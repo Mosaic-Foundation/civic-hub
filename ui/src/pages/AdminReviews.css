@@ -17,6 +17,12 @@
   flex-wrap: wrap;
 }
 
+/* Space out the stacked review cards in the list view (they render as bare
+   .process-card divs, not inside a gapped .process-list). */
+.admin-reviews-body > .process-card {
+  margin-bottom: var(--space-sm);
+}
+
 .admin-review-filter {
   padding: var(--space-xs) var(--space-md);
   background: var(--color-surface);

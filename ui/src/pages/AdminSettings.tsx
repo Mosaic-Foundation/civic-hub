@@ -285,7 +285,7 @@ export default function AdminSettings() {
                 type="text"
                 value={author.name ?? ""}
                 onChange={(e) => updateAuthor(i, { name: e.target.value })}
-                placeholder="Linda DeVito"
+                placeholder="Name"
                 aria-label={`Author ${i + 1} name`}
                 disabled={!loaded || savingAuthors}
                 maxLength={80}

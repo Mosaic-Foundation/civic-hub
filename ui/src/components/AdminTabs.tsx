@@ -13,7 +13,9 @@ import "./AdminTabs.css";
  */
 export default function AdminTabs() {
   return (
-    <nav className="admin-tabs" aria-label="Admin sections">
+    <>
+      <div className="admin-tabs-eyebrow">Admin</div>
+      <nav className="admin-tabs" aria-label="Admin sections">
       <NavLink to="/admin/reviews" className={tabClass}>
         Reviews
       </NavLink>
@@ -35,7 +37,8 @@ export default function AdminTabs() {
       <NavLink to="/admin/settings" className={tabClass}>
         Settings
       </NavLink>
-    </nav>
+      </nav>
+    </>
   );
 }
 
