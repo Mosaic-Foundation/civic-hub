@@ -11,6 +11,7 @@
 
 import { getDb } from "../../db/client.js";
 import { generateId } from "../../utils/id.js";
+import { assertPassesWordlist } from "../../shared/wordlist/index.js";
 import type { CommunityInput, CommentModeration, CommentPhase, InputContext } from "./models.js";
 import { BODY_PREVIEW_LEN, MODERATION_REASON_MAX } from "./models.js";
 
@@ -94,6 +95,10 @@ export async function submitInput(
   if (!body || body.trim().length === 0) {
     throw new Error("Input body cannot be empty");
   }
+
+  // Egregious-slur pre-filter (see src/shared/wordlist). Blocks the obvious
+  // case at submission; civil dissent passes through untouched.
+  assertPassesWordlist(body);
 
   const id = generateId("input");
   const trimmed = body.trim();

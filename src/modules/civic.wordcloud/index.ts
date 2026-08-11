@@ -10,6 +10,7 @@
 
 import { getDb } from "../../db/client.js";
 import { generateId } from "../../utils/id.js";
+import { assertPassesWordlist } from "../../shared/wordlist/index.js";
 import { aggregateSubmissions } from "./aggregation.js";
 import type {
   WordcloudProcessState,
@@ -165,6 +166,11 @@ export async function submitResponse(
   if (body.length > maxLen) {
     throw new Error(`Submission exceeds maximum length of ${maxLen} characters`);
   }
+
+  // Egregious-slur pre-filter (see src/shared/wordlist). Word-cloud words are
+  // rendered large and public, so this is the highest-visibility instant-post
+  // surface — but the same "block only the obvious slur" bar applies.
+  assertPassesWordlist(body);
 
   // Enforce one submission per author per prompt
   if (actor) {

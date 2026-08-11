@@ -13,6 +13,7 @@ import {
   addMockStatement,
 } from "../debug/seedDeliberationMocks.js";
 import { submitAsCreator } from "../modules/civic.review/index.js";
+import { assertPassesWordlist } from "../shared/wordlist/index.js";
 
 async function getConversationId(processId: string): Promise<string> {
   const process = await processService.getProcess(processId);
@@ -20,11 +21,11 @@ async function getConversationId(processId: string): Promise<string> {
     throw new Error(`Process "${processId}" not found`);
   }
   if (process.status !== "active") {
-    throw new Error("Deliberation is not active");
+    throw new Error("Conversation is not active");
   }
   const state = process.state as unknown as PolisDeliberationState;
   if (!state.polis_conversation_id) {
-    throw new Error("Deliberation has not been started");
+    throw new Error("Conversation has not been started");
   }
   return state.polis_conversation_id;
 }
@@ -84,6 +85,12 @@ export async function submitStatement(req: Request, res: Response): Promise<void
       res.status(400).json({ error: "text is required" });
       return;
     }
+
+    // Egregious-slur pre-filter (see src/shared/wordlist), applied BEFORE the
+    // statement is forwarded to Polis (and before the seed/mock branch below),
+    // since Polis has no visibility into our Code of Conduct. Civil dissent
+    // passes through untouched.
+    assertPassesWordlist(text);
 
     const { data: existing } = await getDb()
       .from("deliberation_submissions")
@@ -304,14 +311,14 @@ export async function getDeliberation(req: Request, res: Response): Promise<void
     const processId = req.params.processId as string;
     const process = await processService.getProcess(processId);
     if (!process || process.definition.type !== "civic.polis_deliberation") {
-      res.status(404).json({ error: "Deliberation not found" });
+      res.status(404).json({ error: "Conversation not found" });
       return;
     }
     const handler = (await import("../processes/registry.js")).getProcessHandler(
       "civic.polis_deliberation",
     );
     if (!handler) {
-      res.status(404).json({ error: "Deliberation handler not registered" });
+      res.status(404).json({ error: "Conversation handler not registered" });
       return;
     }
     const actor = req.query.actor as string | undefined;
