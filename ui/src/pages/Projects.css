@@ -1,16 +1,6 @@
-/* Projects listing page */
-
-.project-card {
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  background: var(--card-background);
-  transition: border-color 0.15s;
-}
-
-.project-card:hover {
-  border-color: var(--border-hover);
-}
+/* Projects listing page.
+   Base card styling (border, radius, shadow, hover, success accent)
+   comes from the shared process-card block in App.css. */
 
 .project-card-header {
   display: flex;
