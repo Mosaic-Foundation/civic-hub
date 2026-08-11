@@ -95,7 +95,7 @@ export default function AdminSettings() {
   }
 
   function addAuthor() {
-    setAuthors((cur) => [...cur, { email: "", label: "Board member" }]);
+    setAuthors((cur) => [...cur, { email: "", name: "", label: "Board member" }]);
   }
 
   function removeAuthor(i: number) {
@@ -173,12 +173,13 @@ export default function AdminSettings() {
       const cleaned: AnnouncementAuthor[] = [];
       for (const a of authors) {
         const email = a.email.trim();
+        const name = (a.name ?? "").trim();
         const label = a.label.trim();
-        if (!email && !label) continue;
+        if (!email && !name && !label) continue;
         if (!email || !label) {
-          throw new Error("Each author needs both an email and a label.");
+          throw new Error("Each author needs both an email and a role.");
         }
-        cleaned.push({ email, label });
+        cleaned.push(name ? { email, name, label } : { email, label });
       }
       const saved = await adminPatchSettings({ announcement_authors: cleaned });
       setAuthors(saved.announcement_authors);
@@ -245,16 +246,27 @@ export default function AdminSettings() {
         <section className="admin-settings-panel">
           <h3>Announcement authors</h3>
           <p className="form-hint">
-            Non-admin users who can post announcements. The label shows on
-            the public feed and announcement page — e.g. "Board member",
-            "Planning Committee", "Guest speaker". Admins can always post
-            (as "Admin") and don't need to be listed here.
+            Non-admin users who can post announcements. The name and role show
+            on the public feed and announcement page as "Posted by [Name],
+            [Role]". Leave name blank to use the author's own account name.
+            Admins can always post (as "Admin") and don't need to be listed here.
           </p>
 
           {authors.length === 0 && (
             <p className="empty-state-inline" style={{ margin: "var(--space-sm) 0" }}>
               No non-admin authors configured. Only admins can post announcements.
             </p>
+          )}
+
+          {authors.length > 0 && (
+            <div className="announcement-author-row announcement-author-head" aria-hidden="true">
+              <span className="announcement-author-col-label">Email</span>
+              <span className="announcement-author-col-label">Name</span>
+              <span className="announcement-author-col-label">
+                Role <span className="announcement-author-col-note">(public label)</span>
+              </span>
+              <span />
+            </div>
           )}
 
           {authors.map((author, i) => (
@@ -265,7 +277,18 @@ export default function AdminSettings() {
                 value={author.email}
                 onChange={(e) => updateAuthor(i, { email: e.target.value })}
                 placeholder="author@example.com"
+                aria-label={`Author ${i + 1} email`}
                 disabled={!loaded || savingAuthors}
+              />
+              <input
+                className="form-input"
+                type="text"
+                value={author.name ?? ""}
+                onChange={(e) => updateAuthor(i, { name: e.target.value })}
+                placeholder="Linda DeVito"
+                aria-label={`Author ${i + 1} name`}
+                disabled={!loaded || savingAuthors}
+                maxLength={80}
               />
               <input
                 className="form-input"
@@ -273,6 +296,7 @@ export default function AdminSettings() {
                 value={author.label}
                 onChange={(e) => updateAuthor(i, { label: e.target.value })}
                 placeholder="Board member"
+                aria-label={`Author ${i + 1} role`}
                 disabled={!loaded || savingAuthors}
                 maxLength={50}
               />

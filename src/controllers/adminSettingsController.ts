@@ -6,8 +6,9 @@
 //                              Field name preserved across Slice 8.5's
 //                              civic.brief → civic.vote_results rename
 //                              so existing operator config keeps working.)
-//   - announcement_authors    (Slice 4.1: {email, label} list of non-admin
-//                              users authorized to post announcements)
+//   - announcement_authors    (Slice 4.1: {email, name?, label} list of
+//                              non-admin users authorized to post
+//                              announcements; name is admin-curated)
 //
 // More settings can be added by extending SettingsResponse + the PATCH
 // body handler.
@@ -101,9 +102,10 @@ export async function handlePatchSettings(
       const input: AnnouncementAuthor[] = [];
       for (const entry of body.announcement_authors) {
         if (!entry || typeof entry !== "object") continue;
-        const e = entry as { email?: unknown; label?: unknown };
+        const e = entry as { email?: unknown; name?: unknown; label?: unknown };
         if (typeof e.email === "string" && typeof e.label === "string") {
-          input.push({ email: e.email, label: e.label });
+          const name = typeof e.name === "string" ? e.name : undefined;
+          input.push(name ? { email: e.email, name, label: e.label } : { email: e.email, label: e.label });
         }
       }
       await setAnnouncementAuthors(input, actor);

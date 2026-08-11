@@ -11,7 +11,7 @@
 
 import { NextFunction, Request, Response } from "express";
 import { getUserFromToken, type User } from "../modules/civic.auth/index.js";
-import { lookupAuthorLabel } from "../services/hubSettings.js";
+import { lookupAuthor } from "../services/hubSettings.js";
 
 function extractToken(req: Request): string | null {
   const auth = req.headers.authorization;
@@ -64,11 +64,17 @@ export function isAdminEmail(email: string | undefined | null): boolean {
  */
 export async function resolveAuthorship(
   email: string | undefined | null,
-): Promise<{ role: "admin" | "author"; label: string } | null> {
+): Promise<{
+  role: "admin" | "author";
+  label: string;
+  /** Admin-curated display name for a listed author, when set. null for
+   *  admins (who post under their own account name). */
+  name: string | null;
+} | null> {
   if (!email) return null;
-  if (isAdminEmail(email)) return { role: "admin", label: "Admin" };
-  const label = await lookupAuthorLabel(email);
-  if (label) return { role: "author", label };
+  if (isAdminEmail(email)) return { role: "admin", label: "Admin", name: null };
+  const author = await lookupAuthor(email);
+  if (author) return { role: "author", label: author.label, name: author.name ?? null };
   return null;
 }
 
@@ -220,6 +226,11 @@ export async function requireAnnouncementPoster(
 
     res.locals.effectiveRole = authorship.role;
     res.locals.authorLabel = authorship.label;
+    // Admin-curated display name for a listed author (null for admins, or
+    // when the admin left it blank). The handler prefers this over the
+    // poster's own account name so the admin controls how a board author
+    // appears even before that person has set up their account.
+    res.locals.authorName = authorship.name;
     next();
   });
 }

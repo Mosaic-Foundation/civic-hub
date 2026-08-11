@@ -1196,6 +1196,8 @@ export function getMeetingSummary(id: string): Promise<PublicMeetingSummary> {
 
 export interface AnnouncementAuthor {
   email: string;
+  /** Admin-curated display name; falls back to the poster's account name when blank. */
+  name?: string;
   label: string;
 }
 

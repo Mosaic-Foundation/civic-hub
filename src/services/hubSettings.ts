@@ -37,6 +37,9 @@ export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];
  */
 export interface AnnouncementAuthor {
   email: string;
+  /** Admin-curated display name for this author. Optional — falls back to
+   *  the poster's own account name when blank. */
+  name?: string;
   label: string;
 }
 
@@ -172,14 +175,16 @@ function normalizeAuthors(raw: unknown[]): AnnouncementAuthor[] {
   const out: AnnouncementAuthor[] = [];
   for (const entry of raw) {
     if (!entry || typeof entry !== "object") continue;
-    const e = entry as { email?: unknown; label?: unknown };
+    const e = entry as { email?: unknown; name?: unknown; label?: unknown };
     const email = typeof e.email === "string" ? e.email.trim() : "";
+    const name = typeof e.name === "string" ? e.name.trim() : "";
     const label = typeof e.label === "string" ? e.label.trim() : "";
     if (!email || !label) continue;
     const lower = email.toLowerCase();
     if (seen.has(lower)) continue;
     seen.add(lower);
-    out.push({ email, label });
+    // Store name only when present, so existing { email, label } rows stay clean.
+    out.push(name ? { email, name, label } : { email, label });
   }
   return out;
 }
@@ -250,11 +255,21 @@ export async function getWaitlist(): Promise<WaitlistEntry[]> {
 export async function lookupAuthorLabel(
   email: string | undefined | null,
 ): Promise<string | null> {
+  return (await lookupAuthor(email))?.label ?? null;
+}
+
+/**
+ * Look up an email in the announcement author list. Returns the full author
+ * entry (label + admin-curated name), or null if the email isn't authorized.
+ */
+export async function lookupAuthor(
+  email: string | undefined | null,
+): Promise<AnnouncementAuthor | null> {
   if (!email) return null;
   const lower = email.toLowerCase();
   const authors = await getAnnouncementAuthors();
   for (const a of authors) {
-    if (a.email.toLowerCase() === lower) return a.label;
+    if (a.email.toLowerCase() === lower) return a;
   }
   return null;
 }

@@ -117,7 +117,12 @@ export async function handleCreateAnnouncement(
         body: body.body,
         author_id: user.id,
         author_role: authorLabel,
-        author_display_name: (await getUser(user.id))?.display_name ?? null,
+        // Prefer the admin-curated name from the author list; fall back to
+        // the poster's own account name when the admin left it blank.
+        author_display_name:
+          (res.locals.authorName as string | null | undefined) ||
+          (await getUser(user.id))?.display_name ||
+          null,
         links: links ?? [],
         image_url,
         image_alt,

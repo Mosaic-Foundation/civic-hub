@@ -44,10 +44,44 @@
 
 .announcement-author-row {
   display: grid;
-  grid-template-columns: 2fr 1.3fr auto;
+  grid-template-columns: 2fr 1.6fr 1.3fr auto;
   gap: var(--space-sm);
   margin-bottom: var(--space-sm);
   align-items: center;
+}
+
+/* Column headers above the author rows. */
+.announcement-author-head {
+  margin-bottom: var(--space-xs);
+}
+
+.announcement-author-col-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.announcement-author-col-note {
+  font-weight: 400;
+  color: var(--color-text-subtle);
+}
+
+@media (max-width: 640px) {
+  /* Stack the fields on narrow screens; hide the column header row since
+     each input keeps its own placeholder + aria-label. */
+  .announcement-author-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .announcement-author-head {
+    display: none;
+  }
+  .announcement-author-row .admin-remove-section {
+    align-self: flex-end;
+  }
 }
 
 /* --- Waitlist table --- */
