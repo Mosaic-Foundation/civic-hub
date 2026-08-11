@@ -40,6 +40,11 @@ import {
   handleRestoreAnnouncement,
   handleRestoreComment,
 } from "../controllers/moderationController.js";
+import {
+  handleArchiveProcess,
+  handleRestoreProcess,
+  handleListArchivedProcesses,
+} from "../controllers/adminArchiveController.js";
 import { cleanOrphanedEvents } from "../services/processService.js";
 import { requireAdmin } from "../middleware/auth.js";
 
@@ -84,6 +89,13 @@ router.get("/reviews/:reviewId", handleAdminGetReview);
 router.post("/reviews/:reviewId/approve", handleAdminApprove);
 router.post("/reviews/:reviewId/request-changes", handleAdminRequestChanges);
 router.post("/reviews/:reviewId/decline", handleAdminDecline);
+
+// Archive / restore (generic soft-remove across process types) + the
+// admin Archived view. Archiving hides an item from the public list, direct
+// fetch, feed, and digest while keeping it restorable.
+router.get("/archived", handleListArchivedProcesses);
+router.post("/processes/:id/archive", handleArchiveProcess);
+router.post("/processes/:id/restore", handleRestoreProcess);
 
 // Hub settings (admin-configurable; overrides env var fallbacks)
 router.get("/settings", handleGetSettings);

@@ -1150,8 +1150,42 @@ export function adminCleanupOrphanedEvents(): Promise<{ message: string; removed
 
 export function adminBatchDeleteMeetingSummaries(
   ids: string[],
-): Promise<{ message: string; deleted: number; skipped: number }> {
+): Promise<{ message: string; deleted: number; archived?: number; skipped: number }> {
+  // Soft-archive (restorable), not hard-delete — see the backend handler.
   return request("POST", `/admin/meeting-summaries/batch-delete`, { ids });
+}
+
+// --- Admin: archive / restore (generic soft-remove) ---
+
+export interface ArchivedProcess {
+  id: string;
+  type: string;
+  title: string;
+  archived_at: string;
+  archived_by: string | null;
+  reason: string | null;
+  previous_status: string | null;
+  type_label: string;
+}
+
+export function adminListArchived(): Promise<{
+  items: ArchivedProcess[];
+  count: number;
+}> {
+  return request("GET", "/admin/archived");
+}
+
+export function adminArchiveProcess(
+  id: string,
+  reason: string,
+): Promise<{ message: string; id: string; status: string }> {
+  return request("POST", `/admin/processes/${id}/archive`, { reason });
+}
+
+export function adminRestoreProcess(
+  id: string,
+): Promise<{ message: string; id: string; status: string }> {
+  return request("POST", `/admin/processes/${id}/restore`);
 }
 
 export function getMeetingSummary(id: string): Promise<PublicMeetingSummary> {

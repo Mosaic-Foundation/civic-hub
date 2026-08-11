@@ -41,8 +41,8 @@ import {
   type SummaryBlock,
 } from "../modules/civic.meeting_summary/index.js";
 import {
+  archiveProcess,
   createProcess,
-  deleteProcess,
   getAllProcesses,
   getProcess,
   saveProcessState,
@@ -677,20 +677,30 @@ export async function handleBatchApproveMeetingSummaries(
 }
 
 // --- POST /admin/meeting-summaries/batch-delete ----------------------------
+//
+// SOFT-archive, not hard-delete. Removed meeting summaries are archived
+// (status → "archived", restorable from the admin Archived view) rather than
+// destroyed. The route name is kept for API compatibility; the behavior is now
+// non-destructive per the "soft-remove only" decision.
 
 export async function handleBatchDeleteMeetingSummaries(
   req: Request,
   res: Response,
 ): Promise<void> {
   try {
+    const adminId = getAuthUser(res).id;
     const body = (req.body ?? {}) as Record<string, unknown>;
     const ids = Array.isArray(body.ids) ? (body.ids as string[]) : null;
     if (!ids || ids.length === 0) {
       res.status(400).json({ error: "ids[] is required" });
       return;
     }
+    const reason =
+      typeof body.reason === "string" && body.reason.trim()
+        ? body.reason.trim()
+        : "Archived from meeting summaries admin";
 
-    let deleted = 0;
+    let archived = 0;
     let skipped = 0;
 
     for (const id of ids) {
@@ -700,20 +710,22 @@ export async function handleBatchDeleteMeetingSummaries(
         continue;
       }
       try {
-        await deleteProcess(id);
-        deleted += 1;
+        await archiveProcess(id, adminId, reason);
+        archived += 1;
       } catch (err) {
         const msg = err instanceof Error ? err.message : "unknown";
         console.warn(
-          `[meeting-summary] batch-delete failed id=${id}: ${msg}`,
+          `[meeting-summary] batch-archive failed id=${id}: ${msg}`,
         );
         skipped += 1;
       }
     }
 
     res.json({
-      message: "Batch delete complete.",
-      deleted,
+      message: "Batch archive complete.",
+      archived,
+      // Keep `deleted` in the response for older clients; equals `archived`.
+      deleted: archived,
       skipped,
     });
   } catch (err) {

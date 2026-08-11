@@ -7,6 +7,7 @@ import { Request, Response } from "express";
 import { getAllEvents, getEventsByProcessId } from "../events/eventStore.js";
 import { getUserFromToken } from "../modules/civic.auth/index.js";
 import { isAdminEmail } from "../middleware/auth.js";
+import { getNonPublicProcessIds } from "../services/processService.js";
 
 /**
  * Slice 11 — events with `meta.visibility === "restricted"` are
@@ -47,6 +48,21 @@ export async function handleGetEvents(
     let events = processId
       ? await getEventsByProcessId(processId)
       : await getAllEvents();
+
+    // Suppress events belonging to archived / pending-review processes so a
+    // removed item leaves no ghost feed cards. Applies to everyone (admins
+    // included) — archived content is reachable via the admin Archived view,
+    // never the feed. Events with no process_id (rare) always pass through.
+    // Skipped when the caller asked for a specific process_id (that read is an
+    // explicit lookup, not the feed).
+    if (!processId) {
+      const hidden = await getNonPublicProcessIds();
+      if (hidden.size > 0) {
+        events = events.filter(
+          (e) => !e.process_id || !hidden.has(e.process_id),
+        );
+      }
+    }
 
     // Restricted events are admin-only. Default to public view; only
     // include restricted events when the caller authenticates as admin.

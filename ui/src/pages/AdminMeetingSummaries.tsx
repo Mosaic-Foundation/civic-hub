@@ -115,8 +115,9 @@ export default function AdminMeetingSummaries() {
         );
       } else {
         const result = await adminBatchDeleteMeetingSummaries(ids);
+        const n = result.archived ?? result.deleted;
         setActionMessage(
-          `Deleted ${result.deleted} summary${result.deleted !== 1 ? "ies" : ""}.`,
+          `Archived ${n} summary${n !== 1 ? "ies" : ""}. Restore from the Archived tab.`,
         );
       }
       setCheckedIds(new Set());
@@ -655,7 +656,7 @@ export default function AdminMeetingSummaries() {
                     <span className="batch-confirm-label">
                       {confirmBatchAction === "approve"
                         ? `Approve ${checkedIds.size} selected?`
-                        : `Delete ${checkedIds.size} selected?`}
+                        : `Archive ${checkedIds.size} selected? They can be restored from the Archived tab.`}
                     </span>
                     {confirmBatchAction === "approve" && (
                       <label className="batch-backdate-label">
@@ -707,7 +708,7 @@ export default function AdminMeetingSummaries() {
                       onClick={() => setConfirmBatchAction("delete")}
                       disabled={batchBusy}
                     >
-                      Delete selected ({checkedIds.size})
+                      Archive selected ({checkedIds.size})
                     </button>
                   </>
                 )}

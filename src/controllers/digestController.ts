@@ -20,7 +20,10 @@
 import { Request, Response } from "express";
 import { getEventsSince } from "../events/eventStore.js";
 import type { CivicEvent } from "../models/event.js";
-import { getAllProcesses } from "../services/processService.js";
+import {
+  getAllProcesses,
+  getNonPublicProcessIds,
+} from "../services/processService.js";
 import {
   assembleDigestForUser,
   buildUnsubscribeUrl,
@@ -204,7 +207,17 @@ export async function handleRunDigest(
     // is still inside the user's "since" cursor. The feed and the
     // public list endpoint already exclude these; the digest must too.
     const removedAnnouncementIds = new Set<string>();
+    // Archived / pending-review processes: their events must not reach the
+    // digest either (matches the feed status-filter). getAllProcesses() below
+    // already omits these, so this is the only place their ids are known.
+    let hiddenProcessIds = new Set<string>();
     if (users.length > 0) {
+      try {
+        hiddenProcessIds = await getNonPublicProcessIds();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "unknown error";
+        console.warn(`[digest] non-public process lookup failed: ${message}`);
+      }
       try {
         const allProcesses = await getAllProcesses();
         for (const p of allProcesses) {
@@ -261,6 +274,8 @@ export async function handleRunDigest(
           // announcement reappear in their email even if the publish
           // event still falls inside their digest window.
           if (e.process_id && removedAnnouncementIds.has(e.process_id)) continue;
+          // Drop events for archived / pending-review processes.
+          if (e.process_id && hiddenProcessIds.has(e.process_id)) continue;
           windowEvents.push(toDigestEvent(e, uiBase));
         }
 

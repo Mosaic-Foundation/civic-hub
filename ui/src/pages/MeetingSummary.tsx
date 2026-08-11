@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   getMeetingSummary,
   type PublicMeetingSummary,
 } from "../services/api";
 import { relativeTime, absoluteTime } from "../components/FeedPost";
 import ShareButton from "../components/ShareButton";
+import AdminArchiveButton from "../components/AdminArchiveButton";
 import "./MeetingSummary.css";
 
 export default function MeetingSummaryPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [summary, setSummary] = useState<PublicMeetingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -165,6 +167,17 @@ export default function MeetingSummaryPage() {
           <h2>Notes from the Civic Hub</h2>
           <p>{summary.admin_notes}</p>
         </section>
+      )}
+
+      {/* Admin-only: archive a stale/incorrect summary (soft-remove,
+          restorable from the admin Archived view). Renders nothing for
+          non-admins. */}
+      {id && (
+        <AdminArchiveButton
+          processId={id}
+          itemLabel="meeting summary"
+          onArchived={() => navigate("/")}
+        />
       )}
     </article>
   );

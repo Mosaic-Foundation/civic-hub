@@ -36,6 +36,7 @@ import {
   isActionable,
   shouldEmitStatusUpdate,
   nonPublicStatusFilter,
+  NON_PUBLIC_STATUSES,
 } from "./processLifecycle.js";
 import {
   resolveCreators,
@@ -436,6 +437,175 @@ export async function saveProcessState(process: Process): Promise<void> {
     );
   }
   process.updatedAt = now;
+}
+
+// --- Archive / restore (soft-remove) ---------------------------------------
+//
+// Soft-remove for admin cleanup (old BoS meeting summaries, stale content).
+// We do NOT hard-delete: process content is append-only-ish (reviewed
+// processes carry immutable review_turns) and residents may have engaged with
+// it. Archiving flips the canonical status to "archived" — which already
+// removes the item from the public list + direct-fetch (NON_PUBLIC_STATUSES)
+// AND, paired with the events feed-status filter, from the feed/digest so no
+// ghost cards remain. The prior status + reason live in `state.archive` so a
+// restore puts the item back exactly where it was (a published meeting summary
+// returns to "published", a closed vote to "closed"). Mirrors the existing
+// announcement `state.moderation` soft-remove pattern — no schema change.
+
+interface ArchiveMeta {
+  archived: boolean;
+  archived_at: string | null;
+  archived_by: string | null;
+  reason: string | null;
+  /** The status the process held before it was archived, for restore. */
+  previous_status: ProcessStatus | null;
+  restored_at?: string | null;
+}
+
+export const ARCHIVE_REASON_MAX = 500;
+
+export async function archiveProcess(
+  id: string,
+  adminId: string,
+  reason: string,
+): Promise<Process> {
+  const process = await getProcess(id);
+  if (!process) throw new Error(`Process not found: ${id}`);
+
+  const trimmedReason = (reason ?? "").trim();
+  if (!trimmedReason) {
+    throw new Error("An archive reason is required");
+  }
+  if (trimmedReason.length > ARCHIVE_REASON_MAX) {
+    throw new Error(
+      `Archive reason must be ${ARCHIVE_REASON_MAX} characters or fewer`,
+    );
+  }
+
+  // Idempotent — re-archiving an archived process is a no-op.
+  if (process.status === "archived") return process;
+
+  const now = new Date().toISOString();
+  const archive: ArchiveMeta = {
+    archived: true,
+    archived_at: now,
+    archived_by: adminId,
+    reason: trimmedReason,
+    previous_status: process.status,
+    restored_at: null,
+  };
+  const nextState = { ...(process.state ?? {}), archive };
+
+  const { error } = await getDb()
+    .from("processes")
+    .update({ status: "archived", state: nextState, updated_at: now })
+    .eq("id", id);
+  if (error) {
+    throw new Error(`ProcessService: failed to archive ${id}: ${error.message}`);
+  }
+
+  // Restricted-visibility lifecycle event so the moderation log picks it up
+  // (mirrors the announcement remove/restore emit shape) and the public feed
+  // never surfaces it.
+  await emitEvent({
+    event_type: "civic.process.updated",
+    actor: adminId,
+    process_id: id,
+    hub_id: process.hubId || HUB_ID,
+    jurisdiction: process.jurisdiction || DEFAULT_JURISDICTION,
+    processType: process.definition.type,
+    visibility: "restricted",
+    data: {
+      process: { previous_status: archive.previous_status, status: "archived" },
+      moderation: {
+        action: "process_archived",
+        reason: trimmedReason,
+        archived_by: adminId,
+      },
+    },
+  });
+
+  process.status = "archived";
+  process.state = nextState;
+  process.updatedAt = now;
+  return process;
+}
+
+export async function restoreProcess(
+  id: string,
+  adminId: string,
+): Promise<Process> {
+  const process = await getProcess(id);
+  if (!process) throw new Error(`Process not found: ${id}`);
+  if (process.status !== "archived") return process;
+
+  const archive = (process.state?.archive ?? null) as ArchiveMeta | null;
+  // Fall back to "closed" if we somehow lost the prior status — a safe,
+  // non-live resting state that won't re-open a vote or expose a draft.
+  const restoreStatus: ProcessStatus = archive?.previous_status ?? "closed";
+
+  const now = new Date().toISOString();
+  const nextState = { ...(process.state ?? {}) };
+  delete (nextState as Record<string, unknown>).archive;
+
+  const { error } = await getDb()
+    .from("processes")
+    .update({ status: restoreStatus, state: nextState, updated_at: now })
+    .eq("id", id);
+  if (error) {
+    throw new Error(`ProcessService: failed to restore ${id}: ${error.message}`);
+  }
+
+  await emitEvent({
+    event_type: "civic.process.updated",
+    actor: adminId,
+    process_id: id,
+    hub_id: process.hubId || HUB_ID,
+    jurisdiction: process.jurisdiction || DEFAULT_JURISDICTION,
+    processType: process.definition.type,
+    visibility: "restricted",
+    data: {
+      process: { previous_status: "archived", status: restoreStatus },
+      moderation: { action: "process_restored", restored_by: adminId },
+    },
+  });
+
+  process.status = restoreStatus;
+  process.state = nextState;
+  process.updatedAt = now;
+  return process;
+}
+
+/**
+ * The set of process ids that are NOT publicly visible (archived or still
+ * pending review). Used by the events feed + digest to suppress cards for
+ * content that has been archived/removed — otherwise an archived process's
+ * historical `civic.process.created` / `.started` / proposal-submitted events
+ * linger in `/events` forever and render ghost feed posts. Single small query;
+ * the feed already fetches all events, so this is one extra round-trip.
+ */
+export async function getNonPublicProcessIds(): Promise<Set<string>> {
+  const { data, error } = await getDb()
+    .from("processes")
+    .select("id")
+    .in("status", [...NON_PUBLIC_STATUSES]);
+  if (error) throw new Error(`ProcessService: ${error.message}`);
+  return new Set((data ?? []).map((r: { id: string }) => r.id));
+}
+
+/**
+ * All archived processes, newest first — for the admin Archived view where an
+ * admin can review and restore. Bypasses the public NON_PUBLIC_STATUSES filter
+ * by design (admin-only surface).
+ */
+export async function getArchivedProcesses(): Promise<Process[]> {
+  const { data, error } = await getDb()
+    .from("processes")
+    .select("*")
+    .eq("status", "archived")
+    .order("updated_at", { ascending: false });
+  if (error) throw new Error(`ProcessService: ${error.message}`);
+  return (data ?? []).map((r) => rowToProcess(r as ProcessRow));
 }
 
 export async function deleteProcess(id: string): Promise<void> {

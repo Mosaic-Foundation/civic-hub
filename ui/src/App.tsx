@@ -38,6 +38,7 @@ import DeliberationDetail from "./pages/DeliberationDetail";
 import ProjectDetail from "./pages/ProjectDetail";
 import ProjectDraft from "./pages/ProjectDraft";
 import AdminModeration from "./pages/AdminModeration";
+import AdminArchived from "./pages/AdminArchived";
 import AdminReviews from "./pages/AdminReviews";
 import MySubmissions from "./pages/MySubmissions";
 import WordCloud from "./pages/WordCloud";
@@ -187,6 +188,7 @@ function AppContent() {
               and client-side via the AuthContext.isAdmin flag inside
               the page. */}
           <Route path="/admin/moderation" element={<AdminGuard><AdminModeration /></AdminGuard>} />
+          <Route path="/admin/archived" element={<AdminGuard><AdminArchived /></AdminGuard>} />
         </Routes>
       </main>
 

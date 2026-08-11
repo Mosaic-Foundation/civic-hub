@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { getProcessState, type ProcessState, type VoteState, type ProposalState } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "../hooks/useRequireAuth";
@@ -11,6 +11,7 @@ import CommunityInputPanel from "../components/CommunityInputPanel";
 import ProposalCommentForm from "../components/ProposalCommentForm";
 import AuthModal from "../components/AuthModal";
 import ShareButton from "../components/ShareButton";
+import AdminArchiveButton from "../components/AdminArchiveButton";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -41,6 +42,7 @@ function statusClass(status: string): string {
 
 export default function Process() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { actorId } = useAuth();
   const { showAuthModal, closeAuthModal, handleAuthComplete } = useRequireAuth();
   const [process, setProcess] = useState<ProcessState | null>(null);
@@ -201,6 +203,16 @@ export default function Process() {
           key={commentRefresh}
           processId={id}
           config={voteState?.content?.community_input}
+        />
+      )}
+
+      {/* Admin-only: archive this process (soft-remove, restorable from the
+          admin Archived view). Renders nothing for non-admins. */}
+      {id && (
+        <AdminArchiveButton
+          processId={id}
+          itemLabel="item"
+          onArchived={() => navigate("/")}
         />
       )}
     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   adminRemoveAnnouncement,
   adminRestoreAnnouncement,
@@ -12,6 +12,7 @@ import PostFeaturedImage from "../components/PostFeaturedImage";
 import LinkPreviewCard from "../components/LinkPreviewCard";
 import ShareButton from "../components/ShareButton";
 import Creator from "../components/Creator";
+import AdminArchiveButton from "../components/AdminArchiveButton";
 import "./Announcement.css";
 
 const URL_RE = /\bhttps?:\/\/\S+/gi;
@@ -26,6 +27,7 @@ const REASON_CHIPS = [
 
 export default function AnnouncementPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { isAdmin } = useAuth();
 
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
@@ -195,17 +197,28 @@ export default function AnnouncementPage() {
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              className="danger"
-              onClick={() => {
-                setShowRemoveModal(true);
-                setRemoveReason("");
-                setModerationError(null);
-              }}
-            >
-              Remove announcement
-            </button>
+            <>
+              <button
+                type="button"
+                className="danger"
+                onClick={() => {
+                  setShowRemoveModal(true);
+                  setRemoveReason("");
+                  setModerationError(null);
+                }}
+              >
+                Remove announcement
+              </button>
+              {/* Archive is distinct from a Code-of-Conduct removal: it hides
+                  the announcement from the site and feed entirely (no
+                  tombstone) for cleanup of stale content, and is restorable
+                  from the admin Archived view. */}
+              <AdminArchiveButton
+                processId={announcement.id}
+                itemLabel="announcement"
+                onArchived={() => navigate("/")}
+              />
+            </>
           )}
           {moderationError && (
             <span className="form-error">{moderationError}</span>

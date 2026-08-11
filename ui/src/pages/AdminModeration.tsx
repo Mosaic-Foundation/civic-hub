@@ -31,6 +31,10 @@ function actionLabel(action: string): string {
       return "Announcement removed";
     case "announcement_restored":
       return "Announcement restored";
+    case "process_archived":
+      return "Item archived";
+    case "process_restored":
+      return "Item restored";
     default:
       return action;
   }

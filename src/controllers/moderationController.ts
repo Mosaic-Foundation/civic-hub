@@ -179,7 +179,7 @@ interface ModerationLogEntry {
   process_id: string;
   process_title: string | null;
   action: string;
-  target_kind: "comment" | "announcement" | null;
+  target_kind: "comment" | "announcement" | "process" | null;
   reason: string | null;
   admin: string;
 }
@@ -240,7 +240,9 @@ export async function handleGetModerationLog(
         ? "comment"
         : action.startsWith("announcement_")
           ? "announcement"
-          : null;
+          : action.startsWith("process_")
+            ? "process"
+            : null;
       const title = await lookupTitle(ev.process_id);
       log.push({
         event_id: ev.id,
