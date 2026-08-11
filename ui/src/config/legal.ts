@@ -8,11 +8,11 @@
 // Because the version is hardcoded (not env-var-driven), every bump
 // is traceable in git history. Keep the bump in the same commit as
 // the markdown changes so the version and content stay aligned.
-export const CURRENT_LEGAL_VERSION = "1.0";
+export const CURRENT_LEGAL_VERSION = "1.1";
 
 /**
  * Human-friendly date for the current bundle. Mirrors the "Last
  * updated" line at the top of each markdown file. The re-acceptance
  * modal can show this without parsing the markdown.
  */
-export const CURRENT_LEGAL_LAST_UPDATED = "2026-04-24";
+export const CURRENT_LEGAL_LAST_UPDATED = "2026-08-10";

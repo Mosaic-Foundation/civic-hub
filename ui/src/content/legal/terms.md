@@ -1,7 +1,7 @@
 # Terms of Service
 
-*Last updated: 2026-04-24*
-*Version: 1.0*
+*Last updated: 2026-08-10*
+*Version: 1.1*
 
 > **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer familiar with Virginia and US consumer law before the Floyd Civic Hub accepts its first resident sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.
 
@@ -35,6 +35,7 @@ You agree to:
 - Only affirm Floyd County residency if you honestly live in Floyd County, Virginia.
 - Not attempt to sign up more than once or vote more than once per issue. One resident, one voice.
 - Not use the Hub to break the law, harass others, or disrupt the service.
+- Keep discussion self-contained: do not import or repost private content about specific people from other platforms (for example, screenshots or copied social-media posts). Linking to authoritative or official sources as references is permitted.
 - Not scrape, crawl, or programmatically access the Hub except through our public APIs (once we publish them).
 - Not impersonate another person or misrepresent your identity or affiliation.
 

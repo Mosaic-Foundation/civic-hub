@@ -1,7 +1,7 @@
 # Privacy Policy
 
 *Last updated: 2026-04-24*
-*Version: 1.0*
+*Version: 1.1*
 
 > **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer familiar with Virginia and US privacy law before the Floyd Civic Hub accepts its first resident sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.
 

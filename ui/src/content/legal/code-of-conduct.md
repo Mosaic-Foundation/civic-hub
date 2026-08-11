@@ -1,7 +1,7 @@
 # Code of Conduct
 
-*Last updated: 2026-04-24*
-*Version: 1.0*
+*Last updated: 2026-08-10*
+*Version: 1.1*
 
 The Floyd Civic Hub is a place for residents of Floyd County to engage with each other and with local government. For that to work, everyone needs to be able to participate without being harassed, attacked, or drowned out. This Code of Conduct describes how we keep the Hub civil — and, just as important, how we avoid the far worse problem of silencing opinions we happen to disagree with.
 
@@ -21,6 +21,7 @@ Content that:
 - **Harasses, threatens, or intimidates** another user, an official, or any identifiable person. This includes sustained targeting of an individual across multiple posts or comments.
 - **Uses slurs or targets people for who they are** — based on race, ethnicity, religion, national origin, sex, gender identity, sexual orientation, disability, or age. Criticism of groups' *actions* is permitted; dehumanizing attacks on who they are is not.
 - **Shares someone's private information without consent** (doxxing), including home addresses, phone numbers not already public, workplace details, or medical information. Public officials' publicly listed contact information is fair to share.
+- **Imports or reposts private content about specific people from other platforms** — for example, screenshots or copied social-media posts. Keep discussion on the Hub self-contained: engage with what people say *here*, not with what they said somewhere else. Linking to authoritative or official sources as references is permitted.
 - **Is spam or obvious off-topic noise** — repetitive posts, commercial solicitation, or content unrelated to Floyd County civic matters.
 - **Impersonates another person** or misrepresents your identity or affiliation to mislead others.
 - **Endangers or sexualizes minors** in any way.
