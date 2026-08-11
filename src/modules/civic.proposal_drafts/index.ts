@@ -137,6 +137,7 @@ export async function appendConversation(
   id: string,
   userMessage: string,
   assistantMessage: string,
+  options?: { markAssisted?: boolean },
 ): Promise<void> {
   const draft = await getDraft(id);
   if (!draft) throw new Error(`Draft not found: ${id}`);
@@ -147,12 +148,17 @@ export async function appendConversation(
     { role: "assistant" as const, content: assistantMessage },
   ];
 
+  // The always-on Code of Conduct pre-check is NOT writing assistance —
+  // only genuine assistant exchanges may flag the draft as AI-helped
+  // (which drives the public "drafted with assistant help" disclosure).
+  const updates: Record<string, unknown> = { conversation_history: history };
+  if (options?.markAssisted !== false) {
+    updates.assistant_helped = true;
+  }
+
   const { error } = await getDb()
     .from("proposal_drafts")
-    .update({
-      conversation_history: history,
-      assistant_helped: true,
-    })
+    .update(updates)
     .eq("id", id);
 
   if (error) throw new Error(`Drafts: ${error.message}`);

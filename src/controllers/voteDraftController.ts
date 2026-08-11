@@ -255,7 +255,11 @@ export async function handleReviewVoteDraft(
       return;
     }
 
-    await appendVoteConversation(id, reviewMessage, response.message);
+    // markAssisted: false — the CoC pre-check is not writing assistance
+    // and must not trigger the "drafted with AI help" disclosure.
+    await appendVoteConversation(id, reviewMessage, response.message, {
+      markAssisted: false,
+    });
     await saveVoteReviewResult(id, response.suggestions);
 
     const updatedDraft = await getVoteDraft(id);

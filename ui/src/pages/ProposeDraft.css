@@ -138,6 +138,16 @@
   line-height: var(--line-height-relaxed);
 }
 
+/* Disclosure under the path choice: the always-on Code of Conduct
+   pre-check is separate from (and independent of) the optional
+   writing assistant. */
+.path-choice-note {
+  margin-top: var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-relaxed);
+}
+
 .path-back-link {
   display: inline-block;
   margin-top: var(--space-md);

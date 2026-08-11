@@ -40,6 +40,7 @@ export default function ProjectDraft() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reviewNotice, setReviewNotice] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState(false);
   const [showMobileAssistant, setShowMobileAssistant] = useState(false);
   const [phase, setPhase] = useState<"brainstorm" | "free_form" | "review">("brainstorm");
   const [showConfirm, setShowConfirm] = useState(false);
@@ -131,6 +132,7 @@ export default function ProjectDraft() {
   const handleReview = useCallback(async () => {
     if (!draft) return;
     setLoading(true);
+    setReviewing(true);
     setError(null);
     setReviewNotice(null);
     try {
@@ -162,6 +164,7 @@ export default function ProjectDraft() {
       ]);
     } finally {
       setLoading(false);
+      setReviewing(false);
     }
   }, [draft]);
 
@@ -292,10 +295,11 @@ export default function ProjectDraft() {
             onClick={() => startDraft("brainstorm")}
             disabled={loading}
           >
-            <span className="path-card-label">Let's brainstorm together</span>
+            <span className="path-card-label">Draft with the assistant</span>
             <span className="path-card-desc">
-              The assistant will ask a few questions to help shape your
-              project page, then offer to generate a starting draft.
+              Optional writing help: the assistant will ask a few questions
+              to help shape your project page, then offer to generate a
+              starting draft.
             </span>
           </button>
 
@@ -307,11 +311,18 @@ export default function ProjectDraft() {
           >
             <span className="path-card-label">I'll write my own</span>
             <span className="path-card-desc">
-              Jump straight to the form. The assistant is available if you
-              want feedback.
+              Jump straight to the form — no AI writing help unless you ask
+              for it.
             </span>
           </button>
         </div>
+
+        <p className="path-choice-note">
+          Whichever you choose, every draft gets a quick automated Code of
+          Conduct check before it goes to the hub admin for review. The check
+          isn't writing help — it just flags anything that would block
+          approval.
+        </p>
       </div>
     );
   }
@@ -326,6 +337,7 @@ export default function ProjectDraft() {
       onApplySuggestion={handleApplySuggestion}
       loading={loading}
       phase={phase}
+      loadingLabel={reviewing ? "Running Code of Conduct check" : "Thinking"}
     />
   );
 

@@ -16,6 +16,9 @@ interface Props {
   onDismissSuggestion?: (index: number) => void;
   loading: boolean;
   phase?: "brainstorm" | "free_form" | "review";
+  /** Label shown next to the loading dots — lets pages distinguish an
+   *  ordinary assistant reply from the Code of Conduct check. */
+  loadingLabel?: string;
 }
 
 export default function AssistantPanel({
@@ -25,6 +28,7 @@ export default function AssistantPanel({
   onDismissSuggestion,
   loading,
   phase,
+  loadingLabel = "Thinking",
 }: Props) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -91,7 +95,7 @@ export default function AssistantPanel({
         {loading && (
           <div className="assistant-msg msg-assistant">
             <div className="msg-content msg-loading">
-              <span className="thinking-label">Reviewing your draft</span>
+              <span className="thinking-label">{loadingLabel}</span>
               <span className="thinking-dots">
                 <span className="dot" />
                 <span className="dot" />

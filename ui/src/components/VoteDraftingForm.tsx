@@ -50,15 +50,15 @@ function getStatusText(draft: VoteDraft, reviewFailed?: boolean): string {
   }
 
   if (draft.last_review_result === null && reviewFailed) {
-    return "Status: Review failed — tap Review draft to try again";
+    return "Status: Check failed — tap Run Code of Conduct check to try again";
   }
 
   if (draft.last_review_result === null) {
-    return "Status: Click Review draft to prepare for submission";
+    return "Status: Run the Code of Conduct check to prepare for submission";
   }
 
   if (draft.draft_modified_since_review) {
-    return "Status: Draft changed — click Review draft before submitting";
+    return "Status: Draft changed — run the Code of Conduct check again before submitting";
   }
 
   const hardBlocks = (draft.last_review_result ?? []).filter(
@@ -311,7 +311,7 @@ export default function VoteDraftingForm({
               onClick={onReview}
               disabled={disabled || reviewLoading}
             >
-              {reviewLoading ? "Reviewing..." : "Review draft"}
+              {reviewLoading ? "Checking..." : "Run Code of Conduct check"}
             </button>
           )}
           <button
