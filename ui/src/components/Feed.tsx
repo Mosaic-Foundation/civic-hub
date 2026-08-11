@@ -205,13 +205,25 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
           break;
         case "proposal":
         case "proposal-closed":
-        case "conversation":
-        case "conversation-results":
           // Title/description served by the canonical processes-row read model.
           lookup = getProcessState(id).then((state) => ({
             title: state.title as string | undefined,
             description: state.description as string | undefined,
           }));
+          break;
+        case "conversation":
+        case "conversation-results":
+          // Polis conversations expose their subject as `topic`/`framing` in
+          // the read model, not `title`/`description` — map them so the feed
+          // card keeps the original conversation topic instead of falling
+          // back to the literal "Conversation results".
+          lookup = getProcessState(id).then((state) => {
+            const s = state as unknown as Record<string, unknown>;
+            return {
+              title: (s.title ?? s.topic) as string | undefined,
+              description: (s.description ?? s.framing) as string | undefined,
+            };
+          });
           break;
         case "announcement":
         case "announcement-author":
