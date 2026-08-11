@@ -4,6 +4,123 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Batch A refinement pass (pre-tester invite) — 2026-08-10
+
+Worked the Batch A punch-list from `Rollout Plan/Launch-Checklist.md` — the
+refinement + fixes pass before inviting the trusted test cohort. All changes
+below are **committed pending Adam's approval, not yet deployed**. Verified with
+`tsc -b` + `vite build` (both green) and the full unit suite (120 pass, incl. 16
+new wordlist tests). The `tests/api/*` integration tests require a running
+server + DB and are not exercised here. **No prod schema change is required by
+this batch** (the archive slice stores its metadata in the existing
+`processes.state` JSONB — see below).
+
+### Straightforward items
+- **"Conversations" label unification.** Killed the remaining resident-visible
+  "Deliberation(s)" strings: `DeliberationPanel` loading/error copy, the four
+  `deliberationController` error strings, and the stale `hub.ts` config comment.
+  Left all code-level identifiers untouched (route `/deliberations`, type
+  `civic.polis_deliberation`, component/table/CSS names) — copy/label only.
+- **Vote-approval email wording.** `notifyCreatorApproved` (`civic.review/email.ts`)
+  now sends an "approved — now gathering support" message (with the support
+  threshold) for votes that enter the `proposed` phase, instead of the
+  inaccurate "now live!". Lifecycle unchanged — only the copy. Driven by a new
+  `entered_support_phase` flag computed in `approveReview` (`service.ts`), which
+  also replaced the ad-hoc `activation_mode` re-read.
+- **welcome.md** reconciled to the current participation model (conversation /
+  proposal / proposed-vote-with-threshold / project; proposals gather support
+  and never auto-launch a vote).
+- **Scroll-to-nav: DROPPED.** The unreliable measure-and-retry auto-scroll in
+  `FeedVotesTabs` was removed in favor of a deterministic `window.scrollTo(0,0)`
+  on route change — sub-pages now land at the top. (Root cause of the old
+  flakiness: the banner image loads and shifts layout *after* measurement.)
+- **AI assist vs AI review clarity (#3).** Kept the always-on CoC pre-check but
+  made the split honest: the assist/no-assist path cards now label assist as
+  *optional* writing help, with a note that every draft still gets a Code-of-
+  Conduct check; the "Review draft" button + status strings are relabeled "Run
+  Code of Conduct check"; the shared spinner label is now context-aware
+  (`loadingLabel`, "Running Code of Conduct check" vs "Thinking"). **Bug fixed:**
+  the review path used to set `assistant_helped: true`, so a "write my own"
+  draft wrongly showed the "drafted with AI help" disclosure — the CoC check now
+  passes `markAssisted: false` in all three draft modules.
+- **Card visual polish (#4).** Shared card language across the four process
+  lists (Votes, Proposals, Projects, Conversations) in `App.css`: 14px radius,
+  soft resting shadow, hover lift, pill-shaped uppercase status badges, and a
+  per-type accent edge drawn from design-system tokens (Votes = Civic Indigo
+  `primary-600`, Proposals = Terracotta `accent-600`, Projects = success
+  `success-500`, Conversations = `primary-400`). Also **fixed** two latent bugs:
+  `status-proposed` / `status-gathering(-support)` badges were previously
+  undefined (rendered unstyled) — now amber `warning`-ramp pills; and the
+  proposal progress fill is now Terracotta, not off-palette orange. Removed the
+  duplicate per-card base rules in `Projects.css` / `Deliberations.css` (the
+  shared block owns them now). `.proposal-card` renders only in the Propose list
+  (`ProposalCard.tsx` is orphaned; ProposalDetail uses none of the card
+  classes), so there is no detail-page bleed.
+- **CoC + ToS "self-contained discussion" clause (#5).** Added the "do not
+  import/repost private content from other platforms; linking to authoritative
+  sources is permitted" clause to the Code of Conduct ("What we may remove") and
+  Terms ("What we expect from you"). Updated **all three** CoC copies (UI
+  markdown, `config/hubs/floyd/`, and the hardcoded `content.ts` fallback the AI
+  review reads) so it's displayed AND enforced. Bumped `CURRENT_LEGAL_VERSION`
+  1.0 → 1.1 + the "Last updated" headers — **this forces every existing account
+  through the re-acceptance modal on next sign-in.** ⚠️ **Legal wording is NOT
+  final — flagged for Adam's legal/pro-bono review.**
+
+### #6 Admin slice — soft-archive + feed status-filter fix
+- **Data model (no migration):** archiving flips `processes.status` → `archived`
+  (already in the `ProcessStatus` union + `NON_PUBLIC_STATUSES`) and stores
+  `{ archived, archived_at, archived_by, reason, previous_status }` in
+  `processes.state.archive`. Restore reads `previous_status` back. Mirrors the
+  existing announcement `state.moderation` soft-remove pattern.
+- **Service:** `archiveProcess` / `restoreProcess` / `getArchivedProcesses` /
+  `getNonPublicProcessIds` in `processService.ts`. Archive/restore emit a
+  restricted-visibility `civic.process.updated` with a `process_archived` /
+  `process_restored` moderation action (shows in the moderation log).
+- **Endpoints:** `POST /admin/processes/:id/archive` (reason required),
+  `POST /admin/processes/:id/restore`, `GET /admin/archived`
+  (`adminArchiveController.ts`, under `requireAdmin`).
+- **Meeting-summary cleanup:** the meeting-summaries admin batch action is now
+  **soft-archive, not hard-delete** (`handleBatchDeleteMeetingSummaries` calls
+  `archiveProcess`; route name kept for compatibility). `deleteProcess` is now
+  unused by the app (left exported).
+- **Feed status-filter fix (the ghost-post bug):** `GET /events` (feed) and the
+  daily digest now suppress events whose `process_id` belongs to an archived /
+  pending-review process, via `getNonPublicProcessIds()`. Fixes both the feed
+  and the email digest (they share the classifier). Restricted-event admin
+  reads and the moderation log are untouched.
+- **UI:** new **Archived** admin tab + `AdminArchived` page (list + two-step
+  Restore); AdminTabs reordered by function (queues → oversight → settings) and
+  its stale docstring fixed; new reusable `AdminArchiveButton` (two-step confirm
+  + reason) placed on the announcement toolbar, meeting-summary detail, and the
+  generic process detail — all admin-only. Moderation-log page + type learned
+  the new `process_archived` / `process_restored` actions.
+- **Decision:** archive-only, no hard-delete path in the UI (Adam, 2026-08-10).
+
+### #7 Slur/profanity wordlist filter (instant-post content)
+- New `src/shared/wordlist/index.ts`: a deliberately **short, egregious-slur-only**
+  list (NOT general profanity), whole-word matching (Scunthorpe-safe) with light
+  leetspeak + repeated-char normalization. `assertPassesWordlist(text)` throws a
+  user-facing 400 with a clear reason + appeal path. Wired into the three
+  instant-post paths: comments (`civic.input`), Polis statements (before
+  forwarding to Polis, covers the seed/mock branch), and word-cloud words
+  (`civic.wordcloud`). 16 unit tests assert slurs/leetspeak are caught and civil
+  dissent + Scunthorpe words pass. **The word list is intentionally reviewable —
+  Adam should review/tune the exact terms before launch.**
+
+### #8 Light process-linking — DEFERRED (Adam, 2026-08-10). Revisit later.
+
+### Verify before ship (Adam's smoke test, needs backend + DB)
+- Archive an old BoS meeting summary → confirm it leaves the feed AND the digest
+  (no ghost card), shows in the Archived tab, and restores to `published`.
+- Approve a resident vote → confirm the email says "gathering support" and the
+  vote lands in `proposed`, not open for ballots.
+- Submit a comment / Polis statement / word-cloud word containing a slur →
+  blocked with the reason; submit passionate civil dissent → passes.
+- Confirm the re-acceptance modal fires once for an existing account (legal
+  version bump).
+
+---
+
 ## Launch-critical security hardening (audit §2 punch-list) — 2026-07-04
 
 Worked down the pre-Aug-11 launch-critical list from the code audit
