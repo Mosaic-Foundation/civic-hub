@@ -93,8 +93,8 @@ const hub = {
   beta_mode: import.meta.env.VITE_BETA_MODE === "true",
   /**
    * Polis deliberation instance URL. When non-empty, the
-   * "Deliberations" nav item appears and the /deliberations route
-   * embeds the Polis UI in an iframe. Set to "" to disable.
+   * "Conversations" nav item appears and the /deliberations route
+   * shows the conversations list. Set to "" to disable.
    */
   polis_url: import.meta.env.VITE_HUB_POLIS_URL ?? "https://polis.civic.social",
   onboarding_wordcloud_id:

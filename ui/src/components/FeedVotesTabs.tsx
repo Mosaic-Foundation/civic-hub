@@ -12,7 +12,7 @@
 // Votes) live below the tab strip on each page so they only appear
 // when relevant.
 
-import { useRef, useEffect } from "react";
+import { useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import "./FeedVotesTabs.css";
 
@@ -24,34 +24,20 @@ const SCROLLABLE_TABS: ReadonlyArray<{ to: string; label: string }> = [
 ];
 
 export default function FeedVotesTabs() {
-  const navRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
 
+  // Land every route change at the top of the page. The previous
+  // scroll-to-tab-bar behavior (measure the nav offset, retry on
+  // timers) could never be made reliable because the banner image
+  // above the tabs loads asynchronously and shifts the layout after
+  // measurement — so it was dropped in favor of this deterministic
+  // default.
   useEffect(() => {
-    if (pathname === "/") return;
-    const el = navRef.current;
-    if (!el) return;
-    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
-
-    const navH = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--nav-h")) || 61;
-
-    const tryScroll = () => {
-      const top = el.getBoundingClientRect().top + window.scrollY - navH;
-      if (top > 0 && document.documentElement.scrollHeight > window.innerHeight) {
-        window.scrollTo({ top, behavior: "instant" });
-        return true;
-      }
-      return false;
-    };
-
-    const timers = [0, 100, 300, 600].map((ms) =>
-      setTimeout(() => tryScroll(), ms),
-    );
-    return () => timers.forEach(clearTimeout);
+    window.scrollTo(0, 0);
   }, [pathname]);
 
   return (
-    <nav className="feed-votes-tabs" ref={navRef} aria-label="Primary content">
+    <nav className="feed-votes-tabs" aria-label="Primary content">
       <div className="feed-votes-tabs-pinned">
         <NavLink
           to="/"

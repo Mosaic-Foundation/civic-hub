@@ -86,11 +86,11 @@ export default function DeliberationPanel({ processId }: Props) {
   }
 
   if (loading) {
-    return <div className="deliberation-panel-loading">Loading deliberation...</div>;
+    return <div className="deliberation-panel-loading">Loading conversation...</div>;
   }
 
   if (error || !process) {
-    return <div className="deliberation-panel-error">{error || "Could not load deliberation"}</div>;
+    return <div className="deliberation-panel-error">{error || "Could not load conversation"}</div>;
   }
 
   return (

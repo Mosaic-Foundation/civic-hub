@@ -124,6 +124,13 @@ export async function notifyCreatorApproved(input: {
   process_type: string;
   title: string;
   process_id: string;
+  /**
+   * True when an approved vote enters the community-support ("proposed")
+   * phase instead of opening for ballots — the email must not claim it is
+   * "live" in that case.
+   */
+  entered_support_phase?: boolean;
+  support_threshold?: number;
 }): Promise<void> {
   const typeLabel = processTypeLabel(input.process_type);
   const ui = uiBaseUrl();
@@ -136,6 +143,22 @@ export async function notifyCreatorApproved(input: {
   };
   const basePath = pathMap[input.process_type] || "/process";
   const url = `${ui}${basePath}/${input.process_id}`;
+
+  if (input.entered_support_phase) {
+    const threshold = input.support_threshold ?? 5;
+    await send({
+      to: input.creator_email,
+      subject: `Your ${typeLabel} "${input.title}" is approved — now gathering support`,
+      html: `
+        <p>Hi ${esc(input.creator_name)},</p>
+        <p>Your ${typeLabel} <strong>"${esc(input.title)}"</strong> has been approved and published as a proposed vote.</p>
+        <p>Voting opens once <strong>${threshold} residents</strong> support it. Share it with neighbors who care about this issue to help it reach the threshold.</p>
+        <p><a href="${url}">View your ${typeLabel}</a></p>
+      `,
+      text: `Hi ${input.creator_name},\n\nYour ${typeLabel} "${input.title}" has been approved and published as a proposed vote.\n\nVoting opens once ${threshold} residents support it. Share it with neighbors who care about this issue to help it reach the threshold.\n\nView it: ${url}`,
+    });
+    return;
+  }
 
   await send({
     to: input.creator_email,

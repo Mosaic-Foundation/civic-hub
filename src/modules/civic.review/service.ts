@@ -237,6 +237,24 @@ export async function approveReview(
         ? "draft"
         : "active";
 
+  // Whether an approved vote enters the community-support ("proposed") phase
+  // rather than opening for ballots directly. Drives both the lifecycle action
+  // dispatched below and the wording of the approval email — a supported vote
+  // is NOT live until it clears its support threshold.
+  const voteConfig =
+    proc.type === "civic.vote" &&
+    proc.state &&
+    typeof proc.state === "object" &&
+    typeof (proc.state as Record<string, unknown>).config === "object"
+      ? ((proc.state as Record<string, unknown>).config as Record<string, unknown>)
+      : undefined;
+  const voteEntersSupportPhase =
+    proc.type === "civic.vote" && voteConfig?.activation_mode !== "direct";
+  const voteSupportThreshold =
+    typeof voteConfig?.support_threshold === "number"
+      ? (voteConfig.support_threshold as number)
+      : undefined;
+
   // Atomically claim the review: flip pending_review → approved in a single
   // conditional update. Only the first caller matches the WHERE clause; any
   // concurrent or duplicate approve (double-click, network retry, stale UI)
@@ -363,13 +381,9 @@ export async function approveReview(
   // explicitly configured for "direct" activation (admin/dev tooling) is
   // activated straight away instead.
   if (proc.type === "civic.vote") {
-    const mode = (proc.state as Record<string, unknown> | null)?.config;
-    const activationMode =
-      mode && typeof mode === "object"
-        ? (mode as Record<string, unknown>).activation_mode
-        : undefined;
-    const action =
-      activationMode === "direct" ? "process.activate" : "process.propose";
+    const action = voteEntersSupportPhase
+      ? "process.propose"
+      : "process.activate";
     await executeAction(review.process_id, {
       type: action,
       actor: review.creator_id,
@@ -423,6 +437,8 @@ export async function approveReview(
       process_type: proc.type,
       title: proc.title,
       process_id: liveId,
+      entered_support_phase: voteEntersSupportPhase,
+      support_threshold: voteSupportThreshold,
     });
   } catch (e) {
     console.warn("[review] Failed to notify creator of approval:", e);
