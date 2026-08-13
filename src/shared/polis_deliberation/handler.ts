@@ -138,40 +138,16 @@ export function createPolisDeliberationHandler(
             },
           });
 
-          if (state.summary && state.summary_status === "complete") {
-            const slug = process.spaceSlug ?? "";
-            const outcome = await host.writeOutcomeDelivery(slug, {
-              originating_process_id: process.id,
-              originating_process_type: PROCESS_TYPE,
-              outcome_summary: state.summary.summary_text,
-              participation_stats: {
-                total_participants:
-                  state.summary.participation_stats.total_participants,
-              },
-              result: {
-                directed_questions: state.summary.directed_questions,
-                top_consensus_statements:
-                  state.summary.top_consensus_statements,
-                opinion_groups: state.summary.opinion_groups,
-                linked_polis_data_uri: state.summary.linked_polis_data_uri,
-                methodology: state.summary.methodology,
-              },
-            });
-
-            await host.emitEvent({
-              event_type: "civic.outcome_delivered",
-              actor: "system",
-              space_slug: slug,
-              jurisdiction: process.jurisdiction ?? "",
-              data: {
-                outcome_id: outcome.id,
-                originating_process_id: process.id,
-                originating_process_type: PROCESS_TYPE,
-              },
-            });
-
-            process.status = "finalized";
-          }
+          // Review-first outcome: a closed conversation does NOT auto-post
+          // its outcome anymore. It stays `closed` with the summary on
+          // state; the hub's universal brief seam (executeAction) spawns a
+          // PENDING civic.brief from this summary, which an admin reviews and
+          // publishes. Publication is what finalizes the conversation and
+          // posts the feed card — see civic.brief. (Previously this block
+          // wrote a Polis outcome-delivery record, emitted
+          // civic.outcome_delivered, and set `finalized`; that auto-post is
+          // intentionally removed. Conversations closed before this change
+          // keep their existing outcome_delivered feed cards.)
 
           return {
             summary_status: state.summary_status,

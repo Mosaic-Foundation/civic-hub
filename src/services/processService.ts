@@ -29,6 +29,10 @@ import {
   setProcessFactory,
   setActionDispatcher,
 } from "../processes/registry.js";
+import {
+  spawnBriefFromClosedProcess,
+  findExistingBriefId,
+} from "../processes/spawnBrief.js";
 import { getDb } from "../db/client.js";
 import {
   resolveInitialStatus,
@@ -272,7 +276,35 @@ export async function executeAction(
     });
   }
 
+  // Universal brief seam: when a process transitions INTO a terminal state,
+  // spawn its Civic Brief (pending admin review) if its handler produces one.
+  // A no-op for types without generateBrief (e.g. votes, which keep their
+  // own civic.vote_results pipeline). Best-effort + idempotent: a failure
+  // here must never wedge the close, and a double-close spawns only one
+  // brief (findExistingBriefId collapses the common window).
+  const enteredTerminal =
+    !isTerminalStatus(previousStatus) && isTerminalStatus(process.status);
+  if (enteredTerminal && handler.generateBrief) {
+    try {
+      const existing = await findExistingBriefId(process.id);
+      if (!existing) {
+        await spawnBriefFromClosedProcess(process, action.actor);
+      }
+    } catch (err) {
+      console.warn(
+        `[brief] spawn on close of ${process.id} failed (close proceeds):`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   return { process, result };
+}
+
+/** A process is terminal once closed or finalized — the moment its brief
+ *  should be generated. */
+function isTerminalStatus(status: string): boolean {
+  return status === "closed" || status === "finalized";
 }
 
 // --- Lazy deadline-close ---------------------------------------------------
