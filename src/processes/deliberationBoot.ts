@@ -10,6 +10,8 @@ import type { Process } from "../models/process.js";
 import type { ProcessHandler } from "./types.js";
 import type { PolisHostInterface } from "../shared/polis_deliberation/hostInterface.js";
 import type { PolisAdapter } from "../shared/polis_deliberation/adapter/types.js";
+import type { PolisDeliberationState } from "../shared/polis_deliberation/types.js";
+import type { BriefContent, BriefSection } from "../modules/civic.brief/index.js";
 import { HUB_ID, DEFAULT_JURISDICTION } from "../config/hub.js";
 
 
@@ -132,6 +134,68 @@ export function bootDeliberation(): ProcessHandler {
       payload: {},
     });
     return updated;
+  };
+
+  // Universal brief: a closed conversation's outcome is its Civic Brief.
+  // Reads the already-generated Polis summary off state (no Polis call) and
+  // maps it into the type-agnostic BriefContent. Returns null if the summary
+  // isn't complete (e.g. summarization failed) — the close then produces no
+  // brief rather than an empty one. Wired on the hub side so the portable
+  // shared handler stays free of the brief module.
+  handler.generateBrief = (process: Process): BriefContent | null => {
+    const state = process.state as unknown as PolisDeliberationState;
+    const summary = state.summary;
+    if (!summary || state.summary_status !== "complete") return null;
+
+    const topic = state.topic || process.title;
+    const sections: BriefSection[] = [];
+
+    if (summary.top_consensus_statements?.length) {
+      sections.push({
+        heading: "Where the community agreed",
+        body: summary.top_consensus_statements
+          .map(
+            (s) =>
+              `• ${s.statement_text} (${Math.round(s.agree_rate * 100)}% agreed, ${s.vote_count} votes)`,
+          )
+          .join("\n"),
+      });
+    }
+
+    if (summary.opinion_groups?.length) {
+      sections.push({
+        heading: "Where opinions differed",
+        body: summary.opinion_groups
+          .map((g) => {
+            const reps = (g.representative_statements ?? [])
+              .map((r) => `   – ${r.text}`)
+              .join("\n");
+            return `Group of ${g.size} participant(s):\n${reps}`;
+          })
+          .join("\n\n"),
+      });
+    }
+
+    if (summary.directed_questions?.length) {
+      sections.push({
+        heading: "Questions this raised",
+        body: summary.directed_questions.map((q) => `• ${q}`).join("\n"),
+      });
+    }
+
+    const stats = summary.participation_stats;
+    return {
+      title: topic,
+      headline: `Where the community landed on "${topic}"`,
+      summary: summary.summary_text ?? "",
+      sections,
+      participation_label: stats
+        ? `${stats.total_participants} participant(s) · ${stats.total_statements} statement(s)`
+        : null,
+      participation_count: stats?.total_participants ?? null,
+      comments: [],
+      admin_notes: "",
+    };
   };
 
   return handler;
