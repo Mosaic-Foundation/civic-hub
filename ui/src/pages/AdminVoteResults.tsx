@@ -156,7 +156,7 @@ export default function AdminVoteResults() {
         <AdminTabs />
         <div className="admin-briefs-body">
           <button className="admin-back-link" onClick={backToList} type="button">
-            &larr; Back to Vote results
+            &larr; Back to Briefs
           </button>
           <h1>Review: {selected.title}</h1>
           <p className="admin-subtitle">
@@ -342,10 +342,12 @@ export default function AdminVoteResults() {
     <div className="page admin-briefs-page">
       <AdminTabs />
       <div className="admin-briefs-body">
-        <h1>Vote results</h1>
+        <h1>Briefs</h1>
         <p className="admin-subtitle">
-          Review and approve vote results. Approval delivers the results to the
-          {" "}{hub.governing_body_name} and publishes them to the public feed.
+          Review and approve the brief a process produces when it closes.
+          Approval delivers it to the {hub.governing_body_name} and publishes
+          it to the public feed. (Today this covers closed votes; other process
+          types join as their briefs are built.)
         </p>
 
         <div className="admin-brief-filters">

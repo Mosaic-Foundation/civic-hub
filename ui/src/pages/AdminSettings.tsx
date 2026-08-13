@@ -208,9 +208,9 @@ export default function AdminSettings() {
 
         {error && <p className="form-error">{error}</p>}
 
-        {/* --- Brief delivery --- */}
+        {/* --- Brief recipients --- */}
         <section className="admin-settings-panel">
-          <h3>Brief delivery</h3>
+          <h3>Brief recipients</h3>
           <label className="form-label" htmlFor="brief-recipients">
             Brief recipient emails
           </label>
