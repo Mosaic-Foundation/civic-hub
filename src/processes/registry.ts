@@ -9,6 +9,7 @@ import voteProcess from "./voteProcess.js";
 import proposalAdapter from "./proposalAdapter.js";
 import projectAdapter from "./projectAdapter.js";
 import voteResultsProcess from "./voteResultsProcess.js";
+import briefProcess from "./briefProcess.js";
 import announcementProcess from "./announcementProcess.js";
 import meetingSummaryProcess from "./meetingSummaryProcess.js";
 import { bootDeliberation } from "./deliberationBoot.js";
@@ -34,6 +35,7 @@ const processRegistry: Record<string, ProcessHandler> = {
   "civic.proposal": proposalAdapter,
   "civic.project": projectAdapter,
   "civic.vote_results": voteResultsProcess,
+  "civic.brief": briefProcess,
   "civic.announcement": announcementProcess,
   "civic.meeting_summary": meetingSummaryProcess,
   "civic.polis_deliberation": bootDeliberation(),
