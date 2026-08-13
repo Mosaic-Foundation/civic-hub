@@ -7,6 +7,7 @@
 //   - producing a summary for list views
 
 import { Process, ProcessAction, CreateProcessInput } from "../models/process.js";
+import type { BriefContent } from "../modules/civic.brief/index.js";
 
 export interface ProcessHandler {
   /** The process type this handler manages (e.g., "civic.vote") */
@@ -56,6 +57,30 @@ export interface ProcessHandler {
    * be idempotent: re-reading an already-closed process is a no-op.
    */
   closeIfExpired?(process: Process): Promise<Process>;
+
+  /**
+   * Universal brief hook. When a process closes, the service calls this to
+   * produce the type-specific content for its Civic Brief — a short,
+   * readable summary of the outcome that the admin reviews (in the Briefs
+   * admin tab) and publishes. Returning content means "this process type
+   * produces a brief on close"; returning null (or omitting the method)
+   * means it does not.
+   *
+   * This is the single seam that makes briefs universal: adding a brief to
+   * a new (or existing) process type is implementing this one method — the
+   * generic civic.brief module handles review, delivery, publication, and
+   * archival identically for every type.
+   *
+   * May be async — handlers that read aggregated results (e.g. a Polis
+   * conversation summary, a proposal's endorsement tally) resolve them
+   * here. Must be a pure snapshot: the returned content is frozen onto the
+   * brief record; it must not mutate the source process.
+   *
+   * NOTE: civic.vote keeps its existing civic.vote_results pipeline for now
+   * and intentionally does NOT implement this yet — see civic.brief/models
+   * (coexistence). Migrating votes onto this hook later is additive.
+   */
+  generateBrief?(process: Process): BriefContent | null | Promise<BriefContent | null>;
 }
 
 /**
