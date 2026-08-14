@@ -61,7 +61,8 @@ export type ActivityKind =
   | "project-created"
   | "project-updated"
   | "conversation"
-  | "conversation-results"; // deliberation outcome delivered (close)
+  | "conversation-results" // legacy deliberation outcome delivered (close)
+  | "brief"; // universal civic.brief published — the final result of any process
 
 export interface Activity {
   surface: ActivitySurface;
@@ -254,6 +255,23 @@ function classifyResultPublished(
 ): Activity | null {
   const data = event.data ?? {};
 
+  // Universal brief published — the final result of ANY closed process.
+  // Checked first (by processType) so it never falls through to the legacy
+  // vote-results branch. The pill names the process that completed.
+  if (processType === "civic.brief") {
+    const brief = (data.brief ?? {}) as { source_process_type?: unknown };
+    const srcType =
+      typeof brief.source_process_type === "string"
+        ? brief.source_process_type
+        : "";
+    return {
+      surface: "activity",
+      kind: "brief",
+      pill: briefPill(srcType),
+      href: `/brief/${id}`,
+    };
+  }
+
   if (
     processType === "civic.wordcloud" ||
     data.wordcloud_snapshot !== undefined ||
@@ -305,6 +323,23 @@ function classifyResultPublished(
 
   // Unknown shape — default-closed (was a bland "Activity" card before Phase 3).
   return null;
+}
+
+/** Per-source-type pill for a published brief — names the process that
+ *  completed, so residents see what kind of thing wrapped up. */
+function briefPill(sourceType: string): string {
+  switch (sourceType) {
+    case "civic.polis_deliberation":
+      return "Conversation results";
+    case "civic.vote":
+      return "Vote results";
+    case "civic.proposal":
+      return "Proposal results";
+    case "civic.project":
+      return "Project completed";
+    default:
+      return "Civic Brief";
+  }
 }
 
 function classifyAnnouncement(

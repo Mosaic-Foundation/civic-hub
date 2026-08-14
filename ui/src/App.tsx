@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import hub from "./config/hub";
 import Nav from "./components/Nav";
@@ -22,6 +22,7 @@ import AdminBriefs from "./pages/AdminBriefs";
 import AdminMeetingSummaries from "./pages/AdminMeetingSummaries";
 import AdminSettings from "./pages/AdminSettings";
 import VoteResults from "./pages/VoteResults";
+import BriefPage from "./pages/Brief";
 import MeetingSummary from "./pages/MeetingSummary";
 import VoteLog from "./pages/VoteLog";
 import PostAnnouncement from "./pages/PostAnnouncement";
@@ -158,12 +159,10 @@ function AppContent() {
           />
           <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
           <Route path="/vote-results/:id" element={<VoteResults />} />
-          {/* Legacy public path: historical event action_urls point at
-              /brief/:id. Vercel rewrites all non-/api requests to
-              index.html, so this React Router route is the operative
-              redirect for browser navigation. The Express app also has
-              a 301 at /brief/:id for direct API/curl clients. */}
-          <Route path="/brief/:id" element={<LegacyBriefRedirect />} />
+          {/* Public brief page — the permanent record of a completed process
+              (the /brief path is reclaimed from the old Slice 8.5 redirect;
+              existing published vote-results stay at /vote-results/:id). */}
+          <Route path="/brief/:id" element={<BriefPage />} />
           <Route path="/meeting-summary/:id" element={<MeetingSummary />} />
           <Route path="/announcement/new" element={<PostAnnouncement />} />
           <Route path="/announcement/:id/edit" element={<PostAnnouncement />} />
@@ -233,15 +232,6 @@ function SiteFooter() {
   );
 }
 
-/**
- * Wrapper that pulls the :id param and 301-equivalents to the new
- * /vote-results/:id route. <Navigate replace> keeps history clean so
- * the back button doesn't bounce.
- */
-function LegacyBriefRedirect() {
-  const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/vote-results/${id}`} replace />;
-}
 
 export default function App() {
   return (

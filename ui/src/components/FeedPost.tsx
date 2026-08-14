@@ -191,6 +191,16 @@ function buildTitleSummary(
 
     case "conversation-results":
       return { title: getTitle(id) ?? "Conversation results", summary: descSummary };
+
+    case "brief": {
+      // Rendered from the publish event alone (no metadata fetch): the
+      // process title as the card title, the outcome headline as summary.
+      const brief = (data.brief ?? {}) as { title?: string; headline?: string };
+      return {
+        title: brief.title ?? getTitle(id) ?? "Civic Brief",
+        summary: brief.headline ?? "",
+      };
+    }
   }
 }
 

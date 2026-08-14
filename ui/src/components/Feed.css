@@ -126,6 +126,7 @@
 .feed-post--proposal-closed     { border-top-color: #d6cfe2; }
 .feed-post--conversation        { border-top-color: #e8eaf6; }
 .feed-post--conversation-results{ border-top-color: #d3d7ea; }
+.feed-post--brief               { border-top-color: var(--ds-color-primary-600, #2a4e84); }
 .feed-post--generic             { border-top-color: #6b7280; }
 
 .feed-post-link:focus-visible {
@@ -253,6 +254,7 @@
 .feed-pill--proposal-closed     { background: #ece9f1;                            color: #5b517a; }
 .feed-pill--conversation        { background: #e8eaf6;                            color: #3949ab; }
 .feed-pill--conversation-results{ background: #e6e9f3;                            color: #3f4a86; }
+.feed-pill--brief               { background: var(--ds-color-primary-100, #dce5f2); color: var(--ds-color-primary-700, #1f3a66); }
 
 /* --- Load more --- */
 

@@ -201,6 +201,17 @@ function digestTitleSummary(
 
     case "conversation-results":
       return { title: rawTitle ?? "Conversation results", summary: "The conversation has concluded — see the results." };
+
+    case "brief": {
+      const brief = (event.data as { brief?: { title?: unknown; headline?: unknown } })
+        ?.brief;
+      const title =
+        (typeof brief?.title === "string" && brief.title) || rawTitle || "Civic Brief";
+      const summary =
+        (typeof brief?.headline === "string" && brief.headline) ||
+        "A process has concluded — see the brief.";
+      return { title, summary };
+    }
   }
 }
 
@@ -230,7 +241,8 @@ type DigestSection =
   | "word_clouds"
   | "proposals"
   | "projects"
-  | "conversations";
+  | "conversations"
+  | "briefs";
 
 /** Which email section each classifier kind renders under. */
 const SECTION_OF: Record<ActivityKind, DigestSection> = {
@@ -246,6 +258,7 @@ const SECTION_OF: Record<ActivityKind, DigestSection> = {
   "project-updated": "projects",
   conversation: "conversations",
   "conversation-results": "conversations",
+  brief: "briefs",
 };
 
 const SECTION_LABELS: Record<DigestSection, string> = {
@@ -257,6 +270,7 @@ const SECTION_LABELS: Record<DigestSection, string> = {
   proposals: "Proposals",
   projects: "Projects",
   conversations: "Conversations",
+  briefs: "Completed — results",
 };
 
 const SECTION_ORDER: DigestSection[] = [
@@ -268,6 +282,7 @@ const SECTION_ORDER: DigestSection[] = [
   "proposals",
   "projects",
   "conversations",
+  "briefs",
 ];
 
 // --- HTML formatting --------------------------------------------------------
@@ -291,6 +306,7 @@ const PILL_COLORS: Record<ActivityKind, { bg: string; fg: string }> = {
   "project-updated": { bg: "#e3f2fd", fg: "#1565c0" },
   conversation: { bg: "#e8eaf6", fg: "#3949ab" },
   "conversation-results": { bg: "#e6e9f3", fg: "#3f4a86" },
+  brief: { bg: "#dce5f2", fg: "#1f3a66" },
 };
 
 // Both stacks fall back through the OS sans family so email clients

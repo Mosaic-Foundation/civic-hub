@@ -17,6 +17,7 @@ import authRoutes from "./routes/authRoutes.js";
 import voteDraftRoutes from "./routes/voteDraftRoutes.js";
 import voteLogRoutes from "./routes/voteLogRoutes.js";
 import voteResultsRoutes from "./routes/voteResultsRoutes.js";
+import briefRoutes from "./routes/briefRoutes.js";
 import announcementRoutes from "./routes/announcementRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import linkPreviewRoutes from "./routes/linkPreviewRoutes.js";
@@ -137,15 +138,11 @@ app.use("/votes", voteLogRoutes);
 // Renamed from /brief in Slice 8.5.
 app.use("/vote-results", voteResultsRoutes);
 
-// Legacy redirect: any HTTP client that calls the old /brief/:id path
-// (direct curl, scraper, etc.) gets a 301 to the new location. Browser
-// navigation from old event action_urls is handled by the SPA via
-// React Router (see ui/src/App.tsx) because Vercel rewrites all
-// non-/api requests to index.html before they ever reach this Express
-// app in production.
-app.get("/brief/:id", (req, res) => {
-  res.redirect(301, `/vote-results/${req.params.id}`);
-});
+// Briefs — public read of published civic.brief pages (the universal
+// results record for any completed process). Reclaims the /brief path from
+// the Slice 8.5 legacy redirect: /brief now serves the NEW generic brief;
+// existing published vote-results stay at /vote-results/:id.
+app.use("/brief", briefRoutes);
 
 // Board / Admin announcements — post, edit, read one
 app.use("/announcement", announcementRoutes);
