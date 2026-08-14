@@ -15,6 +15,12 @@ import {
   handleApproveVoteResults,
 } from "../controllers/adminVoteResultsController.js";
 import {
+  handleAdminListBriefs,
+  handleAdminGetBrief,
+  handlePatchBrief,
+  handleApproveBrief,
+} from "../controllers/adminBriefController.js";
+import {
   handleAdminGetMeetingSummary,
   handleAdminListMeetingSummaries,
   handleApproveMeetingSummary,
@@ -74,6 +80,15 @@ router.get("/vote-results", handleAdminListVoteResults);
 router.get("/vote-results/:id", handleAdminGetVoteResults);
 router.patch("/vote-results/:id", handlePatchVoteResults);
 router.post("/vote-results/:id/approve", handleApproveVoteResults);
+
+// Briefs — the universal, admin-reviewed results for any closed process
+// (civic.brief). New closures (conversation/proposal/project, and votes
+// after migration) land here; legacy civic.vote_results keep their routes
+// above for existing published records.
+router.get("/briefs", handleAdminListBriefs);
+router.get("/briefs/:id", handleAdminGetBrief);
+router.patch("/briefs/:id", handlePatchBrief);
+router.post("/briefs/:id/approve", handleApproveBrief);
 
 // Meeting Summaries (batch routes before /:id to avoid Express treating them as an id)
 router.post("/meeting-summaries/batch-approve", handleBatchApproveMeetingSummaries);
