@@ -29,33 +29,11 @@ import {
   getBallotChoicesForProcess,
   hasUserVoted,
 } from "../modules/civic.receipts/index.js";
-import type { VoteResultsProcessState } from "../modules/civic.vote_results/index.js";
-import { emitVoteResultsAggregationCompleted } from "../modules/civic.vote_results/events.js";
 import { getInputsByProcess } from "../modules/civic.input/index.js";
-import { getProcessFactory, getProcessHandler, getActionDispatcher } from "./registry.js";
-import { getDb } from "../db/client.js";
+import { getActionDispatcher } from "./registry.js";
+import { findExistingBriefId } from "./spawnBrief.js";
+import type { BriefContent } from "../modules/civic.brief/index.js";
 
-/**
- * Return the id of an existing civic.vote_results record for this vote, if one
- * was already spawned. Used to make the close idempotent: the lazy deadline
- * close is triggered from read paths, so two near-simultaneous reads can both
- * try to close the same vote. Without this guard that spawns two vote-results
- * records (two admin queue entries, two board emails). Not a full mutual
- * exclusion (a sub-100ms double-read can still race between this check and the
- * spawn), but it collapses the common window; the tally itself is always
- * correct because it is computed from the append-only vote_records table.
- */
-async function findExistingVoteResultsId(
-  sourceVoteId: string,
-): Promise<string | null> {
-  const { data } = await getDb()
-    .from("processes")
-    .select("id")
-    .eq("type", "civic.vote_results")
-    .eq("state->>source_process_id", sourceVoteId)
-    .maybeSingle();
-  return data?.id ?? null;
-}
 import { isPastDeadline } from "../utils/deadline.js";
 
 // --- Helpers ---
@@ -75,105 +53,6 @@ function makeContext(process: Process) {
 
 function syncStatus(process: Process, state: VoteProcessState): void {
   process.status = state.status;
-}
-
-/**
- * Spawn a civic.vote_results process from a just-closed vote and link
- * the two via the parent's follow_up_process_ids array (Civic Process
- * Spec §11.3).
- *
- * The generic process factory emits civic.process.created for the
- * vote-results record; we additionally fire its aggregation_completed
- * here so the spec's Phase 4 boundary is observable on the event feed.
- *
- * The vote's description, options, and voting window are snapshotted
- * onto the vote-results state so the published page can show residents
- * the original question and options without having to read back to the
- * vote process.
- */
-async function spawnVoteResultsFromClosedVote(
-  voteProcess: Process,
-  closeResult: Record<string, unknown>,
-): Promise<Process> {
-  // Seed with community comments collected during the vote. Best-effort:
-  // if the read fails we proceed with an empty list rather than block
-  // the vote-close flow — admin can still add comments manually.
-  let comments: string[] = [];
-  try {
-    const inputs = await getInputsByProcess(voteProcess.id);
-    comments = inputs
-      .map((i) => i.body.trim())
-      .filter((body) => body.length > 0);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.warn(
-      `[voteProcess] Could not read civic.input for vote-results seeding on ${voteProcess.id}: ${message}`,
-    );
-  }
-
-  // Snapshot the vote context. options on civic.vote are bare strings
-  // for MVP, so {id, label} both equal the option string — same
-  // convention as VoteResultsPositionBreakdown.
-  const voteState = voteProcess.state as unknown as VoteProcessState;
-  const voteOptions = voteState.options.map((o) => ({
-    option_id: o,
-    option_label: o,
-  }));
-
-  const factory = getProcessFactory();
-  const voteResults = await factory({
-    definition: { type: "civic.vote_results", version: "0.1" },
-    // Title mirrors the vote's title. Contextual labels ("Vote results"
-    // pill in the feed, "Vote results: …" page heading, "Vote results"
-    // admin tab, etc.) handle disambiguation so the bare title doesn't
-    // need to repeat itself.
-    title: voteProcess.title,
-    description: voteProcess.description,
-    hubId: voteProcess.hubId,
-    jurisdiction: voteProcess.jurisdiction,
-    createdBy: "system",
-    state: {
-      source_process_id: voteProcess.id,
-      vote_title: voteProcess.title,
-      vote_description: voteProcess.description,
-      vote_options: voteOptions,
-      vote_method: voteState.method ?? DEFAULT_METHOD,
-      vote_starts_at: voteState.voting_opens_at,
-      vote_ends_at: voteState.voting_closes_at,
-      vote_content: voteProcess.content ?? null,
-      tally: closeResult.tally,
-      total_votes: closeResult.total_votes,
-      comments,
-    },
-  });
-
-  // Emit aggregation_completed for the vote-results record.
-  // (civic.process.created is already emitted by the generic factory.)
-  const voteResultsState = voteResults.state as unknown as VoteResultsProcessState;
-  await emitVoteResultsAggregationCompleted(
-    {
-      process_id: voteResults.id,
-      hub_id: voteResults.hubId,
-      jurisdiction: voteResults.jurisdiction,
-      emit: emitEvent,
-    },
-    "system",
-    voteResultsState,
-  );
-
-  // Link the parent vote to the new vote-results record. Per Civic
-  // Process Spec §11.3, follow_up_process_ids is the canonical parent
-  // → child linkage. This mutation of voteProcess.state is persisted by
-  // processService after handleAction returns.
-  const linkedVoteState = voteProcess.state as unknown as VoteProcessState & {
-    follow_up_process_ids?: string[];
-  };
-  linkedVoteState.follow_up_process_ids = [
-    ...(linkedVoteState.follow_up_process_ids ?? []),
-    voteResults.id,
-  ];
-
-  return voteResults;
 }
 
 // --- Handler implementation ---
@@ -271,15 +150,15 @@ const voteProcess: ProcessHandler = {
       }
       case "process.close": {
         // Idempotency guard for the lazy-close race: if this vote already has a
-        // vote-results record, the close already ran — don't re-tally, re-emit,
-        // or spawn a duplicate. Just make sure the status reflects closed.
-        const existingResultsId = await findExistingVoteResultsId(process.id);
-        if (existingResultsId) {
+        // brief, the close already ran — don't re-tally, re-emit, or spawn a
+        // duplicate. Just make sure the status reflects closed.
+        const existingBriefId = await findExistingBriefId(process.id);
+        if (existingBriefId) {
           if (state.status === "active") {
             state.status = "closed";
             syncStatus(process, state);
           }
-          result = { already_closed: true, brief_process_id: existingResultsId };
+          result = { already_closed: true, brief_process_id: existingBriefId };
           break;
         }
 
@@ -297,28 +176,20 @@ const voteProcess: ProcessHandler = {
         // vote_participation and vote_records.
         await clearActiveVoteKeysForProcess(process.id);
 
-        // If civic.vote_results is registered, spawn a vote-results
-        // record from the now-closed vote. Hubs that don't register
-        // civic.vote_results simply skip this step. The result key
-        // remains `brief_process_id` for backwards compatibility with
-        // any caller that reads it (the public name changed in
-        // Slice 8.5; the close-flow result shape did not).
-        const voteResultsHandler = getProcessHandler("civic.vote_results");
-        if (voteResultsHandler) {
-          const voteResults = await spawnVoteResultsFromClosedVote(
-            process,
-            outcome.result,
-          );
-          result = { ...result, brief_process_id: voteResults.id };
-        }
+        // The vote is now `closed`. The universal brief seam in
+        // executeAction spawns a PENDING civic.brief from this vote (via
+        // generateBrief below) for admin review; publishing that brief
+        // finalizes the vote (finalizeVote with the anonymized ballots).
+        // No civic.vote_results is created anymore — briefs are the single
+        // unified results artifact for every process type.
         break;
       }
       // Note: there is intentionally no `process.finalize` action here.
       // Finalization publishes the vote result, which must be gated on
-      // admin approval of the accompanying civic.vote_results record.
-      // The vote-results module's approval flow calls `finalizeVote`
-      // directly as a library import; there is no HTTP path that
-      // publishes a vote result without approved-results orchestration.
+      // admin approval of the accompanying brief. The brief module's
+      // approval flow calls `finalizeVote` (via finalizeBriefSource) as a
+      // library import; there is no HTTP path that publishes a vote result
+      // without approved-brief orchestration.
       default:
         throw new Error(`Unknown action type for civic.vote: ${action.type}`);
     }
@@ -404,6 +275,48 @@ const voteProcess: ProcessHandler = {
       payload: {},
     });
     return updated;
+  },
+
+  // Universal brief: a closed vote's tally IS its results brief. Recomputes
+  // the tally from the anonymized receipts (ballot secrecy — the state
+  // carries no ballots) and maps it into the generic BriefContent, seeding
+  // community comments from civic.input. Publishing the brief finalizes the
+  // vote (finalizeVote) via finalizeBriefSource.
+  async generateBrief(process: Process): Promise<BriefContent> {
+    const state = getState(process);
+    const method = getVotingMethod(state.method ?? DEFAULT_METHOD);
+    const ballots = (await getBallotChoicesForProcess(process.id)).map((c) =>
+      method.parseReceipt(c),
+    );
+    const result = method.computeTally(ballots, state.options);
+    const total = result.total_votes;
+
+    const entries = Object.entries(result.tally).sort((a, b) => b[1] - a[1]);
+    const sectionBody = entries
+      .map(([option, count]) => {
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        return `• ${option}: ${count} (${pct}%)`;
+      })
+      .join("\n");
+
+    let comments: string[] = [];
+    try {
+      const inputs = await getInputsByProcess(process.id);
+      comments = inputs.map((i) => i.body.trim()).filter((b) => b.length > 0);
+    } catch {
+      // Best-effort — admin can add comments during review.
+    }
+
+    return {
+      title: process.title,
+      headline: method.summarizeTally(result) || "The community has voted",
+      summary: process.description ?? "",
+      sections: entries.length > 0 ? [{ heading: "Results", body: sectionBody }] : [],
+      participation_label: `${total} vote${total === 1 ? "" : "s"} cast`,
+      participation_count: total,
+      comments,
+      admin_notes: "",
+    };
   },
 };
 
