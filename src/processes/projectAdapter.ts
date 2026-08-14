@@ -15,6 +15,8 @@
 
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
+import { getProject, listProjectUpdates } from "../modules/civic.projects/index.js";
+import type { BriefContent } from "../modules/civic.brief/index.js";
 
 const projectAdapter: ProcessHandler = {
   type: "civic.project",
@@ -55,6 +57,41 @@ const projectAdapter: ProcessHandler = {
       status: process.status,
       created_at: process.createdAt,
       created_by: process.createdBy,
+    };
+  },
+
+  // Universal brief: a completed project's outcome is what it accomplished.
+  // Seeds structure (community response, number of updates); the admin
+  // writes the completion narrative into headline/summary during review.
+  async generateBrief(process: Process): Promise<BriefContent | null> {
+    const project = await getProject(process.id);
+    if (!project) return null;
+    const updates = await listProjectUpdates(process.id).catch(() => []);
+    const weighedIn = project.support_count + project.oppose_count;
+
+    const sections = [
+      {
+        heading: "Community response",
+        body: `${project.support_count} in support · ${project.oppose_count} opposed.`,
+      },
+    ];
+    if (updates.length > 0) {
+      sections.push({
+        heading: "Progress",
+        body: `${updates.length} update${updates.length === 1 ? "" : "s"} posted over the life of the project.`,
+      });
+    }
+
+    return {
+      title: process.title,
+      headline: "Project completed",
+      summary: process.description ?? "",
+      sections,
+      participation_label:
+        weighedIn > 0 ? `${weighedIn} resident${weighedIn === 1 ? "" : "s"} weighed in` : null,
+      participation_count: weighedIn,
+      comments: [],
+      admin_notes: "",
     };
   },
 };

@@ -14,6 +14,7 @@ import {
   emitProjectCommented,
   emitProjectSentimentChanged,
   emitProjectArchived,
+  emitProjectCompleted,
   type EmitEventFn,
 } from "./events.js";
 
@@ -200,6 +201,41 @@ export async function archiveProject(
   // Archive is a terminal lifecycle transition — emit an event so the change
   // is recorded in the event log (the source of truth) rather than silent.
   await emitProjectArchived({ project_id: id, emit }, actor);
+}
+
+/**
+ * Mark a project complete — its terminal, "done" transition (distinct from
+ * archive, which hides it). Sets the child + canonical processes rows to
+ * completed/closed in lockstep and emits a completion event. The processes
+ * row goes to "closed" (still publicly visible — a finished project stays
+ * on the record) so the universal brief seam / caller can spawn its brief.
+ * Auth is enforced by the caller (creator or admin).
+ */
+export async function completeProject(
+  id: string,
+  actor: string,
+  emit: EmitEventFn,
+): Promise<void> {
+  const project = await getProject(id);
+  if (!project) throw new Error(`Project not found: ${id}`);
+  if (project.status !== "active") {
+    throw new Error(`Only an active project can be completed (is "${project.status}").`);
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await getDb()
+    .from("projects")
+    .update({ status: "completed" as ProjectStatus, updated_at: now })
+    .eq("id", id);
+  if (error) throw new Error(`Projects: ${error.message}`);
+
+  const { error: procErr } = await getDb()
+    .from("processes")
+    .update({ status: "closed", updated_at: now })
+    .eq("id", id);
+  if (procErr) throw new Error(`Projects: failed to complete process row: ${procErr.message}`);
+
+  await emitProjectCompleted({ project_id: id, emit }, actor);
 }
 
 // --- Project Updates -------------------------------------------------------

@@ -1,4 +1,4 @@
-export type ProjectStatus = "active" | "archived";
+export type ProjectStatus = "active" | "archived" | "completed";
 
 export type SentimentValue = "support" | "oppose";
 

@@ -7,6 +7,7 @@ import {
   handleSetSentiment,
   handleAddComment,
   handleListComments,
+  handleCompleteProject,
 } from "../controllers/projectController.js";
 import { requireResident } from "../middleware/auth.js";
 
@@ -19,5 +20,6 @@ router.post("/:id/updates", requireResident, handleAddUpdate);
 router.post("/:id/sentiment", requireResident, handleSetSentiment);
 router.post("/:id/comments", requireResident, handleAddComment);
 router.get("/:id/comments", handleListComments);
+router.post("/:id/complete", requireResident, handleCompleteProject);
 
 export default router;

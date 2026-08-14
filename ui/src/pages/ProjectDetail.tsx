@@ -7,6 +7,7 @@ import {
   addProjectUpdate,
   addProjectComment,
   listProjectComments,
+  completeProject,
   type ProjectDetail as ProjectDetailType,
   type ProjectComment,
   type SentimentValue,
@@ -18,7 +19,7 @@ import "./ProjectDetail.css";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const [project, setProject] = useState<ProjectDetailType | null>(null);
   const [comments, setComments] = useState<ProjectComment[]>([]);
@@ -30,6 +31,7 @@ export default function ProjectDetail() {
   const [commentText, setCommentText] = useState("");
   const [commentPosting, setCommentPosting] = useState(false);
   const [sentimentLoading, setSentimentLoading] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   const loadProject = useCallback(async () => {
     if (!id) return;
@@ -115,6 +117,27 @@ export default function ProjectDetail() {
   // Ownership is decided server-side (is_owner) so the raw user_id is never
   // sent to the client; fall back to the id compare only if is_owner is absent.
   const isCreator = project.is_owner ?? (!!user?.id && user.id === project.user_id);
+  const canComplete = (isCreator || isAdmin) && project.status === "active";
+
+  async function handleComplete() {
+    if (!id) return;
+    if (
+      !window.confirm(
+        "Mark this project complete? This closes the project and creates a brief (its final results) for admin review.",
+      )
+    )
+      return;
+    setCompleting(true);
+    setError(null);
+    try {
+      await completeProject(id);
+      await loadProject();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to complete project");
+    } finally {
+      setCompleting(false);
+    }
+  }
 
   return (
     <div className="page">
@@ -149,6 +172,16 @@ export default function ProjectDetail() {
             {project.status}
           </span>
         </div>
+        {canComplete && (
+          <button
+            type="button"
+            className="project-complete-btn"
+            onClick={handleComplete}
+            disabled={completing}
+          >
+            {completing ? "Completing…" : "Mark complete"}
+          </button>
+        )}
       </div>
 
       {/* Sentiment */}

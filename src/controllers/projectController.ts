@@ -1,18 +1,71 @@
 import { Request, Response } from "express";
 import { emitEvent } from "../events/eventEmitter.js";
-import { getAuthUser, resolveCallerId } from "../middleware/auth.js";
+import { getAuthUser, resolveCallerId, isAdminEmail } from "../middleware/auth.js";
 import {
   createProject,
   listProjects,
+  getProject,
   getProjectReadModel,
   getProjectSummary,
   addProjectUpdate,
   setProjectSentiment,
   addProjectComment,
   listProjectComments,
+  completeProject,
 } from "../modules/civic.projects/index.js";
 import type { SentimentValue } from "../modules/civic.projects/models.js";
 import { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
+import { getProcess } from "../services/processService.js";
+import {
+  spawnBriefFromClosedProcess,
+  findExistingBriefId,
+} from "../processes/spawnBrief.js";
+
+/**
+ * POST /projects/:id/complete — mark a project complete (creator or admin).
+ * Transitions the project to completed and spawns its Civic Brief (pending
+ * admin review), like every other process's close.
+ */
+export async function handleCompleteProject(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const user = getAuthUser(res);
+    const id = req.params.id as string;
+    const project = await getProject(id);
+    if (!project) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+    if (project.user_id !== user.id && !isAdminEmail(user.email)) {
+      res.status(403).json({ error: "Only the project creator or an admin can complete this project." });
+      return;
+    }
+
+    await completeProject(id, user.id, emitEvent);
+
+    // Spawn the brief (projects don't run through executeAction).
+    try {
+      const proc = await getProcess(id);
+      if (proc && !(await findExistingBriefId(id))) {
+        await spawnBriefFromClosedProcess(proc, user.id);
+      }
+    } catch (err) {
+      console.warn(
+        `[brief] spawn on project completion ${id} failed:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+
+    res.json({
+      ok: true,
+      message: "Project marked complete. A brief was created for admin review.",
+    });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Unknown error" });
+  }
+}
 
 export async function handleCreateProject(
   req: Request,

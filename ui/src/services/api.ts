@@ -571,6 +571,12 @@ export function addProjectUpdate(
   return request("POST", `/projects/${id}/updates`, { content, media_urls: mediaUrls });
 }
 
+export function completeProject(
+  id: string,
+): Promise<{ ok: boolean; message: string }> {
+  return request("POST", `/projects/${id}/complete`);
+}
+
 export function setProjectSentiment(
   id: string,
   sentiment: SentimentValue | "neutral",

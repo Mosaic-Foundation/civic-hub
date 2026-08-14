@@ -257,3 +257,23 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* "Mark complete" — creator/admin action to close a project into its brief. */
+.project-complete-btn {
+  margin-top: var(--space-sm);
+  padding: 0.4rem 0.9rem;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #fff;
+  background: var(--ds-color-success-500, #4a9d5c);
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+}
+.project-complete-btn:hover:not(:disabled) {
+  background: var(--ds-color-success-700, #2a7340);
+}
+.project-complete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
