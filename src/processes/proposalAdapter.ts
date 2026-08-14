@@ -20,7 +20,10 @@
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
 import { emitEvent } from "../events/eventEmitter.js";
-import { closeExpiredProposal } from "../modules/civic.proposals/index.js";
+import { closeExpiredProposal, getProposal } from "../modules/civic.proposals/index.js";
+import { getInputsByProcess } from "../modules/civic.input/index.js";
+import { spawnBriefFromClosedProcess, findExistingBriefId } from "./spawnBrief.js";
+import type { BriefContent } from "../modules/civic.brief/index.js";
 
 const proposalAdapter: ProcessHandler = {
   type: "civic.proposal",
@@ -72,8 +75,58 @@ const proposalAdapter: ProcessHandler = {
   async closeIfExpired(process: Process): Promise<Process> {
     if (process.status !== "active") return process;
     const closed = await closeExpiredProposal(process.id, emitEvent);
-    if (closed) process.status = "closed";
+    if (closed) {
+      process.status = "closed";
+      // Spawn the proposal's brief here (proposal close doesn't run through
+      // executeAction, so the universal seam can't fire). Best-effort +
+      // idempotent — a brief failure must not wedge the close.
+      try {
+        if (!(await findExistingBriefId(process.id))) {
+          await spawnBriefFromClosedProcess(process, "system");
+        }
+      } catch (err) {
+        console.warn(
+          `[brief] spawn on proposal close ${process.id} failed:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
     return process;
+  },
+
+  // Universal brief: a closed proposal's outcome is how much support it drew.
+  async generateBrief(process: Process): Promise<BriefContent | null> {
+    const proposal = await getProposal(process.id);
+    if (!proposal) return null;
+    const support = proposal.support_count ?? 0;
+
+    let comments: string[] = [];
+    try {
+      const inputs = await getInputsByProcess(process.id);
+      comments = inputs.map((i) => i.body.trim()).filter((b) => b.length > 0);
+    } catch {
+      // Best-effort — admin can add comments during review.
+    }
+
+    const supporters = `${support} resident${support === 1 ? "" : "s"}`;
+    return {
+      title: process.title,
+      headline:
+        support > 0
+          ? `Proposal closed with ${supporters} in support`
+          : "Proposal closed",
+      summary: process.description ?? "",
+      sections: [
+        {
+          heading: "Support",
+          body: `${supporters} endorsed this proposal during its support window.`,
+        },
+      ],
+      participation_label: `${support} endorsement${support === 1 ? "" : "s"}`,
+      participation_count: support,
+      comments,
+      admin_notes: "",
+    };
   },
 };
 
