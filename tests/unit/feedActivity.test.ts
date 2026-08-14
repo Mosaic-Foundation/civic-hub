@@ -104,6 +104,37 @@ describe("classifyActivity — result_published discrimination", () => {
     ).toBe("vote-results");
   });
 
+  it("universal brief → 'brief' kind with a per-source-type pill, linking to /brief/:id", () => {
+    const cases: Array<[string, string]> = [
+      ["civic.polis_deliberation", "Conversation results"],
+      ["civic.vote", "Vote results"],
+      ["civic.proposal", "Proposal results"],
+      ["civic.project", "Project completed"],
+      ["civic.unknown_future", "Civic Brief"],
+    ];
+    for (const [srcType, pill] of cases) {
+      const a = classifyActivity(
+        ev("civic.process.result_published", {
+          process: { type: "civic.brief" },
+          brief: { source_process_type: srcType },
+        }),
+      );
+      expect(a).toMatchObject({ surface: "activity", kind: "brief", pill });
+      expect(a?.href).toBe("/brief/proc_1");
+    }
+  });
+
+  it("a civic.brief is classified by processType first (never mistaken for vote-results)", () => {
+    // Even if a stray brief_id-like field were present, processType wins.
+    const a = classifyActivity(
+      ev("civic.process.result_published", {
+        process: { type: "civic.brief" },
+        brief: { source_process_type: "civic.vote" },
+      }),
+    );
+    expect(a?.kind).toBe("brief");
+  });
+
   it("announcement (admin) → announcement pill+kind under the announcement surface", () => {
     const a = classifyActivity(
       ev("civic.process.result_published", { announcement: { author_role: "admin" } }),

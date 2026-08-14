@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
+import type { Process } from "../models/process.js";
 import { emitEvent } from "../events/eventEmitter.js";
+import { HUB_ID, DEFAULT_JURISDICTION } from "../config/hub.js";
 import { getAuthUser, resolveCallerId, isAdminEmail } from "../middleware/auth.js";
 import {
   createProject,
@@ -45,11 +47,27 @@ export async function handleCompleteProject(
 
     await completeProject(id, user.id, emitEvent);
 
-    // Spawn the brief (projects don't run through executeAction).
+    // Spawn the brief (projects don't run through executeAction). A project
+    // may not have a canonical processes row (createProject only writes the
+    // projects table), so build the source Process from the project data
+    // rather than relying on getProcess.
     try {
-      const proc = await getProcess(id);
-      if (proc && !(await findExistingBriefId(id))) {
-        await spawnBriefFromClosedProcess(proc, user.id);
+      if (!(await findExistingBriefId(id))) {
+        const existing = await getProcess(id);
+        const source: Process = existing ?? {
+          id,
+          definition: { type: "civic.project", version: "0.1" },
+          title: project.title,
+          description: project.description ?? "",
+          status: "closed",
+          hubId: HUB_ID,
+          jurisdiction: DEFAULT_JURISDICTION,
+          createdBy: project.user_id,
+          createdAt: project.created_at,
+          updatedAt: new Date().toISOString(),
+          state: {},
+        };
+        await spawnBriefFromClosedProcess(source, user.id);
       }
     } catch (err) {
       console.warn(
