@@ -84,13 +84,11 @@ export async function handleAdminListVoteResults(
   try {
     const statusFilter = req.query.status as string | undefined;
     const all = await getAllProcesses();
-    // Accept both type literals — Slice 8.5 transitional shim. Once
-    // the operator has applied the rename migration, every row reads
-    // "civic.vote_results" and the legacy branch is dead.
+    // Only legacy civic.vote_results rows (existing published vote briefs).
+    // The `civic.brief` string is now the NEW generic brief module — its
+    // records are served by the /admin/briefs controller, not here.
     const records = all.filter(
-      (p) =>
-        p.definition.type === "civic.vote_results" ||
-        p.definition.type === "civic.brief",
+      (p) => p.definition.type === "civic.vote_results",
     );
 
     const summaries = records.map((p) => ({
@@ -136,13 +134,7 @@ export async function handleAdminGetVoteResults(
   try {
     const id = req.params.id as string;
     const record = await getProcess(id);
-    // Accept the legacy "civic.brief" type literal too — Slice 8.5
-    // transitional shim for rows the operator hasn't migrated yet.
-    if (
-      !record ||
-      (record.definition.type !== "civic.vote_results" &&
-        record.definition.type !== "civic.brief")
-    ) {
+    if (!record || record.definition.type !== "civic.vote_results") {
       res.status(404).json({ error: "Vote results not found" });
       return;
     }
@@ -173,13 +165,7 @@ export async function handlePatchVoteResults(
   try {
     const id = req.params.id as string;
     const record = await getProcess(id);
-    // Accept the legacy "civic.brief" type literal too — Slice 8.5
-    // transitional shim for rows the operator hasn't migrated yet.
-    if (
-      !record ||
-      (record.definition.type !== "civic.vote_results" &&
-        record.definition.type !== "civic.brief")
-    ) {
+    if (!record || record.definition.type !== "civic.vote_results") {
       res.status(404).json({ error: "Vote results not found" });
       return;
     }
@@ -250,13 +236,7 @@ export async function handleApproveVoteResults(
   try {
     const id = req.params.id as string;
     const record = await getProcess(id);
-    // Accept the legacy "civic.brief" type literal too — Slice 8.5
-    // transitional shim for rows the operator hasn't migrated yet.
-    if (
-      !record ||
-      (record.definition.type !== "civic.vote_results" &&
-        record.definition.type !== "civic.brief")
-    ) {
+    if (!record || record.definition.type !== "civic.vote_results") {
       res.status(404).json({ error: "Vote results not found" });
       return;
     }

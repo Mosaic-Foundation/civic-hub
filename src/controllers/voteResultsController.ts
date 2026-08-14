@@ -19,14 +19,10 @@ export async function handleGetVoteResults(
   try {
     const id = req.params.id as string;
     const process = await getProcess(id);
-    // Accept both type literals so rows the operator hasn't yet
-    // migrated still load. Slice 8.5 transitional shim — remove the
-    // "civic.brief" branch after the migration has been applied. See
-    // 20260427000000_rename_civic_brief_to_vote_results.sql.
+    // Only legacy civic.vote_results rows. `civic.brief` is now the new
+    // generic brief module, served publicly at /brief/:id — not here.
     const isVoteResults =
-      process &&
-      (process.definition.type === "civic.vote_results" ||
-        process.definition.type === "civic.brief");
+      process && process.definition.type === "civic.vote_results";
     if (!isVoteResults) {
       res.status(404).json({ error: "Vote results not found" });
       return;

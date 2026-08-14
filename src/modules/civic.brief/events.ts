@@ -111,12 +111,16 @@ export async function emitBriefResultPublished(
     jurisdiction: ctx.jurisdiction,
     processType: PROCESS_TYPE,
     action_url_path: publicPath(ctx.process_id),
+    // NOTE: intentionally NOT `brief_id` — that key is a legacy alias the
+    // feed classifier maps to civic.vote_results. A civic.brief is
+    // classified by processType instead (added in the feed stage).
     data: {
-      brief_id: ctx.process_id,
-      source_process_id: state.source_process_id,
-      source_process_type: state.source_process_type,
-      headline: state.content.headline,
-      title: state.content.title,
+      brief: {
+        source_process_id: state.source_process_id,
+        source_process_type: state.source_process_type,
+        headline: state.content.headline,
+        title: state.content.title,
+      },
     },
   });
 }
