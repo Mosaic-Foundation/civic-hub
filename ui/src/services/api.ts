@@ -921,6 +921,111 @@ export function getPublicVoteResults(id: string): Promise<PublicVoteResults> {
   return request("GET", `/vote-results/${id}`);
 }
 
+// --- Universal briefs (civic.brief) ---
+// The generic, admin-reviewed results for any closed process. Mirrors the
+// vote-results API but with type-agnostic content (headline / summary /
+// sections) instead of vote-specific position breakdowns.
+
+export type BriefPublicationStatus = "pending" | "approved" | "published";
+
+export interface BriefSection {
+  heading: string;
+  body: string;
+}
+
+export interface BriefContent {
+  title: string;
+  headline: string;
+  summary: string;
+  sections: BriefSection[];
+  participation_label: string | null;
+  participation_count: number | null;
+  comments: string[];
+  admin_notes: string;
+  image_url?: string | null;
+  image_alt?: string | null;
+}
+
+export interface BriefSummary {
+  id: string;
+  type: "civic.brief";
+  title: string;
+  source_process_id: string;
+  source_process_type: string;
+  publication_status: BriefPublicationStatus;
+  headline: string;
+  participation_count: number | null;
+  summary_preview: string;
+  generated_at: string;
+  approved_at: string | null;
+  published_at: string | null;
+  created_at: string;
+}
+
+export interface BriefDetail extends BriefSummary {
+  content: BriefContent;
+  delivered_to: string[];
+  created_by: string;
+}
+
+export interface PublicBrief {
+  id: string;
+  type: "civic.brief";
+  title: string;
+  source_process_id: string;
+  source_process_type: string;
+  headline: string;
+  summary: string;
+  sections: BriefSection[];
+  participation_label: string | null;
+  participation_count: number | null;
+  comments: string[];
+  admin_notes: string;
+  image_url?: string | null;
+  image_alt?: string | null;
+  delivered_recipient_count: number;
+  approved_at: string | null;
+  generated_at: string;
+  published_at: string;
+}
+
+export interface BriefContentPatch {
+  comments?: string[];
+  admin_notes?: string;
+  headline?: string;
+  summary?: string;
+  image_url?: string | null;
+  image_alt?: string | null;
+}
+
+export function adminListBriefs(
+  status?: BriefPublicationStatus,
+): Promise<BriefSummary[]> {
+  const params = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request("GET", `/admin/briefs${params}`);
+}
+
+export function adminGetBrief(id: string): Promise<BriefDetail> {
+  return request("GET", `/admin/briefs/${id}`);
+}
+
+export function adminPatchBrief(
+  id: string,
+  patch: BriefContentPatch,
+): Promise<BriefDetail> {
+  return request("PATCH", `/admin/briefs/${id}`, patch);
+}
+
+export function adminApproveBrief(
+  id: string,
+): Promise<{ message: string; brief: BriefDetail }> {
+  return request("POST", `/admin/briefs/${id}/approve`);
+}
+
+export function getPublicBrief(id: string): Promise<PublicBrief> {
+  return request("GET", `/brief/${id}`);
+}
+
 // --- Announcements ---
 
 /**

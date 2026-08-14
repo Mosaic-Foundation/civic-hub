@@ -22,7 +22,7 @@ export default function AdminTabs() {
       <NavLink to="/admin/proposals" className={tabClass}>
         Proposals
       </NavLink>
-      <NavLink to="/admin/vote-results" className={tabClass}>
+      <NavLink to="/admin/briefs" className={tabClass}>
         Briefs
       </NavLink>
       <NavLink to="/admin/meeting-summaries" className={tabClass}>

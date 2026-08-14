@@ -83,6 +83,24 @@
   color: var(--success-color, #2e7d32);
 }
 
+/* --- Brief source-type tag + read-only detail sections --- */
+.admin-brief-source-tag {
+  background: var(--ds-color-primary-100, #dce5f2);
+  color: var(--ds-color-primary-700, #1f3a66);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.68rem;
+}
+
+.admin-brief-section-block {
+  margin: 0 0 var(--space-md);
+}
+
+.admin-brief-section-block h4 {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--font-size-base, 1rem);
+}
+
 /* --- Vote-context snapshot (read-only block on admin review) --- */
 
 .admin-vote-context {

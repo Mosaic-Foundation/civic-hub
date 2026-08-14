@@ -18,6 +18,7 @@ import ProposeDraftVote from "./pages/ProposeDraftVote";
 import ProposalDetail from "./pages/ProposalDetail";
 import AdminProposals from "./pages/AdminProposals";
 import AdminVoteResults from "./pages/AdminVoteResults";
+import AdminBriefs from "./pages/AdminBriefs";
 import AdminMeetingSummaries from "./pages/AdminMeetingSummaries";
 import AdminSettings from "./pages/AdminSettings";
 import VoteResults from "./pages/VoteResults";
@@ -140,15 +141,13 @@ function AppContent() {
           <Route path="/admin/reviews" element={<AdminGuard><AdminReviews /></AdminGuard>} />
           <Route path="/admin/reviews/:reviewId" element={<AdminGuard><AdminReviews /></AdminGuard>} />
           <Route path="/admin/proposals" element={<AdminGuard><AdminProposals /></AdminGuard>} />
+          {/* Legacy vote-results admin (existing published vote briefs keep
+              their review screen); the Briefs tab now points at /admin/briefs. */}
           <Route path="/admin/vote-results" element={<AdminGuard><AdminVoteResults /></AdminGuard>} />
           <Route path="/admin/vote-results/:id" element={<AdminGuard><AdminVoteResults /></AdminGuard>} />
-          {/* Legacy admin paths from before the Slice 8.5 rename — redirect
-              so old bookmarks / nav muscle-memory continue to work. */}
-          <Route
-            path="/admin/briefs"
-            element={<Navigate to="/admin/vote-results" replace />}
-          />
-          <Route path="/admin/briefs/:id" element={<LegacyBriefAdminRedirect />} />
+          {/* Unified Briefs queue — the universal admin results surface. */}
+          <Route path="/admin/briefs" element={<AdminGuard><AdminBriefs /></AdminGuard>} />
+          <Route path="/admin/briefs/:id" element={<AdminGuard><AdminBriefs /></AdminGuard>} />
           <Route
             path="/admin/meeting-summaries"
             element={<AdminGuard><AdminMeetingSummaries /></AdminGuard>}
@@ -242,11 +241,6 @@ function SiteFooter() {
 function LegacyBriefRedirect() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={`/vote-results/${id}`} replace />;
-}
-
-function LegacyBriefAdminRedirect() {
-  const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/admin/vote-results/${id}`} replace />;
 }
 
 export default function App() {
