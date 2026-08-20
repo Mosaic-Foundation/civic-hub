@@ -214,6 +214,21 @@ activity signing, the AT Protocol bridge, any spec change, any UI redesign.
 - `hub:payload` keeps the wire lossless but is a broad extension. Once
   consumers exist, the fields they actually use should be promoted to real
   civic or hub terms and the catch-all narrowed.
+- **The civic context does not resolve at the IRI every activity carries.**
+  `https://civic.social/ns/civic` 404s: the apex is a registrar-level domain
+  forward, not a host. The document itself is published and correct at
+  `https://www.civic.social/ns/civic` (repo `civic-social-site`,
+  `client/public/ns/civic`, with Content-Type + CORS in `firebase.json`).
+  This is NOT a functional problem — AS2 documents are consumed as plain JSON
+  and consumers do not fetch the context — but it MUST be fixed before either
+  activity signing (RDF canonicalization has to resolve the vocabulary) or any
+  third-party validation of the Level 1 conformance claim. Fix: add
+  `civic.social` as a Firebase custom domain and drop the registrar forward.
+- `civic:processType` is typed `{"@type": "@id"}` in the published context,
+  but the hub emits the internal registry string (`"civic.vote"`), which a
+  JSON-LD processor would read as a relative IRI. Either the hub emits
+  `civic:Vote`-style terms (what spec §4 describes, and my lean) or the
+  context drops the `@id` typing. Settle it during the process-spec rewrite.
 
 ---
 
