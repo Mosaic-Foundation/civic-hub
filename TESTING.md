@@ -209,6 +209,8 @@ Each row tracks a user flow, which layer covers it, and which slice introduced i
 | A ballot naming a choice is refused at emission | :white_check_mark: | — | activitySerializer.test.ts |
 | A stored ballot's choice is stripped, not served | :white_check_mark: | — | activitySerializer.test.ts |
 | Production refuses to boot without CIVIC_SPACE_DID | :white_check_mark: | — | hubConfig.test.ts |
+| Accept: application/ld+json is honored, body unchanged | :white_check_mark: | — | events.test.ts |
+| Manifest names its conformance level | :white_check_mark: | — | health.test.ts |
 | POST /auth/request-code accepts email | :white_check_mark: | — | auth.test.ts |
 | POST /auth/request-code rejects invalid email | :white_check_mark: | — | auth.test.ts |
 | POST /auth/verify creates user + returns token | :white_check_mark: | — | auth.test.ts |

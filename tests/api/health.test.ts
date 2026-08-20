@@ -46,6 +46,9 @@ describe("Health and Discovery", () => {
     expect(body.feeds.some((f) => f.endsWith("/events"))).toBe(true);
     expect(Array.isArray(body.processes)).toBe(true);
     expect(body.spec.activity).toBe("civic-activity-spec-v0.2");
+    // Spec §6.3: "A conformance claim names its level." Level 2 adds
+    // ActivityPub delivery, which this hub does not implement.
+    expect(body.spec.conformance).toBe("level-1");
     // No civic geography configured => the key is absent, never null/"none".
     if ("jurisdictions" in body) {
       expect(Array.isArray(body.jurisdictions)).toBe(true);

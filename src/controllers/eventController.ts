@@ -32,6 +32,29 @@ import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 /** Civic Activity Spec §6.1 — the collection's media type. */
 const ACTIVITY_JSON = "application/activity+json; charset=utf-8";
 
+/**
+ * The equivalent JSON-LD form. §6.1 SHOULDs that a space accept and honor
+ * `Accept: application/ld+json; profile="https://www.w3.org/ns/activitystreams"`,
+ * which is how JSON-LD-native tooling asks for the same document.
+ */
+const LD_JSON = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"; charset=utf-8';
+
+/**
+ * Pick the response media type from the caller's `Accept`.
+ *
+ * The body is byte-identical either way — AS2 IS JSON-LD, so this is a
+ * labelling decision, not a serialization one. Anything that does not ask for
+ * ld+json gets `application/activity+json`, which is what the fediverse sends
+ * and what §6.1 names as the default.
+ */
+function negotiateActivityType(req: Request): string {
+  const accept = req.headers.accept;
+  if (typeof accept === "string" && accept.toLowerCase().includes("application/ld+json")) {
+    return LD_JSON;
+  }
+  return ACTIVITY_JSON;
+}
+
 /** Spec §6.2 — `limit` defaults to 50, maxes at 200, and CLAMPS (never rejects). */
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -69,7 +92,7 @@ export async function handleGetActivityCollection(
     const paged = req.query.page === "true" || typeof req.query.cursor === "string";
 
     if (!paged) {
-      res.setHeader("Content-Type", ACTIVITY_JSON);
+      res.setHeader("Content-Type", negotiateActivityType(req));
       res.json(await buildCollection(req, filters));
       return;
     }
@@ -80,7 +103,7 @@ export async function handleGetActivityCollection(
       return;
     }
 
-    res.setHeader("Content-Type", ACTIVITY_JSON);
+    res.setHeader("Content-Type", negotiateActivityType(req));
     res.json(await buildPage(req, filters, cursor));
   } catch (err) {
     // A stored event that cannot be serialized lands here. That is a loud
@@ -112,7 +135,7 @@ export async function handleGetActivity(
       return;
     }
 
-    res.setHeader("Content-Type", ACTIVITY_JSON);
+    res.setHeader("Content-Type", negotiateActivityType(req));
     res.json(toActivity(event));
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

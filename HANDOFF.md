@@ -224,6 +224,28 @@ activity signing, the AT Protocol bridge, any spec change, any UI redesign.
   activity signing (RDF canonicalization has to resolve the vocabulary) or any
   third-party validation of the Level 1 conformance claim. Fix: add
   `civic.social` as a Firebase custom domain and drop the registrar forward.
+- **Activity ids are not actually permanent, and the append-only guarantee is
+  not enforced.** Spec §2.2 tells consumers they MAY deduplicate on `id`, and
+  §7.4 requires ids to be stable — but `deleteProcess()` deletes a process's
+  events, and `cleanOrphanedEvents()` deletes events by id and is reachable
+  from an **admin HTTP route** (`adminRoutes.ts`), not just a script. So an
+  activity served publicly at a stable IRI can later 404. Worse, the
+  database-level protection the design language leans on does not hold: the
+  events table's "append-only" trigger does not block row deletes in practice
+  — `/debug/seed` wiped the table in a dev session on 2026-08-20. Pre-existing
+  and acceptable while there are no external consumers, but it must be settled
+  before there are: either tombstones (`Delete`/`Tombstone` per AS2) or a
+  soft-hide that keeps the row and withholds it under the §5.2 serving rule,
+  plus a trigger that actually enforces what it claims. Flagged by the
+  2026-08-20 conformance audit (Finding 6); the admin-route exposure and the
+  unenforced trigger were found while verifying it.
+- **`published` is ingest time, not content time, for synced material.**
+  `emitEvent` accepts a `timestamp` override (floyd-news-sync backdates to a
+  story's real publication time), but `eventToRow` never writes it — the
+  events table stamps `created_at`, and the wire's `published` reads from
+  that. Ordering stays internally consistent, so nothing is broken today, but
+  a re-enabled news sync would publish ingest times. Fix when floyd-news-sync
+  returns. (Audit Finding 7.)
 - `civic:processType` is typed `{"@type": "@id"}` in the published context,
   but the hub emits the internal registry string (`"civic.vote"`), which a
   JSON-LD processor would read as a relative IRI. Either the hub emits

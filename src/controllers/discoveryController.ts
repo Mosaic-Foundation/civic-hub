@@ -30,7 +30,16 @@ export function handleDiscoveryManifest(_req: Request, res: Response): void {
 
   manifest.feeds = [`${hub}/events`];
   manifest.processes = getRegisteredTypes();
-  manifest.spec = { activity: "civic-activity-spec-v0.2" };
+  // Civic Activity Spec v0.2 §6.3: "A conformance claim names its level."
+  // Level 1 (Publisher) is what this hub implements — a single validated
+  // emission path serving the §6.1 collection under the §5.2 serving rule.
+  // Level 2 adds ActivityPub delivery and is deliberately not implemented;
+  // claiming it here would be the kind of overstatement the levels exist to
+  // prevent.
+  manifest.spec = {
+    activity: "civic-activity-spec-v0.2",
+    conformance: "level-1",
+  };
 
   res.json(manifest);
 }

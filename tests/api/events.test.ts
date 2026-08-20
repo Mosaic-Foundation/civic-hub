@@ -65,6 +65,35 @@ describe("GET /events — the activity collection", () => {
     expect(typeof body.totalItems).toBe("number");
   });
 
+  it("honors Accept: application/ld+json without changing the body", async () => {
+    // Spec §6.1 SHOULD. AS2 *is* JSON-LD, so this is a labelling decision —
+    // the document must not change shape based on how it was asked for.
+    const activityJson = await api("/events");
+    const ldJson = await api("/events", {
+      headers: {
+        Accept: 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"',
+      },
+    });
+
+    expect(activityJson.headers.get("content-type")).toContain(
+      "application/activity+json",
+    );
+    const ldType = ldJson.headers.get("content-type") ?? "";
+    expect(ldType).toContain("application/ld+json");
+    expect(ldType).toContain("https://www.w3.org/ns/activitystreams");
+
+    expect(await ldJson.text()).toBe(await activityJson.text());
+  });
+
+  it("defaults to application/activity+json for everyone else", async () => {
+    for (const accept of ["*/*", "application/json", "application/activity+json"]) {
+      const res = await api("/events?page=true&limit=1", {
+        headers: { Accept: accept },
+      });
+      expect(res.headers.get("content-type")).toContain("application/activity+json");
+    }
+  });
+
   it("serves an OrderedCollectionPage whose items are valid Civic Activities", async () => {
     const { status, body } = await apiJson<Page>("/events?page=true");
     expect(status).toBe(200);
