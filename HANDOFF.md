@@ -164,6 +164,26 @@ since that is exactly what `generator.url` already carries.
 should have a stable identity) before the next deploy — the hub will not start
 without it.
 
+### Deploy follow-up: the spec paths needed Vercel rewrites
+
+The first production deploy surfaced a routing gap. Activities advertise
+absolute IRIs built from BASE_URL — `https://floyd.civic.social/events`,
+`.../activities/{id}`, and the `first`/`next`/`partOf` links — but
+`vercel.json` only routed `/api/:path*` to the function, so those paths fell
+through to the SPA catch-all and returned `index.html`. Fetching
+`/api/events` worked; following the collection's own `next` link did not,
+and activity `id`s did not dereference — which was the entire reason for
+choosing HTTP IRIs over `urn:uuid:`. `/.well-known/civic.json`, the manifest
+consumers use to find the feed, had the same problem (pre-existing).
+
+Fixed with three rewrites above the catch-all — `/events`,
+`/activities/:id*`, `/.well-known/civic.json` → `/api`. Routing only, no
+code change: `api/index.ts` strips a leading `/api` and nothing else, so
+each path reaches Express exactly as mounted. Setting
+`BASE_URL=https://floyd.civic.social/api` was the alternative and was
+rejected: it would bake `/api` into every activity id permanently and make
+the spec's `GET /events` path wrong.
+
 ### Verification
 
 - `npx vitest run` — 19 files, **229 tests, all passing** (32 serializer unit
