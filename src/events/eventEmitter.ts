@@ -1,13 +1,17 @@
 // Centralized event creation and emission.
 //
-// All events flow through here to ensure consistency with the Civic Event
-// Spec v0.1 (with known divergences documented in HANDOFF.md).
+// All events flow through here — the single emission path the Civic Activity
+// Specification v0.2 (§7.1) requires, so no observable state change bypasses
+// the activity stream. The event stored here is the hub's INTERNAL model; its
+// AS2 wire form is produced at the edge by events/activitySerializer.ts and
+// validated below before anything is written.
 //
 // Events are the PRIMARY public interface of the hub. All external systems
 // should rely on events, not internal process APIs.
 
 import { CivicEvent, CreateEventInput } from "../models/event.js";
 import { appendEvent } from "./eventStore.js";
+import { validateForEmission } from "./activitySerializer.js";
 import { generateId } from "../utils/id.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 
@@ -64,6 +68,24 @@ export async function emitEvent(input: CreateEventInput): Promise<CivicEvent> {
 
   if (input.dedupe_key) {
     event.dedupe_key = input.dedupe_key;
+  }
+
+  // Validate at the emission path (Civic Activity Spec v0.2 §7.2): the event
+  // is projected onto its AS2 wire form BEFORE it is stored. An event that
+  // cannot be serialized — an event_type with no mapping, a malformed
+  // timestamp, a missing actor — must not enter the append-only log, because
+  // the log is permanent and /events would then be unable to serve it. The
+  // serialized document is deliberately discarded: the internal event is the
+  // source of truth and the wire is a projection of it, recomputed on read.
+  try {
+    validateForEmission(event);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `emitEvent: refusing to store an event that cannot be serialized as a ` +
+        `Civic Activity — ${reason}`,
+      { cause: err },
+    );
   }
 
   await appendEvent(event);

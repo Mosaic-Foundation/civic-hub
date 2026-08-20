@@ -803,9 +803,15 @@ interface EventsResponse {
  * Fetch the hub's event feed. Returns all events in descending timestamp
  * order. Pagination is applied client-side in the feed component until the
  * backend grows server-side pagination.
+ *
+ * Reads /api/feed, the hub's INTERNAL read model, not /events. As of the
+ * Civic Activity Spec v0.2 wire conversion, /events serves an AS2
+ * OrderedCollection for external consumers; the app keeps consuming the
+ * internal CivicEvent shape (and the shared feed classifier with it), so the
+ * presentation layer is not coupled to the federation format.
  */
 export async function getEvents(): Promise<CivicEvent[]> {
-  const res = await request<EventsResponse>("GET", "/events");
+  const res = await request<EventsResponse>("GET", "/feed");
   return res.events;
 }
 

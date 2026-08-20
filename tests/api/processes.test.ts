@@ -39,12 +39,21 @@ describe("Process endpoints (public read layer)", () => {
     const { body: list } = await apiJson<ProcessSummary[]>("/process");
     const firstId = list[0].id;
 
-    const { status, body } = await apiJson<{ id: string; title: string }>(
-      `/process/${firstId}`,
-    );
+    const { status, body } = await apiJson<{
+      id?: string;
+      process_id?: string;
+      title?: string;
+      topic?: string;
+    }>(`/process/${firstId}`);
     expect(status).toBe(200);
-    expect(body.id).toBe(firstId);
-    expect(body.title).toBeDefined();
+    // Process types whose handler implements its own descriptor return their
+    // shape, not the generic one: civic.polis_deliberation answers with
+    // `process_id` / `topic` where a vote answers with `id` / `title`. Both
+    // must identify the process that was asked for. (Whether one endpoint
+    // should serve two shapes is a process-spec question, not a test bug —
+    // which of them lands first in the list depends only on seed data.)
+    expect(body.id ?? body.process_id).toBe(firstId);
+    expect(body.title ?? body.topic).toBeDefined();
   });
 
   it("GET /process/:id returns 404 for non-existent process", async () => {

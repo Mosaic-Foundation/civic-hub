@@ -4,6 +4,199 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## AS2 wire conversion — Civic Activity Spec v0.2 compliance — 2026-08-20
+
+The hub's public wire format is now **ActivityStreams 2.0** conforming to the
+[Civic Activity Specification v0.2](../civic-social-docs/specs/civic-activity-spec.md).
+The v0.1 envelope (`event_type` / `data` / `meta.visibility`, the
+`{ events, count }` feed) is **retired with no compatibility window** — the hub
+is pre-launch and has no external consumers.
+
+**Strategy: serialize at the edge.** The internal `CivicEvent`, the append-only
+Postgres log, `emitEvent()`, every module `events.ts`, `shared/feedActivity.ts`
+and the digest are unchanged in shape. A new serializer projects internal
+events onto AS2 documents at the boundary, on read. No migration, no schema
+change. Future work (activity signing, ActivityPub delivery, portability
+export, an AT Protocol bridge) attaches to that seam.
+
+### What changed
+
+| Area | Change |
+|---|---|
+| `src/events/activitySerializer.ts` (new) | `toActivity(event)` → a conformant AS2 document; `validateForEmission(event)` adds the emitter-side checks; the `event_type → activity` mapping table lives here and **throws** on an unmapped type. |
+| `src/events/eventEmitter.ts` | Serializes every event *before* `appendEvent()`. An event that cannot be represented on the wire is never stored (spec §7.2). The wire form is discarded. |
+| `src/events/eventStore.ts` | Added `getEventPage()` (keyset pagination on `created_at,id`), `getEventById()`, `countEvents()`. Row mapping, schema and append-only trigger untouched. |
+| `GET /events` | AS2 `OrderedCollection`; `?page=true` / `?cursor=` → `OrderedCollectionPage` with `orderedItems`, `partOf`, `next`. Filters: `context` (process IRI **or** bare id), `type` (AS2 activity type, or an internal event type), `since`, `limit` (default 50, max 200, clamped). `Content-Type: application/activity+json`. |
+| `GET /activities/:id` (new) | Dereferences the `id` each activity carries. 404 for unknown **and** for restricted-to-non-admin — indistinguishable, per §5.2. |
+| `GET /api/feed` (new) | The old `{ events, count }` handler, moved verbatim to `controllers/feedController.ts`. The hub UI's internal read model, not a spec surface. Mounted at both `/feed` and `/api/feed` because Vercel strips the `/api` prefix before Express sees it. |
+| `ui/src/services/api.ts` | `getEvents()` now reads `/feed`. No other UI change — payload shape is identical, so the feed, its filters and the digest are untouched. |
+| `src/config/hub.ts` | Added `spaceDid()` (`CIVIC_SPACE_DID`, defaults to a `did:web:` derived from the BASE_URL host), `hubName()`, `civicPlaceCode()` / `civicPlaceName()` / `normalizePlaceCode()`. |
+| `discoveryController.ts` | Space-spec manifest: `{ name, space: { id, scope, type }, jurisdictions?, feeds[], processes[], spec: { activity: "civic-activity-spec-v0.2" } }`. |
+| `.env.example` | Documents `CIVIC_SPACE_DID`, `CIVIC_JURISDICTION` (civic place-code format) and `CIVIC_JURISDICTION_NAME`. |
+
+### Visibility, unchanged in behavior
+
+`public` → `to: ["…#Public"]`; `restricted` → `to: ["{base}/audiences/admins"]`
+(an opaque, space-managed audience IRI; it does not dereference yet). Admins
+still see restricted activities, nobody else does, archived/pending-review
+processes are still suppressed from the feed, and an unauthorized caller gets a
+valid **empty page** rather than an error. `totalItems` is counted with the
+caller's own filters applied, so it cannot signal that withheld activities
+exist.
+
+### Hub extension terms (promotion candidates)
+
+Hub-local families with no canonical civic home use `hub:`-prefixed terms in
+the namespace `{baseUrl}/ns#`, declared as a third `@context` entry **only on
+documents that use one**. The register lives beside the mapping table as
+`EXTENSION_TERMS` in `activitySerializer.ts`.
+
+| Term | Kind | Used by | Why it has no canonical home yet |
+|---|---|---|---|
+| `hub:payload` | property | every activity whose event carries `data` | Verbatim carry of the internal event payload, so the wire loses nothing the v0.1 `data` field held and no hub field is silently reinterpreted as an AS2 one. |
+| `hub:ProposedProcess` | object type | `civic.process.proposed` (`Offer`) | A process offered for community support before it opens. |
+| `hub:SupportThreshold` | object type | `civic.process.threshold_met` (`Announce`) | The support threshold of a proposed process being reached. |
+| `hub:Aggregation` | object type | `civic.process.aggregation_completed` (`Create`) | Raw participation aggregated into structured results — the step before publication. |
+| `hub:Submission` | object type | `civic.process.submission_received` (`Create`) | Free-text participation with no ballot/comment shape (word clouds). |
+| `hub:Project` | object type | `civic.project.created` / `.updated` | A community project page — a candidate civic process class. |
+| `hub:ProjectSentiment` | object type | `civic.project.sentiment_changed` (`Update`) | Aggregate support/oppose sentiment on a project. |
+| `hub:ReviewSubmission` | object type | the six `civic.review.*` types | Space-internal review correspondence; always restricted. |
+
+Canonical assignments follow spec §3.2 (created → `Create` + `civic:Process`,
+started → `civic:Start`, ended/closed/archived → `civic:End` +
+`civic:terminalState`, result published → `Announce` + `civic:Result`, ballot →
+`Create` + `civic:Ballot`, comment → `Create` + `Note`, proposal → `Create` +
+`civic:Proposal`, outcome → `Create`/`Announce` + `civic:Outcome`). Proposal
+support/endorsement uses AS2's own `Like`; review decisions use `Accept`,
+`Reject`, `TentativeReject`, `Update`, `Undo`.
+
+### Ballot secrecy on the wire
+
+`civic.process.vote_submitted` carries no ballot content internally, so the
+serialized `civic:Ballot` object carries none either — `civic:method` only when
+the payload has it, and **never** a selection. A golden test asserts the
+document contains no selection or choice. Spec §5.4.
+
+### Dead code / oddities found while enumerating event types
+
+- **`civic.outcome_delivered`** — no longer emitted (the Polis close path
+  stopped auto-delivering outcomes when the universal `civic.brief` review seam
+  landed), but present in stored history and still handled by the feed
+  classifier. Mapped (`Announce` + `civic:Outcome` + `target`) and listed as a
+  retired type in the serializer's totality test: stored events must stay
+  serializable forever.
+- **`emitProposalEndorsed`** (`civic.proposal.endorsed`) — exported by
+  `civic.proposals/events.ts`, called by nothing. Mapped anyway so the path is
+  safe if it is ever wired up.
+- **Bare `"system"` actor** — `spawnBriefFromClosedProcess` defaulted to a
+  generic `"system"` actor, which spec §2.2.1 forbids (a system actor must name
+  its component). Changed to `system:brief-spawn`, and the proposal-close call
+  site to `system:proposal-close`. Historical rows carrying a bare `"system"`
+  serialize to `{base}/system/unspecified` rather than being misattributed to a
+  participant.
+- **Anonymous comments** emit `actor: "anonymous"`, which currently serializes
+  to `{ui}/users/anonymous`. When disclosure policy lands (spec §5.3) this
+  should become a process-scoped anonymous actor IRI.
+
+### Dev-environment fixes made along the way
+
+- **`GET /debug/seed` no longer half-wipes.** It cleared events *before*
+  discovering that `clearProcesses()` is impossible when append-only
+  `review_turns` rows exist — leaving the dev database with processes and no
+  activity log, unrepairable by either the endpoint or auto-seed. The blocker
+  is now checked first and nothing is deleted when the reseed cannot run.
+  Clearing that state needs a one-time SQL-editor step, run against the DEV
+  project on 2026-08-20:
+  `TRUNCATE review_turns, process_reviews, wordcloud_submissions CASCADE;`
+  The dev database is reseeded and healthy again (Green Box active, Flock
+  Camera proposed, four conversations); the wire and the UI feed were
+  re-verified against the restored fixture.
+- **`scripts/seedDevActivities.ts` (new)** — appends one full vote lifecycle
+  (created → started → 3 ballots → comment → ended → aggregation → brief) with
+  a generated process id, so a dev database whose reseed is blocked can still
+  be given a realistic activity log without deleting anything.
+- **`tests/fixtures/helpers.ts` / `auth.test.ts`** — residency affirmation now
+  sends `full_name`, which became required when voting privacy was hardened.
+  Three tests had been failing since; the suite is green again (217 pass).
+
+### Post-audit fix
+
+A second-session audit caught a real (if cosmetic) bug in `countEvents()`:
+`NOT (meta->>visibility = 'restricted')` and `NOT (process_id IN (…))` evaluate
+to NULL — not true — for a NULL column, so Postgres dropped those rows from
+`totalItems` while the page reads kept them (`rowToEvent` defaults a null
+`meta` to public, and an event with no `process_id` always passes the
+suppression filter). Both exclusions now spell the NULL branch out
+(`col.is.null,col.neq.x`), verified against the dev database: the plain
+`.not()` form counted 0 of 15 rows on a column that is null everywhere, the
+`or()` form counted all 15. An API test now asserts the invariant directly —
+`totalItems` must equal the number of items walked across every page.
+
+### Two guards added before the reversibility window closes
+
+Both protect decisions that get expensive once activities are signed or
+delivered over ActivityPub — a delivered activity is a permanent copy on
+someone else's server, so neither is retrofittable after federation.
+
+**Ballot secrecy is now structural, not conventional.** `hub:payload` carries
+the event's `data` verbatim, which made "no emitter ever puts a choice in a
+ballot payload" a convention one careless change could break. Two layers now:
+the EMISSION path refuses to store a ballot event whose payload names a choice
+(the log is append-only, so storing it would link voter to ballot permanently —
+a bigger harm than the wire), and the READ path strips selection-shaped keys
+from stored rows rather than throwing, so one bad row cannot 500 `/events` for
+everyone. Container keys (`vote`, `ballot`) are deliberately not flagged —
+`vote: { changed: false }`, the hub's real payload, passes — and a public
+options list on a non-ballot activity still passes, because the question is
+public and only the answer is secret. On-the-record voting stays legitimate,
+but it must arrive through disclosure policy, not by deleting the guard.
+
+**Production refuses to boot without `CIVIC_SPACE_DID`.** It is `generator.id`
+on every activity and the key consumers bind provenance to; the derived
+`did:web:<BASE_URL host>` default would tie the space's identity to its
+address, so a host change would silently mint a new space with no `Move`
+activity to explain it. `assertSpaceIdentityConfigured()` throws at boot in
+production (mirroring the CIVIC_ALLOWED_ORIGINS convention), warns in dev, and
+rejects a non-DID value in any environment — a URL being the plausible mistake,
+since that is exactly what `generator.url` already carries.
+
+**Still to set:** `CIVIC_SPACE_DID` in Vercel Production (and any preview that
+should have a stable identity) before the next deploy — the hub will not start
+without it.
+
+### Verification
+
+- `npx vitest run` — 19 files, **229 tests, all passing** (32 serializer unit
+  tests, 4 config-guard tests, 20 collection/feed API tests).
+- Boot guard exercised for real: a production-env import of `src/app.ts`
+  without `CIVIC_SPACE_DID` refuses with the explanatory error; with a valid
+  DID it boots.
+- Hub UI feed checked in the browser against `/api/feed`: cards render, the
+  All / Announcements / Activity filters behave as before, digest dry-run
+  (`scripts/dryRunUserDigest.ts`) renders unchanged.
+- `npx tsc --noEmit` clean.
+
+### Not done (deliberately out of scope)
+
+ActivityPub delivery (inbox/outbox/actor documents/WebFinger), HTTP signatures,
+activity signing, the AT Protocol bridge, any spec change, any UI redesign.
+
+### Open questions
+
+- `id` is `{baseUrl}/activities/{event.id}` (dereferenceable) rather than the
+  spec's RECOMMENDED `urn:uuid:`. That is deliberate — a resolvable id is worth
+  more today than a UUID — but it means activity ids are tied to the serving
+  host, which is exactly what `generator.id` exists to avoid. Revisit before
+  signing lands.
+- `context` points at the UI process page (`{uiBaseUrl}/process/:id`), which
+  returns HTML, not the process descriptor the spec expects a `GET` on that IRI
+  to return. A content-negotiated descriptor is the fix.
+- `hub:payload` keeps the wire lossless but is a broad extension. Once
+  consumers exist, the fields they actually use should be promoted to real
+  civic or hub terms and the catch-all narrowed.
+
+---
+
 ## Batch A refinement pass (pre-tester invite) — 2026-08-10
 
 Worked the Batch A punch-list from `Rollout Plan/Launch-Checklist.md` — the

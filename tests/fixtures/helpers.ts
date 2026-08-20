@@ -75,11 +75,13 @@ async function signIn(email: string): Promise<{ token: string; userId: string }>
 export async function getResidentToken(): Promise<string> {
   const { token } = await signIn(`test-resident-${Date.now()}@civic.social`);
 
-  // Affirm residency
+  // Affirm residency. full_name is required for accounts that don't have one
+  // yet (added when voting privacy/identity was hardened), so send it here —
+  // otherwise every resident-gated endpoint answers 403 in tests.
   await api("/auth/residency", {
     method: "POST",
     headers: authHeaders(token),
-    body: JSON.stringify({ affirm: true }),
+    body: JSON.stringify({ affirm: true, full_name: "Test Resident" }),
   });
 
   return token;

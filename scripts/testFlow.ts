@@ -157,7 +157,7 @@ async function run() {
 
   // 8. Fetch all events
   console.log("\n── Step 8: Fetch all events ──");
-  const eventsRes = await request("GET", "/events");
+  const eventsRes = await request("GET", "/feed");
   assert(eventsRes.status === 200, "Events retrieved");
   assert(eventsRes.data.count >= 7, `Got ${eventsRes.data.count} events (expected ≥7)`);
 
@@ -221,19 +221,19 @@ async function run() {
 
   // 10. Filter events by process
   console.log("\n── Step 10: Filter events by process_id ──");
-  const filteredRes = await request("GET", `/events?process_id=${processId}`);
+  const filteredRes = await request("GET", `/feed?process_id=${processId}`);
   assert(filteredRes.status === 200, "Filtered events retrieved");
   assert(filteredRes.data.count >= 7, `Filtered: ${filteredRes.data.count} events for this process`);
 
   // 10b. Filter events by event_type
   console.log("\n── Step 10b: Filter events by event_type ──");
-  const typeFilterRes = await request("GET", "/events?event_type=civic.process.vote_submitted");
+  const typeFilterRes = await request("GET", "/feed?event_type=civic.process.vote_submitted");
   assert(typeFilterRes.status === 200, "Type-filtered events retrieved");
   assert(typeFilterRes.data.count >= 3, `Got ${typeFilterRes.data.count} vote_submitted events (expected ≥3)`);
 
   // 10c. Combine filters
   console.log("\n── Step 10c: Combine filters ──");
-  const comboRes = await request("GET", `/events?process_id=${processId}&event_type=civic.process.ended`);
+  const comboRes = await request("GET", `/feed?process_id=${processId}&event_type=civic.process.ended`);
   assert(comboRes.status === 200, "Combined filter works");
   assert(comboRes.data.count === 1, `Got ${comboRes.data.count} ended events for this process (expected 1)`);
 
@@ -241,7 +241,8 @@ async function run() {
   console.log("\n── Step 11: Discovery manifest ──");
   const manifestRes = await request("GET", "/.well-known/civic.json");
   assert(manifestRes.status === 200, "Manifest retrieved");
-  assert(manifestRes.data.feeds?.events !== undefined, "Manifest has feeds.events");
+  assert(Array.isArray(manifestRes.data.feeds), "Manifest has a feeds array");
+  assert(typeof manifestRes.data.space?.id === "string", "Manifest has space.id (the space DID)");
 
   // ═══ Phase 2: Proposal lifecycle via civic.vote ═══
 
@@ -312,7 +313,7 @@ async function run() {
 
   // 16. Verify events for proposal lifecycle
   console.log("\n── Step 16: Verify proposal lifecycle events ──");
-  const propEvents = await request("GET", `/events?process_id=${proposalId}`);
+  const propEvents = await request("GET", `/feed?process_id=${proposalId}`);
   const propEventTypes = propEvents.data.events.map((e: any) => e.event_type);
   assert(propEventTypes.includes("civic.process.created"), "Has created event");
   assert(propEventTypes.includes("civic.process.proposed"), "Has proposed event");

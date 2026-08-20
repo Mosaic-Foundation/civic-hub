@@ -115,7 +115,8 @@ describe("Auth endpoints", () => {
     }>("/auth/residency", {
       method: "POST",
       headers: authHeaders(verifyBody.token),
-      body: JSON.stringify({ affirm: true }),
+      // full_name is required for an account that doesn't have one yet.
+      body: JSON.stringify({ affirm: true, full_name: "Test Resident" }),
     });
 
     expect(status).toBe(200);

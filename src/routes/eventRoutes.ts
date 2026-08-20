@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { handleGetEvents } from "../controllers/eventController.js";
+import { handleGetActivityCollection } from "../controllers/eventController.js";
 
 const router = Router();
 
-router.get("/", handleGetEvents);
+// The AS2 activity collection — the hub's public wire surface.
+router.get("/", handleGetActivityCollection);
 
 export default router;

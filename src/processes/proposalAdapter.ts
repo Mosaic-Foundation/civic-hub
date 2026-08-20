@@ -82,7 +82,7 @@ const proposalAdapter: ProcessHandler = {
       // idempotent — a brief failure must not wedge the close.
       try {
         if (!(await findExistingBriefId(process.id))) {
-          await spawnBriefFromClosedProcess(process, "system");
+          await spawnBriefFromClosedProcess(process, "system:proposal-close");
         }
       } catch (err) {
         console.warn(

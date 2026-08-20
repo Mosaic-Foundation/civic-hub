@@ -7,6 +7,8 @@
 import express from "express";
 import processRoutes from "./routes/processRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
+import activityRoutes from "./routes/activityRoutes.js";
+import feedRoutes from "./routes/feedRoutes.js";
 import discoveryRoutes from "./routes/discoveryRoutes.js";
 import debugRoutes from "./routes/debugRoutes.js";
 import inputRoutes from "./routes/inputRoutes.js";
@@ -40,6 +42,7 @@ import {
   userSettingsRouter,
 } from "./routes/digestRoutes.js";
 import { handleListAnnouncements } from "./controllers/announcementController.js";
+import { assertSpaceIdentityConfigured } from "./config/hub.js";
 import { ensureSeeded } from "./debug/autoSeed.js";
 import { pingDb } from "./db/client.js";
 import { validateEmailConfig } from "./utils/email.js";
@@ -64,6 +67,11 @@ if (isProd && parsedOrigins.length === 0) {
 
 const allowedOrigins = new Set(parsedOrigins);
 const allowAnyOrigin = !isProd && parsedOrigins.length === 0;
+
+// The space's stable identity must be explicit in production — it is
+// `generator.id` on every activity this hub will ever emit. See
+// config/hub.ts for why a derived default is unsafe there.
+assertSpaceIdentityConfigured();
 
 validateEmailConfig();
 
@@ -187,9 +195,20 @@ app.use("/unsubscribe", digestUnsubscribeRouter);
 app.use("/user/settings", userSettingsRouter);
 
 // --- Primary public interfaces ---
-// Events are the PRIMARY public interface of the hub.
-// All external systems (feeds, dashboards, federation) should rely on events.
+// Events are the PRIMARY public interface of the hub. /events serves the AS2
+// activity collection defined by Civic Activity Spec v0.2 §6; /activities/:id
+// dereferences a single activity by the id its own document carries.
+// All external systems (feeds, dashboards, federation) read these.
 app.use("/events", eventRoutes);
+app.use("/activities", activityRoutes);
+
+// Internal read model for the hub's own UI — the pre-v0.2 `{ events, count }`
+// shape, unchanged. Mounted twice on purpose: on Vercel the `/api` prefix is
+// stripped before Express sees the request (api/index.ts), so "/feed" IS
+// "/api/feed" in production, while the explicit mount keeps the same URL
+// working against a local dev server on :3000.
+app.use("/feed", feedRoutes);
+app.use("/api/feed", feedRoutes);
 
 // Discovery manifest
 app.use("/.well-known", discoveryRoutes);
@@ -251,11 +270,13 @@ app.get("/", (_req, res) => {
       "PATCH /admin/meeting-summaries/:id": "Edit meeting summary blocks/notes (pending only)",
       "POST /admin/meeting-summaries/:id/approve": "Approve and publish a meeting summary",
       "GET /meeting-summary/:id": "Public read of a published meeting summary",
-      "GET /events": "List all events (primary public interface)",
-      "GET /events?process_id=X": "Filter events by process",
-      "GET /events?type=X": "Filter events by type (e.g., civic.process.vote_submitted)",
-      "GET /events?process_id=X&type=Y": "Combine filters",
-      "GET /events?pretty=true": "Pretty-print event output",
+      "GET /events": "AS2 OrderedCollection of civic activities (primary public interface)",
+      "GET /events?page=true": "First OrderedCollectionPage (follow `next` for older pages)",
+      "GET /events?context=X": "Filter by process (process IRI or bare process id)",
+      "GET /events?type=X": "Filter by activity type (e.g., Create, Announce, civic:End)",
+      "GET /events?since=X&limit=N": "Filter by RFC 3339 timestamp; page size (default 50, max 200)",
+      "GET /activities/:id": "Dereference a single civic activity",
+      "GET /api/feed": "Internal UI read model: { events, count } (process_id / event_type / pretty filters)",
       "GET /.well-known/civic.json": "Discovery manifest",
       "GET /debug/seed": "Seed sample data (dev only)",
       "GET /health": "Health check",

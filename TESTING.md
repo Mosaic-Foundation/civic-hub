@@ -189,12 +189,26 @@ Each row tracks a user flow, which layer covers it, and which slice introduced i
 | GET /process/:id returns a single process | :white_check_mark: | — | processes.test.ts |
 | GET /process/:id returns 404 for missing process | :white_check_mark: | — | processes.test.ts |
 | GET /process/:id/state returns UI-friendly state | :white_check_mark: | — | processes.test.ts |
-| GET /events returns events in wrapped response | :white_check_mark: | — | events.test.ts |
-| Events conform to Civic Event Spec v0.1 | :white_check_mark: | — | events.test.ts |
-| Events use canonical civic.* prefix | :white_check_mark: | — | events.test.ts |
-| Events sorted descending by timestamp | :white_check_mark: | — | events.test.ts |
-| GET /events?process_id=X filters by process | :white_check_mark: | — | events.test.ts |
-| GET /events?event_type=X filters by type | :white_check_mark: | — | events.test.ts |
+| GET /events returns an AS2 OrderedCollection | :white_check_mark: | — | events.test.ts |
+| GET /events?page=true returns a conformant OrderedCollectionPage | :white_check_mark: | — | events.test.ts |
+| Activities carry every Civic Activity Spec v0.2 MUST property | :white_check_mark: | — | events.test.ts |
+| Activities are ordered newest first | :white_check_mark: | — | events.test.ts |
+| Paging: `next` walks the sequence with no repeats or gaps | :white_check_mark: | — | events.test.ts |
+| `limit` is clamped, never rejected | :white_check_mark: | — | events.test.ts |
+| Filters (`context` / `type` / `since`) carry forward into `next` | :white_check_mark: | — | events.test.ts |
+| Unmatched filters return an empty page, not an error | :white_check_mark: | — | events.test.ts |
+| Restricted activities are withheld from anonymous callers, silently | :white_check_mark: | — | events.test.ts |
+| GET /activities/:id dereferences one activity (404 for unknown/restricted) | :white_check_mark: | — | events.test.ts |
+| GET /api/feed still serves the internal `{ events, count }` shape | :white_check_mark: | — | events.test.ts |
+| GET /api/feed keeps its process_id / event_type filters | :white_check_mark: | — | events.test.ts |
+| Serializer golden documents, one per mapped family | :white_check_mark: | — | activitySerializer.test.ts |
+| Ballot activities never carry a selection | :white_check_mark: | — | activitySerializer.test.ts |
+| Every emitted event_type has an activity mapping | :white_check_mark: | — | activitySerializer.test.ts |
+| Serialization is deterministic (byte-identical) | :white_check_mark: | — | activitySerializer.test.ts |
+| An event that cannot be serialized is never stored | :white_check_mark: | — | activitySerializer.test.ts |
+| A ballot naming a choice is refused at emission | :white_check_mark: | — | activitySerializer.test.ts |
+| A stored ballot's choice is stripped, not served | :white_check_mark: | — | activitySerializer.test.ts |
+| Production refuses to boot without CIVIC_SPACE_DID | :white_check_mark: | — | hubConfig.test.ts |
 | POST /auth/request-code accepts email | :white_check_mark: | — | auth.test.ts |
 | POST /auth/request-code rejects invalid email | :white_check_mark: | — | auth.test.ts |
 | POST /auth/verify creates user + returns token | :white_check_mark: | — | auth.test.ts |

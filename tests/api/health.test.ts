@@ -26,16 +26,31 @@ describe("Health and Discovery", () => {
     expect(Object.keys(body.endpoints).length).toBeGreaterThan(0);
   });
 
-  it("GET /.well-known/civic.json returns discovery manifest", async () => {
+  it("GET /.well-known/civic.json returns the Space-spec discovery manifest", async () => {
     const { status, body } = await apiJson<{
-      hub: { id: string };
+      name: string;
+      space: { id: string; scope: string; type: string };
+      jurisdictions?: string[];
+      feeds: string[];
+      processes: string[];
       spec: Record<string, string>;
-      capabilities: string[];
     }>("/.well-known/civic.json");
     expect(status).toBe(200);
-    expect(body.hub).toBeDefined();
-    expect(body.hub.id).toBeDefined();
-    expect(body.capabilities).toBeDefined();
-    expect(Array.isArray(body.capabilities)).toBe(true);
+    expect(body.name).toBeTruthy();
+    // The space is identified by its DID — the key that survives migration.
+    expect(body.space).toBeDefined();
+    expect(body.space.id).toMatch(/^did:/);
+    expect(body.space.scope).toBe("community");
+    expect(body.space.type).toBe("civic.hub");
+    expect(Array.isArray(body.feeds)).toBe(true);
+    expect(body.feeds.some((f) => f.endsWith("/events"))).toBe(true);
+    expect(Array.isArray(body.processes)).toBe(true);
+    expect(body.spec.activity).toBe("civic-activity-spec-v0.2");
+    // No civic geography configured => the key is absent, never null/"none".
+    if ("jurisdictions" in body) {
+      expect(Array.isArray(body.jurisdictions)).toBe(true);
+      expect(body.jurisdictions).not.toContain("local");
+      expect(body.jurisdictions).not.toContain("none");
+    }
   });
 });

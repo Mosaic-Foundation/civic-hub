@@ -170,7 +170,7 @@ async function run(): Promise<void> {
   step("5c. Verify comment_added event");
   const earlyEvs = await request<{ events: Array<{ event_type: string; process_id: string; data: unknown }> }>(
     "GET",
-    `/events?process_id=${voteId}`,
+    `/feed?process_id=${voteId}`,
   );
   const commentEvents = earlyEvs.data.events.filter(
     (e) => e.event_type === "civic.process.comment_added",
@@ -205,7 +205,7 @@ async function run(): Promise<void> {
   step("7. Verify spec-compliant event sequence");
   const evs = await request<{ events: Array<{ event_type: string; process_id: string; data: unknown }> }>(
     "GET",
-    "/events",
+    "/feed",
   );
   const voteEvents = evs.data.events.filter((e) => e.process_id === voteId);
   const briefEvents = evs.data.events.filter((e) => e.process_id === briefId);
@@ -302,7 +302,7 @@ async function run(): Promise<void> {
   step("13. Final event sequence");
   const finalEvs = await request<{ events: Array<{ event_type: string; process_id: string }> }>(
     "GET",
-    "/events",
+    "/feed",
   );
   const finalVoteTypes = finalEvs.data.events
     .filter((e) => e.process_id === voteId)

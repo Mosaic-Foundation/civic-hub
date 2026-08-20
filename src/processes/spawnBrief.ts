@@ -23,7 +23,11 @@ import type { BriefProcessState } from "../modules/civic.brief/index.js";
  */
 export async function spawnBriefFromClosedProcess(
   source: Process,
-  actor: string = "system",
+  // Civic Activity Spec v0.2 §2.2.1: a system actor MUST name the specific
+  // component that acted, so an audit trail can tell hub machinery apart. The
+  // "system:" prefix is what the activity serializer maps to a space-scoped
+  // system IRI (a bare name would serialize as a participant).
+  actor: string = "system:brief-spawn",
 ): Promise<Process | null> {
   const sourceType = source.definition.type;
   const handler = getProcessHandler(sourceType);
