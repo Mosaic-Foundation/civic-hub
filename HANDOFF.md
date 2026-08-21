@@ -132,6 +132,30 @@ more likely to fire: it previously matched only agenda-typed summaries by
 date+title, and now matches any provisional summary by shared document.
 Creation and upgrades now share one budget (`created + upgraded >= perRunCap`).
 
+### Three dedupe layers, after a duplicate reached production (2026-08-21)
+
+The first production run produced a second summary for the 2026-06-23 Regular
+Meeting, which already had one from June. Document fingerprints are precise but
+only hold while the documents persist: a jurisdiction that replaces an agenda
+PDF with a revised version, or drops a recording, leaves the old summary and
+the new entry with nothing in common. Dedupe now runs three layers, cheapest
+and most precise first:
+
+1. **Exact `source_id`** — same connector, same meeting.
+2. **Document fingerprints** (`identity.ts`) — survives a connector change.
+3. **Per-meeting slots** — count existing summaries per `date::normalized-title`
+   and create only the surplus. Independent of documents entirely.
+
+Layer 3 deliberately counts rather than matching booleans, so it does not
+reintroduce the same-day collision bug: a date+type that genuinely hosts two
+meetings (Floyd ran two Budget Workshops on 2023-04-11) gets two slots, and
+only meetings beyond the existing count are created.
+
+**Known limitation:** an *archived* summary is invisible to all three layers,
+because `getAllProcesses()` filters out archived rows. Archiving one copy of a
+duplicate is safe as long as the other copy remains; archiving the last copy of
+a meeting means it will be recreated on the next run.
+
 ### Guard
 
 `cronAlertReason()` — zero discovered meetings is a **failure**, not an empty

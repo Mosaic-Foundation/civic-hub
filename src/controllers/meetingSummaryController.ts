@@ -528,6 +528,16 @@ export async function handleRunMeetingSummary(
     // the Wix CMS would make all 48 existing summaries invisible to dedupe and
     // the cron would summarize every one of them a second time.
     const bySourceFingerprint = new Map<string, typeof allProcesses[0]>();
+    // Last-resort dedupe: how many summaries already exist per meeting.
+    //
+    // Document fingerprints are the precise match, but they only work while the
+    // documents persist. A jurisdiction that replaces an agenda PDF with a
+    // revised one, or removes a recording, leaves an existing summary with
+    // nothing in common with the freshly discovered entry — and the meeting
+    // gets summarized a second time. Counting per meeting closes that without
+    // reintroducing the same-day collision bug: if a date+type genuinely has
+    // two meetings, two summaries are expected and only the surplus is created.
+    const existingSlots = new Map<string, number>();
     for (const p of allProcesses) {
       if (p.definition.type !== "civic.meeting_summary") continue;
       const s = summaryState(p);
@@ -538,6 +548,8 @@ export async function handleRunMeetingSummary(
         }
         // Agenda- and recording-sourced summaries are provisional: both get
         // re-summarized when the official minutes for that date appear.
+        const slotKey = meetingKey(s.meeting_date, s.meeting_title);
+        existingSlots.set(slotKey, (existingSlots.get(slotKey) ?? 0) + 1);
         const sourceType = (s.source_type ?? "minutes") as MeetingSourceType;
         if (UPGRADEABLE_SOURCE_TYPES.includes(sourceType)) {
           provisionalBySourceId.set(s.source_id, p);
@@ -598,12 +610,32 @@ export async function handleRunMeetingSummary(
         );
         break;
       }
+      const slotKey = meetingKey(entry.meeting_date, entry.meeting_title);
+      const consumeSlot = () => {
+        const remaining = existingSlots.get(slotKey) ?? 0;
+        if (remaining > 0) existingSlots.set(slotKey, remaining - 1);
+      };
+
       if (
         existingSourceIds.has(entry.source_id) ||
         provisionalFor(entry) ||
         existingByDocuments(entry)
       ) {
+        consumeSlot();
         skippedExisting += 1;
+        continue;
+      }
+
+      // No shared id and no shared document — but a summary for this same
+      // meeting already exists and has not been claimed by another entry this
+      // run. Treat it as covered rather than summarizing the meeting twice.
+      if ((existingSlots.get(slotKey) ?? 0) > 0) {
+        consumeSlot();
+        skippedExisting += 1;
+        console.log(
+          `[meeting-summary] ${slotKey} already has a summary with no shared ` +
+            `documents (source files likely replaced upstream) — skipping`,
+        );
         continue;
       }
 
