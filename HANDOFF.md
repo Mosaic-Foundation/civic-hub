@@ -236,11 +236,34 @@ things to check. Writes nothing to the database.
 
 ### Tests
 
-Module had **zero** coverage before this. Added 66 tests in four files:
-`meetingSummaryWixCms.test.ts` (21), `meetingSummaryConnector.test.ts` (29),
-`meetingSummaryIdentity.test.ts` (12), `meetingSummaryPipeline.test.ts` (8),
-`meetingSummaryAlarm.test.ts` (8), `meetingSummaryPrompt.test.ts` (11).
-Suite: **320 passing, 25 files** (`tests/api` needs the dev server up).
+The module had **zero** coverage before this — a large part of why its discovery
+leg could return nothing for weeks unnoticed. 112 tests across nine files now,
+each anchored to a failure that actually happened rather than to a coverage
+target:
+
+| File | Tests | Pins |
+|---|---|---|
+| `meetingSummaryConnector.test.ts` | 29 | YouTube feed parse, date-from-title, multi-part grouping |
+| `meetingSummaryWixCms.test.ts` | 21 | Wix rows → meetings, both URL conventions, same-day meetings |
+| `meetingSummaryIdentity.test.ts` | 12 | Cross-connector identity — the migration hazard |
+| `meetingSummaryPrompt.test.ts` | 11 | Block guidance scaled to meeting length |
+| `meetingSummaryAlarm.test.ts` | 8 | Zero discovered = failure, not empty success |
+| `meetingSummaryPipeline.test.ts` | 8 | Transcript-only summarization |
+| `meetingSummarySlots.test.ts` | 8 | Per-meeting slot dedupe |
+| `feedHealth.test.ts` | 8 | Published card ⇒ page resolves |
+| `feedPublicationDedupe.test.ts` | 7 | One card per published process |
+
+**Suite: 343 passing, 28 files** (281 unit / 21 files without a dev server;
+`tests/api` needs one running).
+
+**Note on what tests can and cannot cover here.** Every test above pins
+*logic* against known inputs. None of them could have caught the original bug,
+because nothing in the code changed — the county's website did. That class of
+failure is only catchable at runtime, which is what the discovery guard and the
+feed health check are for. They are the continuously-running half of the
+verification story, and the two halves cover different things: tests catch
+regressions before they ship, the alarms catch the world changing underneath
+shipped code.
 
 ### Verified end to end (2026-08-21)
 
@@ -289,11 +312,57 @@ currently generic and should name the supervisors, recurring department heads,
 and organizations, instructing the model to prefer those spellings and to say
 so when an unlisted name is unclear.
 
+### Production incident, and what it turned out to be (2026-08-21)
+
+The first production runs surfaced three things that all looked like duplicate
+summaries. Only one was:
+
+1. **Jun 23 Regular Meeting appeared twice in the feed** — one process, two
+   `result_published` events, caused by the unpublish bug above. Fixed in code.
+2. **Jun 23 Budget Workshop and Jun 9 Regular Meeting 404'd** — same bug; both
+   had been unpublished by the upgrade pass and needed re-approval to restore.
+3. **Jun 9 Regular Meeting appeared twice** — and this one was **not** a dedupe
+   failure. The event log settles it: `proc_5d4dd147…` was created 2026-07-15
+   and sat unapproved for five weeks; `proc_d6609dea…` was the June record.
+   Today's runs created neither. The stale one was approved by mistake during
+   cleanup and then archived.
+
+Worth recording because the instinct in the moment was to blame the new dedupe
+code, and the data said otherwise. **When triaging an apparent duplicate, read
+the `created` events first** — `GET /feed` carries them, and process creation
+timestamps distinguish "the pipeline made this today" from "this has been here
+for weeks".
+
+Operational lesson for the review queue: the **Generated** date separates the
+two cases, with one exception — the upgrade pass resets `generated_at` to now.
+So "Generated today" means new *or* freshly upgraded (approve), and an older
+date means a leftover (check whether that meeting already has a published
+summary before approving).
+
+### Admin surface changes (2026-08-21)
+
+- List rows now read `Board of Supervisors Regular Meeting — Jun 23, 2026`,
+  matching the feed card. Every BoS row has an identical title, so the meeting
+  date was the only distinguishing field and it was buried in the grey meta
+  line. Removed the now-duplicate `Meeting <date>` from that line.
+- Dropped the **Approved** filter tab. `approveMeetingSummary()` walks
+  pending → approved → published inside one call, so `"approved"` is a
+  transient in-memory step that is never persisted — the tab could only ever
+  be empty. The status stays in the model; the lifecycle and its events
+  distinguish outcome-recorded (Phase 5) from publication (Phase 6).
+- New badges: "Transcript-only" for `source_type: "recording"`, and a
+  recording-based review banner warning about auto-transcript mishearings.
+
 ### Not verified / open
-- **Prod env vars must be set** before this helps production: at minimum
-  `MEETING_CONNECTOR_ID=auto`, `MEETING_SOURCE_URL`, `MEETING_TYPE_EXCLUDE`.
+- **The feed health check is deployed but has not run in production yet.** It
+  executes at the end of each meeting-summary cron, so its first real exercise
+  is the next scheduled run. Its logic is unit-tested and the equivalent check
+  run externally reports all cards resolving.
 - **The YouTube feed returns only ~15 videos.** Backfill needs the YouTube
   Data API (`YOUTUBE_API_KEY`, already documented).
+- **Backfill in progress.** With `MEETING_SUMMARY_CUTOFF_DATE=2026-06-01`, the
+  cron works backward at 3/run until every meeting since June has a summary,
+  then goes quiet. Expect a few more review-queue items before it settles.
 - **Plugin-as-a-service gaps** (connector registry in the host controller,
   env-var config, hard-coded jurisdiction) are written up in
   `decisions/audit-2026-07-02-ecosystem-architecture.md` §7.4 and
