@@ -17,13 +17,17 @@ import AdminTabs from "../components/AdminTabs";
 import hub from "../config/hub";
 import "./AdminMeetingSummaries.css";
 
+// No "Approved" filter: approveMeetingSummary() walks pending → approved →
+// published inside one call, so "approved" is a transient in-memory step that
+// is never persisted. The status stays in the model because the lifecycle and
+// its events distinguish the outcome-recorded step from publication — but a
+// filter for a state no record can hold is just a tab that is always empty.
 const STATUS_FILTERS: Array<{
   id: "all" | MeetingSummaryApprovalStatus;
   label: string;
 }> = [
   { id: "all", label: "All" },
   { id: "pending", label: "Pending" },
-  { id: "approved", label: "Approved" },
   { id: "published", label: "Published" },
 ];
 
