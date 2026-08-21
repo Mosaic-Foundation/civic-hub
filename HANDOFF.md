@@ -156,6 +156,35 @@ because `getAllProcesses()` filters out archived rows. Archiving one copy of a
 duplicate is safe as long as the other copy remains; archiving the last copy of
 a meeting means it will be recreated on the next run.
 
+### The upgrade pass was unpublishing live summaries (2026-08-21)
+
+Floyd's 2026-06-23 summary appeared **twice in the feed** while the admin list
+showed a single record — one card dated Jun 25, one dated Aug 21, both linking
+to the same video and minutes. Not a dedupe failure: one process, two
+`civic.process.result_published` events.
+
+The upgrade pass set `approval_status = "pending"` and `published_at = null` on
+an already-published summary. Two consequences, both bad:
+
+1. `getPublicReadModel` returns nothing for an unpublished summary, so a page
+   residents already had links to **404'd silently** from the moment the
+   upgrade ran until an admin happened to re-approve it.
+2. Re-approval emitted a second `result_published`, leaving a stale feed card
+   pointing at content that had been replaced.
+
+**Fixed in two places.** The upgrade now keeps an already-published summary
+published, applies the better minutes-based content in place, and emits
+`civic.process.updated` so the change is on the record. An unpublished summary
+still routes through review exactly as before. And `GET /feed` collapses
+`result_published` to the newest per process — the log stays append-only and
+keeps the true history, while the feed shows current state. Scoped to
+publications deliberately; repeated comments and votes are distinct
+occurrences and keep their own cards.
+
+Note: the admin "Clean up orphaned feed entries" action does **not** cover
+this. It removes events whose process no longer exists; here the process is
+alive and both events are valid.
+
 ### Guard
 
 `cronAlertReason()` — zero discovered meetings is a **failure**, not an empty

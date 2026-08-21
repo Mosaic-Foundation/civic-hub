@@ -57,6 +57,39 @@ export async function handleGetFeed(
       events = events.filter((e) => e.meta?.visibility !== "restricted");
     }
 
+    // Collapse superseded publications: one card per published process.
+    //
+    // A process can legitimately be published more than once. The
+    // meeting-summary upgrade pass re-summarizes an agenda-based summary when
+    // official minutes appear, which sends it back through review, and
+    // re-approval emits a second `result_published`. Both events are true
+    // history and the log is append-only — but the feed is a projection of
+    // current state, and rendering both leaves a stale card pointing at
+    // content that has since been replaced. Keep the newest.
+    //
+    // Scoped to result_published deliberately: repeated comments, votes and
+    // updates are distinct occurrences and must each keep their own card.
+    if (!processId) {
+      const newestPublication = new Map<string, string>();
+      for (const e of events) {
+        if (e.event_type !== "civic.process.result_published" || !e.process_id) {
+          continue;
+        }
+        const seen = newestPublication.get(e.process_id);
+        if (!seen || e.timestamp > seen) {
+          newestPublication.set(e.process_id, e.timestamp);
+        }
+      }
+      if (newestPublication.size > 0) {
+        events = events.filter(
+          (e) =>
+            e.event_type !== "civic.process.result_published" ||
+            !e.process_id ||
+            newestPublication.get(e.process_id) === e.timestamp,
+        );
+      }
+    }
+
     // Optional: further filter by event type (combinable with process_id)
     if (eventType) {
       events = events.filter((e) => e.event_type === eventType);
