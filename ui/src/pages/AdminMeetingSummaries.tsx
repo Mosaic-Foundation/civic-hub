@@ -754,7 +754,7 @@ export default function AdminMeetingSummaries() {
                   className="admin-proposal-title-link"
                   onClick={() => openReview(s.id)}
                 >
-                  {s.meeting_title}
+                  {s.meeting_title} — {formatDate(s.meeting_date)}
                 </h3>
                 <StatusChip status={s.approval_status} />
               </div>
@@ -762,7 +762,6 @@ export default function AdminMeetingSummaries() {
                 className="admin-proposal-meta"
                 onClick={() => openReview(s.id)}
               >
-                <span>Meeting {formatDate(s.meeting_date)}</span>
                 <span>{s.block_count} blocks</span>
                 {s.source_type === "agenda" && (
                   <span className="badge-agenda">Agenda-only</span>
