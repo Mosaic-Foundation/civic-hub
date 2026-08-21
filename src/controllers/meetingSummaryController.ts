@@ -657,9 +657,22 @@ export async function handleRunMeetingSummary(
     }
 
     // --- Upgrade pass: re-summarize agenda-based summaries when minutes appear ---
+    //
+    // Shares the per-run budget with creation. An upgrade costs exactly what a
+    // creation costs — a PDF fetch, a transcript fetch and a full Claude call —
+    // so leaving it uncapped let a single run make an unbounded number of model
+    // calls inside a 300-second function. It also resets each upgraded summary
+    // to "pending", so an uncapped pass can flood the review queue with items
+    // an admin had already approved.
     let upgraded = 0;
     if (provisionalBySourceId.size > 0 || bySourceFingerprint.size > 0) {
       for (const entry of filteredEntries) {
+        if (created + upgraded >= perRunCap) {
+          console.log(
+            `[meeting-summary] cap reached (${perRunCap}); remaining upgrades deferred to next run`,
+          );
+          break;
+        }
         if (!entry.source_minutes_url) continue;
         // Upgrade the summary this meeting's documents already belong to, if
         // it is still provisional; otherwise fall back to id/date+title match.

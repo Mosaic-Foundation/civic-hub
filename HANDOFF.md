@@ -118,6 +118,20 @@ entry sharing one. This also fixes the cross-connector **upgrade** path noted
 as an open item earlier: a recording-only summary from `youtube-channel` is now
 correctly upgraded when `wix-cms` later reports minutes for the same meeting.
 
+### Per-run cap now covers upgrades too (2026-08-21)
+
+`MEETING_SUMMARY_MAX_PER_RUN` capped creation but **not** the upgrade pass,
+which looped over every discovered entry. An upgrade costs exactly what a
+creation costs — PDF fetch, transcript fetch, full Claude call — so a run could
+make an unbounded number of model calls inside a 300-second function. It also
+resets each upgraded summary to `pending`, so an uncapped pass can flood the
+review queue with items an admin had already approved.
+
+Pre-existing, but the cross-connector fingerprint matching above made it far
+more likely to fire: it previously matched only agenda-typed summaries by
+date+title, and now matches any provisional summary by shared document.
+Creation and upgrades now share one budget (`created + upgraded >= perRunCap`).
+
 ### Guard
 
 `cronAlertReason()` — zero discovered meetings is a **failure**, not an empty
