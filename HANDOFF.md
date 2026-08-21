@@ -185,6 +185,27 @@ Note: the admin "Clean up orphaned feed entries" action does **not** cover
 this. It removes events whose process no longer exists; here the process is
 alive and both events are valid.
 
+### Feed link health folded into the alarm (2026-08-21)
+
+The run that unpublished two live pages **reported complete success** — every
+counter read zero. Publication state broke, not the job, and no cron-level
+guard could see it. `services/feedHealth.ts` checks the invariant that actually
+matters to a reader: every card in the public feed resolves to content the
+public can fetch.
+
+It runs at the end of each meeting-summary cron, against the database (no HTTP),
+and feeds `cronAlertReason` so broken links raise the same alarm as a failed
+summarization. `broken_links` is also on the run's JSON response. A failing
+health check never fails the run that produced good work.
+
+Two gates, because a publication can fail either: the process-level status
+(archived, pending_review) and a module's own approval gate, where "published"
+lives in `state.approval_status` — the gate the upgrade pass tripped. Only the
+newest publication per process is checked, matching what the feed collapses to.
+
+Deliberately type-agnostic: it will catch the next cause as well as the known
+one. Worth promoting to its own cron if other publication paths grow.
+
 ### Guard
 
 `cronAlertReason()` — zero discovered meetings is a **failure**, not an empty

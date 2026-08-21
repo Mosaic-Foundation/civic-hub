@@ -59,6 +59,10 @@ import { callClaude, DEFAULT_MODEL } from "../utils/anthropic.js";
 import { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../utils/http.js";
 import { fetchYouTubeTranscript } from "../utils/youtube.js";
 import { sendEmail } from "../utils/email.js";
+import {
+  findBrokenPublications,
+  type BrokenPublication,
+} from "../services/feedHealth.js";
 
 // "auto" tries every connector whose configuration is present, in descending
 // order of source quality, and uses the first that returns meetings. This is
@@ -190,6 +194,8 @@ interface CronOutcome {
   failures: Array<{ source_id: string; error: string }>;
   duration_ms: number;
   connector_id: string;
+  /** Published feed cards whose page no longer resolves. */
+  brokenLinks?: BrokenPublication[];
   /** Set when the run aborted before finishing (discovery threw, config invalid). */
   fatal?: string;
 }
@@ -227,6 +233,14 @@ export function cronAlertReason(outcome: CronOutcome): string | null {
   if (outcome.failed > 0) {
     return `${outcome.failed} meeting(s) failed to summarize.`;
   }
+  if (outcome.brokenLinks && outcome.brokenLinks.length > 0) {
+    // The counters can all read zero while readers get 404s: this run's
+    // predecessor unpublished two live pages and reported complete success.
+    return (
+      `${outcome.brokenLinks.length} published feed card(s) point at a page ` +
+      `that no longer resolves. Readers clicking them get nothing.`
+    );
+  }
   return null;
 }
 
@@ -261,6 +275,16 @@ async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
     <p>The meeting summary cron ${headline}.</p>
     <p><strong>Why you're getting this:</strong> ${reason}</p>
     ${failureLines ? `<ul>${failureLines}</ul>` : ""}
+    ${
+      outcome.brokenLinks && outcome.brokenLinks.length > 0
+        ? `<p><strong>Broken feed links</strong> — published cards whose page 404s:</p><ul>${outcome.brokenLinks
+            .map(
+              (b) =>
+                `<li><code>${b.process_id}</code> (${b.process_type}, published ${b.published_at.slice(0, 10)}): ${b.reason}</li>`,
+            )
+            .join("\n")}</ul>`
+        : ""
+    }
     <p>Connector: <code>${outcome.connector_id}</code><br/>
        Discovered: ${outcome.discovered} |
        Created: ${outcome.created} |
@@ -450,6 +474,7 @@ export async function handleRunMeetingSummary(
   let skippedExisting = 0;
   let failed = 0;
   let usedConnectorId = connectorId;
+  let brokenLinks: BrokenPublication[] = [];
   const failures: Array<{ source_id: string; error: string }> = [];
 
   try {
@@ -797,6 +822,28 @@ export async function handleRunMeetingSummary(
       }
     }
 
+    // Verify the reader-facing invariant before declaring the run clean: every
+    // published card still resolves. This is the check the counters cannot do —
+    // the run that unpublished two live pages reported zero failures.
+    try {
+      brokenLinks = await findBrokenPublications();
+      if (brokenLinks.length > 0) {
+        console.error(
+          `[meeting-summary] ${brokenLinks.length} published feed card(s) point ` +
+            `at a page that 404s: ${brokenLinks
+              .map((b) => `${b.process_id} (${b.reason})`)
+              .join("; ")}`,
+        );
+      } else {
+        console.log("[meeting-summary] feed link check: all published cards resolve");
+      }
+    } catch (err) {
+      // A failed health check must never fail the run that produced good work.
+      console.warn(
+        `[meeting-summary] feed link check errored: ${err instanceof Error ? err.message : "unknown"}`,
+      );
+    }
+
     const duration_ms = Date.now() - started;
     console.log(
       `[meeting-summary] run complete discovered=${discovered} created=${created} upgraded=${upgraded} skipped=${skippedExisting} failed=${failed} duration_ms=${duration_ms}`,
@@ -807,6 +854,7 @@ export async function handleRunMeetingSummary(
       upgraded,
       skipped_existing: skippedExisting,
       failed,
+      broken_links: brokenLinks.length,
       duration_ms,
     });
 
@@ -818,6 +866,7 @@ export async function handleRunMeetingSummary(
       failures,
       duration_ms,
       connector_id: usedConnectorId,
+      brokenLinks,
     }).catch((err) => {
       console.warn(
         `[meeting-summary] notification send error: ${err instanceof Error ? err.message : "unknown"}`,
