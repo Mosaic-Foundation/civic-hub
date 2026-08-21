@@ -74,6 +74,7 @@ export {
 } from "./pipeline.js";
 
 export {
+  blockCountGuidance,
   buildDiscoveryPrompt,
   buildSummarizationPrompt,
   resolveEffectiveInstructions,

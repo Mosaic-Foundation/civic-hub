@@ -148,6 +148,14 @@ export async function summarizeMeeting(
 
   const transcriptText = formatTranscript(transcript);
 
+  // Meeting length, taken from the last transcript timestamp. Drives how many
+  // topic blocks the prompt asks for — a fixed range squeezed long meetings
+  // and silently lost their later hours. Null when there is no transcript.
+  const durationSeconds =
+    transcript.length > 0
+      ? Math.max(...transcript.map((t) => t.start))
+      : null;
+
   const prompt = buildSummarizationPrompt({
     extraction_instructions: instructions,
     meeting_title: entry.meeting_title,
@@ -155,6 +163,7 @@ export async function summarizeMeeting(
     transcript_text: transcriptText,
     has_video: hasVideo,
     source_type: sourceType,
+    transcript_duration_seconds: durationSeconds,
   });
 
   const { text, model } = await deps.callClaude({

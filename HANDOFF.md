@@ -151,14 +151,57 @@ things to check. Writes nothing to the database.
 Module had **zero** coverage before this. Added 66 tests in four files:
 `meetingSummaryWixCms.test.ts` (21), `meetingSummaryConnector.test.ts` (29),
 `meetingSummaryIdentity.test.ts` (12), `meetingSummaryPipeline.test.ts` (8),
-`meetingSummaryAlarm.test.ts` (8). Suite: **309 passing, 24 files**
-(`tests/api` needs the dev server up).
+`meetingSummaryAlarm.test.ts` (8), `meetingSummaryPrompt.test.ts` (11).
+Suite: **320 passing, 25 files** (`tests/api` needs the dev server up).
+
+### Verified end to end (2026-08-21)
+
+Two `--summarize` runs against live Floyd data, with production-shaped config:
+
+```
+wix collection "2017Agenda": 297 row(s) → 293 meeting(s) after filters
+transcript fetched segments=5107
+summarized in 55s / 59s — 13 and 16 blocks, source_type="agenda"
+```
+
+293 = 297 rows less the four EMS rows, correctly keeping "BOS meeting with
+Floyd County EMS". Timestamps are genuinely grounded (10:09 → 15:34 → 33:16 →
+… → 4:06:41), not defaulted to zero. Content is strong: named officials,
+specific figures, the Virginia Code citation for the closed session, and
+`action_taken` populated on exactly the blocks carrying votes.
+
+### Quality findings from those runs, and what was changed
+
+**Block-count guidance was causing silent content loss.** The prompt said
+"Aim for 4–12 blocks per meeting" regardless of length. On a 4h24m meeting
+that is 22–66 minutes per block, and the two runs lost different things:
+
+| | Run 1 | Run 2 |
+|---|---|---|
+| Blocks | 13 | 16 |
+| Last block | 3:12:03 | 4:06:41 |
+| Closed session | captured, with vote | **omitted** |
+| Final hour | **dropped** | captured |
+
+Run 1 obeyed the range and lost the last hour including the County
+Administrator's report; run 2 exceeded it, covered more, and dropped the FOIA
+closed session and its certification vote instead. Fixed by
+`blockCountGuidance()`, which scales the target to the recording's actual
+length (roughly one block per 8–20 minutes, floored at 4–8 and capped at
+20–40), plus two explicit instructions: cover through to adjournment, and
+never omit a closed session. Duration comes from the last transcript
+timestamp; a document-only summary keeps the old fixed range.
+
+**Auto-transcript mishearings pass through as fact.** Repeatable across both
+runs: "Supervisor **Cookenboo**" for Kuchenbuch — in an `action_taken` line,
+the highest-stakes field on the page. Also "**Xerxes** Society" for Xerces,
+and "Alex Tuckman" / "Alex Tuchman" spelled differently between runs. This is
+a *configuration* fix, not a code one: `MEETING_EXTRACTION_INSTRUCTIONS` is
+currently generic and should name the supervisors, recurring department heads,
+and organizations, instructing the model to prefer those spellings and to say
+so when an unlisted name is unclear.
 
 ### Not verified / open
-
-- **The summarize leg was not run end-to-end.** No `ANTHROPIC_API_KEY` or
-  `SUPADATA_API_KEY` in the local dev env, so only discovery was exercised
-  live. Run `--summarize` with keys present to close this out.
 - **Prod env vars must be set** before this helps production: at minimum
   `MEETING_CONNECTOR_ID=auto`, `MEETING_SOURCE_URL`, `MEETING_TYPE_EXCLUDE`.
 - **The YouTube feed returns only ~15 videos.** Backfill needs the YouTube

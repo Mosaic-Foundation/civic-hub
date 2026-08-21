@@ -67,6 +67,41 @@ Your entire response will be fed to JSON.parse(). If it fails to parse, the run 
 }
 
 /**
+ * How many topic blocks to ask for, given how long the meeting actually ran.
+ *
+ * A flat "4–12 blocks" was the original guidance, written for a typical
+ * ninety-minute meeting. On Floyd's 4h24m August 2026 meeting it actively
+ * caused content loss: one run obeyed it, produced 13 blocks, and silently
+ * dropped the final hour — including the County Administrator's report. A
+ * second run of the same transcript exceeded it with 16 blocks and covered
+ * more, but dropped the closed session instead. The instruction was squeezing
+ * a four-hour meeting into a ninety-minute shape.
+ *
+ * Roughly one block per 8–20 minutes of meeting, floored so a short meeting
+ * still gets a useful breakdown and capped so a marathon session doesn't turn
+ * into a transcript. Returns null when the duration is unknown (no transcript),
+ * where the caller falls back to the original fixed range.
+ */
+export function blockCountGuidance(
+  durationSeconds: number | null | undefined,
+): { min: number; max: number } | null {
+  if (
+    typeof durationSeconds !== "number" ||
+    !Number.isFinite(durationSeconds) ||
+    durationSeconds <= 0
+  ) {
+    return null;
+  }
+  const minutes = durationSeconds / 60;
+  const clamp = (n: number, lo: number, hi: number) =>
+    Math.max(lo, Math.min(hi, Math.round(n)));
+  return {
+    min: clamp(minutes / 20, 4, 20),
+    max: clamp(minutes / 8, 8, 40),
+  };
+}
+
+/**
  * Prompt for the per-meeting summarization leg. Takes the PDF (passed
  * as a native document content block at the API layer) and the YouTube
  * transcript (stringified with timestamps) and asks Claude for a list
@@ -85,6 +120,8 @@ export function buildSummarizationPrompt(input: {
   transcript_text: string;
   has_video: boolean;
   source_type: "minutes" | "agenda" | "recording";
+  /** Length of the recording, from the last transcript timestamp. */
+  transcript_duration_seconds?: number | null;
 }): string {
   const isAgenda = input.source_type === "agenda";
   const isRecordingOnly = input.source_type === "recording";
@@ -93,6 +130,11 @@ export function buildSummarizationPrompt(input: {
   const videoGuidance = input.has_video
     ? `For each block, set start_time_seconds to the transcript timestamp where that topic begins (an integer number of seconds from the start of the video). Use ONLY timestamps you can ground in a specific transcript line. If you cannot find the topic in the transcript, set start_time_seconds to null — do NOT default to 0 and do NOT guess.`
     : `This meeting has NO video recording. Set start_time_seconds to null on every block. Summarize from the ${documentName} document only.`;
+
+  const blocks = blockCountGuidance(input.transcript_duration_seconds);
+  const blockTarget = blocks
+    ? `This meeting ran about ${Math.round((input.transcript_duration_seconds ?? 0) / 60)} minutes. Aim for roughly ${blocks.min}–${blocks.max} blocks — enough to cover a meeting of that length without turning the summary into a transcript.`
+    : `Aim for 4–12 blocks per meeting.`;
 
   const transcriptBlock = input.has_video
     ? `<transcript>\n${input.transcript_text}\n</transcript>`
@@ -139,7 +181,13 @@ For each block, produce:
 
 ${videoGuidance}
 
-Aim for 4–12 blocks per meeting. Skip procedural micro-items (call to order, roll call, adjournment, etc.) unless they contain substantive content.
+${blockTarget}
+
+COVER THE WHOLE MEETING. Work through the ${input.has_video ? "transcript" : "document"} from beginning to end and produce blocks for the entire session, right through to adjournment — not just the first portion. A long meeting's later items (department reports, new business, public comment, board discussion) matter as much as its opening ones, and omitting them silently misrepresents what happened.
+
+Never omit a closed session. If the body goes into closed session, produce a block for it recording the stated legal basis, and record the certification vote on return in action_taken.
+
+Skip procedural micro-items (call to order, roll call, adjournment, etc.) unless they contain substantive content.
 
 Return a JSON object of the form:
 {
