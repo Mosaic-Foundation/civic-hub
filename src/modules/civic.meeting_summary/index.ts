@@ -14,6 +14,7 @@
 export type {
   // Core data model
   MeetingSummaryApprovalStatus,
+  MeetingSourceType,
   MeetingSummaryProcessState,
   SummaryBlock,
   // Inputs
@@ -23,6 +24,8 @@ export type {
   MeetingSummaryProcessContext,
   EmitEventFn,
   FetchHtmlFn,
+  FetchXmlFn,
+  FetchJsonFn,
   FetchPdfFn,
   FetchYouTubeTranscriptFn,
   TranscriptSegment,
@@ -47,6 +50,14 @@ export {
   getPublicReadModel,
 } from "./service.js";
 
+export { UPGRADEABLE_SOURCE_TYPES } from "./models.js";
+
+export {
+  documentFingerprint,
+  sourceFingerprints,
+  videoFingerprint,
+} from "./identity.js";
+
 export {
   assertApprovalTransition,
   canApprove,
@@ -69,6 +80,29 @@ export {
 } from "./prompts.js";
 
 export { floydMinutesConnector } from "./connectors/floydMinutes.js";
+
+export {
+  channelFeedUrl,
+  cleanMeetingTitle,
+  groupVideosIntoMeetings,
+  isValidChannelId,
+  matchesTitleFilter,
+  parseChannelFeed,
+  parseMeetingDateFromTitle,
+  youtubeChannelConnector,
+} from "./connectors/youtubeChannel.js";
+export type { FeedVideo } from "./connectors/youtubeChannel.js";
+
+export {
+  discoverCollectionName,
+  fetchWixAccessToken,
+  normalizeWixDocUrl,
+  parseWixMeetingDate,
+  queryWixCollection,
+  rowsToMeetings,
+  wixCmsConnector,
+} from "./connectors/wixCms.js";
+export type { WixMeetingRow } from "./connectors/wixCms.js";
 
 export const PROCESS_DESCRIPTOR = {
   type: "civic.meeting_summary",

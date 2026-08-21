@@ -284,6 +284,16 @@ export default function AdminMeetingSummaries() {
             </div>
           )}
 
+          {selected.source_type === "recording" && (
+            <div className="meeting-ai-banner" style={{ borderLeftColor: "#d97706" }}>
+              <strong style={{ color: "#d97706" }}>Recording-based summary.</strong> This
+              summary was generated from the meeting's automatic video transcript — there
+              was no agenda or minutes document to work from. Automatic transcripts
+              mishear names and figures, so check those closely. It will be upgraded
+              automatically if minutes are posted for this date.
+            </div>
+          )}
+
           <section className="admin-detail-section">
             <h3>Source</h3>
             <ul className="meeting-source-list">
@@ -757,7 +767,12 @@ export default function AdminMeetingSummaries() {
                 {s.source_type === "agenda" && (
                   <span className="badge-agenda">Agenda-only</span>
                 )}
-                {!s.has_video && <span>PDF-only</span>}
+                {s.source_type === "recording" && (
+                  <span className="badge-agenda">Transcript-only</span>
+                )}
+                {!s.has_video && s.source_type !== "recording" && (
+                  <span>PDF-only</span>
+                )}
                 <span>Generated {formatDate(s.generated_at)}</span>
                 {s.published_at && (
                   <span>Published {formatDate(s.published_at)}</span>

@@ -10,6 +10,8 @@ import type {
   CreateMeetingSummaryInput,
   FetchPdfFn,
   FetchYouTubeTranscriptFn,
+  FetchXmlFn,
+  FetchJsonFn,
   MeetingEntry,
   MeetingSourceConnector,
   MeetingSummaryConfig,
@@ -29,7 +31,12 @@ import { buildProcessDescription } from "./service.js";
 export async function discoverMeetings(
   connector: MeetingSourceConnector,
   cfg: MeetingSummaryConfig,
-  deps: { fetchHtml: FetchHtmlFn; callClaude: CallClaudeFn },
+  deps: {
+    fetchHtml: FetchHtmlFn;
+    fetchXml: FetchXmlFn;
+    fetchJson: FetchJsonFn;
+    callClaude: CallClaudeFn;
+  },
 ): Promise<MeetingEntry[]> {
   return connector.discover(cfg, deps);
 }
@@ -59,21 +66,39 @@ export async function summarizeMeeting(
 ): Promise<SummarizeMeetingResult> {
   const instructions = resolveEffectiveInstructions(cfg.extraction_instructions);
 
-  // --- Determine which PDF to use (minutes preferred, agenda fallback) ---
+  // --- Pick the authoritative source (minutes > agenda > recording) ---
+  //
+  // Feed-based connectors (youtube-channel) surface meetings that have no
+  // document at all. That is a first-class case, not an error: the video
+  // transcript is what actually records the meeting, and the minutes PDF —
+  // when a jurisdiction eventually posts one — arrives weeks later and is
+  // folded in by the cron's upgrade pass.
   const pdfUrl = entry.source_minutes_url ?? entry.source_agenda_url;
-  if (!pdfUrl) {
-    throw new Error("No PDF available (no minutes or agenda URL)");
-  }
-  const sourceType: "minutes" | "agenda" = entry.source_minutes_url ? "minutes" : "agenda";
+  const sourceType: "minutes" | "agenda" | "recording" = entry.source_minutes_url
+    ? "minutes"
+    : entry.source_agenda_url
+      ? "agenda"
+      : "recording";
 
-  const pdf = await deps.fetchPdf(pdfUrl);
-  if (pdf.bytes.length > MAX_PDF_BYTES) {
-    const sizeMb = (pdf.bytes.length / (1024 * 1024)).toFixed(1);
+  if (!pdfUrl && !entry.source_video_url) {
     throw new Error(
-      `PDF too large: ${sizeMb}MB exceeds ${MAX_PDF_BYTES / (1024 * 1024)}MB limit — skipping`,
+      "Nothing to summarize: the entry has no minutes PDF, no agenda PDF, and no recording",
     );
   }
-  const pdfBase64 = uint8ToBase64(pdf.bytes);
+
+  let pdfBase64: string | null = null;
+  let pdfMime = "application/pdf";
+  if (pdfUrl) {
+    const pdf = await deps.fetchPdf(pdfUrl);
+    if (pdf.bytes.length > MAX_PDF_BYTES) {
+      const sizeMb = (pdf.bytes.length / (1024 * 1024)).toFixed(1);
+      throw new Error(
+        `PDF too large: ${sizeMb}MB exceeds ${MAX_PDF_BYTES / (1024 * 1024)}MB limit — skipping`,
+      );
+    }
+    pdfBase64 = uint8ToBase64(pdf.bytes);
+    pdfMime = pdf.mime || "application/pdf";
+  }
 
   // --- Fetch transcript (optional — some meetings have no video) ---
   let transcript: TranscriptSegment[] = [];
@@ -110,6 +135,17 @@ export async function summarizeMeeting(
     }
   }
 
+  // A recording-sourced meeting has nothing BUT the transcript. If it came
+  // back empty there is no source left, so fail this meeting loudly instead
+  // of asking Claude to summarize thin air (which yields invented blocks).
+  if (sourceType === "recording" && transcript.length === 0) {
+    throw new Error(
+      `No transcript available for ${entry.source_video_url} and no minutes or ` +
+        `agenda PDF to fall back on — nothing to summarize. Check that the video ` +
+        `has captions and that the transcript provider (SUPADATA_API_KEY) is working.`,
+    );
+  }
+
   const transcriptText = formatTranscript(transcript);
 
   const prompt = buildSummarizationPrompt({
@@ -124,11 +160,18 @@ export async function summarizeMeeting(
   const { text, model } = await deps.callClaude({
     model: cfg.model,
     userText: prompt,
-    documentBase64: {
-      data: pdfBase64,
-      mediaType: pdf.mime || "application/pdf",
-      filename: filenameFromUrl(pdfUrl) ?? (sourceType === "minutes" ? "minutes.pdf" : "agenda.pdf"),
-    },
+    // Omitted entirely for recording-sourced meetings — there is no document.
+    ...(pdfBase64 && pdfUrl
+      ? {
+          documentBase64: {
+            data: pdfBase64,
+            mediaType: pdfMime,
+            filename:
+              filenameFromUrl(pdfUrl) ??
+              (sourceType === "minutes" ? "minutes.pdf" : "agenda.pdf"),
+          },
+        }
+      : {}),
     // 16k gives headroom for verbose minutes with 15+ topic blocks
     // without ever flirting with the model's per-response ceiling.
     maxTokens: 16_000,

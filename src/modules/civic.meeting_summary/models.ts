@@ -27,6 +27,18 @@
 export type MeetingSummaryApprovalStatus = "pending" | "approved" | "published";
 
 /**
+ * Which source a summary was built from. See MeetingSummaryProcessState
+ * for the authority ordering and the upgrade rules.
+ */
+export type MeetingSourceType = "minutes" | "agenda" | "recording";
+
+/** Source types a later minutes-bearing run is allowed to re-summarize. */
+export const UPGRADEABLE_SOURCE_TYPES: readonly MeetingSourceType[] = [
+  "agenda",
+  "recording",
+];
+
+/**
  * A single topic block — one segment of the meeting. `start_time_seconds`
  * points into the YouTube recording for click-to-jump UX. `action_taken`
  * captures any motion / vote / decision distinct from the discussion.
@@ -66,8 +78,18 @@ export interface MeetingSummaryProcessState {
   source_minutes_url: string | null;
   /** PDF URL of the agenda document. Null when the page didn't list one. */
   source_agenda_url: string | null;
-  /** What the summary was built from: "minutes" or "agenda". */
-  source_type: "minutes" | "agenda";
+  /**
+   * What the summary was built from, in descending order of authority:
+   *   "minutes"   — the official minutes PDF (plus transcript if present)
+   *   "agenda"    — the agenda PDF (plus transcript if present)
+   *   "recording" — the video transcript alone, no document at all
+   *
+   * "recording" is what the youtube-channel connector produces: a channel
+   * feed carries no PDFs. Both "agenda" and "recording" are provisional
+   * and get re-summarized by the cron's upgrade pass if minutes for the
+   * same date turn up later.
+   */
+  source_type: MeetingSourceType;
   /**
    * YouTube watch URL of the primary recording. Null when the meeting
    * has no video recording (e.g. streaming failure, PDF-only workshop).
@@ -122,7 +144,7 @@ export interface CreateMeetingSummaryInput {
   source_id: string;
   source_minutes_url: string | null;
   source_agenda_url: string | null;
-  source_type: "minutes" | "agenda";
+  source_type: MeetingSourceType;
   source_video_url: string | null;
   additional_video_urls: string[];
   meeting_title: string;
@@ -167,6 +189,22 @@ export interface FetchHtmlFn {
   (url: string): Promise<string>;
 }
 
+/** Fetch an RSS/Atom feed (or any XML body) as a string. */
+export interface FetchXmlFn {
+  (url: string): Promise<string>;
+}
+
+/**
+ * Fetch (or POST to) a JSON endpoint. Needed by connectors that read a
+ * site's CMS/data API rather than its rendered HTML.
+ */
+export interface FetchJsonFn {
+  (
+    url: string,
+    init?: { method?: string; headers?: Record<string, string>; body?: string },
+  ): Promise<unknown>;
+}
+
 export interface FetchPdfFn {
   (url: string): Promise<{ bytes: Uint8Array; mime: string }>;
 }
@@ -201,8 +239,40 @@ export interface CallClaudeFn {
 // --- Configuration ---------------------------------------------------------
 
 export interface MeetingSummaryConfig {
-  /** Jurisdiction's minutes page URL (e.g. Floyd's agendas-minutes page). */
+  /**
+   * Jurisdiction's minutes page URL (e.g. Floyd's agendas-minutes page).
+   * Required by HTML-scraping connectors; empty for feed-based ones.
+   */
   source_url: string;
+  /**
+   * YouTube channel id (UC…) for the youtube-channel connector. Ignored
+   * by connectors that don't read a channel feed.
+   */
+  channel_id?: string;
+  /**
+   * Comma-separated, case-insensitive substrings. A discovered meeting is
+   * kept when its title contains ANY of them; empty keeps everything.
+   * Lets one channel carrying several bodies' recordings be narrowed to
+   * the one this hub publishes summaries for.
+   */
+  title_filter?: string;
+  /**
+   * Comma-separated, case-insensitive substrings. A discovered meeting is
+   * DROPPED when its title contains any of them. Applied after title_filter.
+   *
+   * The complement of title_filter, and the better tool when a source is
+   * already almost entirely the right body: Floyd's agendas collection is
+   * all Board of Supervisors business except a handful of EMS Board rows,
+   * so one exclusion is more robust than trying to enumerate every valid
+   * meeting-type name ("Regular Meeting", "Budget Workshop Meeting",
+   * "Special Called Meeting", "Public Hearing …", and 23 more).
+   */
+  type_exclude?: string;
+  /**
+   * CMS collection to read, for data-API connectors (wix-cms). Optional —
+   * the connector discovers it from the page when unset.
+   */
+  collection_name?: string;
   /**
    * Admin-provided natural-language guidance. Prepended verbatim to the
    * Claude extraction and summarization prompts. A short built-in
@@ -243,6 +313,8 @@ export interface MeetingSourceConnector {
     cfg: MeetingSummaryConfig,
     deps: {
       fetchHtml: FetchHtmlFn;
+      fetchXml: FetchXmlFn;
+      fetchJson: FetchJsonFn;
       callClaude: CallClaudeFn;
     },
   ): Promise<MeetingEntry[]>;
@@ -254,5 +326,5 @@ export interface SummarizeMeetingResult {
   blocks: SummaryBlock[];
   ai_instructions_used: string;
   model: string;
-  sourceType: "minutes" | "agenda";
+  sourceType: MeetingSourceType;
 }

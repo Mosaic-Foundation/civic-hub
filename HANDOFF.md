@@ -4,6 +4,173 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Meeting summaries: silent discovery failure + connector ladder — 2026-08-20
+
+Board of Supervisors meeting summaries stopped being generated. Nothing
+reported it, because the failure looked exactly like success.
+
+### Root cause
+
+Floyd County rebuilt `https://www.floydcova.gov/agendas-minutes` as a
+**client-rendered Wix page**. `fetch()` does not execute JavaScript, so the
+connector started receiving a bootstrap shell instead of the listing:
+
+| | plain `fetch()` | real browser |
+|---|---|---|
+| bytes | 551 KB | — |
+| PDF links | **0** | 756 agenda/minutes/recording links |
+| visible text | **0 chars** | full listing |
+| after `trimMinutesHtml` | **999 bytes of HTML comments** | — |
+
+Every other page on the site still server-renders normally, so this was a
+per-page change. Claude was reading the page correctly the whole time — it was
+being handed a blank one. Anthropic's `web_fetch` server tool has the same
+limitation ("does not support websites dynamically rendered with JavaScript"),
+so routing discovery through the API would not have helped either.
+
+**Ruled out:** the cron entry and `/internal/meeting-summary/run` route are
+correct (GET, `CRON_SECRET` bearer, shared with three working crons); no
+YouTube 429 or captcha (the transcript leg is never reached); `claude-sonnet-4-6`
+is a current model. The county's server-rendered `/archive-agendas-minutes`
+page exists but is frozen at 2026-06-09, so repointing at it was not a fix.
+
+### Why nobody was told
+
+`notifyCronFailures` returned early unless `failed > 0`, and empty discovery
+produces `discovered: 0, created: 0, failed: 0` → HTTP 200. The total-batch
+`catch` returned 500 to a cron caller that reads nobody's response and never
+notified at all. Two distinct silent paths.
+
+### The fix — a connector ladder, `auto` by default
+
+`MEETING_CONNECTOR_ID=auto` tries each configured connector in order and uses
+the first that returns meetings, logging which one won. An operator sets a
+source URL and/or a channel id; they do not have to know what kind of site
+they have.
+
+| Connector | Reads | Model call? | Notes |
+|---|---|---|---|
+| `wix-cms` **(new)** | The CMS collection behind a Wix page | No | Works when the page renders client-side |
+| `floyd-minutes-page` | Any **server-rendered** listing page, any engine | Yes | The universal fallback |
+| `youtube-channel` **(new)** | A government's YouTube channel feed | No | Recordings only, no documents |
+
+**`wix-cms` is the one that fixes Floyd.** A Wix site publishes a read token at
+`/_api/v1/access-tokens`; that token queries the collection the page displays.
+Verified live: **297 rows** back to 2017, each carrying meeting date, meeting
+type, agenda PDF, minutes PDF, and up to three recordings. Wix document
+references (`wix:document://v1/ugd/…`) map onto `{origin}/_files/ugd/…`; older
+rows already carry absolute `filesusr.com` URLs, and both shapes are handled.
+Discovery costs zero model tokens because the fields are structured.
+
+*Stability, stated honestly:* this is an internal Wix endpoint, not a
+documented API, so it can change without notice. That is survivable because the
+new empty-discovery guard turns a break into a same-day alert, and the ladder
+falls through to the next connector rather than taking the run down.
+
+**`youtube-channel`** reads `https://www.youtube.com/feeds/videos.xml?channel_id=…`
+— plain XML, no key, no scraping. Dates come from video titles, not upload
+timestamps (Floyd's Jun 23 meeting was uploaded Jun 24). Multi-part uploads
+collapse into one entry, earliest first. Kept as a fallback and as the right
+primary for a body that streams but publishes no documents.
+
+**New `source_type: "recording"`.** `summarizeMeeting` learned to work from a
+transcript alone (it previously threw `No PDF available`). Authority order is
+minutes > agenda > recording; `agenda` and `recording` are both in
+`UPGRADEABLE_SOURCE_TYPES`, so the upgrade pass re-summarizes from official
+minutes when they appear. Recording-specific prompt preamble warns about
+auto-transcript misheard names and figures. Admin UI gains a "Transcript-only"
+badge and review banner.
+
+### Two dedupe bugs found while adding budget workshops
+
+Both were silent-data-loss bugs, and both are now covered by tests.
+
+1. **Same-day meetings collapsed.** The upgrade map was keyed on
+   `meeting_date` alone. Floyd held a Budget Workshop *and* a Regular Meeting
+   on 2026-06-23, each with its own agenda and minutes — the second was
+   skipped as a duplicate. Now keyed on date **and** normalized title.
+2. **Same-day, same-type meetings collided.** Floyd held *two* separate Budget
+   Workshop Meetings on 2023-04-11, with different agendas and recordings.
+   `source_id` now appends a short deterministic hash of the row's own
+   documents when a date+type key repeats — stable across runs and independent
+   of query order. The upgrade matcher prefers an exact `source_id` and
+   **declines an ambiguous date+title match** rather than overwriting the
+   wrong summary.
+
+### Cross-connector identity (the migration hazard)
+
+`source_id` is minted by whichever connector found the meeting, so switching
+connectors renames every meeting in the database. Production's 48 existing
+summaries carry HTML-connector ids (PDF URLs); `wix-cms` mints
+`wix:2017Agenda:…`. Nothing would have matched, and the cron would have
+re-summarized meetings that already exist.
+
+`identity.ts` (new) fingerprints the **documents and recordings** a summary was
+built from, which do not change when the discovery route does. It normalizes
+the forms that differ cosmetically:
+
+- `{site}/_files/ugd/{id}.pdf`, `{metaSiteId}.filesusr.com/ugd/{id}.pdf`, and
+  `wix:document://v1/ugd/{id}.pdf/…` are one document
+- `watch?v=`, `/live/`, `/embed/`, and `youtu.be/` are one video
+
+The cron indexes every existing summary by these fingerprints and skips any
+entry sharing one. This also fixes the cross-connector **upgrade** path noted
+as an open item earlier: a recording-only summary from `youtube-channel` is now
+correctly upgraded when `wix-cms` later reports minutes for the same meeting.
+
+### Guard
+
+`cronAlertReason()` — zero discovered meetings is a **failure**, not an empty
+success; the fatal path alerts too; and an operator with no
+`CIVIC_ADMIN_EMAILS` gets a log line saying nobody is watching. In `auto` mode
+the alert names every rung tried and what each returned.
+
+### New: `scripts/diagnoseMeetingSummary.ts`
+
+```bash
+npx tsx --env-file=.env scripts/diagnoseMeetingSummary.ts             # dry run
+npx tsx --env-file=.env scripts/diagnoseMeetingSummary.ts --summarize # + Claude
+```
+
+Reports key presence (never values), walks the connector ladder showing each
+rung's result, and when everything comes up empty prints the ordered list of
+things to check. Writes nothing to the database.
+
+### Env changes
+
+| Var | Change |
+|---|---|
+| `MEETING_CONNECTOR_ID` | default is now `auto` |
+| `MEETING_TYPE_EXCLUDE` | **new** — use `EMS Board,EMS Meeting`; Floyd labels EMS rows both ways, and "BOS meeting with Floyd County EMS" is deliberately *not* excluded |
+| `MEETING_WIX_COLLECTION` | **new**, optional — auto-discovered; set only if that fails |
+| `MEETING_YOUTUBE_CHANNEL_ID` | **new** — must be the `UC…` id, not the `@handle` |
+| `MEETING_TITLE_FILTER` | **new** — leave empty for `wix-cms` (the collection is already Board-specific); needed for `youtube-channel`, where one channel carries every body's recordings |
+
+### Tests
+
+Module had **zero** coverage before this. Added 66 tests in four files:
+`meetingSummaryWixCms.test.ts` (21), `meetingSummaryConnector.test.ts` (29),
+`meetingSummaryIdentity.test.ts` (12), `meetingSummaryPipeline.test.ts` (8),
+`meetingSummaryAlarm.test.ts` (8). Suite: **309 passing, 24 files**
+(`tests/api` needs the dev server up).
+
+### Not verified / open
+
+- **The summarize leg was not run end-to-end.** No `ANTHROPIC_API_KEY` or
+  `SUPADATA_API_KEY` in the local dev env, so only discovery was exercised
+  live. Run `--summarize` with keys present to close this out.
+- **Prod env vars must be set** before this helps production: at minimum
+  `MEETING_CONNECTOR_ID=auto`, `MEETING_SOURCE_URL`, `MEETING_TYPE_EXCLUDE`.
+- **The YouTube feed returns only ~15 videos.** Backfill needs the YouTube
+  Data API (`YOUTUBE_API_KEY`, already documented).
+- **Plugin-as-a-service gaps** (connector registry in the host controller,
+  env-var config, hard-coded jurisdiction) are written up in
+  `decisions/audit-2026-07-02-ecosystem-architecture.md` §7.4 and
+  `civic-social-docs/ecosystem/assisted-creation-and-hosting.md` §6. Not done
+  here.
+
+---
+
 ## AS2 wire conversion — Civic Activity Spec v0.2 compliance — 2026-08-20
 
 The hub's public wire format is now **ActivityStreams 2.0** conforming to the

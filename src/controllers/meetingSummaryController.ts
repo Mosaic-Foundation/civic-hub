@@ -32,8 +32,14 @@ import {
   getAdminSummary,
   getPublicReadModel,
   resolveEffectiveInstructions,
+  sourceFingerprints,
   summarizeMeeting,
+  UPGRADEABLE_SOURCE_TYPES,
+  wixCmsConnector,
+  youtubeChannelConnector,
+  type MeetingEntry,
   type MeetingSourceConnector,
+  type MeetingSourceType,
   type MeetingSummaryApprovalStatus,
   type MeetingSummaryConfig,
   type MeetingSummaryPatch,
@@ -50,11 +56,15 @@ import {
 import { getAuthUser } from "../middleware/auth.js";
 import { enrichCreator } from "../services/creatorDisplay.js";
 import { callClaude, DEFAULT_MODEL } from "../utils/anthropic.js";
-import { fetchHtml, fetchPdf } from "../utils/http.js";
+import { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../utils/http.js";
 import { fetchYouTubeTranscript } from "../utils/youtube.js";
 import { sendEmail } from "../utils/email.js";
 
-const DEFAULT_CONNECTOR_ID = "floyd-minutes-page";
+// "auto" tries every connector whose configuration is present, in descending
+// order of source quality, and uses the first that returns meetings. This is
+// what makes "point it at your government's site" true across platforms
+// without the operator having to know which kind of site they have.
+const DEFAULT_CONNECTOR_ID = "auto";
 const CRON_ACTOR = "system:meeting-summary-cron";
 const DEFAULT_MAX_PER_RUN = 3;
 
@@ -66,10 +76,58 @@ function maxPerRun(): number {
   return Math.floor(n);
 }
 
-// Connector registry — MVP ships one; extending is a new entry here.
+// Connector registry — supporting a new publishing platform is a new entry
+// here plus one module under modules/civic.meeting_summary/connectors.
+//
+//   wix-cms             Reads the CMS collection behind a Wix page. Structured
+//                       rows, works even when the page renders client-side.
+//                       Needs MEETING_SOURCE_URL.
+//   floyd-minutes-page  Generic HTML + Claude reader. Works on ANY
+//                       server-rendered listing page, whatever engine — the
+//                       universal fallback. Needs MEETING_SOURCE_URL.
+//   youtube-channel     Reads a government's YouTube channel feed. Recordings
+//                       only, no documents. Needs MEETING_YOUTUBE_CHANNEL_ID.
 const CONNECTORS: Record<string, MeetingSourceConnector> = {
+  "wix-cms": wixCmsConnector,
   "floyd-minutes-page": floydMinutesConnector,
+  "youtube-channel": youtubeChannelConnector,
 };
+
+/** Connectors that read a page and therefore require MEETING_SOURCE_URL. */
+const PAGE_CONNECTOR_IDS = new Set(["wix-cms", "floyd-minutes-page"]);
+
+/**
+ * The order "auto" tries connectors in — best source first.
+ *
+ * Structured data beats prompt-driven HTML extraction (exact fields, no model
+ * drift, full history). Documents beat recordings, because minutes are the
+ * authoritative record and a transcript is a fallback. A connector whose
+ * configuration is absent is skipped, not failed.
+ */
+const AUTO_ORDER = ["wix-cms", "floyd-minutes-page", "youtube-channel"] as const;
+
+/**
+ * Identity of a meeting for dedupe and upgrade matching.
+ *
+ * Date alone is not enough: two different meetings share a date often enough
+ * that keying on it drops real meetings (see the Budget Workshop / Regular
+ * Meeting pair on 2026-06-23). Title is normalized so trivial punctuation or
+ * casing differences between a connector's runs don't fork one meeting in two.
+ */
+function meetingKey(date: string, title: string): string {
+  const normalized = (title ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `${date}::${normalized}`;
+}
+
+/** Whether a connector has enough configuration to be worth attempting. */
+function isConfigured(id: string, cfg: MeetingSummaryConfig): boolean {
+  if (PAGE_CONNECTOR_IDS.has(id)) return Boolean(cfg.source_url);
+  if (id === "youtube-channel") return Boolean(cfg.channel_id);
+  return true;
+}
 
 function summaryState(
   record: { state: Record<string, unknown> },
@@ -124,25 +182,93 @@ function adminRecipients(): string[] {
     .filter((e) => e.length > 0);
 }
 
-async function notifyCronFailures(stats: {
+interface CronOutcome {
   discovered: number;
   created: number;
   skippedExisting: number;
   failed: number;
   failures: Array<{ source_id: string; error: string }>;
   duration_ms: number;
-}): Promise<void> {
-  const recipients = adminRecipients();
-  if (recipients.length === 0 || stats.failed === 0) return;
+  connector_id: string;
+  /** Set when the run aborted before finishing (discovery threw, config invalid). */
+  fatal?: string;
+}
 
-  const subject = `[Civic Hub] Meeting summary cron: ${stats.failed} failure(s)`;
-  const failureLines = stats.failures
+/**
+ * Why the run deserves an email, or null when it was genuinely uneventful.
+ *
+ * THIS IS THE GUARD THAT WAS MISSING. The previous version only notified
+ * when `failed > 0`, which made two very different outcomes indistinguishable
+ * from success:
+ *
+ *   1. Discovery returned zero entries. When Floyd County moved its
+ *      agendas-and-minutes page to client-side rendering, `fetch()` began
+ *      returning a shell with no meeting links in it. Discovery dutifully
+ *      reported "0 meetings", the run exited 200 OK with failed=0, and the
+ *      pipeline stayed silent for weeks while everyone assumed it was fine.
+ *   2. The batch threw outright (bad config, discovery error). The catch
+ *      block returned 500 to a cron caller that reads nobody's response.
+ *
+ * A source that has ever worked and now yields nothing is the single most
+ * likely symptom of an upstream change, so it is reported as a failure, not
+ * as an empty success.
+ */
+export function cronAlertReason(outcome: CronOutcome): string | null {
+  if (outcome.fatal) {
+    return `the run aborted: ${outcome.fatal}`;
+  }
+  if (outcome.discovered === 0) {
+    return (
+      `discovery returned 0 meetings from connector "${outcome.connector_id}". ` +
+      `Either the source genuinely lists no meetings, or — far more likely — ` +
+      `it changed shape and can no longer be read.`
+    );
+  }
+  if (outcome.failed > 0) {
+    return `${outcome.failed} meeting(s) failed to summarize.`;
+  }
+  return null;
+}
+
+/**
+ * Email admins when a run is worth their attention. Best-effort: a bounced
+ * notification must never fail the run itself.
+ */
+async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
+  const reason = cronAlertReason(outcome);
+  if (!reason) return;
+
+  const recipients = adminRecipients();
+  if (recipients.length === 0) {
+    console.warn(
+      `[meeting-summary] would have alerted admins (${reason}) but ` +
+        `CIVIC_ADMIN_EMAILS is empty — nobody is watching this cron.`,
+    );
+    return;
+  }
+
+  const headline = outcome.fatal
+    ? "failed"
+    : outcome.discovered === 0
+      ? "found no meetings"
+      : `completed with ${outcome.failed} failure(s)`;
+
+  const subject = `[Civic Hub] Meeting summary cron ${headline}`;
+  const failureLines = outcome.failures
     .map((f) => `<li><code>${f.source_id}</code>: ${f.error}</li>`)
     .join("\n");
   const html = `
-    <p>The meeting summary cron completed with <strong>${stats.failed} failure(s)</strong>.</p>
-    <ul>${failureLines}</ul>
-    <p>Discovered: ${stats.discovered} | Created: ${stats.created} | Skipped existing: ${stats.skippedExisting} | Duration: ${stats.duration_ms}ms</p>
+    <p>The meeting summary cron ${headline}.</p>
+    <p><strong>Why you're getting this:</strong> ${reason}</p>
+    ${failureLines ? `<ul>${failureLines}</ul>` : ""}
+    <p>Connector: <code>${outcome.connector_id}</code><br/>
+       Discovered: ${outcome.discovered} |
+       Created: ${outcome.created} |
+       Skipped existing: ${outcome.skippedExisting} |
+       Failed: ${outcome.failed} |
+       Duration: ${outcome.duration_ms}ms</p>
+    <p>Run it by hand to see the full trace:<br/>
+       <code>npx tsx scripts/diagnoseMeetingSummary.ts</code></p>
   `;
 
   for (const to of recipients) {
@@ -154,6 +280,94 @@ async function notifyCronFailures(stats: {
       );
     }
   }
+}
+
+/**
+ * Fire the alert and return the response body for a run that never got off
+ * the ground (missing key, unknown connector, discovery threw). These used
+ * to return 500 and tell nobody.
+ */
+async function failRun(
+  res: Response,
+  status: number,
+  message: string,
+  partial: Partial<CronOutcome> = {},
+): Promise<void> {
+  const outcome: CronOutcome = {
+    discovered: 0,
+    created: 0,
+    skippedExisting: 0,
+    failed: 0,
+    failures: [],
+    duration_ms: 0,
+    connector_id: "unknown",
+    ...partial,
+    fatal: message,
+  };
+  console.error(`[meeting-summary] run aborted: ${message}`);
+  res.status(status).json({
+    error: message,
+    discovered: outcome.discovered,
+    created: outcome.created,
+    skipped_existing: outcome.skippedExisting,
+    failed: outcome.failed,
+    duration_ms: outcome.duration_ms,
+  });
+  await notifyCronOutcome(outcome).catch((err) => {
+    console.warn(
+      `[meeting-summary] notification send error: ${err instanceof Error ? err.message : "unknown"}`,
+    );
+  });
+}
+
+/**
+ * Run discovery, honoring "auto".
+ *
+ * In auto mode each configured connector is tried in AUTO_ORDER and the first
+ * one returning meetings wins. A connector that throws is logged and the ladder
+ * continues — a Wix endpoint change should fall through to HTML scraping, not
+ * take the run down. If every rung comes up empty the caller sees zero
+ * meetings and the alarm fires, with `attempts` naming what was tried.
+ */
+async function runDiscovery(
+  requestedId: string,
+  cfg: MeetingSummaryConfig,
+  deps: Parameters<typeof discoverMeetings>[2],
+): Promise<{
+  entries: MeetingEntry[];
+  connectorId: string;
+  attempts: Array<{ id: string; outcome: string }>;
+}> {
+  const attempts: Array<{ id: string; outcome: string }> = [];
+
+  if (requestedId !== "auto") {
+    const connector = CONNECTORS[requestedId];
+    const entries = await discoverMeetings(connector, cfg, deps);
+    return { entries, connectorId: connector.id, attempts };
+  }
+
+  for (const id of AUTO_ORDER) {
+    if (!isConfigured(id, cfg)) {
+      attempts.push({ id, outcome: "skipped (not configured)" });
+      continue;
+    }
+    try {
+      const entries = await discoverMeetings(CONNECTORS[id], cfg, deps);
+      if (entries.length > 0) {
+        attempts.push({ id, outcome: `${entries.length} meeting(s)` });
+        console.log(`[meeting-summary] auto: "${id}" won with ${entries.length} meeting(s)`);
+        return { entries, connectorId: id, attempts };
+      }
+      attempts.push({ id, outcome: "0 meetings" });
+      console.warn(`[meeting-summary] auto: "${id}" returned no meetings — trying next`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "unknown error";
+      attempts.push({ id, outcome: `error: ${msg}` });
+      console.warn(`[meeting-summary] auto: "${id}" failed (${msg}) — trying next`);
+    }
+  }
+
+  return { entries: [], connectorId: "auto", attempts };
 }
 
 // --- POST /internal/meeting-summary/run ------------------------------------
@@ -173,60 +387,107 @@ export async function handleRunMeetingSummary(
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    res.status(500).json({
-      error:
-        "ANTHROPIC_API_KEY must be set. Create a key at https://console.anthropic.com and add it to Vercel env vars.",
-    });
+    await failRun(
+      res,
+      500,
+      "ANTHROPIC_API_KEY must be set. Create a key at https://console.anthropic.com and add it to Vercel env vars.",
+    );
     return;
   }
 
-  const sourceUrl = process.env.MEETING_SOURCE_URL?.trim();
-  if (!sourceUrl) {
-    res.status(500).json({
-      error:
-        "MEETING_SOURCE_URL must be set (e.g. https://www.floydcova.gov/agendas-minutes).",
-    });
+  const connectorId = process.env.MEETING_CONNECTOR_ID?.trim() || DEFAULT_CONNECTOR_ID;
+  if (connectorId !== "auto" && !CONNECTORS[connectorId]) {
+    await failRun(
+      res,
+      500,
+      `Unknown MEETING_CONNECTOR_ID "${connectorId}". Known: auto, ${Object.keys(CONNECTORS).join(", ")}`,
+      { connector_id: connectorId },
+    );
     return;
   }
 
-  const connectorId = process.env.MEETING_CONNECTOR_ID?.trim();
-  const connector = connectorFor(connectorId);
-  if (!connector) {
-    res.status(500).json({
-      error: `Unknown MEETING_CONNECTOR_ID "${connectorId}". Known: ${Object.keys(CONNECTORS).join(", ")}`,
-    });
-    return;
-  }
+  const sourceUrl = process.env.MEETING_SOURCE_URL?.trim() ?? "";
+  const channelId = process.env.MEETING_YOUTUBE_CHANNEL_ID?.trim() ?? "";
 
   const cfg: MeetingSummaryConfig = {
     source_url: sourceUrl,
+    channel_id: channelId,
+    title_filter: process.env.MEETING_TITLE_FILTER?.trim() ?? "",
+    type_exclude: process.env.MEETING_TYPE_EXCLUDE?.trim() ?? "",
+    collection_name: process.env.MEETING_WIX_COLLECTION?.trim() ?? "",
     extraction_instructions: resolveEffectiveInstructions(
       process.env.MEETING_EXTRACTION_INSTRUCTIONS ?? "",
     ),
     model: modelName(),
   };
 
+  if (connectorId !== "auto" && !isConfigured(connectorId, cfg)) {
+    await failRun(
+      res,
+      500,
+      PAGE_CONNECTOR_IDS.has(connectorId)
+        ? `MEETING_SOURCE_URL must be set for the "${connectorId}" connector.`
+        : `MEETING_YOUTUBE_CHANNEL_ID must be set for the "${connectorId}" connector.`,
+      { connector_id: connectorId },
+    );
+    return;
+  }
+
+  if (connectorId === "auto" && !sourceUrl && !channelId) {
+    await failRun(
+      res,
+      500,
+      "No source configured. Set MEETING_SOURCE_URL (the jurisdiction's " +
+        "agendas-and-minutes page) and/or MEETING_YOUTUBE_CHANNEL_ID.",
+      { connector_id: "auto" },
+    );
+    return;
+  }
+
   const started = Date.now();
   let discovered = 0;
   let created = 0;
   let skippedExisting = 0;
   let failed = 0;
+  let usedConnectorId = connectorId;
   const failures: Array<{ source_id: string; error: string }> = [];
 
   try {
     console.log(
-      `[meeting-summary] run started connector=${connector.id} source=${cfg.source_url}`,
+      `[meeting-summary] run started connector=${connectorId} ` +
+        `source=${cfg.source_url || cfg.channel_id || "(none)"}`,
     );
 
     const discoveryStart = Date.now();
-    const entries = await discoverMeetings(connector, cfg, {
+    const discovery = await runDiscovery(connectorId, cfg, {
       fetchHtml,
+      fetchXml,
+      fetchJson,
       callClaude,
     });
+    const entries = discovery.entries;
+    usedConnectorId = discovery.connectorId;
     discovered = entries.length;
     console.log(
-      `[meeting-summary] discovery done entries=${discovered} duration_ms=${Date.now() - discoveryStart}`,
+      `[meeting-summary] discovery done connector=${usedConnectorId} ` +
+        `entries=${discovered} duration_ms=${Date.now() - discoveryStart}`,
     );
+
+    // Zero discovered entries is the signature of a source that changed
+    // shape underneath us, not a quiet month. Say so loudly here; the
+    // alert itself is raised by notifyCronOutcome below.
+    if (discovered === 0) {
+      const ladder = discovery.attempts.length > 0
+        ? ` Tried: ${discovery.attempts.map((a) => `${a.id} → ${a.outcome}`).join("; ")}.`
+        : "";
+      console.error(
+        `[meeting-summary] DISCOVERY EMPTY — no connector returned meetings.` +
+          ladder +
+          ` This is reported as a failure, not an empty success: a source that ` +
+          `stops parsing looks exactly like a source with no meetings. Run ` +
+          `"npx tsx scripts/diagnoseMeetingSummary.ts" to see the raw source.`,
+      );
+    }
 
     // Apply date cutoff to skip old meetings (e.g. pre-2026 backlog with
     // oversized PDFs that fail every run).
@@ -242,22 +503,87 @@ export async function handleRunMeetingSummary(
     // Process newest meetings first so the per-run cap prioritizes recent ones.
     filteredEntries.sort((a, b) => b.meeting_date.localeCompare(a.meeting_date));
 
-    // Build the set of existing source_ids and a map of agenda-based
-    // summaries (keyed by meeting_date) eligible for upgrade once minutes
-    // become available.
+    // Build the set of existing source_ids and a map of provisional
+    // (agenda- or recording-sourced) summaries eligible for upgrade once
+    // minutes become available.
+    //
+    // Keyed by date AND meeting title, not date alone. A jurisdiction
+    // routinely holds two distinct meetings on one day — Floyd ran a Budget
+    // Workshop and a Regular Meeting on 2026-06-23, each with its own agenda
+    // and minutes. Keying on the date alone made the second meeting look like
+    // a duplicate of the first, so it was silently skipped and its upgrade
+    // would have overwritten the wrong summary.
     const allProcesses = await getAllProcesses();
     const existingSourceIds = new Set<string>();
-    const agendaByDate = new Map<string, typeof allProcesses[0]>();
+    // Primary match: a provisional summary carrying this exact source_id.
+    const provisionalBySourceId = new Map<string, typeof allProcesses[0]>();
+    // Secondary bridge, for summaries whose source_id was minted by a
+    // different connector (or by an older scheme keyed on the PDF URL, which
+    // changed when minutes replaced an agenda). Holds every candidate so an
+    // ambiguous match can be declined rather than guessed.
+    const provisionalByMeeting = new Map<string, Array<typeof allProcesses[0]>>();
+    // Cross-connector identity: every summary indexed by the documents and
+    // recordings it was built from. This is what survives a connector change —
+    // `source_id` does not. Without it, switching Floyd from HTML scraping to
+    // the Wix CMS would make all 48 existing summaries invisible to dedupe and
+    // the cron would summarize every one of them a second time.
+    const bySourceFingerprint = new Map<string, typeof allProcesses[0]>();
     for (const p of allProcesses) {
       if (p.definition.type !== "civic.meeting_summary") continue;
       const s = summaryState(p);
       if (typeof s?.source_id === "string") {
         existingSourceIds.add(s.source_id);
-        if ((s.source_type ?? "minutes") === "agenda") {
-          agendaByDate.set(s.meeting_date, p);
+        for (const fp of sourceFingerprints(s)) {
+          if (!bySourceFingerprint.has(fp)) bySourceFingerprint.set(fp, p);
+        }
+        // Agenda- and recording-sourced summaries are provisional: both get
+        // re-summarized when the official minutes for that date appear.
+        const sourceType = (s.source_type ?? "minutes") as MeetingSourceType;
+        if (UPGRADEABLE_SOURCE_TYPES.includes(sourceType)) {
+          provisionalBySourceId.set(s.source_id, p);
+          const key = meetingKey(s.meeting_date, s.meeting_title);
+          const bucket = provisionalByMeeting.get(key);
+          if (bucket) bucket.push(p);
+          else provisionalByMeeting.set(key, [p]);
         }
       }
     }
+
+    /**
+     * The existing provisional summary this entry should upgrade, or null.
+     *
+     * Exact source_id wins. Falling back to date-and-title is only safe when
+     * that identifies exactly ONE summary: Floyd ran two separate Budget
+     * Workshop Meetings on 2023-04-11, and picking either arbitrarily would
+     * overwrite a real summary with another meeting's content. When it is
+     * ambiguous we decline to match, which at worst creates a second summary
+     * an admin can merge — strictly better than silently clobbering one.
+     */
+    const provisionalFor = (
+      entry: MeetingEntry,
+    ): typeof allProcesses[0] | null => {
+      const exact = provisionalBySourceId.get(entry.source_id);
+      if (exact) return exact;
+      const bucket = provisionalByMeeting.get(
+        meetingKey(entry.meeting_date, entry.meeting_title),
+      );
+      return bucket && bucket.length === 1 ? bucket[0] : null;
+    };
+
+    /**
+     * Any existing summary — provisional or final — built from the same
+     * documents or recording as this entry. Matching here means "we already
+     * covered this meeting", regardless of which connector found it.
+     */
+    const existingByDocuments = (
+      entry: MeetingEntry,
+    ): typeof allProcesses[0] | null => {
+      for (const fp of sourceFingerprints(entry)) {
+        const hit = bySourceFingerprint.get(fp);
+        if (hit) return hit;
+      }
+      return null;
+    };
 
     const perRunCap = maxPerRun();
     const willAutoPublish = autoPublish();
@@ -272,7 +598,11 @@ export async function handleRunMeetingSummary(
         );
         break;
       }
-      if (existingSourceIds.has(entry.source_id) || agendaByDate.has(entry.meeting_date)) {
+      if (
+        existingSourceIds.has(entry.source_id) ||
+        provisionalFor(entry) ||
+        existingByDocuments(entry)
+      ) {
         skippedExisting += 1;
         continue;
       }
@@ -328,10 +658,20 @@ export async function handleRunMeetingSummary(
 
     // --- Upgrade pass: re-summarize agenda-based summaries when minutes appear ---
     let upgraded = 0;
-    if (agendaByDate.size > 0) {
+    if (provisionalBySourceId.size > 0 || bySourceFingerprint.size > 0) {
       for (const entry of filteredEntries) {
         if (!entry.source_minutes_url) continue;
-        const existing = agendaByDate.get(entry.meeting_date);
+        // Upgrade the summary this meeting's documents already belong to, if
+        // it is still provisional; otherwise fall back to id/date+title match.
+        const byDocs = existingByDocuments(entry);
+        const upgradeable =
+          byDocs &&
+          UPGRADEABLE_SOURCE_TYPES.includes(
+            (summaryState(byDocs).source_type ?? "minutes") as MeetingSourceType,
+          )
+            ? byDocs
+            : null;
+        const existing = upgradeable ?? provisionalFor(entry);
         if (!existing) continue;
         const meetingStart = Date.now();
         try {
@@ -386,13 +726,14 @@ export async function handleRunMeetingSummary(
       duration_ms,
     });
 
-    notifyCronFailures({
+    notifyCronOutcome({
       discovered,
       created,
       skippedExisting,
       failed,
       failures,
       duration_ms,
+      connector_id: usedConnectorId,
     }).catch((err) => {
       console.warn(
         `[meeting-summary] notification send error: ${err instanceof Error ? err.message : "unknown"}`,
@@ -401,14 +742,16 @@ export async function handleRunMeetingSummary(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     const duration_ms = Date.now() - started;
-    console.error(`[meeting-summary] batch error: ${message}`);
-    res.status(500).json({
-      error: message,
+    // A throw here used to return 500 to a cron caller that reads nobody's
+    // response — the loudest possible failure, delivered to no one. Alert.
+    await failRun(res, 500, message, {
       discovered,
       created,
-      skipped_existing: skippedExisting,
+      skippedExisting,
       failed,
+      failures,
       duration_ms,
+      connector_id: usedConnectorId,
     });
   }
 }

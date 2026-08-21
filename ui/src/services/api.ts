@@ -1157,6 +1157,13 @@ export function listAnnouncements(limit?: number): Promise<AnnouncementSummary[]
 
 export type MeetingSummaryApprovalStatus = "pending" | "approved" | "published";
 
+/**
+ * What a summary was built from. "recording" means the video transcript
+ * alone — the shape the youtube-channel connector produces, since a channel
+ * feed carries no minutes or agenda PDF.
+ */
+export type MeetingSourceType = "minutes" | "agenda" | "recording";
+
 export interface SummaryBlock {
   topic_title: string;
   topic_summary: string;
@@ -1174,7 +1181,7 @@ export interface MeetingSummarySummary {
   approval_status: MeetingSummaryApprovalStatus;
   block_count: number;
   has_video: boolean;
-  source_type: "minutes" | "agenda";
+  source_type: MeetingSourceType;
   generated_at: string;
   approved_at: string | null;
   published_at: string | null;
@@ -1187,7 +1194,7 @@ export interface MeetingSummaryDetail extends MeetingSummarySummary {
   source_id: string;
   source_minutes_url: string | null;
   source_agenda_url: string | null;
-  source_type: "minutes" | "agenda";
+  source_type: MeetingSourceType;
   source_video_url: string | null;
   additional_video_urls: string[];
   blocks: SummaryBlock[];
@@ -1208,7 +1215,7 @@ export interface PublicMeetingSummary {
   meeting_date: string;
   source_minutes_url: string | null;
   source_agenda_url: string | null;
-  source_type: "minutes" | "agenda";
+  source_type: MeetingSourceType;
   source_video_url: string | null;
   additional_video_urls: string[];
   blocks: SummaryBlock[];

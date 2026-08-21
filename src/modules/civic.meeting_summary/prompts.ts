@@ -84,19 +84,31 @@ export function buildSummarizationPrompt(input: {
   meeting_date: string;
   transcript_text: string;
   has_video: boolean;
-  source_type: "minutes" | "agenda";
+  source_type: "minutes" | "agenda" | "recording";
 }): string {
   const isAgenda = input.source_type === "agenda";
+  const isRecordingOnly = input.source_type === "recording";
+  const documentName = isAgenda ? "agenda" : "minutes";
 
   const videoGuidance = input.has_video
     ? `For each block, set start_time_seconds to the transcript timestamp where that topic begins (an integer number of seconds from the start of the video). Use ONLY timestamps you can ground in a specific transcript line. If you cannot find the topic in the transcript, set start_time_seconds to null — do NOT default to 0 and do NOT guess.`
-    : `This meeting has NO video recording. Set start_time_seconds to null on every block. Summarize from the ${isAgenda ? "agenda" : "minutes"} document only.`;
+    : `This meeting has NO video recording. Set start_time_seconds to null on every block. Summarize from the ${documentName} document only.`;
 
   const transcriptBlock = input.has_video
     ? `<transcript>\n${input.transcript_text}\n</transcript>`
     : `<transcript>(no video recording for this meeting)</transcript>`;
 
-  const sourceGuidance = isAgenda
+  const recordingGuidance = `There is NO minutes document and NO agenda document for this meeting — the video transcript is your ONLY source. It is an automatic (speech-to-text) transcript of the meeting recording, so expect misheard names, garbled proper nouns, and missing punctuation.
+
+Work only from what the transcript actually supports:
+- Do NOT infer agenda items that were never spoken about.
+- When a name, dollar figure, vote count, or ordinance number is unclear in the transcript, say so in plain language ("the transcript is unclear on the exact figure") rather than guessing a value.
+- Prefer describing what was discussed and decided over reconstructing formal procedure.
+- Public comment and citizen concerns are in scope — they are often the most useful part of the record for residents and appear nowhere else.`;
+
+  const sourceGuidance = isRecordingOnly
+    ? recordingGuidance
+    : isAgenda
     ? `The attached PDF is the meeting AGENDA (not official minutes). The agenda only lists planned topics — it does NOT record what was actually discussed or decided.
 
 ${input.has_video ? `The video transcript is your PRIMARY source for what happened in this meeting. Use it to determine what was discussed, what decisions were made, and what actions were taken. The agenda serves only as a topic guide — the transcript tells you what actually occurred, including any topics that came up during public comment or discussion that were NOT on the agenda.
@@ -121,7 +133,7 @@ Produce a chronological list of topic blocks. Each block covers one coherent age
 
 For each block, produce:
 - topic_title: a short phrase (under 12 words) naming the topic.
-- topic_summary: 1–4 sentences of plain-language summary. Neutral tone. No speculation. If the ${isAgenda ? "transcript is" : "minutes are"} unclear, say so.
+- topic_summary: 1–4 sentences of plain-language summary. Neutral tone. No speculation. If the ${isAgenda || isRecordingOnly ? "transcript is" : "minutes are"} unclear, say so.
 - start_time_seconds: see below.
 - action_taken: a single short sentence describing any concrete action, motion, vote, or decision from this block. Null if the block is discussion only.
 
