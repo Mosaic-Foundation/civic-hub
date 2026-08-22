@@ -1,5 +1,20 @@
 import type { Request, Response } from "express";
 import { getDb } from "../db/client.js";
+import { notifyAdminsOfWaitlistSignup } from "../services/waitlistNotify.js";
+
+/**
+ * Coerce the test-user opt-in. The form posts a real boolean, but a checkbox
+ * that never got serialized (older client, missing field) must read as "did
+ * not opt in" rather than as truthy junk.
+ */
+export function readTestUserFlag(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const v = value.trim().toLowerCase();
+    return v === "true" || v === "on" || v === "1" || v === "yes";
+  }
+  return false;
+}
 
 export async function handleJoinWaitlist(
   req: Request,
@@ -24,11 +39,14 @@ export async function handleJoinWaitlist(
       ? body.notes.trim().slice(0, 500)
       : null;
 
+  const wantsTestUser = readTestUserFlag(body.wants_test_user);
+  const createdAt = new Date().toISOString();
+
   try {
     const { error } = await getDb()
       .from("waitlist")
       .upsert(
-        { email, notes, created_at: new Date().toISOString() },
+        { email, notes, wants_test_user: wantsTestUser, created_at: createdAt },
         { onConflict: "email" },
       );
     if (error) throw error;
@@ -38,6 +56,23 @@ export async function handleJoinWaitlist(
     res.status(500).json({ error: "Could not join waitlist. Please try again." });
     return;
   }
+
+  // Operator notification. Awaited on purpose: on serverless the function is
+  // frozen the instant the response is flushed, so a fire-and-forget send
+  // never leaves the box. Best-effort — a failed send is logged inside, and
+  // the signup (already persisted) still reports success.
+  await notifyAdminsOfWaitlistSignup({
+    email,
+    notes,
+    wants_test_user: wantsTestUser,
+    created_at: createdAt,
+  }).catch((err) => {
+    console.warn(
+      `[waitlist] admin notification failed for ${email}: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  });
 
   res.json({ message: "You're on the list! We'll email you when access opens up." });
 }

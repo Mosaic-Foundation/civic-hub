@@ -479,6 +479,7 @@ export default function AdminSettings() {
                     <tr>
                       <th>Email</th>
                       <th>Signed up</th>
+                      <th>Test user</th>
                       <th>Notes</th>
                     </tr>
                   </thead>
@@ -487,6 +488,7 @@ export default function AdminSettings() {
                       <tr key={w.email}>
                         <td>{w.email}</td>
                         <td>{new Date(w.created_at).toLocaleDateString()}</td>
+                        <td>{w.wants_test_user ? "Yes" : "—"}</td>
                         <td>{w.notes ?? "—"}</td>
                       </tr>
                     ))}

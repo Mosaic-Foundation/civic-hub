@@ -195,6 +195,8 @@ export interface WaitlistEntry {
   email: string;
   created_at: string;
   notes: string | null;
+  /** Opted in to "I'd like to be a test user" on the waitlist form. */
+  wants_test_user: boolean;
 }
 
 export async function getBetaAllowlist(): Promise<string[]> {
@@ -239,7 +241,7 @@ export async function isEmailOnBetaAllowlist(
 export async function getWaitlist(): Promise<WaitlistEntry[]> {
   const { data, error } = await getDb()
     .from("waitlist")
-    .select("email, created_at, notes")
+    .select("email, created_at, notes, wants_test_user")
     .order("created_at", { ascending: false });
   if (error) throw new Error(`hubSettings.getWaitlist: ${error.message}`);
   return (data ?? []) as WaitlistEntry[];

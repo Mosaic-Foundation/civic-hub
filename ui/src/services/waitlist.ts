@@ -1,13 +1,23 @@
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
 
+export interface JoinWaitlistOptions {
+  notes?: string;
+  /** "I'd like to be a test user" — asks to be approved onto the beta allowlist. */
+  wantsTestUser?: boolean;
+}
+
 export async function joinWaitlist(
   email: string,
-  notes?: string,
+  options: JoinWaitlistOptions = {},
 ): Promise<{ message: string }> {
   const res = await fetch(`${API_BASE}/waitlist`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, notes: notes || undefined }),
+    body: JSON.stringify({
+      email,
+      notes: options.notes || undefined,
+      wants_test_user: options.wantsTestUser ?? false,
+    }),
   });
 
   if (!res.ok) {

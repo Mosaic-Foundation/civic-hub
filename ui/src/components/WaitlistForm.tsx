@@ -18,6 +18,11 @@ interface Props {
  * Waitlist capture form. Shared by the BetaLanding splash and the sign-in
  * modal's private-beta fallback. Honeypot-gated (the hidden `website` field);
  * on success shows the standard confirmation instead of the form.
+ *
+ * The test-user checkbox is an opt-in signal for the operator: it lands on
+ * the waitlist row as `wants_test_user` and is flagged in the signup email,
+ * so volunteers can be moved onto the beta allowlist without extra back and
+ * forth.
  */
 export default function WaitlistForm({
   heading,
@@ -26,6 +31,7 @@ export default function WaitlistForm({
 }: Props) {
   const [email, setEmail] = useState(initialEmail);
   const [notes, setNotes] = useState("");
+  const [wantsTestUser, setWantsTestUser] = useState(false);
   const [honeypot, setHoneypot] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -38,7 +44,7 @@ export default function WaitlistForm({
     setSubmitting(true);
     setError(null);
     try {
-      await joinWaitlist(email, notes);
+      await joinWaitlist(email, { notes, wantsTestUser });
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -76,6 +82,20 @@ export default function WaitlistForm({
             disabled={submitting}
             maxLength={500}
           />
+          <label className="beta-waitlist-checkbox">
+            <input
+              type="checkbox"
+              checked={wantsTestUser}
+              onChange={(e) => setWantsTestUser(e.target.checked)}
+              disabled={submitting}
+            />
+            <span>
+              I'd like to be a test user
+              <span className="beta-waitlist-checkbox-hint">
+                You'll be approved onto the beta allowlist.
+              </span>
+            </span>
+          </label>
           <div className="beta-hp" aria-hidden="true">
             <label>
               Website

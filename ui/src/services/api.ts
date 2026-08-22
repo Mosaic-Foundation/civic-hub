@@ -1329,6 +1329,8 @@ export interface WaitlistEntry {
   email: string;
   created_at: string;
   notes: string | null;
+  /** Opted in to "I'd like to be a test user" on the waitlist form. */
+  wants_test_user: boolean;
 }
 
 export interface AdminSettings {

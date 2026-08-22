@@ -132,6 +132,30 @@
   box-sizing: border-box;
 }
 
+.beta-waitlist-checkbox {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+  cursor: pointer;
+}
+
+.beta-waitlist-checkbox input {
+  /* Nudge the box onto the first line of the label text. */
+  margin: 0.15rem 0 0;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.beta-waitlist-checkbox-hint {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
 .beta-waitlist-submit {
   display: inline-flex;
   align-items: center;

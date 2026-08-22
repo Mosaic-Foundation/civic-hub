@@ -4,6 +4,100 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Waitlist: test-user opt-in + signup notification — 2026-08-21
+
+The waitlist collected an email and a free-text note, and told nobody it had
+done so. Sign-ups sat in a table until someone remembered to open Admin →
+Settings, and there was no way to tell "add me to the list" apart from "let me
+in and I'll break things for you" without reading every note.
+
+### What changed
+
+**Opt-in checkbox** — "I'd like to be a test user / You'll be approved onto the
+beta allowlist" on `ui/src/components/WaitlistForm.tsx` (the form the
+BetaLanding splash and the sign-in modal's private-beta fallback both share, so
+both entry points get it). Persists to the new `waitlist.wants_test_user`
+column and shows as a **Test user** column in the admin waitlist table.
+
+**Signup notification** — every accepted signup emails everyone in
+`CIVIC_ADMIN_EMAILS` via the shared Resend helper. The opt-in is in the
+**subject line** (`[Civic Hub waitlist] TEST USER — someone@example.com`), not
+buried in the body, because that is the part that gets read on a lock screen.
+
+| File | Change |
+|---|---|
+| `supabase/migrations/20260821000000_waitlist_test_user.sql` | `wants_test_user BOOLEAN NOT NULL DEFAULT FALSE` |
+| `src/services/waitlistNotify.ts` **(new)** | `renderWaitlistNotification()` (pure) + `notifyAdminsOfWaitlistSignup()` |
+| `src/controllers/waitlistController.ts` | Persists the flag; awaits the best-effort notify |
+| `src/services/hubSettings.ts` | `getWaitlist()` selects and types the flag |
+| `ui/src/components/WaitlistForm.tsx`, `ui/src/services/waitlist.ts` | Checkbox; `joinWaitlist(email, { notes, wantsTestUser })` |
+| `ui/src/pages/AdminSettings.tsx`, `ui/src/services/api.ts`, `ui/src/pages/BetaLanding.css` | Test-user column, type, checkbox styling |
+| `tests/unit/waitlistNotification.test.ts` **(new)** | 10 tests |
+
+### Patterns followed, deliberately
+
+- **Best-effort, non-fatal, logged** — same shape as `civic.feedback`'s
+  `notifyOperator` and the meeting-summary cron's `notifyCronOutcome`. The row
+  is already written by the time we send; a bounced email must not turn a
+  successful signup into a 500 for the person who just filled in the form.
+- **Awaited, not fire-and-forget.** Serverless freezes the function the instant
+  the response is flushed, so an un-awaited send never leaves the box — this is
+  exactly the "saved but no email" bug the feedback module already fixed once.
+- **Empty `CIVIC_ADMIN_EMAILS` is logged, not silent** — same warning the cron
+  alerts emit, so a misconfigured deploy says so instead of dropping signups.
+- **Honeypot unchanged, and it still short-circuits first.** A bot that fills
+  the hidden `website` field gets the same fake confirmation and touches
+  neither the database nor the mailer — spam can't turn into inbox volume.
+- **Notes and email address are HTML-escaped** in the email body. Both are
+  attacker-controlled free text from an unauthenticated form.
+
+### Deploy order matters
+
+The migration must be applied **before** the backend deploys. The insert now
+names `wants_test_user`, and PostgREST rejects the whole row if the column
+isn't there — sign-ups would 500 in the window between deploy and migration.
+
+`supabase db push` **is not the way to apply this to dev.** The repo's Supabase
+CLI is linked to PROD (`nfhyypwoporfggqcerli`); dev is `urfmvqhzmamigssqwsya`.
+Paste the migration into the dev project's SQL editor, same as the three
+migrations backfilled in the Slice-C session.
+
+### Verified
+
+`npx tsc -b` clean (backend and `ui/`), full suite green — 29 files, 353 tests.
+
+Against the local dev server, with the migration applied to dev:
+
+| Submission | Row written | Notifier |
+|---|---|---|
+| Box checked | `wants_test_user = true` | Fired, subject `[Civic Hub waitlist] TEST USER — …` |
+| Box unchecked | `wants_test_user = false` | Fired, subject without the flag |
+| Honeypot filled | **No row at all** | Never reached |
+
+**The dev send does not complete, and that is the local Resend key, not the
+code.** That key is sandboxed to `creatinglake@gmail.com` while
+`CIVIC_ADMIN_EMAILS` is `adam@civic.social`, so Resend returns 403 and the
+notifier logs `notification NOT sent … Resend 403: …`. Useful accident: it
+exercised the best-effort path for real — the signup still persisted and the
+form still got its confirmation. Production sends from the verified
+floyd.civic.social domain (same path as OTP and feedback email), so this
+doesn't reproduce there. Subject lines and bodies were verified by rendering
+`renderWaitlistNotification()` directly; the unit tests pin both.
+
+Test rows (`tester-checked@`, `tester-unchecked@`) were deleted from dev after
+the run.
+
+### Open
+
+- Repeat sign-ups upsert on `email`, so re-submitting with the box unchecked
+  clears a previous opt-in and emails again. Correct for "they changed their
+  mind", noisy if someone submits twice — revisit if it ever happens.
+- Still no automatic email to the *user* when they're moved onto the allowlist
+  (the open question from the 2026-06-01 beta-gating session). This change
+  tells the operator sooner; it does not close that loop.
+
+---
+
 ## Meeting summaries: silent discovery failure + connector ladder — 2026-08-20
 
 Board of Supervisors meeting summaries stopped being generated. Nothing
