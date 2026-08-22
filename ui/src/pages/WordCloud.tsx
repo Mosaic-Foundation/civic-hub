@@ -481,7 +481,7 @@ export default function WordCloud() {
   const fetchData = useCallback(async () => {
     if (!id || authLoading) return;
     try {
-      const data = await getWordcloud(id, actorId ?? undefined);
+      const data = await getWordcloud(id);
       setWc(data);
       setError(null);
     } catch (err) {

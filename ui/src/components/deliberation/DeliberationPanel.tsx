@@ -37,7 +37,7 @@ export default function DeliberationPanel({ processId }: Props) {
 
   const loadProcess = useCallback(async () => {
     try {
-      const p = await getDeliberation(processId, user?.id);
+      const p = await getDeliberation(processId);
       setProcess(p);
       setHasSubmitted(!!p.has_submitted);
     } catch (err: any) {

@@ -36,7 +36,7 @@ export default function ProjectDetail() {
   const loadProject = useCallback(async () => {
     if (!id) return;
     try {
-      const detail = await getProjectDetail(id, user?.id);
+      const detail = await getProjectDetail(id);
       setProject(detail);
       const cmts = await listProjectComments(id);
       setComments(cmts);

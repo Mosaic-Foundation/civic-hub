@@ -4,6 +4,52 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Read paths: stop trusting `?actor=` (three stragglers) — 2026-08-21
+
+`resolveCallerId()` in `src/middleware/auth.ts` has been the rule for a while —
+per-actor fields on public read paths come from the Bearer token, never from the
+query string, because `?actor=<someone else's id>` let any caller read another
+resident's private state. `projectController` and `announcementController` had
+migrated. Three endpoints never did:
+
+| Endpoint | Leaked |
+|---|---|
+| `GET /proposals/:id` | `has_supported` — whether a named resident endorsed a proposal |
+| `GET /deliberations/:processId` | `has_submitted` + whatever the handler personalizes |
+| `GET /wordcloud/:id` | `has_submitted` |
+
+All three now call `resolveCallerId(req)`. The frontend helpers lost their
+`actor` parameter (`getCivicProposal`, `getDeliberation`, `getWordcloud`, plus
+`getProjectDetail`, which was still sending a param the server had already
+stopped reading) — the request wrapper's `Authorization` header carries identity
+on its own.
+
+**No behaviour change for signed-in residents.** The token resolves to the same
+id the UI used to pass; anonymous callers get the public read model, as before.
+
+### Verified
+
+`npx tsc --noEmit` (backend) and `npx tsc -b --force` (`ui/`) clean; suite green
+— 29 files, 353 tests. Against dev, with a word cloud whose contributor holds a
+real session:
+
+- `GET /wordcloud/:id` **with that contributor's Bearer token** → `has_submitted: true`
+- `GET /wordcloud/:id?actor=<that same user id>`, no token → `has_submitted: false`
+- `GET /proposals/:id?actor=…` → `has_supported: null` (query actor ignored)
+- `GET /deliberations/:id?actor=…` → `has_submitted: false`
+
+The positive control matters: "always false" would also be what a broken
+per-actor path looks like.
+
+### Open
+
+- `processController` still carries a **private copy** of `resolveCallerId`
+  (line 21) instead of importing the shared one. Identical behaviour; the
+  duplication is what let these three drift in the first place. Left alone to
+  keep this change to the leak itself.
+
+---
+
 ## Word cloud: reveal by default, conceal only during onboarding — 2026-08-21
 
 ### First, what the submission rule actually is

@@ -9,6 +9,7 @@
 import { Request, Response } from "express";
 import { getProcess } from "../services/processService.js";
 import { getDb } from "../db/client.js";
+import { resolveCallerId } from "../middleware/auth.js";
 import {
   buildClouds,
   getSubmissionCount,
@@ -97,7 +98,11 @@ export async function handleGetWordcloud(
     const clouds = await buildClouds(process.id, state);
     const submissionCount = await getSubmissionCount(process.id);
 
-    const actor = req.query.actor as string | undefined;
+    // Caller identity comes from the session token, never from ?actor= (which
+    // let anyone learn whether another resident had contributed by passing
+    // their id). Anonymous callers get the public read model with
+    // has_submitted false.
+    const actor = await resolveCallerId(req);
     let hasSubmitted = false;
     if (actor) {
       const { count, error: countErr } = await getDb()

@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { getAuthUser } from "../middleware/auth.js";
+import { getAuthUser, resolveCallerId } from "../middleware/auth.js";
 import { getPolisAdapter } from "../processes/deliberationBoot.js";
 import { getDb } from "../db/client.js";
 import * as processService from "../services/processService.js";
@@ -321,7 +321,10 @@ export async function getDeliberation(req: Request, res: Response): Promise<void
       res.status(404).json({ error: "Conversation handler not registered" });
       return;
     }
-    const actor = req.query.actor as string | undefined;
+    // Caller identity comes from the session token, never from ?actor= (which
+    // let anyone read another resident's participation state by passing their
+    // id). Anonymous callers get the public read model.
+    const actor = await resolveCallerId(req);
     const readModel = handler.getReadModel(process, actor);
 
     let has_submitted = false;

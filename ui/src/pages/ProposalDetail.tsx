@@ -54,7 +54,7 @@ export default function ProposalDetail() {
 
   const fetchProposal = useCallback(() => {
     if (!id) return;
-    getCivicProposal(id, currentActor)
+    getCivicProposal(id)
       .then(setProposal)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));

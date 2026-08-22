@@ -322,9 +322,9 @@ export function listCivicProposals(status?: CivicProposalStatus): Promise<CivicP
 }
 
 /** Get proposal detail */
-export function getCivicProposal(id: string, actor?: string): Promise<CivicProposalDetail> {
-  const params = actor ? `?actor=${encodeURIComponent(actor)}` : "";
-  return request("GET", `/proposals/${id}${params}`);
+/** Per-actor fields come from the session token, never from a query param. */
+export function getCivicProposal(id: string): Promise<CivicProposalDetail> {
+  return request("GET", `/proposals/${id}`);
 }
 
 /** Support/endorse a proposal */
@@ -558,9 +558,9 @@ export function listProjects(status?: ProjectStatus): Promise<ProjectSummary[]> 
   return request("GET", `/projects${params}`);
 }
 
-export function getProjectDetail(id: string, actor?: string): Promise<ProjectDetail> {
-  const params = actor ? `?actor=${encodeURIComponent(actor)}` : "";
-  return request("GET", `/projects/${id}${params}`);
+/** Per-actor fields come from the session token, never from a query param. */
+export function getProjectDetail(id: string): Promise<ProjectDetail> {
+  return request("GET", `/projects/${id}`);
 }
 
 export function addProjectUpdate(
@@ -1664,9 +1664,9 @@ export function listDeliberations(): Promise<DeliberationSummary[]> {
   return request("GET", "/deliberations");
 }
 
-export function getDeliberation(processId: string, actor?: string): Promise<DeliberationReadModel> {
-  const qs = actor ? `?actor=${encodeURIComponent(actor)}` : "";
-  return request("GET", `/deliberations/${processId}${qs}`);
+/** Per-actor fields come from the session token, never from a query param. */
+export function getDeliberation(processId: string): Promise<DeliberationReadModel> {
+  return request("GET", `/deliberations/${processId}`);
 }
 
 export function getDeliberationClusters(processId: string): Promise<ClusterState> {
@@ -1769,9 +1769,13 @@ export interface WordcloudState {
   has_submitted: boolean;
 }
 
-export function getWordcloud(id: string, actor?: string): Promise<WordcloudState> {
-  const qs = actor ? `?actor=${encodeURIComponent(actor)}` : "";
-  return request("GET", `/wordcloud/${id}${qs}`);
+/**
+ * The actor is resolved from the session token the request wrapper already
+ * sends — never from a query param, which let any caller read another
+ * resident's per-actor fields by passing their user id.
+ */
+export function getWordcloud(id: string): Promise<WordcloudState> {
+  return request("GET", `/wordcloud/${id}`);
 }
 
 export function getWordcloudCloud(

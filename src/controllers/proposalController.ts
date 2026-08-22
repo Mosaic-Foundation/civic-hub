@@ -12,7 +12,7 @@ import {
   getProposalReadModel,
   getProposalSummary,
 } from "../modules/civic.proposals/index.js";
-import { getAuthUser } from "../middleware/auth.js";
+import { getAuthUser, resolveCallerId } from "../middleware/auth.js";
 import { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
 
 /**
@@ -82,7 +82,10 @@ export async function handleGetProposal(
   res: Response,
 ): Promise<void> {
   const id = req.params.id as string;
-  const actor = req.query.actor as string | undefined;
+  // Caller identity comes from the session token, never from ?actor= (which
+  // let anyone read another resident's support state by passing their id).
+  // Anonymous callers get the public read model with no per-actor fields.
+  const actor = await resolveCallerId(req);
 
   try {
     const readModel = await getProposalReadModel(id, actor);
