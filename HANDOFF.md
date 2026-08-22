@@ -4,6 +4,78 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Word cloud: reveal by default, conceal only during onboarding — 2026-08-21
+
+### First, what the submission rule actually is
+
+Checked because Adam remembered contributing more than once. He hadn't — the
+rule is **one submission per person per prompt**, and all three layers agree:
+
+- `submitResponse()` counts the author's rows for the prompt and refuses a second
+- `idx_wc_submissions_unique_author` (`process_id, prompt_id, author_id`) enforces
+  it in Postgres, so the API cannot be talked around it
+- the UI hides the form once `has_submitted` is true
+
+That is the intended rule and it stays. One submission is one short answer of up
+to `max_submission_length` (280) characters — the aggregator splits it into
+words, so "mountains and music" already contributes two words to the cloud.
+
+*(An exploratory change allowing five distinct responses per person was built
+and then dropped in the same session once the intent was confirmed. Nothing from
+it remains — no migration, no config field.)*
+
+### What changed
+
+**Concealment is now an onboarding device only.** Previously every first-time
+viewer hit the "Add yours to reveal the cloud" curtain. Now:
+
+| Context | Cloud | Form |
+|---|---|---|
+| `?onboarding=1`, not yet contributed | concealed | shown |
+| `?onboarding=1`, contributed | revealed | thank-you line |
+| Any other visit, not yet contributed | **revealed** | shown below the header |
+| Any other visit, contributed | revealed | thank-you line |
+
+Someone who came to look at the cloud is no longer charged a word for it; the
+invitation to contribute stays on offer underneath until they take it, and after
+they do they get "Thanks for contributing" instead of a vanished form.
+
+| File | Change |
+|---|---|
+| `ui/src/pages/WordCloud.tsx` | `PromptSection` takes `isOnboarding`; `revealed` starts true unless onboarding; the form no longer depends on the curtain |
+| `ui/src/pages/WordCloud.css` | `.wordcloud-form-done` |
+
+Frontend only — no backend, schema, or event changes.
+
+### Verified
+
+`npx tsc --noEmit` (backend) and `npx tsc -b` (`ui/`) clean; suite green — 29
+files, 353 tests. In the browser against dev: a plain visit renders the full
+cloud with the form above it; `?onboarding=1` renders the banner, the form, and
+the blurred cloud behind "Add yours to reveal". The read model returns
+`has_submitted: true` for a seeded contributor and `false` for a stranger, which
+is the flag the post-contribution branch keys on.
+
+### Open
+
+- **`GET /wordcloud/:id?actor=<id>` still trusts the query string.** Anyone can
+  pass another resident's user id and learn whether they contributed. The same
+  hole was already closed on `/process/:id/state` by resolving the actor from
+  the session token (`processController.resolveCallerId`); this endpoint should
+  follow. Small fix, deliberately not bundled with a UI-only change.
+- `has_submitted` is computed **process-wide**, not per prompt, so on a
+  multi-prompt cloud one answer would hide every prompt's form. Unreachable
+  today — `CreateWordCloud.tsx` only ever creates one prompt.
+- Running the API suite calls `GET /debug/seed`, which **clears the dev events
+  table and then fails** whenever any `civic.wordcloud` process exists (the
+  `wordcloud_submissions` FK blocks `clearProcesses()`). Symptom: six
+  `tests/api/events.test.ts` failures and an empty dev feed. Fix is in the
+  endpoint's own error message — `TRUNCATE review_turns, process_reviews,
+  wordcloud_submissions CASCADE;` in the dev SQL editor, then re-hit
+  `/debug/seed`.
+
+---
+
 ## Waitlist: test-user opt-in + signup notification — 2026-08-21
 
 The waitlist collected an email and a free-text note, and told nobody it had

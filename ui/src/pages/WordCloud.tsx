@@ -378,6 +378,7 @@ function PromptSection({
   prompt,
   cloud,
   isActive,
+  isOnboarding,
   hasSubmitted,
   maxLength,
   onSubmitted,
@@ -387,12 +388,21 @@ function PromptSection({
   prompt: { id: string; text: string; max_length?: number };
   cloud: WordcloudPromptCloud | undefined;
   isActive: boolean;
+  /** The cloud is only held back during onboarding — see `revealed` below. */
+  isOnboarding: boolean;
   hasSubmitted: boolean;
   maxLength: number;
   onSubmitted: () => void;
   refreshKey: number;
 }) {
-  const [revealed, setRevealed] = useState(!isActive || hasSubmitted);
+  // The "add yours to reveal" trade is an ONBOARDING device: a new arrival is
+  // asked for their word before they see everyone else's, so their answer is
+  // their own. Every other visit shows the cloud straight away — people who
+  // came to look should not be made to pay for it — and the form stays on
+  // offer underneath until they contribute their one response.
+  const [revealed, setRevealed] = useState(
+    !isActive || hasSubmitted || !isOnboarding,
+  );
 
   useEffect(() => {
     if (hasSubmitted) setRevealed(true);
@@ -405,7 +415,7 @@ function PromptSection({
     <section className="wordcloud-prompt-section">
       <h2 className="wordcloud-prompt-text">{prompt.text}</h2>
 
-      {isActive && !hasSubmitted && !revealed && (
+      {isActive && !hasSubmitted && (
         <SubmitForm
           processId={processId}
           promptId={prompt.id}
@@ -413,6 +423,12 @@ function PromptSection({
           onSubmitted={onSubmitted}
           onRevealed={() => setRevealed(true)}
         />
+      )}
+
+      {isActive && hasSubmitted && (
+        <p className="wordcloud-form-done">
+          Thanks for contributing — you have added your response to this prompt.
+        </p>
       )}
 
       <div className={`wordcloud-cloud-wrapper${revealed ? " wordcloud-cloud-revealed" : ""}`}>
@@ -563,6 +579,7 @@ export default function WordCloud() {
             prompt={prompt}
             cloud={cloud}
             isActive={isActive}
+            isOnboarding={isOnboarding}
             hasSubmitted={wc.has_submitted}
             maxLength={wc.config.max_submission_length}
             onSubmitted={refreshCloud}

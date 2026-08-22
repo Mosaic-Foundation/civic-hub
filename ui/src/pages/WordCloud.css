@@ -362,6 +362,12 @@
   margin-top: 0.35rem;
 }
 
+.wordcloud-form-done {
+  font-size: var(--font-size-sm, 0.9rem);
+  color: var(--color-text-muted, #666);
+  padding: 0.5rem 0 0.75rem;
+}
+
 .wordcloud-submission-count {
   font-size: var(--font-size-xs, 0.75rem);
   color: var(--color-text-subtle, #999);
