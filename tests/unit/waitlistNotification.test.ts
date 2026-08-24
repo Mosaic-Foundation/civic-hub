@@ -14,6 +14,7 @@ import { readTestUserFlag } from "../../src/controllers/waitlistController.js";
 
 const base = {
   email: "resident@example.com",
+  name: null,
   notes: null,
   wants_test_user: false,
   created_at: "2026-08-21T14:30:00.000Z",
@@ -87,6 +88,33 @@ describe("renderWaitlistNotification", () => {
     });
     expect(html).not.toContain("<b>x</b>");
     expect(html).toContain("&lt;b&gt;");
+  });
+
+  it("leads with the name when one was given", () => {
+    // "TEST USER — Dana Reed" reads as a person; a bare address reads as a row.
+    const { subject, html } = renderWaitlistNotification({
+      ...base,
+      name: "Dana Reed",
+      wants_test_user: true,
+    });
+    expect(subject).toContain("Dana Reed <resident@example.com>");
+    expect(html).toContain("Dana Reed");
+  });
+
+  it("falls back to the address alone when no name was given", () => {
+    const { subject, html } = renderWaitlistNotification(base);
+    expect(subject).toContain("resident@example.com");
+    expect(subject).not.toContain("<resident@example.com>");
+    expect(html).not.toContain("<strong>Name:</strong>");
+  });
+
+  it("escapes the name too", () => {
+    const { html } = renderWaitlistNotification({
+      ...base,
+      name: '<script>alert(1)</script>',
+    });
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
   });
 
   it("keeps line breaks in notes readable", () => {

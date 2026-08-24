@@ -2,6 +2,8 @@ import type { Request, Response } from "express";
 import { getDb } from "../db/client.js";
 import { notifyAdminsOfWaitlistSignup } from "../services/waitlistNotify.js";
 
+const NAME_MAX_LEN = 200;
+
 /**
  * Coerce the test-user opt-in. The form posts a real boolean, but a checkbox
  * that never got serialized (older client, missing field) must read as "did
@@ -39,6 +41,12 @@ export async function handleJoinWaitlist(
       ? body.notes.trim().slice(0, 500)
       : null;
 
+  // Optional, and blank stays null so "no name given" is one value, not two.
+  const name =
+    typeof body.name === "string" && body.name.trim().length > 0
+      ? body.name.trim().slice(0, NAME_MAX_LEN)
+      : null;
+
   const wantsTestUser = readTestUserFlag(body.wants_test_user);
   const createdAt = new Date().toISOString();
 
@@ -46,7 +54,7 @@ export async function handleJoinWaitlist(
     const { error } = await getDb()
       .from("waitlist")
       .upsert(
-        { email, notes, wants_test_user: wantsTestUser, created_at: createdAt },
+        { email, name, notes, wants_test_user: wantsTestUser, created_at: createdAt },
         { onConflict: "email" },
       );
     if (error) throw error;
@@ -63,6 +71,7 @@ export async function handleJoinWaitlist(
   // the signup (already persisted) still reports success.
   await notifyAdminsOfWaitlistSignup({
     email,
+    name,
     notes,
     wants_test_user: wantsTestUser,
     created_at: createdAt,

@@ -4,6 +4,83 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Waitlist: optional name, softer opt-in copy, and a prod outage — 2026-08-22
+
+Follow-up to [the test-user opt-in](#waitlist-test-user-opt-in--signup-notification--2026-08-21).
+Three things: a production incident, a copy correction, and a name field.
+
+### The outage — deploy order, exactly as warned
+
+The opt-in commit was pushed to `origin/main` by a concurrent session before
+the migration had been applied to prod. Vercel auto-deployed it, and prod ran
+code that inserts `wants_test_user` against a table without that column.
+
+Two things broke, one of them wider than expected:
+
+- `POST /waitlist` → 500. Nobody could join the waitlist.
+- `GET /admin/settings` → 500 — **the entire settings page**, not just the
+  waitlist panel. `loadSettings()` awaits `getWaitlist()` inline, so one
+  failing `select` takes the whole response down with it.
+
+Diagnosed from the data, not from guesswork: dev had the column and an empty
+waitlist (so the failing signup never went there), prod lacked the column and
+its newest row was five days old. Fixed by applying both migrations to prod.
+
+**The lesson is the coupling, not the mistake.** Any migration that adds a
+column the backend immediately writes must be applied *before* the deploy that
+writes it, and a shared `main` means "before you push" is the only reliable
+interpretation of "before".
+
+### Copy correction
+
+The checkbox hint said "You'll be approved onto the beta allowlist" — a
+promise the hub cannot keep, made to a stranger at the moment they hand over
+their address. Now: **"We'll let you know if you're approved for the beta
+allowlist."** Same invitation, no guarantee.
+
+### Optional name
+
+`waitlist.name TEXT` (nullable), from a never-required field at the top of the
+form. Blank or whitespace-only input stores `NULL`, so "no name given" is one
+value everywhere rather than two. The notification leads with it when present
+— `TEST USER — Dana Reed <dana@example.com>` reads as a person, a bare address
+reads as a row — and falls back to the address alone when absent. Shows as a
+**Name** column in the admin waitlist table.
+
+| File | Change |
+|---|---|
+| `supabase/migrations/20260822000000_waitlist_name.sql` **(new)** | `name TEXT` |
+| `src/controllers/waitlistController.ts` | Parses/trims name, 200-char cap, blank → null |
+| `src/services/waitlistNotify.ts` | Name in subject and body, escaped |
+| `src/services/hubSettings.ts`, `ui/src/services/api.ts` | Select and type the field |
+| `ui/src/components/WaitlistForm.tsx` | Name input + revised checkbox hint |
+| `ui/src/pages/AdminSettings.tsx` | Name column |
+| `tests/unit/waitlistNotification.test.ts` | 13 tests (was 10) |
+
+### Verified
+
+`npx tsc -b` clean (backend and `ui/`); unit suite 294/294. Both migrations
+applied to dev **and** prod — confirmed by probing each schema directly.
+
+Through the real form on dev, plus the API for the paths a browser can't reach:
+
+| Submission | Row written | Notifier |
+|---|---|---|
+| Name + box checked | `name`, `wants_test_user = true` | `TEST USER — Dana Reed <…>` |
+| No name, unchecked | `name = NULL`, `false` | Address alone, unflagged |
+| Whitespace-only name | `name = NULL` — not `""` | Fired |
+| Honeypot filled | **No row at all** | Never reached |
+
+*Testing note worth keeping:* driving the checkbox by setting `.checked` in
+the DOM writes `false` — React's `onChange` fires on the click event, not on a
+property assignment, so the component state never updates. Any browser
+automation against this form must issue a real click, or it will "pass" while
+testing nothing. Cost an hour once; will cost it again otherwise.
+
+Dev test rows were deleted after the run.
+
+---
+
 ## Read paths: stop trusting `?actor=` (three stragglers) — 2026-08-21
 
 `resolveCallerId()` in `src/middleware/auth.ts` has been the rule for a while —

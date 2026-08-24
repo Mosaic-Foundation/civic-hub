@@ -477,6 +477,7 @@ export default function AdminSettings() {
                 <table className="admin-waitlist-table">
                   <thead>
                     <tr>
+                      <th>Name</th>
                       <th>Email</th>
                       <th>Signed up</th>
                       <th>Test user</th>
@@ -486,6 +487,7 @@ export default function AdminSettings() {
                   <tbody>
                     {waitlist.map((w) => (
                       <tr key={w.email}>
+                        <td>{w.name ?? "—"}</td>
                         <td>{w.email}</td>
                         <td>{new Date(w.created_at).toLocaleDateString()}</td>
                         <td>{w.wants_test_user ? "Yes" : "—"}</td>

@@ -11,6 +11,8 @@ import { sendEmail } from "../utils/email.js";
 
 export interface WaitlistSignup {
   email: string;
+  /** Optional — the form never requires it. */
+  name: string | null;
   notes: string | null;
   /** The "I'd like to be a test user" checkbox on the waitlist form. */
   wants_test_user: boolean;
@@ -57,9 +59,12 @@ export function renderWaitlistNotification(signup: WaitlistSignup): {
   subject: string;
   html: string;
 } {
+  // Name first when we have one — "TEST USER — Dana Reed" reads as a person,
+  // "TEST USER — d.reed+beta@example.com" reads as a row.
+  const who = signup.name ? `${signup.name} <${signup.email}>` : signup.email;
   const subject = signup.wants_test_user
-    ? `[Civic Hub waitlist] TEST USER — ${signup.email}`
-    : `[Civic Hub waitlist] ${signup.email}`;
+    ? `[Civic Hub waitlist] TEST USER — ${who}`
+    : `[Civic Hub waitlist] ${who}`;
 
   const testUserRow = signup.wants_test_user
     ? `<p style="margin:12px 0;padding:12px 14px;background:#ecfdf5;border-left:3px solid #059669;border-radius:6px;font-size:14px;">
@@ -76,6 +81,11 @@ export function renderWaitlistNotification(signup: WaitlistSignup): {
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937;">
       <h1 style="font-size:18px;font-weight:600;margin:0 0 12px;">New Civic Hub waitlist signup</h1>
+      ${
+        signup.name
+          ? `<p style="margin:0 0 4px;color:#374151;"><strong>Name:</strong> ${escapeHtml(signup.name)}</p>`
+          : ""
+      }
       <p style="margin:0 0 4px;color:#374151;"><strong>Email:</strong> ${escapeHtml(signup.email)}</p>
       <p style="margin:0 0 4px;color:#374151;"><strong>Signed up:</strong> ${escapeHtml(formatDateUS(signup.created_at))}</p>
       ${testUserRow}

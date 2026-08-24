@@ -29,6 +29,7 @@ export default function WaitlistForm({
   description,
   initialEmail = "",
 }: Props) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState(initialEmail);
   const [notes, setNotes] = useState("");
   const [wantsTestUser, setWantsTestUser] = useState(false);
@@ -44,7 +45,7 @@ export default function WaitlistForm({
     setSubmitting(true);
     setError(null);
     try {
-      await joinWaitlist(email, { notes, wantsTestUser });
+      await joinWaitlist(email, { name, notes, wantsTestUser });
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -64,6 +65,16 @@ export default function WaitlistForm({
         </div>
       ) : (
         <form className="beta-waitlist-form" onSubmit={handleSubmit}>
+          <input
+            className="form-input"
+            type="text"
+            placeholder="Your name (optional)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={submitting}
+            maxLength={200}
+            autoComplete="name"
+          />
           <input
             className="form-input"
             type="email"
@@ -92,7 +103,7 @@ export default function WaitlistForm({
             <span>
               I'd like to be a test user
               <span className="beta-waitlist-checkbox-hint">
-                You'll be approved onto the beta allowlist.
+                We'll let you know if you're approved for the beta allowlist.
               </span>
             </span>
           </label>
