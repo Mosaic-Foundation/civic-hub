@@ -56,8 +56,12 @@ export default function WaitlistForm({
 
   return (
     <section className="beta-waitlist">
-      {heading && <h2>{heading}</h2>}
-      {description && <p>{description}</p>}
+      {/* Heading and description are the invitation to sign up, so they retire
+          once someone has. Leaving "Interested in participating? Leave your
+          email…" above "You're on the list!" asks the reader to do the thing
+          they just did. */}
+      {!success && heading && <h2>{heading}</h2>}
+      {!success && description && <p>{description}</p>}
 
       {success ? (
         <div className="beta-waitlist-success">
