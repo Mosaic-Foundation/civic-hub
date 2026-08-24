@@ -111,6 +111,23 @@ export function bootDeliberation(): ProcessHandler {
 
   const handler = shared as unknown as ProcessHandler;
 
+  // Storage this process type owns. Declared on the boot side rather than in
+  // the portable shared handler, for the same reason closeIfExpired is: the
+  // shared module stays free of hub-specific imports. A hub that doesn't
+  // register deliberation never probes these tables.
+  handler.requiredSchema = [
+    {
+      table: "deliberation_submissions",
+      columns: ["process_id", "user_id"],
+      owner: "civic.polis_deliberation",
+    },
+    {
+      table: "deliberation_votes",
+      columns: ["process_id", "user_id", "statement_id"],
+      owner: "civic.polis_deliberation",
+    },
+  ];
+
   // Lazy deadline-close: an active deliberation past its deadline runs the
   // shared "close" action through the injected dispatcher (persists status +
   // emits the lifecycle event). The shared handler's close guards its Polis

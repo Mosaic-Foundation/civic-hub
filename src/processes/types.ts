@@ -8,10 +8,19 @@
 
 import { Process, ProcessAction, CreateProcessInput } from "../models/process.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
+import type { SchemaRequirement } from "../db/schemaContract.js";
 
 export interface ProcessHandler {
   /** The process type this handler manages (e.g., "civic.vote") */
   type: string;
+
+  /**
+   * Optional: the tables and columns this handler needs to function.
+   * Declared here rather than in a central list so that enabling or omitting
+   * a process type carries its storage expectations with it. Checked at
+   * startup and by GET /health — see src/db/schemaContract.ts.
+   */
+  requiredSchema?: SchemaRequirement[];
 
   /** Initialize process-specific state from creation input */
   initializeState(input: Record<string, unknown>): Record<string, unknown>;

@@ -90,3 +90,12 @@ export function getProcessHandler(type: string): ProcessHandler | undefined {
 export function getRegisteredTypes(): string[] {
   return Object.keys(processRegistry);
 }
+
+/**
+ * Every registered handler. Used by the schema contract to collect the
+ * storage each enabled process type declares — a hub that omits a module
+ * drops that module's expectations along with it.
+ */
+export function getAllHandlers(): ProcessHandler[] {
+  return Object.values(processRegistry);
+}

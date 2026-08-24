@@ -4,6 +4,101 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Schema drift check — making the 08-22 outage impossible to miss — 2026-08-24
+
+The waitlist outage was not caused by a fragile settings page. It was caused
+by **nothing in the system knowing whether the deployed code and the applied
+migrations agree**. `GET /health` returned `ok` throughout: the ping proves the
+connection works, and says nothing about the schema standing on top of it.
+
+### What was built
+
+A schema contract, checked at startup and continuously by `/health`.
+
+- **`src/db/schemaContract.ts`** — what the running code needs the database to
+  look like. `CORE_REQUIREMENTS` covers tables the core owns regardless of
+  which processes are enabled.
+- **`src/db/schemaCheck.ts`** — probes each requirement with one bounded
+  `SELECT`, in parallel (sequential cost 2.6s against a remote DB; parallel
+  ~900ms). Read-only by construction: it never writes, never migrates, never
+  repairs. It can only refuse to be quiet.
+- **`ProcessHandler.requiredSchema?`** — handlers declare the storage they own.
+- **Startup** — `validateSchemaAtStartup()` sits beside `validateEmailConfig()`
+  in `app.ts`, logging one line per cold start. Non-blocking: a drifted hub
+  must still boot, precisely so it can serve the `/health` that explains why.
+- **`GET /health`** — now reports `schema: { ok, checked, gaps }` and returns
+  **503 `degraded`** on drift. Only gap descriptions travel in the response,
+  not the whole contract.
+
+### Why it composes with the plugin architecture
+
+The list is **not** centralized. Each process handler declares its own storage
+(`civic.wordcloud` → `wordcloud_submissions`, `civic.polis_deliberation` → its
+two tables, `civic.vote` → the ballot tables), and the checker aggregates
+whatever the registry currently holds. A hub that omits a module drops that
+module's expectations with it — pinned by a test, because centralizing the
+list would silently break exactly that property.
+
+Nothing here touches the Civic Event Spec, the event model, the AS2 wire
+format, or the discovery manifest. No new event types, no new routes; the
+`level-1` conformance test passes unchanged.
+
+### The ballot-secrecy invariant is now enforced, not just documented
+
+`vote_records` has no `user_id` and `vote_participation` has no `receipt_id` —
+that separation **is** the anonymous-ballot guarantee, and until now it lived
+in a comment in the initial migration and a "Don'ts" line in the Supabase
+README. `forbiddenColumns` inverts the probe: a select that *succeeds* is the
+violation. A future migration that quietly joins those tables back together
+now turns the hub's health endpoint red instead of silently making every past
+ballot attributable.
+
+### Verified, and the false-alarm risk taken seriously
+
+A drift check that cries wolf gets ignored, at which point it is worse than no
+check. The first draft invented column names (`wordcloud_submissions.word`,
+which is really `body`; a `deliberation_submissions.id` that does not exist —
+that table is keyed on `(process_id, user_id)`) and "found" drift on a healthy
+database. So the contract was validated against **both** databases:
+
+| Database | First run | After fix |
+|---|---|---|
+| **prod** (fully migrated) | `✓ 27 table(s) match` — zero gaps, zero inconclusive | unchanged |
+| **dev** | one gap: `users.display_name` — **real drift, found by this check** | `✓ 27 table(s) match` |
+
+Dev was behind on `20260619000000_add_display_name.sql`, so `updateDisplayName()`
+(Board/committee personal attribution) had been throwing locally while prod
+worked. Applied during this session; both databases now match the code.
+
+**A drifted database makes `tests/api/health.test.ts` fail**, because that
+smoke test asserts `/health` is 200 and the endpoint is now telling the truth.
+That is intended, and the test was deliberately not weakened to accommodate
+drift — it failed exactly once here, on the real gap, and went green when the
+migration was applied. Suite: 375 tests green.
+
+**Cache TTL is asymmetric on purpose.** A clean result is trusted for 5
+minutes (schemas do not drift on their own); a drifted one is re-probed after
+30 seconds, because whoever is reading that red health check is very likely
+applying the missing migration right now, and an endpoint that keeps insisting
+things are broken for five minutes after the fix teaches people to ignore it.
+Verified live: /health returned 503 with the gap named, then recovered to 200
+on its own once the column existed.
+
+Unit coverage (`tests/unit/schemaContract.test.ts`, 17 tests) pins the parts
+that must not regress: connectivity failures are classified `inconclusive` and
+never reported as drift; the forbidden-column inversion; the plugin property;
+and the exact words an operator reads at 2am.
+
+### What this does not solve
+
+Migrations are still applied by hand, and a shared `main` means "apply before
+you push" is the only safe timing. This check shortens the feedback loop from
+"a user reports the form is broken" to "the deploy log says so" — it does not
+close the window. A pre-push guard comparing migrations against the target
+database was scoped and deferred.
+
+---
+
 ## Waitlist: optional name, softer opt-in copy, and a prod outage — 2026-08-22
 
 Follow-up to [the test-user opt-in](#waitlist-test-user-opt-in--signup-notification--2026-08-21).

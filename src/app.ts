@@ -46,6 +46,7 @@ import { assertSpaceIdentityConfigured } from "./config/hub.js";
 import { ensureSeeded } from "./debug/autoSeed.js";
 import { pingDb } from "./db/client.js";
 import { validateEmailConfig } from "./utils/email.js";
+import { validateSchemaAtStartup, getSchemaReport } from "./db/schemaCheck.js";
 
 const app = express();
 
@@ -74,6 +75,9 @@ const allowAnyOrigin = !isProd && parsedOrigins.length === 0;
 assertSpaceIdentityConfigured();
 
 validateEmailConfig();
+// Schema contract check — logs once per cold start. Non-blocking: a hub with
+// drift must still boot, precisely so /health can explain what is wrong.
+validateSchemaAtStartup();
 
 app.use((req, res, next) => {
   const origin = req.headers.origin as string | undefined;
@@ -287,14 +291,32 @@ app.get("/", (_req, res) => {
 // Health check — includes a DB ping so you can verify Supabase connectivity
 app.get("/health", async (_req, res) => {
   const db = await pingDb();
+  // Connectivity is not correctness: the ping passed throughout the
+  // 2026-08-22 waitlist outage while every write to that table failed. The
+  // schema report is what makes "deployed code vs applied migrations" visible.
+  const schema = await getSchemaReport().catch((err) => ({
+    ok: true as const,
+    checked: 0,
+    gaps: [],
+    inconclusive: [{ table: "*", detail: err instanceof Error ? err.message : String(err) }],
+    duration_ms: 0,
+  }));
   // Vercel injects the deployed commit SHA at build time. Exposing it here
   // makes "is the latest code actually live?" answerable in one request:
   // compare this to `git rev-parse HEAD` locally.
   const commit =
     process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA ?? "unknown";
-  res.status(db.ok ? 200 : 503).json({
-    status: db.ok ? "ok" : "degraded",
+  const healthy = db.ok && schema.ok;
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? "ok" : "degraded",
     db,
+    schema: {
+      ok: schema.ok,
+      checked: schema.checked,
+      // Only the gaps travel in the response — enough to name the missing
+      // column, not enough to enumerate the schema to an anonymous caller.
+      gaps: schema.gaps.map((g) => `${g.table}: ${g.detail}`),
+    },
     commit,
     deployed_at: process.env.VERCEL_DEPLOYMENT_ID ?? null,
     timestamp: new Date().toISOString(),

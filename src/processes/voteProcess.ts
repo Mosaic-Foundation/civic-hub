@@ -58,6 +58,43 @@ function syncStatus(process: Process, state: VoteProcessState): void {
 // --- Handler implementation ---
 
 const voteProcess: ProcessHandler = {
+  // The two-table split below is the anonymous-ballot guarantee, not an
+  // accident of normalization: vote_records knows the choice but not the
+  // voter, vote_participation knows the voter but not the choice. The
+  // forbidden columns are checked at startup so a future migration cannot
+  // quietly join them back together.
+  requiredSchema: [
+    {
+      table: "vote_records",
+      columns: ["receipt_id", "process_id", "choice"],
+      forbiddenColumns: [
+        {
+          column: "user_id",
+          reason:
+            "vote_records must never identify the voter — this column would make every past ballot attributable",
+        },
+      ],
+      owner: "civic.vote",
+    },
+    {
+      table: "vote_participation",
+      columns: ["user_id", "process_id", "has_voted"],
+      forbiddenColumns: [
+        {
+          column: "receipt_id",
+          reason:
+            "vote_participation must never link a voter to a ballot receipt",
+        },
+      ],
+      owner: "civic.vote",
+    },
+    {
+      table: "active_vote_keys",
+      columns: ["user_id", "process_id", "receipt_id"],
+      owner: "civic.vote",
+    },
+  ],
+
   type: "civic.vote",
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {

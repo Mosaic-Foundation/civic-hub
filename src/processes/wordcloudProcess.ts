@@ -65,6 +65,14 @@ export const PROCESS_DESCRIPTOR = {
 } as const;
 
 const wordcloudProcess: ProcessHandler = {
+  requiredSchema: [
+    {
+      table: "wordcloud_submissions",
+      columns: ["id", "process_id", "prompt_id", "author_id", "body"],
+      owner: "civic.wordcloud",
+    },
+  ],
+
   type: "civic.wordcloud",
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
