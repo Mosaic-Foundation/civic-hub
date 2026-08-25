@@ -194,12 +194,49 @@ RELATIONSHIPS` block in the header of `src/events/activitySerializer.ts`
 (where whoever starts the bridge will open the file), an entry under
 Protocol / Federation in `IDEAS.md`, and here.
 
+### Dev smoke test — migration applied, endpoints exercised (2026-08-25)
+
+Migration applied to **dev** (`urfmvqhzmamigssqwsya`). Boot log reports
+`[schema] ✓ 28 table(s) match the code`, so the contract sees `process_links`
+and the three draft `links` columns. Exercised against the live DB: typeahead
+(returns `/deliberation/:id` for a Polis conversation — the route the old
+hardcoded switch got wrong), create, both-direction read (same `link_id` from
+each end, `Continues` ⇄ `Continued by`), idempotent re-assert, delete, and
+every guard (self-link, unknown relation, unknown target, unauthenticated
+write). AS2 wire form confirmed as `hub:payload.process.link` on an `Update`.
+
+**Two bugs the unit tests could not catch, found here and fixed:**
+
+1. **Admins got no add-link affordance.** `GET /:id/links` is a public route,
+   so no middleware populates `res.locals.authUser` — reading it there made
+   `isAdmin` permanently false, and an admin viewing a process they did not
+   create received `can_edit: false`. That silently broke the entire
+   admin-review surface, which is the reason the panel is mounted on
+   AdminReviews at all. The caller is now resolved from the bearer token
+   directly, the same shape as `eventController.callerIsAdmin`. **This class of
+   bug is invisible to the infra-free unit suite** — it lives in the gap
+   between a pure module and its HTTP surface.
+2. **The activity payload named the target's title.** `to_title` duplicated
+   into `data.process.link`, which is carried verbatim onto a permanent,
+   append-only public wire. Archive the target later and its title is still
+   named in an activity that cannot be retracted. Dropped; `to_id` identifies
+   the target, and a consumer entitled to see it can dereference it. Verified
+   by flipping a linked process to `pending_review` and confirming newly
+   emitted activities carry no title.
+
+Also confirmed under that flip: an anonymous caller sees the link withheld
+(peer not hydrated), which is the load-bearing privacy guarantee for a
+resident's proposed links.
+
+Dev test data cleaned up — `process_links` is empty and no process was left in
+a non-public status.
+
 ### Open questions
 
-- **Un-run against a live DB.** Everything above is typechecked and unit-tested,
-  but no request has hit a real `process_links` table — the migration hasn't
-  been applied anywhere yet. First dev run should exercise: link from a draft →
-  submit → confirm invisible while pending → approve → confirm both ends render.
+- **The UI paths are still unexercised.** The API is verified end-to-end
+  against dev, but nobody has driven the picker, the draft field, or the
+  panel in a browser. Worth walking: link from a draft → submit → confirm
+  invisible while pending → approve → confirm both ends render.
 - **`Participation-Model.md` was not found** anywhere on disk (searched the
   monorepo, all doc folders, the subrepo, and `~/Developer`). This was built
   against the design as Adam stated it in-session. Worth reconciling if that

@@ -11,7 +11,8 @@
 
 import type { Request, Response } from "express";
 import { emitEvent } from "../events/eventEmitter.js";
-import { getAuthUser, isAdminEmail, resolveCallerId } from "../middleware/auth.js";
+import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
+import { getUserFromToken } from "../modules/civic.auth/index.js";
 import { HUB_ID, DEFAULT_JURISDICTION } from "../config/hub.js";
 import { processDetailPath } from "../processes/registry.js";
 import {
@@ -30,14 +31,39 @@ import {
 } from "../services/processLinks.js";
 import { executeSearchRpc } from "../services/searchExecutor.js";
 
+/**
+ * Resolve the caller on a PUBLIC route, where no auth middleware has run.
+ * Returns undefined for anonymous or invalid-token callers rather than
+ * throwing — an unreadable token is simply "not signed in" here.
+ */
+async function resolveCaller(
+  req: Request,
+): Promise<{ id: string; email: string } | undefined> {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith("Bearer ")) return undefined;
+  const token = auth.slice(7);
+  if (!token) return undefined;
+  try {
+    const user = await getUserFromToken(token);
+    return user ? { id: user.id, email: user.email } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** GET /process/:id/links — public. Returns both directions. */
 export async function handleGetLinks(req: Request, res: Response): Promise<void> {
   try {
     const processId = req.params.id as string;
+    // PUBLIC route: no middleware has populated res.locals.authUser, so the
+    // caller must be resolved from the bearer token directly (same shape as
+    // eventController.callerIsAdmin). Reading res.locals here would make
+    // isAdmin permanently false and quietly strip the add-link affordance
+    // from every admin viewing a process they did not create.
     // Anonymous callers resolve to undefined and simply see the public view.
-    const viewerId = await resolveCallerId(req);
-    const user = res.locals.authUser as { email?: string } | undefined;
-    const isAdmin = isAdminEmail(user?.email);
+    const viewer = await resolveCaller(req);
+    const viewerId = viewer?.id;
+    const isAdmin = isAdminEmail(viewer?.email);
 
     const links = await getRenderedLinks(processId, { viewerId, isAdmin });
 
@@ -109,7 +135,6 @@ export async function handleCreateLink(req: Request, res: Response): Promise<voi
             link_id: edge.id,
             relation: edge.relation,
             to_id: edge.to_id,
-            to_title: target.title,
           },
         },
       },
