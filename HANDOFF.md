@@ -263,6 +263,30 @@ lived in the same place — the seam between a pure module and the world
 structurally blind there, and four bugs in a row is not a coincidence. Budget
 a real-environment pass; it is not optional polish.
 
+### Linking through the admin/resident review negotiation — verified
+
+Walked the full back-and-forth on dev as a real non-admin resident plus an
+admin. All of it works:
+
+resident links at creation → submits (stays `pending_review`, link private:
+the target vote showed 2 public backlinks, not 3) → both resident and admin
+get `can_edit: true` on the pending submission → **admin appends a link** →
+admin requests changes → **resident adds another link while in
+`changes_requested`** → resident revises and resubmits and **all links
+survive** (`reviseAndResubmit` only touches title/description/content/config,
+so it cannot clobber them) → **admin removes one of the resident's links** →
+approve → both ends live and public. A declined submission goes to `archived`,
+which keeps its links hidden.
+
+**Decision (Adam, 2026-08-25): link changes are deliberately NOT tracked in the
+review thread.** `takeSnapshot` captures title / description / content /
+config, and links are intentionally left out, so a turn records no link
+history and neither party is notified when the other edits. That was weighed
+and declined: the resident can see the current link set on their submission at
+any time, and seeing the current state is what agreement actually requires. Do
+not add snapshot tracking or change-notifications without asking — this is a
+settled call, not an oversight.
+
 ### Open questions
 
 - **Prod migration not yet applied.** Dev only. Same SQL, prod project, before
