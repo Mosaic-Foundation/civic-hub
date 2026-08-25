@@ -341,6 +341,21 @@ buried in the body, because that is the part that gets read on a lock screen.
 - **Notes and email address are HTML-escaped** in the email body. Both are
   attacker-controlled free text from an unauthenticated form.
 
+### Follow-up: the confirmation stopped contradicting itself — 2026-08-24
+
+The success state replaced the form but left the heading and description
+standing above it, so someone who had just joined was still reading
+"Interested in participating? Leave your email and we'll let you know when the
+hub opens up" — an invitation to do the thing they had just done, directly
+above the message confirming they had done it. Both lines are the invitation,
+so both now retire on success and the confirmation stands alone. The sign-in
+modal passed neither, so only the beta landing page changed. (`2f8d503`)
+
+Also verified in production this session: a real signup with the box checked
+delivered the flagged notification to the operator's inbox — the one link the
+local setup could never prove, since that Resend key is sandboxed to a
+different address.
+
 ### Deploy order matters
 
 The migration must be applied **before** the backend deploys. The insert now
