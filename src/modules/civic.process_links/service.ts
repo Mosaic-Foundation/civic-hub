@@ -159,9 +159,16 @@ export function renderLinks(
  * auto-suggested candidates shown before the user types anything.
  *
  * Deliberately crude: strip stopwords, keep the distinctive terms, cap the
- * length. websearch_to_tsquery ORs bare terms, so this surfaces processes
- * sharing any salient word. Good enough to put likely links in front of
- * someone; not trying to be a recommender.
+ * count. Good enough to put likely links in front of someone; not trying to
+ * be a recommender.
+ *
+ * THE TERMS ARE JOINED WITH EXPLICIT `OR`, and that is load-bearing.
+ * websearch_to_tsquery ANDs bare space-separated terms, so a six-word seed
+ * would demand all six words co-occur in the target — which essentially
+ * nothing satisfies, and the whole suggestion feature silently returns
+ * nothing. (It did exactly that until a dev smoke test caught it.) A typed
+ * query is passed through untouched, because AND is what someone typing two
+ * words actually means.
  */
 const STOPWORDS: ReadonlySet<string> = new Set([
   "the", "a", "an", "and", "or", "but", "for", "of", "to", "in", "on", "at",
@@ -185,5 +192,5 @@ export function suggestionSeed(title: string, description = ""): string {
     distinct.push(w);
     if (distinct.length >= 6) break;
   }
-  return distinct.join(" ");
+  return distinct.join(" OR ");
 }

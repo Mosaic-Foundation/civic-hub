@@ -250,23 +250,47 @@ describe("visibility inheritance", () => {
 // --- auto-suggestion seed --------------------------------------------------
 
 describe("suggestionSeed", () => {
+  /** The terms the seed actually asks Postgres to match. */
+  const terms = (seed: string) => seed.split(" OR ").filter((t) => t.length > 0);
+
   it("keeps the distinctive words and drops stopwords", () => {
     const seed = suggestionSeed("Should the county extend the Jacksonville trail?");
-    expect(seed).toContain("extend");
-    expect(seed).toContain("jacksonville");
-    expect(seed).toContain("trail");
-    expect(seed).not.toContain("the");
-    expect(seed).not.toContain("county");
+    expect(terms(seed)).toContain("extend");
+    expect(terms(seed)).toContain("jacksonville");
+    expect(terms(seed)).toContain("trail");
+    expect(terms(seed)).not.toContain("the");
+    expect(terms(seed)).not.toContain("county");
+  });
+
+  /**
+   * REGRESSION — websearch_to_tsquery ANDs bare space-separated terms, so a
+   * multi-word seed joined by spaces demands every word co-occur and matches
+   * essentially nothing. The auto-suggestion feature shipped dead because of
+   * exactly that, and was caught only by a smoke test against a real
+   * database. This pins the OR.
+   */
+  it("joins terms with explicit OR, not bare spaces", () => {
+    const seed = suggestionSeed("Add recycling to the new green box dumpster sites");
+    expect(seed).toContain(" OR ");
+    expect(terms(seed).length).toBeGreaterThan(1);
+    // No term may itself contain a space — that would be an AND in disguise.
+    for (const t of terms(seed)) expect(t).not.toContain(" ");
+  });
+
+  it("does not emit a dangling OR for a single-term seed", () => {
+    const seed = suggestionSeed("Jacksonville");
+    expect(seed).toBe("jacksonville");
+    expect(seed).not.toContain("OR");
   });
 
   it("deduplicates repeated words", () => {
     const seed = suggestionSeed("Trail trail trail extension");
-    expect(seed.split(" ").filter((w) => w === "trail")).toHaveLength(1);
+    expect(terms(seed).filter((w) => w === "trail")).toHaveLength(1);
   });
 
   it("caps the seed so one long description can't become the whole query", () => {
     const seed = suggestionSeed("alpha bravo charlie delta echo foxtrot golf hotel india");
-    expect(seed.split(" ").length).toBeLessThanOrEqual(6);
+    expect(terms(seed).length).toBeLessThanOrEqual(6);
   });
 
   it("returns empty for input with nothing distinctive in it", () => {

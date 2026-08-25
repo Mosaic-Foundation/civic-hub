@@ -1,5 +1,10 @@
 .related-processes {
   margin-top: var(--space-xl, 2rem);
+  /* Symmetric bottom margin. The panel is mounted mid-page on several detail
+     views, so whatever follows it (comments, an admin toolbar) would otherwise
+     butt straight up against the last link row — margin-top alone only spaces
+     the side we happened to think about. */
+  margin-bottom: var(--space-xl, 2rem);
   padding-top: var(--space-lg, 1.5rem);
   border-top: 1px solid var(--color-border);
 }

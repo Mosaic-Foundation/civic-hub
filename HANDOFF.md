@@ -231,12 +231,51 @@ resident's proposed links.
 Dev test data cleaned up — `process_links` is empty and no process was left in
 a non-public status.
 
+### UI walkthrough — the full round trip, in a browser (2026-08-25)
+
+Drove the real flow on dev: new proposal → the picker's **auto-suggestions**
+surfaced the related vote from the draft's own title before anything was typed
+→ picked it as `continues` → confirmed the link persisted onto
+`proposal_drafts.links` → Code of Conduct check → submit. `submitForReview`
+materialized the edge, and the live proposal renders **Continues → Add More
+Secure Dumpster (Green Box) Sites**, while the vote now renders **Continued by
+→ Add recycling to the new green box dumpster sites**. One row, both ends, and
+the backlink was never written.
+
+**Two more bugs, both invisible to the tests and to the API-level pass:**
+
+1. **The auto-suggestion feature was dead on arrival.**
+   `websearch_to_tsquery` **ANDs** bare space-separated terms — the code
+   comment claimed it ORed them. A six-word seed therefore demanded all six
+   words co-occur, which essentially nothing satisfies, so the suggestion
+   query silently returned zero every time. It failed by looking exactly like
+   "no matches." `suggestionSeed` now joins terms with explicit `OR`; a typed
+   query is still passed through untouched, because AND is what someone typing
+   two words means. Two regression tests pin the OR, including that a
+   single-term seed emits no dangling operator.
+2. **The panel had no bottom margin.** `margin-top` only — so on the proposal
+   page the comment form butted directly against the last link row (measured
+   gap: 0px). Symmetric margin added.
+
+**Note for future slices:** every bug found after the unit suite went green
+lived in the same place — the seam between a pure module and the world
+(HTTP auth, Postgres query semantics, CSS neighbours). The infra-free suite is
+structurally blind there, and four bugs in a row is not a coincidence. Budget
+a real-environment pass; it is not optional polish.
+
 ### Open questions
 
-- **The UI paths are still unexercised.** The API is verified end-to-end
-  against dev, but nobody has driven the picker, the draft field, or the
-  panel in a browser. Worth walking: link from a draft → submit → confirm
-  invisible while pending → approve → confirm both ends render.
+- **Prod migration not yet applied.** Dev only. Same SQL, prod project, before
+  the code deploys.
+- **Dev carries one demo artifact:** proposal `proc_69cda899e1fa420a` ("Add
+  recycling to the new green box dumpster sites"), created through the UI
+  during this walkthrough and linked to the green box vote. Left in place
+  deliberately so the feature is visible on dev; delete it and its
+  `process_links` row if unwanted.
+- **`Participation-Model.md` was not found** anywhere on disk (searched the
+  monorepo, all doc folders, the subrepo, and `~/Developer`). This was built
+  against the design as Adam stated it in-session. Worth reconciling if that
+  document exists somewhere I couldn't see.
 - **`Participation-Model.md` was not found** anywhere on disk (searched the
   monorepo, all doc folders, the subrepo, and `~/Developer`). This was built
   against the design as Adam stated it in-session. Worth reconciling if that
