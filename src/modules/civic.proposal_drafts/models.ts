@@ -1,3 +1,12 @@
+import type { RelationType } from "../civic.process_links/models.js";
+
+/** A related process the author picked while composing. Carried on the draft
+ *  until submission, then materialized into process_links. */
+export interface ProposedLink {
+  to_id: string;
+  relation: RelationType;
+}
+
 import type { Category } from "../civic.proposal_assistant/models.js";
 import type { Suggestion } from "../civic.proposal_assistant/models.js";
 
@@ -20,6 +29,7 @@ export interface ProposalDraft {
   draft_modified_since_review: boolean;
   steward_approved: boolean | null;
   assistant_helped: boolean;
+  links: ProposedLink[];
   status: DraftStatus;
   created_at: string;
   updated_at: string;
@@ -37,5 +47,6 @@ export interface UpdateDraftInput {
   considerations?: string;
   category?: Category;
   proposal_duration_ms?: number;
+  links?: ProposedLink[];
   skip_modified_flag?: boolean;
 }

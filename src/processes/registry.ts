@@ -99,3 +99,17 @@ export function getRegisteredTypes(): string[] {
 export function getAllHandlers(): ProcessHandler[] {
   return Object.values(processRegistry);
 }
+
+/**
+ * The canonical public UI path for a process, resolved from its handler.
+ *
+ * The single place the app turns (type, id) into a link. Handlers declare
+ * `detailPath`; anything without one — including a type this hub does not
+ * have registered at all — falls back to the generic process route, which
+ * always resolves. Callers (link cards, search hits) therefore never need to
+ * know which process types exist.
+ */
+export function processDetailPath(type: string, id: string): string {
+  const handler = processRegistry[type];
+  return handler?.detailPath?.(id) ?? `/process/${id}`;
+}

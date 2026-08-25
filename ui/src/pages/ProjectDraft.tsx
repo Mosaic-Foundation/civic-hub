@@ -15,6 +15,7 @@ import {
   type DraftSuggestion,
 } from "../services/api";
 import "./ProjectDraft.css";
+import type { ProposedLink } from "../services/api";
 
 type Step = "path" | "drafting";
 
@@ -45,6 +46,11 @@ export default function ProjectDraft() {
   const [phase, setPhase] = useState<"brainstorm" | "free_form" | "review">("brainstorm");
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Titles for links already on the draft, so the list can render without a
+  // lookup round-trip. Repopulated by the picker as the author chooses.
+  const [linkTitles, setLinkTitles] = useState<
+    Record<string, { title: string; type: string }>
+  >({});
 
   const isMobile = useIsMobile();
 
@@ -127,6 +133,25 @@ export default function ProjectDraft() {
       }
     },
     [draft, phase],
+  );
+
+
+  const handleLinksChange = useCallback(
+    async (links: ProposedLink[]) => {
+      if (!draft) return;
+      // Persist immediately. Links are part of the draft, so they must
+      // survive a refresh the same way the prose does.
+      // skip_modified_flag: adding a link is not a content change, so it must
+      // not invalidate a Code of Conduct check the author already passed.
+      try {
+        const updated = await updateProjectDraft(draft.id, { links, skip_modified_flag: true });
+        setDraft(updated);
+      } catch {
+        // Non-fatal: the picked link is still in the form's state and will be
+        // sent with the submission.
+      }
+    },
+    [draft],
   );
 
   const handleReview = useCallback(async () => {
@@ -365,6 +390,10 @@ export default function ProjectDraft() {
             {reviewNotice && <p className="form-hint" style={{ padding: "0 var(--space-lg)" }}>{reviewNotice}</p>}
             <ProjectDraftingForm
               draft={draft}
+              links={draft.links ?? []}
+              onLinksChange={handleLinksChange}
+              linkTitles={linkTitles}
+              onLinkTitlesChange={setLinkTitles}
               onFieldChange={handleFieldChange}
               onImageChange={handleImageChange}
               onReview={handleReview}
@@ -389,6 +418,10 @@ export default function ProjectDraft() {
         {reviewNotice && <p className="form-hint">{reviewNotice}</p>}
               <ProjectDraftingForm
                 draft={draft}
+                links={draft.links ?? []}
+                onLinksChange={handleLinksChange}
+                linkTitles={linkTitles}
+                onLinkTitlesChange={setLinkTitles}
                 onFieldChange={handleFieldChange}
                 onImageChange={handleImageChange}
                 onReview={handleReview}

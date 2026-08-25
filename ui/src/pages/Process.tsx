@@ -11,6 +11,7 @@ import CommunityInputPanel from "../components/CommunityInputPanel";
 import ProposalCommentForm from "../components/ProposalCommentForm";
 import AuthModal from "../components/AuthModal";
 import ShareButton from "../components/ShareButton";
+import RelatedProcesses from "../components/RelatedProcesses";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 
 function formatDate(iso: string): string {
@@ -203,6 +204,17 @@ export default function Process() {
           key={commentRefresh}
           processId={id}
           config={voteState?.content?.community_input}
+        />
+      )}
+
+      {/* Related processes — universal panel. Renders both the links this
+          process authored and the backlinks pointing at it, from the same
+          stored rows. */}
+      {id && (
+        <RelatedProcesses
+          processId={id}
+          title={process.title}
+          description={process.description}
         />
       )}
 

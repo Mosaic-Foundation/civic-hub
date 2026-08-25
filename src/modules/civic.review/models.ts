@@ -55,6 +55,21 @@ export interface SubmitForReviewInput {
   content?: Record<string, unknown>;
   config?: Record<string, unknown>;
   state?: Record<string, unknown>;
+  /**
+   * Related processes the creator asserted while composing. Materialized into
+   * process_links immediately after the process row is inserted.
+   *
+   * This is the seam that makes creation-time linking universal: EVERY process
+   * type reaches the live hub through submitForReview (createOrSubmit submits
+   * first and auto-approves for admins), so a type added later gets this for
+   * free without implementing anything.
+   *
+   * The links become publicly visible only when the submission is approved —
+   * not because anything here defers them, but because a link renders only
+   * when the process it hangs off is publicly visible, and a pending_review
+   * process is not. Admins can append to or remove them during review.
+   */
+  links?: Array<{ to_id: string; relation: string }>;
 }
 
 export interface ReviseInput {

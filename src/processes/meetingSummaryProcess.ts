@@ -26,6 +26,7 @@ function getState(process: Process): MeetingSummaryProcessState {
 
 const meetingSummaryProcess: ProcessHandler = {
   type: "civic.meeting_summary",
+  detailPath: (id: string) => `/meeting-summary/${id}`,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     // Meeting summaries are created programmatically by the cron

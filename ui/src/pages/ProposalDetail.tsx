@@ -8,6 +8,7 @@ import ShareButton from "../components/ShareButton";
 import Creator from "../components/Creator";
 import CommunityInputPanel from "../components/CommunityInputPanel";
 import ProposalCommentForm from "../components/ProposalCommentForm";
+import RelatedProcesses from "../components/RelatedProcesses";
 
 
 function formatDate(iso: string): string {
@@ -217,6 +218,12 @@ export default function ProposalDetail() {
           </ul>
         </div>
       )}
+
+      <RelatedProcesses
+        processId={proposal.id}
+        title={proposal.title}
+        description={proposal.description}
+      />
 
       {/* Comments — form only for active proposals; read-only list always shown */}
       {(proposal.status === "submitted" || proposal.status === "endorsed") && (

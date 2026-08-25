@@ -74,6 +74,7 @@ const wordcloudProcess: ProcessHandler = {
   ],
 
   type: "civic.wordcloud",
+  detailPath: (id: string) => `/wordcloud/${id}`,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     return createWordcloudState(input) as unknown as Record<string, unknown>;

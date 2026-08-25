@@ -18,6 +18,7 @@ import {
   type Phase,
 } from "../modules/civic.proposal_assistant/index.js";
 import { submitAsCreator } from "../modules/civic.review/index.js";
+import { validateLinkSet } from "../modules/civic.process_links/index.js";
 
 const VALID_PHASES = new Set(["brainstorm", "review", "free_form"]);
 
@@ -114,7 +115,7 @@ export async function handleUpdateProjectDraft(
       return;
     }
 
-    const { title, description, sources, banner_image_url, banner_image_alt, skip_modified_flag } = req.body;
+    const { title, description, sources, banner_image_url, banner_image_alt, links, skip_modified_flag } = req.body;
 
     const updated = await updateProjectDraft(id, {
       title,
@@ -122,6 +123,10 @@ export async function handleUpdateProjectDraft(
       sources,
       banner_image_url,
       banner_image_alt,
+      // Links are validated against the DRAFT id purely to reuse the
+      // self-link/vocabulary checks; the real from_id is the process created
+      // at submission. A draft can't link to itself in any meaningful sense.
+      links: links === undefined ? undefined : validateLinkSet("", links),
       skip_modified_flag: skip_modified_flag === true,
     });
     res.json(updated);
@@ -320,6 +325,7 @@ export async function handleSubmitProjectDraft(
     // One creation path: always submit for review; admins are auto-approved.
     const result = await submitAsCreator(
       {
+        links: draft.links,
         process_type: "civic.project",
         title: draft.title.trim(),
         description: draft.description.trim(),

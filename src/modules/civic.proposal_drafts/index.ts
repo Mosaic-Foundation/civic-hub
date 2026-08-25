@@ -29,10 +29,12 @@ interface DraftRow {
   status: string;
   created_at: string;
   updated_at: string;
+  links: unknown;
 }
 
 function rowToDraft(row: DraftRow): ProposalDraft {
   return {
+    links: Array.isArray(row.links) ? (row.links as never) : [],
     id: row.id,
     user_id: row.user_id,
     category: row.category as ProposalDraft["category"],
@@ -117,6 +119,8 @@ export async function updateDraft(
   if (patch.considerations !== undefined) updates.considerations = patch.considerations;
   if (patch.category !== undefined) updates.category = patch.category;
   if (patch.proposal_duration_ms !== undefined) updates.proposal_duration_ms = patch.proposal_duration_ms;
+
+  if (patch.links !== undefined) updates.links = patch.links;
 
   if (!patch.skip_modified_flag) {
     updates.draft_modified_since_review = true;

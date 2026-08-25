@@ -1,3 +1,12 @@
+import type { RelationType } from "../civic.process_links/models.js";
+
+/** A related process the author picked while composing. Carried on the draft
+ *  until submission, then materialized into process_links. */
+export interface ProposedLink {
+  to_id: string;
+  relation: RelationType;
+}
+
 import type { Suggestion } from "../civic.proposal_assistant/models.js";
 
 export type ProjectDraftStatus = "drafting" | "submitted" | "abandoned";
@@ -14,6 +23,7 @@ export interface ProjectDraft {
   last_review_result: Suggestion[] | null;
   draft_modified_since_review: boolean;
   assistant_helped: boolean;
+  links: ProposedLink[];
   status: ProjectDraftStatus;
   created_at: string;
   updated_at: string;
@@ -29,5 +39,6 @@ export interface UpdateProjectDraftInput {
   sources?: string;
   banner_image_url?: string | null;
   banner_image_alt?: string | null;
+  links?: ProposedLink[];
   skip_modified_flag?: boolean;
 }

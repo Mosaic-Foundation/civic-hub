@@ -1,4 +1,6 @@
 import { getDb } from "../../db/client.js";
+import { createEdges } from "../../services/processLinks.js";
+import { validateLinkSet } from "../civic.process_links/index.js";
 import { generateId } from "../../utils/id.js";
 import { getProcessHandler } from "../../processes/registry.js";
 import {
@@ -85,6 +87,26 @@ export async function submitForReview(
     .insert(processRow);
   if (procErr) {
     throw new Error(`Failed to create process for review: ${procErr.message}`);
+  }
+
+  // Materialize the creator's proposed links. Done here — the one funnel every
+  // process type passes through — so creation-time linking is universal rather
+  // than something each new type has to wire up.
+  //
+  // Best-effort by design: a link to a process that has since been removed
+  // must not cost someone the submission they just spent time writing. Invalid
+  // input is dropped with a warning rather than thrown.
+  if (input.links?.length) {
+    try {
+      const links = validateLinkSet(processId, input.links);
+      await createEdges(processId, links, input.creator_id);
+    } catch (err) {
+      console.warn(
+        `[review] dropped invalid links on ${processId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 
   // Insert the review record

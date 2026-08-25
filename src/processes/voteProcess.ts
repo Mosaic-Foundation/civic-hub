@@ -96,6 +96,7 @@ const voteProcess: ProcessHandler = {
   ],
 
   type: "civic.vote",
+  detailPath: (id: string) => `/process/${id}`,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     return createVoteState(input) as unknown as Record<string, unknown>;

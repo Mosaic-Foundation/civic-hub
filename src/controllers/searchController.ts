@@ -20,6 +20,7 @@ import {
   countSearchRpc,
   executeSearchRpc,
 } from "../services/searchExecutor.js";
+import { processDetailPath } from "../processes/registry.js";
 
 const ALLOWED_TYPES: ReadonlySet<SearchTypeKey> = new Set([
   "vote",
@@ -78,6 +79,7 @@ export async function handleSearch(req: Request, res: Response): Promise<void> {
     const page = await executeSearch(query, {
       execute: executeSearchRpc,
       count: countSearchRpc,
+      hrefFor: processDetailPath,
     });
 
     // Structured per-request log — useful for spotting slow queries

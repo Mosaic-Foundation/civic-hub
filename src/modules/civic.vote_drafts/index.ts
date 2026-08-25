@@ -29,10 +29,12 @@ interface DraftRow {
   status: string;
   created_at: string;
   updated_at: string;
+  links: unknown;
 }
 
 function rowToDraft(row: DraftRow): VoteDraft {
   return {
+    links: Array.isArray(row.links) ? (row.links as never) : [],
     id: row.id,
     user_id: row.user_id,
     title: row.title,
@@ -134,6 +136,8 @@ export async function updateVoteDraft(
     }
     updates.custom_options = patch.custom_options;
   }
+
+  if (patch.links !== undefined) updates.links = patch.links;
 
   if (!patch.skip_modified_flag) {
     updates.draft_modified_since_review = true;

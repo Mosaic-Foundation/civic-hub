@@ -22,6 +22,17 @@ export interface ProcessHandler {
    */
   requiredSchema?: SchemaRequirement[];
 
+  /**
+   * Optional: the canonical public UI path for one process of this type,
+   * e.g. `/project/proj_abc`. Omit and the generic `/process/:id` is used.
+   *
+   * Declared here rather than in a switch statement so that link cards and
+   * search hits route correctly for a process type the moment it is
+   * registered. Adding a type with its own detail page means setting this one
+   * field — nothing downstream enumerates process types.
+   */
+  detailPath?(id: string): string;
+
   /** Initialize process-specific state from creation input */
   initializeState(input: Record<string, unknown>): Record<string, unknown>;
 

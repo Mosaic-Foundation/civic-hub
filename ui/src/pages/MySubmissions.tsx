@@ -11,6 +11,7 @@ import {
   type ReviewDetail,
 } from "../services/api";
 import "./MySubmissions.css";
+import RelatedProcesses from "../components/RelatedProcesses";
 
 const TYPE_LABELS: Record<string, string> = {
   "civic.vote": "Vote",
@@ -194,6 +195,14 @@ export default function MySubmissions() {
               <h2>Your submission</h2>
               <p style={{ whiteSpace: "pre-wrap" }}>{(proc?.description as string) || "No description"}</p>
             </div>
+
+            {detail.review.process_id && (
+              <RelatedProcesses
+                processId={detail.review.process_id}
+                title={String(proc?.title ?? "")}
+                description={String(proc?.description ?? "")}
+              />
+            )}
 
             {/* Review thread */}
             <div className="submission-detail-section">

@@ -19,4 +19,4 @@ export {
 } from "./models.js";
 
 export { executeSearch, formatHit, validateQuery } from "./service.js";
-export type { SearchDeps } from "./service.js";
+export type { HrefResolver, SearchDeps } from "./service.js";

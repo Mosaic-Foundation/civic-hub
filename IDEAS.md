@@ -22,6 +22,19 @@ delete the entry).
 
 - ActivityPub federation — inbox/outbox for cross-hub event distribution
   (Phase 3+ per CLAUDE.md).
+- **Process relationships on the wire — do this WITH the AS2 bridge, not
+  after.** Light process-linking shipped 2026-08-25 (`process_links`:
+  continues / references / implements). No spec covers relationships between
+  processes, so links currently ride the wire as an opaque `hub:payload` blob
+  on `civic.process.updated` rather than as something a federated consumer can
+  follow. AS2 has native homes for it — `context`, `inReplyTo`, `target`,
+  `Relationship` — and civic-activity.md §9 already earmarks `process_id ->
+  object.context`. Two pieces of work: (a) project process_links as a real AS2
+  relationship in `src/events/activitySerializer.ts` (a wire change — goldens
+  updated deliberately), and (b) decide whether civic-activity.md /
+  civic-process.md should define process relationships at the protocol level.
+  (b) is a design-review call. A pointer note also sits in the serializer
+  header, where whoever starts the bridge will see it.
 - DID-based identity and verifiable credentials (Phase 2).
 - Event signing for cryptographic provenance across federated hubs.
 - Credential-scoped visibility (e.g. "only verified Floyd residents can see

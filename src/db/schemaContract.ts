@@ -71,14 +71,21 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "review_turns", owner: "civic.review" },
   { table: "proposals", owner: "civic.proposals" },
   { table: "proposal_supports", owner: "civic.proposals" },
-  { table: "proposal_drafts", owner: "civic.proposal_drafts" },
+  { table: "proposal_drafts", columns: ["links"], owner: "civic.proposal_drafts" },
   { table: "projects", owner: "civic.projects" },
   { table: "project_updates", owner: "civic.projects" },
   { table: "project_comments", owner: "civic.projects" },
   { table: "project_sentiments", owner: "civic.projects" },
-  { table: "project_drafts", owner: "civic.project_drafts" },
-  { table: "vote_drafts", columns: ["method", "custom_options"], owner: "civic.vote_drafts" },
+  { table: "project_drafts", columns: ["links"], owner: "civic.project_drafts" },
+  { table: "vote_drafts", columns: ["method", "custom_options", "links"], owner: "civic.vote_drafts" },
   { table: "link_previews", owner: "civic.link_preview" },
+  // Universal: linking is a property of every process, not of any one handler,
+  // so it belongs in core rather than behind a requiredSchema declaration.
+  {
+    table: "process_links",
+    columns: ["id", "from_id", "to_id", "relation", "created_by"],
+    owner: "core/processLinks",
+  },
 ];
 
 /**

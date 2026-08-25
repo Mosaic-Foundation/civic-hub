@@ -115,6 +115,11 @@ export function bootDeliberation(): ProcessHandler {
   // the portable shared handler, for the same reason closeIfExpired is: the
   // shared module stays free of hub-specific imports. A hub that doesn't
   // register deliberation never probes these tables.
+  // Detail route for this type. Set here (not in the portable shared handler)
+  // for the same reason requiredSchema is: the shared module stays free of
+  // hub-specific routing.
+  handler.detailPath = (id: string) => `/deliberation/${id}`;
+
   handler.requiredSchema = [
     {
       table: "deliberation_submissions",

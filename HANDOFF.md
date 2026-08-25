@@ -4,6 +4,209 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Light process-linking, universal across process types (Batch A #8) — 2026-08-25
+
+> ### ⚠️ DEPLOY ORDER — MIGRATION MUST GO TO PROD FIRST
+>
+> This change adds `supabase/migrations/20260825000000_process_links.sql`.
+> **Apply it to prod Supabase BEFORE deploying the code that writes
+> `process_links`.** Per the 08-22 incident, a shared-main push must not get
+> ahead of its migration: the write paths here (link creation, and draft
+> submission, which materializes `draft.links`) hit `process_links` and the
+> new `links` columns on the three draft tables. Without the migration those
+> writes fail.
+>
+> Apply via Supabase → SQL Editor (dev first, then prod). Verify with:
+> `SELECT to_regclass('public.process_links') IS NOT NULL AS table_ready;`
+> — expect `t`. The schema contract now names `process_links` and the draft
+> `links` columns, so a deploy-before-migrate shows up in the boot log and on
+> `GET /health` instead of surfacing as a 500 later.
+
+Reopened #8, deferred on 2026-08-10. Built to the design of record, with one
+decision escalated to universal at Adam's direction: **linking is a property of
+every process, not a capability each process type opts into.**
+
+### The shape of it
+
+**One row per relationship.** `process_links(from_id, to_id, relation)` stores
+the edge once, in the direction the author asserted it. The backlink is
+*derived* by reading `to_id` — never written. That is the whole design: a
+backlink cannot drift from its forward link because there is nothing to keep in
+sync. Both ends carry the same link id, which the unit tests assert directly.
+
+**Relation vocabulary:** `continues` / `references` / `implements`, enforced by
+a CHECK constraint so a bad write from any path (app, script, SQL console) is
+refused rather than stored. Each relation has a forward and a back label
+("Continues" ⇄ "Continued by"), resolved per side at render time.
+
+**Visibility is inherited, not stored.** There is no `status`/`approved` column
+on `process_links`. A link renders only when the process it hangs off is itself
+publicly visible — so a resident's proposed links stay private while their
+submission sits in `pending_review`, and go live when an admin approves. The
+review flow already governs that; a second state machine here would only be
+something else to keep honest.
+
+### Why it is universal
+
+Six of the seven seams cost a future process type nothing:
+
+1. `from_id`/`to_id` reference `processes(id)` with no notion of type.
+2. The API keys on a process id — `/process/:id/links`, mounted once.
+3. The typeahead reuses the existing `search_processes` RPC with no type
+   filter, and `search_doc` is maintained by a trigger on `processes`, so a
+   new type is findable the moment a row exists.
+4. `renderLinks()` is pure and type-agnostic.
+5. Authz reads `processes.created_by`.
+6. `submitForReview()` is the one funnel every process type passes through
+   (`submitAsCreator` submits first and auto-approves for admins), so
+   creation-time links materialize there for every type at once.
+
+The seventh — the detail route for a link card — was a hardcoded `switch` in
+`civic.search`. It is now `ProcessHandler.detailPath`, declared on the handler
+alongside `requiredSchema` and `generateBrief`, resolved through
+`processDetailPath()` in the registry. **This also fixed a latent bug:** search
+had no case for proposal / project / deliberation / wordcloud, so those hits
+had been falling through to `/process/:id`. Search now routes through the same
+resolver and gets the fix for free.
+
+Adding a process type later means: set `detailPath` (one line, optional —
+omitting it falls back to `/process/:id`, which always resolves), and mount
+`<RelatedProcesses processId={id} />` on its detail page. Nothing else.
+
+### Files
+
+**Migration** — `20260825000000_process_links.sql`: the table (+ unique edge
+index, both-direction indexes, RLS ENABLE+FORCE per project convention), plus
+a `links` jsonb column on `proposal_drafts` / `vote_drafts` / `project_drafts`.
+
+**Backend**
+- `src/modules/civic.process_links/` — pure module (models + service). Names no
+  process type. `validateLink` / `validateLinkSet` / `renderLinks` /
+  `suggestionSeed`. Owns NO status list — see the spec-conformance pass below.
+- `src/services/processLinks.ts` — Supabase adapter (edges, peer hydration,
+  idempotent create, delete).
+- `src/controllers/processLinksController.ts` + `routes/processLinksRoutes.ts`.
+- `src/processes/types.ts` + all nine handlers — `detailPath`.
+- `src/processes/registry.ts` — `processDetailPath()`.
+- `src/modules/civic.search/` — `hrefFor` switch replaced by an injected
+  `HrefResolver`; the controller passes the registry's.
+- `src/modules/civic.review/` — `SubmitForReviewInput.links`, materialized in
+  `submitForReview` right after the process row insert.
+- `src/db/schemaContract.ts` — `process_links` in `CORE_REQUIREMENTS` (core,
+  not a handler declaration: every process has links), plus the draft `links`
+  columns.
+- The three draft modules + controllers — `links` persisted on the draft and
+  passed into `submitAsCreator`.
+
+**Frontend**
+- `ProcessLinkPicker` — debounced typeahead, keyboard nav, request-sequence
+  guard against the slow-response race. With an empty query it seeds from the
+  draft's own title/description, which is what produces the auto-suggested
+  candidates before the author types.
+- `ProcessLinkField` — the creation-time field, on all three drafting forms.
+  Explicitly labelled Optional; nothing validates it as required.
+- `RelatedProcesses` — the detail-page panel. Renders forward links and
+  backlinks from the same rows. Mounted on Process, ProposalDetail,
+  ProjectDetail, DeliberationDetail, **plus AdminReviews and MySubmissions** so
+  proposed links are part of what the admin reviews and what the creator sees.
+
+### Permissions
+
+Reading is public. Writing is **the process's creator OR an admin** — the
+resident asserts the relationship, and the admin who reviews the submission can
+append to it or take it away. `GET /process/:id/links` returns `can_edit`,
+decided server-side, so mounting the panel stays one line and no page has to
+fetch `created_by` just to pick an affordance.
+
+Removal authorizes against the process that *authored* the edge: the process on
+the receiving end of a backlink did not assert the relationship and does not get
+to silently drop it.
+
+Link create/remove emits `civic.process.updated` through `emitEvent()` (design
+constraint #2 — no silent state changes). That type is default-CLOSED in the
+feed classifier, so it records the change without posting a feed card.
+
+### Verified
+
+`tsc -b` clean (backend + UI), `vite build` clean, **342 unit tests pass across
+24 files** — 29 of them new in `tests/unit/processLinks.test.ts`, covering edge
+storage (vocabulary, self-link, dedupe, cap, and that no inverse row is ever
+produced) and both-direction render (same edge → outgoing on one end, incoming
+on the other, same link id, correct inverse label per relation, withheld peers
+dropped, newest-first ordering).
+
+### Not built — deliberately out of scope
+
+- **Topics** and **convert-at-close** — later slices, per the design of record.
+- The add-link affordance is **not** on announcement / meeting-summary /
+  wordcloud / brief pages (Adam, 2026-08-25). They can still be linked *to* and
+  appear as peers; they just don't offer the button.
+- `civic.vote` keeps `detailPath: /process/:id`, matching its existing route.
+
+### Spec-conformance pass (audited before commit)
+
+Checked against `/specs/civic-activity.md`, `/specs/civic-event.md`,
+`/specs/civic-process.md`, `/specs/civic-hub.md`, and
+`/specs/civic-plugin-architecture.md`. Two violations found and fixed:
+
+1. **Activity data namespacing.** §5 — *"the `data` field MUST be namespaced by
+   `activity_type`."* Every existing emitter uses exactly one key
+   (`data.process`); this had `data.process` and `data.process_link` as
+   siblings. That mattered more than it looks: `withPayload()` carries `data`
+   **verbatim** into `hub:payload` on the AS2 wire, so the shape is a public
+   commitment. Now nested as `data.process.link`.
+2. **A second source of truth for "publicly visible."**
+   `services/processLifecycle.ts` already owns `NON_PUBLIC_STATUSES` +
+   `isPubliclyFetchable()`. The linking module had grown its own copy that
+   *also* listed `draft` — two lists that disagreed on day one, which is the
+   exact drift the schema contract exists to prevent. The module's copy is
+   gone; the adapter calls the canonical helper and the unit test pins the
+   property in its real home.
+
+Confirmed aligned: `civic.process.updated` is a canonical v0.1 lifecycle
+activity (§4.1), already mapped to AS2 `Update` — no new event type invented.
+`GET /events` suppresses events belonging to `pending_review` processes via
+`getNonPublicProcessIds()`, so proposed links on a submission under review do
+not leak onto the public wire. And per the plugin architecture's one principle
+(least privilege), linking is a **host** capability: no `ProcessHandler` can
+write a link — `createEdge` is reachable only from the host controller and
+`submitForReview`.
+
+### Deferred by decision — process relationships on the wire
+
+**No spec covers relationships between processes** (searched all four; there is
+no `related` / `parent` / link concept anywhere). So this slice introduces a
+protocol-level concept that lives only in the implementation, and a link
+currently reaches the wire as an opaque `hub:payload` blob rather than
+something a federated consumer can follow.
+
+**Decision (Adam, 2026-08-25): ship the hub-local form now; do the AS2 work
+when the Phase 3 bridge starts.** AS2 has native homes for it (`context`,
+`inReplyTo`, `target`, `Relationship`) and civic-activity.md §9 already
+earmarks `process_id → object.context`. Two pieces of work at bridge time:
+project process_links as a real AS2 relationship (a **wire change** — goldens
+updated deliberately), and decide whether the activity/process specs should
+define relationships at the protocol level (a design-review call, not a code
+change).
+
+Recorded in three places so it can't be lost: a `DEFERRED — PROCESS
+RELATIONSHIPS` block in the header of `src/events/activitySerializer.ts`
+(where whoever starts the bridge will open the file), an entry under
+Protocol / Federation in `IDEAS.md`, and here.
+
+### Open questions
+
+- **Un-run against a live DB.** Everything above is typechecked and unit-tested,
+  but no request has hit a real `process_links` table — the migration hasn't
+  been applied anywhere yet. First dev run should exercise: link from a draft →
+  submit → confirm invisible while pending → approve → confirm both ends render.
+- **`Participation-Model.md` was not found** anywhere on disk (searched the
+  monorepo, all doc folders, the subrepo, and `~/Developer`). This was built
+  against the design as Adam stated it in-session. Worth reconciling if that
+  document exists somewhere I couldn't see.
+
+---
+
 ## Schema drift check — making the 08-22 outage impossible to miss — 2026-08-24
 
 The waitlist outage was not caused by a fragile settings page. It was caused

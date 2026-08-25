@@ -15,6 +15,7 @@ import {
   type DraftSuggestion,
 } from "../services/api";
 import "./ProposeDraftVote.css";
+import type { ProposedLink } from "../services/api";
 
 type Step = "path" | "drafting";
 
@@ -50,6 +51,11 @@ export default function ProposeDraftVote() {
   const [phase, setPhase] = useState<"brainstorm" | "free_form" | "review">("brainstorm");
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Titles for links already on the draft, so the list can render without a
+  // lookup round-trip. Repopulated by the picker as the author chooses.
+  const [linkTitles, setLinkTitles] = useState<
+    Record<string, { title: string; type: string }>
+  >({});
   const [reviewFailed, setReviewFailed] = useState(false);
   const [reviewNotice, setReviewNotice] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState(false);
@@ -135,6 +141,25 @@ export default function ProposeDraftVote() {
       }
     },
     [draft, phase],
+  );
+
+
+  const handleLinksChange = useCallback(
+    async (links: ProposedLink[]) => {
+      if (!draft) return;
+      // Persist immediately. Links are part of the draft, so they must
+      // survive a refresh the same way the prose does.
+      // skip_modified_flag: adding a link is not a content change, so it must
+      // not invalidate a Code of Conduct check the author already passed.
+      try {
+        const updated = await updateVoteDraft(draft.id, { links, skip_modified_flag: true });
+        setDraft(updated);
+      } catch {
+        // Non-fatal: the picked link is still in the form's state and will be
+        // sent with the submission.
+      }
+    },
+    [draft],
   );
 
   const handleReview = useCallback(async () => {
@@ -383,6 +408,10 @@ export default function ProposeDraftVote() {
             {error && <p className="form-error" style={{ padding: "0 var(--space-lg)" }}>{error}</p>}
             <VoteDraftingForm
               draft={draft}
+              links={draft.links ?? []}
+              onLinksChange={handleLinksChange}
+              linkTitles={linkTitles}
+              onLinkTitlesChange={setLinkTitles}
               onFieldChange={handleFieldChange}
               onDurationChange={handleDurationChange}
               onMethodChange={handleMethodChange}
@@ -409,6 +438,10 @@ export default function ProposeDraftVote() {
         {reviewNotice && <p className="form-hint">{reviewNotice}</p>}
               <VoteDraftingForm
                 draft={draft}
+                links={draft.links ?? []}
+                onLinksChange={handleLinksChange}
+                linkTitles={linkTitles}
+                onLinkTitlesChange={setLinkTitles}
                 onFieldChange={handleFieldChange}
                 onDurationChange={handleDurationChange}
                 onMethodChange={handleMethodChange}

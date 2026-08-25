@@ -6,6 +6,7 @@
 
 import express from "express";
 import processRoutes from "./routes/processRoutes.js";
+import processLinksRoutes from "./routes/processLinksRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import feedRoutes from "./routes/feedRoutes.js";
@@ -106,6 +107,11 @@ app.use("/auth", authRoutes);
 
 // --- Internal control surfaces ---
 // Process endpoints are internal. External systems should use /events.
+// Process-linking is universal: mounted once on /process, it serves every
+// process type — including types registered later — with no per-type wiring.
+// MOUNTED FIRST, deliberately: processRoutes has a GET /:id catch-all that
+// would otherwise capture /process/link-candidates as a process id.
+app.use("/process", processLinksRoutes);
 app.use("/process", processRoutes);
 app.use("/process", inputRoutes);
 

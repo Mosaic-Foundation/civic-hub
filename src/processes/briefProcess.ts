@@ -23,6 +23,7 @@ function getState(process: Process): BriefProcessState {
 
 const briefProcess: ProcessHandler = {
   type: "civic.brief",
+  detailPath: (id: string) => `/brief/${id}`,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     // Briefs are always created programmatically by the close flow

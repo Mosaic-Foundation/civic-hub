@@ -28,6 +28,7 @@ function getState(process: Process): VoteResultsProcessState {
 
 const voteResultsProcess: ProcessHandler = {
   type: "civic.vote_results",
+  detailPath: (id: string) => `/vote-results/${id}`,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     // Vote-results records are always created programmatically (from a

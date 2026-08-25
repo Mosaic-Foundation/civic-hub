@@ -25,10 +25,12 @@ interface DraftRow {
   status: string;
   created_at: string;
   updated_at: string;
+  links: unknown;
 }
 
 function rowToDraft(row: DraftRow): ProjectDraft {
   return {
+    links: Array.isArray(row.links) ? (row.links as never) : [],
     id: row.id,
     user_id: row.user_id,
     title: row.title,
@@ -104,6 +106,8 @@ export async function updateProjectDraft(
   if (patch.sources !== undefined) updates.sources = patch.sources;
   if (patch.banner_image_url !== undefined) updates.banner_image_url = patch.banner_image_url;
   if (patch.banner_image_alt !== undefined) updates.banner_image_alt = patch.banner_image_alt;
+
+  if (patch.links !== undefined) updates.links = patch.links;
 
   if (!patch.skip_modified_flag) {
     updates.draft_modified_since_review = true;

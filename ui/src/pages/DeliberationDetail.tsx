@@ -7,6 +7,7 @@ import {
 import DeliberationPanel from "../components/deliberation/DeliberationPanel";
 import CompletedDeliberation from "../components/deliberation/CompletedDeliberation";
 import ShareButton from "../components/ShareButton";
+import RelatedProcesses from "../components/RelatedProcesses";
 import "./DeliberationDetail.css";
 
 export default function DeliberationDetail() {
@@ -59,6 +60,12 @@ export default function DeliberationDetail() {
           </p>
         </div>
       )}
+
+      <RelatedProcesses
+        processId={process.process_id}
+        title={process.topic}
+        description={process.framing}
+      />
     </div>
   );
 }

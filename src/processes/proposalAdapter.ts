@@ -27,6 +27,7 @@ import type { BriefContent } from "../modules/civic.brief/index.js";
 
 const proposalAdapter: ProcessHandler = {
   type: "civic.proposal",
+  detailPath: (id: string) => `/proposal/${id}`,
 
   // The relational `proposals` row holds proposal state; the canonical
   // `processes` row needs no type-specific state.

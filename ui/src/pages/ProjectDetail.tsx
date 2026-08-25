@@ -15,6 +15,7 @@ import {
 
 import ShareButton from "../components/ShareButton";
 import Creator from "../components/Creator";
+import RelatedProcesses from "../components/RelatedProcesses";
 import "./ProjectDetail.css";
 
 export default function ProjectDetail() {
@@ -312,6 +313,12 @@ export default function ProjectDetail() {
           ))
         )}
       </div>
+
+      <RelatedProcesses
+        processId={project.id}
+        title={project.title}
+        description={project.description}
+      />
     </div>
   );
 }

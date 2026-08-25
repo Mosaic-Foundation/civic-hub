@@ -20,6 +20,7 @@ import {
   type Category,
 } from "../modules/civic.proposal_assistant/index.js";
 import { submitAsCreator } from "../modules/civic.review/index.js";
+import { validateLinkSet } from "../modules/civic.process_links/index.js";
 
 const VALID_CATEGORIES = new Set(["issue", "idea", "project", "concern"]);
 const VALID_PHASES = new Set(["brainstorm", "review", "free_form"]);
@@ -128,7 +129,7 @@ export async function handleUpdateDraft(
       return;
     }
 
-    const { title, description, sources, considerations, category, proposal_duration_ms, skip_modified_flag } = req.body;
+    const { title, description, sources, considerations, category, proposal_duration_ms, links, skip_modified_flag } = req.body;
 
     if (category && !VALID_CATEGORIES.has(category)) {
       res.status(400).json({ error: "Invalid category" });
@@ -152,6 +153,10 @@ export async function handleUpdateDraft(
       considerations,
       category: category as Category | undefined,
       proposal_duration_ms: proposal_duration_ms !== undefined ? Number(proposal_duration_ms) : undefined,
+      // Links are validated against the DRAFT id purely to reuse the
+      // self-link/vocabulary checks; the real from_id is the process created
+      // at submission. A draft can't link to itself in any meaningful sense.
+      links: links === undefined ? undefined : validateLinkSet("", links),
       skip_modified_flag: skip_modified_flag === true,
     });
     res.json(updated);
@@ -382,6 +387,7 @@ export async function handleSubmitDraft(
       // proposal_duration_ms inside the approval flow.
       const result = await submitAsCreator(
         {
+          links: draft.links,
           process_type: "civic.proposal",
           title: draft.title.trim(),
           description: fullDescription || "",

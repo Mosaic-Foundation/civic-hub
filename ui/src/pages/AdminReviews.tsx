@@ -13,6 +13,7 @@ import {
 } from "../services/api";
 import AdminTabs from "../components/AdminTabs";
 import "./AdminReviews.css";
+import RelatedProcesses from "../components/RelatedProcesses";
 
 const STATUS_FILTERS: Array<{ id: "all" | ReviewStatus; label: string }> = [
   { id: "all", label: "All" },
@@ -238,6 +239,18 @@ export default function AdminReviews() {
                   </details>
                 )}
               </div>
+
+              {/* Related processes the creator proposed, plus anything the
+                  admin appends here. Editable during review, and invisible to
+                  everyone else until this submission is approved — a link
+                  renders only when the process it hangs off is public. */}
+              {detail.review.process_id && (
+                <RelatedProcesses
+                  processId={detail.review.process_id}
+                  title={String(proc?.title ?? "")}
+                  description={String(proc?.description ?? "")}
+                />
+              )}
 
               {/* Turn thread */}
               <h2>Review thread</h2>

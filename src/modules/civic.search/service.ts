@@ -90,25 +90,16 @@ function normalizeIso(input: string | null | undefined): string | null {
 
 // --- Hit formatting ---------------------------------------------------------
 
-/** Map an internal civic.* type to the canonical UI route for its
- *  detail page. New types added here when the hub registers a new
- *  process type that surfaces a public detail page. */
-function hrefFor(type: string, id: string): string {
-  switch (type) {
-    case "civic.vote":
-      return `/process/${id}`;
-    case "civic.vote_results":
-      return `/vote-results/${id}`;
-    case "civic.announcement":
-      return `/announcement/${id}`;
-    case "civic.meeting_summary":
-      return `/meeting-summary/${id}`;
-    default:
-      // Unknown post type — fall back to the generic process route so
-      // the link still works in the admin / debug case.
-      return `/process/${id}`;
-  }
-}
+/** Map an internal civic.* type to the canonical UI route for its detail
+ *  page. Injected by the caller rather than switched on here: the registry
+ *  owns the type -> route mapping (ProcessHandler.detailPath), so a newly
+ *  registered process type routes correctly with no change to this module —
+ *  and this module stays free of any hub-specific type list.
+ *
+ *  Defaults to the generic process route, which resolves for every type. */
+export type HrefResolver = (type: string, id: string) => string;
+
+const defaultHref: HrefResolver = (_type, id) => `/process/${id}`;
 
 /** Trim a description for card display. Falls back to a short slice
  *  of the body when description is empty / null. */
@@ -128,7 +119,7 @@ function cardSummary(row: SearchHitRow): string {
   return "";
 }
 
-export function formatHit(row: SearchHitRow): SearchHit {
+export function formatHit(row: SearchHitRow, hrefFor: HrefResolver = defaultHref): SearchHit {
   return {
     process_id: row.id,
     type: row.type,
@@ -146,6 +137,9 @@ export function formatHit(row: SearchHitRow): SearchHit {
 export interface SearchDeps {
   execute: SearchExecuteFn;
   count: SearchCountFn;
+  /** Resolves a hit's canonical UI path. The host hub passes the registry's
+   *  resolver; omitting it falls back to the generic process route. */
+  hrefFor?: HrefResolver;
   /** Wall-clock provider — injected so tests can drive deterministic
    *  took_ms values. Defaults to performance.now / Date.now. */
   now?: () => number;
@@ -181,7 +175,7 @@ export async function executeSearch(
   ]);
 
   return {
-    hits: rows.map(formatHit),
+    hits: rows.map((row) => formatHit(row, deps.hrefFor ?? defaultHref)),
     total,
     query: {
       q: filters.q,

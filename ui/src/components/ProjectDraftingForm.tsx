@@ -3,8 +3,16 @@ import type { ProjectDraft, DraftSuggestion } from "../services/api";
 import { uploadProjectImage } from "../services/api";
 import PostImagePicker from "./PostImagePicker";
 import "./VoteDraftingForm.css";
+import ProcessLinkField from "./ProcessLinkField";
+import type { ProposedLink } from "../services/api";
 
 interface Props {
+  /** Related processes the author has picked. Optional by design — the
+   *  field defaults empty and staying empty is a valid answer. */
+  links: ProposedLink[];
+  onLinksChange: (links: ProposedLink[]) => void;
+  linkTitles: Record<string, { title: string; type: string }>;
+  onLinkTitlesChange: (t: Record<string, { title: string; type: string }>) => void;
   draft: ProjectDraft;
   onFieldChange: (field: string, value: string) => void;
   onImageChange: (next: { image_url: string | null; image_alt: string | null }) => void;
@@ -57,6 +65,10 @@ function getStatusClass(draft: ProjectDraft): string {
 
 export default function ProjectDraftingForm({
   draft,
+  links,
+  onLinksChange,
+  linkTitles,
+  onLinkTitlesChange,
   onFieldChange,
   onImageChange,
   onReview,
@@ -149,6 +161,16 @@ export default function ProjectDraftingForm({
           />
           <p className="form-hint">Add relevant links, one per line.</p>
         </div>
+
+        <ProcessLinkField
+          value={links}
+          onChange={onLinksChange}
+          titles={linkTitles}
+          onTitlesChange={onLinkTitlesChange}
+          seedTitle={draft.title}
+          seedDescription={draft.description}
+          disabled={disabled}
+        />
       </div>
 
       <div className="drafting-form-footer">

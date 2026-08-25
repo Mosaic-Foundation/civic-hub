@@ -365,6 +365,7 @@ export interface ProposalDraft {
   status: string;
   created_at: string;
   updated_at: string;
+  links: ProposedLink[];
 }
 
 export interface AssistantResponse {
@@ -399,7 +400,7 @@ export function getDraft(id: string): Promise<ProposalDraft> {
 
 export function updateDraft(
   id: string,
-  patch: Partial<Pick<ProposalDraft, "title" | "description" | "sources" | "considerations" | "category" | "proposal_duration_ms">> & { skip_modified_flag?: boolean },
+  patch: Partial<Pick<ProposalDraft, "title" | "description" | "sources" | "considerations" | "category" | "proposal_duration_ms" | "links">> & { skip_modified_flag?: boolean },
 ): Promise<ProposalDraft> {
   return request("PATCH", `/proposals/drafts/${id}`, patch);
 }
@@ -455,6 +456,7 @@ export interface VoteDraft {
   status: string;
   created_at: string;
   updated_at: string;
+  links: ProposedLink[];
 }
 
 export interface VoteDraftAssistantResult {
@@ -474,7 +476,7 @@ export function getVoteDraft(id: string): Promise<VoteDraft> {
 
 export function updateVoteDraft(
   id: string,
-  patch: Partial<Pick<VoteDraft, "title" | "description" | "sources" | "voting_duration_ms" | "method" | "custom_options">> & { skip_modified_flag?: boolean },
+  patch: Partial<Pick<VoteDraft, "title" | "description" | "sources" | "voting_duration_ms" | "method" | "custom_options" | "links">> & { skip_modified_flag?: boolean },
 ): Promise<VoteDraft> {
   return request("PATCH", `/votes/drafts/${id}`, patch);
 }
@@ -612,6 +614,7 @@ export interface ProjectDraft {
   status: string;
   created_at: string;
   updated_at: string;
+  links: ProposedLink[];
 }
 
 export interface ProjectDraftAssistantResult {
@@ -631,7 +634,7 @@ export function getProjectDraft(id: string): Promise<ProjectDraft> {
 
 export function updateProjectDraft(
   id: string,
-  patch: Partial<Pick<ProjectDraft, "title" | "description" | "sources" | "banner_image_url" | "banner_image_alt">> & { skip_modified_flag?: boolean },
+  patch: Partial<Pick<ProjectDraft, "title" | "description" | "sources" | "banner_image_url" | "banner_image_alt" | "links">> & { skip_modified_flag?: boolean },
 ): Promise<ProjectDraft> {
   return request("PATCH", `/projects/drafts/${id}`, patch);
 }
@@ -1964,4 +1967,95 @@ export function adminDeclineReview(
   reason: string,
 ): Promise<ProcessReviewSummary> {
   return request("POST", `/admin/reviews/${reviewId}/decline`, { reason });
+}
+
+// --- Process linking -------------------------------------------------------
+//
+// Universal across process types: every endpoint keys on a process id, so a
+// process type added later is linkable with no change here.
+
+export type RelationType = "continues" | "references" | "implements";
+
+export interface ProposedLink {
+  to_id: string;
+  relation: RelationType;
+}
+
+export interface LinkPeer {
+  id: string;
+  type: string;
+  title: string;
+  status: string;
+  href: string;
+}
+
+export interface RenderedLink {
+  id: string;
+  relation: RelationType;
+  direction: "outgoing" | "incoming";
+  /** Already resolved for this side of the edge ("Continues" vs "Continued by"). */
+  label: string;
+  peer: LinkPeer;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface ProcessLinks {
+  outgoing: RenderedLink[];
+  incoming: RenderedLink[];
+  /** Whether the signed-in viewer may add or remove links here (the process's
+   *  creator, or an admin). Decided server-side so a page can mount the panel
+   *  without fetching the process's creator itself. */
+  can_edit?: boolean;
+  relations?: Array<{
+    value: RelationType;
+    forward: string;
+    back: string;
+    description: string;
+  }>;
+}
+
+export interface LinkCandidate {
+  id: string;
+  type: string;
+  title: string;
+  status: string;
+  href: string;
+}
+
+export function getProcessLinks(processId: string): Promise<ProcessLinks> {
+  return request("GET", `/process/${processId}/links`);
+}
+
+export function addProcessLink(
+  processId: string,
+  link: ProposedLink,
+): Promise<ProcessLinks & { link_id: string }> {
+  return request("POST", `/process/${processId}/links`, link);
+}
+
+export function removeProcessLink(
+  processId: string,
+  linkId: string,
+): Promise<ProcessLinks> {
+  return request("DELETE", `/process/${processId}/links/${linkId}`);
+}
+
+/**
+ * Typeahead over existing processes. With no `q`, the process's own title and
+ * description seed the query, which is what produces the auto-suggested
+ * candidates shown before the user types.
+ */
+export function getLinkCandidates(params: {
+  q?: string;
+  seedTitle?: string;
+  seedDescription?: string;
+  exclude?: string[];
+}): Promise<{ candidates: LinkCandidate[]; suggested: boolean }> {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set("q", params.q);
+  if (params.seedTitle) qs.set("seed_title", params.seedTitle);
+  if (params.seedDescription) qs.set("seed_description", params.seedDescription);
+  for (const id of params.exclude ?? []) qs.append("exclude", id);
+  return request("GET", `/process/link-candidates?${qs.toString()}`);
 }

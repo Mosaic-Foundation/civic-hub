@@ -1,8 +1,16 @@
 import { useCallback, useRef } from "react";
 import type { DraftCategory, ProposalDraft } from "../services/api";
 import "./DraftingForm.css";
+import ProcessLinkField from "./ProcessLinkField";
+import type { ProposedLink } from "../services/api";
 
 interface Props {
+  /** Related processes the author has picked. Optional by design — the
+   *  field defaults empty and staying empty is a valid answer. */
+  links: ProposedLink[];
+  onLinksChange: (links: ProposedLink[]) => void;
+  linkTitles: Record<string, { title: string; type: string }>;
+  onLinkTitlesChange: (t: Record<string, { title: string; type: string }>) => void;
   draft: ProposalDraft;
   onFieldChange: (field: string, value: string) => void;
   onDurationChange: (ms: number) => void;
@@ -80,6 +88,10 @@ function getStatusClass(draft: ProposalDraft, reviewFailed?: boolean): string {
 
 export default function DraftingForm({
   draft,
+  links,
+  onLinksChange,
+  linkTitles,
+  onLinkTitlesChange,
   onFieldChange,
   onDurationChange,
   onReview,
@@ -204,6 +216,16 @@ export default function DraftingForm({
             ))}
           </select>
         </div>
+
+        <ProcessLinkField
+          value={links}
+          onChange={onLinksChange}
+          titles={linkTitles}
+          onTitlesChange={onLinkTitlesChange}
+          seedTitle={draft.title}
+          seedDescription={draft.description}
+          disabled={disabled}
+        />
       </div>
 
       <div className="drafting-form-footer">

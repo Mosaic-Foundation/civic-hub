@@ -25,6 +25,7 @@ function getState(process: Process): AnnouncementProcessState {
 
 const announcementProcess: ProcessHandler = {
   type: "civic.announcement",
+  detailPath: (id: string) => `/announcement/${id}`,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     // Expected shape mirrors CreateAnnouncementInput. The hub's announcement

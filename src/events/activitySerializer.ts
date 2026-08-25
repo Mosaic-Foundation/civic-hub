@@ -14,6 +14,29 @@
 // ActivityPub delivery, the portability export, a later AT Protocol bridge —
 // attaches to this seam.
 //
+// DEFERRED — PROCESS RELATIONSHIPS (pick this up when the AS2 bridge starts)
+// Light process-linking (2026-08-25) introduced a typed relationship between
+// two processes: continues / references / implements, stored once in
+// `process_links` and rendered from both ends. NO SPEC COVERS IT — not
+// civic-process.md, not civic-hub.md, not civic-activity.md.
+//
+// So today a link reaches the wire only inside `hub:payload`, as
+// `data.process.link` on a civic.process.updated / Update. That is recorded
+// but not EXPRESSED: a federated consumer sees an opaque blob, not a
+// relationship it can follow.
+//
+// AS2 already has the right homes for this, and the activity spec's own
+// mapping table (§9) earmarks one of them: `process_id -> object.context
+// (future extension)`. When the bridge work begins, decide between
+// `context`, `inReplyTo`, `target`, and a first-class `Relationship` object,
+// then project process_links properly instead of leaving it in the payload.
+// Amending the activity spec to define process relationships is a design-
+// review question for Adam, not a code change to make unilaterally.
+//
+// Decision of record (Adam, 2026-08-25): ship the hub-local form now, do this
+// at bridge time. Changing the projection later IS a wire change — update the
+// goldens deliberately, with the spec open.
+//
 // TWO CALLERS, ONE FUNCTION
 //   1. GET /events and GET /activities/:id serialize stored events on read.
 //   2. emitEvent() serializes each event before it is appended, so an event
