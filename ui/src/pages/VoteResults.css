@@ -204,3 +204,71 @@
   line-height: var(--line-height-base);
   white-space: pre-wrap;
 }
+
+/* --- Brief page header (Brief.tsx) ---------------------------------------
+   These two classes were referenced by Brief.tsx but defined NOWHERE — the
+   markup was adapted from the vote-results header and the styles never came
+   with it. The result was an unstyled div: the title and share icons stacked
+   with no gap, and the outcome headline sat as a bare <p> hard against them.
+   Named for their own component rather than folded into .vote-results-header,
+   because a brief's header is a different shape (title beside share controls,
+   then a standalone outcome line). */
+
+.vote-results-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin: 0 0 var(--space-sm);
+}
+
+.vote-results-header-row .vote-results-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-2xl);
+  line-height: var(--line-height-tight);
+  min-width: 0;
+}
+
+/* The outcome in one line — "Proposal closed", "The community has voted".
+   It is the first thing a reader should register after the title, so it gets
+   real separation from the header row and from whatever follows. */
+.vote-results-headline {
+  margin: 0 0 var(--space-xl);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-normal);
+  color: var(--color-brand);
+}
+
+@media (max-width: 600px) {
+  .vote-results-header-row {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+}
+
+/* Prose inside a brief section. The app's CSS reset zeroes <p> margins, and
+   the summary's paragraphs carry no class of their own — so a multi-paragraph
+   summary ran together as one block.
+
+   `:not([class])` is deliberate, not decoration. This stylesheet is shared by
+   VoteResults, AdminBriefs and AdminVoteResults, where the paragraphs inside a
+   section DO carry classes — `.brief-admin-notes` sets `margin: 0` on purpose,
+   and a bare `.vote-results-section > p` would outrank it and silently undo
+   that on two other pages. Matching only class-less paragraphs keeps this fix
+   confined to the markup that actually has the problem. */
+.vote-results-section > p:not([class]) {
+  margin: 0 0 var(--space-md);
+  line-height: var(--line-height-relaxed);
+}
+
+.vote-results-section > p:not([class]):last-child {
+  margin-bottom: 0;
+}
+
+/* Participation reads as a distinct fact about the outcome, not another
+   paragraph of the summary — give it a little air above. */
+.vote-results-section > p.vote-results-participation {
+  margin-top: var(--space-md);
+}

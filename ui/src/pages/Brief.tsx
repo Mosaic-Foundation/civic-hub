@@ -70,6 +70,12 @@ export default function BriefPage() {
 
   const noun = SOURCE_NOUN[brief.source_process_type] ?? "process";
 
+  // Split once, so the render can ask whether there is anything to show
+  // before committing to a heading.
+  const summaryParagraphs = (brief.summary ?? "")
+    .split(/\n\n+/)
+    .filter((para) => para.trim().length > 0);
+
   return (
     <div className="page vote-results-page">
       <Link to="/" className="back-link">
@@ -99,20 +105,24 @@ export default function BriefPage() {
         <PostFeaturedImage src={brief.image_url} alt={brief.image_alt ?? ""} />
       )}
 
-      <section className="vote-results-section">
-        <h2>Summary</h2>
-        {brief.summary
-          .split(/\n\n+/)
-          .filter((p) => p.trim())
-          .map((para, i) => (
+      {/* The Summary heading appears only when there is prose under it.
+          A brief whose source process had no description would otherwise
+          render "Summary" over nothing but the participation count, which
+          reads as broken rather than empty. Participation still shows on its
+          own in that case — it is a fact about the outcome, not a summary. */}
+      {(summaryParagraphs.length > 0 || brief.participation_label) && (
+        <section className="vote-results-section">
+          {summaryParagraphs.length > 0 && <h2>Summary</h2>}
+          {summaryParagraphs.map((para, i) => (
             <p key={i} style={{ whiteSpace: "pre-wrap" }}>
               {para}
             </p>
           ))}
-        {brief.participation_label && (
-          <p className="vote-results-participation">{brief.participation_label}</p>
-        )}
-      </section>
+          {brief.participation_label && (
+            <p className="vote-results-participation">{brief.participation_label}</p>
+          )}
+        </section>
+      )}
 
       {brief.sections.map((s, i) => (
         <section key={i} className="vote-results-section">
