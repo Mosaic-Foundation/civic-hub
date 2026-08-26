@@ -63,8 +63,19 @@ describe("digest ↔ feed parity (Phase 3)", () => {
     ).toBe(true);
   });
 
-  it("includes the Part C close cards (proposal closed + conversation results)", () => {
-    expect(classifyItemKind(ev("civic.proposal.closed", { proposal: {} }))).toBe("proposal-closed");
+  /**
+   * PARITY IS THE POINT HERE. The digest does not classify anything itself —
+   * filter.ts delegates to the same classifyActivity the web feed uses — so
+   * silencing the proposal-closed feed card on 2026-08-26 dropped it from the
+   * digest in the same commit, with no digest code touched. This test failing
+   * was how that was confirmed rather than assumed.
+   */
+  it("drops proposal-closed from the digest in lockstep with the feed", () => {
+    expect(classifyItemKind(ev("civic.proposal.closed", { proposal: {} }))).toBeNull();
+    expect(isDigestRenderable(ev("civic.proposal.closed", { proposal: {} }))).toBe(false);
+  });
+
+  it("still includes conversation results", () => {
     expect(
       classifyItemKind(ev("civic.outcome_delivered", { originating_process_id: "proc_x" })),
     ).toBe("conversation-results");

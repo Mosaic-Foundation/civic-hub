@@ -160,13 +160,21 @@ export function classifyActivity(event: ClassifierEvent): Activity | null {
       };
 
     case "civic.proposal.closed":
-      // Part C — Phase 2 gave proposals a real deadline-close; surface it.
-      return {
-        surface: "activity",
-        kind: "proposal-closed",
-        pill: "Proposal closed",
-        href: `/proposal/${id}`,
-      };
+      // Deliberately silent in the feed (Adam, 2026-08-26). A closing proposal
+      // used to post its own card AND then its published brief posted another,
+      // so one proposal produced two cards saying much the same thing. The
+      // brief is the better of the two: the "closed" card sent a reader to a
+      // finished proposal with no outcome on it yet.
+      //
+      // This makes all three process types behave alike — a vote closing has
+      // never posted a card, and conversations dropped theirs for the same
+      // reason (see shared/polis_deliberation/handler.ts). Publication of the
+      // brief is the announcement that a process has concluded.
+      //
+      // The EVENT still fires and is still on the wire; only the feed card is
+      // withheld. Proposals closed before this change keep their existing
+      // cards, since the feed is a projection of an append-only log.
+      return null;
 
     case "civic.project.created":
       return {

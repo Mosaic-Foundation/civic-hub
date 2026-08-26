@@ -507,7 +507,24 @@ outcome: title, source-type pill, outcome headline, date, participation, and
 day west of UTC. App-wide `toLocaleDateString` convention, not introduced here,
 and real publication timestamps are not midnight — my fixtures exaggerated it.
 
-### Feed double-posting — a finding, NOT yet acted on
+### Outcomes rows are colored by process type — 2026-08-26
+
+The index shipped in grayscale. Rows now carry the **same palette the feed
+uses**, keyed to the source process type: a colored pill and a 3px left border
+in the pill's foreground color. The border is the cue that survives scanning a
+long list, where the pill sits far right and the eye runs down the left edge.
+
+**The feed's pill hexes were promoted to tokens first.** `Feed.css` carried
+bare hexes for proposal / conversation / project / wordcloud; those are now
+`--pill-<slug>-*` in `theme.css`, and both `Feed.css` and `Outcomes.css` point
+at them. Two files holding the same hexes is a drift waiting to happen. Pure
+refactor — identical values, no visual change to the feed.
+
+**Only color is keyed to type, never layout**, so a process type registered
+later inherits the whole row shape and merely looks neutral until someone adds
+two lines.
+
+### Feed double-posting — FIXED 2026-08-26
 
 Adam assumed a closing process posts one feed card. That holds for two types
 and not the third:
@@ -522,10 +539,22 @@ and not the third:
   separated by however long admin review takes, so they only stack visibly when
   review is fast.
 
-**Recommended (not done, awaiting Adam):** drop the `civic.proposal.closed`
-feed card and let the brief be the announcement, matching conversations. Four
-lines in `shared/feedActivity.ts`. A reader clicking PROPOSAL CLOSED lands on a
-closed proposal with no outcome yet, which is the weaker of the two cards.
+**Done (Adam, 2026-08-26):** `civic.proposal.closed` no longer produces a feed
+card — `classifyActivity` returns null for it. The published brief is the
+announcement, matching votes and conversations. All three process types now
+behave alike.
+
+The EVENT still fires and is still on the wire; only the card is withheld. The
+`proposal-closed` kind stays defined across the feed and digest renderers
+because proposals closed BEFORE this change keep their cards — the feed is a
+projection of an append-only log, not a re-render of current policy.
+
+**The digest followed for free, and a test proved it rather than my asserting
+it.** `civic.digest/filter.ts` delegates to the same `classifyActivity`, so the
+item left the email in the same commit with no digest code touched — and
+`digest-parity.test.ts` failed, which is exactly how that was confirmed. Both
+that test and the feed classifier test were rewritten to assert the new intent
+with the reasoning inline, not edited to make red go green.
 
 ### Open questions
 

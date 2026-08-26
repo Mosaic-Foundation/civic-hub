@@ -245,16 +245,16 @@
 .feed-pill--announcement        { background: var(--pill-announcement-bg);        color: var(--pill-announcement-fg); }
 .feed-pill--announcement-author { background: var(--pill-announcement-author-bg); color: var(--pill-announcement-author-fg); }
 .feed-pill--meeting             { background: var(--pill-meeting-bg);             color: var(--pill-meeting-fg); }
-.feed-pill--wordcloud           { background: #e0f2f1;                            color: #00695c; }
+.feed-pill--wordcloud           { background: var(--pill-wordcloud-bg);           color: var(--pill-wordcloud-fg); }
 .feed-pill--generic             { background: #6b7280;                            color: #fff; }
-.feed-pill--project-created     { background: #e3f2fd;                            color: #1565c0; }
-.feed-pill--project-updated     { background: #e3f2fd;                            color: #1565c0; }
+.feed-pill--project-created     { background: var(--pill-project-bg);             color: var(--pill-project-fg); }
+.feed-pill--project-updated     { background: var(--pill-project-bg);             color: var(--pill-project-fg); }
 /* Phase 3 — proposal (idea board) + conversation (deliberation) pills. */
-.feed-pill--proposal            { background: #ede7f6;                            color: #5e35b1; }
-.feed-pill--proposal-closed     { background: #ece9f1;                            color: #5b517a; }
-.feed-pill--conversation        { background: #e8eaf6;                            color: #3949ab; }
-.feed-pill--conversation-results{ background: #e6e9f3;                            color: #3f4a86; }
-.feed-pill--brief               { background: var(--ds-color-primary-100, #dce5f2); color: var(--ds-color-primary-700, #1f3a66); }
+.feed-pill--proposal            { background: var(--pill-proposal-bg);            color: var(--pill-proposal-fg); }
+.feed-pill--proposal-closed     { background: var(--pill-proposal-closed-bg);     color: var(--pill-proposal-closed-fg); }
+.feed-pill--conversation        { background: var(--pill-conversation-bg);        color: var(--pill-conversation-fg); }
+.feed-pill--conversation-results{ background: var(--pill-conversation-results-bg); color: var(--pill-conversation-results-fg); }
+.feed-pill--brief               { background: var(--pill-brief-bg);               color: var(--pill-brief-fg); }
 
 /* --- Load more --- */
 

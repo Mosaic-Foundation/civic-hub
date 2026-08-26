@@ -152,14 +152,44 @@ export default function Outcomes() {
   );
 }
 
+
+/**
+ * Slug for the source process type, used to color a row.
+ *
+ * The palette is the SAME one the feed uses (--pill-<slug>-* in theme.css), so
+ * a proposal outcome here reads the same purple as a proposal card in the
+ * feed. An unrecognized type falls back to a neutral slug rather than an
+ * unstyled row — a process type registered later looks plain here, never
+ * broken.
+ */
+function typeSlug(processType: string): string {
+  switch (processType) {
+    case "civic.vote":
+      return "vote";
+    case "civic.proposal":
+      return "proposal";
+    case "civic.polis_deliberation":
+      return "conversation";
+    case "civic.project":
+      return "project";
+    case "civic.wordcloud":
+      return "wordcloud";
+    default:
+      return "generic";
+  }
+}
+
 function OutcomeRow({ outcome }: { outcome: OutcomeEntry }) {
   const published = new Date(outcome.published_at);
+  const slug = typeSlug(outcome.source_process_type);
   return (
-    <li className="outcomes-item">
+    <li className={`outcomes-item outcomes-item--${slug}`}>
       <Link to={`/brief/${outcome.id}`} className="outcomes-item-link">
         <div className="outcomes-item-head">
           <span className="outcomes-item-title">{outcome.title}</span>
-          <span className="outcomes-pill">{friendlyType(outcome.source_process_type)}</span>
+          <span className={`outcomes-pill outcomes-pill--${slug}`}>
+            {friendlyType(outcome.source_process_type)}
+          </span>
         </div>
         <p className="outcomes-item-headline">{outcome.headline}</p>
         <p className="outcomes-item-meta">

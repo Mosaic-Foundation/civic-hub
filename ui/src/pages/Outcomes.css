@@ -149,11 +149,43 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--color-brand);
-  background: var(--color-surface-alt);
   border-radius: 999px;
   padding: 3px 10px;
+  /* Neutral default. Every known process type overrides both properties
+     below; an unrecognized one lands here and reads plain rather than
+     unstyled. */
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
 }
+
+/* --- Process-type color -----------------------------------------------
+ *
+ * Same palette as the feed's pills (--pill-<slug>-* in theme.css), so an
+ * outcome carries the color its process wore while it was live. The row's
+ * left border uses the pill's foreground: it is the cue that survives
+ * scanning a long list, where the pill sits at the far right and the eye is
+ * running down the left edge.
+ *
+ * Colors are the ONLY thing keyed to type here — never layout — so a process
+ * type added later inherits the whole row shape for free.
+ */
+.outcomes-item {
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-left-color: var(--color-border);
+}
+
+.outcomes-item--vote          { border-left-color: var(--pill-vote-fg); }
+.outcomes-item--proposal      { border-left-color: var(--pill-proposal-fg); }
+.outcomes-item--conversation  { border-left-color: var(--pill-conversation-fg); }
+.outcomes-item--project       { border-left-color: var(--pill-project-fg); }
+.outcomes-item--wordcloud     { border-left-color: var(--pill-wordcloud-fg); }
+
+.outcomes-pill--vote          { background: var(--pill-vote-bg);         color: var(--pill-vote-fg); }
+.outcomes-pill--proposal      { background: var(--pill-proposal-bg);     color: var(--pill-proposal-fg); }
+.outcomes-pill--conversation  { background: var(--pill-conversation-bg); color: var(--pill-conversation-fg); }
+.outcomes-pill--project       { background: var(--pill-project-bg);      color: var(--pill-project-fg); }
+.outcomes-pill--wordcloud     { background: var(--pill-wordcloud-bg);    color: var(--pill-wordcloud-fg); }
 
 .outcomes-item-headline {
   font-family: var(--font-body);

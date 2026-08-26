@@ -226,10 +226,22 @@ describe("classifyActivity — created / proposal / project / outcome", () => {
     expect(a?.href).toBe("/proposal/proc_1");
   });
 
-  it("proposal closed → proposal-closed card (Part C)", () => {
-    const a = classifyActivity(ev("civic.proposal.closed", { proposal: { support_count: 2 } }));
-    expect(a).toMatchObject({ kind: "proposal-closed", pill: "Proposal closed" });
-    expect(a?.href).toBe("/proposal/proc_1");
+  /**
+   * CHANGED 2026-08-26 (Adam). A closing proposal used to post its own card,
+   * and then its published brief posted another — one proposal, two cards
+   * saying much the same thing. The brief is the better of the two: the
+   * "closed" card sent a reader to a finished proposal with no outcome on it
+   * yet. Silencing this makes all three process types behave alike; a closing
+   * vote has never posted a card, and conversations dropped theirs for the
+   * same reason.
+   *
+   * The EVENT still fires and is still on the wire — only the feed card is
+   * withheld. The `proposal-closed` kind stays defined throughout the feed and
+   * digest renderers because proposals closed before this change keep their
+   * cards: the feed is a projection of an append-only log.
+   */
+  it("proposal closed → no feed card; the published brief is the announcement", () => {
+    expect(classifyActivity(ev("civic.proposal.closed", { proposal: { support_count: 2 } }))).toBeNull();
   });
 
   it("project created/updated → project cards via action_url", () => {

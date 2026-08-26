@@ -62,6 +62,21 @@
   --pill-announcement-author-bg: #e4ddf0;              --pill-announcement-author-fg: #3a2c5e;
   --pill-meeting-bg: var(--ds-color-success-100);      --pill-meeting-fg: var(--ds-color-success-700);
 
+  /* Process-type palette. These values previously lived as bare hexes inside
+     Feed.css; they are tokens now because the Outcomes index colors its rows
+     by the SAME process types, and two files carrying the same hexes is a
+     drift waiting to happen. Feed.css and Outcomes.css both point here.
+     The -fg value doubles as the row's left-border accent, so it must stay
+     dark enough to read as a deliberate edge rather than a smudge. */
+  --pill-proposal-bg: #ede7f6;                        --pill-proposal-fg: #5e35b1;
+  --pill-proposal-closed-bg: #ece9f1;                 --pill-proposal-closed-fg: #5b517a;
+  --pill-conversation-bg: #e8eaf6;                    --pill-conversation-fg: #3949ab;
+  --pill-conversation-results-bg: #e6e9f3;            --pill-conversation-results-fg: #3f4a86;
+  --pill-project-bg: #e3f2fd;                         --pill-project-fg: #1565c0;
+  --pill-wordcloud-bg: #e0f2f1;                       --pill-wordcloud-fg: #00695c;
+  --pill-brief-bg: var(--ds-color-primary-100, #dce5f2);
+  --pill-brief-fg: var(--ds-color-primary-700, #1f3a66);
+
   /* --- Typography --- */
   --font-body: var(--ds-font-family-sans);
   --font-heading: var(--ds-font-family-display);
