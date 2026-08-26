@@ -344,13 +344,46 @@ phone and by keyboard).
 passed Code of Conduct check — the link field patches with
 `skip_modified_flag: true` and `updateDraft` honours it.
 
-**Deliberately not built.** No Topics. No always-on thread strip: Adam judged
-that pairwise links plus briefs-in-the-chain are enough, and noted correctly
-that conversation → proposal → vote → project is *not* a fixed order, so a
-linear strip would misrepresent it. Revisit only if the gap is felt. Convert-at-
-close (pre-filling the link when a project is started from a closed vote) is
-the remaining piece that would make chains form without people remembering —
-not built yet.
+**Deliberately not built.** No Topics.
+
+**No thread strip, and this is a settled decision — not a backlog item**
+(Adam, 2026-08-25). One hop in each direction, from every process, brief,
+announcement and meeting summary, is the whole navigation model. Reasons, so
+nobody re-opens this on aesthetics:
+
+- **The relation labels already carry the signal.** "Continued by →" tells a
+  reader a later stage exists; "Continues →" tells them an earlier one does.
+  A thread view would mostly restate what the labels say, using far more of
+  the page.
+- **Any rendered thread must pick a path, and the data does not support
+  picking one.** The spine/lateral idea (treat `continues` + `implements` as
+  the thread, `references` as lateral) is an editorial judgment dressed as
+  structure. When it picks wrong it actively misleads, which is worse than
+  showing nothing. Adam caught the linear-order version of this first: the
+  order is NOT conversation → proposal → vote → project, and a strip implying
+  it would lie.
+- **Every node is an entry point, which is the actual win.** Backlinks are
+  free and automatic, so there is no privileged place to stand. This is
+  ordinary hypertext, and it works because each page is honest about its
+  immediate neighbours instead of summarizing a graph.
+- **Cheap to add later, awkward to remove.** All the data is there; a thread
+  view is pure read-layer work whenever wanted.
+
+**The known cost, stated plainly:** standing three hops from the origin, you
+can reach it but cannot see it. Briefs soften this by already showing their
+source's links (a free second hop).
+
+**The trigger to revisit** — the only one: if anyone finds themselves
+repeatedly clicking three or four hops to reconstruct a history, especially
+reading a brief for posterity. Absent that, leave it alone.
+
+**Still to build: convert-at-close.** Pre-fill the link when a project is
+started from a closed vote (and equivalent transitions). This is the higher-
+value work, and deliberately ranked above any visualization: a thread strip is
+the wrong thing to optimize in either world — if linking is sparse it has
+nothing to show, and if linking is dense one-hop navigation already works.
+What decides which world we are in is whether links get created at all, and
+that currently depends entirely on people remembering.
 
 ### Open questions
 
