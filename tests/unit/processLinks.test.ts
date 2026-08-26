@@ -307,19 +307,25 @@ describe("default relation per process type", () => {
   // and CSS, which the infra-free backend suite must not load. If the two ever
   // disagree, this test is the one that should be believed and the UI fixed.
   const defaultRelationFor = (t?: string) =>
-    t === "civic.project"
-      ? "implements"
-      : t === "civic.vote" || t === "civic.proposal"
-        ? "continues"
-        : "references";
+    t === "civic.project" ? "implements" : t === "civic.vote" ? "continues" : "references";
 
   it("defaults a project to implements — a project carries out a decision", () => {
     expect(defaultRelationFor("civic.project")).toBe("implements");
   });
 
-  it("defaults a vote and a proposal to continues", () => {
+  it("defaults a vote to continues — a vote follows a discussion or proposal", () => {
     expect(defaultRelationFor("civic.vote")).toBe("continues");
-    expect(defaultRelationFor("civic.proposal")).toBe("continues");
+  });
+
+  /**
+   * A proposal is an idea board, not a stage that descends from an earlier
+   * one — it never becomes a vote (see processes/proposalAdapter.ts). It more
+   * often opens a thread than continues one, so it defaults like a
+   * conversation. Distinct from a PROPOSED VOTE, which is a civic.vote in
+   * `proposed` status gathering support, and does continue from something.
+   */
+  it("defaults a proposal to references — an idea board opens a thread", () => {
+    expect(defaultRelationFor("civic.proposal")).toBe("references");
   });
 
   it("defaults a conversation to references — it opens a thread, not descends from one", () => {

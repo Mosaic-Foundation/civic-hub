@@ -328,7 +328,20 @@ process, and a links panel would only pollute it. It stays linkable *as a
 target* if someone genuinely wants to cite one.
 
 **Relation defaults per process type, never restrictions.** Project →
-`implements`, vote and proposal → `continues`, everything else → `references`.
+`implements`, vote → `continues`, everything else (including proposals and
+conversations) → `references`.
+
+> **Proposal vs proposed vote — do not conflate these.** A **proposal**
+> (`civic.proposal`) is an idea board: float an idea, gauge interest. It is NOT
+> a vote and never becomes one (`processes/proposalAdapter.ts`). A **proposed
+> vote** is a `civic.vote` sitting in `proposed` status gathering support until
+> it crosses a threshold and opens for balloting — same type as a live vote,
+> earlier in its lifecycle. They share the word "propose" and nothing else.
+> That distinction is why a proposal defaults to `references` (it opens a
+> thread) while a vote defaults to `continues` (it follows a discussion or a
+> proposal). Adam is considering renaming the user-facing label to "proposed
+> vote"; the Process Picker copy already separates them by intent, and the
+> Batch A fast-follow about "needs supporters" framing points the same way.
 The default leads the dropdown; all three stay available for every type,
 including types not yet invented — one of them will legitimately implement
 something that is not a project. A test pins that an unknown type still gets a

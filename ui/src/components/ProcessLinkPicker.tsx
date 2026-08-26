@@ -60,16 +60,19 @@ const RELATION_OPTIONS: Array<{
  * them will legitimately implement something that isn't a project.
  *
  * The reasoning: a project is where a decision gets carried out, so it
- * implements. A vote or proposal almost always follows a conversation or an
- * earlier proposal, so it continues. A conversation usually opens a thread
- * rather than descending from one, so it merely references.
+ * implements. A vote almost always follows a conversation or a proposal, so it
+ * continues.
+ *
+ * A PROPOSAL defaults to references, not continues — a proposal is an idea
+ * board (float an idea, gauge interest; it never becomes a vote, see
+ * processes/proposalAdapter.ts), so it more often OPENS a thread than descends
+ * from one. Same reasoning as a conversation.
  */
 export function defaultRelationFor(processType?: string): RelationType {
   switch (processType) {
     case "civic.project":
       return "implements";
     case "civic.vote":
-    case "civic.proposal":
       return "continues";
     default:
       return "references";
