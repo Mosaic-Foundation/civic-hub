@@ -7,6 +7,7 @@ import ShareButton from "../components/ShareButton";
 import hub from "../config/hub";
 // Reuse the vote-results public styling — same page language.
 import "./VoteResults.css";
+import RelatedProcesses from "../components/RelatedProcesses";
 
 const SOURCE_NOUN: Record<string, string> = {
   "civic.polis_deliberation": "conversation",
@@ -150,6 +151,19 @@ export default function BriefPage() {
         </time>
         .
       </p>
+
+      {/* Linking is the one thing that stays open on a brief. The brief's
+          CONTENT is a sealed record; its relationships are navigation, and
+          they belong below it as a separate capability. The panel also shows
+          the pair derived from state.source_process_id and the links of the
+          process this brief summarizes, so the permanent record carries the
+          whole thread. */}
+      <RelatedProcesses
+        processId={id!}
+        title={brief.title}
+        description=""
+        processType="civic.brief"
+      />
     </div>
   );
 }

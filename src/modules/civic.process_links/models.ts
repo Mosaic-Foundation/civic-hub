@@ -45,6 +45,20 @@ export interface RenderedLink {
   peer: LinkPeer;
   created_by: string | null;
   created_at: string;
+  /**
+   * True for a relationship DERIVED from data the system already holds rather
+   * than stored as a process_links row — today, the brief ⇄ source pair, which
+   * comes from the brief's own `state.source_process_id`. There is no row to
+   * delete, so the UI must not offer a remove control on these.
+   */
+  synthetic?: boolean;
+  /**
+   * True for a link that belongs to a DIFFERENT process and is being shown
+   * here for context — today, a brief displaying the links of the process it
+   * summarizes. The row lives on that other process; this is a projection, so
+   * the UI must not offer a remove control.
+   */
+  inherited?: boolean;
 }
 
 export interface RenderedLinks {

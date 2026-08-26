@@ -169,6 +169,7 @@ export default function ProjectDraftingForm({
           onTitlesChange={onLinkTitlesChange}
           seedTitle={draft.title}
           seedDescription={draft.description}
+          processType="civic.project"
           disabled={disabled}
         />
       </div>

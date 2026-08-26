@@ -36,6 +36,8 @@ interface Props {
   seedTitle?: string;
   seedDescription?: string;
   disabled?: boolean;
+  /** Type of the process being created — sets the default relation. */
+  processType?: string;
 }
 
 export default function ProcessLinkField({
@@ -46,6 +48,7 @@ export default function ProcessLinkField({
   seedTitle = "",
   seedDescription = "",
   disabled = false,
+  processType,
 }: Props) {
   const [picking, setPicking] = useState(false);
 
@@ -72,8 +75,9 @@ export default function ProcessLinkField({
         <span className="link-field__optional">Optional</span>
       </div>
       <p className="link-field__help">
-        Is this connected to something already happening? Linking it helps
-        people follow the thread. You can skip this.
+        Is this connected to a community process — one happening now, or one
+        that already happened? Linking helps people follow a topic across
+        processes. Skip it if nothing applies.
       </p>
 
       {value.length > 0 && (
@@ -111,6 +115,7 @@ export default function ProcessLinkField({
           exclude={value.map((l) => l.to_id)}
           seedTitle={seedTitle}
           seedDescription={seedDescription}
+          processType={processType}
           onPick={handlePick}
           onCancel={() => setPicking(false)}
         />

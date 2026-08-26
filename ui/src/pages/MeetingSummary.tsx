@@ -8,6 +8,7 @@ import { relativeTime, absoluteTime } from "../components/FeedPost";
 import ShareButton from "../components/ShareButton";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import "./MeetingSummary.css";
+import RelatedProcesses from "../components/RelatedProcesses";
 
 export default function MeetingSummaryPage() {
   const { id } = useParams<{ id: string }>();
@@ -179,6 +180,11 @@ export default function MeetingSummaryPage() {
           onArchived={() => navigate("/")}
         />
       )}
+
+      {/* Read-only. A process may link TO this post, and the counter-link
+          renders here so a reader can follow it back — but content posts
+          never originate links of their own. */}
+      <RelatedProcesses processId={id!} readOnly />
     </article>
   );
 }

@@ -28,11 +28,53 @@ const RELATION_OPTIONS: Array<{
   value: RelationType;
   label: string;
   hint: string;
+  meaning: string;
 }> = [
-  { value: "continues", label: "Continues", hint: "Picks up where an earlier process left off" },
-  { value: "references", label: "References", hint: "Cites or draws on another process" },
-  { value: "implements", label: "Implements", hint: "Carries out what another process decided" },
+  {
+    value: "continues",
+    label: "Continues",
+    hint: "Picks up where an earlier process left off",
+    meaning:
+      "The same conversation, carried into a new stage — a vote that follows a proposal, or a proposal that follows a discussion.",
+  },
+  {
+    value: "references",
+    label: "References",
+    hint: "Cites or draws on another process",
+    meaning:
+      "Relevant background, but a separate matter. Use this when something informed the work without leading directly to it.",
+  },
+  {
+    value: "implements",
+    label: "Implements",
+    hint: "Carries out what another process decided",
+    meaning:
+      "The doing, after the deciding — usually a project acting on what a vote or proposal settled.",
+  },
 ];
+
+/**
+ * The relation most likely to be right for a given process type. A DEFAULT,
+ * never a restriction: all three stay available for every type, because the
+ * hub is meant to accept process types nobody has thought of yet, and one of
+ * them will legitimately implement something that isn't a project.
+ *
+ * The reasoning: a project is where a decision gets carried out, so it
+ * implements. A vote or proposal almost always follows a conversation or an
+ * earlier proposal, so it continues. A conversation usually opens a thread
+ * rather than descending from one, so it merely references.
+ */
+export function defaultRelationFor(processType?: string): RelationType {
+  switch (processType) {
+    case "civic.project":
+      return "implements";
+    case "civic.vote":
+    case "civic.proposal":
+      return "continues";
+    default:
+      return "references";
+  }
+}
 
 interface Props {
   /** Ids to keep out of the results — the current process and anything
@@ -44,6 +86,9 @@ interface Props {
   onPick: (link: ProposedLink, peer: LinkCandidate) => void;
   onCancel?: () => void;
   busy?: boolean;
+  /** The type of the process being linked FROM — picks the default relation
+   *  and puts it first in the list. */
+  processType?: string;
 }
 
 export default function ProcessLinkPicker({
@@ -53,9 +98,18 @@ export default function ProcessLinkPicker({
   onPick,
   onCancel,
   busy = false,
+  processType,
 }: Props) {
   const [query, setQuery] = useState("");
-  const [relation, setRelation] = useState<RelationType>("references");
+  const [relation, setRelation] = useState<RelationType>(() =>
+    defaultRelationFor(processType),
+  );
+  const [showHelp, setShowHelp] = useState(false);
+  // The likeliest choice leads; the rest keep their canonical order.
+  const orderedOptions = [
+    ...RELATION_OPTIONS.filter((o) => o.value === defaultRelationFor(processType)),
+    ...RELATION_OPTIONS.filter((o) => o.value !== defaultRelationFor(processType)),
+  ];
   const [candidates, setCandidates] = useState<LinkCandidate[]>([]);
   const [suggested, setSuggested] = useState(false);
   const [selected, setSelected] = useState<LinkCandidate | null>(null);
@@ -171,13 +225,24 @@ export default function ProcessLinkPicker({
         </label>
 
         <label className="link-picker__field link-picker__field--relation">
-          <span className="link-picker__label">Relationship</span>
+          <span className="link-picker__label">
+            Relationship
+            <button
+              type="button"
+              className="link-picker__help-toggle"
+              aria-expanded={showHelp}
+              aria-label="What do these relationships mean?"
+              onClick={() => setShowHelp((v) => !v)}
+            >
+              ?
+            </button>
+          </span>
           <select
             className="link-picker__select"
             value={relation}
             onChange={(e) => setRelation(e.target.value as RelationType)}
           >
-            {RELATION_OPTIONS.map((opt) => (
+            {orderedOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -186,7 +251,18 @@ export default function ProcessLinkPicker({
         </label>
       </div>
 
-      {activeHint && <p className="link-picker__hint">{activeHint}</p>}
+      {showHelp ? (
+        <dl className="link-picker__help">
+          {RELATION_OPTIONS.map((opt) => (
+            <div key={opt.value} className="link-picker__help-row">
+              <dt>{opt.label}</dt>
+              <dd>{opt.meaning}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        activeHint && <p className="link-picker__hint">{activeHint}</p>
+      )}
 
       {loading && <p className="link-picker__status">Searching…</p>}
       {error && <p className="link-picker__status link-picker__status--error">{error}</p>}

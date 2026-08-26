@@ -287,6 +287,71 @@ any time, and seeing the current state is what agreement actually requires. Do
 not add snapshot tracking or change-notifications without asking — this is a
 settled call, not an oversight.
 
+### Slice A — linking reaches briefs and content posts — 2026-08-25
+
+Follow-on to the linking slice, from Adam's review of it on prod. **No
+migration.**
+
+**Briefs now carry the thread into the permanent record.** Three things stack
+on a brief's page:
+
+1. **The brief ⇄ source pair, DERIVED not stored.** A brief already records
+   what it summarizes in `state.source_process_id`. Writing a `process_links`
+   row for it would be a second record of a relationship the system already
+   holds — the duplication this whole design exists to prevent — and it would
+   have needed a fourth relation in the vocabulary, and therefore a second
+   prod migration. So the pair is computed at read time from the field the
+   brief system already maintains: it cannot drift, cannot be forgotten, and
+   cost no schema change. A brief reads "Summarizes →"; its source reads
+   "Summarized by ←".
+2. **The source's links, PROJECTED not copied.** A brief displays the links of
+   the process it summarizes. Copying them would again mean two rows for one
+   relationship; projecting keeps the row on the source and the brief current
+   if a link is added later. Adam chose live-projection over a frozen snapshot
+   (2026-08-25) — links are navigation, not evidence, and a stale brief helps
+   nobody.
+3. **Its own links, editable.** The brief's *content* is a sealed record; its
+   relationships are not. Adam: "the brief [is] totally uneditable and
+   archivable other than the linking … linking is this separate capability down
+   below the brief."
+
+Both derived and projected links carry flags (`synthetic`, `inherited`) and no
+remove control. Verified on dev that the API refuses to delete either — one has
+no row, the other's row belongs to the source.
+
+**Content posts show backlinks, never originate them.** Announcement and
+meeting-summary pages mount the panel `readOnly`: a process may link *to* them
+and the counter-link renders so a reader can follow it back, but they offer no
+add or remove control. **Word clouds are excluded entirely** (Adam,
+2026-08-25) — the word cloud is a community amenity, not a stage in a civic
+process, and a links panel would only pollute it. It stays linkable *as a
+target* if someone genuinely wants to cite one.
+
+**Relation defaults per process type, never restrictions.** Project →
+`implements`, vote and proposal → `continues`, everything else → `references`.
+The default leads the dropdown; all three stay available for every type,
+including types not yet invented — one of them will legitimately implement
+something that is not a project. A test pins that an unknown type still gets a
+valid default.
+
+**Also:** the field's copy now asks whether this connects to a community
+process "happening now, or one that already happened … helps people follow a
+topic across processes"; and a `?` beside **Relationship** expands an inline
+glossary of the three relations (inline, not a hover tooltip, so it works on a
+phone and by keyboard).
+
+**Confirmed already correct, not changed:** editing links does NOT invalidate a
+passed Code of Conduct check — the link field patches with
+`skip_modified_flag: true` and `updateDraft` honours it.
+
+**Deliberately not built.** No Topics. No always-on thread strip: Adam judged
+that pairwise links plus briefs-in-the-chain are enough, and noted correctly
+that conversation → proposal → vote → project is *not* a fixed order, so a
+linear strip would misrepresent it. Revisit only if the gap is felt. Convert-at-
+close (pre-filling the link when a project is started from a closed vote) is
+the remaining piece that would make chains form without people remembering —
+not built yet.
+
 ### Open questions
 
 - **Prod migration not yet applied.** Dev only. Same SQL, prod project, before

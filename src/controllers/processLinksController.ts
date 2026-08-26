@@ -15,6 +15,7 @@ import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
 import { getUserFromToken } from "../modules/civic.auth/index.js";
 import { HUB_ID, DEFAULT_JURISDICTION } from "../config/hub.js";
 import { processDetailPath } from "../processes/registry.js";
+import type { RenderedLink, RenderedLinks } from "../modules/civic.process_links/index.js";
 import {
   LinkValidationError,
   RELATIONS,
@@ -25,11 +26,40 @@ import {
 import {
   createEdge,
   deleteEdge,
+  getBriefLinks,
   getEdgeById,
   getProcessOwner,
   getRenderedLinks,
 } from "../services/processLinks.js";
+import { getProcess } from "../services/processService.js";
 import { executeSearchRpc } from "../services/searchExecutor.js";
+
+
+/**
+ * For a brief, the links belonging to the process it summarizes — projected
+ * onto the brief so the published record carries the whole thread.
+ *
+ * Returns nothing for anything that is not a brief. The source's own brief
+ * pair is excluded, because from the brief's point of view that is itself.
+ */
+async function inheritedFromSource(
+  processId: string,
+  opts: { viewerId?: string | null; isAdmin?: boolean },
+): Promise<RenderedLinks> {
+  const empty: RenderedLinks = { outgoing: [], incoming: [] };
+  const proc = await getProcess(processId);
+  if (!proc || proc.definition.type !== "civic.brief") return empty;
+
+  const sourceId = (proc.state as { source_process_id?: unknown })?.source_process_id;
+  if (typeof sourceId !== "string" || !sourceId) return empty;
+
+  const sourceLinks = await getRenderedLinks(sourceId, opts);
+  const mark = (l: RenderedLink): RenderedLink => ({ ...l, inherited: true });
+  return {
+    outgoing: sourceLinks.outgoing.map(mark),
+    incoming: sourceLinks.incoming.filter((l) => l.peer.id !== processId).map(mark),
+  };
+}
 
 /**
  * Resolve the caller on a PUBLIC route, where no auth middleware has run.
@@ -65,7 +95,23 @@ export async function handleGetLinks(req: Request, res: Response): Promise<void>
     const viewerId = viewer?.id;
     const isAdmin = isAdminEmail(viewer?.email);
 
-    const links = await getRenderedLinks(processId, { viewerId, isAdmin });
+    const own = await getRenderedLinks(processId, { viewerId, isAdmin });
+
+    // The brief pair, derived from state.source_process_id rather than stored.
+    const brief = await getBriefLinks(processId, { viewerId, isAdmin });
+
+    // A brief also SHOWS the links of the process it summarizes, so the
+    // permanent record carries the thread instead of dead-ending. Projected,
+    // never copied: the rows stay on the source, so there is still exactly one
+    // record per relationship and the brief cannot drift from it. Marked
+    // `inherited` so the UI can render them without a remove control — they
+    // are not the brief's to sever.
+    const inherited = await inheritedFromSource(processId, { viewerId, isAdmin });
+
+    const links = {
+      outgoing: [...brief.outgoing, ...own.outgoing, ...inherited.outgoing],
+      incoming: [...brief.incoming, ...own.incoming, ...inherited.incoming],
+    };
 
     // The server decides who may edit, so a page only has to mount the panel
     // — it never has to fetch created_by just to know which affordance to

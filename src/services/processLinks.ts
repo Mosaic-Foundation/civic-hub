@@ -10,10 +10,12 @@
 
 import { getDb } from "../db/client.js";
 import { generateId } from "../utils/id.js";
+import { findExistingBriefId } from "../processes/spawnBrief.js";
 import { processDetailPath } from "../processes/registry.js";
 import { isPubliclyFetchable } from "./processLifecycle.js";
 import {
   renderLinks,
+  type RenderedLink,
   type LinkPeer,
   type LinkProposal,
   type ProcessLinkEdge,
@@ -218,4 +220,86 @@ export async function getEdgeById(linkId: string): Promise<ProcessLinkEdge | nul
 export async function deleteEdge(linkId: string): Promise<void> {
   const { error } = await getDb().from("process_links").delete().eq("id", linkId);
   if (error) throw new Error(`Failed to remove link: ${error.message}`);
+}
+
+/**
+ * The brief relationship, DERIVED rather than stored.
+ *
+ * A brief already records what it summarizes, in `state.source_process_id`.
+ * Writing a process_links row for it would be a SECOND record of a
+ * relationship the system already knows — the exact duplication this design
+ * exists to avoid — and it would need a fourth relation in the vocabulary
+ * (and therefore another migration) to read sensibly. So the pair is computed
+ * at read time from the field the brief system already maintains, which means
+ * it cannot drift and cannot be forgotten.
+ *
+ * Returns the synthetic link for whichever side `processId` is on:
+ *   - a brief gets   "Summarizes"   -> its source
+ *   - a source gets  "Summarized by" -> its brief
+ *
+ * Synthetic links carry `synthetic: true` so the UI can render them without a
+ * remove control: there is no row to delete, and the relationship is not
+ * anyone's to sever.
+ */
+export async function getBriefLinks(
+  processId: string,
+  opts: { viewerId?: string | null; isAdmin?: boolean } = {},
+): Promise<RenderedLinks> {
+  const self = await getDb()
+    .from("processes")
+    .select("id, type, state")
+    .eq("id", processId)
+    .maybeSingle();
+  if (self.error || !self.data) return { outgoing: [], incoming: [] };
+
+  const row = self.data as { id: string; type: string; state: Record<string, unknown> | null };
+  const empty: RenderedLinks = { outgoing: [], incoming: [] };
+
+  // This process IS a brief -> point at what it summarizes.
+  if (row.type === "civic.brief") {
+    const sourceId = (row.state as { source_process_id?: unknown } | null)?.source_process_id;
+    if (typeof sourceId !== "string" || !sourceId) return empty;
+    const peers = await hydratePeers([sourceId], {
+      includeNonPublicOwnedBy: opts.viewerId ?? null,
+      isAdmin: opts.isAdmin,
+    });
+    const peer = peers.get(sourceId);
+    if (!peer) return empty;
+    return {
+      outgoing: [syntheticLink("brief-source", "Summarizes", "outgoing", peer)],
+      incoming: [],
+    };
+  }
+
+  // This process HAS a brief -> point at it.
+  const briefId = await findExistingBriefId(processId);
+  if (!briefId) return empty;
+  const peers = await hydratePeers([briefId], {
+    includeNonPublicOwnedBy: opts.viewerId ?? null,
+    isAdmin: opts.isAdmin,
+  });
+  const peer = peers.get(briefId);
+  if (!peer) return empty;
+  return {
+    outgoing: [],
+    incoming: [syntheticLink("brief-of", "Summarized by", "incoming", peer)],
+  };
+}
+
+function syntheticLink(
+  idSuffix: string,
+  label: string,
+  direction: "outgoing" | "incoming",
+  peer: LinkPeer,
+): RenderedLink {
+  return {
+    id: `synthetic:${idSuffix}:${peer.id}`,
+    relation: "references",
+    direction,
+    label,
+    peer,
+    created_by: null,
+    created_at: "",
+    synthetic: true,
+  };
 }

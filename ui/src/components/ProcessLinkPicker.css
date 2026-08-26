@@ -151,3 +151,55 @@
     flex: 1 1 100%;
   }
 }
+
+/* Relation help — a "?" beside the label that expands an inline glossary.
+   Inline rather than a floating tooltip: it must be reachable by keyboard and
+   readable on a phone, and a hover tooltip is neither. */
+.link-picker__help-toggle {
+  margin-left: 6px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong, var(--color-border));
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.link-picker__help-toggle:hover,
+.link-picker__help-toggle[aria-expanded="true"] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.link-picker__help {
+  margin: var(--space-sm) 0 0;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+}
+
+.link-picker__help-row + .link-picker__help-row {
+  margin-top: var(--space-sm);
+}
+
+.link-picker__help dt {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.link-picker__help dd {
+  margin: 2px 0 0;
+  color: var(--color-text-muted);
+  max-width: 62ch;
+}

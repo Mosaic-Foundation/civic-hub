@@ -30,6 +30,17 @@ import "./RelatedProcesses.css";
 
 interface Props {
   processId: string;
+  /**
+   * Display-only. Backlinks still render so a reader can follow the thread,
+   * but no add or remove control appears.
+   *
+   * Used on content posts (announcements, meeting summaries): a process may
+   * link TO them, and they show the counter-link, but they never originate
+   * links of their own.
+   */
+  readOnly?: boolean;
+  /** Type of this process — sets the picker's default relation. */
+  processType?: string;
   /** Seeds auto-suggestions in the picker. */
   title?: string;
   description?: string;
@@ -39,6 +50,8 @@ export default function RelatedProcesses({
   processId,
   title = "",
   description = "",
+  readOnly = false,
+  processType,
 }: Props) {
   const [links, setLinks] = useState<ProcessLinks>({ outgoing: [], incoming: [] });
   const [loading, setLoading] = useState(true);
@@ -63,8 +76,9 @@ export default function RelatedProcesses({
     void load();
   }, [load]);
 
-  // Server-decided: the creator of this process, or an admin.
-  const canEdit = links.can_edit === true;
+  // Server-decided: the creator of this process, or an admin. `readOnly`
+  // overrides it for surfaces that display links but never originate them.
+  const canEdit = !readOnly && links.can_edit === true;
 
   async function handlePick(link: ProposedLink, _peer: LinkCandidate) {
     setBusy(true);
@@ -116,10 +130,10 @@ export default function RelatedProcesses({
         )}
       </div>
 
-      {all.length === 0 && !picking && (
+      {all.length === 0 && !picking && !readOnly && (
         <p className="related-processes__empty">
-          Nothing linked yet. Connecting this to an earlier vote, proposal, or
-          conversation helps people follow the thread.
+          Nothing linked yet. Connecting this to a related community process
+          helps people follow the topic across processes.
         </p>
       )}
 
@@ -130,6 +144,7 @@ export default function RelatedProcesses({
           exclude={excluded}
           seedTitle={title}
           seedDescription={description}
+          processType={processType}
           busy={busy}
           onPick={handlePick}
           onCancel={() => setPicking(false)}
@@ -142,7 +157,7 @@ export default function RelatedProcesses({
             <LinkRow
               key={link.id}
               link={link}
-              canEdit={canEdit}
+              canEdit={canEdit && !link.synthetic && !link.inherited}
               busy={busy}
               confirming={confirmRemove === link.id}
               onAskRemove={() => setConfirmRemove(link.id)}
@@ -174,7 +189,12 @@ function LinkRow({
   onConfirmRemove: () => void;
 }) {
   return (
-    <li className={`related-processes__item related-processes__item--${link.direction}`}>
+    <li
+      className={
+        `related-processes__item related-processes__item--${link.direction}` +
+        (link.synthetic || link.inherited ? " related-processes__item--derived" : "")
+      }
+    >
       <div className="related-processes__item-main">
         <span className="related-processes__relation">{link.label}</span>
         <Link to={link.peer.href} className="related-processes__peer">

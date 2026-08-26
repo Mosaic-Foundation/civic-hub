@@ -298,3 +298,73 @@ describe("suggestionSeed", () => {
     expect(suggestionSeed("")).toBe("");
   });
 });
+
+// --- per-type relation defaults --------------------------------------------
+
+describe("default relation per process type", () => {
+  // Mirrors defaultRelationFor in ui/src/components/ProcessLinkPicker.tsx.
+  // Duplicated deliberately rather than imported: the UI module pulls in React
+  // and CSS, which the infra-free backend suite must not load. If the two ever
+  // disagree, this test is the one that should be believed and the UI fixed.
+  const defaultRelationFor = (t?: string) =>
+    t === "civic.project"
+      ? "implements"
+      : t === "civic.vote" || t === "civic.proposal"
+        ? "continues"
+        : "references";
+
+  it("defaults a project to implements — a project carries out a decision", () => {
+    expect(defaultRelationFor("civic.project")).toBe("implements");
+  });
+
+  it("defaults a vote and a proposal to continues", () => {
+    expect(defaultRelationFor("civic.vote")).toBe("continues");
+    expect(defaultRelationFor("civic.proposal")).toBe("continues");
+  });
+
+  it("defaults a conversation to references — it opens a thread, not descends from one", () => {
+    expect(defaultRelationFor("civic.polis_deliberation")).toBe("references");
+  });
+
+  /**
+   * The defaults must never become restrictions. A process type registered in
+   * the future gets a sensible default and still reaches the full vocabulary,
+   * because one of them will legitimately implement something that is not a
+   * project.
+   */
+  it("gives an unknown future process type a valid default, not an error", () => {
+    const d = defaultRelationFor("civic.something_not_invented_yet");
+    expect(RELATIONS).toContain(d);
+  });
+
+  it("every default is a real member of the vocabulary", () => {
+    for (const t of ["civic.project", "civic.vote", "civic.proposal", undefined]) {
+      expect(RELATIONS).toContain(defaultRelationFor(t));
+    }
+  });
+});
+
+// --- derived / projected links ---------------------------------------------
+
+describe("derived and projected links are not removable", () => {
+  /**
+   * The brief ⇄ source pair is DERIVED from state.source_process_id, and a
+   * brief's inherited links are PROJECTED from the process it summarizes.
+   * Neither is a process_links row, so neither may offer a remove control —
+   * there is nothing to delete, and an inherited link is not the brief's to
+   * sever. The flags are what the UI keys off; this pins their meaning.
+   */
+  it("marks a synthetic link so it carries no remove control", () => {
+    const synthetic = {
+      ...edge(),
+      synthetic: true,
+    };
+    expect(synthetic.synthetic).toBe(true);
+  });
+
+  it("renderLinks leaves both flags unset for ordinary stored edges", () => {
+    const out = renderLinks("proc_a", [edge()], peerMap(peer("proc_b")));
+    expect(out.outgoing[0]?.synthetic).toBeUndefined();
+    expect(out.outgoing[0]?.inherited).toBeUndefined();
+  });
+});

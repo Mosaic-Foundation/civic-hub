@@ -172,3 +172,11 @@
     align-items: flex-start;
   }
 }
+
+/* A derived or projected link — the brief ⇄ source pair, or a brief showing
+   the links of the process it summarizes. Muted because it is context rather
+   than something asserted here, and it carries no remove control. */
+.related-processes__item--derived {
+  border-left-style: dotted;
+  opacity: 0.9;
+}

@@ -1998,6 +1998,12 @@ export interface RenderedLink {
   peer: LinkPeer;
   created_by: string | null;
   created_at: string;
+  /** Derived from data the system already holds (the brief ⇄ source pair)
+   *  rather than stored as a row. Not removable. */
+  synthetic?: boolean;
+  /** Belongs to another process and shown here for context (a brief showing
+   *  its source's links). Not removable from here. */
+  inherited?: boolean;
 }
 
 export interface ProcessLinks {

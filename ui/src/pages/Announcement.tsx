@@ -14,6 +14,7 @@ import ShareButton from "../components/ShareButton";
 import Creator from "../components/Creator";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import "./Announcement.css";
+import RelatedProcesses from "../components/RelatedProcesses";
 
 const URL_RE = /\bhttps?:\/\/\S+/gi;
 
@@ -368,6 +369,11 @@ export default function AnnouncementPage() {
           </form>
         </div>
       )}
+
+      {/* Read-only. A process may link TO this post, and the counter-link
+          renders here so a reader can follow it back — but content posts
+          never originate links of their own. */}
+      <RelatedProcesses processId={id!} readOnly />
     </article>
   );
 }
