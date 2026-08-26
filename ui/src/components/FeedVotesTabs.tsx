@@ -21,6 +21,9 @@ const SCROLLABLE_TABS: ReadonlyArray<{ to: string; label: string }> = [
   { to: "/propose", label: "Proposals" },
   { to: "/votes", label: "Votes" },
   { to: "/projects", label: "Projects" },
+  // Last: the archive of what has finished, after the surfaces where things
+  // are still happening.
+  { to: "/outcomes", label: "Outcomes" },
 ];
 
 export default function FeedVotesTabs() {

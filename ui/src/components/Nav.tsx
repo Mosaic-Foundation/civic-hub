@@ -19,6 +19,7 @@ const DRAWER_LINKS: ReadonlyArray<{ to: string; label: string; end?: boolean }> 
   { to: "/propose", label: "Propose" },
   { to: "/votes", label: "Votes" },
   { to: "/projects", label: "Projects" },
+  { to: "/outcomes", label: "Outcomes" },
   { to: "/welcome", label: "Welcome" },
   { to: "/about", label: "About" },
 ];

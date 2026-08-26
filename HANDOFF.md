@@ -467,6 +467,66 @@ prod; none re-checked on push.
 **Do NOT point CI at the dev project Adam works in** — CI runs would collide
 with hands-on use and leave permanent residue in a database he browses.
 
+### Outcomes — a public index of completed processes — 2026-08-26
+
+**The gap it closes.** A published brief was reachable three ways: a feed card
+(which decays out of view in days), search (which needs you to know the words),
+and a direct link from a related process. There was no `/briefs` index at all,
+so "what has this community actually decided" had no answer and a permanent
+record had no front door. **No migration** — briefs are already process rows.
+
+**`GET /brief`** returns every published brief with the filter options present
+in the data. Filtering and sorting run in the pure module
+(`civic.brief/filterIndex`) rather than in SQL — deliberately. The set is one
+row per completed process for the life of a hub, and keeping it pure puts the
+page's entire behaviour in the layer CI actually runs. 18 unit tests.
+
+**`related_count` counts the SOURCE process's links, not the brief's.** A brief
+owns almost no stored links — its relationships are derived (the brief ⇄ source
+pair) or projected from the source. Counting the brief's own rows reported 0
+for an outcome that visibly displays two, which is worse than showing nothing.
+Caught by looking at the live response, not by reasoning.
+
+**The page** (`/outcomes`, nav tab last, after the surfaces where things are
+still happening). Type chips, year select, newest/oldest, and a row per
+outcome: title, source-type pill, outcome headline, date, participation, and
+"N related" so a reader knows an outcome sits in a thread before clicking.
+
+- **Named "Outcomes", not "Results"** — results implies vote tallies, and this
+  holds conversation summaries and project retrospectives too.
+- **Filter options are derived from the data**, never enumerated, so a process
+  type registered later appears the first time one of its briefs publishes. A
+  test pins that.
+- **No search box.** `/search` already indexes briefs; a second search here
+  would drift from it.
+- Every filter combination was exercised against the live endpoint with
+  fixtures spanning three source types and two years, then the fixtures were
+  removed.
+
+**Known, not fixed:** a `published_at` at midnight UTC renders as the previous
+day west of UTC. App-wide `toLocaleDateString` convention, not introduced here,
+and real publication timestamps are not midnight — my fixtures exaggerated it.
+
+### Feed double-posting — a finding, NOT yet acted on
+
+Adam assumed a closing process posts one feed card. That holds for two types
+and not the third:
+
+- **Votes** — no `civic.process.ended` case in the classifier, so a closing
+  vote posts nothing; only its published brief posts. Clean.
+- **Conversations** — deliberately fixed already; `polis_deliberation/handler.ts`
+  records that the old auto-post was *"intentionally removed"* so brief
+  publication is the announcement. Clean.
+- **Proposals — double-post.** `civic.proposal.closed` posts a PROPOSAL CLOSED
+  card AND the brief posts PROPOSAL RESULTS. Two cards, same proposal. They are
+  separated by however long admin review takes, so they only stack visibly when
+  review is fast.
+
+**Recommended (not done, awaiting Adam):** drop the `civic.proposal.closed`
+feed card and let the brief be the announcement, matching conversations. Four
+lines in `shared/feedActivity.ts`. A reader clicking PROPOSAL CLOSED lands on a
+closed proposal with no outcome yet, which is the weaker of the two cards.
+
 ### Open questions
 
 - **Dev carries one demo artifact:** proposal `proc_69cda899e1fa420a` ("Add

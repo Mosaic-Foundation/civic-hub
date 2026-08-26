@@ -59,3 +59,11 @@ export const PROCESS_DESCRIPTOR = {
     "civic.process.result_published",
   ],
 } as const;
+
+export type { BriefIndexEntry } from "./service.js";
+export {
+  availableSourceTypes,
+  availableYears,
+  filterIndex,
+  toIndexEntry,
+} from "./service.js";

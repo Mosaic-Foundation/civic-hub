@@ -302,3 +302,97 @@ export function getAdminSummary(
     created_at: processMeta.createdAt,
   };
 }
+
+// --- Public index (the Outcomes page) --------------------------------------
+
+/**
+ * One row in the public outcomes index.
+ *
+ * Deliberately narrower than the full read model: an index needs enough to
+ * decide whether to open something, not the thing itself. Sections, comments
+ * and admin notes stay out, which keeps a page of fifty rows small.
+ */
+export interface BriefIndexEntry {
+  id: string;
+  title: string;
+  source_process_id: string;
+  source_process_type: string;
+  headline: string;
+  /** Null when the process type reports no participation figure. */
+  participation_label: string | null;
+  published_at: string;
+  /** How many processes this outcome is linked to, in either direction.
+   *  Lets a row say "3 related" so a reader knows it sits in a thread
+   *  before clicking. */
+  related_count: number;
+}
+
+/**
+ * Project one brief onto an index row, or null when it is not public.
+ *
+ * The publication check lives HERE rather than in the caller's query, so a
+ * pending brief cannot reach the index through a query someone writes later
+ * without thinking about it. Same reason getPublicReadModel returns null.
+ */
+export function toIndexEntry(
+  state: BriefProcessState,
+  processMeta: { id: string; title: string },
+  relatedCount = 0,
+): BriefIndexEntry | null {
+  if (state.publication_status !== "published") return null;
+  const publishedAt = state.published_at;
+  if (!publishedAt) return null;
+  return {
+    id: processMeta.id,
+    title: processMeta.title,
+    source_process_id: state.source_process_id,
+    source_process_type: state.source_process_type,
+    headline: state.content.headline,
+    participation_label: state.content.participation_label,
+    published_at: publishedAt,
+    related_count: relatedCount,
+  };
+}
+
+/** Source-process types that can appear in the index, for the filter chips.
+ *  Derived from the entries present rather than hardcoded, so a process type
+ *  added later shows up the first time one of its briefs publishes. */
+export function availableSourceTypes(entries: BriefIndexEntry[]): string[] {
+  return [...new Set(entries.map((e) => e.source_process_type))].sort();
+}
+
+/** Years present in the index, newest first — the date filter's options.
+ *  Civic time is annual; a year bucket is how people actually look back. */
+export function availableYears(entries: BriefIndexEntry[]): number[] {
+  const years = new Set<number>();
+  for (const e of entries) {
+    const y = new Date(e.published_at).getUTCFullYear();
+    if (Number.isFinite(y)) years.add(y);
+  }
+  return [...years].sort((a, b) => b - a);
+}
+
+/**
+ * Filter and sort an index. Pure, so the whole behaviour of the page is
+ * testable without a database.
+ */
+export function filterIndex(
+  entries: BriefIndexEntry[],
+  opts: { sourceTypes?: string[]; year?: number | null; sort?: "newest" | "oldest" } = {},
+): BriefIndexEntry[] {
+  const types = opts.sourceTypes?.length ? new Set(opts.sourceTypes) : null;
+  const out = entries.filter((e) => {
+    if (types && !types.has(e.source_process_type)) return false;
+    if (opts.year != null) {
+      const y = new Date(e.published_at).getUTCFullYear();
+      if (y !== opts.year) return false;
+    }
+    return true;
+  });
+  // ISO 8601 sorts lexicographically, so string comparison is date order.
+  return out.sort((a, b) =>
+    opts.sort === "oldest"
+      ? a.published_at.localeCompare(b.published_at)
+      : b.published_at.localeCompare(a.published_at),
+  );
+}

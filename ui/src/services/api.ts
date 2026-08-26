@@ -2065,3 +2065,37 @@ export function getLinkCandidates(params: {
   for (const id of params.exclude ?? []) qs.append("exclude", id);
   return request("GET", `/process/link-candidates?${qs.toString()}`);
 }
+
+// --- Outcomes index --------------------------------------------------------
+
+export interface OutcomeEntry {
+  id: string;
+  title: string;
+  source_process_id: string;
+  source_process_type: string;
+  headline: string;
+  participation_label: string | null;
+  published_at: string;
+  /** Links on the process this brief summarizes — "does this sit in a thread". */
+  related_count: number;
+}
+
+export interface OutcomesPage {
+  outcomes: OutcomeEntry[];
+  total: number;
+  total_unfiltered: number;
+  filters: { source_types: string[]; years: number[] };
+}
+
+export function getOutcomes(params: {
+  sourceTypes?: string[];
+  year?: number | null;
+  sort?: "newest" | "oldest";
+} = {}): Promise<OutcomesPage> {
+  const qs = new URLSearchParams();
+  for (const t of params.sourceTypes ?? []) qs.append("source_type", t);
+  if (params.year != null) qs.set("year", String(params.year));
+  if (params.sort) qs.set("sort", params.sort);
+  const q = qs.toString();
+  return request("GET", `/brief${q ? `?${q}` : ""}`);
+}

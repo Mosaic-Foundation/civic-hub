@@ -34,6 +34,7 @@ import CodeOfConduct from "./pages/CodeOfConduct";
 import Feedback from "./pages/Feedback";
 import Welcome from "./pages/Welcome";
 import Projects from "./pages/Projects";
+import Outcomes from "./pages/Outcomes";
 import Deliberations from "./pages/Deliberations";
 import ConversationDraft from "./pages/ConversationDraft";
 import DeliberationDetail from "./pages/DeliberationDetail";
@@ -54,7 +55,7 @@ import "./App.css";
 // Routes that show the hub banner above the nav. Detail/action pages
 // (/process/:id, /propose, etc.) stay compact so task-focused flows are
 // not pushed down by 200px of imagery.
-const BANNER_ROUTES = new Set(["/", "/votes", "/propose", "/projects", "/deliberations"]);
+const BANNER_ROUTES = new Set(["/", "/votes", "/propose", "/projects", "/deliberations", "/outcomes"]);
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { isAdmin, loading } = useAuth();
@@ -162,6 +163,7 @@ function AppContent() {
           {/* Public brief page — the permanent record of a completed process
               (the /brief path is reclaimed from the old Slice 8.5 redirect;
               existing published vote-results stay at /vote-results/:id). */}
+          <Route path="/outcomes" element={<Outcomes />} />
           <Route path="/brief/:id" element={<BriefPage />} />
           <Route path="/meeting-summary/:id" element={<MeetingSummary />} />
           <Route path="/announcement/new" element={<PostAnnouncement />} />
