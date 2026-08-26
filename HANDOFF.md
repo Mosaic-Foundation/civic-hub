@@ -415,6 +415,58 @@ unverified flow explicitly rather than leaving the gap implied. Six bugs in
 this slice survived a green unit suite, so treat that inventory as real work,
 not bookkeeping.
 
+### Closing the test gap — what CI can and cannot be made to guard — 2026-08-26
+
+**The finding that shaped this.** CI (`.github/workflows/ci.yml`) runs four
+things: install, `tsc`, `npx vitest run tests/unit`, and a UI build. It has no
+database and no server, so neither `tests/api` nor `tests/e2e` runs on push —
+for linking or for any other feature.
+
+**A bare Postgres service container cannot fix that**, which I got wrong at
+first and record here so nobody else spends time on it: the app talks
+exclusively through `supabase-js`, which speaks to PostgREST. A `postgres:16`
+container has no PostgREST, so the app cannot connect to it at all.
+
+**What IS true and useful:** all 28 tables the code declares are created by
+files in `supabase/migrations/` — nothing was hand-made in the Supabase
+console. So the migration set is complete and a from-scratch build is viable
+whenever it is wanted.
+
+**What was done instead, deliberately small.** The linking *decisions* were
+extracted from the controller into pure functions the existing CI already
+guards: `canEditLinks`, `canRemoveLink`, `edgeBelongsToProcess`,
+`isRemovableLink`. 14 new unit tests, including a **regression pin on the
+can_edit bug that actually shipped** — an admin viewing a process they had not
+created got `can_edit: false`, because the controller derived `isAdmin` from
+`res.locals.authUser` on a route with no auth middleware. That decision is now
+separable from the wiring and CI-guarded; the wiring left behind is one line.
+Behaviour re-verified against dev after the refactor (admin true, resident
+false, anonymous false, resident write refused).
+
+This does not make the wiring impossible to get wrong. It makes it hard to get
+wrong *quietly*.
+
+**Still not guarded automatically**, and listed row by row in `TESTING.md`:
+anything requiring a real database — links surviving revise-and-resubmit,
+pending-review privacy, delete-cascade, the brief ⇄ source derivation,
+inherited links, and the two UI behaviours. All verified by hand on dev and
+prod; none re-checked on push.
+
+**To actually run integration tests in CI**, two options, neither done:
+- **Supabase CLI local stack** (`supabase start` in the workflow). Correct and
+  isolated — a real Postgres + PostgREST per run, applying
+  `supabase/migrations/` from empty, no secrets. Would also prove the migration
+  set builds a working schema from scratch, which has never been verified.
+  Needs `supabase init` (there is no `config.toml` today) and adds image-pull
+  time to every run.
+- **A Supabase project dedicated to CI.** Much less work: second free project,
+  URL + service key as GitHub secrets, migrations applied once by hand. But
+  test data accumulates (`review_turns` is append-only and cannot be cleaned),
+  concurrent pushes collide, and it puts a full-access key in CI.
+
+**Do NOT point CI at the dev project Adam works in** — CI runs would collide
+with hands-on use and leave permanent residue in a database he browses.
+
 ### Open questions
 
 - **Dev carries one demo artifact:** proposal `proc_69cda899e1fa420a` ("Add

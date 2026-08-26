@@ -13,6 +13,10 @@ export type {
 export { RELATIONS, RELATION_LABELS } from "./models.js";
 
 export {
+  canEditLinks,
+  canRemoveLink,
+  edgeBelongsToProcess,
+  isRemovableLink,
   LinkValidationError,
   MAX_LINKS_PER_PROCESS,
   isRelationType,

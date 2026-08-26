@@ -17,6 +17,9 @@ import { HUB_ID, DEFAULT_JURISDICTION } from "../config/hub.js";
 import { processDetailPath } from "../processes/registry.js";
 import type { RenderedLink, RenderedLinks } from "../modules/civic.process_links/index.js";
 import {
+  canEditLinks,
+  canRemoveLink,
+  edgeBelongsToProcess,
   LinkValidationError,
   RELATIONS,
   RELATION_LABELS,
@@ -118,8 +121,11 @@ export async function handleGetLinks(req: Request, res: Response): Promise<void>
     // show. Keeps the mount one line for every process type, present and
     // future.
     const source = await getProcessOwner(processId);
-    const canEdit =
-      Boolean(viewerId) && (isAdmin || (source?.created_by != null && source.created_by === viewerId));
+    const canEdit = canEditLinks({
+      viewerId,
+      isAdmin,
+      processCreatedBy: source?.created_by,
+    });
 
     res.json({
       ...links,
@@ -143,7 +149,7 @@ export async function handleCreateLink(req: Request, res: Response): Promise<voi
       res.status(404).json({ error: "Process not found" });
       return;
     }
-    if (!isAdmin && source.created_by !== user.id) {
+    if (!canEditLinks({ viewerId: user.id, isAdmin, processCreatedBy: source.created_by })) {
       res.status(403).json({
         error: "Only the person who created this process, or an admin, can add links to it.",
         code: "not_link_owner",
@@ -211,7 +217,7 @@ export async function handleDeleteLink(req: Request, res: Response): Promise<voi
     }
     // The edge must actually touch the process in the URL, so a link can't be
     // removed by way of an unrelated process the caller happens to own.
-    if (edge.from_id !== processId && edge.to_id !== processId) {
+    if (!edgeBelongsToProcess(edge, processId)) {
       res.status(404).json({ error: "Link not found on this process" });
       return;
     }
@@ -221,7 +227,7 @@ export async function handleDeleteLink(req: Request, res: Response): Promise<voi
     // relationship and does not get to silently drop it — only its author or
     // an admin can.
     const source = await getProcessOwner(edge.from_id);
-    if (!isAdmin && source?.created_by !== user.id) {
+    if (!canRemoveLink({ viewerId: user.id, isAdmin, sourceCreatedBy: source?.created_by })) {
       res.status(403).json({
         error: "Only the person who added this link, or an admin, can remove it.",
         code: "not_link_owner",

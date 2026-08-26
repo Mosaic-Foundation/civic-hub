@@ -194,3 +194,82 @@ export function suggestionSeed(title: string, description = ""): string {
   }
   return distinct.join(" OR ");
 }
+
+// --- Authorization decisions -----------------------------------------------
+//
+// These are the JUDGMENTS the HTTP layer makes, extracted as pure functions
+// over plain values.
+//
+// WHY THEY LIVE HERE. Every one of them was previously inline in the
+// controller, where the only thing that could test them was a running server
+// and a live database — neither of which CI has. `canEditLinks` in particular
+// shipped BROKEN: the controller derived `isAdmin` from `res.locals.authUser`
+// on a route with no auth middleware, so it was permanently false and admins
+// silently lost the add-link affordance on any process they had not created.
+// A green unit suite could not have caught it, because the decision was not
+// separable from the wiring.
+//
+// Now the decision is testable and the wiring is one line that reads
+// obviously. That does not make the wiring impossible to get wrong — it makes
+// it hard to get wrong quietly.
+
+/**
+ * May this viewer add or remove links on this process?
+ *
+ * The process's creator, or an admin. Anonymous callers never can — which is
+ * why `viewerId` being absent short-circuits before the admin check: an
+ * unauthenticated request has no identity to be an admin *with*.
+ */
+export function canEditLinks(input: {
+  viewerId: string | null | undefined;
+  isAdmin: boolean;
+  processCreatedBy: string | null | undefined;
+}): boolean {
+  if (!input.viewerId) return false;
+  if (input.isAdmin) return true;
+  return input.processCreatedBy != null && input.processCreatedBy === input.viewerId;
+}
+
+/**
+ * May this viewer remove this particular edge?
+ *
+ * Authorized against the process that AUTHORED the edge, never the one on the
+ * receiving end: a backlink is someone else's assertion about you, and the
+ * target does not get to silently drop it.
+ */
+export function canRemoveLink(input: {
+  viewerId: string | null | undefined;
+  isAdmin: boolean;
+  /** created_by of the edge's FROM process — the one that asserted it. */
+  sourceCreatedBy: string | null | undefined;
+}): boolean {
+  return canEditLinks({
+    viewerId: input.viewerId,
+    isAdmin: input.isAdmin,
+    processCreatedBy: input.sourceCreatedBy,
+  });
+}
+
+/**
+ * Does this edge actually touch the process named in the request?
+ *
+ * Guards against removing a link by way of an unrelated process the caller
+ * happens to own.
+ */
+export function edgeBelongsToProcess(
+  edge: { from_id: string; to_id: string },
+  processId: string,
+): boolean {
+  return edge.from_id === processId || edge.to_id === processId;
+}
+
+/**
+ * Is this link backed by a row that can be deleted at all?
+ *
+ * False for DERIVED links (the brief ⇄ source pair, computed from
+ * `state.source_process_id`) and for PROJECTED ones (a brief showing the links
+ * of the process it summarizes). Neither has a row here to remove.
+ */
+export function isRemovableLink(link: { synthetic?: boolean; inherited?: boolean }): boolean {
+  return !link.synthetic && !link.inherited;
+}

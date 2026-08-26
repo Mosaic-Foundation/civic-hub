@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
+  canEditLinks,
+  canRemoveLink,
+  edgeBelongsToProcess,
+  isRemovableLink,
   LinkValidationError,
   MAX_LINKS_PER_PROCESS,
   RELATION_LABELS,
@@ -372,5 +376,97 @@ describe("derived and projected links are not removable", () => {
     const out = renderLinks("proc_a", [edge()], peerMap(peer("proc_b")));
     expect(out.outgoing[0]?.synthetic).toBeUndefined();
     expect(out.outgoing[0]?.inherited).toBeUndefined();
+  });
+});
+
+// --- authorization decisions -----------------------------------------------
+
+describe("canEditLinks — who may add or remove links", () => {
+  const ADMIN = { viewerId: "user_admin", isAdmin: true };
+  const RESIDENT = { viewerId: "user_rosa", isAdmin: false };
+
+  /**
+   * REGRESSION. This exact case shipped broken: the controller read `isAdmin`
+   * from `res.locals.authUser` on a route with NO auth middleware, so it was
+   * permanently false and an admin viewing a process they had not created got
+   * can_edit:false and no add-link affordance — silently disabling the whole
+   * admin-review surface. Caught only by hand against a live server. The
+   * decision is pinned here so the next regression is caught by CI instead.
+   */
+  it("lets an admin edit a process they did NOT create", () => {
+    expect(canEditLinks({ ...ADMIN, processCreatedBy: "user_someone_else" })).toBe(true);
+  });
+
+  it("lets the creator edit their own process", () => {
+    expect(canEditLinks({ ...RESIDENT, processCreatedBy: "user_rosa" })).toBe(true);
+  });
+
+  it("refuses a resident on someone else's process", () => {
+    expect(canEditLinks({ ...RESIDENT, processCreatedBy: "user_someone_else" })).toBe(false);
+  });
+
+  it("refuses an anonymous caller outright", () => {
+    expect(canEditLinks({ viewerId: null, isAdmin: false, processCreatedBy: "user_rosa" })).toBe(false);
+    expect(canEditLinks({ viewerId: undefined, isAdmin: false, processCreatedBy: null })).toBe(false);
+  });
+
+  /**
+   * An unauthenticated request has no identity to be an admin WITH. If a bug
+   * ever sets isAdmin true without a viewer, this must still refuse — the
+   * alternative is anonymous write access.
+   */
+  it("refuses an anonymous caller even if isAdmin is somehow true", () => {
+    expect(canEditLinks({ viewerId: null, isAdmin: true, processCreatedBy: "x" })).toBe(false);
+  });
+
+  it("refuses when the process has no recorded creator and the viewer is not an admin", () => {
+    expect(canEditLinks({ ...RESIDENT, processCreatedBy: null })).toBe(false);
+    expect(canEditLinks({ ...RESIDENT, processCreatedBy: undefined })).toBe(false);
+  });
+});
+
+describe("canRemoveLink — authorized against the edge's AUTHOR", () => {
+  /**
+   * A backlink is someone else's assertion about you. The process on the
+   * receiving end did not make the claim and does not get to silently drop
+   * it — only the process that authored the edge, or an admin.
+   */
+  it("lets the author of the edge remove it", () => {
+    expect(canRemoveLink({ viewerId: "user_a", isAdmin: false, sourceCreatedBy: "user_a" })).toBe(true);
+  });
+
+  it("refuses the owner of the process on the RECEIVING end", () => {
+    expect(canRemoveLink({ viewerId: "user_b", isAdmin: false, sourceCreatedBy: "user_a" })).toBe(false);
+  });
+
+  it("lets an admin remove anyone's edge", () => {
+    expect(canRemoveLink({ viewerId: "user_admin", isAdmin: true, sourceCreatedBy: "user_a" })).toBe(true);
+  });
+});
+
+describe("edgeBelongsToProcess — no removing links via an unrelated process", () => {
+  const e = { from_id: "proc_a", to_id: "proc_b" };
+
+  it("accepts either end of the edge", () => {
+    expect(edgeBelongsToProcess(e, "proc_a")).toBe(true);
+    expect(edgeBelongsToProcess(e, "proc_b")).toBe(true);
+  });
+
+  it("rejects a process the edge does not touch", () => {
+    expect(edgeBelongsToProcess(e, "proc_unrelated")).toBe(false);
+  });
+});
+
+describe("isRemovableLink — derived and projected links have no row to delete", () => {
+  it("an ordinary stored edge is removable", () => {
+    expect(isRemovableLink({})).toBe(true);
+  });
+
+  it("a derived link (brief ⇄ source) is not", () => {
+    expect(isRemovableLink({ synthetic: true })).toBe(false);
+  });
+
+  it("an inherited link (a brief showing its source's links) is not", () => {
+    expect(isRemovableLink({ inherited: true })).toBe(false);
   });
 });

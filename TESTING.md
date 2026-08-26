@@ -48,6 +48,16 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
 - **Helpers:** `civic-hub/tests/fixtures/helpers.ts`
 - **Covers:** process CRUD, event feed, auth flow, proposals, search, health/discovery, cron endpoints, deliberation routes
 
+> **Why so much linking logic is pure.** CI runs ONLY the unit layer — it has
+> no database and no server, and the app talks exclusively through
+> `supabase-js`/PostgREST, so a bare Postgres container cannot stand in for it.
+> Rather than write integration tests nothing would run, the linking slice
+> extracted its *decisions* (`canEditLinks`, `canRemoveLink`,
+> `edgeBelongsToProcess`, `isRemovableLink`) into pure functions the existing
+> CI already guards, leaving one-line wiring behind. Making integration tests
+> run on push needs either the Supabase CLI local stack in the workflow, or a
+> Supabase project dedicated to CI. Not done — see HANDOFF.
+
 ### Unit Tests (Vitest, infrastructure-free)
 Pure functions only — no database, no server, no network. **This is the layer CI
 runs on every push**, alongside `tsc` and a real UI build.
@@ -213,17 +223,19 @@ against dev/prod but not automated say so — that is a real gap, not a formalit
 | Withheld peer dropped from render | :white_check_mark: unit | | |
 | Suggestion seed joins terms with OR, not spaces | :white_check_mark: unit | | regression — shipped broken once |
 | Per-process-type relation defaults | :white_check_mark: unit | | mirrored from the UI module; see note in test |
-| POST/DELETE /process/:id/links authz (creator or admin) | | dev | **Needs API test** |
-| GET /process/:id/links returns can_edit correctly for admin vs anon | | dev | **Needs API test** — this exact case shipped broken |
+| POST/DELETE /process/:id/links authz (creator or admin) | :white_check_mark: unit | dev | decision extracted to `canEditLinks` / `canRemoveLink`; HTTP wiring still untested |
+| GET /process/:id/links returns can_edit correctly for admin vs anon | :white_check_mark: unit | dev | `canEditLinks`; regression-pinned — this exact case shipped broken |
 | Typeahead returns all process types, honours exclude | | dev | **Needs API test** |
 | Links picked at creation survive draft → submit → approve | | dev | **Needs API test** |
 | Links survive revise-and-resubmit through review | | dev | **Needs API test** |
 | Pending-review links stay private until approval | | dev | **Needs API test** — load-bearing privacy guarantee |
 | Archived process withheld as a peer | | dev | **Needs API test** |
+| Removing a link is authorized against the edge's AUTHOR, not the target | :white_check_mark: unit | dev | `canRemoveLink` — a backlink is not the target's to drop |
+| A link cannot be removed via an unrelated process the caller owns | :white_check_mark: unit | | `edgeBelongsToProcess` |
 | Deleting a process cascades its links (no dangling edges) | | dev | **Needs API test** |
 | Brief ⇄ source pair derived from state.source_process_id | | dev | **Needs API test** |
 | Brief projects its source's links, marked inherited | | dev | **Needs API test** |
-| Derived / inherited links cannot be deleted via API | | dev | **Needs API test** |
+| Derived / inherited links cannot be deleted via API | :white_check_mark: unit | dev | `isRemovableLink` |
 | Link edits do NOT reset the Code of Conduct check | | dev | **Needs API test** |
 | Picker: auto-suggestions from the draft's own title | | dev UI | **Needs E2E** |
 | Read-only backlinks on announcement / meeting summary | | | **Needs E2E** |
