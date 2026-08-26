@@ -55,8 +55,9 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
 > extracted its *decisions* (`canEditLinks`, `canRemoveLink`,
 > `edgeBelongsToProcess`, `isRemovableLink`) into pure functions the existing
 > CI already guards, leaving one-line wiring behind. Making integration tests
-> run on push needs either the Supabase CLI local stack in the workflow, or a
-> Supabase project dedicated to CI. Not done — see HANDOFF.
+> run on push is NOT done — **read "Running integration tests in CI" at the
+> bottom of this file before writing anything in `tests/api/`, or you will
+> write a test nothing executes.**
 
 ### Unit Tests (Vitest, infrastructure-free)
 Pure functions only — no database, no server, no network. **This is the layer CI
@@ -375,4 +376,41 @@ The goal: before any push to `main`, every row in this table should have at leas
 
 ---
 
-*Last updated: 2026-08-25 — added the unit-test layer (which CI runs and this file had never documented) and the process-linking inventory.*
+## Running integration tests in CI
+
+**Read this before writing anything in `tests/api/` or `tests/e2e/`.**
+
+Neither suite runs on push today. CI does four things: install, `tsc`,
+`npx vitest run tests/unit`, and a UI build. It has no database and no server.
+A test added to `tests/api` is a test **nobody will ever run automatically**
+until one of the options below is done.
+
+**A bare Postgres container does NOT work.** The app talks exclusively through
+`supabase-js`, which speaks to PostgREST — Supabase's HTTP layer. A
+`postgres:16` service container has no PostgREST, so the app cannot connect to
+it at all. Considered and rejected 2026-08-26; don't re-tread it.
+
+Two options that do work:
+
+**1. Supabase CLI local stack** — *correct, more setup.*
+Add `supabase/setup-cli` to the workflow and run `supabase start`: a real
+Postgres + PostgREST per run, applying `supabase/migrations/` from empty.
+Isolated, disposable, no secrets in CI. Needs `supabase init` first (there is
+no `config.toml` today) and adds image-pull time to every run.
+*Bonus worth having anyway:* it proves the migration set builds a working
+schema from scratch, which has never been verified. As of 2026-08-26 all 28
+tables the code needs ARE created by migration files — none by hand in the
+Supabase console — so this should work.
+
+**2. A Supabase project dedicated to CI** — *quick, degrades over time.*
+A second free project; `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` as GitHub
+secrets; migrations applied once by hand. But test data accumulates and
+`review_turns` is append-only so it cannot be cleaned; concurrent pushes
+collide and make CI flaky; and it puts a full-access key in CI secrets.
+
+**Do NOT point CI at the dev Supabase project.** Runs would collide with
+hands-on use and leave permanent residue in a database that gets browsed.
+
+---
+
+*Last updated: 2026-08-26 — added the unit-test layer (which CI runs and this file had never documented), the process-linking coverage inventory, and the standing note above on running integration tests in CI.*
