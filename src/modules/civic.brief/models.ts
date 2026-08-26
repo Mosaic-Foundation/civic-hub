@@ -12,11 +12,12 @@
 // vote_results: created `pending`, admin reviews and edits, then approves
 // which delivers it to officials and publishes it to the public feed.
 //
-// COEXISTENCE: this module runs ALONGSIDE civic.vote_results, which keeps
-// handling votes unchanged. Briefs cover conversation / proposal / project
-// (and any future type). A vote's results can be represented in this same
-// generic shape later, so migrating votes onto civic.brief is additive —
-// existing vote_results records and URLs keep working untouched.
+// SUPERSESSION (updated 2026-08-25): this module now covers EVERY process
+// type, votes included — civic.vote implements generateBrief and no longer
+// spawns a civic.vote_results record. civic.vote_results survives only so
+// already-published results keep their URLs; it is legacy, not a parallel
+// pipeline. The previous text here described the two as coexisting, which was
+// true when written and is not now.
 //
 // Like vote_results, this module is self-contained and portable: the host
 // hub injects callbacks for event emission, email delivery, and finalizing

@@ -96,9 +96,14 @@ export interface ProcessHandler {
    * here. Must be a pure snapshot: the returned content is frozen onto the
    * brief record; it must not mutate the source process.
    *
-   * NOTE: civic.vote keeps its existing civic.vote_results pipeline for now
-   * and intentionally does NOT implement this yet — see civic.brief/models
-   * (coexistence). Migrating votes onto this hook later is additive.
+   * HISTORICAL NOTE, CORRECTED 2026-08-25: this used to say civic.vote kept
+   * the civic.vote_results pipeline and did not implement this hook. No longer
+   * true — civic.vote implements generateBrief (voteProcess.ts), and per that
+   * file "no civic.vote_results is created anymore; briefs are the single
+   * unified results artifact for every process type". civic.vote_results
+   * survives only so already-published records keep their URLs. Corrected
+   * rather than deleted because the stale note misled a reader during the
+   * 2026-08-25 linking slice.
    */
   generateBrief?(process: Process): BriefContent | null | Promise<BriefContent | null>;
 }

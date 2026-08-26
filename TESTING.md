@@ -37,7 +37,7 @@ npm run test:watch
 
 ---
 
-## Two Test Layers
+## Three Test Layers
 
 ### API Integration Tests (Vitest)
 Hit the Express backend directly via fetch, no browser. Fast, high coverage.
@@ -47,6 +47,27 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
 - **Config:** `civic-hub/vitest.config.ts`
 - **Helpers:** `civic-hub/tests/fixtures/helpers.ts`
 - **Covers:** process CRUD, event feed, auth flow, proposals, search, health/discovery, cron endpoints, deliberation routes
+
+### Unit Tests (Vitest, infrastructure-free)
+Pure functions only — no database, no server, no network. **This is the layer CI
+runs on every push**, alongside `tsc` and a real UI build.
+
+- **Location:** `civic-hub/tests/unit/`
+- **Run:** `npx vitest run tests/unit`
+- **Covers:** lifecycle transitions, voting methods, the wordlist filter, feed
+  classification, the activity serializer's golden documents, schema-contract
+  classification, process-link edge storage and both-direction rendering
+
+- **KNOW WHAT THIS LAYER CANNOT SEE.** It is blind to everything at the seam
+  between a pure module and the world. During the 2026-08-25 process-linking
+  slice, six bugs survived a fully green unit suite and were caught only by
+  running against a real database and a real browser:
+  an admin permission check reading `res.locals` on a route with no auth
+  middleware; a title leaking onto the permanent AS2 wire; a Postgres query
+  that ANDed terms where the code assumed OR (which silently disabled a whole
+  feature); a zero-pixel CSS margin collision; and two more.
+  **Green unit tests are not evidence that a slice works.** Budget a
+  real-environment pass on anything touching HTTP, SQL, or layout.
 
 ### E2E User Flow Tests (Playwright)
 Open the real UI in Chromium and simulate resident interactions.
@@ -177,6 +198,36 @@ Each row tracks a user flow, which layer covers it, and which slice introduced i
 | Admin: start conversation (POST /deliberations/:id/start) | | | D | Needs test |
 | Admin: close conversation (POST /deliberations/:id/close) | | | D | Needs test |
 | Admin: regenerate summary (POST /deliberations/:id/regenerate-summary) | | | D | Needs test |
+
+### Process Linking Flows (Slice: linking, 2026-08-25)
+
+Marked honestly: `unit` means pure-logic coverage only. Flows verified by hand
+against dev/prod but not automated say so — that is a real gap, not a formality.
+
+| Flow | Automated | Verified | Notes |
+|------|-----------|----------|-------|
+| Edge stored exactly once; no inverse row written | :white_check_mark: unit | | processLinks.test.ts |
+| Both-direction render: one edge → outgoing one end, incoming the other | :white_check_mark: unit | | same link id from both ends |
+| Inverse label correct for every relation | :white_check_mark: unit | | |
+| Relation vocabulary / self-link / duplicate / cap rejected | :white_check_mark: unit | | |
+| Withheld peer dropped from render | :white_check_mark: unit | | |
+| Suggestion seed joins terms with OR, not spaces | :white_check_mark: unit | | regression — shipped broken once |
+| Per-process-type relation defaults | :white_check_mark: unit | | mirrored from the UI module; see note in test |
+| POST/DELETE /process/:id/links authz (creator or admin) | | dev | **Needs API test** |
+| GET /process/:id/links returns can_edit correctly for admin vs anon | | dev | **Needs API test** — this exact case shipped broken |
+| Typeahead returns all process types, honours exclude | | dev | **Needs API test** |
+| Links picked at creation survive draft → submit → approve | | dev | **Needs API test** |
+| Links survive revise-and-resubmit through review | | dev | **Needs API test** |
+| Pending-review links stay private until approval | | dev | **Needs API test** — load-bearing privacy guarantee |
+| Archived process withheld as a peer | | dev | **Needs API test** |
+| Deleting a process cascades its links (no dangling edges) | | dev | **Needs API test** |
+| Brief ⇄ source pair derived from state.source_process_id | | dev | **Needs API test** |
+| Brief projects its source's links, marked inherited | | dev | **Needs API test** |
+| Derived / inherited links cannot be deleted via API | | dev | **Needs API test** |
+| Link edits do NOT reset the Code of Conduct check | | dev | **Needs API test** |
+| Picker: auto-suggestions from the draft's own title | | dev UI | **Needs E2E** |
+| Read-only backlinks on announcement / meeting summary | | | **Needs E2E** |
+| Word cloud shows no links panel at all | | | **Needs E2E** |
 
 ### API-Only Flows
 
@@ -312,4 +363,4 @@ The goal: before any push to `main`, every row in this table should have at leas
 
 ---
 
-*Last updated: 2026-06-18*
+*Last updated: 2026-08-25 — added the unit-test layer (which CI runs and this file had never documented) and the process-linking inventory.*

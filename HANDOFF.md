@@ -398,23 +398,39 @@ nothing to show, and if linking is dense one-hop navigation already works.
 What decides which world we are in is whether links get created at all, and
 that currently depends entirely on people remembering.
 
+### Shipped — status at end of session
+
+**Deployed to prod and healthy.** `20260825000000_process_links.sql` is applied
+to prod; `GET /api/health` reports 28 tables checked, zero gaps, which is
+positive proof (the contract names `process_links` and the three draft `links`
+columns, so a missing one would be itemized). The whole batch is on `main` at
+`Mosaic-Foundation/civic-hub`. Note `/health` is NOT in `vercel.json`'s
+rewrites — the Express app is only reachable under `/api`, so the health URL is
+`/api/health`; plain `/health` returns the SPA's HTML.
+
+**Automated coverage is thinner than the test count suggests.** 352 unit tests
+pass, but the linking work has *no* API or E2E tests — every integration
+behaviour was verified by hand against dev and prod. `TESTING.md` lists each
+unverified flow explicitly rather than leaving the gap implied. Six bugs in
+this slice survived a green unit suite, so treat that inventory as real work,
+not bookkeeping.
+
 ### Open questions
 
-- **Prod migration not yet applied.** Dev only. Same SQL, prod project, before
-  the code deploys.
 - **Dev carries one demo artifact:** proposal `proc_69cda899e1fa420a` ("Add
   recycling to the new green box dumpster sites"), created through the UI
-  during this walkthrough and linked to the green box vote. Left in place
+  during the walkthrough and linked to the green box vote. Left in place
   deliberately so the feature is visible on dev; delete it and its
-  `process_links` row if unwanted.
+  `process_links` row if unwanted. Two further test proposals were **archived**
+  rather than deleted — `review_turns` is append-only at the database level and
+  correctly refused the delete.
 - **`Participation-Model.md` was not found** anywhere on disk (searched the
   monorepo, all doc folders, the subrepo, and `~/Developer`). This was built
   against the design as Adam stated it in-session. Worth reconciling if that
   document exists somewhere I couldn't see.
-- **`Participation-Model.md` was not found** anywhere on disk (searched the
-  monorepo, all doc folders, the subrepo, and `~/Developer`). This was built
-  against the design as Adam stated it in-session. Worth reconciling if that
-  document exists somewhere I couldn't see.
+- **Docs name the wrong GitHub org.** Both HANDOFFs still say
+  `creatinglake/civic-hub`, but the remote is now
+  `Mosaic-Foundation/civic-hub`. Unrelated to this slice; not swept.
 
 ---
 
