@@ -15,14 +15,48 @@ import "./WordcloudTeaser.css";
  * 154ms for the actual page content).
  *
  * Caching the promise rather than the value means concurrent mounts share one
- * in-flight request instead of racing. Cloud contents change on the order of
- * days, so a per-session cache is ample; a full reload refetches.
+ * in-flight request instead of racing.
+ *
+ * The module cache dies with the page, so sessionStorage carries it across
+ * reloads and new tabs — the banner then paints from cache immediately instead
+ * of waiting on the slowest request on the site. Cloud contents change on the
+ * order of days and the cache dies with the tab, so no TTL is needed.
  */
-let cloudRequest: ReturnType<typeof getWordcloudCloud> | null = null;
+const CACHE_KEY = "wordcloud-teaser-cache-v1";
 
-function loadCloud(id: string) {
+type CloudResponse = Awaited<ReturnType<typeof getWordcloudCloud>>;
+
+let cloudRequest: Promise<CloudResponse> | null = null;
+
+function readCache(id: string): CloudResponse | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id: string; data: CloudResponse };
+    return parsed.id === id ? parsed.data : null;
+  } catch {
+    // Private windows and blocked site-data both throw here. A cache miss is
+    // always survivable, so never let storage break the banner.
+    return null;
+  }
+}
+
+function writeCache(id: string, data: CloudResponse): void {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ id, data }));
+  } catch {
+    /* quota or blocked storage — the in-memory cache still applies */
+  }
+}
+
+function loadCloud(id: string): Promise<CloudResponse> {
+  const cached = readCache(id);
+  if (cached) return Promise.resolve(cached);
   if (!cloudRequest) {
-    cloudRequest = getWordcloudCloud(id);
+    cloudRequest = getWordcloudCloud(id).then((res) => {
+      writeCache(id, res);
+      return res;
+    });
     // A failed request must not be cached as a permanent failure — the next
     // mount should be free to try again.
     cloudRequest.catch(() => {

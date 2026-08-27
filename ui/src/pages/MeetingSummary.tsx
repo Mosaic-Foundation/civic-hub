@@ -162,30 +162,59 @@ export default function MeetingSummaryPage() {
         ))}
       </div>
 
+      {/* Sections collapse by default so the page opens as a scannable agenda
+          of the whole meeting rather than a wall of prose. A four-hour meeting
+          runs to a dozen-plus blocks; most readers want to find the one item
+          they care about, not read all of it. Native <details> is used rather
+          than hand-rolled state so keyboard and screen-reader behaviour, and
+          the browser's own find-in-page expansion, come for free. */}
+      <p className="meeting-blocks-help">
+        Select a section to read its summary.
+        {hasVideo
+          ? " Select a timestamp to open the recording at that moment."
+          : ""}
+      </p>
+
       <section className="meeting-blocks">
         {summary.blocks.map((block, i) => (
-          <article key={i} className="meeting-block">
-            {block.start_time_seconds !== null && summary.source_video_url ? (
-              <a
-                href={youTubeAtTime(
-                  summary.source_video_url,
-                  block.start_time_seconds,
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="meeting-block-timestamp"
-              >
-                {formatSeconds(block.start_time_seconds)}
-              </a>
-            ) : null}
-            <h2 className="meeting-block-title">{block.topic_title}</h2>
-            <p className="meeting-block-summary">{block.topic_summary}</p>
-            {block.action_taken && (
-              <p className="meeting-block-action">
-                <strong>Action taken:</strong> {block.action_taken}
-              </p>
-            )}
-          </article>
+          <details key={i} className="meeting-block">
+            <summary className="meeting-block-header">
+              <span className="meeting-block-heading">
+                {block.start_time_seconds !== null && summary.source_video_url ? (
+                  <a
+                    href={youTubeAtTime(
+                      summary.source_video_url,
+                      block.start_time_seconds,
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="meeting-block-timestamp"
+                    // Without this the browser both follows the link and
+                    // toggles the section, so jumping to the video would
+                    // silently expand a block the reader never asked for.
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {formatSeconds(block.start_time_seconds)}
+                  </a>
+                ) : null}
+                <h2 className="meeting-block-title">{block.topic_title}</h2>
+              </span>
+              {/* Votes and motions are what most residents come for, so they
+                  stay findable without opening every section. */}
+              {block.action_taken && (
+                <span className="meeting-block-flag">Action taken</span>
+              )}
+              <span className="meeting-block-caret" aria-hidden="true" />
+            </summary>
+            <div className="meeting-block-body">
+              <p className="meeting-block-summary">{block.topic_summary}</p>
+              {block.action_taken && (
+                <p className="meeting-block-action">
+                  <strong>Action taken:</strong> {block.action_taken}
+                </p>
+              )}
+            </div>
+          </details>
         ))}
       </section>
 

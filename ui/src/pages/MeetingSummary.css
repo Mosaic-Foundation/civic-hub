@@ -189,3 +189,105 @@
 .meeting-revised {
   color: var(--color-text-muted, #555);
 }
+
+/* --- Collapsible topic blocks -------------------------------------------
+   Collapsed by default: the page opens as a scannable agenda of the whole
+   meeting. A four-hour session runs to a dozen-plus blocks, and most readers
+   are looking for one item rather than reading straight through. */
+
+.meeting-blocks-help {
+  margin: var(--space-md) 0 var(--space-sm);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--color-text-muted, #666);
+}
+
+.meeting-block {
+  border: 1px solid var(--color-border, #e5e3dd);
+  border-radius: var(--radius-md, 6px);
+  margin-bottom: var(--space-sm, 0.75rem);
+  background: var(--color-surface, #fff);
+}
+
+.meeting-block-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm, 0.75rem);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  list-style: none; /* drop the default disclosure triangle */
+}
+.meeting-block-header::-webkit-details-marker {
+  display: none;
+}
+.meeting-block-header:hover {
+  background: var(--color-surface-alt, #faf8f4);
+}
+/* Keyboard focus must stay visible — the summary is the control. */
+.meeting-block-header:focus-visible {
+  outline: 2px solid var(--color-primary, #2c3e73);
+  outline-offset: -2px;
+}
+
+.meeting-block-heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm, 0.75rem);
+  flex: 1;
+  min-width: 0;
+}
+
+.meeting-block-title {
+  font-size: var(--font-size-base, 1rem);
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* Sits inside the summary, so it stops propagation in the handler to keep
+   "jump to the video" from also expanding the section. */
+.meeting-block-timestamp {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.meeting-block-flag {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs, 0.75rem);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--pill-results-bg, #d9ecd9);
+  color: var(--pill-results-fg, #0f4a26);
+  white-space: nowrap;
+}
+
+.meeting-block-caret {
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--color-text-muted, #666);
+  transition: transform 120ms ease;
+}
+.meeting-block[open] .meeting-block-caret {
+  transform: rotate(180deg);
+}
+
+.meeting-block-body {
+  padding: 0 var(--space-md) var(--space-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meeting-block-caret {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Stack so a long topic title is not squeezed against the timestamp. */
+  .meeting-block-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+  }
+}
