@@ -170,3 +170,22 @@
   line-height: var(--line-height-base);
   white-space: pre-wrap;
 }
+
+/* Awaiting-minutes notice.
+   Meeting records routinely go live before their official minutes exist:
+   bodies approve minutes at a following meeting, so a multi-week gap is
+   normal. Without this, the missing link reads as an omission. */
+.meeting-pending-minutes {
+  margin: var(--space-md) 0;
+  padding: var(--space-sm) var(--space-md);
+  border-left: 3px solid var(--color-accent, #d97706);
+  background: var(--color-surface-alt, #faf8f4);
+  border-radius: var(--radius-sm, 4px);
+  font-size: var(--font-size-sm, 0.9rem);
+  line-height: 1.5;
+  color: var(--color-text-muted, #555);
+}
+
+.meeting-revised {
+  color: var(--color-text-muted, #555);
+}

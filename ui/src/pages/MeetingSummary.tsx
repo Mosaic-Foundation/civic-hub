@@ -85,8 +85,34 @@ export default function MeetingSummaryPage() {
           >
             {relativeTime(summary.published_at)}
           </time>
+          {summary.revised_at && (
+            <>
+              {" · "}
+              <span className="meeting-revised">
+                Updated{" "}
+                <time
+                  dateTime={summary.revised_at}
+                  title={absoluteTime(summary.revised_at)}
+                >
+                  {relativeTime(summary.revised_at)}
+                </time>{" "}
+                with the official minutes
+              </span>
+            </>
+          )}
         </p>
       </header>
+
+      {summary.awaiting_minutes && (
+        // Readers otherwise wonder why a meeting record has no minutes link.
+        // Jurisdictions approve minutes at the FOLLOWING meeting, so a gap of
+        // several weeks is normal rather than an omission.
+        <div className="meeting-pending-minutes">
+          Official minutes for this meeting have not been published yet — they
+          are usually approved at a later meeting. This summary is based on the
+          meeting recording. It will be updated once the minutes are available.
+        </div>
+      )}
 
       <div className="meeting-disclaimer">
         <strong>{summary.ai_attribution_label}</strong>

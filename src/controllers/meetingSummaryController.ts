@@ -31,8 +31,11 @@ import {
   getAdminReadModel,
   getAdminSummary,
   getPublicReadModel,
+  acceptRevision,
+  discardRevision,
   resolveEffectiveInstructions,
   sourceFingerprints,
+  stageRevision,
   summarizeMeeting,
   UPGRADEABLE_SOURCE_TYPES,
   wixCmsConnector,
@@ -71,6 +74,14 @@ import {
 const DEFAULT_CONNECTOR_ID = "auto";
 const CRON_ACTOR = "system:meeting-summary-cron";
 const DEFAULT_MAX_PER_RUN = 3;
+
+/**
+ * How long a revision may wait for review before the cron mentions it.
+ *
+ * Long enough not to nag about something queued yesterday, short enough that an
+ * improvement does not sit unread for a whole meeting cycle.
+ */
+const REVISION_NAG_DAYS = 14;
 
 function maxPerRun(): number {
   const raw = process.env.MEETING_SUMMARY_MAX_PER_RUN?.trim();
@@ -230,6 +241,8 @@ interface CronOutcome {
   brokenLinks?: BrokenPublication[];
   /** Summaries still describing a meeting that had not happened when written. */
   staleSummaries?: Array<{ meeting_date: string; meeting_title: string; generated_at: string }>;
+  /** Revisions sitting unreviewed past the nag threshold. */
+  staleRevisions?: Array<{ meeting_date: string; meeting_title: string; waiting_days: number }>;
   /** Set when the run aborted before finishing (discovery threw, config invalid). */
   fatal?: string;
 }
@@ -266,6 +279,15 @@ export function cronAlertReason(outcome: CronOutcome): string | null {
   }
   if (outcome.failed > 0) {
     return `${outcome.failed} meeting(s) failed to summarize.`;
+  }
+  if (outcome.staleRevisions && outcome.staleRevisions.length > 0) {
+    // Nothing is broken — the published version is still serving — but an
+    // improvement is sitting unread, and silence would let it sit forever.
+    return (
+      `${outcome.staleRevisions.length} revision(s) have been waiting for review ` +
+      `longer than ${REVISION_NAG_DAYS} days. The published summaries are ` +
+      `unaffected, but the newer versions are not reaching residents.`
+    );
   }
   if (outcome.staleSummaries && outcome.staleSummaries.length > 0) {
     // The Aug 2026 case: a summary written from the agenda three days before
@@ -815,9 +837,15 @@ export async function handleRunMeetingSummary(
         const existing = upgradeable ?? provisionalFor(entry);
         if (!existing) continue;
 
+        const existingState = summaryState(existing);
+
+        // A revision is already waiting on this summary. Regenerating would
+        // just replace one unreviewed candidate with another and burn the
+        // per-run budget doing it.
+        if (existingState.pending_revision) continue;
+
         // Skip when there is nothing new to say: no minutes to add, and the
         // existing summary was already written after the meeting happened.
-        const existingState = summaryState(existing);
         if (!entry.source_minutes_url && !summaryPredatesMeeting(existingState)) {
           continue;
         }
@@ -854,14 +882,44 @@ export async function handleRunMeetingSummary(
             callClaude,
           });
           const state = summaryState(existing);
+          const nowIso = new Date().toISOString();
+          const reason = entry.source_minutes_url
+            ? "Official minutes have been published for this meeting."
+            : "A recording of this meeting is now available; the previous summary was written before it took place.";
+
+          // A summary that is already public gets a REVISION, reviewed before
+          // residents see it, with the live version untouched meanwhile. One
+          // that is still in review has no public version to protect, so it is
+          // replaced directly rather than queueing a review inside a review.
+          if (state.approval_status === "published") {
+            stageRevision(state, {
+              blocks: summary.blocks,
+              source_minutes_url: entry.source_minutes_url,
+              source_agenda_url: entry.source_agenda_url,
+              source_type: summary.sourceType,
+              reason,
+              ai_instructions_used: summary.ai_instructions_used,
+              ai_model: summary.model,
+              generated_at: nowIso,
+            });
+            existing.state = state as unknown as Record<string, unknown>;
+            await saveProcessState(existing);
+            console.log(
+              `[meeting-summary] staged revision for published process=${existing.id} ` +
+                `source_id=${entry.source_id} — awaiting admin review`,
+            );
+            upgraded += 1;
+            continue;
+          }
+
           state.source_id = entry.source_id;
           state.source_minutes_url = entry.source_minutes_url;
           state.source_agenda_url = entry.source_agenda_url;
-          state.source_type = "minutes";
+          state.source_type = summary.sourceType;
           state.blocks = summary.blocks;
           state.ai_instructions_used = summary.ai_instructions_used;
           state.ai_model = summary.model;
-          state.generated_at = new Date().toISOString();
+          state.generated_at = nowIso;
 
           // An already-published summary keeps its published state.
           //
@@ -879,34 +937,12 @@ export async function handleRunMeetingSummary(
           // update is announced so the change is on the record and the admin
           // surfaces can show it; an unpublished summary still routes through
           // review as before.
-          const wasPublished = state.approval_status === "published";
-          if (!wasPublished) {
-            state.approval_status = "pending";
-            state.published_at = null;
-            state.approved_at = null;
-          }
+          // Still in review: it stays in review with better content.
+          state.approval_status = "pending";
+          state.published_at = null;
+          state.approved_at = null;
           existing.state = state as unknown as Record<string, unknown>;
           await saveProcessState(existing);
-
-          if (wasPublished) {
-            await emitEvent({
-              event_type: "civic.process.updated",
-              actor: CRON_ACTOR,
-              process_id: existing.id,
-              hub_id: existing.hubId,
-              jurisdiction: existing.jurisdiction,
-              processType: "civic.meeting_summary",
-              action_url_path: `/meeting-summary/${existing.id}`,
-              data: {
-                meeting_summary: {
-                  approval_status: state.approval_status,
-                  block_count: state.blocks.length,
-                  meeting_date: state.meeting_date,
-                  upgraded_to: "minutes",
-                },
-              },
-            });
-          }
           console.log(
             `[meeting-summary] upgraded process=${existing.id} source_id=${entry.source_id} duration_ms=${Date.now() - meetingStart}`,
           );
@@ -939,6 +975,28 @@ export async function handleRunMeetingSummary(
       console.error(
         `[meeting-summary] ${staleSummaries.length} summary/summaries predate their ` +
           `own meeting: ${staleSummaries.map((t) => t.meeting_date).join(", ")}`,
+      );
+    }
+
+    // Revisions nobody has reviewed. Not a failure — the published version is
+    // still serving correctly — but an improvement that is not reaching anyone.
+    const nowMs = Date.now();
+    const staleRevisions = (await getAllProcesses().catch(() => []))
+      .filter((p) => p.definition.type === "civic.meeting_summary")
+      .map((p) => summaryState(p))
+      .filter((st) => st.pending_revision)
+      .map((st) => ({
+        meeting_date: st.meeting_date,
+        meeting_title: st.meeting_title,
+        waiting_days: Math.floor(
+          (nowMs - Date.parse(st.pending_revision!.generated_at)) / 86_400_000,
+        ),
+      }))
+      .filter((r) => Number.isFinite(r.waiting_days) && r.waiting_days >= REVISION_NAG_DAYS);
+    if (staleRevisions.length > 0) {
+      console.warn(
+        `[meeting-summary] ${staleRevisions.length} revision(s) waiting > ${REVISION_NAG_DAYS} days: ` +
+          staleRevisions.map((r) => `${r.meeting_date} (${r.waiting_days}d)`).join(", "),
       );
     }
 
@@ -976,6 +1034,7 @@ export async function handleRunMeetingSummary(
       failed,
       broken_links: brokenLinks.length,
       stale_summaries: staleSummaries.length,
+      pending_revisions_overdue: staleRevisions.length,
       duration_ms,
     });
 
@@ -989,6 +1048,7 @@ export async function handleRunMeetingSummary(
       connector_id: usedConnectorId,
       brokenLinks,
       staleSummaries,
+      staleRevisions,
     }).catch((err) => {
       console.warn(
         `[meeting-summary] notification send error: ${err instanceof Error ? err.message : "unknown"}`,
@@ -1202,6 +1262,82 @@ export async function handleApproveMeetingSummary(
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });
   }
+}
+
+// --- Revision review ------------------------------------------------------
+//
+//   POST /admin/meeting-summaries/:id/revision/accept
+//   POST /admin/meeting-summaries/:id/revision/discard
+//
+// A revision is a regenerated summary held beside a PUBLISHED one, waiting for
+// review. The live version keeps serving throughout, so neither of these can
+// take a page offline.
+
+async function withRevision(
+  req: Request,
+  res: Response,
+  apply: (state: MeetingSummaryProcessState) => void,
+  message: string,
+): Promise<void> {
+  try {
+    const id = req.params.id as string;
+    const record = await getProcess(id);
+    if (!record || record.definition.type !== "civic.meeting_summary") {
+      res.status(404).json({ error: "Meeting summary not found" });
+      return;
+    }
+    const state = summaryState(record);
+    if (!state.pending_revision) {
+      res.status(409).json({ error: "No revision is waiting for review." });
+      return;
+    }
+    apply(state);
+    record.state = state as unknown as Record<string, unknown>;
+    await saveProcessState(record);
+    res.json({
+      message,
+      meeting_summary: await enrichCreator(
+        getAdminReadModel(state, {
+          id: record.id,
+          title: record.title,
+          createdAt: record.createdAt,
+          createdBy: record.createdBy,
+        }),
+        { keepRawId: true },
+      ),
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Unknown error",
+    });
+  }
+}
+
+export async function handleAcceptMeetingSummaryRevision(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  // No publication event: the summary was already published and stays
+  // published. The feed marks it "Updated" from revised_at rather than
+  // floating a month-old meeting back to the top.
+  await withRevision(
+    req,
+    res,
+    (state) => acceptRevision(state),
+    "Revision accepted. The published summary now reflects it.",
+  );
+}
+
+export async function handleDiscardMeetingSummaryRevision(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  await withRevision(
+    req,
+    res,
+    (state) => discardRevision(state),
+    "Revision discarded. The published summary is unchanged.",
+  );
 }
 
 // --- POST /admin/meeting-summaries/batch-approve ---------------------------

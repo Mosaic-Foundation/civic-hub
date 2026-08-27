@@ -22,7 +22,9 @@ import {
 import {
   handleAdminGetMeetingSummary,
   handleAdminListMeetingSummaries,
+  handleAcceptMeetingSummaryRevision,
   handleApproveMeetingSummary,
+  handleDiscardMeetingSummaryRevision,
   handleBatchApproveMeetingSummaries,
   handleBatchDeleteMeetingSummaries,
   handlePatchMeetingSummary,
@@ -95,6 +97,16 @@ router.get("/meeting-summaries", handleAdminListMeetingSummaries);
 router.get("/meeting-summaries/:id", handleAdminGetMeetingSummary);
 router.patch("/meeting-summaries/:id", handlePatchMeetingSummary);
 router.post("/meeting-summaries/:id/approve", handleApproveMeetingSummary);
+// Revision review — a regenerated summary waiting beside a published one.
+// Neither route can take a page offline: the live version keeps serving.
+router.post(
+  "/meeting-summaries/:id/revision/accept",
+  handleAcceptMeetingSummaryRevision,
+);
+router.post(
+  "/meeting-summaries/:id/revision/discard",
+  handleDiscardMeetingSummaryRevision,
+);
 
 // Process reviews (collaborative admin review before publication)
 router.get("/reviews", handleAdminListReviews);

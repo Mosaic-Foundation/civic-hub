@@ -16,6 +16,7 @@ export type {
   MeetingSummaryApprovalStatus,
   MeetingSourceType,
   MeetingSummaryProcessState,
+  MeetingSummaryRevision,
   SummaryBlock,
   // Inputs
   CreateMeetingSummaryInput,
@@ -39,8 +40,11 @@ export type {
 } from "./models.js";
 
 export {
+  acceptRevision,
   AI_ATTRIBUTION_LABEL,
   approveMeetingSummary,
+  discardRevision,
+  stageRevision,
   buildProcessDescription,
   createMeetingSummaryState,
   editMeetingSummary,

@@ -1331,6 +1331,58 @@ meetings" (success). Publication state broke and the counters read zero
 check — did the reader get a correct, resolvable summary — and that is the
 category to keep extending.
 
+### Two-stage review: revisions (2026-08-27)
+
+Better sources arrive late. Measured against Floyd's live collection,
+**recordings appear within 0–1 days and minutes take 15–30**, in periodic batch
+sweeps, because minutes must be approved at the *following* meeting before they
+can be published. So a summary is written from the recording, and a better one
+becomes possible weeks later.
+
+The improved summary must still be reviewed before residents see it — but the
+obvious implementation, flipping the record back to `pending`, is the one that
+must never be used: an unpublished summary serves nothing, so the live page
+404s for as long as the queue goes untouched. That is precisely the bug fixed
+earlier this week.
+
+**A revision is held beside the published summary instead.**
+
+```
+proc_abc  ├─ published version   ← keeps serving, untouched
+          └─ pending_revision    ← awaits review
+                                   accept  → swaps in, sets revised_at
+                                   discard → cleared, v1 continues
+```
+
+- `stageRevision` / `acceptRevision` / `discardRevision` in `service.ts`.
+- `POST /admin/meeting-summaries/:id/revision/accept|discard`.
+- The upgrade pass stages a revision when the summary is **published**; a
+  summary still in review is replaced directly, since there is no public
+  version to protect and queueing a review inside a review helps nobody.
+- A revision already waiting is not regenerated — that would swap one
+  unreviewed candidate for another and burn the per-run budget.
+- Accepting emits **no publication event**. The feed marks the existing card
+  from `revised_at` rather than floating a month-old meeting back to the top.
+  Chosen over a new card because the recording-based summary is already the
+  substantively complete account; minutes add formal precision.
+
+**Reader-facing.** The public payload carries `awaiting_minutes` and
+`revised_at`. A summary with no minutes shows: *"Official minutes for this
+meeting have not been published yet — they are usually approved at a later
+meeting."* Without it the missing link reads as an omission rather than normal
+public-body cadence. After a revision the header reads "Updated … with the
+official minutes". Neither string names a jurisdiction.
+
+**Unreviewed revisions** raise the alarm after `REVISION_NAG_DAYS` (14) and
+appear as `pending_revisions_overdue`. Nothing is broken — the published
+version still serves — but an improvement sitting unread would otherwise be
+invisible forever.
+
+**Generalizing.** The concept is source *authority* (`recording < agenda <
+minutes`), not "minutes". A jurisdiction that publishes official transcripts
+would slot in as another tier; one that never posts minutes simply never
+generates a revision. No per-jurisdiction code.
+
 ### Guard
 
 `cronAlertReason()` — zero discovered meetings is a **failure**, not an empty

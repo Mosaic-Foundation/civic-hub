@@ -55,6 +55,32 @@ export interface SummaryBlock {
 }
 
 /**
+ * A regenerated summary awaiting review, held beside the published one.
+ *
+ * WHY A REVISION RATHER THAN A STATUS ROUND-TRIP
+ * Better sources arrive late: a jurisdiction publishes the recording within a
+ * day and the official minutes weeks later. The improved summary must still be
+ * reviewed before residents see it — but sending the record back to "pending"
+ * clears `published_at`, and an unpublished summary serves nothing, so the live
+ * page would 404 for as long as the queue went untouched. That happened.
+ *
+ * So the published version stays exactly where it is and the candidate waits
+ * here. Approving swaps it in; discarding drops it and leaves v1 serving.
+ */
+export interface MeetingSummaryRevision {
+  blocks: SummaryBlock[];
+  source_minutes_url: string | null;
+  source_agenda_url: string | null;
+  source_type: MeetingSourceType;
+  /** What this revision adds over the live version, for the review screen. */
+  reason: string;
+  ai_instructions_used: string;
+  ai_model: string;
+  /** ISO 8601 — when the revision was generated. */
+  generated_at: string;
+}
+
+/**
  * Process.state shape for a civic.meeting_summary process.
  *
  * The process-level `status` field (active | finalized) mirrors the
@@ -123,6 +149,14 @@ export interface MeetingSummaryProcessState {
   last_edited_at: string | null;
   /** Increments on each admin edit during review. */
   edit_count: number;
+  /**
+   * A regenerated summary awaiting review. Null when there is none. Only ever
+   * set on a summary that is already published — an unpublished one has no
+   * live version to protect, so it is replaced directly.
+   */
+  pending_revision: MeetingSummaryRevision | null;
+  /** ISO 8601 — when a revision was last accepted. Null if never revised. */
+  revised_at: string | null;
 
   // --- Provenance / reproducibility ---
   /** Snapshot of the admin extraction instructions at generation time. */

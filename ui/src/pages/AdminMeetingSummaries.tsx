@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  adminAcceptMeetingSummaryRevision,
   adminApproveMeetingSummary,
+  adminDiscardMeetingSummaryRevision,
   adminBatchApproveMeetingSummaries,
   adminBatchDeleteMeetingSummaries,
   adminCleanupOrphanedEvents,
@@ -59,6 +61,27 @@ export default function AdminMeetingSummaries() {
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [confirmingApprove, setConfirmingApprove] = useState(false);
+  const [revisionBusy, setRevisionBusy] = useState(false);
+
+  async function resolveRevision(action: "accept" | "discard") {
+    if (!selected) return;
+    setRevisionBusy(true);
+    setError(null);
+    try {
+      const { message, meeting_summary } =
+        action === "accept"
+          ? await adminAcceptMeetingSummaryRevision(selected.id)
+          : await adminDiscardMeetingSummaryRevision(selected.id);
+      setSelected(meeting_summary);
+      setBlocks(meeting_summary.blocks);
+      setMeetingTitle(meeting_summary.meeting_title);
+      setActionMessage(message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Revision action failed");
+    } finally {
+      setRevisionBusy(false);
+    }
+  }
 
   function loadList() {
     setLoading(true);
@@ -279,6 +302,42 @@ export default function AdminMeetingSummaries() {
             <p className="admin-action-message">{actionMessage}</p>
           )}
           {error && <p className="form-error">{error}</p>}
+
+          {selected.pending_revision && (
+            <div
+              className="meeting-ai-banner"
+              style={{ borderLeftColor: "#2563eb" }}
+            >
+              <strong style={{ color: "#2563eb" }}>
+                A revised summary is waiting for review.
+              </strong>{" "}
+              {selected.pending_revision.reason} The published version below is
+              still live and unchanged — accepting swaps in the revision,
+              discarding keeps what is published.
+              <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem" }}>
+                <button
+                  className="btn-primary"
+                  disabled={revisionBusy}
+                  onClick={() => resolveRevision("accept")}
+                >
+                  {revisionBusy ? "Working…" : "Accept revision"}
+                </button>
+                <button
+                  className="btn-secondary"
+                  disabled={revisionBusy}
+                  onClick={() => resolveRevision("discard")}
+                >
+                  Discard
+                </button>
+              </div>
+              <p style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>
+                Revision generated{" "}
+                {formatDate(selected.pending_revision.generated_at)} ·{" "}
+                {selected.pending_revision.blocks.length} blocks (published
+                version has {selected.blocks.length})
+              </p>
+            </div>
+          )}
 
           {selected.source_type === "agenda" && (
             <div className="meeting-ai-banner" style={{ borderLeftColor: "#d97706" }}>
@@ -772,6 +831,9 @@ export default function AdminMeetingSummaries() {
                 )}
                 {s.source_type === "recording" && (
                   <span className="badge-agenda">Transcript-only</span>
+                )}
+                {s.pending_revision && (
+                  <span className="badge-agenda">Revision waiting</span>
                 )}
                 {!s.has_video && s.source_type !== "recording" && (
                   <span>PDF-only</span>

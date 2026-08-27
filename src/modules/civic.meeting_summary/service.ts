@@ -9,6 +9,7 @@ import type {
   MeetingSummaryPatch,
   MeetingSummaryProcessContext,
   MeetingSummaryProcessState,
+  MeetingSummaryRevision,
   SummaryBlock,
 } from "./models.js";
 import { assertApprovalTransition, canApprove, canEdit } from "./lifecycle.js";
@@ -51,6 +52,8 @@ export function createMeetingSummaryState(
     admin_notes: "",
     last_edited_at: null,
     edit_count: 0,
+    pending_revision: null,
+    revised_at: null,
     ai_instructions_used: input.ai_instructions_used,
     ai_model: input.ai_model,
     ai_attribution_label: AI_ATTRIBUTION_LABEL,
@@ -193,6 +196,8 @@ export function getAdminReadModel(
     admin_notes: state.admin_notes,
     last_edited_at: state.last_edited_at,
     edit_count: state.edit_count,
+    pending_revision: state.pending_revision ?? null,
+    revised_at: state.revised_at ?? null,
     ai_instructions_used: state.ai_instructions_used,
     ai_model: state.ai_model,
     ai_attribution_label: state.ai_attribution_label,
@@ -225,9 +230,65 @@ export function getPublicReadModel(
     admin_notes: state.admin_notes,
     generated_at: state.generated_at,
     published_at: state.published_at,
+    // Lets the public page say what is still missing, and note a revision.
+    // Deliberately not the revision itself — unreviewed text is never public.
+    awaiting_minutes: !state.source_minutes_url,
+    revised_at: state.revised_at ?? null,
     ai_model: state.ai_model,
     ai_attribution_label: state.ai_attribution_label,
   };
+}
+
+/**
+ * Attach a regenerated summary for review without disturbing the live one.
+ *
+ * Replaces any revision already waiting: a newer regeneration supersedes an
+ * older one that nobody got to, and keeping a queue of them would mean
+ * reviewing the same meeting repeatedly.
+ */
+export function stageRevision(
+  state: MeetingSummaryProcessState,
+  revision: MeetingSummaryRevision,
+): MeetingSummaryProcessState {
+  state.pending_revision = revision;
+  return state;
+}
+
+/**
+ * Accept the waiting revision: its content becomes the live summary.
+ *
+ * Publication state is untouched — the summary was published before and stays
+ * published, so no page ever goes dark and no second publication event fires.
+ * `revised_at` is what the UI renders as "Updated".
+ */
+export function acceptRevision(
+  state: MeetingSummaryProcessState,
+  now: string = new Date().toISOString(),
+): MeetingSummaryProcessState {
+  const rev = state.pending_revision;
+  if (!rev) throw new Error("No revision is waiting for review");
+
+  state.blocks = rev.blocks;
+  state.source_minutes_url = rev.source_minutes_url;
+  state.source_agenda_url = rev.source_agenda_url;
+  state.source_type = rev.source_type;
+  state.ai_instructions_used = rev.ai_instructions_used;
+  state.ai_model = rev.ai_model;
+  state.generated_at = rev.generated_at;
+  state.revised_at = now;
+  state.pending_revision = null;
+  return state;
+}
+
+/** Drop the waiting revision. The live summary continues unchanged. */
+export function discardRevision(
+  state: MeetingSummaryProcessState,
+): MeetingSummaryProcessState {
+  if (!state.pending_revision) {
+    throw new Error("No revision is waiting for review");
+  }
+  state.pending_revision = null;
+  return state;
 }
 
 export function getAdminSummary(
@@ -248,6 +309,8 @@ export function getAdminSummary(
     approved_at: state.approved_at,
     published_at: state.published_at,
     edit_count: state.edit_count,
+    pending_revision: state.pending_revision ?? null,
+    revised_at: state.revised_at ?? null,
     created_at: processMeta.createdAt,
   };
 }

@@ -1175,6 +1175,8 @@ export interface MeetingSummarySummary {
   published_at: string | null;
   edit_count: number;
   created_at: string;
+  /** Set when a regenerated summary is waiting for review. */
+  pending_revision?: { generated_at: string } | null;
 }
 
 /** Admin detail (full read). */
@@ -1192,6 +1194,15 @@ export interface MeetingSummaryDetail extends MeetingSummarySummary {
   ai_model: string;
   ai_attribution_label: string;
   created_by: string;
+  /** A regenerated summary awaiting review, held beside the published one. */
+  pending_revision?: {
+    blocks: SummaryBlock[];
+    source_minutes_url: string | null;
+    source_type: MeetingSourceType;
+    reason: string;
+    generated_at: string;
+  } | null;
+  revised_at?: string | null;
 }
 
 /** Public payload — only returned for published summaries. */
@@ -1208,6 +1219,10 @@ export interface PublicMeetingSummary {
   additional_video_urls: string[];
   blocks: SummaryBlock[];
   admin_notes: string;
+  /** True while no official minutes have been published for this meeting. */
+  awaiting_minutes?: boolean;
+  /** ISO 8601 — when a revision was last accepted. Null if never revised. */
+  revised_at?: string | null;
   generated_at: string;
   published_at: string;
   ai_model: string;
@@ -1254,6 +1269,20 @@ export function adminBatchApproveMeetingSummaries(
     ids,
     backdate: opts?.backdate ?? false,
   });
+}
+
+/** Accept the waiting revision — its content becomes the live summary. */
+export function adminAcceptMeetingSummaryRevision(
+  id: string,
+): Promise<{ message: string; meeting_summary: MeetingSummaryDetail }> {
+  return request("POST", `/admin/meeting-summaries/${id}/revision/accept`);
+}
+
+/** Drop the waiting revision. The published summary continues unchanged. */
+export function adminDiscardMeetingSummaryRevision(
+  id: string,
+): Promise<{ message: string; meeting_summary: MeetingSummaryDetail }> {
+  return request("POST", `/admin/meeting-summaries/${id}/revision/discard`);
 }
 
 export function adminCleanupOrphanedEvents(): Promise<{ message: string; removed: number }> {
