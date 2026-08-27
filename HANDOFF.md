@@ -89,14 +89,54 @@ render path — one `idea`, one `moderation`, both prefixed
 `[dev test row — Claude Code, 2026-08-27]`. There is no delete path by design,
 so they will sit in the dev archive. Prod is untouched.
 
+### Decided against: an attention badge on the Feedback tab (2026-08-27)
+
+Raised, discussed, **declined by Adam.** Recording the reasoning so it does not
+get re-pitched every time someone notices the panel has no unread indicator.
+
+**What was proposed.** A counter on the Feedback admin tab showing how many
+submissions have arrived since the last look — the same pattern reviews already
+use: `users.reviews_seen_at` + `countReviewNotifications()` +
+`GET /notifications/reviews/count` + the `civic-nav-menu-badge` in `Nav.tsx`.
+
+**Why it was declined.** Awareness is already covered. The daily admin digest
+names new feedback and links into the panel, and feedback is not time-sensitive
+— the one category that is (`moderation`) still sends an immediate email. A
+badge would only add value in the narrow case of being in the app, mid-task,
+between digests. Adam's call: *"I don't need immediate notifications of the
+feedback."* Not a cost objection — it simply isn't needed.
+
+**One thing that was misread on the way, worth stating plainly for next time:**
+clear-on-view is **per page, not per item**. `AdminReviews` stamps
+`markReviewsSeen()` once on mount, so the counter zeroes when the page opens
+regardless of whether anything was clicked, read, or acted on. There is no
+per-submission read state anywhere in the pattern — `seen_at` is a single
+timestamp per *user*, not a flag per row. That is the whole reason one glance
+can clear the whole badge. Anyone revisiting this should not design per-item
+tracking; it would be a different (and worse) thing than what exists.
+
+**If it is ever revisited, there are two routes, and the obvious one is not
+automatically right:**
+
+| | Column (`users.feedback_seen_at`) | Browser `localStorage` |
+|---|---|---|
+| Migration | Yes — and the schema contract needs the column too | None |
+| Across devices | Consistent | Per-device; laptop and phone count separately |
+| Survives clearing site data | Yes | No — resets to zero unread |
+| Mirrors existing code | Exactly (reviews) | Diverges from the house pattern |
+
+The column route was the default assumption and is why this was deferred out of
+the pre-launch window at all. But a badge is a per-viewer convenience, not
+shared state, so `localStorage` is a legitimate fit for a single-admin hub and
+carries no deploy-order risk. Pick deliberately rather than defaulting to the
+column because reviews did.
+
+One implementation note either way: reviews count on `updated_at` because a
+review mutates. Feedback rows are immutable, so the equivalent query counts on
+`created_at`.
+
 ### Open
 
-- **Attention badge.** The panel is a pull; the digest is a daily push. The
-  in-app badge pattern already exists (`users.reviews_seen_at` +
-  `GET /notifications/reviews/count` + the Nav menu badge) and feedback could
-  reuse it — but it needs its own `feedback_seen_at` column, which means a
-  migration, which is the one thing deliberately kept out of this change before
-  launch. Worth doing after.
 - **Digest window vs. digest cadence.** The 24h window assumes the daily cron.
   If the admin digest ever moves off daily, that constant
   (`FEEDBACK_WINDOW_MS`) has to move with it or submissions fall through the gap.
