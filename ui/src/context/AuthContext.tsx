@@ -32,6 +32,12 @@ interface AuthState {
    * time.
    */
   authorLabel: string | null;
+  /**
+   * The signed-in user's public office, when an admin has designated one
+   * on their account. null for residents and for plain admins. Orthogonal
+   * to `isAdmin` — an account can be both, and renders both badges.
+   */
+  official: { type: string; title: string } | null;
   /** Convenience: true when role is "admin". */
   isAdmin: boolean;
   /** Convenience: true when role is "admin" OR "author". */
@@ -42,6 +48,7 @@ interface AuthState {
     user: AuthUser,
     role?: AuthRole,
     authorLabel?: string | null,
+    official?: { type: string; title: string } | null,
   ) => void;
   /** Update user after residency affirmation */
   updateUser: (user: AuthUser) => void;
@@ -56,6 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [role, setRole] = useState<AuthRole>(null);
   const [authorLabel, setAuthorLabel] = useState<string | null>(null);
+  const [official, setOfficial] = useState<
+    { type: string; title: string } | null
+  >(null);
   const [loading, setLoading] = useState(true);
 
   // Try to restore session from localStorage on mount
@@ -63,10 +73,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const stored = getStoredToken();
     if (stored) {
       getMe(stored)
-        .then(({ user: u, role: r, author_label }) => {
+        .then(({ user: u, role: r, author_label, official_type, official_title }) => {
           setUser(u);
           setRole(r ?? null);
           setAuthorLabel(author_label ?? null);
+          setOfficial(
+            official_type && official_title
+              ? { type: official_type, title: official_title }
+              : null,
+          );
           setToken(stored);
         })
         .catch((err) => {
@@ -94,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setRole(null);
       setAuthorLabel(null);
+      setOfficial(null);
     };
     window.addEventListener("civic:auth-expired", onExpired);
     return () => window.removeEventListener("civic:auth-expired", onExpired);
@@ -105,12 +121,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       newUser: AuthUser,
       newRole: AuthRole = null,
       newAuthorLabel: string | null = null,
+      newOfficial: { type: string; title: string } | null = null,
     ) => {
       storeToken(newToken);
       setToken(newToken);
       setUser(newUser);
       setRole(newRole);
       setAuthorLabel(newAuthorLabel);
+      setOfficial(newOfficial);
     },
     [],
   );
@@ -128,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setRole(null);
     setAuthorLabel(null);
+    setOfficial(null);
   }, [token]);
 
   const actorId = user?.id ?? null;
@@ -149,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         canParticipate,
         role,
         authorLabel,
+        official,
         isAdmin,
         canPostAnnouncements,
         login,

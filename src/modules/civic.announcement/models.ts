@@ -47,6 +47,14 @@ export interface AnnouncementProcessState {
   content: AnnouncementContent;
   author_id: string;
   author_role: AnnouncementAuthorRole;
+  /**
+   * Machine-readable office kind behind `author_role` (which is the
+   * free-form display string). Stamped at post time from the author's
+   * managed official role; null for admin-authored and synced posts.
+   * Carried into the event payload so a per-office feed pill colour can
+   * be added later without backfilling historical announcements.
+   */
+  official_type?: string | null;
   author_display_name: string | null;
   created_at: string;       // ISO 8601
   last_edited_at: string | null;
@@ -155,6 +163,8 @@ export interface CreateAnnouncementInput {
   links?: AnnouncementLink[];
   author_id: string;
   author_role: AnnouncementAuthorRole;
+  /** See AnnouncementProcessState.official_type. */
+  official_type?: string | null;
   author_display_name?: string | null;
   image_url?: string | null;
   image_alt?: string | null;

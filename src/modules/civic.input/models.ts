@@ -29,6 +29,16 @@ export interface CommunityInput {
    * Attached by the read/list controller, not persisted.
    */
   author_is_admin?: boolean;
+  /**
+   * The (non-anonymous) author's public office, resolved at read time
+   * from author_id alongside author_is_admin. Both null for anonymous
+   * comments and for residents. Rendered as its own pill next to the
+   * name — independent of author_is_admin, so an admin who is also a
+   * supervisor shows both. Attached by the read/list controller, not
+   * persisted.
+   */
+  author_official_type?: string | null;
+  author_official_title?: string | null;
   body: string;
   submitted_at: string; // ISO 8601
   phase: CommentPhase | null;

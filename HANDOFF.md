@@ -4,12 +4,171 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Officials: an admin-managed role with a structured title — 2026-08-27
+
+**Built, not pushed.** ⚠️ **Migration must be applied to prod BEFORE this
+code deploys** — see "Deploy order" below.
+
+Generalizes the env-managed board author into a per-user official role. Before:
+officials were `CIVIC_BOARD_EMAILS` (env) or an email-keyed JSON blob in
+`hub_settings.announcement_authors`, both reachable only at announcement-post
+time, so a Board member's title appeared on announcements and nowhere else.
+Now an admin designates an ACCOUNT, and the title renders wherever that person
+posts.
+
+### The model
+
+| Column | Purpose |
+|---|---|
+| `users.official_type` | Coarse kind — `board_of_supervisors` \| `town_council` \| `planning_commission` \| `school_board` \| `other`. Drives pill colour and future filtering. |
+| `users.official_title` | The string that actually renders: "Board of Supervisors", "Supervisor, District 3". |
+
+Type is stored; **title is what renders**. Two people can share a type and show
+different titles. Both-or-neither is enforced by a CHECK.
+
+**Columns, not a join table** — one office per account, no history requirement,
+and `creatorDisplay.resolveCreators()` keeps its single batched `select("*")`
+over `users`. No join, no N+1.
+
+**Adding an office type** is three edits, none in a component: the union +
+`OFFICIAL_TYPES`, `OFFICIAL_TYPE_LABELS`, and the CHECK constraint. A per-office
+pill colour is then one CSS rule on
+`.creator-official-badge--<kebab-type>` — zero TypeScript.
+
+### Admin and official are orthogonal now
+
+`resolveAuthorship()` used to short-circuit on admin and return
+`{ role: "admin", label: "Admin" }`, so a hub administrator who also sat on the
+Board could never show their office. That short-circuit is gone. The two halves
+are independent:
+
+- `isAdmin` — platform capability, from `CIVIC_ADMIN_EMAILS`. Gates `/admin/*`.
+- `official` — public identity, designated by an admin on the account.
+
+Someone who is both renders **both** badges, office first (`authorBadges()`).
+They are never merged.
+
+**One place still holds a single value**: an announcement's `author_role`, which
+drives the feed card pill and the page eyebrow. There, the **office wins** — a
+supervisor's post reads as coming from the Board, not from the software's
+administrator. The Admin badge next to their name is unaffected.
+
+### Posting is fused to official status — for now
+
+Designating someone an official also lets them post announcements
+(`canPost = isAdmin || official !== null`). Identity and that capability are
+deliberately the same switch today; splitting them later means adding a second
+column, not reworking the model. An official still cannot reach `/admin/*`.
+
+### Files
+
+| Piece | File |
+|---|---|
+| Migration | `supabase/migrations/20260827100000_official_role.sql` |
+| Shared vocabulary + badge decision | `src/shared/officialTypes.ts` (dependency-free, both runtimes — the `feedActivity.ts` pattern) |
+| Read/write of the role | `src/services/officials.ts` |
+| Authorship split | `resolveOfficial()` / `resolveAuthorship()` in `src/middleware/auth.ts` |
+| Byline resolution | `rowToDisplay()` in `src/services/creatorDisplay.ts` (+ the two inline copies in `processService.ts`) |
+| Comments | `src/controllers/inputController.ts` |
+| Admin API | `officials` on `GET`/`PATCH /admin/settings` |
+| Admin UI | Officials section in `ui/src/pages/AdminSettings.tsx` |
+| Byline component | `ui/src/components/Creator.tsx` + `.css` |
+| Seed | `scripts/seedOfficials.ts` |
+
+Read models gained `creator_official_type` / `creator_official_title` (flat,
+matching the existing `creator_is_admin` convention); comments gained
+`author_official_*`, under the same anonymity rule — **an anonymous comment
+never carries its author's office**, which would identify them as surely as
+their name.
+
+`CommunityInputPanel` no longer hand-rolls its own `creator-admin-badge`; it
+goes through `<Creator>` like every other surface, so the badges cannot drift.
+
+### The legacy list, and the latch
+
+`CIVIC_BOARD_EMAILS` still works as the last-resort fallback, exactly as before:
+`getAnnouncementAuthors()` consults it only when no `announcement_authors` row
+exists. `resolveOfficial()` falls back to that list (inferring a type from the
+free-form label) **until `hub_settings.officials_migrated` is set**.
+
+That latch matters. Without it, demoting someone in the admin panel would be
+undone on the next request by the stale list still naming them. It is set by a
+live `seedOfficials.ts` run, and by the first save from the admin panel — which
+makes the panel self-migrating: it lists managed officials merged with
+unmigrated legacy entries, and saving writes them all onto user rows.
+
+### Designating an account that does not exist yet
+
+The hub has no user-directory endpoint, so the admin's input key is still an
+email. Designating an unknown email creates a shell `users` row
+(`email_verified: false`, `is_resident: false`) the way `verifyCode` does;
+`unique(email)` means that person's first sign-in adopts the same row. This
+preserves the operator's ability to pre-authorize a board member before they
+have ever signed in.
+
+### Deploy order
+
+1. Apply `20260827100000_official_role.sql` to **prod**.
+2. `npx tsx scripts/seedOfficials.ts --dry-run`, then live, against prod.
+3. Then push. Per the 08-22 incident, a shared `main` means the migration must
+   not trail its writer.
+
+Both official reads use `select("*")` (or degrade on error) specifically so a
+database that has not applied the migration resolves to "no title" instead of
+erroring out the content the byline annotates — but that is a safety net, not
+the plan.
+
+### Verification
+
+- `tsc` clean (backend + `ui/tsc -b`), **500 unit tests pass** (34 files).
+- 59 new assertions across four `tests/unit` files: `officialTypes.test.ts`,
+  `authOfficial.test.ts`, `creatorDisplayOfficial.test.ts`,
+  `officialsRoster.test.ts`. Per the CI note (only `tests/unit` runs on push),
+  the badge decision was extracted into the pure `authorBadges()` so it is
+  covered without standing up jsdom for one component — the repo has no
+  frontend test runner.
+- Against the **un-migrated dev DB**: `GET /process/:id/state` returns the new
+  fields as `null` with no error; `listOfficialsWithLegacy()` logs a warning and
+  returns `[]`; an admin still resolves to `{ isAdmin: true, label: "Admin" }`.
+  The degradation path is real, not theoretical.
+- Badge CSS checked by computed style in the running app: office pill
+  `#F4E1D2` on `#8C4A2B` (accent), Admin pill `#DCE5F2` on `#15294C` (primary),
+  identical geometry, visually distinct. Not screenshot-verified — the preview
+  pane returned blank captures.
+
+### Open
+
+- **No dev-DB migration.** Applying it needs the Supabase CLI with a linked
+  project and DB password, which this session did not have. The dev database is
+  still un-migrated; it degrades correctly but shows no officials until the
+  migration is applied there too.
+- **Curated name vs. `full_name`.** The admin-curated name is written to
+  `display_name`, and the byline rule is `full_name ?? display_name ??
+  "Resident"` — so an official who has set their own real name will show that,
+  not the admin's version. Announcements previously preferred the curated name.
+  Worth a look if an operator notices.
+- **Per-office pill colours are not defined**, only enabled. Every office shows
+  the same terracotta pill today.
+- **`announcement_authors` is still returned** by `GET /admin/settings`,
+  read-only and marked deprecated, so an operator can see what the legacy list
+  held. Remove it once prod is migrated and settled.
+
+---
+
 ## Feedback archive in the admin panel, and feedback joins the daily digest — 2026-08-27
 
+**Shipped** — pushed to `main` 2026-08-27, live via Vercel auto-deploy.
+
 **No migration.** This change is additive and read-only against a table that
-already exists, through an index that already exists. The only migration in
-flight is still `20260827000000_feedback_topic_category.sql` from the entry
-below — nothing here changes that deploy-order requirement or adds to it.
+already exists, through an index that already exists. It rode along with
+`20260827000000_feedback_topic_category.sql` (entry below) but added nothing to
+that deploy-order requirement.
+
+**First look at prod will be empty**, and that is correct, not a fault: the
+archive shows submissions from the moment it exists onward, and the only prod
+feedback that predates it is whatever is already sitting in the inbox. Likewise
+the first admin digest reports a 24h window, so it will name nothing until
+residents start submitting.
 
 Two things: feedback got a home in the admin panel, and it stopped emailing on
 every submission.
@@ -84,10 +243,12 @@ read correctly in that case — covered by tests.
 
 ### Housekeeping
 
-**Two dev-only rows are now in the dev feedback table**, submitted to verify the
-render path — one `idea`, one `moderation`, both prefixed
+**Three dev-only rows are now in the dev feedback table**, submitted to verify
+the render path and (after the migration landed) the topic round-trip — one
+`idea`, one `moderation`, one `topic`, all prefixed
 `[dev test row — Claude Code, 2026-08-27]`. There is no delete path by design,
-so they will sit in the dev archive. Prod is untouched.
+so they will sit in the dev archive. Prod is untouched — nothing was submitted
+there.
 
 ### Decided against: an attention badge on the Feedback tab (2026-08-27)
 
@@ -145,21 +306,28 @@ review mutates. Feedback rows are immutable, so the equivalent query counts on
 
 ## Feedback: a "Suggest a topic" category — 2026-08-27
 
-> ### ⚠️ DEPLOY ORDER — MIGRATION MUST GO TO PROD FIRST
+> ### ✅ SHIPPED — migration applied, then pushed, in that order (2026-08-27)
 >
-> This change adds `supabase/migrations/20260827000000_feedback_topic_category.sql`.
-> **Apply it to dev, then prod, BEFORE deploying the code that writes
-> `category = 'topic'`.** Per the 08-22 incident, a shared `main` must not get
-> ahead of its migration. The failure mode is already confirmed by hand on dev:
-> the form accepts the pill, the server validator accepts the value, and the
-> insert is refused by the CHECK constraint — a 500 with the resident's message
-> already typed.
+> `supabase/migrations/20260827000000_feedback_topic_category.sql` was applied
+> by hand in the Supabase SQL Editor to **prod (`Civic-Hub-Floyd`) and dev
+> (`civic_hub_floyd_Dev`)**, verified with
+> `SELECT position('topic' in pg_get_constraintdef(oid)) > 0 ... → true`,
+> **and only then** was the code pushed. `civic-hub` auto-deploys on push to
+> `main`, so push *is* deploy — there is no window between them, which is why
+> the migration had to land first. The 08-22 ordering hold was honoured.
 >
-> Apply via Supabase → SQL Editor. Verify with:
-> `INSERT INTO feedback_submissions (id, category, message) VALUES ('fb_probe', 'topic', 'probe'); ROLLBACK;`
-> inside a transaction, or simply re-read the constraint:
-> `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'feedback_submissions_category_chk';`
-> — expect `'topic'` in the list.
+> Kept as a record rather than deleted: the next migration wants the same
+> sequence, and a banner that only ever appears unresolved teaches people to
+> scroll past it.
+>
+> **Verification tip worth reusing.** Reading the constraint back with
+> `pg_get_constraintdef(oid)` alone is awkward — the SQL Editor truncates the
+> string mid-list, and it is easy to misread a stale constraint as a current
+> one. Ask a boolean instead:
+> ```sql
+> SELECT position('topic' in pg_get_constraintdef(oid)) > 0 AS topic_allowed
+> FROM pg_constraint WHERE conname = 'feedback_submissions_category_chk';
+> ```
 
 Residents can now suggest a **subject the Hub should take up** without starting
 a process themselves. It reuses the existing feedback form — one more pill, no
@@ -229,10 +397,13 @@ rather than during.
 - Dev UI at `/feedback`: five pills render, "Suggest a topic" selects, hint reads
   "A topic the Hub should discuss — for when you'd rather suggest an issue than
   start a process yourself".
-- **Not verified: persistence.** `category='topic'` cannot round-trip until the
-  migration is applied — migrations here are applied by hand in the Supabase SQL
-  Editor, which is Adam's step. The dev probe above confirms the CHECK constraint
-  is the only remaining gate.
+- **Persistence — verified after the migration landed (2026-08-27).** A `topic`
+  submission on dev returned 200, persisted, and read back through
+  `GET /admin/feedback?category=topic` as `category: "topic"`. The same request
+  had returned 500 (`violates check constraint`) before the migration, so the
+  before/after is the constraint and nothing else. It also logged
+  `no immediate email by policy`, confirming topic follows the digest path
+  rather than the inbox.
 
 ---
 

@@ -167,6 +167,8 @@ export default function ProjectDetail() {
           <Creator
             name={project.creator_name}
             isAdmin={project.creator_is_admin}
+            officialType={project.creator_official_type}
+            officialTitle={project.creator_official_title}
             prefix="by"
           />
           <span>&middot;</span>
@@ -302,7 +304,12 @@ export default function ProjectDetail() {
             <div key={c.id} className="project-comment-item">
               <div className="project-comment-content">{c.content}</div>
               <div className="project-comment-meta">
-                <Creator name={c.creator_name} isAdmin={c.creator_is_admin} />
+                <Creator
+                  name={c.creator_name}
+                  isAdmin={c.creator_is_admin}
+                  officialType={c.creator_official_type}
+                  officialTitle={c.creator_official_title}
+                />
                 <span>
                   {new Date(c.created_at).toLocaleDateString(undefined, {
                     month: "short",

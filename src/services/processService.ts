@@ -376,6 +376,8 @@ export async function listProcessSummaries(): Promise<Record<string, unknown>[]>
       ...s,
       creator_name: creator.name,
       creator_is_admin: creator.is_admin,
+      creator_official_type: creator.official?.type ?? null,
+      creator_official_title: creator.official?.title ?? null,
       created_by: "",
     };
   });
@@ -421,7 +423,8 @@ export async function getProcessState(
 }
 
 /**
- * Attach `creator_name` + `creator_is_admin` to a process read model and
+ * Attach `creator_name` + `creator_is_admin` + the official title fields
+ * to a process read model and
  * redact the raw `created_by` id. Shared by the single-process read path.
  * Idempotent-friendly: if the model has no `created_by`, resolves to the
  * "Resident" fallback and leaves the (already absent) id blank.
@@ -436,6 +439,8 @@ async function enrichProcessCreator(
     ...model,
     creator_name: creator.name,
     creator_is_admin: creator.is_admin,
+    creator_official_type: creator.official?.type ?? null,
+    creator_official_title: creator.official?.title ?? null,
     created_by: "",
   };
 }

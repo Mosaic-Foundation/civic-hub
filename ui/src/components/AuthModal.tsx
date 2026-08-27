@@ -23,6 +23,21 @@ interface PendingAuth {
   user: AuthUser;
   role: AuthRole;
   author_label: string | null;
+  official: { type: string; title: string } | null;
+}
+
+/**
+ * Collapse the verify response's two flat official_* fields into the
+ * shape AuthContext holds. Both must be present — a type with no title
+ * has nothing to render (the same both-or-neither rule the DB enforces).
+ */
+function officialFrom(result: {
+  official_type: string | null;
+  official_title: string | null;
+}): { type: string; title: string } | null {
+  return result.official_type && result.official_title
+    ? { type: result.official_type, title: result.official_title }
+    : null;
 }
 
 type Step = "email" | "code" | "residency";
@@ -151,7 +166,13 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
         // Returning resident with a name on file — fully signed up
         // before. login() now, complete. The app-root ReAcceptModal
         // catches them if their legal-version is stale.
-        login(result.token, result.user, result.role, result.author_label);
+        login(
+          result.token,
+          result.user,
+          result.role,
+          result.author_label,
+          officialFrom(result),
+        );
         onComplete();
       } else {
         // New user, or a returning account missing the (now required)
@@ -164,6 +185,7 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
           user: result.user,
           role: result.role,
           author_label: result.author_label,
+          official: officialFrom(result),
         });
         setStep("residency");
       }
@@ -245,7 +267,13 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
       // the gate-passed user. If the user had closed the modal before
       // reaching this point, no login() ever happened.
       if (pendingAuth) {
-        login(tokenToUse, nextUser, pendingAuth.role, pendingAuth.author_label);
+        login(
+          tokenToUse,
+          nextUser,
+          pendingAuth.role,
+          pendingAuth.author_label,
+          pendingAuth.official,
+        );
         // First-time signup — route to the onboarding word cloud if configured.
         if (needsResidency) {
           const wcId = hub.onboarding_wordcloud_id;

@@ -12,31 +12,66 @@
 // Admin rule:
 //   is_admin = the user's email is in CIVIC_ADMIN_EMAILS (via isAdminEmail).
 //
+// Official rule:
+//   official = users.official_type + users.official_title, when both are
+//   set by an admin. ORTHOGONAL to is_admin — an account can be a hub
+//   admin, a public official, both, or neither, and the byline renders a
+//   pill for each half it has.
+//
 // Batch-first: resolveCreators() fetches every id in ONE query so list
 // endpoints don't fan out into N per-row lookups. resolveCreator() is a thin
 // convenience wrapper for the single-id (detail) case.
 
 import { getDb } from "../db/client.js";
 import { isAdminEmail } from "../middleware/auth.js";
+import {
+  type OfficialIdentity,
+  toOfficialIdentity,
+} from "../shared/officialTypes.js";
 
 export interface CreatorDisplay {
   name: string;
   is_admin: boolean;
+  /**
+   * The account's public office, or null for a resident. Rendered as its
+   * own pill next to the name, independently of `is_admin` — someone who
+   * is both shows both.
+   */
+  official: OfficialIdentity | null;
 }
 
 /** The value used for any id we can't resolve to a real person. */
-const FALLBACK: CreatorDisplay = { name: "Resident", is_admin: false };
+const FALLBACK: CreatorDisplay = {
+  name: "Resident",
+  is_admin: false,
+  official: null,
+};
 
 interface UserRow {
   id: string;
   full_name: string | null;
   display_name: string | null;
   email: string | null;
+  official_type?: string | null;
+  official_title?: string | null;
 }
 
-function rowToDisplay(row: UserRow): CreatorDisplay {
+/**
+ * Exported for unit tests: the whole row → byline mapping, with no DB.
+ *
+ * Reads the official columns DEFENSIVELY (they are optional on UserRow)
+ * because the surrounding query is a `select("*")` chosen specifically to
+ * survive a database that has not applied a migration yet. A hub running
+ * older schema resolves to `official: null` — no title — rather than
+ * erroring out the content the byline annotates.
+ */
+export function rowToDisplay(row: UserRow): CreatorDisplay {
   const name = row.full_name?.trim() || row.display_name?.trim() || "Resident";
-  return { name, is_admin: isAdminEmail(row.email) };
+  return {
+    name,
+    is_admin: isAdminEmail(row.email),
+    official: toOfficialIdentity(row.official_type, row.official_title),
+  };
 }
 
 /**
@@ -119,6 +154,8 @@ export async function enrichCreator(
     ...model,
     creator_name: creator.name,
     creator_is_admin: creator.is_admin,
+    creator_official_type: creator.official?.type ?? null,
+    creator_official_title: creator.official?.title ?? null,
   };
   if (!opts.keepRawId) out[field] = "";
   return out;
@@ -144,6 +181,8 @@ export async function enrichCreators(
       ...m,
       creator_name: creator.name,
       creator_is_admin: creator.is_admin,
+      creator_official_type: creator.official?.type ?? null,
+      creator_official_title: creator.official?.title ?? null,
     };
     if (!opts.keepRawId) out[field] = "";
     return out;

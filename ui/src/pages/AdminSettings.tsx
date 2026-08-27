@@ -2,17 +2,22 @@
 //
 // Holds all admin-editable settings that aren't tied to a single
 // proposal or brief review flow. Today: brief recipient emails and the
-// announcement authors list. Future additions (theme, jurisdiction,
-// email templates, etc.) should land here too.
+// officials roster. Future additions (theme, jurisdiction, email
+// templates, etc.) should land here too.
 
 import { useEffect, useState } from "react";
 import {
   adminGetSettings,
   adminPatchSettings,
-  type AnnouncementAuthor,
+  type Official,
   type WaitlistEntry,
   type CommentIdentityMode,
 } from "../services/api";
+import {
+  OFFICIAL_TYPES,
+  OFFICIAL_TYPE_LABELS,
+  type OfficialType,
+} from "../../../src/shared/officialTypes";
 import AdminTabs from "../components/AdminTabs";
 import "./AdminSettings.css";
 
@@ -25,10 +30,10 @@ export default function AdminSettings() {
   const [savingRecipients, setSavingRecipients] = useState(false);
   const [recipientsMessage, setRecipientsMessage] = useState<string | null>(null);
 
-  // --- Announcement authors ---
-  const [authors, setAuthors] = useState<AnnouncementAuthor[]>([]);
-  const [savingAuthors, setSavingAuthors] = useState(false);
-  const [authorsMessage, setAuthorsMessage] = useState<string | null>(null);
+  // --- Officials ---
+  const [officials, setOfficials] = useState<Official[]>([]);
+  const [savingOfficials, setSavingOfficials] = useState(false);
+  const [officialsMessage, setOfficialsMessage] = useState<string | null>(null);
 
   // --- Support threshold ---
   const [threshold, setThreshold] = useState(5);
@@ -54,7 +59,7 @@ export default function AdminSettings() {
     adminGetSettings()
       .then((s) => {
         setRecipientsText(s.brief_recipient_emails.join(", "));
-        setAuthors(s.announcement_authors);
+        setOfficials(s.officials);
         setThreshold(s.support_threshold);
         setAllowlistText(s.beta_allowlist.join(", "));
         setWaitlist(s.waitlist);
@@ -90,16 +95,24 @@ export default function AdminSettings() {
     }
   }
 
-  function updateAuthor(i: number, patch: Partial<AnnouncementAuthor>) {
-    setAuthors((cur) => cur.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
+  function updateOfficial(i: number, patch: Partial<Official>) {
+    setOfficials((cur) => cur.map((o, idx) => (idx === i ? { ...o, ...patch } : o)));
   }
 
-  function addAuthor() {
-    setAuthors((cur) => [...cur, { email: "", name: "", label: "Board member" }]);
+  function addOfficial() {
+    setOfficials((cur) => [
+      ...cur,
+      {
+        email: "",
+        name: "",
+        official_type: "board_of_supervisors",
+        official_title: OFFICIAL_TYPE_LABELS.board_of_supervisors,
+      },
+    ]);
   }
 
-  function removeAuthor(i: number) {
-    setAuthors((cur) => cur.filter((_, idx) => idx !== i));
+  function removeOfficial(i: number) {
+    setOfficials((cur) => cur.filter((_, idx) => idx !== i));
   }
 
   async function saveThreshold() {
@@ -166,34 +179,41 @@ export default function AdminSettings() {
     });
   }
 
-  async function saveAuthors() {
-    setSavingAuthors(true);
-    setAuthorsMessage(null);
+  async function saveOfficials() {
+    setSavingOfficials(true);
+    setOfficialsMessage(null);
     try {
-      const cleaned: AnnouncementAuthor[] = [];
-      for (const a of authors) {
-        const email = a.email.trim();
-        const name = (a.name ?? "").trim();
-        const label = a.label.trim();
-        if (!email && !name && !label) continue;
-        if (!email || !label) {
-          throw new Error("Each author needs both an email and a role.");
+      const cleaned: Official[] = [];
+      for (const o of officials) {
+        const email = o.email.trim();
+        const name = (o.name ?? "").trim();
+        const title = o.official_title.trim();
+        // A fully blank row is a row the admin added and abandoned —
+        // drop it rather than making them delete it to save.
+        if (!email && !name && !title) continue;
+        if (!email || !title) {
+          throw new Error("Each official needs both an email and a title.");
         }
-        cleaned.push(name ? { email, name, label } : { email, label });
+        cleaned.push({
+          email,
+          name: name || null,
+          official_type: o.official_type,
+          official_title: title,
+        });
       }
-      const saved = await adminPatchSettings({ announcement_authors: cleaned });
-      setAuthors(saved.announcement_authors);
-      setAuthorsMessage(
-        saved.announcement_authors.length === 0
+      const saved = await adminPatchSettings({ officials: cleaned });
+      setOfficials(saved.officials);
+      setOfficialsMessage(
+        saved.officials.length === 0
           ? "Cleared — only admins can post announcements."
-          : `Saved. ${saved.announcement_authors.length} non-admin author(s) can now post.`,
+          : `Saved. ${saved.officials.length} official(s) can post announcements.`,
       );
     } catch (err) {
-      setAuthorsMessage(
-        err instanceof Error ? err.message : "Failed to save authors",
+      setOfficialsMessage(
+        err instanceof Error ? err.message : "Failed to save officials",
       );
     } finally {
-      setSavingAuthors(false);
+      setSavingOfficials(false);
     }
   }
 
@@ -242,70 +262,103 @@ export default function AdminSettings() {
           </div>
         </section>
 
-        {/* --- Announcement authors --- */}
+        {/* --- Officials --- */}
         <section className="admin-settings-panel">
-          <h3>Announcement authors</h3>
+          <h3>Officials</h3>
           <p className="form-hint">
-            Non-admin users who can post announcements. The name and role show
-            on the public feed and announcement page as "Posted by [Name],
-            [Role]". Leave name blank to use the author's own account name.
-            Admins can always post (as "Admin") and don't need to be listed here.
+            Accounts that hold a public office. The title shows as a pill next
+            to their name everywhere they post — announcements, proposals,
+            projects, and comments — and they can post announcements. Leave
+            name blank to use the person's own account name. Admins can always
+            post and only need to be listed here if they also hold an office
+            (they will show both badges).
           </p>
 
-          {authors.length === 0 && (
+          {officials.length === 0 && (
             <p className="empty-state-inline" style={{ margin: "var(--space-sm) 0" }}>
-              No non-admin authors configured. Only admins can post announcements.
+              No officials configured. Only admins can post announcements.
             </p>
           )}
 
-          {authors.length > 0 && (
-            <div className="announcement-author-row announcement-author-head" aria-hidden="true">
-              <span className="announcement-author-col-label">Email</span>
-              <span className="announcement-author-col-label">Name</span>
-              <span className="announcement-author-col-label">
-                Role <span className="announcement-author-col-note">(public label)</span>
+          {officials.length > 0 && (
+            <div className="official-row official-head" aria-hidden="true">
+              <span className="official-col-label">Email</span>
+              <span className="official-col-label">Name</span>
+              <span className="official-col-label">Office</span>
+              <span className="official-col-label">
+                Title <span className="official-col-note">(public pill)</span>
               </span>
               <span />
             </div>
           )}
 
-          {authors.map((author, i) => (
-            <div key={i} className="announcement-author-row">
+          {officials.map((official, i) => (
+            <div key={i} className="official-row">
               <input
                 className="form-input"
                 type="email"
-                value={author.email}
-                onChange={(e) => updateAuthor(i, { email: e.target.value })}
-                placeholder="author@example.com"
-                aria-label={`Author ${i + 1} email`}
-                disabled={!loaded || savingAuthors}
+                value={official.email}
+                onChange={(e) => updateOfficial(i, { email: e.target.value })}
+                placeholder="official@example.com"
+                aria-label={`Official ${i + 1} email`}
+                disabled={!loaded || savingOfficials}
               />
               <input
                 className="form-input"
                 type="text"
-                value={author.name ?? ""}
-                onChange={(e) => updateAuthor(i, { name: e.target.value })}
+                value={official.name ?? ""}
+                onChange={(e) => updateOfficial(i, { name: e.target.value })}
                 placeholder="Name"
-                aria-label={`Author ${i + 1} name`}
-                disabled={!loaded || savingAuthors}
+                aria-label={`Official ${i + 1} name`}
+                disabled={!loaded || savingOfficials}
                 maxLength={80}
               />
+              <select
+                className="form-input"
+                value={official.official_type}
+                onChange={(e) => {
+                  const nextType = e.target.value as OfficialType;
+                  // Keep the title in step while it still matches the old
+                  // office's default, so switching offices does the
+                  // obvious thing — but never clobber a title the admin
+                  // has customized ("Supervisor, District 3").
+                  const isDefaultTitle = OFFICIAL_TYPES.some(
+                    (t) => OFFICIAL_TYPE_LABELS[t] === official.official_title,
+                  );
+                  updateOfficial(i, {
+                    official_type: nextType,
+                    ...(isDefaultTitle
+                      ? { official_title: OFFICIAL_TYPE_LABELS[nextType] }
+                      : {}),
+                  });
+                }}
+                aria-label={`Official ${i + 1} office`}
+                disabled={!loaded || savingOfficials}
+              >
+                {OFFICIAL_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {OFFICIAL_TYPE_LABELS[t]}
+                  </option>
+                ))}
+              </select>
               <input
                 className="form-input"
                 type="text"
-                value={author.label}
-                onChange={(e) => updateAuthor(i, { label: e.target.value })}
-                placeholder="Board member"
-                aria-label={`Author ${i + 1} role`}
-                disabled={!loaded || savingAuthors}
+                value={official.official_title}
+                onChange={(e) =>
+                  updateOfficial(i, { official_title: e.target.value })
+                }
+                placeholder="Board of Supervisors"
+                aria-label={`Official ${i + 1} title`}
+                disabled={!loaded || savingOfficials}
                 maxLength={50}
               />
               <button
                 type="button"
                 className="admin-remove-section"
-                onClick={() => removeAuthor(i)}
-                disabled={savingAuthors}
-                aria-label={`Remove author ${i + 1}`}
+                onClick={() => removeOfficial(i)}
+                disabled={savingOfficials}
+                aria-label={`Remove official ${i + 1}`}
               >
                 ×
               </button>
@@ -315,23 +368,23 @@ export default function AdminSettings() {
           <button
             type="button"
             className="admin-add-section"
-            onClick={addAuthor}
-            disabled={!loaded || savingAuthors}
+            onClick={addOfficial}
+            disabled={!loaded || savingOfficials}
           >
-            + Add author
+            + Add official
           </button>
 
           <div className="admin-settings-actions" style={{ marginTop: "var(--space-md)" }}>
             <button
               type="button"
               className="admin-convert-button"
-              onClick={saveAuthors}
-              disabled={!loaded || savingAuthors}
+              onClick={saveOfficials}
+              disabled={!loaded || savingOfficials}
             >
-              {savingAuthors ? "Saving…" : "Save authors"}
+              {savingOfficials ? "Saving…" : "Save officials"}
             </button>
-            {authorsMessage && (
-              <span className="admin-settings-message">{authorsMessage}</span>
+            {officialsMessage && (
+              <span className="admin-settings-message">{officialsMessage}</span>
             )}
           </div>
         </section>

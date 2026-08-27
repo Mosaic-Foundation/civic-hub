@@ -103,6 +103,14 @@ interface ProcessSummaryBase {
   creator_name: string;
   /** Whether the creator is a hub admin (email in CIVIC_ADMIN_EMAILS). */
   creator_is_admin: boolean;
+  /**
+   * The author's public office, when an admin has designated one on their
+   * account. Both null for residents. The TITLE renders as its own pill
+   * next to the name (see Creator); the TYPE only selects its colour.
+   * Independent of creator_is_admin — an account can carry both.
+   */
+  creator_official_type: string | null;
+  creator_official_title: string | null;
 }
 
 /** Vote summary (from GET /process list) */
@@ -168,6 +176,14 @@ export interface VoteState {
   created_by: string;
   creator_name: string;
   creator_is_admin: boolean;
+  /**
+   * The author's public office, when an admin has designated one on their
+   * account. Both null for residents. The TITLE renders as its own pill
+   * next to the name (see Creator); the TYPE only selects its colour.
+   * Independent of creator_is_admin — an account can carry both.
+   */
+  creator_official_type: string | null;
+  creator_official_title: string | null;
   jurisdiction?: string;
   content?: ProcessContent;
 }
@@ -188,6 +204,14 @@ export interface ProposalState {
   created_by: string;
   creator_name: string;
   creator_is_admin: boolean;
+  /**
+   * The author's public office, when an admin has designated one on their
+   * account. Both null for residents. The TITLE renders as its own pill
+   * next to the name (see Creator); the TYPE only selects its colour.
+   * Independent of creator_is_admin — an account can carry both.
+   */
+  creator_official_type: string | null;
+  creator_official_title: string | null;
 }
 
 export type ProcessState = VoteState | ProposalState;
@@ -271,6 +295,14 @@ export interface CivicProposalSummary {
   submitted_by: string;
   creator_name: string;
   creator_is_admin: boolean;
+  /**
+   * The author's public office, when an admin has designated one on their
+   * account. Both null for residents. The TITLE renders as its own pill
+   * next to the name (see Creator); the TYPE only selects its colour.
+   * Independent of creator_is_admin — an account can carry both.
+   */
+  creator_official_type: string | null;
+  creator_official_title: string | null;
   status: CivicProposalStatus;
   support_count: number;
   support_threshold: number;
@@ -289,6 +321,14 @@ export interface CivicProposalDetail {
   submitted_by: string;
   creator_name: string;
   creator_is_admin: boolean;
+  /**
+   * The author's public office, when an admin has designated one on their
+   * account. Both null for residents. The TITLE renders as its own pill
+   * next to the name (see Creator); the TYPE only selects its colour.
+   * Independent of creator_is_admin — an account can carry both.
+   */
+  creator_official_type: string | null;
+  creator_official_title: string | null;
   status: CivicProposalStatus;
   support_count: number;
   support_threshold: number;
@@ -516,6 +556,14 @@ export interface ProjectSummary {
   user_id: string;
   creator_name: string;
   creator_is_admin: boolean;
+  /**
+   * The author's public office, when an admin has designated one on their
+   * account. Both null for residents. The TITLE renders as its own pill
+   * next to the name (see Creator); the TYPE only selects its colour.
+   * Independent of creator_is_admin — an account can carry both.
+   */
+  creator_official_type: string | null;
+  creator_official_title: string | null;
   status: ProjectStatus;
   support_count: number;
   oppose_count: number;
@@ -541,6 +589,14 @@ export interface ProjectComment {
   user_id: string;
   creator_name: string;
   creator_is_admin: boolean;
+  /**
+   * The author's public office, when an admin has designated one on their
+   * account. Both null for residents. The TITLE renders as its own pill
+   * next to the name (see Creator); the TYPE only selects its colour.
+   * Independent of creator_is_admin — an account can carry both.
+   */
+  creator_official_type: string | null;
+  creator_official_title: string | null;
   content: string;
   created_at: string;
 }
@@ -674,6 +730,13 @@ export interface CommunityInput {
   author_name: string | null;
   /** Whether the (non-anonymous) author is a hub admin. Always false for anonymous. */
   author_is_admin?: boolean;
+  /**
+   * The (non-anonymous) author's public office. Both null for residents
+   * and — always — for anonymous comments: an office identifies a person
+   * as surely as a name does, so anonymity is never pierced by it.
+   */
+  author_official_type?: string | null;
+  author_official_title?: string | null;
   is_anonymous: boolean;
   body: string;
   submitted_at: string;
@@ -1060,7 +1123,21 @@ export interface Announcement {
   creator_name: string;
   /** Whether the author is a hub admin. */
   creator_is_admin: boolean;
+  /**
+   * The author's public office, when an admin has designated one on their
+   * account. Both null for residents. The TITLE renders as its own pill
+   * next to the name (see Creator); the TYPE only selects its colour.
+   * Independent of creator_is_admin — an account can carry both.
+   */
+  creator_official_type: string | null;
+  creator_official_title: string | null;
   author_role: AnnouncementAuthorRole;
+  /**
+   * Machine-readable office behind author_role. Null for admin-authored
+   * and synced posts. Present so a per-office feed pill colour can be
+   * added later without backfilling old announcements.
+   */
+  official_type?: string | null;
   author_display_name: string | null;
   created_at: string;
   last_edited_at: string | null;
@@ -1093,6 +1170,12 @@ export interface AnnouncementSummary {
   image_url: string | null;
   image_alt: string | null;
   author_role: AnnouncementAuthorRole;
+  /**
+   * Machine-readable office behind author_role. Null for admin-authored
+   * and synced posts. Present so a per-office feed pill colour can be
+   * added later without backfilling old announcements.
+   */
+  official_type?: string | null;
   author_display_name: string | null;
   created_at: string;
   last_edited_at: string | null;
@@ -1353,8 +1436,27 @@ export interface WaitlistEntry {
   wants_test_user: boolean;
 }
 
+/**
+ * An account an admin has designated as holding a public office.
+ * Designating someone an official also grants announcement posting —
+ * identity and that capability are fused for now, and can be split later
+ * without changing this shape.
+ */
+export interface Official {
+  /** The admin's input key. The hub has no user directory to pick from. */
+  email: string;
+  /** Admin-curated display name; blank means "use their account name". */
+  name?: string | null;
+  /** One of OFFICIAL_TYPES — drives the pill colour, not the pill text. */
+  official_type: string;
+  /** What actually renders in the pill, e.g. "Board of Supervisors". */
+  official_title: string;
+}
+
 export interface AdminSettings {
   brief_recipient_emails: string[];
+  officials: Official[];
+  /** @deprecated superseded by `officials`; returned read-only. */
   announcement_authors: AnnouncementAuthor[];
   beta_allowlist: string[];
   waitlist: WaitlistEntry[];

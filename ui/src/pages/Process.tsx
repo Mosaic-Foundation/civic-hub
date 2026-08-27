@@ -129,6 +129,8 @@ export default function Process() {
         <Creator
           name={process.creator_name}
           isAdmin={process.creator_is_admin}
+          officialType={process.creator_official_type}
+          officialTitle={process.creator_official_title}
           prefix="Created by"
         />
         <span>Created {formatDate(process.created_at)}</span>

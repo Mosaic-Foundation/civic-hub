@@ -21,6 +21,16 @@ export const SETTING_KEYS = {
   BETA_ALLOWLIST: "beta_allowlist",
   SUPPORT_THRESHOLD: "support_threshold",
   COMMENT_IDENTITY_MODE: "comment_identity_mode",
+  /**
+   * Latch: set once the legacy email-keyed announcement_authors list has
+   * been copied onto users.official_type/official_title. While unset, the
+   * auth middleware still honours the legacy list (and, through it,
+   * CIVIC_BOARD_EMAILS) so a deploy that lands before the seed runs does
+   * not lock officials out. Once set, the managed role is the only source
+   * of official status — which is what makes demotion in the admin panel
+   * stick.
+   */
+  OFFICIALS_MIGRATED: "officials_migrated",
 } as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];
@@ -187,6 +197,28 @@ function normalizeAuthors(raw: unknown[]): AnnouncementAuthor[] {
     out.push(name ? { email, name, label } : { email, label });
   }
   return out;
+}
+
+// --- Officials migration latch ---
+
+/**
+ * True once the officials roster lives on user rows. See
+ * SETTING_KEYS.OFFICIALS_MIGRATED. Any unreadable / unset value means
+ * "not yet", which keeps the legacy fallbacks live — failing toward
+ * people still being able to post, never toward locking them out.
+ */
+export async function areOfficialsMigrated(): Promise<boolean> {
+  try {
+    return (await getSetting(SETTING_KEYS.OFFICIALS_MIGRATED)) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export async function setOfficialsMigrated(
+  updatedBy: string | null,
+): Promise<void> {
+  await setSetting(SETTING_KEYS.OFFICIALS_MIGRATED, "true", updatedBy);
 }
 
 // --- Beta allowlist ---

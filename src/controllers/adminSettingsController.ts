@@ -6,9 +6,16 @@
 //                              Field name preserved across Slice 8.5's
 //                              civic.brief → civic.vote_results rename
 //                              so existing operator config keeps working.)
-//   - announcement_authors    (Slice 4.1: {email, name?, label} list of
-//                              non-admin users authorized to post
-//                              announcements; name is admin-curated)
+//   - officials               ({email, name?, official_type,
+//                              official_title} roster. Writes the managed
+//                              official role onto users rows. Designating
+//                              someone an official also grants
+//                              announcement posting — identity and that
+//                              capability are deliberately fused for now.)
+//   - announcement_authors    (Slice 4.1, SUPERSEDED by `officials`.
+//                              Still returned read-only so an operator
+//                              can see what the legacy list held; the
+//                              first save of `officials` retires it.)
 //
 // More settings can be added by extending SettingsResponse + the PATCH
 // body handler.
@@ -30,10 +37,17 @@ import {
   getCommentIdentityMode,
   setCommentIdentityMode,
 } from "../services/hubSettings.js";
+import {
+  type OfficialRecord,
+  listOfficialsWithLegacy,
+  setOfficials,
+} from "../services/officials.js";
 import { getAuthUser } from "../middleware/auth.js";
 
 interface SettingsResponse {
   brief_recipient_emails: string[];
+  officials: OfficialRecord[];
+  /** @deprecated superseded by `officials`; read-only. */
   announcement_authors: AnnouncementAuthor[];
   beta_allowlist: string[];
   waitlist: WaitlistEntry[];
@@ -44,6 +58,7 @@ interface SettingsResponse {
 async function loadSettings(): Promise<SettingsResponse> {
   return {
     brief_recipient_emails: await getVoteResultsRecipients(),
+    officials: await listOfficialsWithLegacy(),
     announcement_authors: await getAnnouncementAuthors(),
     beta_allowlist: await getBetaAllowlist(),
     waitlist: await getWaitlist(),
@@ -72,6 +87,7 @@ export async function handlePatchSettings(
     const actor = getAuthUser(res).id;
     const body = (req.body ?? {}) as {
       brief_recipient_emails?: unknown;
+      officials?: unknown;
       announcement_authors?: unknown;
       beta_allowlist?: unknown;
       support_threshold?: unknown;
@@ -89,6 +105,21 @@ export async function handlePatchSettings(
         (e): e is string => typeof e === "string",
       );
       await setVoteResultsRecipients(input, actor);
+    }
+
+    if (body.officials !== undefined) {
+      if (!Array.isArray(body.officials)) {
+        res.status(400).json({
+          error:
+            "officials must be an array of { email, name?, official_type, official_title } objects.",
+        });
+        return;
+      }
+      // setOfficials() normalizes and validates: it drops rows with no
+      // email or no title (the DB's both-or-neither CHECK), narrows an
+      // unrecognized type to "other" rather than rejecting the save, and
+      // demotes any account absent from the list.
+      await setOfficials(body.officials, actor);
     }
 
     if (body.announcement_authors !== undefined) {

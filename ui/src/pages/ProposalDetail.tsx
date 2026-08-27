@@ -114,6 +114,8 @@ export default function ProposalDetail() {
         <Creator
           name={proposal.creator_name}
           isAdmin={proposal.creator_is_admin}
+          officialType={proposal.creator_official_type}
+          officialTitle={proposal.creator_official_title}
           prefix="Proposed by"
         />
         <span>Submitted {formatDate(proposal.created_at)}</span>

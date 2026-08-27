@@ -146,6 +146,8 @@ export default function AnnouncementPage() {
           <Creator
             name={announcement.creator_name}
             isAdmin={announcement.creator_is_admin}
+            officialType={announcement.creator_official_type}
+            officialTitle={announcement.creator_official_title}
             prefix="Posted by"
           />{" "}
           <time

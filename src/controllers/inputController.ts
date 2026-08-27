@@ -177,9 +177,10 @@ export async function handleGetInputs(
       }
     }
 
-    // Resolve author admin-status in ONE query, for non-anonymous comments
-    // only. Anonymity is never pierced — anonymous comments stay
-    // author_is_admin=false regardless of who posted them.
+    // Resolve author admin-status and office in ONE query, for
+    // non-anonymous comments only. Anonymity is never pierced — anonymous
+    // comments stay author_is_admin=false with no office regardless of
+    // who posted them.
     const authorIds = inputs
       .filter((c) => !c.is_anonymous)
       .map((c) => c.author_id)
@@ -197,6 +198,15 @@ export async function handleGetInputs(
           ? c.author_name
           : c.author_name ?? resolved?.name ?? null,
         author_is_admin: !c.is_anonymous && (resolved?.is_admin ?? false),
+        // Same anonymity rule as author_is_admin: an anonymous comment
+        // never carries its author's office, which would identify them
+        // as surely as their name would.
+        author_official_type: c.is_anonymous
+          ? null
+          : (resolved?.official?.type ?? null),
+        author_official_title: c.is_anonymous
+          ? null
+          : (resolved?.official?.title ?? null),
       };
     });
 

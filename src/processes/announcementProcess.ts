@@ -43,6 +43,8 @@ const announcementProcess: ProcessHandler = {
       body: input.body as string,
       author_id: input.author_id as string,
       author_role: input.author_role as AnnouncementAuthorRole,
+      official_type:
+        typeof input.official_type === "string" ? input.official_type : null,
       links: Array.isArray(input.links)
         ? (input.links as AnnouncementLink[])
         : undefined,

@@ -11,7 +11,13 @@
 
 import { NextFunction, Request, Response } from "express";
 import { getUserFromToken, type User } from "../modules/civic.auth/index.js";
-import { lookupAuthor } from "../services/hubSettings.js";
+import { areOfficialsMigrated, lookupAuthor } from "../services/hubSettings.js";
+import { lookupOfficialByEmail } from "../services/officials.js";
+import {
+  type OfficialIdentity,
+  inferOfficialType,
+  toOfficialIdentity,
+} from "../shared/officialTypes.js";
 
 function extractToken(req: Request): string | null {
   const auth = req.headers.authorization;
@@ -49,33 +55,101 @@ export function isAdminEmail(email: string | undefined | null): boolean {
 }
 
 /**
- * Resolve a user's effective role for announcement posting.
+ * Resolve an account's official identity — the public office rendered as
+ * a pill next to their name.
  *
- * Returns:
- *   - { role: "admin", label: "Admin" } when the user is in
- *     CIVIC_ADMIN_EMAILS. Admins always post as "Admin" regardless of
- *     whether their email also appears in the author list.
- *   - { role: "author", label: <configured label> } when the user's email
- *     is in the admin-managed author list (hub_settings), falling back to
- *     CIVIC_BOARD_EMAILS with a default label of "Board member".
- *   - null when the user has no posting privilege.
+ * Three tiers, most authoritative first:
+ *   1. users.official_type / official_title — the managed role
+ *   2. hub_settings.announcement_authors    — the legacy email-keyed list,
+ *      whose free-form label becomes the title and whose type is inferred.
+ *      getAnnouncementAuthors() itself falls back to CIVIC_BOARD_EMAILS
+ *      when no list has been saved, so that env var remains the
+ *      last-resort seed exactly as before.
+ *   3. nothing — a resident.
  *
- * Async because the author list lives in hub_settings (Postgres).
+ * Tiers 2 and 3 are switched OFF once `officials_migrated` is set (the
+ * seed script sets it after copying the legacy list onto user rows).
+ * Without that switch, demoting someone in the admin panel would be
+ * undone on the next request by the stale list still naming them.
+ */
+export async function resolveOfficial(
+  email: string | undefined | null,
+): Promise<OfficialIdentity | null> {
+  if (!email) return null;
+
+  const managed = await lookupOfficialByEmail(email);
+  if (managed) return managed;
+
+  if (await areOfficialsMigrated()) return null;
+
+  const legacy = await lookupAuthor(email);
+  if (legacy) {
+    return toOfficialIdentity(inferOfficialType(legacy.label), legacy.label);
+  }
+  return null;
+}
+
+/**
+ * A signed-in user's posting authority, split into its two independent
+ * halves.
+ *
+ * `isAdmin` is a PLATFORM capability (CIVIC_ADMIN_EMAILS — reaches
+ * /admin/*). `official` is a PUBLIC IDENTITY (an office an admin
+ * designated). They are orthogonal: a county administrator who also sits
+ * on the Board is both, and must render both badges. This function
+ * therefore does NOT short-circuit on admin the way its predecessor did.
+ *
+ * Returns null when the user has neither — i.e. no posting privilege.
+ */
+export interface Authorship {
+  /** Platform capability. Gates /admin/* and the "Admin" badge. */
+  isAdmin: boolean;
+  /** Public office, or null. Gates the title pill. */
+  official: OfficialIdentity | null;
+  /**
+   * Permission role for the announcement edit-ownership check.
+   * "admin" may edit anyone's; "author" may edit only their own.
+   */
+  role: "admin" | "author";
+  /**
+   * The string stamped on a new announcement as `author_role`. It drives
+   * the feed card pill and the page eyebrow, both of which hold exactly
+   * ONE value — so for someone who is both, the OFFICE wins. A post from
+   * a supervisor should read as coming from the Board, not from the
+   * software's administrator. The Admin badge is unaffected: it renders
+   * separately, from creator_is_admin, next to the name.
+   */
+  label: string;
+  /** Admin-curated display name for a listed author, when set. */
+  name: string | null;
+}
+
+/**
+ * Resolve a user's authorship for announcement posting.
+ *
+ * Async because both halves are DB-backed (users columns; hub_settings).
  */
 export async function resolveAuthorship(
   email: string | undefined | null,
-): Promise<{
-  role: "admin" | "author";
-  label: string;
-  /** Admin-curated display name for a listed author, when set. null for
-   *  admins (who post under their own account name). */
-  name: string | null;
-} | null> {
+): Promise<Authorship | null> {
   if (!email) return null;
-  if (isAdminEmail(email)) return { role: "admin", label: "Admin", name: null };
-  const author = await lookupAuthor(email);
-  if (author) return { role: "author", label: author.label, name: author.name ?? null };
-  return null;
+
+  const isAdmin = isAdminEmail(email);
+  const official = await resolveOfficial(email);
+  if (!isAdmin && !official) return null;
+
+  // Legacy list may carry an admin-curated display name; the managed
+  // role writes that straight to users.display_name instead, so this is
+  // only consulted while the legacy tier is still live.
+  const legacyName = official && !isAdmin ? (await lookupAuthor(email))?.name ?? null : null;
+
+  return {
+    isAdmin,
+    official,
+    role: isAdmin ? "admin" : "author",
+    label: official?.title ?? "Admin",
+    name: legacyName,
+  };
 }
 
 /**
@@ -226,6 +300,7 @@ export async function requireAnnouncementPoster(
 
     res.locals.effectiveRole = authorship.role;
     res.locals.authorLabel = authorship.label;
+    res.locals.authorOfficial = authorship.official;
     // Admin-curated display name for a listed author (null for admins, or
     // when the admin left it blank). The handler prefers this over the
     // poster's own account name so the admin controls how a board author

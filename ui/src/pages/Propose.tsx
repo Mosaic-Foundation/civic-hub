@@ -95,6 +95,8 @@ export default function Propose() {
                           <Creator
                             name={p.creator_name}
                             isAdmin={p.creator_is_admin}
+                            officialType={p.creator_official_type}
+                            officialTitle={p.creator_official_title}
                             prefix="by"
                           />
                           <span>{new Date(p.created_at).toLocaleDateString()}</span>
@@ -129,6 +131,8 @@ export default function Propose() {
                           <Creator
                             name={p.creator_name}
                             isAdmin={p.creator_is_admin}
+                            officialType={p.creator_official_type}
+                            officialTitle={p.creator_official_title}
                             prefix="by"
                           />
                           <span>{new Date(p.created_at).toLocaleDateString()}</span>

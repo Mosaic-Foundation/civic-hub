@@ -62,13 +62,16 @@ export async function handleVerify(
 
   try {
     const result = await verifyCode(email, code);
-    // Include role + author_label alongside the token + user so the UI
-    // gets the posting-privilege bit without a follow-up /auth/me call.
+    // Include role + author_label + office alongside the token + user so
+    // the UI gets the posting-privilege bit and the byline pill without a
+    // follow-up /auth/me call.
     const authorship = await resolveAuthorship(result.user?.email);
     res.json({
       ...result,
       role: authorship?.role ?? null,
       author_label: authorship?.label ?? null,
+      official_type: authorship?.official?.type ?? null,
+      official_title: authorship?.official?.title ?? null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -152,6 +155,8 @@ export async function handleGetMe(
     user,
     role: authorship?.role ?? null,
     author_label: authorship?.label ?? null,
+    official_type: authorship?.official?.type ?? null,
+    official_title: authorship?.official?.title ?? null,
   });
 }
 

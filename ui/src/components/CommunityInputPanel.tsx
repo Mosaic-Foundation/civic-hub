@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { CommunityInput, CommunityInputConfig } from "../services/api";
-import "./Creator.css";
+import Creator from "./Creator";
 import {
   adminHideComment,
   adminRestoreComment,
@@ -170,13 +170,22 @@ export default function CommunityInputPanel({ processId, config }: Props) {
               )}
 
               <span className="input-meta">
-                {input.is_anonymous
-                  ? "Anonymous"
-                  : input.author_name || "Resident"}{" "}
-                {/* Admin badge — only for non-anonymous admin authors.
-                    Anonymity is never pierced. */}
-                {!input.is_anonymous && input.author_is_admin && (
-                  <span className="creator-admin-badge">Admin</span>
+                {/* Byline goes through <Creator> like every other surface,
+                    so the Admin badge and the office pill stay identical
+                    here and on proposals / projects / announcements. An
+                    anonymous comment renders the bare word "Anonymous" —
+                    no name, no badges: the server already nulls the
+                    author fields, and passing them anyway would be one
+                    edit away from piercing anonymity. */}
+                {input.is_anonymous ? (
+                  "Anonymous"
+                ) : (
+                  <Creator
+                    name={input.author_name || "Resident"}
+                    isAdmin={input.author_is_admin}
+                    officialType={input.author_official_type}
+                    officialTitle={input.author_official_title}
+                  />
                 )}{" "}
                 {/* Moderation accountability: admins can see who posted
                     an anonymous comment; residents never can. */}

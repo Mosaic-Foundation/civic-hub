@@ -24,6 +24,33 @@
   letter-spacing: 0.01em;
 }
 
+/* Office pill — the author's public position ("Board of Supervisors").
+   Shares the Admin pill's geometry so a byline carrying both reads as one
+   row of badges, but takes the accent tint so the office is the thing the
+   eye lands on first. Distinct from .creator-admin-badge on purpose: one
+   says who this person is in the community, the other says what they can
+   do in this software.
+
+   PER-OFFICE COLOUR: authorBadges() also emits a
+   .creator-official-badge--<kebab-type> modifier (…--board-of-supervisors,
+   …--school-board, …). None are defined yet, so every office inherits the
+   base look. Giving one its own colour is a single rule added below — no
+   TypeScript change, no component change. */
+.creator-official-badge {
+  display: inline-block;
+  align-self: center;
+  padding: 1px var(--space-xs, 0.375rem);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 600;
+  line-height: 1.4;
+  border-radius: var(--radius-sm, 4px);
+  background: var(--ds-color-accent-100, #f4e1d2);
+  color: var(--ds-color-accent-800, #8c4a2b);
+  text-transform: none;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
 /* Admin-only secondary id line — small muted raw user id shown alongside
    the resolved name so admins can uniquely identify a submitter. Never
    used on public surfaces. */

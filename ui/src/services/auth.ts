@@ -103,6 +103,8 @@ export function verifyCode(
   user: AuthUser;
   role: AuthRole;
   author_label: string | null;
+  official_type: string | null;
+  official_title: string | null;
 }> {
   return request("POST", "/auth/verify", { email, code });
 }
@@ -147,7 +149,13 @@ export function acceptTos(
 
 export function getMe(
   token: string,
-): Promise<{ user: AuthUser; role: AuthRole; author_label: string | null }> {
+): Promise<{
+  user: AuthUser;
+  role: AuthRole;
+  author_label: string | null;
+  official_type: string | null;
+  official_title: string | null;
+}> {
   return request("GET", "/auth/me", undefined, token);
 }
 

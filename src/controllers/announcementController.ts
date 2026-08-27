@@ -72,10 +72,19 @@ export async function handleCreateAnnouncement(
 ): Promise<void> {
   try {
     const user = getAuthUser(res);
-    // The middleware resolved the user's display label — "Admin" for
-    // admins, or the admin-configured label (e.g. "Board member",
-    // "Planning Committee") for authors in the hub_settings list.
+    // The middleware resolved the user's display label. For an official
+    // this is their office title ("Board of Supervisors"); for a plain
+    // admin it is "Admin". The office WINS for someone who is both —
+    // author_role drives the feed pill and the page eyebrow, which hold
+    // one value, and a supervisor's post should read as coming from the
+    // Board. The separate Admin badge next to their name is unaffected.
     const authorLabel = res.locals.authorLabel as AnnouncementAuthorRole | undefined;
+    // The machine-readable half of the same designation. Null when the
+    // poster is a plain admin (no office) — the label carries "Admin".
+    const authorOfficial = res.locals.authorOfficial as
+      | { type: string; title: string }
+      | null
+      | undefined;
     if (!authorLabel) {
       throw new Error(
         "authorLabel missing on res.locals — requireAnnouncementPoster must run before this handler.",
@@ -117,6 +126,7 @@ export async function handleCreateAnnouncement(
         body: body.body,
         author_id: user.id,
         author_role: authorLabel,
+        official_type: authorOfficial?.type ?? null,
         // Prefer the admin-curated name from the author list; fall back to
         // the poster's own account name when the admin left it blank.
         author_display_name:
