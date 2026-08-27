@@ -18,7 +18,10 @@ import {
   type AnnouncementLink,
   type AnnouncementProcessState,
 } from "../modules/civic.announcement/index.js";
+import { sendAnnouncementReceipt } from "../modules/civic.announcement/receipt.js";
 import { emitEvent } from "../events/eventEmitter.js";
+import { uiBaseUrl } from "../utils/baseUrl.js";
+import { hubName } from "../config/hub.js";
 import {
   createProcess,
   getAllProcesses,
@@ -171,6 +174,40 @@ export async function handleCreateAnnouncement(
       new Set([...extractUrls(body.body), ...linkUrls]),
     );
     if (allUrls.length > 0) warmPreviewsInBackground(allUrls);
+
+    // Publication receipt — tell the author and the admins that something
+    // just went out under this office's name. Detection, not prevention:
+    // sign-in is an emailed code, so whoever holds the inbox (or a live
+    // session on an unlocked laptop) can publish as a supervisor. This
+    // makes that impossible to miss, and removal already exists.
+    //
+    // Fire-and-forget, deliberately NOT awaited: the announcement is
+    // already persisted and published by this point, and a mail failure
+    // must not turn a successful publish into a 400. sendAnnouncementReceipt
+    // swallows its own errors; the catch here is belt-and-braces against
+    // a synchronous throw before the promise exists.
+    //
+    // Only the hand-authored path gets a receipt. The floyd-news sync
+    // creates announcements through createProcess directly and has no
+    // human author to warn.
+    try {
+      void sendAnnouncementReceipt(
+        {
+          title: body.title,
+          authorLabel,
+          authorName:
+            (res.locals.authorName as string | null | undefined) ?? null,
+          postedAt: record.createdAt,
+          publicUrl: `${uiBaseUrl()}/announcement/${record.id}`,
+          hubLabel: hubName(),
+        },
+        user.email,
+      );
+    } catch (err) {
+      console.error(
+        `[announcement] receipt dispatch failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
 
     const created = await enrichCreator(
       getPublicReadModel(state, {

@@ -4,6 +4,81 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Announcement publication receipts — 2026-08-27
+
+**Built, not pushed.** No migration. Follows the officials entry below.
+
+Every hand-authored announcement now emails a receipt to **the author and
+every address in `CIVIC_ADMIN_EMAILS`**.
+
+**Why this and not 2FA.** Sign-in is a code sent to an inbox, so whoever holds
+that inbox — or a live session on an unlocked laptop — can publish carrying a
+supervisor's office. The pill is what makes that account worth stealing. Three
+candidate mitigations were weighed:
+
+| | Inbox compromised | Device/session stolen |
+|---|---|---|
+| Shorter session / step-up re-auth | no help | stops it |
+| TOTP second factor | stops it | stops it |
+| **Receipt email** | **catches it** | **catches it** |
+
+The receipt is the only one that helps against both, and by far the cheapest —
+removal already exists in moderation, so the response path was already built
+and the alarm was the missing piece. Prevention was deliberately deferred.
+
+**The author is emailed, not just admins**, because they are the one person who
+knows instantly that they did not write it. Admins are emailed because they can
+take it down.
+
+| Piece | File |
+|---|---|
+| Formatter + recipients (pure) | `src/modules/civic.announcement/receipt.ts` |
+| Dispatch | end of `handleCreateAnnouncement`, `src/controllers/announcementController.ts` |
+| Tests | `tests/unit/announcementReceipt.test.ts` (16) |
+
+**Fire-and-forget, deliberately not awaited.** The announcement is persisted and
+published before the receipt is attempted; a mail failure must not turn a
+successful publish into a 400. `sendAnnouncementReceipt` swallows per-recipient
+errors, and the call site has a second guard against a synchronous throw.
+
+**Only the hand-authored path.** The floyd-news sync builds announcements
+through `createProcess` directly and has no human author to warn.
+
+**An admin posting under their own office gets ONE email**, not two — the
+recipient list dedupes case-insensitively. That is exactly the account this
+protects, so it is the case most worth not annoying.
+
+### Not built (considered, deferred)
+
+- **Step-up re-auth on publish** (GitHub's "sudo mode"): a freshness
+  requirement on the action while the 30-day session still covers reading and
+  commenting. The check is trivial; the cost is the UI — prompting mid-flow and
+  preserving the draft across the round trip. Worth doing alongside TOTP, since
+  they share a re-auth flow.
+- **Shortening `SESSION_TTL_MS` for officials** (currently 30 days for
+  everyone, `src/modules/civic.auth/index.ts`). Now trivially expressible since
+  official status lives on the user row.
+- **Splitting posting from official status.** A compromised official account
+  currently gets impersonation *and* posting rights together, because the two
+  are fused. Unfusing them would shrink the blast radius — the strongest
+  argument yet for eventually doing it.
+
+### Badge coverage — where the title does and does not render
+
+Every public byline goes through `<Creator>`: Propose (×2), Projects (×2),
+ProposalDetail, ProjectDetail (+ its comments), Process, Announcement, and
+`CommunityInputPanel` (process comments).
+
+Two places show a name WITHOUT the badge, both intentional-ish:
+- **Feed cards** (`FeedPost.tsx`) render `author_display_name` as plain text —
+  but the office is already on the card as the announcement PILL plus a
+  distinct border, via `author_role`. Different mechanism, same information.
+  Non-announcement cards show no author name at all (pre-existing).
+- **`AdminReviews.tsx`** renders `creator_name` as prose in three places.
+  Admin-only triage surface; a pill adds little there. Left alone.
+
+---
+
 ## Officials: an admin-managed role with a structured title — 2026-08-27
 
 **Built, not pushed.** ⚠️ **Migration must be applied to prod BEFORE this
