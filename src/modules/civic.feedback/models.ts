@@ -5,10 +5,20 @@
 // own table and never flow through emitEvent(). Public /events readers
 // must not see this surface.
 
-export type FeedbackCategory = "idea" | "bug" | "moderation" | "general";
+// "topic" is resident-facing in a way the others are not: it collects
+// subjects the Hub should take up, so an operator choosing launch content
+// can read them as a group. Kept in this list — not a separate surface —
+// so it reuses the one feedback form, validator, and table.
+export type FeedbackCategory =
+  | "idea"
+  | "topic"
+  | "bug"
+  | "moderation"
+  | "general";
 
 export const FEEDBACK_CATEGORIES: ReadonlyArray<FeedbackCategory> = [
   "idea",
+  "topic",
   "bug",
   "moderation",
   "general",

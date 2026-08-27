@@ -24,6 +24,11 @@ const CATEGORIES: ReadonlyArray<{
   hint: string;
 }> = [
   { value: "idea", label: "Idea", hint: "A feature or improvement you'd like to see" },
+  {
+    value: "topic",
+    label: "Suggest a topic",
+    hint: "A topic the Hub should discuss — for when you'd rather suggest an issue than start a process yourself",
+  },
   { value: "bug", label: "Bug", hint: "Something is broken or not working as expected" },
   { value: "moderation", label: "Moderation", hint: "Flag content or behavior for the operator" },
   { value: "general", label: "General", hint: "Anything else — questions, thoughts, comments" },
@@ -96,8 +101,8 @@ export default function Feedback() {
       <div className="feedback-body">
         <h1>Send feedback</h1>
         <p className="feedback-subtitle">
-          Ideas, bug reports, moderation flags, or general thoughts — all
-          welcome. We read everything.
+          Ideas, topics the Hub should take up, bug reports, moderation
+          flags, or general thoughts — all welcome. We read everything.
         </p>
 
         <form className="feedback-form" onSubmit={handleSubmit}>

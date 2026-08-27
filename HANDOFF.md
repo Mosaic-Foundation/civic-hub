@@ -4,6 +4,99 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Feedback: a "Suggest a topic" category — 2026-08-27
+
+> ### ⚠️ DEPLOY ORDER — MIGRATION MUST GO TO PROD FIRST
+>
+> This change adds `supabase/migrations/20260827000000_feedback_topic_category.sql`.
+> **Apply it to dev, then prod, BEFORE deploying the code that writes
+> `category = 'topic'`.** Per the 08-22 incident, a shared `main` must not get
+> ahead of its migration. The failure mode is already confirmed by hand on dev:
+> the form accepts the pill, the server validator accepts the value, and the
+> insert is refused by the CHECK constraint — a 500 with the resident's message
+> already typed.
+>
+> Apply via Supabase → SQL Editor. Verify with:
+> `INSERT INTO feedback_submissions (id, category, message) VALUES ('fb_probe', 'topic', 'probe'); ROLLBACK;`
+> inside a transaction, or simply re-read the constraint:
+> `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'feedback_submissions_category_chk';`
+> — expect `'topic'` in the list.
+
+Residents can now suggest a **subject the Hub should take up** without starting
+a process themselves. It reuses the existing feedback form — one more pill, no
+new surface, no new table, no new endpoint.
+
+### What changed
+
+| Where | Change |
+|---|---|
+| `src/modules/civic.feedback/models.ts` | `"topic"` added to `FeedbackCategory` and `FEEDBACK_CATEGORIES` |
+| `ui/src/services/api.ts` | the mirrored `FeedbackCategory` union — **a fourth definition site**, easy to miss |
+| `ui/src/pages/Feedback.tsx` | "Suggest a topic" pill (second, after Idea) + hint + subtitle copy |
+| `supabase/migrations/20260827000000_feedback_topic_category.sql` | replaces the category CHECK from `20260429000000` with the superset |
+| `tests/unit/feedbackCategories.test.ts` | new — drift guard across all four |
+
+**Server validation needed no change.** `isValidCategory()` derives from
+`FEEDBACK_CATEGORIES`, so `'topic'` was accepted the moment it joined the list —
+verified on the running dev server: `POST /feedback` with a bogus category now
+returns `category must be one of: idea, topic, bug, moderation, general`.
+
+**Pill order is idea → topic → bug → moderation → general.** "General" is the
+catch-all and stays last; a specific category after it reads wrong. The default
+selection is unchanged (`idea`).
+
+### The drift guard, and why it exists
+
+The category set is defined in four places that cannot import from each other —
+a TS model, a UI union, a UI pill list, and a SQL migration — and enforced in a
+fifth, the database. Nothing kept them in step. `tests/unit/feedbackCategories.test.ts`
+parses the newest migration that defines the constraint, the UI union, and the
+form's `CATEGORIES` array, and asserts all three equal `FEEDBACK_CATEGORIES`.
+Confirmed to fail on a stale constraint before being committed. It is pure
+file-reading plus one validation call that returns before `getDb()` — no DB, so
+it is safe in the `tests/unit`-only CI.
+
+### ⚠️ Open: there is no admin feedback view
+
+The task asked to make sure the admin view can filter topic submissions as their
+own group. **That view does not exist.** `feedback_submissions` is write-only in
+this codebase — `submitFeedback()` inserts, and nothing reads it back: no admin
+route, no admin controller, no admin page, no `GET /feedback`. Deliberately not
+built here, since it is a new surface rather than an adjustment to an existing one.
+
+Until it exists, topic suggestions reach Adam two ways:
+
+1. **Operator email** — already sent per submission, subject line
+   `[Civic Hub feedback] topic — <first 60 chars>`, so they are filterable in the
+   inbox today with no further work.
+2. **SQL** — `feedback_submissions_category_idx` (from `20260429000000`) already
+   indexes the column, so the group read is a plain indexed lookup:
+   ```sql
+   SELECT created_at, name, email, message
+     FROM feedback_submissions
+    WHERE category = 'topic'
+    ORDER BY created_at DESC;
+   ```
+
+**Open question for Adam:** if choosing launch content is going to be a repeated
+pass over these, an admin feedback list (read endpoint + category filter, mirroring
+`AdminReviews`) is the natural follow-up. Worth deciding before the Hub launches
+rather than during.
+
+### Verification
+
+- `tsc -b` clean, backend and `ui/`.
+- `tests/unit` — 29 files, **433 tests green** (5 new).
+- Dev UI at `/feedback`: five pills render, "Suggest a topic" selects, hint reads
+  "A topic the Hub should discuss — for when you'd rather suggest an issue than
+  start a process yourself".
+- **Not verified: persistence.** `category='topic'` cannot round-trip until the
+  migration is applied — migrations here are applied by hand in the Supabase SQL
+  Editor, which is Adam's step. The dev probe above confirms the CHECK constraint
+  is the only remaining gate.
+
+---
+
 ## Light process-linking, universal across process types (Batch A #8) — 2026-08-25
 
 > ### ⚠️ DEPLOY ORDER — MIGRATION MUST GO TO PROD FIRST

@@ -1735,7 +1735,14 @@ export function startDeliberation(processId: string): Promise<unknown> {
 
 // --- Slice 14 — feedback ---
 
-export type FeedbackCategory = "idea" | "bug" | "moderation" | "general";
+// Mirrors FeedbackCategory in src/modules/civic.feedback/models.ts —
+// keep the two in step; the server validates against its own list.
+export type FeedbackCategory =
+  | "idea"
+  | "topic"
+  | "bug"
+  | "moderation"
+  | "general";
 
 export interface SubmitFeedbackInput {
   category: FeedbackCategory;
