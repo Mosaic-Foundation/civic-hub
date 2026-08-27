@@ -1307,6 +1307,21 @@ had a summary, correctly skipped), 0 failed. `cronAlertReason` had no concept of
 3. **Alarm on staleness.** `summaryPredatesMeeting()` compares `generated_at`
    against `meeting_date`; any summary still failing that after the upgrade pass
    raises the alarm and appears as `stale_summaries` on the run response.
+4. **Admin edits are never overwritten.** The review UI lets an admin rewrite
+   blocks before approving; minutes arrive 15–30 days later, so a wholesale
+   re-summarization would discard that work silently, weeks after the fact.
+   When `edit_count > 0` the upgrade attaches the newly-available minutes URL
+   as a source and leaves the reviewed text alone.
+
+**Why not simply wait for minutes?** Measured against the live collection:
+recordings appear within **0–1 days**, minutes take **15–30** and arrive in
+periodic batch sweeps (many rows share an update date), because minutes must be
+approved at the *following* meeting before they can be published. Waiting would
+put every summary 2–4 weeks behind — an archive, not a civic feed. The
+transcript is also the richer source: it carries public comment, discussion and
+the closed-session basis that terse formal minutes omit. So the pipeline
+summarizes from the recording within a day and folds the minutes in later, in
+place, when they appear.
 
 **The pattern worth remembering:** all three failures this month were invisible
 to the job's own view of itself. The source broke and discovery reported "0

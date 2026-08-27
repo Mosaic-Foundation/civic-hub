@@ -821,10 +821,32 @@ export async function handleRunMeetingSummary(
         if (!entry.source_minutes_url && !summaryPredatesMeeting(existingState)) {
           continue;
         }
+        // An admin who edited this summary owns its wording. Re-summarizing
+        // would silently discard that work weeks later, with no warning and no
+        // way to recover it. Attach the newly-available minutes as a source so
+        // the link is on the record, and leave the human's text alone.
+        if ((existingState.edit_count ?? 0) > 0) {
+          if (
+            entry.source_minutes_url &&
+            existingState.source_minutes_url !== entry.source_minutes_url
+          ) {
+            existingState.source_minutes_url = entry.source_minutes_url;
+            existing.state = existingState as unknown as Record<string, unknown>;
+            await saveProcessState(existing);
+            console.log(
+              `[meeting-summary] ${entry.source_id} was admin-edited ` +
+                `(edit_count=${existingState.edit_count}) — attached the minutes link ` +
+                `but kept the reviewed text`,
+            );
+          }
+          continue;
+        }
+
         const meetingStart = Date.now();
         try {
           console.log(
-            `[meeting-summary] upgrading agenda→minutes source_id=${entry.source_id}`,
+            `[meeting-summary] upgrading source_id=${entry.source_id} ` +
+              `(${entry.source_minutes_url ? "minutes now available" : "recording now available"})`,
           );
           const summary = await summarizeMeeting(entry, cfg, {
             fetchPdf,

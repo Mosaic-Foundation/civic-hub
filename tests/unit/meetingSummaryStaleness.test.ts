@@ -124,3 +124,38 @@ describe("upgrade trigger", () => {
     expect(shouldUpgrade({ source_minutes_url: null, source_video_url: null }, stale)).toBe(false);
   });
 });
+
+// --- Admin edits survive the minutes upgrade -------------------------------
+//
+// The review UI lets an admin rewrite blocks before approving — fixing a
+// mangled name, tightening a summary. Minutes arrive 15-30 days later, and a
+// wholesale re-summarization would discard that work silently, weeks after the
+// fact, with no way to recover it.
+
+/** Mirrors the edit guard in the upgrade pass. */
+function upgradePlan(existing: { edit_count: number }, entryHasMinutes: boolean) {
+  if ((existing.edit_count ?? 0) > 0) {
+    return entryHasMinutes ? "attach-link-only" : "skip";
+  }
+  return "resummarize";
+}
+
+describe("upgrade respects admin edits", () => {
+  it("re-summarizes an untouched summary", () => {
+    expect(upgradePlan({ edit_count: 0 }, true)).toBe("resummarize");
+  });
+
+  it("preserves reviewed text, attaching only the minutes link", () => {
+    expect(upgradePlan({ edit_count: 1 }, true)).toBe("attach-link-only");
+  });
+
+  it("leaves an edited summary entirely alone when there is nothing to attach", () => {
+    expect(upgradePlan({ edit_count: 3 }, false)).toBe("skip");
+  });
+
+  it("treats any number of edits as ownership", () => {
+    for (const n of [1, 2, 7]) {
+      expect(upgradePlan({ edit_count: n }, true)).toBe("attach-link-only");
+    }
+  });
+});
