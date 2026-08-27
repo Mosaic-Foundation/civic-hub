@@ -556,6 +556,38 @@ item left the email in the same commit with no digest code touched — and
 that test and the feed classifier test were rewritten to assert the new intent
 with the reasoning inline, not edited to make red go green.
 
+### Admin panel — "Process reviews", and the archive-coverage gap — 2026-08-26
+
+**Renamed** the admin tab and page heading from "Reviews" / "Submission
+reviews" to **"Process reviews"** (Adam). The queue handles every process type
+now, and "Reviews" read like it might be something narrower.
+
+**Finding — the Proposals admin tab is a leftover, but deleting it would break
+archiving.** Two archive routes exist:
+
+- `POST /admin/processes/:id/archive` — generic, any process type, added with
+  the Archived tab and the reusable `AdminArchiveButton`.
+- `POST /admin/proposals/:id/archive` — proposal-only, and older.
+
+So archiving is NOT proposal-specific. But `AdminArchiveButton` is mounted on
+only **three** pages — Announcement, MeetingSummary, and Process. It is missing
+from ProposalDetail, ProjectDetail, DeliberationDetail, Brief and WordCloud.
+
+Consequences today:
+- The Proposals tab is the ONLY way to archive a proposal.
+- **Projects and conversations cannot be archived from the UI at all** — the
+  generic route exists and nothing calls it.
+
+**Proposed slice (not built):** mount `AdminArchiveButton` on the detail pages
+missing it, then retire the Proposals tab and its proposal-specific route.
+Archiving then works identically everywhere — from the thing itself — and the
+Archived tab stays the single place to review and restore. Do NOT just delete
+the tab first; it is currently load-bearing.
+
+Also noted: the Proposals tab lists ALL proposals (`listProposals()` takes an
+optional status filter and the page passes none), so a short list there means
+few proposals exist, not that it is truncating.
+
 ### Open questions
 
 - **Dev carries one demo artifact:** proposal `proc_69cda899e1fa420a` ("Add

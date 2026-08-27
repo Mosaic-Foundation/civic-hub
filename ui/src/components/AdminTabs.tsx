@@ -5,7 +5,7 @@ import "./AdminTabs.css";
  * Shared tab navigation for admin pages. Sits at the top of every admin
  * surface so the admin can jump between surfaces without leaving the admin
  * context. Ordered by function: the publication/approval queues first
- * (Reviews, Proposals, Vote results, Meeting summaries), then oversight
+ * (Process reviews, Proposals, Briefs, Meeting summaries), then oversight
  * (Moderation, Archived), then configuration (Settings).
  *
  * Each tab is a NavLink so React Router assigns `aria-current="page"`
@@ -17,7 +17,7 @@ export default function AdminTabs() {
       <div className="admin-tabs-eyebrow">Admin</div>
       <nav className="admin-tabs" aria-label="Admin sections">
       <NavLink to="/admin/reviews" className={tabClass}>
-        Reviews
+        Process reviews
       </NavLink>
       <NavLink to="/admin/proposals" className={tabClass}>
         Proposals
