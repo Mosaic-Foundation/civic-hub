@@ -126,6 +126,38 @@ function meetingKey(date: string, title: string): string {
   return `${date}::${normalized}`;
 }
 
+/**
+ * Today's date in ISO form, for comparing against a meeting date.
+ *
+ * Deliberately UTC-simple: meeting dates are calendar dates with no timezone,
+ * and being a few hours conservative about "has this happened" is the safe
+ * direction — a summary written a day late is fine, one written before the
+ * meeting is not.
+ */
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * A summary is stale when it was generated before the meeting it describes
+ * had happened.
+ *
+ * Floyd posts agendas ~4 days ahead and recordings ~1 day after, so the cron
+ * would reliably catch the agenda first and write a summary of PLANNED topics
+ * — then never revisit it, because the upgrade pass only fired on minutes.
+ * The 2026-08-25 meeting sat that way: summarized 2026-08-22 from the agenda,
+ * recording posted 2026-08-26, nothing re-read it.
+ */
+function summaryPredatesMeeting(state: {
+  generated_at?: string;
+  meeting_date?: string;
+}): boolean {
+  const generated = (state.generated_at ?? "").slice(0, 10);
+  const meeting = state.meeting_date ?? "";
+  if (!generated || !meeting) return false;
+  return generated < meeting;
+}
+
 /** Whether a connector has enough configuration to be worth attempting. */
 function isConfigured(id: string, cfg: MeetingSummaryConfig): boolean {
   if (PAGE_CONNECTOR_IDS.has(id)) return Boolean(cfg.source_url);
@@ -196,6 +228,8 @@ interface CronOutcome {
   connector_id: string;
   /** Published feed cards whose page no longer resolves. */
   brokenLinks?: BrokenPublication[];
+  /** Summaries still describing a meeting that had not happened when written. */
+  staleSummaries?: Array<{ meeting_date: string; meeting_title: string; generated_at: string }>;
   /** Set when the run aborted before finishing (discovery threw, config invalid). */
   fatal?: string;
 }
@@ -232,6 +266,17 @@ export function cronAlertReason(outcome: CronOutcome): string | null {
   }
   if (outcome.failed > 0) {
     return `${outcome.failed} meeting(s) failed to summarize.`;
+  }
+  if (outcome.staleSummaries && outcome.staleSummaries.length > 0) {
+    // The Aug 2026 case: a summary written from the agenda three days before
+    // the meeting, never revisited once the recording appeared. Every counter
+    // read clean because nothing failed — the summary simply described the
+    // wrong thing.
+    return (
+      `${outcome.staleSummaries.length} summary/summaries still describe a meeting ` +
+      `that had not happened when they were written, and no newer source was ` +
+      `available to replace them.`
+    );
   }
   if (outcome.brokenLinks && outcome.brokenLinks.length > 0) {
     // The counters can all read zero while readers get 404s: this run's
@@ -275,6 +320,16 @@ async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
     <p>The meeting summary cron ${headline}.</p>
     <p><strong>Why you're getting this:</strong> ${reason}</p>
     ${failureLines ? `<ul>${failureLines}</ul>` : ""}
+    ${
+      outcome.staleSummaries && outcome.staleSummaries.length > 0
+        ? `<p><strong>Summaries written before their meeting happened</strong> — these describe planned topics, not the meeting:</p><ul>${outcome.staleSummaries
+            .map(
+              (t) =>
+                `<li>${t.meeting_date} — ${t.meeting_title} (written ${t.generated_at.slice(0, 10)})</li>`,
+            )
+            .join("\n")}</ul>`
+        : ""
+    }
     ${
       outcome.brokenLinks && outcome.brokenLinks.length > 0
         ? `<p><strong>Broken feed links</strong> — published cards whose page 404s:</p><ul>${outcome.brokenLinks
@@ -635,6 +690,18 @@ export async function handleRunMeetingSummary(
         );
         break;
       }
+      // A meeting that has not happened yet has only an agenda, and an agenda
+      // describes what is PLANNED. Summarizing it produces a document that
+      // reads like a record of the meeting while predating it — and until the
+      // upgrade fix below, nothing ever corrected it. Wait for the meeting.
+      if (entry.meeting_date > todayIso()) {
+        console.log(
+          `[meeting-summary] ${entry.meeting_date} "${entry.meeting_title}" has not ` +
+            `happened yet — deferring until there is a record to summarize`,
+        );
+        continue;
+      }
+
       const slotKey = meetingKey(entry.meeting_date, entry.meeting_title);
       const consumeSlot = () => {
         const remaining = existingSlots.get(slotKey) ?? 0;
@@ -730,7 +797,11 @@ export async function handleRunMeetingSummary(
           );
           break;
         }
-        if (!entry.source_minutes_url) continue;
+        // Two things justify re-summarizing: official minutes appearing, or a
+        // recording appearing for a summary that predates its own meeting.
+        // The second case is the common one — the county posts agendas days
+        // ahead and recordings a day after — and it used to be invisible.
+        if (!entry.source_minutes_url && !entry.source_video_url) continue;
         // Upgrade the summary this meeting's documents already belong to, if
         // it is still provisional; otherwise fall back to id/date+title match.
         const byDocs = existingByDocuments(entry);
@@ -743,6 +814,13 @@ export async function handleRunMeetingSummary(
             : null;
         const existing = upgradeable ?? provisionalFor(entry);
         if (!existing) continue;
+
+        // Skip when there is nothing new to say: no minutes to add, and the
+        // existing summary was already written after the meeting happened.
+        const existingState = summaryState(existing);
+        if (!entry.source_minutes_url && !summaryPredatesMeeting(existingState)) {
+          continue;
+        }
         const meetingStart = Date.now();
         try {
           console.log(
@@ -822,6 +900,26 @@ export async function handleRunMeetingSummary(
       }
     }
 
+    // Any summary still describing a meeting it predates, after the upgrade
+    // pass has had its chance to replace it. Recomputed from storage rather
+    // than tracked through the loop so it also catches records this run never
+    // touched.
+    const staleSummaries = (await getAllProcesses().catch(() => []))
+      .filter((p) => p.definition.type === "civic.meeting_summary")
+      .map((p) => summaryState(p))
+      .filter((st) => summaryPredatesMeeting(st))
+      .map((st) => ({
+        meeting_date: st.meeting_date,
+        meeting_title: st.meeting_title,
+        generated_at: st.generated_at,
+      }));
+    if (staleSummaries.length > 0) {
+      console.error(
+        `[meeting-summary] ${staleSummaries.length} summary/summaries predate their ` +
+          `own meeting: ${staleSummaries.map((t) => t.meeting_date).join(", ")}`,
+      );
+    }
+
     // Verify the reader-facing invariant before declaring the run clean: every
     // published card still resolves. This is the check the counters cannot do —
     // the run that unpublished two live pages reported zero failures.
@@ -855,6 +953,7 @@ export async function handleRunMeetingSummary(
       skipped_existing: skippedExisting,
       failed,
       broken_links: brokenLinks.length,
+      stale_summaries: staleSummaries.length,
       duration_ms,
     });
 
@@ -867,6 +966,7 @@ export async function handleRunMeetingSummary(
       duration_ms,
       connector_id: usedConnectorId,
       brokenLinks,
+      staleSummaries,
     }).catch((err) => {
       console.warn(
         `[meeting-summary] notification send error: ${err instanceof Error ? err.message : "unknown"}`,

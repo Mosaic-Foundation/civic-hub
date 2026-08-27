@@ -1269,6 +1269,53 @@ newest publication per process is checked, matching what the feed collapses to.
 Deliberately type-agnostic: it will catch the next cause as well as the known
 one. Worth promoting to its own cron if other publication paths grow.
 
+### Summaries that predate their own meeting (2026-08-27)
+
+The 2026-08-25 Board meeting produced no usable summary and **no alarm**. Not a
+pipeline failure — a timing assumption nobody had stated:
+
+```
+Aug 21  county posts the Aug 25 agenda
+Aug 22  cron summarizes it — from the agenda, three days BEFORE the meeting
+Aug 25  meeting happens
+Aug 26  county posts the recording
+Aug 27  nothing has re-read it
+```
+
+Floyd posts agendas ~4 days ahead and recordings ~1 day after, so the cron
+**reliably** caught the agenda first and wrote a summary of *planned* topics.
+The upgrade pass then declined to revisit it, because it only fired when
+official **minutes** appeared (`if (!entry.source_minutes_url) continue;`) and
+Floyd had not posted minutes. The summary sat in Pending describing a meeting
+that had not yet happened.
+
+No alarm fired because nothing failed: 294 discovered, 0 created (Aug 25 already
+had a summary, correctly skipped), 0 failed. `cronAlertReason` had no concept of
+"we hold a summary that predates the meeting it describes".
+
+**Three fixes.**
+
+1. **Do not summarize a meeting that has not happened.** The creation loop skips
+   any entry whose `meeting_date` is in the future. An agenda describes what is
+   planned; summarizing it produces a document that reads as a record while
+   predating the event.
+2. **Upgrade on a recording, not only on minutes.** Re-summarize when minutes
+   appear **or** when a recording appears for a summary that predates its own
+   meeting. Guarded so a summary already written after the meeting is not
+   re-summarized on every run — that would burn the per-run budget and reset
+   review state forever.
+3. **Alarm on staleness.** `summaryPredatesMeeting()` compares `generated_at`
+   against `meeting_date`; any summary still failing that after the upgrade pass
+   raises the alarm and appears as `stale_summaries` on the run response.
+
+**The pattern worth remembering:** all three failures this month were invisible
+to the job's own view of itself. The source broke and discovery reported "0
+meetings" (success). Publication state broke and the counters read zero
+(success). Here a summary described the wrong thing and every counter was clean
+(success). Each guard added since is an *outcome* check rather than a *process*
+check — did the reader get a correct, resolvable summary — and that is the
+category to keep extending.
+
 ### Guard
 
 `cronAlertReason()` — zero discovered meetings is a **failure**, not an empty
