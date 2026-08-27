@@ -242,6 +242,27 @@ against dev/prod but not automated say so — that is a real gap, not a formalit
 | Read-only backlinks on announcement / meeting summary | | | **Needs E2E** |
 | Word cloud shows no links panel at all | | | **Needs E2E** |
 
+### Archive / Restore Flows (Slice: universal archiving, 2026-08-26)
+
+Archiving flips `processes.status`; three types also keep state elsewhere and
+sync it via `ProcessHandler.onArchive` / `onRestore`. "dev" means round-tripped
+by hand against the dev database, checking BOTH tables — not automated.
+
+| Flow | Automated | Verified | Notes |
+|------|-----------|----------|-------|
+| Handlers owning outside state declare both hooks | :white_check_mark: unit | | archiveHooks.test.ts |
+| Hooks stay optional for state-only types | :white_check_mark: unit | | civic.brief implements neither |
+| No handler implements one hook without the other | :white_check_mark: unit | | archiving must not be one-way |
+| Registering a new process type forces an archive decision | :white_check_mark: unit | | registry snapshot; guard confirmed to fire |
+| civic.proposal archive/restore syncs `proposals.status` | | dev | child returns to `closed`, not a default |
+| civic.project archive/restore syncs `projects.status` | | dev | child returns to `completed`, not `active` |
+| civic.wordcloud archive/restore syncs `state.status` | | dev | else an archived cloud keeps accepting words |
+| civic.vote / conversation / brief round-trip | | dev | brief has no hooks — proves the default path |
+| civic.announcement / meeting_summary / vote_results | | | **Not tested** — no dev instances; state-only, same case as brief |
+| An archived proposal 404s at `/proposals/:id` and leaves `/propose` | | dev | the take-down bug found by the audit |
+| Restore returns a process to its exact prior status | | dev | two-step Restore exercised in the browser |
+| Child status survives an archive/restore round trip | | dev | **Needs API test** — the stash/read-back logic broke twice |
+
 ### API-Only Flows
 
 | Flow | API | Slice | Notes |
@@ -413,4 +434,4 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-08-26 — added the unit-test layer (which CI runs and this file had never documented), the process-linking coverage inventory, and the standing note above on running integration tests in CI.*
+*Last updated: 2026-08-26 — added the archive/restore inventory, the unit-test layer (which CI runs and this file had never documented), the process-linking coverage inventory, and the standing note above on running integration tests in CI.*
