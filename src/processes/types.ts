@@ -79,6 +79,50 @@ export interface ProcessHandler {
   closeIfExpired?(process: Process): Promise<Process>;
 
   /**
+   * Archive / restore hooks — sync storage this handler owns.
+   *
+   * `archiveProcess` flips `processes.status` and stores the archive metadata,
+   * which is all a process type needs when its state lives entirely in that
+   * row. It is NOT enough for a type that owns a child table or keeps its own
+   * status inside `state`: civic.proposal and civic.project each have a
+   * `status` column on their own table, and civic.wordcloud keeps `status` in
+   * `state`, and every one of those read models reads its OWN copy. Archiving
+   * without syncing them leaves a process hidden from the public list while
+   * its detail page still renders it as live.
+   *
+   * This is the same seam as requiredSchema and generateBrief: the handler
+   * declares what it owns, rather than the service growing a switch over
+   * process types. A type whose state lives only in `processes` omits both.
+   *
+   * Called AFTER the processes row is updated, and best-effort: a failure is
+   * logged and does not roll back the archive, because a process hidden from
+   * the public with a stale child row is recoverable, while an admin unable to
+   * take down bad content is not.
+   */
+  onArchive?(process: Process): Promise<void>;
+
+  /**
+   * Inverse of onArchive.
+   *
+   * `previousStatus` is the PROCESS status being restored. `archiveMeta` is
+   * the `state.archive` block as it stood before restore removed it —
+   * including anything onArchive stashed there. Both are passed explicitly
+   * because restoreProcess deletes `state.archive` and overwrites the
+   * in-memory copy before this runs, so a handler cannot read its own stash
+   * off `process`.
+   *
+   * Handlers whose child vocabulary differs from ProcessStatus should stash
+   * their own previous value in onArchive and read it back here. Deriving it
+   * from `previousStatus` does not work: a process may be `finalized` while
+   * its proposal row is `closed`, and nothing maps one to the other.
+   */
+  onRestore?(
+    process: Process,
+    previousStatus: string,
+    archiveMeta: Record<string, unknown> | null,
+  ): Promise<void>;
+
+  /**
    * Universal brief hook. When a process closes, the service calls this to
    * produce the type-specific content for its Civic Brief — a short,
    * readable summary of the outcome that the admin reviews (in the Briefs

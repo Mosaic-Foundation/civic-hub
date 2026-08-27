@@ -16,7 +16,6 @@ import Propose from "./pages/Propose";
 import ProposeDraft from "./pages/ProposeDraft";
 import ProposeDraftVote from "./pages/ProposeDraftVote";
 import ProposalDetail from "./pages/ProposalDetail";
-import AdminProposals from "./pages/AdminProposals";
 import AdminVoteResults from "./pages/AdminVoteResults";
 import AdminBriefs from "./pages/AdminBriefs";
 import AdminMeetingSummaries from "./pages/AdminMeetingSummaries";
@@ -142,7 +141,6 @@ function AppContent() {
           <Route path="/my-submissions/:reviewId" element={<MySubmissions />} />
           <Route path="/admin/reviews" element={<AdminGuard><AdminReviews /></AdminGuard>} />
           <Route path="/admin/reviews/:reviewId" element={<AdminGuard><AdminReviews /></AdminGuard>} />
-          <Route path="/admin/proposals" element={<AdminGuard><AdminProposals /></AdminGuard>} />
           {/* Legacy vote-results admin (existing published vote briefs keep
               their review screen); the Briefs tab now points at /admin/briefs. */}
           <Route path="/admin/vote-results" element={<AdminGuard><AdminVoteResults /></AdminGuard>} />

@@ -663,21 +663,6 @@ export function submitProjectDraft(
 // --- Admin: Proposal Review ---
 
 /** List proposals for admin review */
-export function adminListProposals(status?: string): Promise<CivicProposalSummary[]> {
-  const params = status ? `?status=${encodeURIComponent(status)}` : "";
-  return request("GET", `/admin/proposals${params}`);
-}
-
-/** Get full proposal detail for admin review */
-export function adminGetProposal(id: string): Promise<CivicProposalDetail> {
-  return request("GET", `/admin/proposals/${id}`);
-}
-
-/** Archive a proposal */
-export function archiveProposal(proposalId: string): Promise<{ message: string }> {
-  return request("POST", `/admin/proposals/${proposalId}/archive`);
-}
-
 // --- Community Input ---
 
 export interface CommunityInput {

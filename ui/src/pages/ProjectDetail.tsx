@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   getProjectDetail,
@@ -17,8 +17,10 @@ import ShareButton from "../components/ShareButton";
 import Creator from "../components/Creator";
 import RelatedProcesses from "../components/RelatedProcesses";
 import "./ProjectDetail.css";
+import AdminArchiveButton from "../components/AdminArchiveButton";
 
 export default function ProjectDetail() {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { user, isAdmin } = useAuth();
 
@@ -313,6 +315,13 @@ export default function ProjectDetail() {
           ))
         )}
       </div>
+
+      {/* Admin-only soft-remove. Renders nothing for everyone else. */}
+      <AdminArchiveButton
+        processId={project.id}
+        itemLabel="project"
+        onArchived={() => navigate("/projects")}
+      />
 
       <RelatedProcesses
         processId={project.id}

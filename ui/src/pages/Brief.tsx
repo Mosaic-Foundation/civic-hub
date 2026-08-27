@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { getPublicBrief, type PublicBrief } from "../services/api";
 import { absoluteTime } from "../components/FeedPost";
 import PostFeaturedImage from "../components/PostFeaturedImage";
@@ -8,6 +8,7 @@ import hub from "../config/hub";
 // Reuse the vote-results public styling — same page language.
 import "./VoteResults.css";
 import RelatedProcesses from "../components/RelatedProcesses";
+import AdminArchiveButton from "../components/AdminArchiveButton";
 
 const SOURCE_NOUN: Record<string, string> = {
   "civic.polis_deliberation": "conversation",
@@ -23,6 +24,7 @@ const SOURCE_NOUN: Record<string, string> = {
  * published civic.brief records only (pending/approved 404).
  */
 export default function BriefPage() {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [brief, setBrief] = useState<PublicBrief | null>(null);
   const [loading, setLoading] = useState(true);
@@ -173,6 +175,16 @@ export default function BriefPage() {
         title={brief.title}
         description=""
         processType="civic.brief"
+      />
+
+      {/* Admin-only soft-remove. A brief is a permanent public record, so
+          this is for taking down content that should not be public — it is
+          restorable from the Archived tab, and an archived brief drops out of
+          Outcomes and the feed automatically. */}
+      <AdminArchiveButton
+        processId={id!}
+        itemLabel="brief"
+        onArchived={() => navigate("/outcomes")}
       />
     </div>
   );

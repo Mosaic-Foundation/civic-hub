@@ -6,6 +6,7 @@
 import { Process, ProcessAction } from "../models/process.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { ProcessHandler } from "./types.js";
+import { getDb } from "../db/client.js";
 import {
   createWordcloudState,
   activateWordcloud,
@@ -75,6 +76,43 @@ const wordcloudProcess: ProcessHandler = {
 
   type: "civic.wordcloud",
   detailPath: (id: string) => `/wordcloud/${id}`,
+
+
+  /**
+   * The word cloud keeps its own `status` inside `state` — the submission form
+   * reads that copy, not the processes column (see HANDOFF, "Word cloud"). So
+   * archiving must flip both or an archived word cloud keeps accepting words.
+   *
+   * archiveProcess has already written `state` with the archive metadata by
+   * the time this runs, so re-read and patch rather than using the in-memory
+   * copy this handler was handed.
+   */
+  async onArchive(process: Process): Promise<void> {
+    const db = getDb();
+    const { data, error: readErr } = await db
+      .from("processes").select("state").eq("id", process.id).maybeSingle();
+    if (readErr) throw new Error(`wordcloud archive read failed: ${readErr.message}`);
+    const state = { ...((data?.state as Record<string, unknown>) ?? {}), status: "archived" };
+    const { error } = await db.from("processes").update({ state }).eq("id", process.id);
+    if (error) throw new Error(`wordcloud archive failed: ${error.message}`);
+    process.state = state;
+  },
+
+  async onRestore(
+    process: Process,
+    previousStatus: string,
+  ): Promise<void> {
+    // The word cloud's status IS a ProcessStatus, so previousStatus is
+    // directly usable — no stash needed, unlike proposals/projects.
+    const db = getDb();
+    const { data, error: readErr } = await db
+      .from("processes").select("state").eq("id", process.id).maybeSingle();
+    if (readErr) throw new Error(`wordcloud restore read failed: ${readErr.message}`);
+    const state = { ...((data?.state as Record<string, unknown>) ?? {}), status: previousStatus };
+    const { error } = await db.from("processes").update({ state }).eq("id", process.id);
+    if (error) throw new Error(`wordcloud restore failed: ${error.message}`);
+    process.state = state;
+  },
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     return createWordcloudState(input) as unknown as Record<string, unknown>;

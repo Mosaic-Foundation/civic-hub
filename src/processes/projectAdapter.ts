@@ -15,6 +15,7 @@
 
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
+import { getDb } from "../db/client.js";
 import { getProject, listProjectUpdates } from "../modules/civic.projects/index.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 
@@ -64,6 +65,64 @@ const projectAdapter: ProcessHandler = {
   // Universal brief: a completed project's outcome is what it accomplished.
   // Seeds structure (community response, number of updates); the admin
   // writes the completion narrative into headline/summary during review.
+
+  /**
+   * The `projects` table carries its own status and its read model reads THAT
+   * copy — so archiving only the processes row would hide the project from the
+   * public list while /project/:id still rendered it as live.
+   *
+   * The child's PREVIOUS status is stashed into the archive metadata on the
+   * way in, because the two vocabularies do not correspond: a process may be
+   * `finalized` while its project row is `completed`, and nothing recovers one
+   * from the other. Deriving it was the first version of this, and it silently
+   * restored a closed proposal as `submitted` in the sibling handler.
+   */
+  async onArchive(process: Process): Promise<void> {
+    const db = getDb();
+    const { data: row } = await db
+      .from("projects").select("status").eq("id", process.id).maybeSingle();
+    const previous = (row as { status?: string } | null)?.status ?? "active";
+
+    // Re-read: archiveProcess has already written state with its archive meta.
+    const { data: proc } = await db
+      .from("processes").select("state").eq("id", process.id).maybeSingle();
+    const state = { ...((proc?.state as Record<string, unknown>) ?? {}) };
+    const archive = { ...((state.archive as Record<string, unknown>) ?? {}) };
+    archive.child_previous_status = previous;
+    state.archive = archive;
+
+    const { error: stateErr } = await db
+      .from("processes").update({ state }).eq("id", process.id);
+    if (stateErr) throw new Error(`projects archive meta failed: ${stateErr.message}`);
+    process.state = state;
+
+    const { error } = await db
+      .from("projects")
+      .update({ status: "archived", updated_at: new Date().toISOString() })
+      .eq("id", process.id);
+    if (error) throw new Error(`projects row archive failed: ${error.message}`);
+  },
+
+  async onRestore(
+    _process: Process,
+    _previousStatus: string,
+    archiveMeta: Record<string, unknown> | null,
+  ): Promise<void> {
+    // Put the child row back exactly where it was, using the value onArchive
+    // stashed. restoreProcess has already stripped state.archive by now, which
+    // is why this arrives as an argument rather than off the process.
+    const stashed = archiveMeta?.child_previous_status;
+    const known = ["active", "completed"];
+    const next =
+      typeof stashed === "string" && known.includes(stashed) ? stashed : "active";
+
+    const { error } = await getDb()
+      .from("projects")
+      .update({ status: next, updated_at: new Date().toISOString() })
+      .eq("id", _process.id);
+    if (error) throw new Error(`projects row restore failed: ${error.message}`);
+  },
+
   async generateBrief(process: Process): Promise<BriefContent | null> {
     const project = await getProject(process.id);
     if (!project) return null;

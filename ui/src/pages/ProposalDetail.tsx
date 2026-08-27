@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { getCivicProposal, supportCivicProposal, type CivicProposalDetail } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "../hooks/useRequireAuth";
@@ -9,6 +9,7 @@ import Creator from "../components/Creator";
 import CommunityInputPanel from "../components/CommunityInputPanel";
 import ProposalCommentForm from "../components/ProposalCommentForm";
 import RelatedProcesses from "../components/RelatedProcesses";
+import AdminArchiveButton from "../components/AdminArchiveButton";
 
 
 function formatDate(iso: string): string {
@@ -42,6 +43,7 @@ function statusClass(status: string): string {
 }
 
 export default function ProposalDetail() {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { actorId } = useAuth();
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } = useRequireAuth();
@@ -218,6 +220,13 @@ export default function ProposalDetail() {
           </ul>
         </div>
       )}
+
+      {/* Admin-only soft-remove. Renders nothing for everyone else. */}
+      <AdminArchiveButton
+        processId={proposal.id}
+        itemLabel="proposal"
+        onArchived={() => navigate("/propose")}
+      />
 
       <RelatedProcesses
         processId={proposal.id}

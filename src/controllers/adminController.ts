@@ -12,7 +12,6 @@ import {
   listProposals,
   getProposalReadModel,
   getProposalSummary,
-  archiveProposal,
 } from "../modules/civic.proposals/index.js";
 import { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
 
@@ -80,24 +79,3 @@ export async function handleAdminGetProposal(
   }
 }
 
-/**
- * POST /admin/proposals/:id/archive — archive a proposal (reject/shelve)
- */
-export async function handleArchiveProposal(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  const id = req.params.id as string;
-
-  try {
-    await archiveProposal(id);
-    res.json({ message: "Proposal archived", proposal_id: id });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    if (message.includes("not found")) {
-      res.status(404).json({ error: message });
-    } else {
-      res.status(400).json({ error: message });
-    }
-  }
-}

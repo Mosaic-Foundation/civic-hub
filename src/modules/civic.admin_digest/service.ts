@@ -50,9 +50,19 @@ function snapshotFromList(
 export async function buildAdminDigest(): Promise<AdminDigestPayload> {
   const ui = uiBaseUrl();
 
-  // 1. Proposals — both `submitted` (still gathering support) and
-  //    `endorsed` (threshold met, awaiting admin conversion). Admin's
-  //    review surface lists both, so the digest mirrors that.
+  // 1. Proposals — the IDEA BOARD (civic.proposal), not proposed votes.
+  //
+  //    DO NOT CONFLATE THE TWO. A *proposal* is an idea floated for interest
+  //    and discussion; it never becomes a vote (see processes/proposalAdapter
+  //    .ts). A *proposed vote* is a civic.vote sitting in `proposed` status,
+  //    gathering support until it crosses a threshold and opens for balloting.
+  //    They share the word and nothing else.
+  //
+  //    This comment previously described the idea board in proposed-vote terms
+  //    — "still gathering support", "threshold met, awaiting admin conversion"
+  //    — which was already wrong when written. `endorsed` and `converted` are
+  //    legacy values on the proposals table from before that mechanism moved
+  //    to civic.vote. Corrected 2026-08-26.
   const submitted = await listProposals("submitted");
   const endorsed = await listProposals("endorsed");
   const proposalItems = [...endorsed, ...submitted].map(toPendingItem);
@@ -89,7 +99,11 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
     }
   }
 
-  const proposals = snapshotFromList(proposalItems, `${ui}/admin/proposals`);
+  // /admin/proposals was retired on 2026-08-26 (archiving moved onto each
+  // process's own page). These proposals are already LIVE — not pending
+  // review — so this links to the public proposals surface, not the Process
+  // reviews queue, which holds a different thing entirely.
+  const proposals = snapshotFromList(proposalItems, `${ui}/propose`);
   const voteResults = snapshotFromList(
     voteResultsItems,
     `${ui}/admin/vote-results`,
@@ -189,9 +203,11 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
   const ui = uiBaseUrl();
   const sections = [
     renderQueueSection(
-      "Proposals awaiting review",
+      // "awaiting review" was a misnomer: these are live idea-board proposals
+      // an admin may want to look at, not submissions in the review queue.
+      "Open proposals",
       { singular: "proposal", plural: "proposals" },
-      `${ui}/admin/proposals`,
+      `${ui}/propose`,
       p.proposals,
     ),
     renderQueueSection(

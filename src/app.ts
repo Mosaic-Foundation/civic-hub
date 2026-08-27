@@ -246,7 +246,6 @@ app.get("/", (_req, res) => {
       "POST /proposals/:id/support": "Endorse a proposal",
       "GET /admin/proposals": "List proposals for admin moderation",
       "GET /admin/proposals/:id": "Get full proposal detail for admin",
-      "POST /admin/proposals/:id/archive": "Archive a proposal",
       "POST /auth/request-code": "Request email verification code",
       "POST /auth/verify": "Verify code and get session token",
       "POST /auth/residency": "Affirm Floyd County residency (requires auth)",

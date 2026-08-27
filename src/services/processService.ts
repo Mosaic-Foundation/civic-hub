@@ -560,6 +560,23 @@ export async function archiveProcess(
   process.status = "archived";
   process.state = nextState;
   process.updatedAt = now;
+
+  // Let the handler sync storage it owns (a child table's status column, a
+  // status kept inside state). Best-effort by design — see ProcessHandler
+  // .onArchive: a stale child row is recoverable, an admin who cannot take
+  // down bad content is not.
+  const handler = getProcessHandler(process.definition.type);
+  if (handler?.onArchive) {
+    try {
+      await handler.onArchive(process);
+    } catch (err) {
+      console.error(
+        `[archive] ${process.definition.type} onArchive failed for ${id}:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   return process;
 }
 
@@ -578,6 +595,13 @@ export async function restoreProcess(
 
   const now = new Date().toISOString();
   const nextState = { ...(process.state ?? {}) };
+  // Captured BEFORE the delete: a handler's onRestore may have stashed its
+  // child row's previous status in here, and it is about to be removed from
+  // both the row and the in-memory copy.
+  const archiveMeta =
+    ((process.state ?? {}) as Record<string, unknown>).archive as
+      | Record<string, unknown>
+      | undefined;
   delete (nextState as Record<string, unknown>).archive;
 
   const { error } = await getDb()
@@ -605,6 +629,21 @@ export async function restoreProcess(
   process.status = restoreStatus;
   process.state = nextState;
   process.updatedAt = now;
+
+  // Mirror of the archive hook. previousStatus is passed so a handler can put
+  // its child row back where it was rather than guessing a default.
+  const restoreHandler = getProcessHandler(process.definition.type);
+  if (restoreHandler?.onRestore) {
+    try {
+      await restoreHandler.onRestore(process, restoreStatus, archiveMeta ?? null);
+    } catch (err) {
+      console.error(
+        `[restore] ${process.definition.type} onRestore failed for ${id}:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   return process;
 }
 

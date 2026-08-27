@@ -14,6 +14,7 @@ import { useAuth } from "../context/AuthContext";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import "./WordCloud.css";
+import AdminArchiveButton from "../components/AdminArchiveButton";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -587,6 +588,16 @@ export default function WordCloud() {
           />
         );
       })}
+
+      {/* Admin-only soft-remove. Renders nothing for everyone else. The
+          handler's onArchive hook also flips state.status, which is the copy
+          the submission form reads — otherwise an archived word cloud would
+          keep accepting words. */}
+      <AdminArchiveButton
+        processId={wc.id}
+        itemLabel="word cloud"
+        onArchived={() => navigate("/")}
+      />
     </div>
   );
 }

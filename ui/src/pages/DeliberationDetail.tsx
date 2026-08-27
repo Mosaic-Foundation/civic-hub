@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   getDeliberation,
   type DeliberationReadModel,
@@ -9,8 +9,10 @@ import CompletedDeliberation from "../components/deliberation/CompletedDeliberat
 import ShareButton from "../components/ShareButton";
 import RelatedProcesses from "../components/RelatedProcesses";
 import "./DeliberationDetail.css";
+import AdminArchiveButton from "../components/AdminArchiveButton";
 
 export default function DeliberationDetail() {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [process, setProcess] = useState<DeliberationReadModel | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +62,13 @@ export default function DeliberationDetail() {
           </p>
         </div>
       )}
+
+      {/* Admin-only soft-remove. Renders nothing for everyone else. */}
+      <AdminArchiveButton
+        processId={process.process_id}
+        itemLabel="conversation"
+        onArchived={() => navigate("/deliberations")}
+      />
 
       <RelatedProcesses
         processId={process.process_id}
