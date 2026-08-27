@@ -199,12 +199,17 @@ export default function MeetingSummaryPage() {
                 ) : null}
                 <h2 className="meeting-block-title">{block.topic_title}</h2>
               </span>
-              {/* Votes and motions are what most residents come for, so they
-                  stay findable without opening every section. */}
-              {block.action_taken && (
-                <span className="meeting-block-flag">Action taken</span>
-              )}
-              <span className="meeting-block-caret" aria-hidden="true" />
+              {/* Grouped so the pair can move as a unit: beside the title on a
+                  wide screen, onto its own row beneath it on a narrow one,
+                  where competing for the same line starves the title. */}
+              <span className="meeting-block-meta">
+                {/* Votes and motions are what most residents come for, so they
+                    stay findable without opening every section. */}
+                {block.action_taken && (
+                  <span className="meeting-block-flag">Action taken</span>
+                )}
+                <span className="meeting-block-caret" aria-hidden="true" />
+              </span>
             </summary>
             <div className="meeting-block-body">
               <p className="meeting-block-summary">{block.topic_summary}</p>
