@@ -154,7 +154,12 @@ export async function getProposal(id: string): Promise<Proposal | undefined> {
 }
 
 /**
- * List all proposals, optionally filtered by status. Newest first.
+ * List proposals, newest first.
+ *
+ * ARCHIVED PROPOSALS ARE EXCLUDED unless `statusFilter` asks for them by name.
+ * The public list previously returned every status, so an archived proposal
+ * stayed on /propose after an admin took it down. Callers that genuinely want
+ * archived rows pass statusFilter: "archived".
  */
 export async function listProposals(
   statusFilter?: ProposalStatus,
@@ -166,6 +171,10 @@ export async function listProposals(
 
   if (statusFilter) {
     query = query.eq("status", statusFilter);
+  } else {
+    // Default-exclude archived. See the note above: an unfiltered list is the
+    // PUBLIC list, and an archived proposal must not appear on it.
+    query = query.neq("status", "archived");
   }
 
   const { data, error } = await query;
@@ -386,6 +395,19 @@ export async function getProposalReadModel(
   actor?: string,
 ): Promise<Record<string, unknown> | undefined> {
   const proposal = await getProposal(proposalId);
+
+  // An ARCHIVED proposal is not public. Archiving is the admin's take-down for
+  // content that should not be up, and it already removes the proposal from
+  // the generic process list and the feed — but this read model backs
+  // /proposals/:id, which was still serving it at its direct URL. A take-down
+  // that leaves the link working is not a take-down.
+  //
+  // Admin surfaces do not come through here: the Archived tab reads
+  // processService.getArchivedProcesses.
+  // `undefined` is this function's existing "not found" signal, and the
+  // controller already turns it into a 404 — so an archived proposal returns
+  // the same thing rather than introducing a second absent-value.
+  if (proposal && proposal.status === "archived") return undefined;
   if (!proposal) return undefined;
 
   const hasSupported = actor ? await hasUserSupported(proposalId, actor) : null;

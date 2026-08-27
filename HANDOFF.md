@@ -588,6 +588,50 @@ Also noted: the Proposals tab lists ALL proposals (`listProposals()` takes an
 optional status filter and the page passes none), so a short list there means
 few proposals exist, not that it is truncating.
 
+### Archive audit — the child-table blind spot, and what it found — 2026-08-26
+
+Adam asked whether the proposals/projects "own child table" split causes
+problems anywhere else. Audited every writer of `processes.status` against
+every writer of `proposals.status` / `projects.status`.
+
+**The modules were already disciplined.** `archiveProposal`,
+`closeExpiredProposal`, `archiveProject` and `completeProject` all write BOTH
+tables. No one-sided status writes exist. (`supportProposal` looked one-sided
+but writes `proposal_supports` and only reads status.)
+
+**The gap was in the GENERIC service, and it was real.** `archiveProcess` knew
+only about the `processes` row — hence the `onArchive` / `onRestore` hooks.
+
+**And the audit found a live bug beyond archiving.** Archiving a proposal hid
+it from `/process/:id`, the generic list and the feed — but `/proposals/:id`
+still returned 200 and it still appeared on `/propose`. The proposal's own read
+paths never filtered archived status, because before this slice archiving one
+was rare and admin-driven. **A take-down that leaves the direct link working is
+not a take-down.** Fixed: `getProposalReadModel` returns not-found for an
+archived proposal, and `listProposals` / `listProjects` exclude archived unless
+a caller asks for that status by name. Verified: archive → all three surfaces
+404/absent → restore → all three back.
+
+**Also found, not fixed:** `deleteProcess` in processService is **dead code**
+(exported, called nowhere). It deletes the events and the `processes` row and
+would ORPHAN a `proposals` / `projects` child row. Harmless while nothing calls
+it; a landmine for whoever calls it next. Either delete it or give it the same
+hook treatment before using it.
+
+**Why proposals/projects differ at all** — worth recording, since it reads like
+an oversight and isn't. The 2026 universalization aligned the **registry and
+read layer**: every type has a `processes` row and appears in
+`listProcessSummaries`, discovery, the dispatch loop, links and briefs. It did
+NOT unify **storage or HTTP surface** — both adapters say so in their own
+docstrings. Proposals and projects keep relational tables that own their real
+state, reached through `/proposals` and `/projects` rather than the generic
+action dispatcher, because those tables buy indexed queries on support counts
+and comments-as-rows that JSONB state would not. The cost is that anything
+operating generically over "a process" can miss the child row. The hooks are
+the systematic answer: a type declares what it owns, and the service grows no
+switch. If proposals ever migrate fully into `processes.state`, delete the hook
+and nothing else changes.
+
 ### Open questions
 
 - **Dev carries one demo artifact:** proposal `proc_69cda899e1fa420a` ("Add

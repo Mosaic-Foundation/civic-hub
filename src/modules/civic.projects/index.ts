@@ -134,6 +134,10 @@ export async function listProjects(
 
   if (statusFilter) {
     query = query.eq("status", statusFilter);
+  } else {
+    // Default-exclude archived, for the same reason as proposals: an
+    // unfiltered list is the public list.
+    query = query.neq("status", "archived");
   }
 
   const { data, error } = await query;
