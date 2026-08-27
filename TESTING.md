@@ -263,6 +263,97 @@ by hand against the dev database, checking BOTH tables — not automated.
 | Restore returns a process to its exact prior status | | dev | two-step Restore exercised in the browser |
 | Child status survives an archive/restore round trip | | dev | **Needs API test** — the stash/read-back logic broke twice |
 
+### Meeting Summary Flows (Slice: connector ladder + revisions, 2026-08-27)
+
+145 unit tests across 11 files. The module had **zero** coverage before this,
+which is a large part of why its discovery leg returned nothing for weeks
+without anyone noticing.
+
+Every test here is anchored to a failure that actually happened in production,
+not to a coverage target. All are infrastructure-free (`tests/unit`), so CI
+runs them; the network-facing halves are exercised through injected `fetchHtml`
+/ `fetchXml` / `fetchJson` / `callClaude`, never live.
+
+**Discovery — reading a jurisdiction's sources**
+
+| Flow | Automated | Verified | Notes |
+|------|-----------|----------|-------|
+| Wix CMS collection → meetings | :white_check_mark: unit | live | meetingSummaryWixCms.test.ts (21) |
+| Both Wix document URL shapes resolve | :white_check_mark: unit | | `_files/ugd` and `filesusr.com` are one file |
+| YouTube channel feed → meetings | :white_check_mark: unit | live | meetingSummaryConnector.test.ts (29) |
+| Meeting date read from title, not upload time | :white_check_mark: unit | | a Jun 23 meeting uploaded Jun 24 |
+| Multi-part uploads collapse to one meeting | :white_check_mark: unit | | earliest becomes the primary recording |
+| Another body's meetings excluded by type | :white_check_mark: unit | live | EMS Board dropped, "BOS meeting with EMS" kept |
+| `auto` falls through connectors in order | | live | needs an API test with a stubbed connector |
+| Wix access-token + query round-trip | | live | real endpoint uncovered; injected in unit tests |
+
+**Dedupe — three layers, most precise first**
+
+| Flow | Automated | Verified | Notes |
+|------|-----------|----------|-------|
+| Exact `source_id` match skips | :white_check_mark: unit | live | |
+| Same meeting recognized across a connector change | :white_check_mark: unit | | meetingSummaryIdentity.test.ts (12) |
+| YouTube watch / live / embed / youtu.be are one video | :white_check_mark: unit | | |
+| Per-meeting slots create only the surplus | :white_check_mark: unit | | meetingSummarySlots.test.ts (8) |
+| Two meetings on one date stay separate | :white_check_mark: unit | live | Budget Workshop + Regular, 2026-06-23 |
+| Two same-date same-type meetings stay separate | :white_check_mark: unit | | two Budget Workshops, 2023-04-11 |
+| Archived summary is invisible to dedupe | | dev | known limitation, documented in HANDOFF |
+
+**Summarization**
+
+| Flow | Automated | Verified | Notes |
+|------|-----------|----------|-------|
+| Transcript-only meeting (no PDF at all) | :white_check_mark: unit | | meetingSummaryPipeline.test.ts (8) |
+| No document block sent when there is no PDF | :white_check_mark: unit | | |
+| Empty transcript + no PDF fails loudly | :white_check_mark: unit | | inventing blocks is worse than failing |
+| Block count scales to meeting length | :white_check_mark: unit | | meetingSummaryPrompt.test.ts (11) |
+| Prompt demands coverage through adjournment | :white_check_mark: unit | | a 4h24m run had dropped the last hour |
+| Prompt forbids omitting a closed session | :white_check_mark: unit | | a run had dropped one with its vote |
+| Transcript mishearings corrected by instructions | | live | config, not code — verify per jurisdiction |
+
+**Timing and revisions**
+
+| Flow | Automated | Verified | Notes |
+|------|-----------|----------|-------|
+| A meeting that has not happened is not summarized | :white_check_mark: unit | | meetingSummaryStaleness.test.ts (17) |
+| Summary predating its own meeting is detected | :white_check_mark: unit | live | 2026-08-25 written 2026-08-22 |
+| Upgrade fires when a recording appears | :white_check_mark: unit | live | not only when minutes appear |
+| A fresh summary is not re-summarized each run | :white_check_mark: unit | | would burn the per-run budget |
+| A source the record lacks triggers an upgrade | :white_check_mark: unit | live | `offersNewSources` — self-repairing |
+| Published summary gets a revision, not an overwrite | :white_check_mark: unit | | meetingSummaryRevision.test.ts (16) |
+| Live page keeps serving while a revision waits | :white_check_mark: unit | live | the 404 this design exists to prevent |
+| Accepting a revision changes no publication state | :white_check_mark: unit | | no 404 window, no second feed card |
+| Recording URL applied so timestamps become links | :white_check_mark: unit | live | |
+| Admin edits survive on an in-review summary | :white_check_mark: unit | | replacement there is silent |
+| Admin edits still get offered a revision | :white_check_mark: unit | | guarding both paths blocked the flow |
+| Revision accept / discard through the admin UI | | dev | React surface, no component tests |
+
+**Alarms — outcome checks, not step checks**
+
+| Flow | Automated | Verified | Notes |
+|------|-----------|----------|-------|
+| Zero discovered meetings is a failure | :white_check_mark: unit | | meetingSummaryAlarm.test.ts (8) |
+| A run that aborts alerts | :white_check_mark: unit | | previously returned 500 to nobody |
+| A healthy run stays quiet | :white_check_mark: unit | | steady state must not nag |
+| Published card ⇒ page resolves | :white_check_mark: unit | live | feedHealth.test.ts (8) |
+| One feed card per published process | :white_check_mark: unit | live | feedPublicationDedupe.test.ts (7) |
+| Stale summaries reported | :white_check_mark: unit | | |
+| Overdue revisions reported after 14 days | | | **Needs test** — threshold logic uncovered |
+| Alarm email actually delivers | | dev | Resend path; no automated coverage |
+
+**Suite size.** 428 unit tests across 28 files (all CI runs); 490 across 35
+files with a dev server on `:3000`. The first full run straight after starting
+the server can fail a couple of API tests on a warm-up race (cold start plus
+auto-seed) and pass on retry — re-run once before treating a red API result as
+real.
+
+**Known gaps.** The cron HTTP handler itself has no API test (it needs
+`CRON_SECRET` and a running server, and CI runs only `tests/unit`). The admin
+revision surface is untested at the component level. Neither the Wix data
+endpoint nor Supadata is contract-tested, so an upstream shape change is caught
+by the discovery guard at runtime rather than by CI — which is the intended
+division of labour, but worth stating.
+
 ### API-Only Flows
 
 | Flow | API | Slice | Notes |

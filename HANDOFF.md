@@ -1452,14 +1452,16 @@ things to check. Writes nothing to the database.
 ### Tests
 
 The module had **zero** coverage before this — a large part of why its discovery
-leg could return nothing for weeks unnoticed. 112 tests across nine files now,
-each anchored to a failure that actually happened rather than to a coverage
+leg could return nothing for weeks unnoticed. **145 tests across eleven files**
+now, each anchored to a failure that actually happened rather than to a coverage
 target:
 
 | File | Tests | Pins |
 |---|---|---|
 | `meetingSummaryConnector.test.ts` | 29 | YouTube feed parse, date-from-title, multi-part grouping |
 | `meetingSummaryWixCms.test.ts` | 21 | Wix rows → meetings, both URL conventions, same-day meetings |
+| `meetingSummaryStaleness.test.ts` | 17 | Never summarize a future meeting; upgrade on a recording |
+| `meetingSummaryRevision.test.ts` | 16 | Two-stage review without taking the live page down |
 | `meetingSummaryIdentity.test.ts` | 12 | Cross-connector identity — the migration hazard |
 | `meetingSummaryPrompt.test.ts` | 11 | Block guidance scaled to meeting length |
 | `meetingSummaryAlarm.test.ts` | 8 | Zero discovered = failure, not empty success |
@@ -1468,17 +1470,25 @@ target:
 | `feedHealth.test.ts` | 8 | Published card ⇒ page resolves |
 | `feedPublicationDedupe.test.ts` | 7 | One card per published process |
 
-**Suite: 343 passing, 28 files** (281 unit / 21 files without a dev server;
-`tests/api` needs one running).
+**Suite: 428 passing across 28 files in `tests/unit`** — which is all CI runs.
+With a dev server on `:3000` the full suite is **490 across 35 files**.
 
-**Note on what tests can and cannot cover here.** Every test above pins
-*logic* against known inputs. None of them could have caught the original bug,
-because nothing in the code changed — the county's website did. That class of
-failure is only catchable at runtime, which is what the discovery guard and the
-feed health check are for. They are the continuously-running half of the
-verification story, and the two halves cover different things: tests catch
-regressions before they ship, the alarms catch the world changing underneath
-shipped code.
+*Caveat worth knowing:* the first full run immediately after starting the server
+failed 2 API tests, and the same run passed on retry. It is a warm-up race
+(cold start plus auto-seed), not a real failure — give the server a moment, or
+re-run once, before believing a red API result.
+
+Per-flow coverage, including the gaps, is tracked in `TESTING.md` →
+"Meeting Summary Flows".
+
+**Note on what tests can and cannot cover here.** Every test above pins *logic*
+against known inputs. **None of them could have caught any of this session's
+production failures**, because no code was wrong when they broke — the county's
+website changed shape, then a recording appeared after a summary was written,
+then a record kept a stale null. That class is only catchable at runtime, which
+is what the discovery guard, the feed health check and the staleness check are
+for. Tests catch regressions before they ship; the alarms catch the world
+changing underneath shipped code. Both are necessary and neither substitutes.
 
 ### Verified end to end (2026-08-21)
 
