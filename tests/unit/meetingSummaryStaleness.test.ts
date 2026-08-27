@@ -132,30 +132,57 @@ describe("upgrade trigger", () => {
 // wholesale re-summarization would discard that work silently, weeks after the
 // fact, with no way to recover it.
 
-/** Mirrors the edit guard in the upgrade pass. */
-function upgradePlan(existing: { edit_count: number }, entryHasMinutes: boolean) {
-  if ((existing.edit_count ?? 0) > 0) {
+/**
+ * Mirrors the edit guard in the upgrade pass.
+ *
+ * The guard protects the path that would DESTROY an admin's work — direct
+ * replacement of a summary still in review. A published summary gets a
+ * revision instead, which waits for review, so the admin's edits are replaced
+ * only by their own decision. Guarding that path too would mean an edited
+ * summary silently never receives the official minutes.
+ */
+function upgradePlan(
+  existing: { edit_count: number; approval_status: string },
+  entryHasMinutes: boolean,
+) {
+  const editedAndUnpublished =
+    existing.edit_count > 0 && existing.approval_status !== "published";
+  if (editedAndUnpublished) {
     return entryHasMinutes ? "attach-link-only" : "skip";
   }
-  return "resummarize";
+  return existing.approval_status === "published"
+    ? "stage-revision"
+    : "replace-in-place";
 }
 
-describe("upgrade respects admin edits", () => {
-  it("re-summarizes an untouched summary", () => {
-    expect(upgradePlan({ edit_count: 0 }, true)).toBe("resummarize");
+describe("upgrade respects admin edits without blocking revisions", () => {
+  it("stages a revision for an untouched published summary", () => {
+    expect(upgradePlan({ edit_count: 0, approval_status: "published" }, true)).toBe(
+      "stage-revision",
+    );
   });
 
-  it("preserves reviewed text, attaching only the minutes link", () => {
-    expect(upgradePlan({ edit_count: 1 }, true)).toBe("attach-link-only");
+  it("STILL stages a revision when the published summary was edited", () => {
+    // The admin compares both versions and chooses. Skipping here would mean
+    // an edited summary never receives the official minutes at all.
+    expect(upgradePlan({ edit_count: 4, approval_status: "published" }, true)).toBe(
+      "stage-revision",
+    );
   });
 
-  it("leaves an edited summary entirely alone when there is nothing to attach", () => {
-    expect(upgradePlan({ edit_count: 3 }, false)).toBe("skip");
+  it("replaces an untouched summary that is still in review", () => {
+    expect(upgradePlan({ edit_count: 0, approval_status: "pending" }, true)).toBe(
+      "replace-in-place",
+    );
   });
 
-  it("treats any number of edits as ownership", () => {
-    for (const n of [1, 2, 7]) {
-      expect(upgradePlan({ edit_count: n }, true)).toBe("attach-link-only");
-    }
+  it("protects edits on a summary still in review — nothing to compare against", () => {
+    expect(upgradePlan({ edit_count: 1, approval_status: "pending" }, true)).toBe(
+      "attach-link-only",
+    );
+  });
+
+  it("leaves an edited in-review summary alone when there is nothing to attach", () => {
+    expect(upgradePlan({ edit_count: 3, approval_status: "pending" }, false)).toBe("skip");
   });
 });

@@ -849,11 +849,21 @@ export async function handleRunMeetingSummary(
         if (!entry.source_minutes_url && !summaryPredatesMeeting(existingState)) {
           continue;
         }
-        // An admin who edited this summary owns its wording. Re-summarizing
-        // would silently discard that work weeks later, with no warning and no
-        // way to recover it. Attach the newly-available minutes as a source so
-        // the link is on the record, and leave the human's text alone.
-        if ((existingState.edit_count ?? 0) > 0) {
+        // An admin who edited a summary owns its wording — but only the path
+        // that would DESTROY that work needs guarding.
+        //
+        // A published summary gets a revision, which waits for review: the
+        // admin sees both versions and decides, so their edits are replaced
+        // only by their own choice. Skipping regeneration there would mean an
+        // edited summary silently never receives the official minutes.
+        //
+        // A summary still in review is replaced in place, with nothing to
+        // compare against and no decision point. That is where edits vanish,
+        // so that is where the guard belongs.
+        const editedAndUnpublished =
+          (existingState.edit_count ?? 0) > 0 &&
+          existingState.approval_status !== "published";
+        if (editedAndUnpublished) {
           if (
             entry.source_minutes_url &&
             existingState.source_minutes_url !== entry.source_minutes_url
@@ -862,9 +872,9 @@ export async function handleRunMeetingSummary(
             existing.state = existingState as unknown as Record<string, unknown>;
             await saveProcessState(existing);
             console.log(
-              `[meeting-summary] ${entry.source_id} was admin-edited ` +
-                `(edit_count=${existingState.edit_count}) — attached the minutes link ` +
-                `but kept the reviewed text`,
+              `[meeting-summary] ${entry.source_id} was admin-edited and is not ` +
+                `published (edit_count=${existingState.edit_count}) — attached the ` +
+                `minutes link but kept the reviewed text`,
             );
           }
           continue;

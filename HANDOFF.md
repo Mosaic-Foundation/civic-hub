@@ -1361,6 +1361,14 @@ proc_abc  ├─ published version   ← keeps serving, untouched
   version to protect and queueing a review inside a review helps nobody.
 - A revision already waiting is not regenerated — that would swap one
   unreviewed candidate for another and burn the per-run budget.
+- **The admin-edit guard applies only to the destructive path.** An edited
+  summary *still in review* is replaced in place, with nothing to compare
+  against, so regeneration is skipped and only the minutes link is attached. An
+  edited summary that is *published* still gets a revision: the admin sees both
+  versions and decides, so their edits are replaced only by their own choice.
+  Guarding both paths would have meant an edited summary silently never
+  receiving the official minutes — which was the first version of this and
+  would have broken the very flow the revision system exists for.
 - Accepting emits **no publication event**. The feed marks the existing card
   from `revised_at` rather than floating a month-old meeting back to the top.
   Chosen over a new card because the recording-based summary is already the
