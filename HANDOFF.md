@@ -612,11 +612,28 @@ archived proposal, and `listProposals` / `listProjects` exclude archived unless
 a caller asks for that status by name. Verified: archive → all three surfaces
 404/absent → restore → all three back.
 
-**Also found, not fixed:** `deleteProcess` in processService is **dead code**
-(exported, called nowhere). It deletes the events and the `processes` row and
-would ORPHAN a `proposals` / `projects` child row. Harmless while nothing calls
-it; a landmine for whoever calls it next. Either delete it or give it the same
-hook treatment before using it.
+**`deleteProcess` REMOVED (2026-08-26).** It was not quite dead — no app code
+called it, but `scripts/verifyPhase2Close.ts` did. It hard-deleted a
+`processes` row and its events while **`proposals` and `projects` have NO
+foreign key back to `processes`**, so it silently orphaned child rows. The
+script now cleans up its own throwaway ids directly. Archiving is the supported
+removal path: reversible, visible in the Archived tab and moderation log, and
+it syncs child storage through the hooks. If a hard delete is ever genuinely
+wanted, **add the foreign keys first** so the database enforces cleanup rather
+than trusting a helper to remember every table.
+
+**Universality — verified, not assumed.** Archived and restored one of every
+registered type present on dev: brief, conversation, vote and proposal all
+round-tripped correctly, including `civic.brief`, which implements neither hook.
+A new plugin type gets archiving free as long as its state lives in the
+`processes` row.
+
+**Guard for future plugins:** `tests/unit/archiveHooks.test.ts` pins the
+registry. Registering a new process type FAILS that test until someone adds it
+to `KNOWN_TYPES`, and the failure message asks the one question that matters —
+does this type keep state outside its processes row? A deliberate speed bump;
+nothing can detect that automatically without a database. Confirmed the guard
+actually fires by registering a fake type and watching it fail.
 
 **Why proposals/projects differ at all** — worth recording, since it reads like
 an oversight and isn't. The 2026 universalization aligned the **registry and

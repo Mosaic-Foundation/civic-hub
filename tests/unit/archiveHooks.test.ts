@@ -63,3 +63,58 @@ describe("archive hooks — handlers that own storage must sync it", () => {
     }
   });
 });
+
+/**
+ * UNIVERSALITY GUARD FOR NEW PLUGINS.
+ *
+ * Archiving works for a new process type with no work at all — `archiveProcess`
+ * flips `processes.status`, which is what the public list, direct fetch, feed,
+ * digest and Outcomes all read. Verified on dev across every registered type,
+ * including civic.brief, which implements neither hook.
+ *
+ * The one way to get it wrong is to add a type that keeps state OUTSIDE the
+ * processes row — a child table with its own status column, or a status inside
+ * `state` — and not implement the hooks. Then the thing archives on the generic
+ * surfaces while its own page still serves it. That is exactly the bug found in
+ * civic.proposal on 2026-08-26.
+ *
+ * Nothing can detect that automatically without a database. So this test pins
+ * the registry instead: adding a process type FAILS here until someone adds it
+ * to the list below, and the failure message tells them what to decide. It is
+ * a speed bump on purpose.
+ */
+describe("registry snapshot — adding a process type forces an archive decision", () => {
+  const KNOWN_TYPES = [
+    "civic.announcement",
+    "civic.brief",
+    "civic.meeting_summary",
+    "civic.polis_deliberation",
+    "civic.project",
+    "civic.proposal",
+    "civic.vote",
+    "civic.vote_results",
+    "civic.wordcloud",
+  ];
+
+  it("has no process type this test has not been told about", () => {
+    const registered = getAllHandlers().map((h) => h.type).sort();
+    const unknown = registered.filter((t) => !KNOWN_TYPES.includes(t));
+    expect(
+      unknown,
+      unknown.length
+        ? `New process type(s): ${unknown.join(", ")}.\n` +
+          "Before adding them to KNOWN_TYPES, decide: does this type keep any " +
+          "state OUTSIDE its `processes` row — a child table with its own " +
+          "status, or a status inside `state`? If so it MUST implement " +
+          "onArchive/onRestore, or archiving will hide it from the feed while " +
+          "its own page keeps serving it. If all its state lives in the " +
+          "processes row, it needs neither and archiving already works."
+        : undefined,
+    ).toEqual([]);
+  });
+
+  it("still knows about every type in the list", () => {
+    const registered = getAllHandlers().map((h) => h.type);
+    for (const t of KNOWN_TYPES) expect(registered).toContain(t);
+  });
+});

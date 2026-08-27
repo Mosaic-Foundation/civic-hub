@@ -18,7 +18,6 @@ import {
   getProcess,
   getProcessState,
   saveProcessState,
-  deleteProcess,
 } from "../src/services/processService.js";
 import { createProposal } from "../src/modules/civic.proposals/index.js";
 import { emitEvent } from "../src/events/eventEmitter.js";
@@ -176,8 +175,13 @@ async function cleanup() {
   console.log("\n── Cleanup ──");
   for (const id of ids) {
     try {
+      // Inlined 2026-08-26. processService.deleteProcess was removed: it hard-
+      // deleted a processes row while `proposals` / `projects` have NO foreign
+      // key to it, so it silently orphaned child rows. This script owns only
+      // its own throwaway "p2v_" ids, so it cleans them up directly.
       await getDb().from("proposals").delete().eq("id", id);
-      await deleteProcess(id); // also deletes its events
+      await getDb().from("events").delete().eq("process_id", id);
+      await getDb().from("processes").delete().eq("id", id);
     } catch (e) {
       console.warn(`  (cleanup) ${id}: ${e instanceof Error ? e.message : e}`);
     }

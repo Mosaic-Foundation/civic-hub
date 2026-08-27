@@ -664,6 +664,7 @@ export async function getNonPublicProcessIds(): Promise<Set<string>> {
   return new Set((data ?? []).map((r: { id: string }) => r.id));
 }
 
+
 /**
  * All archived processes, newest first — for the admin Archived view where an
  * admin can review and restore. Bypasses the public NON_PUBLIC_STATUSES filter
@@ -679,24 +680,21 @@ export async function getArchivedProcesses(): Promise<Process[]> {
   return (data ?? []).map((r) => rowToProcess(r as ProcessRow));
 }
 
-export async function deleteProcess(id: string): Promise<void> {
-  // Delete associated events first to avoid orphaned feed entries.
-  const { error: evError } = await getDb()
-    .from("events")
-    .delete()
-    .eq("process_id", id);
-  if (evError) {
-    console.warn(
-      `ProcessService: failed to delete events for process ${id}: ${evError.message}`,
-    );
-  }
-  const { error } = await getDb().from("processes").delete().eq("id", id);
-  if (error) {
-    throw new Error(
-      `ProcessService: failed to delete process ${id}: ${error.message}`,
-    );
-  }
-}
+/*
+ * deleteProcess was REMOVED on 2026-08-26.
+ *
+ * It hard-deleted a `processes` row (and its events) while `proposals` and
+ * `projects` have NO foreign key back to `processes` — so it silently orphaned
+ * child rows, leaving a proposal that no process owns. Nothing in the app
+ * called it; only a dev verification script did, and that script now cleans up
+ * its own throwaway ids directly.
+ *
+ * Archiving is the supported removal path. It is reversible, it is visible in
+ * the Archived tab and the moderation log, and it syncs child storage through
+ * ProcessHandler.onArchive. If a hard delete is ever genuinely needed, add the
+ * foreign keys first so the database enforces the cleanup, rather than trusting
+ * a helper to remember every table.
+ */
 
 /**
  * Delete events whose process_id doesn't match any existing process.
