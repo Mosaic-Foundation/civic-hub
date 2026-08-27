@@ -52,6 +52,7 @@ import {
   handleRestoreProcess,
   handleListArchivedProcesses,
 } from "../controllers/adminArchiveController.js";
+import { handleAdminListFeedback } from "../controllers/adminFeedbackController.js";
 import { cleanOrphanedEvents } from "../services/processService.js";
 import { requireAdmin } from "../middleware/auth.js";
 
@@ -121,6 +122,11 @@ router.post("/reviews/:reviewId/decline", handleAdminDecline);
 router.get("/archived", handleListArchivedProcesses);
 router.post("/processes/:id/archive", handleArchiveProcess);
 router.post("/processes/:id/restore", handleRestoreProcess);
+
+// Feedback archive (read-only). Everything residents sent through the
+// feedback form, newest first, optionally filtered to one category.
+// Read-only on purpose — see adminFeedbackController.
+router.get("/feedback", handleAdminListFeedback);
 
 // Hub settings (admin-configurable; overrides env var fallbacks)
 router.get("/settings", handleGetSettings);

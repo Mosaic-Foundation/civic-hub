@@ -1,0 +1,117 @@
+/* Admin Feedback archive — a read list, not a work queue.
+   Messages are free text of arbitrary length, so this is a card list
+   rather than the table used by Archived/Moderation, whose rows are
+   short and uniform. */
+
+.admin-feedback-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin: var(--space-md) 0 var(--space-md);
+}
+
+.admin-feedback-filter {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.admin-feedback-filter:hover {
+  border-color: var(--color-border-strong, var(--color-primary));
+}
+
+.admin-feedback-filter.is-active {
+  background: var(--ds-color-primary-600, #2a4e84);
+  border-color: var(--ds-color-primary-600, #2a4e84);
+  color: #fff;
+}
+
+.admin-feedback-count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-sm);
+}
+
+.admin-feedback-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.admin-feedback-item {
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--space-md);
+  background: var(--color-surface);
+}
+
+/* Deep links from the daily digest land on a row — make it obvious which. */
+.admin-feedback-item:target {
+  border-color: var(--ds-color-primary-600, #2a4e84);
+  box-shadow: 0 0 0 2px var(--ds-color-primary-100, #dbe6f5);
+}
+
+.admin-feedback-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.admin-feedback-category {
+  font-weight: 600;
+  font-size: var(--font-size-xs, 0.75rem);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--color-surface-muted, #f3f4f6);
+  color: var(--color-text);
+}
+
+/* Topic suggestions are the reason this page exists — give them the
+   accent so they're findable when scanning the unfiltered list. */
+.admin-feedback-category.cat-topic {
+  background: var(--ds-color-primary-100, #dbe6f5);
+  color: var(--ds-color-primary-700, #1e3a5f);
+}
+
+/* Moderation is the one category that still pages the operator by email;
+   flag it here too so the two surfaces agree on what is urgent. */
+.admin-feedback-category.cat-moderation {
+  background: var(--ds-color-warning-100, #fdf0d5);
+  color: var(--ds-color-warning-800, #7a4b00);
+}
+
+.admin-feedback-from {
+  margin-left: auto;
+  word-break: break-word;
+}
+
+.admin-feedback-message {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 600px) {
+  .admin-feedback-from {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+}

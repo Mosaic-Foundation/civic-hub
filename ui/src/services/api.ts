@@ -1762,6 +1762,32 @@ export function submitFeedback(
   return request("POST", "/feedback", input);
 }
 
+/** One row of the admin feedback archive. Admin-only — carries PII. */
+export interface FeedbackSubmission {
+  id: string;
+  created_at: string;
+  category: FeedbackCategory;
+  message: string;
+  name: string | null;
+  email: string | null;
+  user_id: string | null;
+  user_agent: string | null;
+}
+
+/**
+ * Admin feedback archive, newest first. `category` omitted (or "all")
+ * returns every category. Read-only: there is no write counterpart.
+ */
+export function adminListFeedback(
+  category?: FeedbackCategory | "all",
+): Promise<{ items: FeedbackSubmission[]; count: number }> {
+  const qs =
+    category && category !== "all"
+      ? `?category=${encodeURIComponent(category)}`
+      : "";
+  return request("GET", `/admin/feedback${qs}`);
+}
+
 // --- Word Cloud ---
 
 export interface WordcloudCloudEntry {

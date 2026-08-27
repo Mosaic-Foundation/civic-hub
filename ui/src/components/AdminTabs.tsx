@@ -6,7 +6,7 @@ import "./AdminTabs.css";
  * surface so the admin can jump between surfaces without leaving the admin
  * context. Ordered by function: the publication/approval queues first
  * (Process reviews, Briefs, Meeting summaries), then oversight
- * (Moderation, Archived), then configuration (Settings).
+ * (Moderation, Feedback, Archived), then configuration (Settings).
  *
  * Each tab is a NavLink so React Router assigns `aria-current="page"`
  * automatically on the active tab.
@@ -27,6 +27,9 @@ export default function AdminTabs() {
       </NavLink>
       <NavLink to="/admin/moderation" className={tabClass}>
         Moderation
+      </NavLink>
+      <NavLink to="/admin/feedback" className={tabClass}>
+        Feedback
       </NavLink>
       <NavLink to="/admin/archived" className={tabClass}>
         Archived

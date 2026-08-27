@@ -4,6 +4,105 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Feedback archive in the admin panel, and feedback joins the daily digest — 2026-08-27
+
+**No migration.** This change is additive and read-only against a table that
+already exists, through an index that already exists. The only migration in
+flight is still `20260827000000_feedback_topic_category.sql` from the entry
+below — nothing here changes that deploy-order requirement or adds to it.
+
+Two things: feedback got a home in the admin panel, and it stopped emailing on
+every submission.
+
+### 1. The archive — `/admin/feedback`
+
+Read-only list of every submission, newest first, filterable by category. The
+filter refetches server-side against `feedback_submissions_category_idx` rather
+than filtering in the page, so it stays correct once the archive outgrows one
+response. Deep links from the digest land on a row via its `id` anchor, which
+`:target` highlights.
+
+| Piece | File |
+|---|---|
+| Read path | `listFeedback()` in `src/modules/civic.feedback/service.ts` |
+| Endpoint | `GET /admin/feedback` — `src/controllers/adminFeedbackController.ts`, one line in `adminRoutes.ts` |
+| UI | `ui/src/pages/AdminFeedback.tsx` + `.css`, tab in `AdminTabs`, route in `App.tsx` |
+
+**Read-only is a decision, not an omission.** No approve, edit, delete, or
+resolve. Feedback is a record of what somebody said; an archive you can edit is
+a worse record than one you cannot. It also keeps the surface small — the thing
+that makes `AdminReviews` 448 lines is its state machine, and this has none.
+
+**PII.** These rows carry name and email. `feedback_submissions` is RLS
+deny-all with service-role bypass, so this endpoint is the first path by which
+feedback leaves the database. `requireAdmin` on the whole `/admin` router is
+what stands in front of it; the page is linked from no non-admin surface.
+
+### 2. Notifications: per-submission email → daily digest
+
+Every submission used to email the operator immediately. That is what made the
+inbox the de-facto archive — the problem the panel exists to solve. Now:
+
+- **`moderation` keeps its immediate email.** It is someone reporting content
+  they think shouldn't be up; latency there has a cost.
+- **`idea` / `topic` / `bug` / `general` do not.** They land in the panel and
+  are summarised once a day by the admin digest.
+
+The policy is one set, `IMMEDIATE_EMAIL_CATEGORIES` in the feedback service,
+with `sendsImmediateEmail()` exported so it is testable and greppable. To go
+back to emailing on everything, add the categories to that set; to go silent,
+empty it. Nothing else changes.
+
+**In the digest** (`civic.admin_digest`), feedback is a `QueueSnapshot` like the
+review queues, with one difference worth knowing: **it is a 24-hour window, not
+a backlog.** Feedback has no pending/resolved state, so counting "all of it"
+would re-report the same submissions every day forever. The window is what keeps
+the section honest, and it is why this needed no seen/handled column — i.e. no
+migration. Section renders last (it is "what came in", not "what is waiting on
+you"), is skipped entirely when the window is empty, and degrades to empty on a
+read failure rather than costing the admin the rest of their digest.
+
+Feedback can now be the *only* reason a digest sends, so the subject line had to
+read correctly in that case — covered by tests.
+
+### Verification
+
+- `tsc -b` clean, backend and `ui/`. `tests/unit` — 30 files, **441 tests green**
+  (8 new in `tests/unit/adminFeedbackDigest.test.ts`).
+- Exercised against dev with a real admin session: `GET /admin/feedback` returns
+  401 unauthenticated, 200 + `{items, count}` as admin, 400 on a bad category,
+  and filters correctly by category.
+- Page verified in the browser: tab renders between Moderation and Archived,
+  rows render newest-first with attribution, category filter refetches, per-filter
+  empty states and singular/plural are right.
+- Notification policy verified end to end from the dev server log: an `idea`
+  submission logged `saved for the admin panel; no immediate email by policy`,
+  while a `moderation` submission attempted the send. (That send returned Resend
+  403 — dev sandbox only allows the account's own address, and
+  `FEEDBACK_RECIPIENT_EMAIL` isn't it. Pre-existing dev config, unrelated to this
+  change, but worth knowing before reading the dev log as a failure.)
+
+### Housekeeping
+
+**Two dev-only rows are now in the dev feedback table**, submitted to verify the
+render path — one `idea`, one `moderation`, both prefixed
+`[dev test row — Claude Code, 2026-08-27]`. There is no delete path by design,
+so they will sit in the dev archive. Prod is untouched.
+
+### Open
+
+- **Attention badge.** The panel is a pull; the digest is a daily push. The
+  in-app badge pattern already exists (`users.reviews_seen_at` +
+  `GET /notifications/reviews/count` + the Nav menu badge) and feedback could
+  reuse it — but it needs its own `feedback_seen_at` column, which means a
+  migration, which is the one thing deliberately kept out of this change before
+  launch. Worth doing after.
+- **Digest window vs. digest cadence.** The 24h window assumes the daily cron.
+  If the admin digest ever moves off daily, that constant
+  (`FEEDBACK_WINDOW_MS`) has to move with it or submissions fall through the gap.
+
+---
+
 ## Feedback: a "Suggest a topic" category — 2026-08-27
 
 > ### ⚠️ DEPLOY ORDER — MIGRATION MUST GO TO PROD FIRST

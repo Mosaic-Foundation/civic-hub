@@ -10,6 +10,7 @@ import {
   type Proposal,
 } from "../civic.proposals/index.js";
 import { getAllProcesses } from "../../services/processService.js";
+import { listFeedback } from "../civic.feedback/index.js";
 import { sendEmail } from "../../utils/email.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
 import type {
@@ -19,6 +20,9 @@ import type {
 } from "./models.js";
 
 const DISPLAY_CAP = 5;
+/** The digest runs daily, so "new feedback" means the last 24 hours. */
+const FEEDBACK_WINDOW_MS = 24 * 60 * 60 * 1000;
+const FEEDBACK_EXCERPT_LEN = 90;
 const HUB_NAME_FALLBACK = "Floyd Civic Hub";
 
 function hubName(): string {
@@ -103,6 +107,27 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
   // process's own page). These proposals are already LIVE — not pending
   // review — so this links to the public proposals surface, not the Process
   // reviews queue, which holds a different thing entirely.
+  // 4. Feedback — everything residents sent in the last 24h. Unlike the
+  //    queues above this is not a backlog: feedback has no pending state,
+  //    so re-reporting it every day would make the digest un-scannable.
+  //    The window is what keeps it honest. A failure here must not cost
+  //    the admin the rest of their digest, so it degrades to empty.
+  const since = new Date(Date.now() - FEEDBACK_WINDOW_MS).toISOString();
+  let feedbackItems: PendingItemSummary[] = [];
+  try {
+    feedbackItems = (await listFeedback({ since })).map((f) => ({
+      id: f.id,
+      title: `${f.category} — ${excerpt(f.message)}`,
+      created_at: f.created_at,
+    }));
+  } catch (err) {
+    console.warn(
+      `[admin-digest] Feedback section unavailable: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+
   const proposals = snapshotFromList(proposalItems, `${ui}/propose`);
   const voteResults = snapshotFromList(
     voteResultsItems,
@@ -112,6 +137,7 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
     meetingSummaryItems,
     `${ui}/admin/meeting-summaries`,
   );
+  const feedback = snapshotFromList(feedbackItems, `${ui}/admin/feedback`);
 
   return {
     hub_name: hubName(),
@@ -119,14 +145,24 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
     proposals,
     vote_results: voteResults,
     meeting_summaries: meetingSummaries,
+    feedback,
     empty:
       proposals.count === 0 &&
       voteResults.count === 0 &&
-      meetingSummaries.count === 0,
+      meetingSummaries.count === 0 &&
+      feedback.count === 0,
   };
 }
 
 // --- Email rendering ---------------------------------------------------------
+
+/** One-line preview of a feedback message — newlines collapsed, capped. */
+function excerpt(message: string): string {
+  const flat = message.replace(/\s+/g, " ").trim();
+  return flat.length > FEEDBACK_EXCERPT_LEN
+    ? `${flat.slice(0, FEEDBACK_EXCERPT_LEN - 1)}…`
+    : flat;
+}
 
 function escapeHtml(s: string): string {
   return s
@@ -146,12 +182,18 @@ function renderQueueSection(
   noun: { singular: string; plural: string },
   detailPathPrefix: string,
   q: QueueSnapshot,
+  opts: {
+    /** Joins prefix and id. "#" for surfaces whose items have no own page. */
+    detailSeparator?: string;
+    /** Overrides noun.plural in the "Open … panel" link. */
+    panelLabel?: string;
+  } = {},
 ): string {
   if (q.count === 0) return "";
   const label = pluralize(q.count, noun.singular, noun.plural);
   const itemList = q.items
     .map((it) => {
-      const detailHref = `${detailPathPrefix}/${encodeURIComponent(it.id)}`;
+      const detailHref = `${detailPathPrefix}${opts.detailSeparator ?? "/"}${encodeURIComponent(it.id)}`;
       return `<li style="margin:0 0 6px;line-height:1.4;">
         <a href="${escapeHtml(detailHref)}" style="color:#1e3a5f;text-decoration:none;">${escapeHtml(it.title)}</a>
       </li>`;
@@ -171,7 +213,7 @@ function renderQueueSection(
       <ul style="list-style:disc;padding-left:20px;margin:0;font-size:14px;">${itemList}</ul>
       ${overflow}
       <p style="margin:10px 0 0;font-size:13px;">
-        <a href="${escapeHtml(q.panel_url)}" style="color:#1e3a5f;font-weight:600;">Open ${escapeHtml(noun.plural)} panel →</a>
+        <a href="${escapeHtml(q.panel_url)}" style="color:#1e3a5f;font-weight:600;">Open ${escapeHtml(opts.panelLabel ?? noun.plural)} panel →</a>
       </p>
     </section>
   `;
@@ -198,6 +240,11 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
       `${p.meeting_summaries.count} meeting ${pluralize(p.meeting_summaries.count, "summary", "summaries")}`,
     );
   }
+  if (p.feedback.count > 0) {
+    totalParts.push(
+      `${p.feedback.count} feedback ${pluralize(p.feedback.count, "submission", "submissions")}`,
+    );
+  }
   const subject = `[${p.hub_name}] Admin queue: ${totalParts.join(", ")}`;
 
   const ui = uiBaseUrl();
@@ -222,13 +269,24 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
       `${ui}/admin/meeting-summaries`,
       p.meeting_summaries,
     ),
+    // Last on purpose: this is "here is what came in", not "here is what
+    // is waiting on you". Items deep-link to their row in the archive,
+    // which is the only place a submission is ever rendered.
+    renderQueueSection(
+      "New feedback",
+      { singular: "submission", plural: "submissions" },
+      `${ui}/admin/feedback`,
+      p.feedback,
+      { detailSeparator: "#", panelLabel: "feedback" },
+    ),
   ].join("");
 
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937;">
       <h1 style="font-size:18px;font-weight:600;margin:0 0 8px;color:#1e3a5f;">${escapeHtml(p.hub_name)} — admin queue</h1>
       <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">
-        Daily summary of items waiting for your review.
+        Daily summary of items waiting for your review, and feedback
+        residents sent in the last 24 hours.
       </p>
       ${sections}
       <p style="margin:32px 0 0;color:#9ca3af;font-size:12px;">
@@ -254,6 +312,7 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
   appendQueueText("Proposals awaiting review", p.proposals);
   appendQueueText("Vote results awaiting approval", p.vote_results);
   appendQueueText("Meeting summaries awaiting review", p.meeting_summaries);
+  appendQueueText("New feedback (last 24h)", p.feedback);
   textParts.push(
     "You receive this because your email is in CIVIC_ADMIN_EMAILS.",
   );

@@ -1,9 +1,13 @@
-// civic.feedback service — persistence + best-effort operator email.
+// civic.feedback service — persistence, operator notification, admin read.
 //
-// submitFeedback() writes a row to feedback_submissions and (if
-// RESEND_API_KEY is configured) emails the operator. Email failure is
-// non-fatal: we still return the persisted row so the user gets a
-// confirmation while the operator backfills via DB triage.
+// submitFeedback() writes a row to feedback_submissions. Whether it also
+// emails the operator immediately depends on the category — see
+// IMMEDIATE_EMAIL_CATEGORIES below. Email failure is non-fatal: we still
+// return the persisted row so the user gets a confirmation while the
+// operator picks the submission up in the admin panel.
+//
+// listFeedback() is the admin read path (/admin/feedback). It is the only
+// reader: feedback never flows through emitEvent() and is never public.
 
 import { getDb } from "../../db/client.js";
 import { sendEmail } from "../../utils/email.js";
@@ -16,9 +20,34 @@ import {
 } from "./models.js";
 
 const MESSAGE_MAX_LEN = 4000;
+const DEFAULT_LIST_LIMIT = 200;
+const MAX_LIST_LIMIT = 500;
 const NAME_MAX_LEN = 200;
 const EMAIL_MAX_LEN = 320;
 const UA_MAX_LEN = 500;
+
+/**
+ * Categories that still trigger an immediate, per-submission email.
+ *
+ * Only moderation. A moderation flag is someone reporting content they
+ * think shouldn't be up — latency there has a cost, so it keeps the push.
+ * Everything else (idea, topic, bug, general) is not time-sensitive: it
+ * lands in /admin/feedback and is summarised once a day by the admin
+ * digest. That is deliberate — a per-submission email for every idea and
+ * topic suggestion turns the inbox into the archive, which is exactly the
+ * thing the admin panel replaces.
+ *
+ * To go back to emailing on every submission, add the other categories
+ * here; to go fully silent, empty the set. Nothing else needs to change.
+ */
+const IMMEDIATE_EMAIL_CATEGORIES: ReadonlySet<FeedbackCategory> = new Set([
+  "moderation",
+]);
+
+/** Whether a category still pages the operator the moment it arrives. */
+export function sendsImmediateEmail(category: FeedbackCategory): boolean {
+  return IMMEDIATE_EMAIL_CATEGORIES.has(category);
+}
 
 export class FeedbackValidationError extends Error {
   constructor(message: string) {
@@ -94,22 +123,77 @@ export async function submitFeedback(
   }
   const submission = rowToSubmission(data);
 
-  // Operator notification. This MUST be awaited: on serverless (Vercel)
-  // the function is frozen the moment the HTTP response is flushed, so a
-  // fire-and-forget send is killed mid-request and the email silently
-  // never goes out (submission still persists — which is exactly the
-  // "saved but no email" symptom this fixes). Still best-effort: a send
-  // failure is caught and logged, never thrown, so the already-persisted
-  // submission is reported as success.
-  await notifyOperator(submission).catch((err) => {
-    console.warn(
-      `[feedback] Operator notification failed for ${submission.id}: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
+  // Operator notification, for the categories that still get one. When it
+  // does send it MUST be awaited: on serverless (Vercel) the function is
+  // frozen the moment the HTTP response is flushed, so a fire-and-forget
+  // send is killed mid-request and the email silently never goes out
+  // (submission still persists — which is exactly the "saved but no email"
+  // symptom this fixes). Still best-effort: a send failure is caught and
+  // logged, never thrown, so the already-persisted submission is reported
+  // as success.
+  if (sendsImmediateEmail(submission.category)) {
+    await notifyOperator(submission).catch((err) => {
+      console.warn(
+        `[feedback] Operator notification failed for ${submission.id}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    });
+  } else {
+    console.log(
+      `[feedback] ${submission.id} (${submission.category}) saved for the admin panel; no immediate email by policy.`,
     );
-  });
+  }
 
   return submission;
+}
+
+export interface ListFeedbackOptions {
+  /** Restrict to one category. Omit for everything. */
+  category?: FeedbackCategory;
+  /** Only submissions created at or after this ISO timestamp. */
+  since?: string;
+  /** Newest-first cap. Defaults to 200, hard-capped at 500. */
+  limit?: number;
+}
+
+/**
+ * Read feedback, newest first. Admin-only at every call site — the rows
+ * carry name/email, and the table is RLS deny-all with service-role
+ * bypass, so this function and the /admin route in front of it are the
+ * entire exposure surface.
+ *
+ * Filtering is server-side on an indexed column
+ * (feedback_submissions_category_idx) rather than in the page, so the
+ * digest can ask for one category without pulling the table.
+ */
+export async function listFeedback(
+  options: ListFeedbackOptions = {},
+): Promise<FeedbackSubmission[]> {
+  if (options.category !== undefined && !isValidCategory(options.category)) {
+    throw new FeedbackValidationError(
+      `category must be one of: ${FEEDBACK_CATEGORIES.join(", ")}`,
+    );
+  }
+  const limit = Math.min(
+    Math.max(1, Math.trunc(options.limit ?? DEFAULT_LIST_LIMIT)),
+    MAX_LIST_LIMIT,
+  );
+
+  let query = getDb()
+    .from("feedback_submissions")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (options.category) query = query.eq("category", options.category);
+  if (options.since) query = query.gte("created_at", options.since);
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`feedback: ${error.message}`);
+  }
+  return (data ?? []).map((row) => rowToSubmission(row as Record<string, unknown>));
 }
 
 async function notifyOperator(s: FeedbackSubmission): Promise<void> {
