@@ -201,10 +201,19 @@
   color: var(--color-text-muted, #666);
 }
 
+/* The container owns the spacing. `.meeting-blocks` is a flex column, so its
+   `gap` is the real lever — a margin on the child stacks on top of it rather
+   than replacing it. Collapsed, these read as a list rather than a stack of
+   cards, so the gap wants to be roughly half what open prose blocks needed:
+   enough to separate, not enough to make a dozen sections feel sparse. */
+.meeting-blocks {
+  gap: 0.85rem;
+}
+
 .meeting-block {
   border: 1px solid var(--color-border, #e5e3dd);
   border-radius: var(--radius-md, 6px);
-  margin-bottom: var(--space-sm, 0.75rem);
+  margin-bottom: 0;
   background: var(--color-surface, #fff);
 }
 
@@ -212,7 +221,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm, 0.75rem);
-  padding: var(--space-sm) var(--space-md);
+  padding: 0.55rem var(--space-md);
   cursor: pointer;
   list-style: none; /* drop the default disclosure triangle */
 }
@@ -244,10 +253,42 @@
 }
 
 /* Sits inside the summary, so it stops propagation in the handler to keep
-   "jump to the video" from also expanding the section. */
+   "jump to the video" from also expanding the section.
+
+   Styled as a pill rather than the earlier square chip: it is the one playful,
+   clickable thing on an otherwise formal page, and it should invite a click
+   without shouting. The `margin-bottom` from the pre-collapse rule is zeroed —
+   in a centred flex row it pushed the pill off-axis. */
 .meeting-block-timestamp {
   flex-shrink: 0;
+  margin-bottom: 0;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
+  transition:
+    background 0.15s,
+    transform 0.1s;
+}
+
+.meeting-block-timestamp:hover {
+  transform: translateY(-1px);
+}
+
+.meeting-block-timestamp:active {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meeting-block-timestamp {
+    transition: background 0.15s;
+  }
+  .meeting-block-timestamp:hover,
+  .meeting-block-timestamp:active {
+    transform: none;
+  }
 }
 
 .meeting-block-flag {
