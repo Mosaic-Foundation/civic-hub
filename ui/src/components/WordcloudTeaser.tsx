@@ -4,6 +4,34 @@ import { getWordcloudCloud } from "../services/api";
 import hub from "../config/hub";
 import "./WordcloudTeaser.css";
 
+/**
+ * Module-scoped cache of the cloud fetch.
+ *
+ * The teaser is mounted in two mutually exclusive branches of App (the beta
+ * splash and the main app). Only one renders at a time, but the auth-loading
+ * transition swaps between those subtrees, so React unmounts one and mounts the
+ * other — and the effect ran twice, firing the same request twice on every
+ * cold page load. It was the slowest thing on any page (480ms + 244ms, against
+ * 154ms for the actual page content).
+ *
+ * Caching the promise rather than the value means concurrent mounts share one
+ * in-flight request instead of racing. Cloud contents change on the order of
+ * days, so a per-session cache is ample; a full reload refetches.
+ */
+let cloudRequest: ReturnType<typeof getWordcloudCloud> | null = null;
+
+function loadCloud(id: string) {
+  if (!cloudRequest) {
+    cloudRequest = getWordcloudCloud(id);
+    // A failed request must not be cached as a permanent failure — the next
+    // mount should be free to try again.
+    cloudRequest.catch(() => {
+      cloudRequest = null;
+    });
+  }
+  return cloudRequest;
+}
+
 // A slim, always-near-the-top affordance pointing at the community word cloud.
 // Shows the actual submitted words rotating through; when the cloud is empty it
 // invites the visitor to be the first. Hidden entirely when no word cloud is
@@ -22,7 +50,7 @@ export default function WordcloudTeaser() {
       return;
     }
     let cancelled = false;
-    getWordcloudCloud(id)
+    loadCloud(id)
       .then((res) => {
         if (cancelled) return;
         const cloud = res.clouds?.[0];
