@@ -271,6 +271,8 @@ export function acceptRevision(
   state.blocks = rev.blocks;
   state.source_minutes_url = rev.source_minutes_url;
   state.source_agenda_url = rev.source_agenda_url;
+  state.source_video_url = rev.source_video_url;
+  state.additional_video_urls = rev.additional_video_urls;
   state.source_type = rev.source_type;
   state.ai_instructions_used = rev.ai_instructions_used;
   state.ai_model = rev.ai_model;

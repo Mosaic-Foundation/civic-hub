@@ -71,6 +71,13 @@ export interface MeetingSummaryRevision {
   blocks: SummaryBlock[];
   source_minutes_url: string | null;
   source_agenda_url: string | null;
+  /**
+   * Carried because a recording often appears AFTER the summary was first
+   * written, and the timestamps in `blocks` are only clickable when the
+   * record knows the video they point into.
+   */
+  source_video_url: string | null;
+  additional_video_urls: string[];
   source_type: MeetingSourceType;
   /** What this revision adds over the live version, for the review screen. */
   reason: string;

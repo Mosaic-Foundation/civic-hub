@@ -1198,6 +1198,7 @@ export interface MeetingSummaryDetail extends MeetingSummarySummary {
   pending_revision?: {
     blocks: SummaryBlock[];
     source_minutes_url: string | null;
+    source_video_url: string | null;
     source_type: MeetingSourceType;
     reason: string;
     generated_at: string;

@@ -169,6 +169,31 @@ function summaryPredatesMeeting(state: {
   return generated < meeting;
 }
 
+/**
+ * Does the freshly discovered entry carry a source the stored summary lacks?
+ *
+ * A record is written from whatever existed at the time. Jurisdictions publish
+ * asynchronously — Floyd posts an agenda days ahead, the recording a day after
+ * the meeting, minutes weeks later — so a summary written early is missing
+ * sources that exist now. That gap is itself the reason to re-summarize, and
+ * checking it directly is more honest than enumerating which document happened
+ * to arrive.
+ *
+ * It also repairs records silently: the 2026-08-25 summary was regenerated
+ * FROM the transcript (its blocks carry real timestamps) while the row kept
+ * `source_video_url: null` from creation, so the timestamps had no video to
+ * link into and the page claimed no recording existed.
+ */
+function offersNewSources(
+  entry: MeetingEntry,
+  state: MeetingSummaryProcessState,
+): boolean {
+  if (entry.source_minutes_url && !state.source_minutes_url) return true;
+  if (entry.source_video_url && !state.source_video_url) return true;
+  if (entry.source_agenda_url && !state.source_agenda_url) return true;
+  return false;
+}
+
 /** Whether a connector has enough configuration to be worth attempting. */
 function isConfigured(id: string, cfg: MeetingSummaryConfig): boolean {
   if (PAGE_CONNECTOR_IDS.has(id)) return Boolean(cfg.source_url);
@@ -844,9 +869,12 @@ export async function handleRunMeetingSummary(
         // per-run budget doing it.
         if (existingState.pending_revision) continue;
 
-        // Skip when there is nothing new to say: no minutes to add, and the
-        // existing summary was already written after the meeting happened.
-        if (!entry.source_minutes_url && !summaryPredatesMeeting(existingState)) {
+        // Skip only when there is genuinely nothing new: no source the record
+        // is missing, and the summary was already written after the meeting.
+        if (
+          !offersNewSources(entry, existingState) &&
+          !summaryPredatesMeeting(existingState)
+        ) {
           continue;
         }
         // An admin who edited a summary owns its wording — but only the path
@@ -906,6 +934,8 @@ export async function handleRunMeetingSummary(
               blocks: summary.blocks,
               source_minutes_url: entry.source_minutes_url,
               source_agenda_url: entry.source_agenda_url,
+              source_video_url: entry.source_video_url,
+              additional_video_urls: entry.additional_video_urls,
               source_type: summary.sourceType,
               reason,
               ai_instructions_used: summary.ai_instructions_used,
@@ -925,6 +955,10 @@ export async function handleRunMeetingSummary(
           state.source_id = entry.source_id;
           state.source_minutes_url = entry.source_minutes_url;
           state.source_agenda_url = entry.source_agenda_url;
+          // Refreshing these is what makes block timestamps clickable: the UI
+          // only links a timestamp when the record knows its video.
+          state.source_video_url = entry.source_video_url;
+          state.additional_video_urls = entry.additional_video_urls;
           state.source_type = summary.sourceType;
           state.blocks = summary.blocks;
           state.ai_instructions_used = summary.ai_instructions_used;

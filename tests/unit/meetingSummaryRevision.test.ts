@@ -50,6 +50,8 @@ function published(): MeetingSummaryProcessState {
 }
 
 const revision: MeetingSummaryRevision = {
+  source_video_url: "https://www.youtube.com/watch?v=-clkKd5uaZA",
+  additional_video_urls: [],
   blocks: [
     { topic_title: "Roads", topic_summary: "v2", start_time_seconds: 60, action_taken: "Approved 5-0" },
     { topic_title: "Budget", topic_summary: "v2", start_time_seconds: 900, action_taken: null },
@@ -130,6 +132,73 @@ describe("discarding a revision", () => {
 
   it("throws when nothing is waiting", () => {
     expect(() => discardRevision(published())).toThrow(/No revision/);
+  });
+});
+
+describe("sources the record was missing", () => {
+  // The 2026-08-25 record was regenerated FROM the transcript — its blocks
+  // carry real timestamps — while the row kept source_video_url: null from
+  // creation. The page then claimed no recording existed and the timestamps
+  // had no video to link into.
+  it("applies a recording that appeared after the summary was written", () => {
+    const s = published();
+    s.source_video_url = null;
+    stageRevision(s, revision);
+    acceptRevision(s);
+    expect(s.source_video_url).toBe("https://www.youtube.com/watch?v=-clkKd5uaZA");
+  });
+
+  it("carries secondary recordings too", () => {
+    const s = published();
+    s.additional_video_urls = [];
+    stageRevision(s, {
+      ...revision,
+      additional_video_urls: ["https://www.youtube.com/watch?v=AFefIVItmhE"],
+    });
+    acceptRevision(s);
+    expect(s.additional_video_urls).toEqual([
+      "https://www.youtube.com/watch?v=AFefIVItmhE",
+    ]);
+  });
+});
+
+/** Mirrors offersNewSources() in the controller. */
+function offersNewSources(
+  entry: { source_minutes_url: string | null; source_video_url: string | null; source_agenda_url: string | null },
+  state: { source_minutes_url: string | null; source_video_url: string | null; source_agenda_url: string | null },
+): boolean {
+  if (entry.source_minutes_url && !state.source_minutes_url) return true;
+  if (entry.source_video_url && !state.source_video_url) return true;
+  if (entry.source_agenda_url && !state.source_agenda_url) return true;
+  return false;
+}
+
+describe("offersNewSources", () => {
+  const none = { source_minutes_url: null, source_video_url: null, source_agenda_url: null };
+
+  it("fires when a recording exists that the record lacks — the Aug 25 case", () => {
+    expect(
+      offersNewSources({ ...none, source_video_url: "https://youtu.be/x" }, none),
+    ).toBe(true);
+  });
+
+  it("fires when minutes appear", () => {
+    expect(
+      offersNewSources({ ...none, source_minutes_url: "https://x.test/m.pdf" }, none),
+    ).toBe(true);
+  });
+
+  it("does NOT fire when the record already has everything", () => {
+    const both = {
+      source_minutes_url: "https://x.test/m.pdf",
+      source_video_url: "https://youtu.be/x",
+      source_agenda_url: null,
+    };
+    expect(offersNewSources(both, both)).toBe(false);
+  });
+
+  it("does not fire when the entry has nothing new to add", () => {
+    expect(offersNewSources(none, { ...none, source_video_url: "https://youtu.be/x" })).toBe(false);
   });
 });
 

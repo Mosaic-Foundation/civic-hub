@@ -1391,6 +1391,36 @@ minutes`), not "minutes". A jurisdiction that publishes official transcripts
 would slot in as another tier; one that never posts minutes simply never
 generates a revision. No per-jurisdiction code.
 
+### The upgrade never refreshed the recording URL (2026-08-27)
+
+The repaired 2026-08-25 summary came back with real timestamps and
+transcript-only detail — supervisor names, bill numbers, delivery dates — while
+the admin page read **"Video recording: none available"** and the timestamps
+were plain text rather than links.
+
+Both were true at once. `summarizeMeeting()` reads `entry.source_video_url`, so
+it fetched the transcript and produced grounded timestamps. But the upgrade
+wrote back only `source_minutes_url`, `source_agenda_url` and `source_type` —
+never `source_video_url`. The record kept the `null` baked in when it was
+created on Aug 22, before the recording existed. The UI links a timestamp only
+when the record knows its video (`MeetingSummary.tsx:168`), so every timestamp
+rendered dead.
+
+**Fixed by making "a source the record lacks" the upgrade trigger itself.**
+`offersNewSources()` compares the discovered entry against the stored summary;
+any source present in one and missing from the other is reason to re-summarize.
+That is more honest than enumerating which document happened to arrive, and it
+makes the pass self-repairing — the Aug 25 record is fixed by the next run
+without intervention. Both the direct-replace path and `MeetingSummaryRevision`
+now carry `source_video_url` and `additional_video_urls`.
+
+**Admin copy corrected too.** A summary with an agenda *and* a recording was
+labelled "Agenda-based summary… generated from the meeting agenda", which
+undersold it: the prompt treats the transcript as the primary source in that
+case and the agenda as a topic guide. It now reads "Recording-based summary"
+with the auto-transcript caveat when a video exists, and keeps the agenda-only
+wording when one genuinely does not.
+
 ### Guard
 
 `cronAlertReason()` — zero discovered meetings is a **failure**, not an empty

@@ -341,9 +341,26 @@ export default function AdminMeetingSummaries() {
 
           {selected.source_type === "agenda" && (
             <div className="meeting-ai-banner" style={{ borderLeftColor: "#d97706" }}>
-              <strong style={{ color: "#d97706" }}>Agenda-based summary.</strong> This
-              summary was generated from the meeting agenda (not official minutes).
-              It will be automatically upgraded when minutes are posted.
+              {selected.source_video_url ? (
+                <>
+                  <strong style={{ color: "#d97706" }}>
+                    Recording-based summary.
+                  </strong>{" "}
+                  Built from the meeting recording's transcript, with the agenda
+                  as a topic guide — official minutes have not been posted yet.
+                  Automatic transcripts mishear names and figures, so check
+                  those closely. A revision will be offered for review once the
+                  minutes are available.
+                </>
+              ) : (
+                <>
+                  <strong style={{ color: "#d97706" }}>Agenda-based summary.</strong>{" "}
+                  Generated from the meeting agenda only — no recording or
+                  official minutes were available, so this describes what was
+                  planned rather than what happened. A revision will be offered
+                  for review once a recording or the minutes appear.
+                </>
+              )}
             </div>
           )}
 
