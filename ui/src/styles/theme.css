@@ -96,7 +96,9 @@
      FeedFilter's surface pills read three of them — but no process-type
      surface should point at them anymore. New surfaces use --type-*. */
   --type-vote-bg: var(--ds-color-primary-100);   --type-vote-fg: var(--ds-color-primary-800);
-  --type-proposal-bg: #ede7f6;                   --type-proposal-fg: #5e35b1;
+  /* Dusty plum, not Material violet — the vivid #5e35b1 fought the
+     earthy palette (Adam, 2026-08-28). */
+  --type-proposal-bg: #eae7f0;                   --type-proposal-fg: #5f4b8b;
   /* Conversation left indigo for a landscape teal (2026-08-28, Adam) —
      it was one of three near-identical blues; deliberation now reads as
      its own hue, kin to the design system's civic-teal. */

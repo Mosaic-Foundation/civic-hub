@@ -321,7 +321,7 @@ const SECTION_ORDER: DigestSection[] = [
  */
 const PILL_COLORS: Record<ActivityColor, { bg: string; fg: string }> = {
   vote: { bg: "#dce5f2", fg: "#1e3a5f" },
-  proposal: { bg: "#ede7f6", fg: "#5e35b1" },
+  proposal: { bg: "#eae7f0", fg: "#5f4b8b" },
   conversation: { bg: "#ddefef", fg: "#0f5e66" },
   project: { bg: "#e3f2fd", fg: "#1565c0" },
   wordcloud: { bg: "#edf0dd", fg: "#5c6b2a" },

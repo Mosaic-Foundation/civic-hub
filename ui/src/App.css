@@ -688,7 +688,7 @@
    from the type palette, so a proposal card's edge matches the proposal
    pill in the feed and on Outcomes. */
 .proposal-card {
-  --card-accent: var(--type-proposal-fg, #5e35b1);
+  --card-accent: var(--type-proposal-fg, #5f4b8b);
 }
 
 .project-card {
@@ -724,6 +724,9 @@
 /* --- Status badge --- */
 
 .status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.72rem;
   font-weight: 600;
   padding: 0.2rem 0.6rem;
@@ -733,25 +736,50 @@
   letter-spacing: 0.04em;
 }
 
-.status-open {
-  background: var(--success-bg);
-  color: var(--success-color);
-}
-
-.status-closed {
-  background: var(--danger-bg);
-  color: var(--danger-color);
-}
-
-/* Support-gathering phases — warm amber, distinct from live green.
-   (These classes were previously emitted by ProcessCard but never
-   defined, so the badges rendered unstyled.) */
+/* Lifecycle-state pills (2026-08-28) — NEUTRAL pill + a small colored
+   dot, replacing the solid green/red/amber washes. Cards now carry a
+   per-type identity color on their edge; a second saturated color block
+   fought it (and clashed differently against every type hue). The dot
+   keeps the at-a-glance semantic — green live, amber gathering support,
+   gray finished — while the pill itself goes with every card color.
+   Closed is deliberately NOT red: a finished process is not an error. */
+.status-open,
+.status-closed,
 .status-proposed,
 .status-threshold_met,
 .status-submitted,
 .status-gathering {
-  background: var(--ds-color-warning-100, #fdf4d6);
-  color: var(--ds-color-warning-700, #946c18);
+  background: var(--color-surface, #f6f5f2);
+  border: 1px solid var(--color-border, #e0ddd5);
+  color: var(--color-text-muted, #5f5e5a);
+}
+
+.status-open::before,
+.status-closed::before,
+.status-proposed::before,
+.status-threshold_met::before,
+.status-submitted::before,
+.status-gathering::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-open::before {
+  background: var(--ds-color-success-500, #4a9d5c);
+}
+
+.status-closed::before {
+  background: var(--color-text-faint, #b4b2a9);
+}
+
+.status-proposed::before,
+.status-threshold_met::before,
+.status-submitted::before,
+.status-gathering::before {
+  background: var(--ds-color-warning-500, #e0a83a);
 }
 
 /* --- Process detail page --- */
