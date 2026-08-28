@@ -81,8 +81,11 @@ Two places show a name WITHOUT the badge, both intentional-ish:
 
 ## Officials: an admin-managed role with a structured title — 2026-08-27
 
-**Built, not pushed.** ⚠️ **Migration must be applied to prod BEFORE this
-code deploys** — see "Deploy order" below.
+**Built, not pushed. Migration applied to BOTH databases 2026-08-27** — prod
+(`nfhyypwoporfggqcerli`) and dev (`urfmvqhzmamigssqwsya`), by hand in the
+Supabase SQL editor, before the code was committed. The deploy-order constraint
+below is therefore already satisfied; it is recorded because it governs any
+rollback or fresh environment, not because it is still outstanding.
 
 Generalizes the env-managed board author into a per-user official role. Before:
 officials were `CIVIC_BOARD_EMAILS` (env) or an email-keyed JSON blob in
@@ -183,10 +186,20 @@ have ever signed in.
 
 ### Deploy order
 
-1. Apply `20260827100000_official_role.sql` to **prod**.
-2. `npx tsx scripts/seedOfficials.ts --dry-run`, then live, against prod.
-3. Then push. Per the 08-22 incident, a shared `main` means the migration must
+1. Apply `20260827100000_official_role.sql` to the database. **Done** for prod
+   and dev on 2026-08-27, by hand in the Supabase SQL editor.
+2. Then push. Per the 08-22 incident, a shared `main` means the migration must
    not trail its writer.
+
+**`scripts/seedOfficials.ts` was NOT run against prod, and should not be.**
+Vercel refuses to export secret-typed env vars — `vercel env pull
+--environment=production` writes `[SENSITIVE]` in place of
+`SUPABASE_SERVICE_ROLE_KEY` — so running it against prod means hand-placing
+that key in a local file. Unnecessary: prod has no `CIVIC_BOARD_EMAILS` set at
+all, and Admin → Settings → Officials already merges any unmigrated legacy
+entries into the roster, so saving there does the same job with no service-role
+key on disk. The script remains useful for a self-hosted hub whose operator has
+direct credentials.
 
 Both official reads use `select("*")` (or degrade on error) specifically so a
 database that has not applied the migration resolves to "no title" instead of
@@ -213,10 +226,10 @@ the plan.
 
 ### Open
 
-- **No dev-DB migration.** Applying it needs the Supabase CLI with a linked
-  project and DB password, which this session did not have. The dev database is
-  still un-migrated; it degrades correctly but shows no officials until the
-  migration is applied there too.
+- **Nothing is deployed.** Four commits sit on local `main` from two concurrent
+  sessions. After deploying, open Admin → Settings → Officials and add whoever
+  should carry a title — that first save is also what latches
+  `officials_migrated` and retires the legacy fallback.
 - **Curated name vs. `full_name`.** The admin-curated name is written to
   `display_name`, and the byline rule is `full_name ?? display_name ??
   "Resident"` — so an official who has set their own real name will show that,
