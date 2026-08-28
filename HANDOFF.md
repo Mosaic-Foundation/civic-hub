@@ -86,10 +86,31 @@ logs a warning — verified against dev); the WRITE fails loudly on purpose.
   the status flips and ONE feed card appears; post again, confirm no second
   card and both responses on the page.
 
+**Card copy (2026-08-28, after Adam's review):** the feed/digest card
+carries **no excerpt of the response** — a truncated quote can misrepresent
+an official statement; the card links to the brief where the response reads
+in full. Instead it shows a shared, italic context line — *"Responding to
+the community's Civic Brief on this \<proposal/vote/conversation/project\>"*
+(`briefResponseContext` in `feedActivity.ts`, consumed by both FeedPost and
+the digest so the phrasing cannot drift). The event payload still carries
+the excerpt for log/wire consumers; only the rendering dropped it. The
+24h anchor window stays rolling and deliberately NOT aligned to the digest
+cron (13:00 UTC) — per-user digest cursors mean there is no single send
+moment, a daily digest already can't contain two anchors for one brief, and
+calendar bucketing would reintroduce the boundary double-post.
+
 ### Open questions / deferred
 
 - Response rate-limiting (per-official caps) — deliberately skipped; add
   only if the feed shows abuse the 24h anchor doesn't already absorb.
+- **Per-brief responder invitations (Adam, 2026-08-28):** during admin
+  brief review, a section to pick which officials/emails are notified of
+  the brief and invited to respond — a per-brief override of the global
+  "Brief recipients" setting, naturally recorded in `delivered_to`.
+- **Naming (Adam, 2026-08-28):** "Civic Brief" itself is in question
+  (candidates: "Civic Results", "Community Results"). If renamed, the
+  response context line is one string (`briefResponseContext`), and the
+  page/pill/digest copy are the other touchpoints.
 - A "responded" filter on the Outcomes index rows — the index entry doesn't
   carry response status yet.
 - Notifying the brief's followers/author when a response lands (no follower

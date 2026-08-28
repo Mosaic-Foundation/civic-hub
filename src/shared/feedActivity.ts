@@ -356,6 +356,38 @@ function classifyResultPublished(
   return null;
 }
 
+/**
+ * Context line for an official-response card — names WHAT is being
+ * responded to: the community's record of a completed process. Shared by
+ * the feed card (metadata line) and the email digest (row summary) so the
+ * two can never phrase it differently. The card deliberately carries NO
+ * excerpt of the response itself: a truncated quote can misrepresent an
+ * official statement, and the card links to the brief where the full
+ * response reads in context.
+ */
+export function briefResponseContext(sourceType: unknown): string {
+  const noun = briefSourceNoun(
+    typeof sourceType === "string" ? sourceType : "",
+  );
+  return `Responding to the community's Civic Brief on this ${noun}`;
+}
+
+/** Reader-facing noun for a brief's source process type. */
+function briefSourceNoun(sourceType: string): string {
+  switch (sourceType) {
+    case "civic.polis_deliberation":
+      return "conversation";
+    case "civic.vote":
+      return "vote";
+    case "civic.proposal":
+      return "proposal";
+    case "civic.project":
+      return "project";
+    default:
+      return "process";
+  }
+}
+
 /** Per-source-type pill for a published brief — names the process that
  *  completed, so residents see what kind of thing wrapped up. */
 function briefPill(sourceType: string): string {

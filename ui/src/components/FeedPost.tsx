@@ -3,6 +3,7 @@ import type { CivicEvent } from "../services/api";
 import { useIsWideViewport } from "../hooks/useIsWideViewport";
 import hub from "../config/hub";
 import {
+  briefResponseContext,
   classifyActivity,
   type Activity,
   type ActivityKind,
@@ -71,7 +72,7 @@ export function eventToPost(
   const activity = classifyActivity(event);
   if (!activity) return null;
 
-  const { title, summary, authorName } = buildTitleSummary(
+  const { title, summary, authorName, engagement } = buildTitleSummary(
     activity,
     event,
     getProcessTitle,
@@ -81,6 +82,7 @@ export function eventToPost(
   return {
     id: event.id,
     title,
+    engagement: engagement ?? null,
     // The classifier's pill label is canonical/hub-agnostic ("Meeting
     // summary"), which the email digest uses. On the feed card we prefix the
     // governing body so the card pill matches the feed's filter pill
@@ -107,7 +109,15 @@ function buildTitleSummary(
   event: CivicEvent,
   getTitle: (id: string) => string | undefined,
   getDescription: (id: string) => string | undefined,
-): { title: string; summary: string; authorName?: string | null } {
+): {
+  title: string;
+  summary: string;
+  authorName?: string | null;
+  /** Event-derived metadata line. When set, it wins over the Feed
+   *  container's fetched-meta buildEngagement (which knows nothing about
+   *  this event's payload). */
+  engagement?: string | null;
+} {
   const id = event.process_id;
   const data = event.data as Record<string, unknown>;
   const descSummary = summaryFromDescription(getDescription(id));
@@ -204,12 +214,17 @@ function buildTitleSummary(
 
     case "brief-response": {
       // Rendered from the response event alone: the brief's title as the
-      // card title, the response excerpt as the summary, the official as
-      // the byline. The card links to /brief/:id where every response
-      // (including any collapsed under the 24h anchor) is shown in full.
-      const brief = (data.brief ?? {}) as { title?: string };
+      // card title, the official as the byline, and the shared context
+      // line ("Responding to the community's Civic Brief on this …") in
+      // the metadata slot. NO excerpt of the response — a truncated quote
+      // can misrepresent an official statement (Adam, 2026-08-28); the
+      // card links to /brief/:id where every response (including any
+      // collapsed under the 24h anchor) reads in full and in context.
+      const brief = (data.brief ?? {}) as {
+        title?: string;
+        source_process_type?: string;
+      };
       const response = (data.response ?? {}) as {
-        excerpt?: string;
         official_title?: string;
         responder_name?: string;
       };
@@ -218,8 +233,9 @@ function buildTitleSummary(
         .join(", ");
       return {
         title: brief.title ?? getTitle(id) ?? "Civic Brief",
-        summary: response.excerpt ?? "",
+        summary: "",
         authorName: byline || null,
+        engagement: briefResponseContext(brief.source_process_type),
       };
     }
   }
@@ -355,7 +371,15 @@ export default function FeedPost({ post }: Props) {
         )}
         {post.summary && <p className="feed-post-summary">{post.summary}</p>}
         {post.engagement && (
-          <p className="feed-post-engagement">{post.engagement}</p>
+          <p
+            className={
+              post.pillKind === "brief-response"
+                ? "feed-post-engagement feed-post-engagement--context"
+                : "feed-post-engagement"
+            }
+          >
+            {post.engagement}
+          </p>
         )}
         <time
           className="feed-post-time"

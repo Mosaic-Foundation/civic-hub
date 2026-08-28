@@ -301,7 +301,10 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
         ...post,
         imageUrl: meta?.imageUrl ?? null,
         imageAlt: meta?.imageAlt ?? null,
-        engagement: meta ? buildEngagement(post.pillKind, meta) : null,
+        // An event-derived line from eventToPost (e.g. the official-response
+        // context) wins; buildEngagement only knows the fetched meta.
+        engagement:
+          post.engagement ?? (meta ? buildEngagement(post.pillKind, meta) : null),
       });
     }
     return out;

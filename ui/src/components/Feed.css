@@ -257,6 +257,12 @@
 .feed-pill--brief               { background: var(--pill-brief-bg);               color: var(--pill-brief-fg); }
 .feed-pill--brief-response      { background: var(--pill-brief-response-bg);      color: var(--pill-brief-response-fg); }
 
+/* The official-response context line ("Responding to the community's
+   Civic Brief on this proposal") — italic to read as framing, not data. */
+.feed-post-engagement--context {
+  font-style: italic;
+}
+
 /* --- Load more --- */
 
 .feed-load-more-row {

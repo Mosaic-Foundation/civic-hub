@@ -12,6 +12,7 @@
 // (inlined as hex literals — email clients don't read CSS variables).
 
 import {
+  briefResponseContext,
   classifyActivity,
   type Activity,
   type ActivityKind,
@@ -214,25 +215,21 @@ function digestTitleSummary(
     }
 
     case "brief-response": {
+      // Same shared context line as the feed card, and like the card, NO
+      // excerpt — a truncated quote can misrepresent an official
+      // statement; the row links to the brief where the response reads in
+      // full.
       const data = event.data as {
-        brief?: { title?: unknown };
-        response?: { excerpt?: unknown; official_title?: unknown };
+        brief?: { title?: unknown; source_process_type?: unknown };
       };
       const title =
         (typeof data?.brief?.title === "string" && data.brief.title) ||
         rawTitle ||
         "Civic Brief";
-      const office =
-        typeof data?.response?.official_title === "string"
-          ? data.response.official_title
-          : "";
-      const summary =
-        (typeof data?.response?.excerpt === "string" &&
-          data.response.excerpt) ||
-        (office
-          ? `The ${office} has responded — read the response.`
-          : "An official has responded — read the response.");
-      return { title, summary };
+      return {
+        title,
+        summary: `${briefResponseContext(data?.brief?.source_process_type)}.`,
+      };
     }
   }
 }

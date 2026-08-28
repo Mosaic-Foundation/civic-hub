@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  briefResponseContext,
   classifyActivity,
   type ClassifierEvent,
 } from "../../src/shared/feedActivity.js";
@@ -307,5 +308,21 @@ describe("classifyActivity — official responses to briefs", () => {
       ),
     ).toBeNull();
     expect(classifyActivity(ev("civic.process.action_taken"))).toBeNull();
+  });
+});
+
+describe("briefResponseContext — the card's framing line", () => {
+  it("names the source process kind", () => {
+    expect(briefResponseContext("civic.proposal")).toBe(
+      "Responding to the community's Civic Brief on this proposal",
+    );
+    expect(briefResponseContext("civic.vote")).toMatch(/this vote$/);
+    expect(briefResponseContext("civic.polis_deliberation")).toMatch(/this conversation$/);
+    expect(briefResponseContext("civic.project")).toMatch(/this project$/);
+  });
+
+  it("degrades to 'process' for unknown or missing source types", () => {
+    expect(briefResponseContext("civic.wordcloud")).toMatch(/this process$/);
+    expect(briefResponseContext(undefined)).toMatch(/this process$/);
   });
 });
