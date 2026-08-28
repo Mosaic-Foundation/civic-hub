@@ -150,3 +150,39 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* --- Brief review: per-brief delivery recipient picker ------------------ */
+
+.admin-recipient-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.admin-recipient-row .form-input {
+  margin: 0;
+}
+
+/* Email narrower than label — the label is the half that renders publicly
+   and tends to be longer ("Jane Doe, Board of Supervisors"). */
+.admin-recipient-row .form-input:first-child {
+  flex: 2;
+}
+.admin-recipient-row .form-input:nth-child(2) {
+  flex: 3;
+}
+
+.admin-recipient-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+@media (max-width: 640px) {
+  .admin-recipient-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

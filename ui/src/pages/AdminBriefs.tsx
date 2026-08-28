@@ -5,9 +5,12 @@ import {
   adminGetBrief,
   adminPatchBrief,
   adminApproveBrief,
+  adminGetSettings,
   type BriefDetail,
   type BriefPublicationStatus,
+  type BriefRecipient,
   type BriefSummary,
+  type Official,
 } from "../services/api";
 import AdminTabs from "../components/AdminTabs";
 import PostImagePicker from "../components/PostImagePicker";
@@ -35,6 +38,34 @@ function sourceLabel(type: string): string {
   return SOURCE_LABELS[type] ?? "Process";
 }
 
+/** Display label for a roster official: "Jane Doe, Board of Supervisors"
+ *  (or just the office when no curated name exists). This becomes the
+ *  public "Sent to …" text, so it must never be the email. */
+function officialLabel(o: Official): string {
+  const name = o.name?.trim();
+  return name ? `${name}, ${o.official_title}` : o.official_title;
+}
+
+/**
+ * Prefill for a brief whose recipients were never chosen: the hub-wide
+ * recipient emails, labeled from the officials roster where they match.
+ * Unmatched emails get an empty label the admin must fill before saving
+ * — the server refuses a labelless recipient rather than leak the email
+ * onto the public receipt.
+ */
+function prefillRecipients(
+  globalEmails: string[],
+  officials: Official[],
+): BriefRecipient[] {
+  const byEmail = new Map(
+    officials.map((o) => [o.email.toLowerCase(), officialLabel(o)]),
+  );
+  return globalEmails.map((email) => ({
+    email,
+    label: byEmail.get(email.toLowerCase()) ?? "",
+  }));
+}
+
 export default function AdminBriefs() {
   const navigate = useNavigate();
   const { id: routeId } = useParams<{ id?: string }>();
@@ -54,6 +85,8 @@ export default function AdminBriefs() {
   const [adminNotes, setAdminNotes] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageAlt, setImageAlt] = useState<string | null>(null);
+  const [recipients, setRecipients] = useState<BriefRecipient[]>([]);
+  const [rosterOfficials, setRosterOfficials] = useState<Official[]>([]);
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [confirmingApprove, setConfirmingApprove] = useState(false);
@@ -96,8 +129,11 @@ export default function AdminBriefs() {
     }
     setError(null);
     setActionMessage(null);
-    adminGetBrief(routeId)
-      .then((record) => {
+    // Settings ride along for the recipient picker: the officials roster
+    // (quick-add + label matching) and the hub-wide recipient emails
+    // (prefill for a brief whose selection was never made).
+    Promise.all([adminGetBrief(routeId), adminGetSettings()])
+      .then(([record, settings]) => {
         setSelected(record);
         setHeadline(record.content.headline);
         setSummary(record.content.summary);
@@ -105,6 +141,11 @@ export default function AdminBriefs() {
         setAdminNotes(record.content.admin_notes);
         setImageUrl(record.content.image_url ?? null);
         setImageAlt(record.content.image_alt ?? null);
+        setRosterOfficials(settings.officials);
+        setRecipients(
+          record.recipients ??
+            prefillRecipients(settings.brief_recipient_emails, settings.officials),
+        );
         setConfirmingApprove(false);
       })
       .catch((err: Error) => setError(err.message));
@@ -119,6 +160,7 @@ export default function AdminBriefs() {
       admin_notes: adminNotes,
       image_url: imageUrl,
       image_alt: imageUrl && altTrimmed.length > 0 ? altTrimmed : null,
+      recipients,
     };
   }
 
@@ -281,12 +323,112 @@ export default function AdminBriefs() {
             />
           </section>
 
+          {isPending && (
+            <section className="admin-detail-section">
+              <h3>Delivery recipients</h3>
+              <p className="form-hint">
+                Who receives this brief by email when you approve it. The{" "}
+                <strong>display label</strong> is what the published page
+                shows in its "Sent to …" receipt — email addresses are never
+                shown publicly. Leave the list empty to publish without an
+                email delivery.
+              </p>
+              {recipients.map((r, i) => (
+                <div key={i} className="admin-recipient-row">
+                  <input
+                    className="form-input"
+                    type="email"
+                    placeholder="email@example.gov"
+                    value={r.email}
+                    onChange={(e) =>
+                      setRecipients((prev) =>
+                        prev.map((row, j) =>
+                          j === i ? { ...row, email: e.target.value } : row,
+                        ),
+                      )
+                    }
+                  />
+                  <input
+                    className="form-input"
+                    placeholder="Display label, e.g. Jane Doe, Board of Supervisors"
+                    value={r.label}
+                    onChange={(e) =>
+                      setRecipients((prev) =>
+                        prev.map((row, j) =>
+                          j === i ? { ...row, label: e.target.value } : row,
+                        ),
+                      )
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="admin-cancel-button"
+                    onClick={() =>
+                      setRecipients((prev) => prev.filter((_, j) => j !== i))
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              {recipients.length === 0 && (
+                <p className="form-hint">
+                  No recipients — the brief will publish to the feed without
+                  an email delivery.
+                </p>
+              )}
+              <div className="admin-recipient-actions">
+                {rosterOfficials
+                  .filter(
+                    (o) =>
+                      !recipients.some(
+                        (r) => r.email.toLowerCase() === o.email.toLowerCase(),
+                      ),
+                  )
+                  .map((o) => (
+                    <button
+                      key={o.email}
+                      type="button"
+                      className="admin-archive-button"
+                      onClick={() =>
+                        setRecipients((prev) => [
+                          ...prev,
+                          { email: o.email, label: officialLabel(o) },
+                        ])
+                      }
+                    >
+                      + {officialLabel(o)}
+                    </button>
+                  ))}
+                <button
+                  type="button"
+                  className="admin-archive-button"
+                  onClick={() =>
+                    setRecipients((prev) => [...prev, { email: "", label: "" }])
+                  }
+                >
+                  + Add by email
+                </button>
+              </div>
+            </section>
+          )}
+
           {selected.delivered_to.length > 0 && (
             <section className="admin-detail-section">
-              <h3>Delivered to</h3>
+              <h3>Delivered</h3>
+              {selected.delivered_at && (
+                <p className="form-hint">
+                  Sent {formatDateTime(selected.delivered_at)}.
+                </p>
+              )}
               <ul>
-                {selected.delivered_to.map((r) => (
-                  <li key={r}>{r}</li>
+                {selected.delivered_to.map((r, i) => (
+                  <li key={r}>
+                    {r}
+                    {selected.delivered_to_labels[i] && (
+                      <> — shown publicly as "{selected.delivered_to_labels[i]}"</>
+                    )}
+                  </li>
                 ))}
               </ul>
             </section>
@@ -335,9 +477,9 @@ export default function AdminBriefs() {
           )}
           {confirmingApprove && (
             <p className="form-hint" style={{ marginTop: "var(--space-sm)" }}>
-              This delivers the brief to the {hub.governing_body_name} (if
-              recipients are configured) and publishes it to the public feed.
-              This cannot be undone.
+              {recipients.length > 0
+                ? `This emails the brief to the ${recipients.length} selected recipient${recipients.length === 1 ? "" : "s"} and publishes it to the public feed. The published page will name them by their display labels. This cannot be undone.`
+                : "No recipients are selected — this publishes the brief to the public feed without an email delivery. This cannot be undone."}
             </p>
           )}
         </div>

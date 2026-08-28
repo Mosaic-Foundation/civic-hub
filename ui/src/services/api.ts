@@ -1025,9 +1025,22 @@ export interface BriefSummary {
   created_at: string;
 }
 
+/** One delivery recipient picked during review. The email is where the
+ *  brief is sent (admin-only); the label is what the published page's
+ *  "Sent to …" receipt shows. */
+export interface BriefRecipient {
+  email: string;
+  label: string;
+}
+
 export interface BriefDetail extends BriefSummary {
   content: BriefContent;
   delivered_to: string[];
+  /** Per-review selection: null = never touched (approval falls back to
+   *  the hub-wide setting), [] = explicitly no delivery. */
+  recipients: BriefRecipient[] | null;
+  delivered_at: string | null;
+  delivered_to_labels: string[];
   created_by: string;
 }
 
@@ -1047,6 +1060,11 @@ export interface PublicBrief {
   image_url?: string | null;
   image_alt?: string | null;
   delivered_recipient_count: number;
+  /** Public-safe recipient labels ("Jane Doe, Board of Supervisors") and
+   *  the actual send time — the "Sent to … on …" receipt. Empty/null on
+   *  legacy deliveries, which render the governing-body wording. */
+  sent_to: string[];
+  delivered_at: string | null;
   approved_at: string | null;
   generated_at: string;
   published_at: string;
@@ -1080,6 +1098,8 @@ export interface BriefContentPatch {
   summary?: string;
   image_url?: string | null;
   image_alt?: string | null;
+  /** Per-review delivery selection; [] means "publish with no email". */
+  recipients?: BriefRecipient[];
 }
 
 export function adminListBriefs(

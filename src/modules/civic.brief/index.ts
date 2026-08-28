@@ -13,6 +13,7 @@ export type {
   BriefProcessContext,
   BriefProcessState,
   BriefPublicationStatus,
+  BriefRecipient,
   BriefSection,
   CreateBriefInput,
   EmitEventFn,
@@ -21,6 +22,7 @@ export type {
 } from "./models.js";
 
 export {
+  RECIPIENT_LABEL_MAX,
   approveBrief,
   createBriefState,
   editBrief,
@@ -28,6 +30,8 @@ export {
   getAdminReadModel,
   getAdminSummary,
   getPublicReadModel,
+  normalizeRecipients,
+  setRecipients,
 } from "./service.js";
 
 export {

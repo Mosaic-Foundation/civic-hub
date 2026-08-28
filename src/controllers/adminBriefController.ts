@@ -16,6 +16,7 @@ import {
   editBrief,
   getAdminReadModel,
   getAdminSummary,
+  setRecipients,
   type BriefContentPatch,
   type BriefProcessState,
   type BriefPublicationStatus,
@@ -146,6 +147,21 @@ export async function handlePatchBrief(
       patch.image_alt = body.image_alt as string | null;
     }
 
+    // Per-review delivery selection rides the same PATCH as the content
+    // edits. setRecipients validates (labels required — the label is what
+    // the public receipt shows) and throws a user-facing message the UI
+    // renders verbatim. A 400, not a 500: it's the admin's input.
+    if (body.recipients !== undefined) {
+      try {
+        setRecipients(state, body.recipients);
+      } catch (err) {
+        res.status(400).json({
+          error: err instanceof Error ? err.message : "Invalid recipients",
+        });
+        return;
+      }
+    }
+
     const actor = getAuthUser(res).id;
     const ctx = {
       process_id: record.id,
@@ -192,9 +208,12 @@ export async function handleApproveBrief(
       return;
     }
 
-    // Recipients from the "Brief recipients" setting. Empty is allowed —
-    // the brief still publishes to the feed, just without an email.
-    const recipients = await getVoteResultsRecipients();
+    // Delivery goes to the admin's per-review selection (state.recipients,
+    // set via PATCH during review). The hub-wide "Brief recipients"
+    // setting is only the fallback for briefs whose review predates the
+    // picker. Empty is allowed either way — the brief still publishes to
+    // the feed, just without an email.
+    const fallbackRecipients = await getVoteResultsRecipients();
 
     const actor = getAuthUser(res).id;
     const ctx = {
@@ -205,7 +224,7 @@ export async function handleApproveBrief(
     };
 
     await approveBrief(state, actor, ctx, {
-      recipients,
+      fallbackRecipients,
       hubLabel: HUB_LABEL,
       publicBriefUrl: publicBriefUrl(record.id),
       sendEmail,

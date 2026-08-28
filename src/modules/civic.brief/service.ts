@@ -12,6 +12,7 @@ import type {
   BriefContentPatch,
   BriefProcessContext,
   BriefProcessState,
+  BriefRecipient,
   CreateBriefInput,
   FinalizeSourceFn,
   SendEmailFn,
@@ -134,6 +135,73 @@ function sanitizeImage(
   return { image_url: url, image_alt: alt.length > 0 ? alt : null };
 }
 
+/** Generous shape check — catches pastes that aren't addresses, nothing
+ *  more. Real validation is the send itself. */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export const RECIPIENT_LABEL_MAX = 120;
+
+/**
+ * Validate and normalize an admin-selected recipient list. Throws with a
+ * user-facing message on bad input; the admin UI shows it verbatim.
+ *
+ * The LABEL is required on every recipient: it is the only part the
+ * published page shows, and defaulting it from the email would leak the
+ * address onto a permanent public record the moment someone forgot to
+ * fill it in. Refusing loudly here is what makes that impossible.
+ */
+export function normalizeRecipients(raw: unknown): BriefRecipient[] {
+  if (!Array.isArray(raw)) {
+    throw new Error("Recipients must be a list of { email, label }.");
+  }
+  const seen = new Set<string>();
+  const out: BriefRecipient[] = [];
+  for (const entry of raw) {
+    const e = (entry ?? {}) as { email?: unknown; label?: unknown };
+    const email = typeof e.email === "string" ? e.email.trim() : "";
+    const label = typeof e.label === "string" ? e.label.trim() : "";
+    if (email.length === 0 && label.length === 0) continue; // blank row
+    if (!EMAIL_SHAPE.test(email)) {
+      throw new Error(`"${email || "(empty)"}" is not a valid email address.`);
+    }
+    if (label.length === 0) {
+      throw new Error(
+        `Recipient ${email} needs a display label — it is what the ` +
+          `published brief shows in place of the address.`,
+      );
+    }
+    if (label.length > RECIPIENT_LABEL_MAX) {
+      throw new Error(
+        `Recipient labels must be ${RECIPIENT_LABEL_MAX} characters or fewer.`,
+      );
+    }
+    const key = email.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ email, label });
+  }
+  return out;
+}
+
+/**
+ * Replace the brief's per-review recipient selection. Pending-only, like
+ * every other review edit — once approved, the delivery already happened
+ * and the selection is history (`delivered_to` / `delivered_to_labels`).
+ */
+export function setRecipients(
+  state: BriefProcessState,
+  raw: unknown,
+): BriefRecipient[] {
+  if (!canEdit(state)) {
+    throw new Error(
+      `Recipients cannot be changed: publication_status is "${state.publication_status}"`,
+    );
+  }
+  const recipients = normalizeRecipients(raw);
+  state.recipients = recipients;
+  return recipients;
+}
+
 function sanitizeList(items: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -153,11 +221,19 @@ function sanitizeList(items: string[]): string[] {
  *
  *   1. publication_status = approved, approved_at = now
  *   2. deliver email (HALT on failure)
- *   3. record delivered_to
+ *   3. record delivered_to / delivered_at / delivered_to_labels
  *   4. emit outcome_recorded
  *   5. publication_status = published, published_at = now
  *   6. emit result_published (the feed-worthy event)
  *   7. finalize the source process (mark it finalized)
+ *
+ * WHO gets the email: the admin's per-review selection
+ * (`state.recipients`) when one was made — including an explicit empty
+ * selection, which means "publish with no delivery". Only a brief whose
+ * review predates the picker (`recipients === undefined`) falls back to
+ * `deps.fallbackRecipients` (the hub-wide setting), and that legacy path
+ * records no labels, so the public receipt keeps its governing-body
+ * wording instead of naming anyone.
  *
  * Unlike vote_results, delivery recipients being empty is NOT fatal: a
  * conversation/project brief may be published to the feed without an
@@ -168,7 +244,9 @@ export async function approveBrief(
   actor: string,
   ctx: BriefProcessContext,
   deps: {
-    recipients: string[];
+    /** Hub-wide "Brief recipients" setting — used ONLY when the admin
+     *  never touched the per-brief selection. */
+    fallbackRecipients: string[];
     hubLabel: string;
     publicBriefUrl: string;
     sendEmail: SendEmailFn;
@@ -181,25 +259,33 @@ export async function approveBrief(
     );
   }
 
+  const selected = state.recipients;
+  const toEmails =
+    selected !== undefined ? selected.map((r) => r.email) : deps.fallbackRecipients;
+  const toLabels = selected !== undefined ? selected.map((r) => r.label) : [];
+
   // Step 1: approved
   assertPublicationTransition(state.publication_status, "approved");
   state.publication_status = "approved";
   state.approved_at = new Date().toISOString();
 
   // Step 2: deliver email (only if recipients configured; halt on failure)
-  if (deps.recipients.length > 0) {
+  if (toEmails.length > 0) {
     const email = formatBriefEmail(state, {
       hubLabel: deps.hubLabel,
       publicUrl: deps.publicBriefUrl,
     });
     await deps.sendEmail({
-      to: deps.recipients,
+      to: toEmails,
       subject: email.subject,
       html: email.html,
       text: email.text,
     });
-    // Step 3: record recipients
-    state.delivered_to = [...deps.recipients];
+    // Step 3: record the delivery — emails server-side, labels for the
+    // public receipt, and the actual send time.
+    state.delivered_to = [...toEmails];
+    state.delivered_at = new Date().toISOString();
+    state.delivered_to_labels = [...toLabels];
   }
 
   // Step 4: outcome recorded
@@ -248,6 +334,9 @@ export function getAdminReadModel(
     published_at: state.published_at,
     content: state.content,
     delivered_to: state.delivered_to,
+    recipients: state.recipients ?? null,
+    delivered_at: state.delivered_at ?? null,
+    delivered_to_labels: state.delivered_to_labels ?? [],
     created_at: processMeta.createdAt,
     created_by: processMeta.createdBy,
   };
@@ -275,6 +364,11 @@ export function getPublicReadModel(
     image_url: state.content.image_url ?? null,
     image_alt: state.content.image_alt ?? null,
     delivered_recipient_count: state.delivered_to.length,
+    // The receipt the page renders: display labels and the send time.
+    // NEVER the emails — `delivered_to` stays out of this model. Legacy
+    // deliveries (no labels recorded) keep the governing-body wording.
+    sent_to: state.delivered_to_labels ?? [],
+    delivered_at: state.delivered_at ?? null,
     approved_at: state.approved_at,
     generated_at: state.generated_at,
     published_at: state.published_at,

@@ -68,6 +68,19 @@ export interface BriefContent {
 }
 
 /**
+ * One delivery recipient, as selected by the admin during brief review.
+ *
+ * TWO halves with different audiences: `email` is where the brief is
+ * sent and stays SERVER-SIDE forever; `label` is the public-safe display
+ * string ("Jane Doe, Board of Supervisors") the published page shows in
+ * its "Sent to …" receipt. No read model may ever surface the email.
+ */
+export interface BriefRecipient {
+  email: string;
+  label: string;
+}
+
+/**
  * Shape of Process.state for a civic.brief process.
  *
  * The process-level `status` tracks the lifecycle state machine; the
@@ -89,6 +102,21 @@ export interface BriefProcessState {
   published_at: string | null;
   content: BriefContent;
   delivered_to: string[]; // email recipients recorded on approval
+  /**
+   * Recipients the admin selected during review (per-brief; editable
+   * while pending). Three states, three meanings on approval:
+   *   undefined — never touched: fall back to the hub-wide "Brief
+   *               recipients" setting (pre-picker briefs keep working)
+   *   []        — explicitly cleared: publish with NO email delivery
+   *   non-empty — deliver to exactly these
+   */
+  recipients?: BriefRecipient[];
+  /** When the delivery email was actually sent (null when none was). */
+  delivered_at?: string | null;
+  /** Public-safe labels snapshotted at send time — what the published
+   *  page's "Sent to …" receipt renders. Empty for legacy/fallback
+   *  deliveries, which keep the governing-body receipt line. */
+  delivered_to_labels?: string[];
 }
 
 /**

@@ -4,6 +4,65 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Per-brief delivery recipients + public "Sent to" receipt — 2026-08-28
+
+**Built, not pushed. No migration** (brief state is JSONB). Replaces the
+automated hub-wide delivery with an explicit choice made during review:
+selecting who receives the brief is now part of the admin's review, and the
+published page says to whom it was sent and when.
+
+**The two-halves rule (the load-bearing decision):** each recipient is
+`{ email, label }`. The EMAIL is where the brief is sent and stays
+server-side forever; the LABEL ("Jane Doe, Board of Supervisors") is the
+only half any public read model carries. `normalizeRecipients` REFUSES a
+labelless recipient rather than defaulting the label from the email —
+refusal is what makes leaking an address onto a permanent public record
+impossible, not convention. Unit tests assert the public model never
+contains an email string.
+
+**Three states of `state.recipients`, three meanings at approval:**
+`undefined` (review predates the picker) → fall back to the hub-wide
+"Brief recipients" setting, recording NO labels so the public receipt keeps
+its old "Delivered to the Board of Supervisors on [date]" wording;
+`[]` (admin explicitly cleared) → publish with no email at all — the
+fallback does NOT resurrect delivery; non-empty → deliver to exactly
+those, recording `delivered_to` (emails, server-side), `delivered_at`
+(actual send time), and `delivered_to_labels` (public). Selection is
+editable only while pending, like every other review edit.
+
+**Admin review UI (`AdminBriefs.tsx`):** a "Delivery recipients" section —
+rows of email + display label, quick-add buttons for every officials-roster
+member (label auto-built as "Name, Title"), free-form add-by-email, and the
+hub-wide setting as the prefill for untouched briefs (roster-matched emails
+get labels; unmatched ones get an empty label the save refuses until
+filled). The approve confirmation states exactly how many recipients will
+be emailed, or that none will.
+
+**Public page (`Brief.tsx`):** "Sent to Jane Doe, Board of Supervisors and
+Sam Lee, Town Council on August 28, 2026 at 2:14 PM." (labels joined as a
+sentence, `delivered_at` timestamp). Legacy briefs keep the governing-body
+line.
+
+| Piece | File |
+|---|---|
+| Types (`BriefRecipient`, state fields) | `src/modules/civic.brief/models.ts` |
+| `normalizeRecipients` / `setRecipients` / approve resolution | `src/modules/civic.brief/service.ts` |
+| PATCH accepts `recipients`; approve uses per-brief selection | `src/controllers/adminBriefController.ts` |
+| Picker UI + delivered receipt | `ui/src/pages/AdminBriefs.tsx` (+ `AdminVoteResults.css`) |
+| Public receipt | `ui/src/pages/Brief.tsx` |
+| Tests | `tests/unit/briefRecipients.test.ts` (14); `briefLifecycle.test.ts` updated to `fallbackRecipients` |
+
+Verification: `tsc -b` clean (backend + ui), **554 unit tests pass** (37
+files). Dev `GET /brief/:id` confirmed to carry `sent_to`/`delivered_at`
+and to omit `delivered_to` entirely. Not yet exercised: a full admin
+review → approve round-trip with the picker (needs an admin session).
+
+Deferred: the hub-wide "Brief recipients" setting is now only a prefill +
+legacy fallback — once every in-flight pending brief has been reviewed
+with the picker, it could be retired or relabeled "Default recipients".
+
+---
+
 ## Official responses to Civic Briefs — 2026-08-27
 
 **Built, not pushed. HAS A MIGRATION — apply before push** (see Deploy order

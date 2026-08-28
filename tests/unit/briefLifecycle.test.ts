@@ -133,7 +133,7 @@ describe("civic.brief — approveBrief orchestration", () => {
     const finalizeSource = vi.fn(async () => undefined);
 
     await approveBrief(state, "admin", ctx, {
-      recipients: ["board@example.com"],
+      fallbackRecipients: ["board@example.com"],
       hubLabel: "Test Hub",
       publicBriefUrl: "https://hub/brief/brief_1",
       sendEmail,
@@ -162,7 +162,7 @@ describe("civic.brief — approveBrief orchestration", () => {
     const finalizeSource = vi.fn(async () => undefined);
 
     await approveBrief(state, "admin", ctx, {
-      recipients: [],
+      fallbackRecipients: [],
       hubLabel: "Test Hub",
       publicBriefUrl: "https://hub/brief/proj_1",
       sendEmail,
@@ -184,7 +184,7 @@ describe("civic.brief — approveBrief orchestration", () => {
     state.publication_status = "published";
     await expect(
       approveBrief(state, "admin", ctx, {
-        recipients: [],
+        fallbackRecipients: [],
         hubLabel: "H",
         publicBriefUrl: "u",
         sendEmail: vi.fn(async () => undefined),

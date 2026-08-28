@@ -24,6 +24,13 @@ const SOURCE_NOUN: Record<string, string> = {
   "civic.project": "project",
 };
 
+/** "A" / "A and B" / "A, B, and C" — the receipt reads as a sentence. */
+function joinNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+}
+
 /**
  * Public Brief page — the permanent public record of a completed process.
  * Renders the outcome headline, summary, outcome sections, participation,
@@ -126,7 +133,19 @@ export default function BriefPage() {
 
       <p className="vote-results-headline">{brief.headline}</p>
 
-      {brief.delivered_recipient_count > 0 && brief.approved_at && (
+      {/* Delivery receipt. Briefs whose review selected named recipients
+          show WHO (their public display labels — never emails) and WHEN
+          (the actual send time). Legacy deliveries recorded no labels and
+          keep the governing-body wording. */}
+      {brief.sent_to.length > 0 && brief.delivered_at ? (
+        <p className="vote-results-delivery">
+          Sent to {joinNames(brief.sent_to)} on{" "}
+          <time dateTime={brief.delivered_at}>
+            {absoluteTime(brief.delivered_at)}
+          </time>
+          .
+        </p>
+      ) : brief.delivered_recipient_count > 0 && brief.approved_at ? (
         <p className="vote-results-delivery">
           Delivered to the {hub.governing_body_name} on{" "}
           {new Date(brief.approved_at).toLocaleDateString(undefined, {
@@ -136,7 +155,7 @@ export default function BriefPage() {
           })}
           .
         </p>
-      )}
+      ) : null}
 
       {/* Response status — a neutral invitation, not a callout. "Awaiting"
           states a fact and what will appear; it names no one and sets no
