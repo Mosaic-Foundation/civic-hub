@@ -22,11 +22,11 @@
   white-space: nowrap;
 }
 
-/* Awaiting is deliberately muted — an open door, not a demand. */
+/* Awaiting wears the brief's own dark-blue palette — visible without
+   reading as an alarm; the invitation copy beside it does the framing. */
 .brief-response-status--awaiting {
-  background: var(--color-surface, #f1f2f4);
-  color: var(--color-text-muted, #5b6470);
-  border: 1px solid var(--color-border, #d8dce1);
+  background: var(--pill-brief-bg, #dce5f2);
+  color: var(--pill-brief-fg, #1f3a66);
 }
 
 /* Responded shares the feed's official-response gold. */
