@@ -288,10 +288,11 @@ export async function regenerateSummary(req: Request, res: Response): Promise<vo
 
 export async function listDeliberations(_req: Request, res: Response): Promise<void> {
   try {
-    const all = await processService.getAllProcesses();
-    const deliberations = all.filter(
-      (p) => p.definition.type === "civic.polis_deliberation",
-    );
+    // Type-filtered in SQL — this list was fetching every process's full
+    // state JSONB to keep five conversations (perf pass, 2026-08-28).
+    const deliberations = await processService.getAllProcesses([
+      "civic.polis_deliberation",
+    ]);
     const handler = (await import("../processes/registry.js")).getProcessHandler(
       "civic.polis_deliberation",
     );

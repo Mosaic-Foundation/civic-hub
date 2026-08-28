@@ -24,11 +24,59 @@ function getStoredToken(): string | null {
   }
 }
 
+// --- Short-lived GET cache (perf pass, 2026-08-28) --------------------------
+//
+// Tab-switching refetched everything from scratch (auth/me + the full
+// list for the page), so every navigation cost 2-4 API roundtrips before
+// anything rendered. This caches ONLY the allowlisted list/identity GETs
+// below, in memory, for 30 seconds — long enough to make tab hops
+// instant, short enough that a colleague's new post appears on the next
+// natural refresh.
+//
+// Correctness guards, in order of importance:
+//   - ANY non-GET request clears the whole cache, so your own mutation
+//     is never hidden behind a stale list (post a proposal → the list
+//     refetches fresh).
+//   - The allowlist holds only list/identity endpoints. Per-actor detail
+//     reads (/process/:id/state carries your_current_vote etc.) are
+//     deliberately NOT cacheable.
+//   - Keyed by path + auth token, so sign-in/out never serves the other
+//     identity's payload.
+//   - In-memory module state: a hard reload starts empty.
+const CACHE_TTL_MS = 30_000;
+const CACHEABLE_PATHS = new Set([
+  "/feed",
+  "/process",
+  "/proposals",
+  "/projects",
+  "/deliberations",
+  "/brief",
+  "/auth/me",
+  "/notifications/reviews/count",
+]);
+const getCache = new Map<string, { at: number; data: unknown }>();
+
+function isCacheable(method: string, path: string): boolean {
+  if (method !== "GET") return false;
+  return CACHEABLE_PATHS.has(path.split("?")[0]!);
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = getStoredToken();
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  if (method !== "GET") {
+    getCache.clear();
+  }
+  const cacheKey = `${path}|${token ?? ""}`;
+  if (isCacheable(method, path)) {
+    const hit = getCache.get(cacheKey);
+    if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+      return hit.data as T;
+    }
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
@@ -48,7 +96,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     throw new Error(err.error ?? `Request failed: ${res.status}`);
   }
 
-  return res.json();
+  const data = await res.json();
+  if (isCacheable(method, path)) {
+    getCache.set(cacheKey, { at: Date.now(), data });
+  }
+  return data;
 }
 
 // --- Structured content types ---
@@ -216,7 +268,12 @@ export interface ProposalState {
 
 export type ProcessState = VoteState | ProposalState;
 
-export function listProcesses(): Promise<ProcessSummary[]> {
+export function listProcesses(types?: string[]): Promise<ProcessSummary[]> {
+  if (types && types.length > 0) {
+    const qs = new URLSearchParams();
+    for (const t of types) qs.append("type", t);
+    return request("GET", `/process?${qs.toString()}`);
+  }
   return request("GET", "/process");
 }
 

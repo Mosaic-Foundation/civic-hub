@@ -159,11 +159,17 @@ export async function handleProcessAction(
 // --- Read layer for UI consumption ---
 
 export async function handleListProcesses(
-  _req: Request,
+  req: Request,
   res: Response,
 ): Promise<void> {
   try {
-    const all = await listProcessSummaries();
+    // Optional ?type= filter (repeatable) — lets single-type consumers
+    // (the Votes tab) skip fetching every other type's full state JSONB.
+    const raw = req.query.type;
+    const types = (Array.isArray(raw) ? raw : raw ? [raw] : []).filter(
+      (t): t is string => typeof t === "string" && t.length > 0,
+    );
+    const all = await listProcessSummaries(types.length > 0 ? types : undefined);
     // Public list: hide vote-results, briefs, and meeting summaries that
     // aren't yet published. Pending / approved records are admin-facing and
     // must not be visible to the public before approval.

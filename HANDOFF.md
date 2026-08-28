@@ -4,6 +4,67 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Feed borders go dark + performance pass — 2026-08-28 (night)
+
+**Built, not pushed. No migration.** Two asks from Adam after the deploy:
+the site read "pastely", and the feed/Conversations felt slow to load.
+
+**The pastel offender was the feed's top borders.** List-card edges were
+already the dark `--type-*-fg` halves; the feed cards' 4px top border was
+still painted with the pastel pill BACKGROUNDS, keyed by the retired
+kind classes with pre-palette hexes (old lavender, old teal — half the
+rules matched no emitted class). Now `feed-post--type-<color>` +
+`--type-*-fg`, same dark accents as everywhere else. Computed-style
+verified (proposal #5f4b8b, official-response gold).
+
+**Performance findings (measured):** prod API ≈ 220–260ms/call warm; the
+page shell is fast (350ms) — the cost was request COUNT and shape:
+1. Feed = N+1 waterfall (1 `/feed` + ~15 per-process `/state`) behind a
+   blanket "wait for metadata" render gate → cards 1–2s late.
+2. Eight of those calls were guaranteed 404s (resident proposals aren't
+   processes; `/process/prop_*/state` failed every load).
+3. Conversations fetched EVERY process row (full state JSONB, ~1.4MB
+   table) to keep 5.
+4. `/auth/me` made 3 stacked officials-tier lookups (~500ms dev).
+5. No client caching between tab switches.
+6. Cold starts (single Vercel function) add 1–3s on first hit — untouched.
+
+**Fixes shipped:**
+- **Feed render gate narrowed** to `TITLE_NEEDS_META` kinds (vote-open,
+  vote-results, wordcloud, conversation-results, proposal-closed,
+  project-updated) — every other kind paints on the first frame from the
+  event payload and hydrates engagement/images as fetches land.
+- **Proposal kinds no longer fetch** (`Promise.resolve({})`) — the 404s
+  are gone. Feed load measured: 18 → 9 API calls, `/state` 15 → 6.
+- **`getAllProcesses(types?)`** — SQL `.in("type", …)` filter;
+  `listDeliberations` passes `["civic.polis_deliberation"]`, and
+  `GET /process?type=` (repeatable) lets the Votes tab fetch only
+  `civic.vote`. `listProcessSummaries(types?)` threads it through.
+- **`/auth/me` officials tiers now query in parallel**
+  (`resolveOfficialParts` in middleware/auth.ts) — one roundtrip instead
+  of three; tier PRECEDENCE is applied after the fact so semantics are
+  unchanged (managed wins; legacy dies at the migration latch), and the
+  legacy row is reused for the display name (was a 4th query). Two
+  authOfficial tests updated: they asserted later tiers were never
+  CALLED; the contract is that their answers LOSE.
+- **30s in-memory GET cache** in the UI's `request()` for allowlisted
+  list/identity paths only (`/feed`, `/process`, `/proposals`,
+  `/projects`, `/deliberations`, `/brief`, `/auth/me`, reviews count).
+  Keyed by path+token; ANY non-GET clears the whole cache so your own
+  mutation is never hidden behind a stale list. Per-actor detail reads
+  (`/process/:id/state`) are deliberately not cacheable.
+
+**Not done (candidates if still slow):** slimming the `select("*")`
+column set (summaries need the state JSONB today — handlers' getSummary
+reads it), a batch `/process/summaries?ids=` endpoint for the feed's
+remaining 6 calls, and a keep-warm ping for the Vercel function.
+
+Verification: tsc -b clean both sides, 557 unit tests pass,
+browser-measured before/after on dev, Conversations renders 3 cards via
+the SQL-filtered path.
+
+---
+
 ## Cosmetic consolidation, finished and PUSHED — 2026-08-28 (evening)
 
 **Pushed to `origin/main` by Adam; Vercel auto-deploy from `8213d34`.**

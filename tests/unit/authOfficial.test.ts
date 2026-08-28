@@ -110,9 +110,11 @@ describe("resolveOfficial — the fallback chain", () => {
   it("prefers the managed role on the user row", async () => {
     mocks.lookupOfficialByEmail.mockResolvedValue(BOARD);
     mocks.lookupAuthor.mockResolvedValue({ email: "x", label: "Stale Label" });
+    // 2026-08-28 perf pass: the tiers are now QUERIED in parallel (one
+    // roundtrip instead of three stacked), so the legacy lookup does
+    // fire — the contract is that its answer LOSES to the managed row,
+    // not that it is never asked.
     expect(await resolveOfficial("sup@floyd.gov")).toEqual(BOARD);
-    // The legacy list is not even consulted once the row answers.
-    expect(mocks.lookupAuthor).not.toHaveBeenCalled();
   });
 
   it("falls back to the legacy list before migration, inferring the type", async () => {
@@ -147,8 +149,9 @@ describe("resolveOfficial — the fallback chain", () => {
       email: "gone@floyd.gov",
       label: "Board member",
     });
+    // The lookup itself fires (parallel tiers, 2026-08-28) — what the
+    // latch guarantees is that its answer is DISCARDED once migrated.
     expect(await resolveOfficial("gone@floyd.gov")).toBeNull();
-    expect(mocks.lookupAuthor).not.toHaveBeenCalled();
   });
 
   it("a demoted admin+official drops to plain Admin, not to nothing", async () => {

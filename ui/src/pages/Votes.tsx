@@ -57,7 +57,7 @@ export default function Votes() {
   }
 
   useEffect(() => {
-    listProcesses()
+    listProcesses(["civic.vote"])
       .then(setProcesses)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));

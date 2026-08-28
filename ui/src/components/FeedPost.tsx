@@ -357,7 +357,7 @@ export default function FeedPost({ post }: Props) {
   const isWideViewport = useIsWideViewport();
   const pillClass = `feed-pill feed-pill--type-${post.pillColor}`;
   const hasImage = Boolean(post.imageUrl);
-  const articleClass = `feed-post feed-post--${post.pillKind}${
+  const articleClass = `feed-post feed-post--type-${post.pillColor}${
     hasImage ? " has-image" : ""
   }`;
 

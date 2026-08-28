@@ -205,11 +205,11 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
           break;
         case "proposal":
         case "proposal-closed":
-          // Title/description served by the canonical processes-row read model.
-          lookup = getProcessState(id).then((state) => ({
-            title: state.title as string | undefined,
-            description: state.description as string | undefined,
-          }));
+          // No fetch: resident proposals (prop_*) are not processes, so
+          // /process/:id/state 404'd on every load — eight wasted
+          // requests per feed (perf pass, 2026-08-28). The card renders
+          // fully from the event payload (data.proposal.title).
+          lookup = Promise.resolve({});
           break;
         case "conversation":
         case "conversation-results":
@@ -291,9 +291,21 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
       // removed by a moderator. The lookup loop above populates
       // removedProcessIds; this is the second half of the filter.
       if (ev.process_id && removedProcessIds.has(ev.process_id)) continue;
-      // Wait for metadata before rendering — prevents "Untitled vote"
-      // flash while process title is still loading.
-      if (ev.process_id && !(ev.process_id in processMeta)) continue;
+      // Render gate (narrowed in the 2026-08-28 perf pass): only kinds
+      // whose TITLE must be fetched still wait for metadata — everything
+      // else carries its title in the event payload and paints on the
+      // first frame, with engagement counts/images hydrating in as the
+      // lazy fetches land. The old blanket gate held EVERY card back a
+      // full extra roundtrip (1-2s on prod).
+      const kind = classifyActivity(ev)?.kind;
+      if (
+        ev.process_id &&
+        kind !== undefined &&
+        TITLE_NEEDS_META.has(kind) &&
+        !(ev.process_id in processMeta)
+      ) {
+        continue;
+      }
       const post = eventToPost(ev, getDescription, getTitle);
       if (!post) continue;
       const meta = processMeta[ev.process_id];
@@ -386,6 +398,20 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
     </section>
   );
 }
+
+/**
+ * Kinds whose card title comes from the fetched read model rather than
+ * the event payload — these still wait for metadata so they never flash
+ * "Untitled vote". Everything else renders immediately.
+ */
+const TITLE_NEEDS_META: ReadonlySet<ActivityKind> = new Set([
+  "vote-open",
+  "vote-results",
+  "wordcloud",
+  "conversation-results",
+  "proposal-closed",
+  "project-updated",
+] as ActivityKind[]);
 
 /**
  * Slice 10 — compose the per-card engagement / metadata line from the

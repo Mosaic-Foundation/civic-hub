@@ -75,18 +75,38 @@ export function isAdminEmail(email: string | undefined | null): boolean {
 export async function resolveOfficial(
   email: string | undefined | null,
 ): Promise<OfficialIdentity | null> {
-  if (!email) return null;
+  return (await resolveOfficialParts(email)).official;
+}
 
-  const managed = await lookupOfficialByEmail(email);
-  if (managed) return managed;
+/**
+ * The three tier lookups, fired IN PARALLEL (perf pass 2026-08-28: they
+ * ran sequentially, and /auth/me — which sits on every page mount — was
+ * paying three stacked Supabase roundtrips, ~500ms on dev). The tier
+ * PRECEDENCE is applied after the fact, so the semantics are unchanged:
+ * managed wins; the legacy list counts only until officials_migrated.
+ * The wasted queries when an earlier tier hits are cheap point reads.
+ */
+async function resolveOfficialParts(
+  email: string | undefined | null,
+): Promise<{
+  official: OfficialIdentity | null;
+  /** The legacy list row, for the admin-curated display name. */
+  legacy: { label: string; name?: string | null } | null;
+}> {
+  if (!email) return { official: null, legacy: null };
 
-  if (await areOfficialsMigrated()) return null;
+  const [managed, migrated, legacy] = await Promise.all([
+    lookupOfficialByEmail(email),
+    areOfficialsMigrated(),
+    lookupAuthor(email),
+  ]);
 
-  const legacy = await lookupAuthor(email);
-  if (legacy) {
-    return toOfficialIdentity(inferOfficialType(legacy.label), legacy.label);
-  }
-  return null;
+  if (managed) return { official: managed, legacy: null };
+  if (migrated || !legacy) return { official: null, legacy: null };
+  return {
+    official: toOfficialIdentity(inferOfficialType(legacy.label), legacy.label),
+    legacy,
+  };
 }
 
 /**
@@ -135,13 +155,14 @@ export async function resolveAuthorship(
   if (!email) return null;
 
   const isAdmin = isAdminEmail(email);
-  const official = await resolveOfficial(email);
+  const { official, legacy } = await resolveOfficialParts(email);
   if (!isAdmin && !official) return null;
 
   // Legacy list may carry an admin-curated display name; the managed
   // role writes that straight to users.display_name instead, so this is
-  // only consulted while the legacy tier is still live.
-  const legacyName = official && !isAdmin ? (await lookupAuthor(email))?.name ?? null : null;
+  // only consulted while the legacy tier is still live. Reuses the row
+  // the parallel lookup already fetched — previously a second roundtrip.
+  const legacyName = official && !isAdmin ? legacy?.name ?? null : null;
 
   return {
     isAdmin,

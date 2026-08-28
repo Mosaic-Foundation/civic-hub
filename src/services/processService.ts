@@ -200,12 +200,24 @@ export async function getProcess(id: string): Promise<Process | undefined> {
   return rowToProcess(data as ProcessRow);
 }
 
-export async function getAllProcesses(): Promise<Process[]> {
-  const { data, error } = await getDb()
+/**
+ * All public processes — optionally narrowed to specific process TYPES,
+ * in SQL. Pass `types` whenever the caller only wants one kind: the
+ * processes table carries every process's full state JSONB (vote
+ * tallies, brief content, …), so "fetch everything and filter in JS"
+ * ships the whole table over the wire to render a handful of summaries
+ * (the Conversations tab was pulling all 144 rows to show 5 — perf
+ * pass, 2026-08-28).
+ */
+export async function getAllProcesses(types?: string[]): Promise<Process[]> {
+  let q = getDb()
     .from("processes")
     .select("*")
-    .not("status", "in", nonPublicStatusFilter())
-    .order("created_at", { ascending: false });
+    .not("status", "in", nonPublicStatusFilter());
+  if (types && types.length > 0) {
+    q = q.in("type", types);
+  }
+  const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw new Error(`ProcessService: ${error.message}`);
   return (data ?? []).map((r) => rowToProcess(r as ProcessRow));
 }
@@ -338,8 +350,10 @@ async function autoCloseIfExpired(process: Process): Promise<Process> {
 
 // --- UI read layer ---------------------------------------------------------
 
-export async function listProcessSummaries(): Promise<Record<string, unknown>[]> {
-  const all = await getAllProcesses();
+export async function listProcessSummaries(
+  types?: string[],
+): Promise<Record<string, unknown>[]> {
+  const all = await getAllProcesses(types);
   // Lazily close any process whose deadline has elapsed before summarizing.
   const resolved = await Promise.all(all.map(autoCloseIfExpired));
   const summaries = resolved.map((p) => {
