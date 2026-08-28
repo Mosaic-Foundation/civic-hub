@@ -38,7 +38,17 @@ export default function ProposalDetail() {
   const fetchProposal = useCallback(() => {
     if (!id) return;
     getCivicProposal(id)
-      .then(setProposal)
+      .then((p) => {
+        setProposal(p);
+        // Clear any earlier failure. Without this a single transient error —
+        // a cold start, a request caught mid-deploy — stayed pinned to the
+        // page forever: every later refetch succeeded and repopulated the
+        // proposal, but nothing ever reset `error`, so the page rendered live
+        // data with a stale "Proposal not found" beside it. React Router does
+        // not remount on client-side navigation, so only a hard reload cleared
+        // it.
+        setError(null);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [id, currentActor]);
