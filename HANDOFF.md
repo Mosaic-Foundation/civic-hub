@@ -4,9 +4,60 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Cosmetic consolidation, finished and PUSHED — 2026-08-28 (evening)
+
+**Pushed to `origin/main` by Adam; Vercel auto-deploy from `8213d34`.**
+The whole 08-28 design batch (color architecture → palette → vocabulary →
+cards → polish) is live. No migrations in the batch. Three pieces landed
+after the entries below were written:
+
+**Proposal purple muted; lifecycle pills are neutral-with-a-dot
+(`21b8a30`).** The vivid Material violet (#5e35b1) became a dusty plum
+(**#5f4b8b** on #eae7f0) — token, card-accent fallback, and digest hex
+together. And the OPEN/CLOSED status badges dropped their solid
+green/red washes for a **neutral pill + small colored dot** (green =
+live, amber = gathering, gray = done): the card edge now carries the
+identity color, and a second saturated block clashed differently against
+every type hue. **Closed is deliberately no longer red** — a finished
+process is not an error. Adam's read: the green dot reads as a green
+light. This restyle is what the statusDisplay variants (`status-live` /
+`status-phase` / `status-done`, entry below) render into.
+
+**Outcomes rows now render the LITERAL shared card (`1a4f4d8`).**
+Supersedes the "metrics mirror App.css" approach in the entry below —
+mirroring by hand is how the page drifted twice (unbolded span titles,
+different fonts). `OutcomeRow` now emits the same
+`.process-card` / `.process-card-header` (real `<h3>`) /
+`.process-card-meta` classes the four list pages use, with the source
+type's `--type-*-fg` passed inline as `--card-accent`; all card-shaped
+CSS was deleted from Outcomes.css so there is nothing left to drift.
+Computed-style verified identical to a list card (16.8px/600 Libre
+Franklin title, 14px radius, 4px accent edge).
+
+**Sticky filter seam closed (`8213d34`).** The filter bars pinned at
+`--nav-h + --tabs-h` = 106px but the tab strip actually ends at 105
+(`--tabs-h` said 45, renders 44) — a 1px see-through sliver while
+scrolling. Variable corrected AND both bars (`.votes-filter`,
+`.feed-filter`) pin 2px higher to tuck under the opaque tab strip
+(z-90 over z-89), so no zoom rounding can reopen it. Also hoisted the
+Proposals/Projects StatusFilter out of their first `<section>` to page
+level — inside the section it stopped sticking once the section
+scrolled past (sticky cannot outlive its parent); now matches
+Votes/Conversations.
+
+Also in the pushed batch but recorded earlier the same day: official
+responses (+ the blue Awaiting-response chip on /brief/:id, per Adam),
+per-brief delivery recipients, the process-type color architecture and
+palette, the status vocabulary, and the list-page filters.
+
+**Post-deploy check for the next session:** the first daily digest after
+this deploy (13:00 UTC cron) renders the new pill palette — eyeball one.
+
+---
+
 ## One status vocabulary + filters on every list page — 2026-08-28 (later still)
 
-**Built, not pushed. No migration.** Two more consistency passes from
+**Built; PUSHED 2026-08-28 with the design batch (evening entry above). No migration.** Two more consistency passes from
 Adam's review.
 
 **One lifecycle vocabulary
@@ -39,6 +90,9 @@ survive).
 **Outcomes rows adopt the shared card language** — 14px radius, resting
 shadow, hover lift, 4px type-colored accent edge — matching the feed
 and list cards (metrics mirror App.css's `.process-card` block).
+*Superseded the same evening:* mirrored metrics still drifted on
+typography, so the rows now render the literal shared classes — see the
+evening entry above.
 
 Verification: `tsc -b` clean, 557 unit tests pass, browser-checked:
 filter bars on all four list pages, Votes pills read
@@ -49,7 +103,7 @@ with shared labels, Outcomes cards restyled.
 
 ## Palette refresh + page cards join the type palette — 2026-08-28 (later)
 
-**Built, not pushed. No migration.** Follow-up to the entry below, after
+**Built; PUSHED 2026-08-28 with the design batch (evening entry above). No migration.** Follow-up to the entry below, after
 Adam reviewed swatch mockups. Two problems: the type palette was three
 near-identical blues (vote navy / conversation indigo / project azure), and
 the process LIST pages ran a second, older card-accent palette (proposal
@@ -64,7 +118,8 @@ cards terracotta, project cards green) that contradicted the pills.
    gray closed. Why projects couldn't take identity-green: a green edge
    next to a green OPEN badge meaning different things.
 3. **Identity — one hue per process type** (`--type-*`), now: vote navy,
-   proposal purple, **conversation TEAL** (#ddefef/#0f5e66 — left indigo;
+   proposal purple (*muted to dusty plum #5f4b8b later the same evening*),
+   **conversation TEAL** (#ddefef/#0f5e66 — left indigo;
    kin to the design system's civic-teal), project azure, **wordcloud
    MOSS** (#edf0dd/#5c6b2a — ceded its teal to conversations; a marigold
    alternative was mocked and rejected as too close to official-response
@@ -86,7 +141,7 @@ stays terracotta, OPEN badge stays green.
 
 ## One color per process type, everywhere — 2026-08-28
 
-**Built, not pushed. No migration.** Adam's rule after seeing a proposal
+**Built; PUSHED 2026-08-28 with the design batch (evening entry above). No migration.** Adam's rule after seeing a proposal
 render three different colors: every surface colors a card, row, or pill by
 the underlying PROCESS TYPE, never by the event's lifecycle moment. "New
 proposal", "Proposal results", and the proposal's Outcomes row are all one
@@ -144,7 +199,7 @@ pills — an information-architecture change, decided separately.
 
 ## Per-brief delivery recipients + public "Sent to" receipt — 2026-08-28
 
-**Built, not pushed. No migration** (brief state is JSONB). Replaces the
+**Built; PUSHED 2026-08-28 (first batch of the day). No migration** (brief state is JSONB). Replaces the
 automated hub-wide delivery with an explicit choice made during review:
 selecting who receives the brief is now part of the admin's review, and the
 published page says to whom it was sent and when.
@@ -203,7 +258,7 @@ with the picker, it could be retired or relabeled "Default recipients".
 
 ## Official responses to Civic Briefs — 2026-08-27
 
-**Built, not pushed. HAS A MIGRATION — apply before push** (see Deploy order
+**Built; migration applied to dev AND prod, then PUSHED 2026-08-28** (see Deploy order
 below). Depends on the managed official role (2026-08-27, below): an official
 identity must exist to respond as one.
 
@@ -261,7 +316,13 @@ classifier is shared, the digest gets the same card for free (renders under
    hand in the Supabase SQL editor** (the officials-migration procedure; the
    CLI link points at prod and `db push` would replay unrecorded history — do
    not use it). Verify: `SELECT to_regclass('public.brief_responses') IS NOT
-   NULL;` → `t`. **NOT yet applied to either database as of this session.**
+   NULL;` → `t`.
+   > ✅ **DONE 2026-08-28, in order:** Adam applied it to dev (verify query
+   > returned `t`) and then prod (independently confirmed from the session:
+   > `supabase inspect db table-stats --linked` showed
+   > `public.brief_responses` present with its indexes, 0 rows). The code
+   > was pushed only after the prod table existed. The 08-22 ordering hold
+   > was honoured.
 2. Then push. Per the 08-22 incident, the migration must not trail its writer.
 
 Reads degrade against an un-migrated DB (page shows "Awaiting response",
@@ -277,11 +338,18 @@ logs a warning — verified against dev); the WRITE fails loudly on purpose.
 - Against the un-migrated dev DB: `GET /brief/:id` returns
   `response_status: "awaiting"`, `responses: []`; anonymous POST → 401;
   page renders the awaiting chip (screenshot-verified via the dev servers).
-- **Not yet exercised end-to-end:** an actual official posting (needs the
-  table + an official-role account). Do this on dev right after the dev
-  migration: sign in as a roster official, post to a published brief, confirm
-  the status flips and ONE feed card appears; post again, confirm no second
-  card and both responses on the page.
+- **Exercised end-to-end on dev (2026-08-28):** `adam@mosaic.social` was
+  designated an official (`board_of_supervisors` — written directly onto
+  the dev users row by script, since the dev roster was empty) and posted
+  a response to brief `proc_09713c46665c4297`. Verified from the session:
+  the row persisted with the office snapshot and `feed_anchor: true`,
+  exactly one `civic.process.action_taken` / `official_response` event on
+  the log, the page flipped to "Responded [date]", and ONE "Official
+  response" card appeared at the top of the feed.
+  **Still not exercised live: the 24h collapse** — no second response was
+  posted, so `feed_anchor: false` on a follow-up has only unit coverage.
+  Also added same-day (Adam): the Awaiting-response chip wears the
+  brief's blue palette instead of muted gray (`b2f8a10`).
 
 **Card copy (2026-08-28, after Adam's review):** the feed/digest card
 carries **no excerpt of the response** — a truncated quote can misrepresent
@@ -317,7 +385,7 @@ calendar bucketing would reintroduce the boundary double-post.
 
 ## Announcement publication receipts — 2026-08-27
 
-**Built, not pushed.** No migration. Follows the officials entry below.
+**Built; on `origin/main` as of 2026-08-28.** No migration. Follows the officials entry below.
 
 Every hand-authored announcement now emails a receipt to **the author and
 every address in `CIVIC_ADMIN_EMAILS`**.
@@ -392,7 +460,7 @@ Two places show a name WITHOUT the badge, both intentional-ish:
 
 ## Officials: an admin-managed role with a structured title — 2026-08-27
 
-**Built, not pushed. Migration applied to BOTH databases 2026-08-27** — prod
+**Built; on `origin/main` as of 2026-08-28. Migration applied to BOTH databases 2026-08-27** — prod
 (`nfhyypwoporfggqcerli`) and dev (`urfmvqhzmamigssqwsya`), by hand in the
 Supabase SQL editor, before the code was committed. The deploy-order constraint
 below is therefore already satisfied; it is recorded because it governs any
