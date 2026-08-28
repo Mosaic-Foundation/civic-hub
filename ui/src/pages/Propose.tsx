@@ -5,10 +5,18 @@ import {
   listCivicProposals,
   type CivicProposalSummary,
 } from "../services/api";
+import { statusDisplay } from "../components/statusDisplay";
 import HubInfo from "../components/HubInfo";
 import ProcessPicker from "../components/ProcessPicker";
 import Creator from "../components/Creator";
+import StatusFilter, { useStatusFilter } from "../components/StatusFilter";
 import "./Propose.css";
+
+const FILTER_CHOICES = [
+  { key: "all", label: "All" },
+  { key: "active", label: "Active" },
+  { key: "completed", label: "Completed" },
+] as const;
 
 /**
  * Slice B — Propose listing page. Mirrors the Votes page pattern:
@@ -44,6 +52,10 @@ export default function Propose() {
     .filter((p) => p.status !== "submitted")
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
+  const { active: filter, setActive: setFilter } = useStatusFilter(FILTER_CHOICES);
+  const showActive = filter === "all" || filter === "active";
+  const showCompleted = filter === "all" || filter === "completed";
+
   return (
     <div className="page page-home">
       <HubInfo />
@@ -71,7 +83,13 @@ export default function Propose() {
                 </button>
               )}
             </div>
-            {activeProposals.length === 0 ? (
+            <StatusFilter
+              choices={FILTER_CHOICES}
+              active={filter}
+              onChange={setFilter}
+              label="Filter proposals by status"
+            />
+            {!showActive ? null : activeProposals.length === 0 ? (
               <p className="empty-state-inline">
                 No proposals yet.
               </p>
@@ -83,7 +101,7 @@ export default function Propose() {
                       <div className="proposal-card">
                         <div className="proposal-card-header">
                           <h3>{p.title}</h3>
-                          <span className="status-badge status-open">open</span>
+                          <span className={statusDisplay("open").className}>{statusDisplay("open").label}</span>
                         </div>
                         {p.support_count > 0 && (
                           <p className="proposal-supporters">
@@ -109,7 +127,7 @@ export default function Propose() {
             )}
           </section>
 
-          {archivedProposals.length > 0 && (
+          {showCompleted && archivedProposals.length > 0 && (
             <section className="section">
               <h2 className="section-title">Past Proposals</h2>
               <ul className="process-list">
@@ -119,12 +137,8 @@ export default function Propose() {
                       <div className="proposal-card">
                         <div className="proposal-card-header">
                           <h3>{p.title}</h3>
-                          <span className={`status-badge ${
-                            p.status === "endorsed" ? "admin-status-endorsed" :
-                            p.status === "converted" ? "status-converted" :
-                            "status-archived"
-                          }`}>
-                            {p.status}
+                          <span className={statusDisplay(p.status).className}>
+                            {statusDisplay(p.status).label}
                           </span>
                         </div>
                         <div className="process-card-meta">

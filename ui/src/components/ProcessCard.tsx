@@ -1,4 +1,5 @@
 import type { VoteSummary } from "../services/api";
+import { statusDisplay } from "./statusDisplay";
 
 interface Props {
   process: VoteSummary;
@@ -11,18 +12,6 @@ function formatShortDate(iso: string): string {
   });
 }
 
-function statusLabel(status: string): string {
-  switch (status) {
-    case "draft": return "draft";
-    case "proposed": return "gathering support";
-    case "threshold_met": return "ready to activate";
-    case "active": return "active";
-    case "closed": return "closed";
-    case "finalized": return "finalized";
-    default: return status;
-  }
-}
-
 export default function ProcessCard({ process }: Props) {
   const isVotable = process.status === "active";
   const isDone = process.status === "closed" || process.status === "finalized";
@@ -32,8 +21,8 @@ export default function ProcessCard({ process }: Props) {
     <div className="process-card">
       <div className="process-card-header">
         <h3>{process.title}</h3>
-        <span className={`status-badge status-${process.status}`}>
-          {statusLabel(process.status)}
+        <span className={statusDisplay(process.status).className}>
+          {statusDisplay(process.status).label}
         </span>
       </div>
       <div className="process-card-meta">
@@ -50,7 +39,7 @@ export default function ProcessCard({ process }: Props) {
           <span>Closed {formatShortDate(process.closes_at)}</span>
         )}
         {isDone && !process.closes_at && (
-          <span>{process.status === "finalized" ? "Finalized" : "Closed"}</span>
+          <span>Completed</span>
         )}
         {process.status === "draft" && <span>Draft</span>}
       </div>

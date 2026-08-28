@@ -743,6 +743,13 @@
    keeps the at-a-glance semantic — green live, amber gathering support,
    gray finished — while the pill itself goes with every card color.
    Closed is deliberately NOT red: a finished process is not an error. */
+/* Canonical variants come from statusDisplay.ts: status-live (green
+   dot), status-phase (amber dot), status-done (gray dot). The legacy
+   per-status class names remain as aliases so any straggler render
+   still gets the neutral look rather than an unstyled chip. */
+.status-live,
+.status-phase,
+.status-done,
 .status-open,
 .status-closed,
 .status-proposed,
@@ -754,6 +761,9 @@
   color: var(--color-text-muted, #5f5e5a);
 }
 
+.status-live::before,
+.status-phase::before,
+.status-done::before,
 .status-open::before,
 .status-closed::before,
 .status-proposed::before,
@@ -767,14 +777,17 @@
   flex-shrink: 0;
 }
 
+.status-live::before,
 .status-open::before {
   background: var(--ds-color-success-500, #4a9d5c);
 }
 
+.status-done::before,
 .status-closed::before {
   background: var(--color-text-faint, #b4b2a9);
 }
 
+.status-phase::before,
 .status-proposed::before,
 .status-threshold_met::before,
 .status-submitted::before,

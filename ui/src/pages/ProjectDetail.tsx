@@ -18,6 +18,7 @@ import Creator from "../components/Creator";
 import RelatedProcesses from "../components/RelatedProcesses";
 import "./ProjectDetail.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
+import { statusDisplay } from "../components/statusDisplay";
 
 export default function ProjectDetail() {
   const navigate = useNavigate();
@@ -173,8 +174,8 @@ export default function ProjectDetail() {
           />
           <span>&middot;</span>
           <span>{new Date(project.created_at).toLocaleDateString()}</span>
-          <span className={`status-badge ${project.status === "active" ? "status-active" : "status-archived"}`}>
-            {project.status}
+          <span className={statusDisplay(project.status).className}>
+            {statusDisplay(project.status).label}
           </span>
         </div>
         {canComplete && (

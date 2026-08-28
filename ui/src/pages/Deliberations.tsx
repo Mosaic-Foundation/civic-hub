@@ -7,7 +7,15 @@ import {
 } from "../services/api";
 import HubInfo from "../components/HubInfo";
 import ProcessPicker from "../components/ProcessPicker";
+import StatusFilter, { useStatusFilter } from "../components/StatusFilter";
+import { statusDisplay } from "../components/statusDisplay";
 import "./Deliberations.css";
+
+const FILTER_CHOICES = [
+  { key: "all", label: "All" },
+  { key: "active", label: "Active" },
+  { key: "completed", label: "Completed" },
+] as const;
 
 export default function Deliberations() {
   const { user, isAdmin } = useAuth();
@@ -35,6 +43,10 @@ export default function Deliberations() {
     (p) => p.lifecycle === "closed" || p.lifecycle === "finalized",
   );
 
+  const { active: filter, setActive: setFilter } = useStatusFilter(FILTER_CHOICES);
+  const showActive = filter === "all" || filter === "active";
+  const showCompleted = filter === "all" || filter === "completed";
+
   return (
     <div className="page page-home">
       <HubInfo />
@@ -59,11 +71,18 @@ export default function Deliberations() {
         </div>
       </section>
 
+      <StatusFilter
+        choices={FILTER_CHOICES}
+        active={filter}
+        onChange={setFilter}
+        label="Filter conversations by status"
+      />
+
       {loading && <p className="section deliberations-loading">Loading...</p>}
 
       {/* Drafts are managed through the admin review flow, not shown here */}
 
-      {!loading && active.length > 0 && (
+      {!loading && showActive && active.length > 0 && (
         <section className="section">
           <h2 className="section-title">Active Conversations</h2>
           <ul className="process-list">
@@ -73,7 +92,7 @@ export default function Deliberations() {
                   <div className="deliberation-card">
                     <div className="deliberation-card-header">
                       <h3>{p.topic}</h3>
-                      <span className="status-badge status-active">active</span>
+                      <span className={statusDisplay("active").className}>{statusDisplay("active").label}</span>
                     </div>
                     {(p.participant_count ?? 0) > 0 && (
                       <p className="deliberation-card-participants">
@@ -88,7 +107,7 @@ export default function Deliberations() {
         </section>
       )}
 
-      {!loading && completed.length > 0 && (
+      {!loading && showCompleted && completed.length > 0 && (
         <section className="section">
           <h2 className="section-title">Completed</h2>
           <ul className="process-list">
@@ -98,7 +117,7 @@ export default function Deliberations() {
                   <div className="deliberation-card">
                     <div className="deliberation-card-header">
                       <h3>{p.topic}</h3>
-                      <span className="status-badge status-archived">completed</span>
+                      <span className={statusDisplay("completed").className}>{statusDisplay("completed").label}</span>
                     </div>
                     {(p.participant_count ?? 0) > 0 && (
                       <p className="deliberation-card-participants">

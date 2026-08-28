@@ -4,6 +4,49 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## One status vocabulary + filters on every list page — 2026-08-28 (later still)
+
+**Built, not pushed. No migration.** Two more consistency passes from
+Adam's review.
+
+**One lifecycle vocabulary
+(`ui/src/components/statusDisplay.ts`).** Every card type had its own
+status dialect — votes "active/closed/finalized", proposals "open" /
+"promoted", projects "active/archived", conversations "Completed". Now
+one shared mapper: a running process is **"Active"**, a finished one is
+**"Completed"**, everywhere; states carrying MORE meaning keep their
+label ("Gathering support", "Ready to activate", "Promoted to a vote",
+"Endorsed", "Archived", "Draft"). Three pill variants of the
+neutral-dot style: `status-live` (green dot), `status-phase` (amber),
+`status-done` (gray). Callers pre-translate context ("closed" on a
+civic.proposal → "promoted"); the module knows keys, not process types.
+Swept: ProcessCard, ProposalCard, Propose, Projects, ProjectDetail,
+Process, ProposalDetail, Deliberations. Legacy per-status CSS classes
+remain as neutral aliases; admin-panel chips untouched.
+**Public label rule (Adam): the deliberation process renders as
+"Conversations" to the public — "deliberation" never appears in
+user-facing text**, only in internal names.
+
+**Status filter pills on every list page
+(`ui/src/components/StatusFilter.tsx`).** Votes' `?status=` filter bar
+is now a shared component; Conversations (All/Active/Completed),
+Proposals (All/Active/Completed), and Projects (All/Active/Archived)
+each mount it with only their relevant statuses ("Proposed" stays
+Votes-only). Votes swapped onto the shared component; its "Finalized"
+label is now "Completed" (URL key `finalized` kept so bookmarks
+survive).
+
+**Outcomes rows adopt the shared card language** — 14px radius, resting
+shadow, hover lift, 4px type-colored accent edge — matching the feed
+and list cards (metrics mirror App.css's `.process-card` block).
+
+Verification: `tsc -b` clean, 557 unit tests pass, browser-checked:
+filter bars on all four list pages, Votes pills read
+All/Active/Proposed/Completed, badges emit `status-live`/`status-phase`
+with shared labels, Outcomes cards restyled.
+
+---
+
 ## Palette refresh + page cards join the type palette — 2026-08-28 (later)
 
 **Built, not pushed. No migration.** Follow-up to the entry below, after

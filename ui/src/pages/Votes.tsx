@@ -11,6 +11,7 @@ import {
 import HubInfo from "../components/HubInfo";
 import ProcessPicker from "../components/ProcessPicker";
 import ProcessCard from "../components/ProcessCard";
+import StatusFilter from "../components/StatusFilter";
 
 /**
  * Slice 12 — Votes-page filter pills mirror the home-feed pattern.
@@ -24,11 +25,13 @@ import ProcessCard from "../components/ProcessCard";
  */
 type VotesFilterKey = "all" | "active" | "proposed" | "finalized";
 
+// "finalized" stays the URL key (bookmarks survive); the LABEL is the
+// shared vocabulary's "Completed" (statusDisplay.ts).
 const FILTER_CHOICES: ReadonlyArray<{ key: VotesFilterKey; label: string }> = [
   { key: "all", label: "All" },
   { key: "active", label: "Active" },
   { key: "proposed", label: "Proposed" },
-  { key: "finalized", label: "Finalized" },
+  { key: "finalized", label: "Completed" },
 ];
 
 function isFilterKey(v: string | null): v is VotesFilterKey {
@@ -137,25 +140,12 @@ export default function Votes() {
       </section>
 
 
-      <nav className="votes-filter" aria-label="Filter votes by status">
-        <ul className="votes-filter-list">
-          {FILTER_CHOICES.map((c) => {
-            const isActive = c.key === activeFilter;
-            return (
-              <li key={c.key}>
-                <button
-                  type="button"
-                  className={`votes-filter-pill${isActive ? " is-active" : ""}`}
-                  onClick={() => setActiveFilter(c.key)}
-                  aria-pressed={isActive}
-                >
-                  {c.label}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <StatusFilter
+        choices={FILTER_CHOICES}
+        active={activeFilter}
+        onChange={(k) => setActiveFilter(k as VotesFilterKey)}
+        label="Filter votes by status"
+      />
 
       {loading && <p className="section">Loading...</p>}
       {error && <p className="section error">Failed to load: {error}</p>}

@@ -6,6 +6,14 @@ import HubInfo from "../components/HubInfo";
 import ProcessPicker from "../components/ProcessPicker";
 import Creator from "../components/Creator";
 import "./Projects.css";
+import { statusDisplay } from "../components/statusDisplay";
+import StatusFilter, { useStatusFilter } from "../components/StatusFilter";
+
+const FILTER_CHOICES = [
+  { key: "all", label: "All" },
+  { key: "active", label: "Active" },
+  { key: "archived", label: "Archived" },
+] as const;
 
 export default function Projects() {
   const { user } = useAuth();
@@ -28,6 +36,10 @@ export default function Projects() {
   const archivedProjects = projects
     .filter((p) => p.status === "archived")
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
+  const { active: filter, setActive: setFilter } = useStatusFilter(FILTER_CHOICES);
+  const showActive = filter === "all" || filter === "active";
+  const showArchived = filter === "all" || filter === "archived";
 
   return (
     <div className="page page-home">
@@ -56,7 +68,13 @@ export default function Projects() {
                 </button>
               )}
             </div>
-            {activeProjects.length === 0 ? (
+            <StatusFilter
+              choices={FILTER_CHOICES}
+              active={filter}
+              onChange={setFilter}
+              label="Filter projects by status"
+            />
+            {!showActive ? null : activeProjects.length === 0 ? (
               <p className="empty-state-inline">
                 No projects yet.
               </p>
@@ -68,7 +86,7 @@ export default function Projects() {
                       <div className="project-card">
                         <div className="project-card-header">
                           <h3>{p.title}</h3>
-                          <span className="status-badge status-active">active</span>
+                          <span className={statusDisplay("active").className}>{statusDisplay("active").label}</span>
                         </div>
                         {(p.support_count > 0 || p.oppose_count > 0) && (
                           <div className="project-sentiment-bar">
@@ -102,7 +120,7 @@ export default function Projects() {
             )}
           </section>
 
-          {archivedProjects.length > 0 && (
+          {showArchived && archivedProjects.length > 0 && (
             <section className="section">
               <h2 className="section-title">Archived Projects</h2>
               <ul className="process-list">
@@ -112,7 +130,7 @@ export default function Projects() {
                       <div className="project-card">
                         <div className="project-card-header">
                           <h3>{p.title}</h3>
-                          <span className="status-badge status-archived">archived</span>
+                          <span className={statusDisplay("archived").className}>{statusDisplay("archived").label}</span>
                         </div>
                         <div className="process-card-meta">
                           <Creator

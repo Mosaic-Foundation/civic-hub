@@ -13,6 +13,7 @@ import AuthModal from "../components/AuthModal";
 import ShareButton from "../components/ShareButton";
 import RelatedProcesses from "../components/RelatedProcesses";
 import AdminArchiveButton from "../components/AdminArchiveButton";
+import { statusDisplay } from "../components/statusDisplay";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -20,25 +21,6 @@ function formatDate(iso: string): string {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function statusLabel(status: string): string {
-  switch (status) {
-    case "draft": return "draft";
-    case "proposed": return "gathering support";
-    case "threshold_met": return "ready to activate";
-    case "active": return "active";
-    case "closed": return "closed";
-    case "finalized": return "finalized";
-    case "open": return "open";
-    default: return status;
-  }
-}
-
-function statusClass(status: string): string {
-  if (status === "proposed" || status === "threshold_met") return "status-gathering";
-  if (status === "closed") return "status-closed";
-  return `status-${status}`;
 }
 
 export default function Process() {
@@ -106,15 +88,16 @@ export default function Process() {
 
       <div className="process-header">
         <h1>{process.title}</h1>
-        {isProposal ? (
-          <span className={`status-badge ${process.status === "closed" ? "status-promoted" : "status-gathering"}`}>
-            {process.status === "closed" ? "promoted" : "gathering support"}
-          </span>
-        ) : (
-          <span className={`status-badge ${statusClass(process.status)}`}>
-            {statusLabel(process.status)}
-          </span>
-        )}
+        {(() => {
+          // A civic.proposal's "closed" means it was promoted to a vote —
+          // pre-translate before the shared vocabulary renders it.
+          const key =
+            isProposal && process.status === "closed" ? "promoted" :
+            isProposal && process.status !== "closed" ? "gathering" :
+            process.status;
+          const d = statusDisplay(key);
+          return <span className={d.className}>{d.label}</span>;
+        })()}
       </div>
 
       {/* Jurisdiction badge */}

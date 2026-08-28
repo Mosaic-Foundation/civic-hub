@@ -10,6 +10,7 @@ import CommunityInputPanel from "../components/CommunityInputPanel";
 import ProposalCommentForm from "../components/ProposalCommentForm";
 import RelatedProcesses from "../components/RelatedProcesses";
 import AdminArchiveButton from "../components/AdminArchiveButton";
+import { statusDisplay } from "../components/statusDisplay";
 
 
 function formatDate(iso: string): string {
@@ -20,27 +21,6 @@ function formatDate(iso: string): string {
   });
 }
 
-function statusLabel(status: string): string {
-  switch (status) {
-    case "submitted": return "open";
-    case "closed": return "closed";
-    case "endorsed": return "endorsed";
-    case "converted": return "converted to vote";
-    case "archived": return "archived";
-    default: return status;
-  }
-}
-
-function statusClass(status: string): string {
-  switch (status) {
-    case "submitted": return "status-open";
-    case "closed": return "status-closed";
-    case "endorsed": return "admin-status-endorsed";
-    case "converted": return "admin-status-converted";
-    case "archived": return "admin-status-archived";
-    default: return "";
-  }
-}
 
 export default function ProposalDetail() {
   const navigate = useNavigate();
@@ -101,8 +81,8 @@ export default function ProposalDetail() {
 
       <div className="process-header">
         <h1>{proposal.title}</h1>
-        <span className={`status-badge ${statusClass(proposal.status)}`}>
-          {statusLabel(proposal.status)}
+        <span className={statusDisplay(proposal.status).className}>
+          {statusDisplay(proposal.status).label}
         </span>
       </div>
 

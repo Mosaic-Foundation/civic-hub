@@ -1,4 +1,5 @@
 import type { ProposalSummary } from "../services/api";
+import { statusDisplay } from "./statusDisplay";
 
 interface Props {
   proposal: ProposalSummary;
@@ -15,11 +16,10 @@ export default function ProposalCard({ proposal }: Props) {
     <div className="proposal-card">
       <div className="proposal-card-header">
         <h3>{proposal.title}</h3>
-        {isPromoted ? (
-          <span className="status-badge status-promoted">promoted</span>
-        ) : (
-          <span className="status-badge status-gathering">gathering support</span>
-        )}
+        {(() => {
+          const d = statusDisplay(isPromoted ? "promoted" : "gathering");
+          return <span className={d.className}>{d.label}</span>;
+        })()}
       </div>
 
       {!isPromoted && (
