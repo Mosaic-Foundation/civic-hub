@@ -7,14 +7,30 @@
 import { Request, Response } from "express";
 import { getProcess } from "../services/processService.js";
 import { getDb } from "../db/client.js";
+import { emitEvent } from "../events/eventEmitter.js";
+import { getAuthUser } from "../middleware/auth.js";
+import type { OfficialIdentity } from "../shared/officialTypes.js";
 import {
   availableSourceTypes,
   availableYears,
+  emitBriefResponseAdded,
   filterIndex,
   getPublicReadModel,
+  isFeedAnchor,
+  normalizeResponseBody,
+  respondGate,
+  responseExcerpt,
+  responseStatus,
   toIndexEntry,
+  toPublicResponses,
   type BriefProcessState,
 } from "../modules/civic.brief/index.js";
+import {
+  insertResponse,
+  latestAnchorAt,
+  listResponsesForBrief,
+  responderNames,
+} from "../services/briefResponses.js";
 
 export async function handleGetBrief(
   req: Request,
@@ -36,7 +52,115 @@ export async function handleGetBrief(
       res.status(404).json({ error: "Brief not found" });
       return;
     }
-    res.json(model);
+
+    // Official responses + the page's Awaiting/Responded status. The
+    // responder's account id stays server-side; only the resolved name
+    // and the office snapshot go over the wire.
+    const records = await listResponsesForBrief(process.id);
+    const names = await responderNames(records.map((r) => r.responder_id));
+    const status = responseStatus(records);
+    res.json({
+      ...model,
+      response_status: status.status,
+      responded_at: status.responded_at,
+      responses: toPublicResponses(
+        records,
+        (rid) => names.get(rid) ?? "Official",
+      ),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: message });
+  }
+}
+
+/**
+ * POST /brief/:id/response — an official goes on the record about a
+ * published brief. Route-gated by requireOfficial (residents and plain
+ * admins 403 before reaching here); the published-only rule and body
+ * validation live in the pure respondGate/normalizeResponseBody.
+ *
+ * Append-only by design: any official may respond to any published
+ * brief, and may respond again later — a follow-up is a new row, never
+ * an edit. Every response emits its event; at most one per brief per
+ * 24h is anchored for the feed (see isFeedAnchor).
+ */
+export async function handlePostBriefResponse(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const id = req.params.id as string;
+    const official = res.locals.officialIdentity as OfficialIdentity | undefined;
+
+    const record = await getProcess(id);
+    const state =
+      record && record.definition.type === "civic.brief"
+        ? (record.state as unknown as BriefProcessState)
+        : null;
+
+    const gate = respondGate(official ?? null, state);
+    if (gate) {
+      res.status(gate.status).json({ error: gate.error });
+      return;
+    }
+    // respondGate returned null, so both are present.
+    const briefState = state!;
+    const identity = official!;
+
+    let body: string;
+    try {
+      body = normalizeResponseBody((req.body ?? {}).body);
+    } catch (err) {
+      res
+        .status(400)
+        .json({ error: err instanceof Error ? err.message : "Invalid body" });
+      return;
+    }
+
+    const user = getAuthUser(res);
+    const anchor = isFeedAnchor(await latestAnchorAt(id), new Date());
+    const stored = await insertResponse({
+      brief_id: id,
+      responder_id: user.id,
+      official_type: identity.type,
+      official_title: identity.title,
+      body,
+      feed_anchor: anchor,
+    });
+
+    await emitBriefResponseAdded(
+      {
+        process_id: record!.id,
+        hub_id: record!.hubId,
+        jurisdiction: record!.jurisdiction,
+        emit: emitEvent,
+      },
+      user.id,
+      briefState,
+      {
+        excerpt: responseExcerpt(body),
+        official_type: identity.type,
+        official_title: identity.title,
+        responder_name:
+          user.full_name?.trim() || user.display_name?.trim() || "Official",
+        feed_anchor: anchor,
+      },
+    );
+
+    const records = await listResponsesForBrief(id);
+    const names = await responderNames(records.map((r) => r.responder_id));
+    const status = responseStatus(records);
+    res.status(201).json({
+      message: "Response posted.",
+      response_id: stored.id,
+      response_status: status.status,
+      responded_at: status.responded_at,
+      responses: toPublicResponses(
+        records,
+        (rid) => names.get(rid) ?? "Official",
+      ),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });

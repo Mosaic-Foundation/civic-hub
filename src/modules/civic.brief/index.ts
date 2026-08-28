@@ -39,6 +39,23 @@ export {
 
 export { formatBriefEmail } from "./email.js";
 
+export type {
+  BriefResponseRecord,
+  BriefResponseStatus,
+  PublicBriefResponse,
+} from "./responses.js";
+export {
+  RESPONSE_BODY_MAX,
+  FEED_ANCHOR_WINDOW_MS,
+  isFeedAnchor,
+  normalizeResponseBody,
+  respondGate,
+  responseExcerpt,
+  responseStatus,
+  toPublicResponses,
+} from "./responses.js";
+export { emitBriefResponseAdded } from "./events.js";
+
 export const PROCESS_DESCRIPTOR = {
   type: "civic.brief",
   version: "0.1",

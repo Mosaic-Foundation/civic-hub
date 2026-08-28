@@ -310,6 +310,42 @@ export async function requireAnnouncementPoster(
   });
 }
 
+/**
+ * Require an authenticated user whose ACCOUNT holds the official role
+ * (users.official_type / official_title, with the legacy fallback tiers
+ * resolveOfficial still honours pre-migration).
+ *
+ * Deliberately NOT satisfied by admin status: this gates public acts of
+ * an OFFICE — an official response to a Civic Brief — and "Admin" is a
+ * platform capability, not an office. An administrator who also holds an
+ * office passes on the office, like anyone else.
+ *
+ * Sets `res.locals.officialIdentity` (the {type, title} snapshot the
+ * handler stamps onto whatever it writes).
+ */
+export async function requireOfficial(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  await requireAuth(req, res, async () => {
+    const user = res.locals.authUser as User | undefined;
+    if (!user) return;
+
+    const official = await resolveOfficial(user.email);
+    if (!official) {
+      res.status(403).json({
+        error:
+          "Only accounts holding an official role can post a response. " +
+          "Ask a hub admin to designate your office.",
+      });
+      return;
+    }
+    res.locals.officialIdentity = official;
+    next();
+  });
+}
+
 // Backward-compat alias. Old callers imported `requireBoardOrAdmin`; the
 // new name is `requireAnnouncementPoster` which reflects the DB-backed,
 // flexible-label semantics. Leave this re-export in place so external

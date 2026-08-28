@@ -1050,6 +1050,27 @@ export interface PublicBrief {
   approved_at: string | null;
   generated_at: string;
   published_at: string;
+  /**
+   * Official responses — the government's side of the record, appended
+   * to the sealed brief. "awaiting" until the first response;
+   * responded_at is the FIRST response's timestamp (the date the status
+   * line renders) and never moves as follow-ups arrive.
+   */
+  response_status: "awaiting" | "responded";
+  responded_at: string | null;
+  responses: PublicBriefResponse[];
+}
+
+/** One official response on a brief, oldest first. The office fields are
+ *  a snapshot taken at response time (a later demotion or retitle does
+ *  not rewrite the record). */
+export interface PublicBriefResponse {
+  id: string;
+  body: string;
+  official_type: string;
+  official_title: string;
+  responder_name: string;
+  created_at: string;
 }
 
 export interface BriefContentPatch {
@@ -1087,6 +1108,21 @@ export function adminApproveBrief(
 
 export function getPublicBrief(id: string): Promise<PublicBrief> {
   return request("GET", `/brief/${id}`);
+}
+
+/** Post a public official response (official-role accounts only; 403
+ *  otherwise). Returns the refreshed response list + status. */
+export function postBriefResponse(
+  id: string,
+  body: string,
+): Promise<{
+  message: string;
+  response_id: string;
+  response_status: "awaiting" | "responded";
+  responded_at: string | null;
+  responses: PublicBriefResponse[];
+}> {
+  return request("POST", `/brief/${id}/response`, { body });
 }
 
 // --- Announcements ---

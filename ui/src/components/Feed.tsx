@@ -252,10 +252,12 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
           });
           break;
         case "brief":
-          // Brief cards render entirely from the publish event (title +
-          // headline), so no fetch is needed — and we deliberately do NOT
-          // call getProcessState here (it would expose the brief's admin
-          // read model). Resolve empty so the render gate passes.
+        case "brief-response":
+          // Brief cards render entirely from their event (title + headline,
+          // or title + response excerpt), so no fetch is needed — and we
+          // deliberately do NOT call getProcessState here (it would expose
+          // the brief's admin read model). Resolve empty so the render gate
+          // passes.
           lookup = Promise.resolve({});
           break;
       }
@@ -446,6 +448,7 @@ function buildEngagement(
     case "conversation":
     case "conversation-results":
     case "brief":
+    case "brief-response":
       return null;
   }
 }

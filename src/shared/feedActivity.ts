@@ -62,7 +62,8 @@ export type ActivityKind =
   | "project-updated"
   | "conversation"
   | "conversation-results" // legacy deliberation outcome delivered (close)
-  | "brief"; // universal civic.brief published — the final result of any process
+  | "brief" // universal civic.brief published — the final result of any process
+  | "brief-response"; // an official responded to a published brief (anchored)
 
 export interface Activity {
   surface: ActivitySurface;
@@ -147,6 +148,28 @@ export function classifyActivity(event: ClassifierEvent): Activity | null {
           kind: "conversation",
           pill: "New conversation",
           href: `/deliberation/${id}`,
+        };
+      }
+      return null;
+
+    case "civic.process.action_taken":
+      // An official's public response to a published brief. Every response
+      // emits this event (the log is never throttled), but only the ANCHOR
+      // — stamped by the write path when no other response to the same
+      // brief anchored a card in the last 24h — renders in the feed and
+      // digest, so a burst of responses is one card. Suppressed responses
+      // still reach readers: the card links to /brief/:id, which shows
+      // them all. Any other action_taken stays default-closed.
+      if (
+        processType === "civic.brief" &&
+        event.data?.action === "official_response" &&
+        event.data?.feed_anchor === true
+      ) {
+        return {
+          surface: "activity",
+          kind: "brief-response",
+          pill: "Official response",
+          href: `/brief/${id}`,
         };
       }
       return null;

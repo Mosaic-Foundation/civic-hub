@@ -76,6 +76,11 @@
   --pill-wordcloud-bg: #e0f2f1;                       --pill-wordcloud-fg: #00695c;
   --pill-brief-bg: var(--ds-color-primary-100, #dce5f2);
   --pill-brief-fg: var(--ds-color-primary-700, #1f3a66);
+  /* Official response to a brief — a warm gold, distinct from every
+     process-type hue so "the government spoke" reads at a glance.
+     Mirrored as literals in civic.digest/service.ts PILL_COLORS. */
+  --pill-brief-response-bg: #fdf1e0;
+  --pill-brief-response-fg: #8a5a13;
 
   /* --- Typography --- */
   --font-body: var(--ds-font-family-sans);

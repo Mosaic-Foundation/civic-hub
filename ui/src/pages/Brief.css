@@ -1,0 +1,128 @@
+/* Brief page — official-response additions.
+   Layered on top of VoteResults.css (the shared public-record page
+   language); only what responses add lives here. */
+
+/* --- Status line: a quiet chip + a neutral invitation ------------------ */
+
+.brief-response-status-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin: 0 0 var(--space-lg);
+}
+
+.brief-response-status {
+  display: inline-block;
+  padding: 2px var(--space-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  line-height: 1.5;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+/* Awaiting is deliberately muted — an open door, not a demand. */
+.brief-response-status--awaiting {
+  background: var(--color-surface, #f1f2f4);
+  color: var(--color-text-muted, #5b6470);
+  border: 1px solid var(--color-border, #d8dce1);
+}
+
+/* Responded shares the feed's official-response gold. */
+.brief-response-status--responded {
+  background: var(--pill-brief-response-bg, #fdf1e0);
+  color: var(--pill-brief-response-fg, #8a5a13);
+}
+
+.brief-response-status-note {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted, #5b6470);
+}
+
+/* --- Responses: public correspondence, oldest first -------------------- */
+
+.brief-response {
+  padding: var(--space-md);
+  border: 1px solid var(--color-border, #d8dce1);
+  border-left: 3px solid var(--pill-brief-response-fg, #8a5a13);
+  border-radius: var(--radius-md);
+  background: var(--color-surface, #fbfbfc);
+  margin: 0 0 var(--space-md);
+}
+
+.brief-response-header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.brief-response-author {
+  font-weight: 600;
+}
+
+.brief-response-date {
+  margin-left: auto;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted, #5b6470);
+}
+
+.brief-response-body {
+  margin: 0;
+  line-height: var(--line-height-relaxed);
+}
+
+/* --- The official-only form -------------------------------------------- */
+
+.brief-response-form {
+  margin-top: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.brief-response-form label {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.brief-response-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-sm);
+  font: inherit;
+  border: 1px solid var(--color-border, #d8dce1);
+  border-radius: var(--radius-md);
+  resize: vertical;
+}
+
+.brief-response-form-note {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted, #5b6470);
+}
+
+.brief-response-form-error {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-danger, #b3261e);
+}
+
+.brief-response-form button {
+  align-self: flex-start;
+  padding: var(--space-sm) var(--space-md);
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-primary, #1f3a66);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.brief-response-form button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

@@ -201,6 +201,27 @@ function buildTitleSummary(
         summary: brief.headline ?? "",
       };
     }
+
+    case "brief-response": {
+      // Rendered from the response event alone: the brief's title as the
+      // card title, the response excerpt as the summary, the official as
+      // the byline. The card links to /brief/:id where every response
+      // (including any collapsed under the 24h anchor) is shown in full.
+      const brief = (data.brief ?? {}) as { title?: string };
+      const response = (data.response ?? {}) as {
+        excerpt?: string;
+        official_title?: string;
+        responder_name?: string;
+      };
+      const byline = [response.responder_name, response.official_title]
+        .filter((s): s is string => typeof s === "string" && s.length > 0)
+        .join(", ");
+      return {
+        title: brief.title ?? getTitle(id) ?? "Civic Brief",
+        summary: response.excerpt ?? "",
+        authorName: byline || null,
+      };
+    }
   }
 }
 

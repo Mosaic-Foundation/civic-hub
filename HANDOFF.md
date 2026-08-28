@@ -4,6 +4,99 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Official responses to Civic Briefs — 2026-08-27
+
+**Built, not pushed. HAS A MIGRATION — apply before push** (see Deploy order
+below). Depends on the managed official role (2026-08-27, below): an official
+identity must exist to respond as one.
+
+A published brief now carries the government's side of the record. Officials
+post public responses to it; the public `/brief/:id` page shows **"Awaiting
+response"** (a neutral invitation — no deadline, no callout) until the first
+response, then **"Responded [date]"** with every response rendered below the
+brief.
+
+**Decisions (agreed with Adam this session):**
+
+- **Any official may respond to any published brief**, and may respond again
+  later — responses are **append-only public correspondence** (no edit, no
+  delete; a follow-up is a new row). No unique constraint, no rate limit; the
+  roster is small and admin-managed, and demotion revokes instantly.
+- **The gate is the official ROLE, not the delivery list.** Plain admins
+  cannot respond — a response is a public act of an office, not a platform
+  capability. The brief's `delivered_to` recipients stay a framing concept
+  only ("Awaiting a response from the Board of Supervisors" via
+  `hub.governing_body_name`); gating on the list would lock out a supervisor
+  whose delivery went to a clerk's inbox, and those emails must never render.
+- **"Responded" anchors to the FIRST response's date** and never moves.
+- **Office is snapshotted onto each response** (`official_type` /
+  `official_title` at response time) so a later demotion or retitle never
+  rewrites the record — same principle as announcements' `author_role`.
+
+**Feed: one card per brief per 24h, log never throttled.** Every response
+emits `civic.process.action_taken` (`data.action = "official_response"` — new
+serializer mapping, `hub:OfficialResponse` / generic `hub:ProcessAction`, both
+registered in `EXTENSION_TERMS`). The WRITE path stamps `feed_anchor: true`
+only when no other anchor for that brief exists in the past rolling 24h
+(`isFeedAnchor`, keyed on the last ANCHOR so ongoing conversation cannot
+suppress cards forever); the shared classifier renders only anchored events as
+a **"brief-response"** card, pill **"Official response"** (warm gold), linking
+to `/brief/:id` where the collapsed responses are all visible. Because the
+classifier is shared, the digest gets the same card for free (renders under
+"Completed — results").
+
+| Piece | File |
+|---|---|
+| Migration | `supabase/migrations/20260828000000_brief_responses.sql` |
+| Pure rules (gate, status, anchor window, projections) | `src/modules/civic.brief/responses.ts` |
+| Event emitter | `emitBriefResponseAdded`, `src/modules/civic.brief/events.ts` |
+| Serializer mapping | `civic.process.action_taken`, `src/events/activitySerializer.ts` |
+| Storage | `src/services/briefResponses.ts` |
+| Middleware | `requireOfficial`, `src/middleware/auth.ts` |
+| HTTP | `POST /brief/:id/response` + extended `GET /brief/:id`, `briefController` / `briefRoutes` |
+| Classifier | `brief-response` kind, `src/shared/feedActivity.ts` (+ digest filter/service, FeedPost, Feed.css, theme.css) |
+| Page | status chip + responses section + official-only form, `ui/src/pages/Brief.tsx` + `Brief.css` |
+| Tests | `tests/unit/briefResponses.test.ts` (19) + 3 classifier cases in `feedActivity.test.ts` |
+
+### Deploy order
+
+1. Apply `20260828000000_brief_responses.sql` — **dev first, then prod, by
+   hand in the Supabase SQL editor** (the officials-migration procedure; the
+   CLI link points at prod and `db push` would replay unrecorded history — do
+   not use it). Verify: `SELECT to_regclass('public.brief_responses') IS NOT
+   NULL;` → `t`. **NOT yet applied to either database as of this session.**
+2. Then push. Per the 08-22 incident, the migration must not trail its writer.
+
+Reads degrade against an un-migrated DB (page shows "Awaiting response",
+logs a warning — verified against dev); the WRITE fails loudly on purpose.
+
+### Verification
+
+- `tsc -b` clean (backend + ui). **538 unit tests pass** (36 files) — gate
+  (official/admin/resident × published/pending), status transition
+  awaiting → responded (earliest-date anchoring), 24h anchor window
+  (boundary, fail-open on corrupt timestamp), public projection leaks no
+  account ids, classifier default-closed for non-anchored/other actions.
+- Against the un-migrated dev DB: `GET /brief/:id` returns
+  `response_status: "awaiting"`, `responses: []`; anonymous POST → 401;
+  page renders the awaiting chip (screenshot-verified via the dev servers).
+- **Not yet exercised end-to-end:** an actual official posting (needs the
+  table + an official-role account). Do this on dev right after the dev
+  migration: sign in as a roster official, post to a published brief, confirm
+  the status flips and ONE feed card appears; post again, confirm no second
+  card and both responses on the page.
+
+### Open questions / deferred
+
+- Response rate-limiting (per-official caps) — deliberately skipped; add
+  only if the feed shows abuse the 24h anchor doesn't already absorb.
+- A "responded" filter on the Outcomes index rows — the index entry doesn't
+  carry response status yet.
+- Notifying the brief's followers/author when a response lands (no follower
+  mechanism exists on briefs today).
+
+---
+
 ## Announcement publication receipts — 2026-08-27
 
 **Built, not pushed.** No migration. Follows the officials entry below.

@@ -257,3 +257,55 @@ describe("classifyActivity — created / proposal / project / outcome", () => {
     expect(a?.href).toBe("/deliberation/proc_orig");
   });
 });
+
+describe("classifyActivity — official responses to briefs", () => {
+  const anchored = {
+    ...withType("civic.brief"),
+    action: "official_response",
+    feed_anchor: true,
+    brief: { title: "Speed limits on Route 8" },
+    response: { excerpt: "We hear you.", official_title: "Board of Supervisors" },
+  };
+
+  it("anchored response → Official response card linking to the brief", () => {
+    const a = classifyActivity(ev("civic.process.action_taken", anchored));
+    expect(a).toMatchObject({
+      surface: "activity",
+      kind: "brief-response",
+      pill: "Official response",
+    });
+    expect(a?.href).toBe("/brief/proc_1");
+  });
+
+  it("non-anchored response → no card (the 24h collapse), event stays on the log", () => {
+    // The log is never throttled; only the anchor renders. Five responses
+    // in an afternoon are five events and one card.
+    expect(
+      classifyActivity(
+        ev("civic.process.action_taken", { ...anchored, feed_anchor: false }),
+      ),
+    ).toBeNull();
+    expect(
+      classifyActivity(
+        ev("civic.process.action_taken", { ...anchored, feed_anchor: undefined }),
+      ),
+    ).toBeNull();
+  });
+
+  it("action_taken stays default-closed for other actions and other process types", () => {
+    expect(
+      classifyActivity(
+        ev("civic.process.action_taken", { ...anchored, action: "something_else" }),
+      ),
+    ).toBeNull();
+    expect(
+      classifyActivity(
+        ev("civic.process.action_taken", {
+          ...anchored,
+          ...withType("civic.vote"),
+        }),
+      ),
+    ).toBeNull();
+    expect(classifyActivity(ev("civic.process.action_taken"))).toBeNull();
+  });
+});

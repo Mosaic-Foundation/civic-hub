@@ -255,6 +255,7 @@
 .feed-pill--conversation        { background: var(--pill-conversation-bg);        color: var(--pill-conversation-fg); }
 .feed-pill--conversation-results{ background: var(--pill-conversation-results-bg); color: var(--pill-conversation-results-fg); }
 .feed-pill--brief               { background: var(--pill-brief-bg);               color: var(--pill-brief-fg); }
+.feed-pill--brief-response      { background: var(--pill-brief-response-bg);      color: var(--pill-brief-response-fg); }
 
 /* --- Load more --- */
 

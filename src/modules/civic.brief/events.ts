@@ -97,6 +97,52 @@ export async function emitBriefOutcomeRecorded(
   });
 }
 
+/**
+ * An official responded to a published brief. Always emitted — the event
+ * log records every response (design constraint #2). Whether the FEED
+ * shows a card is decided by `feed_anchor`, stamped here from the pure
+ * isFeedAnchor decision: at most one anchored response per brief per
+ * 24h, so a burst of responses is one card. The shared classifier
+ * (feedActivity.ts) renders only anchored responses.
+ */
+export async function emitBriefResponseAdded(
+  ctx: BriefProcessContext,
+  actor: string,
+  state: BriefProcessState,
+  response: {
+    excerpt: string;
+    official_type: string;
+    official_title: string;
+    responder_name: string;
+    feed_anchor: boolean;
+  },
+): Promise<void> {
+  await ctx.emit({
+    event_type: "civic.process.action_taken",
+    actor,
+    process_id: ctx.process_id,
+    hub_id: ctx.hub_id,
+    jurisdiction: ctx.jurisdiction,
+    processType: PROCESS_TYPE,
+    action_url_path: publicPath(ctx.process_id),
+    data: {
+      action: "official_response",
+      feed_anchor: response.feed_anchor,
+      brief: {
+        title: state.content.title,
+        source_process_id: state.source_process_id,
+        source_process_type: state.source_process_type,
+      },
+      response: {
+        excerpt: response.excerpt,
+        official_type: response.official_type,
+        official_title: response.official_title,
+        responder_name: response.responder_name,
+      },
+    },
+  });
+}
+
 /** Phase 6 — the brief is published (public). This is the feed-worthy one. */
 export async function emitBriefResultPublished(
   ctx: BriefProcessContext,

@@ -101,6 +101,8 @@ export const EXTENSION_TERMS: ReadonlyArray<{
   { term: "hub:Project", kind: "object type", why: "A community project page. A candidate civic process class, not yet in the registry." },
   { term: "hub:ProjectSentiment", kind: "object type", why: "Aggregate support/oppose sentiment on a project." },
   { term: "hub:ReviewSubmission", kind: "object type", why: "A resident submission moving through the hub's admin review workflow. Space-internal correspondence, always restricted." },
+  { term: "hub:OfficialResponse", kind: "object type", why: "A public on-the-record response by a designated official to a published Civic Brief. No canonical civic class yet." },
+  { term: "hub:ProcessAction", kind: "object type", why: "Generic fallback object for civic.process.action_taken payloads that are not official responses." },
 ];
 
 // --- Public API ------------------------------------------------------------
@@ -324,6 +326,24 @@ const ACTIVITY_MAPPINGS: Record<string, ActivityMapping> = {
     type: "Announce",
     buildObject: (e, data) => civicObject("civic:Outcome", data, {}),
     buildTarget: (e, data) => deliveryTarget(data),
+  },
+
+  // A generic action executed against a process (Civic Event Spec's
+  // canonical catch-all verb). Today's sole emitter is the official
+  // response to a published brief (data.action = "official_response"),
+  // which gets its own extension object so a consumer can recognize the
+  // government's side of the record without sniffing payloads; any other
+  // action serializes as the generic hub:ProcessAction.
+  "civic.process.action_taken": {
+    type: "Create",
+    buildObject: (e, data, env) =>
+      civicObject(
+        data.action === "official_response"
+          ? "hub:OfficialResponse"
+          : "hub:ProcessAction",
+        data,
+        { id: processIri(e, env), name: titleOf(data) },
+      ),
   },
 
   // --- Hub-local process families (spec §3.4 extension objects) ------------

@@ -212,6 +212,28 @@ function digestTitleSummary(
         "A process has concluded — see the brief.";
       return { title, summary };
     }
+
+    case "brief-response": {
+      const data = event.data as {
+        brief?: { title?: unknown };
+        response?: { excerpt?: unknown; official_title?: unknown };
+      };
+      const title =
+        (typeof data?.brief?.title === "string" && data.brief.title) ||
+        rawTitle ||
+        "Civic Brief";
+      const office =
+        typeof data?.response?.official_title === "string"
+          ? data.response.official_title
+          : "";
+      const summary =
+        (typeof data?.response?.excerpt === "string" &&
+          data.response.excerpt) ||
+        (office
+          ? `The ${office} has responded — read the response.`
+          : "An official has responded — read the response.");
+      return { title, summary };
+    }
   }
 }
 
@@ -259,6 +281,10 @@ const SECTION_OF: Record<ActivityKind, DigestSection> = {
   conversation: "conversations",
   "conversation-results": "conversations",
   brief: "briefs",
+  // A response belongs with the outcome it answers, not in its own
+  // section — the "Completed — results" section carries both the brief
+  // and, later, the government's reply to it.
+  "brief-response": "briefs",
 };
 
 const SECTION_LABELS: Record<DigestSection, string> = {
@@ -307,6 +333,7 @@ const PILL_COLORS: Record<ActivityKind, { bg: string; fg: string }> = {
   conversation: { bg: "#e8eaf6", fg: "#3949ab" },
   "conversation-results": { bg: "#e6e9f3", fg: "#3f4a86" },
   brief: { bg: "#dce5f2", fg: "#1f3a66" },
+  "brief-response": { bg: "#fdf1e0", fg: "#8a5a13" },
 };
 
 // Both stacks fall back through the OS sans family so email clients
