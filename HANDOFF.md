@@ -4,6 +4,43 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Palette refresh + page cards join the type palette — 2026-08-28 (later)
+
+**Built, not pushed. No migration.** Follow-up to the entry below, after
+Adam reviewed swatch mockups. Two problems: the type palette was three
+near-identical blues (vote navy / conversation indigo / project azure), and
+the process LIST pages ran a second, older card-accent palette (proposal
+cards terracotta, project cards green) that contradicted the pills.
+
+**The three color layers, made explicit (the sorting-through):**
+1. **Action — terracotta** (`--ds-color-accent-*`): every CTA sitewide +
+   announcements. This is WHY proposals couldn't take terracotta as
+   identity, much as Adam liked it — every button would read
+   proposal-branded.
+2. **Status — semantic**: green OPEN badges / meetings, amber pending,
+   gray closed. Why projects couldn't take identity-green: a green edge
+   next to a green OPEN badge meaning different things.
+3. **Identity — one hue per process type** (`--type-*`), now: vote navy,
+   proposal purple, **conversation TEAL** (#ddefef/#0f5e66 — left indigo;
+   kin to the design system's civic-teal), project azure, **wordcloud
+   MOSS** (#edf0dd/#5c6b2a — ceded its teal to conversations; a marigold
+   alternative was mocked and rejected as too close to official-response
+   gold). Announcement rust / author violet / meeting green /
+   official-response gold / generic unchanged. Only two blues remain,
+   far apart (dark navy vs bright azure).
+
+**Page cards now wear the type palette:** the four `--card-accent` values
+in App.css point at `--type-*-fg` — proposal cards purple, project cards
+azure, deliberation cards teal, vote cards navy. A process is ONE color
+everywhere: its list card, feed pill, Outcomes row, filter pill, digest
+row. Digest PILL_COLORS hexes updated to mirror.
+
+Verification: tsc -b clean, 557 unit tests pass, computed-style checked
+proposal (#5e35b1) and deliberation (#0f5e66) card edges on dev; CTA
+stays terracotta, OPEN badge stays green.
+
+---
+
 ## One color per process type, everywhere — 2026-08-28
 
 **Built, not pushed. No migration.** Adam's rule after seeing a proposal

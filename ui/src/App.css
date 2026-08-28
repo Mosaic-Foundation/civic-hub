@@ -649,7 +649,12 @@
 .proposal-card,
 .project-card,
 .deliberation-card {
-  --card-accent: var(--ds-color-primary-600, #2a4e84);
+  /* Default accent = the vote type color (votes use the base
+     .process-card class). Each list's card class overrides below with
+     ITS type token — the same hue that type's pill, Outcomes row, and
+     filter pill wear, so a process is one color everywhere it appears
+     (2026-08-28). */
+  --card-accent: var(--type-vote-fg, #2a4e84);
   position: relative;
   border: 1px solid var(--border-color);
   border-left: 4px solid var(--card-accent);
@@ -677,17 +682,21 @@
   transform: translateY(-1px);
 }
 
-/* Per-type accent edges — votes stay Civic Indigo (the default). */
+/* Per-type accent edges — each card wears its process type's color
+   (--type-* in theme.css). Terracotta stays the ACTION accent (buttons,
+   CTAs) and green stays STATUS (OPEN badges, meetings); identity comes
+   from the type palette, so a proposal card's edge matches the proposal
+   pill in the feed and on Outcomes. */
 .proposal-card {
-  --card-accent: var(--ds-color-accent-600, #c37b51);
+  --card-accent: var(--type-proposal-fg, #5e35b1);
 }
 
 .project-card {
-  --card-accent: var(--ds-color-success-500, #4a9d5c);
+  --card-accent: var(--type-project-fg, #1565c0);
 }
 
 .deliberation-card {
-  --card-accent: var(--ds-color-primary-400, #5b82b8);
+  --card-accent: var(--type-conversation-fg, #0f5e66);
 }
 
 .process-card-header {

@@ -97,9 +97,14 @@
      surface should point at them anymore. New surfaces use --type-*. */
   --type-vote-bg: var(--ds-color-primary-100);   --type-vote-fg: var(--ds-color-primary-800);
   --type-proposal-bg: #ede7f6;                   --type-proposal-fg: #5e35b1;
-  --type-conversation-bg: #e8eaf6;               --type-conversation-fg: #3949ab;
+  /* Conversation left indigo for a landscape teal (2026-08-28, Adam) —
+     it was one of three near-identical blues; deliberation now reads as
+     its own hue, kin to the design system's civic-teal. */
+  --type-conversation-bg: #ddefef;               --type-conversation-fg: #0f5e66;
   --type-project-bg: #e3f2fd;                    --type-project-fg: #1565c0;
-  --type-wordcloud-bg: #e0f2f1;                  --type-wordcloud-fg: #00695c;
+  /* Wordcloud ceded its teal to conversations and took an earthy moss —
+     distinct from meeting-green (yellower) and rarely on screen anyway. */
+  --type-wordcloud-bg: #edf0dd;                  --type-wordcloud-fg: #5c6b2a;
   --type-announcement-bg: var(--ds-color-accent-100);
   --type-announcement-fg: var(--ds-color-accent-800);
   --type-announcement-author-bg: #e4ddf0;        --type-announcement-author-fg: #3a2c5e;
