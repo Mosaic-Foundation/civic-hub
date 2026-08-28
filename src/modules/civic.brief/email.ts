@@ -53,6 +53,16 @@ export function formatBriefEmail(
     ? `<h3 style="margin:16px 0 4px;">Notes from the ${esc(deps.hubLabel)}</h3><p style="margin:0;white-space:pre-wrap;">${esc(c.admin_notes)}</p>`
     : "";
 
+  // The invite to respond (2026-08-28): delivery is not just FYI — the
+  // brief page accepts public responses from official-role accounts, and
+  // the email is where the responsible official learns that. Kept as a
+  // neutral invitation, matching the page's non-partisan framing.
+  const respondHtml = `<p style="margin-top:16px;">You are invited to respond: officials with a hub account can post a public response on the brief page, where it appears alongside the brief as part of the permanent public record.</p>`;
+  const respondText =
+    "You are invited to respond: officials with a hub account can post a " +
+    "public response on the brief page, where it appears alongside the " +
+    "brief as part of the permanent public record.";
+
   const html = `
     <p><strong>${esc(c.headline)}</strong></p>
     <p style="white-space:pre-wrap;">${esc(c.summary)}</p>
@@ -60,7 +70,8 @@ export function formatBriefEmail(
     ${sectionsHtml}
     ${notesHtml}
     ${commentsHtml}
-    <p style="margin-top:16px;"><a href="${esc(deps.publicUrl)}">View the full brief</a></p>
+    ${respondHtml}
+    <p style="margin-top:16px;"><a href="${esc(deps.publicUrl)}">View the full brief and respond</a></p>
   `;
 
   const sectionsText = c.sections
@@ -77,7 +88,7 @@ export function formatBriefEmail(
     ? `\n\nNotes from the ${deps.hubLabel}:\n${c.admin_notes}`
     : "";
 
-  const text = `${c.headline}\n\n${c.summary}${participation ? `\n\n${participation}` : ""}${sectionsText}${notesText}${commentsText}\n\nView the full brief: ${deps.publicUrl}`;
+  const text = `${c.headline}\n\n${c.summary}${participation ? `\n\n${participation}` : ""}${sectionsText}${notesText}${commentsText}\n\n${respondText}\n\nView the full brief and respond: ${deps.publicUrl}`;
 
   return { subject, html, text };
 }
