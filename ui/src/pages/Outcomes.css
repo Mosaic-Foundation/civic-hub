@@ -32,28 +32,10 @@
   gap: var(--space-sm);
 }
 
-.outcomes-chip {
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  border-radius: 999px;
-  padding: 5px 14px;
-  cursor: pointer;
-}
-
-.outcomes-chip:hover {
-  border-color: var(--color-border-strong, var(--color-border));
-  color: var(--color-text);
-}
-
-.outcomes-chip.is-on {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-primary-text);
-}
+/* The type filter renders with the feed's own pill classes
+   (.feed-filter-pill--type-* from FeedFilter.css) — one style, two
+   surfaces. The old gray .outcomes-chip toggles are gone with the
+   sort dropdown (2026-08-28). */
 
 .outcomes-select {
   display: inline-flex;
@@ -160,7 +142,8 @@
 
 /* --- Process-type color -----------------------------------------------
  *
- * Same palette as the feed's pills (--pill-<slug>-* in theme.css), so an
+ * Same palette as the feed's pills (the --type-<slug>-* tokens in
+ * theme.css, keyed by the shared classifier's ActivityColor), so an
  * outcome carries the color its process wore while it was live. The row's
  * left border uses the pill's foreground: it is the cue that survives
  * scanning a long list, where the pill sits at the far right and the eye is
@@ -175,17 +158,17 @@
   border-left-color: var(--color-border);
 }
 
-.outcomes-item--vote          { border-left-color: var(--pill-vote-fg); }
-.outcomes-item--proposal      { border-left-color: var(--pill-proposal-fg); }
-.outcomes-item--conversation  { border-left-color: var(--pill-conversation-fg); }
-.outcomes-item--project       { border-left-color: var(--pill-project-fg); }
-.outcomes-item--wordcloud     { border-left-color: var(--pill-wordcloud-fg); }
+.outcomes-item--vote          { border-left-color: var(--type-vote-fg); }
+.outcomes-item--proposal      { border-left-color: var(--type-proposal-fg); }
+.outcomes-item--conversation  { border-left-color: var(--type-conversation-fg); }
+.outcomes-item--project       { border-left-color: var(--type-project-fg); }
+.outcomes-item--wordcloud     { border-left-color: var(--type-wordcloud-fg); }
 
-.outcomes-pill--vote          { background: var(--pill-vote-bg);         color: var(--pill-vote-fg); }
-.outcomes-pill--proposal      { background: var(--pill-proposal-bg);     color: var(--pill-proposal-fg); }
-.outcomes-pill--conversation  { background: var(--pill-conversation-bg); color: var(--pill-conversation-fg); }
-.outcomes-pill--project       { background: var(--pill-project-bg);      color: var(--pill-project-fg); }
-.outcomes-pill--wordcloud     { background: var(--pill-wordcloud-bg);    color: var(--pill-wordcloud-fg); }
+.outcomes-pill--vote          { background: var(--type-vote-bg);         color: var(--type-vote-fg); }
+.outcomes-pill--proposal      { background: var(--type-proposal-bg);     color: var(--type-proposal-fg); }
+.outcomes-pill--conversation  { background: var(--type-conversation-bg); color: var(--type-conversation-fg); }
+.outcomes-pill--project       { background: var(--type-project-bg);      color: var(--type-project-fg); }
+.outcomes-pill--wordcloud     { background: var(--type-wordcloud-bg);    color: var(--type-wordcloud-fg); }
 
 .outcomes-item-headline {
   font-family: var(--font-body);

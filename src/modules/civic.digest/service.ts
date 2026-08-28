@@ -15,6 +15,7 @@ import {
   briefResponseContext,
   classifyActivity,
   type Activity,
+  type ActivityColor,
   type ActivityKind,
   type ClassifierEvent,
 } from "../../shared/feedActivity.js";
@@ -86,6 +87,7 @@ function eventToItem(
   const { title, summary } = digestTitleSummary(activity, event, titles);
   return {
     kind: activity.kind,
+    color: activity.color,
     title,
     // Pill label is the classifier's — identical to the feed card pill.
     pill_label: activity.pill,
@@ -311,26 +313,23 @@ const SECTION_ORDER: DigestSection[] = [
 // --- HTML formatting --------------------------------------------------------
 
 /**
- * Per-kind pill background/foreground hex pairs. Mirror the
- * --pill-<kind>-* tokens (and the Phase-3 additions) in the UI's
- * theme.css / Feed.css. Inlined as literals because email clients don't
- * honor CSS vars.
+ * Per-PROCESS-TYPE pill hex pairs (2026-08-28) — one color per process
+ * type across feed, Outcomes, and this email, keyed by the shared
+ * classifier's ActivityColor. Mirror the --type-<color>-* tokens in the
+ * UI's theme.css; change BOTH together. Inlined as literals because
+ * email clients don't honor CSS vars.
  */
-const PILL_COLORS: Record<ActivityKind, { bg: string; fg: string }> = {
-  "vote-open": { bg: "#e0ecfc", fg: "#1e3a5f" },
-  "vote-results": { bg: "#d4ede8", fg: "#0f5a55" },
-  meeting: { bg: "#d9ecd9", fg: "#0f4a26" },
+const PILL_COLORS: Record<ActivityColor, { bg: string; fg: string }> = {
+  vote: { bg: "#dce5f2", fg: "#1e3a5f" },
+  proposal: { bg: "#ede7f6", fg: "#5e35b1" },
+  conversation: { bg: "#e8eaf6", fg: "#3949ab" },
+  project: { bg: "#e3f2fd", fg: "#1565c0" },
+  wordcloud: { bg: "#e0f2f1", fg: "#00695c" },
   announcement: { bg: "#fbe5d3", fg: "#8c3210" },
   "announcement-author": { bg: "#e4ddf0", fg: "#3a2c5e" },
-  wordcloud: { bg: "#e0f2f1", fg: "#00695c" },
-  proposal: { bg: "#ede7f6", fg: "#5e35b1" },
-  "proposal-closed": { bg: "#ece9f1", fg: "#5b517a" },
-  "project-created": { bg: "#e3f2fd", fg: "#1565c0" },
-  "project-updated": { bg: "#e3f2fd", fg: "#1565c0" },
-  conversation: { bg: "#e8eaf6", fg: "#3949ab" },
-  "conversation-results": { bg: "#e6e9f3", fg: "#3f4a86" },
-  brief: { bg: "#dce5f2", fg: "#1f3a66" },
-  "brief-response": { bg: "#fdf1e0", fg: "#8a5a13" },
+  meeting: { bg: "#d9ecd9", fg: "#0f4a26" },
+  "official-response": { bg: "#fdf1e0", fg: "#8a5a13" },
+  generic: { bg: "#dce5f2", fg: "#1f3a66" },
 };
 
 // Both stacks fall back through the OS sans family so email clients
@@ -383,7 +382,9 @@ function renderSectionHtml(label: string, items: DigestItem[]): string {
   // correctly.
   const rows = items
     .map((item) => {
-      const { bg, fg } = PILL_COLORS[item.kind];
+      // Fallback to generic: an item built by older code (or a fixture)
+      // without a color must render a plain pill, never crash the send.
+      const { bg, fg } = PILL_COLORS[item.color] ?? PILL_COLORS.generic;
       const thumbCell = item.thumbnail_url
         ? `
               <td valign="top" width="60" style="padding:0 12px 0 0;">

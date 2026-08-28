@@ -65,9 +65,41 @@ export type ActivityKind =
   | "brief" // universal civic.brief published — the final result of any process
   | "brief-response"; // an official responded to a published brief (anchored)
 
+/**
+ * THE color decision (2026-08-28, Adam): every surface colors a card, row,
+ * or pill by the underlying PROCESS TYPE, not by the event's lifecycle
+ * moment — a proposal is proposal-purple as "New proposal", as "Proposal
+ * results", and on its Outcomes row. Kinds collapse onto these keys here,
+ * in the same shared classifier that owns feed-worthiness, so the feed,
+ * the Outcomes index, and the email digest can never disagree again
+ * (they previously kept three drifting palettes keyed by kind).
+ *
+ * Each key maps to a `--type-<key>-bg/-fg` token pair in the UI's
+ * theme.css and a literal hex pair in civic.digest/service.ts
+ * PILL_COLORS (emails cannot read CSS variables).
+ *
+ * Two non-process keys on purpose: "announcement-author" preserves the
+ * elected-official vs hub-admin announcement distinction, and
+ * "official-response" is an ACT (the government answering a brief), not
+ * a process — it keeps its gold everywhere.
+ */
+export type ActivityColor =
+  | "vote"
+  | "proposal"
+  | "conversation"
+  | "project"
+  | "wordcloud"
+  | "announcement"
+  | "announcement-author"
+  | "meeting"
+  | "official-response"
+  | "generic";
+
 export interface Activity {
   surface: ActivitySurface;
   kind: ActivityKind;
+  /** Process-type color key — see ActivityColor above. */
+  color: ActivityColor;
   /**
    * Canonical, hub-config-free pill label. Single source of truth for both
    * the feed card pill and the email digest pill — so they read identically
@@ -146,6 +178,7 @@ export function classifyActivity(event: ClassifierEvent): Activity | null {
         return {
           surface: "activity",
           kind: "conversation",
+          color: "conversation",
           pill: "New conversation",
           href: `/deliberation/${id}`,
         };
@@ -168,6 +201,7 @@ export function classifyActivity(event: ClassifierEvent): Activity | null {
         return {
           surface: "activity",
           kind: "brief-response",
+          color: "official-response",
           pill: "Official response",
           href: `/brief/${id}`,
         };
@@ -178,6 +212,7 @@ export function classifyActivity(event: ClassifierEvent): Activity | null {
       return {
         surface: "activity",
         kind: "proposal",
+        color: "proposal",
         pill: "New proposal",
         href: `/proposal/${id}`,
       };
@@ -203,6 +238,7 @@ export function classifyActivity(event: ClassifierEvent): Activity | null {
       return {
         surface: "activity",
         kind: "project-created",
+        color: "project",
         pill: "New project",
         href: event.action_url,
       };
@@ -211,6 +247,7 @@ export function classifyActivity(event: ClassifierEvent): Activity | null {
       return {
         surface: "activity",
         kind: "project-updated",
+        color: "project",
         pill: "Project update",
         href: event.action_url,
       };
@@ -225,6 +262,7 @@ export function classifyActivity(event: ClassifierEvent): Activity | null {
       return {
         surface: "activity",
         kind: "conversation-results",
+        color: "conversation",
         pill: "Conversation results",
         href: `/deliberation/${origin}`,
       };
@@ -259,6 +297,7 @@ function classifyStarted(
     return {
       surface: "activity",
       kind: "wordcloud",
+      color: "wordcloud",
       pill: "Word cloud",
       href: `/wordcloud/${id}`,
     };
@@ -270,6 +309,7 @@ function classifyStarted(
     return {
       surface: "activity",
       kind: "vote-open",
+      color: "vote",
       pill: "Vote open",
       href: event.action_url,
     };
@@ -298,6 +338,7 @@ function classifyResultPublished(
     return {
       surface: "activity",
       kind: "brief",
+      color: briefColorOf(srcType),
       pill: briefPill(srcType),
       href: `/brief/${id}`,
     };
@@ -311,6 +352,7 @@ function classifyResultPublished(
     return {
       surface: "activity",
       kind: "wordcloud",
+      color: "wordcloud",
       pill: "Word cloud",
       href: `/wordcloud/${id}`,
     };
@@ -328,6 +370,7 @@ function classifyResultPublished(
     return {
       surface: "meeting_summary",
       kind: "meeting",
+      color: "meeting",
       pill: "Meeting summary",
       href: event.action_url,
     };
@@ -341,6 +384,7 @@ function classifyResultPublished(
     return {
       surface: "activity",
       kind: "vote-results",
+      color: "vote",
       pill: "Vote results",
       href: event.action_url,
     };
@@ -370,6 +414,26 @@ export function briefResponseContext(sourceType: unknown): string {
     typeof sourceType === "string" ? sourceType : "",
   );
   return `Responding to the community's Civic Brief on this ${noun}`;
+}
+
+/** Color key for a brief (or its response context) — the brief wears its
+ *  SOURCE process's color, which is what makes the Outcomes page and the
+ *  feed agree. Unknown sources stay neutral rather than wrong. */
+function briefColorOf(sourceType: string): ActivityColor {
+  switch (sourceType) {
+    case "civic.polis_deliberation":
+      return "conversation";
+    case "civic.vote":
+      return "vote";
+    case "civic.proposal":
+      return "proposal";
+    case "civic.project":
+      return "project";
+    case "civic.wordcloud":
+      return "wordcloud";
+    default:
+      return "generic";
+  }
 }
 
 /** Reader-facing noun for a brief's source process type. */
@@ -432,6 +496,7 @@ function classifyAnnouncement(
     // border color so residents can tell elected-official posts from the hub
     // administrator's.
     kind: isAdmin || isSynced ? "announcement" : "announcement-author",
+    color: isAdmin || isSynced ? "announcement" : "announcement-author",
     pill: abbreviateGovernment(normalized),
     href: actionUrl,
   };

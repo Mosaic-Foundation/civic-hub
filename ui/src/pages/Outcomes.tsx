@@ -4,6 +4,9 @@ import { getOutcomes, type OutcomeEntry, type OutcomesPage } from "../services/a
 import { friendlyType } from "../components/ProcessLinkPicker";
 import hub from "../config/hub";
 import "./Outcomes.css";
+// The filter bar reuses the feed's pill classes so the two surfaces can
+// never drift in style — see .feed-filter-pill--type-* in FeedFilter.css.
+import "../components/FeedFilter.css";
 
 /**
  * Outcomes — the public archive of every completed civic process.
@@ -17,42 +20,38 @@ import "./Outcomes.css";
  * and a second search here would drift from it. It links out instead.
  */
 
-type Sort = "newest" | "oldest";
-
 export default function Outcomes() {
   const [page, setPage] = useState<OutcomesPage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [types, setTypes] = useState<string[]>([]);
+  // Single-select, like the feed's filter bar: All, or exactly one type.
+  // Always newest first — an archive reads backward from today; the old
+  // sort dropdown was removed on purpose (Adam, 2026-08-28).
+  const [type, setType] = useState<string | null>(null);
   const [year, setYear] = useState<number | null>(null);
-  const [sort, setSort] = useState<Sort>("newest");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setPage(await getOutcomes({ sourceTypes: types, year, sort }));
+      setPage(await getOutcomes({ sourceTypes: type ? [type] : [], year }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load outcomes.");
     } finally {
       setLoading(false);
     }
-  }, [types, year, sort]);
+  }, [type, year]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  function toggleType(t: string) {
-    setTypes((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
-  }
-
   // Filter options come from the server, derived from what has actually been
   // published — so a process type added later appears here on its own.
   const availableTypes = page?.filters.source_types ?? [];
   const availableYears = page?.filters.years ?? [];
-  const filtered = types.length > 0 || year != null;
+  const filtered = type != null || year != null;
 
   return (
     <div className="page outcomes-page">
@@ -66,18 +65,34 @@ export default function Outcomes() {
 
       {availableTypes.length > 0 && (
         <div className="outcomes-filters" role="group" aria-label="Filter outcomes">
+          {/* Same pill bar as the feed's filter — shared classes from
+              FeedFilter.css, colored by the per-type tokens, single-select
+              with "All" first. Only the types actually present in the
+              archive get a pill. */}
           <div className="outcomes-filter-row">
-            {availableTypes.map((t) => (
-              <button
-                key={t}
-                type="button"
-                className={`outcomes-chip${types.includes(t) ? " is-on" : ""}`}
-                aria-pressed={types.includes(t)}
-                onClick={() => toggleType(t)}
-              >
-                {friendlyType(t)}
-              </button>
-            ))}
+            <button
+              type="button"
+              className={`feed-filter-pill feed-filter-pill--all${type === null ? " is-active" : ""}`}
+              aria-pressed={type === null}
+              onClick={() => setType(null)}
+            >
+              All
+            </button>
+            {availableTypes.map((t) => {
+              const slug = typeSlug(t);
+              const isActive = type === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  className={`feed-filter-pill feed-filter-pill--type-${slug}${isActive ? " is-active" : ""}`}
+                  aria-pressed={isActive}
+                  onClick={() => setType(isActive ? null : t)}
+                >
+                  {friendlyType(t)}
+                </button>
+              );
+            })}
           </div>
 
           <div className="outcomes-filter-row">
@@ -98,20 +113,12 @@ export default function Outcomes() {
               </label>
             )}
 
-            <label className="outcomes-select">
-              <span>Order</span>
-              <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-              </select>
-            </label>
-
             {filtered && (
               <button
                 type="button"
                 className="outcomes-clear"
                 onClick={() => {
-                  setTypes([]);
+                  setType(null);
                   setYear(null);
                 }}
               >

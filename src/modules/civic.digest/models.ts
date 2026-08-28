@@ -19,7 +19,7 @@
 // logic — no DB, network, or process coupling — and is exactly the
 // "pull both sides into a shared module" the old filter.ts header asked for.
 
-import type { ActivityKind } from "../../shared/feedActivity.js";
+import type { ActivityColor, ActivityKind } from "../../shared/feedActivity.js";
 
 /** Minimal view of a CivicEvent the digest needs — mirrors models/event.ts. */
 export interface DigestEvent {
@@ -65,9 +65,16 @@ export interface DigestHubContext {
  */
 export type DigestItemKind = ActivityKind;
 
+/** The shared per-process-type color key — see ActivityColor. */
+export type DigestItemColor = ActivityColor;
+
 /** A single row in the digest — one renderable civic event. */
 export interface DigestItem {
   kind: DigestItemKind;
+  /** Process-type color key (shared ActivityColor) — selects the pill's
+   *  hex pair in service.ts PILL_COLORS, mirroring the web's --type-*
+   *  tokens: one color per process type across feed, Outcomes, digest. */
+  color: DigestItemColor;
   title: string;
   /**
    * Short uppercase label rendered as a colored pill to the right of the

@@ -4,6 +4,64 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## One color per process type, everywhere — 2026-08-28
+
+**Built, not pushed. No migration.** Adam's rule after seeing a proposal
+render three different colors: every surface colors a card, row, or pill by
+the underlying PROCESS TYPE, never by the event's lifecycle moment. "New
+proposal", "Proposal results", and the proposal's Outcomes row are all one
+purple; a brief wears its SOURCE process's color, so Outcomes and the feed
+finally agree. The feed on All is mixed; filtered, monochrome.
+
+**The decision lives in the shared classifier** (`feedActivity.ts`):
+`Activity.color: ActivityColor` — vote / proposal / conversation / project /
+wordcloud / announcement / announcement-author / meeting /
+official-response / generic. Kinds collapse onto these keys there, so the
+feed, Outcomes, and the digest render one decision (the same collapse the
+Phase-3 audit did for feed-worthiness). Two non-process keys on purpose:
+announcement-author keeps the elected-official vs admin distinction, and
+official-response keeps its gold (an act, not a process).
+
+**Renderers:** theme.css gains `--type-<color>-bg/-fg` tokens (the old
+"start" colors are canonical; the divergent results-variants — vote-results
+teal, conversation-results navy, brief blue — retire from use). Feed.css
+pill classes are now `feed-pill--type-<color>`; Outcomes.css points at the
+same tokens; digest `PILL_COLORS` is rekeyed by ActivityColor (hexes mirror
+the tokens; falls back to generic rather than crashing a send on an item
+with no color). The legacy `--pill-*` tokens stay DEFINED — App.css uses
+`--pill-vote-*` as a general control accent (~25 sites) and FeedFilter's
+three surface pills still read them — but no process-type surface points at
+them anymore.
+
+**Outcomes filter = feed filter (same classes):** the gray toggle-chips and
+the Newest/Oldest dropdown are gone. The bar is now the feed's pill style
+(`.feed-filter-pill`, shared via FeedFilter.css import): **All** + one
+type-colored pill per type present, single-select, active = inverted
+(type-fg background, white text). Always newest first; the backend `sort`
+param survives unused. Year select and Clear stay.
+
+| Piece | File |
+|---|---|
+| `ActivityColor` + per-case stamping + `briefColorOf` | `src/shared/feedActivity.ts` |
+| `--type-*` tokens | `ui/src/styles/theme.css` |
+| Pill classes by color | `ui/src/components/Feed.css`; filter pills in `FeedFilter.css` |
+| `pillColor` plumbing | `ui/src/components/FeedPost.tsx` |
+| Outcomes filter rework + token repoint | `ui/src/pages/Outcomes.tsx` / `Outcomes.css` |
+| Digest rekey + fixture fix | `src/modules/civic.digest/{models,service}.ts`, `scripts/renderDigestSample.ts` |
+| Tests | color-rule cases in `tests/unit/feedActivity.test.ts` |
+
+Verification: `tsc -b` clean (backend + ui), **557 unit tests pass**.
+Browser-checked on dev: feed pills per type (proposal purple, conversation
+indigo, official response gold), Outcomes bar in feed style with working
+single-select filter (active pill = white-on-type, computed-style
+verified), digest sample renders.
+
+Deferred: restructuring the FEED's own filter bar (still the three surface
+groups: Announcements / BOS meeting summaries / Activity) into per-process
+pills — an information-architecture change, decided separately.
+
+---
+
 ## Per-brief delivery recipients + public "Sent to" receipt — 2026-08-28
 
 **Built, not pushed. No migration** (brief state is JSONB). Replaces the

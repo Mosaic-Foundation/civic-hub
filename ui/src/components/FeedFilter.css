@@ -85,3 +85,22 @@
 .feed-filter-pill--announcement.is-active { background: var(--pill-announcement-fg); }
 .feed-filter-pill--meeting.is-active { background: var(--pill-meeting-fg); }
 .feed-filter-pill--activity.is-active { background: var(--pill-vote-results-fg); }
+
+/* --- Per-process-type filter pills (2026-08-28) -------------------------
+ * Used by the Outcomes page's filter bar (which imports this stylesheet
+ * so the two surfaces share one pill style). Colored by the --type-*
+ * tokens — the same per-process-type palette the feed cards and Outcomes
+ * rows wear. Inactive: type bg/fg. Active: inverted, type fg as bg. */
+.feed-filter-pill--type-vote.feed-filter-pill          { background: var(--type-vote-bg);          color: var(--type-vote-fg);          border-color: transparent; }
+.feed-filter-pill--type-proposal.feed-filter-pill      { background: var(--type-proposal-bg);      color: var(--type-proposal-fg);      border-color: transparent; }
+.feed-filter-pill--type-conversation.feed-filter-pill  { background: var(--type-conversation-bg);  color: var(--type-conversation-fg);  border-color: transparent; }
+.feed-filter-pill--type-project.feed-filter-pill       { background: var(--type-project-bg);       color: var(--type-project-fg);       border-color: transparent; }
+.feed-filter-pill--type-wordcloud.feed-filter-pill     { background: var(--type-wordcloud-bg);     color: var(--type-wordcloud-fg);     border-color: transparent; }
+.feed-filter-pill--type-generic.feed-filter-pill       { background: var(--type-generic-bg);       color: var(--type-generic-fg);       border-color: transparent; }
+
+.feed-filter-pill--type-vote.is-active          { background: var(--type-vote-fg); color: var(--color-primary-text); }
+.feed-filter-pill--type-proposal.is-active      { background: var(--type-proposal-fg); color: var(--color-primary-text); }
+.feed-filter-pill--type-conversation.is-active  { background: var(--type-conversation-fg); color: var(--color-primary-text); }
+.feed-filter-pill--type-project.is-active       { background: var(--type-project-fg); color: var(--color-primary-text); }
+.feed-filter-pill--type-wordcloud.is-active     { background: var(--type-wordcloud-fg); color: var(--color-primary-text); }
+.feed-filter-pill--type-generic.is-active       { background: var(--type-generic-fg); color: var(--color-primary-text); }

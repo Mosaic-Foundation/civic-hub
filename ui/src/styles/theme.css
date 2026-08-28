@@ -82,6 +82,33 @@
   --pill-brief-response-bg: #fdf1e0;
   --pill-brief-response-fg: #8a5a13;
 
+  /* --- THE per-process-type palette (2026-08-28) ---------------------------
+     One color per process type, worn EVERYWHERE that type appears: its feed
+     cards at every lifecycle moment, its Outcomes row and pill, its filter
+     pill. Keyed by the shared classifier's ActivityColor (feedActivity.ts),
+     which collapses event kinds onto these keys — so "New proposal",
+     "Proposal results", and the proposal's Outcomes row are all the same
+     purple. Mirrored as literal hexes in civic.digest/service.ts PILL_COLORS
+     (emails cannot read CSS variables); change BOTH together.
+
+     The legacy --pill-<kind>-* tokens above stay DEFINED — App.css and
+     friends use --pill-vote-* as a general control accent (~25 sites), and
+     FeedFilter's surface pills read three of them — but no process-type
+     surface should point at them anymore. New surfaces use --type-*. */
+  --type-vote-bg: var(--ds-color-primary-100);   --type-vote-fg: var(--ds-color-primary-800);
+  --type-proposal-bg: #ede7f6;                   --type-proposal-fg: #5e35b1;
+  --type-conversation-bg: #e8eaf6;               --type-conversation-fg: #3949ab;
+  --type-project-bg: #e3f2fd;                    --type-project-fg: #1565c0;
+  --type-wordcloud-bg: #e0f2f1;                  --type-wordcloud-fg: #00695c;
+  --type-announcement-bg: var(--ds-color-accent-100);
+  --type-announcement-fg: var(--ds-color-accent-800);
+  --type-announcement-author-bg: #e4ddf0;        --type-announcement-author-fg: #3a2c5e;
+  --type-meeting-bg: var(--ds-color-success-100);
+  --type-meeting-fg: var(--ds-color-success-700);
+  --type-official-response-bg: #fdf1e0;          --type-official-response-fg: #8a5a13;
+  --type-generic-bg: var(--ds-color-primary-100, #dce5f2);
+  --type-generic-fg: var(--ds-color-primary-700, #1f3a66);
+
   /* --- Typography --- */
   --font-body: var(--ds-font-family-sans);
   --font-heading: var(--ds-font-family-display);

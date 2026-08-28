@@ -326,3 +326,47 @@ describe("briefResponseContext — the card's framing line", () => {
     expect(briefResponseContext(undefined)).toMatch(/this process$/);
   });
 });
+
+describe("classifyActivity — one color per process type", () => {
+  it("a process wears the same color at every lifecycle moment", () => {
+    // Votes: open and results both vote-colored (the old teal split is gone).
+    expect(classifyActivity(ev("civic.process.started", withType("civic.vote")))?.color).toBe("vote");
+    expect(
+      classifyActivity(ev("civic.process.result_published", { results_id: "r1" }))?.color,
+    ).toBe("vote");
+    // Conversations: created and legacy delivered outcome.
+    expect(
+      classifyActivity(ev("civic.process.created", withType("civic.polis_deliberation")))?.color,
+    ).toBe("conversation");
+    expect(
+      classifyActivity(ev("civic.outcome_delivered", { originating_process_id: "x" }))?.color,
+    ).toBe("conversation");
+  });
+
+  it("a brief wears its SOURCE process's color — the Outcomes/feed agreement", () => {
+    const briefOf = (src: string) =>
+      classifyActivity(
+        ev("civic.process.result_published", {
+          ...withType("civic.brief"),
+          brief: { source_process_type: src },
+        }),
+      )?.color;
+    expect(briefOf("civic.proposal")).toBe("proposal");
+    expect(briefOf("civic.vote")).toBe("vote");
+    expect(briefOf("civic.polis_deliberation")).toBe("conversation");
+    expect(briefOf("civic.project")).toBe("project");
+    expect(briefOf("civic.somenewthing")).toBe("generic");
+  });
+
+  it("official responses keep their gold — an act, not a process", () => {
+    expect(
+      classifyActivity(
+        ev("civic.process.action_taken", {
+          ...withType("civic.brief"),
+          action: "official_response",
+          feed_anchor: true,
+        }),
+      )?.color,
+    ).toBe("official-response");
+  });
+});

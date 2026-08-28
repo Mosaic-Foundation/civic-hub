@@ -240,22 +240,20 @@
  * review" pill, but no FeedPost code path emits the `--vote-results`
  * blue class today.
  */
-.feed-pill--vote-open           { background: var(--pill-vote-bg);                color: var(--pill-vote-fg); }
-.feed-pill--vote-results        { background: var(--pill-vote-results-bg);        color: var(--pill-vote-results-fg); }
-.feed-pill--announcement        { background: var(--pill-announcement-bg);        color: var(--pill-announcement-fg); }
-.feed-pill--announcement-author { background: var(--pill-announcement-author-bg); color: var(--pill-announcement-author-fg); }
-.feed-pill--meeting             { background: var(--pill-meeting-bg);             color: var(--pill-meeting-fg); }
-.feed-pill--wordcloud           { background: var(--pill-wordcloud-bg);           color: var(--pill-wordcloud-fg); }
-.feed-pill--generic             { background: #6b7280;                            color: #fff; }
-.feed-pill--project-created     { background: var(--pill-project-bg);             color: var(--pill-project-fg); }
-.feed-pill--project-updated     { background: var(--pill-project-bg);             color: var(--pill-project-fg); }
-/* Phase 3 — proposal (idea board) + conversation (deliberation) pills. */
-.feed-pill--proposal            { background: var(--pill-proposal-bg);            color: var(--pill-proposal-fg); }
-.feed-pill--proposal-closed     { background: var(--pill-proposal-closed-bg);     color: var(--pill-proposal-closed-fg); }
-.feed-pill--conversation        { background: var(--pill-conversation-bg);        color: var(--pill-conversation-fg); }
-.feed-pill--conversation-results{ background: var(--pill-conversation-results-bg); color: var(--pill-conversation-results-fg); }
-.feed-pill--brief               { background: var(--pill-brief-bg);               color: var(--pill-brief-fg); }
-.feed-pill--brief-response      { background: var(--pill-brief-response-bg);      color: var(--pill-brief-response-fg); }
+/* 2026-08-28 — pills are colored by PROCESS TYPE (the classifier's
+   ActivityColor), not by event kind: a proposal is the same purple as
+   "New proposal", "Proposal results", and its Outcomes row. The old
+   per-kind classes are gone; FeedPost emits feed-pill--type-<color>. */
+.feed-pill--type-vote                { background: var(--type-vote-bg);                color: var(--type-vote-fg); }
+.feed-pill--type-proposal            { background: var(--type-proposal-bg);            color: var(--type-proposal-fg); }
+.feed-pill--type-conversation        { background: var(--type-conversation-bg);        color: var(--type-conversation-fg); }
+.feed-pill--type-project             { background: var(--type-project-bg);             color: var(--type-project-fg); }
+.feed-pill--type-wordcloud           { background: var(--type-wordcloud-bg);           color: var(--type-wordcloud-fg); }
+.feed-pill--type-announcement        { background: var(--type-announcement-bg);        color: var(--type-announcement-fg); }
+.feed-pill--type-announcement-author { background: var(--type-announcement-author-bg); color: var(--type-announcement-author-fg); }
+.feed-pill--type-meeting             { background: var(--type-meeting-bg);             color: var(--type-meeting-fg); }
+.feed-pill--type-official-response   { background: var(--type-official-response-bg);   color: var(--type-official-response-fg); }
+.feed-pill--type-generic             { background: var(--type-generic-bg);             color: var(--type-generic-fg); }
 
 /* The official-response context line ("Responding to the community's
    Civic Brief on this proposal") — italic to read as framing, not data. */

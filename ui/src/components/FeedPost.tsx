@@ -6,6 +6,7 @@ import {
   briefResponseContext,
   classifyActivity,
   type Activity,
+  type ActivityColor,
   type ActivityKind,
 } from "../../../src/shared/feedActivity";
 
@@ -34,6 +35,10 @@ export interface FeedPostView {
   title: string;
   pillLabel: string;
   pillKind: FeedPillKind;
+  /** Process-type color key — selects the feed-pill--type-<color> class.
+   *  See ActivityColor in feedActivity.ts: one color per process type,
+   *  shared with Outcomes and the digest. */
+  pillColor: ActivityColor;
   summary: string;
   timestamp: string; // ISO 8601
   href: string;
@@ -92,6 +97,7 @@ export function eventToPost(
         ? `${hub.governing_body_short} meeting summary`
         : activity.pill,
     pillKind: activity.kind,
+    pillColor: activity.color,
     summary,
     timestamp: event.timestamp,
     href: activity.href,
@@ -349,7 +355,7 @@ export default function FeedPost({ post }: Props) {
   // Civic Hub" chip both work. Power users can still ⌘-click /
   // middle-click to force a new tab on either device.
   const isWideViewport = useIsWideViewport();
-  const pillClass = `feed-pill feed-pill--${post.pillKind}`;
+  const pillClass = `feed-pill feed-pill--type-${post.pillColor}`;
   const hasImage = Boolean(post.imageUrl);
   const articleClass = `feed-post feed-post--${post.pillKind}${
     hasImage ? " has-image" : ""
