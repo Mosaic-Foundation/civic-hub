@@ -91,47 +91,13 @@
   gap: var(--space-md);
 }
 
-/* Same card language as the process lists and the feed (the shared
-   .process-card block in App.css): 14px radius, soft resting shadow,
-   4px type-colored accent edge, gentle lift on hover. Kept in sync by
-   convention — the metrics below mirror that block. */
+/* The row's CARD is the shared .process-card (App.css) — same markup
+   and classes as the Votes/Proposals/Projects/Conversations lists, with
+   the per-type accent passed inline as --card-accent. Nothing card-shaped
+   is styled here anymore, on purpose: mirroring metrics by hand is how
+   this page drifted twice. */
 .outcomes-item {
-  border: 1px solid var(--border-color, var(--color-border));
-  border-radius: var(--radius-lg, 14px);
-  background: var(--card-background, var(--color-surface));
-  box-shadow: var(--shadow-card, 0 1px 2px rgba(15, 27, 45, 0.06));
-  transition:
-    border-color var(--ds-duration-base, 200ms) var(--ds-ease-default, ease),
-    box-shadow var(--ds-duration-base, 200ms) var(--ds-ease-default, ease),
-    transform var(--ds-duration-base, 200ms) var(--ds-ease-default, ease);
-}
-
-.outcomes-item:hover {
-  border-color: var(--ds-color-border-strong, var(--color-border));
-  box-shadow: var(--ds-shadow-md, 0 4px 12px rgba(15, 27, 45, 0.08));
-  transform: translateY(-1px);
-}
-
-.outcomes-item-link {
-  display: block;
-  padding: 1rem 1.25rem;
-  text-decoration: none;
-  color: inherit;
-}
-
-.outcomes-item-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-sm);
-}
-
-.outcomes-item-title {
-  font-family: var(--font-heading);
-  font-size: var(--font-size-lg);
-  color: var(--color-text);
-  line-height: var(--line-height-tight);
-  min-width: 0;
+  list-style: none;
 }
 
 .outcomes-pill {
@@ -162,18 +128,6 @@
  * Colors are the ONLY thing keyed to type here — never layout — so a process
  * type added later inherits the whole row shape for free.
  */
-.outcomes-item {
-  /* 4px to match the process-card accent edge. */
-  border-left-width: 4px;
-  border-left-style: solid;
-  border-left-color: var(--color-border);
-}
-
-.outcomes-item--vote          { border-left-color: var(--type-vote-fg); }
-.outcomes-item--proposal      { border-left-color: var(--type-proposal-fg); }
-.outcomes-item--conversation  { border-left-color: var(--type-conversation-fg); }
-.outcomes-item--project       { border-left-color: var(--type-project-fg); }
-.outcomes-item--wordcloud     { border-left-color: var(--type-wordcloud-fg); }
 
 .outcomes-pill--vote          { background: var(--type-vote-bg);         color: var(--type-vote-fg); }
 .outcomes-pill--proposal      { background: var(--type-proposal-bg);     color: var(--type-proposal-fg); }
@@ -182,23 +136,12 @@
 .outcomes-pill--wordcloud     { background: var(--type-wordcloud-bg);    color: var(--type-wordcloud-fg); }
 
 .outcomes-item-headline {
+  /* Same voice as the feed card summary: body font, muted, one quiet
+     line under the bold title. */
+  margin: var(--space-xs) 0 0;
   font-family: var(--font-body);
   font-size: var(--font-size-base);
-  color: var(--color-text);
-  margin: var(--space-xs) 0 0;
-}
-
-.outcomes-item-meta {
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
   color: var(--color-text-muted);
-  margin: var(--space-xs) 0 0;
 }
 
-@media (max-width: 600px) {
-  .outcomes-item-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { getOutcomes, type OutcomeEntry, type OutcomesPage } from "../services/api";
 import { friendlyType } from "../components/ProcessLinkPicker";
@@ -190,28 +190,39 @@ function OutcomeRow({ outcome }: { outcome: OutcomeEntry }) {
   const published = new Date(outcome.published_at);
   const slug = typeSlug(outcome.source_process_type);
   return (
-    <li className={`outcomes-item outcomes-item--${slug}`}>
-      <Link to={`/brief/${outcome.id}`} className="outcomes-item-link">
-        <div className="outcomes-item-head">
-          <span className="outcomes-item-title">{outcome.title}</span>
-          <span className={`outcomes-pill outcomes-pill--${slug}`}>
-            {friendlyType(outcome.source_process_type)}
-          </span>
+    <li className="outcomes-item">
+      {/* THE shared card language — literally the same classes the
+          Votes/Proposals/Projects/Conversations lists render
+          (.process-card + .process-card-header/meta in App.css), so the
+          archive cannot drift from them again. Only the accent color is
+          per-row: the source process type's --type-* token, passed as
+          the card's own --card-accent custom property. */}
+      <Link to={`/brief/${outcome.id}`} className="process-link">
+        <div
+          className="process-card"
+          style={{ "--card-accent": `var(--type-${slug}-fg)` } as CSSProperties}
+        >
+          <div className="process-card-header">
+            <h3>{outcome.title}</h3>
+            <span className={`outcomes-pill outcomes-pill--${slug}`}>
+              {friendlyType(outcome.source_process_type)}
+            </span>
+          </div>
+          <p className="outcomes-item-headline">{outcome.headline}</p>
+          <div className="process-card-meta">
+            <time dateTime={outcome.published_at}>
+              {published.toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </time>
+            {outcome.participation_label && <span>{outcome.participation_label}</span>}
+            {outcome.related_count > 0 && (
+              <span>{outcome.related_count} related</span>
+            )}
+          </div>
         </div>
-        <p className="outcomes-item-headline">{outcome.headline}</p>
-        <p className="outcomes-item-meta">
-          <time dateTime={outcome.published_at}>
-            {published.toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </time>
-          {outcome.participation_label && <> · {outcome.participation_label}</>}
-          {outcome.related_count > 0 && (
-            <> · {outcome.related_count} related</>
-          )}
-        </p>
       </Link>
     </li>
   );
