@@ -93,6 +93,18 @@ export async function hydratePeers(
     const moderation = (row.state as { moderation?: { removed?: unknown } } | null)?.moderation;
     if (moderation?.removed === true || moderation?.removed === "true") continue;
 
+    // ARCHIVED is absolute: an archived process is taken down, and a link to
+    // it disappears from the other end for EVERYONE — admins included. It
+    // reappears if the process is restored, because the edge row is still
+    // there; only the peer was withheld.
+    //
+    // This used to fall under the admin exemption below, which meant an admin
+    // saw archived peers rendered as ordinary links that 404 on click. The
+    // exemption exists for a PENDING_REVIEW peer — a submission still in the
+    // queue, which an admin or its own creator may legitimately see — and
+    // should never have extended to something deliberately removed.
+    if (row.status === "archived") continue;
+
     const visible =
       isPubliclyFetchable(row.status as never) ||
       opts.isAdmin === true ||
