@@ -6,7 +6,10 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Feed borders go dark + performance pass — 2026-08-28 (night)
 
-**Built, not pushed. No migration.** Two asks from Adam after the deploy:
+**Built and PUSHED (through `54079c0`, both phases). No migration.**
+Adam accepted this as the resting state — the remaining candidates
+(keep-warm ping for cold starts, slimmer columns) stay deferred until
+prod feels slow again. Two asks from Adam after the deploy:
 the site read "pastely", and the feed/Conversations felt slow to load.
 
 **The pastel offender was the feed's top borders.** List-card edges were
