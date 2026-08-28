@@ -101,11 +101,15 @@ against un-migrated dev.
   CoC-only prompt shape).
 
 **Incomplete / follow-ups:**
-1. Apply the migration to dev, then re-verify the Settings toggle
-   end-to-end (hide affordance everywhere + persistence across devices).
-   The affordance-hiding guard is code-verified only until then. Prod
-   application + deploy is a separate, later decision (do not push
-   code before the prod column exists — the 08-22 ordering rule).
+1. ✅ **DONE 2026-08-28 (later that day):** Adam applied the migration to
+   dev by hand in the SQL editor (verify query returned the column,
+   default false). Opt-out then re-verified end-to-end: toggle saves;
+   affordance card gone on desktop /propose/new; FAB gone on mobile
+   /votes/new; flag read back from /auth/me on a fresh page load
+   (server-side persistence, not client state). Test account restored
+   to default (hide=false). **Prod is still un-migrated** — when
+   shipping this, apply the same SQL to prod FIRST, verify, then push
+   (the 08-22 ordering rule: the migration must not trail its writer).
 2. The live assistant conversation (kickoff → questions → generated
    draft → suggestions) couldn't be exercised locally (no
    ANTHROPIC_API_KEY in local .env) — the transport, fail-open, and
