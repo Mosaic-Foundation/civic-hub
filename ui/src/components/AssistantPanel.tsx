@@ -19,6 +19,8 @@ interface Props {
   /** Label shown next to the loading dots — lets pages distinguish an
    *  ordinary assistant reply from the Code of Conduct check. */
   loadingLabel?: string;
+  /** Renders a close (collapse) button in the panel header. */
+  onClose?: () => void;
 }
 
 export default function AssistantPanel({
@@ -29,6 +31,7 @@ export default function AssistantPanel({
   loading,
   phase,
   loadingLabel = "Thinking",
+  onClose,
 }: Props) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -54,8 +57,18 @@ export default function AssistantPanel({
 
   return (
     <div className="assistant-panel">
-      <div className="assistant-header">
+      <div className="assistant-header assistant-header-row">
         <h3 className="assistant-title">Drafting assistant</h3>
+        {onClose && (
+          <button
+            type="button"
+            className="assistant-close-btn"
+            onClick={onClose}
+            aria-label="Close assistant"
+          >
+            &times;
+          </button>
+        )}
       </div>
 
       <div className="assistant-messages">

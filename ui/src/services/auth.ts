@@ -55,6 +55,13 @@ export interface AuthUser {
    */
   tos_version_accepted: string | null;
   tos_accepted_at: string | null;
+  /**
+   * When true, the AI drafting-help affordance is removed from every
+   * process creation flow. Stored server-side so it follows the user
+   * across devices. The automated Code of Conduct check still runs on
+   * every submission regardless.
+   */
+  hide_ai_drafting_help: boolean;
   display_name: string | null;
   /**
    * The user's real name — required for participation. null on
@@ -145,6 +152,16 @@ export function acceptTos(
   version: string,
 ): Promise<{ user: AuthUser }> {
   return request("POST", "/auth/accept-tos", { version }, token);
+}
+
+/**
+ * Persist the "Hide AI drafting help" preference on the user's account.
+ */
+export function setHideAiDraftingHelp(
+  token: string,
+  hide: boolean,
+): Promise<{ user: AuthUser }> {
+  return request("PATCH", "/auth/me", { hide_ai_drafting_help: hide }, token);
 }
 
 export function getMe(

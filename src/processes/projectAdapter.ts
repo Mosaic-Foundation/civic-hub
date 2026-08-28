@@ -18,10 +18,13 @@ import { ProcessHandler } from "./types.js";
 import { getDb } from "../db/client.js";
 import { getProject, listProjectUpdates } from "../modules/civic.projects/index.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
+import { projectAssistantConfig } from "./projectAssistantConfig.js";
 
 const projectAdapter: ProcessHandler = {
   type: "civic.project",
   detailPath: (id: string) => `/project/${id}`,
+
+  getAssistantConfig: () => projectAssistantConfig,
 
   // The relational `projects` row holds project state; the canonical
   // `processes` row needs no type-specific state.

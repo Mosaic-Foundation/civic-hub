@@ -1,4 +1,4 @@
-export { callAssistant } from "./service.js";
+export { callAssistant, checkTextAgainstCoC, getHubConfig } from "./service.js";
 export type { CallClaudeMultiTurnFn } from "./service.js";
 
 // Shown to a creator when the automated Code-of-Conduct pre-check could not
@@ -8,14 +8,19 @@ export type { CallClaudeMultiTurnFn } from "./service.js";
 // instead of silently trapping the creator with a disabled Submit button.
 export const AUTOMATED_REVIEW_UNAVAILABLE_NOTICE =
   "The automated check couldn't run just now, so we've skipped it — your submission will go straight to human review. You can submit when you're ready.";
+
 export type {
   Phase,
   Category,
-  ProcessType,
+  DraftField,
   Suggestion,
   DraftState,
   DraftProposal,
   AssistantResponse,
   HubConfig,
   CallAssistantInput,
+  AssistantTypeConfig,
+  AssistantDraft,
+  AssistantDraftStore,
+  AssistantFieldGuidance,
 } from "./models.js";

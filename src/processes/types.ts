@@ -9,6 +9,7 @@
 import { Process, ProcessAction, CreateProcessInput } from "../models/process.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import type { SchemaRequirement } from "../db/schemaContract.js";
+import type { AssistantTypeConfig } from "../modules/civic.assistant/index.js";
 
 export interface ProcessHandler {
   /** The process type this handler manages (e.g., "civic.vote") */
@@ -32,6 +33,17 @@ export interface ProcessHandler {
    * field — nothing downstream enumerates process types.
    */
   detailPath?(id: string): string;
+
+  /**
+   * Optional: drafting-assistant config for this process type. Declaring it
+   * is what opts a type into AI drafting help — the shared /assistant routes
+   * dispatch on it, and the UI's creation shell shows the (collapsed)
+   * assistant affordance only for types that declare it. A handler without
+   * this simply gets a plain form: no assistant affordance, no assistant
+   * routes. This is the single seam — no per-type assistant logic may live
+   * outside the handler and the generic civic.assistant module.
+   */
+  getAssistantConfig?(): AssistantTypeConfig;
 
   /** Initialize process-specific state from creation input */
   initializeState(input: Record<string, unknown>): Record<string, unknown>;

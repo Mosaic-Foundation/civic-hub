@@ -7,6 +7,7 @@
 import { Process, ProcessAction } from "../models/process.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { ProcessHandler } from "./types.js";
+import { voteAssistantConfig } from "./voteAssistantConfig.js";
 import {
   createVoteState,
   propose,
@@ -97,6 +98,8 @@ const voteProcess: ProcessHandler = {
 
   type: "civic.vote",
   detailPath: (id: string) => `/process/${id}`,
+
+  getAssistantConfig: () => voteAssistantConfig,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     return createVoteState(input) as unknown as Record<string, unknown>;

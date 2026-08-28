@@ -1,273 +1,108 @@
-import { useState, useCallback, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useRequireAuth } from "../hooks/useRequireAuth";
+import { useDraftFlow } from "../hooks/useDraftFlow";
 import AuthModal from "../components/AuthModal";
-import AssistantPanel, { type ChatMessage } from "../components/AssistantPanel";
+import DraftShell from "../components/DraftShell";
 import ProjectDraftingForm from "../components/ProjectDraftingForm";
 import {
   createProjectDraft,
   updateProjectDraft,
-  sendProjectAssistantMessage,
-  reviewProjectDraft,
   submitProjectDraft as apiSubmitProjectDraft,
   type ProjectDraft as ProjectDraftType,
-  type DraftSuggestion,
 } from "../services/api";
 import "./ProjectDraft.css";
 import type { ProposedLink } from "../services/api";
 
-type Step = "path" | "drafting";
+/**
+ * ONE creation flow — the drafting form IS the page. No path choice: AI
+ * writing help is a collapsed panel the user can open (DraftShell), and
+ * everything here is fully usable without it. The draft row is created
+ * lazily on the first real interaction.
+ */
 
-function friendlyError(msg: string): string {
-  if (msg.includes("rate_limit") || msg.includes("429"))
-    return "The assistant is getting too many requests right now. Wait a moment and try again.";
-  if (msg.includes("ANTHROPIC_API_KEY"))
-    return "The assistant isn't configured yet. Please contact the hub admin.";
-  if (msg.includes("timeout") || msg.includes("aborted"))
-    return "The assistant took too long to respond. Try again with a shorter message.";
-  return "Something went wrong with the assistant. Try again in a moment.";
-}
+const EMPTY_DRAFT: ProjectDraftType = {
+  id: "",
+  user_id: "",
+  title: "",
+  description: "",
+  sources: "",
+  banner_image_url: null,
+  banner_image_alt: null,
+  conversation_history: [],
+  last_review_result: null,
+  draft_modified_since_review: false,
+  assistant_helped: false,
+  status: "drafting",
+  created_at: "",
+  updated_at: "",
+  links: [],
+};
 
 export default function ProjectDraft() {
   const navigate = useNavigate();
-  const { canParticipate, isAdmin } = useAuth();
-  const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } =
-    useRequireAuth();
+  const { isAdmin } = useAuth();
 
-  const [step, setStep] = useState<Step>("path");
-  const [draft, setDraft] = useState<ProjectDraftType | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [reviewNotice, setReviewNotice] = useState<string | null>(null);
-  const [reviewing, setReviewing] = useState(false);
-  const [showMobileAssistant, setShowMobileAssistant] = useState(false);
-  const [phase, setPhase] = useState<"brainstorm" | "free_form" | "review">("brainstorm");
+  const flow = useDraftFlow<ProjectDraftType>({
+    processType: "civic.project",
+    createDraft: () => createProjectDraft(),
+    updateDraft: (id, patch) => updateProjectDraft(id, patch),
+    applyFields: ["title", "description", "sources"],
+  });
+
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [localLinks, setLocalLinks] = useState<ProposedLink[]>([]);
   // Titles for links already on the draft, so the list can render without a
   // lookup round-trip. Repopulated by the picker as the author chooses.
   const [linkTitles, setLinkTitles] = useState<
     Record<string, { title: string; type: string }>
   >({});
 
-  const isMobile = useIsMobile();
-
-  async function startDraft(path: "brainstorm" | "write") {
-    requireAuth(async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const d = await createProjectDraft();
-        setDraft(d);
-        setStep("drafting");
-
-        if (path === "brainstorm") {
-          setPhase("brainstorm");
-          const greeting =
-            "Want to think through this together first, or do you want to write your own draft and I'll review it?";
-          setMessages([
-            { role: "assistant", content: greeting },
-          ]);
-
-          const result = await sendProjectAssistantMessage(
-            d.id,
-            "brainstorm",
-            "I want to start a community project.",
-          );
-          setDraft(result.draft);
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              content: result.response.message,
-              suggestions:
-                result.response.suggestions.length > 0
-                  ? result.response.suggestions
-                  : undefined,
-            },
-          ]);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to create draft");
-      } finally {
-        setLoading(false);
-      }
-    });
-  }
-
-  const handleSendMessage = useCallback(
-    async (text: string) => {
-      if (!draft) return;
-      setLoading(true);
-      setError(null);
-      setMessages((prev) => [...prev, { role: "user", content: text }]);
-      try {
-        const result = await sendProjectAssistantMessage(draft.id, phase, text);
-        setDraft(result.draft);
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: result.response.message,
-            suggestions:
-              result.response.suggestions.length > 0
-                ? result.response.suggestions
-                : undefined,
-          },
-        ]);
-
-        if (result.response.draft_proposal) {
-          setDraft(result.draft);
-          setPhase("free_form");
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: friendlyError(msg) },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [draft, phase],
-  );
-
-
-  const handleLinksChange = useCallback(
-    async (links: ProposedLink[]) => {
-      if (!draft) return;
-      // Persist immediately. Links are part of the draft, so they must
-      // survive a refresh the same way the prose does.
-      // skip_modified_flag: adding a link is not a content change, so it must
-      // not invalidate a Code of Conduct check the author already passed.
-      try {
-        const updated = await updateProjectDraft(draft.id, { links, skip_modified_flag: true });
-        setDraft(updated);
-      } catch {
-        // Non-fatal: the picked link is still in the form's state and will be
-        // sent with the submission.
-      }
-    },
-    [draft],
-  );
-
-  const handleReview = useCallback(async () => {
-    if (!draft) return;
-    setLoading(true);
-    setReviewing(true);
-    setError(null);
-    setReviewNotice(null);
-    try {
-      const result = await reviewProjectDraft(draft.id);
-      setDraft(result.draft);
-      setReviewNotice(result.review_unavailable ? result.response.message : null);
-      setMessages((prev) => {
-        const cleaned = prev.map((msg) =>
-          msg.suggestions ? { ...msg, role: msg.role, content: msg.content } : msg,
-        );
-        return [
-          ...cleaned,
-          {
-            role: "assistant" as const,
-            content: result.response.message,
-            suggestions:
-              result.response.suggestions.length > 0
-                ? result.response.suggestions
-                : undefined,
-          },
-        ];
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      setError(friendlyError(msg));
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: friendlyError(msg) },
-      ]);
-    } finally {
-      setLoading(false);
-      setReviewing(false);
-    }
-  }, [draft]);
+  const draft = flow.draft;
+  const displayDraft: ProjectDraftType = draft ?? {
+    ...EMPTY_DRAFT,
+    ...(flow.pendingFields as Partial<ProjectDraftType>),
+  };
 
   const handleFieldChange = useCallback(
-    async (field: string, value: string) => {
-      if (!draft) return;
-      try {
-        const updated = await updateProjectDraft(draft.id, { [field]: value });
-        setDraft(updated);
-      } catch {
-        // silent — field saves are best-effort
-      }
+    (field: string, value: string) => {
+      void flow.queuePatch({ [field]: value });
     },
-    [draft],
+    [flow.queuePatch],
   );
 
   const handleImageChange = useCallback(
-    async (next: { image_url: string | null; image_alt: string | null }) => {
-      if (!draft) return;
-      try {
-        const updated = await updateProjectDraft(draft.id, {
+    (next: { image_url: string | null; image_alt: string | null }) => {
+      void flow.queuePatch(
+        {
           banner_image_url: next.image_url,
           banner_image_alt: next.image_alt,
-          skip_modified_flag: true,
-        });
-        setDraft(updated);
-      } catch {
-        // silent — image saves are best-effort
-      }
+        },
+        { skipModifiedFlag: true },
+      );
     },
-    [draft],
+    [flow.queuePatch],
   );
 
-  const handleApplySuggestion = useCallback(
-    async (suggestion: DraftSuggestion) => {
-      if (!draft || !suggestion.field || !suggestion.suggested_revision) return;
-      if (suggestion.field === "considerations") return;
-
-      const field = suggestion.field as keyof Pick<ProjectDraftType, "title" | "description" | "sources">;
-      const current = String(draft[field] ?? "");
-      let newValue: string;
-
-      if (suggestion.quoted_text && current.includes(suggestion.quoted_text)) {
-        newValue = current.replace(suggestion.quoted_text, suggestion.suggested_revision);
-      } else if (current.trim()) {
-        newValue = current.trim() + "\n\n" + suggestion.suggested_revision;
-      } else {
-        newValue = suggestion.suggested_revision;
-      }
-
-      try {
-        const updated = await updateProjectDraft(draft.id, {
-          [suggestion.field]: newValue,
-          skip_modified_flag: true,
-        });
-        setDraft(updated);
-      } catch {
-        // silent
-      }
-
-      const inputId = `draft-${suggestion.field}`;
-      const el = document.getElementById(inputId) as
-        | HTMLInputElement
-        | HTMLTextAreaElement
-        | null;
-      if (el) el.value = newValue;
+  const handleLinksChange = useCallback(
+    (links: ProposedLink[]) => {
+      setLocalLinks(links);
+      // skip_modified_flag: adding a link is not a content change, so it must
+      // not invalidate a Code of Conduct check the author already passed.
+      void flow.queuePatch({ links }, { skipModifiedFlag: true });
     },
-    [draft],
+    [flow.queuePatch],
   );
 
-  async function handleSubmit() {
+  function handleSubmit() {
     setShowConfirm(true);
   }
 
   async function confirmSubmit() {
     if (!draft || submitting) return;
     setSubmitting(true);
-    setError(null);
+    flow.setError(null);
     try {
       const result = await apiSubmitProjectDraft(draft.id);
       if (result.auto_approved) {
@@ -276,192 +111,50 @@ export default function ProjectDraft() {
         navigate(`/my-submissions/${result.review_id}`, { state: { submitted: true } });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Submit failed");
+      flow.setError(err instanceof Error ? err.message : "Submit failed");
     } finally {
       setSubmitting(false);
       setShowConfirm(false);
     }
   }
 
-  // --- Render ---
-
-  if (step === "path") {
-    return (
-      <div className="page detail-page">
-        {showAuthModal && (
-          <AuthModal
-            onComplete={handleAuthComplete}
-            onDismiss={closeAuthModal}
-          />
-        )}
-        <Link to="/projects" className="back-link">
-          &larr; Projects
-        </Link>
-        <h1>Start a project</h1>
-        <p className="propose-description">
-          Share a project you're building or organizing for the community.
-          Your project goes live after a quick review and you can post
-          updates over time.
-        </p>
-
-        {!canParticipate && (
-          <p className="auth-prompt-inline">
-            You'll need to create an account before submitting.
-          </p>
-        )}
-
-        {error && <p className="form-error">{error}</p>}
-        {reviewNotice && <p className="form-hint">{reviewNotice}</p>}
-
-        <div className="path-choice">
-          <button
-            type="button"
-            className="path-card"
-            onClick={() => startDraft("brainstorm")}
-            disabled={loading}
-          >
-            <span className="path-card-label">Draft with the assistant</span>
-            <span className="path-card-desc">
-              Optional writing help: the assistant will ask a few questions
-              to help shape your project page, then offer to generate a
-              starting draft.
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className="path-card"
-            onClick={() => startDraft("write")}
-            disabled={loading}
-          >
-            <span className="path-card-label">I'll write my own</span>
-            <span className="path-card-desc">
-              Jump straight to the form — no AI writing help unless you ask
-              for it.
-            </span>
-          </button>
-        </div>
-
-        <p className="path-choice-note">
-          Whichever you choose, every draft gets a quick automated Code of
-          Conduct check before it goes to the hub admin for review. The check
-          isn't writing help — it just flags anything that would block
-          approval.
-        </p>
-      </div>
-    );
-  }
-
-  // step === "drafting"
-  if (!draft) return null;
-
-  const assistantPanel = (
-    <AssistantPanel
-      messages={messages}
-      onSendMessage={handleSendMessage}
-      onApplySuggestion={handleApplySuggestion}
-      loading={loading}
-      phase={phase}
-      loadingLabel={reviewing ? "Running Code of Conduct check" : "Thinking"}
-    />
-  );
-
   return (
-    <div className="propose-draft-page">
-      {showAuthModal && (
+    <>
+      {flow.showAuthModal && (
         <AuthModal
-          onComplete={handleAuthComplete}
-          onDismiss={closeAuthModal}
+          onComplete={flow.handleAuthComplete}
+          onDismiss={flow.closeAuthModal}
         />
       )}
 
-      {/* Desktop two-pane */}
-      {!isMobile && (
-        <div className="propose-draft-layout">
-          <div className="propose-draft-assistant">{assistantPanel}</div>
-          <div className="propose-draft-form">
-            <div className="propose-draft-form-header">
-              <Link to="/projects" className="back-link">
-                &larr; Projects
-              </Link>
-              <h1 className="propose-draft-title">Start a project</h1>
-            </div>
-            {error && <p className="form-error" style={{ padding: "0 var(--space-lg)" }}>{error}</p>}
-            {reviewNotice && <p className="form-hint" style={{ padding: "0 var(--space-lg)" }}>{reviewNotice}</p>}
-            <ProjectDraftingForm
-              draft={draft}
-              links={draft.links ?? []}
-              onLinksChange={handleLinksChange}
-              linkTitles={linkTitles}
-              onLinkTitlesChange={setLinkTitles}
-              onFieldChange={handleFieldChange}
-              onImageChange={handleImageChange}
-              onReview={handleReview}
-              onSubmit={handleSubmit}
-              disabled={submitting}
-              reviewLoading={loading}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Mobile single-pane */}
-      {isMobile && (
-        <>
-          <div className="propose-draft-mobile">
-            <div className="page detail-page">
-              <Link to="/projects" className="back-link">
-                &larr; Projects
-              </Link>
-              <h1>Start a project</h1>
-              {error && <p className="form-error">{error}</p>}
-        {reviewNotice && <p className="form-hint">{reviewNotice}</p>}
-              <ProjectDraftingForm
-                draft={draft}
-                links={draft.links ?? []}
-                onLinksChange={handleLinksChange}
-                linkTitles={linkTitles}
-                onLinkTitlesChange={setLinkTitles}
-                onFieldChange={handleFieldChange}
-                onImageChange={handleImageChange}
-                onReview={handleReview}
-                onSubmit={handleSubmit}
-                disabled={submitting}
-                reviewLoading={loading}
-              />
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="assistant-fab"
-            onClick={() => setShowMobileAssistant(true)}
-            aria-label="Open drafting assistant"
-          >
-            ?
-          </button>
-
-          {showMobileAssistant && (
-            <div className="assistant-overlay">
-              <div className="assistant-header" style={{ display: "flex", justifyContent: "space-between" }}>
-                <h3 className="assistant-title">Drafting assistant</h3>
-                <button
-                  type="button"
-                  className="assistant-close-btn"
-                  onClick={() => setShowMobileAssistant(false)}
-                  aria-label="Close assistant"
-                >
-                  &times;
-                </button>
-              </div>
-              {assistantPanel}
-            </div>
-          )}
-        </>
-      )}
+      <DraftShell
+        backTo="/projects"
+        backLabel="Projects"
+        title="Start a project"
+        error={flow.error}
+        reviewNotice={flow.reviewNotice}
+        assistant={flow.shellAssistant}
+        reviewSuggestions={draft?.last_review_result}
+        onApplySuggestion={flow.handleApplySuggestion}
+      >
+        <ProjectDraftingForm
+          draft={displayDraft}
+          links={draft?.links ?? localLinks}
+          onLinksChange={handleLinksChange}
+          linkTitles={linkTitles}
+          onLinkTitlesChange={setLinkTitles}
+          onFieldChange={handleFieldChange}
+          onImageChange={handleImageChange}
+          onReview={flow.handleReview}
+          onSubmit={handleSubmit}
+          disabled={submitting}
+          reviewLoading={flow.reviewing}
+          fieldGuidance={flow.config?.field_guidance}
+        />
+      </DraftShell>
 
       {/* Submit confirmation modal */}
-      {showConfirm && (
+      {showConfirm && draft && (
         <div className="intro-overlay" onClick={() => setShowConfirm(false)}>
           <div
             className="intro-modal"
@@ -484,6 +177,12 @@ export default function ProjectDraft() {
                 <p className="confirm-desc">{draft.description}</p>
               )}
             </div>
+
+            <p className="confirm-finality-warning">
+              {isAdmin
+                ? "Once submitted, your project cannot be edited. Please make sure everything looks the way you want it before submitting."
+                : "Your project will be submitted for review before going live. You'll be notified when an admin has reviewed it."}
+            </p>
 
             {draft.assistant_helped && (
               <p className="confirm-disclosure">
@@ -533,22 +232,6 @@ export default function ProjectDraft() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
-}
-
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(
-    typeof window !== "undefined" ? window.innerWidth < 769 : false,
-  );
-
-  useEffect(() => {
-    function handleResize() {
-      setIsMobile(window.innerWidth < 769);
-    }
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  return isMobile;
 }

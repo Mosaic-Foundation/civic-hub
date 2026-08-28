@@ -79,6 +79,8 @@ function rowToUser(row: Record<string, unknown>): User {
     tos_accepted_at: row.tos_accepted_at
       ? String(row.tos_accepted_at)
       : null,
+    // Defaults false for rows (or databases) that pre-date the migration.
+    hide_ai_drafting_help: Boolean(row.hide_ai_drafting_help),
     display_name: row.display_name ? String(row.display_name) : null,
     full_name: row.full_name ? String(row.full_name) : null,
   };
@@ -576,6 +578,27 @@ export async function deleteAccount(
  * carry personal attribution ("Jane Doe, Board member") rather than
  * just the role label.
  */
+/**
+ * Persistent "Hide AI drafting help" preference. Server-side (not
+ * localStorage) so it follows the user across devices. Requires the
+ * hide_ai_drafting_help migration; fails loudly against an un-migrated
+ * database on purpose — reads degrade to false, writes must not lie.
+ */
+export async function updateHideAiDraftingHelp(
+  userId: string,
+  hide: boolean,
+): Promise<User> {
+  const { data, error } = await getDb()
+    .from("users")
+    .update({ hide_ai_drafting_help: hide })
+    .eq("id", userId)
+    .select()
+    .maybeSingle();
+  if (error) throw new Error(`Auth: ${error.message}`);
+  if (!data) throw new Error("User not found");
+  return rowToUser(data);
+}
+
 export async function updateDisplayName(
   userId: string,
   displayName: string | null,

@@ -14,6 +14,7 @@ import discoveryRoutes from "./routes/discoveryRoutes.js";
 import debugRoutes from "./routes/debugRoutes.js";
 import inputRoutes from "./routes/inputRoutes.js";
 import proposalRoutes from "./routes/proposalRoutes.js";
+import assistantRoutes from "./routes/assistantRoutes.js";
 import proposalDraftRoutes from "./routes/proposalDraftRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -115,8 +116,12 @@ app.use("/process", processLinksRoutes);
 app.use("/process", processRoutes);
 app.use("/process", inputRoutes);
 
-// Proposal draft endpoints — AI-augmented drafting (mounted before /proposals
-// so /proposals/drafts doesn't get caught by /proposals/:id).
+// Shared drafting-assistant endpoints — one surface for every process type,
+// dispatched through the registry (ProcessHandler.getAssistantConfig).
+app.use("/assistant", assistantRoutes);
+
+// Proposal draft endpoints — draft storage + submission (mounted before
+// /proposals so /proposals/drafts doesn't get caught by /proposals/:id).
 app.use("/proposals/drafts", proposalDraftRoutes);
 
 // Vote draft endpoints — AI-augmented vote drafting (mounted before /votes

@@ -200,3 +200,22 @@
 .settings-danger-cancel:hover:not(:disabled) {
   background: var(--color-surface-alt);
 }
+
+/* --- AI drafting help toggle --- */
+
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  margin-top: var(--space-sm);
+}
+
+.settings-toggle-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}

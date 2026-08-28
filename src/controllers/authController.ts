@@ -15,6 +15,7 @@ import {
   acceptLegalTerms,
   updateDisplayName,
   updateFullName,
+  updateHideAiDraftingHelp,
   deleteAccount,
   getUserFromToken,
   logout,
@@ -222,13 +223,15 @@ export async function handleUpdateProfile(
     res.status(401).json({ error: "Invalid or expired session" });
     return;
   }
-  const { display_name, full_name } = (req.body ?? {}) as {
+  const { display_name, full_name, hide_ai_drafting_help } = (req.body ?? {}) as {
     display_name?: unknown;
     full_name?: unknown;
+    hide_ai_drafting_help?: unknown;
   };
   const hasDisplayName = display_name !== undefined;
   const hasFullName = full_name !== undefined;
-  if (!hasDisplayName && !hasFullName) {
+  const hasHideDraftingHelp = hide_ai_drafting_help !== undefined;
+  if (!hasDisplayName && !hasFullName && !hasHideDraftingHelp) {
     res.status(400).json({ error: "Nothing to update" });
     return;
   }
@@ -240,6 +243,10 @@ export async function handleUpdateProfile(
     res.status(400).json({ error: "full_name must be a string" });
     return;
   }
+  if (hasHideDraftingHelp && typeof hide_ai_drafting_help !== "boolean") {
+    res.status(400).json({ error: "hide_ai_drafting_help must be a boolean" });
+    return;
+  }
   try {
     let updated = user;
     if (hasFullName) {
@@ -249,6 +256,12 @@ export async function handleUpdateProfile(
       updated = await updateDisplayName(
         user.id,
         typeof display_name === "string" ? display_name : null,
+      );
+    }
+    if (hasHideDraftingHelp) {
+      updated = await updateHideAiDraftingHelp(
+        user.id,
+        hide_ai_drafting_help as boolean,
       );
     }
     res.json({ user: updated });

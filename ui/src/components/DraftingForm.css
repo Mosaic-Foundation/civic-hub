@@ -152,3 +152,19 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* --- Inline field guidance (FieldGuide) --- */
+/* One line of best-practices advice + a short example under each field,
+   for drafters working without the assistant. */
+
+.field-guide {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-relaxed);
+}
+
+.field-guide-example {
+  color: var(--color-text-subtle, var(--color-text-muted));
+  font-style: italic;
+}

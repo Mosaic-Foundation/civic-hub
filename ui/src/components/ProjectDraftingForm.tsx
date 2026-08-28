@@ -1,8 +1,9 @@
 import { useCallback, useRef } from "react";
-import type { ProjectDraft, DraftSuggestion } from "../services/api";
+import type { AssistantFieldGuidance, ProjectDraft, DraftSuggestion } from "../services/api";
 import { uploadProjectImage } from "../services/api";
 import PostImagePicker from "./PostImagePicker";
 import "./VoteDraftingForm.css";
+import { FieldGuide } from "./DraftingForm";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
 
@@ -20,6 +21,8 @@ interface Props {
   onSubmit: () => void;
   disabled: boolean;
   reviewLoading?: boolean;
+  /** Per-field inline guidance served by the assistant config endpoint. */
+  fieldGuidance?: AssistantFieldGuidance[];
 }
 
 const PLACEHOLDERS = {
@@ -75,6 +78,7 @@ export default function ProjectDraftingForm({
   onSubmit,
   disabled,
   reviewLoading,
+  fieldGuidance,
 }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -113,6 +117,7 @@ export default function ProjectDraftingForm({
             maxLength={200}
             disabled={disabled}
           />
+          <FieldGuide guidance={fieldGuidance} field="title" />
         </div>
 
         <div className="form-field">
@@ -128,6 +133,7 @@ export default function ProjectDraftingForm({
             rows={6}
             disabled={disabled}
           />
+          <FieldGuide guidance={fieldGuidance} field="description" />
         </div>
 
         <div className="form-field">
@@ -159,6 +165,7 @@ export default function ProjectDraftingForm({
             rows={4}
             disabled={disabled}
           />
+          <FieldGuide guidance={fieldGuidance} field="sources" />
           <p className="form-hint">Add relevant links, one per line.</p>
         </div>
 

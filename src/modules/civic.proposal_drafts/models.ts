@@ -7,8 +7,8 @@ export interface ProposedLink {
   relation: RelationType;
 }
 
-import type { Category } from "../civic.proposal_assistant/models.js";
-import type { Suggestion } from "../civic.proposal_assistant/models.js";
+import type { Category } from "../civic.assistant/models.js";
+import type { Suggestion } from "../civic.assistant/models.js";
 
 export type DraftStatus = "drafting" | "submitted" | "abandoned";
 
@@ -49,4 +49,7 @@ export interface UpdateDraftInput {
   proposal_duration_ms?: number;
   links?: ProposedLink[];
   skip_modified_flag?: boolean;
+  /** The value being written is assistant-produced text (Apply on a
+   *  suggestion card) — sets assistant_helped on the draft. */
+  assistant_applied?: boolean;
 }

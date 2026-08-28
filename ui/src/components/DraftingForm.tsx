@@ -1,8 +1,32 @@
 import { useCallback, useRef } from "react";
-import type { DraftCategory, ProposalDraft } from "../services/api";
+import type { AssistantFieldGuidance, DraftCategory, ProposalDraft } from "../services/api";
 import "./DraftingForm.css";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
+
+/** Inline hint + example under a field — the same best-practices content
+ *  the assistant works from, so manual drafters get the quality lift too. */
+export function FieldGuide({
+  guidance,
+  field,
+}: {
+  guidance?: AssistantFieldGuidance[];
+  field: string;
+}) {
+  const entry = guidance?.find((g) => g.field === field);
+  if (!entry) return null;
+  return (
+    <p className="field-guide">
+      {entry.hint}
+      {entry.example && (
+        <>
+          {" "}
+          <span className="field-guide-example">Example: “{entry.example}”</span>
+        </>
+      )}
+    </p>
+  );
+}
 
 interface Props {
   /** Related processes the author has picked. Optional by design — the
@@ -19,6 +43,8 @@ interface Props {
   disabled: boolean;
   reviewLoading?: boolean;
   reviewFailed?: boolean;
+  /** Per-field inline guidance served by the assistant config endpoint. */
+  fieldGuidance?: AssistantFieldGuidance[];
 }
 
 const DURATION_OPTIONS = [
@@ -99,6 +125,7 @@ export default function DraftingForm({
   disabled,
   reviewLoading,
   reviewFailed,
+  fieldGuidance,
 }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -165,6 +192,7 @@ export default function DraftingForm({
             maxLength={200}
             disabled={disabled}
           />
+          <FieldGuide guidance={fieldGuidance} field="title" />
         </div>
 
         <div className="form-field">
@@ -180,6 +208,7 @@ export default function DraftingForm({
             rows={5}
             disabled={disabled}
           />
+          <FieldGuide guidance={fieldGuidance} field="description" />
         </div>
 
         <div className="form-field">
@@ -195,6 +224,7 @@ export default function DraftingForm({
             rows={2}
             disabled={disabled}
           />
+          <FieldGuide guidance={fieldGuidance} field="sources" />
           <p className="form-hint">Add relevant links, one per line.</p>
         </div>
 

@@ -7,7 +7,7 @@ export interface ProposedLink {
   relation: RelationType;
 }
 
-import type { Suggestion } from "../civic.proposal_assistant/models.js";
+import type { Suggestion } from "../civic.assistant/models.js";
 
 export type ProjectDraftStatus = "drafting" | "submitted" | "abandoned";
 
@@ -41,4 +41,7 @@ export interface UpdateProjectDraftInput {
   banner_image_alt?: string | null;
   links?: ProposedLink[];
   skip_modified_flag?: boolean;
+  /** The value being written is assistant-produced text (Apply on a
+   *  suggestion card) — sets assistant_helped on the draft. */
+  assistant_applied?: boolean;
 }

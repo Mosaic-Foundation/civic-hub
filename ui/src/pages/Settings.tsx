@@ -14,17 +14,25 @@ import {
   deleteAccount as deleteAccountApi,
   getMe,
   getStoredToken,
+  setHideAiDraftingHelp,
 } from "../services/auth";
 import "./Settings.css";
 
 export default function Settings() {
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading, updateUser } = useAuth();
   const navigate = useNavigate();
   // "loading" = haven't fetched yet, number = frequency in days, null = unsubscribed
   const [frequency, setFrequency] = useState<number | null | "loading">("loading");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // "Hide AI drafting help" — server-persisted so it follows the user
+  // across devices. Initialized from the freshly fetched user below.
+  const [hideDraftingHelp, setHideDraftingHelp] = useState(false);
+  const [savingDraftingHelp, setSavingDraftingHelp] = useState(false);
+  const [draftingHelpMessage, setDraftingHelpMessage] = useState<string | null>(null);
+  const [draftingHelpError, setDraftingHelpError] = useState<string | null>(null);
 
   // Slice 13.11 — account deletion local state. The user types
   // their own email into the confirm input; submit is gated on an
@@ -47,11 +55,36 @@ export default function Settings() {
     getMe(token)
       .then(({ user: u }) => {
         setFrequency(u.digest_frequency_days);
+        setHideDraftingHelp(u.hide_ai_drafting_help === true);
       })
       .catch((err: Error) => {
         setError(`Could not load settings: ${err.message}`);
       });
   }, [loading, user]);
+
+  async function onHideDraftingHelpChange(hide: boolean) {
+    const token = getStoredToken();
+    if (!token) return;
+    setSavingDraftingHelp(true);
+    setDraftingHelpMessage(null);
+    setDraftingHelpError(null);
+    try {
+      const { user: updated } = await setHideAiDraftingHelp(token, hide);
+      setHideDraftingHelp(updated.hide_ai_drafting_help);
+      updateUser(updated);
+      setDraftingHelpMessage(
+        updated.hide_ai_drafting_help
+          ? "Saved. You won't see the drafting assistant anywhere."
+          : "Saved. The drafting assistant is available again (collapsed until you open it).",
+      );
+    } catch (err) {
+      setDraftingHelpError(
+        err instanceof Error ? err.message : "Could not save setting",
+      );
+    } finally {
+      setSavingDraftingHelp(false);
+    }
+  }
 
   async function handleDeleteAccount() {
     if (!user) return;
@@ -184,6 +217,32 @@ export default function Settings() {
           </select>
 
           {message && <p className="settings-message">{message}</p>}
+        </section>
+
+        <section className="settings-panel">
+          <h3>AI drafting help</h3>
+          <p className="form-hint">
+            When you create a proposal, vote, or project, an optional AI
+            assistant can help you draft. It never opens on its own — but if
+            you'd rather not see it at all, hide it here. This applies on
+            every device you sign in from. Every submission still gets the
+            automated Code of Conduct check either way.
+          </p>
+
+          <label className="settings-toggle-row">
+            <input
+              type="checkbox"
+              checked={hideDraftingHelp}
+              onChange={(e) => onHideDraftingHelpChange(e.target.checked)}
+              disabled={savingDraftingHelp}
+            />
+            <span>Hide AI drafting help</span>
+          </label>
+
+          {draftingHelpMessage && (
+            <p className="settings-message">{draftingHelpMessage}</p>
+          )}
+          {draftingHelpError && <p className="form-error">{draftingHelpError}</p>}
         </section>
 
         <p className="settings-signed-in">

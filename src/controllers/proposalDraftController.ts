@@ -5,44 +5,20 @@ import {
   getDraft,
   listUserDrafts,
   updateDraft,
-  appendConversation,
-  saveReviewResult,
-  applyDraftProposal,
   setDraftStatus,
   claimDraftForSubmission,
 } from "../modules/civic.proposal_drafts/index.js";
-import {
-  callAssistant,
-  AUTOMATED_REVIEW_UNAVAILABLE_NOTICE,
-  type HubConfig,
-  type DraftState,
-  type Phase,
-  type Category,
-} from "../modules/civic.proposal_assistant/index.js";
+import { type Category } from "../modules/civic.assistant/index.js";
 import { submitAsCreator } from "../modules/civic.review/index.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 
+// Assistant conversation + Code of Conduct review live on the shared
+// /assistant routes (assistantController), dispatched through the registry.
+// This controller owns only draft storage and submission.
+
 const VALID_CATEGORIES = new Set(["issue", "idea", "project", "concern"]);
-const VALID_PHASES = new Set(["brainstorm", "review", "free_form"]);
 // Matches the proposal_drafts.proposal_duration_ms column default (90 days).
 const DEFAULT_PROPOSAL_DURATION_MS = 7776000000;
-
-function getHubConfig(): HubConfig {
-  return {
-    hub_name: process.env.HUB_NAME ?? "Floyd Civic Hub",
-    community_description:
-      "residents of Floyd County, Virginia — a small rural community in the Blue Ridge Mountains",
-  };
-}
-
-function draftState(draft: { title: string; description: string; sources: string; considerations: string }): DraftState {
-  return {
-    title: draft.title,
-    description: draft.description,
-    sources: draft.sources,
-    considerations: draft.considerations,
-  };
-}
 
 export async function handleCreateDraft(
   req: Request,
@@ -129,7 +105,7 @@ export async function handleUpdateDraft(
       return;
     }
 
-    const { title, description, sources, considerations, category, proposal_duration_ms, links, skip_modified_flag } = req.body;
+    const { title, description, sources, considerations, category, proposal_duration_ms, links, skip_modified_flag, assistant_applied } = req.body;
 
     if (category && !VALID_CATEGORIES.has(category)) {
       res.status(400).json({ error: "Invalid category" });
@@ -158,153 +134,12 @@ export async function handleUpdateDraft(
       // at submission. A draft can't link to itself in any meaningful sense.
       links: links === undefined ? undefined : validateLinkSet("", links),
       skip_modified_flag: skip_modified_flag === true,
+      assistant_applied: assistant_applied === true,
     });
     res.json(updated);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(400).json({ error: message });
-  }
-}
-
-export async function handleSendAssistantMessage(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  const user = getAuthUser(res);
-  const id = req.params.id as string;
-  const { phase, user_message } = req.body;
-
-  if (!user_message || typeof user_message !== "string") {
-    res.status(400).json({ error: "user_message is required" });
-    return;
-  }
-  if (!phase || !VALID_PHASES.has(phase)) {
-    res.status(400).json({ error: "phase must be: brainstorm, review, or free_form" });
-    return;
-  }
-
-  try {
-    const draft = await getDraft(id);
-    if (!draft) {
-      res.status(404).json({ error: "Draft not found" });
-      return;
-    }
-    if (draft.user_id !== user.id) {
-      res.status(403).json({ error: "Not authorized" });
-      return;
-    }
-    if (draft.status !== "drafting") {
-      res.status(400).json({ error: "Draft is not in drafting state" });
-      return;
-    }
-
-    const category = draft.category ?? "idea";
-    const hubConfig = getHubConfig();
-
-    const response = await callAssistant({
-      phase: phase as Phase,
-      category: category as Category,
-      draft_state: draftState(draft),
-      conversation_history: draft.conversation_history,
-      user_message,
-      hub_config: hubConfig,
-    });
-
-    await appendConversation(id, user_message, response.message);
-
-    if (response.draft_proposal) {
-      await applyDraftProposal(
-        id,
-        response.draft_proposal.title,
-        response.draft_proposal.description,
-        response.draft_proposal.sources,
-        response.draft_proposal.considerations,
-      );
-    }
-
-    if (response.suggestions.length > 0) {
-      await saveReviewResult(id, response.suggestions);
-    }
-
-    const updatedDraft = await getDraft(id);
-    res.json({ response, draft: updatedDraft });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("[proposal-assistant]", message);
-    res.status(500).json({ error: message });
-  }
-}
-
-export async function handleReviewDraft(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  const user = getAuthUser(res);
-  const id = req.params.id as string;
-
-  try {
-    const draft = await getDraft(id);
-    if (!draft) {
-      res.status(404).json({ error: "Draft not found" });
-      return;
-    }
-    if (draft.user_id !== user.id) {
-      res.status(403).json({ error: "Not authorized" });
-      return;
-    }
-    if (draft.status !== "drafting") {
-      res.status(400).json({ error: "Draft is not in drafting state" });
-      return;
-    }
-
-    const category = draft.category ?? "idea";
-    const hubConfig = getHubConfig();
-
-    const reviewMessage =
-      "Please review my current draft against the Code of Conduct and Proposal Best Practices. " +
-      "Return your feedback as structured suggestions.";
-
-    let response;
-    try {
-      response = await callAssistant({
-        phase: "review",
-        category: category as Category,
-        draft_state: draftState(draft),
-        conversation_history: draft.conversation_history,
-        user_message: reviewMessage,
-        hub_config: hubConfig,
-      });
-    } catch (reviewErr) {
-      // Fail open: the automated pre-check couldn't run. Record a clean
-      // (empty) review result so the draft is no longer "modified since
-      // review", and let it through to human admin review (the real gate).
-      console.error(
-        "[proposal-review] automated check unavailable, failing open to human review:",
-        reviewErr instanceof Error ? reviewErr.message : reviewErr,
-      );
-      await saveReviewResult(id, []);
-      const degraded = await getDraft(id);
-      res.json({
-        response: { message: AUTOMATED_REVIEW_UNAVAILABLE_NOTICE, suggestions: [] },
-        draft: degraded,
-        review_unavailable: true,
-      });
-      return;
-    }
-
-    // markAssisted: false — the CoC pre-check is not writing assistance
-    // and must not trigger the "drafted with AI help" disclosure.
-    await appendConversation(id, reviewMessage, response.message, {
-      markAssisted: false,
-    });
-    await saveReviewResult(id, response.suggestions);
-
-    const updatedDraft = await getDraft(id);
-    res.json({ response, draft: updatedDraft });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("[proposal-review]", message);
-    res.status(500).json({ error: message });
   }
 }
 

@@ -3,15 +3,27 @@ import {
   DEFAULT_MODEL,
   type MultiTurnMessage,
 } from "../../utils/anthropic.js";
-import { buildSystemPrompt } from "./systemPrompt.js";
+import { buildSystemPrompt, buildCocCheckPrompt } from "./systemPrompt.js";
 import type {
   CallAssistantInput,
   AssistantResponse,
   Suggestion,
   DraftProposal,
+  DraftField,
+  HubConfig,
 } from "./models.js";
 
 export type CallClaudeMultiTurnFn = typeof callClaudeMultiTurn;
+
+/** Hub identity handed to the assistant. Single source — every caller
+ *  (draft assistant, CoC-only check) uses this rather than re-declaring. */
+export function getHubConfig(): HubConfig {
+  return {
+    hub_name: process.env.HUB_NAME ?? "Floyd Civic Hub",
+    community_description:
+      "residents of Floyd County, Virginia — a small rural community in the Blue Ridge Mountains",
+  };
+}
 
 export async function callAssistant(
   input: CallAssistantInput,
@@ -24,7 +36,7 @@ export async function callAssistant(
     input.category,
     input.draft_state,
     input.phase,
-    input.process_type,
+    input.config,
   );
 
   const messages: MultiTurnMessage[] = [
@@ -42,7 +54,44 @@ export async function callAssistant(
 
   const result = await claude({ model, system: systemPrompt, messages, tools, maxTokens: 1536 });
 
-  return parseAssistantResponse(result.text);
+  return parseAssistantResponse(result.text, input.config.fields);
+}
+
+/**
+ * Standalone Code of Conduct check for submission paths that have no
+ * drafting assistant (e.g. conversation creation). Returns hard-block
+ * suggestions only. Callers are expected to fail open on throw — the
+ * real gate is human admin review.
+ */
+export async function checkTextAgainstCoC(
+  fields: Array<{ label: string; text: string }>,
+  hubConfig: HubConfig,
+  claude: CallClaudeMultiTurnFn = callClaudeMultiTurn,
+): Promise<Suggestion[]> {
+  const model = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  const submission = fields
+    .filter((f) => f.text.trim().length > 0)
+    .map((f) => `${f.label}:\n${f.text}`)
+    .join("\n\n");
+  if (!submission) return [];
+
+  const result = await claude({
+    model,
+    system: buildCocCheckPrompt(hubConfig),
+    messages: [
+      {
+        role: "user",
+        content: `Check this submission against the Code of Conduct:\n\n${submission}`,
+      },
+    ],
+    maxTokens: 1024,
+  });
+
+  // Everything this prompt returns is a CoC finding — normalize to hard.
+  return parseAssistantResponse(result.text, []).suggestions.map((s) => ({
+    ...s,
+    severity: "hard" as const,
+  }));
 }
 
 function cleanMessage(raw: string): string {
@@ -59,7 +108,7 @@ function extractFallbackMessage(text: string): string {
     || "I'm here to help — could you rephrase that?";
 }
 
-function parseAssistantResponse(text: string): AssistantResponse {
+function parseAssistantResponse(text: string, validFields: DraftField[]): AssistantResponse {
   const stripped = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
 
   const jsonMatch = stripped.match(/\{[\s\S]*\}/);
@@ -70,6 +119,10 @@ function parseAssistantResponse(text: string): AssistantResponse {
       draft_proposal: null,
     };
   }
+
+  const fieldSet = new Set<string>(validFields);
+  const isValidField = (v: unknown): v is DraftField =>
+    typeof v === "string" && fieldSet.has(v);
 
   try {
     const parsed = JSON.parse(jsonMatch[0]);
@@ -110,9 +163,4 @@ function parseAssistantResponse(text: string): AssistantResponse {
       draft_proposal: null,
     };
   }
-}
-
-const VALID_FIELDS = new Set(["title", "description", "sources", "considerations"]);
-function isValidField(v: unknown): v is "title" | "description" | "sources" | "considerations" {
-  return typeof v === "string" && VALID_FIELDS.has(v);
 }

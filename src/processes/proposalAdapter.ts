@@ -25,10 +25,13 @@ import { closeExpiredProposal, getProposal } from "../modules/civic.proposals/in
 import { getInputsByProcess } from "../modules/civic.input/index.js";
 import { spawnBriefFromClosedProcess, findExistingBriefId } from "./spawnBrief.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
+import { proposalAssistantConfig } from "./proposalAssistantConfig.js";
 
 const proposalAdapter: ProcessHandler = {
   type: "civic.proposal",
   detailPath: (id: string) => `/proposal/${id}`,
+
+  getAssistantConfig: () => proposalAssistantConfig,
 
   // The relational `proposals` row holds proposal state; the canonical
   // `processes` row needs no type-specific state.

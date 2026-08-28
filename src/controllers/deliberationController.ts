@@ -13,6 +13,7 @@ import {
   addMockStatement,
 } from "../debug/seedDeliberationMocks.js";
 import { submitAsCreator } from "../modules/civic.review/index.js";
+import { checkTextAgainstCoC, getHubConfig } from "../modules/civic.assistant/index.js";
 import { assertPassesWordlist } from "../shared/wordlist/index.js";
 
 async function getConversationId(processId: string): Promise<string> {
@@ -214,6 +215,37 @@ export async function handleCreateDeliberation(req: Request, res: Response): Pro
       ...(participation_threshold ? { participation_threshold: parseInt(participation_threshold, 10) } : {}),
       ...(seed_statements?.length ? { seed_statements } : {}),
     };
+
+    // The always-on automated Code of Conduct check. Conversations have no
+    // drafting flow (and no assistant), so the check runs here at submission
+    // instead of on a draft. Hard findings block; an unavailable checker
+    // fails open to human admin review, same as the draft flows.
+    try {
+      const findings = await checkTextAgainstCoC(
+        [
+          { label: "Topic", text: String(topic) },
+          { label: "Framing", text: String(framing) },
+          ...(Array.isArray(seed_statements) && seed_statements.length
+            ? [{ label: "Seed statements", text: seed_statements.join("\n") }]
+            : []),
+        ],
+        getHubConfig(),
+      );
+      if (findings.length > 0) {
+        res.status(400).json({
+          error:
+            "This conversation can't be submitted yet — the automated Code of Conduct check flagged: " +
+            findings.map((f) => f.message).join(" "),
+          coc_findings: findings,
+        });
+        return;
+      }
+    } catch (cocErr) {
+      console.error(
+        "[deliberation-coc] automated check unavailable, failing open to human review:",
+        cocErr instanceof Error ? cocErr.message : cocErr,
+      );
+    }
 
     // One creation path: always submit for review; admins are auto-approved.
     const result = await submitAsCreator(

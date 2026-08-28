@@ -1,6 +1,6 @@
 import { getDb } from "../../db/client.js";
 import { generateId } from "../../utils/id.js";
-import type { Suggestion } from "../civic.proposal_assistant/models.js";
+import type { Suggestion } from "../civic.assistant/models.js";
 import type {
   VoteDraft,
   VoteDraftStatus,
@@ -139,6 +139,13 @@ export async function updateVoteDraft(
 
   if (patch.links !== undefined) updates.links = patch.links;
 
+  // assistant_applied: the caller is writing assistant-produced text into
+  // the form (Apply on a suggestion card). This — not conversation — is
+  // what flips the public "drafted with assistant help" disclosure.
+  if (patch.assistant_applied) {
+    updates.assistant_helped = true;
+  }
+
   if (!patch.skip_modified_flag) {
     updates.draft_modified_since_review = true;
   }
@@ -158,7 +165,6 @@ export async function appendVoteConversation(
   id: string,
   userMessage: string,
   assistantMessage: string,
-  options?: { markAssisted?: boolean },
 ): Promise<void> {
   const draft = await getVoteDraft(id);
   if (!draft) throw new Error(`Vote draft not found: ${id}`);
@@ -169,16 +175,12 @@ export async function appendVoteConversation(
     { role: "assistant" as const, content: assistantMessage },
   ];
 
-  // The always-on Code of Conduct pre-check is NOT writing assistance —
-  // only genuine assistant exchanges may flag the draft as AI-helped.
-  const updates: Record<string, unknown> = { conversation_history: history };
-  if (options?.markAssisted !== false) {
-    updates.assistant_helped = true;
-  }
-
+  // Talking to the assistant does NOT flag the draft as AI-helped — the
+  // disclosure fires only when assistant-produced text lands in the form
+  // (applyVoteDraftProposal, or updateVoteDraft with assistant_applied).
   const { error } = await getDb()
     .from("vote_drafts")
-    .update(updates)
+    .update({ conversation_history: history })
     .eq("id", id);
 
   if (error) throw new Error(`VoteDrafts: ${error.message}`);

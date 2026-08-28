@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from "react";
-import type { VoteDraft, DraftSuggestion } from "../services/api";
+import type { AssistantFieldGuidance, VoteDraft, DraftSuggestion } from "../services/api";
 import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
+import { FieldGuide } from "./DraftingForm";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
 
@@ -18,6 +19,8 @@ interface Props {
   onMethodChange: (method: string, options: string[] | null) => void;
   onReview: () => void;
   onSubmit: () => void;
+  /** Per-field inline guidance served by the assistant config endpoint. */
+  fieldGuidance?: AssistantFieldGuidance[];
   disabled: boolean;
   reviewLoading?: boolean;
   reviewFailed?: boolean;
@@ -109,6 +112,7 @@ export default function VoteDraftingForm({
   disabled,
   reviewLoading,
   reviewFailed,
+  fieldGuidance,
 }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [localOptions, setLocalOptions] = useState<string[]>(
@@ -214,6 +218,7 @@ export default function VoteDraftingForm({
             maxLength={200}
             disabled={disabled}
           />
+          <FieldGuide guidance={fieldGuidance} field="title" />
         </div>
 
         {draft.method === "approval" && (
@@ -272,6 +277,7 @@ export default function VoteDraftingForm({
             rows={5}
             disabled={disabled}
           />
+          <FieldGuide guidance={fieldGuidance} field="description" />
         </div>
 
         <div className="form-field">
@@ -287,6 +293,7 @@ export default function VoteDraftingForm({
             rows={2}
             disabled={disabled}
           />
+          <FieldGuide guidance={fieldGuidance} field="sources" />
           <p className="form-hint">Add relevant links, one per line.</p>
         </div>
 

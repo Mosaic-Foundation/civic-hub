@@ -432,7 +432,11 @@ export function supportCivicProposal(
   return request("POST", `/proposals/${proposalId}/support`, { user_id: userId });
 }
 
-// --- Proposal Drafts (AI-augmented drafting) ---
+// --- Drafting assistant (shared across process types) ---
+//
+// One API surface for every process type: /assistant/:processType/...
+// dispatches through the backend registry. Which types have an assistant
+// (and their greetings + per-field guidance) comes from the config call.
 
 export type DraftCategory = "issue" | "idea" | "project" | "concern";
 export type DraftPhase = "brainstorm" | "review" | "free_form";
@@ -444,6 +448,51 @@ export interface DraftSuggestion {
   message: string;
   suggested_revision: string | null;
 }
+
+export interface AssistantFieldGuidance {
+  field: "title" | "description" | "sources" | "considerations";
+  hint: string;
+  example?: string;
+}
+
+export interface AssistantUiConfig {
+  available: boolean;
+  content_noun?: string;
+  greeting?: string;
+  returning_greeting?: string;
+  kickoff_message?: string;
+  supports_categories?: boolean;
+  field_guidance: AssistantFieldGuidance[];
+}
+
+export function getAssistantUiConfig(
+  processType: string,
+): Promise<AssistantUiConfig> {
+  return request("GET", `/assistant/${processType}/config`);
+}
+
+/** One assistant conversation turn for a draft of any process type. */
+export function sendAssistantMessage<D>(
+  processType: string,
+  draftId: string,
+  phase: DraftPhase,
+  userMessage: string,
+): Promise<{ response: AssistantResponse; draft: D; review_unavailable?: boolean }> {
+  return request("POST", `/assistant/${processType}/drafts/${draftId}/message`, {
+    phase,
+    user_message: userMessage,
+  });
+}
+
+/** The always-on automated Code of Conduct check for a draft of any type. */
+export function reviewDraftCoC<D>(
+  processType: string,
+  draftId: string,
+): Promise<{ response: AssistantResponse; draft: D; review_unavailable?: boolean }> {
+  return request("POST", `/assistant/${processType}/drafts/${draftId}/review`);
+}
+
+// --- Proposal Drafts ---
 
 export interface ProposalDraft {
   id: string;
@@ -476,13 +525,6 @@ export interface AssistantResponse {
   } | null;
 }
 
-export interface DraftAssistantResult {
-  response: AssistantResponse;
-  draft: ProposalDraft;
-  /** True when the automated pre-check could not run and was skipped (fail-open). */
-  review_unavailable?: boolean;
-}
-
 export function createDraft(category?: DraftCategory): Promise<ProposalDraft> {
   return request("POST", "/proposals/drafts", { category });
 }
@@ -497,24 +539,9 @@ export function getDraft(id: string): Promise<ProposalDraft> {
 
 export function updateDraft(
   id: string,
-  patch: Partial<Pick<ProposalDraft, "title" | "description" | "sources" | "considerations" | "category" | "proposal_duration_ms" | "links">> & { skip_modified_flag?: boolean },
+  patch: Partial<Pick<ProposalDraft, "title" | "description" | "sources" | "considerations" | "category" | "proposal_duration_ms" | "links">> & { skip_modified_flag?: boolean; assistant_applied?: boolean },
 ): Promise<ProposalDraft> {
   return request("PATCH", `/proposals/drafts/${id}`, patch);
-}
-
-export function sendAssistantMessage(
-  draftId: string,
-  phase: DraftPhase,
-  userMessage: string,
-): Promise<DraftAssistantResult> {
-  return request("POST", `/proposals/drafts/${draftId}/assistant`, {
-    phase,
-    user_message: userMessage,
-  });
-}
-
-export function reviewDraft(draftId: string): Promise<DraftAssistantResult> {
-  return request("POST", `/proposals/drafts/${draftId}/review`);
 }
 
 /**
@@ -556,13 +583,6 @@ export interface VoteDraft {
   links: ProposedLink[];
 }
 
-export interface VoteDraftAssistantResult {
-  response: AssistantResponse;
-  draft: VoteDraft;
-  /** True when the automated pre-check could not run and was skipped (fail-open). */
-  review_unavailable?: boolean;
-}
-
 export function createVoteDraft(): Promise<VoteDraft> {
   return request("POST", "/votes/drafts");
 }
@@ -573,24 +593,9 @@ export function getVoteDraft(id: string): Promise<VoteDraft> {
 
 export function updateVoteDraft(
   id: string,
-  patch: Partial<Pick<VoteDraft, "title" | "description" | "sources" | "voting_duration_ms" | "method" | "custom_options" | "links">> & { skip_modified_flag?: boolean },
+  patch: Partial<Pick<VoteDraft, "title" | "description" | "sources" | "voting_duration_ms" | "method" | "custom_options" | "links">> & { skip_modified_flag?: boolean; assistant_applied?: boolean },
 ): Promise<VoteDraft> {
   return request("PATCH", `/votes/drafts/${id}`, patch);
-}
-
-export function sendVoteAssistantMessage(
-  draftId: string,
-  phase: DraftPhase,
-  userMessage: string,
-): Promise<VoteDraftAssistantResult> {
-  return request("POST", `/votes/drafts/${draftId}/assistant`, {
-    phase,
-    user_message: userMessage,
-  });
-}
-
-export function reviewVoteDraft(draftId: string): Promise<VoteDraftAssistantResult> {
-  return request("POST", `/votes/drafts/${draftId}/review`);
 }
 
 export function submitVoteDraft(
@@ -730,13 +735,6 @@ export interface ProjectDraft {
   links: ProposedLink[];
 }
 
-export interface ProjectDraftAssistantResult {
-  response: AssistantResponse;
-  draft: ProjectDraft;
-  /** True when the automated pre-check could not run and was skipped (fail-open). */
-  review_unavailable?: boolean;
-}
-
 export function createProjectDraft(): Promise<ProjectDraft> {
   return request("POST", "/projects/drafts");
 }
@@ -747,24 +745,9 @@ export function getProjectDraft(id: string): Promise<ProjectDraft> {
 
 export function updateProjectDraft(
   id: string,
-  patch: Partial<Pick<ProjectDraft, "title" | "description" | "sources" | "banner_image_url" | "banner_image_alt" | "links">> & { skip_modified_flag?: boolean },
+  patch: Partial<Pick<ProjectDraft, "title" | "description" | "sources" | "banner_image_url" | "banner_image_alt" | "links">> & { skip_modified_flag?: boolean; assistant_applied?: boolean },
 ): Promise<ProjectDraft> {
   return request("PATCH", `/projects/drafts/${id}`, patch);
-}
-
-export function sendProjectAssistantMessage(
-  draftId: string,
-  phase: DraftPhase,
-  userMessage: string,
-): Promise<ProjectDraftAssistantResult> {
-  return request("POST", `/projects/drafts/${draftId}/assistant`, {
-    phase,
-    user_message: userMessage,
-  });
-}
-
-export function reviewProjectDraft(draftId: string): Promise<ProjectDraftAssistantResult> {
-  return request("POST", `/projects/drafts/${draftId}/review`);
 }
 
 export function submitProjectDraft(

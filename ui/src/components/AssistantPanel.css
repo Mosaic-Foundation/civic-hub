@@ -313,7 +313,8 @@
   flex-direction: column;
 }
 
-.assistant-overlay .assistant-header {
+.assistant-overlay .assistant-header,
+.assistant-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;

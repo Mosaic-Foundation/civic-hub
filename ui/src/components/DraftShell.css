@@ -1,0 +1,137 @@
+/* --- DraftShell — the shared creation layout --- */
+/* The .propose-draft-* layout classes live in the page CSS files that
+   predate the shell (ProposeDraft.css et al.); this file adds only what
+   the shell itself introduces. */
+
+/* Single-column desktop state (assistant collapsed). */
+.propose-draft-layout.draft-shell-solo {
+  grid-template-columns: 1fr;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.draft-shell-notices:empty {
+  display: none;
+}
+
+.draft-shell-notices .form-error,
+.draft-shell-notices .form-hint {
+  padding: 0 var(--space-lg);
+}
+
+/* Fine print: the universal automated Code of Conduct disclosure. */
+.coc-disclosure {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle, var(--color-text-muted));
+  line-height: var(--line-height-relaxed);
+}
+
+/* Collapsed assistant affordance — visible but closed, never auto-open. */
+.assistant-affordance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin: var(--space-md) var(--space-lg) 0;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt, transparent);
+}
+
+.assistant-affordance-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-relaxed);
+}
+
+.assistant-affordance-label {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.assistant-affordance-btn {
+  flex-shrink: 0;
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.assistant-affordance-btn:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.assistant-affordance-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* Inline CoC-check results — the manual path's view of the same
+   suggestion cards the assistant panel shows. */
+.coc-results {
+  margin: var(--space-md) var(--space-lg) 0;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  max-height: 40vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.coc-results-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.page .coc-results {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Page-flow layout (conversation) shares the header pieces. */
+.draft-shell-page-header .propose-draft-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.draft-shell-page-header .back-link {
+  margin-bottom: var(--space-sm);
+  display: inline-block;
+}
+
+.draft-shell-page-header {
+  margin-bottom: var(--space-md);
+}
+
+/* In page-flow layout the affordance has no form padding to align with. */
+.page .assistant-affordance {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+@media (max-width: 768px) {
+  .assistant-affordance {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-left: 0;
+    margin-right: 0;
+  }
+}

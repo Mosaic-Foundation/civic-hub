@@ -4,6 +4,122 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## One creation flow — assistant as progressive disclosure — 2026-08-28
+
+**Built, NOT pushed. One migration, NOT yet applied (see below).**
+Implements Adam's 08-28 decided design: the "Draft with the assistant /
+I'll write my own" fork is gone. Every process type gets ONE form-first
+creation flow; AI writing help is a collapsed panel the user opens, never
+a path choice, never auto-open, and never the default author.
+
+**Backend — `civic.assistant`, registry-driven (was `civic.proposal_assistant`):**
+- `src/modules/civic.assistant/` — generic module. The system prompt has
+  ZERO per-type branches: everything type-specific (best-practices doc,
+  greetings, kickoff, brainstorm/review/type guidance, output-field
+  schema, per-field UI guidance, draft-store adapter) comes from an
+  `AssistantTypeConfig` the process handler declares via the new registry
+  seam `ProcessHandler.getAssistantConfig?()` (processes/types.ts).
+- Configs live beside their handlers: `src/processes/proposalAssistantConfig.ts`,
+  `voteAssistantConfig.ts`, `projectAssistantConfig.ts` (best-practices
+  docs moved out of the old module's content.ts; content.ts now holds
+  only the shared Code of Conduct). A handler with no config gets no
+  assistant anywhere — deliberation/wordcloud/etc. declare nothing.
+- **One shared route** `/assistant/:processType/...` (assistantRoutes +
+  assistantController): `GET .../config` (affordance availability,
+  greetings, field guidance — public), `POST .../drafts/:id/message`,
+  `POST .../drafts/:id/review`. The three per-type controllers lost their
+  duplicated assistant/review handlers (~300 lines) and now own only
+  draft storage + submission. Old `/…/drafts/:id/assistant|review`
+  endpoints removed (UI updated in the same commit).
+- **Stricter `assistant_helped`:** talking to the assistant no longer
+  marks it. It is set ONLY when assistant-produced text lands in the
+  form — a generated draft applied server-side, or an Apply-suggestion
+  PATCH (`assistant_applied: true`, all three drafts modules). The CoC
+  review never marks it (unchanged). Public disclosure label unchanged.
+- **Conversations get the automated CoC check too:** deliberation
+  creation now runs `checkTextAgainstCoC` (CoC-only prompt, hard
+  findings block with a readable error, API failure fails open to human
+  review) — so the universal disclosure line is true on all four types.
+
+**Frontend — one shell, four types:**
+- `components/DraftShell.tsx` (+css) — THE creation layout: form-first;
+  collapsed affordance card on desktop ("Want help drafting? …") /
+  existing FAB on mobile; panel opens only on click; universal fine
+  print "All submissions get an automated check against the Code of
+  Conduct before posting."; inline CoC-results block (SuggestionCards
+  with Apply) so manual drafters see and resolve concerns with the
+  panel closed; hides the affordance when the type has no config OR the
+  user set "Hide AI drafting help".
+- `hooks/useDraftFlow.ts` — the shared page brain: lazy draft creation
+  (no row until a real interaction), an edit buffer so a signed-out
+  visitor's typing survives the auth gate, assistant open/seed flow
+  (empty draft → brainstorm greeting + kickoff; existing content or
+  history → free-form, no API call until the user speaks), CoC review,
+  Apply semantics.
+- ProposeDraft / ProposeDraftVote / ProjectDraft rewritten onto
+  DraftShell + useDraftFlow (~585 → ~250 lines each; path-choice screens
+  and dead CSS deleted). ConversationDraft mounts the same shell
+  (assistant=null → no affordance; conversation creation stays
+  admin-gated by /deliberations — that page's concern).
+- **Per-field inline guidance** (#7): hint + one short example under
+  title/description/sources on all three forms, served from the same
+  per-type config the assistant uses (`field_guidance` on GET
+  /assistant/:type/config), rendered by `FieldGuide` (DraftingForm.tsx).
+- **Settings → "AI drafting help" panel:** "Hide AI drafting help"
+  checkbox, persisted server-side via PATCH /auth/me
+  (`hide_ai_drafting_help`), so it follows the user across devices.
+
+**Migration — NOT applied anywhere yet:**
+`supabase/migrations/20260828100000_hide_ai_drafting_help.sql` adds
+`users.hide_ai_drafting_help boolean not null default false`. Per the
+established procedure (CLI link points at prod — no `db push`), apply by
+hand in the Supabase SQL editor, **dev only for now** per the design
+note. Reads degrade gracefully un-migrated (setting reads false); the
+write fails loudly — verified: the Settings toggle shows a clear error
+against un-migrated dev.
+
+**Verified (local dev against dev Supabase, desktop 800px + mobile 375px):**
+- No path-choice screen on any type; all four render the shell with the
+  CoC line; proposal/vote/project show the collapsed affordance +
+  field guidance; conversation shows neither affordance nor FAB.
+- Lazy creation: typing a title created the draft row and flipped the
+  status bar to "Run the Code of Conduct check…".
+- CoC check through the shared route (`POST
+  /assistant/civic.proposal/drafts/:id/review`) — no ANTHROPIC_API_KEY
+  in local .env, so the **fail-open path** ran end-to-end:
+  `review_unavailable: true`, empty review recorded, notice rendered,
+  status "Ready to submit", `assistant_helped` stayed false.
+- Assistant open: desktop card → two-pane panel with returning-draft
+  greeting (no kickoff call when the form has content); mobile FAB →
+  full-screen overlay, brainstorm greeting seeded, kickoff failed with
+  the friendly "isn't configured yet" message.
+- `assistant_applied: true` PATCH flips `assistant_helped` false→true
+  and (with skip_modified_flag) preserves a passed review.
+- `tsc` clean (backend + ui), ui `vite build` clean, **567 unit tests
+  pass** (10 new in `tests/unit/assistantRegistry.test.ts`: which types
+  declare configs, config completeness, prompt built purely from config,
+  CoC-only prompt shape).
+
+**Incomplete / follow-ups:**
+1. Apply the migration to dev, then re-verify the Settings toggle
+   end-to-end (hide affordance everywhere + persistence across devices).
+   The affordance-hiding guard is code-verified only until then. Prod
+   application + deploy is a separate, later decision (do not push
+   code before the prod column exists — the 08-22 ordering rule).
+2. The live assistant conversation (kickoff → questions → generated
+   draft → suggestions) couldn't be exercised locally (no
+   ANTHROPIC_API_KEY in local .env) — the transport, fail-open, and
+   marking semantics are verified; the conversational quality path
+   should get a pass on a keyed environment.
+3. Dev DB now has a test account (test-resident@example.com) and two
+   throwaway drafting-state proposal drafts (one marked
+   assistant_helped by the API-level Apply test). Nothing was submitted
+   for review. Harmless; delete if tidiness matters.
+4. `GET /assistant/:type/config` is fetched twice on page mount (React
+   strict-mode double effect) — cosmetic, cacheable later.
+
+---
+
 ## Feed borders go dark + performance pass — 2026-08-28 (night)
 
 **Built and PUSHED (through `54079c0`, both phases). No migration.**

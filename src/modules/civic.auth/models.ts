@@ -34,6 +34,13 @@ export interface User {
    */
   tos_version_accepted: string | null;
   tos_accepted_at: string | null;
+  /**
+   * When true, the AI drafting-help affordance is removed from every
+   * process creation flow for this user (server-side so it follows them
+   * across devices). Does not affect the always-on automated Code of
+   * Conduct check, which runs on every submission regardless.
+   */
+  hide_ai_drafting_help: boolean;
   display_name: string | null;
   /**
    * The user's real name, required for participation (votes, comments,
