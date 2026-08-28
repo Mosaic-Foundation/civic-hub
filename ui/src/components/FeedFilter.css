@@ -7,7 +7,9 @@
   /* Stick directly below the Feed | Votes tab strip so the filter
      pills stay reachable while scrolling the feed. */
   position: sticky;
-  top: calc(var(--nav-h) + var(--tabs-h));
+  /* 2px under the tab strip — same seam fix as .votes-filter: hardcoded
+     chrome heights plus zoom rounding left a 1px see-through gap. */
+  top: calc(var(--nav-h) + var(--tabs-h) - 2px);
   z-index: 89;
   background: var(--color-bg);
 }

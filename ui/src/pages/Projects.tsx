@@ -68,12 +68,16 @@ export default function Projects() {
                 </button>
               )}
             </div>
-            <StatusFilter
-              choices={FILTER_CHOICES}
-              active={filter}
-              onChange={setFilter}
-              label="Filter projects by status"
-            />
+          </section>
+
+          <StatusFilter
+            choices={FILTER_CHOICES}
+            active={filter}
+            onChange={setFilter}
+            label="Filter projects by status"
+          />
+
+          <section className="section">
             {!showActive ? null : activeProjects.length === 0 ? (
               <p className="empty-state-inline">
                 No projects yet.

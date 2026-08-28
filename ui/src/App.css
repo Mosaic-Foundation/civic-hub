@@ -7,7 +7,7 @@
      their sticky offset so the nav, tabs, and filter pills form one
      uninterrupted band as the page scrolls. */
   --nav-h: 61px;
-  --tabs-h: 45px;
+  --tabs-h: 44px;
 }
 
 .app {
@@ -220,7 +220,11 @@
   /* Stick under the Feed | Votes tab strip — same chrome stack as
      on /, so the filter pills stay reachable while the page scrolls. */
   position: sticky;
-  top: calc(var(--nav-h) + var(--tabs-h));
+  /* 2px UNDER the tab strip (z-90 paints over this bar's z-89): the
+     chrome heights are hardcoded, and any 1px mismatch or zoom rounding
+     left a see-through seam between the strip and this bar while
+     scrolling. Overlapping upward closes it at every zoom level. */
+  top: calc(var(--nav-h) + var(--tabs-h) - 2px);
   z-index: 89;
   background: var(--color-bg);
 }

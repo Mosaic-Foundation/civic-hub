@@ -83,12 +83,16 @@ export default function Propose() {
                 </button>
               )}
             </div>
-            <StatusFilter
-              choices={FILTER_CHOICES}
-              active={filter}
-              onChange={setFilter}
-              label="Filter proposals by status"
-            />
+          </section>
+
+          <StatusFilter
+            choices={FILTER_CHOICES}
+            active={filter}
+            onChange={setFilter}
+            label="Filter proposals by status"
+          />
+
+          <section className="section">
             {!showActive ? null : activeProposals.length === 0 ? (
               <p className="empty-state-inline">
                 No proposals yet.
