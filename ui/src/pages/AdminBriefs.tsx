@@ -173,7 +173,7 @@ export default function AdminBriefs() {
       setSelected(updated);
       setImageUrl(updated.content.image_url ?? null);
       setImageAlt(updated.content.image_alt ?? null);
-      setActionMessage("Draft saved.");
+      setActionMessage("Saved — the brief stays pending until you approve it.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -442,7 +442,7 @@ export default function AdminBriefs() {
                 onClick={saveDraft}
                 disabled={saving || approving}
               >
-                {saving ? "Saving…" : "Save draft"}
+                {saving ? "Saving…" : "Save for later"}
               </button>
               {confirmingApprove ? (
                 <>
@@ -474,6 +474,13 @@ export default function AdminBriefs() {
                 </button>
               )}
             </div>
+          )}
+          {isPending && !confirmingApprove && (
+            <p className="form-hint" style={{ marginTop: "var(--space-sm)" }}>
+              Save for later keeps your edits and recipient selection without
+              publishing. Approve and publish saves them too — no separate
+              save needed.
+            </p>
           )}
           {confirmingApprove && (
             <p className="form-hint" style={{ marginTop: "var(--space-sm)" }}>
