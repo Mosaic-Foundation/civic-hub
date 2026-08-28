@@ -5,7 +5,7 @@ import {
   type CivicEvent,
   type VoteState,
   getAnnouncement,
-  getEvents,
+  getFeed,
   getMeetingSummary,
   getProcessState,
   getProjectDetail,
@@ -88,9 +88,22 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    getEvents()
-      .then((all) => {
+    getFeed()
+      .then(({ events: all, processMeta: seeded }) => {
         if (cancelled) return;
+        // Perf pass phase 2: the server batches every card's metadata
+        // into the feed response, so cards render COMPLETE on the first
+        // frame — the per-id lazy fetches below become a fallback for
+        // any process the server couldn't enrich. Removed announcements
+        // arrive as a flag on their meta entry.
+        const removed = new Set<string>();
+        const meta: Record<string, ProcessMeta> = {};
+        for (const [id, m] of Object.entries(seeded)) {
+          if (m.removed) removed.add(id);
+          meta[id] = m;
+        }
+        if (removed.size > 0) setRemovedProcessIds(removed);
+        setProcessMeta(meta);
         setEvents(all);
       })
       .catch((err: Error) => {

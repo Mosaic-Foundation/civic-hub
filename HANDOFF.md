@@ -54,10 +54,28 @@ page shell is fast (350ms) — the cost was request COUNT and shape:
   mutation is never hidden behind a stale list. Per-actor detail reads
   (`/process/:id/state`) are deliberately not cacheable.
 
+**Phase 2 — server-batched feed metadata (same night).** Adam noticed
+the phase-1 trade-off: cards painted sparse (title/pill/date) and the
+second line popped in as the per-process fetches landed. Fix: GET /feed
+now ships a `process_meta` map — `src/services/feedMeta.ts` classifies
+the feed's own events, runs the SAME handler read models the per-id
+endpoints serve (via `getProcessState`, so the visibility gate and every
+type's field logic are reused, not duplicated; wordcloud submission
+counts are the one extra query), and emits the CLIENT's camelCase
+ProcessMeta shape on purpose (it exists solely to seed Feed.tsx's
+cache). The client seeds `processMeta` + `removedProcessIds` from it;
+the lazy per-id path survives only as a fallback for anything the server
+couldn't enrich. Measured: **3 API calls per feed load** (was 18 before
+the pass, 9 after phase 1), zero `/state` calls, every card complete on
+the first frame. `/feed` itself does the read models in parallel
+server-side (~880ms dev where the DB is remote; expect ~300–400ms on
+prod where the function sits next to Supabase). Enrichment is skipped
+for `?process_id=` lookups.
+
 **Not done (candidates if still slow):** slimming the `select("*")`
 column set (summaries need the state JSONB today — handlers' getSummary
-reads it), a batch `/process/summaries?ids=` endpoint for the feed's
-remaining 6 calls, and a keep-warm ping for the Vercel function.
+reads it), and a keep-warm ping for the Vercel function (cold starts
+remain 1–3s).
 
 Verification: tsc -b clean both sides, 557 unit tests pass,
 browser-measured before/after on dev, Conversations renders 3 cards via

@@ -902,9 +902,26 @@ export interface CivicEvent {
   meta: CivicEventMeta;
 }
 
+/** Server-batched card metadata, keyed by process_id — camelCase on
+ *  purpose: it exists solely to seed Feed.tsx's ProcessMeta cache. */
+export interface FeedProcessMeta {
+  title?: string;
+  description?: string;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
+  totalVotes?: number;
+  commentsCount?: number;
+  editCount?: number;
+  lastEditedAt?: string | null;
+  blockCount?: number;
+  maxStartSeconds?: number | null;
+  removed?: boolean;
+}
+
 interface EventsResponse {
   events: CivicEvent[];
   count: number;
+  process_meta?: Record<string, FeedProcessMeta>;
 }
 
 /**
@@ -921,6 +938,20 @@ interface EventsResponse {
 export async function getEvents(): Promise<CivicEvent[]> {
   const res = await request<EventsResponse>("GET", "/feed");
   return res.events;
+}
+
+/**
+ * The feed with its server-batched card metadata (perf pass phase 2):
+ * every card's second line ships in the same response, so the Feed makes
+ * no per-process follow-up requests and cards render complete on the
+ * first frame.
+ */
+export async function getFeed(): Promise<{
+  events: CivicEvent[];
+  processMeta: Record<string, FeedProcessMeta>;
+}> {
+  const res = await request<EventsResponse>("GET", "/feed");
+  return { events: res.events, processMeta: res.process_meta ?? {} };
 }
 
 // --- Vote results (renamed from "Civic Briefs" in Slice 8.5) ---

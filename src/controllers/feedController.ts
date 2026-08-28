@@ -15,6 +15,7 @@
 import { Request, Response } from "express";
 import { getAllEvents, getEventsByProcessId } from "../events/eventStore.js";
 import { getNonPublicProcessIds } from "../services/processService.js";
+import { buildFeedProcessMeta } from "../services/feedMeta.js";
 import { callerIsAdmin } from "./eventController.js";
 
 export async function handleGetFeed(
@@ -95,7 +96,15 @@ export async function handleGetFeed(
       events = events.filter((e) => e.event_type === eventType);
     }
 
-    const body = { events, count: events.length };
+    // Enrich the feed view with per-process card metadata, batched here
+    // so the client needs no follow-up requests (and no pop-in — perf
+    // pass phase 2, 2026-08-28). Skipped for explicit per-process reads,
+    // which are lookups, not the feed.
+    const process_meta = processId
+      ? undefined
+      : await buildFeedProcessMeta(events);
+
+    const body = { events, count: events.length, process_meta };
 
     if (pretty) {
       res.setHeader("Content-Type", "application/json");
