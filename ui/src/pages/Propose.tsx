@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 import {
   listCivicProposals,
   type CivicProposalSummary,
@@ -28,7 +27,6 @@ const FILTER_CHOICES = [
  * the AI review gate.
  */
 export default function Propose() {
-  const { user } = useAuth();
   const [proposals, setProposals] = useState<CivicProposalSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,14 +72,12 @@ export default function Propose() {
                   Ideas and concerns raised by community members.
                 </p>
               </div>
-              {user && (
-                <button type="button" className="home-start-btn" onClick={() => setShowPicker(true)}>
+              <button type="button" className="home-start-btn" onClick={() => setShowPicker(true)}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                     <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                   Make a proposal
                 </button>
-              )}
             </div>
           </section>
 

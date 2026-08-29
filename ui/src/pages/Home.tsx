@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useAuth } from "../context/AuthContext";
 import HubInfo from "../components/HubInfo";
 import WelcomeBanner from "../components/WelcomeBanner";
 import ProcessPicker from "../components/ProcessPicker";
@@ -10,7 +9,6 @@ import FeedFilter, {
 } from "../components/FeedFilter";
 
 export default function Home() {
-  const { user } = useAuth();
   const { active, setActive } = useFeedFilter();
   const filter = useFilterPredicate(active);
   const [showPicker, setShowPicker] = useState(false);
@@ -19,8 +17,7 @@ export default function Home() {
     <div className="page page-home">
       <div className="home-hero-row">
         <HubInfo />
-        {user && (
-          <button
+        <button
             type="button"
             className="home-start-btn"
             onClick={() => setShowPicker(true)}
@@ -30,7 +27,6 @@ export default function Home() {
             </svg>
             Raise something
           </button>
-        )}
       </div>
       <WelcomeBanner />
 

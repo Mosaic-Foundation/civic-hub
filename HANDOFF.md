@@ -4,6 +4,84 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Conversations join the flow: assistant, unified durations, open CTAs — 2026-08-28 (later)
+
+**Built, NOT pushed. One migration, applied to dev? → NO (pending, see below).**
+Three decisions from Adam after his review of the creation-flow rebuild:
+
+**1. Conversation drafting assistant (topic + framing).** The deliberation
+handler now declares `getAssistantConfig` (deliberationBoot →
+`src/processes/deliberationAssistantConfig.ts`) with a new *Conversation
+Best Practices* doc whose spine is neutrality-of-the-instrument: fair
+open-question topics, framings both sides would call even-handed, seed
+statement advice (short, single-idea, deliberately multi-perspective).
+Assistant scope is title(topic)+description(framing) only; seed
+statements / duration / participant goal are plain form fields it cannot
+write into. New storage: `civic.deliberation_drafts` module +
+`deliberation_drafts` table + `/deliberations/drafts` routes (mounted
+before `/deliberations/:processId`), submit → `submitAsCreator` with
+`assistant_helped` carried on state and the "Drafted with assistant help"
+label added to DeliberationDetail. ConversationDraft page rebuilt on
+useDraftFlow + DraftShell; HostDeliberationForm retired (deleted).
+assistantRegistry tests now pin FOUR types with configs.
+
+**2. Unified durations.** One picker everywhere: 2 weeks / 1 month /
+6 weeks / 2 months / 3 months, **default 6 weeks** (Adam chose uniform
+6w; noted my lean toward 1 month for votes — one constant if he changes
+his mind). Proposals lose the 6-month option (server cap 2w–3m for NEW
+drafts; existing long-window proposals unaffected; the retired label
+still renders for old drafts). Projects stay deadline-free. Conversations
+swap the optional deadline DATE for the duration picker — `duration_ms`
+lives on deliberation state and the **deadline is computed at START**
+(`start` action: now + duration), so review-queue/waiting time never eats
+the participation window; explicit `deadline` still wins for API callers.
+Creator-facing "admin discretion / no deadline" was considered and
+rejected (recreates never-concludes); admin close-early exists, and an
+admin deadline-extend control is the flagged follow-up.
+
+**3. Creation CTAs visible signed-out.** "Raise something" + the four
+per-page create buttons lost their `{user && …}` wrap. Verified funnel:
+signed-out visitor types a title (buffered, no modal), clicks the CoC
+check → auth modal → signs in → the pending action continues: draft
+created WITH the buffered title, real CoC check runs, inline results
+card renders, "Ready to submit". Backend gates unchanged (creation was
+never client-gated).
+
+**Bug found & fixed in passing:** `initializeState` DROPPED
+`seed_statements` (input carried them, state never did, `start` read
+`state.seed_statements`) — so review-path conversations silently lost
+their seeds. Now carried on state; regression-pinned in
+`tests/unit/deliberationDurations.test.ts` (6 tests: seeds carried,
+duration stored, deadline anchored at start, explicit deadline wins,
+seeds reach the Polis adapter).
+
+**Also learned (pre-existing, NOT changed):** first-time signups
+hard-redirect to `hub.onboarding_wordcloud_id` (AuthModal). Local dev UI
+env points it at `proc-wordcloud-test`, which doesn't exist in dev →
+"Word cloud not found" after every fresh dev signup (this is what Adam
+hit). That redirect also discards a first-time signup's buffered draft +
+pending action — returning sign-ins are unaffected. Flagged for a
+decision: skip the onboarding detour when the user arrived mid-draft?
+
+**Migration** `20260828200000_deliberation_drafts_and_durations.sql`:
+`deliberation_drafts` table + `ALTER` the two drafts columns' defaults to
+3628800000 (6 weeks). **Dev still needs it** — conversation drafting
+errors loudly until applied ("Could not find the table
+'public.deliberation_drafts'"); everything else in this batch works
+without it. Prod at ship time, before the push, same as its sibling.
+
+**Verified (local dev):** `tsc` clean both, ui build clean, **573 unit
+tests pass** (39 files). Browser: vote + proposal pickers show the five
+options with 6 weeks selected; signed-out Home shows "Raise something";
+picker → form → buffered-title funnel end-to-end (above); conversation
+page renders shell + affordance + neutrality guidance +
+`GET /assistant/civic.polis_deliberation/config` → available:true. NOT
+yet verified (blocked on the dev migration): conversation draft
+create/patch/CoC/submit + assistant open, and a review-path conversation
+landing with seeds + start-anchored deadline.
+
+---
+
 ## One creation flow — assistant as progressive disclosure — 2026-08-28
 
 **Built, NOT pushed. One migration, NOT yet applied (see below).**

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import hub from "../config/hub";
-import { useAuth } from "../context/AuthContext";
 import {
   listProcesses,
   type ProcessSummary,
@@ -39,7 +38,6 @@ function isFilterKey(v: string | null): v is VotesFilterKey {
 }
 
 export default function Votes() {
-  const { user } = useAuth();
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -128,14 +126,12 @@ export default function Votes() {
               Official and proposed advisory votes for {hub.jurisdiction}.
             </p>
           </div>
-          {user && (
-            <button type="button" className="home-start-btn" onClick={() => setShowPicker(true)}>
+          <button type="button" className="home-start-btn" onClick={() => setShowPicker(true)}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
               Suggest a vote
             </button>
-          )}
         </div>
       </section>
 
