@@ -117,7 +117,10 @@ export default function VoteDraftingForm({
   reviewFailed,
   fieldGuidance,
 }: Props) {
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Per-FIELD debounce timers: a single shared timer silently dropped a
+  // field's save when the user moved to another field within 800ms —
+  // the form kept the text but the server never received it.
+  const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [localOptions, setLocalOptions] = useState<string[]>(
     draft.custom_options ?? ["", ""],
   );
@@ -125,8 +128,8 @@ export default function VoteDraftingForm({
   const handleChange = useCallback(
     (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       const value = e.target.value;
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
+      if (debounceRef.current[field]) clearTimeout(debounceRef.current[field]);
+      debounceRef.current[field] = setTimeout(() => {
         onFieldChange(field, value);
       }, 800);
     },
@@ -147,8 +150,10 @@ export default function VoteDraftingForm({
     const updated = [...localOptions];
     updated[index] = value;
     setLocalOptions(updated);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
+    if (debounceRef.current["custom_options"]) {
+      clearTimeout(debounceRef.current["custom_options"]);
+    }
+    debounceRef.current["custom_options"] = setTimeout(() => {
       onMethodChange(draft.method, updated);
     }, 800);
   }

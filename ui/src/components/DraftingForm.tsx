@@ -131,13 +131,16 @@ export default function DraftingForm({
   reviewFailed,
   fieldGuidance,
 }: Props) {
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Per-FIELD debounce timers: a single shared timer silently dropped a
+  // field's save when the user moved to another field within 800ms —
+  // the form kept the text but the server never received it.
+  const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const handleChange = useCallback(
     (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       const value = e.target.value;
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
+      if (debounceRef.current[field]) clearTimeout(debounceRef.current[field]);
+      debounceRef.current[field] = setTimeout(() => {
         onFieldChange(field, value);
       }, 800);
     },
