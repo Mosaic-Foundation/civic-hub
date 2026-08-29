@@ -22,8 +22,12 @@ import type { ProposedLink } from "../services/api";
  */
 
 const DURATION_LABELS: Record<number, string> = {
+  [14 * 24 * 60 * 60 * 1000]: "2 weeks",
   [30 * 24 * 60 * 60 * 1000]: "1 month",
+  [42 * 24 * 60 * 60 * 1000]: "6 weeks",
+  [60 * 24 * 60 * 60 * 1000]: "2 months",
   [90 * 24 * 60 * 60 * 1000]: "3 months",
+  // Retired option — still labels pre-2026-08-28 drafts that carry it.
   [180 * 24 * 60 * 60 * 1000]: "6 months",
 };
 
@@ -35,7 +39,7 @@ const EMPTY_DRAFT: ProposalDraft = {
   description: "",
   sources: "",
   considerations: "",
-  proposal_duration_ms: 90 * 24 * 60 * 60 * 1000,
+  proposal_duration_ms: 42 * 24 * 60 * 60 * 1000,
   conversation_history: [],
   last_review_result: null,
   draft_modified_since_review: false,

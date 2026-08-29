@@ -47,10 +47,14 @@ interface Props {
   fieldGuidance?: AssistantFieldGuidance[];
 }
 
+// The unified duration picker — the same five choices on every
+// duration-bearing type (votes, proposals, conversations), default 6 weeks.
 const DURATION_OPTIONS = [
+  { label: "2 weeks", ms: 14 * 24 * 60 * 60 * 1000 },
   { label: "1 month", ms: 30 * 24 * 60 * 60 * 1000 },
+  { label: "6 weeks", ms: 42 * 24 * 60 * 60 * 1000 },
+  { label: "2 months", ms: 60 * 24 * 60 * 60 * 1000 },
   { label: "3 months", ms: 90 * 24 * 60 * 60 * 1000 },
-  { label: "6 months", ms: 180 * 24 * 60 * 60 * 1000 },
 ];
 
 const PLACEHOLDERS: Record<string, Record<string, string>> = {

@@ -24,6 +24,7 @@ import type { ProposedLink } from "../services/api";
 const DURATION_LABELS: Record<number, string> = {
   [14 * 24 * 60 * 60 * 1000]: "2 weeks",
   [30 * 24 * 60 * 60 * 1000]: "1 month",
+  [42 * 24 * 60 * 60 * 1000]: "6 weeks",
   [60 * 24 * 60 * 60 * 1000]: "2 months",
   [90 * 24 * 60 * 60 * 1000]: "3 months",
 };
@@ -34,7 +35,7 @@ const EMPTY_DRAFT: VoteDraft = {
   title: "",
   description: "",
   sources: "",
-  voting_duration_ms: 30 * 24 * 60 * 60 * 1000,
+  voting_duration_ms: 42 * 24 * 60 * 60 * 1000,
   method: "yes_no_unsure",
   custom_options: null,
   conversation_history: [],

@@ -17,8 +17,9 @@ import { validateLinkSet } from "../modules/civic.process_links/index.js";
 // This controller owns only draft storage and submission.
 
 const VALID_CATEGORIES = new Set(["issue", "idea", "project", "concern"]);
-// Matches the proposal_drafts.proposal_duration_ms column default (90 days).
-const DEFAULT_PROPOSAL_DURATION_MS = 7776000000;
+// Matches the proposal_drafts.proposal_duration_ms column default (6 weeks —
+// the unified default across drafting types since 2026-08-28).
+const DEFAULT_PROPOSAL_DURATION_MS = 42 * 24 * 60 * 60 * 1000;
 
 export async function handleCreateDraft(
   req: Request,
@@ -115,9 +116,12 @@ export async function handleUpdateDraft(
     if (proposal_duration_ms !== undefined) {
       const dur = Number(proposal_duration_ms);
       const MIN_DURATION = 14 * 24 * 60 * 60 * 1000;   // 2 weeks
-      const MAX_DURATION = 180 * 24 * 60 * 60 * 1000;   // 6 months
+      // 3 months — the 6-month option was retired 2026-08-28 when every
+      // duration-bearing type adopted the same 2w–3m picker. Existing
+      // proposals with longer windows keep them; only new drafts are capped.
+      const MAX_DURATION = 90 * 24 * 60 * 60 * 1000;
       if (isNaN(dur) || dur < MIN_DURATION || dur > MAX_DURATION) {
-        res.status(400).json({ error: "Duration must be between 2 weeks and 6 months" });
+        res.status(400).json({ error: "Duration must be between 2 weeks and 3 months" });
         return;
       }
     }
