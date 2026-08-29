@@ -7,6 +7,8 @@ import {
 import { statusDisplay } from "../components/statusDisplay";
 import HubInfo from "../components/HubInfo";
 import ProcessPicker from "../components/ProcessPicker";
+import AuthModal from "../components/AuthModal";
+import { useRequireAuth } from "../hooks/useRequireAuth";
 import Creator from "../components/Creator";
 import StatusFilter, { useStatusFilter } from "../components/StatusFilter";
 import "./Propose.css";
@@ -27,6 +29,12 @@ const FILTER_CHOICES = [
  * the AI review gate.
  */
 export default function Propose() {
+  // CTA-gate (design decision 2026-08-28): the create buttons are
+  // visible to everyone, but clicking one runs the sign-up gate first —
+  // the picker opens only for signed-in residents. Direct /…/new URLs
+  // keep the softer buffer-then-gate flow for shared links.
+  const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } =
+    useRequireAuth();
   const [proposals, setProposals] = useState<CivicProposalSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +65,9 @@ export default function Propose() {
   return (
     <div className="page page-home">
       <HubInfo />
+      {showAuthModal && (
+        <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
+      )}
       {showPicker && <ProcessPicker onDismiss={() => setShowPicker(false)} context="proposal" />}
 
       {loading && <p className="section">Loading...</p>}
@@ -72,7 +83,7 @@ export default function Propose() {
                   Ideas and concerns raised by community members.
                 </p>
               </div>
-              <button type="button" className="home-start-btn" onClick={() => setShowPicker(true)}>
+              <button type="button" className="home-start-btn" onClick={() => requireAuth(() => setShowPicker(true))}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                     <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   </svg>

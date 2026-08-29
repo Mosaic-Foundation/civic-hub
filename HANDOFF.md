@@ -39,13 +39,18 @@ Creator-facing "admin discretion / no deadline" was considered and
 rejected (recreates never-concludes); admin close-early exists, and an
 admin deadline-extend control is the flagged follow-up.
 
-**3. Creation CTAs visible signed-out.** "Raise something" + the four
-per-page create buttons lost their `{user && …}` wrap. Verified funnel:
-signed-out visitor types a title (buffered, no modal), clicks the CoC
-check → auth modal → signs in → the pending action continues: draft
-created WITH the buffered title, real CoC check runs, inline results
-card renders, "Ready to submit". Backend gates unchanged (creation was
-never client-gated).
+**3. Creation CTAs visible signed-out — refined same-day to "gate at the
+button" (Adam picked option A).** "Raise something" + the four per-page
+create buttons lost their `{user && …}` wrap, but clicking one while
+signed out now runs `requireAuth` FIRST: auth modal (full onboarding,
+wordcloud detour intact for first-timers) → the picker opens only for
+signed-in residents. Direct `/…/new` URLs keep the softer flow for
+shared links: type freely (buffered), auth modal at the first gated
+action, pending action continues with the buffer flushed — verified
+end-to-end (draft created WITH the buffered title, real CoC check ran,
+inline results card, "Ready to submit"). Backend gates unchanged
+(creation was never client-gated). Both CTA states browser-verified:
+signed-out click → auth modal, no picker; signed-in click → picker.
 
 **Bug found & fixed in passing:** `initializeState` DROPPED
 `seed_statements` (input carried them, state never did, `start` read

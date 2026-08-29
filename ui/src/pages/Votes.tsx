@@ -9,6 +9,8 @@ import {
 } from "../services/api";
 import HubInfo from "../components/HubInfo";
 import ProcessPicker from "../components/ProcessPicker";
+import AuthModal from "../components/AuthModal";
+import { useRequireAuth } from "../hooks/useRequireAuth";
 import ProcessCard from "../components/ProcessCard";
 import StatusFilter from "../components/StatusFilter";
 
@@ -38,6 +40,12 @@ function isFilterKey(v: string | null): v is VotesFilterKey {
 }
 
 export default function Votes() {
+  // CTA-gate (design decision 2026-08-28): the create buttons are
+  // visible to everyone, but clicking one runs the sign-up gate first —
+  // the picker opens only for signed-in residents. Direct /…/new URLs
+  // keep the softer buffer-then-gate flow for shared links.
+  const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } =
+    useRequireAuth();
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,6 +119,9 @@ export default function Votes() {
   return (
     <div className="page page-home">
       <HubInfo />
+      {showAuthModal && (
+        <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
+      )}
       {showPicker && <ProcessPicker onDismiss={() => setShowPicker(false)} context="vote" />}
 
       {/* Slice 12.1 — Feed | Votes tab strip. Sits below HubInfo so
@@ -126,7 +137,7 @@ export default function Votes() {
               Official and proposed advisory votes for {hub.jurisdiction}.
             </p>
           </div>
-          <button type="button" className="home-start-btn" onClick={() => setShowPicker(true)}>
+          <button type="button" className="home-start-btn" onClick={() => requireAuth(() => setShowPicker(true))}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
