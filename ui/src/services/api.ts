@@ -1872,6 +1872,9 @@ export interface DeliberationReadModel {
   framing: string;
   polis_conversation_id: string | null;
   deadline: string | null;
+  /** Participation window; the deadline is computed from it at start. */
+  duration_ms?: number | null;
+  assistant_helped?: boolean;
   participation_threshold: number | null;
   summary: DeliberationSummaryData | null;
   summary_status: string;
@@ -1952,10 +1955,52 @@ export function createDeliberation(input: {
   topic: string;
   framing: string;
   deadline?: string;
+  duration_ms?: number;
   participation_threshold?: number;
   seed_statements?: string[];
 }): Promise<CreateProcessResult> {
   return request("POST", "/deliberations", input);
+}
+
+// --- Deliberation Drafts (conversation drafting with assistant help) ---
+// title = the conversation topic, description = the framing.
+
+export interface DeliberationDraft {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  seed_statements: string;
+  duration_ms: number;
+  participation_threshold: number | null;
+  conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
+  last_review_result: DraftSuggestion[] | null;
+  draft_modified_since_review: boolean;
+  assistant_helped: boolean;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export function createDeliberationDraft(): Promise<DeliberationDraft> {
+  return request("POST", "/deliberations/drafts");
+}
+
+export function getDeliberationDraft(id: string): Promise<DeliberationDraft> {
+  return request("GET", `/deliberations/drafts/${id}`);
+}
+
+export function updateDeliberationDraft(
+  id: string,
+  patch: Partial<Pick<DeliberationDraft, "title" | "description" | "seed_statements" | "duration_ms" | "participation_threshold">> & { skip_modified_flag?: boolean; assistant_applied?: boolean },
+): Promise<DeliberationDraft> {
+  return request("PATCH", `/deliberations/drafts/${id}`, patch);
+}
+
+export function submitDeliberationDraft(
+  draftId: string,
+): Promise<CreateProcessResult> {
+  return request("POST", `/deliberations/drafts/${draftId}/submit`);
 }
 
 export function startDeliberation(processId: string): Promise<unknown> {

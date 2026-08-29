@@ -34,6 +34,7 @@ import { adminDigestCronRouter } from "./routes/adminDigestRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import projectDraftRoutes from "./routes/projectDraftRoutes.js";
 import deliberationRoutes from "./routes/deliberationRoutes.js";
+import deliberationDraftRoutes from "./routes/deliberationDraftRoutes.js";
 import feedbackRoutes from "./routes/feedbackRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
@@ -136,6 +137,10 @@ app.use("/projects/drafts", projectDraftRoutes);
 app.use("/projects", projectRoutes);
 
 // Deliberation endpoints — Polis-backed community deliberation
+// Conversation draft endpoints — mounted before /deliberations so
+// /deliberations/drafts doesn't get caught by /deliberations/:processId.
+app.use("/deliberations/drafts", deliberationDraftRoutes);
+
 app.use("/deliberations", deliberationRoutes);
 
 // Word cloud endpoints — lightweight free-text aggregation process

@@ -13,6 +13,7 @@ import type { PolisAdapter } from "../shared/polis_deliberation/adapter/types.js
 import type { PolisDeliberationState } from "../shared/polis_deliberation/types.js";
 import type { BriefContent, BriefSection } from "../modules/civic.brief/index.js";
 import { HUB_ID, DEFAULT_JURISDICTION } from "../config/hub.js";
+import { deliberationAssistantConfig } from "./deliberationAssistantConfig.js";
 
 
 let _adapter: PolisAdapter | null = null;
@@ -119,6 +120,12 @@ export function bootDeliberation(): ProcessHandler {
   // for the same reason requiredSchema is: the shared module stays free of
   // hub-specific routing.
   handler.detailPath = (id: string) => `/deliberation/${id}`;
+
+  // Drafting assistant (topic + framing) — declared here, not in the
+  // portable shared handler, for the same reason detailPath is: the
+  // shared module stays free of hub-specific modules (the config wires
+  // the hub's deliberation_drafts storage).
+  handler.getAssistantConfig = () => deliberationAssistantConfig;
 
   handler.requiredSchema = [
     {

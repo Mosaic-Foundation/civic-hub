@@ -28,7 +28,8 @@ export interface BaseDraft {
   id: string;
   title: string;
   description: string;
-  sources: string;
+  /** Not every type has a sources field (conversations don't). */
+  sources?: string;
   conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
   last_review_result: DraftSuggestion[] | null;
 }

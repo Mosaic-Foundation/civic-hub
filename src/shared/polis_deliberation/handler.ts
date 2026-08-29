@@ -51,7 +51,10 @@ export function createPolisDeliberationHandler(
         topic: cfg.topic,
         framing: cfg.framing,
         deadline: cfg.deadline ?? null,
+        duration_ms: cfg.duration_ms ?? null,
         participation_threshold: cfg.participation_threshold ?? null,
+        assistant_helped: cfg.assistant_helped ?? false,
+        seed_statements: cfg.seed_statements ?? null,
         last_math_tick: 0,
         summary: null,
         summary_status: "pending",
@@ -71,12 +74,20 @@ export function createPolisDeliberationHandler(
             description: input.framing,
             strict_moderation:
               (process.state as any).polis_moderation === "strict",
-            seed_statements: (process.state as any).seed_statements,
+            seed_statements: state.seed_statements ?? undefined,
           });
 
           state.polis_conversation_id = conversation_id;
           state.polis_base_url = `${polisBaseUrl}/${conversation_id}`;
           process.status = "active";
+
+          // Duration-based deadline anchors at START: the participation
+          // window begins when the conversation actually opens, so time in
+          // the review queue (or waiting for an admin to press Start) never
+          // eats into it. An explicit deadline, if given, wins.
+          if (!state.deadline && state.duration_ms && state.duration_ms > 0) {
+            state.deadline = new Date(Date.now() + state.duration_ms).toISOString();
+          }
 
           await host.emitEvent({
             event_type: "civic.process.started",
@@ -226,7 +237,9 @@ export function createPolisDeliberationHandler(
         framing: state.framing,
         polis_conversation_id: state.polis_conversation_id || null,
         deadline: state.deadline,
+        duration_ms: state.duration_ms ?? null,
         participation_threshold: state.participation_threshold,
+        assistant_helped: state.assistant_helped ?? false,
         summary: state.summary,
         summary_status: state.summary_status,
         continued_from_response_id: state.continued_from_response_id,

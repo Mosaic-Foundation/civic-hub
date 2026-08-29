@@ -201,7 +201,7 @@ export async function getClusterState(req: Request, res: Response): Promise<void
 export async function handleCreateDeliberation(req: Request, res: Response): Promise<void> {
   try {
     const user = getAuthUser(res);
-    const { title, description, topic, framing, deadline, participation_threshold, seed_statements } = req.body;
+    const { title, description, topic, framing, deadline, duration_ms, participation_threshold, seed_statements } = req.body;
 
     if (!topic || !framing) {
       res.status(400).json({ error: "topic and framing are required" });
@@ -211,7 +211,13 @@ export async function handleCreateDeliberation(req: Request, res: Response): Pro
     const statePayload: Record<string, unknown> = {
       topic,
       framing,
+      // Either an explicit deadline or a duration (deadline computed when
+      // the conversation starts). The drafting UI sends duration_ms; the
+      // deadline form stays supported for direct API callers.
       ...(deadline ? { deadline: new Date(deadline).toISOString() } : {}),
+      ...(Number.isFinite(Number(duration_ms)) && Number(duration_ms) > 0
+        ? { duration_ms: Number(duration_ms) }
+        : {}),
       ...(participation_threshold ? { participation_threshold: parseInt(participation_threshold, 10) } : {}),
       ...(seed_statements?.length ? { seed_statements } : {}),
     };

@@ -50,6 +50,10 @@ export default function DeliberationDetail() {
         />
       </div>
 
+      {process.assistant_helped && (
+        <p className="assistant-helped-label">Drafted with assistant help</p>
+      )}
+
       {isActive && <DeliberationPanel processId={process.process_id} />}
       {isCompleted && <CompletedDeliberation process={process} />}
 

@@ -32,9 +32,16 @@ function config(type: string): AssistantTypeConfig {
   return c;
 }
 
+const ASSISTANT_TYPES = [
+  "civic.proposal",
+  "civic.vote",
+  "civic.project",
+  "civic.polis_deliberation",
+];
+
 describe("assistant registry seam", () => {
-  it("proposal, vote, and project declare assistant configs", () => {
-    for (const type of ["civic.proposal", "civic.vote", "civic.project"]) {
+  it("proposal, vote, project, and conversation declare assistant configs", () => {
+    for (const type of ASSISTANT_TYPES) {
       expect(getProcessHandler(type)?.getAssistantConfig?.()).toBeTruthy();
     }
   });
@@ -43,15 +50,11 @@ describe("assistant registry seam", () => {
     const withAssistant = getRegisteredTypes().filter(
       (t) => getProcessHandler(t)?.getAssistantConfig?.(),
     );
-    expect(withAssistant.sort()).toEqual([
-      "civic.project",
-      "civic.proposal",
-      "civic.vote",
-    ]);
+    expect(withAssistant.sort()).toEqual([...ASSISTANT_TYPES].sort());
   });
 
   it("every config is complete enough for the shared route and the UI", () => {
-    for (const type of ["civic.proposal", "civic.vote", "civic.project"]) {
+    for (const type of ASSISTANT_TYPES) {
       const c = config(type);
       expect(c.contentNoun.length).toBeGreaterThan(0);
       expect(c.greeting.length).toBeGreaterThan(0);
@@ -75,12 +78,20 @@ describe("assistant registry seam", () => {
     expect(config("civic.proposal").supportsCategories).toBe(true);
     expect(config("civic.vote").supportsCategories).toBe(false);
     expect(config("civic.project").supportsCategories).toBe(false);
+    expect(config("civic.polis_deliberation").supportsCategories).toBe(false);
+  });
+
+  it("the conversation assistant is scoped to topic + framing", () => {
+    expect(config("civic.polis_deliberation").fields).toEqual([
+      "title",
+      "description",
+    ]);
   });
 });
 
 describe("buildSystemPrompt — config-driven, no per-type branches", () => {
   it("interpolates the declared best-practices doc and title", () => {
-    for (const type of ["civic.proposal", "civic.vote", "civic.project"]) {
+    for (const type of ASSISTANT_TYPES) {
       const c = config(type);
       const prompt = buildSystemPrompt(HUB, undefined, EMPTY_DRAFT, "brainstorm", c);
       expect(prompt).toContain(c.bestPracticesTitle);
