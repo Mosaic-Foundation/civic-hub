@@ -50,6 +50,11 @@ export default function Deliberations() {
   const completed = processes.filter(
     (p) => p.lifecycle === "closed" || p.lifecycle === "finalized",
   );
+  // Approved but not yet started — normally auto-start at approval makes
+  // this transient, but when Polis was unreachable the conversation waits
+  // here for a manual Start. Without this section it was stranded
+  // invisibly: not active, not completed, no path to the Start button.
+  const waiting = processes.filter((p) => p.lifecycle === "draft");
 
   const { active: filter, setActive: setFilter } = useStatusFilter(FILTER_CHOICES);
   const showActive = filter === "all" || filter === "active";
@@ -89,7 +94,33 @@ export default function Deliberations() {
 
       {loading && <p className="section deliberations-loading">Loading...</p>}
 
-      {/* Drafts are managed through the admin review flow, not shown here */}
+      {/* Approved-but-unstarted conversations, admin-only: the door to the
+          manual Start fallback when auto-start couldn't reach Polis. */}
+      {!loading && isAdmin && waiting.length > 0 && (
+        <section className="section">
+          <h2 className="section-title">Waiting to start</h2>
+          <p className="section-description">
+            Approved but not yet opened — start each one to create its live
+            conversation.
+          </p>
+          <ul className="process-list">
+            {waiting.map((p) => (
+              <li key={p.process_id}>
+                <Link to={`/deliberation/${p.process_id}`} className="process-link">
+                  <div className="deliberation-card">
+                    <div className="deliberation-card-header">
+                      <h3>{p.topic}</h3>
+                      <span className={statusDisplay("draft").className}>
+                        {statusDisplay("draft").label}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {!loading && showActive && active.length > 0 && (
         <section className="section">

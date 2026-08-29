@@ -353,3 +353,15 @@
 .assistant-fab:hover {
   transform: scale(1.05);
 }
+
+/* --- Long-URL containment --- */
+/* Assistant messages and suggestion cards routinely carry long URLs;
+   without a break rule they force horizontal scroll on the whole panel. */
+
+.msg-content,
+.suggestion-quote,
+.suggestion-message,
+.suggestion-revision-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

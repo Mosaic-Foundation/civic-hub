@@ -223,6 +223,69 @@ export default function AdminReviews() {
               <div className="review-process-preview">
                 <h3>Process content</h3>
                 <p style={{ whiteSpace: "pre-wrap" }}>{(proc?.description as string) || "No description"}</p>
+
+                {/* Conversation submissions carry their setup on state —
+                    the admin must see the WHOLE submission (seeds, sources,
+                    window) before approving, not just topic + framing. */}
+                {proc?.type === "civic.polis_deliberation" &&
+                  !!proc?.state &&
+                  (() => {
+                    const st = proc.state as Record<string, unknown>;
+                    const seeds = Array.isArray(st.seed_statements)
+                      ? (st.seed_statements as string[])
+                      : [];
+                    const sources = Array.isArray(st.sources)
+                      ? (st.sources as string[])
+                      : [];
+                    const durationMs =
+                      typeof st.duration_ms === "number" ? st.duration_ms : null;
+                    const threshold =
+                      typeof st.participation_threshold === "number"
+                        ? st.participation_threshold
+                        : null;
+                    return (
+                      <div className="review-conversation-details">
+                        {durationMs !== null && (
+                          <p>
+                            <strong>Open for:</strong>{" "}
+                            {Math.round(durationMs / (24 * 60 * 60 * 1000))} days
+                            once started
+                            {threshold
+                              ? `, or until ${threshold} participants`
+                              : ""}
+                          </p>
+                        )}
+                        {sources.length > 0 && (
+                          <>
+                            <p style={{ marginBottom: 0 }}>
+                              <strong>Sources:</strong>
+                            </p>
+                            <ul className="review-conversation-list">
+                              {sources.map((url, i) => (
+                                <li key={i}>
+                                  <a href={url} target="_blank" rel="noopener noreferrer">
+                                    {url}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                        {seeds.length > 0 && (
+                          <>
+                            <p style={{ marginBottom: 0 }}>
+                              <strong>Seed statements:</strong>
+                            </p>
+                            <ul className="review-conversation-list">
+                              {seeds.map((s, i) => (
+                                <li key={i}>{s}</li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
                 {!!proc?.content && (
                   <details>
                     <summary>Structured content</summary>

@@ -4,6 +4,38 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Adam's second pass: three fixes — 2026-08-29 (later)
+
+**Built, NOT pushed. No migration.** Adam's testing surfaced:
+
+1. **Long URLs forced horizontal scroll** in the assistant column —
+   `overflow-wrap: anywhere` on `.msg-content` + suggestion-card text
+   (AssistantPanel.css). Computed-style verified.
+2. **The admin review view hid the submission's setup** — sources, seed
+   statements, and the participation window live on `process.state`, and
+   the review page showed only topic + framing, so Adam thought his
+   sources were lost (they weren't — on state all along). AdminReviews
+   now renders a conversation-details block: "Open for: N days once
+   started", sources as links, seeds as a list. Verified on his water
+   review (rev_60845f22e8e7453c).
+3. **Approved-but-unstarted conversations were stranded invisibly.**
+   Dev has no POLIS_AUTH_TOKEN, so auto-start at approval failed (by
+   design, best-effort) and the conversation sat at `draft` — which the
+   Conversations page buckets nowhere, and the manual-Start fallback had
+   NO button anywhere in the UI (api.startDeliberation was defined but
+   unused). Now: an admin-only **"Waiting to start"** section on
+   /deliberations lists draft conversations, and DeliberationDetail
+   shows an admin **Start conversation** button on drafts. Verified:
+   section lists the water conversation; Start surfaces the Polis 401
+   cleanly and leaves it draft (on prod, with the token, it goes live).
+   The "vanished after approval" confusion also had a cache component:
+   the UI's 30s GET cache can briefly serve the stale list.
+
+Note for prod thinking: the same stranding could happen there during a
+Polis outage — the new section + button close that loop everywhere.
+
+---
+
 ## Conversation sources + AI seed statements + prompt honesty — 2026-08-29
 
 **Built, NOT pushed. One migration (dev NOT yet applied, see below).**
