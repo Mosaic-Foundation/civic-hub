@@ -4,6 +4,31 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Sources presentation + dev Polis live — 2026-08-29 (later still)
+
+**Built, NOT pushed.** Adam's review of the live conversation page:
+sources rendered as one run-on "Learn more" blob of raw URLs ABOVE the
+card. Now: a shared `SourceLinks` component renders a compact numbered
+SOURCES list — title-only links, no raw URLs — placed AFTER the framing
+inside the card (active panel, completed view, and pre-start block; the
+admin review list reuses the same parser). Each source line is
+"Short title: URL"; the parser extracts the URL for the href, uses the
+title as link text (hostname fallback), and strips trailing
+parentheticals so old verbose lines render cleanly. Sources cap at SIX
+(submit-time backstop + form guide + the assistant's web-search prompt
+now demands short-titled lines, 3–5 offered max).
+
+**Dev now runs live Polis.** Adam minted a fresh Standard User JWT on
+the Hetzner box (the documented /app/keys procedure — prod's token is
+Vercel-sensitive and unrecoverable, and doubles as the 2036 rotation
+drill) with its own oidc_sub `dev-civic-hub`. Verified end-to-end: the
+water conversation started → real Polis conversation `9jdhekwr6b`,
+deadline stamped start+42d (2026-10-10), seeds live and voteable.
+That conversation is TEST CONTENT on the shared prod Polis server —
+close it when done.
+
+---
+
 ## Adam's second pass: three fixes — 2026-08-29 (later)
 
 **Built, NOT pushed. No migration.** Adam's testing surfaced:

@@ -1,4 +1,5 @@
 import type { DeliberationReadModel } from "../../services/api";
+import SourceLinks from "../SourceLinks";
 import "./CompletedDeliberation.css";
 
 interface Props {
@@ -22,6 +23,8 @@ export default function CompletedDeliberation({ process: proc }: Props) {
         <h4 className="completed-topic">{proc.topic}</h4>
         <span className="completed-badge">Completed</span>
       </div>
+
+      <SourceLinks sources={proc.sources ?? []} />
 
       {!summary && (
         <p className="completed-no-summary">

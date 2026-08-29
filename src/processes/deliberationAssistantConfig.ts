@@ -100,7 +100,7 @@ A conversation maps community opinion — it is an instrument, not an argument. 
     },
     {
       field: "sources",
-      hint: "Link anything that backs the framing's factual claims, so participants can verify the table-stakes.",
+      hint: "One per line as “Short title: https://…” — up to six. Participants see the titles as links.",
     },
     {
       field: "seed_statements",

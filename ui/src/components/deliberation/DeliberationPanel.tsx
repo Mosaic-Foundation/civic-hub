@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
+import SourceLinks from "../SourceLinks";
 import type { DeliberationReadModel, ClusterState, VoteDirection } from "../../services/api";
 import {
   getDeliberation,
@@ -112,6 +113,7 @@ export default function DeliberationPanel({ processId }: Props) {
           </div>
         )}
         <p className="deliberation-framing">{process.framing}</p>
+        <SourceLinks sources={process.sources ?? []} />
       </div>
 
       <div className="deliberation-tabs">

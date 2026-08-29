@@ -13,24 +13,3 @@
   color: var(--color-text-muted);
   margin-top: var(--space-sm);
 }
-
-/* --- "Learn more" sources under the framing --- */
-
-.deliberation-sources {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-  margin: var(--space-sm) 0 var(--space-md);
-  line-height: var(--line-height-relaxed);
-}
-
-.deliberation-sources-label {
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.deliberation-sources-link {
-  color: var(--color-primary);
-  text-decoration: underline;
-  margin-right: var(--space-sm);
-  word-break: break-all;
-}

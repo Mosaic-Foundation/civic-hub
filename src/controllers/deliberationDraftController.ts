@@ -153,10 +153,14 @@ export async function handleSubmitDeliberationDraft(
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
+    // Cap at 6 — a "learn more" list, not a bibliography. The form guide
+    // and the assistant's instructions carry the same limit; this is the
+    // backstop.
     const sources = draft.sources
       .split("\n")
       .map((s) => s.trim())
-      .filter((s) => s.length > 0);
+      .filter((s) => s.length > 0)
+      .slice(0, 6);
 
     // duration_ms (not an absolute deadline) goes on state: the deadline is
     // computed when the conversation STARTS (auto-start at approval), so

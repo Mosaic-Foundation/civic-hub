@@ -40,7 +40,7 @@ const PLACEHOLDERS = {
   description:
     "Set the table for participants — what's the situation, why now, and what range of views exist?",
   sources:
-    "Links that back the framing's factual claims (one per line, optional)",
+    "Short title: https://… (one per line, up to six, optional)",
   seeds:
     "Short, single-idea statements participants vote on first (one per line, optional)",
 };

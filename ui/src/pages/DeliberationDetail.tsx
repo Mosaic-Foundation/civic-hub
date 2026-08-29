@@ -9,6 +9,7 @@ import {
 import DeliberationPanel from "../components/deliberation/DeliberationPanel";
 import CompletedDeliberation from "../components/deliberation/CompletedDeliberation";
 import ShareButton from "../components/ShareButton";
+import SourceLinks from "../components/SourceLinks";
 import RelatedProcesses from "../components/RelatedProcesses";
 import "./DeliberationDetail.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
@@ -77,22 +78,6 @@ export default function DeliberationDetail() {
         <p className="assistant-helped-label">Drafted with assistant help</p>
       )}
 
-      {process.sources && process.sources.length > 0 && (
-        <div className="deliberation-sources">
-          <span className="deliberation-sources-label">Learn more:</span>{" "}
-          {process.sources.map((url, i) => (
-            <a
-              key={i}
-              className="deliberation-sources-link"
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
-            </a>
-          ))}
-        </div>
-      )}
 
       {isActive && <DeliberationPanel processId={process.process_id} />}
       {isCompleted && <CompletedDeliberation process={process} />}
@@ -101,6 +86,7 @@ export default function DeliberationDetail() {
         <div className="deliberation-detail-draft">
           <h2>{process.topic}</h2>
           <p className="deliberation-framing">{process.framing}</p>
+          <SourceLinks sources={process.sources ?? []} />
           <p className="deliberation-detail-status">
             This conversation hasn't started yet.
           </p>

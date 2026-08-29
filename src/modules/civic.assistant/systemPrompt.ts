@@ -75,7 +75,7 @@ You have access to a web search tool. Use it when:
 - The user wants links to official documents, news articles, or data
 
 ${config.fields.includes("sources")
-    ? `When you search, summarize what you found in plain language and offer the relevant links as a suggestion card targeting the "sources" field. Always cite the actual URLs you found — never invent or guess URLs. If the search doesn't return useful results, say so honestly.`
+    ? `When you search, summarize what you found in plain language and offer the relevant links as a suggestion card targeting the "sources" field. In that card, format EACH source on its own line as "Short title: URL" — a title of a few plain words, with NO parentheticals, findings, or commentary in the line (put that context in your chat message instead). Readers see the titles as links; a cluttered line makes a cluttered page. Offer 3–5 sources at most — the field caps at six. Always cite the actual URLs you found — never invent or guess URLs. If the search doesn't return useful results, say so honestly.`
     : `When you search, summarize what you found in plain language in your chat message. This ${noun} form has NO sources field — do not offer to "add links to the form", and never claim you have. If a found fact belongs in the ${noun}, offer it as a suggestion card for a field that exists (${config.fields.map((f) => `"${f}"`).join(", ")}). Always cite the actual URLs you found — never invent or guess URLs. If the search doesn't return useful results, say so honestly.`}
 
 Do NOT search proactively without the user asking. Do NOT use search results to inject facts the user didn't request.

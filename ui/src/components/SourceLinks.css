@@ -1,0 +1,30 @@
+/* --- SourceLinks — compact numbered sources under a description --- */
+
+.source-links {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-relaxed);
+}
+
+.source-links-label {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--font-size-xs);
+}
+
+.source-links-list {
+  margin: var(--space-xs) 0 0;
+  padding-left: var(--space-lg);
+}
+
+.source-links-list li {
+  margin-bottom: 2px;
+}
+
+.source-links-list a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}

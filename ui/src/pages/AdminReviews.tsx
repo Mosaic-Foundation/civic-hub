@@ -14,6 +14,7 @@ import {
 import AdminTabs from "../components/AdminTabs";
 import "./AdminReviews.css";
 import RelatedProcesses from "../components/RelatedProcesses";
+import { parseSourceLine } from "../components/SourceLinks";
 
 const STATUS_FILTERS: Array<{ id: "all" | ReviewStatus; label: string }> = [
   { id: "all", label: "All" },
@@ -261,13 +262,20 @@ export default function AdminReviews() {
                               <strong>Sources:</strong>
                             </p>
                             <ul className="review-conversation-list">
-                              {sources.map((url, i) => (
-                                <li key={i}>
-                                  <a href={url} target="_blank" rel="noopener noreferrer">
-                                    {url}
-                                  </a>
-                                </li>
-                              ))}
+                              {sources.map((line, i) => {
+                                const parsed = parseSourceLine(line);
+                                return (
+                                  <li key={i}>
+                                    {parsed ? (
+                                      <a href={parsed.url} target="_blank" rel="noopener noreferrer">
+                                        {parsed.label}
+                                      </a>
+                                    ) : (
+                                      line
+                                    )}
+                                  </li>
+                                );
+                              })}
                             </ul>
                           </>
                         )}
