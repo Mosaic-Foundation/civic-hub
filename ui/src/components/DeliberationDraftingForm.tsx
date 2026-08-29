@@ -39,6 +39,8 @@ const PLACEHOLDERS = {
   title: "e.g., How should Floyd County balance growth and rural character?",
   description:
     "Set the table for participants — what's the situation, why now, and what range of views exist?",
+  sources:
+    "Links that back the framing's factual claims (one per line, optional)",
   seeds:
     "Short, single-idea statements participants vote on first (one per line, optional)",
 };
@@ -151,11 +153,28 @@ export default function DeliberationDraftingForm({
         </div>
 
         <div className="form-field">
-          <label htmlFor="draft-seeds" className="form-label">
+          <label htmlFor="draft-sources" className="form-label">
+            Links / Sources <span className="optional">(optional)</span>
+          </label>
+          <textarea
+            id="draft-sources"
+            className="form-textarea form-textarea-small"
+            defaultValue={draft.sources}
+            onChange={handleChange("sources")}
+            placeholder={PLACEHOLDERS.sources}
+            rows={2}
+            disabled={disabled}
+          />
+          <FieldGuide guidance={fieldGuidance} field="sources" />
+          <p className="form-hint">Add relevant links, one per line.</p>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="draft-seed_statements" className="form-label">
             Seed statements <span className="optional">(optional)</span>
           </label>
           <textarea
-            id="draft-seeds"
+            id="draft-seed_statements"
             className="form-textarea form-textarea-small"
             defaultValue={draft.seed_statements}
             onChange={handleChange("seed_statements")}
@@ -163,13 +182,7 @@ export default function DeliberationDraftingForm({
             rows={3}
             disabled={disabled}
           />
-          <p className="field-guide">
-            Keep each statement short and single-idea, and represent different
-            perspectives — including ones you don't share.{" "}
-            <span className="field-guide-example">
-              Example: “I'd use a bike lane on Main Street if it existed”
-            </span>
-          </p>
+          <FieldGuide guidance={fieldGuidance} field="seed_statements" />
         </div>
 
         <div className="form-field">

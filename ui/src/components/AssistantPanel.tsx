@@ -13,6 +13,9 @@ interface Props {
   messages: ChatMessage[];
   onSendMessage: (message: string) => void;
   onApplySuggestion?: (suggestion: DraftSuggestion) => void;
+  /** Gates the Apply button per card — a suggestion for a field this
+   *  form doesn't have must not offer a silent no-op Apply. */
+  canApplySuggestion?: (suggestion: DraftSuggestion) => boolean;
   onDismissSuggestion?: (index: number) => void;
   loading: boolean;
   phase?: "brainstorm" | "free_form" | "review";
@@ -27,6 +30,7 @@ export default function AssistantPanel({
   messages,
   onSendMessage,
   onApplySuggestion,
+  canApplySuggestion,
   onDismissSuggestion,
   loading,
   phase,
@@ -90,7 +94,9 @@ export default function AssistantPanel({
                     key={si}
                     suggestion={s}
                     onApply={
-                      s.suggested_revision && onApplySuggestion
+                      s.suggested_revision &&
+                      onApplySuggestion &&
+                      (canApplySuggestion ? canApplySuggestion(s) : true)
                         ? () => onApplySuggestion(s)
                         : undefined
                     }

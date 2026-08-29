@@ -35,6 +35,7 @@ const EMPTY_DRAFT: DeliberationDraft = {
   user_id: "",
   title: "",
   description: "",
+  sources: "",
   seed_statements: "",
   duration_ms: 42 * 24 * 60 * 60 * 1000,
   participation_threshold: null,
@@ -55,7 +56,7 @@ export default function ConversationDraft() {
     processType: "civic.polis_deliberation",
     createDraft: () => createDeliberationDraft(),
     updateDraft: (id, patch) => updateDeliberationDraft(id, patch),
-    applyFields: ["title", "description"],
+    applyFields: ["title", "description", "sources", "seed_statements"],
   });
 
   const [showConfirm, setShowConfirm] = useState(false);
@@ -135,6 +136,7 @@ export default function ConversationDraft() {
         assistant={flow.shellAssistant}
         reviewSuggestions={draft?.last_review_result}
         onApplySuggestion={flow.handleApplySuggestion}
+        canApplySuggestion={flow.canApplySuggestion}
       >
         <DeliberationDraftingForm
           draft={displayDraft}

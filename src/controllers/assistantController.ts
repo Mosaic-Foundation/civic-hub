@@ -33,6 +33,9 @@ function toDraftState(draft: AssistantDraft): DraftState {
     description: draft.description,
     sources: draft.sources,
     considerations: draft.considerations ?? "",
+    ...(draft.seed_statements !== undefined
+      ? { seed_statements: draft.seed_statements }
+      : {}),
   };
 }
 

@@ -27,6 +27,7 @@ interface DraftRow {
   user_id: string;
   title: string;
   description: string;
+  sources: string | null;
   seed_statements: string;
   duration_ms: number;
   participation_threshold: number | null;
@@ -45,6 +46,8 @@ function rowToDraft(row: DraftRow): DeliberationDraft {
     user_id: row.user_id,
     title: row.title,
     description: row.description,
+    // Defaults "" for rows (or databases) that pre-date the sources column.
+    sources: row.sources ?? "",
     seed_statements: row.seed_statements,
     duration_ms: Number(row.duration_ms),
     participation_threshold:
@@ -103,6 +106,7 @@ export async function updateDeliberationDraft(
   const updates: Record<string, unknown> = {};
   if (patch.title !== undefined) updates.title = patch.title;
   if (patch.description !== undefined) updates.description = patch.description;
+  if (patch.sources !== undefined) updates.sources = patch.sources;
   if (patch.seed_statements !== undefined) updates.seed_statements = patch.seed_statements;
 
   if (patch.duration_ms !== undefined) {
@@ -192,12 +196,16 @@ export async function applyDeliberationDraftProposal(
   id: string,
   title: string,
   description: string,
+  sources: string,
+  seedStatements: string,
 ): Promise<DeliberationDraft> {
   const { data, error } = await getDb()
     .from("deliberation_drafts")
     .update({
       title,
       description,
+      sources,
+      seed_statements: seedStatements,
       assistant_helped: true,
     })
     .eq("id", id)

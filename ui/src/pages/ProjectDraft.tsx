@@ -136,6 +136,7 @@ export default function ProjectDraft() {
         assistant={flow.shellAssistant}
         reviewSuggestions={draft?.last_review_result}
         onApplySuggestion={flow.handleApplySuggestion}
+        canApplySuggestion={flow.canApplySuggestion}
       >
         <ProjectDraftingForm
           draft={displayDraft}

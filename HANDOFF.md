@@ -4,6 +4,60 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Conversation sources + AI seed statements + prompt honesty — 2026-08-29
+
+**Built, NOT pushed. One migration (dev NOT yet applied, see below).**
+Adam's dev pass caught a real bug: the assistant searched for sources on
+a conversation, said **"Done — I've added all three links to the Sources
+field"** — a field conversations didn't have — and the suggestion card's
+Apply silently no-opped (field normalized to null). Three fixes + two
+scope decisions from Adam:
+
+**Honesty fixes (all types):**
+1. The generic prompt's web-search section is now FIELD-AWARE — it only
+   mentions the Sources field when `config.fields` includes it, and for
+   types without one instructs the assistant to say so instead of
+   pretending. New "You never write into the form" section + never-do
+   rules: the assistant must never claim a write ("I've added…") — only
+   "it's in a suggestion card below, click Apply."
+2. Apply buttons are GATED per card (`canApplySuggestion` threaded
+   useDraftFlow → DraftShell → AssistantPanel/inline results): a
+   suggestion for a field the form doesn't have renders without Apply
+   instead of a silent no-op that flips to "Applied".
+3. Pinned in tests: never-write rule present in every prompt; web-search
+   copy branches on sources; seed_statements only in declared templates.
+
+**Conversations gain a Sources field** ("learn more" links under the
+framing, one per line): `deliberation_drafts.sources` column (migration
+below), form field, statePayload → `state.sources`, read model, and a
+"Learn more:" links block on DeliberationDetail. Participants can verify
+the framing's factual table-stakes; the assistant's search results now
+have a real home.
+
+**Seed statements become a first-class assistant field.** The field
+vocabulary genuinely extended (`DraftField` += `seed_statements`, carried
+through DraftState/DraftProposal/parser/output-template/Apply targeting —
+NOT smuggled through "considerations"). The deliberation config declares
+`fields: [title, description, sources, seed_statements]`; its
+best-practices doc now directs the assistant to suggest deliberately
+multi-perspective seed sets (4–8, one per line, one card) — the place
+creators most predictably fail. Seeds still land only via Apply, which
+marks assistant_helped → public disclosure. Form textarea id renamed
+`draft-seeds` → `draft-seed_statements` for generic Apply targeting.
+
+**Migration** `20260829000000_deliberation_sources.sql`:
+`ALTER TABLE deliberation_drafts ADD COLUMN IF NOT EXISTS sources TEXT
+NOT NULL DEFAULT '';` — dev needs it (sources writes fail loudly until
+then; reads default ""); prod at ship time with its siblings.
+
+**Verified:** tsc clean both, **576 unit tests pass** (3 new honesty
+tests). Conversation form renders Topic / Framing / Links / Seed
+statements / duration / participant goal with correct Apply-target ids.
+Live assistant re-test of the search→sources→Apply loop needs the dev
+migration first.
+
+---
+
 ## Conversations join the flow: assistant, unified durations, open CTAs — 2026-08-28 (later)
 
 **Built, NOT pushed. One migration, applied to dev? → NO (pending, see below).**

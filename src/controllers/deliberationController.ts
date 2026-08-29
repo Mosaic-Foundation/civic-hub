@@ -201,7 +201,7 @@ export async function getClusterState(req: Request, res: Response): Promise<void
 export async function handleCreateDeliberation(req: Request, res: Response): Promise<void> {
   try {
     const user = getAuthUser(res);
-    const { title, description, topic, framing, deadline, duration_ms, participation_threshold, seed_statements } = req.body;
+    const { title, description, topic, framing, deadline, duration_ms, participation_threshold, seed_statements, sources } = req.body;
 
     if (!topic || !framing) {
       res.status(400).json({ error: "topic and framing are required" });
@@ -220,6 +220,7 @@ export async function handleCreateDeliberation(req: Request, res: Response): Pro
         : {}),
       ...(participation_threshold ? { participation_threshold: parseInt(participation_threshold, 10) } : {}),
       ...(seed_statements?.length ? { seed_statements } : {}),
+      ...(Array.isArray(sources) && sources.length ? { sources } : {}),
     };
 
     // The always-on automated Code of Conduct check. Conversations have no

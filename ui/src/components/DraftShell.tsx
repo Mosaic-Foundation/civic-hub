@@ -46,6 +46,9 @@ interface Props {
   /** Applies assistant-produced text into the form (marks assistant_helped).
    *  Used by both the inline results block and the panel's cards. */
   onApplySuggestion?: (s: DraftSuggestion) => void;
+  /** Gates Apply per card — suggestions for fields this form doesn't have
+   *  must not offer a silent no-op Apply button. */
+  canApplySuggestion?: (s: DraftSuggestion) => boolean;
   /**
    * "full": fixed-height two-pane layout for forms with internal scroll
    * (proposal / vote / project). "page": normal page flow (conversation).
@@ -66,6 +69,7 @@ export default function DraftShell({
   assistant,
   reviewSuggestions,
   onApplySuggestion,
+  canApplySuggestion,
   layout = "full",
   children,
 }: Props) {
@@ -99,6 +103,7 @@ export default function DraftShell({
       messages={assistant.messages}
       onSendMessage={assistant.onSendMessage}
       onApplySuggestion={onApplySuggestion}
+      canApplySuggestion={canApplySuggestion}
       loading={assistant.loading}
       phase={assistant.phase}
       loadingLabel={assistant.loadingLabel}
@@ -118,7 +123,9 @@ export default function DraftShell({
             key={i}
             suggestion={s}
             onApply={
-              s.suggested_revision && onApplySuggestion
+              s.suggested_revision &&
+              onApplySuggestion &&
+              (canApplySuggestion ? canApplySuggestion(s) : true)
                 ? () => onApplySuggestion(s)
                 : undefined
             }

@@ -54,6 +54,23 @@ export default function DeliberationDetail() {
         <p className="assistant-helped-label">Drafted with assistant help</p>
       )}
 
+      {process.sources && process.sources.length > 0 && (
+        <div className="deliberation-sources">
+          <span className="deliberation-sources-label">Learn more:</span>{" "}
+          {process.sources.map((url, i) => (
+            <a
+              key={i}
+              className="deliberation-sources-link"
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+            </a>
+          ))}
+        </div>
+      )}
+
       {isActive && <DeliberationPanel processId={process.process_id} />}
       {isCompleted && <CompletedDeliberation process={process} />}
 

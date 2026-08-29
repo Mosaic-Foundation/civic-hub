@@ -53,6 +53,8 @@ export interface PolisDeliberationState {
    * seeds — the input carried them, the state never did.
    */
   seed_statements: string[] | null;
+  /** "Learn more" links shown under the framing. */
+  sources: string[] | null;
   last_math_tick: number;
   summary: DeliberationSummary | null;
   summary_status: "pending" | "generating" | "complete" | "failed";
@@ -67,6 +69,7 @@ export interface PolisDeliberationInput {
   duration_ms?: number;
   participation_threshold?: number;
   assistant_helped?: boolean;
+  sources?: string[];
   seed_statements?: string[];
   continued_from_response_id?: string;
   polis_moderation?: "open" | "strict";

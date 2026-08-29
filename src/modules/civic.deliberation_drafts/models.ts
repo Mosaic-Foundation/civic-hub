@@ -18,6 +18,8 @@ export interface DeliberationDraft {
   user_id: string;
   title: string;
   description: string;
+  /** "Learn more" links under the framing, one per line. */
+  sources: string;
   seed_statements: string;
   duration_ms: number;
   participation_threshold: number | null;
@@ -37,6 +39,7 @@ export interface CreateDeliberationDraftInput {
 export interface UpdateDeliberationDraftInput {
   title?: string;
   description?: string;
+  sources?: string;
   seed_statements?: string;
   duration_ms?: number;
   participation_threshold?: number | null;

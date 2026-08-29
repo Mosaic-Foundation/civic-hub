@@ -81,11 +81,44 @@ describe("assistant registry seam", () => {
     expect(config("civic.polis_deliberation").supportsCategories).toBe(false);
   });
 
-  it("the conversation assistant is scoped to topic + framing", () => {
+  it("the conversation assistant covers topic, framing, sources, and seeds", () => {
     expect(config("civic.polis_deliberation").fields).toEqual([
       "title",
       "description",
+      "sources",
+      "seed_statements",
     ]);
+  });
+});
+
+describe("prompt honesty — the assistant never claims form writes", () => {
+  it("every prompt carries the never-write rule", () => {
+    for (const type of ASSISTANT_TYPES) {
+      const prompt = buildSystemPrompt(HUB, undefined, EMPTY_DRAFT, "free_form", config(type));
+      expect(prompt).toContain("You never write into the form");
+    }
+  });
+
+  it("the web-search section only mentions the Sources field when it exists", () => {
+    const noSources: AssistantTypeConfig = {
+      ...config("civic.vote"),
+      fields: ["title", "description"],
+    };
+    const prompt = buildSystemPrompt(HUB, undefined, EMPTY_DRAFT, "free_form", noSources);
+    expect(prompt).toContain("NO sources field");
+    expect(prompt).not.toContain('targeting the "sources" field');
+
+    const withSources = buildSystemPrompt(HUB, undefined, EMPTY_DRAFT, "free_form", config("civic.vote"));
+    expect(withSources).toContain('targeting the "sources" field');
+    expect(withSources).not.toContain("NO sources field");
+  });
+
+  it("the output template includes seed_statements only when declared", () => {
+    const delib = buildSystemPrompt(HUB, undefined, EMPTY_DRAFT, "free_form", config("civic.polis_deliberation"));
+    expect(delib).toContain('"seed_statements": "..."');
+
+    const vote = buildSystemPrompt(HUB, undefined, EMPTY_DRAFT, "free_form", config("civic.vote"));
+    expect(vote).not.toContain('"seed_statements"');
   });
 });
 

@@ -12,13 +12,20 @@ export type Phase = "brainstorm" | "review" | "free_form";
 export type Category = "issue" | "idea" | "project" | "concern";
 
 /** The universal output fields a drafting form can have. */
-export type DraftField = "title" | "description" | "sources" | "considerations";
+export type DraftField =
+  | "title"
+  | "description"
+  | "sources"
+  | "considerations"
+  | "seed_statements";
 
 export interface DraftState {
   title: string;
   description: string;
   sources: string;
   considerations: string;
+  /** Conversation (deliberation) drafts only: one statement per line. */
+  seed_statements?: string;
 }
 
 export interface Suggestion {
@@ -34,6 +41,8 @@ export interface DraftProposal {
   description: string;
   sources: string;
   considerations: string;
+  /** Present only when the type declares the field (conversations). */
+  seed_statements?: string;
 }
 
 export interface AssistantResponse {
@@ -85,6 +94,7 @@ export interface AssistantDraft extends Record<string, unknown> {
   description: string;
   sources: string;
   considerations?: string;
+  seed_statements?: string;
   conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
 }
 

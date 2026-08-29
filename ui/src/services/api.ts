@@ -444,13 +444,13 @@ export type DraftPhase = "brainstorm" | "review" | "free_form";
 export interface DraftSuggestion {
   severity: "soft" | "hard";
   quoted_text: string | null;
-  field: "title" | "description" | "sources" | "considerations" | null;
+  field: "title" | "description" | "sources" | "considerations" | "seed_statements" | null;
   message: string;
   suggested_revision: string | null;
 }
 
 export interface AssistantFieldGuidance {
-  field: "title" | "description" | "sources" | "considerations";
+  field: "title" | "description" | "sources" | "considerations" | "seed_statements";
   hint: string;
   example?: string;
 }
@@ -1875,6 +1875,8 @@ export interface DeliberationReadModel {
   /** Participation window; the deadline is computed from it at start. */
   duration_ms?: number | null;
   assistant_helped?: boolean;
+  /** "Learn more" links shown under the framing. */
+  sources?: string[] | null;
   participation_threshold: number | null;
   summary: DeliberationSummaryData | null;
   summary_status: string;
@@ -1970,6 +1972,7 @@ export interface DeliberationDraft {
   user_id: string;
   title: string;
   description: string;
+  sources: string;
   seed_statements: string;
   duration_ms: number;
   participation_threshold: number | null;
@@ -1992,7 +1995,7 @@ export function getDeliberationDraft(id: string): Promise<DeliberationDraft> {
 
 export function updateDeliberationDraft(
   id: string,
-  patch: Partial<Pick<DeliberationDraft, "title" | "description" | "seed_statements" | "duration_ms" | "participation_threshold">> & { skip_modified_flag?: boolean; assistant_applied?: boolean },
+  patch: Partial<Pick<DeliberationDraft, "title" | "description" | "sources" | "seed_statements" | "duration_ms" | "participation_threshold">> & { skip_modified_flag?: boolean; assistant_applied?: boolean },
 ): Promise<DeliberationDraft> {
   return request("PATCH", `/deliberations/drafts/${id}`, patch);
 }

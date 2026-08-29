@@ -152,6 +152,9 @@ function parseAssistantResponse(text: string, validFields: DraftField[]): Assist
           description: String(parsed.draft_proposal.description ?? ""),
           sources: String(parsed.draft_proposal.sources ?? ""),
           considerations: String(parsed.draft_proposal.considerations ?? ""),
+          ...(fieldSet.has("seed_statements")
+            ? { seed_statements: String(parsed.draft_proposal.seed_statements ?? "") }
+            : {}),
         }
       : null;
 

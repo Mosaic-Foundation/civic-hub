@@ -77,6 +77,7 @@ export async function handleUpdateDeliberationDraft(
     const {
       title,
       description,
+      sources,
       seed_statements,
       duration_ms,
       participation_threshold,
@@ -87,6 +88,7 @@ export async function handleUpdateDeliberationDraft(
     const updated = await updateDeliberationDraft(id, {
       title,
       description,
+      sources,
       seed_statements,
       duration_ms,
       participation_threshold,
@@ -151,6 +153,11 @@ export async function handleSubmitDeliberationDraft(
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
+    const sources = draft.sources
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
     // duration_ms (not an absolute deadline) goes on state: the deadline is
     // computed when the conversation STARTS (auto-start at approval), so
     // review-queue time never eats into the participation window.
@@ -163,6 +170,7 @@ export async function handleSubmitDeliberationDraft(
         ? { participation_threshold: draft.participation_threshold }
         : {}),
       ...(seeds.length > 0 ? { seed_statements: seeds } : {}),
+      ...(sources.length > 0 ? { sources } : {}),
     };
 
     // One creation path: always submit for review; admins are auto-approved.

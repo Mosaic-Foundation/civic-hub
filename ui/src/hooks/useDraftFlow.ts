@@ -314,6 +314,21 @@ export function useDraftFlow<D extends BaseDraft>({
   }, [requireAuth, ensureDraft, processType, commitDraft, pushAssistantResponse]);
 
   /**
+   * Whether a suggestion can actually land in this type's form. Cards
+   * that fail this must not render an Apply button — a silent no-op
+   * Apply is worse than none.
+   */
+  const canApplySuggestion = useCallback(
+    (suggestion: DraftSuggestion): boolean =>
+      Boolean(
+        suggestion.field &&
+          suggestion.suggested_revision &&
+          applyFields.includes(suggestion.field),
+      ),
+    [applyFields],
+  );
+
+  /**
    * Apply assistant-produced text into a form field. This — and only
    * this — marks the draft assistant_helped (assistant_applied flag).
    */
@@ -385,6 +400,7 @@ export function useDraftFlow<D extends BaseDraft>({
     ensureDraft,
     handleReview,
     handleApplySuggestion,
+    canApplySuggestion,
     // auth modal wiring for the page
     requireAuth,
     showAuthModal,

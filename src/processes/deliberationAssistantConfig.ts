@@ -2,11 +2,12 @@
 // declared by the deliberation handler via ProcessHandler.getAssistantConfig.
 // See proposalAssistantConfig.ts for the pattern.
 //
-// Scope: the assistant helps with the TOPIC (title) and FRAMING
-// (description) only. Seed statements, duration, and the participant goal
-// are plain form fields it cannot write into — it may still ADVISE about
-// seed statements in chat (the best-practices doc covers them), but only
-// the person can put text in that field.
+// Scope: TOPIC (title), FRAMING (description), SOURCES ("learn more"
+// links under the framing), and SEED STATEMENTS — the last being where
+// the assistant's multi-perspective coaching matters most, since creators
+// predictably seed only their own side. Duration and the participant goal
+// stay plain form fields. Everything reaches the form only via Apply on a
+// suggestion card, which marks assistant_helped (the public disclosure).
 
 import type { AssistantTypeConfig } from "../modules/civic.assistant/index.js";
 import {
@@ -50,9 +51,9 @@ The framing does NOT need to be long — a short paragraph often suffices. It in
 
 Flag framings that argue for an outcome, characterize one side unfavorably, present contested claims as settled facts, or omit that disagreement exists. Unsourced empirical claims in a framing deserve a flag too — participants should not have to fact-check the table stakes.
 
-## Seed statements (advice only — the assistant cannot write this field)
+## Seed statements
 
-Seed statements are the first statements participants vote on, and they teach participants what a good statement looks like. When the user asks about them, advise:
+Seed statements are the first statements participants vote on, and they teach participants what a good statement looks like. This is where creators most predictably fail — well-meaning people seed five statements from their own side without noticing. When you suggest seed statements (as a suggestion card targeting the "seed_statements" field, one statement per line), the set MUST deliberately span the range of perspectives, including ones the creator disagrees with. Criteria:
 - **Short and single-idea** — one claim per statement, ideally under 140 characters. Compound statements ("We should build the park and raise the meals tax to fund it") force people to vote on two things at once.
 - **First person or plain declarative** — *"I'd use a bike lane on Main Street if it existed"*, *"The county should prioritize fixing existing roads over building new ones."*
 - **Spread across the map** — seed statements should deliberately represent DIFFERENT perspectives, including ones the creator disagrees with. All-one-side seeds tilt the conversation from the first vote.
@@ -66,6 +67,7 @@ Plain, warm, curious. The creator is a host, not an advocate. Flag sarcasm, load
 
 - Use the user's words for the SUBJECT, but neutralize any framing that takes a side — and tell them you did, so they see the difference.
 - The topic becomes a fair open question; the framing states the situation, acknowledges the range of views, and invites participation.
+- Offer seed statements too when the conversation would benefit — a small set (4–8), one per line, deliberately spanning the perspectives in play.
 - Don't invent facts, numbers, or local details the user didn't provide.
 - Keep it short — a starting point the creator will refine.`;
 
@@ -79,10 +81,10 @@ export const deliberationAssistantConfig: AssistantTypeConfig = {
   bestPractices: CONVERSATION_BEST_PRACTICES,
   bestPracticesTitle: "Conversation Best Practices",
   brainstormGuidance: `For conversations: What does the community need to talk through? Why now — what's happening that makes this timely? What are the different ways neighbors see this (including views you don't share)? What would you want to learn from the results?`,
-  reviewEmptyFieldsGuidance: `After evaluating the draft content, check whether the framing (description) is empty. If it is, mention in your message what a short framing paragraph could add — participants decide whether to join based on it — and offer to help write one. This is NOT a suggestion (don't add it to the suggestions array) — just a conversational nudge. Always make it clear the user can submit without it. If the conversation seems one where seed statements would help, briefly mention that too (you can advise on them, but only the user can fill that field).`,
+  reviewEmptyFieldsGuidance: `After evaluating the draft content, check the optional fields. If sources is empty and the framing makes factual claims, mention that "learn more" links would let participants verify the table-stakes. If seed statements are empty, mention what a balanced starter set adds — and offer to draft one (as a suggestion card). These are NOT suggestions (don't add them to the suggestions array) — just conversational nudges. Always make it clear the user can submit without them.`,
   typeGuidance: `## Conversation guidance
-A conversation maps community opinion — it is an instrument, not an argument. Your single most important job here is protecting the neutrality of the instrument: a fair open-question topic and a framing that residents on every side would call even-handed. Be more insistent about balance here than you would be for a proposal: a one-sided proposal invites rebuttal, but a one-sided conversation silently produces a distorted map. The user picks the duration and participant goal — don't advise on those.`,
-  fields: ["title", "description"],
+A conversation maps community opinion — it is an instrument, not an argument. Your single most important job here is protecting the neutrality of the instrument: a fair open-question topic, a framing that residents on every side would call even-handed, and seed statements that deliberately span the perspectives in play. Be more insistent about balance here than you would be for a proposal: a one-sided proposal invites rebuttal, but a one-sided conversation silently produces a distorted map. When suggesting seed statements, return them as ONE suggestion card targeting "seed_statements" with one statement per line. The user picks the duration and participant goal — don't advise on those.`,
+  fields: ["title", "description", "sources", "seed_statements"],
   supportsCategories: false,
   fieldGuidance: [
     {
@@ -96,18 +98,33 @@ A conversation maps community opinion — it is an instrument, not an argument. 
       example:
         "The county is updating its comprehensive plan. Some neighbors want more housing and business; others worry about losing what makes Floyd rural. This conversation maps where we agree and differ.",
     },
+    {
+      field: "sources",
+      hint: "Link anything that backs the framing's factual claims, so participants can verify the table-stakes.",
+    },
+    {
+      field: "seed_statements",
+      hint: "Keep each statement short and single-idea, and represent different perspectives — including ones you don't share.",
+      example: "I'd use a bike lane on Main Street if it existed",
+    },
   ],
   draftStore: {
     async get(id) {
       const draft = await getDeliberationDraft(id);
       if (!draft) return undefined;
-      return { ...draft, sources: "", considerations: "" };
+      return { ...draft, considerations: "" };
     },
     appendConversation: (id, userMessage, assistantMessage) =>
       appendDeliberationConversation(id, userMessage, assistantMessage),
     saveReviewResult: (id, suggestions) => saveDeliberationReviewResult(id, suggestions),
     applyGeneratedDraft: async (id, draft) => {
-      await applyDeliberationDraftProposal(id, draft.title, draft.description);
+      await applyDeliberationDraftProposal(
+        id,
+        draft.title,
+        draft.description,
+        draft.sources,
+        draft.seed_statements ?? "",
+      );
     },
   },
 };
