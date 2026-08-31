@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { rowToDisplay } from "../../src/services/creatorDisplay.js";
+import {
+  rowToDisplay,
+  redactForAudience,
+  type CreatorDisplay,
+} from "../../src/services/creatorDisplay.js";
 
 // rowToDisplay is the whole users-row → byline mapping with no DB in the
 // way. Everything the feed, proposals, projects, and comments show next to
@@ -117,5 +121,137 @@ describe("rowToDisplay — schema drift", () => {
       rowToDisplay(row({ official_type: null, official_title: "School Board" }))
         .official,
     ).toEqual({ type: "other", title: "School Board" });
+  });
+});
+
+// --- Public anonymity (2026-08-31) ------------------------------------------
+// redactForAudience is the single decision point between what a signed-in
+// member sees (today's behavior, untouched) and what the anonymous public
+// sees (no resident names, no admin flag, per-process "Resident N").
+
+const RESIDENT: CreatorDisplay = {
+  name: "Dana Reed",
+  is_admin: false,
+  official: null,
+};
+const ADMIN: CreatorDisplay = {
+  name: "Adam Operator",
+  is_admin: true,
+  official: null,
+};
+const OFFICIAL: CreatorDisplay = {
+  name: "Jane Doe",
+  is_admin: false,
+  official: { type: "board_of_supervisors", title: "Board of Supervisors" },
+};
+const ADMIN_OFFICIAL: CreatorDisplay = {
+  name: "Pat Both",
+  is_admin: true,
+  official: { type: "board_of_supervisors", title: "Board of Supervisors" },
+};
+
+describe("redactForAudience — member sees today's bylines, unchanged", () => {
+  it("passes every shape through verbatim", () => {
+    for (const creator of [RESIDENT, ADMIN, OFFICIAL, ADMIN_OFFICIAL]) {
+      expect(
+        redactForAudience(creator, "user_1", { audience: "member" }),
+      ).toEqual(creator);
+    }
+  });
+});
+
+describe("redactForAudience — public never sees a resident's name", () => {
+  it("a resident becomes plain Resident (list surfaces: no number)", () => {
+    expect(redactForAudience(RESIDENT, "user_1", { audience: "public" })).toEqual({
+      name: "Resident",
+      is_admin: false,
+      official: null,
+    });
+  });
+
+  it("an admin shows as the Admin ROLE — real name withheld, no pill", () => {
+    // Adam, 2026-08-31: admin-authored content (announcements, meeting
+    // summaries, word clouds, comments) is institutional speech — the
+    // public sees "Admin", never "Resident" and never the personal name.
+    const shown = redactForAudience(ADMIN, "user_2", { audience: "public" });
+    expect(shown.name).toBe("Admin");
+    expect(shown.is_admin).toBe(false); // the name IS the label; no pill
+    expect(shown.official).toBeNull();
+  });
+
+  it("an official keeps name + office; the Admin pill still never shows", () => {
+    expect(redactForAudience(OFFICIAL, "user_3", { audience: "public" })).toEqual(
+      { ...OFFICIAL, is_admin: false },
+    );
+    const both = redactForAudience(ADMIN_OFFICIAL, "user_4", {
+      audience: "public",
+    });
+    expect(both.name).toBe("Pat Both"); // office outranks the admin label
+    expect(both.official?.title).toBe("Board of Supervisors");
+    expect(both.is_admin).toBe(false);
+  });
+
+  it("an unknown / missing id resolves to plain Resident", () => {
+    const shown = redactForAudience(
+      { name: "Resident", is_admin: false, official: null },
+      undefined,
+      { audience: "public", anonNumbers: new Map([["user_1", 1]]) },
+    );
+    expect(shown.name).toBe("Resident");
+  });
+});
+
+describe("redactForAudience — per-process numbering", () => {
+  it("uses the process map on detail surfaces", () => {
+    const anonNumbers = new Map([
+      ["user_1", 1],
+      ["user_2", 3],
+    ]);
+    expect(
+      redactForAudience(RESIDENT, "user_2", { audience: "public", anonNumbers })
+        .name,
+    ).toBe("Resident 3");
+  });
+
+  it("an id absent from the map falls back to plain Resident", () => {
+    expect(
+      redactForAudience(RESIDENT, "user_9", {
+        audience: "public",
+        anonNumbers: new Map([["user_1", 1]]),
+      }).name,
+    ).toBe("Resident");
+  });
+
+  it("the same person can carry different numbers in different processes", () => {
+    const processA = new Map([["user_1", 3]]);
+    const processB = new Map([["user_1", 1]]);
+    expect(
+      redactForAudience(RESIDENT, "user_1", {
+        audience: "public",
+        anonNumbers: processA,
+      }).name,
+    ).toBe("Resident 3");
+    expect(
+      redactForAudience(RESIDENT, "user_1", {
+        audience: "public",
+        anonNumbers: processB,
+      }).name,
+    ).toBe("Resident 1");
+  });
+});
+
+describe("redactForAudience — the Admin label is consistent everywhere", () => {
+  it("an admin never gets a Resident number, even with a map present", () => {
+    const shown = redactForAudience(ADMIN, "user_2", {
+      audience: "public",
+      anonNumbers: new Map([["user_2", 4]]),
+    });
+    expect(shown.name).toBe("Admin");
+  });
+
+  it("members still see the admin's real name + Admin pill", () => {
+    expect(
+      redactForAudience(ADMIN, "user_2", { audience: "member" }),
+    ).toEqual(ADMIN);
   });
 });

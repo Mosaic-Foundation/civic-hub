@@ -2,7 +2,12 @@ import { Request, Response } from "express";
 import type { Process } from "../models/process.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { HUB_ID, DEFAULT_JURISDICTION } from "../config/hub.js";
-import { getAuthUser, resolveCallerId, isAdminEmail } from "../middleware/auth.js";
+import {
+  getAuthUser,
+  resolveCallerUser,
+  isAdminEmail,
+} from "../middleware/auth.js";
+import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import {
   createProject,
   listProjects,
@@ -127,8 +132,12 @@ export async function handleListProjects(
     const projects = await listProjects(status as any);
     const summaries = projects.map(getProjectSummary);
     // Resolve every creator in one query; attach name + admin flag and
-    // redact the raw user_id from this public list.
-    const enriched = await enrichCreators(summaries, { rawIdField: "user_id" });
+    // redact the raw user_id from this public list. Cross-process list
+    // surface: public callers see plain "Resident" (no number).
+    const enriched = await enrichCreators(summaries, {
+      rawIdField: "user_id",
+      audience: (await resolveCallerUser(req)) ? "member" : "public",
+    });
     res.json(enriched);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -144,7 +153,8 @@ export async function handleGetProject(
   // Caller identity comes from the session token, never from ?actor= (which
   // let anyone read another user's sentiment by passing their id). Anonymous
   // callers get the public read model with no per-actor fields.
-  const callerId = await resolveCallerId(req);
+  const caller = await resolveCallerUser(req);
+  const callerId = caller?.id;
 
   try {
     const readModel = await getProjectReadModel(id, callerId);
@@ -156,7 +166,11 @@ export async function handleGetProject(
     // never leaves the API. enrichCreator redacts user_id (keepRawId omitted).
     const isOwner =
       !!callerId && (readModel as { user_id?: string }).user_id === callerId;
-    const enriched = await enrichCreator(readModel, { rawIdField: "user_id" });
+    const enriched = await enrichCreator(readModel, {
+      rawIdField: "user_id",
+      audience: caller ? "member" : "public",
+      anonNumbers: caller ? undefined : await buildProcessAnonNumbers(id),
+    });
     enriched.is_owner = isOwner;
     res.json(enriched);
   } catch (err) {
@@ -268,9 +282,18 @@ export async function handleListComments(
   try {
     const comments = await listProjectComments(projectId);
     // Attach creator name + admin flag (batched) and redact raw user_id.
+    // Public callers get "Resident N" numbering from the SAME per-process
+    // map as the project byline, so one page never disagrees with itself.
+    const caller = await resolveCallerUser(req);
     const enriched = await enrichCreators(
       comments as unknown as Record<string, unknown>[],
-      { rawIdField: "user_id" },
+      {
+        rawIdField: "user_id",
+        audience: caller ? "member" : "public",
+        anonNumbers: caller
+          ? undefined
+          : await buildProcessAnonNumbers(projectId),
+      },
     );
     res.json(enriched);
   } catch (err) {

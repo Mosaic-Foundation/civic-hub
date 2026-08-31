@@ -187,11 +187,23 @@ export async function resolveAuthorship(
 export async function resolveCallerId(
   req: Request,
 ): Promise<string | undefined> {
+  return (await resolveCallerUser(req))?.id;
+}
+
+/**
+ * Full-user variant of resolveCallerId, for public read paths that need the
+ * caller's AUDIENCE as well as their id (public anonymity, 2026-08-31): a
+ * valid session means audience 'member' (real names, today's behavior); no
+ * or invalid token means audience 'public' (resident identities redacted).
+ * Never rejects and never gates the route — it only informs the response.
+ */
+export async function resolveCallerUser(
+  req: Request,
+): Promise<User | undefined> {
   const token = extractToken(req);
   if (!token) return undefined;
   try {
-    const user = await getUserFromToken(token);
-    return user?.id;
+    return (await getUserFromToken(token)) ?? undefined;
   } catch {
     return undefined;
   }

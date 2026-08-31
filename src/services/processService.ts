@@ -46,6 +46,8 @@ import {
   resolveCreators,
   resolveCreator,
   getCreator,
+  redactForAudience,
+  type Audience,
 } from "./creatorDisplay.js";
 import { HUB_ID, DEFAULT_JURISDICTION } from "../config/hub.js";
 
@@ -351,7 +353,8 @@ async function autoCloseIfExpired(process: Process): Promise<Process> {
 // --- UI read layer ---------------------------------------------------------
 
 export async function listProcessSummaries(
-  types?: string[],
+  types: string[] | undefined,
+  audience: Audience,
 ): Promise<Record<string, unknown>[]> {
   const all = await getAllProcesses(types);
   // Lazily close any process whose deadline has elapsed before summarizing.
@@ -385,7 +388,12 @@ export async function listProcessSummaries(
       typeof (s as { created_by?: unknown }).created_by === "string"
         ? ((s as { created_by: string }).created_by)
         : "";
-    const creator = getCreator(map, rawId);
+    // List surface: no per-process numbering (a number is meaningless
+    // when every row is a different process). Admin-authored rows show
+    // "Admin"; officials their name; residents plain "Resident".
+    const creator = redactForAudience(getCreator(map, rawId), rawId, {
+      audience,
+    });
     return {
       ...s,
       creator_name: creator.name,
@@ -397,10 +405,18 @@ export async function listProcessSummaries(
   });
 }
 
+export interface ProcessStateOptions {
+  actor?: string;
+  audience: Audience;
+  /** Per-process resident numbering, when the caller built one (public detail reads). */
+  anonNumbers?: Map<string, number>;
+}
+
 export async function getProcessState(
   processId: string,
-  actor?: string,
+  opts: ProcessStateOptions,
 ): Promise<Record<string, unknown> | undefined> {
+  const actor = opts.actor;
   let process = await getProcess(processId);
   if (!process) return undefined;
 
@@ -433,7 +449,7 @@ export async function getProcessState(
   // public read model. Read models expose the creator id under `created_by`
   // (vote, project, proposal, generic) — types that use a different field
   // (announcement → author_id) enrich inside their own read model instead.
-  return enrichProcessCreator(model);
+  return enrichProcessCreator(model, opts);
 }
 
 /**
@@ -445,11 +461,15 @@ export async function getProcessState(
  */
 async function enrichProcessCreator(
   model: Record<string, unknown>,
+  opts: ProcessStateOptions,
 ): Promise<Record<string, unknown>> {
   const rawId =
     typeof model.created_by === "string" ? (model.created_by as string) : "";
-  const creator = await resolveCreator(rawId);
-  return {
+  const creator = redactForAudience(await resolveCreator(rawId), rawId, {
+    audience: opts.audience,
+    anonNumbers: opts.anonNumbers,
+  });
+  const out: Record<string, unknown> = {
     ...model,
     creator_name: creator.name,
     creator_is_admin: creator.is_admin,
@@ -457,6 +477,20 @@ async function enrichProcessCreator(
     creator_official_title: creator.official?.title ?? null,
     created_by: "",
   };
+  // Snapshot byline fields (announcement-shaped models) must match the
+  // audience rule too — a post-time snapshot is still a real name. Only
+  // rewritten when the model's stamped official_type is null (legacy
+  // officials keep their name via the stamp).
+  if (
+    opts.audience === "public" &&
+    !creator.official &&
+    (out.official_type ?? null) === null &&
+    typeof out.author_display_name === "string" &&
+    (out.author_display_name as string).length > 0
+  ) {
+    out.author_display_name = creator.name;
+  }
+  return out;
 }
 
 // --- Dev/test utilities ----------------------------------------------------

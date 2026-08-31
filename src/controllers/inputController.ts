@@ -9,11 +9,18 @@ import {
 } from "../modules/civic.input/index.js";
 import { getProcess } from "../services/processService.js";
 import { getDb } from "../db/client.js";
-import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
+import {
+  getAuthUser,
+  isAdminEmail,
+  resolveCallerUser,
+} from "../middleware/auth.js";
 import { emitEvent } from "../events/eventEmitter.js";
-import { getUserFromToken } from "../modules/civic.auth/index.js";
 import { getCommentIdentityMode } from "../services/hubSettings.js";
-import { resolveCreators } from "../services/creatorDisplay.js";
+import {
+  resolveCreators,
+  redactForAudience,
+} from "../services/creatorDisplay.js";
+import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import { HUB_ID } from "../config/hub.js";
 
 
@@ -56,21 +63,6 @@ function redactForPublic(input: CommunityInput): CommunityInput {
       reason: null,
     },
   };
-}
-
-/** Best-effort admin detection — see eventController for the rationale. */
-async function callerIsAdmin(req: Request): Promise<boolean> {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith("Bearer ")) return false;
-  const token = auth.slice(7);
-  if (!token) return false;
-  try {
-    const user = await getUserFromToken(token);
-    if (!user) return false;
-    return isAdminEmail(user.email);
-  } catch {
-    return false;
-  }
 }
 
 export async function handleSubmitInput(
@@ -186,8 +178,38 @@ export async function handleGetInputs(
       .map((c) => c.author_id)
       .filter((id) => id.length > 0);
     const creatorMap = await resolveCreators(authorIds);
+
+    // One token resolution decides both tiers below: admins see raw
+    // author ids + moderation detail; a valid session of any kind is a
+    // MEMBER (real names, today's behavior); no valid session is the
+    // PUBLIC, whose resident bylines are anonymized to "Resident N" —
+    // numbered per-process from the same map the page's author byline
+    // uses, so the thread and the byline agree.
+    const caller = await resolveCallerUser(req);
+    const isAdmin = !!caller && isAdminEmail(caller.email);
+    const anonNumbers = caller
+      ? undefined
+      : await buildProcessAnonNumbers(processId);
+
     const withAdmin = inputs.map((c) => {
       const resolved = c.is_anonymous ? undefined : creatorMap.get(c.author_id);
+      if (!c.is_anonymous && !caller) {
+        // Public audience. An OFFICIAL author keeps their real name and
+        // office; any other resident's post-time name snapshot is
+        // overridden — a snapshot is still a real name.
+        const shown = redactForAudience(
+          resolved ?? { name: "Resident", is_admin: false, official: null },
+          c.author_id,
+          { audience: "public", anonNumbers },
+        );
+        return {
+          ...c,
+          author_name: shown.name,
+          author_is_admin: shown.is_admin,
+          author_official_type: shown.official?.type ?? null,
+          author_official_title: shown.official?.title ?? null,
+        };
+      }
       return {
         ...c,
         // Display name: the post-time snapshot wins (so later name edits don't
@@ -210,7 +232,6 @@ export async function handleGetInputs(
       };
     });
 
-    const isAdmin = await callerIsAdmin(req);
     res.json(isAdmin ? withAdmin : withAdmin.map(redactForPublic));
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

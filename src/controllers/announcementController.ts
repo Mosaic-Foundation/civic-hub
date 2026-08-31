@@ -32,8 +32,12 @@ import {
   getAuthUser,
   isAdminEmail,
   resolveCallerId,
+  resolveCallerUser,
 } from "../middleware/auth.js";
-import { enrichCreator } from "../services/creatorDisplay.js";
+import {
+  enrichCreator,
+  PUBLIC_ADMIN_NAME,
+} from "../services/creatorDisplay.js";
 import { getUserFromToken, getUser } from "../modules/civic.auth/index.js";
 import { extractUrls } from "../modules/civic.link_preview/index.js";
 import { warmPreviewsInBackground } from "../services/linkPreviewCache.js";
@@ -214,7 +218,8 @@ export async function handleCreateAnnouncement(
         id: record.id,
         createdAt: record.createdAt,
       }),
-      { rawIdField: "author_id" },
+      // Gated by requireBoardOrAdmin — the poster is a signed-in member.
+      { rawIdField: "author_id", audience: "member" },
     );
     created.is_owner = true; // the poster is, by definition, the author
     res.status(201).json(created);
@@ -291,7 +296,8 @@ export async function handleUpdateAnnouncement(
           id: record.id,
           createdAt: record.createdAt,
         }),
-        { rawIdField: "author_id" },
+        // Gated by requireBoardOrAdmin — the editor is a signed-in member.
+        { rawIdField: "author_id", audience: "member" },
       );
       updated.is_owner =
         !!callerId &&
@@ -354,8 +360,17 @@ export async function handleGetAnnouncement(
       : getPublicReadModel(getState(record), meta);
     // Owner edit-affordance is a server-computed boolean so the raw author_id
     // never leaves the API (enrichCreator redacts it — keepRawId omitted).
-    const callerId = await resolveCallerId(req);
-    const enriched = await enrichCreator(model, { rawIdField: "author_id" });
+    //
+    // Public anonymity: an admin-authored announcement shows to the
+    // public as "Admin" (creator-based rule in redactForAudience — role
+    // acknowledged, personal name withheld). Officials keep name +
+    // office; signed-in members see today's bylines.
+    const caller = await resolveCallerUser(req);
+    const callerId = caller?.id;
+    const enriched = await enrichCreator(model, {
+      rawIdField: "author_id",
+      audience: caller ? "member" : "public",
+    });
     enriched.is_owner =
       !!callerId && (model as { author_id?: string }).author_id === callerId;
     res.json(enriched);
@@ -372,6 +387,7 @@ export async function handleListAnnouncements(
   try {
     const limitRaw = req.query.limit as string | undefined;
     const limit = limitRaw ? Math.max(1, Math.min(200, parseInt(limitRaw, 10))) : undefined;
+    const isPublic = !(await resolveCallerUser(req));
 
     const all = await getAllProcesses();
     const summaries = all
@@ -394,6 +410,19 @@ export async function handleListAnnouncements(
           id: p.id,
           createdAt: p.createdAt,
         }),
+      )
+      // Public anonymity: the summary carries the post-time
+      // author_display_name snapshot. For unauthenticated callers a
+      // non-official (admin) author shows as "Admin"; officials
+      // (state.official_type set) keep their name. Members see the
+      // snapshot unchanged.
+      .map((s) =>
+        isPublic &&
+        (s.official_type ?? null) === null &&
+        typeof s.author_display_name === "string" &&
+        s.author_display_name.length > 0
+          ? { ...s, author_display_name: PUBLIC_ADMIN_NAME }
+          : s,
       );
 
     res.json(limit ? summaries.slice(0, limit) : summaries);

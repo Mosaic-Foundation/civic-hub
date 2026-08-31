@@ -44,6 +44,7 @@ export async function handleAdminListProposals(
     const enriched = await enrichCreators(summaries, {
       rawIdField: "submitted_by",
       keepRawId: true,
+      audience: "member", // admin-gated route
     });
     res.json(enriched);
   } catch (err) {
@@ -71,6 +72,7 @@ export async function handleAdminGetProposal(
       await enrichCreator(readModel, {
         rawIdField: "submitted_by",
         keepRawId: true,
+        audience: "member", // admin-gated route
       }),
     );
   } catch (err) {

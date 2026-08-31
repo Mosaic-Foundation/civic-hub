@@ -21,6 +21,27 @@
 // Batch-first: resolveCreators() fetches every id in ONE query so list
 // endpoints don't fan out into N per-row lookups. resolveCreator() is a thin
 // convenience wrapper for the single-id (detail) case.
+//
+// AUDIENCE RULE (public anonymity, 2026-08-31):
+// Every enrichment call now declares its audience. 'member' (a valid
+// authenticated session) sees exactly what it always saw. 'public' (no
+// valid token — the open internet, scrapers, search indexers) never
+// receives a resident's real name, and the rule is CREATOR-based, the
+// same on every surface:
+//   - an OFFICIAL (users.official_type + official_title) keeps their real
+//     name and office pill — public office is public by definition;
+//   - an ADMIN (CIVIC_ADMIN_EMAILS) shows as "Admin" — the role is
+//     acknowledged (an announcement, meeting summary, or word cloud is
+//     institutional speech, not a resident's), but the operator's
+//     personal name is never published. Reversible by design: showing
+//     the name later is a one-line change here; un-publishing one from
+//     scrapers is not. An admin wanting to speak purely as a neighbor
+//     uses the per-comment anonymous toggle, which is never pierced.
+//   - everyone else becomes "Resident" (plus a per-process number on
+//     detail surfaces, via `anonNumbers`).
+// The fingerprint guardrail: no stable per-user public marker for
+// RESIDENTS. Numbering is per-process only (see processAnonymity.ts) —
+// never global, never per-account, never a stable color or avatar.
 
 import { getDb } from "../db/client.js";
 import { isAdminEmail } from "../middleware/auth.js";
@@ -38,6 +59,56 @@ export interface CreatorDisplay {
    * is both shows both.
    */
   official: OfficialIdentity | null;
+}
+
+/**
+ * Who is reading the response. 'member' = a valid authenticated session
+ * (today's behavior, unchanged). 'public' = no valid token — resident
+ * identities are redacted server-side before the payload leaves the API.
+ */
+export type Audience = "public" | "member";
+
+export interface AudienceOptions {
+  audience: Audience;
+  /**
+   * Per-process resident numbering (id → N) for detail surfaces where
+   * multiple residents co-appear. Built by processAnonymity.ts. Absent on
+   * cross-process list/feed surfaces, where a number would be meaningless
+   * — those show plain "Resident".
+   */
+  anonNumbers?: Map<string, number>;
+}
+
+/** The public byline for admin-authored content (Adam, 2026-08-31). */
+export const PUBLIC_ADMIN_NAME = "Admin";
+
+/**
+ * Apply the audience rule to a resolved creator. The ONLY place the
+ * public/member distinction is decided — every enrichment path below
+ * funnels through this.
+ */
+export function redactForAudience(
+  creator: CreatorDisplay,
+  id: string | null | undefined,
+  opts: AudienceOptions,
+): CreatorDisplay {
+  if (opts.audience === "member") return creator;
+  if (creator.official) {
+    // Officials keep name + office. The Admin capability pill is still
+    // never shown to the public — capability is internal, office is not.
+    return { name: creator.name, is_admin: false, official: creator.official };
+  }
+  if (creator.is_admin) {
+    // Role acknowledged, name withheld. The name IS the label, so the
+    // pill (is_admin) stays off — "Admin · Admin" would be noise.
+    return { name: PUBLIC_ADMIN_NAME, is_admin: false, official: null };
+  }
+  const n = id ? opts.anonNumbers?.get(id) : undefined;
+  return {
+    name: n ? `Resident ${n}` : "Resident",
+    is_admin: false,
+    official: null,
+  };
 }
 
 /** The value used for any id we can't resolve to a real person. */
@@ -133,6 +204,52 @@ export function getCreator(
   return map.get(id) ?? { ...FALLBACK };
 }
 
+export interface EnrichOptions extends AudienceOptions {
+  rawIdField?: string;
+  keepRawId?: boolean;
+}
+
+/**
+ * Snapshot name fields some read models carry alongside the resolved
+ * creator fields (announcements stamp author_display_name at post time).
+ * For a public audience these must be overridden too — a snapshot
+ * bypassing the resolver is still a resident's real name in the payload.
+ * Only rewritten when the model's own `official_type` is null: the
+ * stamped state field is authoritative for legacy officials whose office
+ * lives in hub_settings rather than on their users row.
+ */
+const SNAPSHOT_NAME_FIELDS = ["author_display_name", "author_name"] as const;
+
+function applyCreatorFields(
+  model: Record<string, unknown>,
+  creator: CreatorDisplay,
+  rawId: string,
+  field: string,
+  opts: EnrichOptions,
+): Record<string, unknown> {
+  const shown = redactForAudience(creator, rawId, opts);
+  const out: Record<string, unknown> = {
+    ...model,
+    creator_name: shown.name,
+    creator_is_admin: shown.is_admin,
+    creator_official_type: shown.official?.type ?? null,
+    creator_official_title: shown.official?.title ?? null,
+  };
+  if (
+    opts.audience === "public" &&
+    !creator.official &&
+    (model.official_type ?? null) === null
+  ) {
+    for (const snap of SNAPSHOT_NAME_FIELDS) {
+      if (typeof out[snap] === "string" && (out[snap] as string).length > 0) {
+        out[snap] = shown.name;
+      }
+    }
+  }
+  if (!opts.keepRawId) out[field] = "";
+  return out;
+}
+
 /**
  * Enrich a single read-model object with resolved creator fields and REDACT
  * the raw id from public output.
@@ -141,24 +258,19 @@ export function getCreator(
  * by `rawIdField` (default "created_by") UNLESS `keepRawId` is true (admin /
  * moderation responses that need the id for unique identification).
  *
+ * `opts.audience` is REQUIRED: every call site must declare who is reading
+ * (see redactForAudience). Admin-gated endpoints pass 'member'.
+ *
  * The raw id to resolve is read from `model[rawIdField]` before redaction.
  */
 export async function enrichCreator(
   model: Record<string, unknown>,
-  opts: { rawIdField?: string; keepRawId?: boolean } = {},
+  opts: EnrichOptions,
 ): Promise<Record<string, unknown>> {
   const field = opts.rawIdField ?? "created_by";
   const rawId = typeof model[field] === "string" ? (model[field] as string) : "";
   const creator = await resolveCreator(rawId);
-  const out: Record<string, unknown> = {
-    ...model,
-    creator_name: creator.name,
-    creator_is_admin: creator.is_admin,
-    creator_official_type: creator.official?.type ?? null,
-    creator_official_title: creator.official?.title ?? null,
-  };
-  if (!opts.keepRawId) out[field] = "";
-  return out;
+  return applyCreatorFields(model, creator, rawId, field, opts);
 }
 
 /**
@@ -167,7 +279,7 @@ export async function enrichCreator(
  */
 export async function enrichCreators(
   models: Record<string, unknown>[],
-  opts: { rawIdField?: string; keepRawId?: boolean } = {},
+  opts: EnrichOptions,
 ): Promise<Record<string, unknown>[]> {
   const field = opts.rawIdField ?? "created_by";
   const ids = models
@@ -177,14 +289,6 @@ export async function enrichCreators(
   return models.map((m) => {
     const rawId = typeof m[field] === "string" ? (m[field] as string) : "";
     const creator = getCreator(map, rawId);
-    const out: Record<string, unknown> = {
-      ...m,
-      creator_name: creator.name,
-      creator_is_admin: creator.is_admin,
-      creator_official_type: creator.official?.type ?? null,
-      creator_official_title: creator.official?.title ?? null,
-    };
-    if (!opts.keepRawId) out[field] = "";
-    return out;
+    return applyCreatorFields(m, creator, rawId, field, opts);
   });
 }

@@ -1181,7 +1181,7 @@ export async function handleAdminGetMeetingSummary(
           createdAt: record.createdAt,
           createdBy: record.createdBy,
         }),
-        { keepRawId: true },
+        { keepRawId: true, audience: "member" },
       ),
     );
   } catch (err) {
@@ -1246,7 +1246,7 @@ export async function handlePatchMeetingSummary(
           createdAt: record.createdAt,
           createdBy: record.createdBy,
         }),
-        { keepRawId: true },
+        { keepRawId: true, audience: "member" },
       ),
     );
   } catch (err) {
@@ -1299,7 +1299,7 @@ export async function handleApproveMeetingSummary(
           createdAt: record.createdAt,
           createdBy: record.createdBy,
         }),
-        { keepRawId: true },
+        { keepRawId: true, audience: "member" },
       ),
     });
   } catch (err) {
@@ -1347,7 +1347,7 @@ async function withRevision(
           createdAt: record.createdAt,
           createdBy: record.createdBy,
         }),
-        { keepRawId: true },
+        { keepRawId: true, audience: "member" },
       ),
     });
   } catch (err) {

@@ -16,7 +16,11 @@ import { Request, Response } from "express";
 import { getAllEvents, getEventsByProcessId } from "../events/eventStore.js";
 import { getNonPublicProcessIds } from "../services/processService.js";
 import { buildFeedProcessMeta } from "../services/feedMeta.js";
-import { callerIsAdmin } from "./eventController.js";
+import { isAdminEmail, resolveCallerUser } from "../middleware/auth.js";
+import {
+  officialActorIds,
+  redactEventForPublic,
+} from "../events/publicRedaction.js";
 
 export async function handleGetFeed(
   req: Request,
@@ -53,9 +57,19 @@ export async function handleGetFeed(
 
     // Restricted events are admin-only. Default to public view; only
     // include restricted events when the caller authenticates as admin.
-    const isAdmin = await callerIsAdmin(req);
+    const caller = await resolveCallerUser(req);
+    const isAdmin = !!caller && isAdminEmail(caller.email);
     if (!isAdmin) {
       events = events.filter((e) => e.meta?.visibility !== "restricted");
+    }
+
+    // Public anonymity (2026-08-31): with no valid session at all, resident
+    // actors are rewritten to per-process opaque tokens and name-shaped
+    // payload fields are scrubbed before the events leave the API. Any
+    // signed-in caller (member or admin) gets the events unchanged.
+    if (!caller) {
+      const officials = await officialActorIds(events);
+      events = events.map((e) => redactEventForPublic(e, officials));
     }
 
     // Collapse superseded publications: one card per published process.

@@ -77,11 +77,13 @@ export async function buildFeedProcessMeta(
   await Promise.all(
     ids.map(async (id) => {
       try {
-        // Same read path as GET /process/:id/state (no actor: the feed is
-        // a public projection, per-actor fields must not be baked into a
-        // shared response). Returns undefined for non-processes and
-        // anything not publicly fetchable.
-        const model = await getProcessState(id);
+        // Same read path as GET /process/:id/state (no actor, audience
+        // "public": the feed meta is a shared cross-audience projection —
+        // per-actor fields and resident names must not be baked into it.
+        // mapModelToMeta below carries no creator fields either way).
+        // Returns undefined for non-processes and anything not publicly
+        // fetchable.
+        const model = await getProcessState(id, { audience: "public" });
         if (!model) return;
         const meta = mapModelToMeta(model);
         if (!meta) return;

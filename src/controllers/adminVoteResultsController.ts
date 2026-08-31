@@ -145,7 +145,7 @@ export async function handleAdminGetVoteResults(
         createdAt: record.createdAt,
         createdBy: record.createdBy,
       }),
-      { keepRawId: true },
+      { keepRawId: true, audience: "member" },
     );
     res.json(model);
   } catch (err) {
@@ -217,7 +217,7 @@ export async function handlePatchVoteResults(
         createdAt: record.createdAt,
         createdBy: record.createdBy,
       }),
-      { keepRawId: true },
+      { keepRawId: true, audience: "member" },
     );
     res.json(model);
   } catch (err) {
@@ -329,7 +329,7 @@ export async function handleApproveVoteResults(
         createdAt: record.createdAt,
         createdBy: record.createdBy,
       }),
-      { keepRawId: true },
+      { keepRawId: true, audience: "member" },
     );
     res.json({
       message: "Vote results approved and published.",

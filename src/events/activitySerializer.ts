@@ -108,12 +108,27 @@ export const EXTENSION_TERMS: ReadonlyArray<{
 // --- Public API ------------------------------------------------------------
 
 /**
+ * Wire options for audience-dependent serialization. Default (absent) is
+ * the canonical member/admin document — byte-identical to before these
+ * options existed, which is what the golden tests and the emission-path
+ * validator rely on. `actorIriOverride` is set only by the public read
+ * path (events/publicRedaction.ts) to replace a resident's stable
+ * per-user IRI with a process-scoped opaque one.
+ */
+export interface WireOptions {
+  actorIriOverride?: string;
+}
+
+/**
  * Project an internal CivicEvent onto an AS2 document.
  *
  * @throws if the event's type has no mapping, or a required field
  *   (`id`, `timestamp`) is missing or malformed.
  */
-export function toActivity(event: CivicEvent): Record<string, unknown> {
+export function toActivity(
+  event: CivicEvent,
+  wire: WireOptions = {},
+): Record<string, unknown> {
   const mapping = ACTIVITY_MAPPINGS[event.event_type];
   if (!mapping) {
     throw new UnmappedEventTypeError(event.event_type);
@@ -143,7 +158,7 @@ export function toActivity(event: CivicEvent): Record<string, unknown> {
     "@context": contextFor(usesHubTerms(object) || usesHubTerms(target)),
     id: `${env.base}/activities/${event.id}`,
     type: mapping.type,
-    actor: actorIri(event.actor, env),
+    actor: wire.actorIriOverride ?? actorIri(event.actor, env),
     published,
     to: audienceOf(event, env),
     generator: {

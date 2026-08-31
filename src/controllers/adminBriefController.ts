@@ -107,7 +107,7 @@ export async function handleAdminGetBrief(
         createdAt: record.createdAt,
         createdBy: record.createdBy,
       }),
-      { keepRawId: true },
+      { keepRawId: true, audience: "member" },
     );
     res.json(model);
   } catch (err) {
@@ -183,7 +183,7 @@ export async function handlePatchBrief(
         createdAt: record.createdAt,
         createdBy: record.createdBy,
       }),
-      { keepRawId: true },
+      { keepRawId: true, audience: "member" },
     );
     res.json(model);
   } catch (err) {
@@ -242,7 +242,7 @@ export async function handleApproveBrief(
         createdAt: record.createdAt,
         createdBy: record.createdBy,
       }),
-      { keepRawId: true },
+      { keepRawId: true, audience: "member" },
     );
     res.json({ message: "Brief approved and published.", brief: model });
   } catch (err) {

@@ -25,8 +25,13 @@ import {
   activityTypeIndex,
 } from "../events/activitySerializer.js";
 import { getUserFromToken } from "../modules/civic.auth/index.js";
-import { isAdminEmail } from "../middleware/auth.js";
+import { isAdminEmail, resolveCallerUser } from "../middleware/auth.js";
 import { getNonPublicProcessIds } from "../services/processService.js";
+import type { Audience } from "../services/creatorDisplay.js";
+import {
+  officialActorIds,
+  toPublicActivity,
+} from "../events/publicRedaction.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 
 /** Civic Activity Spec §6.1 — the collection's media type. */
@@ -81,6 +86,23 @@ export async function callerIsAdmin(req: Request): Promise<boolean> {
   }
 }
 
+/**
+ * One token resolution for both serving decisions on this surface:
+ * restricted-event visibility (admin) and resident anonymization
+ * (public anonymity, 2026-08-31 — any VALID session is a member and
+ * receives the wire unchanged; only the anonymous public gets redacted
+ * actors and payloads).
+ */
+async function callerView(
+  req: Request,
+): Promise<{ isAdmin: boolean; audience: Audience }> {
+  const user = await resolveCallerUser(req);
+  return {
+    isAdmin: !!user && isAdminEmail(user.email),
+    audience: user ? "member" : "public",
+  };
+}
+
 // --- GET /events -----------------------------------------------------------
 
 export async function handleGetActivityCollection(
@@ -130,13 +152,18 @@ export async function handleGetActivity(
       res.status(404).json({ error: "Activity not found" });
       return;
     }
-    if (event.meta?.visibility === "restricted" && !(await callerIsAdmin(req))) {
+    const caller = await callerView(req);
+    if (event.meta?.visibility === "restricted" && !caller.isAdmin) {
       res.status(404).json({ error: "Activity not found" });
       return;
     }
 
     res.setHeader("Content-Type", negotiateActivityType(req));
-    res.json(toActivity(event));
+    if (caller.audience === "public") {
+      res.json(toPublicActivity(event, await officialActorIds([event])));
+    } else {
+      res.json(toActivity(event));
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });
@@ -194,7 +221,7 @@ async function buildCollection(
   req: Request,
   filters: Filters,
 ): Promise<Record<string, unknown>> {
-  const isAdmin = await callerIsAdmin(req);
+  const { isAdmin } = await callerView(req);
   const hidden = filters.processId
     ? new Set<string>()
     : await getNonPublicProcessIds();
@@ -231,7 +258,7 @@ async function buildPage(
   filters: Filters,
   cursor: EventCursor | null,
 ): Promise<Record<string, unknown>> {
-  const isAdmin = await callerIsAdmin(req);
+  const { isAdmin, audience } = await callerView(req);
   let events: Awaited<ReturnType<typeof getEventPage>>["events"] = [];
   let nextCursor: EventCursor | null = null;
 
@@ -268,12 +295,21 @@ async function buildPage(
     }
   }
 
+  // Public anonymity: unauthenticated callers get resident actors
+  // rewritten to per-process opaque IRIs and name-shaped payload fields
+  // scrubbed. Any valid session (member or admin) gets the canonical
+  // documents, unchanged.
+  const officials =
+    audience === "public" ? await officialActorIds(events) : null;
+
   const page: Record<string, unknown> = {
     "@context": [AS2_CONTEXT, CIVIC_CONTEXT],
     id: pageUrl(filters, cursor),
     type: "OrderedCollectionPage",
     partOf: collectionUrl(filters),
-    orderedItems: events.map(toActivity),
+    orderedItems: officials
+      ? events.map((e) => toPublicActivity(e, officials))
+      : events.map((e) => toActivity(e)),
   };
   // `next` is absent on the last page (§6.1) and carries the request's filter
   // set forward so the sequence a consumer walks stays the one it asked for.

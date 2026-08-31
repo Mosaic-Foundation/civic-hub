@@ -12,8 +12,9 @@ import {
   getProposalReadModel,
   getProposalSummary,
 } from "../modules/civic.proposals/index.js";
-import { getAuthUser, resolveCallerId } from "../middleware/auth.js";
+import { getAuthUser, resolveCallerUser } from "../middleware/auth.js";
 import { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
+import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 
 /**
  * POST /proposals — submit a new proposal
@@ -64,8 +65,11 @@ export async function handleListProposals(
     const summaries = proposals.map(getProposalSummary);
     // Resolve every submitter in one query; attach creator name + admin
     // flag and redact the raw submitted_by id from this public list.
+    // Cross-process list surface: public callers see plain "Resident"
+    // (no number — each row is a different process).
     const enriched = await enrichCreators(summaries, {
       rawIdField: "submitted_by",
+      audience: (await resolveCallerUser(req)) ? "member" : "public",
     });
     res.json(enriched);
   } catch (err) {
@@ -84,17 +88,25 @@ export async function handleGetProposal(
   const id = req.params.id as string;
   // Caller identity comes from the session token, never from ?actor= (which
   // let anyone read another resident's support state by passing their id).
-  // Anonymous callers get the public read model with no per-actor fields.
-  const actor = await resolveCallerId(req);
+  // Anonymous callers get the public read model with no per-actor fields —
+  // and, on this detail surface, per-process "Resident N" bylines that
+  // stay consistent with the comment thread (same numbering map).
+  const caller = await resolveCallerUser(req);
 
   try {
-    const readModel = await getProposalReadModel(id, actor);
+    const readModel = await getProposalReadModel(id, caller?.id);
     if (!readModel) {
       res.status(404).json({ error: "Proposal not found" });
       return;
     }
     // Attach creator name + admin flag; redact the raw submitted_by id.
-    res.json(await enrichCreator(readModel, { rawIdField: "submitted_by" }));
+    res.json(
+      await enrichCreator(readModel, {
+        rawIdField: "submitted_by",
+        audience: caller ? "member" : "public",
+        anonNumbers: caller ? undefined : await buildProcessAnonNumbers(id),
+      }),
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });

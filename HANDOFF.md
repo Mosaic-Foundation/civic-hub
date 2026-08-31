@@ -4,6 +4,126 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Public anonymity — resident names hidden from signed-out viewers — 2026-08-31
+
+**Built, NOT pushed.** No migration — everything is read-time. Verified
+live against dev (curl, unauthenticated vs signed-in) plus 613 unit
+tests (incl. AS2 goldens, byte-identical), 6 new API integration tests,
+tsc clean, UI build clean.
+
+**The rule.** `audience = 'member'` when the request carries a valid
+session token, else `'public'`. Members and admins see exactly what they
+saw before — nothing about the signed-in experience changed. The public
+(open internet, scrapers, indexers) never receives a resident's real
+name or admin flag. Officials (users.official_type + official_title)
+keep real name + office pill for everyone; the Admin capability pill is
+never shown to the public, even on an official.
+
+**Where it lives.**
+- `src/services/creatorDisplay.ts` — `redactForAudience()` is the ONE
+  decision point; `enrichCreator`/`enrichCreators` now REQUIRE an
+  `audience` option (tsc forces every call site through the rule).
+  Post-time snapshot fields (`author_display_name`, `author_name`) are
+  overridden too when the author isn't an official.
+- `src/services/processAnonymity.ts` — NEW. Per-process "Resident N"
+  numbering, READ-TIME and deterministic (no participant-index table;
+  the persisted alternative wasn't needed — both endpoints of a detail
+  page rebuild the identical map from the same rows, so they always
+  agree). Numbered by first appearance (author = 1, then comment
+  authors by earliest timestamp; ties broken by id). Officials are
+  exempt and don't consume a number. Anonymous comments stay
+  "Anonymous". THE FINGERPRINT GUARDRAIL: numbers are per-process ONLY
+  — the same person is Resident 3 in one process and Resident 1 in
+  another. Never make this global/per-account (that's a tracking
+  handle). Caveat: hard-deleting a comment can renumber later
+  contributors; append-only activity never shifts existing numbers.
+- `src/middleware/auth.ts` — `resolveCallerUser()` (full-user variant
+  of resolveCallerId); public read routes stay ungated, the token only
+  flips the audience.
+- List/feed surfaces (cross-process rows) show plain "Resident" — a
+  number would be meaningless there. Detail surfaces (proposal/project/
+  process state + their comment threads) use the numbering map.
+
+**The "Admin" label (Adam, 2026-08-31 — SUPERSEDES the earlier
+type-based institutional byline).** The public rule is CREATOR-based
+and identical on every surface: official → real name + office pill;
+admin → the literal label "Admin" (role acknowledged, personal name
+withheld — `PUBLIC_ADMIN_NAME` in creatorDisplay.ts, one line to change
+if admin names should ever go public); everyone else → "Resident" /
+"Resident N". This replaced `INSTITUTIONAL_BYLINE_TYPES` +
+`publicFallbackName` entirely (both deleted): announcements, meeting
+summaries, word clouds, admin comments — anything admin-authored — now
+says "Admin" to the public instead of "Resident" or the hub name.
+Admins, like officials, never consume a Resident number. An
+official-who-is-admin shows office + name (office outranks the label).
+Adam's stance of record: he runs ONE account, engages as admin, stays
+neutral, and uses the per-comment anonymous toggle (never pierced) for
+anything personal. The event-payload scrub swaps a non-official
+`author_display_name` to "Admin" likewise.
+**civic.brief — RESOLVED (Adam, 2026-08-31): general rule, no special
+case.** Today only officials participate (official responses, real
+name + title, already exempt). Future resident interaction inherits
+"Resident N" automatically through the same paths — that IS the
+future-proofing.
+**Public-visibility SETTING — punted deliberately (Adam, 2026-08-31).**
+Considered a hub_settings toggle (e.g. "all names public"). Hardcoded
+instead: a one-click retroactive de-anonymization switch is a footgun —
+residents posted under one expectation, and flipping it would publish
+names they never agreed to expose. If ever revisited, follow the
+`comment_identity_mode` pattern (setting key + getter + admin toggle +
+one branch in `redactForAudience`) and make it forward-only /
+consent-aware. Note `comment_identity_mode` itself is orthogonal and
+untouched: it's the POST-time comment identity policy (real_name /
+anonymous_optional / anonymous_only) for everyone; audience redaction
+is READ-time for the signed-out public, layered on top.
+
+**AS2 / feed actor anonymization** (`src/events/publicRedaction.ts`,
+NEW). The public wire leaked stable per-user handles even without
+names: `GET /events` emitted `{ui}/users/<raw-user-id>` actor IRIs and
+`GET /api/feed` served raw `actor` ids. For UNAUTHENTICATED callers
+only: resident actors become per-process opaque IRIs
+`{ui}/process/<pid>/participants/anon-<HMAC-SHA256(secret,
+pid:userId), 16 hex>` — stable within a process, unlinkable across
+processes; name-shaped payload fields are scrubbed from
+`hub:payload`/`data` (non-official `author_display_name` →
+`hubName()`; `author_name`/`full_name`/`display_name`/`creator_name`
+dropped; `responder_name` kept — brief responders are officials by
+construction). Officials, `system:*` and `did:` actors pass through.
+The stored log and the default `toActivity()` output are untouched
+(goldens unchanged); this is serve-time only, via a `WireOptions`
+actor-IRI override. This IS a public-wire change for anonymous
+consumers — deliberate, spec §5.3-aligned (process-scoped anonymous
+actors).
+
+**NEW ENV VAR: `CIVIC_ANON_SECRET`** — ✅ Adam set it on Vercel PROD
+and PREVIEW (2026-08-31; on the ops/env checklist). Safe
+degrade if unset: every resident actor collapses to the shared
+"anonymous" token — nothing leaks, but per-process distinctness is
+lost. Dev gets a value via `.claude/launch.json` (hub entry env).
+Generate with `openssl rand -hex 32`.
+
+**Confirmed no-leak surfaces (checked, unchanged):** vote logs/receipts
+(no names), vote-results comments (bare strings), wordcloud responses,
+Polis conversations (opaque xid), search results, brief responses
+(officials only), feed `process_meta` (carries no name fields).
+
+**Tests.** `tests/unit/creatorDisplayOfficial.test.ts` (extended:
+member passthrough, official exempt, admin→Resident, numbering,
+institutional byline), `tests/unit/processAnonymity.test.ts` (numbering
+core incl. cross-process independence), `tests/unit/publicRedaction
+.test.ts` (HMAC tokens, scrub, AS2 IRIs, degrade). Integration:
+`tests/api/publicAnonymity.test.ts` — NOT run by CI (TESTING.md:
+CI has no DB/server); passed locally against the dev server.
+
+**Dev-DB residue from live verification: CLEANED (2026-08-31).** All 7
+test users, 3 test proposals + 5 comments + 11 events, and the test
+announcement were deleted from dev (dry-run verified, then removed; the
+one-off script was deleted after use). Cara's temporary official role
+was reverted before that. The temporary second admin email was removed
+from `.claude/launch.json`.
+
+---
+
 ## SHIPPED to production — 2026-08-29
 
 The whole 08-28/29 arc (10 commits, 447ab21..fbbe04e) is **live on
