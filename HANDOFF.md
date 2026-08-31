@@ -6,10 +6,26 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Public anonymity — resident names hidden from signed-out viewers — 2026-08-31
 
-**Built, NOT pushed.** No migration — everything is read-time. Verified
-live against dev (curl, unauthenticated vs signed-in) plus 613 unit
-tests (incl. AS2 goldens, byte-identical), 6 new API integration tests,
-tsc clean, UI build clean.
+**SHIPPED to production** (commit `ecd26d1`, pushed 2026-08-31; Vercel
+auto-deployed). No migration — everything is read-time. Post-deploy
+verification against floyd.civic.social, unauthenticated: proposals
+list returned `['Admin', 'Resident']` (no real names), and /events
+actors came back as per-process `…/participants/anon-<digest>` IRIs —
+same token for the same person within a process, different across
+processes, confirming CIVIC_ANON_SECRET is live in prod. Adam to
+spot-check signed-in (real names should be unchanged). Beta allowlist
+still blocks signed-out browsing, so this is invisible to users until
+public launch — the privacy layer shipped before anyone could be
+indexed, which was the point.
+
+Pre-ship verification: live dev curls (unauthenticated vs signed-in),
+612 unit tests (incl. AS2 goldens, byte-identical for authenticated
+callers), 6 API integration tests, tsc clean, UI build clean.
+
+Housekeeping: the future "per-space public-identity setting" idea lives
+in the Mosaic Foundation Management folder (`Civic Social/Future Tasks/
+space-engine-public-identity-setting.md`), NOT in any repo — planning
+docs stay out of the monorepo per Adam.
 
 **The rule.** `audience = 'member'` when the request carries a valid
 session token, else `'public'`. Members and admins see exactly what they
