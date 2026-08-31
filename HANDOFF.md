@@ -4,6 +4,22 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## SHIPPED to production — 2026-08-29
+
+The whole 08-28/29 arc (10 commits, 447ab21..fbbe04e) is **live on
+floyd.civic.social**. Order honored per the 08-22 rule: Adam applied all
+three migrations to prod by hand FIRST (verified: users column present,
+deliberation_drafts table with sources present, drafts duration defaults
+= 3628800000), then pushed; Vercel auto-deployed. Post-deploy
+verification: /api/assistant/:type/config live for all four types
+(deliberation serving title/description/sources/seed_statements), and
+the deployed bundle contains the new copy (affordance, CoC line,
+SourceLinks, Waiting-to-start) with the old path-choice copy absent.
+Signed-out page checks blocked by beta mode (expected); Adam to
+spot-check the signed-in feel.
+
+---
+
 ## Sources presentation + dev Polis live — 2026-08-29 (later still)
 
 **Built, NOT pushed.** Adam's review of the live conversation page:
