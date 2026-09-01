@@ -5,9 +5,9 @@ import { useSyncExternalStore } from "react";
  *
  * The backend allow-list (CIVIC_BETA_MODE) is the real account gate — it
  * decides who can receive a sign-in code and create an account. This flag
- * is purely a front-end "let me look around" toggle: when set, a logged-out
- * visitor gets to browse the full public app read-only instead of being held
- * at the BetaLanding splash. It grants no write access (every write is still
+ * is purely a front-end "seen the front door" toggle: when set, a logged-out
+ * visitor browses the full public app read-only instead of getting the
+ * BetaWelcomeDialog. It grants no write access (every write is still
  * gated server-side by requireResident), so it is safe to keep client-side.
  *
  * Stored in sessionStorage so it lasts a browsing session but resets on a

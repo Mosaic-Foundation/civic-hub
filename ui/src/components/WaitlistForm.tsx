@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { joinWaitlist } from "../services/waitlist";
+import "./WaitlistForm.css";
 
 interface Props {
   /** Optional heading rendered above the form. */
@@ -15,8 +16,9 @@ interface Props {
 }
 
 /**
- * Waitlist capture form. Shared by the BetaLanding splash and the sign-in
- * modal's private-beta fallback. Honeypot-gated (the hidden `website` field);
+ * Waitlist capture form. Shared by the BetaWelcomeDialog, BetaBanner's
+ * waitlist modal, and the sign-in modal's private-beta fallback.
+ * Honeypot-gated (the hidden `website` field);
  * on success shows the standard confirmation instead of the form.
  *
  * The test-user checkbox is an opt-in signal for the operator: it lands on

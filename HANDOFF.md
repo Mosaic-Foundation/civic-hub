@@ -4,6 +4,49 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## BetaLanding wall → BetaWelcomeDialog front door — 2026-08-31
+
+Adam's call after seeing the merged banner live: the full-page landing
+wall felt wrong — a first-time visitor should SEE the browsable site,
+with the invitation floating over it. `pages/BetaLanding.tsx` + `.css`
+are DELETED; the front door is now
+`ui/src/components/BetaWelcomeDialog.tsx` + `.css`.
+
+- A logged-out first-time visitor lands on the REAL app (deep links
+  included — /votes opens /votes) with the dialog over it: hub name,
+  tagline, private-beta explainer, Sign in, "Browse the site →",
+  feedback note, and the shared WaitlistForm (test-user checkbox
+  included) — the same content the wall carried.
+- Every way out (X, Escape, backdrop, Browse) calls `enterPreview()`;
+  the visitor is then browsing read-only with the always-on BetaBanner
+  carrying the beta/demo reminder — no second notice step (Adam
+  explicitly walked that back). The dialog stays away for the session
+  (same `civic_preview` sessionStorage flag as before) and returns next
+  session.
+- "Sign in" swaps the dialog for the shared AuthModal; dismissing that
+  brings the dialog back, completing it signs the user in.
+- `.beta-waitlist*` styles moved from BetaLanding.css into a new
+  `components/WaitlistForm.css` imported by WaitlistForm itself — the
+  form is used from three modals now, so its styles travel with it.
+- App.tsx no longer has a pre-preview route branch: all public routes
+  render the full app, `preview` only decides whether the dialog shows.
+
+Also: **dev word cloud fixed** — `VITE_HUB_ONBOARDING_WORDCLOUD_ID`
+points at `proc-wordcloud-test`, which had never been seeded in the dev
+Supabase DB. Ran `node --env-file=.env --import tsx
+scripts/seedWordcloud.ts` (15 sample responses); the wordcloud page and
+the nav teaser strip now work in dev. Broader dev↔prod demo-data parity
+(proposals/projects/conversation to match the prod seed set) flagged as
+a follow-up task.
+
+Verified in the dev app: fresh visitor on a deep link gets site-behind-
+dialog; Browse closes in place (banner + CTA remain); reload does not
+re-show within the session; Sign in ↔ AuthModal round-trip works;
+mobile 375px scrolls the dialog with no horizontal overflow. tsc clean,
+UI build clean.
+
+---
+
 ## Beta banners merged into one always-on bar — 2026-08-31
 
 Follow-up to the entry below, after Adam saw the two-banner design live:

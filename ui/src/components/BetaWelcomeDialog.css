@@ -1,0 +1,158 @@
+/* BetaWelcomeDialog — the private-beta front door, floating over the
+   browsable app. Same <dialog> conventions as ProcessPicker: explicit
+   centering (a global reset defeats `margin: auto`), top-anchored,
+   scrollable on short viewports. Action buttons keep the old
+   BetaLanding treatment (solid Sign in, outlined Browse). */
+
+.beta-welcome {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: 520px;
+  width: calc(100% - var(--space-xl) * 2);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+  position: fixed;
+  top: 6vh;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.beta-welcome::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.beta-welcome-body {
+  position: relative;
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+}
+
+.beta-welcome-close {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.beta-welcome-close:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
+.beta-welcome-close:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.beta-welcome-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-2xl);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+  margin: 0 0 var(--space-xs);
+  color: var(--color-brand);
+  /* Keep clear of the absolutely-positioned close button. */
+  padding-right: var(--space-2xl, 48px);
+}
+
+.beta-welcome-tagline {
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-lg);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+.beta-welcome-note {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-base);
+}
+
+.beta-welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.beta-welcome-signin {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--pill-vote-fg, #1e3a5f);
+  color: #fff;
+  border: 1px solid var(--pill-vote-fg, #1e3a5f);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.beta-welcome-signin:hover {
+  background: #14304f;
+}
+
+.beta-welcome-browse {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-lg);
+  background: transparent;
+  color: var(--pill-vote-fg, #1e3a5f);
+  border: 1px solid var(--pill-vote-fg, #1e3a5f);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.beta-welcome-browse:hover {
+  background: var(--pill-vote-bg, #e7eef7);
+}
+
+.beta-welcome-feedback-note {
+  margin: var(--space-md) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-base);
+}
+
+/* The shared waitlist card sits inside the dialog surface — keep its
+   border (it separates the form from the CTA block above) but tighten
+   the spacing for the modal context. */
+.beta-welcome-body .beta-waitlist {
+  margin-top: var(--space-lg);
+}
+
+@media (max-width: 600px) {
+  .beta-welcome {
+    top: 4vh;
+    max-height: 92vh;
+  }
+  .beta-welcome-body {
+    padding: var(--space-lg);
+  }
+}

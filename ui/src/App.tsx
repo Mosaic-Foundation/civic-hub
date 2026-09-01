@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from "react
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import hub from "./config/hub";
 import Nav from "./components/Nav";
-import BetaLanding from "./pages/BetaLanding";
 import HubBanner from "./components/HubBanner";
 import WordcloudTeaser from "./components/WordcloudTeaser";
 import FeedVotesTabs from "./components/FeedVotesTabs";
@@ -49,6 +48,7 @@ import CreateWordCloud from "./pages/CreateWordCloud";
 import IntroPopup, { hasSeenIntro } from "./components/IntroPopup";
 import ReAcceptModal from "./components/ReAcceptModal";
 import BetaBanner from "./components/BetaBanner";
+import BetaWelcomeDialog from "./components/BetaWelcomeDialog";
 import { usePreviewMode } from "./hooks/usePreviewMode";
 import "./App.css";
 
@@ -76,31 +76,13 @@ function AppContent() {
   const { user, loading } = useAuth();
   const preview = usePreviewMode();
 
-  // Private-beta splash. A logged-out visitor sees BetaLanding until they opt
-  // into read-only preview ("Browse the site"). The backend allow-list is the
-  // real account gate; `preview` only relaxes this front-end wall so people
-  // can look around. Once in preview we fall through to the full app below,
-  // where BetaBanner keeps the beta state visible.
-  if (hub.beta_mode && !user && !loading && !preview) {
-    return (
-      <div className="app">
-        <Nav />
-        <WordcloudTeaser />
-        <main className="page-shell">
-          <Routes>
-            <Route path="/welcome" element={<Welcome />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/code-of-conduct" element={<CodeOfConduct />} />
-            <Route path="/feedback" element={<Feedback />} />
-            <Route path="*" element={<BetaLanding />} />
-          </Routes>
-        </main>
-        <SiteFooter />
-      </div>
-    );
-  }
+  // Private-beta front door. A logged-out first-time visitor lands on the
+  // real app with BetaWelcomeDialog floating over it (sign in / waitlist /
+  // browse) — every dismissal enters read-only preview. The backend
+  // allow-list is the real account gate; `preview` only tracks whether the
+  // visitor has been through the front door this session. BetaBanner keeps
+  // the beta state visible from there.
+  const showWelcomeDialog = hub.beta_mode && !user && !loading && !preview;
 
   // While a logged-out visitor browses in beta preview, the persistent banner
   // is enough of an onboarding cue — suppress the intro popup so we don't stack
@@ -118,6 +100,8 @@ function AppContent() {
           (the waitlist CTA inside it is signed-out-only). Gone entirely
           (zero code change) when beta_mode flips off. */}
       {hub.beta_mode && <BetaBanner />}
+
+      {showWelcomeDialog && <BetaWelcomeDialog />}
 
       <Nav />
       <WordcloudTeaser />

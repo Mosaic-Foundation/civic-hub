@@ -1,0 +1,108 @@
+/* WaitlistForm — shared by the BetaWelcomeDialog, the sign-in modal's
+   private-beta fallback, and BetaBanner's waitlist modal. Moved here from
+   BetaLanding.css when the landing splash became a dialog, so the styles
+   travel with the component instead of a page that may not be loaded. */
+
+.beta-waitlist {
+  margin: var(--space-xl) 0 0;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.beta-waitlist h2 {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--font-size-lg, 1.15rem);
+}
+
+.beta-waitlist p {
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-base);
+}
+
+.beta-waitlist-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.beta-waitlist-form .form-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.beta-waitlist-checkbox {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+  cursor: pointer;
+}
+
+.beta-waitlist-checkbox input {
+  /* Nudge the box onto the first line of the label text. */
+  margin: 0.15rem 0 0;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.beta-waitlist-checkbox-hint {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.beta-waitlist-submit {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--pill-vote-fg, #1e3a5f);
+  color: #fff;
+  border: 1px solid var(--pill-vote-fg, #1e3a5f);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.beta-waitlist-submit:hover:not(:disabled) {
+  background: #14304f;
+}
+
+.beta-waitlist-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.beta-waitlist-success {
+  padding: var(--space-md) var(--space-lg);
+  background: var(--pill-vote-bg, #e7eef7);
+  border: 1px solid var(--pill-vote-fg, #1e3a5f);
+  border-radius: var(--radius-md);
+  color: var(--pill-vote-fg, #1e3a5f);
+}
+
+.beta-waitlist-error {
+  font-size: var(--font-size-sm);
+  color: var(--color-error, #b91c1c);
+}
+
+/* Honeypot field — visually removed, still submittable by bots. */
+.beta-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
