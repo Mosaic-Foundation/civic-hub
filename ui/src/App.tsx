@@ -48,8 +48,7 @@ import WordCloud from "./pages/WordCloud";
 import CreateWordCloud from "./pages/CreateWordCloud";
 import IntroPopup, { hasSeenIntro } from "./components/IntroPopup";
 import ReAcceptModal from "./components/ReAcceptModal";
-import PreviewBanner from "./components/PreviewBanner";
-import BetaDemoBanner from "./components/BetaDemoBanner";
+import BetaBanner from "./components/BetaBanner";
 import { usePreviewMode } from "./hooks/usePreviewMode";
 import "./App.css";
 
@@ -81,7 +80,7 @@ function AppContent() {
   // into read-only preview ("Browse the site"). The backend allow-list is the
   // real account gate; `preview` only relaxes this front-end wall so people
   // can look around. Once in preview we fall through to the full app below,
-  // where PreviewBanner keeps the beta state visible.
+  // where BetaBanner keeps the beta state visible.
   if (hub.beta_mode && !user && !loading && !preview) {
     return (
       <div className="app">
@@ -114,14 +113,11 @@ function AppContent() {
         <IntroPopup onDismiss={() => setShowIntro(false)} />
       )}
 
-      {inBetaPreview && <PreviewBanner />}
-
-      {/* Demo-data notice for signed-in beta testers — the audience that
-          gets no other beta cue and is most likely to mistake seeded
-          processes for real community input. Suppressed while
-          PreviewBanner is showing so no visitor ever sees two bars;
-          gone entirely (zero code change) when beta_mode flips off. */}
-      {hub.beta_mode && !inBetaPreview && <BetaDemoBanner />}
+      {/* One always-on beta bar for everyone — signed-in testers and
+          signed-out preview browsers get the same demo-data reminder
+          (the waitlist CTA inside it is signed-out-only). Gone entirely
+          (zero code change) when beta_mode flips off. */}
+      {hub.beta_mode && <BetaBanner />}
 
       <Nav />
       <WordcloudTeaser />

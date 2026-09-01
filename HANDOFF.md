@@ -4,6 +4,40 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Beta banners merged into one always-on bar — 2026-08-31
+
+Follow-up to the entry below, after Adam saw the two-banner design live:
+the PreviewBanner→BetaDemoBanner swap flashed on reload, the demo notice
+wasn't prominent enough, and "Join the waitlist" made no sense once
+signed in. PreviewBanner and BetaDemoBanner are DELETED, replaced by one
+`ui/src/components/BetaBanner.tsx` + `.css`.
+
+- One navy bar for EVERYONE (signed-in testers and signed-out preview
+  browsers) whenever `hub.beta_mode` is true: "You're browsing the
+  {hub.name} beta — **much of what you see is demo content, not real
+  community topics.** Real topics from {hub.jurisdiction} arrive at
+  public launch."
+- **Not dismissible, by Adam's call** — the reminder should follow
+  testers everywhere for the whole beta. All sessionStorage dismissal
+  code is gone.
+- **More prominent:** base font size (was sm), demo clause bolded.
+- **Waitlist CTA is signed-out-only** and now opens the shared
+  `WaitlistForm` (test-user checkbox included) in a `<dialog>` modal —
+  ProcessPicker's dialog conventions — so a browsing visitor doesn't
+  lose their place. BetaLanding's inline form is unchanged.
+- **Flash fixed structurally:** the bar text is identical in both auth
+  states, and the CTA renders only once auth has resolved (`!loading`),
+  so nothing swaps during the session-restore race on hard reload.
+
+Verified in the dev app both signed out (bar + CTA → modal with
+checkbox; Escape/backdrop/X close) and signed in via bypass (bar, no
+CTA, no flash on reload); mobile 375px wraps cleanly, no horizontal
+scroll. tsc clean, UI build clean. `usePreviewMode`'s enterPreview/
+exitPreview and the BetaLanding wall are untouched (exitPreview is now
+unused but kept as enterPreview's pair).
+
+---
+
 ## Beta demo-data banner — 2026-08-31
 
 UI-only; no backend change, no migration. New site-wide banner telling

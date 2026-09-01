@@ -1,0 +1,127 @@
+/* BetaBanner — the always-on beta bar, shown to everyone while
+   hub.beta_mode is true. Navy control accent (same family as the
+   Feedback button), base font size rather than sm so the demo-data
+   warning stays prominent even for signed-in testers. */
+
+.beta-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--pill-vote-fg, #1e3a5f);
+  color: #fff;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  text-align: center;
+}
+
+.beta-banner-sub {
+  opacity: 0.85;
+}
+
+.beta-banner-cta {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: var(--space-xs) var(--space-md);
+  background: #fff;
+  color: var(--pill-vote-fg, #1e3a5f);
+  border: 1px solid #fff;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.beta-banner-cta:hover {
+  opacity: 0.88;
+}
+
+.beta-banner-cta:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .beta-banner {
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+  .beta-banner-sub {
+    display: block;
+  }
+}
+
+/* --- Waitlist modal (opened by the CTA) --- */
+/* Same <dialog> conventions as ProcessPicker: explicit centering (a
+   global reset defeats `margin: auto`), top-anchored, scrollable on
+   short viewports. The form itself is WaitlistForm, whose .beta-waitlist
+   card chrome is neutralized here — the dialog provides the chrome. */
+
+.beta-waitlist-dialog {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: 440px;
+  width: calc(100% - var(--space-xl) * 2);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+  position: fixed;
+  top: 8vh;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  max-height: 84vh;
+  overflow-y: auto;
+}
+
+.beta-waitlist-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.beta-waitlist-dialog-body {
+  position: relative;
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+}
+
+.beta-waitlist-dialog-body .beta-waitlist {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.beta-waitlist-dialog-close {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.beta-waitlist-dialog-close:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
+.beta-waitlist-dialog-close:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}

@@ -12,7 +12,7 @@ import { useSyncExternalStore } from "react";
  *
  * Stored in sessionStorage so it lasts a browsing session but resets on a
  * fresh visit — every new visitor still lands on the splash first. A custom
- * event keeps the App wall and the PreviewBanner in sync within the tab, and
+ * event keeps the App wall and the BetaBanner in sync within the tab, and
  * the native `storage` event syncs across tabs.
  */
 
