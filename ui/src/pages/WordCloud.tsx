@@ -589,6 +589,26 @@ export default function WordCloud() {
         );
       })}
 
+      {/* Onboarding only (the ?onboarding=1 param the sign-up flow arrives
+          with — never a normal visit to a word cloud). Once the new arrival
+          has added their word, the page's job is done: give them one clear
+          way forward to the feed. "Skip" at the top stays for anyone who
+          would rather not contribute. */}
+      {isOnboarding && wc.has_submitted && (
+        <div className="wordcloud-proceed">
+          <p className="wordcloud-proceed-note">
+            Thanks — you're all set.
+          </p>
+          <button
+            type="button"
+            className="wordcloud-proceed-btn"
+            onClick={() => navigate("/")}
+          >
+            Proceed to the site &rarr;
+          </button>
+        </div>
+      )}
+
       {/* Admin-only soft-remove. Renders nothing for everyone else. The
           handler's onArchive hook also flips state.status, which is the copy
           the submission form reads — otherwise an archived word cloud would

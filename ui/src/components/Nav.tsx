@@ -5,6 +5,7 @@ import { getReviewNotificationCount } from "../services/api";
 import AuthModal from "./AuthModal";
 import SearchBar from "./SearchBar";
 import hub from "../config/hub";
+import { BETA_PUBLIC_PATHS } from "../config/betaPublicPaths";
 import "./Nav.css";
 
 // Top nav stays minimal: wordmark + search + sign-in. All primary
@@ -23,9 +24,6 @@ const DRAWER_LINKS: ReadonlyArray<{ to: string; label: string; end?: boolean }> 
   { to: "/welcome", label: "Welcome" },
   { to: "/about", label: "About" },
 ];
-
-// Routes accessible without sign-in during beta mode.
-const BETA_PUBLIC_PATHS = new Set(["/welcome", "/about", "/feedback", "/code-of-conduct", "/privacy", "/terms"]);
 
 // Secondary drawer link — active-input affordance; styled like the
 // primary links (full-weight, regular size), not the muted legal

@@ -4,6 +4,205 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Beta demo content slate — seeded on PROD — 2026-09-01
+
+**Script:** `scripts/seedBetaSlate.ts` (`--env dev|prod`, `--dry-run`, `--remove`). Source of
+truth for the content is outside the repo: `~/Documents/Civic Social/Mosaic Foundation
+Management/Civic Social/Floyd Civic Hub/Rollout Plan/Seed-Content-Slate.md` (v2, 2026-09-01) and
+`Seed-Content-Draft.md` (verbatim text). Don Kenny (§10) is IN, per Adam ("use that name; it's a
+demo exploration of what the building could be").
+
+```
+cd ~/Developer/Civic-Social-Mono/civic-hub
+npx tsx scripts/seedBetaSlate.ts --env prod --dry-run   # plan + before-matrix, writes nothing
+npx tsx scripts/seedBetaSlate.ts --env prod             # seed (idempotent; reruns skip what exists)
+npx tsx scripts/seedBetaSlate.ts --env prod --remove    # clear the slate (restores the kept items)
+```
+
+**Prod audit (read-only, 144 processes).** Nothing from the old `seedProdDemo` ids is left on
+prod. The July 1 session had already entered the Draft slate as real reviewed processes:
+Water `proc_7fca320b59f649c5` and Recreation `proc_6fbc00d6498045ef` (both **finalized** — they
+auto-closed by deadline on 2026-08-10, not "live" as the slate assumed), trails vote
+`proc_861a092e431845a3` (proposed, 1/5), tool library `proc_c34075135a2b451d` (open, 3 supports,
+2 comments), skate park `proc_58293e6945e44a98` (active, banner) plus a stranded pending-review
+duplicate `proc_d945fcbbd0e84a86` (changes requested, never resubmitted). Flock camera, green-box
+votes, and the June test items are already archived. `proc_d99682d772c648fc` ("Which of these
+would you most like to see the Hub used for first?", 08-27, admin) is Adam's own beta question —
+left alone. Announcements and 74 BoS meeting summaries are the real pipelines — untouched. Admin
+account on prod: `user_4f02a6460fc64b2b`. `hub_id` is `civic-hub-local` on every prod row (the
+`CIVIC_HUB_ID` env is unset there; nothing reads it — the DID is the identity).
+
+**What the script does** (through the real code paths — `createProcess`, the civic.vote module
+lifecycle, civic.input, civic.projects/proposals, processLinks, the deliberation handler's real
+`start` action for live Polis, and the civic.brief `setRecipients` → `approveBrief` sequence):
+
+| Type | State | Item | id |
+|---|---|---|---|
+| Conversation | open (leads the feed) | Where We Agree | `proc_beta_conv_agree_001` (live Polis, 12 seeds, 6 wks) |
+| Conversation | open | Don Kenny building | `proc_beta_conv_donkenny_001` (live Polis, 8 seeds; by Maya) |
+| Conversation | open (kept, **reopened**) | Water | prod `proc_7fca320b59f649c5` — status → active, deadline +6 wks, Polis `conversation/reopen` |
+| Conversation | open (kept, **reopened**) | Recreation | prod `proc_6fbc00d6498045ef` — same |
+| Conversation | completed + brief | Keeping the lights on (energy) | `proc_beta_conv_energy_001` (closed −15d, stored summary, `seed-conv-energy-001` mock id) → brief `proc_beta_brief_energy_001` (published −13d, sent to Board of Supervisors) |
+| Proposal | open (kept) | Tool library | prod `proc_c34075135a2b451d` + 1 demo comment (Tomas) |
+| Proposal | completed → advanced | Farm stand | `proc_beta_prop_farmstand_001` (Reuben, −35d; 5 supports, 4 comments; `converted` → vote, −21d) |
+| Vote | proposed (kept) | Trails + recreation budget | prod `proc_861a092e431845a3` + 2 demo endorsements → 3/5, "needs 2 more" |
+| Vote | active | Energy-resilience step | `proc_beta_vote_energy_001` (approval method, opened −7d, closes +7d, 30 ballots) |
+| Vote | closed + brief | Farm stand at the Pavilion | `proc_beta_vote_farmstand_001` (proposed → 5 endorsements → auto-activated −21d → 58 ballots 36/14/8 → closed −7d → **finalized** by the brief) → brief `proc_beta_brief_farmstand_001` (published −5d, sent to Board + Parks & Rec) |
+| Project | active (kept, refined) | Skate park | prod `proc_58293e6945e44a98` retitled "Floyd Skate Park at Lineberry Park" (Draft §PROJECT verbatim) + 2 updates; links → Recreation + trails vote |
+| Project | completed | Conversation Café | `proc_beta_proj_cafe_001` (Della, −40d; 3 supporters; update + completion update; completed −21d; links → Where We Agree) |
+| — | archived | stranded skate-park duplicate | prod `proc_d945fcbbd0e84a86` via `archiveProcess` (restorable) |
+
+Demo residents (fictional, `@demo.invalid`, digest opted out): Maya Whitlock `user_demo_beta_001`,
+Reuben Sloane `_002`, Della Kirkwood `_003`, Tomas Ferrell `_004`; the admin account posts the
+flagship conversation, the energy pair, and one endorsement/sentiment each so bylines vary.
+Signed out every one of them renders as "Resident N"; the admin as "Admin".
+
+**Briefs — the hard rule, verified.** Both briefs go through the real pipeline with ONE
+substitution: the injected `sendEmail` is a logging stub. The script never imports the mailer and
+scrubs `SMTP_*`/`RESEND_API_KEY` from its own env at bootstrap; the recorded recipient addresses
+are on the reserved `.invalid` TLD. Dev run log: 2 "SUPPRESSED" lines, 0 `[mailer]` lines. Note
+the transport is SMTP (nodemailer), not Resend — Resend only sends sign-in codes / waitlist /
+feedback.
+
+**Two things the rehearsal surfaced (both fixed):**
+
+1. **`events` is append-only — UPDATE blocked by trigger** (DELETE allowed since migration
+   20260416000100). Backdating after the fact is impossible, so every emitter the script uses is
+   handed an `emit` that passes the planned `timestamp`; row tables get `created_at` set directly.
+2. **`eventStore.eventToRow` dropped the event's timestamp on insert** and let `created_at`
+   default to now(), so the documented `timestamp` override (`CreateEventInput.timestamp`,
+   `createProcess.eventTimestamp`) never reached the column the feed sorts on. Fixed:
+   `created_at: event.timestamp` (src/events/eventStore.ts). No production caller passes an
+   override today (news-sync deliberately doesn't), so live behavior is unchanged; tsc clean,
+   `tests/unit` 612/612 green.
+
+**Dev rehearsal (2026-09-01):** `--env dev` creates stand-ins for the five kept prod items first,
+then runs the same 18 steps. Verified on the dev UI signed out: feed leads with Where We Agree;
+closed vote shows 36/14/8 of 58 + "Voting finalized" + link to its brief; brief page shows "Sent
+to Board of Supervisors and Parks & Recreation on …" + "Awaiting response"; proposed vote shows
+"3 of 5 endorsements / Needs 2 more endorsements to proceed to an official vote"; completed
+proposal shows "Promoted to a vote / converted to an official vote" + Continued-by link; completed
+project shows COMPLETED + both updates; closed conversation renders the stored summary (35
+participants, 28 statements, 3 groups); Where We Agree serves its Polis seed statements; a demo
+resident's ballot on the active vote was accepted (tally 31). `--remove` on dev is clean.
+
+**Known / flagged:**
+- `tests/api/events.test.ts` "pages: next walks the whole sequence" now times out on the shared
+  dev DB: it pages 2 at a time and 126 events × ~200 ms > its 15 s limit. Pagination itself is
+  clean (walked manually: 10 pages, 0 duplicates). Not in CI (only `tests/unit` runs).
+- Polis `conversation/close` timed out (20 s) from this machine; `conversation/reopen` and create
+  work. Best-effort either way; the hub closes locally regardless.
+- The Projects list page filters `active`/`archived` only, so a **completed** project (the café)
+  is reachable from the feed, links, and its detail page but not from the Projects tab.
+- Slate §2 asks for "single choice, 1 of 4"; the only methods are `yes_no_unsure` and `approval`,
+  so the energy vote is `approval` (UI says "Select all options you approve of"). Seeded ballots
+  each pick one.
+- The farm-stand vote page shows the proposal's 4 comments (existing proposal→vote behavior).
+
+**Prod run (2026-09-01, 16:41 ET, Adam's go-ahead after confirming events stay append-only).**
+All 17 steps completed; Polis reopen succeeded for Water (`3fkvnmwhdc`) and Recreation
+(`55jadepafe`); new Polis conversations `9hmshipyra` (Don Kenny) and `4fa6jtybhe` (Where We
+Agree). Log: 2 SUPPRESSED deliveries, 0 `[mailer]` lines; both briefs' recorded `delivered_to`
+are `@demo.invalid` addresses. No email left this machine and the prod deploy was not involved
+(the script ran locally against the prod database; the eventStore fix is not deployed and does
+not need to be — the seeded rows already carry correct `created_at`).
+
+**Verified on floyd.civic.social, signed out (a–d from the brief):**
+(a) feed leads with Where We Agree, then Don Kenny, skate-park update, farm-stand VOTE RESULTS
+card, the 08-25 BoS summary, the energy VOTE OPEN card, then the real Aug announcements/summaries
+— the slate interleaves with the real pipelines in date order;
+(b) closed vote: COMPLETED, 36/14/8 of 58, "Voting finalized", Vote Log, comments, brief link;
+brief pages: "Sent to Board of Supervisors and Parks & Recreation on August 27" / "…Board of
+Supervisors on August 19" + "Awaiting response"; proposed trails vote: GATHERING SUPPORT, 3 of 5,
+"Needs 2 more endorsements"; farm-stand proposal: PROMOTED TO A VOTE + "converted to an official
+vote" + Continued-by link; café: COMPLETED with both updates; energy conversation: Completed with
+the stored summary; Where We Agree: live, serves seed statements; energy vote: ACTIVE and accepted
+a ballot from demo resident Maya via the API (now 31 ballots; the temporary verification session
+was deleted);
+(c) every demo resident renders as "Resident N", the admin as "Admin"; signed in, the farm-stand
+proposal reads "Reuben Sloane";
+(d) no delivery email fired (see above).
+
+**Final prod matrix:**
+
+| Type | proposed | open / active | completed / closed |
+|---|---|---|---|
+| Conversation | — | Where We Agree `proc_beta_conv_agree_001` · Don Kenny `proc_beta_conv_donkenny_001` · Water `proc_7fca320b59f649c5` (reopened) · Recreation `proc_6fbc00d6498045ef` (reopened) | Energy `proc_beta_conv_energy_001` + brief `proc_beta_brief_energy_001` |
+| Proposal | — | Tool library `proc_c34075135a2b451d` | Farm stand `proc_beta_prop_farmstand_001` (→ vote) |
+| Vote | Trails `proc_861a092e431845a3` (3/5) · Adam's "which use first?" `proc_d99682d772c648fc` (1/5, untouched) | Energy step `proc_beta_vote_energy_001` (31 ballots, closes +7d) | Farm stand `proc_beta_vote_farmstand_001` (58, finalized) + brief `proc_beta_brief_farmstand_001` |
+| Project | — | Skate park `proc_58293e6945e44a98` (Lineberry, 2 updates) | Café `proc_beta_proj_cafe_001` |
+| Word cloud | — | `proc_wordcloud_floyd_001` (untouched) | — |
+| Archived | stranded skate-park duplicate `proc_d945fcbbd0e84a86` (restorable) |||
+
+Cosmetic, noticed on the live feed: the energy vote's card said "Open for input — be the first to
+vote" while 30 seeded ballots existed, because the card counts `vote_participation` rows (none for
+anonymized seeded ballots) rather than `vote_records`; Maya's real ballot makes it 1. Harmless for
+beta; the vote page itself is correct.
+
+**Removed and re-seeded the same evening.** Adam ran `--remove` by mistake (it worked exactly as
+designed: kept items restored, demo rows gone) and the seed was re-run at ~17:00 ET. Same ids
+throughout; only the live Polis conversation ids changed — Where We Agree is now `9jhwxaudyz`,
+Don Kenny `3rbekkmnfn`. The first run's Polis conversations (`4fa6jtybhe`, `9hmshipyra`) are
+orphaned but open on polis.civic.social because the close call timed out; harmless, nothing
+points at them. Maya's verification ballot was not repeated, so the energy vote has 30 ballots.
+
+**Uncommitted in this working tree:** `scripts/seedBetaSlate.ts` (new), `src/events/eventStore.ts`
+(the created_at fix), this HANDOFF entry — plus the other session's UI files (App.tsx, Nav.tsx,
+WordCloud.*, betaPublicPaths.ts) from earlier today. Commit when ready.
+
+**To clear the slate later** (restores the kept items, deletes only demo rows):
+```
+cd ~/Developer/Civic-Social-Mono/civic-hub
+npx tsx scripts/seedBetaSlate.ts --env prod --remove
+```
+
+---
+
+## Legal-page dialog gate + onboarding "Proceed to the site" — 2026-09-01
+
+UI-only; no backend change, no migration. Three items from Adam's brief.
+
+**1. Welcome dialog no longer covers standalone info/legal pages.** The
+sign-up consent line (AuthModal) and ReAcceptModal open Terms / Privacy /
+Code of Conduct with `target="_blank"`; that new tab has no `civic_preview`
+sessionStorage flag, so `showWelcomeDialog` was true again and the
+BetaWelcomeDialog landed on top of the page the visitor clicked through
+to read. `BETA_PUBLIC_PATHS` moved out of Nav.tsx into a new shared
+`ui/src/config/betaPublicPaths.ts` (/welcome, /about, /feedback,
+/code-of-conduct, /privacy, /terms); Nav imports it unchanged, and
+App.tsx now adds `!BETA_PUBLIC_PATHS.has(pathname)` to the
+`showWelcomeDialog` gate. A visitor who lands on one of these and then
+navigates to / still gets the dialog (they haven't been through the
+front door) — intended. Verified signed out with no preview flag: all
+six routes load with no dialog; / still shows it.
+
+**2. Onboarding "Proceed to the site" button.** The only onboarding
+signal is the `?onboarding=1` query param the first-time sign-up path in
+AuthModal redirects with (`hub.onboarding_wordcloud_id`); WordCloud.tsx
+already reads it as `isOnboarding`. New block at the bottom of the page,
+rendered only when `isOnboarding && wc.has_submitted`: "Thanks — you're
+all set." + a primary "Proceed to the site →" button that `navigate("/")`s
+(dropping the param, which is all "completing" onboarding means — there
+is no other state). The top "Skip →" link is untouched. Styles in
+WordCloud.css (`.wordcloud-proceed*`), same primary palette as the
+submit button. Verified via the real sign-up flow in the dev app (fresh
+email, bypass code → residency gate → redirect to
+/wordcloud/proc-wordcloud-test?onboarding=1): no button before the word
+is added, button after, click lands on /; the same word cloud opened
+WITHOUT the param shows neither Skip nor the button.
+
+**3. Waitlist email — verified required, no change.** Client: the field
+is `type="email" required` and the submit button is disabled while empty.
+Server: `handleJoinWaitlist` 400s with "A valid email is required." when
+the value is missing or has no `@`.
+
+tsc clean, UI build clean. Dev-DB side effect of the verification: one
+throwaway resident `onboarding-test-20260901@example.com` (name
+"Onboarding Tester") and one response ("the mountains") on
+proc-wordcloud-test.
+
+---
+
 ## BetaLanding wall → BetaWelcomeDialog front door — 2026-08-31
 
 Adam's call after seeing the merged banner live: the full-page landing

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import hub from "./config/hub";
+import { BETA_PUBLIC_PATHS } from "./config/betaPublicPaths";
 import Nav from "./components/Nav";
 import HubBanner from "./components/HubBanner";
 import WordcloudTeaser from "./components/WordcloudTeaser";
@@ -75,6 +76,7 @@ function AppContent() {
   const [showIntro, setShowIntro] = useState(() => !hasSeenIntro());
   const { user, loading } = useAuth();
   const preview = usePreviewMode();
+  const { pathname } = useLocation();
 
   // Private-beta front door. A logged-out first-time visitor lands on the
   // real app with BetaWelcomeDialog floating over it (sign in / waitlist /
@@ -82,7 +84,13 @@ function AppContent() {
   // allow-list is the real account gate; `preview` only tracks whether the
   // visitor has been through the front door this session. BetaBanner keeps
   // the beta state visible from there.
-  const showWelcomeDialog = hub.beta_mode && !user && !loading && !preview;
+  //
+  // Never over a standalone info/legal page: the sign-up consent line and
+  // the re-acceptance modal open Terms / Privacy / Code of Conduct in a new
+  // tab, which has no session preview flag — without this gate the dialog
+  // would land on top of the very page the visitor clicked through to read.
+  const showWelcomeDialog =
+    hub.beta_mode && !user && !loading && !preview && !BETA_PUBLIC_PATHS.has(pathname);
 
   // While a logged-out visitor browses in beta preview, the persistent banner
   // is enough of an onboarding cue — suppress the intro popup so we don't stack
