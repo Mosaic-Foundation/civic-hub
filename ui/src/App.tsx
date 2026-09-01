@@ -49,6 +49,7 @@ import CreateWordCloud from "./pages/CreateWordCloud";
 import IntroPopup, { hasSeenIntro } from "./components/IntroPopup";
 import ReAcceptModal from "./components/ReAcceptModal";
 import PreviewBanner from "./components/PreviewBanner";
+import BetaDemoBanner from "./components/BetaDemoBanner";
 import { usePreviewMode } from "./hooks/usePreviewMode";
 import "./App.css";
 
@@ -114,6 +115,13 @@ function AppContent() {
       )}
 
       {inBetaPreview && <PreviewBanner />}
+
+      {/* Demo-data notice for signed-in beta testers — the audience that
+          gets no other beta cue and is most likely to mistake seeded
+          processes for real community input. Suppressed while
+          PreviewBanner is showing so no visitor ever sees two bars;
+          gone entirely (zero code change) when beta_mode flips off. */}
+      {hub.beta_mode && !inBetaPreview && <BetaDemoBanner />}
 
       <Nav />
       <WordcloudTeaser />

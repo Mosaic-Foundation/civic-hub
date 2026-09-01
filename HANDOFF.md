@@ -4,6 +4,52 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Beta demo-data banner — 2026-08-31
+
+UI-only; no backend change, no migration. New site-wide banner telling
+beta testers that seeded processes are demo content, not real community
+input. Primary audience is SIGNED-IN allowlisted testers — the one group
+that previously saw no beta cue at all (signed-out visitors already get
+PreviewBanner).
+
+- `ui/src/components/BetaDemoBanner.tsx` + `.css` — thin navy top bar
+  on the site's control accent (`--pill-vote-fg`, same family as the
+  Feedback button / PreviewBanner) with white text, per Adam's mid-build
+  call — a first amber warning-palette pass was reverted. The Dismiss
+  control is a ghost (outlined) button vs PreviewBanner's solid white
+  CTA, so the two bars still read as different messages. Copy: "Beta:
+  much of what you see is demo content, not real community-proposed
+  topics. Real topics from {hub.jurisdiction} arrive at public launch."
+  role="region" + labeled Dismiss button.
+- Mounted in `App.tsx` AppContent at the shell level (above Nav), so it
+  shows on every route. Not rendered in the BetaLanding branch.
+- **Reconciliation choice: SUPPRESS, not fold-in.** The banner renders
+  only when `hub.beta_mode && !inBetaPreview` — while PreviewBanner is
+  showing (signed-out preview), the demo banner stays hidden so no
+  audience ever sees two stacked bars. PreviewBanner's copy/routing is
+  untouched (it already carries two sentences + a CTA; a third clause
+  crowded it on mobile).
+- Gated purely on `hub.beta_mode` (VITE_BETA_MODE): flips off at public
+  launch with zero code change.
+- Dismissible per session via `sessionStorage` key
+  `beta-demo-banner-dismissed` (distinct from WelcomeBanner's
+  localStorage key, which is untouched) — dismissal survives client-side
+  nav but the reminder returns next session.
+
+Verified in the browser against the dev backend, signed in via the
+bypass-code flow with beta mode on (the `civic-ui-beta` launch config,
+port 5174): banner on every route incl. non-Home; suppressed in preview
+mode (one bar only); absent on BetaLanding; dismiss persists across
+in-app nav and returns after session reset; mobile 375px wraps cleanly,
+no horizontal scroll. tsc clean, UI build clean.
+
+Observation (pre-existing, not fixed): on a hard reload while signed in,
+PreviewBanner can flash for signed-in users during the auth-restore
+race (`inBetaPreview` doesn't wait on `loading`). The demo banner
+respects the same flag, so the two never stack even during the flash.
+
+---
+
 ## Public anonymity — resident names hidden from signed-out viewers — 2026-08-31
 
 **SHIPPED to production** (commit `ecd26d1`, pushed 2026-08-31; Vercel
