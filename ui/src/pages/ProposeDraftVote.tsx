@@ -154,6 +154,8 @@ export default function ProposeDraftVote() {
         backTo="/votes"
         backLabel="Votes"
         title={reviseReviewId ? "Revise your vote" : "Suggest a vote"}
+        processType="civic.vote"
+        formVersion={draft?.updated_at ?? null}
         error={flow.error}
         reviewNotice={flow.reviewNotice}
         assistant={flow.shellAssistant}

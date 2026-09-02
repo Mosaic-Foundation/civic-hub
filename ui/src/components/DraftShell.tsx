@@ -9,9 +9,10 @@
 // assistant affordance entirely when the signed-in user has "Hide AI
 // drafting help" set or the process type declares no assistant config.
 
-import { useState, useEffect, type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { friendlyType } from "./ProcessLinkPicker";
 import AssistantPanel, { type ChatMessage } from "./AssistantPanel";
 import SuggestionCard from "./SuggestionCard";
 import type { DraftSuggestion } from "../services/api";
@@ -54,6 +55,13 @@ interface Props {
    * (proposal / vote / project). "page": normal page flow (conversation).
    */
   layout?: "full" | "page";
+  /** Registry type — names the form tab ("Conversation form") and the
+   *  assistant's placeholder. */
+  processType?: string;
+  /** A value that changes whenever the draft's fields change (its
+   *  updated_at). While the assistant view is up, a change marks the form
+   *  tab "updated" so the person knows there is something to look at. */
+  formVersion?: string | null;
   children: ReactNode;
 }
 
@@ -71,16 +79,58 @@ export default function DraftShell({
   onApplySuggestion,
   canApplySuggestion,
   layout = "full",
+  processType,
+  formVersion,
   children,
 }: Props) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const footerHeight = useFooterHeight(isMobile);
+  const typeLabel = processType ? friendlyType(processType) : "Draft";
 
   // The persistent opt-out: respected everywhere the affordance renders.
   const optedOut = user?.hide_ai_drafting_help === true;
   const showAssistant = assistant !== null && !optedOut;
   const open = showAssistant && assistant.open;
+
+  // "Updated" marker on the form tab: the draft changed while the assistant
+  // view was up (the assistant wrote a draft, or Apply was pressed).
+  const versionAtOpen = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (open) versionAtOpen.current = formVersion;
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const formUpdated =
+    open && versionAtOpen.current !== undefined && versionAtOpen.current !== formVersion;
+
+  /**
+   * Phone navigation between the two views (Adam, 2026-09-02: the assistant
+   * covered the form and the only way back was the ×). Rendered at the top
+   * of the form page and as the assistant view's header, so the same control
+   * is in the same place in both.
+   */
+  const switcher = showAssistant && isMobile ? (
+    <div className="draft-view-switch" role="tablist" aria-label="Draft view">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={!open}
+        className={`draft-view-tab${!open ? " is-active" : ""}`}
+        onClick={() => { if (open) assistant.onClose(); }}
+      >
+        {typeLabel} form
+        {formUpdated && <span className="draft-view-dot" aria-label="Updated" />}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={open}
+        className={`draft-view-tab${open ? " is-active" : ""}`}
+        onClick={() => { if (!open) assistant.onOpenRequest(); }}
+        disabled={assistant.opening}
+      >
+        {assistant.opening && !open ? "Opening…" : "Assistant"}
+      </button>
+    </div>
+  ) : null;
 
   const affordance = showAssistant && !open && (
     <div className="assistant-affordance">
@@ -109,6 +159,8 @@ export default function DraftShell({
       phase={assistant.phase}
       loadingLabel={assistant.loadingLabel}
       onClose={assistant.onClose}
+      header={isMobile ? switcher : undefined}
+      placeholder={`Ask for help with your ${typeLabel.toLowerCase()}...`}
     />
   );
 
@@ -171,9 +223,10 @@ export default function DraftShell({
         <div className="propose-draft-mobile">
           <div className="page detail-page">
             <div className="draft-shell-page-header">{header}</div>
+            {switcher}
             {notices}
-            {/* Same collapsed card as desktop — the "?" bubble alone was not
-                recognizable as the assistant on a phone (Adam, 2026-09-02). */}
+            {/* Same collapsed card as desktop — explains what the assistant
+                does; the switcher above is the persistent way to it. */}
             {affordance}
             {inlineResults}
             {children}
@@ -208,43 +261,10 @@ export default function DraftShell({
     if (!isMobile && layout === "full") return null;
     return (
       <>
-        {isMobile && !open && (
-          <button
-            type="button"
-            className="assistant-fab"
-            // Sits just above the pinned status/submit footer, never over it.
-            style={{ bottom: `calc(${footerHeight}px + var(--space-md))` }}
-            onClick={assistant.onOpenRequest}
-            aria-label="Open drafting assistant"
-            disabled={assistant.opening}
-          >
-            <span aria-hidden="true">✦</span> {assistant.opening ? "Opening…" : "Assistant"}
-          </button>
-        )}
         {open && <div className="assistant-overlay">{panel}</div>}
       </>
     );
   }
-}
-
-/**
- * Height of the form's pinned footer (status + submit) on phones, so the
- * floating assistant button can sit above it. Observed, not assumed: the
- * footer grows when the Code of Conduct button appears.
- */
-function useFooterHeight(enabled: boolean): number {
-  const [height, setHeight] = useState(0);
-  useEffect(() => {
-    if (!enabled) { setHeight(0); return; }
-    const el = document.querySelector<HTMLElement>(".drafting-form-footer");
-    if (!el) return;
-    const update = () => setHeight(el.getBoundingClientRect().height);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [enabled]);
-  return height;
 }
 
 function useIsMobile() {

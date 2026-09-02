@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { type ReactNode, useState, useRef, useEffect } from "react";
 import SuggestionCard from "./SuggestionCard";
 import type { DraftSuggestion } from "../services/api";
 import "./AssistantPanel.css";
@@ -24,6 +24,12 @@ interface Props {
   loadingLabel?: string;
   /** Renders a close (collapse) button in the panel header. */
   onClose?: () => void;
+  /** Replaces the default "Drafting assistant ×" header — the phone layout
+   *  puts the form/assistant switcher here so the two views share one
+   *  control. */
+  header?: ReactNode;
+  /** Free-form input placeholder; names the thing being drafted. */
+  placeholder?: string;
 }
 
 export default function AssistantPanel({
@@ -36,6 +42,8 @@ export default function AssistantPanel({
   phase,
   loadingLabel = "Thinking",
   onClose,
+  header,
+  placeholder,
 }: Props) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -61,19 +69,21 @@ export default function AssistantPanel({
 
   return (
     <div className="assistant-panel">
-      <div className="assistant-header assistant-header-row">
-        <h3 className="assistant-title">Drafting assistant</h3>
-        {onClose && (
-          <button
-            type="button"
-            className="assistant-close-btn"
-            onClick={onClose}
-            aria-label="Close assistant"
-          >
-            &times;
-          </button>
-        )}
-      </div>
+      {header ?? (
+        <div className="assistant-header assistant-header-row">
+          <h3 className="assistant-title">Drafting assistant</h3>
+          {onClose && (
+            <button
+              type="button"
+              className="assistant-close-btn"
+              onClick={onClose}
+              aria-label="Close assistant"
+            >
+              &times;
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="assistant-messages">
         {messages.length === 0 && (
@@ -134,7 +144,7 @@ export default function AssistantPanel({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={phase === "brainstorm" ? "Type your answer here..." : "Ask for help with your proposal..."}
+            placeholder={phase === "brainstorm" ? "Type your answer here..." : (placeholder ?? "Ask for help with your draft...")}
             rows={phase === "brainstorm" ? 3 : 1}
             disabled={loading}
           />

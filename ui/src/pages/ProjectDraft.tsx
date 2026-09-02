@@ -139,6 +139,8 @@ export default function ProjectDraft() {
         backTo="/projects"
         backLabel="Projects"
         title={reviseReviewId ? "Revise your project" : "Start a project"}
+        processType="civic.project"
+        formVersion={draft?.updated_at ?? null}
         error={flow.error}
         reviewNotice={flow.reviewNotice}
         assistant={flow.shellAssistant}

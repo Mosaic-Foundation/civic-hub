@@ -157,6 +157,8 @@ export default function ConversationDraft() {
         backTo="/deliberations"
         backLabel="Conversations"
         title={reviseReviewId ? "Revise your conversation" : "Start a conversation"}
+        processType="civic.polis_deliberation"
+        formVersion={draft?.updated_at ?? null}
         error={flow.error}
         reviewNotice={flow.reviewNotice}
         assistant={flow.shellAssistant}

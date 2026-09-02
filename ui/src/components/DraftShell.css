@@ -135,3 +135,60 @@
     margin-right: 0;
   }
 }
+
+/* --- Phone: form / assistant switcher ------------------------------------
+   Sticky under the section tabs on the form page; static as the assistant
+   view's header. One control, same place, both views. */
+.draft-view-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: sticky;
+  top: calc(var(--nav-h, 61px) + var(--tabs-h, 44px));
+  z-index: 95;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  margin: 0 0 var(--space-md);
+}
+
+.assistant-overlay .draft-view-switch {
+  position: static;
+  margin: 0;
+}
+
+.draft-view-tab {
+  position: relative;
+  padding: var(--space-sm) var(--space-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-md, 1rem);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+}
+
+.draft-view-tab.is-active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.draft-view-tab:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.draft-view-tab:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.draft-view-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 0.4rem;
+  border-radius: 50%;
+  background: var(--civic-rust, #c37b51);
+  vertical-align: middle;
+}

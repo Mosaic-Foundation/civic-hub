@@ -57,6 +57,8 @@ interface AnthropicContent {
 interface AnthropicResponse {
   id?: string;
   model: string;
+  /** "end_turn" | "max_tokens" | "tool_use" | "pause_turn" | … */
+  stop_reason?: string;
   content: AnthropicContent[];
   usage?: { input_tokens?: number; output_tokens?: number };
   error?: { type: string; message: string };
@@ -271,6 +273,30 @@ async function callClaudeMultiTurnOnce(
     if (data.usage) {
       totalUsage.input_tokens += data.usage.input_tokens ?? 0;
       totalUsage.output_tokens += data.usage.output_tokens ?? 0;
+    }
+
+    // Server-side tools (web search) can run long enough that the API
+    // pauses the turn and hands back what it has so far — typically the
+    // model's "On it — searching now" text plus the server_tool_use block.
+    // That is NOT the reply: the turn continues by sending the content back
+    // as the assistant message and calling again. Before 2026-09-02 this
+    // fell through to the no-tool_use branch below and the pre-search text
+    // was returned as the whole answer, so search results, the summary,
+    // and the sources suggestion card never reached the person.
+    if (data.stop_reason === "pause_turn") {
+      (messages as Record<string, unknown>[]).push({
+        role: "assistant",
+        content: data.content,
+      });
+      body.messages = messages;
+      continue;
+    }
+
+    if (data.stop_reason === "max_tokens") {
+      console.warn(
+        `[anthropic] response truncated at max_tokens=${String(body.max_tokens)} — ` +
+          "a JSON reply cut here fails to parse and loses its suggestion cards",
+      );
     }
 
     // If stop_reason is "end_turn" or no tool_use blocks, we're done

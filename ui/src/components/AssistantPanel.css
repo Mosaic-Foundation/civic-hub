@@ -330,34 +330,6 @@
   line-height: 1;
 }
 
-.assistant-fab {
-  position: fixed;
-  bottom: var(--space-lg); /* overridden inline to clear the pinned footer */
-  right: var(--space-md);
-  min-height: 44px;
-  padding: 0 var(--space-md);
-  border-radius: 999px;
-  background: var(--color-primary);
-  color: var(--color-primary-text);
-  border: none;
-  box-shadow: var(--shadow-popover);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-xs);
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  z-index: 100;
-  transition: bottom 0.15s ease;
-  transition: transform 0.15s ease;
-}
-
-.assistant-fab:hover {
-  transform: scale(1.05);
-}
-
 /* --- Long-URL containment --- */
 /* Assistant messages and suggestion cards routinely carry long URLs;
    without a break rule they force horizontal scroll on the whole panel. */

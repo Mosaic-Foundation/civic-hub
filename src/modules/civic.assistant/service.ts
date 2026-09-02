@@ -52,7 +52,10 @@ export async function callAssistant(
     },
   ];
 
-  const result = await claude({ model, system: systemPrompt, messages, tools, maxTokens: 1536 });
+  // 4096, not 1536: a search turn carries the summary, citations, and a
+  // sources card in one JSON object; at 1536 the JSON was being cut off
+  // and the person got the prose with no card (2026-09-02).
+  const result = await claude({ model, system: systemPrompt, messages, tools, maxTokens: 4096 });
 
   return parseAssistantResponse(result.text, input.config.fields);
 }

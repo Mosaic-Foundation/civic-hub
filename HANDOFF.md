@@ -4,6 +4,35 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Phone drafting: form ↔ assistant switcher; assistant search turns fixed; assistant leads — 2026-09-02
+
+**Switcher (Adam: the assistant covered the form, no obvious way between them).** On phones the
+drafting page now has a sticky two-tab switcher — "Conversation form | Assistant" (type name from
+the registry label) — and the assistant view uses the same switcher as its header, so one control
+sits in the same place in both views. The chat persists across switches (messages live in
+`useDraftFlow`). When the draft changes while the assistant view is up (draft written, Apply
+pressed), the form tab shows a small rust dot. The floating "✦ Assistant" pill from earlier today
+is gone (redundant); the "Want help drafting?" card stays as the explainer. `DraftShell` gained
+`processType` / `formVersion` props (the four pages pass them); `AssistantPanel` gained `header`
+and `placeholder` props (placeholder no longer says "your proposal" on every type).
+
+**Search turns lost their results (Adam: "On it — searching now" then nothing; "these sources"
+with no sources).** Root cause in `src/utils/anthropic.ts`: the web_search server tool can pause
+the turn (`stop_reason: "pause_turn"`) and hand back the pre-search text plus a `server_tool_use`
+block; the client only recognized client-side `tool_use`, so it returned that text as the whole
+reply — the search summary and the sources suggestion card never arrived. Fix: on `pause_turn`,
+send the content back as the assistant message and continue (`tests/unit/anthropicPauseTurn.test.ts`).
+Also `max_tokens` for the drafting assistant 1536 → 4096 (a search reply's JSON was being cut off,
+which also drops its cards), with a warning logged when a reply hits max_tokens.
+
+**Assistant leads (Adam: it should be saying "want me to add seed statements? sources?").**
+`systemPrompt.ts` gained a "Drive the process" section: every reply that adds or changes something
+says plainly what it did and where it is (the suggestion card, click Apply), then makes exactly one
+concrete next-step offer for the next empty/thin field in the form's field order — generic over
+`config.fields`, so it reads "seed statements" on a conversation and "sources" on a proposal.
+
+---
+
 ## Every detail page says what it is — 2026-09-02
 
 Adam (on a phone): a proposal's title was cramped beside its status pill, and nothing on the page

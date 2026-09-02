@@ -145,6 +145,8 @@ export default function ProposeDraft() {
         backTo="/propose"
         backLabel="Proposals"
         title={reviseReviewId ? "Revise your proposal" : "Propose something"}
+        processType="civic.proposal"
+        formVersion={draft?.updated_at ?? null}
         error={flow.error}
         reviewNotice={flow.reviewNotice}
         assistant={flow.shellAssistant}
