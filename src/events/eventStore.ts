@@ -45,9 +45,16 @@ function rowToEvent(row: EventRow): CivicEvent {
   };
 }
 
-function eventToRow(event: CivicEvent): Omit<EventRow, "created_at"> {
+function eventToRow(event: CivicEvent): EventRow {
   return {
     id: event.id,
+    // The event's own timestamp IS the row's created_at. The emitter stamps
+    // "now" unless a caller passed an explicit `timestamp` (sync paths, seed
+    // scripts), and the read side maps created_at straight back onto
+    // `timestamp` — so omitting it here (and letting the column default to
+    // now()) silently discarded every override and left the feed's ordering
+    // disagreeing with the event it was ordering. Fixed 2026-09-01.
+    created_at: event.timestamp,
     version: event.version,
     event_type: event.event_type,
     process_id: event.process_id || null,

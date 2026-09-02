@@ -13,6 +13,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
+import hub from "../config/hub";
 import "./WordCloud.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 
@@ -589,25 +590,25 @@ export default function WordCloud() {
         );
       })}
 
-      {/* Onboarding only (the ?onboarding=1 param the sign-up flow arrives
-          with — never a normal visit to a word cloud). Once the new arrival
-          has added their word, the page's job is done: give them one clear
-          way forward to the feed. "Skip" at the top stays for anyone who
-          would rather not contribute. */}
-      {isOnboarding && wc.has_submitted && (
-        <div className="wordcloud-proceed">
+      {/* Always offer one clear way forward to the feed (Adam, 2026-09-02:
+          "add it everywhere"). During onboarding (the ?onboarding=1 param the
+          sign-up flow arrives with), once the new arrival has added their
+          word we also say so; "Skip" at the top stays for anyone who would
+          rather not contribute. */}
+      <div className="wordcloud-proceed">
+        {isOnboarding && wc.has_submitted && (
           <p className="wordcloud-proceed-note">
             Thanks — you're all set.
           </p>
-          <button
-            type="button"
-            className="wordcloud-proceed-btn"
-            onClick={() => navigate("/")}
-          >
-            Proceed to the site &rarr;
-          </button>
-        </div>
-      )}
+        )}
+        <button
+          type="button"
+          className="wordcloud-proceed-btn"
+          onClick={() => navigate("/")}
+        >
+          Continue to the {hub.name} &rarr;
+        </button>
+      </div>
 
       {/* Admin-only soft-remove. Renders nothing for everyone else. The
           handler's onArchive hook also flips state.status, which is the copy

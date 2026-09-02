@@ -4,6 +4,17 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Word cloud: "Continue to the Floyd Civic Hub" always shown — 2026-09-02
+
+Adam: the proceed button after the word cloud should not be onboarding-only — "add it everywhere,
+it just goes to the feed." `ui/src/pages/WordCloud.tsx`: the `.wordcloud-proceed` block now renders
+on every visit, labeled "Continue to the {hub.name} →" (hub config name, so demo/white-label hubs
+read right), navigating to `/`. The "Thanks — you're all set." note still appears only during
+onboarding after the word is added; the top "Skip →" is unchanged. Verified on the dev UI signed
+out: button present on a normal visit, click lands on `/`. UI tsc + vite build clean.
+
+---
+
 ## Beta demo content slate — seeded on PROD — 2026-09-01
 
 **Script:** `scripts/seedBetaSlate.ts` (`--env dev|prod`, `--dry-run`, `--remove`). Source of
