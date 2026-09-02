@@ -4,6 +4,41 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## What a new process type gets for free, and what it must declare — 2026-09-02
+
+Adam asked for today's fixes to hold for every type, present and future. Verified on dev for
+proposal, vote, project, and conversation (revise round trip via API for all four; phone layout,
+switcher, and type header in the browser for all four). The contract, so the next type inherits
+the same behavior:
+
+**Free — shared code every type flows through (nothing to declare):**
+- Creation and review: `submitForReview` / `submitAsCreator` (links materialized, `draft_id`
+  recorded), `reviseAndResubmit` (title/description/content/state/links replaced in place),
+  `POST /reviews/:id/reopen`, the review pages' full-submission preview (generic `content` walk).
+- Drafting UI: `DraftShell` (phone layout with pinned footer, form/assistant switcher, help card),
+  `useDraftFlow` (resume a draft for revision, assistant chat), `ProcessLinkField`
+  (title lookup for pre-existing links), `SubmissionPreview`, `ProcessHeader` (type pill from
+  `friendlyType`, which humanizes unknown types).
+- Assistant: paused search turns continued, one-time nudge when a search is promised but not
+  run, only hard blocks persisted from chat, the "drive the process" prompt rule over
+  `config.fields`.
+
+**Must declare on the `ProcessHandler` (registry-driven — no page enumerates types):**
+- `detailPath(id)` — its public page. Also add a `DETAIL_SECTIONS` entry in `FeedVotesTabs` if it
+  has its own section tab.
+- `draftPath(draftId)` + `reopenDraft(draftId)` — its drafting page and how to flip its draft back
+  to drafting (revise flow). Its draft controller must pass `draft_id` to `submitAsCreator` and
+  branch to `reviseAndResubmit` when `review_id` is in the submit body (copy any of the four).
+- `describeSubmission(source)` ONLY if part of the submission lives on `state` rather than
+  `content` (votes, conversations); otherwise the generic walk covers it.
+- `getAssistantConfig()` if it has a drafting assistant; `requiredSchema` for its own tables
+  (a `links JSONB` column on its drafts table, like the four existing ones); `generateBrief` if
+  closing it should produce a brief.
+- Its drafting page passes `processType` and `formVersion` to `DraftShell`, and `resumeDraft`
+  from `?draft=` to `useDraftFlow` (copy any of the four pages).
+
+---
+
 ## Assistant: a promised search is never the end of a turn — 2026-09-02
 
 Adam (on prod, minutes before the pause_turn fix deployed at 18:23Z): "Searching now — give me a
