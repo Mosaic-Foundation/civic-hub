@@ -2,6 +2,7 @@ import { createPolisDeliberationHandler } from "../shared/polis_deliberation/han
 import { createPolisAdapter } from "../shared/polis_deliberation/adapter/polisAdapter.js";
 import { createPolisSummarizer } from "../shared/polis_deliberation/summarization/polisSummarizer.js";
 import { emitEvent } from "../events/eventEmitter.js";
+import { describeSubmissionFields } from "../shared/submissionPreview.js";
 import { generateId } from "../utils/id.js";
 import { callClaude, DEFAULT_MODEL } from "../utils/anthropic.js";
 import { getActionDispatcher } from "./registry.js";
@@ -120,6 +121,17 @@ export function bootDeliberation(): ProcessHandler {
   // for the same reason requiredSchema is: the shared module stays free of
   // hub-specific routing.
   handler.detailPath = (id: string) => `/deliberation/${id}`;
+
+  // A conversation's submission lives on state (seed statements, sources,
+  // window, participant goal) — extend the generic content walk with those
+  // keys so the review previews show the whole setup as submitted.
+  handler.describeSubmission = (source) =>
+    describeSubmissionFields(source, [
+      "seed_statements",
+      "sources",
+      "duration_ms",
+      "participation_threshold",
+    ]);
 
   // Drafting assistant (topic + framing) — declared here, not in the
   // portable shared handler, for the same reason detailPath is: the

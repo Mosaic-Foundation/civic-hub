@@ -33,6 +33,7 @@ import {
 import { getInputsByProcess } from "../modules/civic.input/index.js";
 import { getActionDispatcher } from "./registry.js";
 import { findExistingBriefId } from "./spawnBrief.js";
+import { describeSubmissionFields } from "../shared/submissionPreview.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 
 import { isPastDeadline } from "../utils/deadline.js";
@@ -100,6 +101,12 @@ const voteProcess: ProcessHandler = {
   detailPath: (id: string) => `/process/${id}`,
 
   getAssistantConfig: () => voteAssistantConfig,
+
+  // A vote's submission lives on state (method, options, window) — extend the
+  // generic content walk with those keys so the review previews show the
+  // whole ballot as submitted.
+  describeSubmission: (source) =>
+    describeSubmissionFields(source, ["method", "options", "config.voting_duration_ms"]),
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     return createVoteState(input) as unknown as Record<string, unknown>;

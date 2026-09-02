@@ -7,6 +7,7 @@
 //   - producing a summary for list views
 
 import { Process, ProcessAction, CreateProcessInput } from "../models/process.js";
+import type { SubmissionField, SubmissionSource } from "../shared/submissionPreview.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import type { SchemaRequirement } from "../db/schemaContract.js";
 import type { AssistantTypeConfig } from "../modules/civic.assistant/index.js";
@@ -33,6 +34,21 @@ export interface ProcessHandler {
    * field — nothing downstream enumerates process types.
    */
   detailPath?(id: string): string;
+
+  /**
+   * Optional: the fields a creator submitted, for the "Your submission" /
+   * admin review previews. The default (registry.describeSubmission) walks
+   * the process `content` block generically, so a type whose submission
+   * lives in `content` needs nothing here. Declare this only when part of
+   * the submission lives on `state` (votes: options + method + window;
+   * conversations: seed statements + sources + window) — and prefer
+   * extending the default (`describeSubmissionFields(source, stateKeys)`)
+   * over hand-building a list, so unknown keys still surface.
+   *
+   * Same seam as detailPath / requiredSchema / generateBrief: the handler
+   * declares what it owns; no page enumerates process types.
+   */
+  describeSubmission?(source: SubmissionSource): SubmissionField[];
 
   /**
    * Optional: drafting-assistant config for this process type. Declaring it

@@ -2208,10 +2208,16 @@ export interface ReviewTurn {
   created_at: string;
 }
 
+import type { SubmissionField } from "../../../src/shared/submissionPreview";
+
 export interface ReviewDetail {
   review: ProcessReviewSummary;
   turns: ReviewTurn[];
   process: Record<string, unknown>;
+  /** Everything the creator submitted, as displayable fields (server-computed
+   *  through the process registry). Absent on older servers — the
+   *  SubmissionPreview component then derives the same list client-side. */
+  submission?: SubmissionField[] | null;
 }
 
 export function submitForReview(input: {

@@ -1,0 +1,85 @@
+/* SubmissionPreview — the complete picture of a pending submission, shared by
+   the creator's My Submissions detail and the admin review page. */
+
+.submission-preview__heading {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg, 1.25rem);
+  margin: 0 0 var(--space-sm, 0.5rem);
+}
+
+.submission-preview__banner {
+  margin: 0 0 var(--space-md, 1rem);
+}
+
+.submission-preview__banner img {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.submission-preview__description {
+  white-space: pre-wrap;
+  margin: 0 0 var(--space-md, 1rem);
+}
+
+.submission-preview__field {
+  margin: 0 0 var(--space-md, 1rem);
+}
+
+.submission-preview__label {
+  display: block;
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--color-text-muted, #666);
+  margin-bottom: 0.25rem;
+}
+
+.submission-preview__paragraph {
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.submission-preview__links,
+.submission-preview__list,
+.submission-preview__options {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.submission-preview__links li,
+.submission-preview__list li,
+.submission-preview__options li {
+  margin-bottom: 0.25rem;
+}
+
+.submission-preview__links a {
+  color: var(--color-primary, #1e3a5f);
+  word-break: break-all;
+}
+
+.submission-preview__sections p {
+  margin: 0.25rem 0 0.75rem;
+  white-space: pre-wrap;
+}
+
+.submission-preview__flags {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--color-text-muted, #666);
+  font-style: italic;
+  margin: 0;
+}
+
+.submission-preview__raw {
+  margin-top: var(--space-md, 1rem);
+}
+
+.submission-preview__raw pre,
+.submission-preview__json {
+  font-size: var(--font-size-sm, 0.875rem);
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow: auto;
+  margin: 0;
+}

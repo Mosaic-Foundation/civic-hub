@@ -12,6 +12,7 @@ import {
 } from "../services/api";
 import "./MySubmissions.css";
 import RelatedProcesses from "../components/RelatedProcesses";
+import SubmissionPreview from "../components/SubmissionPreview";
 
 const TYPE_LABELS: Record<string, string> = {
   "civic.vote": "Vote",
@@ -190,10 +191,14 @@ export default function MySubmissions() {
               </span>
             </p>
 
-            {/* Current content */}
+            {/* Current content — everything that was submitted, rendered the
+                way the live page will show it (banner, sources, options, …). */}
             <div className="submission-detail-section">
-              <h2>Your submission</h2>
-              <p style={{ whiteSpace: "pre-wrap" }}>{(proc?.description as string) || "No description"}</p>
+              <SubmissionPreview
+                heading="Your submission"
+                fields={detail.submission}
+                process={proc ?? null}
+              />
             </div>
 
             {detail.review.process_id && (

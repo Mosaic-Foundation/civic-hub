@@ -4,6 +4,44 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Submission previews show everything that was submitted — 2026-09-02
+
+Adam (smoke test): a pending project on My Submissions showed title + description only — no
+banner, no sources; the admin review page was no better for projects/proposals/votes (their
+`content` was a raw JSON toggle; only conversations had a per-type block). Ask: make both previews
+show the whole submission, for every type, and keep working for types added later.
+
+**Design — registry-driven, generic by default.**
+- `src/shared/submissionPreview.ts` (pure; shared by backend + UI like feedActivity):
+  `describeSubmissionFields(source, extraStateKeys)` walks the process `content` block —
+  `content` is by convention what was submitted — turning each key into a typed field via
+  key-aware presenters (`*image_url` → image with its `_alt` companion; URL lists / `{url,label}`
+  objects → links; `*_ms` → duration in the picker's vocabulary; string lists → list; `options`
+  → ballot options; `method` → readable label; booleans → flag; `sections` → structured sections)
+  and a `json` last resort so nothing submitted is ever dropped. Labels: a small map for known
+  keys, humanized otherwise. Display order: image, prose, links, lists/options, settings, flags.
+- `ProcessHandler.describeSubmission?(source)` (types.ts) + `registry.describeSubmission(source)`:
+  default = the generic walk; a handler whose submission lives on `state` extends it —
+  `voteProcess` adds `method`, `options`, `config.voting_duration_ms`; `deliberationBoot` adds
+  `seed_statements`, `sources`, `duration_ms`, `participation_threshold`. A new type gets the
+  default with no change anywhere; only state-carried fields need a one-line declaration.
+- `GET /reviews/:id` (creator + admin variants) now returns `submission: SubmissionField[]`.
+- UI `components/SubmissionPreview.tsx` (+ css) renders the list (banner figure, description,
+  labeled fields, flags line, optional raw JSON toggle) and falls back to the client-side generic
+  walk when a server predates `submission`. Both `MySubmissions` and `AdminReviews` use it; the
+  admin page's conversation-only block and `parseSourceLine` import are gone.
+- Quirk handled: the vote draft stores the whole "Label: https://…" line in `links[].url`; the
+  presenter parses the real URL out so anchors work.
+
+Verified on dev: one pending submission per type as a non-admin resident (project with banner +
+two sources; proposal with link, category, considerations, 6-week window; approval vote with three
+options + a source + 2-week window; conversation with three seeds, a source, 6 weeks, goal 40).
+Creator pages and admin pages render all of it. `tests/unit/submissionPreview.test.ts` (10 tests,
+incl. a novel-type case). tsc clean both sides, vite build clean, `tests/unit` 622/622. Test
+submissions withdrawn on dev.
+
+---
+
 ## Conversation drafts carry process links — 2026-09-02
 
 Adam noticed the conversation creation flow had no link picker. Cause: conversations joined the

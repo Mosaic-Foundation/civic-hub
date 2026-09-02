@@ -13,6 +13,11 @@ import briefProcess from "./briefProcess.js";
 import announcementProcess from "./announcementProcess.js";
 import meetingSummaryProcess from "./meetingSummaryProcess.js";
 import { bootDeliberation } from "./deliberationBoot.js";
+import {
+  describeSubmissionFields,
+  type SubmissionField,
+  type SubmissionSource,
+} from "../shared/submissionPreview.js";
 import wordcloudProcess from "./wordcloudProcess.js";
 
 // civic.vote_results + civic.announcement + civic.meeting_summary are
@@ -112,4 +117,16 @@ export function getAllHandlers(): ProcessHandler[] {
 export function processDetailPath(type: string, id: string): string {
   const handler = processRegistry[type];
   return handler?.detailPath?.(id) ?? `/process/${id}`;
+}
+
+/**
+ * Everything the creator submitted, as displayable fields — for the review
+ * previews (creator + admin). Handlers may extend the generic default via
+ * `describeSubmission`; a type without one — including a type registered
+ * tomorrow — gets the generic walk of its `content` block, so nothing it
+ * submits is hidden. See src/shared/submissionPreview.ts.
+ */
+export function describeSubmission(source: SubmissionSource): SubmissionField[] {
+  const handler = processRegistry[source.type];
+  return handler?.describeSubmission?.(source) ?? describeSubmissionFields(source);
 }

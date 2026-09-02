@@ -14,7 +14,7 @@ import {
 import AdminTabs from "../components/AdminTabs";
 import "./AdminReviews.css";
 import RelatedProcesses from "../components/RelatedProcesses";
-import { parseSourceLine } from "../components/SourceLinks";
+import SubmissionPreview from "../components/SubmissionPreview";
 
 const STATUS_FILTERS: Array<{ id: "all" | ReviewStatus; label: string }> = [
   { id: "all", label: "All" },
@@ -220,95 +220,16 @@ export default function AdminReviews() {
                 {formatDate(detail.review.created_at)}
               </p>
 
-              {/* Process content preview */}
+              {/* Process content preview — everything the creator submitted,
+                  rendered the way the live page will show it, for every
+                  process type (registry-driven; see SubmissionPreview). */}
               <div className="review-process-preview">
-                <h3>Process content</h3>
-                <p style={{ whiteSpace: "pre-wrap" }}>{(proc?.description as string) || "No description"}</p>
-
-                {/* Conversation submissions carry their setup on state —
-                    the admin must see the WHOLE submission (seeds, sources,
-                    window) before approving, not just topic + framing. */}
-                {proc?.type === "civic.polis_deliberation" &&
-                  !!proc?.state &&
-                  (() => {
-                    const st = proc.state as Record<string, unknown>;
-                    const seeds = Array.isArray(st.seed_statements)
-                      ? (st.seed_statements as string[])
-                      : [];
-                    const sources = Array.isArray(st.sources)
-                      ? (st.sources as string[])
-                      : [];
-                    const durationMs =
-                      typeof st.duration_ms === "number" ? st.duration_ms : null;
-                    const threshold =
-                      typeof st.participation_threshold === "number"
-                        ? st.participation_threshold
-                        : null;
-                    return (
-                      <div className="review-conversation-details">
-                        {durationMs !== null && (
-                          <p>
-                            <strong>Open for:</strong>{" "}
-                            {Math.round(durationMs / (24 * 60 * 60 * 1000))} days
-                            once started
-                            {threshold
-                              ? `, or until ${threshold} participants`
-                              : ""}
-                          </p>
-                        )}
-                        {sources.length > 0 && (
-                          <>
-                            <p style={{ marginBottom: 0 }}>
-                              <strong>Sources:</strong>
-                            </p>
-                            <ul className="review-conversation-list">
-                              {sources.map((line, i) => {
-                                const parsed = parseSourceLine(line);
-                                return (
-                                  <li key={i}>
-                                    {parsed ? (
-                                      <a href={parsed.url} target="_blank" rel="noopener noreferrer">
-                                        {parsed.label}
-                                      </a>
-                                    ) : (
-                                      line
-                                    )}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </>
-                        )}
-                        {seeds.length > 0 && (
-                          <>
-                            <p style={{ marginBottom: 0 }}>
-                              <strong>Seed statements:</strong>
-                            </p>
-                            <ul className="review-conversation-list">
-                              {seeds.map((s, i) => (
-                                <li key={i}>{s}</li>
-                              ))}
-                            </ul>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })()}
-                {!!proc?.content && (
-                  <details>
-                    <summary>Structured content</summary>
-                    <pre
-                      style={{
-                        fontSize: "var(--font-size-sm)",
-                        whiteSpace: "pre-wrap",
-                        maxHeight: "300px",
-                        overflow: "auto",
-                      }}
-                    >
-                      {JSON.stringify(proc.content, null, 2)}
-                    </pre>
-                  </details>
-                )}
+                <SubmissionPreview
+                  heading="Process content"
+                  fields={detail?.submission}
+                  process={proc ?? null}
+                  showRaw
+                />
               </div>
 
               {/* Related processes the creator proposed, plus anything the

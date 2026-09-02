@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import { describeSubmission } from "../processes/registry.js";
+import type { SubmissionField } from "../shared/submissionPreview.js";
 import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
 import {
   submitForReview,
@@ -17,6 +19,25 @@ import {
 import { getDb } from "../db/client.js";
 
 // --- Notification indicator ---
+
+
+/** The creator's submission as displayable fields, via the registry so a
+ *  process type can extend the generic default. Null when the process row
+ *  is missing (the review outlived it). */
+function submissionFor(proc: unknown): SubmissionField[] | null {
+  const row = proc as {
+    type?: string; title?: string; description?: string;
+    content?: Record<string, unknown> | null; state?: Record<string, unknown> | null;
+  } | null;
+  if (!row || typeof row.type !== "string") return null;
+  return describeSubmission({
+    type: row.type,
+    title: row.title ?? "",
+    description: row.description ?? "",
+    content: row.content ?? null,
+    state: row.state ?? null,
+  });
+}
 
 export async function handleGetReviewNotifications(
   _req: Request,
@@ -207,7 +228,7 @@ export async function handleGetReview(
       .eq("id", review.process_id)
       .single();
 
-    res.json({ review, turns, process: proc });
+    res.json({ review, turns, process: proc, submission: submissionFor(proc) });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });
@@ -266,7 +287,7 @@ export async function handleAdminGetReview(
       .eq("id", review.process_id)
       .single();
 
-    res.json({ review, turns, process: proc });
+    res.json({ review, turns, process: proc, submission: submissionFor(proc) });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });
