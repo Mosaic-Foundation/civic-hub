@@ -12,7 +12,9 @@
 // so the rest of the page becomes interactive.
 
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { LEGAL_PATHS } from "../config/betaPublicPaths";
 import { acceptTos } from "../services/auth";
 import hub from "../config/hub";
 import {
@@ -38,6 +40,7 @@ function needsReAcceptance(
 
 export default function ReAcceptModal() {
   const { user, token, updateUser, logout } = useAuth();
+  const { pathname } = useLocation();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +48,12 @@ export default function ReAcceptModal() {
   // unauthenticated, render nothing — the AuthModal handles those.
   if (!user || !token) return null;
   if (!needsReAcceptance(user.tos_version_accepted)) return null;
+  // The modal's own links open Terms / Privacy / Code of Conduct in a new
+  // tab. That tab is the same signed-in app, so without this gate the modal
+  // re-mounted on top of the very page the person clicked through to read
+  // (Adam, 2026-09-02). Let the legal pages render bare; the modal is still
+  // waiting on every other route.
+  if (LEGAL_PATHS.has(pathname)) return null;
 
   const isFirstAcceptance = user.tos_version_accepted == null;
 

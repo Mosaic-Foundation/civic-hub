@@ -17,3 +17,14 @@ export const BETA_PUBLIC_PATHS: ReadonlySet<string> = new Set([
   "/privacy",
   "/terms",
 ]);
+
+/**
+ * The standalone legal pages. The re-acceptance modal (ReAcceptModal) opens
+ * these in a new tab so the person can read what they are accepting; that tab
+ * must show the page itself, never the modal again on top of it.
+ */
+export const LEGAL_PATHS: ReadonlySet<string> = new Set([
+  "/terms",
+  "/privacy",
+  "/code-of-conduct",
+]);

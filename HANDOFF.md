@@ -4,6 +4,20 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Re-acceptance modal no longer covers the legal pages — 2026-09-02
+
+Bug (Adam, smoke test): a signed-in account on an older legal version gets the "We've updated our
+Terms" / "Before you continue…" modal, whose links open Terms / Privacy / Code of Conduct in a new
+tab — and that tab, being the same signed-in app, mounted the modal again on top of the page the
+person had clicked through to read. Same shape as yesterday's welcome-dialog bug, same fix:
+`ReAcceptModal` now returns null when `pathname` is in the new `LEGAL_PATHS` set (`/terms`,
+`/privacy`, `/code-of-conduct`, in `ui/src/config/betaPublicPaths.ts`). The modal still gates
+every other route, so acceptance is still required to use the app. Verified on dev with a
+tos_version_accepted = null account: the three legal pages render bare, `/` still shows the
+modal. UI tsc + vite build clean.
+
+---
+
 ## Word cloud: "Continue to the Floyd Civic Hub" always shown — 2026-09-02
 
 Adam: the proceed button after the word cloud should not be onboarding-only — "add it everywhere,
