@@ -78,6 +78,7 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "project_sentiments", owner: "civic.projects" },
   { table: "project_drafts", columns: ["links"], owner: "civic.project_drafts" },
   { table: "vote_drafts", columns: ["method", "custom_options", "links"], owner: "civic.vote_drafts" },
+  { table: "deliberation_drafts", columns: ["sources", "links"], owner: "civic.deliberation_drafts" },
   { table: "link_previews", owner: "civic.link_preview" },
   // Universal: linking is a property of every process, not of any one handler,
   // so it belongs in core rather than behind a requiredSchema declaration.

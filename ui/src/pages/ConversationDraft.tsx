@@ -10,6 +10,7 @@ import {
   updateDeliberationDraft,
   submitDeliberationDraft as apiSubmitDeliberationDraft,
   type DeliberationDraft,
+  type ProposedLink,
 } from "../services/api";
 import "./ProposeDraft.css";
 
@@ -46,6 +47,7 @@ const EMPTY_DRAFT: DeliberationDraft = {
   status: "drafting",
   created_at: "",
   updated_at: "",
+  links: [],
 };
 
 export default function ConversationDraft() {
@@ -61,6 +63,12 @@ export default function ConversationDraft() {
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [localLinks, setLocalLinks] = useState<ProposedLink[]>([]);
+  // Titles for links already on the draft, so the list can render without a
+  // lookup round-trip. Repopulated by the picker as the author chooses.
+  const [linkTitles, setLinkTitles] = useState<
+    Record<string, { title: string; type: string }>
+  >({});
 
   const draft = flow.draft;
   const displayDraft: DeliberationDraft = draft ?? {
@@ -78,6 +86,16 @@ export default function ConversationDraft() {
   const handleDurationChange = useCallback(
     (ms: number) => {
       void flow.queuePatch({ duration_ms: ms });
+    },
+    [flow.queuePatch],
+  );
+
+  const handleLinksChange = useCallback(
+    (links: ProposedLink[]) => {
+      setLocalLinks(links);
+      // skip_modified_flag: adding a link is not a content change, so it must
+      // not invalidate a Code of Conduct check the author already passed.
+      void flow.queuePatch({ links }, { skipModifiedFlag: true });
     },
     [flow.queuePatch],
   );
@@ -140,6 +158,10 @@ export default function ConversationDraft() {
       >
         <DeliberationDraftingForm
           draft={displayDraft}
+          links={draft?.links ?? localLinks}
+          onLinksChange={handleLinksChange}
+          linkTitles={linkTitles}
+          onLinkTitlesChange={setLinkTitles}
           onFieldChange={handleFieldChange}
           onDurationChange={handleDurationChange}
           onThresholdChange={handleThresholdChange}

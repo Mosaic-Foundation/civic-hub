@@ -1,4 +1,13 @@
 import type { Suggestion } from "../civic.assistant/models.js";
+import type { RelationType } from "../civic.process_links/models.js";
+
+/** A related process the author picked while composing. Carried on the draft
+ *  until submission, then materialized into process_links — the same shape
+ *  proposal / vote / project drafts use. */
+export interface ProposedLink {
+  to_id: string;
+  relation: RelationType;
+}
 
 export type DeliberationDraftStatus = "drafting" | "submitted" | "abandoned";
 
@@ -30,6 +39,7 @@ export interface DeliberationDraft {
   status: DeliberationDraftStatus;
   created_at: string;
   updated_at: string;
+  links: ProposedLink[];
 }
 
 export interface CreateDeliberationDraftInput {
@@ -43,6 +53,7 @@ export interface UpdateDeliberationDraftInput {
   seed_statements?: string;
   duration_ms?: number;
   participation_threshold?: number | null;
+  links?: ProposedLink[];
   skip_modified_flag?: boolean;
   /** The value being written is assistant-produced text (Apply on a
    *  suggestion card) — sets assistant_helped on the draft. */

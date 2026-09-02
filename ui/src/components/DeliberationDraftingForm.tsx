@@ -6,13 +6,20 @@
 // form fields outside the assistant's reach.
 
 import { useCallback, useRef } from "react";
-import type { AssistantFieldGuidance, DeliberationDraft, DraftSuggestion } from "../services/api";
+import type { AssistantFieldGuidance, DeliberationDraft, DraftSuggestion, ProposedLink } from "../services/api";
+import ProcessLinkField from "./ProcessLinkField";
 import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
 
 interface Props {
   draft: DeliberationDraft;
+  /** Related processes the author has picked. Optional by design — the
+   *  field defaults empty and staying empty is a valid answer. */
+  links: ProposedLink[];
+  onLinksChange: (links: ProposedLink[]) => void;
+  linkTitles: Record<string, { title: string; type: string }>;
+  onLinkTitlesChange: (t: Record<string, { title: string; type: string }>) => void;
   onFieldChange: (field: string, value: string) => void;
   onDurationChange: (ms: number) => void;
   onThresholdChange: (n: number | null) => void;
@@ -82,6 +89,10 @@ function getStatusClass(draft: DeliberationDraft, reviewFailed?: boolean): strin
 
 export default function DeliberationDraftingForm({
   draft,
+  links,
+  onLinksChange,
+  linkTitles,
+  onLinkTitlesChange,
   onFieldChange,
   onDurationChange,
   onThresholdChange,
@@ -168,6 +179,17 @@ export default function DeliberationDraftingForm({
           <FieldGuide guidance={fieldGuidance} field="sources" />
           <p className="form-hint">Add relevant links, one per line.</p>
         </div>
+
+        <ProcessLinkField
+          value={links}
+          onChange={onLinksChange}
+          titles={linkTitles}
+          onTitlesChange={onLinkTitlesChange}
+          seedTitle={draft.title}
+          seedDescription={draft.description}
+          processType="civic.polis_deliberation"
+          disabled={disabled}
+        />
 
         <div className="form-field">
           <label htmlFor="draft-seed_statements" className="form-label">

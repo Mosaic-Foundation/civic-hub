@@ -1983,6 +1983,7 @@ export interface DeliberationDraft {
   status: string;
   created_at: string;
   updated_at: string;
+  links: ProposedLink[];
 }
 
 export function createDeliberationDraft(): Promise<DeliberationDraft> {
@@ -1995,7 +1996,7 @@ export function getDeliberationDraft(id: string): Promise<DeliberationDraft> {
 
 export function updateDeliberationDraft(
   id: string,
-  patch: Partial<Pick<DeliberationDraft, "title" | "description" | "sources" | "seed_statements" | "duration_ms" | "participation_threshold">> & { skip_modified_flag?: boolean; assistant_applied?: boolean },
+  patch: Partial<Pick<DeliberationDraft, "title" | "description" | "sources" | "seed_statements" | "duration_ms" | "participation_threshold" | "links">> & { skip_modified_flag?: boolean; assistant_applied?: boolean },
 ): Promise<DeliberationDraft> {
   return request("PATCH", `/deliberations/drafts/${id}`, patch);
 }

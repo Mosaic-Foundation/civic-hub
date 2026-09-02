@@ -4,6 +4,36 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Conversation drafts carry process links — 2026-09-02
+
+Adam noticed the conversation creation flow had no link picker. Cause: conversations joined the
+drafting pattern on 2026-08-28 (`deliberation_drafts`), three days after process linking shipped
+(2026-08-25) into the proposal / vote / project drafts, and the new table and form were built
+without the links column and field. Nothing downstream was type-specific — the review funnel
+(`submitForReview` → `createEdges`) already materializes links for any process type — so the fix
+is the conversation-side plumbing only, mirroring the proposal path:
+
+- **Migration** `supabase/migrations/20260902120000_deliberation_drafts_links.sql` — `links JSONB
+  NOT NULL DEFAULT '[]'` on `deliberation_drafts`. **Applied to dev** (Adam, via the dashboard —
+  the CLI here is linked to prod). **Apply to prod BEFORE deploying this code**: a PATCH carrying
+  links fails on the missing column otherwise. Schema contract now lists
+  `deliberation_drafts` (`sources`, `links`), so `/health` reports the gap if the order slips.
+- **Backend** `civic.deliberation_drafts` model/storage carry `links`; `deliberationDraftController`
+  validates them on PATCH (`validateLinkSet`, same as proposals) and passes `draft.links` into
+  `submitAsCreator`.
+- **Frontend** `DeliberationDraftingForm` mounts `ProcessLinkField` after Links / Sources, before
+  Seed statements (`processType="civic.polis_deliberation"`); `ConversationDraft` holds the
+  local links + titles state and patches with `skipModifiedFlag` so picking a link never
+  invalidates a passed Code of Conduct check. `api.ts` types updated.
+
+Verified on dev end-to-end through the API as the admin: draft → PATCH two links (references the
+energy conversation, continues the café project) → bogus relation rejected 400 → draft reload
+keeps links → submit (auto-approved) → the live conversation's `/links` shows both edges. The
+form renders the picker at `/deliberations/new`. Test conversation archived on dev. tsc clean
+both sides, vite build clean, `tests/unit` green.
+
+---
+
 ## Re-acceptance modal no longer covers the legal pages — 2026-09-02
 
 Bug (Adam, smoke test): a signed-in account on an older legal version gets the "We've updated our

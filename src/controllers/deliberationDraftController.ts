@@ -4,6 +4,7 @@
 // mirrors voteDraftController for the deliberation type.
 
 import { Request, Response } from "express";
+import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { getAuthUser } from "../middleware/auth.js";
 import {
   createDeliberationDraft,
@@ -81,6 +82,7 @@ export async function handleUpdateDeliberationDraft(
       seed_statements,
       duration_ms,
       participation_threshold,
+      links,
       skip_modified_flag,
       assistant_applied,
     } = req.body;
@@ -92,6 +94,10 @@ export async function handleUpdateDeliberationDraft(
       seed_statements,
       duration_ms,
       participation_threshold,
+      // Validated against an empty from_id purely for the vocabulary /
+      // self-link checks (as the other draft types do); the real from_id is
+      // the process created at submission.
+      links: links === undefined ? undefined : validateLinkSet("", links),
       skip_modified_flag: skip_modified_flag === true,
       assistant_applied: assistant_applied === true,
     });
@@ -180,6 +186,7 @@ export async function handleSubmitDeliberationDraft(
     // One creation path: always submit for review; admins are auto-approved.
     const result = await submitAsCreator(
       {
+        links: draft.links,
         process_type: "civic.polis_deliberation",
         title: draft.title.trim(),
         description: draft.description.trim(),

@@ -38,6 +38,7 @@ interface DraftRow {
   status: string;
   created_at: string;
   updated_at: string;
+  links: unknown;
 }
 
 function rowToDraft(row: DraftRow): DeliberationDraft {
@@ -65,6 +66,8 @@ function rowToDraft(row: DraftRow): DeliberationDraft {
     status: row.status as DeliberationDraftStatus,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    // [] for rows (or databases) that pre-date the links column.
+    links: Array.isArray(row.links) ? (row.links as never) : [],
   };
 }
 
@@ -108,6 +111,7 @@ export async function updateDeliberationDraft(
   if (patch.description !== undefined) updates.description = patch.description;
   if (patch.sources !== undefined) updates.sources = patch.sources;
   if (patch.seed_statements !== undefined) updates.seed_statements = patch.seed_statements;
+  if (patch.links !== undefined) updates.links = patch.links;
 
   if (patch.duration_ms !== undefined) {
     const ms = patch.duration_ms;
