@@ -14,6 +14,7 @@ import ShareButton from "../components/ShareButton";
 import RelatedProcesses from "../components/RelatedProcesses";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
+import ProcessHeader from "../components/ProcessHeader";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -86,24 +87,22 @@ export default function Process() {
         <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
       )}
 
-      <div className="process-header">
-        <h1>{process.title}</h1>
-        {(() => {
+      <ProcessHeader
+        type={process.type}
+        title={process.title}
+        status={statusDisplay(
           // A civic.proposal's "closed" means it was promoted to a vote —
           // pre-translate before the shared vocabulary renders it.
-          const key =
-            isProposal && process.status === "closed" ? "promoted" :
-            isProposal && process.status !== "closed" ? "gathering" :
-            process.status;
-          const d = statusDisplay(key);
-          return <span className={d.className}>{d.label}</span>;
-        })()}
-      </div>
-
-      {/* Jurisdiction badge */}
-      {isVote && voteState?.jurisdiction && voteState.jurisdiction !== "local" && (
-        <span className="jurisdiction-badge">{voteState.jurisdiction}</span>
-      )}
+          isProposal && process.status === "closed" ? "promoted" :
+          isProposal && process.status !== "closed" ? "gathering" :
+          process.status,
+        )}
+        aside={
+          isVote && voteState?.jurisdiction && voteState.jurisdiction !== "local" ? (
+            <span className="jurisdiction-badge">{voteState.jurisdiction}</span>
+          ) : null
+        }
+      />
 
       {/* Plain description (always shown) */}
       <p className="process-description">{process.description}</p>

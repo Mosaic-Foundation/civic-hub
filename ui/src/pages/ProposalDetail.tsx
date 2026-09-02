@@ -11,6 +11,7 @@ import ProposalCommentForm from "../components/ProposalCommentForm";
 import RelatedProcesses from "../components/RelatedProcesses";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
+import ProcessHeader from "../components/ProcessHeader";
 
 
 function formatDate(iso: string): string {
@@ -89,12 +90,11 @@ export default function ProposalDetail() {
         <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
       )}
 
-      <div className="process-header">
-        <h1>{proposal.title}</h1>
-        <span className={statusDisplay(proposal.status).className}>
-          {statusDisplay(proposal.status).label}
-        </span>
-      </div>
+      <ProcessHeader
+        type="civic.proposal"
+        title={proposal.title}
+        status={statusDisplay(proposal.status)}
+      />
 
       {proposal.description && (
         <p className="process-description">{proposal.description}</p>

@@ -26,8 +26,30 @@ const SCROLLABLE_TABS: ReadonlyArray<{ to: string; label: string }> = [
   { to: "/outcomes", label: "Outcomes" },
 ];
 
+/**
+ * A detail page belongs to a section even though its URL does not start
+ * with the section's path (/proposal/:id lives under Proposals, /process/:id
+ * under Votes, /brief/:id under Outcomes). Without this the tab bar went
+ * quiet the moment you opened anything — on a phone, the only hint of what
+ * kind of process you were reading (Adam, 2026-09-02).
+ */
+const DETAIL_SECTIONS: ReadonlyArray<{ prefix: string; tab: string }> = [
+  { prefix: "/proposal/", tab: "/propose" },
+  { prefix: "/process/", tab: "/votes" },
+  { prefix: "/votes/", tab: "/votes" },
+  { prefix: "/project/", tab: "/projects" },
+  { prefix: "/deliberation/", tab: "/deliberations" },
+  { prefix: "/brief/", tab: "/outcomes" },
+  { prefix: "/vote-results/", tab: "/outcomes" },
+];
+
+function sectionFor(pathname: string): string | null {
+  return DETAIL_SECTIONS.find((d) => pathname.startsWith(d.prefix))?.tab ?? null;
+}
+
 export default function FeedVotesTabs() {
   const { pathname } = useLocation();
+  const detailSection = sectionFor(pathname);
 
   // Land every route change at the top of the page. The previous
   // scroll-to-tab-bar behavior (measure the nav offset, retry on
@@ -59,8 +81,9 @@ export default function FeedVotesTabs() {
             <NavLink
               to={t.to}
               className={({ isActive }) =>
-                `feed-votes-tab${isActive ? " is-active" : ""}`
+                `feed-votes-tab${isActive || detailSection === t.to ? " is-active" : ""}`
               }
+              aria-current={detailSection === t.to ? "page" : undefined}
             >
               {t.label}
             </NavLink>

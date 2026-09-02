@@ -19,6 +19,7 @@ import RelatedProcesses from "../components/RelatedProcesses";
 import "./ProjectDetail.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
+import ProcessHeader from "../components/ProcessHeader";
 
 export default function ProjectDetail() {
   const navigate = useNavigate();
@@ -163,21 +164,23 @@ export default function ProjectDetail() {
       </div>
 
       <div className="project-detail-header">
-        <h1>{project.title}</h1>
-        <div className="project-detail-meta">
-          <Creator
-            name={project.creator_name}
-            isAdmin={project.creator_is_admin}
-            officialType={project.creator_official_type}
-            officialTitle={project.creator_official_title}
-            prefix="by"
-          />
-          <span>&middot;</span>
-          <span>{new Date(project.created_at).toLocaleDateString()}</span>
-          <span className={statusDisplay(project.status).className}>
-            {statusDisplay(project.status).label}
-          </span>
-        </div>
+        <ProcessHeader
+          type="civic.project"
+          title={project.title}
+          status={statusDisplay(project.status)}
+        >
+          <div className="project-detail-meta">
+            <Creator
+              name={project.creator_name}
+              isAdmin={project.creator_is_admin}
+              officialType={project.creator_official_type}
+              officialTitle={project.creator_official_title}
+              prefix="by"
+            />
+            <span>&middot;</span>
+            <span>{new Date(project.created_at).toLocaleDateString()}</span>
+          </div>
+        </ProcessHeader>
         {canComplete && (
           <button
             type="button"

@@ -16,11 +16,13 @@ import "./DeliberationPanel.css";
 
 interface Props {
   processId: string;
+  /** false when the page above already shows the topic as its title. */
+  showTopic?: boolean;
 }
 
 type Tab = "participate" | "clusters";
 
-export default function DeliberationPanel({ processId }: Props) {
+export default function DeliberationPanel({ processId, showTopic }: Props) {
   const { user } = useAuth();
   const [process, setProcess] = useState<DeliberationReadModel | null>(null);
   const [clusters, setClusters] = useState<ClusterState | null>(null);
@@ -97,7 +99,7 @@ export default function DeliberationPanel({ processId }: Props) {
   return (
     <div className="deliberation-panel">
       <div className="deliberation-panel-header">
-        <h3 className="deliberation-topic">{process.topic}</h3>
+        {showTopic !== false && <h3 className="deliberation-topic">{process.topic}</h3>}
         {(process.deadline || process.participation_threshold) && (
           <div className="deliberation-meta">
             {process.deadline && (

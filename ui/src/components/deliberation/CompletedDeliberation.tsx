@@ -4,6 +4,8 @@ import "./CompletedDeliberation.css";
 
 interface Props {
   process: DeliberationReadModel;
+  /** false when the page above already shows the topic as its title. */
+  showTopic?: boolean;
 }
 
 function formatDate(iso: string): string {
@@ -14,13 +16,13 @@ function formatDate(iso: string): string {
   });
 }
 
-export default function CompletedDeliberation({ process: proc }: Props) {
+export default function CompletedDeliberation({ process: proc, showTopic }: Props) {
   const summary = proc.summary;
 
   return (
     <div className="completed-deliberation">
       <div className="completed-header">
-        <h4 className="completed-topic">{proc.topic}</h4>
+        {showTopic !== false && <h4 className="completed-topic">{proc.topic}</h4>}
         <span className="completed-badge">Completed</span>
       </div>
 

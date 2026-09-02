@@ -14,6 +14,8 @@ import { useAuth } from "../context/AuthContext";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import hub from "../config/hub";
+import ProcessHeader from "../components/ProcessHeader";
+import { statusDisplay } from "../components/statusDisplay";
 import "./WordCloud.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 
@@ -554,12 +556,11 @@ export default function WordCloud() {
       )}
 
       <div className="wordcloud-header">
-        <h1>
-          {wc.title}
-          <span className={`wordcloud-status status-${wc.status}`}>
-            {wc.status}
-          </span>
-        </h1>
+        <ProcessHeader
+          type="civic.wordcloud"
+          title={wc.title}
+          status={statusDisplay(wc.status)}
+        />
         {wc.description && (
           <p className="wordcloud-description">{wc.description}</p>
         )}

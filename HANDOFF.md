@@ -4,6 +4,29 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Every detail page says what it is — 2026-09-02
+
+Adam (on a phone): a proposal's title was cramped beside its status pill, and nothing on the page
+said it was a proposal — the Proposals tab went quiet the moment you opened one. Two changes:
+
+- **`components/ProcessHeader.tsx`** (+ css): the one header for every process page — a type
+  pill (PROPOSAL / VOTE / PROJECT / CONVERSATION / BRIEF / WORD CLOUD, from the shared
+  `friendlyType` map, which humanizes unknown types so a future type renders sensibly) above a
+  full-width, balanced title, with the status badge beneath and an optional `aside` (share
+  button, jurisdiction) and `children` meta row. Used by ProposalDetail, Process (votes),
+  ProjectDetail, DeliberationDetail (the panel/completed views got `showTopic={false}` so the
+  topic isn't shown twice; a not-yet-started conversation reads "Waiting to start"), Brief, and
+  WordCloud (its status is now the shared badge, not the raw status string).
+- **`FeedVotesTabs`**: a detail route highlights its section — `/proposal/` → Proposals,
+  `/process/` and `/votes/` → Votes, `/project/` → Projects, `/deliberation/` → Conversations,
+  `/brief/` and `/vote-results/` → Outcomes (`aria-current="page"` too).
+
+Verified at 375×812 on dev: pill → title (327px wide) → status on the proposal, vote, project,
+both conversation states, brief, and word cloud; the right tab is active on each. No horizontal
+overflow. UI tsc + vite build clean.
+
+---
+
 ## "Edit & resubmit" reopens the real drafting form; drafting forms on phones — 2026-09-02
 
 **Revise flow (Adam, smoke test: "when I added content and hit resubmit, it doesn't seem to be

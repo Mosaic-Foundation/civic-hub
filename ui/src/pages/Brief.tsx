@@ -7,6 +7,7 @@ import {
 } from "../services/api";
 import { absoluteTime } from "../components/FeedPost";
 import PostFeaturedImage from "../components/PostFeaturedImage";
+import ProcessHeader from "../components/ProcessHeader";
 import ShareButton from "../components/ShareButton";
 import hub from "../config/hub";
 import { useAuth } from "../context/AuthContext";
@@ -126,10 +127,11 @@ export default function BriefPage() {
         &larr; Home
       </Link>
 
-      <div className="vote-results-header-row">
-        <h1 className="vote-results-title">{brief.title}</h1>
-        <ShareButton title={`Civic Brief: ${brief.title}`} />
-      </div>
+      <ProcessHeader
+        type="civic.brief"
+        title={brief.title}
+        aside={<ShareButton title={`Civic Brief: ${brief.title}`} />}
+      />
 
       <p className="vote-results-headline">{brief.headline}</p>
 

@@ -1,0 +1,42 @@
+/* ProcessHeader — type pill above a full-width title, status beneath. */
+
+.process-header-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs, 0.35rem);
+  margin-bottom: var(--space-md, 1rem);
+}
+
+.process-type-pill {
+  display: inline-block;
+  font-size: var(--font-size-xs, 0.72rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-primary, #1e3a5f);
+  background: var(--color-primary-wash, var(--color-surface-alt, rgba(30, 58, 95, 0.08)));
+  border-radius: var(--radius-sm, 4px);
+  padding: 0.15rem 0.5rem;
+}
+
+.process-header-title {
+  margin: 0;
+  width: 100%;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.process-header-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm, 0.5rem);
+}
+
+@media (max-width: 600px) {
+  .process-header-title {
+    font-size: 1.35rem;
+  }
+}

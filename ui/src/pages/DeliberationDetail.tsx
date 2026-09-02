@@ -8,6 +8,8 @@ import {
 } from "../services/api";
 import DeliberationPanel from "../components/deliberation/DeliberationPanel";
 import CompletedDeliberation from "../components/deliberation/CompletedDeliberation";
+import { statusDisplay } from "../components/statusDisplay";
+import ProcessHeader from "../components/ProcessHeader";
 import ShareButton from "../components/ShareButton";
 import SourceLinks from "../components/SourceLinks";
 import RelatedProcesses from "../components/RelatedProcesses";
@@ -74,17 +76,28 @@ export default function DeliberationDetail() {
         />
       </div>
 
+      <ProcessHeader
+        type="civic.polis_deliberation"
+        title={process.topic}
+        status={
+          isActive
+            ? statusDisplay("active")
+            : isCompleted
+              ? statusDisplay("completed")
+              : { ...statusDisplay("draft"), label: "Waiting to start" }
+        }
+      />
+
       {process.assistant_helped && (
         <p className="assistant-helped-label">Drafted with assistant help</p>
       )}
 
 
-      {isActive && <DeliberationPanel processId={process.process_id} />}
-      {isCompleted && <CompletedDeliberation process={process} />}
+      {isActive && <DeliberationPanel processId={process.process_id} showTopic={false} />}
+      {isCompleted && <CompletedDeliberation process={process} showTopic={false} />}
 
       {!isActive && !isCompleted && (
         <div className="deliberation-detail-draft">
-          <h2>{process.topic}</h2>
           <p className="deliberation-framing">{process.framing}</p>
           <SourceLinks sources={process.sources ?? []} />
           <p className="deliberation-detail-status">
