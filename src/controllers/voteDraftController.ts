@@ -7,7 +7,7 @@ import {
   updateVoteDraft,
   setVoteDraftStatus,
 } from "../modules/civic.vote_drafts/index.js";
-import { submitAsCreator } from "../modules/civic.review/index.js";
+import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 
 // Assistant conversation + Code of Conduct review live on the shared
@@ -177,8 +177,23 @@ export async function handleSubmitVoteDraft(
       ? { links: optionalLinks.map((url: string) => ({ url, label: url })) }
       : undefined;
 
+    const reviewId = typeof req.body?.review_id === "string" ? req.body.review_id : undefined;
+    if (reviewId) {
+      const review = await reviseAndResubmit(reviewId, user.id, {
+        title: draft.title.trim(),
+        description: draft.description.trim() || "",
+        content: (contentPayload as Record<string, unknown> | undefined) ?? {},
+        state: stateInput,
+        links: draft.links,
+      });
+      await setVoteDraftStatus(id, "submitted");
+      res.status(201).json({ review_id: review.id, process_id: review.process_id, auto_approved: false });
+      return;
+    }
+
     const result = await submitAsCreator(
       {
+        draft_id: draft.id,
         links: draft.links,
         process_type: "civic.vote",
         title: draft.title.trim(),

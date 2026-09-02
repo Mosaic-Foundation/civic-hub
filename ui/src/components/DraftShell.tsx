@@ -75,6 +75,7 @@ export default function DraftShell({
 }: Props) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const footerHeight = useFooterHeight(isMobile);
 
   // The persistent opt-out: respected everywhere the affordance renders.
   const optedOut = user?.hide_ai_drafting_help === true;
@@ -171,6 +172,9 @@ export default function DraftShell({
           <div className="page detail-page">
             <div className="draft-shell-page-header">{header}</div>
             {notices}
+            {/* Same collapsed card as desktop — the "?" bubble alone was not
+                recognizable as the assistant on a phone (Adam, 2026-09-02). */}
+            {affordance}
             {inlineResults}
             {children}
           </div>
@@ -208,17 +212,39 @@ export default function DraftShell({
           <button
             type="button"
             className="assistant-fab"
+            // Sits just above the pinned status/submit footer, never over it.
+            style={{ bottom: `calc(${footerHeight}px + var(--space-md))` }}
             onClick={assistant.onOpenRequest}
             aria-label="Open drafting assistant"
             disabled={assistant.opening}
           >
-            ?
+            <span aria-hidden="true">✦</span> {assistant.opening ? "Opening…" : "Assistant"}
           </button>
         )}
         {open && <div className="assistant-overlay">{panel}</div>}
       </>
     );
   }
+}
+
+/**
+ * Height of the form's pinned footer (status + submit) on phones, so the
+ * floating assistant button can sit above it. Observed, not assumed: the
+ * footer grows when the Code of Conduct button appears.
+ */
+function useFooterHeight(enabled: boolean): number {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    if (!enabled) { setHeight(0); return; }
+    const el = document.querySelector<HTMLElement>(".drafting-form-footer");
+    if (!el) return;
+    const update = () => setHeight(el.getBoundingClientRect().height);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [enabled]);
+  return height;
 }
 
 function useIsMobile() {

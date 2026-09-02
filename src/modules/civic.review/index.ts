@@ -13,6 +13,7 @@ export {
   submitForReview,
   submitAsCreator,
   approveReview,
+  reopenForRevision,
   requestChanges,
   declineReview,
   reviseAndResubmit,

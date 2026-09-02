@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useDraftFlow } from "../hooks/useDraftFlow";
 import AuthModal from "../components/AuthModal";
@@ -9,6 +9,7 @@ import {
   createProjectDraft,
   updateProjectDraft,
   submitProjectDraft as apiSubmitProjectDraft,
+  getProjectDraft,
   type ProjectDraft as ProjectDraftType,
 } from "../services/api";
 import "./ProjectDraft.css";
@@ -43,10 +44,17 @@ export default function ProjectDraft() {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
 
+  // Revision (from "Edit & resubmit"): reopen THIS draft and, on submit,
+  // revise the review it came from instead of creating a new process.
+  const [searchParams] = useSearchParams();
+  const resumeDraftId = searchParams.get("draft");
+  const reviseReviewId = searchParams.get("review");
+
   const flow = useDraftFlow<ProjectDraftType>({
     processType: "civic.project",
     createDraft: () => createProjectDraft(),
     updateDraft: (id, patch) => updateProjectDraft(id, patch),
+    resumeDraft: resumeDraftId ? () => getProjectDraft(resumeDraftId) : undefined,
     applyFields: ["title", "description", "sources"],
   });
 
@@ -104,7 +112,7 @@ export default function ProjectDraft() {
     setSubmitting(true);
     flow.setError(null);
     try {
-      const result = await apiSubmitProjectDraft(draft.id);
+      const result = await apiSubmitProjectDraft(draft.id, reviseReviewId ? { review_id: reviseReviewId } : undefined);
       if (result.auto_approved) {
         navigate(`/project/${result.process_id}`);
       } else {
@@ -130,7 +138,7 @@ export default function ProjectDraft() {
       <DraftShell
         backTo="/projects"
         backLabel="Projects"
-        title="Start a project"
+        title={reviseReviewId ? "Revise your project" : "Start a project"}
         error={flow.error}
         reviewNotice={flow.reviewNotice}
         assistant={flow.shellAssistant}
@@ -138,6 +146,9 @@ export default function ProjectDraft() {
         onApplySuggestion={flow.handleApplySuggestion}
         canApplySuggestion={flow.canApplySuggestion}
       >
+        {flow.resuming ? (
+          <p className="form-hint" style={{ padding: "var(--space-lg)" }}>Loading your draft…</p>
+        ) : (
         <ProjectDraftingForm
           draft={displayDraft}
           links={draft?.links ?? localLinks}
@@ -152,6 +163,7 @@ export default function ProjectDraft() {
           reviewLoading={flow.reviewing}
           fieldGuidance={flow.config?.field_guidance}
         />
+        )}
       </DraftShell>
 
       {/* Submit confirmation modal */}

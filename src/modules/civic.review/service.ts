@@ -1,5 +1,6 @@
 import { getDb } from "../../db/client.js";
 import { createEdges } from "../../services/processLinks.js";
+import { draftPathFor, reopenDraftForRevision } from "../../processes/registry.js";
 import { validateLinkSet } from "../civic.process_links/index.js";
 import { generateId } from "../../utils/id.js";
 import { getProcessHandler } from "../../processes/registry.js";
@@ -113,6 +114,7 @@ export async function submitForReview(
   const reviewRow = {
     id: reviewId,
     process_id: processId,
+    draft_id: input.draft_id ?? null,
     creator_id: input.creator_id,
     creator_name: input.creator_name,
     creator_email: input.creator_email,
@@ -639,6 +641,18 @@ export async function reviseAndResubmit(
   if (input.description !== undefined) updates.description = input.description;
   if (input.content !== undefined) updates.content = input.content;
   if (input.config !== undefined) updates.config = input.config;
+  if (input.state !== undefined) {
+    // Same path as submitForReview: the handler turns raw submit input into
+    // its initial state, so a revised vote/conversation is exactly what a
+    // fresh submission of the same draft would be.
+    const { data: current } = await getDb()
+      .from("processes")
+      .select("type")
+      .eq("id", review.process_id)
+      .single();
+    const handler = current ? getProcessHandler(String(current.type)) : undefined;
+    updates.state = handler ? handler.initializeState(input.state) : input.state;
+  }
 
   const { error: procErr } = await getDb()
     .from("processes")
@@ -646,6 +660,29 @@ export async function reviseAndResubmit(
     .eq("id", review.process_id);
   if (procErr)
     throw new Error(`Failed to update process: ${procErr.message}`);
+
+  // Related processes: the revised draft's picks replace the creator's
+  // earlier ones (an admin's additions during review are not the creator's
+  // and are kept). Best-effort, like creation-time linking.
+  if (input.links !== undefined) {
+    try {
+      await getDb()
+        .from("process_links")
+        .delete()
+        .eq("from_id", review.process_id)
+        .eq("created_by", creatorActor);
+      if (input.links.length) {
+        const links = validateLinkSet(review.process_id, input.links);
+        await createEdges(review.process_id, links, creatorActor);
+      }
+    } catch (err) {
+      console.warn(
+        `[review] dropped invalid links on revise of ${review.process_id}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
 
   // Read back the updated process for the snapshot
   const { data: proc } = await getDb()
@@ -917,4 +954,39 @@ async function getNextTurnNumber(reviewId: string): Promise<number> {
   if (error) throw new Error(`Failed to get turn count: ${error.message}`);
   if (!data || data.length === 0) return 1;
   return (data[0].turn_number as number) + 1;
+}
+
+
+/**
+ * "Edit & resubmit": hand the creator their real drafting form back. Flips
+ * the draft the review came from to "drafting" (through the type's handler,
+ * so a type added later only has to declare `reopenDraft`) and returns where
+ * to send them. Reviews that predate `draft_id` return null and fall back to
+ * the inline title/description form.
+ */
+export async function reopenForRevision(
+  reviewId: string,
+  creatorActor: string,
+): Promise<{ draft_id: string; draft_path: string } | null> {
+  const review = await getReview(reviewId);
+  if (!review) throw new Error("Review not found");
+  if (review.creator_id !== creatorActor) {
+    throw new Error("Only the creator can revise this submission");
+  }
+  if (review.status !== "changes_requested") {
+    throw new Error(`Cannot revise review in status: ${review.status}`);
+  }
+  if (!review.draft_id) return null;
+
+  const { data: proc } = await getDb()
+    .from("processes")
+    .select("type")
+    .eq("id", review.process_id)
+    .single();
+  const type = proc ? String(proc.type) : "";
+  const path = draftPathFor(type, review.draft_id);
+  if (!path) return null;
+
+  await reopenDraftForRevision(type, review.draft_id);
+  return { draft_id: review.draft_id, draft_path: `${path}${path.includes("?") ? "&" : "?"}review=${encodeURIComponent(reviewId)}` };
 }

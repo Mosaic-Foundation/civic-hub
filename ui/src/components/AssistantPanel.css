@@ -332,11 +332,11 @@
 
 .assistant-fab {
   position: fixed;
-  bottom: var(--space-lg);
-  right: var(--space-lg);
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
+  bottom: var(--space-lg); /* overridden inline to clear the pinned footer */
+  right: var(--space-md);
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  border-radius: 999px;
   background: var(--color-primary);
   color: var(--color-primary-text);
   border: none;
@@ -345,8 +345,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-lg);
+  gap: var(--space-xs);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
   z-index: 100;
+  transition: bottom 0.15s ease;
   transition: transform 0.15s ease;
 }
 

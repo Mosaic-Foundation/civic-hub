@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  getProcessDescriptor,
   type LinkCandidate,
   type ProposedLink,
   type RelationType,
@@ -51,6 +52,35 @@ export default function ProcessLinkField({
   processType,
 }: Props) {
   const [picking, setPicking] = useState(false);
+
+  // Links the field did not pick itself (a resumed draft's, on "Edit &
+  // resubmit") arrive without titles; resolve them so the list never shows a
+  // raw process id. Best-effort — a link whose target is gone keeps its id.
+  useEffect(() => {
+    const missing = value.map((l) => l.to_id).filter((id) => !titles[id]);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      missing.map((id) =>
+        getProcessDescriptor(id)
+          .then((p) => {
+            // Conversations name themselves `topic` and carry a flat `type`.
+            const d = p as { title?: string; topic?: string; type?: string; definition?: { type?: string } };
+            return [id, { title: d.title ?? d.topic ?? id, type: d.definition?.type ?? d.type ?? "" }] as const;
+          })
+          .catch(() => null),
+      ),
+    ).then((results) => {
+      if (cancelled) return;
+      const found = results.filter((r): r is NonNullable<typeof r> => r !== null);
+      if (found.length === 0) return;
+      onTitlesChange({ ...titles, ...Object.fromEntries(found) });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value.map((l) => l.to_id).join(",")]);
 
   function handlePick(link: ProposedLink, peer: LinkCandidate) {
     // Same target + same relation twice is a slip, not an intent.

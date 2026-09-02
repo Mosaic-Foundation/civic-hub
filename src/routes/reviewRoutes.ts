@@ -4,6 +4,7 @@ import {
   handleSubmitForReview,
   handleRevise,
   handleWithdraw,
+  handleReopen,
   handleGetMyReviews,
   handleGetReview,
 } from "../controllers/reviewController.js";
@@ -17,5 +18,6 @@ router.get("/mine", handleGetMyReviews);
 router.get("/:reviewId", handleGetReview);
 router.post("/:reviewId/revise", handleRevise);
 router.post("/:reviewId/withdraw", handleWithdraw);
+router.post("/:reviewId/reopen", handleReopen);
 
 export default router;

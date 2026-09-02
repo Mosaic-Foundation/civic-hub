@@ -4,6 +4,52 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## "Edit & resubmit" reopens the real drafting form; drafting forms on phones — 2026-09-02
+
+**Revise flow (Adam, smoke test: "when I added content and hit resubmit, it doesn't seem to be
+resubmitting").** The creator's revise UI was a title + description box, so anything else they
+changed (sources, banner, options, seeds, links) had nowhere to go. Now:
+
+- **Migration** `supabase/migrations/20260902150000_process_reviews_draft_id.sql` — nullable
+  `draft_id` on `process_reviews`, set by `submitForReview` from `SubmitForReviewInput.draft_id`
+  (each of the four draft submit controllers passes its draft id). **Applied to dev** (Adam,
+  dashboard). **Apply to prod BEFORE deploying** — the review insert writes the column.
+- **Registry hooks** (`ProcessHandler.draftPath?(draftId)` and `reopenDraft?(draftId)`, same seam
+  as detailPath): each of the four handlers declares its drafting page URL and how to flip its
+  draft back to "drafting". `registry.draftPathFor` / `reopenDraftForRevision`. A type added
+  later declares those two lines and gets the whole flow.
+- **`POST /reviews/:id/reopen`** (`reopenForRevision`): creator-only, `changes_requested` only;
+  flips the draft to drafting and returns `{draft_id, draft_path}` (path carries `?draft=…&review=…`).
+  Reviews without a draft on record (pre-column) return nulls → the inline form remains as fallback.
+- **`reviseAndResubmit`** now takes `state` (re-initialized through the handler exactly as
+  submitForReview does — votes/conversations) and `links` (the creator's edges are replaced;
+  admin-added ones are kept). The four draft submit controllers accept `review_id` in the body
+  and, when present, revise in place instead of `submitAsCreator` — never a second process.
+- **UI:** `useDraftFlow` gained `resumeDraft` (+ `resuming`); the four draft pages read
+  `?draft=` / `?review=`, load that draft (form waits on it — inputs are `defaultValue`), title
+  "Revise your …", and submit with `review_id`. `MySubmissions` "Edit & resubmit" calls reopen and
+  navigates there. `ProcessLinkField` resolves titles for links it did not pick itself (a resumed
+  draft's) so they don't render as raw ids.
+
+Verified on dev, API + browser: submit → admin request-changes → reopen (draft back to drafting)
+→ edit sources/banner alt/related process in the real form → conduct check → resubmit → same
+process id, status pending_review, history submit / request_changes / revise_resubmit, new
+content on the process, links swapped, `processes` count for the title = 1; a reopen while
+pending is refused 409. Test review left on dev as `rev_fd9b7d8c6ba948e7` (pending).
+
+**Drafting forms on phones (Adam: "the form is embedded within the page… you have to go way
+down low" to find the status and submit; "I don't see the open AI assistant").** Cause: the
+shell sized itself to `100vh − nav`, but on a phone the word-cloud ribbon and section tabs also
+sit above it, so the fixed box ran ~75px past the screen; the footer landed below the fold with a
+second inner scroll, and the assistant was a bare "?" bubble overlapping it. `ProposeDraft.css`
+mobile block: page flows normally, `.drafting-form-footer` is `position: sticky; bottom: 0`
+(+ safe-area padding); `DraftShell` renders the "Want help drafting?" card on mobile too and the
+FAB is a labeled "✦ Assistant" pill whose `bottom` clears the measured footer (ResizeObserver).
+Shared classes → all four forms. Verified at 375×812 on all four: footer pinned on load, pill
+above it, single scroll, no horizontal overflow.
+
+---
+
 ## Submission previews show everything that was submitted — 2026-09-02
 
 Adam (smoke test): a pending project on My Submissions showed title + description only — no

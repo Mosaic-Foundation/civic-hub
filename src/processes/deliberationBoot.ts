@@ -3,6 +3,7 @@ import { createPolisAdapter } from "../shared/polis_deliberation/adapter/polisAd
 import { createPolisSummarizer } from "../shared/polis_deliberation/summarization/polisSummarizer.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { describeSubmissionFields } from "../shared/submissionPreview.js";
+import { setDeliberationDraftStatus } from "../modules/civic.deliberation_drafts/index.js";
 import { generateId } from "../utils/id.js";
 import { callClaude, DEFAULT_MODEL } from "../utils/anthropic.js";
 import { getActionDispatcher } from "./registry.js";
@@ -121,6 +122,8 @@ export function bootDeliberation(): ProcessHandler {
   // for the same reason requiredSchema is: the shared module stays free of
   // hub-specific routing.
   handler.detailPath = (id: string) => `/deliberation/${id}`;
+  handler.draftPath = (draftId: string) => `/deliberations/new?draft=${encodeURIComponent(draftId)}`;
+  handler.reopenDraft = (draftId: string) => setDeliberationDraftStatus(draftId, "drafting");
 
   // A conversation's submission lives on state (seed statements, sources,
   // window, participant goal) — extend the generic content walk with those

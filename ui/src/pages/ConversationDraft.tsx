@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useDraftFlow } from "../hooks/useDraftFlow";
 import AuthModal from "../components/AuthModal";
@@ -9,6 +9,7 @@ import {
   createDeliberationDraft,
   updateDeliberationDraft,
   submitDeliberationDraft as apiSubmitDeliberationDraft,
+  getDeliberationDraft,
   type DeliberationDraft,
   type ProposedLink,
 } from "../services/api";
@@ -54,10 +55,17 @@ export default function ConversationDraft() {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
 
+  // Revision (from "Edit & resubmit"): reopen THIS draft and, on submit,
+  // revise the review it came from instead of creating a new process.
+  const [searchParams] = useSearchParams();
+  const resumeDraftId = searchParams.get("draft");
+  const reviseReviewId = searchParams.get("review");
+
   const flow = useDraftFlow<DeliberationDraft>({
     processType: "civic.polis_deliberation",
     createDraft: () => createDeliberationDraft(),
     updateDraft: (id, patch) => updateDeliberationDraft(id, patch),
+    resumeDraft: resumeDraftId ? () => getDeliberationDraft(resumeDraftId) : undefined,
     applyFields: ["title", "description", "sources", "seed_statements"],
   });
 
@@ -117,7 +125,7 @@ export default function ConversationDraft() {
     setSubmitting(true);
     flow.setError(null);
     try {
-      const result = await apiSubmitDeliberationDraft(draft.id);
+      const result = await apiSubmitDeliberationDraft(draft.id, reviseReviewId ? { review_id: reviseReviewId } : undefined);
       if (result.auto_approved) {
         navigate("/deliberations");
       } else {
@@ -148,7 +156,7 @@ export default function ConversationDraft() {
       <DraftShell
         backTo="/deliberations"
         backLabel="Conversations"
-        title="Start a conversation"
+        title={reviseReviewId ? "Revise your conversation" : "Start a conversation"}
         error={flow.error}
         reviewNotice={flow.reviewNotice}
         assistant={flow.shellAssistant}
@@ -156,6 +164,9 @@ export default function ConversationDraft() {
         onApplySuggestion={flow.handleApplySuggestion}
         canApplySuggestion={flow.canApplySuggestion}
       >
+        {flow.resuming ? (
+          <p className="form-hint" style={{ padding: "var(--space-lg)" }}>Loading your draft…</p>
+        ) : (
         <DeliberationDraftingForm
           draft={displayDraft}
           links={draft?.links ?? localLinks}
@@ -172,6 +183,7 @@ export default function ConversationDraft() {
           reviewFailed={flow.reviewFailed}
           fieldGuidance={flow.config?.field_guidance}
         />
+        )}
       </DraftShell>
 
       {/* Submit confirmation modal */}

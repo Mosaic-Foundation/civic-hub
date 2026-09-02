@@ -558,8 +558,16 @@ export interface CreateProcessResult {
 
 export function submitDraft(
   draftId: string,
+  opts?: SubmitDraftOptions,
 ): Promise<CreateProcessResult> {
-  return request("POST", `/proposals/drafts/${draftId}/submit`);
+  return request("POST", `/proposals/drafts/${draftId}/submit`, opts ?? {});
+}
+
+/** Passing `review_id` turns a submit into a revision of that review (after
+ *  an admin requested changes): the process is updated in place and goes
+ *  back into the queue instead of a second process being created. */
+export interface SubmitDraftOptions {
+  review_id?: string;
 }
 
 // --- Vote Drafts (AI-augmented vote drafting) ---
@@ -600,8 +608,9 @@ export function updateVoteDraft(
 
 export function submitVoteDraft(
   draftId: string,
+  opts?: SubmitDraftOptions,
 ): Promise<CreateProcessResult> {
-  return request("POST", `/votes/drafts/${draftId}/submit`);
+  return request("POST", `/votes/drafts/${draftId}/submit`, opts ?? {});
 }
 
 // --- Projects (community project pages) ---
@@ -752,8 +761,9 @@ export function updateProjectDraft(
 
 export function submitProjectDraft(
   draftId: string,
+  opts?: SubmitDraftOptions,
 ): Promise<CreateProcessResult> {
-  return request("POST", `/projects/drafts/${draftId}/submit`);
+  return request("POST", `/projects/drafts/${draftId}/submit`, opts ?? {});
 }
 
 // --- Admin: Proposal Review ---
@@ -2003,8 +2013,9 @@ export function updateDeliberationDraft(
 
 export function submitDeliberationDraft(
   draftId: string,
+  opts?: SubmitDraftOptions,
 ): Promise<CreateProcessResult> {
-  return request("POST", `/deliberations/drafts/${draftId}/submit`);
+  return request("POST", `/deliberations/drafts/${draftId}/submit`, opts ?? {});
 }
 
 export function startDeliberation(processId: string): Promise<unknown> {
@@ -2189,6 +2200,8 @@ export interface ProcessReviewSummary {
   updated_at: string;
   process_type: string | null;
   process_title: string | null;
+  /** The draft this submission came from; null for older reviews. */
+  draft_id?: string | null;
 }
 
 export interface ReviewTurn {
@@ -2247,6 +2260,15 @@ export function markReviewsSeen(): Promise<{ ok: boolean }> {
 
 export function getReviewDetail(reviewId: string): Promise<ReviewDetail> {
   return request("GET", `/reviews/${reviewId}`);
+}
+
+/** "Edit & resubmit": reopen the draft behind a changes-requested review.
+ *  Returns where to send the creator, or nulls when the review predates
+ *  draft tracking (use the inline form then). */
+export function reopenReview(
+  reviewId: string,
+): Promise<{ draft_id: string | null; draft_path: string | null }> {
+  return request("POST", `/reviews/${reviewId}/reopen`);
 }
 
 export function reviseReview(
@@ -2359,6 +2381,15 @@ export interface LinkCandidate {
   title: string;
   status: string;
   href: string;
+}
+
+/** The spec descriptor for any process type — id, title, definition.type,
+ *  status. Used to put a title on a link the picker did not pick itself
+ *  (a resumed draft's). */
+export function getProcessDescriptor(
+  id: string,
+): Promise<{ id: string; title: string; status: string; definition: { type: string } }> {
+  return request("GET", `/process/${encodeURIComponent(id)}`);
 }
 
 export function getProcessLinks(processId: string): Promise<ProcessLinks> {

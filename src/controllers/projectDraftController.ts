@@ -7,7 +7,7 @@ import {
   updateProjectDraft,
   setProjectDraftStatus,
 } from "../modules/civic.project_drafts/index.js";
-import { submitAsCreator } from "../modules/civic.review/index.js";
+import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 
 // Assistant conversation + Code of Conduct review live on the shared
@@ -159,9 +159,32 @@ export async function handleSubmitProjectDraft(
       .map((l) => l.trim())
       .filter((l) => l.length > 0);
 
+    const content = {
+      sources,
+      assistant_helped: draft.assistant_helped,
+      banner_image_url: draft.banner_image_url ?? null,
+      banner_image_alt: draft.banner_image_alt ?? null,
+    };
+
+    // Revision of an existing submission (admin requested changes): update
+    // the process in place and put it back in the queue — never a second one.
+    const reviewId = typeof req.body?.review_id === "string" ? req.body.review_id : undefined;
+    if (reviewId) {
+      const review = await reviseAndResubmit(reviewId, user.id, {
+        title: draft.title.trim(),
+        description: draft.description.trim(),
+        content,
+        links: draft.links,
+      });
+      await setProjectDraftStatus(id, "submitted");
+      res.status(201).json({ review_id: review.id, process_id: review.process_id, auto_approved: false });
+      return;
+    }
+
     // One creation path: always submit for review; admins are auto-approved.
     const result = await submitAsCreator(
       {
+        draft_id: draft.id,
         links: draft.links,
         process_type: "civic.project",
         title: draft.title.trim(),
@@ -169,12 +192,7 @@ export async function handleSubmitProjectDraft(
         creator_id: user.id,
         creator_name: user.full_name || user.display_name || "Resident",
         creator_email: user.email,
-        content: {
-          sources,
-          assistant_helped: draft.assistant_helped,
-          banner_image_url: draft.banner_image_url ?? null,
-          banner_image_alt: draft.banner_image_alt ?? null,
-        },
+        content,
       },
       user.email,
     );

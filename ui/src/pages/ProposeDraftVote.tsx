@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useDraftFlow } from "../hooks/useDraftFlow";
 import AuthModal from "../components/AuthModal";
@@ -9,6 +9,7 @@ import {
   createVoteDraft,
   updateVoteDraft,
   submitVoteDraft as apiSubmitVoteDraft,
+  getVoteDraft,
   type VoteDraft,
 } from "../services/api";
 import "./ProposeDraftVote.css";
@@ -52,10 +53,17 @@ export default function ProposeDraftVote() {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
 
+  // Revision (from "Edit & resubmit"): reopen THIS draft and, on submit,
+  // revise the review it came from instead of creating a new process.
+  const [searchParams] = useSearchParams();
+  const resumeDraftId = searchParams.get("draft");
+  const reviseReviewId = searchParams.get("review");
+
   const flow = useDraftFlow<VoteDraft>({
     processType: "civic.vote",
     createDraft: () => createVoteDraft(),
     updateDraft: (id, patch) => updateVoteDraft(id, patch),
+    resumeDraft: resumeDraftId ? () => getVoteDraft(resumeDraftId) : undefined,
     applyFields: ["title", "description", "sources"],
   });
 
@@ -114,7 +122,7 @@ export default function ProposeDraftVote() {
     setSubmitting(true);
     flow.setError(null);
     try {
-      const result = await apiSubmitVoteDraft(draft.id);
+      const result = await apiSubmitVoteDraft(draft.id, reviseReviewId ? { review_id: reviseReviewId } : undefined);
       if (result.auto_approved) {
         navigate(`/process/${result.process_id}`);
       } else {
@@ -145,7 +153,7 @@ export default function ProposeDraftVote() {
       <DraftShell
         backTo="/votes"
         backLabel="Votes"
-        title="Suggest a vote"
+        title={reviseReviewId ? "Revise your vote" : "Suggest a vote"}
         error={flow.error}
         reviewNotice={flow.reviewNotice}
         assistant={flow.shellAssistant}
@@ -153,6 +161,9 @@ export default function ProposeDraftVote() {
         onApplySuggestion={flow.handleApplySuggestion}
         canApplySuggestion={flow.canApplySuggestion}
       >
+        {flow.resuming ? (
+          <p className="form-hint" style={{ padding: "var(--space-lg)" }}>Loading your draft…</p>
+        ) : (
         <VoteDraftingForm
           draft={displayDraft}
           links={draft?.links ?? localLinks}
@@ -169,6 +180,7 @@ export default function ProposeDraftVote() {
           reviewFailed={flow.reviewFailed}
           fieldGuidance={flow.config?.field_guidance}
         />
+        )}
       </DraftShell>
 
       {/* Submit confirmation modal */}

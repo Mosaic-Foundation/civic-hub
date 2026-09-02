@@ -3,6 +3,7 @@ import { describeSubmission } from "../processes/registry.js";
 import type { SubmissionField } from "../shared/submissionPreview.js";
 import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
 import {
+  reopenForRevision,
   submitForReview,
   approveReview,
   requestChanges,
@@ -136,6 +137,29 @@ export async function handleRevise(
     });
 
     res.json(review);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    const status = message.includes("not found")
+      ? 404
+      : message.includes("Only the creator")
+        ? 403
+        : message.includes("Cannot revise")
+          ? 409
+          : 500;
+    res.status(status).json({ error: message });
+  }
+}
+
+export async function handleReopen(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const user = getAuthUser(res);
+    const reviewId = req.params.reviewId as string;
+    const result = await reopenForRevision(reviewId, user.id);
+    // null → no draft on record: the client falls back to the inline form.
+    res.json(result ?? { draft_id: null, draft_path: null });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     const status = message.includes("not found")

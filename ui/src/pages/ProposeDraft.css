@@ -5,26 +5,48 @@
   overflow: hidden;
 }
 
+/* Phones (2026-09-02): the page flows like any other page and the footer
+   (status + submit) pins to the bottom of the screen while the form is
+   longer than the viewport. Before this, the shell sized itself to
+   100vh minus the nav bar only — but on a phone the word-cloud ribbon and
+   the section tabs also sit above it, so the fixed box ran ~75px past the
+   bottom of the screen: the footer landed below the fold, the page and the
+   form each scrolled on their own, and the submit button was the last
+   thing anyone found. One rule set for every drafting type (the four forms
+   share these classes). */
 @media (max-width: 768px) {
+  .propose-draft-page {
+    height: auto;
+    overflow: visible;
+  }
+
   .propose-draft-mobile {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - var(--nav-h, 61px));
-    overflow: hidden;
+    display: block;
+    height: auto;
+    overflow: visible;
   }
 
   .propose-draft-mobile .page {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    display: block;
+    overflow: visible;
     padding-bottom: 0;
   }
 
   .propose-draft-mobile .drafting-form {
-    flex: 1;
-    min-height: 0;
+    display: block;
+    height: auto;
+  }
+
+  .propose-draft-mobile .drafting-form-scroll {
+    flex: none;
+    overflow: visible;
+  }
+
+  .propose-draft-mobile .drafting-form-footer {
+    position: sticky;
+    bottom: 0;
+    padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.06);
   }
 }
 

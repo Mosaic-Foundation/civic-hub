@@ -5,6 +5,7 @@ import {
   getMyReviews,
   getReviewDetail,
   reviseReview,
+  reopenReview,
   withdrawReview,
   markReviewsSeen,
   type ProcessReviewSummary,
@@ -105,6 +106,30 @@ export default function MySubmissions() {
         <p>Sign in to view your submissions.</p>
       </div>
     );
+  }
+
+  /**
+   * "Edit & resubmit": reopen the creator's real drafting form (banner,
+   * sources, options, seeds, links — the whole submission), and submit from
+   * there as a revision. Reviews without a draft on record (older ones)
+   * fall back to the inline title/description form.
+   */
+  async function handleEditAndResubmit() {
+    if (!routeId || acting) return;
+    setActing(true);
+    setError(null);
+    try {
+      const target = await reopenReview(routeId);
+      if (target.draft_path) {
+        navigate(target.draft_path);
+        return;
+      }
+      setShowRevise(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reopen your draft");
+    } finally {
+      setActing(false);
+    }
   }
 
   async function handleRevise() {
@@ -241,9 +266,10 @@ export default function MySubmissions() {
                   <div className="review-actions">
                     <button
                       className="review-action-btn review-action-btn--approve"
-                      onClick={() => setShowRevise(true)}
+                      onClick={handleEditAndResubmit}
+                      disabled={acting}
                     >
-                      Edit & resubmit
+                      {acting ? "Opening…" : "Edit & resubmit"}
                     </button>
                     <button
                       className="review-action-btn review-action-btn--secondary"

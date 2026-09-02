@@ -26,10 +26,13 @@ import { getInputsByProcess } from "../modules/civic.input/index.js";
 import { spawnBriefFromClosedProcess, findExistingBriefId } from "./spawnBrief.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import { proposalAssistantConfig } from "./proposalAssistantConfig.js";
+import { setDraftStatus as setProposalDraftStatus } from "../modules/civic.proposal_drafts/index.js";
 
 const proposalAdapter: ProcessHandler = {
   type: "civic.proposal",
   detailPath: (id: string) => `/proposal/${id}`,
+  draftPath: (draftId: string) => `/propose/new?draft=${encodeURIComponent(draftId)}`,
+  reopenDraft: (draftId: string) => setProposalDraftStatus(draftId, "drafting"),
 
   getAssistantConfig: () => proposalAssistantConfig,
 

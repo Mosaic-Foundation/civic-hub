@@ -50,6 +50,12 @@ interface Options<D extends BaseDraft> {
   processType: string;
   createDraft: () => Promise<D>;
   updateDraft: (id: string, patch: Record<string, unknown>) => Promise<D>;
+  /**
+   * Revision: load THIS draft instead of creating one. The page passes it
+   * when it arrives with `?draft=` (from "Edit & resubmit"); the form waits
+   * on `resuming` so its fields initialize from the loaded values.
+   */
+  resumeDraft?: () => Promise<D>;
   /** Fields Apply-suggestion may write (the fields this type's form renders). */
   applyFields: string[];
 }
@@ -68,6 +74,7 @@ export function useDraftFlow<D extends BaseDraft>({
   processType,
   createDraft,
   updateDraft,
+  resumeDraft,
   applyFields,
 }: Options<D>) {
   const { canParticipate } = useAuth();
@@ -88,6 +95,8 @@ export function useDraftFlow<D extends BaseDraft>({
   /** Reactive mirror of buffered (pre-draft) edits, so the form's status
    *  bar sees a signed-out visitor's typing. */
   const [pendingFields, setPendingFields] = useState<Record<string, unknown>>({});
+  /** True while a resumed draft is being fetched (revision flow). */
+  const [resuming, setResuming] = useState(!!resumeDraft);
 
   const draftRef = useRef<D | null>(null);
   const draftPromise = useRef<Promise<D> | null>(null);
@@ -97,6 +106,31 @@ export function useDraftFlow<D extends BaseDraft>({
   const commitDraft = useCallback((d: D) => {
     draftRef.current = d;
     setDraft(d);
+  }, []);
+
+  // Revision flow: the draft already exists — load it up front so the form
+  // renders the submitted values, and make ensureDraft reuse it.
+  useEffect(() => {
+    if (!resumeDraft) return;
+    let cancelled = false;
+    const p = resumeDraft();
+    draftPromise.current = p;
+    p.then((d) => {
+      if (cancelled) return;
+      commitDraft(d);
+    })
+      .catch((err) => {
+        if (cancelled) return;
+        draftPromise.current = null;
+        setError(err instanceof Error ? err.message : "Could not load your draft");
+      })
+      .finally(() => {
+        if (!cancelled) setResuming(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Which types have an assistant (and their copy) is the backend
@@ -387,6 +421,7 @@ export function useDraftFlow<D extends BaseDraft>({
 
   return {
     draft,
+    resuming,
     config,
     pendingFields,
     error,

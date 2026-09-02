@@ -19,10 +19,13 @@ import { getDb } from "../db/client.js";
 import { getProject, listProjectUpdates } from "../modules/civic.projects/index.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import { projectAssistantConfig } from "./projectAssistantConfig.js";
+import { setProjectDraftStatus } from "../modules/civic.project_drafts/index.js";
 
 const projectAdapter: ProcessHandler = {
   type: "civic.project",
   detailPath: (id: string) => `/project/${id}`,
+  draftPath: (draftId: string) => `/projects/new?draft=${encodeURIComponent(draftId)}`,
+  reopenDraft: (draftId: string) => setProjectDraftStatus(draftId, "drafting"),
 
   getAssistantConfig: () => projectAssistantConfig,
 

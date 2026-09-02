@@ -34,6 +34,7 @@ import { getInputsByProcess } from "../modules/civic.input/index.js";
 import { getActionDispatcher } from "./registry.js";
 import { findExistingBriefId } from "./spawnBrief.js";
 import { describeSubmissionFields } from "../shared/submissionPreview.js";
+import { setVoteDraftStatus } from "../modules/civic.vote_drafts/index.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 
 import { isPastDeadline } from "../utils/deadline.js";
@@ -99,6 +100,8 @@ const voteProcess: ProcessHandler = {
 
   type: "civic.vote",
   detailPath: (id: string) => `/process/${id}`,
+  draftPath: (draftId: string) => `/votes/new?draft=${encodeURIComponent(draftId)}`,
+  reopenDraft: (draftId: string) => setVoteDraftStatus(draftId, "drafting"),
 
   getAssistantConfig: () => voteAssistantConfig,
 

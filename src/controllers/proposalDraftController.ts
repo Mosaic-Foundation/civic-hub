@@ -9,7 +9,7 @@ import {
   claimDraftForSubmission,
 } from "../modules/civic.proposal_drafts/index.js";
 import { type Category } from "../modules/civic.assistant/index.js";
-import { submitAsCreator } from "../modules/civic.review/index.js";
+import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 
 // Assistant conversation + Code of Conduct review live on the shared
@@ -221,11 +221,33 @@ export async function handleSubmitDraft(
         : DEFAULT_PROPOSAL_DURATION_MS;
 
     try {
+      const content = {
+        optional_links: optionalLinks,
+        category: draft.category ?? null,
+        assistant_helped: draft.assistant_helped,
+        proposal_duration_ms: durationMs,
+      };
+
+      // Revision of an existing submission (admin requested changes): update
+      // the process in place and put it back in the queue — never a second one.
+      const reviewId = typeof req.body?.review_id === "string" ? req.body.review_id : undefined;
+      if (reviewId) {
+        const review = await reviseAndResubmit(reviewId, user.id, {
+          title: draft.title.trim(),
+          description: fullDescription || "",
+          content,
+          links: draft.links,
+        });
+        res.status(201).json({ review_id: review.id, process_id: review.process_id, auto_approved: false });
+        return;
+      }
+
       // One creation path: always submit for review; admins are auto-approved
       // (no review wait). The proposal's closes_at is derived from
       // proposal_duration_ms inside the approval flow.
       const result = await submitAsCreator(
         {
+          draft_id: draft.id,
           links: draft.links,
           process_type: "civic.proposal",
           title: draft.title.trim(),
@@ -233,12 +255,7 @@ export async function handleSubmitDraft(
           creator_id: user.id,
           creator_name: user.full_name || user.display_name || "Resident",
           creator_email: user.email,
-          content: {
-            optional_links: optionalLinks,
-            category: draft.category ?? null,
-            assistant_helped: draft.assistant_helped,
-            proposal_duration_ms: durationMs,
-          },
+          content,
         },
         user.email,
       );

@@ -126,6 +126,21 @@ export function processDetailPath(type: string, id: string): string {
  * tomorrow — gets the generic walk of its `content` block, so nothing it
  * submits is hidden. See src/shared/submissionPreview.ts.
  */
+/** Where a creator revises one of this type's drafts, or null when the type
+ *  declares no drafting page. */
+export function draftPathFor(type: string, draftId: string): string | null {
+  return processRegistry[type]?.draftPath?.(draftId) ?? null;
+}
+
+/** Put a submitted draft back into "drafting" through its type's handler. */
+export async function reopenDraftForRevision(type: string, draftId: string): Promise<void> {
+  const handler = processRegistry[type];
+  if (!handler?.reopenDraft) {
+    throw new Error(`Process type ${type} does not support revising a draft`);
+  }
+  await handler.reopenDraft(draftId);
+}
+
 export function describeSubmission(source: SubmissionSource): SubmissionField[] {
   const handler = processRegistry[source.type];
   return handler?.describeSubmission?.(source) ?? describeSubmissionFields(source);

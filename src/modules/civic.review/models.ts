@@ -14,6 +14,10 @@ export interface ProcessReview {
   status: ReviewStatus;
   created_at: string;
   updated_at: string;
+  /** The draft this submission came from (null for reviews that predate the
+   *  column or types without drafts). Lets "Edit & resubmit" reopen the
+   *  creator's real drafting form. */
+  draft_id?: string | null;
 }
 
 export type ReviewTurnAction =
@@ -47,6 +51,8 @@ export interface ReviewTurn {
 
 export interface SubmitForReviewInput {
   process_type: string;
+  /** The draft being submitted, recorded on the review for revision. */
+  draft_id?: string;
   title: string;
   description: string;
   creator_id: string;
@@ -77,5 +83,10 @@ export interface ReviseInput {
   description?: string;
   content?: Record<string, unknown>;
   config?: Record<string, unknown>;
+  /** Raw state INPUT (what the type's submit builds) — re-initialized
+   *  through the handler exactly as submitForReview does. */
+  state?: Record<string, unknown>;
+  /** The creator's related processes, replacing the ones on the process. */
+  links?: Array<{ to_id: string; relation: string }>;
   note?: string;
 }

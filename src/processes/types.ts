@@ -51,6 +51,21 @@ export interface ProcessHandler {
   describeSubmission?(source: SubmissionSource): SubmissionField[];
 
   /**
+   * Optional: the drafting page for one of this type's drafts, e.g.
+   * `/projects/new?draft=pdraft_abc`. Used by "Edit & resubmit" to send the
+   * creator back into their real form. Omit for a type without drafts.
+   */
+  draftPath?(draftId: string): string;
+
+  /**
+   * Optional: put a submitted draft back into "drafting" so the creator can
+   * revise it after an admin requested changes. The submit path then calls
+   * reviseAndResubmit (with `review_id`) instead of creating a new process.
+   * Declared by the handler because each type owns its drafts table.
+   */
+  reopenDraft?(draftId: string): Promise<void>;
+
+  /**
    * Optional: drafting-assistant config for this process type. Declaring it
    * is what opts a type into AI drafting help — the shared /assistant routes
    * dispatch on it, and the UI's creation shell shows the (collapsed)
