@@ -4,6 +4,29 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Assistant: a promised search is never the end of a turn — 2026-09-02
+
+Adam (on prod, minutes before the pause_turn fix deployed at 18:23Z): "Searching now — give me a
+moment." then nothing until he typed "Hello", which delivered the sources card. That is the
+pause_turn bug below, but the ask was broader: *if it's gonna do something it should do it.* So,
+on top of the client fix: `callClaudeMultiTurn` now reports `serverToolUses` (count of
+`server_tool_use` blocks in the turn), and `callAssistant` nudges the model ONCE, inside the same
+request, when a reply narrates a search (`claimsToBeSearching`: "searching now", "let me look that
+up", …), no search ran, and nothing actionable came back — the follow-up says "run the search now,
+put the links in a suggestion card". Logged as a warning so it is visible in the function logs.
+`tests/unit/assistantSearchNudge.test.ts`. Tab label stays "Assistant" ("Drafting assistant"
+wraps on a phone; the page it sits in is already the drafting page).
+
+**Chat cards no longer leak onto the form view.** `handleAssistantMessage` saved EVERY chat
+suggestion as the draft's `last_review_result`, so a sources card from the chat reappeared on the
+form page under "Code of Conduct check" — and, as a side effect, chatting counted as having run
+the check ("Ready to submit" without pressing it). Now only HARD blocks from chat are persisted
+(they gate submission and must show on the form); soft cards stay in the chat, where Apply
+already works. A chat-only session therefore still has to run the Code of Conduct check before
+submitting, which is the documented rule.
+
+---
+
 ## Phone drafting: form ↔ assistant switcher; assistant search turns fixed; assistant leads — 2026-09-02
 
 **Switcher (Adam: the assistant covered the form, no obvious way between them).** On phones the

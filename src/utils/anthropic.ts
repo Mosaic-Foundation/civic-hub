@@ -44,6 +44,9 @@ export interface CallClaudeResult {
   text: string;
   model: string;
   usage?: { input_tokens?: number; output_tokens?: number };
+  /** How many server-side tool calls (web search) ran during this turn —
+   *  lets a caller tell "I searched" from "I said I would search". */
+  serverToolUses?: number;
 }
 
 interface AnthropicContent {
@@ -226,6 +229,7 @@ async function callClaudeMultiTurnOnce(
 
   const MAX_TOOL_ROUNDS = 5;
   let totalUsage = { input_tokens: 0, output_tokens: 0 };
+  let serverToolUses = 0;
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const controller = new AbortController();
@@ -274,6 +278,9 @@ async function callClaudeMultiTurnOnce(
       totalUsage.input_tokens += data.usage.input_tokens ?? 0;
       totalUsage.output_tokens += data.usage.output_tokens ?? 0;
     }
+    serverToolUses += (data.content ?? []).filter(
+      (c: AnthropicContent) => c.type === "server_tool_use",
+    ).length;
 
     // Server-side tools (web search) can run long enough that the API
     // pauses the turn and hands back what it has so far — typically the
@@ -310,7 +317,7 @@ async function callClaudeMultiTurnOnce(
         .map((c) => c.text as string)
         .join("");
 
-      return { text, model: data.model ?? input.model, usage: totalUsage };
+      return { text, model: data.model ?? input.model, usage: totalUsage, serverToolUses };
     }
 
     // Tool use detected — the API handles server-side tools (web_search)
@@ -326,6 +333,7 @@ async function callClaudeMultiTurnOnce(
         text: textParts.join(""),
         model: data.model ?? input.model,
         usage: totalUsage,
+        serverToolUses,
       };
     }
 

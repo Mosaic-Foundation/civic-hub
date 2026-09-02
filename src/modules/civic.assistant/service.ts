@@ -56,8 +56,47 @@ export async function callAssistant(
   // sources card in one JSON object; at 1536 the JSON was being cut off
   // and the person got the prose with no card (2026-09-02).
   const result = await claude({ model, system: systemPrompt, messages, tools, maxTokens: 4096 });
+  const parsed = parseAssistantResponse(result.text, input.config.fields);
 
-  return parseAssistantResponse(result.text, input.config.fields);
+  // Never let "Searching now — give me a moment." be the end of a turn.
+  // If the model narrated a search without running the tool and produced
+  // nothing actionable, nudge it once, in the same turn, to actually do it
+  // (Adam, 2026-09-02: "if it's gonna do something it should do it").
+  if (
+    parsed.suggestions.length === 0 &&
+    !parsed.draft_proposal &&
+    (result.serverToolUses ?? 0) === 0 &&
+    claimsToBeSearching(parsed.message)
+  ) {
+    console.warn("[assistant] reply narrated a search without running it — nudging once");
+    const followUp = await claude({
+      model,
+      system: systemPrompt,
+      messages: [
+        ...messages,
+        { role: "assistant", content: result.text },
+        {
+          role: "user",
+          content:
+            "Go ahead and run the search now. Reply with what you found and put the links in a suggestion card so I can apply them — do not tell me you are about to search.",
+        },
+      ],
+      tools,
+      maxTokens: 4096,
+    });
+    return parseAssistantResponse(followUp.text, input.config.fields);
+  }
+
+  return parsed;
+}
+
+/** "On it — searching now." / "Searching now — give me a moment." and kin:
+ *  a promise to search, not a result. Exported for tests. */
+export function claimsToBeSearching(message: string): boolean {
+  const m = message.trim();
+  if (m.length > 240) return false; // a real summary is longer than a promise
+  return /\b(search(ing)?|look(ing)? (that|those|it) up|find(ing)? (some|a few|those))\b/i.test(m) &&
+    /\b(now|moment|sec|second|minute|on it|let me|hang on|one moment|shortly)\b/i.test(m);
 }
 
 /**

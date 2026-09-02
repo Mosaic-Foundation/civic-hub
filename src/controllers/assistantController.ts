@@ -144,8 +144,15 @@ export async function handleAssistantMessage(
       await config.draftStore.applyGeneratedDraft(draft.id, response.draft_proposal);
     }
 
-    if (response.suggestions.length > 0) {
-      await config.draftStore.saveReviewResult(draft.id, response.suggestions);
+    // Chat suggestions live in the chat — their Apply buttons work from the
+    // cards there. Only HARD blocks are persisted onto the draft, because
+    // they gate submission and must be visible on the form view too. Soft
+    // cards (a sources list, a rewrite) used to be saved here as well and
+    // then reappeared on the form as "Code of Conduct check" results
+    // (Adam, 2026-09-02).
+    const hardBlocks = response.suggestions.filter((s) => s.severity === "hard");
+    if (hardBlocks.length > 0) {
+      await config.draftStore.saveReviewResult(draft.id, hardBlocks);
     }
 
     const updatedDraft = await config.draftStore.get(draft.id);
