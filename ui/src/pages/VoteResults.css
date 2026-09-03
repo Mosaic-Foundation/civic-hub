@@ -10,10 +10,11 @@
  * names — renaming them would balloon this slice without UI benefit.
  */
 
+/* Same container as every other detail page (.detail-page): full shell
+   width, left-aligned. It used to be a 720px centered column, which read
+   as "indented" next to the conversation / vote / project pages. */
 .vote-results-page {
-  padding: var(--space-lg);
-  max-width: 720px;
-  margin: 0 auto;
+  padding: 1.5rem;
 }
 
 
@@ -56,13 +57,14 @@
   line-height: var(--line-height-base);
 }
 
-/* Delivery indicator — short banner directly under the heading. The
-   teal aligns with the vote-results pill family in the feed/digest. */
+/* Delivery receipt — short banner directly under the heading. Navy with
+   white text (the beta banner / Sign in navy) so the "sent to" fact
+   carries some weight instead of the washed-out results tint. */
 .vote-results-delivery {
   margin: 0 0 var(--space-xl);
   padding: var(--space-sm) var(--space-md);
-  background: var(--pill-vote-results-bg);
-  color: var(--pill-vote-results-fg);
+  background: var(--pill-vote-fg, #1e3a5f);
+  color: #fff;
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
   font-weight: 500;

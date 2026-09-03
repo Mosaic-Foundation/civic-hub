@@ -13,6 +13,7 @@ import ProcessHeader from "../components/ProcessHeader";
 import ShareButton from "../components/ShareButton";
 import SourceLinks from "../components/SourceLinks";
 import RelatedProcesses from "../components/RelatedProcesses";
+import { BriefPointer } from "../components/BriefPointer";
 import "./DeliberationDetail.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 
@@ -87,6 +88,8 @@ export default function DeliberationDetail() {
               : { ...statusDisplay("draft"), label: "Waiting to start" }
         }
       />
+
+      <BriefPointer processId={process.process_id} />
 
       {process.assistant_helped && (
         <p className="assistant-helped-label">Drafted with assistant help</p>

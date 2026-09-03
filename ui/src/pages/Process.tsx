@@ -12,6 +12,7 @@ import ProposalCommentForm from "../components/ProposalCommentForm";
 import AuthModal from "../components/AuthModal";
 import ShareButton from "../components/ShareButton";
 import RelatedProcesses from "../components/RelatedProcesses";
+import { BriefPointer } from "../components/BriefPointer";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
@@ -103,6 +104,8 @@ export default function Process() {
           ) : null
         }
       />
+
+      <BriefPointer processId={process.id} />
 
       {/* Plain description (always shown) */}
       <p className="process-description">{process.description}</p>

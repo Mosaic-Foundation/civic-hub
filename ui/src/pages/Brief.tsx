@@ -8,6 +8,7 @@ import {
 import { absoluteTime } from "../components/FeedPost";
 import PostFeaturedImage from "../components/PostFeaturedImage";
 import ProcessHeader from "../components/ProcessHeader";
+import { BriefSourcePointer } from "../components/BriefPointer";
 import ShareButton from "../components/ShareButton";
 import hub from "../config/hub";
 import { useAuth } from "../context/AuthContext";
@@ -132,6 +133,11 @@ export default function BriefPage() {
         title={brief.title}
         aside={<ShareButton title={`Civic Brief: ${brief.title}`} />}
       />
+
+      {/* Where this came from — the pair the links API derives from
+          source_process_id, surfaced at the top instead of only in the
+          Related panel at the bottom. */}
+      <BriefSourcePointer processId={id!} />
 
       <p className="vote-results-headline">{brief.headline}</p>
 

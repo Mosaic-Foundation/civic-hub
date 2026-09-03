@@ -4,6 +4,46 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Brief ↔ source pointers at the top of the page; brief page layout — 2026-09-03
+
+Adam (smoke test, energy conversation): a completed conversation should link to its brief, and
+the brief should link back — the pair existed, but only as "Summarized by" / "Summarizes" rows
+inside the Related panel at the bottom, which he missed. Also: the brief page looked "indented",
+and its "Sent to …" receipt was a washed-out light blue.
+
+- **`components/BriefPointer.tsx`** (+ css), two exports, both reading the SYNTHETIC brief pair
+  the links API already derives from `state.source_process_id` (`getBriefLinks`) — nothing is
+  stored, nothing asks what type it is on, so any type that declares `generateBrief` gets both
+  for free:
+  - `BriefPointer` on a process page: "The final brief is published. Sent to X on DATE." +
+    a navy **Read the brief →** button. Renders nothing until a brief exists (the active energy
+    vote shows nothing). Mounted right under `ProcessHeader` on Process (votes), DeliberationDetail,
+    ProjectDetail, ProposalDetail.
+  - `BriefSourcePointer` on the brief page, above the headline: "This brief summarizes the
+    completed {type} <title>" + **Open the {type} →** (type word from the shared `friendlyType`).
+- **`VoteResults.css`**: `.vote-results-page` drops its 720px centered column for the same
+  `1.5rem` padding as `.detail-page`, so the brief (and legacy vote-results) page sits where every
+  other detail page does. `.vote-results-delivery` is now navy (`--pill-vote-fg`) with white text.
+
+Verified on dev for all four source types: energy conversation → `proc_beta_brief_energy_001`,
+farm-stand vote → its brief, recycling proposal `proc_69cda899e1fa420a` → `proc_09713c46665c4297`,
+and a project created through the real draft path as the admin, completed, brief approved with
+`recipients: []` (no delivery), pointer present both ways. 375px: no horizontal overflow, button
+goes full-width. UI tsc + vite build clean.
+
+**Dev side effects (all archived, restorable):** `[uitest] Brief pointer project`
+`proc_1543e344398f4630` + brief `proc_44d73fcbc9724541`; brief `proc_19115325f48745cf` from
+completing the legacy `[TEST] Community Tool Library` `proc_ccec8c5f00274a93` (that project is now
+`completed`; it has no `processes` mirror row — pre-2026-08 projects created via `POST /projects`
+never got one — so the links API cannot pair it and its brief; modern projects go through the
+review funnel and are fine). uitest session rows deleted.
+
+**Noticed, not changed:** the project detail page has no horizontal padding below its banner at
+narrow widths (`ProjectDetail` uses `.page` without `.detail-page`); the pill/title/meta sit flush
+left on prod today. Separate fix.
+
+---
+
 ## Sign-in modal names both cases: "Sign in or create an account" — 2026-09-03
 
 Adam (smoke test, step 2): the nav's Sign in button opened a box titled "Create an account to

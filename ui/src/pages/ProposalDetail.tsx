@@ -9,6 +9,7 @@ import Creator from "../components/Creator";
 import CommunityInputPanel from "../components/CommunityInputPanel";
 import ProposalCommentForm from "../components/ProposalCommentForm";
 import RelatedProcesses from "../components/RelatedProcesses";
+import { BriefPointer } from "../components/BriefPointer";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
@@ -95,6 +96,8 @@ export default function ProposalDetail() {
         title={proposal.title}
         status={statusDisplay(proposal.status)}
       />
+
+      <BriefPointer processId={proposal.id} />
 
       {proposal.description && (
         <p className="process-description">{proposal.description}</p>

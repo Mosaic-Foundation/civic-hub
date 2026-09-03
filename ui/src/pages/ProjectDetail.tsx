@@ -16,6 +16,7 @@ import {
 import ShareButton from "../components/ShareButton";
 import Creator from "../components/Creator";
 import RelatedProcesses from "../components/RelatedProcesses";
+import { BriefPointer } from "../components/BriefPointer";
 import "./ProjectDetail.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
@@ -192,6 +193,8 @@ export default function ProjectDetail() {
           </button>
         )}
       </div>
+
+      <BriefPointer processId={project.id} />
 
       {/* Sentiment */}
       {project.status === "active" && (
