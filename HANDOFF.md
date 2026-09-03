@@ -68,7 +68,9 @@ as one system:
 - **Plain-text surfaces:** `stripMarkdown()` applied in search `cardSummary` and `shareMeta`
   (social previews). Feed cards and the digest never used descriptions (event-derived copy).
   `tests/unit/markdown.test.ts` (4).
-- **Comments:** `.input-item` is now a white card with a soft shadow (proposal + vote comments).
+- **Comments:** every comment is a white speech bubble — 14px corners, a small tail sticking up
+  from the top-left, one rule set in App.css for `.input-item` (proposals, votes) and
+  `.project-comment-item` (projects) so they match (Adam, later the same day).
 
 Verified on dev: a proposal created through the real draft path with bold labels, italic, a link,
 a bullet list and a numbered list — detail page renders strong/em/ul/ol/a (rel noopener, no

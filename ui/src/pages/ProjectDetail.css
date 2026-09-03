@@ -200,13 +200,10 @@
   margin: 0 0 var(--space-md);
 }
 
-.project-comment-item {
-  padding: var(--space-sm) 0;
-  border-bottom: 1px solid var(--color-border, #e5e7eb);
-}
-
-.project-comment-item:last-child {
-  border-bottom: none;
+/* .project-comment-item is styled as a comment bubble in App.css, together
+   with the shared input panel's .input-item, so both read the same. */
+.project-comment-item + .project-comment-item {
+  margin-top: 1rem;
 }
 
 .project-comment-content {
