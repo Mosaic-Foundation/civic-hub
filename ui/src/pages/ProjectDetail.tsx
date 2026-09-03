@@ -24,6 +24,8 @@ import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
 import MarkdownTextarea from "../components/MarkdownTextarea";
 import RichText from "../components/RichText";
+import EditHistory from "../components/EditHistory";
+import { getEditPolicy, startProcessEdit, type EditPolicy } from "../services/api";
 
 export default function ProjectDetail() {
   const navigate = useNavigate();
@@ -41,6 +43,36 @@ export default function ProjectDetail() {
   const [commentPosting, setCommentPosting] = useState(false);
   const [sentimentLoading, setSentimentLoading] = useState(false);
   const [completing, setCompleting] = useState(false);
+
+  // "Edit project" — the server decides (creator or admin, active, what is
+  // locked); we only ask when the viewer could plausibly be allowed. Hooks
+  // live up here, above the loading/error returns, so their order is stable.
+  const [editPolicy, setEditPolicy] = useState<EditPolicy | null>(null);
+  const [editStarting, setEditStarting] = useState(false);
+  const viewerIsCreator = project?.is_owner ?? (!!user?.id && user?.id === project?.user_id);
+  const mayAsk = !!project && (viewerIsCreator || isAdmin) && project.status === "active";
+  const projectId = project?.id;
+  useEffect(() => {
+    if (!mayAsk || !projectId) { setEditPolicy(null); return; }
+    let cancelled = false;
+    getEditPolicy(projectId)
+      .then((p) => { if (!cancelled) setEditPolicy(p); })
+      .catch(() => { if (!cancelled) setEditPolicy(null); });
+    return () => { cancelled = true; };
+  }, [mayAsk, projectId]);
+
+  async function handleStartEdit() {
+    if (!projectId) return;
+    setEditStarting(true);
+    try {
+      const target = await startProcessEdit(projectId);
+      navigate(target.draft_path);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open the editor");
+    } finally {
+      setEditStarting(false);
+    }
+  }
 
   const loadProject = useCallback(async () => {
     if (!id) return;
@@ -172,6 +204,19 @@ export default function ProjectDetail() {
           type="civic.project"
           title={project.title}
           status={statusDisplay(project.status)}
+          aside={
+            editPolicy?.editable ? (
+              <button
+                type="button"
+                className="project-edit-btn"
+                onClick={handleStartEdit}
+                disabled={editStarting}
+                title="Change the description, sources, banner, or related processes. Every change is kept on the page."
+              >
+                {editStarting ? "Opening…" : "Edit project"}
+              </button>
+            ) : null
+          }
         >
           <div className="project-detail-meta">
             <Creator
@@ -218,6 +263,9 @@ export default function ProjectDetail() {
       {project.description && (
         <RichText className="project-description" text={project.description} />
       )}
+
+      {/* Visible edit history — renders nothing until the project is edited. */}
+      <EditHistory processId={project.id} />
 
       {/* Sources */}
       {project.sources.length > 0 && (

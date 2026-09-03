@@ -4,6 +4,55 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Project editing: visible history, supporters notified — 2026-09-03
+
+Adam: project owners must be able to change the description, sources, banner and related
+processes after publishing (the Updates log is a progress feed, not an editor) — but people who
+supported a project signed on to particular words. Decision: **only projects are editable**;
+every other type stays uneditable once submitted. Edits are allowed, visible, and announced:
+
+- **Registry seam** (`types.ts`): `editPolicy(process)` → `{editable, locked_fields, reason}`,
+  `listSupporters(processId)`, `onEdited(process, changes)`. Only `projectAdapter` declares
+  them: editable while the `projects` row is `active`; the **title locks once anyone supports**
+  (the title is what people endorsed); supporters = `project_sentiments` where `support`;
+  `onEdited` mirrors title/description/sources/banner into the `projects` row (the detail page
+  reads that table). `tests/unit/processEdits.test.ts` pins that civic.project is the only type
+  with a policy.
+- **Shared service** `services/processEdits.ts`: `getEditPolicy` (creator or admin, then the
+  handler), `startEdit` (reopens the draft the review recorded — same `reopenDraft` seam as the
+  revise flow — and returns `draft_path?draft=&edit=<id>&locked=title`; 409 for a process with no
+  draft on record), `diffEdit` (pure: per-field before/after; locked fields and
+  `assistant_helped` ignored; link order irrelevant), `applyEdit` (updates `processes`, replaces
+  the creator's links, calls `onEdited`, emits ONE `civic.process.updated` with
+  `data.edit = {changed_fields, previous, current, editor_role}`, emails supporters minus the
+  editor — Resend, subject `"<title>" was edited — see what changed`, link to `#edits`; a no-op
+  submit writes nothing), `listEdits` (reads the event log — no new table).
+- **Routes** on `/process` (universal): `GET /:id/edits` (public), `GET /:id/edit-policy`
+  (signed in), `POST /:id/edit` (creator/admin). `projectDraftController` submit accepts
+  `edit_process_id` and calls `applyEdit` (the Code of Conduct check still gates the submit).
+- **UI**: `ProjectDetail` — "Edit project" beside the status badge (only when the server's policy
+  says editable), `components/EditHistory.tsx` under the description: "Edited <date> by the
+  creator · See what changed" → newest-first entries, each field before/after (description as
+  rich text), opens automatically at `#edits` (the email link). Mounted on all four detail pages
+  (renders nothing where nothing was edited). `ProjectDraft` reads `?edit=` / `?locked=`: title
+  "Edit your project", locked title input + note, confirm copy "Your changes go live right away…",
+  submit with `edit_process_id` → back to the project at `#edits`. Progress updates (the Updates
+  box) are untouched and never notify.
+
+Verified on dev end to end: modern project created via the draft path as admin → resident
+supports → policy flips to `locked_fields: ["title"]`; resident's policy: not editable; start
+edit → draft reopened (status drafting); draft edited (title change, description, second source,
+a related process) → submit with `edit_process_id` → `changed_fields: [description, sources,
+links]` (title ignored), `processes` + `projects` rows + links updated, one edit event, supporter
+email attempted (dev Resend sandbox refuses non-owner addresses — the send path ran; prod's
+domain is verified); no-op resubmit → `changed_fields: []`, still one edit. Browser: signed out,
+"Edited September 3, 2026 by the creator · See what changed" with before/after; as the creator,
+Edit project → "Edit your project", title disabled with the lock note. Fixed on the way: the new
+hooks in ProjectDetail sat below the loading early-return (hook-order crash) — moved up.
+Backend + UI tsc, vite build, `tests/unit` green. Test project archived; uitest sessions deleted.
+
+---
+
 ## Vercel builds: lockfile installs (npm ci) — 2026-09-03
 
 Two consecutive Vercel builds of `50dd0d9` sat 5+ minutes and were cancelled (earlier builds

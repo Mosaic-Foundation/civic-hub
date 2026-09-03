@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { getAuthUser } from "../middleware/auth.js";
+import { applyEdit } from "../services/processEdits.js";
 import {
   createProjectDraft,
   getProjectDraft,
@@ -165,6 +166,23 @@ export async function handleSubmitProjectDraft(
       banner_image_url: draft.banner_image_url ?? null,
       banner_image_alt: draft.banner_image_alt ?? null,
     };
+
+    // Edit of a LIVE project (creator or admin, from "Edit project"): diff
+    // against the process, apply in place, record the change, notify
+    // supporters. Nothing is re-reviewed; the Code of Conduct check above
+    // already gated this submit.
+    const editProcessId = typeof req.body?.edit_process_id === "string" ? req.body.edit_process_id : undefined;
+    if (editProcessId) {
+      const changes = await applyEdit(editProcessId, { id: user.id, email: user.email }, {
+        title: draft.title.trim(),
+        description: draft.description.trim(),
+        content,
+        links: draft.links,
+      });
+      await setProjectDraftStatus(id, "submitted");
+      res.status(200).json({ process_id: editProcessId, edited: true, changed_fields: changes.changed_fields });
+      return;
+    }
 
     // Revision of an existing submission (admin requested changes): update
     // the process in place and put it back in the queue — never a second one.

@@ -27,6 +27,43 @@ const projectAdapter: ProcessHandler = {
   draftPath: (draftId: string) => `/projects/new?draft=${encodeURIComponent(draftId)}`,
   reopenDraft: (draftId: string) => setProjectDraftStatus(draftId, "drafting"),
 
+  // Creator edits (the only type that allows them — Adam, 2026-09-03):
+  // while the project is active; the title locks once anyone supports it,
+  // because the title is what people endorsed.
+  editPolicy: async (process) => {
+    const db = getDb();
+    const { data: row } = await db.from("projects").select("status").eq("id", process.id).maybeSingle();
+    const status = (row as { status?: string } | null)?.status;
+    if (status !== "active") {
+      return { editable: false, locked_fields: [], reason: "Only an active project can be edited." };
+    }
+    const { count } = await db
+      .from("project_sentiments")
+      .select("*", { count: "exact", head: true })
+      .eq("project_id", process.id)
+      .eq("sentiment", "support");
+    return { editable: true, locked_fields: (count ?? 0) > 0 ? ["title"] : [] };
+  },
+  listSupporters: async (processId) => {
+    const { data } = await getDb()
+      .from("project_sentiments")
+      .select("user_id")
+      .eq("project_id", processId)
+      .eq("sentiment", "support");
+    return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
+  },
+  onEdited: async (process, changes) => {
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const c = changes.current;
+    if (typeof c.title === "string") patch.title = c.title;
+    if (typeof c.description === "string") patch.description = c.description;
+    if (Array.isArray(c.sources)) patch.sources = c.sources;
+    if ("banner_image_url" in c) patch.banner_image_url = c.banner_image_url ?? null;
+    if ("banner_image_alt" in c) patch.banner_image_alt = c.banner_image_alt ?? null;
+    const { error } = await getDb().from("projects").update(patch).eq("id", process.id);
+    if (error) throw new Error(`Projects: could not mirror edit: ${error.message}`);
+  },
+
   getAssistantConfig: () => projectAssistantConfig,
 
   // The relational `projects` row holds project state; the canonical

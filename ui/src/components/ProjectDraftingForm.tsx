@@ -24,6 +24,10 @@ interface Props {
   reviewLoading?: boolean;
   /** Per-field inline guidance served by the assistant config endpoint. */
   fieldGuidance?: AssistantFieldGuidance[];
+  /** Fields the edit policy locks (a supported project's title). */
+  lockedFields?: string[];
+  /** Live values to display for locked fields. */
+  lockedValues?: { title?: string };
 }
 
 const PLACEHOLDERS = {
@@ -80,7 +84,10 @@ export default function ProjectDraftingForm({
   disabled,
   reviewLoading,
   fieldGuidance,
+  lockedFields = [],
+  lockedValues,
 }: Props) {
+  const titleLocked = lockedFields.includes("title");
   // Per-FIELD debounce timers: a single shared timer silently dropped a
   // field's save when the user moved to another field within 800ms —
   // the form kept the text but the server never received it.
@@ -111,16 +118,36 @@ export default function ProjectDraftingForm({
           <label htmlFor="draft-title" className="form-label">
             Project name <span className="required">*</span>
           </label>
-          <input
-            id="draft-title"
-            type="text"
-            className="form-input"
-            defaultValue={draft.title}
-            onChange={handleChange("title")}
-            placeholder={PLACEHOLDERS.title}
-            maxLength={200}
-            disabled={disabled}
-          />
+          {titleLocked ? (
+            // Locked: show the LIVE title (the draft may carry a stale one),
+            // read-only. The server ignores title changes anyway; this keeps
+            // the form honest about what the project is called.
+            <input
+              id="draft-title"
+              type="text"
+              className="form-input"
+              value={lockedValues?.title ?? draft.title}
+              readOnly
+              disabled
+              aria-describedby="draft-title-locked"
+            />
+          ) : (
+            <input
+              id="draft-title"
+              type="text"
+              className="form-input"
+              defaultValue={draft.title}
+              onChange={handleChange("title")}
+              placeholder={PLACEHOLDERS.title}
+              maxLength={200}
+              disabled={disabled}
+            />
+          )}
+          {titleLocked && (
+            <p id="draft-title-locked" className="form-hint">
+              The title is locked because residents have already supported this project under it.
+            </p>
+          )}
           <FieldGuide guidance={fieldGuidance} field="title" />
         </div>
 

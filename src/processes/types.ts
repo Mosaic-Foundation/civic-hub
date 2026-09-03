@@ -12,6 +12,25 @@ import type { BriefContent } from "../modules/civic.brief/index.js";
 import type { SchemaRequirement } from "../db/schemaContract.js";
 import type { AssistantTypeConfig } from "../modules/civic.assistant/index.js";
 
+/**
+ * Whether — and which parts of — a live process its creator may edit.
+ * Declared per type; a type without `editPolicy` is not editable at all.
+ * `locked_fields` names submitted fields that must not change (a project's
+ * title once anyone supports it). `reason` is shown when not editable.
+ */
+export interface EditPolicy {
+  editable: boolean;
+  locked_fields: string[];
+  reason?: string;
+}
+
+/** One applied edit — what changed, before and after, per field. */
+export interface EditChangeSet {
+  changed_fields: string[];
+  previous: Record<string, unknown>;
+  current: Record<string, unknown>;
+}
+
 /** Open Graph-style preview of one process page. */
 export interface ShareMeta {
   title: string;
@@ -59,6 +78,29 @@ export interface ProcessHandler {
    * declares what it owns; no page enumerates process types.
    */
   describeSubmission?(source: SubmissionSource): SubmissionField[];
+
+  /**
+   * Optional: opt this type into creator edits of a LIVE process (see
+   * services/processEdits.ts). Only projects declare it today — every other
+   * type is uneditable once submitted, by decision (Adam, 2026-09-03).
+   * The handler owns the facts (its child table's status, support count),
+   * so it decides; the shared service enforces, diffs, records, notifies.
+   */
+  editPolicy?(process: Process): Promise<EditPolicy> | EditPolicy;
+
+  /**
+   * Optional: user ids to notify when the substance of this process is
+   * edited (a project's supporters). Progress updates never trigger this —
+   * only edits to what people signed on to.
+   */
+  listSupporters?(processId: string): Promise<string[]>;
+
+  /**
+   * Optional: mirror an applied edit into the type's own table (projects
+   * keep title/description/sources/banner on `projects`). The shared service
+   * has already updated the `processes` row and the creator's links.
+   */
+  onEdited?(process: Process, changes: EditChangeSet): Promise<void>;
 
   /**
    * Optional: what a social-media preview of one of this type's pages should

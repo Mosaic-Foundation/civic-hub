@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useDraftFlow } from "../hooks/useDraftFlow";
@@ -14,6 +14,7 @@ import {
 } from "../services/api";
 import "./ProjectDraft.css";
 import type { ProposedLink } from "../services/api";
+import { getProjectDetail } from "../services/api";
 
 /**
  * ONE creation flow — the drafting form IS the page. No path choice: AI
@@ -49,6 +50,20 @@ export default function ProjectDraft() {
   const [searchParams] = useSearchParams();
   const resumeDraftId = searchParams.get("draft");
   const reviseReviewId = searchParams.get("review");
+  // Edit of a LIVE project (from "Edit project"): same reopened draft, but
+  // submit applies the diff in place, records it, and notifies supporters.
+  const editProcessId = searchParams.get("edit");
+  const lockedFields = (searchParams.get("locked") ?? "").split(",").filter(Boolean);
+  const [lockedValues, setLockedValues] = useState<{ title?: string } | undefined>(undefined);
+  useEffect(() => {
+    if (!editProcessId || lockedFields.length === 0) return;
+    let cancelled = false;
+    getProjectDetail(editProcessId)
+      .then((p) => { if (!cancelled) setLockedValues({ title: p.title }); })
+      .catch(() => { /* the input falls back to the draft's title */ });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editProcessId, searchParams.get("locked")]);
 
   const flow = useDraftFlow<ProjectDraftType>({
     processType: "civic.project",
@@ -112,6 +127,11 @@ export default function ProjectDraft() {
     setSubmitting(true);
     flow.setError(null);
     try {
+      if (editProcessId) {
+        await apiSubmitProjectDraft(draft.id, { edit_process_id: editProcessId });
+        navigate(`/project/${editProcessId}#edits`);
+        return;
+      }
       const result = await apiSubmitProjectDraft(draft.id, reviseReviewId ? { review_id: reviseReviewId } : undefined);
       if (result.auto_approved) {
         navigate(`/project/${result.process_id}`);
@@ -138,7 +158,7 @@ export default function ProjectDraft() {
       <DraftShell
         backTo="/projects"
         backLabel="Projects"
-        title={reviseReviewId ? "Revise your project" : "Start a project"}
+        title={editProcessId ? "Edit your project" : reviseReviewId ? "Revise your project" : "Start a project"}
         processType="civic.project"
         formVersion={draft?.updated_at ?? null}
         error={flow.error}
@@ -161,6 +181,8 @@ export default function ProjectDraft() {
           onImageChange={handleImageChange}
           onReview={flow.handleReview}
           onSubmit={handleSubmit}
+          lockedFields={lockedFields}
+          lockedValues={lockedValues}
           disabled={submitting}
           reviewLoading={flow.reviewing}
           fieldGuidance={flow.config?.field_guidance}
@@ -184,7 +206,7 @@ export default function ProjectDraft() {
               &times;
             </button>
             <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "var(--font-size-xl)", marginBottom: "var(--space-md)" }}>
-              Submit your project
+              {editProcessId ? "Save your changes" : "Submit your project"}
             </h2>
             <div className="confirm-preview">
               <h3 className="confirm-title">{draft.title}</h3>
@@ -194,9 +216,11 @@ export default function ProjectDraft() {
             </div>
 
             <p className="confirm-finality-warning">
-              {isAdmin
-                ? "Once submitted, your project cannot be edited. Please make sure everything looks the way you want it before submitting."
-                : "Your project will be submitted for review before going live. You'll be notified when an admin has reviewed it."}
+              {editProcessId
+                ? "Your changes go live right away. The previous version stays visible on the project page under \"See what changed\", and residents who support this project will be told it was edited."
+                : isAdmin
+                  ? "Once submitted, your project can only be changed through Edit project, which keeps a visible history of every change."
+                  : "Your project will be submitted for review before going live. You'll be notified when an admin has reviewed it."}
             </p>
 
             {draft.assistant_helped && (

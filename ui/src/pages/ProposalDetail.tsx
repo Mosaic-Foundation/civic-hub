@@ -15,6 +15,7 @@ import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
 import RichText from "../components/RichText";
+import EditHistory from "../components/EditHistory";
 
 
 function formatDate(iso: string): string {
@@ -104,6 +105,7 @@ export default function ProposalDetail() {
       {proposal.description && (
         <RichText className="process-description" text={proposal.description} />
       )}
+      <EditHistory processId={proposal.id} />
 
       <div className="process-meta">
         <Creator

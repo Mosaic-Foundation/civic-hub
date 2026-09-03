@@ -568,6 +568,39 @@ export function submitDraft(
  *  back into the queue instead of a second process being created. */
 export interface SubmitDraftOptions {
   review_id?: string;
+  /** Edit of a LIVE process (from "Edit project"): apply in place, record, notify. */
+  edit_process_id?: string;
+}
+
+// --- Creator edits of a live process (universal /process/:id routes) ---
+
+export interface EditPolicy {
+  editable: boolean;
+  locked_fields: string[];
+  reason?: string;
+}
+
+export interface ProcessEdit {
+  id: string;
+  at: string;
+  editor_role: "creator" | "admin";
+  changed_fields: string[];
+  previous: Record<string, unknown>;
+  current: Record<string, unknown>;
+}
+
+export function getEditPolicy(processId: string): Promise<EditPolicy> {
+  return request("GET", `/process/${processId}/edit-policy`);
+}
+
+export function startProcessEdit(
+  processId: string,
+): Promise<{ draft_id: string; draft_path: string; locked_fields: string[] }> {
+  return request("POST", `/process/${processId}/edit`);
+}
+
+export function listProcessEdits(processId: string): Promise<{ edits: ProcessEdit[] }> {
+  return request("GET", `/process/${processId}/edits`);
 }
 
 // --- Vote Drafts (AI-augmented vote drafting) ---

@@ -18,6 +18,7 @@ import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
 import RichText from "../components/RichText";
+import EditHistory from "../components/EditHistory";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -111,6 +112,7 @@ export default function Process() {
 
       {/* Plain description (always shown) */}
       <RichText className="process-description" text={process.description} />
+      <EditHistory processId={process.id} />
 
       <div className="process-meta">
         <Creator
