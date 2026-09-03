@@ -96,6 +96,19 @@ export interface ProcessHandler {
   listSupporters?(processId: string): Promise<string[]>;
 
   /**
+   * Optional: make a fresh draft, owned by `editorId`, prefilled from a LIVE
+   * process — for editing a process that has no draft on record (reviewed
+   * before drafts were recorded, 2026-09-02) or when the editor is not the
+   * creator (an admin editing someone's project must not write into the
+   * creator's draft). Returns the new draft id.
+   */
+  draftFromProcess?(
+    process: Process,
+    editorId: string,
+    links: Array<{ to_id: string; relation: string }>,
+  ): Promise<string>;
+
+  /**
    * Optional: the inverse of listSupporters — every process of this type
    * the given user supports. Drives the account-menu badge for supporters
    * of an edited process (services/editNotifications.ts).

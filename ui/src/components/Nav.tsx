@@ -320,9 +320,13 @@ export default function Nav() {
                               selectMenuItem(() => {
                                 // Opening any of them clears the badge — the
                                 // page carries the full history from there.
-                                markEditsSeen().catch(() => {});
+                                // Stamp BEFORE navigating: the route change
+                                // re-polls, and a poll that raced the stamp
+                                // would bring the dot straight back.
                                 setEditNotifs([]);
-                                navigate(n.href);
+                                markEditsSeen()
+                                  .catch(() => {})
+                                  .finally(() => navigate(n.href));
                               })
                             }
                           >

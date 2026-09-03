@@ -16,10 +16,15 @@
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
 import { getDb } from "../db/client.js";
+import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { getProject, listProjectUpdates } from "../modules/civic.projects/index.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import { projectAssistantConfig } from "./projectAssistantConfig.js";
-import { setProjectDraftStatus } from "../modules/civic.project_drafts/index.js";
+import {
+  createProjectDraft,
+  setProjectDraftStatus,
+  updateProjectDraft,
+} from "../modules/civic.project_drafts/index.js";
 
 const projectAdapter: ProcessHandler = {
   type: "civic.project",
@@ -51,6 +56,21 @@ const projectAdapter: ProcessHandler = {
       .eq("project_id", processId)
       .eq("sentiment", "support");
     return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
+  },
+  draftFromProcess: async (process, editorId, links) => {
+    const project = await getProject(process.id);
+    const content = (process.content ?? {}) as Record<string, unknown>;
+    const draft = await createProjectDraft({ user_id: editorId });
+    await updateProjectDraft(draft.id, {
+      title: process.title,
+      description: project?.description ?? process.description ?? "",
+      sources: (project?.sources ?? (content.sources as string[] | undefined) ?? []).join("\n"),
+      banner_image_url: project?.banner_image_url ?? (content.banner_image_url as string | null) ?? null,
+      banner_image_alt: project?.banner_image_alt ?? (content.banner_image_alt as string | null) ?? null,
+      links: validateLinkSet(process.id, links),
+      skip_modified_flag: true,
+    });
+    return draft.id;
   },
   listSupportedBy: async (userId) => {
     const { data } = await getDb()

@@ -933,6 +933,19 @@ export async function countReviewNotifications(
   return count ?? 0;
 }
 
+/**
+ * Record the draft a review's process is edited from, for reviews that
+ * predate `draft_id` (before 2026-09-02). Only ever fills a null.
+ */
+export async function setReviewDraftId(reviewId: string, draftId: string): Promise<void> {
+  const { error } = await getDb()
+    .from("process_reviews")
+    .update({ draft_id: draftId })
+    .eq("id", reviewId)
+    .is("draft_id", null);
+  if (error) throw new Error(`Failed to record draft on review: ${error.message}`);
+}
+
 /** Stamp reviews_seen_at = now() for the user, clearing their badge. */
 export async function markReviewsSeen(userId: string): Promise<void> {
   const { error } = await getDb()

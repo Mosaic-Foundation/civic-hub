@@ -27,7 +27,7 @@ import {
   processDetailPath,
   reopenDraftForRevision,
 } from "../processes/registry.js";
-import { getReviewByProcessId } from "../modules/civic.review/service.js";
+import { getReviewByProcessId, setReviewDraftId } from "../modules/civic.review/service.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { createEdges, getEdgesFor } from "./processLinks.js";
 import { getProcess } from "./processService.js";
@@ -78,18 +78,37 @@ export async function startEdit(
 ): Promise<{ draft_id: string; draft_path: string; locked_fields: string[] }> {
   const policy = await getEditPolicy(process, editor);
   if (!policy.editable) throw new EditError(policy.reason ?? "Not editable", 403);
-  const review = await getReviewByProcessId(process.id);
-  if (!review?.draft_id) {
-    throw new EditError("This item predates editing — it has no draft on record.", 409);
-  }
   const type = process.definition.type;
-  const base = draftPathFor(type, review.draft_id);
+  const handler = getProcessHandler(type);
+  const review = await getReviewByProcessId(process.id);
+
+  // The creator edits in their own recorded draft. Anyone else (an admin),
+  // or a process reviewed before drafts were recorded, gets a fresh draft
+  // prefilled from the live process — never someone else's draft.
+  let draftId: string | null =
+    review?.draft_id && review.creator_id === editor.id ? review.draft_id : null;
+  if (!draftId) {
+    if (!handler?.draftFromProcess) {
+      throw new EditError("This item has no draft on record and cannot be edited.", 409);
+    }
+    const edges = await getEdgesFor(process.id);
+    const links = edges
+      .filter((e) => e.from_id === process.id && e.created_by === process.createdBy)
+      .map((e) => ({ to_id: e.to_id, relation: e.relation }));
+    draftId = await handler.draftFromProcess(process, editor.id, links);
+    if (review && !review.draft_id && review.creator_id === editor.id) {
+      await setReviewDraftId(review.id, draftId);
+    }
+  } else {
+    await reopenDraftForRevision(type, draftId);
+  }
+
+  const base = draftPathFor(type, draftId);
   if (!base) throw new EditError("This kind of process has no drafting page.", 409);
-  await reopenDraftForRevision(type, review.draft_id);
   const sep = base.includes("?") ? "&" : "?";
   const locked = policy.locked_fields.length ? `&locked=${encodeURIComponent(policy.locked_fields.join(","))}` : "";
   return {
-    draft_id: review.draft_id,
+    draft_id: draftId,
     draft_path: `${base}${sep}edit=${encodeURIComponent(process.id)}${locked}`,
     locked_fields: policy.locked_fields,
   };
