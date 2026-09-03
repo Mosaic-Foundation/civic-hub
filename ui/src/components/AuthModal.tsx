@@ -304,7 +304,7 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
         className="intro-modal auth-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Create an account to participate"
+        aria-label="Sign in or create an account"
       >
         <button
           ref={closeRef}
@@ -325,15 +325,30 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
               and we'll email you the moment access opens up.
             </p>
             <WaitlistForm initialEmail={email} />
+            <button
+              type="button"
+              className="auth-back-link"
+              onClick={() => { setBetaBlocked(false); setError(null); }}
+            >
+              Back to sign in
+            </button>
           </div>
         )}
 
         {/* Step 1: Email */}
         {step === "email" && !betaBlocked && (
           <form onSubmit={handleRequestCode}>
-            <h2 className="auth-title">Create an account to participate</h2>
+            {/* One passwordless flow serves returning and new users alike
+                (the server only learns which after the code verifies), so
+                the title names both. The supporting copy is beta-aware:
+                during the private beta it speaks to invited testers and
+                points everyone else at the waitlist; when beta_mode flips
+                off the same step reads as plain sign-in / sign-up. */}
+            <h2 className="auth-title">Sign in or create an account</h2>
             <p className="auth-description">
-              Enter your email to get started. We'll send you a verification code.
+              {hub.beta_mode
+                ? "Beta testers: enter the email address you were invited with and we'll send you a one-time code."
+                : "Enter your email and we'll send you a one-time code. No password needed."}
             </p>
 
             <div className="form-field">
@@ -359,6 +374,25 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
             >
               {loading ? "Sending..." : "Continue"}
             </button>
+
+            {hub.beta_mode ? (
+              <p className="auth-footnote">
+                Not on the beta list yet?{" "}
+                <button
+                  type="button"
+                  className="auth-inline-link"
+                  onClick={() => { setBetaBlocked(true); setError(null); }}
+                  disabled={loading}
+                >
+                  Join the waitlist
+                </button>
+              </p>
+            ) : (
+              <p className="auth-footnote">
+                New here? Same step — your account is created when you verify
+                the code.
+              </p>
+            )}
           </form>
         )}
 

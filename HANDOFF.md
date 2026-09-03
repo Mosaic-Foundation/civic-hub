@@ -4,6 +4,32 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Sign-in modal names both cases: "Sign in or create an account" — 2026-09-03
+
+Adam (smoke test, step 2): the nav's Sign in button opened a box titled "Create an account to
+participate", which reads as sign-up, not sign-in. One passwordless flow serves both (email →
+code; the server only learns new-vs-returning after the code verifies, when newcomers get the
+residency gate), so the modal now names both cases and lets the beta flag pick the supporting
+copy — flip `VITE_BETA_MODE` off at launch and the same component reads as plain sign-in/sign-up
+with no code change:
+
+- Title (and the dialog's aria-label): **Sign in or create an account**.
+- Beta (`hub.beta_mode`): "Beta testers: enter the email address you were invited with and we'll
+  send you a one-time code." Footnote under Continue: "Not on the beta list yet? Join the
+  waitlist" — opens the existing in-modal waitlist panel (previously reachable only by having an
+  unlisted email rejected), which gained a "Back to sign in" link so it is no longer a dead end.
+- Production: "Enter your email and we'll send you a one-time code. No password needed."
+  Footnote: "New here? Same step — your account is created when you verify the code."
+- `AuthModal.tsx` only, plus `.auth-footnote` / `.auth-inline-link` in App.css. Same component
+  everywhere it opens (nav, welcome dialog, every requireAuth action on every page), so it holds
+  for all process types by construction.
+
+Verified on dev: production variant on the plain UI server (5173), beta variant on the
+`civic-ui-beta` launch config (5174, `VITE_BETA_MODE=true`); waitlist link → panel → Back to
+sign in round trip; 375px: no horizontal overflow. UI tsc + vite build clean.
+
+---
+
 ## What a new process type gets for free, and what it must declare — 2026-09-02
 
 Adam asked for today's fixes to hold for every type, present and future. Verified on dev for

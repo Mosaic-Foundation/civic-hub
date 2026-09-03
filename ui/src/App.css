@@ -1927,6 +1927,30 @@
   color: var(--primary-color);
 }
 
+/* Footnote under the email step's Continue button: the "other case"
+   line (waitlist during beta, sign-up reassurance after). */
+.auth-footnote {
+  margin: 0.85rem 0 0;
+  color: var(--muted-text);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.auth-inline-link {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.auth-inline-link:hover:not(:disabled) {
+  color: var(--text-color);
+}
+
 .auth-checkbox-label {
   display: flex;
   align-items: flex-start;
