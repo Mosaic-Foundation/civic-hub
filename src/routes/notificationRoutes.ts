@@ -4,6 +4,10 @@ import {
   handleGetReviewNotifications,
   handleMarkReviewsSeen,
 } from "../controllers/reviewController.js";
+import {
+  handleGetEditNotifications,
+  handleMarkEditsSeen,
+} from "../controllers/editNotificationController.js";
 
 const router = Router();
 
@@ -13,5 +17,10 @@ router.use(requireAuth);
 
 router.get("/reviews/count", handleGetReviewNotifications);
 router.post("/reviews/seen", handleMarkReviewsSeen);
+
+// Edited processes this user supports — the supporter's badge (Adam,
+// 2026-09-03), for people not on the email digest.
+router.get("/edits", handleGetEditNotifications);
+router.post("/edits/seen", handleMarkEditsSeen);
 
 export default router;

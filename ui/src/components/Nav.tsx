@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getReviewNotificationCount } from "../services/api";
+import {
+  getReviewNotificationCount,
+  getEditNotifications,
+  markEditsSeen,
+  type EditNotification,
+} from "../services/api";
 import AuthModal from "./AuthModal";
 import SearchBar from "./SearchBar";
 import hub from "../config/hub";
@@ -65,6 +70,9 @@ export default function Nav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
+  // Supporter's badge: projects this user supports that were edited since
+  // they last looked (Adam, 2026-09-03 — for people not on the digest).
+  const [editNotifs, setEditNotifs] = useState<EditNotification[]>([]);
   const avatarRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -168,6 +176,13 @@ export default function Nav() {
         .catch(() => {
           /* best-effort — a failed poll shouldn't disrupt the nav */
         });
+      getEditNotifications()
+        .then((r) => {
+          if (active) setEditNotifs(r.items);
+        })
+        .catch(() => {
+          /* same: best-effort */
+        });
     };
     fetchCount();
     const interval = setInterval(fetchCount, 60_000);
@@ -257,10 +272,10 @@ export default function Nav() {
                   onClick={() => setMenuOpen((v) => !v)}
                 >
                   <span aria-hidden="true">{initial}</span>
-                  {notifCount > 0 && (
+                  {notifCount + editNotifs.length > 0 && (
                     <span
                       className="civic-nav-avatar-dot"
-                      aria-label={`${notifCount} item${notifCount === 1 ? "" : "s"} need your attention`}
+                      aria-label={`${notifCount + editNotifs.length} item${notifCount + editNotifs.length === 1 ? "" : "s"} need your attention`}
                     />
                   )}
                 </button>
@@ -289,6 +304,36 @@ export default function Nav() {
                         <span className="civic-nav-menu-badge">{notifCount}</span>
                       )}
                     </button>
+                    {editNotifs.length > 0 && (
+                      <div className="civic-nav-menu-group" role="presentation">
+                        <div className="civic-nav-menu-group-label">
+                          Projects you support were edited
+                          <span className="civic-nav-menu-badge">{editNotifs.length}</span>
+                        </div>
+                        {editNotifs.map((n) => (
+                          <button
+                            key={n.process_id}
+                            type="button"
+                            role="menuitem"
+                            className="civic-nav-menu-item civic-nav-menu-item--sub"
+                            onClick={() =>
+                              selectMenuItem(() => {
+                                // Opening any of them clears the badge — the
+                                // page carries the full history from there.
+                                markEditsSeen().catch(() => {});
+                                setEditNotifs([]);
+                                navigate(n.href);
+                              })
+                            }
+                          >
+                            {n.title}
+                            <span className="civic-nav-menu-sub-note">
+                              {n.edits === 1 ? "1 edit" : `${n.edits} edits`} · see what changed
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <button
                       type="button"
                       role="menuitem"

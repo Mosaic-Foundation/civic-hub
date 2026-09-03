@@ -60,7 +60,7 @@ export interface SchemaRequirement {
 export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "processes", columns: ["id", "type", "status", "state", "review_id"], owner: "core/processService" },
   { table: "events", columns: ["id", "event_type", "process_id", "data"], owner: "core/eventStore" },
-  { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at"], owner: "civic.auth" },
+  { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at", "edits_seen_at"], owner: "civic.auth" },
   { table: "sessions", owner: "civic.auth" },
   { table: "pending_verifications", columns: ["attempts", "locked_until"], owner: "civic.auth" },
   { table: "hub_settings", columns: ["key", "value"], owner: "core/hubSettings" },

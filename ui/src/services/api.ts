@@ -53,6 +53,7 @@ const CACHEABLE_PATHS = new Set([
   "/brief",
   "/auth/me",
   "/notifications/reviews/count",
+  "/notifications/edits",
 ]);
 const getCache = new Map<string, { at: number; data: unknown }>();
 
@@ -2289,6 +2290,24 @@ export function getReviewNotificationCount(): Promise<{ count: number }> {
 
 export function markReviewsSeen(): Promise<{ ok: boolean }> {
   return request("POST", "/notifications/reviews/seen");
+}
+
+/** Edited processes this user supports, since they last looked. */
+export interface EditNotification {
+  process_id: string;
+  type: string;
+  title: string;
+  href: string;
+  edits: number;
+  latest_at: string;
+}
+
+export function getEditNotifications(): Promise<{ count: number; items: EditNotification[] }> {
+  return request("GET", "/notifications/edits");
+}
+
+export function markEditsSeen(): Promise<{ ok: boolean }> {
+  return request("POST", "/notifications/edits/seen");
 }
 
 export function getReviewDetail(reviewId: string): Promise<ReviewDetail> {

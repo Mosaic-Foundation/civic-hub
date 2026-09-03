@@ -35,6 +35,17 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   summary "A project you support was edited (N times)… see what changed", link to `#edits`,
   in the Projects section at the user's own cadence. Non-subscribers get nothing by email; the
   page carries the history. A progress update never produces this row.
+- **In-app badge for supporters** (Adam: "does the person get a notification… like the admin
+  does… in case they're not signed up for the digest"). **Migration**
+  `supabase/migrations/20260903230000_edits_seen_at.sql` — `users.edits_seen_at TIMESTAMPTZ`
+  (schema contract updated; `/health` reports the gap until applied — **apply to dev, then prod
+  BEFORE pushing**). `services/editNotifications.ts`: the handler seam `listSupportedBy(userId)`
+  (projectAdapter: `project_sentiments` support rows) → edit events on those processes after
+  `edits_seen_at`, not by the user, grouped per process. `GET /notifications/edits` →
+  `{count, items[{process_id,title,href(#edits),edits,latest_at}]}`, `POST /notifications/edits/seen`.
+  Nav: the avatar dot now counts reviews + edited-supported projects; the account menu shows a
+  "Projects you support were edited" group listing them ("N edits · see what changed"); opening
+  one stamps seen and clears the group. Polled with the review count (60 s, 30 s GET cache).
 - **Routes** on `/process` (universal): `GET /:id/edits` (public), `GET /:id/edit-policy`
   (signed in), `POST /:id/edit` (creator/admin). `projectDraftController` submit accepts
   `edit_process_id` and calls `applyEdit` (the Code of Conduct check still gates the submit).

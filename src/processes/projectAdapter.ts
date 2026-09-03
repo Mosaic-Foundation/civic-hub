@@ -52,6 +52,14 @@ const projectAdapter: ProcessHandler = {
       .eq("sentiment", "support");
     return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
   },
+  listSupportedBy: async (userId) => {
+    const { data } = await getDb()
+      .from("project_sentiments")
+      .select("project_id")
+      .eq("user_id", userId)
+      .eq("sentiment", "support");
+    return ((data ?? []) as Array<{ project_id: string }>).map((r) => r.project_id);
+  },
   onEdited: async (process, changes) => {
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     const c = changes.current;

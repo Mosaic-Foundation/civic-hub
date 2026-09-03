@@ -96,6 +96,13 @@ export interface ProcessHandler {
   listSupporters?(processId: string): Promise<string[]>;
 
   /**
+   * Optional: the inverse of listSupporters — every process of this type
+   * the given user supports. Drives the account-menu badge for supporters
+   * of an edited process (services/editNotifications.ts).
+   */
+  listSupportedBy?(userId: string): Promise<string[]>;
+
+  /**
    * Optional: mirror an applied edit into the type's own table (projects
    * keep title/description/sources/banner on `projects`). The shared service
    * has already updated the `processes` row and the creator's links.
