@@ -23,6 +23,7 @@ export type {
 
 export {
   assembleDigestForUser,
+  buildEditItems,
   formatDigestHtml,
   formatDigestText,
 } from "./service.js";

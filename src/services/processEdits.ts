@@ -7,8 +7,9 @@
 // every edit is recorded as a civic.process.updated event carrying the
 // before/after of each changed field (the event log is the source of
 // truth — no new table), the page shows "Edited … · see what changed", and
-// the handler's supporters get an email. A progress update (project
-// updates log) is not an edit and never triggers any of this.
+// supporters who take the digest get one line about it in their next
+// digest (never a per-edit email). A progress update (project updates log)
+// is not an edit and never triggers any of this.
 //
 // Flow: POST /process/:id/edit reopens the draft the process came from
 // (the same reopen the revise flow uses) and sends the creator to the real
@@ -31,9 +32,6 @@ import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { createEdges, getEdgesFor } from "./processLinks.js";
 import { getProcess } from "./processService.js";
 import { isAdminEmail } from "../middleware/auth.js";
-import { sendEmail } from "../utils/email.js";
-import { uiBaseUrl } from "../utils/baseUrl.js";
-import { stripMarkdown } from "../shared/markdown.js";
 
 export interface Editor {
   id: string;
@@ -216,9 +214,10 @@ export async function applyEdit(
     },
   });
 
-  void notifySupporters(process, editor, changes, editorRole).catch((err) =>
-    console.warn(`[edits] supporter notification failed for ${processId}:`, err),
-  );
+  // No immediate email (Adam, 2026-09-03: not "every time any little edit
+  // has been made"). Supporters who take the digest get ONE line per edited
+  // project in their next digest — see civic.digest buildEditItems, which
+  // reads the same event and the handler's listSupporters.
 
   return changes;
 }
@@ -234,47 +233,6 @@ const FIELD_LABELS: Record<string, string> = {
 
 export function labelForField(field: string): string {
   return FIELD_LABELS[field] ?? field.replace(/_/g, " ");
-}
-
-async function notifySupporters(
-  process: Process,
-  editor: Editor,
-  changes: EditChangeSet,
-  editorRole: "creator" | "admin",
-): Promise<void> {
-  const handler = getProcessHandler(process.definition.type);
-  if (!handler?.listSupporters) return;
-  const ids = (await handler.listSupporters(process.id)).filter((id) => id && id !== editor.id);
-  if (ids.length === 0) return;
-  const { data } = await getDb().from("users").select("id, email, full_name, display_name").in("id", ids);
-  const title = changes.current.title ?? process.title;
-  const url = `${uiBaseUrl()}${processDetailPath(process.definition.type, process.id)}#edits`;
-  const what = changes.changed_fields.map(labelForField).join(", ");
-  const who = editorRole === "creator" ? "its creator" : "a hub admin";
-  const noun = process.definition.type.replace(/^civic\./, "").replace(/_/g, " ");
-  const preview =
-    typeof changes.current.description === "string"
-      ? stripMarkdown(changes.current.description).slice(0, 300)
-      : "";
-  for (const u of (data ?? []) as Array<{ id: string; email: string; full_name: string | null; display_name: string | null }>) {
-    if (!u.email) continue;
-    const name = u.full_name || u.display_name || "Neighbor";
-    const result = await sendEmail({
-      to: u.email,
-      subject: `"${title}" was edited — see what changed`,
-      html: `<p>Hi ${escapeHtml(name)},</p>
-<p>The ${escapeHtml(noun)} you support, <strong>${escapeHtml(String(title))}</strong>, was edited by ${who}. Changed: ${escapeHtml(what)}.</p>
-${preview ? `<p><em>${escapeHtml(preview)}${preview.length === 300 ? "…" : ""}</em></p>` : ""}
-<p>Every edit is kept on the page, so you can see exactly what changed since you supported it:</p>
-<p><a href="${url}">${url}</a></p>`,
-      text: `Hi ${name},\n\nThe ${noun} you support, "${title}", was edited by ${who}. Changed: ${what}.\n\nSee what changed: ${url}`,
-    });
-    if (!result.sent) console.warn(`[edits] email to ${u.email} not sent: ${result.error ?? "unknown"}`);
-  }
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 export interface PublicEdit {

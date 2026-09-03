@@ -19,12 +19,15 @@
 
 import { Request, Response } from "express";
 import { getEventsSince } from "../events/eventStore.js";
+import { getProcess } from "../services/processService.js";
+import { getProcessHandler, processDetailPath } from "../processes/registry.js";
 import type { CivicEvent } from "../models/event.js";
 import {
   getAllProcesses,
   getNonPublicProcessIds,
 } from "../services/processService.js";
 import {
+  buildEditItems,
   assembleDigestForUser,
   buildUnsubscribeUrl,
   verifyUnsubscribeToken,
@@ -243,6 +246,37 @@ export async function handleRunDigest(
       }
     }
 
+    // Edited processes in the window → who supports them (the type's own
+    // listSupporters, resolved once per run), for the personal "a project
+    // you support was edited" digest line. Only types that opt into edits
+    // ever produce these events, so this is empty on most runs.
+    const editSupporters: Record<string, Set<string>> = {};
+    const editProcesses: Record<string, { title: string; href: string }> = {};
+    {
+      const editedIds = new Set<string>();
+      for (const e of allRecent) {
+        const edit = (e.data as { edit?: { changed_fields?: unknown } } | null)?.edit;
+        if (e.process_id && edit && Array.isArray(edit.changed_fields) && edit.changed_fields.length) {
+          editedIds.add(e.process_id);
+        }
+      }
+      for (const id of editedIds) {
+        if (hiddenProcessIds.has(id)) continue;
+        try {
+          const proc = await getProcess(id);
+          const handler = proc ? getProcessHandler(proc.definition.type) : undefined;
+          if (!proc || !handler?.listSupporters) continue;
+          editSupporters[id] = new Set(await handler.listSupporters(id));
+          editProcesses[id] = {
+            title: proc.title,
+            href: `${uiBase}${processDetailPath(proc.definition.type, id)}`,
+          };
+        } catch (err) {
+          console.warn(`[digest] supporter lookup failed for ${id}: ${err instanceof Error ? err.message : err}`);
+        }
+      }
+    }
+
     const now = Date.now();
 
     for (const user of users) {
@@ -301,6 +335,14 @@ export async function handleRunDigest(
           events: windowEvents,
           hub,
           since,
+          personal_items: buildEditItems({
+            user_id: user.id,
+            events: allRecent
+              .filter((e) => e.timestamp > since)
+              .map((e) => ({ ...toDigestEvent(e, uiBase), actor: e.actor })),
+            supporters: editSupporters,
+            processes: editProcesses,
+          }),
           process_titles: processTitles,
           process_thumbnails: processThumbnails,
         });

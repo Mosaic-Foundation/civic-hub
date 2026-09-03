@@ -28,6 +28,63 @@ import type {
   DigestItem,
 } from "./models.js";
 
+// --- Personal items: "a project you support was edited" ---------------------
+
+/**
+ * One digest row per edited process THIS user supports (never the editor
+ * themself), however many edits it had in the window. Adam (2026-09-03):
+ * no per-edit emails — "I don't want an email firing to everyone who has
+ * engaged with a project every time any little edit has been made." The
+ * page carries the full history; the digest carries one line, at the
+ * user's own cadence. Pure: the host prefetches supporters and titles.
+ */
+export function buildEditItems(input: {
+  user_id: string;
+  events: DigestEvent[];
+  /** process_id → user ids who support it (from the type's listSupporters). */
+  supporters: Record<string, ReadonlySet<string> | string[]>;
+  /** process_id → { title, href (absolute, without #edits) }. */
+  processes: Record<string, { title: string; href: string }>;
+}): DigestItem[] {
+  const byProcess = new Map<string, { count: number; latest: string; editors: Set<string> }>();
+  for (const e of input.events) {
+    if (e.event_type !== "civic.process.updated") continue;
+    const edit = (e.data as { edit?: { changed_fields?: unknown } } | null)?.edit;
+    if (!edit || !Array.isArray(edit.changed_fields) || edit.changed_fields.length === 0) continue;
+    const actor = typeof (e as { actor?: unknown }).actor === "string" ? ((e as { actor?: string }).actor as string) : "";
+    const cur = byProcess.get(e.process_id) ?? { count: 0, latest: e.timestamp, editors: new Set<string>() };
+    cur.count += 1;
+    if (e.timestamp > cur.latest) cur.latest = e.timestamp;
+    if (actor) cur.editors.add(actor);
+    byProcess.set(e.process_id, cur);
+  }
+  const items: DigestItem[] = [];
+  for (const [processId, agg] of byProcess) {
+    const supporters = input.supporters[processId];
+    const isSupporter = supporters
+      ? Array.isArray(supporters) ? supporters.includes(input.user_id) : supporters.has(input.user_id)
+      : false;
+    if (!isSupporter) continue;
+    if (agg.editors.size === 1 && agg.editors.has(input.user_id)) continue;
+    const proc = input.processes[processId];
+    if (!proc) continue;
+    items.push({
+      kind: "project-updated",
+      color: "project",
+      title: proc.title,
+      pill_label: "You support this · edited",
+      summary:
+        agg.count === 1
+          ? "A project you support was edited. Every change is kept on the page — see what changed."
+          : `A project you support was edited ${agg.count} times. Every change is kept on the page — see what changed.`,
+      action_url: `${proc.href}#edits`,
+      timestamp: agg.latest,
+      thumbnail_url: null,
+    });
+  }
+  return items;
+}
+
 // --- Assembly ---------------------------------------------------------------
 
 /**
@@ -48,6 +105,8 @@ export function assembleDigestForUser(
       eventToItem(event, activity, titles, thumbnails, input.hub.ui_base_url),
     );
   }
+
+  for (const item of input.personal_items ?? []) items.push(item);
 
   if (items.length === 0) return null;
 

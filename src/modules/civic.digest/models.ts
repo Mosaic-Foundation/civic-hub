@@ -114,6 +114,12 @@ export interface DigestAssemblyInput {
   events: DigestEvent[];
   hub: DigestHubContext;
   /**
+   * Items built for THIS user rather than from the public event stream —
+   * today: "a project you support was edited" (see buildEditItems). They
+   * ride the same sections/sort as everything else.
+   */
+  personal_items?: DigestItem[];
+  /**
    * ISO 8601 — the cut-off used to construct this digest. Purely
    * informational (printed in the footer); filtering happens before
    * assembly by the caller.

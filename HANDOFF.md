@@ -24,9 +24,17 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   draft on record), `diffEdit` (pure: per-field before/after; locked fields and
   `assistant_helped` ignored; link order irrelevant), `applyEdit` (updates `processes`, replaces
   the creator's links, calls `onEdited`, emits ONE `civic.process.updated` with
-  `data.edit = {changed_fields, previous, current, editor_role}`, emails supporters minus the
-  editor — Resend, subject `"<title>" was edited — see what changed`, link to `#edits`; a no-op
-  submit writes nothing), `listEdits` (reads the event log — no new table).
+  `data.edit = {changed_fields, previous, current, editor_role}`; a no-op submit writes
+  nothing), `listEdits` (reads the event log — no new table).
+- **Notification = the digest, not an email per edit.** Adam, on seeing the first cut: "I don't
+  want an email firing to everyone who has engaged with a project every time any little edit
+  has been made." So `applyEdit` sends nothing. `civic.digest` gained `buildEditItems` (pure,
+  `tests/unit/digestEditItems.test.ts`): for each user, one row per edited process THEY support
+  (the type's `listSupporters`, prefetched once per cron run in `digestController`), however
+  many edits it had in their window, never for the editor — "You support this · edited" pill,
+  summary "A project you support was edited (N times)… see what changed", link to `#edits`,
+  in the Projects section at the user's own cadence. Non-subscribers get nothing by email; the
+  page carries the history. A progress update never produces this row.
 - **Routes** on `/process` (universal): `GET /:id/edits` (public), `GET /:id/edit-policy`
   (signed in), `POST /:id/edit` (creator/admin). `projectDraftController` submit accepts
   `edit_process_id` and calls `applyEdit` (the Code of Conduct check still gates the submit).
@@ -43,9 +51,7 @@ Verified on dev end to end: modern project created via the draft path as admin �
 supports → policy flips to `locked_fields: ["title"]`; resident's policy: not editable; start
 edit → draft reopened (status drafting); draft edited (title change, description, second source,
 a related process) → submit with `edit_process_id` → `changed_fields: [description, sources,
-links]` (title ignored), `processes` + `projects` rows + links updated, one edit event, supporter
-email attempted (dev Resend sandbox refuses non-owner addresses — the send path ran; prod's
-domain is verified); no-op resubmit → `changed_fields: []`, still one edit. Browser: signed out,
+links]` (title ignored), `processes` + `projects` rows + links updated, one edit event; no-op resubmit → `changed_fields: []`, still one edit. Browser: signed out,
 "Edited September 3, 2026 by the creator · See what changed" with before/after; as the creator,
 Edit project → "Edit your project", title disabled with the lock note. Fixed on the way: the new
 hooks in ProjectDetail sat below the loading early-return (hook-order crash) — moved up.
