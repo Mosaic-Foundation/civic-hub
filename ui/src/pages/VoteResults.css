@@ -81,6 +81,28 @@
   color: var(--color-text);
 }
 
+/* A short terracotta rule under every section heading — the outcome
+   pages' accent, so "Summary" / "Where residents broadly agree" read as
+   parts of a document rather than bold lines on a white page. */
+.vote-results-section h2::after {
+  content: "";
+  display: block;
+  width: 2.5rem;
+  height: 3px;
+  margin-top: var(--space-xs);
+  border-radius: 2px;
+  background: var(--type-brief-rule, #c37b51);
+}
+
+/* The Summary is the record's opening statement — a tinted card, so the
+   eye lands on it first. */
+.vote-results-section--summary {
+  padding: var(--space-md) var(--space-lg);
+  background: var(--type-brief-wash, #faf0e7);
+  border-left: 4px solid var(--type-brief-rule, #c37b51);
+  border-radius: var(--radius-md);
+}
+
 .vote-results-subheading {
   font-family: var(--font-heading);
   font-size: var(--font-size-base);
@@ -240,7 +262,7 @@
   font-family: var(--font-heading);
   font-size: var(--font-size-lg);
   line-height: var(--line-height-normal);
-  color: var(--color-brand);
+  color: var(--type-brief-fg, #8c4a2b);
 }
 
 @media (max-width: 600px) {

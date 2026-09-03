@@ -204,7 +204,7 @@ export default function BriefPage() {
           reads as broken rather than empty. Participation still shows on its
           own in that case — it is a fact about the outcome, not a summary. */}
       {(summaryParagraphs.length > 0 || brief.participation_label) && (
-        <section className="vote-results-section">
+        <section className="vote-results-section vote-results-section--summary">
           {summaryParagraphs.length > 0 && <h2>Summary</h2>}
           {summaryParagraphs.map((para, i) => (
             <p key={i} style={{ whiteSpace: "pre-wrap" }}>

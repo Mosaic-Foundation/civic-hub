@@ -20,6 +20,18 @@
   padding: 0.15rem 0.5rem;
 }
 
+/* Per-type color, from the same --type-* tokens the feed cards and the
+   Outcomes list use, so a page's pill matches the card that led there. */
+.process-type-pill--vote         { background: var(--type-vote-bg);         color: var(--type-vote-fg); }
+.process-type-pill--proposal     { background: var(--type-proposal-bg);     color: var(--type-proposal-fg); }
+.process-type-pill--conversation { background: var(--type-conversation-bg); color: var(--type-conversation-fg); }
+.process-type-pill--project      { background: var(--type-project-bg);      color: var(--type-project-fg); }
+.process-type-pill--wordcloud    { background: var(--type-wordcloud-bg);    color: var(--type-wordcloud-fg); }
+.process-type-pill--announcement { background: var(--type-announcement-bg); color: var(--type-announcement-fg); }
+.process-type-pill--meeting      { background: var(--type-meeting-bg);      color: var(--type-meeting-fg); }
+.process-type-pill--brief        { background: var(--type-brief-bg);        color: var(--type-brief-fg); }
+.process-type-pill--generic      { background: var(--type-generic-bg);      color: var(--type-generic-fg); }
+
 .process-header-title {
   margin: 0;
   width: 100%;

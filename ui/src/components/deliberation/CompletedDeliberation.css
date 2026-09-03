@@ -6,12 +6,20 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  overflow: hidden;
 }
 
+/* Header band in the conversation teal (the type's own --type-* token),
+   bleeding to the card edges. */
 .completed-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.75rem;
+  margin: -1.25rem -1.25rem 0;
+  padding: 0.75rem 1.25rem;
+  background: var(--type-conversation-bg, #ddefef);
+  border-bottom: 1px solid var(--border, #e0e0e0);
 }
 
 .completed-topic {
@@ -24,9 +32,11 @@
 .completed-badge {
   font-size: 0.7rem;
   font-weight: 600;
-  color: #16a34a;
-  background: #dcfce7;
-  padding: 2px 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--type-conversation-fg, #0f5e66);
+  padding: 2px 10px;
   border-radius: 999px;
 }
 
@@ -56,6 +66,16 @@
   font-weight: 600;
   color: var(--color-text, #222);
   margin: 0 0 0.5rem 0;
+}
+
+.completed-section-title::after {
+  content: "";
+  display: block;
+  width: 2rem;
+  height: 3px;
+  margin-top: 0.25rem;
+  border-radius: 2px;
+  background: var(--type-conversation-fg, #0f5e66);
 }
 
 .completed-questions-list {

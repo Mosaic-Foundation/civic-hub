@@ -4,6 +4,34 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Share by text / email; design pass: type colors on detail pages, terracotta outcomes — 2026-09-03
+
+**Share row** (`ShareButton`): two plain-link channels added between Facebook and the sheet —
+text message (`sms:?&body=<title> <url>`) and email (`mailto:` with subject + body). The native
+share button (phones) is now labeled "Share…" — it is the route to Instagram, Snapchat, TikTok,
+Discord, iMessage, none of which accept a link from a web page any other way. No X / Reddit /
+Bluesky: not where a county hub's residents share.
+
+**Design pass** (Adam: outcomes and process pages "a little boring… add some of that
+terracotta"). All through shared styles, so every type — and the next one — inherits:
+- `components/typeColor.ts` `typeColorSlug(type)` → the `--type-<slug>-*` token family; the
+  `ProcessHeader` pill now wears its type's color (vote navy, proposal plum, conversation teal,
+  project blue, word cloud moss; unknown types → generic). New tokens in theme.css:
+  `--type-brief-bg/fg/rule/wash` = the terracotta accent scale, used by briefs and vote results.
+- Brief / vote-results page (`VoteResults.css`, `Brief.tsx/.css`): headline in terracotta; every
+  section `h2` gets a short terracotta rule; the Summary section is a tinted card
+  (`vote-results-section--summary`, accent-50 wash + accent-600 left border); "Awaiting response"
+  chip terracotta (Responded stays the feed's official-response gold, as do response cards).
+- Completed conversation card (`CompletedDeliberation.css`): header band in the conversation
+  teal bleeding to the card edges, COMPLETED badge solid teal (was Material green), section
+  titles with a short teal rule.
+- Vote page: the Results heading is a tinted band in the vote's navy tokens (`App.css`).
+
+Verified on dev: brief (pill, headline, chip, summary card, section rules), completed energy
+conversation, farm-stand vote results, café project pill. UI tsc + vite build clean.
+
+---
+
 ## Terminal actions at the bottom of every detail page — 2026-09-03
 
 Adam (signed in as admin): the project's "Mark complete" sat at the top beside the title; it

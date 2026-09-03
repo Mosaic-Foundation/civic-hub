@@ -113,6 +113,13 @@
   --type-meeting-bg: var(--ds-color-success-100);
   --type-meeting-fg: var(--ds-color-success-700);
   --type-official-response-bg: #fdf1e0;          --type-official-response-fg: #8a5a13;
+  /* Outcomes (briefs, vote results) wear the hub's terracotta — the one
+     accent the detail pages had been leaving on the table (Adam,
+     2026-09-03: "a little boring… add some of that terracotta"). */
+  --type-brief-bg: var(--ds-color-accent-100, #f4e1d2);
+  --type-brief-fg: var(--ds-color-accent-800, #8c4a2b);
+  --type-brief-rule: var(--ds-color-accent-600, #c37b51);
+  --type-brief-wash: var(--ds-color-accent-50, #faf0e7);
   --type-generic-bg: var(--ds-color-primary-100, #dce5f2);
   --type-generic-fg: var(--ds-color-primary-700, #1f3a66);
 

@@ -15,6 +15,7 @@
 
 import type { ReactNode } from "react";
 import { friendlyType } from "./ProcessLinkPicker";
+import { typeColorSlug } from "./typeColor";
 import type { StatusDisplay } from "./statusDisplay";
 import "./ProcessHeader.css";
 
@@ -34,7 +35,9 @@ interface Props {
 export default function ProcessHeader({ type, title, status, aside, children }: Props) {
   return (
     <header className="process-header-block">
-      <span className="process-type-pill">{friendlyType(type)}</span>
+      <span className={`process-type-pill process-type-pill--${typeColorSlug(type)}`}>
+        {friendlyType(type)}
+      </span>
       <h1 className="process-header-title">{title}</h1>
       {(status || aside) && (
         <div className="process-header-status">

@@ -22,6 +22,27 @@
   opacity: 0.85;
 }
 
+/* Anchor variants (sms:, mailto:) share the button chrome. */
+a.share-icon-btn {
+  text-decoration: none;
+}
+
+/* The native share sheet button carries a word, so it reads as "the
+   rest of the ways to share" rather than one more icon. */
+.share-btn--labeled {
+  width: auto;
+  gap: 0.35rem;
+  padding: 0 0.85rem 0 0.65rem;
+  border-radius: 17px;
+}
+
+.share-btn-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm, 0.85rem);
+  font-weight: 600;
+  color: #fff;
+}
+
 .share-icon-btn:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;

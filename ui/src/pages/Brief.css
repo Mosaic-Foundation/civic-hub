@@ -25,8 +25,8 @@
 /* Awaiting wears the brief's own dark-blue palette — visible without
    reading as an alarm; the invitation copy beside it does the framing. */
 .brief-response-status--awaiting {
-  background: var(--pill-brief-bg, #dce5f2);
-  color: var(--pill-brief-fg, #1f3a66);
+  background: var(--type-brief-bg, #f4e1d2);
+  color: var(--type-brief-fg, #8c4a2b);
 }
 
 /* Responded shares the feed's official-response gold. */

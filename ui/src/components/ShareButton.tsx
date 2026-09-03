@@ -39,6 +39,14 @@ export default function ShareButton({ title, url }: ShareButtonProps) {
     window.open(fbUrl, "_blank", "noopener,noreferrer,width=600,height=400");
   }
 
+  // Plain-link channels that work from any browser, phone or desktop.
+  // sms: with an empty number opens the Messages composer; mailto: the
+  // mail client. Both carry the title and the link, nothing else.
+  const smsHref = `sms:?&body=${encodeURIComponent(`${title} ${fullUrl}`)}`;
+  const mailHref = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(
+    `${title}\n${fullUrl}`,
+  )}`;
+
   async function handleNativeShare() {
     try {
       // URL only. With `text` AND `url`, Safari / iOS hand the sheet two
@@ -85,10 +93,36 @@ export default function ShareButton({ title, url }: ShareButtonProps) {
         </svg>
       </button>
 
+      <a
+        className="share-icon-btn share-icon-btn--sms"
+        href={smsHref}
+        aria-label="Share by text message"
+        title="Text message"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+        </svg>
+      </a>
+
+      <a
+        className="share-icon-btn share-icon-btn--email"
+        href={mailHref}
+        aria-label="Share by email"
+        title="Email"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="14" rx="2" />
+          <polyline points="3 7 12 13 21 7" />
+        </svg>
+      </a>
+
+      {/* The phone's own share sheet — the route to Instagram, Snapchat,
+          TikTok, Discord, iMessage. Labeled, so it is not mistaken for
+          another icon. */}
       {hasNativeShare && (
         <button
           type="button"
-          className="share-icon-btn share-icon-btn--more"
+          className="share-icon-btn share-icon-btn--more share-btn--labeled"
           onClick={handleNativeShare}
           aria-label="More sharing options"
           title="More sharing options"
@@ -98,6 +132,7 @@ export default function ShareButton({ title, url }: ShareButtonProps) {
             <polyline points="16 6 12 2 8 6" />
             <line x1="12" y1="2" x2="12" y2="15" />
           </svg>
+          <span className="share-btn-label">Share…</span>
         </button>
       )}
 
