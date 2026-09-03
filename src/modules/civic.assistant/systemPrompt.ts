@@ -6,6 +6,7 @@ import type {
   HubConfig,
 } from "./models.js";
 import { CODE_OF_CONDUCT } from "./content.js";
+import { DESCRIPTION_MARKDOWN_RULE } from "../../shared/markdown.js";
 
 function formatDraftState(draft: DraftState): string {
   const parts: string[] = [];
@@ -101,6 +102,7 @@ If yes, generate a starting draft following the ${config.bestPracticesTitle} doc
 - In everyday language. Write like a neighbor wrote it, not like a press release. Plain words, short sentences, no corporate or AI-sounding phrasing.
 - Free of facts the user didn't provide. Don't invent numbers, statistics, or specific claims.
 - Free of sources unless the user mentioned them
+- Formatted only where it helps. ${DESCRIPTION_MARKDOWN_RULE} A suggestion card for the description uses the same subset; the form renders it.
 - Modest — a starting point, not a finished ${noun}. The user should feel like they need to edit it.
 
 Run an implicit review pass on your generated draft against the CoC. If you find hard blocks, return them alongside the draft.

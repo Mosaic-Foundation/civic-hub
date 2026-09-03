@@ -1602,10 +1602,13 @@
 }
 
 .input-item {
-  padding: 0.75rem 1rem;
-  background: var(--page-background);
-  border-radius: 6px;
+  /* Each comment on its own white card (Adam, 2026-09-03) — lifts it off
+     the page ground the panel used to share with it. */
+  padding: 0.85rem 1rem;
+  background: var(--color-surface, #fff);
+  border-radius: 8px;
   border: 1px solid var(--border-color);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .input-body {

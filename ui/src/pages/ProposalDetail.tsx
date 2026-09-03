@@ -14,6 +14,7 @@ import { BriefPointer } from "../components/BriefPointer";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
+import RichText from "../components/RichText";
 
 
 function formatDate(iso: string): string {
@@ -101,7 +102,7 @@ export default function ProposalDetail() {
       <BriefPointer processId={proposal.id} />
 
       {proposal.description && (
-        <p className="process-description">{proposal.description}</p>
+        <RichText className="process-description" text={proposal.description} />
       )}
 
       <div className="process-meta">

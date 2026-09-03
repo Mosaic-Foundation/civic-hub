@@ -22,6 +22,8 @@ import AdminArchiveButton from "../components/AdminArchiveButton";
 import DetailActions from "../components/DetailActions";
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
+import MarkdownTextarea from "../components/MarkdownTextarea";
+import RichText from "../components/RichText";
 
 export default function ProjectDetail() {
   const navigate = useNavigate();
@@ -214,7 +216,7 @@ export default function ProjectDetail() {
 
       {/* Description */}
       {project.description && (
-        <div className="project-description">{project.description}</div>
+        <RichText className="project-description" text={project.description} />
       )}
 
       {/* Sources */}
@@ -239,7 +241,7 @@ export default function ProjectDetail() {
 
         {isCreator && project.status === "active" && (
           <div className="project-update-form">
-            <textarea
+            <MarkdownTextarea
               value={updateText}
               onChange={(e) => setUpdateText(e.target.value)}
               placeholder="Share an update on your project..."
@@ -259,7 +261,7 @@ export default function ProjectDetail() {
         ) : (
           project.updates.map((u) => (
             <div key={u.id} className="project-update-item">
-              <div className="project-update-content">{u.content}</div>
+              <RichText className="project-update-content" text={u.content} />
               <div className="project-update-time">
                 {new Date(u.created_at).toLocaleDateString(undefined, {
                   month: "short",

@@ -14,6 +14,7 @@ import type { Process } from "../models/process.js";
 import type { ShareMeta } from "../processes/types.js";
 import { getProcessHandler, processDetailPath } from "../processes/registry.js";
 import { isPubliclyFetchable } from "./processLifecycle.js";
+import { stripMarkdown } from "../shared/markdown.js";
 
 const MAX_DESCRIPTION = 200;
 
@@ -77,7 +78,8 @@ export function buildShareMeta(pathname: string, process: Process): ShareMeta | 
 
   const title = (override?.title ?? process.title ?? "").trim();
   if (!title) return null;
-  const description = trimDescription(override?.description ?? process.description ?? "") || title;
+  const description =
+    trimDescription(stripMarkdown(override?.description ?? process.description ?? "")) || title;
   const image = override?.image !== undefined ? override.image : findShareImage(process);
 
   return { title, description, image, path: canonical };

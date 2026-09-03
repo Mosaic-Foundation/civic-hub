@@ -5,6 +5,7 @@ import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
+import MarkdownTextarea from "./MarkdownTextarea";
 
 interface Props {
   /** Related processes the author has picked. Optional by design — the
@@ -276,7 +277,7 @@ export default function VoteDraftingForm({
           <label htmlFor="draft-description" className="form-label">
             Context for voters <span className="optional">(optional)</span>
           </label>
-          <textarea
+          <MarkdownTextarea
             id="draft-description"
             className="form-textarea"
             defaultValue={draft.description}

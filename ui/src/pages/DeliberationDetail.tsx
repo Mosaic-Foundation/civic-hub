@@ -17,6 +17,7 @@ import DetailActions from "../components/DetailActions";
 import { BriefPointer } from "../components/BriefPointer";
 import "./DeliberationDetail.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
+import RichText from "../components/RichText";
 
 export default function DeliberationDetail() {
   const navigate = useNavigate();
@@ -102,7 +103,7 @@ export default function DeliberationDetail() {
 
       {!isActive && !isCompleted && (
         <div className="deliberation-detail-draft">
-          <p className="deliberation-framing">{process.framing}</p>
+          <RichText className="deliberation-framing" text={process.framing} />
           <SourceLinks sources={process.sources ?? []} />
           <p className="deliberation-detail-status">
             This conversation hasn't started yet.

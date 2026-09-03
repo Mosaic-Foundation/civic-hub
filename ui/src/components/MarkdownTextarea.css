@@ -1,0 +1,79 @@
+/* MarkdownTextarea — toolbar + textarea + optional preview. */
+
+.md-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.md-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.md-tool {
+  min-height: 30px;
+  padding: 0.2rem 0.6rem;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm, 0.85rem);
+  font-weight: 500;
+  color: var(--color-text, #1f2a2d);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--border-color, var(--color-border, #d9d2c3));
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+}
+
+.md-tool:hover:not(:disabled) {
+  border-color: var(--pill-vote-fg, #1e3a5f);
+}
+
+.md-tool:focus-visible {
+  outline: 2px solid var(--color-focus, #1e3a5f);
+  outline-offset: 2px;
+}
+
+.md-tool--bold { font-weight: 700; }
+.md-tool--italic { font-style: italic; }
+
+.md-tool--preview {
+  margin-left: auto;
+}
+
+.md-tool--preview.is-on {
+  background: var(--pill-vote-fg, #1e3a5f);
+  color: #fff;
+  border-color: var(--pill-vote-fg, #1e3a5f);
+}
+
+/* Keep the textarea mounted (the form's handlers and the assistant's
+   Apply-by-id depend on it) — just out of sight while previewing. */
+.md-textarea--hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.md-preview {
+  min-height: 6rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px dashed var(--border-color, var(--color-border, #d9d2c3));
+  border-radius: 6px;
+  background: var(--color-surface, #fff);
+  font-size: 0.95rem;
+}
+
+.md-preview-empty {
+  margin: 0;
+  color: var(--color-text-muted, #5b6470);
+  font-style: italic;
+}
+
+.md-hint {
+  margin: 0;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-muted, #5b6470);
+}

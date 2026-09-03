@@ -11,6 +11,7 @@ import ProcessLinkField from "./ProcessLinkField";
 import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
+import MarkdownTextarea from "./MarkdownTextarea";
 
 interface Props {
   draft: DeliberationDraft;
@@ -151,7 +152,7 @@ export default function DeliberationDraftingForm({
           <label htmlFor="draft-description" className="form-label">
             Framing <span className="required">*</span>
           </label>
-          <textarea
+          <MarkdownTextarea
             id="draft-description"
             className="form-textarea"
             defaultValue={draft.description}

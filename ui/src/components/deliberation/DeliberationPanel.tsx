@@ -13,6 +13,7 @@ import StatementCard from "./StatementCard";
 import StatementSubmission from "./StatementSubmission";
 import ClusterView from "./ClusterView";
 import "./DeliberationPanel.css";
+import RichText from "../RichText";
 
 interface Props {
   processId: string;
@@ -114,7 +115,7 @@ export default function DeliberationPanel({ processId, showTopic }: Props) {
             )}
           </div>
         )}
-        <p className="deliberation-framing">{process.framing}</p>
+        <RichText className="deliberation-framing" text={process.framing} />
         <SourceLinks sources={process.sources ?? []} />
       </div>
 

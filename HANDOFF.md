@@ -4,6 +4,50 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Description formatting: Markdown subset, toolbar, assistant, and comment cards — 2026-09-03
+
+Adam: a formatting toolbar for descriptions ("bold **what we need right now** and **status**"
+on the skate park), for all process types, with the assistant using the same formatting. Built
+as one system:
+
+- **Format:** a small Markdown subset — bold, italic, "- " / "1. " lists, [text](url) links; a
+  bold label on its own line is the section convention. Stored in the existing `description`
+  columns (and project `updates.content`); no migration. Plain text is valid Markdown, so nothing
+  already written changes. The rule text lives once in `src/shared/markdown.ts`
+  (`DESCRIPTION_MARKDOWN_RULE`) and is quoted verbatim into the assistant's system prompt.
+- **Render:** `ui/components/RichText.tsx` (react-markdown + remark-gfm, already deps): `skipHtml`,
+  `allowedElements` = p/strong/em/del/ul/ol/li/a/br/blockquote with `unwrapDisallowed` (no
+  images, no headings, no raw HTML), links `target=_blank rel=noopener`. Single newlines are kept
+  as line breaks (pre-wrap parity) EXCEPT on list lines and the line before a list, so labels and
+  items don't gap open. `.richtext.richtext` (doubled selector) overrides the containers'
+  `white-space: pre-wrap`. Used by Process (votes), ProposalDetail, ProjectDetail (description +
+  each update), DeliberationDetail + DeliberationPanel (framing).
+- **Toolbar:** `ui/components/MarkdownTextarea.tsx` — Bold, Italic, Section, • List, 1. List,
+  Link, Preview (renders with RichText). A drop-in for `<textarea>`: props pass through; edits go
+  through the native value setter + an `input` event, so each form's own onChange/debounce/PATCH
+  path runs exactly as for typing (verified: toolbar edits landed in `project_drafts`). The
+  textarea stays mounted (visually hidden) during Preview so the assistant's Apply-by-id
+  (`draft-description`) keeps working. Mounted for the description in all four drafting forms and
+  for project updates.
+- **Assistant:** one rule in the draft-generation section of `systemPrompt.ts` (format only where
+  it helps; the subset; bold label + list for structure; suggestion cards use the same). The Code
+  of Conduct check (`checkTextAgainstCoC`) reads `stripMarkdown()` text.
+- **Plain-text surfaces:** `stripMarkdown()` applied in search `cardSummary` and `shareMeta`
+  (social previews). Feed cards and the digest never used descriptions (event-derived copy).
+  `tests/unit/markdown.test.ts` (4).
+- **Comments:** `.input-item` is now a white card with a soft shadow (proposal + vote comments).
+
+Verified on dev: a proposal created through the real draft path with bold labels, italic, a link,
+a bullet list and a numbered list — detail page renders strong/em/ul/ol/a (rel noopener, no
+HTML); `/share/meta` and `/search` return stripped text; CoC review passed with the markers
+present; toolbar on /propose/new, /votes/new, /projects/new, /deliberations/new; Section → bold
+label with a blank line, Bullets → "- " per selected line, Link → `[text](https://)`; Preview
+renders; autosave confirmed in the DB. Skate-park stand-in (plain "- " lines) renders as a list
+unchanged in meaning. Backend + UI tsc clean, vite build clean, `tests/unit` 655/655.
+Test proposal `proc_c260327fa39d4376` archived; test draft + uitest session deleted.
+
+---
+
 ## Share by text / email; design pass: type colors on detail pages, terracotta outcomes — 2026-09-03
 
 **Share row** (`ShareButton`): two plain-link channels added between Facebook and the sheet —

@@ -1,0 +1,49 @@
+/* RichText — rendered description Markdown. Overrides the pre-wrap the
+   plain-text containers carried (ReactMarkdown emits newlines between
+   blocks, which pre-wrap would show as blank lines). */
+
+/* Doubled selector on purpose: the containers this replaces
+   (.process-description, .project-description, .project-update-content)
+   carry `white-space: pre-wrap` in stylesheets that load after this one,
+   and pre-wrap would render ReactMarkdown's inter-block newlines as blank
+   lines. */
+.richtext.richtext {
+  white-space: normal;
+  line-height: 1.6;
+}
+
+.richtext p {
+  margin: 0 0 0.75rem;
+}
+
+.richtext ul,
+.richtext ol {
+  margin: 0 0 0.75rem;
+  padding-left: 1.4rem;
+}
+
+.richtext li {
+  margin: 0 0 0.25rem;
+}
+
+.richtext li > p {
+  margin: 0;
+}
+
+.richtext blockquote {
+  margin: 0 0 0.75rem;
+  padding-left: 0.85rem;
+  border-left: 3px solid var(--color-border, #d9d2c3);
+  color: var(--color-text-muted, #5b6470);
+}
+
+.richtext > :last-child {
+  margin-bottom: 0;
+}
+
+.richtext a {
+  color: var(--color-link, #1f3a66);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  overflow-wrap: anywhere;
+}

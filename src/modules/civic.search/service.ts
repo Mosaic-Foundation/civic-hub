@@ -4,6 +4,7 @@
 // returns hits, the other runs the count RPC. This module never
 // imports Supabase, Express, or anything hub-specific.
 
+import { stripMarkdown } from "../../shared/markdown.js";
 import type {
   SearchCountFn,
   SearchExecuteFn,
@@ -105,7 +106,7 @@ const defaultHref: HrefResolver = (_type, id) => `/process/${id}`;
  *  of the body when description is empty / null. */
 function cardSummary(row: SearchHitRow): string {
   if (row.description && row.description.trim().length > 0) {
-    return row.description.trim();
+    return stripMarkdown(row.description).trim();
   }
   // Fallback: peek into common state shapes for body / admin_notes /
   // meeting first-block summary. Cheap and best-effort; the row's

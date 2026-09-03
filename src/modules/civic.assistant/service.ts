@@ -1,3 +1,4 @@
+import { stripMarkdown } from "../../shared/markdown.js";
 import {
   callClaudeMultiTurn,
   DEFAULT_MODEL,
@@ -111,7 +112,10 @@ export async function checkTextAgainstCoC(
   claude: CallClaudeMultiTurnFn = callClaudeMultiTurn,
 ): Promise<Suggestion[]> {
   const model = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  // Formatting is not content: the check reads the stripped text so a
+  // marker can neither hide a violation nor be mistaken for one.
   const submission = fields
+    .map((f) => ({ label: f.label, text: stripMarkdown(f.text) }))
     .filter((f) => f.text.trim().length > 0)
     .map((f) => `${f.label}:\n${f.text}`)
     .join("\n\n");

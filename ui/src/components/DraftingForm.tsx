@@ -3,6 +3,7 @@ import type { AssistantFieldGuidance, DraftCategory, ProposalDraft } from "../se
 import "./DraftingForm.css";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
+import MarkdownTextarea from "./MarkdownTextarea";
 
 /** Inline hint + example under a field — the same best-practices content
  *  the assistant works from, so manual drafters get the quality lift too. */
@@ -206,7 +207,7 @@ export default function DraftingForm({
           <label htmlFor="draft-description" className="form-label">
             Description <span className="optional">(optional)</span>
           </label>
-          <textarea
+          <MarkdownTextarea
             id="draft-description"
             className="form-textarea"
             defaultValue={draft.description}
