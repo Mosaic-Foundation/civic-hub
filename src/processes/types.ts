@@ -12,6 +12,16 @@ import type { BriefContent } from "../modules/civic.brief/index.js";
 import type { SchemaRequirement } from "../db/schemaContract.js";
 import type { AssistantTypeConfig } from "../modules/civic.assistant/index.js";
 
+/** Open Graph-style preview of one process page. */
+export interface ShareMeta {
+  title: string;
+  description: string;
+  /** Absolute or site-relative; null = the hub's default banner. */
+  image: string | null;
+  /** Canonical UI path for this process (its handler's detailPath). */
+  path: string;
+}
+
 export interface ProcessHandler {
   /** The process type this handler manages (e.g., "civic.vote") */
   type: string;
@@ -49,6 +59,16 @@ export interface ProcessHandler {
    * declares what it owns; no page enumerates process types.
    */
   describeSubmission?(source: SubmissionSource): SubmissionField[];
+
+  /**
+   * Optional: what a social-media preview of one of this type's pages should
+   * say. The default (services/shareMeta.ts) is the process title, its
+   * description, and any `*image_url` on its state/content — which is right
+   * for most types, so declare this only when the words live somewhere else
+   * (a brief's headline). Return `null` to say "not shareable right now";
+   * return partial fields to override just those.
+   */
+  describeShare?(process: Process): Partial<ShareMeta> | null | undefined;
 
   /**
    * Optional: the drafting page for one of this type's drafts, e.g.

@@ -19,6 +19,7 @@
     { "source": "/proposal/:id*", "destination": "/api/og" },
     { "source": "/project/:id*", "destination": "/api/og" },
     { "source": "/deliberation/:id*", "destination": "/api/og" },
+    { "source": "/brief/:id*", "destination": "/api/og" },
     { "source": "/vote-results/:id*", "destination": "/api/og" },
     { "source": "/meeting-summary/:id*", "destination": "/api/og" },
     { "source": "/announcement/:id*", "destination": "/api/og" },

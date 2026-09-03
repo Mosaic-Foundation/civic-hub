@@ -2,10 +2,12 @@
 // tags for social media crawlers. Normal browser requests get the SPA
 // index.html unchanged.
 //
-// vercel.json routes content paths (/process/:id, /proposal/:id, etc.)
-// here. The function checks User-Agent: crawlers get a minimal HTML
-// page with the right og:title / og:description / og:image; browsers
-// get the built SPA so React Router handles client-side routing.
+// vercel.json routes every public detail section (/process/:id,
+// /proposal/:id, /brief/:id, etc.) here. The function checks User-Agent:
+// crawlers get a minimal HTML page with the right og:title /
+// og:description / og:image, resolved by the hub's registry-driven
+// GET /share/meta; browsers get the built SPA so React Router handles
+// client-side routing.
 
 import type { IncomingMessage, ServerResponse } from "http";
 import { readFileSync } from "fs";
@@ -70,95 +72,29 @@ interface OgData {
   image?: string | null;
 }
 
+/**
+ * One call for every page kind. The hub's GET /share/meta resolves the id
+ * through the process registry (services/shareMeta.ts), so this function
+ * never enumerates sections — a type added later is covered the moment its
+ * handler has a detailPath and vercel.json routes that section here
+ * (tests/unit/shareMeta.test.ts guards that list).
+ */
 async function fetchOgData(pathname: string): Promise<OgData | null> {
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments.length < 2) return null;
-
-  const [kind, id] = segments;
-  const apiBase = `${SITE_URL}/api`;
-
   try {
-    if (kind === "process" || kind === "proposal" || kind === "wordcloud") {
-      const res = await fetch(`${apiBase}/process/${id}/state`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      const title = data.title ?? "Civic process";
-      const type = data.type ?? "";
-      const status = data.status ?? "";
-      let desc: string;
-      if (kind === "proposal" || type === "civic.proposal") {
-        desc = `Check out this proposal: ${title}`;
-      } else if (kind === "wordcloud" || type === "civic.wordcloud") {
-        desc = `See what the community is saying: ${title}`;
-      } else if (type === "civic.vote") {
-        desc =
-          status === "active"
-            ? `Vote on this issue: ${title}`
-            : `View this vote: ${title}`;
-      } else {
-        desc = title;
-      }
-      return { title, description: desc, image: data.image_url };
-    }
-
-    if (kind === "project") {
-      const res = await fetch(`${apiBase}/projects/${id}`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      const title = data.title ?? "Community project";
-      return {
-        title,
-        description: `Check out this community project: ${title}`,
-        image: data.banner_image_url,
-      };
-    }
-
-    if (kind === "deliberation") {
-      const res = await fetch(`${apiBase}/deliberations/${id}`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      const topic = data.topic ?? "Community conversation";
-      return {
-        title: topic,
-        description: `Join the conversation: ${topic}`,
-      };
-    }
-
-    if (kind === "vote-results") {
-      const res = await fetch(`${apiBase}/vote-results/${id}`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      const title = data.title ?? "Vote results";
-      return {
-        title: `Vote results: ${title}`,
-        description: `See how the community voted on: ${title}`,
-        image: data.image_url,
-      };
-    }
-
-    if (kind === "meeting-summary") {
-      const res = await fetch(`${apiBase}/meeting-summary/${id}`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      const title = data.meeting_title ?? "Meeting summary";
-      return {
-        title: `Meeting summary: ${title}`,
-        description: `Read the summary: ${title}`,
-      };
-    }
-
-    if (kind === "announcement") {
-      const res = await fetch(`${apiBase}/announcement/${id}`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      const title = data.title ?? "Announcement";
-      return { title, description: title, image: data.image_url };
-    }
+    const res = await fetch(
+      `${SITE_URL}/api/share/meta?path=${encodeURIComponent(pathname)}`,
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as Partial<OgData>;
+    if (!data.title) return null;
+    return {
+      title: data.title,
+      description: data.description ?? data.title,
+      image: data.image ?? null,
+    };
   } catch {
     return null;
   }
-
-  return null;
 }
 
 function ogHtml(og: OgData, pathname: string): string {
@@ -198,7 +134,9 @@ export default async function handler(
   res: ServerResponse,
 ) {
   const ua = req.headers["user-agent"] ?? "";
-  const pathname = req.url ?? "/";
+  // Vercel's rewrite appends its `:id` capture as a query string; the
+  // canonical og:url must be the bare path.
+  const pathname = (req.url ?? "/").split("?")[0];
 
   if (CRAWLER_RE.test(ua)) {
     const og = await fetchOgData(pathname);

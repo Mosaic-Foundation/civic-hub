@@ -4,6 +4,48 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Social previews for every page type; native share sheet gets the link — 2026-09-03
+
+Adam (smoke test, sharing the energy brief): Facebook showed the generic hub card, and the native
+share sheet's Copy / Messages "didn't seem to work".
+
+**Facebook — cause:** `api/og.ts` (the Vercel function that serves Open Graph tags to crawlers)
+hand-enumerated page kinds and fetched a different endpoint for each; `/brief` was never added
+when briefs split from vote-results (Slice 8.5), and `vercel.json` had no `/brief/:id*` rewrite,
+so the brief URL went straight to the static `index.html`. **Fix, registry-driven:**
+- `GET /share/meta?path=/section/id` (`services/shareMeta.ts`, `controllers/shareController.ts`,
+  mounted at `/share`): loads the id as a process, requires the handler's `detailPath` to agree
+  with the section in the link (so `/admin/<id>` or a wrong section is 404), refuses non-public
+  statuses and anything with `state.publication_status !== "published"` (briefs, vote results),
+  then builds `{title, description, image, path}` from the row — title, description trimmed to
+  200 chars at a word, first `*image_url` on `state` / `state.content` / `content`.
+- New optional handler seam `describeShare(process)` (types.ts): partial override, or `null` for
+  "not shareable". Declared on `briefProcess` and `voteResultsProcess` only (headline as the
+  description). Every other type — and any added later — gets the default.
+- `api/og.ts` now makes ONE call to `/api/share/meta` and renders; no per-kind branches. Also
+  strips the `?id=` that Vercel's rewrite appends, so `og:url` is the bare path.
+- `vercel.json`: `/brief/:id*` → `/api/og`. `tests/unit/shareMeta.test.ts` iterates
+  `getAllHandlers()` and fails if any handler's detailPath section lacks an `/api/og` rewrite —
+  the guard that would have caught this — plus resolver/refusal cases (28 tests).
+
+Verified on dev: `/share/meta` for brief (headline), conversation, vote, proposal, project
+(café), word cloud → 200 with the right words; wrong section / admin / archived brief → 404;
+`api/og.ts` exercised locally with fetch mapped to the dev hub: crawler UA gets the brief's
+og:title/description/url, browser UA gets the SPA. Backend + UI tsc clean, vite build clean,
+`tests/unit` 650/650.
+
+**Share sheet — cause:** `navigator.share({title, text, url})`. Safari / iOS hand the sheet two
+items and Copy / Messages take the `text` — the link never travels. `ShareButton` now shares
+`{title, url}` only (the `shareText` prop is still accepted, unused); the destination's own
+preview carries the topic. **Needs Adam's device to confirm** — the Browser pane cannot open the
+OS sheet.
+
+**After deploy:** Facebook caches a URL's preview. For the brief URL already shared, re-scrape
+it at developers.facebook.com/tools/debug ("Scrape Again"); fresh URLs pick up the new tags
+immediately. Check with `curl -A facebookexternalhit https://floyd.civic.social/brief/<id>`.
+
+---
+
 ## Brief ↔ source pointers at the top of the page; brief page layout — 2026-09-03
 
 Adam (smoke test, energy conversation): a completed conversation should link to its brief, and

@@ -29,6 +29,18 @@ function getState(process: Process): VoteResultsProcessState {
 const voteResultsProcess: ProcessHandler = {
   type: "civic.vote_results",
   detailPath: (id: string) => `/vote-results/${id}`,
+  // Social previews carry the approved headline, not the (empty) row
+  // description. Unpublished records are not shareable at all.
+  describeShare: (process) => {
+    const state = process.state as {
+      publication_status?: unknown;
+      content?: { headline?: unknown; image_url?: unknown };
+    };
+    if (state.publication_status !== "published") return null;
+    const headline =
+      typeof state.content?.headline === "string" ? state.content.headline.trim() : "";
+    return headline ? { description: headline } : {};
+  },
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     // Vote-results records are always created programmatically (from a

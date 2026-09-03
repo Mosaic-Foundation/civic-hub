@@ -4,19 +4,19 @@ import "./ShareButton.css";
 export interface ShareButtonProps {
   title: string;
   url?: string;
+  /**
+   * Accepted for callers that still pass it, but no longer handed to the
+   * native share sheet — see handleNativeShare. The destination page's own
+   * link preview carries the topic instead.
+   */
   shareText?: string;
 }
 
-export default function ShareButton({
-  title,
-  url,
-  shareText,
-}: ShareButtonProps) {
+export default function ShareButton({ title, url }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fullUrl = url ?? (typeof window !== "undefined" ? window.location.href : "");
-  const text = shareText ?? title;
 
   const hasNativeShare =
     typeof navigator !== "undefined" &&
@@ -41,7 +41,12 @@ export default function ShareButton({
 
   async function handleNativeShare() {
     try {
-      await navigator.share({ title, text, url: fullUrl });
+      // URL only. With `text` AND `url`, Safari / iOS hand the sheet two
+      // items and Copy / Messages take the text — the link never travels
+      // (Adam: "the copy button doesn't seem to work… sharing via text
+      // doesn't seem to work"). The title still heads the sheet; the
+      // destination's own link preview (api/og.ts) carries the topic.
+      await navigator.share({ title, url: fullUrl });
     } catch {
       // user dismissed
     }

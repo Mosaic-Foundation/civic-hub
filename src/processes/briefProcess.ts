@@ -24,6 +24,18 @@ function getState(process: Process): BriefProcessState {
 const briefProcess: ProcessHandler = {
   type: "civic.brief",
   detailPath: (id: string) => `/brief/${id}`,
+  // Social previews carry the approved headline, not the (empty) row
+  // description. Unpublished records are not shareable at all.
+  describeShare: (process) => {
+    const state = process.state as {
+      publication_status?: unknown;
+      content?: { headline?: unknown; image_url?: unknown };
+    };
+    if (state.publication_status !== "published") return null;
+    const headline =
+      typeof state.content?.headline === "string" ? state.content.headline.trim() : "";
+    return headline ? { description: headline } : {};
+  },
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     // Briefs are always created programmatically by the close flow

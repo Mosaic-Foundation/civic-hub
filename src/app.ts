@@ -7,6 +7,7 @@
 import express from "express";
 import processRoutes from "./routes/processRoutes.js";
 import processLinksRoutes from "./routes/processLinksRoutes.js";
+import shareRoutes from "./routes/shareRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import feedRoutes from "./routes/feedRoutes.js";
@@ -114,6 +115,9 @@ app.use("/auth", authRoutes);
 // MOUNTED FIRST, deliberately: processRoutes has a GET /:id catch-all that
 // would otherwise capture /process/link-candidates as a process id.
 app.use("/process", processLinksRoutes);
+// Social-preview metadata for any detail page (api/og.ts calls this), so a
+// type registered later is shareable the moment it has a detailPath.
+app.use("/share", shareRoutes);
 app.use("/process", processRoutes);
 app.use("/process", inputRoutes);
 
