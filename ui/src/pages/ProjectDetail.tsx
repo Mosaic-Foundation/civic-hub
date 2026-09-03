@@ -19,6 +19,7 @@ import RelatedProcesses from "../components/RelatedProcesses";
 import { BriefPointer } from "../components/BriefPointer";
 import "./ProjectDetail.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
+import DetailActions from "../components/DetailActions";
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
 
@@ -182,16 +183,6 @@ export default function ProjectDetail() {
             <span>{new Date(project.created_at).toLocaleDateString()}</span>
           </div>
         </ProcessHeader>
-        {canComplete && (
-          <button
-            type="button"
-            className="project-complete-btn"
-            onClick={handleComplete}
-            disabled={completing}
-          >
-            {completing ? "Completing…" : "Mark complete"}
-          </button>
-        )}
       </div>
 
       <BriefPointer processId={project.id} />
@@ -330,18 +321,32 @@ export default function ProjectDetail() {
         )}
       </div>
 
-      {/* Admin-only soft-remove. Renders nothing for everyone else. */}
-      <AdminArchiveButton
-        processId={project.id}
-        itemLabel="project"
-        onArchived={() => navigate("/projects")}
-      />
-
       <RelatedProcesses
         processId={project.id}
         title={project.title}
         description={project.description}
       />
+
+      {/* Terminal actions — creator/admin "Mark complete" and the admin-only
+          archive — live at the very bottom, after the record and its links,
+          so nobody reaches them by accident. */}
+      <DetailActions>
+        {canComplete && (
+          <button
+            type="button"
+            className="project-complete-btn"
+            onClick={handleComplete}
+            disabled={completing}
+          >
+            {completing ? "Completing…" : "Mark complete"}
+          </button>
+        )}
+        <AdminArchiveButton
+          processId={project.id}
+          itemLabel="project"
+          onArchived={() => navigate("/projects")}
+        />
+      </DetailActions>
     </div>
   );
 }

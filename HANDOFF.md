@@ -4,6 +4,25 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Terminal actions at the bottom of every detail page — 2026-09-03
+
+Adam (signed in as admin): the project's "Mark complete" sat at the top beside the title; it
+and "Archive project" belong at the very bottom, before the footer, so nobody clicks them by
+accident. New `components/DetailActions.tsx` (+ css): a single row, top rule, mounted as the
+LAST child of every detail page — Process (votes), ProposalDetail, DeliberationDetail,
+ProjectDetail, Brief — holding that page's end-of-life actions. The block hides itself with
+`:empty` when nothing rendered for the viewer (AdminArchiveButton returns null for non-admins),
+so residents see no stray rule. Project: "Mark complete" (creator or admin) moved out of the
+header into the row beside Archive. Proposal and conversation pages previously had Archive ABOVE
+Related (proposal: above the comments too); all five now end Related → actions. A type added
+later mounts `DetailActions` once and gets the same placement.
+
+Verified on dev as the admin: project bottom row = [Mark complete, Archive project], header has
+no button; proposal / vote / conversation / brief: actions row is the last child of `.page`.
+Signed out: the row is present but empty, computed `display: none`. UI tsc + vite build clean.
+
+---
+
 ## Social previews for every page type; native share sheet gets the link — 2026-09-03
 
 Adam (smoke test, sharing the energy brief): Facebook showed the generic hub card, and the native

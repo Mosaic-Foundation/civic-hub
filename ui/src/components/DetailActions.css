@@ -1,0 +1,22 @@
+/* DetailActions — terminal / admin actions, last thing before the footer. */
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm, 0.5rem) var(--space-md, 1rem);
+  margin: var(--space-2xl, 3rem) 0 var(--space-md, 1rem);
+  padding-top: var(--space-md, 1rem);
+  border-top: 1px solid var(--color-border, #e3e0d8);
+}
+
+/* Nothing rendered for this viewer → no rule, no gap. */
+.detail-actions:empty {
+  display: none;
+}
+
+/* The archive control brings its own vertical margins for standalone use;
+   inside the row it sits on the baseline with the others. */
+.detail-actions .admin-archive-control {
+  margin: 0;
+}

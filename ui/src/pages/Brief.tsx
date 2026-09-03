@@ -8,6 +8,7 @@ import {
 import { absoluteTime } from "../components/FeedPost";
 import PostFeaturedImage from "../components/PostFeaturedImage";
 import ProcessHeader from "../components/ProcessHeader";
+import DetailActions from "../components/DetailActions";
 import { BriefSourcePointer } from "../components/BriefPointer";
 import ShareButton from "../components/ShareButton";
 import hub from "../config/hub";
@@ -350,11 +351,13 @@ export default function BriefPage() {
           this is for taking down content that should not be public — it is
           restorable from the Archived tab, and an archived brief drops out of
           Outcomes and the feed automatically. */}
-      <AdminArchiveButton
-        processId={id!}
-        itemLabel="brief"
-        onArchived={() => navigate("/outcomes")}
-      />
+      <DetailActions>
+        <AdminArchiveButton
+          processId={id!}
+          itemLabel="brief"
+          onArchived={() => navigate("/outcomes")}
+        />
+      </DetailActions>
     </div>
   );
 }

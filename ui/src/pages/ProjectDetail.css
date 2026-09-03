@@ -260,7 +260,6 @@
 
 /* "Mark complete" — creator/admin action to close a project into its brief. */
 .project-complete-btn {
-  margin-top: var(--space-sm);
   padding: 0.4rem 0.9rem;
   font-size: var(--font-size-sm);
   font-weight: 600;

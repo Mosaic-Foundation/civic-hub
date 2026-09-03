@@ -12,6 +12,7 @@ import ProposalCommentForm from "../components/ProposalCommentForm";
 import AuthModal from "../components/AuthModal";
 import ShareButton from "../components/ShareButton";
 import RelatedProcesses from "../components/RelatedProcesses";
+import DetailActions from "../components/DetailActions";
 import { BriefPointer } from "../components/BriefPointer";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
@@ -208,11 +209,13 @@ export default function Process() {
       {/* Admin-only: archive this process (soft-remove, restorable from the
           admin Archived view). Renders nothing for non-admins. */}
       {id && (
-        <AdminArchiveButton
-          processId={id}
-          itemLabel="item"
-          onArchived={() => navigate("/")}
-        />
+        <DetailActions>
+          <AdminArchiveButton
+            processId={id}
+            itemLabel="item"
+            onArchived={() => navigate("/")}
+          />
+        </DetailActions>
       )}
     </div>
   );

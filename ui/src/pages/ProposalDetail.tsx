@@ -9,6 +9,7 @@ import Creator from "../components/Creator";
 import CommunityInputPanel from "../components/CommunityInputPanel";
 import ProposalCommentForm from "../components/ProposalCommentForm";
 import RelatedProcesses from "../components/RelatedProcesses";
+import DetailActions from "../components/DetailActions";
 import { BriefPointer } from "../components/BriefPointer";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
@@ -216,13 +217,6 @@ export default function ProposalDetail() {
         </div>
       )}
 
-      {/* Admin-only soft-remove. Renders nothing for everyone else. */}
-      <AdminArchiveButton
-        processId={proposal.id}
-        itemLabel="proposal"
-        onArchived={() => navigate("/propose")}
-      />
-
       <RelatedProcesses
         processId={proposal.id}
         title={proposal.title}
@@ -241,6 +235,15 @@ export default function ProposalDetail() {
         processId={proposal.id}
         config={{ label: "Community discussion on this proposal." }}
       />
+
+      {/* Admin-only soft-remove, last thing on the page. */}
+      <DetailActions>
+        <AdminArchiveButton
+          processId={proposal.id}
+          itemLabel="proposal"
+          onArchived={() => navigate("/propose")}
+        />
+      </DetailActions>
     </div>
   );
 }

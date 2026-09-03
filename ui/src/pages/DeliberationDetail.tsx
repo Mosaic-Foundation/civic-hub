@@ -13,6 +13,7 @@ import ProcessHeader from "../components/ProcessHeader";
 import ShareButton from "../components/ShareButton";
 import SourceLinks from "../components/SourceLinks";
 import RelatedProcesses from "../components/RelatedProcesses";
+import DetailActions from "../components/DetailActions";
 import { BriefPointer } from "../components/BriefPointer";
 import "./DeliberationDetail.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
@@ -122,18 +123,20 @@ export default function DeliberationDetail() {
         </div>
       )}
 
-      {/* Admin-only soft-remove. Renders nothing for everyone else. */}
-      <AdminArchiveButton
-        processId={process.process_id}
-        itemLabel="conversation"
-        onArchived={() => navigate("/deliberations")}
-      />
-
       <RelatedProcesses
         processId={process.process_id}
         title={process.topic}
         description={process.framing}
       />
+
+      {/* Admin-only soft-remove, last thing on the page. */}
+      <DetailActions>
+        <AdminArchiveButton
+          processId={process.process_id}
+          itemLabel="conversation"
+          onArchived={() => navigate("/deliberations")}
+        />
+      </DetailActions>
     </div>
   );
 }
