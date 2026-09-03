@@ -4,6 +4,25 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Vercel builds: lockfile installs (npm ci) — 2026-09-03
+
+Two consecutive Vercel builds of `50dd0d9` sat 5+ minutes and were cancelled (earlier builds
+today took ~40 s). The log showed the ROOT `npm install --include=dev` alone taking 4.5 min
+(18:25:11 → 18:29:52), then the silent UI install doing the same. Two causes stacked:
+- `package-lock.json` at the root was out of sync with `package.json` (a transitive
+  `@emnapi/wasi-threads` bump), so `npm ci` was impossible and every build re-resolved the tree.
+- Vercel's Node 24 image now ships an npm newer than local 11.6.2 (it prints the `allow-scripts`
+  warning about esbuild's postinstall — a warning, not the failure), and its full resolve is slow.
+
+Fix: lockfile re-synced (`npm install --package-lock-only`; `npm ci --dry-run` clean at root and
+ui), `vercel.json` install/build now use `npm ci --no-audit --no-fund` (lockfile-only, no
+registry resolution, no audit round-trip), and `.npmrc` (root + ui) sets `audit=false`,
+`fund=false`. If a future build still crawls, the next lever is the Vercel project setting
+Node.js Version → 22.x (npm 10, no allow-scripts), no code change. Note: a Vercel build's UI
+install prints nothing until it finishes — give a build ~8 min before calling it stuck.
+
+---
+
 ## Description formatting: Markdown subset, toolbar, assistant, and comment cards — 2026-09-03
 
 Adam: a formatting toolbar for descriptions ("bold **what we need right now** and **status**"
