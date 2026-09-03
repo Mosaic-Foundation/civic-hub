@@ -50,7 +50,7 @@ export default function ProjectDetail() {
   const [editPolicy, setEditPolicy] = useState<EditPolicy | null>(null);
   const [editStarting, setEditStarting] = useState(false);
   const viewerIsCreator = project?.is_owner ?? (!!user?.id && user?.id === project?.user_id);
-  const mayAsk = !!project && (viewerIsCreator || isAdmin) && project.status === "active";
+  const mayAsk = !!project && viewerIsCreator && project.status === "active";
   const projectId = project?.id;
   useEffect(() => {
     if (!mayAsk || !projectId) { setEditPolicy(null); return; }

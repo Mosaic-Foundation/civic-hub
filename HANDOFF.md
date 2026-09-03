@@ -11,6 +11,13 @@ processes after publishing (the Updates log is a progress feed, not an editor) �
 supported a project signed on to particular words. Decision: **only projects are editable**;
 every other type stays uneditable once submitted. Edits are allowed, visible, and announced:
 
+- **Who may edit: the creator only.** Adam: "I'm not sure the admin should be able to edit
+  the project." Admins keep archive and moderation; `getEditPolicy` refuses anyone but the
+  creator. **No admin review of edits** — they go live at once; the Code of Conduct check still
+  gates every edit (the draft submit refuses hard blocks and unchecked changes). **Admins are
+  notified**: `listEditNotifications(userId, isAdmin)` returns EVERY edited process for an admin
+  (supporters get the ones they support), so the same avatar dot + menu group ("Projects
+  edited") tells the admin, clearing when opened.
 - **Registry seam** (`types.ts`): `editPolicy(process)` → `{editable, locked_fields, reason}`,
   `listSupporters(processId)`, `onEdited(process, changes)`. Only `projectAdapter` declares
   them: editable while the `projects` row is `active`; the **title locks once anyone supports**
@@ -47,23 +54,21 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   "Projects you support were edited" group listing them ("N edits · see what changed"); opening
   one stamps seen (awaited BEFORE navigating — the route change re-polls) and clears the group.
   Polled with the review count (60 s, 30 s GET cache).
-- **Processes with no draft on record, and admins editing someone else's project.** Prod's only
+- **Processes with no draft on record.** (The `draftFromProcess` seam also keeps an editor out
+  of anyone else's draft, should a type ever allow non-creator edits.) Prod's only
   active project (the skate park) was reviewed in July, before `process_reviews.draft_id`
   existed, so the first cut's `startEdit` would have 409'd. New seam `draftFromProcess(process,
   editorId, links)` (projectAdapter: a fresh `project_drafts` row prefilled from the live
-  `projects` row + creator links). `startEdit` uses the review's draft only when the editor IS
-  the creator; otherwise — admin editor, or no draft recorded — it seeds one owned by the editor
-  (and records it on the review when the creator is the one editing and the review had none).
-  An admin therefore never writes into the creator's draft, and the creator keeps theirs.
+  `projects` row + creator links). `startEdit` uses the review's recorded draft when it is the
+  editor's own; with none recorded it seeds one and records it on the review.
 
 Verified on dev after the column landed: resident supports → creator edits → resident
 `/notifications/edits` count 1 (creator 0) → seen → 0 → second edit → 1 again; avatar dot +
 menu group in the browser, click → `/project/<id>#edits` with history open. Legacy path: review
 `draft_id` nulled → start edit seeds a new draft (prefilled with the CURRENT description), records
-it on the review, an edit from it applies. Admin path: resident-created project approved by the
-admin → admin's start edit gets a different draft than the creator's, edit recorded with
-`editor_role: admin`, creator's next start edit returns their own draft. Both test projects
-archived; uitest sessions deleted.
+it on the review, an edit from it applies. (Admin editing was verified on dev before being removed
+the same evening; the admin now gets the notification instead.) Both test projects archived;
+uitest sessions deleted.
 - **Routes** on `/process` (universal): `GET /:id/edits` (public), `GET /:id/edit-policy`
   (signed in), `POST /:id/edit` (creator/admin). `projectDraftController` submit accepts
   `edit_process_id` and calls `applyEdit` (the Code of Conduct check still gates the submit).

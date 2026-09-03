@@ -19,25 +19,32 @@ export interface EditNotification {
   latest_at: string;
 }
 
-export async function listEditNotifications(userId: string): Promise<EditNotification[]> {
+/**
+ * Supporters see the processes THEY support; an admin sees every edited
+ * process (Adam, 2026-09-03: no admin review of edits, but be notified).
+ */
+export async function listEditNotifications(userId: string, isAdmin = false): Promise<EditNotification[]> {
   const db = getDb();
   const { data: userRow } = await db.from("users").select("edits_seen_at").eq("id", userId).maybeSingle();
   const seenAt = ((userRow as { edits_seen_at?: string | null } | null)?.edits_seen_at) ?? EPOCH;
 
   const supported = new Set<string>();
-  for (const handler of getAllHandlers()) {
-    if (!handler.listSupportedBy) continue;
-    for (const id of await handler.listSupportedBy(userId)) supported.add(id);
+  if (!isAdmin) {
+    for (const handler of getAllHandlers()) {
+      if (!handler.listSupportedBy) continue;
+      for (const id of await handler.listSupportedBy(userId)) supported.add(id);
+    }
+    if (supported.size === 0) return [];
   }
-  if (supported.size === 0) return [];
 
-  const { data: events, error } = await db
+  let query = db
     .from("events")
     .select("process_id, actor, created_at, data")
-    .in("process_id", [...supported])
     .eq("event_type", "civic.process.updated")
     .gt("created_at", seenAt)
     .order("created_at", { ascending: false });
+  if (!isAdmin) query = query.in("process_id", [...supported]);
+  const { data: events, error } = await query;
   if (error) throw new Error(`Edit notifications: ${error.message}`);
 
   const byProcess = new Map<string, { edits: number; latest_at: string }>();

@@ -31,7 +31,6 @@ import { getReviewByProcessId, setReviewDraftId } from "../modules/civic.review/
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { createEdges, getEdgesFor } from "./processLinks.js";
 import { getProcess } from "./processService.js";
-import { isAdminEmail } from "../middleware/auth.js";
 
 export interface Editor {
   id: string;
@@ -62,8 +61,10 @@ function isCreator(process: Process, editor: Editor): boolean {
 export async function getEditPolicy(process: Process, editor: Editor): Promise<EditPolicy> {
   const handler = getProcessHandler(process.definition.type);
   if (!handler?.editPolicy) return NOT_EDITABLE;
-  if (!isCreator(process, editor) && !isAdminEmail(editor.email)) {
-    return { editable: false, locked_fields: [], reason: "Only the creator or an admin can edit this." };
+  // Creator only (Adam, 2026-09-03: admins keep archive and moderation, but
+  // do not rewrite a resident's words). Admins are told about edits instead.
+  if (!isCreator(process, editor)) {
+    return { editable: false, locked_fields: [], reason: "Only the creator can edit this." };
   }
   return handler.editPolicy(process);
 }
@@ -82,9 +83,8 @@ export async function startEdit(
   const handler = getProcessHandler(type);
   const review = await getReviewByProcessId(process.id);
 
-  // The creator edits in their own recorded draft. Anyone else (an admin),
-  // or a process reviewed before drafts were recorded, gets a fresh draft
-  // prefilled from the live process — never someone else's draft.
+  // The creator edits in their own recorded draft; a process reviewed before
+  // drafts were recorded gets a fresh draft prefilled from the live process.
   let draftId: string | null =
     review?.draft_id && review.creator_id === editor.id ? review.draft_id : null;
   if (!draftId) {
@@ -214,7 +214,7 @@ export async function applyEdit(
   const handler = getProcessHandler(process.definition.type);
   await handler?.onEdited?.(process, changes);
 
-  const editorRole = isCreator(process, editor) ? "creator" : "admin";
+  const editorRole = "creator" as const;
   await emitEvent({
     event_type: "civic.process.updated",
     actor: editor.id,
