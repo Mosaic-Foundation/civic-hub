@@ -81,8 +81,10 @@ interface OgData {
  */
 async function fetchOgData(pathname: string): Promise<OgData | null> {
   try {
+    // `page`, not `path`: Vercel's /api/:path* rewrite appends its own
+    // `path=` capture to the query and would clobber ours.
     const res = await fetch(
-      `${SITE_URL}/api/share/meta?path=${encodeURIComponent(pathname)}`,
+      `${SITE_URL}/api/share/meta?page=${encodeURIComponent(pathname)}`,
     );
     if (!res.ok) return null;
     const data = (await res.json()) as Partial<OgData>;

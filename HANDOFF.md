@@ -60,7 +60,7 @@ share sheet's Copy / Messages "didn't seem to work".
 hand-enumerated page kinds and fetched a different endpoint for each; `/brief` was never added
 when briefs split from vote-results (Slice 8.5), and `vercel.json` had no `/brief/:id*` rewrite,
 so the brief URL went straight to the static `index.html`. **Fix, registry-driven:**
-- `GET /share/meta?path=/section/id` (`services/shareMeta.ts`, `controllers/shareController.ts`,
+- `GET /share/meta?page=/section/id` (`services/shareMeta.ts`, `controllers/shareController.ts`,
   mounted at `/share`): loads the id as a process, requires the handler's `detailPath` to agree
   with the section in the link (so `/admin/<id>` or a wrong section is 404), refuses non-public
   statuses and anything with `state.publication_status !== "published"` (briefs, vote results),
@@ -86,6 +86,13 @@ items and Copy / Messages take the `text` — the link never travels. `ShareButt
 `{title, url}` only (the `shareText` prop is still accepted, unused); the destination's own
 preview carries the topic. **Needs Adam's device to confirm** — the Browser pane cannot open the
 OS sheet.
+
+**Prod regression, same day (fixed in the follow-up commit):** the endpoint first shipped reading
+`?path=`. On Vercel, the `/api/:path*` rewrite appends its own `path=share/meta` capture to the
+query, so prod received that instead of the page and EVERY page 404'd "Not shareable" — including
+conversations that had worked with the old per-kind code. Dev (no rewrite) was fine, which is why
+the smoke passed. Parameter renamed to `page`; `pagePath()` takes the first value that starts with
+`/` (unit-tested). Lesson for anything behind `/api/:path*`: never name a query parameter `path`.
 
 **After deploy:** Facebook caches a URL's preview. For the brief URL already shared, re-scrape
 it at developers.facebook.com/tools/debug ("Scrape Again"); fresh URLs pick up the new tags

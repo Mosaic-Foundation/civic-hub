@@ -14,6 +14,7 @@ import {
   parseDetailPath,
 } from "../../src/services/shareMeta.js";
 import type { Process } from "../../src/models/process.js";
+import { pagePath } from "../../src/controllers/shareController.js";
 
 function proc(over: Partial<Process> & { type?: string }): Process {
   const { type = "civic.vote", ...rest } = over;
@@ -153,4 +154,13 @@ describe("buildShareMeta — brief and vote results carry their headline", () =>
       ).toBeNull();
     });
   }
+});
+
+describe("share/meta query parsing survives Vercel's rewrite capture", () => {
+  it("reads `page`, ignores the `path` Vercel appends, tolerates repeats", () => {
+    expect(pagePath({ page: "/brief/proc_1", path: "share/meta" } as never)).toBe("/brief/proc_1");
+    expect(pagePath({ page: ["share/meta", "/brief/proc_1"] } as never)).toBe("/brief/proc_1");
+    expect(pagePath({ path: "/brief/proc_1" } as never)).toBe("");
+    expect(pagePath({} as never)).toBe("");
+  });
 });
