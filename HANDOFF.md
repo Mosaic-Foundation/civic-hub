@@ -29,7 +29,9 @@ both lockfiles regenerated with npm 12 (installed to the session scratchpad, not
 `npm install-scripts approve esbuild` (npm 12's command) wrote `"allowScripts":
 {"esbuild@0.27.4": true}` into the root package.json so the postinstall warning is gone. When a
 dependency changes from now on, regenerate the lockfile the same way (npm 12) before pushing.
-If a future build still crawls, the next lever is the Vercel project setting
+Third try failed with `tsc: command not found`: Vercel builds with `NODE_ENV=production`, under which
+`npm ci` omits devDependencies — the old commands carried `--include=dev` for that reason; restored
+on both install commands. If a future build still crawls, the next lever is the Vercel project setting
 Node.js Version → 22.x (npm 10, no allow-scripts), no code change. Note: a Vercel build's UI
 install prints nothing until it finishes — give a build ~8 min before calling it stuck.
 

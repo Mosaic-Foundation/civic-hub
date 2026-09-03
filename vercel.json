@@ -1,7 +1,7 @@
 {
-  "buildCommand": "cd ui && npm ci --no-audit --no-fund && npm run build",
+  "buildCommand": "cd ui && npm ci --include=dev --no-audit --no-fund && npm run build",
   "outputDirectory": "ui/dist",
-  "installCommand": "npm ci --no-audit --no-fund",
+  "installCommand": "npm ci --include=dev --no-audit --no-fund",
   "functions": {
     "api/index.ts": {
       "maxDuration": 300
