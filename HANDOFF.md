@@ -17,7 +17,19 @@ today took ~40 s). The log showed the ROOT `npm install --include=dev` alone tak
 Fix: lockfile re-synced (`npm install --package-lock-only`; `npm ci --dry-run` clean at root and
 ui), `vercel.json` install/build now use `npm ci --no-audit --no-fund` (lockfile-only, no
 registry resolution, no audit round-trip), and `.npmrc` (root + ui) sets `audit=false`,
-`fund=false`. If a future build still crawls, the next lever is the Vercel project setting
+`fund=false`.
+
+**Follow-up (same evening):** the first `npm ci` build failed in 3 s — Vercel's Node 24 image now
+runs **npm 12** (its usage text lists `--allow-directory` / `--allow-scripts`), which resolves
+`@napi-rs/wasm-runtime`'s optional peers (`@emnapi/core`, `@emnapi/runtime` 1.11.3) into the
+lockfile, and a lockfile written by npm 11 lacks them → "Missing … from lock file". Fix:
+both lockfiles regenerated with npm 12 (installed to the session scratchpad, not the repo:
+`npm install npm@latest` there, then `<scratch>/node_modules/.bin/npm install
+--package-lock-only`), verified `npm ci --dry-run` clean under npm 12 AND local npm 11.6.
+`npm install-scripts approve esbuild` (npm 12's command) wrote `"allowScripts":
+{"esbuild@0.27.4": true}` into the root package.json so the postinstall warning is gone. When a
+dependency changes from now on, regenerate the lockfile the same way (npm 12) before pushing.
+If a future build still crawls, the next lever is the Vercel project setting
 Node.js Version → 22.x (npm 10, no allow-scripts), no code change. Note: a Vercel build's UI
 install prints nothing until it finishes — give a build ~8 min before calling it stuck.
 
