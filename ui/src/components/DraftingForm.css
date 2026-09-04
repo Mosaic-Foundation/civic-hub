@@ -185,3 +185,12 @@
 .draft-cancel-btn:hover:not(:disabled) {
   border-color: var(--color-primary);
 }
+
+/* A locked field's value: plain text where the input would be. */
+.form-locked-value {
+  margin: 0;
+  padding: 0.6rem 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-text);
+}

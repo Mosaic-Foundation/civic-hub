@@ -52,6 +52,8 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
 - **"See what changed" stands in for the description.** `EditHistory` reports `onOpenChange`;
   `ProjectDetail` hides the live description while the diff is open, so the change reads in
   place instead of under a duplicate; "Hide changes" brings the description back.
+- **"Edit project" is a navy button** (white text) beside the status badge; a **locked title shows
+  as plain text** (`.form-locked-value`) with the lock note, not an input box that looks editable.
 - **"← Cancel editing" is a navy button** (`DraftShell` `backAsButton`, `.back-link--button`), not
   grey text, in edit mode.
 - **History = a word diff, one edit at a time.** Adam: "10 changes and you say see what changed

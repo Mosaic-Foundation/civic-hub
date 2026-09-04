@@ -125,18 +125,12 @@ export default function ProjectDraftingForm({
             Project name <span className="required">*</span>
           </label>
           {titleLocked ? (
-            // Locked: show the LIVE title (the draft may carry a stale one),
-            // read-only. The server ignores title changes anyway; this keeps
-            // the form honest about what the project is called.
-            <input
-              id="draft-title"
-              type="text"
-              className="form-input"
-              value={lockedValues?.title ?? draft.title}
-              readOnly
-              disabled
-              aria-describedby="draft-title-locked"
-            />
+            // Locked: show the LIVE title (the draft may carry a stale one)
+            // as plain text — not a box that looks editable. The server
+            // ignores title changes anyway.
+            <p id="draft-title" className="form-locked-value" aria-describedby="draft-title-locked">
+              {lockedValues?.title ?? draft.title}
+            </p>
           ) : (
             <input
               id="draft-title"

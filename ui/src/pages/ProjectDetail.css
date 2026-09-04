@@ -277,18 +277,18 @@
 /* "Edit project" beside the status badge — a quiet outlined control; the
    destructive actions stay at the bottom of the page. */
 .project-edit-btn {
-  padding: 0.3rem 0.75rem;
+  padding: 0.35rem 0.8rem;
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--type-project-fg, #1565c0);
-  background: var(--color-surface, #fff);
-  border: 1px solid var(--type-project-fg, #1565c0);
+  color: #fff;
+  background: var(--pill-vote-fg, #1e3a5f);
+  border: 1px solid var(--pill-vote-fg, #1e3a5f);
   border-radius: var(--radius-sm, 4px);
   cursor: pointer;
 }
 .project-edit-btn:hover:not(:disabled) {
-  background: var(--type-project-bg, #e3f2fd);
+  background: #14304f;
 }
 .project-edit-btn:disabled {
   opacity: 0.6;
