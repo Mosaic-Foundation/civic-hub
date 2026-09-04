@@ -45,21 +45,18 @@ export default function ShareButton({ title, url }: ShareButtonProps) {
     window.open(fbUrl, "_blank", "noopener,noreferrer,width=600,height=400");
   }
 
-  // Plain-link channels that work from any browser, phone or desktop.
-  // sms: with an empty number opens the Messages composer; mailto: the
-  // mail client. Both carry the title and the link, nothing else.
+  // Plain-link channel that works from any browser, phone or desktop:
+  // sms: with an empty number opens the Messages composer with the title
+  // and the link. (An email button was dropped — a mailto: link looks dead
+  // on a desktop with no default mail app; people can paste the copied link.)
   const smsHref = `sms:?&body=${encodeURIComponent(`${title} ${fullUrl}`)}`;
-  const mailHref = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(
-    `${title}\n${fullUrl}`,
-  )}`;
 
   async function handleNativeShare() {
     try {
       // URL only. With `text` AND `url`, Safari / iOS hand the sheet two
-      // items and Copy / Messages take the text — the link never travels
-      // (Adam: "the copy button doesn't seem to work… sharing via text
-      // doesn't seem to work"). The title still heads the sheet; the
-      // destination's own link preview (api/og.ts) carries the topic.
+      // items and Copy / Messages take the text — the link never travels.
+      // The title still heads the sheet; the destination's own link
+      // preview (api/og.ts) carries the topic.
       await navigator.share({ title, url: fullUrl });
     } catch {
       // user dismissed
@@ -107,18 +104,6 @@ export default function ShareButton({ title, url }: ShareButtonProps) {
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-        </svg>
-      </a>
-
-      <a
-        className="share-icon-btn share-icon-btn--email"
-        href={mailHref}
-        aria-label="Share by email"
-        title="Email"
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <rect x="3" y="5" width="18" height="14" rx="2" />
-          <polyline points="3 7 12 13 21 7" />
         </svg>
       </a>
 

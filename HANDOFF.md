@@ -57,9 +57,9 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   state before clearing — the first cut re-read the cleared state and said "Nothing changed").
 - **Share links never carry `#edits`.** Adam: copy link / message / email were sharing the URL with
   the change history open. `ShareButton` builds its URL from origin + path + query, never the
-  hash, so a shared link always lands on the plain page. (Email = a `mailto:` link, which opens
-  whatever mail app the device has as its default; on a Mac with no mail handler set, nothing
-  visibly happens — a device setting, not a hub bug. Phones open Mail/Gmail.)
+  hash, so a shared link always lands on the plain page. The **email button was dropped**
+  (Adam): a `mailto:` link looks dead on a desktop with no default mail app, and people can
+  paste the copied link. Share row = copy link · Facebook · text message · Share… (phones).
 - **"See what changed" stands in for the description.** `EditHistory` reports `onOpenChange`;
   `ProjectDetail` hides the live description while the diff is open, so the change reads in
   place instead of under a duplicate; "Hide changes" brings the description back.
