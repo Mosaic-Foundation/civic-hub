@@ -82,13 +82,24 @@ the auto-start at approval failed and `approveReview` logs-and-swallows that fai
 The token proves how it failed: it carries `conversation_id: 5fm62xv5ma`, so **Polis created the
 conversation and the hub never recorded it** — an orphan, with another created on each manual Start.
 
-Root cause, now fixed: **`apiFetch` retried every method on timeout, including POSTs.** A
-`/api/v3/comments` write that took longer than the 15s timeout aborted client-side, the retry
-posted the same statement again, and Polis correctly rejected it as
-`polis_err_post_comment_duplicate`. A client-side timeout says nothing about whether the server
-applied the write, so retrying a create can only duplicate it. (Adam's push on "why did this
-happen" is what surfaced this — the plan before it was to retry activation automatically on a
-cron, which would have manufactured orphans forever without ever succeeding.)
+**Root cause — CORRECTED.** The first diagnosis in this entry was that a slow `/api/v3/comments`
+POST timed out, got retried, and duplicated. **That was wrong**, and measuring Polis disproved it:
+comment writes return in **125ms**. The evidence that settles it is that both failed attempts
+(`5fm62xv5ma` from the auto-start and `6ymkenh7vr` from the manual Start) posted **exactly 8
+statements each and died on the 9th** — identical and deterministic, not a timing race.
+
+So the real cause is in the **data**: the conversation's seed list contains a statement Polis
+rejects as `polis_err_post_comment_duplicate` at position 9, and the seed loop threw on it,
+discarding the conversation id with it. It would have failed on every retry, forever.
+
+Both fixes below still resolve it, for two independent reasons — a duplicate now counts as
+success, and seeding no longer throws away the id — so the conversation will start cleanly. The
+"only retry GETs" change is correct on its own merits (retrying a create can only duplicate it)
+but it was **not** the cause here.
+
+(Adam's push on "why did this happen" is what forced the measurement. The plan before it was to
+retry activation automatically on a cron — against a deterministic data failure that would have
+manufactured an orphan on every sweep, forever.)
 
 Three fixes in `polisAdapter`:
 - **Only GETs are retried.** Reads are free to repeat; creates are not.
@@ -127,10 +138,37 @@ failure while having succeeded. That is the right trade against duplicating writ
 answer is an idempotency key or a read-back confirm; `closeDeliberation` callers already treat it
 as best-effort.
 
-**Left alone, not from this bug** — active on Polis, referenced by neither hub, provenance unclear:
-`5zzvja66ed` (FY2028 budget), `7nkkydtpcj` (Test Conversation, Polis Integration), `8db2na5hib`
-(Green Box Sites), `9zkkxkte67` (Test: Floyd County Infrastructure Priorities), and one row whose
-id serializes as `undefined` with a date for a topic. Seven more are already inactive.
+**Also retired** (explicit test conversations, referenced by neither hub): `7nkkydtpcj`
+"Test Conversation, Polis Integration" and `9zkkxkte67` "Test: Floyd County Infrastructure
+Priorities". A health-check statement was posted to `7nkkydtpcj` while timing the write path,
+before retiring it.
+
+**Left alone, awaiting a decision** — active on Polis, referenced by neither hub, but the topics
+read like real content rather than tests: `5zzvja66ed` (FY2028 budget — dev has a separate FY2027
+one) and `8db2na5hib` (Green Box Sites — prod has a real green-box VOTE, though no conversation).
+Plus one row whose id serializes as `undefined` with a date for a topic. Seven more are already
+inactive.
+
+## Polis health, measured 2026-09-04
+
+| Operation | Result |
+|---|---|
+| `GET /comments` (statements) | 177ms |
+| `GET` next statement | 40ms |
+| `GET` cluster / math state | 91ms |
+| `POST /comments` (write) | **125ms** |
+| `POST /conversation/close` | **never responds** — >40s, but the close APPLIES |
+
+Participation was also exercised end to end through the UI earlier the same day (three statement
+votes on the dev "Where We Agree", recorded correctly).
+
+So: Polis is healthy for everything the participant path touches — create, read statements, serve
+the next statement, record votes, math/clusters. **One endpoint is broken: `conversation/close`
+hangs and never returns, though the close does take effect.** That is pre-existing and already
+guarded — `closeDeliberation` callers treat it as best-effort and close locally regardless, so a
+past-deadline conversation still ends properly on the hub; only the Polis-side conversation stays
+nominally open, and nobody can reach it except through the hub. Worth fixing on the Polis track,
+not urgent for the beta.
 
 **Still open:**
 - Rotate the leaked participant token.
