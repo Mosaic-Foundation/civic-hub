@@ -171,8 +171,6 @@ export default function ProjectDraft() {
         assistant={editProcessId ? null : flow.shellAssistant}
         reviewSuggestions={draft?.last_review_result}
         onApplySuggestion={flow.handleApplySuggestion}
-        appliedSuggestions={flow.appliedSuggestions}
-        onSuggestionApplied={flow.markSuggestionApplied}
         canApplySuggestion={flow.canApplySuggestion}
       >
         {flow.resuming ? (

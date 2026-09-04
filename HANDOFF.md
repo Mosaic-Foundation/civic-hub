@@ -4,6 +4,41 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Applied-suggestion state: universal by construction, and the CoC path too — 2026-09-04
+
+Adam asked whether the applied-suggestions bug was systemic — "across the whole system to all
+processes and to future processes". It was, and checking honestly showed the first fix was
+narrower than the bug:
+
+- **The bug was universal.** `SuggestionCard` is one shared component behind every drafting flow,
+  so proposals, votes, projects and conversations all had it identically. It surfaced on a
+  conversation but was never conversation-specific.
+- **The first fix missed the inline Code of Conduct list.** `DraftShell` renders those cards on
+  the form view with the card's own local state, so applying there and switching views forgot in
+  exactly the same way.
+- **And it was inherited by copying, not by construction.** The state sat in `useDraftFlow` and
+  each of the four pages passed two props down. A new type that omitted them would silently fall
+  back to the old behavior — below the bar set on 2026-09-02 for what a new type gets for free.
+
+Both corrected by moving ownership one level out:
+
+- **`DraftShell` owns `appliedKeys`.** It is mounted for the whole drafting session on both
+  layouts (the switcher swaps its children; the shell itself stays), and every drafting page must
+  render it. So every process type — including one added later — gets this with **nothing to pass**.
+  `useDraftFlow` and all four pages are back to what they were.
+- **Keyed by content, not position.** `suggestionKey(s)` = field | quoted_text | suggested_revision.
+  Position would have keyed the panel and the inline list separately even though they render the
+  SAME suggestions, so applying in one would leave the other still offering Apply. Content-keying
+  means applied is applied on every surface that shows it.
+- The inline CoC cards now read and write that set too.
+
+Verified on dev at 375px on a **proposal** this time (the first fix was verified on a conversation):
+real assistant card → Apply → "Applied" → switch to the form, panel confirmed unmounted → switch
+back → still "Applied", with no page-level wiring left in the drafting pages. Backend tsc clean,
+UI build clean, `tests/unit` 692/692. Test draft and uitest session deleted.
+
+---
+
 ## Applied suggestions forgot they were applied; Done button goes navy — 2026-09-04
 
 Adam, drafting a conversation: "when I apply suggestions and I go to the conversation form and then

@@ -402,28 +402,6 @@ export function useDraftFlow<D extends BaseDraft>({
    * Apply assistant-produced text into a form field. This — and only
    * this — marks the draft assistant_helped (assistant_applied flag).
    */
-  /**
-   * Which suggestions have been applied, by `<messageIndex>:<suggestionIndex>`.
-   *
-   * This lived in SuggestionCard's own useState, which meant switching to the
-   * form and back — which unmounts the panel on both layouts — brought every
-   * card back reading "Apply" as though nothing had happened (Adam,
-   * 2026-09-04). Messages already live in this hook and survive the switch,
-   * so the applied set belongs here beside them. Indices are stable because
-   * the message list is append-only.
-   */
-  const [appliedSuggestions, setAppliedSuggestions] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const markSuggestionApplied = useCallback((key: string) => {
-    setAppliedSuggestions((prev) => {
-      if (prev.has(key)) return prev;
-      const next = new Set(prev);
-      next.add(key);
-      return next;
-    });
-  }, []);
-
   const handleApplySuggestion = useCallback(
     async (suggestion: DraftSuggestion) => {
       const d = draftRef.current;
@@ -499,8 +477,6 @@ export function useDraftFlow<D extends BaseDraft>({
     ensureDraft,
     handleReview,
     handleApplySuggestion,
-    appliedSuggestions,
-    markSuggestionApplied,
     canApplySuggestion,
     // auth modal wiring for the page
     requireAuth,

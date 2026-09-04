@@ -2,6 +2,17 @@ import RichText from "./RichText";
 import { useState } from "react";
 import type { DraftSuggestion } from "../services/api";
 
+/**
+ * Identity for "has this been applied", by content rather than position.
+ *
+ * Position would key the panel and the inline Code of Conduct list
+ * separately, and they render the SAME suggestions — applying in one would
+ * leave the other still offering Apply.
+ */
+export function suggestionKey(s: DraftSuggestion): string {
+  return [s.field ?? "", s.quoted_text ?? "", s.suggested_revision ?? ""].join("|");
+}
+
 interface Props {
   suggestion: DraftSuggestion;
   onApply?: () => void;

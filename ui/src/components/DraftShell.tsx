@@ -14,7 +14,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { friendlyType } from "./ProcessLinkPicker";
 import AssistantPanel, { type ChatMessage } from "./AssistantPanel";
-import SuggestionCard from "./SuggestionCard";
+import SuggestionCard, { suggestionKey } from "./SuggestionCard";
 import type { DraftSuggestion } from "../services/api";
 import "./DraftShell.css";
 
@@ -53,10 +53,6 @@ interface Props {
   /** Applies assistant-produced text into the form (marks assistant_helped).
    *  Used by both the inline results block and the panel's cards. */
   onApplySuggestion?: (s: DraftSuggestion) => void;
-  /** Applied-suggestion state, held by useDraftFlow so it outlives the
-   *  panel's unmount on every form/assistant switch. */
-  appliedSuggestions?: ReadonlySet<string>;
-  onSuggestionApplied?: (key: string) => void;
   /** Gates Apply per card — suggestions for fields this form doesn't have
    *  must not offer a silent no-op Apply button. */
   canApplySuggestion?: (s: DraftSuggestion) => boolean;
@@ -88,8 +84,6 @@ export default function DraftShell({
   assistant,
   reviewSuggestions,
   onApplySuggestion,
-  appliedSuggestions,
-  onSuggestionApplied,
   canApplySuggestion,
   layout = "full",
   processType,
@@ -97,6 +91,26 @@ export default function DraftShell({
   children,
 }: Props) {
   const { user } = useAuth();
+  /**
+   * Which suggestions have been applied. Owned HERE, not in the panel and not
+   * in the card: the card unmounts on every form/assistant switch (Adam,
+   * 2026-09-04, applied cards came back reading "Apply"), and the panel
+   * unmounts with it. DraftShell is mounted for the whole drafting session on
+   * both layouts, and every drafting page must render it — so every process
+   * type, present and future, gets this with nothing to wire up.
+   */
+  const [appliedKeys, setAppliedKeys] = useState<ReadonlySet<string>>(
+    () => new Set<string>(),
+  );
+  const markApplied = (s: DraftSuggestion) =>
+    setAppliedKeys((prev) => {
+      const key = suggestionKey(s);
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+
   const isMobile = useIsMobile();
   const typeLabel = processType ? friendlyType(processType) : "Draft";
 
@@ -181,8 +195,8 @@ export default function DraftShell({
       messages={assistant.messages}
       onSendMessage={assistant.onSendMessage}
       onApplySuggestion={onApplySuggestion}
-      appliedSuggestions={appliedSuggestions}
-      onSuggestionApplied={onSuggestionApplied}
+      appliedSuggestions={appliedKeys}
+      onSuggestionApplied={markApplied}
       canApplySuggestion={canApplySuggestion}
       loading={assistant.loading}
       phase={assistant.phase}
@@ -206,11 +220,15 @@ export default function DraftShell({
           <SuggestionCard
             key={i}
             suggestion={s}
+            applied={appliedKeys.has(suggestionKey(s))}
             onApply={
               s.suggested_revision &&
               onApplySuggestion &&
               (canApplySuggestion ? canApplySuggestion(s) : true)
-                ? () => onApplySuggestion(s)
+                ? () => {
+                    onApplySuggestion(s);
+                    markApplied(s);
+                  }
                 : undefined
             }
           />

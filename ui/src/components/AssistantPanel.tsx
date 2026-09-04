@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useRef, useEffect } from "react";
-import SuggestionCard from "./SuggestionCard";
+import SuggestionCard, { suggestionKey } from "./SuggestionCard";
 import type { DraftSuggestion } from "../services/api";
 import "./AssistantPanel.css";
 
@@ -17,11 +17,11 @@ interface Props {
    *  form doesn't have must not offer a silent no-op Apply. */
   canApplySuggestion?: (suggestion: DraftSuggestion) => boolean;
   onDismissSuggestion?: (index: number) => void;
-  /** Keys (`<messageIndex>:<suggestionIndex>`) already applied, and the
-   *  reporter for a new one. Held above this component so the answer
-   *  survives the panel being unmounted by the form/assistant switch. */
+  /** Suggestions already applied, keyed by content, and the reporter for a
+   *  new one. Held above this component (DraftShell) so the answer survives
+   *  the panel being unmounted by the form/assistant switch. */
   appliedSuggestions?: ReadonlySet<string>;
-  onSuggestionApplied?: (key: string) => void;
+  onSuggestionApplied?: (s: DraftSuggestion) => void;
   loading: boolean;
   phase?: "brainstorm" | "free_form" | "review";
   /** Label shown next to the loading dots — lets pages distinguish an
@@ -115,7 +115,7 @@ export default function AssistantPanel({
             {msg.suggestions && msg.suggestions.length > 0 && (
               <div className="msg-suggestions">
                 {msg.suggestions.map((s, si) => {
-                  const key = `${i}:${si}`;
+                  const key = suggestionKey(s);
                   return (
                     <SuggestionCard
                       key={si}
@@ -127,7 +127,7 @@ export default function AssistantPanel({
                         (canApplySuggestion ? canApplySuggestion(s) : true)
                           ? () => {
                               onApplySuggestion(s);
-                              onSuggestionApplied?.(key);
+                              onSuggestionApplied?.(s);
                             }
                           : undefined
                       }
