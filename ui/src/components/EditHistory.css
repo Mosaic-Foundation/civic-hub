@@ -1,4 +1,4 @@
-/* EditHistory — "Edited … · See what changed" under a description. */
+/* EditHistory — "Edited … · See what changed", one edit at a time. */
 
 .edit-history {
   margin: -0.5rem 0 var(--space-lg, 1.5rem);
@@ -10,26 +10,23 @@
   color: var(--color-text-muted, #5b6470);
 }
 
-.edit-history-toggle {
-  padding: 0;
+.edit-history-toggle,
+.edit-history-arrow {
   background: none;
   border: none;
   font: inherit;
-  color: var(--color-link, #1f3a66);
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
   cursor: pointer;
 }
 
-.edit-history-entries {
-  list-style: none;
-  margin: var(--space-sm, 0.5rem) 0 0;
+.edit-history-toggle {
   padding: 0;
-  display: grid;
-  gap: var(--space-md, 1rem);
+  color: var(--color-link, #1f3a66);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
 .edit-history-entry {
+  margin-top: var(--space-sm, 0.5rem);
   padding: var(--space-md, 1rem);
   background: var(--color-surface, #fff);
   border: 1px solid var(--color-border, #d9d2c3);
@@ -37,64 +34,111 @@
   border-radius: var(--radius-md, 8px);
 }
 
+.edit-history-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm, 0.5rem);
+  flex-wrap: wrap;
+}
+
 .edit-history-when {
-  margin: 0 0 var(--space-sm, 0.5rem);
   font-size: var(--font-size-sm, 0.85rem);
+  color: var(--color-text-muted, #5b6470);
+}
+
+.edit-history-arrows {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.edit-history-arrow {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border, #d9d2c3);
+  color: var(--color-text, #1f2a2d);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.edit-history-arrow:hover:not(:disabled) {
+  border-color: var(--type-project-fg, #1565c0);
+  color: var(--type-project-fg, #1565c0);
+}
+
+.edit-history-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.edit-history-key {
+  margin: var(--space-xs, 0.25rem) 0 0;
+  font-size: var(--font-size-xs, 0.72rem);
   color: var(--color-text-muted, #5b6470);
 }
 
 .edit-history-field h4 {
   margin: var(--space-sm, 0.5rem) 0 0.35rem;
-  font-size: var(--font-size-sm, 0.85rem);
+  font-size: var(--font-size-xs, 0.72rem);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-text-muted, #5b6470);
 }
 
-.edit-history-diff {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-sm, 0.5rem);
-}
-
-.edit-history-before,
-.edit-history-after {
-  padding: 0.6rem 0.75rem;
-  border-radius: var(--radius-sm, 4px);
+.edit-diff {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
   font-size: var(--font-size-sm, 0.9rem);
   overflow-wrap: anywhere;
 }
 
-.edit-history-before { background: #f7efe9; }
-.edit-history-after { background: #ecf3ee; }
-
-.edit-history-tag {
-  display: block;
-  margin-bottom: 0.25rem;
-  font-size: var(--font-size-xs, 0.72rem);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-muted, #5b6470);
+.edit-diff-removed {
+  background: #fbe3e0;
+  color: #8c2f24;
+  text-decoration: line-through;
+  text-decoration-color: rgba(140, 47, 36, 0.6);
+  border-radius: 2px;
+  padding: 0 0.1em;
 }
 
-.edit-history-empty {
-  color: var(--color-text-subtle, #8a8f94);
-  font-style: italic;
+.edit-diff-added {
+  background: #dcefe0;
+  color: #1f5a2e;
+  text-decoration: none;
+  border-radius: 2px;
+  padding: 0 0.1em;
 }
 
-.edit-history-list {
+.edit-diff-list {
   margin: 0;
   padding-left: 1.1rem;
+  font-size: var(--font-size-sm, 0.9rem);
 }
 
-.edit-history-image {
-  max-width: 100%;
+.edit-diff-none {
+  margin: 0;
+  color: var(--color-text-subtle, #8a8f94);
+  font-style: italic;
+  font-size: var(--font-size-sm, 0.9rem);
+}
+
+.edit-diff-images {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm, 0.5rem);
+  flex-wrap: wrap;
+}
+
+.edit-diff-image {
+  max-width: 45%;
   border-radius: var(--radius-sm, 4px);
 }
 
-@media (max-width: 600px) {
-  .edit-history-diff {
-    grid-template-columns: 1fr;
-  }
+.edit-diff-image--removed { outline: 2px solid #c9463a; }
+.edit-diff-image--added { outline: 2px solid #2a7340; }
+
+.edit-diff-arrow {
+  color: var(--color-text-muted, #5b6470);
 }

@@ -24,6 +24,16 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   always runs `checkTextAgainstCoC` (hard blocks only, ~3 s); the old best-practices review turn
   is gone from the button (it returns as "Get suggestions", below). The `coc_only` flag added
   earlier the same evening was removed as redundant.
+- **History = a word diff, one edit at a time.** Adam: "10 changes and you say see what changed
+  it's gonna open up a huge long page… it should be more elegant"; also asked about storage.
+  Storage: one event row per edit holding before/after of only the changed fields as plain text
+  (a long description ≈ 2 KB), nothing copied on read — not a weight. `EditHistory` now opens on
+  the most recent edit ("Edit 3 of 3 · date · creator · changed description") with ‹ › arrows to
+  step back; text fields show a word-level diff (`components/wordDiff.ts`, LCS over words on the
+  Markdown-stripped text — removed words struck through in red, added words in green;
+  `tests/unit/wordDiff.test.ts`), list fields (sources, links) show removed/added items, the
+  banner shows old → new. Verified on dev with three edits: opens on 3 of 3 (sources: +budget
+  link), ‹ → 2 of 3 ("Early" struck, new status added), ‹ → 1 of 3.
 - **Admin notice of edits → the admin panel "Edits" tab, not the dropdown.** Adam (after editing
   the skate park on prod): "I definitely don't want it in the drop down menu for the admin
   account… a new tab that says edits." `GET /admin/edits` (`listAllEdits`): every edited process
