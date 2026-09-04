@@ -39,6 +39,8 @@ export interface DraftShellAssistant {
 interface Props {
   backTo: string;
   backLabel: string;
+  /** Render the back link as a solid navy button (edit mode's "Cancel editing"). */
+  backAsButton?: boolean;
   title: string;
   error?: string | null;
   reviewNotice?: string | null;
@@ -75,6 +77,7 @@ const COC_DISCLOSURE =
 export default function DraftShell({
   backTo,
   backLabel,
+  backAsButton = false,
   title,
   error,
   reviewNotice,
@@ -207,7 +210,7 @@ export default function DraftShell({
 
   const header = (
     <>
-      <Link to={backTo} className="back-link">
+      <Link to={backTo} className={`back-link${backAsButton ? " back-link--button" : ""}`}>
         &larr; {backLabel}
       </Link>
       <h1 className="propose-draft-title">{title}</h1>

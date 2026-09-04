@@ -214,3 +214,21 @@
 .assistant-affordance-btn--secondary:hover:not(:disabled) {
   background: var(--pill-vote-bg, #e7eef7);
 }
+
+/* Edit mode: the way out is a real button, not grey text (Adam, 2026-09-03). */
+.back-link.back-link--button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  background: var(--pill-vote-fg, #1e3a5f);
+  color: #fff;
+  border-radius: var(--radius-sm, 4px);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back-link.back-link--button:hover {
+  background: #14304f;
+  color: #fff;
+}

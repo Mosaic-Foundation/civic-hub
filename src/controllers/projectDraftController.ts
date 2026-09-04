@@ -180,7 +180,12 @@ export async function handleSubmitProjectDraft(
         links: draft.links,
       });
       await setProjectDraftStatus(id, "submitted");
-      res.status(200).json({ process_id: editProcessId, edited: true, changed_fields: changes.changed_fields });
+      res.status(200).json({
+        process_id: editProcessId,
+        edited: true,
+        changed_fields: changes.changed_fields,
+        formatting_only_fields: changes.formatting_only_fields,
+      });
       return;
     }
 

@@ -103,11 +103,24 @@ function FieldChange({ field, before, after }: { field: string; before: unknown;
   );
 }
 
-export default function EditHistory({ processId }: { processId: string }) {
+export default function EditHistory({
+  processId,
+  onOpenChange,
+}: {
+  processId: string;
+  /** Lets the page hide the live description while the diff is showing,
+   *  so the change reads in place instead of under a duplicate. */
+  onOpenChange?: (open: boolean) => void;
+}) {
   const [edits, setEdits] = useState<ProcessEdit[]>([]);
   const [open, setOpen] = useState(() => typeof window !== "undefined" && window.location.hash === "#edits");
   // Index into edits (newest first): 0 = most recent.
   const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    onOpenChange?.(open && edits.length > 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, edits.length]);
 
   useEffect(() => {
     let cancelled = false;

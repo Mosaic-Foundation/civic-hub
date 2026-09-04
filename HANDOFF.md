@@ -39,6 +39,21 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   always runs `checkTextAgainstCoC` (hard blocks only, ~3 s); the old best-practices review turn
   is gone from the button (it returns as "Get suggestions", below). The `coc_only` flag added
   earlier the same evening was removed as redundant.
+- **Formatting-only edits are saved but not recorded.** Adam (bolded two labels on the skate
+  park; the history showed an "edit" with an empty diff): "only track changes that are more
+  than formatting changes." `diffEdit` compares text fields by `substanceOf()` — Markdown
+  stripped, whitespace collapsed; punctuation and case still count — and returns
+  `formatting_only_fields` + `formatting_values` alongside the substantive `changed_fields`.
+  `applyEdit` writes both (processes row, `onEdited` mirror) but emits the event, history entry
+  and digest/badge notice only for substantive changes. The submit reply carries
+  `formatting_only_fields`; the project page says "Formatting updated. Formatting-only changes
+  are saved but not listed as edits." Tests in `processEdits.test.ts`. Verified on dev: bold-only
+  → saved, 0 edits recorded; one word → 1 edit.
+- **"See what changed" stands in for the description.** `EditHistory` reports `onOpenChange`;
+  `ProjectDetail` hides the live description while the diff is open, so the change reads in
+  place instead of under a duplicate; "Hide changes" brings the description back.
+- **"← Cancel editing" is a navy button** (`DraftShell` `backAsButton`, `.back-link--button`), not
+  grey text, in edit mode.
 - **History = a word diff, one edit at a time.** Adam: "10 changes and you say see what changed
   it's gonna open up a huge long page… it should be more elegant"; also asked about storage.
   Storage: one event row per edit holding before/after of only the changed fields as plain text

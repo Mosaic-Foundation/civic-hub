@@ -130,8 +130,9 @@ export default function ProjectDraft() {
     try {
       if (editProcessId) {
         const edited = await apiSubmitProjectDraft(draft.id, { edit_process_id: editProcessId });
-        navigate(`/project/${editProcessId}#edits`, {
-          state: { edited: true, changed: (edited as { changed_fields?: string[] }).changed_fields ?? [] },
+        const r = edited as { changed_fields?: string[]; formatting_only_fields?: string[] };
+        navigate(`/project/${editProcessId}${(r.changed_fields ?? []).length ? "#edits" : ""}`, {
+          state: { edited: true, changed: r.changed_fields ?? [], formatting: r.formatting_only_fields ?? [] },
         });
         return;
       }
@@ -161,6 +162,7 @@ export default function ProjectDraft() {
       <DraftShell
         backTo={editProcessId ? `/project/${editProcessId}` : "/projects"}
         backLabel={editProcessId ? "Cancel editing" : "Projects"}
+        backAsButton={!!editProcessId}
         title={editProcessId ? "Edit your project" : reviseReviewId ? "Revise your project" : "Start a project"}
         processType="civic.project"
         formVersion={draft?.updated_at ?? null}

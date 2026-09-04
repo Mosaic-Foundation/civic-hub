@@ -32,8 +32,11 @@ export default function ProjectDetail() {
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
   // Just saved an edit: say so plainly (it was never "submitted for review").
-  const editedState = (location.state as { edited?: boolean; changed?: string[] } | null) ?? null;
+  const editedState =
+    (location.state as { edited?: boolean; changed?: string[]; formatting?: string[] } | null) ?? null;
   const [showEdited, setShowEdited] = useState(!!editedState?.edited);
+  // While "See what changed" is open, the diff stands in for the description.
+  const [historyOpen, setHistoryOpen] = useState(false);
   const { user, isAdmin } = useAuth();
 
   const [project, setProject] = useState<ProjectDetailType | null>(null);
@@ -243,7 +246,9 @@ export default function ProjectDetail() {
           <span>
             {editedState?.changed && editedState.changed.length > 0
               ? "Your project has been updated. The change is listed below under “See what changed”."
-              : "Nothing changed, so nothing was saved."}
+              : editedState?.formatting && editedState.formatting.length > 0
+                ? "Formatting updated. Formatting-only changes are saved but not listed as edits."
+                : "Nothing changed, so nothing was saved."}
           </span>
           <button type="button" className="project-edited-notice-close" onClick={() => setShowEdited(false)} aria-label="Dismiss">
             ×
@@ -276,13 +281,13 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      {/* Description */}
-      {project.description && (
+      {/* Description — replaced by the diff while the history is open. */}
+      {project.description && !historyOpen && (
         <RichText className="project-description" text={project.description} />
       )}
 
       {/* Visible edit history — renders nothing until the project is edited. */}
-      <EditHistory processId={project.id} />
+      <EditHistory processId={project.id} onOpenChange={setHistoryOpen} />
 
       {/* Sources */}
       {project.sources.length > 0 && (

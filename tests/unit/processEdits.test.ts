@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { diffEdit, labelForField } from "../../src/services/processEdits.js";
+import { diffEdit, labelForField, substanceOf } from "../../src/services/processEdits.js";
 import { getProcessHandler } from "../../src/processes/registry.js";
 
 const current = {
@@ -41,5 +41,20 @@ describe("edit policy is opt-in per type — projects only (Adam, 2026-09-03)", 
     const editable = ["civic.vote", "civic.proposal", "civic.project", "civic.polis_deliberation", "civic.brief"]
       .filter((t) => typeof getProcessHandler(t)?.editPolicy === "function");
     expect(editable).toEqual(["civic.project"]);
+  });
+});
+
+describe("formatting-only edits are saved but not recorded (Adam, 2026-09-03)", () => {
+  it("bold, list markers, and whitespace changes are not substantive", () => {
+    const d = diffEdit(current, { description: "**Old** text" }, []);
+    expect(d.changed_fields).toEqual([]);
+    expect(d.formatting_only_fields).toEqual(["description"]);
+    expect(d.formatting_values.description).toBe("**Old** text");
+    expect(substanceOf("What we need:\n- one\n-  two")).toBe(substanceOf("**What we need:**\n\n- one\n- two"));
+  });
+  it("a changed word, a period, or a capital IS substantive", () => {
+    expect(diffEdit(current, { description: "Old text." }, []).changed_fields).toEqual(["description"]);
+    expect(diffEdit(current, { description: "old text" }, []).changed_fields).toEqual(["description"]);
+    expect(diffEdit(current, { description: "New text" }, []).changed_fields).toEqual(["description"]);
   });
 });

@@ -31,6 +31,7 @@ import { getReviewByProcessId, setReviewDraftId } from "../modules/civic.review/
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { createEdges, getEdgesFor } from "./processLinks.js";
 import { getProcess } from "./processService.js";
+import { stripMarkdown } from "../shared/markdown.js";
 
 export interface Editor {
   id: string;
@@ -44,8 +45,30 @@ export interface EditInput {
   links?: Array<{ to_id: string; relation: string }>;
 }
 
+/** diffEdit's answer: the substantive changes (recorded) plus any
+ *  formatting-only text changes (saved, not recorded). */
+export interface EditDiff extends EditChangeSet {
+  formatting_only_fields: string[];
+  /** Text fields whose new value must be written even though they are not recorded. */
+  formatting_values: Record<string, string>;
+}
+
 /** The submitted fields an edit may touch; `content.*` keys are compared individually. */
 const CONTENT_KEYS_IGNORED = new Set(["assistant_helped"]);
+
+/** Text fields where formatting-only changes are saved but not recorded. */
+const TEXT_FIELDS = new Set(["title", "description"]);
+
+/**
+ * What a text edit is "about": the words, not the markup or the spacing.
+ * Two texts with the same words (bold added, a line break moved) are the
+ * same edit for the history and for supporters (Adam, 2026-09-03: "only
+ * track changes that are more than formatting changes"). Punctuation and
+ * case still count — a period or a capital is a wording choice.
+ */
+export function substanceOf(text: string): string {
+  return stripMarkdown(text).replace(/\s+/g, " ").trim();
+}
 
 const NOT_EDITABLE: EditPolicy = {
   editable: false,
@@ -122,18 +145,28 @@ export function diffEdit(
   current: { title: string; description: string; content: Record<string, unknown>; links: Array<{ to_id: string; relation: string }> },
   next: EditInput,
   lockedFields: string[],
-): EditChangeSet {
+): EditDiff {
   const changed: string[] = [];
   const previous: Record<string, unknown> = {};
   const after: Record<string, unknown> = {};
+  const formattingOnly: string[] = [];
+  const formattingValues: Record<string, string> = {};
   const locked = new Set(lockedFields);
 
-  if (next.title !== undefined && !locked.has("title") && next.title.trim() !== current.title.trim()) {
-    changed.push("title"); previous.title = current.title; after.title = next.title.trim();
-  }
-  if (next.description !== undefined && !locked.has("description") && next.description.trim() !== (current.description ?? "").trim()) {
-    changed.push("description"); previous.description = current.description ?? ""; after.description = next.description.trim();
-  }
+  const textField = (field: "title" | "description", nextValue: string | undefined, currentValue: string) => {
+    if (nextValue === undefined || locked.has(field)) return;
+    const nextTrim = nextValue.trim();
+    const curTrim = (currentValue ?? "").trim();
+    if (nextTrim === curTrim) return;
+    if (substanceOf(nextTrim) === substanceOf(curTrim)) {
+      formattingOnly.push(field);
+      formattingValues[field] = nextTrim;
+      return;
+    }
+    changed.push(field); previous[field] = currentValue ?? ""; after[field] = nextTrim;
+  };
+  textField("title", next.title, current.title);
+  textField("description", next.description, current.description);
   if (next.content) {
     const keys = new Set([...Object.keys(current.content ?? {}), ...Object.keys(next.content)]);
     for (const key of keys) {
@@ -150,7 +183,7 @@ export function diffEdit(
       changed.push("links"); previous.links = current.links; after.links = next.links;
     }
   }
-  return { changed_fields: changed, previous, current: after };
+  return { changed_fields: changed, previous, current: after, formatting_only_fields: formattingOnly, formatting_values: formattingValues };
 }
 
 export class EditError extends Error {
@@ -167,7 +200,7 @@ export async function applyEdit(
   processId: string,
   editor: Editor,
   input: EditInput,
-): Promise<EditChangeSet> {
+): Promise<EditDiff> {
   const process = await getProcess(processId);
   if (!process) throw new EditError("Process not found", 404);
   const policy = await getEditPolicy(process, editor);
@@ -187,12 +220,14 @@ export async function applyEdit(
     input,
     policy.locked_fields,
   );
-  if (changes.changed_fields.length === 0) return changes;
+  if (changes.changed_fields.length === 0 && changes.formatting_only_fields.length === 0) return changes;
 
   const now = new Date().toISOString();
   const updates: Record<string, unknown> = { updated_at: now };
   if ("title" in changes.current) updates.title = changes.current.title;
   if ("description" in changes.current) updates.description = changes.current.description;
+  // Formatting-only text changes are saved, just not recorded below.
+  for (const [field, value] of Object.entries(changes.formatting_values)) updates[field] = value;
   const contentChanged = changes.changed_fields.filter((f) => !["title", "description", "links"].includes(f));
   if (contentChanged.length) {
     const content = { ...((process.content ?? {}) as Record<string, unknown>) };
@@ -215,7 +250,14 @@ export async function applyEdit(
   }
 
   const handler = getProcessHandler(process.definition.type);
-  await handler?.onEdited?.(process, changes);
+  // The handler mirrors everything that was written, formatting included.
+  await handler?.onEdited?.(process, {
+    ...changes,
+    current: { ...changes.current, ...changes.formatting_values },
+  });
+
+  // Formatting-only: saved, but no event, no history entry, no notice.
+  if (changes.changed_fields.length === 0) return changes;
 
   const editorRole = "creator" as const;
   await emitEvent({
