@@ -30,9 +30,25 @@ Verified on dev at 375px: votes = navy top bar, VOTE pill, "32 votes · Closes S
 ACTIVE right; projects = blue bar, PROJECT pill, "by Admin · 7/1/2026" left and ACTIVE right;
 conversations = teal bar, CONVERSATION pill, ACTIVE right.
 
-**Noted, not fixed:** the conversations list has no date to put opposite its status pill —
-`DeliberationSummary` carries no timestamp, so that would need a read-model field. Participant
-count fills the left when non-zero.
+**Second pass, same day.** Adam: the title should be full width with the type pill at the top
+left, and the date at the bottom left across from the status pill — then, "I like the idea of the
+card showing the participation count as well."
+
+- **Header is a column now**, pill first and the title across the full width beneath it. Side by
+  side, a long type word ("CONVERSATION") squeezed the title into a narrow column — a four-line
+  wrap next to a one-word pill on a phone. The feed's pill carries `margin-left: auto`, which is
+  cancelled in a card header so it sits left. One rule covering all three header classes.
+- **The footer is date + participation on the left, status hard right**: votes read
+  "Aug 25 · 32 votes · Closes Sep 8" then ACTIVE; projects "by Admin · 7/1/2026" then ACTIVE, with
+  the support/oppose bar keeping its own colored line above; conversations "9/1/2026" (+ participant
+  count once Polis has produced one) then ACTIVE.
+- Conversations had no timestamp to show, so the shared Polis handler's `getSummary` now returns
+  `created_at` from the process row — the one summary of the five that lacked one. `DeliberationSummary`
+  takes it as optional, and the card omits the date rather than rendering "Invalid Date" against an
+  older server.
+
+Verified on dev at 375px: title width 285 of a 327px card (was squeezed beside the pill), pill top
+left, date bottom left, status bottom right, on all three lists.
 
 ## Word cloud density — measured, and it does NOT scale
 

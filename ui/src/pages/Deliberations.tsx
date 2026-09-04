@@ -111,12 +111,15 @@ export default function Deliberations() {
                 <Link to={`/deliberation/${p.process_id}`} className="process-link">
                   <div className="deliberation-card">
                     <div className="deliberation-card-header">
-                      <h3>{p.topic}</h3>
                       <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.polis_deliberation")}`}>
                         {friendlyType("civic.polis_deliberation")}
                       </span>
+                      <h3>{p.topic}</h3>
                     </div>
                     <div className="process-card-meta">
+                      {p.created_at && (
+                        <span>{new Date(p.created_at).toLocaleDateString()}</span>
+                      )}
                       <span className={statusDisplay("draft").className}>
                         {statusDisplay("draft").label}
                       </span>
@@ -138,12 +141,15 @@ export default function Deliberations() {
                 <Link to={`/deliberation/${p.process_id}`} className="process-link">
                   <div className="deliberation-card">
                     <div className="deliberation-card-header">
-                      <h3>{p.topic}</h3>
                       <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.polis_deliberation")}`}>
                         {friendlyType("civic.polis_deliberation")}
                       </span>
+                      <h3>{p.topic}</h3>
                     </div>
                     <div className="process-card-meta">
+                      {p.created_at && (
+                        <span>{new Date(p.created_at).toLocaleDateString()}</span>
+                      )}
                       {(p.participant_count ?? 0) > 0 && (
                         <span>
                           {p.participant_count} participant{p.participant_count !== 1 ? "s" : ""}
@@ -168,12 +174,15 @@ export default function Deliberations() {
                 <Link to={`/deliberation/${p.process_id}`} className="process-link">
                   <div className="deliberation-card">
                     <div className="deliberation-card-header">
-                      <h3>{p.topic}</h3>
                       <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.polis_deliberation")}`}>
                         {friendlyType("civic.polis_deliberation")}
                       </span>
+                      <h3>{p.topic}</h3>
                     </div>
                     <div className="process-card-meta">
+                      {p.created_at && (
+                        <span>{new Date(p.created_at).toLocaleDateString()}</span>
+                      )}
                       {(p.participant_count ?? 0) > 0 && (
                         <span>
                           {p.participant_count} participant{p.participant_count !== 1 ? "s" : ""}

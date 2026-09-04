@@ -98,10 +98,10 @@ export default function Projects() {
                     <Link to={`/project/${p.id}`} className="process-link">
                       <div className="project-card">
                         <div className="project-card-header">
-                          <h3>{p.title}</h3>
                           <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.project")}`}>
                             {friendlyType("civic.project")}
                           </span>
+                          <h3>{p.title}</h3>
                         </div>
                         {(p.support_count > 0 || p.oppose_count > 0) && (
                           <div className="project-sentiment-bar">
@@ -145,10 +145,10 @@ export default function Projects() {
                     <Link to={`/project/${p.id}`} className="process-link">
                       <div className="project-card">
                         <div className="project-card-header">
-                          <h3>{p.title}</h3>
                           <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.project")}`}>
                             {friendlyType("civic.project")}
                           </span>
+                          <h3>{p.title}</h3>
                         </div>
                         <div className="process-card-meta">
                           <Creator

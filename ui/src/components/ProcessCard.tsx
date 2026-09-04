@@ -26,12 +26,13 @@ export default function ProcessCard({ process }: Props) {
           label is the bare type — "Vote", not the feed's "New vote" — since
           nothing here is new by definition. */}
       <div className="process-card-header">
-        <h3>{process.title}</h3>
         <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.vote")}`}>
           {friendlyType("civic.vote")}
         </span>
+        <h3>{process.title}</h3>
       </div>
       <div className="process-card-meta">
+        <span>{formatShortDate(process.created_at)}</span>
         {isProposal && (
           <span>{process.support_count} of {process.support_threshold} endorsements</span>
         )}

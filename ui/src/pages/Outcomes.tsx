@@ -203,10 +203,10 @@ function OutcomeRow({ outcome }: { outcome: OutcomeEntry }) {
           style={{ "--card-accent": `var(--type-${slug}-fg)` } as CSSProperties}
         >
           <div className="process-card-header">
-            <h3>{outcome.title}</h3>
             <span className={`feed-pill feed-pill--type-${slug}`}>
               {friendlyType(outcome.source_process_type)}
             </span>
+            <h3>{outcome.title}</h3>
           </div>
           <p className="outcomes-item-headline">{outcome.headline}</p>
           <div className="process-card-meta">

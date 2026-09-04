@@ -1912,6 +1912,9 @@ export interface DeliberationSummary {
   title?: string;
   topic: string;
   lifecycle: string;
+  /** Absent on older servers — the card omits the date rather than showing
+   *  "Invalid Date". */
+  created_at?: string;
   participant_count?: number;
   summary_status: string;
 }

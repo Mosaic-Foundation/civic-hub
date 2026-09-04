@@ -707,11 +707,30 @@
   --card-accent: var(--type-conversation-fg, #0f5e66);
 }
 
-.process-card-header {
+/* Pill on its own line, then the title across the full width (Adam,
+   2026-09-04). Side-by-side left the title in a narrow column on a phone —
+   a four-line wrap beside a one-word pill. Column layout, and the pill's
+   own `margin-left: auto` (it is the feed's pill, where it is pushed right)
+   is cancelled so it sits at the left. */
+.process-card-header,
+.project-card-header,
+.deliberation-card-header {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.45rem;
+}
+
+.process-card-header > .feed-pill,
+.project-card-header > .feed-pill,
+.deliberation-card-header > .feed-pill {
+  margin-left: 0;
+}
+
+.process-card-header h3,
+.project-card-header h3,
+.deliberation-card-header h3 {
+  width: 100%;
 }
 
 .process-card-header h3 {

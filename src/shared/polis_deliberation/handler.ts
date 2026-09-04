@@ -20,7 +20,13 @@ export interface ProcessHandlerShape {
     actor?: string,
   ): Record<string, unknown>;
   getSummary(
-    process: { id: string; status: string; state: Record<string, unknown>; title?: string },
+    process: {
+      id: string;
+      status: string;
+      state: Record<string, unknown>;
+      title?: string;
+      createdAt?: string;
+    },
   ): Record<string, unknown>;
 }
 
@@ -258,6 +264,10 @@ export function createPolisDeliberationHandler(
         topic: state.topic,
         status: process.status,
         lifecycle: process.status,
+        // The list card shows a date opposite its status pill, like every
+        // other type's card (Adam, 2026-09-04). Conversations were the one
+        // summary with no timestamp on it.
+        created_at: process.createdAt,
         participant_count:
           state.summary?.participation_stats.total_participants ?? 0,
         summary_status: state.summary_status,
