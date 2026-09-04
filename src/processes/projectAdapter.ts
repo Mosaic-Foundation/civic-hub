@@ -72,6 +72,25 @@ const projectAdapter: ProcessHandler = {
     });
     return draft.id;
   },
+  syncDraftFromProcess: async (draftId, process, links) => {
+    const project = await getProject(process.id);
+    const content = (process.content ?? {}) as Record<string, unknown>;
+    await updateProjectDraft(draftId, {
+      title: process.title,
+      description: project?.description ?? process.description ?? "",
+      sources: (project?.sources ?? (content.sources as string[] | undefined) ?? []).join("\n"),
+      banner_image_url: project?.banner_image_url ?? (content.banner_image_url as string | null) ?? null,
+      banner_image_alt: project?.banner_image_alt ?? (content.banner_image_alt as string | null) ?? null,
+      links: validateLinkSet(process.id, links),
+      skip_modified_flag: true,
+    });
+    // Fresh start: no stale check result, and the check must run again.
+    const { error } = await getDb()
+      .from("project_drafts")
+      .update({ last_review_result: null, draft_modified_since_review: true })
+      .eq("id", draftId);
+    if (error) throw new Error(`ProjectDrafts: could not reset review state: ${error.message}`);
+  },
   listSupportedBy: async (userId) => {
     const { data } = await getDb()
       .from("project_sentiments")

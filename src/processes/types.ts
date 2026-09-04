@@ -109,6 +109,18 @@ export interface ProcessHandler {
   ): Promise<string>;
 
   /**
+   * Optional: overwrite an existing draft's submitted fields from the LIVE
+   * process and clear its Code of Conduct result — so every edit starts
+   * from what is actually published, never from an abandoned edit's text
+   * or a stale suggestion card (Adam: "stuck in edit mode").
+   */
+  syncDraftFromProcess?(
+    draftId: string,
+    process: Process,
+    links: Array<{ to_id: string; relation: string }>,
+  ): Promise<void>;
+
+  /**
    * Optional: the inverse of listSupporters — every process of this type
    * the given user supports. Drives the account-menu badge for supporters
    * of an edited process (services/editNotifications.ts).

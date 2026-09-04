@@ -18,7 +18,21 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   notified**: `listEditNotifications(userId, isAdmin)` returns EVERY edited process for an admin
   (supporters get the ones they support), so the same avatar dot + menu group ("Projects
   edited") tells the admin, clearing when opened.
-- **Edits get the hard Code of Conduct check ONLY, and no assistant.** Adam (editing the skate
+- **The check is the Code of Conduct check, full stop — every type, creation and edits.** Adam:
+  "the code of conduct check… shouldn't be suggesting changes as much as catching code of
+  conduct issues… the writing assistant should be a different thing." `handleAssistantReview` now
+  always runs `checkTextAgainstCoC` (hard blocks only, ~3 s); the old best-practices review turn
+  is gone from the button (it returns as "Get suggestions", below). The `coc_only` flag added
+  earlier the same evening was removed as redundant.
+- **Every edit starts from the live project.** Adam: the skate park "seems to be stuck in edit
+  mode" — the recorded draft still held an abandoned edit's text and a stale suggestion card.
+  New seam `syncDraftFromProcess(draftId, process, links)` (projectAdapter: overwrite the
+  draft's submitted fields from the live `projects` row + creator links, set
+  `last_review_result = null`, `draft_modified_since_review = true`); `startEdit` calls it on the
+  creator's recorded draft every time. Cancel = the back link ("← Cancel editing" → the project);
+  nothing is saved until Submit. Verified on dev: abandon an edit with a stale check result →
+  next start edit shows the live text, no result, check required again.
+- **(Superseded the same evening by the above) Edits get the hard Code of Conduct check ONLY, and no assistant.** Adam (editing the skate
   park on prod): the check "took like 10 seconds" and a soft fact-checking suggestion appeared —
   "we don't want editing help with edits, only with the initial process creation." The draft
   review endpoint now accepts `{coc_only: true}` and runs `checkTextAgainstCoC` (hard blocks

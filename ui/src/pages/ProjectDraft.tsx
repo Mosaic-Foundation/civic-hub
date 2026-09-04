@@ -71,7 +71,6 @@ export default function ProjectDraft() {
     updateDraft: (id, patch) => updateProjectDraft(id, patch),
     resumeDraft: resumeDraftId ? () => getProjectDraft(resumeDraftId) : undefined,
     applyFields: ["title", "description", "sources"],
-    cocOnly: !!editProcessId,
   });
 
   const [showConfirm, setShowConfirm] = useState(false);
@@ -157,8 +156,8 @@ export default function ProjectDraft() {
       )}
 
       <DraftShell
-        backTo="/projects"
-        backLabel="Projects"
+        backTo={editProcessId ? `/project/${editProcessId}` : "/projects"}
+        backLabel={editProcessId ? "Cancel editing" : "Projects"}
         title={editProcessId ? "Edit your project" : reviseReviewId ? "Revise your project" : "Start a project"}
         processType="civic.project"
         formVersion={draft?.updated_at ?? null}

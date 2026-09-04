@@ -58,11 +58,6 @@ interface Options<D extends BaseDraft> {
   resumeDraft?: () => Promise<D>;
   /** Fields Apply-suggestion may write (the fields this type's form renders). */
   applyFields: string[];
-  /**
-   * Edit of a live process: the check runs the hard Code of Conduct pass
-   * only (no advice, no search) and the assistant is not offered.
-   */
-  cocOnly?: boolean;
 }
 
 function friendlyError(msg: string): string {
@@ -81,7 +76,6 @@ export function useDraftFlow<D extends BaseDraft>({
   updateDraft,
   resumeDraft,
   applyFields,
-  cocOnly = false,
 }: Options<D>) {
   const { canParticipate } = useAuth();
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } =
@@ -335,7 +329,7 @@ export function useDraftFlow<D extends BaseDraft>({
       setError(null);
       try {
         const d = await ensureDraft();
-        const result = await reviewDraftCoC<D>(processType, d.id, cocOnly ? { coc_only: true } : undefined);
+        const result = await reviewDraftCoC<D>(processType, d.id);
         commitDraft(result.draft);
         setReviewNotice(result.review_unavailable ? result.response.message : null);
         pushAssistantResponse(result.response);
@@ -351,7 +345,7 @@ export function useDraftFlow<D extends BaseDraft>({
         setReviewing(false);
       }
     });
-  }, [requireAuth, ensureDraft, processType, commitDraft, pushAssistantResponse, cocOnly]);
+  }, [requireAuth, ensureDraft, processType, commitDraft, pushAssistantResponse]);
 
   /**
    * Whether a suggestion can actually land in this type's form. Cards

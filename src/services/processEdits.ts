@@ -83,24 +83,27 @@ export async function startEdit(
   const handler = getProcessHandler(type);
   const review = await getReviewByProcessId(process.id);
 
-  // The creator edits in their own recorded draft; a process reviewed before
-  // drafts were recorded gets a fresh draft prefilled from the live process.
+  // The creator edits in their own recorded draft, RE-SYNCED from the live
+  // process every time (an abandoned edit or a stale check result must not
+  // carry over); a process reviewed before drafts were recorded gets a fresh
+  // draft prefilled the same way.
+  const edges = await getEdgesFor(process.id);
+  const links = edges
+    .filter((e) => e.from_id === process.id && e.created_by === process.createdBy)
+    .map((e) => ({ to_id: e.to_id, relation: e.relation }));
   let draftId: string | null =
     review?.draft_id && review.creator_id === editor.id ? review.draft_id : null;
   if (!draftId) {
     if (!handler?.draftFromProcess) {
       throw new EditError("This item has no draft on record and cannot be edited.", 409);
     }
-    const edges = await getEdgesFor(process.id);
-    const links = edges
-      .filter((e) => e.from_id === process.id && e.created_by === process.createdBy)
-      .map((e) => ({ to_id: e.to_id, relation: e.relation }));
     draftId = await handler.draftFromProcess(process, editor.id, links);
     if (review && !review.draft_id && review.creator_id === editor.id) {
       await setReviewDraftId(review.id, draftId);
     }
   } else {
     await reopenDraftForRevision(type, draftId);
+    await handler?.syncDraftFromProcess?.(draftId, process, links);
   }
 
   const base = draftPathFor(type, draftId);

@@ -183,14 +183,13 @@ export async function handleAssistantReview(
     const draft = await loadDraftForUser(req, res, config);
     if (!draft) return;
 
-    const category = config.supportsCategories
-      ? ((draft.category ?? "idea") as Category)
-      : undefined;
-
-    // Edits of a live process (Adam, 2026-09-03): the hard Code of Conduct
-    // check ONLY — no best-practices advice, no fact-checking, no web
-    // search, no chat turn. Fast, and never a soft "suggestion" card.
-    if (req.body?.coc_only === true) {
+    // The check is the Code of Conduct check and nothing else (Adam,
+    // 2026-09-03: "it should suggest changes only based on code of conduct
+    // violations… the writing assistant should be a different thing").
+    // Hard blocks only; no best-practices advice, no fact-checking, no web
+    // search, no chat turn. Writing help lives in the assistant panel, where
+    // the person asks for it. Same for creation and for edits.
+    {
       const state = toDraftState(draft);
       const fields = [
         { label: "Title", text: state.title ?? "" },
@@ -204,7 +203,7 @@ export async function handleAssistantReview(
       try {
         suggestions = await checkTextAgainstCoC(fields, getHubConfig());
       } catch (err) {
-        console.error(`[assistant-review:${processType}] CoC-only check unavailable, failing open:`, err instanceof Error ? err.message : err);
+        console.error(`[assistant-review:${processType}] CoC check unavailable, failing open to human review:`, err instanceof Error ? err.message : err);
         unavailable = true;
       }
       await config.draftStore.saveReviewResult(draft.id, suggestions);
@@ -214,8 +213,8 @@ export async function handleAssistantReview(
           message: unavailable
             ? AUTOMATED_REVIEW_UNAVAILABLE_NOTICE
             : suggestions.length
-              ? "The Code of Conduct check found something that must be fixed before saving."
-              : "No Code of Conduct issues — you can save your changes.",
+              ? "The Code of Conduct check found something that must be fixed first."
+              : "No Code of Conduct issues found.",
           suggestions,
         },
         draft: updated,
@@ -224,46 +223,6 @@ export async function handleAssistantReview(
       return;
     }
 
-    const reviewMessage =
-      `Please review my current draft against the Code of Conduct and ${config.bestPracticesTitle}. ` +
-      "Return your feedback as structured suggestions.";
-
-    let response;
-    try {
-      response = await callAssistant({
-        phase: "review",
-        category,
-        config,
-        draft_state: toDraftState(draft),
-        conversation_history: draft.conversation_history,
-        user_message: reviewMessage,
-        hub_config: getHubConfig(),
-      });
-    } catch (reviewErr) {
-      // Fail open: the automated pre-check couldn't run. Record a clean
-      // (empty) review result so the draft is no longer "modified since
-      // review", and let it through to human admin review (the real gate).
-      console.error(
-        `[assistant-review:${processType}] automated check unavailable, failing open to human review:`,
-        reviewErr instanceof Error ? reviewErr.message : reviewErr,
-      );
-      await config.draftStore.saveReviewResult(draft.id, []);
-      const degraded = await config.draftStore.get(draft.id);
-      res.json({
-        response: { message: AUTOMATED_REVIEW_UNAVAILABLE_NOTICE, suggestions: [] },
-        draft: degraded,
-        review_unavailable: true,
-      });
-      return;
-    }
-
-    // The CoC pre-check is not writing assistance — appendConversation
-    // never marks assistant_helped, so recording the exchange is safe.
-    await config.draftStore.appendConversation(draft.id, reviewMessage, response.message);
-    await config.draftStore.saveReviewResult(draft.id, response.suggestions);
-
-    const updatedDraft = await config.draftStore.get(draft.id);
-    res.json({ response, draft: updatedDraft });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error(`[assistant-review:${processType}]`, message);
