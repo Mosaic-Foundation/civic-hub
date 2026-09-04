@@ -206,7 +206,7 @@ export default function ProjectDetail() {
   }
 
   return (
-    <div className="page">
+    <div className="page detail-page">
       {project.banner_image_url && (
         <div className="project-banner">
           <img

@@ -32,7 +32,7 @@ prefetch) were verified end to end on dev, not unit-tested — same as the rest 
 `border-radius: 0 0 12px 12px`) — the rounded top left the tab-strip rule overhanging the fillet.
 
 **Open / deferred:** WYSIWYG description editor (TipTap over the same Markdown subset) — offered
-for after the smoke test; project page horizontal padding at narrow widths; Facebook caches the
+for after the smoke test; (project page horizontal padding: fixed 09-04 — `ProjectDetail` uses `page detail-page` like every other detail page, 24px on a phone); Facebook caches the
 old preview for URLs shared before today (Sharing Debugger → Scrape Again); Adam to try the
 share sheet's Copy/Messages on his phone.
 
@@ -449,7 +449,7 @@ completing the legacy `[TEST] Community Tool Library` `proc_ccec8c5f00274a93` (t
 never got one — so the links API cannot pair it and its brief; modern projects go through the
 review funnel and are fine). uitest session rows deleted.
 
-**Noticed, not changed:** the project detail page has no horizontal padding below its banner at
+**Noticed, fixed 2026-09-04 (`page detail-page`):** the project detail page had no horizontal padding below its banner at
 narrow widths (`ProjectDetail` uses `.page` without `.detail-page`); the pill/title/meta sit flush
 left on prod today. Separate fix.
 
