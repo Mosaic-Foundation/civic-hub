@@ -74,9 +74,27 @@ that band read as nothing at all rather than as a control.
 Fix: `scroll-snap-type: x proximity` on the list with `scroll-snap-align: start` on each tab, so
 the strip comes to rest on a whole tab. `proximity`, not `mandatory` — it tidies where a user's
 scroll ends without overriding the peek or the active-tab centring, both of which land
-deliberately. Verified: requesting scrollLeft 30 or 70 both settle at 16 with "Conversations"
-flush after the divider; 110 settles at 157 with "Proposals" flush. The peek still sweeps
-(0 → 247 → rest) with snap enabled.
+deliberately.
+
+**That first cut had a bug, reported within the hour.** `scroll-snap-align: start` aligns an item
+to the *snapport*, and with the default `scroll-padding: auto` the snapport begins at the padding
+edge — so with the list's `padding-left: 16px`, the first tab's snap position was `scrollLeft: 16`,
+not 0. The strip could then never rest at the true start: `more.left` (`scrollLeft > 1`) stayed
+true, so the left arrow was lit permanently, and its 44px fade sat at x 78–122 while
+"Conversations" began at exactly 78 — the C hidden, the o half-faded (Adam: "you should be able to
+scroll all the way to the left and have conversations completely revealed with the left arrow
+disappearing just like the right arrow does").
+
+`scroll-padding-left: var(--space-md)`, matching `padding-left`, insets the snapport by the same
+16px and makes 0 the first tab's snap position. Verified at 375px: rests at 0 with the left arrow
+hidden and "Conversations" fully visible; scrolled fully right, scrollLeft 248 with the right arrow
+hidden and the left one shown — symmetric at both ends; a mid-scroll still snaps to a whole tab, so
+the half-word band it was added for has not come back.
+
+**Worth noting how it got through.** The verification measured the snap mechanism working —
+"requesting 30 or 70 both settle at 16" — and read a settled value of 16 as success without asking
+what 16 did to the arrows or to the first word. Checking that the mechanism fired is not the same
+as checking the result looks right.
 
 ---
 

@@ -54,6 +54,14 @@
      it"). `proximity`, not `mandatory`: it tidies where the scroll ends
      without overriding the peek or the centring, which land deliberately. */
   scroll-snap-type: x proximity;
+  /* MUST match padding-left. `scroll-snap-align: start` aligns an item to the
+     snapport, and with the default `scroll-padding: auto` the snapport starts
+     at the padding edge — so the first tab's snap position was scrollLeft 16,
+     not 0. The strip could then never rest at the true start: the left arrow
+     stayed lit permanently and its fade sat over the first few letters of
+     "Conversations" (Adam, 2026-09-04). Insetting the snapport by the same
+     16px makes 0 the first tab's snap position. */
+  scroll-padding-left: var(--space-md);
 }
 
 .feed-votes-tabs-list li {
