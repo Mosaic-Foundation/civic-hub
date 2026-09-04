@@ -346,6 +346,9 @@
    actually ends. The switcher (phones) and the × (desktop) both sit at the
    top of a panel you have scrolled down, so neither is under your thumb
    after you apply a card. Same action as closing the panel. */
+/* Navy with white text (Adam, 2026-09-04) — it is the way out of the
+   assistant, so it reads as the action it is, matching "Edit project" and
+   the other primary buttons rather than a quiet secondary one. */
 .assistant-done-btn {
   display: block;
   width: 100%;
@@ -354,17 +357,17 @@
   min-height: 40px;
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: var(--color-primary);
-  background: transparent;
-  border: 1px solid var(--color-border);
+  font-weight: 600;
+  color: var(--color-primary-text);
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
 .assistant-done-btn:hover {
-  background: var(--color-surface-muted);
-  border-color: var(--color-border-hover);
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
 }
 
 .assistant-done-btn:focus-visible {

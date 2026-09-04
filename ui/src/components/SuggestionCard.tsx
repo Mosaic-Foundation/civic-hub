@@ -6,15 +6,21 @@ interface Props {
   suggestion: DraftSuggestion;
   onApply?: () => void;
   onDismiss?: () => void;
+  /** Controlled "already applied" state. Pass it where the answer has to
+   *  outlive this component — the drafting panel unmounts every time someone
+   *  switches to the form, and local state took the applied cards with it.
+   *  Omitted, the card falls back to remembering it itself. */
+  applied?: boolean;
 }
 
-export default function SuggestionCard({ suggestion, onApply, onDismiss }: Props) {
+export default function SuggestionCard({ suggestion, onApply, onDismiss, applied: appliedProp }: Props) {
   const isHard = suggestion.severity === "hard";
-  const [applied, setApplied] = useState(false);
+  const [appliedLocal, setAppliedLocal] = useState(false);
+  const applied = appliedProp ?? appliedLocal;
 
   function handleApply() {
     if (onApply) onApply();
-    setApplied(true);
+    setAppliedLocal(true);
   }
 
   return (

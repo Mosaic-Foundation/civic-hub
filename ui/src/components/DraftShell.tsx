@@ -53,6 +53,10 @@ interface Props {
   /** Applies assistant-produced text into the form (marks assistant_helped).
    *  Used by both the inline results block and the panel's cards. */
   onApplySuggestion?: (s: DraftSuggestion) => void;
+  /** Applied-suggestion state, held by useDraftFlow so it outlives the
+   *  panel's unmount on every form/assistant switch. */
+  appliedSuggestions?: ReadonlySet<string>;
+  onSuggestionApplied?: (key: string) => void;
   /** Gates Apply per card — suggestions for fields this form doesn't have
    *  must not offer a silent no-op Apply button. */
   canApplySuggestion?: (s: DraftSuggestion) => boolean;
@@ -84,6 +88,8 @@ export default function DraftShell({
   assistant,
   reviewSuggestions,
   onApplySuggestion,
+  appliedSuggestions,
+  onSuggestionApplied,
   canApplySuggestion,
   layout = "full",
   processType,
@@ -175,6 +181,8 @@ export default function DraftShell({
       messages={assistant.messages}
       onSendMessage={assistant.onSendMessage}
       onApplySuggestion={onApplySuggestion}
+      appliedSuggestions={appliedSuggestions}
+      onSuggestionApplied={onSuggestionApplied}
       canApplySuggestion={canApplySuggestion}
       loading={assistant.loading}
       phase={assistant.phase}

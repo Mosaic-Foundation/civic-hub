@@ -4,6 +4,36 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Applied suggestions forgot they were applied; Done button goes navy — 2026-09-04
+
+Adam, drafting a conversation: "when I apply suggestions and I go to the conversation form and then
+go back to the assistant, it shows those things not applied."
+
+**Cause:** `SuggestionCard` held `applied` in its own `useState`. Switching views unmounts the
+panel — on phones the switcher swaps form for assistant, and on desktop the panel only renders
+while `open` — so every card came back reading "Apply" as though nothing had happened. The text
+*was* applied to the field; only the card's memory of it was lost, which is the worse failure of
+the two: it invites applying the same suggestion twice, which appends the revision a second time.
+
+**Fix — the state moves to where the messages already live.** `useDraftFlow` owns
+`appliedSuggestions: Set<string>` keyed `<messageIndex>:<suggestionIndex>` (stable, the message
+list is append-only) plus `markSuggestionApplied`. `AssistantPanel` reports each apply and reads
+the set back; `SuggestionCard` takes an optional controlled `applied` prop and keeps its local
+state as the fallback for callers that don't pass one (the inline Code of Conduct results in
+`DraftShell`). Threaded through `DraftShell` and all four drafting pages, so every type behaves
+the same and a fifth inherits it by copying the same two props.
+
+**"Done — back to the … form" is navy with white text** (`--color-primary` / `--color-primary-text`,
+weight 600), matching "Edit project" and the other primary actions rather than reading as a quiet
+secondary control.
+
+Verified on dev at 375px on a real conversation draft with a real assistant card: Apply → "Applied";
+switch to the form (panel confirmed unmounted); switch back → still "Applied". Done button computes
+`rgb(42, 78, 132)` on white. Backend tsc clean, UI build clean, `tests/unit` 692/692. Test draft
+and uitest session deleted.
+
+---
+
 ## Facebook sharing on phones; the share reminder becomes a note on the bar — 2026-09-04
 
 **Facebook did nothing on a phone, worked on desktop.** `ShareButton` opened the sharer with

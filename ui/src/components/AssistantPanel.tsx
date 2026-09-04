@@ -17,6 +17,11 @@ interface Props {
    *  form doesn't have must not offer a silent no-op Apply. */
   canApplySuggestion?: (suggestion: DraftSuggestion) => boolean;
   onDismissSuggestion?: (index: number) => void;
+  /** Keys (`<messageIndex>:<suggestionIndex>`) already applied, and the
+   *  reporter for a new one. Held above this component so the answer
+   *  survives the panel being unmounted by the form/assistant switch. */
+  appliedSuggestions?: ReadonlySet<string>;
+  onSuggestionApplied?: (key: string) => void;
   loading: boolean;
   phase?: "brainstorm" | "free_form" | "review";
   /** Label shown next to the loading dots — lets pages distinguish an
@@ -44,6 +49,8 @@ export default function AssistantPanel({
   onApplySuggestion,
   canApplySuggestion,
   onDismissSuggestion,
+  appliedSuggestions,
+  onSuggestionApplied,
   loading,
   phase,
   loadingLabel = "Thinking",
@@ -107,24 +114,31 @@ export default function AssistantPanel({
             <div className="msg-content">{msg.content}</div>
             {msg.suggestions && msg.suggestions.length > 0 && (
               <div className="msg-suggestions">
-                {msg.suggestions.map((s, si) => (
-                  <SuggestionCard
-                    key={si}
-                    suggestion={s}
-                    onApply={
-                      s.suggested_revision &&
-                      onApplySuggestion &&
-                      (canApplySuggestion ? canApplySuggestion(s) : true)
-                        ? () => onApplySuggestion(s)
-                        : undefined
-                    }
-                    onDismiss={
-                      onDismissSuggestion
-                        ? () => onDismissSuggestion(si)
-                        : undefined
-                    }
-                  />
-                ))}
+                {msg.suggestions.map((s, si) => {
+                  const key = `${i}:${si}`;
+                  return (
+                    <SuggestionCard
+                      key={si}
+                      suggestion={s}
+                      applied={appliedSuggestions?.has(key)}
+                      onApply={
+                        s.suggested_revision &&
+                        onApplySuggestion &&
+                        (canApplySuggestion ? canApplySuggestion(s) : true)
+                          ? () => {
+                              onApplySuggestion(s);
+                              onSuggestionApplied?.(key);
+                            }
+                          : undefined
+                      }
+                      onDismiss={
+                        onDismissSuggestion
+                          ? () => onDismissSuggestion(si)
+                          : undefined
+                      }
+                    />
+                  );
+                })}
               </div>
             )}
           </div>
