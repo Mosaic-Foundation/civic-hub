@@ -111,7 +111,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 56px;
+  width: 44px;
   display: flex;
   align-items: center;
   padding: 0;
@@ -150,24 +150,21 @@
   );
 }
 
-/* A chip, not a bare glyph: a gradient alone reads as a rendering artifact,
-   while a bordered circle reads as a control you can press. */
+/* A bare chevron on the fade — no chip. The circles read as clutter in a
+   strip this small (Adam, 2026-09-04); the arrow alone still says which way
+   the tabs go, and the one-time peek below is what teaches that they move. */
 .feed-votes-tabs-arrow-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   margin-bottom: 2px;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface, #fff);
-  color: var(--color-primary, #1e3a5f);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+  color: var(--color-text-muted);
 }
 
 .feed-votes-tabs-arrow:active .feed-votes-tabs-arrow-chip {
-  background: var(--color-surface-muted, #eee);
+  color: var(--color-text);
 }
 
 @media (prefers-reduced-motion: reduce) {

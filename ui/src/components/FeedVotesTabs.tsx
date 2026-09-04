@@ -54,6 +54,20 @@ function prefersReducedMotion(): boolean {
   );
 }
 
+/** Once per visit, the strip shows what it does: it slides to the far end of
+ *  the hidden tabs and back, slowly, then leaves itself where it started.
+ *  Adam (2026-09-04) asked for this instead of a louder static indicator —
+ *  "it's an indicator, I feel like that's more subtle". Any touch, wheel or
+ *  key hands control straight back to the person, mid-slide. */
+const PEEK_SEEN_KEY = "civic:tabs-peeked";
+const PEEK_OUT_MS = 1200;
+const PEEK_HOLD_MS = 250;
+const PEEK_BACK_MS = 1000;
+
+function easeInOut(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+}
+
 export default function FeedVotesTabs() {
   const { pathname } = useLocation();
   const detailSection = sectionFor(pathname);
@@ -155,6 +169,79 @@ export default function FeedVotesTabs() {
       observer.disconnect();
     };
   }, [pathname, measure, centerActive]);
+
+  // The one-time peek. Runs after the strip has settled, only when tabs are
+  // actually hidden, never under prefers-reduced-motion, and at most once a
+  // visit — the point is to teach the gesture, not to animate on every page.
+  const peeked = useRef(false);
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el || peeked.current || prefersReducedMotion()) return;
+    try {
+      if (sessionStorage.getItem(PEEK_SEEN_KEY) === "1") return;
+    } catch {
+      return; // storage unavailable: don't risk replaying it on every route
+    }
+
+    let frame = 0;
+    let startedAt = 0;
+    let done = false;
+    const handOver = () => {
+      done = true;
+      cancelAnimationFrame(frame);
+      detach();
+    };
+    const gestures = ["pointerdown", "touchstart", "wheel", "keydown"] as const;
+    const detach = () => {
+      for (const type of gestures) el.removeEventListener(type, handOver);
+    };
+
+    const begin = window.setTimeout(() => {
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 0) return; // nothing hidden — nothing to demonstrate
+      peeked.current = true;
+      try {
+        sessionStorage.setItem(PEEK_SEEN_KEY, "1");
+      } catch {
+        /* best effort */
+      }
+      const from = el.scrollLeft;
+      // Head for whichever side is hiding more, so the sweep always reveals
+      // something: from the Feed that is the full run out to Outcomes.
+      const to = max - from >= from ? max : 0;
+      for (const type of gestures) {
+        el.addEventListener(type, handOver, { passive: true });
+      }
+      const total = PEEK_OUT_MS + PEEK_HOLD_MS + PEEK_BACK_MS;
+      const step = (now: number) => {
+        if (done) return;
+        if (startedAt === 0) startedAt = now;
+        const t = now - startedAt;
+        if (t >= total) {
+          el.scrollLeft = from;
+          measure();
+          detach();
+          return;
+        }
+        if (t < PEEK_OUT_MS) {
+          el.scrollLeft = from + (to - from) * easeInOut(t / PEEK_OUT_MS);
+        } else if (t < PEEK_OUT_MS + PEEK_HOLD_MS) {
+          el.scrollLeft = to;
+        } else {
+          el.scrollLeft =
+            to + (from - to) * easeInOut((t - PEEK_OUT_MS - PEEK_HOLD_MS) / PEEK_BACK_MS);
+        }
+        measure();
+        frame = requestAnimationFrame(step);
+      };
+      frame = requestAnimationFrame(step);
+    }, 450);
+
+    return () => {
+      window.clearTimeout(begin);
+      handOver();
+    };
+  }, [measure]);
 
   const page = useCallback((direction: 1 | -1) => {
     const el = listRef.current;

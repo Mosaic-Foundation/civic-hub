@@ -59,17 +59,12 @@ export async function callAssistant(
   const result = await claude({ model, system: systemPrompt, messages, tools, maxTokens: 4096 });
   const parsed = parseAssistantResponse(result.text, input.config.fields);
 
-  // Never let "Searching now — give me a moment." be the end of a turn.
-  // If the model narrated a search without running the tool and produced
-  // nothing actionable, nudge it once, in the same turn, to actually do it
-  // (Adam, 2026-09-02: "if it's gonna do something it should do it").
-  if (
-    parsed.suggestions.length === 0 &&
-    !parsed.draft_proposal &&
-    (result.serverToolUses ?? 0) === 0 &&
-    claimsToBeSearching(parsed.message)
-  ) {
-    console.warn("[assistant] reply narrated a search without running it — nudging once");
+  // Never let "On it — let me take a look" be the end of a turn. If the model
+  // narrated an action, ran no tool and produced nothing actionable, nudge it
+  // once, inside the same request, to actually do it (Adam, 2026-09-02: "if
+  // it's gonna do something it should do it").
+  if (deliveredNothing(parsed, result.serverToolUses) && promisesToFollowUp(parsed.message)) {
+    console.warn("[assistant] reply promised an action without doing it — nudging once");
     const followUp = await claude({
       model,
       system: systemPrompt,
@@ -79,25 +74,85 @@ export async function callAssistant(
         {
           role: "user",
           content:
-            "Go ahead and run the search now. Reply with what you found and put the links in a suggestion card so I can apply them — do not tell me you are about to search.",
+            "Go ahead and do that now, in this reply. If it needs a search, run the search and " +
+            "put the links in a suggestion card so I can apply them. If you cannot do it, say so " +
+            "plainly and tell me what you can do instead — do not tell me you are about to do it.",
         },
       ],
       tools,
       maxTokens: 4096,
     });
-    return parseAssistantResponse(followUp.text, input.config.fields);
+    const nudged = parseAssistantResponse(followUp.text, input.config.fields);
+    // The backstop. Two promises in a row is the model failing to act, and
+    // shipping the second one would repeat exactly the dead end this guards
+    // against — so say the honest thing instead of the hopeful one.
+    if (deliveredNothing(nudged, followUp.serverToolUses) && promisesToFollowUp(nudged.message)) {
+      console.warn("[assistant] reply promised an action twice — returning the honest fallback");
+      return { ...nudged, message: COULD_NOT_ACT };
+    }
+    return withSomethingToSay(nudged);
   }
 
-  return parsed;
+  return withSomethingToSay(parsed);
 }
 
-/** "On it — searching now." / "Searching now — give me a moment." and kin:
- *  a promise to search, not a result. Exported for tests. */
-export function claimsToBeSearching(message: string): boolean {
+/** What the person gets when the model twice promised to act and twice
+ *  didn't. Honest and still useful, per Adam (2026-09-04): "either say it
+ *  can't do it or do it." */
+const COULD_NOT_ACT =
+  "I wasn't able to do that just now — sorry. Try asking again, or paste anything you've " +
+  "already read and we can work from that.";
+
+/** A turn that produced no card, no draft and ran no tool has delivered
+ *  nothing, whatever its prose says. Structural, so it holds for every
+ *  process type and any wording. */
+function deliveredNothing(
+  parsed: AssistantResponse,
+  serverToolUses: number | undefined,
+): boolean {
+  return (
+    parsed.suggestions.length === 0 &&
+    !parsed.draft_proposal &&
+    (serverToolUses ?? 0) === 0
+  );
+}
+
+/** An empty bubble is its own version of saying nothing. */
+function withSomethingToSay(response: AssistantResponse): AssistantResponse {
+  if (response.message.trim().length > 0) return response;
+  return {
+    ...response,
+    message:
+      response.suggestions.length > 0 || response.draft_proposal
+        ? "Here's what I put together — take a look at the card below."
+        : "Sorry — I didn't manage a reply that time. Ask me again and I'll have another go.",
+  };
+}
+
+/** A reply that says it is ABOUT to do something rather than doing it:
+ *  "On it — let me take a look…", "Searching now — give me a moment."
+ *
+ *  The 2026-09-02 version required the word "search" (or "look it up") and so
+ *  missed "let me take a look at what's been in the news", which is how this
+ *  reached prod again (Adam, 2026-09-04). A phrase list will always leak, so
+ *  this one is deliberately broad and leans on `deliveredNothing` to keep it
+ *  safe: it is only ever consulted for a turn that produced nothing, where a
+ *  false positive costs one extra model round and no wrong answer.
+ *
+ *  Exported for tests. */
+export function promisesToFollowUp(message: string): boolean {
   const m = message.trim();
-  if (m.length > 240) return false; // a real summary is longer than a promise
-  return /\b(search(ing)?|look(ing)? (that|those|it) up|find(ing)? (some|a few|those))\b/i.test(m) &&
-    /\b(now|moment|sec|second|minute|on it|let me|hang on|one moment|shortly)\b/i.test(m);
+  // A delivered answer — a summary, findings, citations — runs long. A
+  // promise is a sentence or two.
+  if (m.length === 0 || m.length > 400) return false;
+  // "let me know" is an invitation, not a promise; every other "let me" is.
+  const future = /\b(i'?ll|i will|i'?m going to|i am going to|let me(?!\s+know)|lemme)\b/i;
+  const action =
+    /\b(search(ing)?|look(ing)?|check(ing)?|dig(ging)?|find(ing)?|pull(ing)?|gather(ing)?|research(ing)?|scan(ning)?|see what|take a look|have a look)\b/i;
+  // Unambiguous on their own — they promise a continuation and nothing else.
+  const idiom =
+    /\b(on it|hang on|hold on|stand by|one (moment|sec|second)|give me a (moment|sec|second|minute)|be right back|coming right up|in a (moment|sec|second)|working on (it|that))\b/i;
+  return (future.test(m) && action.test(m)) || idiom.test(m);
 }
 
 /**

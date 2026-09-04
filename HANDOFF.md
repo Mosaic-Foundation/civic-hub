@@ -4,6 +4,84 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The assistant never ends a turn on a promise — 2026-09-04
+
+Adam, on prod, drafting a conversation: he asked the assistant to dig through the news for Floyd
+County issues. It replied **"On it — let me take a look at what's been in the news lately for
+Floyd County."** and stopped. "It should never say it's going to do something and not do it.
+Either say it can't do it or do it."
+
+This is the 2026-09-02 failure again, and the reason is instructive: the guard added then,
+`claimsToBeSearching`, required the reply to contain the word "search" (or "look it up" /
+"find some"). Adam's reply said neither — "take a look at what's been in the news" — so the
+nudge never fired and the promise shipped. A phrase list will always leak; the fix is to stop
+depending on one alone.
+
+Three layers now, in `civic.assistant`, all in the shared `callAssistant` path, so every process
+type and any type added later gets them by construction:
+
+1. **Prevention — a rule in the system prompt** (`## Web search`): never announce an action you
+   are not completing in this same message. It spells out *why*, which is the part the model can
+   reason from: the message is delivered only when the whole turn ends, so there is no "next
+   message" in which to follow through. Search in this turn, or say plainly that you can't.
+2. **Detection — structural first, linguistic second.** `deliveredNothing(parsed, serverToolUses)`
+   is the real test: no suggestion card, no draft proposal, no server tool call means the turn
+   delivered nothing whatever its prose claims. Only then is the wording consulted, by
+   `promisesToFollowUp` (replaces `claimsToBeSearching`): a first-person future marker
+   (`I'll`, `I'm going to`, `let me` — but not `let me know`) plus any action verb, or an
+   unambiguous idiom on its own (`on it`, `hang on`, `give me a moment`, `stand by`, …), on a
+   reply under 400 characters. Because it is only ever reached for a turn that produced nothing,
+   a false positive costs one extra model round and never a wrong answer — so it can afford to be
+   broad, which is exactly what the old one couldn't.
+3. **Backstop — two promises in a row is not shippable.** The nudge asks the model to do the
+   thing now or say it can't. If that reply *also* delivers nothing and *also* reads as a promise,
+   the message is replaced with "I wasn't able to do that just now — sorry. Try asking again, or
+   paste anything you've already read and we can work from that." That is the guarantee Adam
+   asked for: do it, or say you can't. (The first draft of this fallback tripped its own
+   detector — "I'll try again" — which the test caught. The copy carries no promise now.)
+
+Also: `withSomethingToSay` — an empty or whitespace `message` can no longer render as a blank
+bubble; it becomes either a line pointing at the card that did come back, or an honest "I didn't
+manage a reply that time."
+
+`tests/unit/assistantSearchNudge.test.ts` (8): the prod reply verbatim as a regression case, the
+double-promise backstop, the empty-message guard, `let me know` and "I can search whenever you
+like" as non-promises. Backend tsc clean, `tests/unit` 675/675.
+
+**Still true and worth knowing:** the pause_turn continuation in `utils/anthropic.ts` (2026-09-02)
+handles the case where the search *does* run and the API pauses the turn. That path was not at
+fault here — `serverToolUses` was 0, meaning no search was ever attempted.
+
+---
+
+## Section tabs: bare chevrons and a one-time peek — 2026-09-04
+
+Adam, on the chevron chips shipped an hour earlier: "those two white circles with arrows take up
+too much space and it looks cluttered. I could see arrows without the white circles or maybe when
+somebody's on mobile for the first time... a motion that scrolls that section from conversations
+to outcomes all the way forward and backward slowly so they see it... once they click on the area
+they take over control... I feel like that's more subtle."
+
+Both, as asked:
+- **The chip is gone.** A bare 20px chevron in `--color-text-muted` on the same live fade; the
+  hit area narrowed 56px → 44px. The arrow still says which way the tabs run; it no longer sits
+  on the strip like a button.
+- **A one-time peek** (`PEEK_SEEN_KEY`, sessionStorage — once per visit, not once forever, so a
+  returning resident is reminded but nobody is animated at on every route). 450 ms after the
+  strip settles it slides to the far end of the hidden tabs and back: 1200 ms out, 250 ms hold,
+  1000 ms back, ease-in-out, driven by rAF on `scrollLeft` so it can be stopped mid-frame. It
+  heads for whichever side hides more, so from the Feed it is the full sweep out to Outcomes and
+  back, and on a deep link it still reveals the larger hidden run. Skipped entirely under
+  `prefers-reduced-motion`, and skipped when nothing overflows. **Any `pointerdown`, `touchstart`,
+  `wheel` or `keydown` on the strip stops it where it stands** — the person takes over mid-slide,
+  which is what Adam asked for.
+
+Verified on dev at 375px: first load sweeps 0 → 246 → 0 and stamps the key; the next page load in
+the same session moves 0px and the active tab still centres (Votes at 145); clearing the key,
+reloading and firing `pointerdown` 900 ms in froze it at 97 and it stayed there. UI build clean.
+
+---
+
 ## Section tabs on phones: the active tab is always in view, and the edge hint is real — 2026-09-04
 
 Adam (smoke test, day 2): the mobile menu still bothered him — he likes Feed pinned and the rest
