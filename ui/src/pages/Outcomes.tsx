@@ -204,7 +204,7 @@ function OutcomeRow({ outcome }: { outcome: OutcomeEntry }) {
         >
           <div className="process-card-header">
             <h3>{outcome.title}</h3>
-            <span className={`outcomes-pill outcomes-pill--${slug}`}>
+            <span className={`feed-pill feed-pill--type-${slug}`}>
               {friendlyType(outcome.source_process_type)}
             </span>
           </div>

@@ -9,6 +9,8 @@ import Creator from "../components/Creator";
 import "./Projects.css";
 import { statusDisplay } from "../components/statusDisplay";
 import StatusFilter, { useStatusFilter } from "../components/StatusFilter";
+import { typeColorSlug } from "../components/typeColor";
+import { friendlyType } from "../components/ProcessLinkPicker";
 
 const FILTER_CHOICES = [
   { key: "all", label: "All" },
@@ -97,7 +99,9 @@ export default function Projects() {
                       <div className="project-card">
                         <div className="project-card-header">
                           <h3>{p.title}</h3>
-                          <span className={statusDisplay("active").className}>{statusDisplay("active").label}</span>
+                          <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.project")}`}>
+                            {friendlyType("civic.project")}
+                          </span>
                         </div>
                         {(p.support_count > 0 || p.oppose_count > 0) && (
                           <div className="project-sentiment-bar">
@@ -122,6 +126,7 @@ export default function Projects() {
                             prefix="by"
                           />
                           <span>{new Date(p.created_at).toLocaleDateString()}</span>
+                          <span className={statusDisplay("active").className}>{statusDisplay("active").label}</span>
                         </div>
                       </div>
                     </Link>
@@ -141,7 +146,9 @@ export default function Projects() {
                       <div className="project-card">
                         <div className="project-card-header">
                           <h3>{p.title}</h3>
-                          <span className={statusDisplay("archived").className}>{statusDisplay("archived").label}</span>
+                          <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.project")}`}>
+                            {friendlyType("civic.project")}
+                          </span>
                         </div>
                         <div className="process-card-meta">
                           <Creator
@@ -152,6 +159,7 @@ export default function Projects() {
                             prefix="by"
                           />
                           <span>{new Date(p.created_at).toLocaleDateString()}</span>
+                          <span className={statusDisplay("archived").className}>{statusDisplay("archived").label}</span>
                         </div>
                       </div>
                     </Link>

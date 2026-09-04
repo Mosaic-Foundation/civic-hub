@@ -12,6 +12,8 @@ import { useRequireAuth } from "../hooks/useRequireAuth";
 import StatusFilter, { useStatusFilter } from "../components/StatusFilter";
 import { statusDisplay } from "../components/statusDisplay";
 import "./Deliberations.css";
+import { typeColorSlug } from "../components/typeColor";
+import { friendlyType } from "../components/ProcessLinkPicker";
 
 const FILTER_CHOICES = [
   { key: "all", label: "All" },
@@ -110,6 +112,11 @@ export default function Deliberations() {
                   <div className="deliberation-card">
                     <div className="deliberation-card-header">
                       <h3>{p.topic}</h3>
+                      <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.polis_deliberation")}`}>
+                        {friendlyType("civic.polis_deliberation")}
+                      </span>
+                    </div>
+                    <div className="process-card-meta">
                       <span className={statusDisplay("draft").className}>
                         {statusDisplay("draft").label}
                       </span>
@@ -132,13 +139,18 @@ export default function Deliberations() {
                   <div className="deliberation-card">
                     <div className="deliberation-card-header">
                       <h3>{p.topic}</h3>
+                      <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.polis_deliberation")}`}>
+                        {friendlyType("civic.polis_deliberation")}
+                      </span>
+                    </div>
+                    <div className="process-card-meta">
+                      {(p.participant_count ?? 0) > 0 && (
+                        <span>
+                          {p.participant_count} participant{p.participant_count !== 1 ? "s" : ""}
+                        </span>
+                      )}
                       <span className={statusDisplay("active").className}>{statusDisplay("active").label}</span>
                     </div>
-                    {(p.participant_count ?? 0) > 0 && (
-                      <p className="deliberation-card-participants">
-                        {p.participant_count} participant{p.participant_count !== 1 ? "s" : ""}
-                      </p>
-                    )}
                   </div>
                 </Link>
               </li>
@@ -157,13 +169,18 @@ export default function Deliberations() {
                   <div className="deliberation-card">
                     <div className="deliberation-card-header">
                       <h3>{p.topic}</h3>
+                      <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.polis_deliberation")}`}>
+                        {friendlyType("civic.polis_deliberation")}
+                      </span>
+                    </div>
+                    <div className="process-card-meta">
+                      {(p.participant_count ?? 0) > 0 && (
+                        <span>
+                          {p.participant_count} participant{p.participant_count !== 1 ? "s" : ""}
+                        </span>
+                      )}
                       <span className={statusDisplay("completed").className}>{statusDisplay("completed").label}</span>
                     </div>
-                    {(p.participant_count ?? 0) > 0 && (
-                      <p className="deliberation-card-participants">
-                        {p.participant_count} participant{p.participant_count !== 1 ? "s" : ""}
-                      </p>
-                    )}
                   </div>
                 </Link>
               </li>

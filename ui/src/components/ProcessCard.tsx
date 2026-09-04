@@ -1,5 +1,7 @@
 import type { VoteSummary } from "../services/api";
 import { statusDisplay } from "./statusDisplay";
+import { typeColorSlug } from "./typeColor";
+import { friendlyType } from "./ProcessLinkPicker";
 
 interface Props {
   process: VoteSummary;
@@ -19,10 +21,14 @@ export default function ProcessCard({ process }: Props) {
 
   return (
     <div className="process-card">
+      {/* Header carries the TYPE, like the feed's cards; the status pill
+          moved to the footer, across from the date (Adam, 2026-09-04). The
+          label is the bare type — "Vote", not the feed's "New vote" — since
+          nothing here is new by definition. */}
       <div className="process-card-header">
         <h3>{process.title}</h3>
-        <span className={statusDisplay(process.status).className}>
-          {statusDisplay(process.status).label}
+        <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.vote")}`}>
+          {friendlyType("civic.vote")}
         </span>
       </div>
       <div className="process-card-meta">
@@ -41,7 +47,9 @@ export default function ProcessCard({ process }: Props) {
         {isDone && !process.closes_at && (
           <span>Completed</span>
         )}
-        {process.status === "draft" && <span>Draft</span>}
+        <span className={statusDisplay(process.status).className}>
+          {statusDisplay(process.status).label}
+        </span>
       </div>
     </div>
   );

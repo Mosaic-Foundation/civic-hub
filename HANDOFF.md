@@ -4,6 +4,70 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## List cards take the feed's shape; word-cloud density measured — 2026-09-04
+
+**Cards.** Adam: the process-page cards should look "more like the cards on the feed" — colour bar
+on top, the type label without the feed's "New" prefix, and the status pill moved to the bottom
+right "across from … the date that it was posted".
+
+The list cards already shared a CSS base (`.process-card`, `.proposal-card`, `.project-card`,
+`.deliberation-card`) with a per-type `--card-accent`; it was just drawn on the LEFT border. So the
+structural half is one rule: `border-left` → `border-top`, and the hover's `border-left-color` →
+`border-top-color`. All four card classes move together and a fifth type inherits it.
+
+- **Header carries the type**, using the feed's own `feed-pill feed-pill--type-<slug>` classes
+  (one pill style, two surfaces — the same move Outcomes already made with the filter pills), with
+  the label from `friendlyType` so it reads "Vote" / "Project" / "Conversation" rather than the
+  feed's "New vote".
+- **Footer carries the status.** `.process-card-meta` is now a flex row and
+  `.process-card-meta .status-badge` takes `margin-left: auto`, so the status sits hard right
+  whatever the type put on the left. `margin-left: auto` on the pill rather than `space-between` on
+  the row, so a type rendering three meta items keeps them grouped left.
+- Applied to Votes (`ProcessCard`), Projects (active AND archived blocks), Conversations (waiting /
+  active / completed), and Outcomes' pill swapped to the same family.
+
+Verified on dev at 375px: votes = navy top bar, VOTE pill, "32 votes · Closes Sep 8" left and
+ACTIVE right; projects = blue bar, PROJECT pill, "by Admin · 7/1/2026" left and ACTIVE right;
+conversations = teal bar, CONVERSATION pill, ACTIVE right.
+
+**Noted, not fixed:** the conversations list has no date to put opposite its status pill —
+`DeliberationSummary` carries no timestamp, so that would need a read-model field. Participant
+count fills the left when non-zero.
+
+## Word cloud density — measured, and it does NOT scale
+
+Adam asked whether the word cloud will show many more, smaller words as people add them. Measured
+by replaying `layoutWords` from `WordCloud.tsx` against a realistic long tail:
+
+| viewport | 50 submitted | 100 | 200 | 400 |
+|---|---|---|---|---|
+| phone 375px | 17 shown | **17** | **17** | **17** |
+| tablet 768px | 50 | 97 | 97 | 97 |
+| desktop 1100px | 50 | 100 | 112 | 112 |
+
+**On a phone the cloud is capped at about 17 words no matter how many are submitted**, and the
+overflow is dropped silently — no "+383 more", nothing. Since the word cloud is the onboarding
+front door and most beta testers are on phones, most of what residents contribute would never be
+seen by anyone.
+
+Three causes, all client-side (the server caps nothing — `buildClouds` returns every aggregated
+entry):
+1. **A hard font floor.** `FONT_SIZES = [14, 18, 24, 32, 42, 56]`; sizing is ratio-based
+   (`count / maxCount`) so words DO shrink relative to the most-mentioned one, but they stop at
+   14px and pack no tighter.
+2. **A fixed canvas.** Height is `max(300, min(width * 0.65, 500))` — on a 375px phone that is
+   343×300 regardless of how much there is to show.
+3. **Silent drop.** The spiral tries 2500 positions and, if none fits, the word is simply not
+   pushed to `placed`.
+
+Not fixed here — it is a real piece of design work (scale the font range and canvas height with
+the entry count, and say so when words still do not fit) and Adam is mid-smoke-test. Raised for a
+decision.
+
+Backend tsc clean, UI build clean, `tests/unit` 696/696.
+
+---
+
 ## Spec audit; the hub namespace now resolves — 2026-09-04
 
 Adam asked for a compliance check of the session's changes against the canonical specs in
