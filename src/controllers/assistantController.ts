@@ -229,3 +229,53 @@ export async function handleAssistantReview(
     res.status(500).json({ error: message });
   }
 }
+
+
+/**
+ * POST /assistant/:processType/drafts/:id/suggest — "Get suggestions".
+ *
+ * The best-practices review, on request (Adam, 2026-09-03: a distinct
+ * button — the Code of Conduct check catches violations; this one improves
+ * the writing). Returns suggestion cards for the assistant panel; nothing
+ * is saved as the draft's check result, so asking for advice never counts
+ * as having run the check.
+ */
+export async function handleAssistantSuggest(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const processType = req.params.processType as string;
+  const config = lookupConfig(processType);
+  if (!config) {
+    res.status(404).json({ error: `No drafting assistant for process type: ${processType}` });
+    return;
+  }
+  try {
+    const draft = await loadDraftForUser(req, res, config);
+    if (!draft) return;
+    const category = config.supportsCategories
+      ? ((draft.category ?? "idea") as Category)
+      : undefined;
+    const message =
+      `Please review my current draft against ${config.bestPracticesTitle} and suggest ` +
+      "concrete improvements as structured suggestions I can apply.";
+    const response = await callAssistant({
+      phase: "review",
+      category,
+      config,
+      draft_state: toDraftState(draft),
+      conversation_history: draft.conversation_history,
+      user_message: message,
+      hub_config: getHubConfig(),
+    });
+    // Advice is a conversation turn, not writing assistance until applied
+    // (Apply is what marks assistant_helped).
+    await config.draftStore.appendConversation(draft.id, message, response.message);
+    const updated = await config.draftStore.get(draft.id);
+    res.json({ response, draft: updated });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error(`[assistant-suggest:${processType}]`, message);
+    res.status(500).json({ error: message });
+  }
+}

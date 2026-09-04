@@ -16,6 +16,7 @@ import {
   getAssistantUiConfig,
   sendAssistantMessage,
   reviewDraftCoC,
+  suggestForDraft,
   type AssistantUiConfig,
   type AssistantResponse,
   type DraftPhase,
@@ -313,6 +314,41 @@ export function useDraftFlow<D extends BaseDraft>({
     }
   }, [config, ensureDraft, processType, commitDraft, pushAssistantResponse]);
 
+  /**
+   * "Get suggestions": open the assistant and run the best-practices
+   * review on the current draft. Distinct from the Code of Conduct check
+   * (which gates submission) and from the chat (which drafts with you).
+   */
+  const [suggesting, setSuggesting] = useState(false);
+  const handleSuggest = useCallback(() => {
+    requireAuth(async () => {
+      if (!config?.available) return;
+      setSuggesting(true);
+      setAssistantLoading(true);
+      setError(null);
+      try {
+        const d = await ensureDraft();
+        if (!assistantSeeded.current) {
+          assistantSeeded.current = true;
+          const history = d.conversation_history ?? [];
+          setMessages(history.length > 0 ? history.map((m) => ({ role: m.role, content: m.content })) : []);
+        }
+        setPhase("review");
+        setAssistantOpen(true);
+        const result = await suggestForDraft<D>(processType, d.id);
+        commitDraft(result.draft);
+        pushAssistantResponse(result.response);
+        setPhase("free_form");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        setMessages((prev) => [...prev, { role: "assistant", content: friendlyError(msg) }]);
+      } finally {
+        setAssistantLoading(false);
+        setSuggesting(false);
+      }
+    });
+  }, [requireAuth, config, ensureDraft, processType, commitDraft, pushAssistantResponse]);
+
   const requestAssistantOpen = useCallback(() => {
     requireAuth(() => {
       void openAssistantAuthed();
@@ -412,8 +448,14 @@ export function useDraftFlow<D extends BaseDraft>({
         messages,
         loading: assistantLoading,
         phase: phase as "brainstorm" | "free_form" | "review",
-        loadingLabel: reviewing ? "Running Code of Conduct check" : "Thinking",
+        loadingLabel: reviewing
+          ? "Running Code of Conduct check"
+          : suggesting
+            ? "Reviewing your draft"
+            : "Thinking",
         onOpenRequest: requestAssistantOpen,
+        onSuggest: handleSuggest,
+        suggesting,
         onClose: () => setAssistantOpen(false),
         onSendMessage: handleSendMessage,
       }

@@ -11,6 +11,7 @@ import {
   handleGetAssistantConfig,
   handleAssistantMessage,
   handleAssistantReview,
+  handleAssistantSuggest,
 } from "../controllers/assistantController.js";
 import { requireResident } from "../middleware/auth.js";
 
@@ -19,5 +20,6 @@ const router = Router();
 router.get("/:processType/config", handleGetAssistantConfig);
 router.post("/:processType/drafts/:id/message", requireResident, handleAssistantMessage);
 router.post("/:processType/drafts/:id/review", requireResident, handleAssistantReview);
+router.post("/:processType/drafts/:id/suggest", requireResident, handleAssistantSuggest);
 
 export default router;

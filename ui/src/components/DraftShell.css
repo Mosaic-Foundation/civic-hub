@@ -196,3 +196,21 @@
   background: var(--civic-rust, #c37b51);
   vertical-align: middle;
 }
+
+/* Help card: two actions side by side; wrap on phones. */
+.assistant-affordance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.assistant-affordance-btn--secondary {
+  background: var(--color-surface, #fff);
+  color: var(--pill-vote-fg, #1e3a5f);
+  border: 1px solid var(--pill-vote-fg, #1e3a5f);
+}
+
+.assistant-affordance-btn--secondary:hover:not(:disabled) {
+  background: var(--pill-vote-bg, #e7eef7);
+}

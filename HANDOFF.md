@@ -24,6 +24,21 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   always runs `checkTextAgainstCoC` (hard blocks only, ~3 s); the old best-practices review turn
   is gone from the button (it returns as "Get suggestions", below). The `coc_only` flag added
   earlier the same evening was removed as redundant.
+- **"Get suggestions" — the writing review, as its own button.** Adam: "maybe we need a new
+  button on all processes that says make suggestions… and then the code of conduct thing is
+  distinctly different. I still want the flow where you talk to the assistant." Three actions
+  now, each doing one thing: the **Code of Conduct check** (gate, hard blocks only), **Open the
+  assistant** (chat; drafts with you), **Get suggestions** (one click: the best-practices review
+  of the current draft, cards with Apply, shown in the assistant panel). `POST
+  /assistant/:type/drafts/:id/suggest` (`handleAssistantSuggest` — the former review turn:
+  `callAssistant({phase:"review"})`, appended to the conversation, NOT saved as the check
+  result, so advice never counts as having run the check). `useDraftFlow.handleSuggest` opens
+  the panel with "Reviewing your draft…" and pushes the cards; `DraftShell`'s help card has both
+  buttons (`assistant.onSuggest`), so every type gets it from one place, it vanishes with
+  "Hide AI drafting help", and it is absent on edits (`assistant={null}`). Verified on dev:
+  thin draft → 2 soft cards (title, description) in ~15 s; `last_review_result` untouched;
+  submit still refused until the check runs; browser: both buttons on /projects/new, click →
+  panel opens, cards with Apply.
 - **Every edit starts from the live project.** Adam: the skate park "seems to be stuck in edit
   mode" — the recorded draft still held an abandoned edit's text and a stale suggestion card.
   New seam `syncDraftFromProcess(draftId, process, links)` (projectAdapter: overwrite the

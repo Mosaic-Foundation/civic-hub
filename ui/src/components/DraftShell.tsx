@@ -30,6 +30,10 @@ export interface DraftShellAssistant {
   onOpenRequest: () => void;
   onClose: () => void;
   onSendMessage: (text: string) => void;
+  /** "Get suggestions": review the current draft against best practices
+   *  and show the cards in the assistant panel. */
+  onSuggest?: () => void;
+  suggesting?: boolean;
 }
 
 interface Props {
@@ -136,16 +140,30 @@ export default function DraftShell({
     <div className="assistant-affordance">
       <div className="assistant-affordance-text">
         <span className="assistant-affordance-label">Want help drafting?</span>{" "}
-        The assistant can ask a few questions and write a draft with you.
+        The assistant can ask a few questions and write a draft with you — or
+        review what you have and suggest improvements.
       </div>
-      <button
-        type="button"
-        className="assistant-affordance-btn"
-        onClick={assistant.onOpenRequest}
-        disabled={assistant.opening}
-      >
-        {assistant.opening ? "Opening…" : "Open the assistant"}
-      </button>
+      <div className="assistant-affordance-actions">
+        <button
+          type="button"
+          className="assistant-affordance-btn"
+          onClick={assistant.onOpenRequest}
+          disabled={assistant.opening || assistant.suggesting}
+        >
+          {assistant.opening ? "Opening…" : "Open the assistant"}
+        </button>
+        {assistant.onSuggest && (
+          <button
+            type="button"
+            className="assistant-affordance-btn assistant-affordance-btn--secondary"
+            onClick={assistant.onSuggest}
+            disabled={assistant.opening || assistant.suggesting}
+            title="Review the current draft against the best-practices guide and suggest improvements"
+          >
+            {assistant.suggesting ? "Reviewing…" : "Get suggestions"}
+          </button>
+        )}
+      </div>
     </div>
   );
 

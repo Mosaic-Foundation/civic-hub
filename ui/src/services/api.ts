@@ -485,6 +485,14 @@ export function sendAssistantMessage<D>(
   });
 }
 
+/** "Get suggestions": the best-practices review, on request, for a draft of any type. */
+export function suggestForDraft<D>(
+  processType: string,
+  draftId: string,
+): Promise<{ response: AssistantResponse; draft: D }> {
+  return request("POST", `/assistant/${processType}/drafts/${draftId}/suggest`);
+}
+
 /** The always-on automated Code of Conduct check for a draft of any type. */
 export function reviewDraftCoC<D>(
   processType: string,

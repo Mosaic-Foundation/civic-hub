@@ -1,3 +1,4 @@
+import RichText from "./RichText";
 import { useState } from "react";
 import type { DraftSuggestion } from "../services/api";
 
@@ -38,7 +39,7 @@ export default function SuggestionCard({ suggestion, onApply, onDismiss }: Props
       {suggestion.suggested_revision && (
         <div className="suggestion-revision">
           <span className="suggestion-revision-label">Suggested:</span>
-          <p className="suggestion-revision-text">{suggestion.suggested_revision}</p>
+          <RichText className="suggestion-revision-text" text={suggestion.suggested_revision} />
         </div>
       )}
 
