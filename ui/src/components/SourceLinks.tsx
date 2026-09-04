@@ -11,6 +11,28 @@ export interface ParsedSource {
   url: string;
 }
 
+/**
+ * A stored link that may be either shape: a raw "Title: URL" line, or a
+ * `{url, label}` pair whose `url` is itself a whole line. Votes stored the
+ * latter — `optionalLinks.map(url => ({url, label: url}))` in
+ * voteDraftController — so the href was the entire line and the browser
+ * resolved it as a RELATIVE path, landing on a blank hub page. Normalizing
+ * here fixes every row already in the database, not just new ones.
+ */
+export function normalizeSourceLink(input: {
+  url: string;
+  label?: string;
+}): ParsedSource | null {
+  const parsed = parseSourceLine(input.url);
+  if (parsed) {
+    // A stored label that is not just a copy of the raw line wins.
+    const label =
+      input.label && input.label !== input.url ? input.label : parsed.label;
+    return { label, url: parsed.url };
+  }
+  return parseSourceLine(input.label ?? "");
+}
+
 export function parseSourceLine(line: string): ParsedSource | null {
   const match = line.match(/https?:\/\/\S+/);
   if (!match || match.index === undefined) return null;
@@ -45,22 +67,29 @@ interface Props {
 }
 
 export default function SourceLinks({ sources, max = 6 }: Props) {
-  const parsed = sources
-    .map(parseSourceLine)
-    .filter((s): s is ParsedSource => s !== null)
+  // A line with no usable URL is shown as plain text rather than dropped:
+  // silently losing something a creator typed is worse than showing it
+  // unlinked, and they can see it is wrong and fix it.
+  const entries = sources
+    .map((line) => ({ line, parsed: parseSourceLine(line) }))
+    .filter((e) => e.line.trim().length > 0)
     .slice(0, max);
 
-  if (parsed.length === 0) return null;
+  if (entries.length === 0) return null;
 
   return (
     <div className="source-links">
       <span className="source-links-label">Sources</span>
       <ol className="source-links-list">
-        {parsed.map((s, i) => (
+        {entries.map((e, i) => (
           <li key={i}>
-            <a href={s.url} target="_blank" rel="noopener noreferrer">
-              {s.label}
-            </a>
+            {e.parsed ? (
+              <a href={e.parsed.url} target="_blank" rel="noopener noreferrer">
+                {e.parsed.label}
+              </a>
+            ) : (
+              e.line
+            )}
           </li>
         ))}
       </ol>

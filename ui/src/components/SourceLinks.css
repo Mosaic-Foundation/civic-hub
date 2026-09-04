@@ -1,7 +1,9 @@
 /* --- SourceLinks — compact numbered sources under a description --- */
 
 .source-links {
-  margin-top: var(--space-sm);
+  /* Bottom margin as well as top: on the project page the next heading
+     ("Updates") sat flush against the last source. */
+  margin: var(--space-sm) 0 var(--space-lg);
   font-size: var(--font-size-xs);
   line-height: var(--line-height-relaxed);
 }

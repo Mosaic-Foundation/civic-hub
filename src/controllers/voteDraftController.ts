@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { getAuthUser } from "../middleware/auth.js";
+import { sourceLineToContentLink } from "../shared/sourceLine.js";
 import {
   createVoteDraft,
   getVoteDraft,
@@ -174,7 +175,9 @@ export async function handleSubmitVoteDraft(
     }
 
     const contentPayload = optionalLinks.length > 0
-      ? { links: optionalLinks.map((url: string) => ({ url, label: url })) }
+      // Parsed, not the raw line on both fields: storing the whole
+      // "Title: https://…" line as the url made the href a relative path.
+      ? { links: optionalLinks.map(sourceLineToContentLink) }
       : undefined;
 
     const reviewId = typeof req.body?.review_id === "string" ? req.body.review_id : undefined;

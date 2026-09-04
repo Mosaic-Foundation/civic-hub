@@ -17,6 +17,7 @@ import ProcessHeader from "../components/ProcessHeader";
 import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
 import SharePrompt from "../components/SharePrompt";
+import SourceLinks from "../components/SourceLinks";
 
 
 function formatDate(iso: string): string {
@@ -205,28 +206,10 @@ export default function ProposalDetail() {
         </div>
       )}
 
-      {/* Links */}
-      {proposal.optional_links.length > 0 && (
-        <div className="proposal-links-section">
-          <h3>Related Links</h3>
-          <ul className="issue-link-list">
-            {proposal.optional_links.map((link, i) => {
-              const urlMatch = link.match(/(https?:\/\/\S+)/);
-              const url = urlMatch ? urlMatch[1] : link;
-              const label = urlMatch ? link.replace(url, "").replace(/:\s*$/, "").trim() : "";
-              return (
-                <li key={i}>
-                  {label ? (
-                    <>{label}: <a href={url} target="_blank" rel="noopener noreferrer">{url}</a></>
-                  ) : (
-                    <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+      {/* Sources — was its own parser that put the title OUTSIDE the link
+          and used the raw URL as the link text. One renderer for every type
+          now. */}
+      <SourceLinks sources={proposal.optional_links} />
 
       <RelatedProcesses
         processId={proposal.id}

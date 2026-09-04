@@ -4,6 +4,51 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Source links were broken on three of the four types — 2026-09-04
+
+Adam: the links on the Floyd County Microgrid Resilience Initiative "do not work… they open up a
+page on the Floyd Civic Hub and don't load anything", and the display "should just be a title that
+links to the HTTPS URL without showing the URL".
+
+The stored data was fine — `"DOE C-MAP program page: https://www.energy.gov/oe/…"`, the documented
+format. The readers were wrong, and there were **three different implementations** where there
+should have been one:
+
+| Type | Was | Result |
+|---|---|---|
+| Conversation | `SourceLinks` | correct |
+| **Project** | `<a href={wholeLine}>{wholeLine}</a>` | **href is not a URL** → resolved relative to the hub → blank page |
+| **Vote** | stored `{url: wholeLine, label: wholeLine}`, rendered as-is | **same broken href** |
+| **Proposal** | own inline parser: `label: <a href={url}>{url}</a>` | worked, but the title sat outside the link and the raw URL was the link text |
+
+So Adam's "doesn't load anything" was the browser resolving `/DOE C-MAP program page: https://…`
+as a path on floyd.civic.social, and his "too long" was three renderers showing the URL as the
+link text.
+
+Fixed by making `SourceLinks` the one renderer, as it always should have been:
+- `ProjectDetail` and `ProposalDetail` now use it; the proposal's bespoke parser and the project's
+  raw anchor are gone. The proposal section is titled "Sources" now rather than "Related Links",
+  matching the field it comes from and every other type.
+- `IssueContent` (votes) normalizes through the new `normalizeSourceLink()`, which handles a
+  `{url,label}` pair whose `url` is itself a whole line — **so every vote already in the database
+  renders correctly with no migration.** Verified against the old shape on dev.
+- `SourceLinks` no longer silently drops a line with no parseable URL; it renders it as plain
+  text. Losing something a creator typed is worse than showing it unlinked.
+- `.source-links` gained a bottom margin — the project page's "Updates" heading sat flush against
+  the last source.
+
+Also fixed at the source: `voteDraftController` stored `{url: line, label: line}` for every
+source. New `src/shared/sourceLine.ts` (`parseSourceLine`, `sourceLineToContentLink`) parses
+before storing, so new votes hold a real URL. It mirrors the UI's copy — the two builds share no
+module — and `tests/unit/sourceLine.test.ts` (6) pins it, using the four real microgrid lines as
+the fixtures and asserting every href parses as an absolute URL and no label contains "http".
+
+Verified on dev at 375px with the real prod source lines copied onto dev rows: project, proposal
+and vote (from the OLD broken shape) all render numbered titles, every href absolute, no URL in
+any link text. Backend tsc clean, UI build clean, `tests/unit` 692/692. Dev test sources reverted.
+
+---
+
 ## Share prompt: creation and outcomes; peek trigger moved to the banner — 2026-09-04
 
 **Peek trigger: half the banner, measured not hardcoded.** Adam: "I really just want it to be

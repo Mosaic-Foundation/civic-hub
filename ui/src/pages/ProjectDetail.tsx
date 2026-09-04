@@ -27,6 +27,7 @@ import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
 import { getEditPolicy, startProcessEdit, type EditPolicy } from "../services/api";
 import SharePrompt from "../components/SharePrompt";
+import SourceLinks from "../components/SourceLinks";
 
 export default function ProjectDetail() {
   const navigate = useNavigate();
@@ -308,21 +309,12 @@ export default function ProjectDetail() {
       {/* Visible edit history — renders nothing until the project is edited. */}
       <EditHistory processId={project.id} onOpenChange={setHistoryOpen} />
 
-      {/* Sources */}
-      {project.sources.length > 0 && (
-        <div className="project-sources">
-          <h3>Sources</h3>
-          <ul>
-            {project.sources.map((url, i) => (
-              <li key={i}>
-                <a href={url} target="_blank" rel="noopener noreferrer">
-                  {url}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* Sources — the shared renderer, same as conversations. It was the
+          raw line as both href and text, so the href was not a URL at all
+          and the browser resolved it relative to the hub (Adam, 2026-09-04:
+          the links "open up a page on the Floyd Civic Hub and don't load
+          anything"). */}
+      <SourceLinks sources={project.sources} />
 
       {/* Updates timeline */}
       <div className="project-updates">

@@ -7,6 +7,7 @@
 
 import React from "react";
 import type { ProcessContent } from "../services/api";
+import { normalizeSourceLink } from "./SourceLinks";
 
 interface Props {
   content: ProcessContent;
@@ -80,13 +81,22 @@ export default function IssueContent({ content }: Props) {
         <div className="issue-links">
           <h3>Learn more</h3>
           <ul className="issue-link-list">
-            {content.links.map((link, i) => (
-              <li key={i}>
-                <a href={link.url} target="_blank" rel="noopener noreferrer">
-                  {link.label}
-                </a>
-              </li>
-            ))}
+            {content.links.map((link, i) => {
+              // Votes stored {url: "Title: https://…", label: same}, so the
+              // href was the whole line and resolved relative to the hub.
+              const s = normalizeSourceLink(link);
+              return (
+                <li key={i}>
+                  {s ? (
+                    <a href={s.url} target="_blank" rel="noopener noreferrer">
+                      {s.label}
+                    </a>
+                  ) : (
+                    link.label || link.url
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
