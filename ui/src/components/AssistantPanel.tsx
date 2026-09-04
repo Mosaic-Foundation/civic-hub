@@ -30,6 +30,12 @@ interface Props {
   header?: ReactNode;
   /** Free-form input placeholder; names the thing being drafted. */
   placeholder?: string;
+  /** "Done — back to the form". Applying a card or reading a reply leaves
+   *  you at a dead end otherwise: the switcher is at the top of a scrolled
+   *  conversation, so there is nothing to press where you actually are
+   *  (Adam, 2026-09-04). Same handler as the panel's close. */
+  onDone?: () => void;
+  doneLabel?: string;
 }
 
 export default function AssistantPanel({
@@ -44,6 +50,8 @@ export default function AssistantPanel({
   onClose,
   header,
   placeholder,
+  onDone,
+  doneLabel,
 }: Props) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -157,6 +165,11 @@ export default function AssistantPanel({
             Send
           </button>
         </div>
+        {onDone && (
+          <button type="button" className="assistant-done-btn" onClick={onDone}>
+            {doneLabel ?? "Done — back to the form"}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -8,14 +8,52 @@ import type {
 import { CODE_OF_CONDUCT } from "./content.js";
 import { DESCRIPTION_MARKDOWN_RULE } from "../../shared/markdown.js";
 
-function formatDraftState(draft: DraftState): string {
-  const parts: string[] = [];
-  if (draft.title) parts.push(`Title: ${draft.title}`);
-  if (draft.description) parts.push(`Description: ${draft.description}`);
-  if (draft.sources) parts.push(`Sources: ${draft.sources}`);
-  if (draft.considerations) parts.push(`Considerations: ${draft.considerations}`);
-  if (draft.seed_statements) parts.push(`Seed statements:\n${draft.seed_statements}`);
-  return parts.length > 0 ? parts.join("\n") : "(empty draft)";
+const FIELD_LABELS: Record<string, string> = {
+  title: "Title",
+  description: "Description",
+  sources: "Sources",
+  considerations: "Considerations",
+  seed_statements: "Seed statements",
+};
+
+/** The name a person sees on the form. Unknown keys humanize, so a field a
+ *  new type declares reads sensibly here with nothing to register. */
+export function fieldLabel(field: string): string {
+  return (
+    FIELD_LABELS[field] ??
+    field.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
+  );
+}
+
+/**
+ * One line per field THIS form has, driven by `config.fields`, with empty
+ * ones named as empty and listed again in a summary.
+ *
+ * The previous version listed only fields that had content, from a hardcoded
+ * set of five keys. An empty field was therefore invisible — the model had to
+ * infer it from a missing line — which is why the assistant would take a
+ * draft to the end without ever mentioning Sources (Adam, 2026-09-04). It also
+ * meant a field a new type declared would not appear at all.
+ */
+function formatDraftState(draft: DraftState, fields: readonly string[]): string {
+  const valueOf = (field: string): string => {
+    const raw = (draft as unknown as Record<string, unknown>)[field];
+    return typeof raw === "string" ? raw.trim() : "";
+  };
+  const lines = fields.map((field) => {
+    const value = valueOf(field);
+    if (value.length === 0) return `${fieldLabel(field)}: (still empty)`;
+    return value.includes("\n")
+      ? `${fieldLabel(field)}:\n${value}`
+      : `${fieldLabel(field)}: ${value}`;
+  });
+  const empty = fields.filter((field) => valueOf(field).length === 0);
+  lines.push(
+    empty.length > 0
+      ? `Fields still empty: ${empty.map(fieldLabel).join(", ")}`
+      : "Every field has content.",
+  );
+  return lines.join("\n");
 }
 
 // The prompt is fully type-agnostic: every per-type branch the old
@@ -51,7 +89,7 @@ Be actively helpful. Offer suggestions where you see opportunities to strengthen
 - Community: ${hubConfig.community_description}
 ${categoryLine}
 - Current draft:
-${formatDraftState(draftState)}
+${formatDraftState(draftState, config.fields)}
 - Conversation phase: ${phase}
 
 ## Code of Conduct (defines hard blocks)
@@ -129,7 +167,9 @@ The goal is to walk the user through each section of the form one at a time, bei
 You lead; the user should never have to guess what to ask for next. Every reply that adds or changes something ends with exactly ONE concrete next-step offer:
 1. First, say plainly what you just did and where it is — "That's in a suggestion card below; click Apply to add it to Sources." Never leave the user wondering whether something happened.
 2. Then look at the form's fields in order (${config.fields.map((f) => `"${f}"`).join(", ")}) and pick the next one that is empty or thin. Offer to fill THAT, and say what you'd put there: not "want to add more?" but "Want me to draft a balanced set of 6 seed statements next — a couple from each side?" or "Want me to search for two or three sources on X?"
-3. When they say yes, do it in the same reply (search, draft, write the card) and then offer the next step. When they say no or skip, move to the next field without pushing. When every field has something, say so and point them to the Code of Conduct check and Submit.
+3. When they say yes, do it in the same reply (search, draft, write the card) and then offer the next step. When they say no or skip, move to the next field without pushing. When every field is either filled or has been offered and declined, say so and point them to the Code of Conduct check and Submit.
+
+**Every field gets asked about once.** "Fields still empty" above names the ones with nothing in them. A field that is empty AND has not yet come up in this conversation is your next offer — Sources included, where the offer is to go and look: "Want me to search for two or three sources on X?" Nobody should reach Submit having never been asked about a field. Ask once, concretely, one field at a time. If they say no, there's nothing, or skip, that field is settled: say plainly that leaving it blank is fine, don't raise it again, and move to the next. Empty fields never block submission and you must never imply they do — this is an offer of help, not a checklist you are enforcing.
 Keep the offers short and specific. One at a time. Name fields the way the person sees them on the form ("Sources", "Seed statements"), never by a raw key with underscores.
 
 If they say no, leave the form light. Include their answers as reference notes or leave blank.

@@ -182,6 +182,8 @@ export default function DraftShell({
       onClose={assistant.onClose}
       header={isMobile ? switcher : undefined}
       placeholder={`Ask for help with your ${typeLabel.toLowerCase()}...`}
+      onDone={assistant.onClose}
+      doneLabel={`Done — back to the ${typeLabel.toLowerCase()} form`}
     />
   );
 

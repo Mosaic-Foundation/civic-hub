@@ -4,6 +4,60 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The assistant offers help with every field; "Done — back to the form" — 2026-09-04
+
+Adam: "I was working with the assistant and we hadn't come up with any sources, but it never
+prompted me asking if I had any or if I would like it to look up sources. It should always seek to
+request information for each field available in the form… but not necessarily make it a
+requirement. If the person says there is nothing, it's fine to leave it blank. But they should
+always be asked before proceeding."
+
+**The cause was structural, not a prompt-wording problem.** `formatDraftState` listed only fields
+that HAD content, from a hardcoded set of five keys. An empty field was therefore invisible in the
+prompt — the model had to notice a missing line — so a draft could reach the end with Sources
+never mentioned. The same hardcoding meant a field a new type declared would not appear at all.
+
+- **The draft state is now registry-driven and names what is missing.** One line per field in
+  `config.fields`, empty ones rendered as `Sources: (still empty)`, followed by either
+  `Fields still empty: Sources, Seed statements` or `Every field has content.` Multi-line values
+  keep their line breaks. `fieldLabel()` humanizes an unknown key, so a type that declares a new
+  field reads correctly here with nothing to register.
+- **One rule added under "Drive the process":** every field gets asked about once. A field that is
+  empty and has not come up yet is the next offer — Sources included, where the offer is to go and
+  look. Ask once, concretely, one at a time. If they decline, say plainly that blank is fine, never
+  raise it again, move on. It states outright that empty fields never block submission and the
+  assistant must never imply they do — this is an offer, not a checklist.
+- The completion condition changed from "when every field has something" to "when every field is
+  either filled or has been offered and declined".
+
+**Verified live on dev** (real model calls, not mocks). Conversation draft with only title and
+description → "Almost there! Two fields are still empty — Sources and Seed statements. Both are
+optional, but each adds real value" → a specific offer for each, having already searched and found
+Floyd-specific STR coverage. Replying "No sources, I do not have any and I do not want any. But yes
+please draft the seed statements" → "Got it — no sources, that's totally fine" plus the seed
+statements card, no second ask. Same on a proposal (different field set): named Sources as the gap,
+searched, delivered shelter cost ranges and a comparable rural example as a card.
+`tests/unit/assistantDraftState.test.ts` (11) pins the rendering for all four types, including that
+a vote is never told Considerations is empty (it has no such field).
+
+**"Done — back to the {type} form"** (`AssistantPanel` `onDone`, wired to the existing
+`assistant.onClose` in `DraftShell`, so one handler serves both layouts: on a phone it flips the
+switcher back, on desktop it collapses the panel). Adam: once suggestions are applied or not,
+"you kind of just reach the end and there's nothing to do" — the switcher and the × both sit at
+the top of a conversation you have scrolled down, so there was nothing under your thumb where the
+reading actually ends. Full-width, under the input row in the pinned footer. Verified on dev at
+375px: the button reads "Done — back to the conversation form", and pressing it returns to the
+form with the switcher on the form tab.
+
+Backend tsc clean, UI build clean, `tests/unit` 686/686. Dev test drafts and the uitest session
+row deleted; no processes were created (nothing was submitted).
+
+**Noticed, not changed:** reopening the assistant restores the chat text from
+`conversation_history` but not the suggestion cards — they live on the response, not in storage, so
+an Apply button is gone once the panel is reopened. Pre-existing; worth a decision later.
+
+---
+
 ## The assistant never ends a turn on a promise — 2026-09-04
 
 Adam, on prod, drafting a conversation: he asked the assistant to dig through the news for Floyd
