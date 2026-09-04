@@ -103,9 +103,37 @@ Three fixes in `polisAdapter`:
 the bug is reintroduced** — after shipping a vacuous drift-guard earlier the same day, a green test
 is no longer taken as evidence on its own.
 
+**Orphan cleanup, done the same day.** Enumerated every conversation on polis.civic.social via
+`GET /api/v3/conversations` and diffed against the Polis ids referenced by **both** hubs. Closed
+four, all verified unreferenced first:
+
+| Polis id | Topic | Origin |
+|---|---|---|
+| `5fm62xv5ma` | Loose dogs and livestock | auto-start at approval |
+| `6ymkenh7vr` | Loose dogs and livestock | the manual Start press |
+| `4fa6jtybhe` | Where We Agree | first seed-slate run (2026-09-01) |
+| `9hmshipyra` | Don Kenny building | first seed-slate run (2026-09-01) |
+
+**The near-miss worth recording:** the first diff used only the PROD in-use set, which made six
+conversations look orphaned — `7ppabafjwe`, `6xpdkkauhb`, `2m9xny6hse`, `7f3km6hhdp`, `9jdhekwr6b`,
+`55mjeazeee`. They are live **dev** conversations. Both hubs share one Polis instance, so any
+cleanup must diff against dev AND prod. Closing that list would have broken the dev environment
+mid-smoke-test.
+
+Also: `/api/v3/conversation/close` **timed out on all four and applied on all four** — verified by
+reading `is_active` afterwards. That is the same >15s latency that caused the original duplicate
+bug, from a second angle. Consequence of the retry fix worth knowing: a slow POST now reports
+failure while having succeeded. That is the right trade against duplicating writes, but the real
+answer is an idempotency key or a read-back confirm; `closeDeliberation` callers already treat it
+as best-effort.
+
+**Left alone, not from this bug** — active on Polis, referenced by neither hub, provenance unclear:
+`5zzvja66ed` (FY2028 budget), `7nkkydtpcj` (Test Conversation, Polis Integration), `8db2na5hib`
+(Green Box Sites), `9zkkxkte67` (Test: Floyd County Infrastructure Priorities), and one row whose
+id serializes as `undefined` with a date for a topic. Seven more are already inactive.
+
 **Still open:**
-- Rotate the leaked token; the orphaned Polis conversation `5fm62xv5ma` (and any from repeated
-  Start presses) should be cleaned up.
+- Rotate the leaked participant token.
 - The universal `activateOnApproval` seam + admin notification on failure — approval still
   hardcodes two different policies (votes roll back, conversations swallow), and a silent
   `console.error` is still the only signal. Deferred, and now safe to build on retry semantics
