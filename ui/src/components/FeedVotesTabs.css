@@ -94,17 +94,84 @@
   border-radius: var(--radius-sm);
 }
 
-/* Fade hint on the right edge when tabs overflow on mobile */
-@media (max-width: 600px) {
-  .feed-votes-tabs::after {
-    content: "";
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 40px;
-    background: linear-gradient(to right, transparent, var(--color-bg, #f8f7f4));
-    pointer-events: none;
-    z-index: 1;
+/* --- Scroller: positioning context for the edge affordances --- */
+
+.feed-votes-tabs-scroller {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* --- Edge affordance: "there is more this way", and a tap target that
+   takes you there. Shown only while tabs are actually hidden in that
+   direction (the previous fade was painted permanently below 600px, so it
+   could not tell you anything — including when you had reached the end). */
+
+.feed-votes-tabs-arrow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  z-index: 3;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.feed-votes-tabs-arrow.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.feed-votes-tabs-arrow--right {
+  right: 0;
+  justify-content: flex-end;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-bg, #f8f7f4) 60%
+  );
+}
+
+.feed-votes-tabs-arrow--left {
+  left: 0;
+  justify-content: flex-start;
+  background: linear-gradient(
+    to left,
+    transparent,
+    var(--color-bg, #f8f7f4) 60%
+  );
+}
+
+/* A chip, not a bare glyph: a gradient alone reads as a rendering artifact,
+   while a bordered circle reads as a control you can press. */
+.feed-votes-tabs-arrow-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-bottom: 2px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface, #fff);
+  color: var(--color-primary, #1e3a5f);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+
+.feed-votes-tabs-arrow:active .feed-votes-tabs-arrow-chip {
+  background: var(--color-surface-muted, #eee);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-votes-tabs-arrow {
+    transition: none;
   }
 }

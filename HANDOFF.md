@@ -4,6 +4,61 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Section tabs on phones: the active tab is always in view, and the edge hint is real — 2026-09-04
+
+Adam (smoke test, day 2): the mobile menu still bothered him — he likes Feed pinned and the rest
+scrolling, but "there's a fade over votes to kind of indicate that you can scroll over, and it's
+still not obvious enough… I'm concerned it's not obvious enough for others to scroll over to see
+projects and outcomes."
+
+Looking at it turned up a defect underneath the cosmetic complaint. At 375px the strip fits
+Feed | Conversations | Proposals and about two letters of Votes, and **it never scrolled itself**:
+opening /projects or /outcomes left the active tab at x≈504–590, entirely off-screen, with no tab
+underlined at all. The bar looked identical to the Feed page, so it did not just fail to invite a
+scroll — it misreported where you were. Same class of problem as the detail-page fix on 09-02.
+
+The old fade could not help either: it was a static `::after` painted on every viewport under
+600px, so it was there when nothing overflowed and still there at the end of the strip. A hint
+that is always on is decoration, not a signal.
+
+Both are fixed in `FeedVotesTabs` alone — one shared component above every section, so all four
+types and any type added later inherit it with nothing to declare:
+
+- **The active tab scrolls into view**, centred, on mount and on every route change, including
+  detail pages via the existing `DETAIL_SECTIONS` mapping. The container's `scrollLeft` is
+  assigned rather than animated: a smooth scroll started during page load is cancelled by the
+  layout still settling around it, which is exactly how Votes and Projects stayed parked at 0 in
+  the first cut. The pass then **verifies the tab really is within the container's box** before
+  recording the route as done, so a pass that ran against half-settled layout is retried instead
+  of trusted; retries run on the next frame, after `document.fonts.ready` (label widths change
+  when the web font swaps in — this was the actual cause of the first failure), and on
+  `ResizeObserver`. Once centred for a route it stops, so a manual scroll is never yanked back.
+- **The edge affordance is live and tappable.** `more.left` / `more.right` come from the real
+  scroll position, so a fade appears only while tabs are actually hidden that way and disappears
+  at each end — and a left one now exists at all, which is what tells you the strip has been
+  scrolled. Each fade carries a 26px bordered chevron chip (`--color-surface` ground, navy glyph,
+  1px border, small shadow) in a 56×43 hit area that scrolls the strip 80% of a screenful.
+  A gradient alone reads as a rendering artifact; a circle with a border reads as a control.
+  `aria-hidden` + `tabIndex={-1}` — tabbing through the links already scrolls them into view, so
+  the buttons are pointer affordances only and add nothing for screen readers.
+- The `@media (max-width: 600px)` wrapper is gone: the affordance keys off actual overflow, so a
+  narrow desktop window behaves correctly too, and a wide one shows nothing.
+
+Verified on dev at 375px: /deliberations, /propose, /votes, /projects, /outcomes and one detail
+page of every type (project, brief, conversation, proposal, vote) all land with the section tab
+on-screen and underlined; arrows are right-only at the start, both in the middle, left-only at
+the end; the right chevron is the topmost element at its own centre (nothing overlays the tap
+target) and one tap moved the strip 145 → 245 of 247. At 1100px: no overflow, no arrows. Resizing
+375 → 900 live clears both arrows without a reload. UI `npm run build` clean, backend tsc clean,
+`tests/unit` 671/671.
+
+**Offered, not built:** the alternative configuration is to stop hiding tabs at all — let the
+five sections wrap to a second row under the pinned Feed on phones. Nothing to discover, no
+affordance needed, at the cost of roughly 44px more sticky chrome under the top nav. Say the word
+and it is a small CSS change.
+
+---
+
 ## Session close — 2026-09-03 (beta smoke test, day 1)
 
 **Where the smoke test stands.** Adam walked the front door, sign-in, the skate park project
