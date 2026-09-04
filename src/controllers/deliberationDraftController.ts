@@ -154,10 +154,24 @@ export async function handleSubmitDeliberationDraft(
       return;
     }
 
+    // Deduplicated, case- and whitespace-insensitively. Polis rejects a
+    // repeated statement with `polis_err_post_comment_duplicate`, and before
+    // 2026-09-04 that error aborted the whole seeding loop — which threw away
+    // the conversation id and left an approved conversation stuck at "waiting
+    // to start" with an orphan on Polis (proc_5889e8e441d1495e). The adapter
+    // now tolerates the error too; this stops it being raised at all. First
+    // occurrence wins, so the creator's ordering is preserved.
+    const seen = new Set<string>();
     const seeds = draft.seed_statements
       .split("\n")
       .map((s) => s.trim())
-      .filter((s) => s.length > 0);
+      .filter((s) => s.length > 0)
+      .filter((s) => {
+        const key = s.toLowerCase().replace(/\s+/g, " ");
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
     // Cap at 6 — a "learn more" list, not a bibliography. The form guide
     // and the assistant's instructions carry the same limit; this is the

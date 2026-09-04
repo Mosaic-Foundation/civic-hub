@@ -60,6 +60,34 @@ page. Backend tsc clean, UI build clean, `tests/unit` 696/696.
 
 ---
 
+## Duplicate seed statements: prevented, and made visible — 2026-09-04
+
+Adam, on learning a repeated seed statement could stop a conversation starting: "Is there another
+way to deal with duplicates? … I am wondering if we can have better formatting for those seed
+statements so it actually looks like a list."
+
+Two small changes, both aimed at never raising the error rather than only surviving it:
+
+- **Deduplicated at submit.** `deliberationDraftController` now drops repeats case- and
+  whitespace-insensitively, first occurrence winning so the creator's ordering survives. The
+  adapter's tolerance (a duplicate counts as success) stays as the backstop; this stops Polis
+  being asked twice at all. `tests/unit/seedStatementDedupe.test.ts` (5).
+- **The field reads back what it will do.** "One line = one statement" was the entire contract of
+  that textarea and nothing on screen said so — a creator could not see how their text would split,
+  or that two lines were the same statement. It now shows "4 statements, one per line" live, and
+  "· 2 repeats will be skipped" in a warning tone when there are any. The box also grew from 3 rows
+  to 6, so a set of six statements looks like a list rather than a scrolling block.
+
+Verified on dev with a draft containing two duplicates across four lines: the counter reads
+"2 statements, one per line · 2 repeats will be skipped".
+
+**Not established:** whether the duplicate on `proc_5889e8e441d1495e` came from the assistant or
+from the creator. Reading it needs the prod seed list (the deliberation read model does not expose
+`seed_statements`), and it no longer matters for correctness — both paths are covered. Worth a look
+if it recurs, since an assistant that emits duplicates would be its own bug.
+
+---
+
 ## Polis: a leaked participant token, a wedged conversation, and an orphan — 2026-09-04
 
 Adam, on prod: an approved conversation ("Loose dogs and livestock", `proc_5889e8e441d1495e`)

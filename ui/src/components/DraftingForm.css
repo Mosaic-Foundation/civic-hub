@@ -194,3 +194,18 @@
   font-weight: 600;
   color: var(--color-text);
 }
+
+/* Seed statements: read back how the text will be split, since "one line =
+   one statement" is invisible in a plain textarea. A repeat is called out
+   because Polis rejects it (and once broke a conversation's start). */
+.seed-statement-count {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.seed-statement-dupes {
+  color: var(--color-warning-fg, #8a5a00);
+  font-weight: 500;
+}
