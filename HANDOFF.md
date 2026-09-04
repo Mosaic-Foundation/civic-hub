@@ -76,9 +76,36 @@ entry):
 3. **Silent drop.** The spiral tries 2500 positions and, if none fits, the word is simply not
    pushed to `placed`.
 
-Not fixed here — it is a real piece of design work (scale the font range and canvas height with
-the entry count, and say so when words still do not fit) and Adam is mid-smoke-test. Raised for a
-decision.
+**Fixed the same day.** Adam: desktop and tablet are fine, but the phone cap should be "around
+forty or fifty", with less whitespace between words, the most common words still larger, and "the
+smallest word could be quite a bit smaller and still be legible". Tuned against the measurement
+harness rather than by eye — four candidate parameter sets, measured at four viewport widths:
+
+- **Two size scales, chosen by canvas width** (< 500px). Narrow gets `[10, 13, 18, 26, 36, 48]`;
+  wide keeps the original `[14, 18, 24, 32, 42, 56]`, so the desktop cloud is unchanged. Sizing is
+  still `count / maxCount`, so the popular words stay big on both.
+- **Less air:** the collision pad is 1px on a phone (2 elsewhere, was 3 everywhere), and the
+  measured box uses a 1.05 line height instead of 1.2 — the old value reserved leading that is not
+  there to see.
+- **The spiral stopped wasting its attempts.** It used a fixed radial step out to ~876px, so on a
+  343×300 phone canvas most of its 2500 tries asked about positions far outside the canvas and were
+  discarded. It now sweeps to the half-diagonal, spending every attempt somewhere a word could
+  actually land. This alone took the phone from 17 to 22.
+
+| viewport | 20 submitted | 50 | 100 | 200 | 400 |
+|---|---|---|---|---|---|
+| phone 375px | 20 | 50 | **65** | 65 | 65 |
+| phone 414px | 20 | 50 | 79 | 79 | 79 |
+| tablet 768px | 20 | 50 | 100 | 134 | 134 |
+| desktop 1100px | 20 | 50 | 100 | 159 | 159 |
+
+Verified in the browser against 108 real submissions (60 distinct) seeded on the dev cloud: a phone
+renders **50 words at 10–48px** where it rendered 17, visibly dense with "mountains", "community",
+"farming", "music" still dominant; desktop renders the same set at 14–56px, unchanged. Temporary
+submissions deleted afterwards (dev cloud back to its original 16).
+
+Still true and not addressed: words that do not fit are dropped without a "+N more". Much rarer now
+— nothing is dropped below ~50 words on a phone — but still silent.
 
 Backend tsc clean, UI build clean, `tests/unit` 696/696.
 

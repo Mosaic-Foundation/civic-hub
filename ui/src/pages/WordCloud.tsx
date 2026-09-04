@@ -28,7 +28,20 @@ function formatDate(iso: string): string {
 }
 
 const COLORS = ["#1e3a5f", "#2a7d4f", "#5c6bc0", "#00897b", "#37474f", "#4a148c"];
-const FONT_SIZES = [14, 18, 24, 32, 42, 56];
+// Two size scales, picked by how much canvas there is. A phone's cloud was
+// capping at ~17 words however many people contributed, and silently dropping
+// the rest (measured, Adam 2026-09-04). The narrow scale trades a smaller
+// floor — 10px, small but readable, and Adam: "it's okay if some of the
+// smaller words aren't very legible" — for roughly four times the words.
+// Wide viewports keep the original scale, so the desktop cloud is unchanged
+// apart from packing tighter.
+const FONT_SIZES_WIDE = [14, 18, 24, 32, 42, 56];
+const FONT_SIZES_NARROW = [10, 13, 18, 26, 36, 48];
+const NARROW_CANVAS_PX = 500;
+
+/** The bounding box reserves the glyph height, not a full line box: 1.2 line
+ *  height padded every word with leading that is not there to see. */
+const LINE_HEIGHT = 1.05;
 
 interface PlacedWord {
   text: string;
@@ -40,21 +53,23 @@ interface PlacedWord {
   rotate: boolean;
 }
 
-function getFontSize(count: number, maxCount: number): number {
-  if (maxCount <= 1) return FONT_SIZES[2];
+function getFontSize(count: number, maxCount: number, sizes: number[]): number {
+  if (maxCount <= 1) return sizes[2];
   const ratio = count / maxCount;
-  if (ratio > 0.8) return FONT_SIZES[5];
-  if (ratio > 0.6) return FONT_SIZES[4];
-  if (ratio > 0.4) return FONT_SIZES[3];
-  if (ratio > 0.25) return FONT_SIZES[2];
-  if (ratio > 0.1) return FONT_SIZES[1];
-  return FONT_SIZES[0];
+  // Still relative to the most-mentioned word, so the popular ones stay big
+  // whatever the scale.
+  if (ratio > 0.8) return sizes[5];
+  if (ratio > 0.6) return sizes[4];
+  if (ratio > 0.4) return sizes[3];
+  if (ratio > 0.25) return sizes[2];
+  if (ratio > 0.1) return sizes[1];
+  return sizes[0];
 }
 
 function measureWord(text: string, fontSize: number, rotate: boolean): { w: number; h: number } {
   const charW = fontSize * 0.58;
   const textW = text.length * charW;
-  const textH = fontSize * 1.2;
+  const textH = fontSize * LINE_HEIGHT;
   if (rotate) return { w: textH, h: textW };
   return { w: textW, h: textH };
 }
@@ -67,10 +82,20 @@ function layoutWords(entries: WordcloudCloudEntry[], width: number, height: numb
   const occupied: Array<{ x: number; y: number; w: number; h: number }> = [];
   const cx = width / 2;
   const cy = height / 2;
+  const narrow = width < NARROW_CANVAS_PX;
+  const sizes = narrow ? FONT_SIZES_NARROW : FONT_SIZES_WIDE;
+  // Gap between words. A phone needs every pixel; a wide canvas can breathe.
+  const pad = narrow ? 1 : 2;
+  // The spiral used a fixed radial step and ran out to ~876px, so on a phone
+  // most of its 2500 attempts asked about positions far outside a 343x300
+  // canvas and were thrown away. Sweeping out to the half-diagonal instead
+  // spends every attempt somewhere that could actually hold a word.
+  const maxRadius = Math.hypot(width, height) / 2;
+  const ATTEMPTS = 4000;
 
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
-    const fontSize = getFontSize(entry.count, maxCount);
+    const fontSize = getFontSize(entry.count, maxCount, sizes);
     const color = COLORS[i % COLORS.length];
     const rotate = i >= 2 && (hashCode(entry.text) % 10) < 3;
     const { w: wordW, h: wordH } = measureWord(entry.text, fontSize, rotate);
@@ -79,16 +104,15 @@ function layoutWords(entries: WordcloudCloudEntry[], width: number, height: numb
     let bestY = cy;
     let found = false;
 
-    for (let t = 0; t < 2500 && !found; t++) {
+    for (let t = 0; t < ATTEMPTS && !found; t++) {
       const angle = t * 0.1;
-      const radius = 1 + t * 0.35;
+      const radius = Math.min(maxRadius, 1 + t * (maxRadius / 3000));
       const tx = cx + radius * Math.cos(angle) - wordW / 2;
       const ty = cy + radius * Math.sin(angle) - wordH / 2;
 
       if (tx < 0 || ty < 0 || tx + wordW > width || ty + wordH > height) continue;
 
       let collides = false;
-      const pad = 3;
       for (const box of occupied) {
         if (
           tx < box.x + box.w + pad &&
