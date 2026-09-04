@@ -16,7 +16,6 @@ import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
 import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
-import SharePrompt from "../components/SharePrompt";
 import SourceLinks from "../components/SourceLinks";
 
 
@@ -135,6 +134,11 @@ export default function ProposalDetail() {
         <div className="process-share-row">
           <ShareButton
             title={proposal.title}
+            nudge={
+              proposal.has_supported
+                ? { processId: proposal.id, text: "You endorsed this — share it so more neighbors can too." }
+                : null
+            }
             shareText={`Support this proposal: ${proposal.title}`}
           />
         </div>
@@ -153,14 +157,7 @@ export default function ProposalDetail() {
           <div className="proposal-action">
             {error && <p className="form-error">{error}</p>}
             {proposal.has_supported ? (
-              <>
-                <p className="endorse-confirmation">You have supported this proposal.</p>
-                <SharePrompt
-                  processId={proposal.id}
-                  title={proposal.title}
-                  line="You endorsed this. Share it so more neighbors can too."
-                />
-              </>
+              <p className="endorse-confirmation">You have supported this proposal.</p>
             ) : (
               <button
                 className="endorse-button"

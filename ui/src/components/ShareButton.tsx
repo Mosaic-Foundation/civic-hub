@@ -1,9 +1,32 @@
 import { useState } from "react";
 import "./ShareButton.css";
 
+/** A one-off "consider sharing this" note attached to the bar. Adam
+ *  (2026-09-04) on the first cut, which was a card carrying its own copy of
+ *  the share row: "it just looks like a redundant share options, especially
+ *  on mobile it looks redundant and cramped… maybe we just need a little
+ *  note next to the share bar." So the reminder points at the buttons that
+ *  are already there. Dismissed once per process, in localStorage. */
+export interface ShareNudge {
+  processId: string;
+  text: string;
+}
+
+const NUDGE_KEY_PREFIX = "civic:share-prompt:";
+
+function nudgeRetired(processId: string): boolean {
+  try {
+    return localStorage.getItem(NUDGE_KEY_PREFIX + processId) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export interface ShareButtonProps {
   title: string;
   url?: string;
+  /** Shows the note beside/below the icons until it is dismissed. */
+  nudge?: ShareNudge | null;
   /**
    * Accepted for callers that still pass it, but no longer handed to the
    * native share sheet — see handleNativeShare. The destination page's own
@@ -12,9 +35,22 @@ export interface ShareButtonProps {
   shareText?: string;
 }
 
-export default function ShareButton({ title, url }: ShareButtonProps) {
+export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nudgeHidden, setNudgeHidden] = useState(
+    () => !nudge || nudgeRetired(nudge.processId),
+  );
+
+  const retireNudge = () => {
+    if (!nudge) return;
+    try {
+      localStorage.setItem(NUDGE_KEY_PREFIX + nudge.processId, "1");
+    } catch {
+      /* best effort */
+    }
+  };
+  const showNudge = nudge !== null && nudge !== undefined && !nudgeHidden;
 
   // The page's canonical address: never the hash. `#edits` opens the change
   // history, and a shared link must land on the plain page (Adam, 2026-09-03).
@@ -40,10 +76,12 @@ export default function ShareButton({ title, url }: ShareButtonProps) {
     }
   }
 
-  function handleFacebook() {
-    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`;
-    window.open(fbUrl, "_blank", "noopener,noreferrer,width=600,height=400");
-  }
+  // A plain link, NOT window.open with width/height: iOS Safari treats a
+  // window.open that carries window features as a popup and blocks it
+  // silently, which is why Facebook worked on desktop and did nothing on a
+  // phone (Adam, 2026-09-04). An anchor is never popup-blocked. The sms:
+  // channel beside it was already an anchor, and was already working.
+  const facebookHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`;
 
   // Plain-link channel that works from any browser, phone or desktop:
   // sms: with an empty number opens the Messages composer with the title
@@ -64,7 +102,7 @@ export default function ShareButton({ title, url }: ShareButtonProps) {
   }
 
   return (
-    <div className="share-row">
+    <div className={showNudge ? "share-row share-row--nudged" : "share-row"}>
       <button
         type="button"
         className="share-icon-btn share-icon-btn--copy"
@@ -84,17 +122,18 @@ export default function ShareButton({ title, url }: ShareButtonProps) {
         )}
       </button>
 
-      <button
-        type="button"
+      <a
         className="share-icon-btn share-icon-btn--facebook"
-        onClick={handleFacebook}
+        href={facebookHref}
+        target="_blank"
+        rel="noopener noreferrer"
         aria-label="Share on Facebook"
         title="Share on Facebook"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
         </svg>
-      </button>
+      </a>
 
       <a
         className="share-icon-btn share-icon-btn--sms"
@@ -129,6 +168,25 @@ export default function ShareButton({ title, url }: ShareButtonProps) {
 
       {error && (
         <span className="share-row-error" role="alert">{error}</span>
+      )}
+
+      {/* The note. Text and a dismiss — no buttons of its own, because the
+          buttons it is talking about are right beside it. */}
+      {showNudge && nudge && (
+        <span className="share-nudge">
+          <span className="share-nudge-text">{nudge.text}</span>
+          <button
+            type="button"
+            className="share-nudge-dismiss"
+            onClick={() => {
+              retireNudge();
+              setNudgeHidden(true);
+            }}
+            aria-label="Dismiss"
+          >
+            &times;
+          </button>
+        </span>
       )}
     </div>
   );

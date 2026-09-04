@@ -14,17 +14,20 @@ import StatementSubmission from "./StatementSubmission";
 import ClusterView from "./ClusterView";
 import "./DeliberationPanel.css";
 import RichText from "../RichText";
-import SharePrompt from "../SharePrompt";
 
 interface Props {
   processId: string;
   /** false when the page above already shows the topic as its title. */
   showTopic?: boolean;
+  /** Fires once the viewer has taken part enough to be worth asking to
+   *  share — their own statement, or three votes. The page owns the share
+   *  bar, so the signal has to travel up to it. */
+  onParticipated?: () => void;
 }
 
 type Tab = "participate" | "clusters";
 
-export default function DeliberationPanel({ processId, showTopic }: Props) {
+export default function DeliberationPanel({ processId, showTopic, onParticipated }: Props) {
   const { user } = useAuth();
   const [process, setProcess] = useState<DeliberationReadModel | null>(null);
   const [clusters, setClusters] = useState<ClusterState | null>(null);
@@ -77,6 +80,12 @@ export default function DeliberationPanel({ processId, showTopic }: Props) {
     }
     init();
   }, [loadProcess, loadNextStatement, loadClusters]);
+
+  // One vote is a tap, not a commitment; three, or a statement of their
+  // own, is taking part.
+  useEffect(() => {
+    if (hasSubmitted || statementsVoted >= 3) onParticipated?.();
+  }, [hasSubmitted, statementsVoted, onParticipated]);
 
   async function handleVote(_statementId: number, direction: VoteDirection) {
     if (!currentStatement) return;
@@ -166,16 +175,6 @@ export default function DeliberationPanel({ processId, showTopic }: Props) {
             <StatementSubmission onSubmit={handleSubmitStatement} />
           )}
 
-          {/* Below the voting, so it never interrupts the flow, and only once
-              taking part means something: a few votes in, or a statement of
-              their own. One vote is a tap, not a commitment. */}
-          {(hasSubmitted || statementsVoted >= 3) && (
-            <SharePrompt
-              processId={processId}
-              title={process.topic}
-              line="Share this conversation so more neighbors take part."
-            />
-          )}
         </div>
       )}
 

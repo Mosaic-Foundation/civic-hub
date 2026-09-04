@@ -21,6 +21,7 @@ import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
 
 export default function DeliberationDetail() {
+  const [participatedState, setParticipated] = useState(false);
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const { id } = useParams<{ id: string }>();
@@ -68,6 +69,7 @@ export default function DeliberationDetail() {
   if (error) return <div className="section error">Error: {error}</div>;
   if (!process) return <div className="section">Conversation not found</div>;
 
+  const participated = participatedState;
   const isActive = process.lifecycle === "active";
   const isCompleted = process.lifecycle === "closed" || process.lifecycle === "finalized";
 
@@ -76,6 +78,11 @@ export default function DeliberationDetail() {
       <div className="process-share-row">
         <ShareButton
           title={process.topic}
+          nudge={
+            participated
+              ? { processId: process.process_id, text: "Thanks for taking part — share this so more neighbors do." }
+              : null
+          }
           shareText={`Join the conversation: ${process.topic}`}
         />
       </div>
@@ -99,7 +106,13 @@ export default function DeliberationDetail() {
       )}
 
 
-      {isActive && <DeliberationPanel processId={process.process_id} showTopic={false} />}
+      {isActive && (
+        <DeliberationPanel
+          processId={process.process_id}
+          showTopic={false}
+          onParticipated={() => setParticipated(true)}
+        />
+      )}
       {isCompleted && <CompletedDeliberation process={process} showTopic={false} />}
 
       {!isActive && !isCompleted && (

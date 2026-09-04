@@ -26,7 +26,6 @@ import MarkdownTextarea from "../components/MarkdownTextarea";
 import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
 import { getEditPolicy, startProcessEdit, type EditPolicy } from "../services/api";
-import SharePrompt from "../components/SharePrompt";
 import SourceLinks from "../components/SourceLinks";
 
 export default function ProjectDetail() {
@@ -222,6 +221,11 @@ export default function ProjectDetail() {
       <div className="process-share-row">
         <ShareButton
           title={project.title}
+          nudge={
+            project.user_sentiment === "support"
+              ? { processId: project.id, text: "You're backing this — share it so more neighbors find it." }
+              : null
+          }
           shareText={`Check out this project: ${project.title}`}
         />
       </div>
@@ -290,15 +294,6 @@ export default function ProjectDetail() {
             <span className="sentiment-counts">Sign in to show your support</span>
           )}
         </div>
-      )}
-      {/* Supporters only — opposing something is not a reason to be asked
-          to spread it. */}
-      {project.user_sentiment === "support" && (
-        <SharePrompt
-          processId={project.id}
-          title={project.title}
-          line="You're backing this. Share it so more neighbors can find it."
-        />
       )}
 
       {/* Description — replaced by the diff while the history is open. */}

@@ -52,3 +52,55 @@ a.share-icon-btn {
   font-size: var(--font-size-sm, 0.85rem);
   color: var(--color-error, #c1351a);
 }
+
+/* --- The "consider sharing this" note ---
+   Sits with the share bar rather than duplicating it. On a phone the icons
+   and the note stack, so the note gets the full width instead of being
+   squeezed beside three buttons. */
+
+.share-row--nudged {
+  flex-wrap: wrap;
+  row-gap: var(--space-xs);
+}
+
+.share-nudge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 2px 2px 2px var(--space-sm);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+  color: var(--color-text-muted);
+  background: var(--color-surface-muted);
+  border-radius: 999px;
+}
+
+.share-nudge-text {
+  min-width: 0;
+}
+
+.share-nudge-dismiss {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-text-muted);
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.share-nudge-dismiss:hover {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.share-nudge-dismiss:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}

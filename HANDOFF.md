@@ -4,6 +4,52 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Facebook sharing on phones; the share reminder becomes a note on the bar — 2026-09-04
+
+**Facebook did nothing on a phone, worked on desktop.** `ShareButton` opened the sharer with
+`window.open(url, "_blank", "noopener,noreferrer,width=600,height=400")`. iOS Safari treats a
+`window.open` that carries **window features** as a popup and blocks it silently — the text-message
+channel beside it was a plain `<a>`, which is exactly why that one always worked. Facebook is now
+an anchor too (`target="_blank" rel="noopener noreferrer"`); anchors are never popup-blocked. The
+cost is a new tab instead of a sized popup on desktop, which is the right trade for a channel that
+did nothing at all on the device most people use.
+
+**The share prompt was redundant, so it moved onto the share bar.** Adam on the first cut: "I don't
+like how the extra share card has shown up after interaction… it just looks like a redundant share
+options, especially on mobile it looks redundant and cramped… maybe we just need a little note next
+to the share bar on each process that says hey consider sharing this." He is right — every detail
+page already carries the share row in its header, so a card with a second copy of it was pure
+duplication.
+
+`SharePrompt` (a card with its own share row) is replaced on process pages by a `nudge` on
+`ShareButton` itself: a small pill under the icons with the line and a `×`, and **no buttons of its
+own** — the buttons it refers to are right beside it. `.share-row--nudged` wraps, so on a phone the
+note takes the full width under the icons instead of being squeezed next to them. Same
+once-per-process localStorage key as before (`civic:share-prompt:<id>`), so a dismissal made under
+the old card still counts.
+
+Where the note comes from, per page — each reads a signal the page already has, so no new server
+field:
+
+| Page | Shown when |
+|---|---|
+| Vote (`Process.tsx`) | `type === "civic.vote" && your_current_vote` |
+| Proposal | `has_supported` |
+| Project | `user_sentiment === "support"` |
+| Conversation | `DeliberationPanel` reports up through a new `onParticipated` — own statement, or 3+ votes |
+| Brief / vote results | always: a finished record has nothing to commit to first |
+
+`SharePrompt` survives in one place only: **My Submissions**, which has no share bar of its own, so
+there the card IS the share affordance rather than a duplicate of one.
+
+Verified on dev at 375px: the vote page shows the note under the icons with no card anywhere
+(`.share-prompt` count 0); Facebook renders as `<a target="_blank">`; dismissing hides it, writes
+the key, leaves the share bar, and it stays gone across a reload; the brief page shows its own
+line; a project the viewer has not supported shows no note. Backend tsc clean, UI build clean,
+`tests/unit` 692/692. uitest session deleted.
+
+---
+
 ## Source links were broken on three of the four types — 2026-09-04
 
 Adam: the links on the Floyd County Microgrid Resilience Initiative "do not work… they open up a
