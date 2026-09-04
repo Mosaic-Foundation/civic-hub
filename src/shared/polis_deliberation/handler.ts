@@ -264,10 +264,11 @@ export function createPolisDeliberationHandler(
         topic: state.topic,
         status: process.status,
         lifecycle: process.status,
-        // The list card shows a date opposite its status pill, like every
+        // The list card shows a start date and a closing date, like every
         // other type's card (Adam, 2026-09-04). Conversations were the one
-        // summary with no timestamp on it.
+        // summary carrying neither.
         created_at: process.createdAt,
+        deadline: state.deadline ?? null,
         participant_count:
           state.summary?.participation_stats.total_participants ?? 0,
         summary_status: state.summary_status,

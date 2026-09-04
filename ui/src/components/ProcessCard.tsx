@@ -1,57 +1,36 @@
+// Vote list card — a thin wrapper over the shared ProcessListCard so the
+// vote's meta line lives with the vote, and the card's shape lives in one
+// place for every type.
+
 import type { VoteSummary } from "../services/api";
-import { statusDisplay } from "./statusDisplay";
-import { typeColorSlug } from "./typeColor";
-import { friendlyType } from "./ProcessLinkPicker";
+import ProcessListCard, { cardDate } from "./ProcessListCard";
 
 interface Props {
   process: VoteSummary;
-}
-
-function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
 }
 
 export default function ProcessCard({ process }: Props) {
   const isVotable = process.status === "active";
   const isDone = process.status === "closed" || process.status === "finalized";
   const isProposal = process.status === "proposed" || process.status === "threshold_met";
+  const closes = cardDate(process.closes_at);
 
   return (
-    <div className="process-card">
-      {/* Header carries the TYPE, like the feed's cards; the status pill
-          moved to the footer, across from the date (Adam, 2026-09-04). The
-          label is the bare type — "Vote", not the feed's "New vote" — since
-          nothing here is new by definition. */}
-      <div className="process-card-header">
-        <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.vote")}`}>
-          {friendlyType("civic.vote")}
-        </span>
-        <h3>{process.title}</h3>
-      </div>
-      <div className="process-card-meta">
-        <span>{formatShortDate(process.created_at)}</span>
-        {isProposal && (
-          <span>{process.support_count} of {process.support_threshold} endorsements</span>
-        )}
-        {(isVotable || isDone) && (
-          <span>{process.total_votes} vote{process.total_votes !== 1 ? "s" : ""}</span>
-        )}
-        {isVotable && process.closes_at && (
-          <span>Closes {formatShortDate(process.closes_at)}</span>
-        )}
-        {isDone && process.closes_at && (
-          <span>Closed {formatShortDate(process.closes_at)}</span>
-        )}
-        {isDone && !process.closes_at && (
-          <span>Completed</span>
-        )}
-        <span className={statusDisplay(process.status).className}>
-          {statusDisplay(process.status).label}
-        </span>
-      </div>
-    </div>
+    <ProcessListCard
+      processType="civic.vote"
+      status={process.status}
+      title={process.title}
+      meta={[
+        cardDate(process.created_at),
+        isProposal
+          ? `${process.support_count} of ${process.support_threshold} endorsements`
+          : (isVotable || isDone)
+            ? `${process.total_votes} vote${process.total_votes !== 1 ? "s" : ""}`
+            : null,
+        isDone
+          ? closes && `closed ${closes}`
+          : closes && `closes ${closes}`,
+      ]}
+    />
   );
 }

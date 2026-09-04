@@ -4,14 +4,13 @@ import {
   listCivicProposals,
   type CivicProposalSummary,
 } from "../services/api";
-import { statusDisplay } from "../components/statusDisplay";
 import HubInfo from "../components/HubInfo";
 import ProcessPicker from "../components/ProcessPicker";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
-import Creator from "../components/Creator";
 import StatusFilter, { useStatusFilter } from "../components/StatusFilter";
 import "./Propose.css";
+import ProcessListCard, { cardDate } from "../components/ProcessListCard";
 
 const FILTER_CHOICES = [
   { key: "all", label: "All" },
@@ -109,28 +108,16 @@ export default function Propose() {
                 {activeProposals.map((p) => (
                   <li key={p.id}>
                     <Link to={`/proposal/${p.id}`} className="process-link">
-                      <div className="proposal-card">
-                        <div className="proposal-card-header">
-                          <h3>{p.title}</h3>
-                          <span className={statusDisplay("open").className}>{statusDisplay("open").label}</span>
-                        </div>
-                        {p.support_count > 0 && (
-                          <p className="proposal-supporters">
-                            {p.support_count}{" "}
-                            {p.support_count === 1 ? "supporter" : "supporters"}
-                          </p>
-                        )}
-                        <div className="process-card-meta">
-                          <Creator
-                            name={p.creator_name}
-                            isAdmin={p.creator_is_admin}
-                            officialType={p.creator_official_type}
-                            officialTitle={p.creator_official_title}
-                            prefix="by"
-                          />
-                          <span>{new Date(p.created_at).toLocaleDateString()}</span>
-                        </div>
-                      </div>
+                      <ProcessListCard
+                        processType="civic.proposal"
+                        status="open"
+                        title={p.title}
+                        meta={[
+                          cardDate(p.created_at),
+                          `${p.support_count} endorsement${p.support_count !== 1 ? "s" : ""}`,
+                          cardDate(p.closes_at) && `closes ${cardDate(p.closes_at)}`,
+                        ]}
+                      />
                     </Link>
                   </li>
                 ))}
@@ -145,24 +132,16 @@ export default function Propose() {
                 {archivedProposals.map((p) => (
                   <li key={p.id}>
                     <Link to={`/proposal/${p.id}`} className="process-link">
-                      <div className="proposal-card">
-                        <div className="proposal-card-header">
-                          <h3>{p.title}</h3>
-                          <span className={statusDisplay(p.status).className}>
-                            {statusDisplay(p.status).label}
-                          </span>
-                        </div>
-                        <div className="process-card-meta">
-                          <Creator
-                            name={p.creator_name}
-                            isAdmin={p.creator_is_admin}
-                            officialType={p.creator_official_type}
-                            officialTitle={p.creator_official_title}
-                            prefix="by"
-                          />
-                          <span>{new Date(p.created_at).toLocaleDateString()}</span>
-                        </div>
-                      </div>
+                      <ProcessListCard
+                        processType="civic.proposal"
+                        status={p.status}
+                        title={p.title}
+                        meta={[
+                          cardDate(p.created_at),
+                          `${p.support_count} endorsement${p.support_count !== 1 ? "s" : ""}`,
+                          cardDate(p.closes_at) && `closed ${cardDate(p.closes_at)}`,
+                        ]}
+                      />
                     </Link>
                   </li>
                 ))}

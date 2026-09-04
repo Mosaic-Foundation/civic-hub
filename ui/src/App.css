@@ -707,29 +707,47 @@
   --card-accent: var(--type-conversation-fg, #0f5e66);
 }
 
-/* Pill on its own line, then the title across the full width (Adam,
-   2026-09-04). Side-by-side left the title in a narrow column on a phone —
-   a four-line wrap beside a one-word pill. Column layout, and the pill's
-   own `margin-left: auto` (it is the feed's pill, where it is pushed right)
-   is cancelled so it sits at the left. */
-.process-card-header,
-.project-card-header,
-.deliberation-card-header {
+/* Row 1 of every process card: type pill hard left, status pill hard right.
+   The title then takes the full width beneath, rather than competing with a
+   pill for the same line — beside a long type word ("CONVERSATION") it was
+   wrapping to four lines on a phone (Adam, 2026-09-04). */
+.process-card-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* The feed's pill carries `margin-left: auto` because it is pushed right
+   there; here it leads the row. */
+.process-card-chips > .feed-pill {
+  margin-left: 0;
+}
+
+.process-card-chips > .status-badge {
+  margin-left: auto;
+}
+
+.process-card-title {
+  width: 100%;
+  margin: 0.5rem 0 0;
+  font-family: var(--font-heading, inherit);
+  font-size: 1.05rem;
+  line-height: var(--ds-line-height-snug, 1.3);
+}
+
+/* Legacy header — still used by Outcomes, which has no status pill. */
+.process-card-header {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.45rem;
 }
 
-.process-card-header > .feed-pill,
-.project-card-header > .feed-pill,
-.deliberation-card-header > .feed-pill {
+.process-card-header > .feed-pill {
   margin-left: 0;
 }
 
-.process-card-header h3,
-.project-card-header h3,
-.deliberation-card-header h3 {
+.process-card-header h3 {
   width: 100%;
 }
 
@@ -748,14 +766,6 @@
   margin-top: 0.6rem;
   font-size: 0.85rem;
   color: var(--light-text);
-}
-
-/* The status pill sits at the far right of the footer, across from the date
-   (Adam, 2026-09-04). `margin-left: auto` on the pill rather than
-   space-between on the row, so the meta items before it stay grouped
-   together on the left however many of them a type renders. */
-.process-card-meta .status-badge {
-  margin-left: auto;
 }
 
 /* --- Status badge --- */

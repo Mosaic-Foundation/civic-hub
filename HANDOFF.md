@@ -4,6 +4,62 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## One card for every process list — 2026-09-04
+
+Adam, after two rounds of tweaking: "we need some consistency across the card design, across
+processes. And I want that to be consistent somewhat for all future processes as well." Agreed the
+shape from a table first, then built it.
+
+**Why they had drifted:** votes, proposals, projects and conversations each wrote their own card
+markup. By this morning they disagreed on where the status sat, whether a type pill existed at all
+(proposals had none), and whether the creator was shown. Tweaking four copies is what produced the
+inconsistency, so the fix is that there is now only one.
+
+**`components/ProcessListCard.tsx`** — the card, for every type present and future:
+
+```
+┌────────────────────────────────────┐ ← 4px bar in the type's colour
+│ [TYPE]                   [STATUS]  │  type left, status right
+│ Title, full width                  │
+│ meta · meta · meta                 │
+└────────────────────────────────────┘
+```
+
+It takes `processType`, `status`, `title` and a `meta` array (falsy entries dropped, so callers can
+pass conditionals inline). Pill label comes from `friendlyType`, colour and accent from
+`typeColorSlug` — both of which degrade sensibly for a type nobody registered — so **a new process
+type gets the card by passing its type string and nothing else.**
+
+| Type | Meta line | Status pill |
+|---|---|---|
+| Vote | start date · N votes (or N of M endorsements while proposed) · closes/closed DATE | from `statusDisplay` |
+| Proposal | start date · N endorsements · closes/closed DATE | same |
+| Conversation | start date · N participants · closes/closed DATE | same |
+| Project | N supporters (+ N opposed when any) · by CREATOR · created DATE | same |
+
+Projects are the deliberate exception on both counts Adam named: they keep the creator, and they
+carry no closing date because projects have no deadline. Oppose count is kept when non-zero — it is
+participation a resident entered, not noise.
+
+**One backend addition:** `deadline` joins `created_at` on the Polis handler's `getSummary`.
+Conversations were the only type whose list summary carried neither, and the closing date is now on
+the card.
+
+`.process-card-chips` is the new row-1 rule (type pill left, `margin-left: auto` on the status);
+`.process-card-title` is full width beneath it; the `margin-left: auto` put on
+`.process-card-meta .status-badge` earlier today is gone, since status no longer lives in the meta
+row. `.process-card-header` stays for Outcomes, which has no status pill — left as the archive view
+it is, since everything there is completed by definition and the pill would read the same on every
+row.
+
+Verified on dev at 375px on all four lists: votes "Aug 25 · 32 votes · closes Sep 8" with VOTE/ACTIVE;
+proposals "Jul 1 · 1 endorsement · closes Sep 29" with PROPOSAL/ACTIVE and no creator; projects
+"0 supporters · by Admin · Jul 1" with PROJECT/ACTIVE; conversations "Sep 1 · closes Oct 13" with
+CONVERSATION/ACTIVE. Title 285px of a 327px card on every one. No bespoke card markup left in any
+page. Backend tsc clean, UI build clean, `tests/unit` 696/696.
+
+---
+
 ## Tab strip: a tab never rests half-hidden — 2026-09-04
 
 Adam: "if I scroll over a little bit to where I can barely see conversations, it creates a full

@@ -7,10 +7,8 @@ import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import Creator from "../components/Creator";
 import "./Projects.css";
-import { statusDisplay } from "../components/statusDisplay";
 import StatusFilter, { useStatusFilter } from "../components/StatusFilter";
-import { typeColorSlug } from "../components/typeColor";
-import { friendlyType } from "../components/ProcessLinkPicker";
+import ProcessListCard, { cardDate } from "../components/ProcessListCard";
 
 const FILTER_CHOICES = [
   { key: "all", label: "All" },
@@ -96,39 +94,25 @@ export default function Projects() {
                 {activeProjects.map((p) => (
                   <li key={p.id}>
                     <Link to={`/project/${p.id}`} className="process-link">
-                      <div className="project-card">
-                        <div className="project-card-header">
-                          <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.project")}`}>
-                            {friendlyType("civic.project")}
-                          </span>
-                          <h3>{p.title}</h3>
-                        </div>
-                        {(p.support_count > 0 || p.oppose_count > 0) && (
-                          <div className="project-sentiment-bar">
-                            {p.support_count > 0 && (
-                              <span className="sentiment-support">
-                                {p.support_count} support
-                              </span>
-                            )}
-                            {p.oppose_count > 0 && (
-                              <span className="sentiment-oppose">
-                                {p.oppose_count} oppose
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        <div className="process-card-meta">
+                      <ProcessListCard
+                        processType="civic.project"
+                        status="active"
+                        title={p.title}
+                        meta={[
+                          `${p.support_count} supporter${p.support_count !== 1 ? "s" : ""}`,
+                          // Kept only when someone actually opposed: it is
+                          // participation a resident entered, not noise.
+                          p.oppose_count > 0 ? `${p.oppose_count} opposed` : null,
                           <Creator
                             name={p.creator_name}
                             isAdmin={p.creator_is_admin}
                             officialType={p.creator_official_type}
                             officialTitle={p.creator_official_title}
                             prefix="by"
-                          />
-                          <span>{new Date(p.created_at).toLocaleDateString()}</span>
-                          <span className={statusDisplay("active").className}>{statusDisplay("active").label}</span>
-                        </div>
-                      </div>
+                          />,
+                          cardDate(p.created_at),
+                        ]}
+                      />
                     </Link>
                   </li>
                 ))}
@@ -143,25 +127,22 @@ export default function Projects() {
                 {archivedProjects.map((p) => (
                   <li key={p.id}>
                     <Link to={`/project/${p.id}`} className="process-link">
-                      <div className="project-card">
-                        <div className="project-card-header">
-                          <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.project")}`}>
-                            {friendlyType("civic.project")}
-                          </span>
-                          <h3>{p.title}</h3>
-                        </div>
-                        <div className="process-card-meta">
+                      <ProcessListCard
+                        processType="civic.project"
+                        status="archived"
+                        title={p.title}
+                        meta={[
+                          `${p.support_count} supporter${p.support_count !== 1 ? "s" : ""}`,
                           <Creator
                             name={p.creator_name}
                             isAdmin={p.creator_is_admin}
                             officialType={p.creator_official_type}
                             officialTitle={p.creator_official_title}
                             prefix="by"
-                          />
-                          <span>{new Date(p.created_at).toLocaleDateString()}</span>
-                          <span className={statusDisplay("archived").className}>{statusDisplay("archived").label}</span>
-                        </div>
-                      </div>
+                          />,
+                          cardDate(p.created_at),
+                        ]}
+                      />
                     </Link>
                   </li>
                 ))}

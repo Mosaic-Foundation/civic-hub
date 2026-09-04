@@ -1915,6 +1915,8 @@ export interface DeliberationSummary {
   /** Absent on older servers — the card omits the date rather than showing
    *  "Invalid Date". */
   created_at?: string;
+  /** Participation window end; null until the conversation is started. */
+  deadline?: string | null;
   participant_count?: number;
   summary_status: string;
 }

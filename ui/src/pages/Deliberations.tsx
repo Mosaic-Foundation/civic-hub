@@ -10,10 +10,8 @@ import ProcessPicker from "../components/ProcessPicker";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import StatusFilter, { useStatusFilter } from "../components/StatusFilter";
-import { statusDisplay } from "../components/statusDisplay";
 import "./Deliberations.css";
-import { typeColorSlug } from "../components/typeColor";
-import { friendlyType } from "../components/ProcessLinkPicker";
+import ProcessListCard, { cardDate } from "../components/ProcessListCard";
 
 const FILTER_CHOICES = [
   { key: "all", label: "All" },
@@ -109,22 +107,18 @@ export default function Deliberations() {
             {waiting.map((p) => (
               <li key={p.process_id}>
                 <Link to={`/deliberation/${p.process_id}`} className="process-link">
-                  <div className="deliberation-card">
-                    <div className="deliberation-card-header">
-                      <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.polis_deliberation")}`}>
-                        {friendlyType("civic.polis_deliberation")}
-                      </span>
-                      <h3>{p.topic}</h3>
-                    </div>
-                    <div className="process-card-meta">
-                      {p.created_at && (
-                        <span>{new Date(p.created_at).toLocaleDateString()}</span>
-                      )}
-                      <span className={statusDisplay("draft").className}>
-                        {statusDisplay("draft").label}
-                      </span>
-                    </div>
-                  </div>
+                    <ProcessListCard
+                      processType="civic.polis_deliberation"
+                      status="draft"
+                      title={p.topic}
+                      meta={[
+                        cardDate(p.created_at),
+                        (p.participant_count ?? 0) > 0
+                          ? `${p.participant_count} participant${p.participant_count !== 1 ? "s" : ""}`
+                          : null,
+                        cardDate(p.deadline) && `closes ${cardDate(p.deadline)}`,
+                      ]}
+                    />
                 </Link>
               </li>
             ))}
@@ -139,25 +133,18 @@ export default function Deliberations() {
             {active.map((p) => (
               <li key={p.process_id}>
                 <Link to={`/deliberation/${p.process_id}`} className="process-link">
-                  <div className="deliberation-card">
-                    <div className="deliberation-card-header">
-                      <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.polis_deliberation")}`}>
-                        {friendlyType("civic.polis_deliberation")}
-                      </span>
-                      <h3>{p.topic}</h3>
-                    </div>
-                    <div className="process-card-meta">
-                      {p.created_at && (
-                        <span>{new Date(p.created_at).toLocaleDateString()}</span>
-                      )}
-                      {(p.participant_count ?? 0) > 0 && (
-                        <span>
-                          {p.participant_count} participant{p.participant_count !== 1 ? "s" : ""}
-                        </span>
-                      )}
-                      <span className={statusDisplay("active").className}>{statusDisplay("active").label}</span>
-                    </div>
-                  </div>
+                    <ProcessListCard
+                      processType="civic.polis_deliberation"
+                      status="active"
+                      title={p.topic}
+                      meta={[
+                        cardDate(p.created_at),
+                        (p.participant_count ?? 0) > 0
+                          ? `${p.participant_count} participant${p.participant_count !== 1 ? "s" : ""}`
+                          : null,
+                        cardDate(p.deadline) && `closes ${cardDate(p.deadline)}`,
+                      ]}
+                    />
                 </Link>
               </li>
             ))}
@@ -172,25 +159,18 @@ export default function Deliberations() {
             {completed.map((p) => (
               <li key={p.process_id}>
                 <Link to={`/deliberation/${p.process_id}`} className="process-link">
-                  <div className="deliberation-card">
-                    <div className="deliberation-card-header">
-                      <span className={`feed-pill feed-pill--type-${typeColorSlug("civic.polis_deliberation")}`}>
-                        {friendlyType("civic.polis_deliberation")}
-                      </span>
-                      <h3>{p.topic}</h3>
-                    </div>
-                    <div className="process-card-meta">
-                      {p.created_at && (
-                        <span>{new Date(p.created_at).toLocaleDateString()}</span>
-                      )}
-                      {(p.participant_count ?? 0) > 0 && (
-                        <span>
-                          {p.participant_count} participant{p.participant_count !== 1 ? "s" : ""}
-                        </span>
-                      )}
-                      <span className={statusDisplay("completed").className}>{statusDisplay("completed").label}</span>
-                    </div>
-                  </div>
+                    <ProcessListCard
+                      processType="civic.polis_deliberation"
+                      status="completed"
+                      title={p.topic}
+                      meta={[
+                        cardDate(p.created_at),
+                        (p.participant_count ?? 0) > 0
+                          ? `${p.participant_count} participant${p.participant_count !== 1 ? "s" : ""}`
+                          : null,
+                        cardDate(p.deadline) && `closed ${cardDate(p.deadline)}`,
+                      ]}
+                    />
                 </Link>
               </li>
             ))}
