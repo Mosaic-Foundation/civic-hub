@@ -60,6 +60,9 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   hash, so a shared link always lands on the plain page. The **email button was dropped**
   (Adam): a `mailto:` link looks dead on a desktop with no default mail app, and people can
   paste the copied link. Share row = copy link · Facebook · text message · Share… (phones).
+- **Readers skip pre-rule formatting-only entries.** `isSubstantiveEdit()` (processEdits.ts) is
+  applied in `listEdits`, the supporter/admin notification readers and the digest builder, so the
+  blank "edits" the skate park recorded before the rule never show anywhere. Tested.
 - **"See what changed" stands in for the description.** `EditHistory` reports `onOpenChange`;
   `ProjectDetail` hides the live description while the diff is open, so the change reads in
   place instead of under a duplicate; "Hide changes" brings the description back.

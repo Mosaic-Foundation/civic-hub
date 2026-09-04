@@ -20,6 +20,7 @@ import {
   type ClassifierEvent,
 } from "../../shared/feedActivity.js";
 import { sortDigestItems } from "./filter.js";
+import { isSubstantiveEdit } from "../../services/processEdits.js";
 import type {
   DigestAssemblyInput,
   DigestEmail,
@@ -49,8 +50,8 @@ export function buildEditItems(input: {
   const byProcess = new Map<string, { count: number; latest: string; editors: Set<string> }>();
   for (const e of input.events) {
     if (e.event_type !== "civic.process.updated") continue;
-    const edit = (e.data as { edit?: { changed_fields?: unknown } } | null)?.edit;
-    if (!edit || !Array.isArray(edit.changed_fields) || edit.changed_fields.length === 0) continue;
+    const edit = (e.data as { edit?: { changed_fields?: unknown; previous?: Record<string, unknown>; current?: Record<string, unknown> } } | null)?.edit;
+    if (!edit || !isSubstantiveEdit(edit)) continue;
     const actor = typeof (e as { actor?: unknown }).actor === "string" ? ((e as { actor?: string }).actor as string) : "";
     const cur = byProcess.get(e.process_id) ?? { count: 0, latest: e.timestamp, editors: new Set<string>() };
     cur.count += 1;

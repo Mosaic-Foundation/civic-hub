@@ -7,6 +7,7 @@
 
 import { getDb } from "../db/client.js";
 import { getAllHandlers, processDetailPath } from "../processes/registry.js";
+import { isSubstantiveEdit } from "./processEdits.js";
 
 const EPOCH = "1970-01-01T00:00:00.000Z";
 
@@ -49,8 +50,8 @@ export async function listEditNotifications(userId: string, isAdmin = false): Pr
 
   const byProcess = new Map<string, { edits: number; latest_at: string }>();
   for (const row of (events ?? []) as Array<{ process_id: string; actor: string | null; created_at: string; data: Record<string, unknown> | null }>) {
-    const edit = (row.data as { edit?: { changed_fields?: unknown } } | null)?.edit;
-    if (!edit || !Array.isArray(edit.changed_fields) || edit.changed_fields.length === 0) continue;
+    const edit = (row.data as { edit?: { changed_fields?: unknown; previous?: Record<string, unknown>; current?: Record<string, unknown> } } | null)?.edit;
+    if (!edit || !isSubstantiveEdit(edit)) continue;
     if (row.actor === userId) continue;
     const cur = byProcess.get(row.process_id) ?? { edits: 0, latest_at: row.created_at };
     cur.edits += 1;
@@ -114,8 +115,8 @@ export async function listAllEdits(adminId: string, sinceDays = 90): Promise<{ i
 
   const byProcess = new Map<string, { edits: number; latest_at: string; fields: Set<string>; unseen: boolean }>();
   for (const row of (events ?? []) as Array<{ process_id: string; created_at: string; data: Record<string, unknown> | null }>) {
-    const edit = (row.data as { edit?: { changed_fields?: unknown } } | null)?.edit;
-    if (!edit || !Array.isArray(edit.changed_fields) || edit.changed_fields.length === 0) continue;
+    const edit = (row.data as { edit?: { changed_fields?: unknown; previous?: Record<string, unknown>; current?: Record<string, unknown> } } | null)?.edit;
+    if (!edit || !isSubstantiveEdit(edit)) continue;
     const cur = byProcess.get(row.process_id) ?? { edits: 0, latest_at: row.created_at, fields: new Set<string>(), unseen: false };
     cur.edits += 1;
     if (row.created_at > cur.latest_at) cur.latest_at = row.created_at;

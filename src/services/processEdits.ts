@@ -299,6 +299,26 @@ export function labelForField(field: string): string {
   return FIELD_LABELS[field] ?? field.replace(/_/g, " ");
 }
 
+/**
+ * Whether a recorded edit changed any words. Edits recorded before the
+ * formatting rule (2026-09-03) can be formatting-only; every reader skips
+ * those so they never show as a blank "edit" in history, the badge, the
+ * digest, or the admin tab. Non-text fields always count.
+ */
+export function isSubstantiveEdit(edit: {
+  changed_fields?: unknown;
+  previous?: Record<string, unknown>;
+  current?: Record<string, unknown>;
+}): boolean {
+  if (!Array.isArray(edit.changed_fields) || edit.changed_fields.length === 0) return false;
+  return (edit.changed_fields as string[]).some((field) => {
+    if (!TEXT_FIELDS.has(field)) return true;
+    const before = edit.previous?.[field];
+    const after = edit.current?.[field];
+    return substanceOf(typeof before === "string" ? before : "") !== substanceOf(typeof after === "string" ? after : "");
+  });
+}
+
 export interface PublicEdit {
   id: string;
   at: string;
@@ -318,6 +338,7 @@ export async function listEdits(processId: string): Promise<PublicEdit[]> {
       | { changed_fields?: unknown; previous?: unknown; current?: unknown; editor_role?: unknown }
       | undefined;
     if (!edit || !Array.isArray(edit.changed_fields)) continue;
+    if (!isSubstantiveEdit(edit as { changed_fields: unknown; previous?: Record<string, unknown>; current?: Record<string, unknown> })) continue;
     out.push({
       id: ev.id,
       at: ev.timestamp,

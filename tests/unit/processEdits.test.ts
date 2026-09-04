@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { diffEdit, labelForField, substanceOf } from "../../src/services/processEdits.js";
+import { diffEdit, isSubstantiveEdit, labelForField, substanceOf } from "../../src/services/processEdits.js";
 import { getProcessHandler } from "../../src/processes/registry.js";
 
 const current = {
@@ -56,5 +56,15 @@ describe("formatting-only edits are saved but not recorded (Adam, 2026-09-03)", 
     expect(diffEdit(current, { description: "Old text." }, []).changed_fields).toEqual(["description"]);
     expect(diffEdit(current, { description: "old text" }, []).changed_fields).toEqual(["description"]);
     expect(diffEdit(current, { description: "New text" }, []).changed_fields).toEqual(["description"]);
+  });
+});
+
+describe("isSubstantiveEdit — readers skip pre-rule formatting-only entries", () => {
+  it("skips an edit whose only change is formatting", () => {
+    expect(isSubstantiveEdit({ changed_fields: ["description"], previous: { description: "What we need:\n- a" }, current: { description: "**What we need:**\n- a" } })).toBe(false);
+  });
+  it("keeps a wording change and any non-text field", () => {
+    expect(isSubstantiveEdit({ changed_fields: ["description"], previous: { description: "Early" }, current: { description: "Underway" } })).toBe(true);
+    expect(isSubstantiveEdit({ changed_fields: ["sources"], previous: { sources: [] }, current: { sources: ["https://x"] } })).toBe(true);
   });
 });

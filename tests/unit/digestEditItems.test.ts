@@ -9,7 +9,7 @@ const edit = (id: string, ts: string, actor: string, fields = ["description"]): 
   timestamp: ts,
   process_id: id,
   action_url: `https://hub/project/${id}`,
-  data: { edit: { changed_fields: fields, previous: {}, current: {}, editor_role: "creator" } },
+  data: { edit: { changed_fields: fields, previous: { description: "before" }, current: { description: "after" }, editor_role: "creator" } },
   actor,
 });
 const processes = { proc_a: { title: "Skate park", href: "https://hub/project/proc_a" } };
