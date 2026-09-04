@@ -29,7 +29,7 @@ const STATUS_FILTERS: Array<{ id: "all" | ReviewStatus; label: string }> = [
 ];
 
 /** Colored type pill — the same one every process page header wears. */
-function TypePill({ type }: { type: string | undefined }) {
+function TypePill({ type }: { type: string | null | undefined }) {
   const t = type ?? "";
   return (
     <span className={`process-type-pill process-type-pill--${typeColorSlug(t)}`}>
