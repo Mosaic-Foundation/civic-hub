@@ -34,7 +34,25 @@ export default function ProjectDetail() {
   // Just saved an edit: say so plainly (it was never "submitted for review").
   const editedState =
     (location.state as { edited?: boolean; changed?: string[]; formatting?: string[] } | null) ?? null;
+  // A toast that shows itself once after a save and goes away on its own
+  // (Adam: not a bar you have to dismiss). The router state is cleared so a
+  // reload or back-navigation does not replay it.
+  // Captured ONCE: the router state is cleared right after mount, so the
+  // message must not be re-derived from it on later renders.
+  const [toastText] = useState<string | null>(() => {
+    if (!editedState?.edited) return null;
+    if (editedState.changed && editedState.changed.length > 0) return "Your project has been updated.";
+    if (editedState.formatting && editedState.formatting.length > 0) return "Formatting updated.";
+    return "Nothing changed, so nothing was saved.";
+  });
   const [showEdited, setShowEdited] = useState(!!editedState?.edited);
+  useEffect(() => {
+    if (!editedState?.edited) return;
+    navigate(location.pathname + location.hash, { replace: true, state: null });
+    const t = window.setTimeout(() => setShowEdited(false), 4500);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // While "See what changed" is open, the diff stands in for the description.
   const [historyOpen, setHistoryOpen] = useState(false);
   const { user, isAdmin } = useAuth();
@@ -242,17 +260,8 @@ export default function ProjectDetail() {
       <BriefPointer processId={project.id} />
 
       {showEdited && (
-        <div className="project-edited-notice" role="status">
-          <span>
-            {editedState?.changed && editedState.changed.length > 0
-              ? "Your project has been updated. The change is listed below under “See what changed”."
-              : editedState?.formatting && editedState.formatting.length > 0
-                ? "Formatting updated. Formatting-only changes are saved but not listed as edits."
-                : "Nothing changed, so nothing was saved."}
-          </span>
-          <button type="button" className="project-edited-notice-close" onClick={() => setShowEdited(false)} aria-label="Dismiss">
-            ×
-          </button>
+        <div className="project-edited-toast" role="status" aria-live="polite">
+          {toastText}
         </div>
       )}
 

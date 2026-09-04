@@ -46,9 +46,20 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   `formatting_only_fields` + `formatting_values` alongside the substantive `changed_fields`.
   `applyEdit` writes both (processes row, `onEdited` mirror) but emits the event, history entry
   and digest/badge notice only for substantive changes. The submit reply carries
-  `formatting_only_fields`; the project page says "Formatting updated. Formatting-only changes
-  are saved but not listed as edits." Tests in `processEdits.test.ts`. Verified on dev: bold-only
+  `formatting_only_fields`; the project page says "Formatting updated." Tests in
+  `processEdits.test.ts`. Verified on dev: bold-only
   → saved, 0 edits recorded; one word → 1 edit.
+- **The post-save notice is a toast, not a bar.** Adam: "I don't think we should have a
+  persistent green bar that requires them to check it away." `.project-edited-toast`: fixed
+  bottom-center pill ("Your project has been updated." / "Formatting updated." / "Nothing
+  changed…"), fades out on its own after ~4.5 s (no animation under reduced motion), and the
+  router state is cleared on mount so a reload never replays it (the text is captured once into
+  state before clearing — the first cut re-read the cleared state and said "Nothing changed").
+- **Share links never carry `#edits`.** Adam: copy link / message / email were sharing the URL with
+  the change history open. `ShareButton` builds its URL from origin + path + query, never the
+  hash, so a shared link always lands on the plain page. (Email = a `mailto:` link, which opens
+  whatever mail app the device has as its default; on a Mac with no mail handler set, nothing
+  visibly happens — a device setting, not a hub bug. Phones open Mail/Gmail.)
 - **"See what changed" stands in for the description.** `EditHistory` reports `onOpenChange`;
   `ProjectDetail` hides the live description while the diff is open, so the change reads in
   place instead of under a duplicate; "Hide changes" brings the description back.

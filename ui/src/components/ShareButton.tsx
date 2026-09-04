@@ -16,7 +16,13 @@ export default function ShareButton({ title, url }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fullUrl = url ?? (typeof window !== "undefined" ? window.location.href : "");
+  // The page's canonical address: never the hash. `#edits` opens the change
+  // history, and a shared link must land on the plain page (Adam, 2026-09-03).
+  const fullUrl =
+    url ??
+    (typeof window !== "undefined"
+      ? `${window.location.origin}${window.location.pathname}${window.location.search}`
+      : "");
 
   const hasNativeShare =
     typeof navigator !== "undefined" &&
