@@ -4,6 +4,60 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Share prompt at engagement moments; the tab peek waits for a scroll — 2026-09-04
+
+**The peek now waits for a real scroll.** Adam: trigger it "when you scroll a decent distance…
+that's when the user will be paying attention to it." On load the reader is looking at the banner
+and the headline, so the one sweep a visit gets was being spent while nobody watched. It now fires
+the first time `window.scrollY` passes `PEEK_SCROLL_TRIGGER_PX` (320 — roughly half a phone
+screen), and the strip is sticky so it is on screen and under the eye by then. Everything else
+holds: once per visit, skipped under reduced motion and when nothing overflows, any touch/wheel/key
+hands control back mid-slide. Verified on dev at 375px: 0px of movement sitting on the page, 0 at
+150px of scroll, full 0 → 246 → 0 sweep at 420px.
+
+**`SharePrompt` — one reminder per process, after the person has actually committed.** Adam wants
+more sharing "but I don't want to overdo it… as low pressure as possible, allow them to easily
+dismiss it — we're just reminding them that they can share it, that's it."
+
+One shared component (`components/SharePrompt.tsx` + css) holding the existing `ShareButton` row
+under one muted line, with a × on the right. Not a modal, not a toast, no second ask. Retired per
+process in localStorage (`civic:share-prompt:<processId>`): the × hides it and records it; using
+any share channel records it too (capture-phase, so it survives a handler that stops propagation)
+but leaves the row up so the "Copied!" feedback still lands. Storage being unavailable costs
+nothing — the row shows and the × still works for that view.
+
+Mounted at each type's own commitment point, four call sites, one per type:
+
+| Type | Shows after | Copy |
+|---|---|---|
+| Vote | the ballot is in (inside `.vote-receipt`) | "Your vote is in. Share this so more neighbors can vote too." |
+| Proposal | endorsed | "You endorsed this. Share it so more neighbors can too." |
+| Project | `user_sentiment === "support"` | "You're backing this. Share it so more neighbors can find it." |
+| Conversation | a statement of their own, or 3+ statements voted | "Share this conversation so more neighbors take part." |
+
+Two judgement calls worth flagging: **opposing a project does not prompt** (no reason to ask
+someone to spread what they are against), and a conversation needs **three** votes, not one — one
+vote is a tap, not a commitment. The conversation prompt sits below the voting UI so it never
+interrupts the flow.
+
+Verified live on dev at 375px for all four: cast a real ballot, endorsed a proposal, supported a
+project, voted three statements through the live Polis conversation — each showed its own line with
+the share row; the prompt was absent at one and two statement votes and appeared on the third.
+Dismissing the project's prompt hid it, wrote `1`, and it stayed gone across a reload while the
+proposal's prompt still showed — dismissal is per process, not global. Backend tsc clean, UI build
+clean, `tests/unit` 686/686. Dev engagements reverted (endorsement row deleted, sentiment back to
+neutral) and the uitest session deleted; the anonymous dev ballot on the energy vote is left, as
+ballots cannot be withdrawn.
+
+**Not built, awaiting Adam's word** (from the same conversation): the share prompt for a process
+*creation*, which cannot live at submission — a submitted process is `pending_review`, and
+`NON_PUBLIC_STATUSES` makes it not publicly fetchable, so sharing then hands out a dead link. It
+belongs at approval instead: the `notifyCreatorApproved` email, plus the creator's first view of
+the now-live page. Also proposed and not built: a share invitation on the outcome pages (brief,
+vote results, completed project), where the link is most worth sending.
+
+---
+
 ## Outcomes page had no horizontal padding — 2026-09-04
 
 Adam: "the outcomes page has the same issue as the projects page had — there's no padding on the

@@ -1,0 +1,56 @@
+/* Deliberately quiet: a tinted strip, one line of muted text, the ordinary
+   share row underneath. It must read as a note, never as a call to action
+   competing with the page's own controls. */
+
+.share-prompt {
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.share-prompt-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.share-prompt-line {
+  flex: 1;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.share-prompt-dismiss {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: -4px -6px 0 0;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--color-text-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.share-prompt-dismiss:hover {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.share-prompt-dismiss:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.share-prompt-actions {
+  margin-top: var(--space-xs);
+}

@@ -14,6 +14,7 @@ import StatementSubmission from "./StatementSubmission";
 import ClusterView from "./ClusterView";
 import "./DeliberationPanel.css";
 import RichText from "../RichText";
+import SharePrompt from "../SharePrompt";
 
 interface Props {
   processId: string;
@@ -163,6 +164,17 @@ export default function DeliberationPanel({ processId, showTopic }: Props) {
             </div>
           ) : (
             <StatementSubmission onSubmit={handleSubmitStatement} />
+          )}
+
+          {/* Below the voting, so it never interrupts the flow, and only once
+              taking part means something: a few votes in, or a statement of
+              their own. One vote is a tap, not a commitment. */}
+          {(hasSubmitted || statementsVoted >= 3) && (
+            <SharePrompt
+              processId={processId}
+              title={process.topic}
+              line="Share this conversation so more neighbors take part."
+            />
           )}
         </div>
       )}

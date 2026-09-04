@@ -16,6 +16,7 @@ import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
 import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
+import SharePrompt from "../components/SharePrompt";
 
 
 function formatDate(iso: string): string {
@@ -151,7 +152,14 @@ export default function ProposalDetail() {
           <div className="proposal-action">
             {error && <p className="form-error">{error}</p>}
             {proposal.has_supported ? (
-              <p className="endorse-confirmation">You have supported this proposal.</p>
+              <>
+                <p className="endorse-confirmation">You have supported this proposal.</p>
+                <SharePrompt
+                  processId={proposal.id}
+                  title={proposal.title}
+                  line="You endorsed this. Share it so more neighbors can too."
+                />
+              </>
             ) : (
               <button
                 className="endorse-button"

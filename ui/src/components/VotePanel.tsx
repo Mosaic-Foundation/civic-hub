@@ -5,6 +5,7 @@ import { submitVote, submitApprovalVote, supportVote, unsupportVote, submitInput
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
 import AuthModal from "./AuthModal";
+import SharePrompt from "./SharePrompt";
 
 const COMMENT_MAX = 500;
 
@@ -353,6 +354,12 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
                   </Link>
                 </>
               )}
+              {/* Once per vote, after the ballot is actually in. */}
+              <SharePrompt
+                processId={process.id}
+                title={process.title}
+                line="Your vote is in. Share this so more neighbors can vote too."
+              />
             </div>
           )}
           {error && <p className="error">{error}</p>}

@@ -58,8 +58,18 @@ function prefersReducedMotion(): boolean {
  *  the hidden tabs and back, slowly, then leaves itself where it started.
  *  Adam (2026-09-04) asked for this instead of a louder static indicator —
  *  "it's an indicator, I feel like that's more subtle". Any touch, wheel or
- *  key hands control straight back to the person, mid-slide. */
+ *  key hands control straight back to the person, mid-slide.
+ *
+ *  It waits for the reader to scroll a real distance first. On load their
+ *  attention is on the banner and the headline, not a strip they have not
+ *  needed yet, so the sweep was being spent while nobody was looking (Adam:
+ *  trigger it "when you scroll a decent distance… that's when the user will
+ *  be paying attention to it"). The strip is sticky, so it is on screen and
+ *  under the eye by the time this fires. */
 const PEEK_SEEN_KEY = "civic:tabs-peeked";
+/** Roughly half a phone screen, with a floor so a short viewport still has
+ *  to travel before it counts as "scrolled down a bit". */
+const PEEK_SCROLL_TRIGGER_PX = 320;
 const PEEK_OUT_MS = 1200;
 const PEEK_HOLD_MS = 250;
 const PEEK_BACK_MS = 1000;
@@ -196,7 +206,7 @@ export default function FeedVotesTabs() {
       for (const type of gestures) el.removeEventListener(type, handOver);
     };
 
-    const begin = window.setTimeout(() => {
+    const sweep = () => {
       const max = el.scrollWidth - el.clientWidth;
       if (max <= 0) return; // nothing hidden — nothing to demonstrate
       peeked.current = true;
@@ -235,10 +245,21 @@ export default function FeedVotesTabs() {
         frame = requestAnimationFrame(step);
       };
       frame = requestAnimationFrame(step);
-    }, 450);
+    };
+
+    // Wait for a real scroll. Not any movement — a deliberate one, far enough
+    // that the reader has settled into the page and the sticky strip is what
+    // they would reach for next.
+    const onScroll = () => {
+      if (done || peeked.current) return;
+      if (window.scrollY < PEEK_SCROLL_TRIGGER_PX) return;
+      window.removeEventListener("scroll", onScroll);
+      sweep();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
 
     return () => {
-      window.clearTimeout(begin);
+      window.removeEventListener("scroll", onScroll);
       handOver();
     };
   }, [measure]);
