@@ -4,6 +4,61 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Spec audit; the hub namespace now resolves — 2026-09-04
+
+Adam asked for a compliance check of the session's changes against the canonical specs in
+`civic-social-docs/specs/` (the four in that folder govern; the copies under `/specs/` are older).
+
+**The session added no drift.** No event-emission code was touched at all — the backend diff is
+the assistant prompt/behaviour, one email body, `detail_path` on `GET /reviews/:id` (a
+creator/admin endpoint, outside the activity contract), and the source-line parser. The one change
+with a data shape (`voteDraftController` storing `content.links` parsed) does not reach any
+activity: `civic.process.created` carries `data: {process: {type, title}}` and never `content`.
+
+**Two decisions turned out to be spec-aligned for reasons not checked at the time.** Sharing records
+nothing server-side, so there is no observable state missing from the activity stream (Activity
+Spec §1.2, no silent state changes). And `civic.process.created` fires at **approval**, not at
+submit — which is exactly why the share prompt belongs at approval: nothing is announced before it
+is publicly fetchable.
+
+**Where the hub stands.** `src/models/event.ts` still carries the v0.1 field names and a comment
+saying v0.1, but that is the internal storage model — `activitySerializer` converts to v0.2 AS2 at
+the endpoint, and the live stream is conformant: every MUST-level property of §2.2 present and
+well-formed, `OrderedCollection`/`OrderedCollectionPage` transport, and a process-scoped actor IRI
+for anonymized participation per §2.2.1. That is **Level 1 (Publisher)** on the §6.3 ladder.
+
+**Fixed here — the `hub:` namespace resolves.** Every activity using a hub term declares
+`"hub": "{base}/ns#"` in its `@context`, and that URL fell through Vercel's rewrites to the SPA: a
+consumer dereferencing it got a page of React. `GET /ns` (`namespaceController`, `namespaceRoutes`,
+`vercel.json` rewrite beside `/.well-known/civic.json`) now serves the register as JSON-LD
+(`application/ld+json`, cached an hour), built from the serializer's existing `EXTENSION_TERMS` so
+it cannot drift from what the mapping table can emit. This doubles as the §3.4 declaration of the
+terms this space emits.
+
+`tests/unit/extensionTerms.test.ts` (4) is the drift guard: it scans the serializer source for
+`hub:` string literals and fails if one is emitted without being declared. **Verified it actually
+fails** by renaming an emitted term — the first cut of the test sliced the source on an anchor that
+did not match, scanned nothing, and passed vacuously; it now asserts it sees at least as many terms
+as are declared before checking anything.
+
+**Left for later (needs Adam — prod env + prod SQL):** no activity carries `location`, a SHOULD in
+§2.2 where the activity has civic geography. `DEFAULT_JURISDICTION` falls back to `"local"`, which
+`normalizePlaceCode` treats as non-geographic, so the property is dropped from every activity.
+`CIVIC_JURISDICTION` is unset on prod and locally. Fix: set `CIVIC_JURISDICTION=us-va-floyd` and
+`CIVIC_JURISDICTION_NAME=Floyd County, Virginia` (the spec's own worked example is this county),
+plus a backfill — `UPDATE processes SET jurisdiction = 'us-va-floyd' WHERE jurisdiction = 'local';`
+— because most emitters read jurisdiction from the process row, so the env alone would only fix new
+processes. Non-breaking: `jurisdiction` is passed through everywhere and never filtered or compared.
+
+**Considered and rejected:** remapping `civic.project.sentiment_changed` from `Update` to `Like`
+(§3.1 prefers a native AS2 verb). One event covers support, oppose AND neutral; `Like` expresses
+only support, so honouring the rule would need `Like`/`Dislike`/`Undo` and a three-way event split.
+`Update` + a typed `hub:ProjectSentiment` is the more honest mapping. Leave it.
+
+Backend tsc clean, UI build clean, `tests/unit` 696/696.
+
+---
+
 ## Applied-suggestion state: universal by construction, and the CoC path too — 2026-09-04
 
 Adam asked whether the applied-suggestions bug was systemic — "across the whole system to all

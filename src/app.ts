@@ -10,6 +10,7 @@ import processLinksRoutes from "./routes/processLinksRoutes.js";
 import shareRoutes from "./routes/shareRoutes.js";
 import processEditRoutes from "./routes/processEditRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
+import namespaceRoutes from "./routes/namespaceRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import feedRoutes from "./routes/feedRoutes.js";
 import discoveryRoutes from "./routes/discoveryRoutes.js";
@@ -228,6 +229,9 @@ app.use("/user/settings", userSettingsRouter);
 // All external systems (feeds, dashboards, federation) read these.
 app.use("/events", eventRoutes);
 app.use("/activities", activityRoutes);
+// The `hub:` prefix every activity's @context declares. Must resolve, or a
+// consumer following it lands on the SPA (Civic Activity Spec v0.2 §3.4).
+app.use("/ns", namespaceRoutes);
 
 // Internal read model for the hub's own UI — the pre-v0.2 `{ events, count }`
 // shape, unchanged. Mounted twice on purpose: on Vercel the `/api` prefix is

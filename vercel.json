@@ -11,20 +11,66 @@
     }
   },
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api" },
-    { "source": "/events", "destination": "/api" },
-    { "source": "/activities/:id*", "destination": "/api" },
-    { "source": "/.well-known/civic.json", "destination": "/api" },
-    { "source": "/process/:id*", "destination": "/api/og" },
-    { "source": "/proposal/:id*", "destination": "/api/og" },
-    { "source": "/project/:id*", "destination": "/api/og" },
-    { "source": "/deliberation/:id*", "destination": "/api/og" },
-    { "source": "/brief/:id*", "destination": "/api/og" },
-    { "source": "/vote-results/:id*", "destination": "/api/og" },
-    { "source": "/meeting-summary/:id*", "destination": "/api/og" },
-    { "source": "/announcement/:id*", "destination": "/api/og" },
-    { "source": "/wordcloud/:id*", "destination": "/api/og" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/:path*",
+      "destination": "/api"
+    },
+    {
+      "source": "/events",
+      "destination": "/api"
+    },
+    {
+      "source": "/activities/:id*",
+      "destination": "/api"
+    },
+    {
+      "source": "/.well-known/civic.json",
+      "destination": "/api"
+    },
+    {
+      "source": "/ns",
+      "destination": "/api"
+    },
+    {
+      "source": "/process/:id*",
+      "destination": "/api/og"
+    },
+    {
+      "source": "/proposal/:id*",
+      "destination": "/api/og"
+    },
+    {
+      "source": "/project/:id*",
+      "destination": "/api/og"
+    },
+    {
+      "source": "/deliberation/:id*",
+      "destination": "/api/og"
+    },
+    {
+      "source": "/brief/:id*",
+      "destination": "/api/og"
+    },
+    {
+      "source": "/vote-results/:id*",
+      "destination": "/api/og"
+    },
+    {
+      "source": "/meeting-summary/:id*",
+      "destination": "/api/og"
+    },
+    {
+      "source": "/announcement/:id*",
+      "destination": "/api/og"
+    },
+    {
+      "source": "/wordcloud/:id*",
+      "destination": "/api/og"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ],
   "crons": [
     {
