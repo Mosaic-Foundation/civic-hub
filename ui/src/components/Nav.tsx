@@ -307,7 +307,7 @@ export default function Nav() {
                     {editNotifs.length > 0 && (
                       <div className="civic-nav-menu-group" role="presentation">
                         <div className="civic-nav-menu-group-label">
-                          {isAdmin ? "Projects edited" : "Projects you support were edited"}
+                          Projects you support were edited
                           <span className="civic-nav-menu-badge">{editNotifs.length}</span>
                         </div>
                         {editNotifs.map((n) => (

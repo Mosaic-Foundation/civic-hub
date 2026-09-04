@@ -51,3 +51,17 @@
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
+
+.admin-tab-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #e02424;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}

@@ -24,6 +24,18 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   always runs `checkTextAgainstCoC` (hard blocks only, ~3 s); the old best-practices review turn
   is gone from the button (it returns as "Get suggestions", below). The `coc_only` flag added
   earlier the same evening was removed as redundant.
+- **Admin notice of edits → the admin panel "Edits" tab, not the dropdown.** Adam (after editing
+  the skate park on prod): "I definitely don't want it in the drop down menu for the admin
+  account… a new tab that says edits." `GET /admin/edits` (`listAllEdits`): every edited process
+  of any type in the last 90 days, newest first, with the union of changed fields and an
+  `unseen` count against the same `edits_seen_at` cursor; `pages/AdminEdits.tsx` (route
+  `/admin/edits`, `AdminTabs` "Edits" tab with a red count badge) lists them, marks new rows, and
+  stamps seen on open. Nothing is approved there — it is an overview. The account dropdown's
+  group is supporters-only for everyone now (`/notifications/edits` no longer has an admin mode).
+- **After saving an edit the page says so.** The confirm dialog's button read "Submit for
+  review" on edits; it is "Save changes" (and "Saving…"), and the project page shows a green
+  "Your project has been updated. The change is listed below under 'See what changed'." notice
+  (or "Nothing changed, so nothing was saved.") passed via router state — never "submitted".
 - **"Get suggestions" — the writing review, as its own button.** Adam: "maybe we need a new
   button on all processes that says make suggestions… and then the code of conduct thing is
   distinctly different. I still want the flow where you talk to the assistant." Three actions

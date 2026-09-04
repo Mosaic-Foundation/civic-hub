@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
+import { adminListEdits } from "../services/api";
 import "./AdminTabs.css";
 
 /**
@@ -12,6 +14,17 @@ import "./AdminTabs.css";
  * automatically on the active tab.
  */
 export default function AdminTabs() {
+  // Edits badge: how many edited processes are new since the admin last
+  // opened the Edits tab. Best-effort; a failed fetch shows no badge.
+  const [unseenEdits, setUnseenEdits] = useState(0);
+  useEffect(() => {
+    let active = true;
+    adminListEdits()
+      .then((r) => { if (active) setUnseenEdits(r.unseen); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
   return (
     <>
       <div className="admin-tabs-eyebrow">Admin</div>
@@ -30,6 +43,10 @@ export default function AdminTabs() {
       </NavLink>
       <NavLink to="/admin/feedback" className={tabClass}>
         Feedback
+      </NavLink>
+      <NavLink to="/admin/edits" className={tabClass}>
+        Edits
+        {unseenEdits > 0 && <span className="admin-tab-badge">{unseenEdits}</span>}
       </NavLink>
       <NavLink to="/admin/archived" className={tabClass}>
         Archived

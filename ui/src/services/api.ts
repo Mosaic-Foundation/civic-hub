@@ -2318,6 +2318,24 @@ export function markEditsSeen(): Promise<{ ok: boolean }> {
   return request("POST", "/notifications/edits/seen");
 }
 
+/** Admin panel "Edits" tab: every edited process, newest first. */
+export interface AdminEditRow {
+  process_id: string;
+  type: string;
+  type_label: string;
+  title: string;
+  href: string;
+  status: string;
+  edits: number;
+  latest_at: string;
+  changed_fields: string[];
+  unseen: boolean;
+}
+
+export function adminListEdits(): Promise<{ items: AdminEditRow[]; unseen: number }> {
+  return request("GET", "/admin/edits");
+}
+
 export function getReviewDetail(reviewId: string): Promise<ReviewDetail> {
   return request("GET", `/reviews/${reviewId}`);
 }

@@ -128,8 +128,10 @@ export default function ProjectDraft() {
     flow.setError(null);
     try {
       if (editProcessId) {
-        await apiSubmitProjectDraft(draft.id, { edit_process_id: editProcessId });
-        navigate(`/project/${editProcessId}#edits`);
+        const edited = await apiSubmitProjectDraft(draft.id, { edit_process_id: editProcessId });
+        navigate(`/project/${editProcessId}#edits`, {
+          state: { edited: true, changed: (edited as { changed_fields?: string[] }).changed_fields ?? [] },
+        });
         return;
       }
       const result = await apiSubmitProjectDraft(draft.id, reviseReviewId ? { review_id: reviseReviewId } : undefined);
@@ -259,7 +261,7 @@ export default function ProjectDraft() {
                 onClick={confirmSubmit}
                 disabled={submitting}
               >
-                {submitting ? "Submitting..." : isAdmin ? "Submit project" : "Submit for review"}
+                {submitting ? (editProcessId ? "Saving..." : "Submitting...") : editProcessId ? "Save changes" : isAdmin ? "Submit project" : "Submit for review"}
               </button>
               <button
                 type="button"

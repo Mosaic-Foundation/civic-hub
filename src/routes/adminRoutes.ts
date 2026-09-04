@@ -3,6 +3,7 @@
 // the CIVIC_ADMIN_EMAILS env var.
 
 import { Router } from "express";
+import { handleAdminListEdits } from "../controllers/editNotificationController.js";
 import {
   handleAdminListProposals,
   handleAdminGetProposal,
@@ -120,6 +121,10 @@ router.post("/reviews/:reviewId/decline", handleAdminDecline);
 // admin Archived view. Archiving hides an item from the public list, direct
 // fetch, feed, and digest while keeping it restorable.
 router.get("/archived", handleListArchivedProcesses);
+
+// Edits of live processes (any type) — the admin's overview; opening the tab
+// stamps the same edits_seen_at cursor via POST /notifications/edits/seen.
+router.get("/edits", handleAdminListEdits);
 router.post("/processes/:id/archive", handleArchiveProcess);
 router.post("/processes/:id/restore", handleRestoreProcess);
 

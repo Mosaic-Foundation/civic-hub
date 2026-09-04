@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   getProjectDetail,
@@ -29,7 +29,11 @@ import { getEditPolicy, startProcessEdit, type EditPolicy } from "../services/ap
 
 export default function ProjectDetail() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams<{ id: string }>();
+  // Just saved an edit: say so plainly (it was never "submitted for review").
+  const editedState = (location.state as { edited?: boolean; changed?: string[] } | null) ?? null;
+  const [showEdited, setShowEdited] = useState(!!editedState?.edited);
   const { user, isAdmin } = useAuth();
 
   const [project, setProject] = useState<ProjectDetailType | null>(null);
@@ -233,6 +237,19 @@ export default function ProjectDetail() {
       </div>
 
       <BriefPointer processId={project.id} />
+
+      {showEdited && (
+        <div className="project-edited-notice" role="status">
+          <span>
+            {editedState?.changed && editedState.changed.length > 0
+              ? "Your project has been updated. The change is listed below under “See what changed”."
+              : "Nothing changed, so nothing was saved."}
+          </span>
+          <button type="button" className="project-edited-notice-close" onClick={() => setShowEdited(false)} aria-label="Dismiss">
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Sentiment */}
       {project.status === "active" && (

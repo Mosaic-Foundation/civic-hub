@@ -41,6 +41,7 @@ import ProjectDetail from "./pages/ProjectDetail";
 import ProjectDraft from "./pages/ProjectDraft";
 import AdminModeration from "./pages/AdminModeration";
 import AdminArchived from "./pages/AdminArchived";
+import AdminEdits from "./pages/AdminEdits";
 import AdminFeedback from "./pages/AdminFeedback";
 import AdminReviews from "./pages/AdminReviews";
 import MySubmissions from "./pages/MySubmissions";
@@ -184,6 +185,7 @@ function AppContent() {
               the page. */}
           <Route path="/admin/moderation" element={<AdminGuard><AdminModeration /></AdminGuard>} />
           <Route path="/admin/archived" element={<AdminGuard><AdminArchived /></AdminGuard>} />
+          <Route path="/admin/edits" element={<AdminGuard><AdminEdits /></AdminGuard>} />
           {/* Read-only archive of resident feedback, incl. topic suggestions. */}
           <Route path="/admin/feedback" element={<AdminGuard><AdminFeedback /></AdminGuard>} />
         </Routes>
