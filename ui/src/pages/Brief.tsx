@@ -19,6 +19,7 @@ import "./VoteResults.css";
 import "./Brief.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import AdminArchiveButton from "../components/AdminArchiveButton";
+import SharePrompt from "../components/SharePrompt";
 
 const SOURCE_NOUN: Record<string, string> = {
   "civic.polis_deliberation": "conversation",
@@ -345,6 +346,17 @@ export default function BriefPage() {
         title={brief.title}
         description=""
         processType="civic.brief"
+      />
+
+      {/* The strongest share on the hub: a brief is the finished thing —
+          what the community decided and who it went to. Everyone sees it,
+          not only people who took part, because there is nothing here to
+          commit to first (Adam, 2026-09-04). Dismissible and once per brief,
+          like every other share prompt. */}
+      <SharePrompt
+        processId={id!}
+        title={`Civic Brief: ${brief.title}`}
+        line="This is the community's finished record. Share it so more neighbors see what came of it."
       />
 
       {/* Admin-only soft-remove. A brief is a permanent public record, so

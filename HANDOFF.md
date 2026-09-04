@@ -4,6 +4,50 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Share prompt: creation and outcomes; peek trigger moved to the banner — 2026-09-04
+
+**Peek trigger: half the banner, measured not hardcoded.** Adam: "I really just want it to be
+like when I scroll about halfway through the banner image or so." `peekTriggerPx()` reads the
+rendered height of `.hub-banner` / `.project-banner` and halves it, falling back to 120px where a
+page has no banner — so the trigger tracks the banner across breakpoints instead of drifting from
+it. On a phone the banner renders 160px, so the sweep fires at 80px of scroll. Verified on dev:
+nothing at 60px, full 0 → 246 → 0 sweep at 130px.
+
+**The creation share moment, now built** — at approval, never at submission, for the reason
+recorded in the previous entry (a submitted process is `pending_review` and
+`NON_PUBLIC_STATUSES` makes it unfetchable, so the link would be dead). Two places:
+
+- **The approval email** (`notifyCreatorApproved`, the "is now live" variant) names sharing as the
+  next step and includes the URL as bare text as well as a link, because pasting a link into a
+  text message is what people actually do from an email. The "gathering support" variant already
+  said this; the live variant did not.
+- **My Submissions**, which is where a creator comes to check. Shown when the review status is
+  `approved`: "This is live now. Share it so neighbors can find it." This needed the public URL,
+  and the UI had no type→route map of its own (the server hands out hrefs everywhere else) —
+  rather than duplicate the registry client-side, `GET /reviews/:id` now returns **`detail_path`**,
+  resolved through `processDetailPath(type, id)`, i.e. the handler's own `detailPath`. A new
+  process type therefore gets a correct share link here with nothing to declare. `SharePrompt`
+  gained an optional `url` for exactly this case — the prompt is not on the process's own page.
+
+**Outcome pages.** The brief page (`Brief.tsx`) and the legacy vote-results page
+(`VoteResults.tsx`) now carry the invitation: "This is the community's finished record. Share it
+so more neighbors see what came of it." Unlike the engagement prompts this shows to everyone —
+there is nothing to commit to on a finished record — and it sits low on the page, after the
+reading. Same dismissal rule, keyed on the brief's own process id.
+
+Note on why the creator prompt is not on the detail pages themselves: the read models deliberately
+carry creator *names*, not ids (the public-anonymity work of 2026-08-31), so "am I the creator" is
+not answerable client-side. Putting it there would mean adding a `viewer_is_creator` boolean to
+four read models. My Submissions knows it by construction and needed one server field instead.
+Worth doing if the on-page prompt turns out to matter.
+
+Verified on dev: `GET /reviews/rev_cf4289c39abe437d` returns
+`detail_path: "/proposal/proc_69cda899e1fa420a"`; that review's page shows the creator prompt under
+"Approved & live"; the brief page shows the outcome invitation. Backend tsc clean, UI build clean,
+`tests/unit` 686/686. uitest sessions deleted.
+
+---
+
 ## Share prompt at engagement moments; the tab peek waits for a scroll — 2026-09-04
 
 **The peek now waits for a real scroll.** Adam: trigger it "when you scroll a decent distance…

@@ -7,6 +7,7 @@ import LinkPreviewCard from "../components/LinkPreviewCard";
 import hub from "../config/hub";
 import ShareButton from "../components/ShareButton";
 import "./VoteResults.css";
+import SharePrompt from "../components/SharePrompt";
 
 const URL_RE = /\bhttps?:\/\/\S+/gi;
 
@@ -277,6 +278,14 @@ export default function VoteResultsPage() {
           })()}
         </section>
       )}
+
+      {/* Same invitation as the brief page — a published result is the
+          finished thing, and worth passing on. */}
+      <SharePrompt
+        processId={id!}
+        title={results.title}
+        line="This is the community's finished record. Share it so more neighbors see what came of it."
+      />
 
       <footer className="vote-results-provenance">
         Generated{" "}

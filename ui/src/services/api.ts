@@ -2273,6 +2273,10 @@ export interface ReviewDetail {
    *  through the process registry). Absent on older servers — the
    *  SubmissionPreview component then derives the same list client-side. */
   submission?: SubmissionField[] | null;
+  /** The process's public page, resolved server-side through the registry.
+   *  Present once the submission is approved and there is a process to point
+   *  at; absent on older servers. */
+  detail_path?: string | null;
 }
 
 export function submitForReview(input: {

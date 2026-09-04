@@ -167,8 +167,9 @@ export async function notifyCreatorApproved(input: {
       <p>Hi ${esc(input.creator_name)},</p>
       <p>Your ${typeLabel} <strong>"${esc(input.title)}"</strong> has been approved and is now live on the hub.</p>
       <p><a href="${url}">View your ${typeLabel}</a></p>
+      <p>This is the moment to share it — the more neighbors who see it, the more you'll hear back. Send them this link:<br>${url}</p>
     `,
-    text: `Hi ${input.creator_name},\n\nYour ${typeLabel} "${input.title}" has been approved and is now live on the hub.\n\nView it: ${url}`,
+    text: `Hi ${input.creator_name},\n\nYour ${typeLabel} "${input.title}" has been approved and is now live on the hub.\n\nView it: ${url}\n\nThis is the moment to share it — the more neighbors who see it, the more you'll hear back. Send them this link:\n${url}`,
   });
 }
 

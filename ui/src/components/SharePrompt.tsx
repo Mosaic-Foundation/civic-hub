@@ -29,6 +29,9 @@ interface Props {
   title: string;
   /** Overrides the default line where a type has something better to say. */
   line?: string;
+  /** The page to share. Defaults to the current one — pass it explicitly when
+   *  the prompt is NOT on the process's own page (My Submissions). */
+  url?: string;
 }
 
 function alreadyRetired(processId: string): boolean {
@@ -39,7 +42,7 @@ function alreadyRetired(processId: string): boolean {
   }
 }
 
-export default function SharePrompt({ processId, title, line }: Props) {
+export default function SharePrompt({ processId, title, line, url }: Props) {
   const [hidden, setHidden] = useState(() => alreadyRetired(processId));
   if (hidden) return null;
 
@@ -72,7 +75,7 @@ export default function SharePrompt({ processId, title, line }: Props) {
       {/* Capture, not bubble: retire on the way down so it is recorded even if
           a channel handler stops propagation. */}
       <div className="share-prompt-actions" onClickCapture={retire}>
-        <ShareButton title={title} />
+        <ShareButton title={title} url={url} />
       </div>
     </div>
   );

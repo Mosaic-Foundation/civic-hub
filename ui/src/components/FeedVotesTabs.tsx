@@ -67,9 +67,19 @@ function prefersReducedMotion(): boolean {
  *  be paying attention to it"). The strip is sticky, so it is on screen and
  *  under the eye by the time this fires. */
 const PEEK_SEEN_KEY = "civic:tabs-peeked";
-/** Roughly half a phone screen, with a floor so a short viewport still has
- *  to travel before it counts as "scrolled down a bit". */
-const PEEK_SCROLL_TRIGGER_PX = 320;
+/** About halfway down the banner image — the point where the reader has
+ *  started moving through the page but the strip is still the next thing
+ *  they meet (Adam, 2026-09-04: "when I scroll about halfway through the
+ *  banner image or so"). Measured off the banner rather than hardcoded, so
+ *  changing its height moves this with it; the fallback is half of the
+ *  240px `.hub-banner` for pages that render no banner. */
+const PEEK_FALLBACK_TRIGGER_PX = 120;
+
+function peekTriggerPx(): number {
+  const banner = document.querySelector(".hub-banner, .project-banner");
+  const height = banner?.getBoundingClientRect().height ?? 0;
+  return height > 0 ? height / 2 : PEEK_FALLBACK_TRIGGER_PX;
+}
 const PEEK_OUT_MS = 1200;
 const PEEK_HOLD_MS = 250;
 const PEEK_BACK_MS = 1000;
@@ -247,12 +257,13 @@ export default function FeedVotesTabs() {
       frame = requestAnimationFrame(step);
     };
 
-    // Wait for a real scroll. Not any movement — a deliberate one, far enough
-    // that the reader has settled into the page and the sticky strip is what
-    // they would reach for next.
+    // Wait until the reader has started moving down the page — far enough to
+    // be looking below the banner, where the sticky strip is what they meet
+    // next — but no further, so the sweep is not saved for a scroll depth
+    // most people never reach.
     const onScroll = () => {
       if (done || peeked.current) return;
-      if (window.scrollY < PEEK_SCROLL_TRIGGER_PX) return;
+      if (window.scrollY < peekTriggerPx()) return;
       window.removeEventListener("scroll", onScroll);
       sweep();
     };

@@ -17,10 +17,21 @@ import {
   countReviewNotifications,
   markReviewsSeen,
 } from "../modules/civic.review/index.js";
+import { processDetailPath } from "../processes/registry.js";
 import { getDb } from "../db/client.js";
 
 // --- Notification indicator ---
 
+
+/** Where this process lives publicly once approved, via the handler's own
+ *  detailPath — so My Submissions can offer a share link without the UI
+ *  keeping its own copy of the type→route map. Null until there is a
+ *  process to point at. */
+function detailPathFor(proc: unknown): string | null {
+  const row = proc as { type?: string; id?: string } | null;
+  if (!row || typeof row.type !== "string" || typeof row.id !== "string") return null;
+  return processDetailPath(row.type, row.id);
+}
 
 /** The creator's submission as displayable fields, via the registry so a
  *  process type can extend the generic default. Null when the process row
@@ -252,7 +263,7 @@ export async function handleGetReview(
       .eq("id", review.process_id)
       .single();
 
-    res.json({ review, turns, process: proc, submission: submissionFor(proc) });
+    res.json({ review, turns, process: proc, submission: submissionFor(proc), detail_path: detailPathFor(proc) });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });
@@ -311,7 +322,7 @@ export async function handleAdminGetReview(
       .eq("id", review.process_id)
       .single();
 
-    res.json({ review, turns, process: proc, submission: submissionFor(proc) });
+    res.json({ review, turns, process: proc, submission: submissionFor(proc), detail_path: detailPathFor(proc) });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });

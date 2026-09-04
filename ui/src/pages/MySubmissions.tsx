@@ -14,6 +14,7 @@ import {
 import "./MySubmissions.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import SubmissionPreview from "../components/SubmissionPreview";
+import SharePrompt from "../components/SharePrompt";
 
 const TYPE_LABELS: Record<string, string> = {
   "civic.vote": "Vote",
@@ -225,6 +226,21 @@ export default function MySubmissions() {
                 process={proc ?? null}
               />
             </div>
+
+            {/* The creator's share moment. It cannot live at submission — a
+                submitted process is `pending_review`, which NON_PUBLIC_STATUSES
+                makes unfetchable, so the link would be dead. Once approved it
+                is live, and this is where the creator comes to check
+                (Adam, 2026-09-04). Same one-per-process dismissal as
+                everywhere else. */}
+            {detail.review.status === "approved" && detail.detail_path && (
+              <SharePrompt
+                processId={detail.review.process_id ?? detail.review.id}
+                title={String(proc?.title ?? "")}
+                url={`${window.location.origin}${detail.detail_path}`}
+                line="This is live now. Share it so neighbors can find it."
+              />
+            )}
 
             {detail.review.process_id && (
               <RelatedProcesses
