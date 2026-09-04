@@ -44,8 +44,9 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   New seam `syncDraftFromProcess(draftId, process, links)` (projectAdapter: overwrite the
   draft's submitted fields from the live `projects` row + creator links, set
   `last_review_result = null`, `draft_modified_since_review = true`); `startEdit` calls it on the
-  creator's recorded draft every time. Cancel = the back link ("← Cancel editing" → the project);
-  nothing is saved until Submit. Verified on dev: abandon an edit with a stale check result →
+  creator's recorded draft every time. Cancel = a **Cancel** button beside **Save changes** in the
+  footer (edit mode relabels Submit), plus the back link "← Cancel editing"; nothing is saved
+  until Save. Verified: type a change, Cancel → project page shows the live text, no edit recorded. Verified on dev: abandon an edit with a stale check result →
   next start edit shows the live text, no result, check required again.
 - **(Superseded the same evening by the above) Edits get the hard Code of Conduct check ONLY, and no assistant.** Adam (editing the skate
   park on prod): the check "took like 10 seconds" and a soft fact-checking suggestion appeared —

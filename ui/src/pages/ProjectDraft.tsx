@@ -183,6 +183,8 @@ export default function ProjectDraft() {
           onSubmit={handleSubmit}
           lockedFields={lockedFields}
           lockedValues={lockedValues}
+          onCancel={editProcessId ? () => navigate(`/project/${editProcessId}`) : undefined}
+          submitLabel={editProcessId ? "Save changes" : undefined}
           disabled={submitting}
           reviewLoading={flow.reviewing}
           fieldGuidance={flow.config?.field_guidance}

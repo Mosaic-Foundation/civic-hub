@@ -28,6 +28,10 @@ interface Props {
   lockedFields?: string[];
   /** Live values to display for locked fields. */
   lockedValues?: { title?: string };
+  /** Edit mode: a Cancel button beside Submit that discards the edit. */
+  onCancel?: () => void;
+  /** Edit mode: "Save changes" instead of "Submit project". */
+  submitLabel?: string;
 }
 
 const PLACEHOLDERS = {
@@ -86,6 +90,8 @@ export default function ProjectDraftingForm({
   fieldGuidance,
   lockedFields = [],
   lockedValues,
+  onCancel,
+  submitLabel = "Submit project",
 }: Props) {
   const titleLocked = lockedFields.includes("title");
   // Per-FIELD debounce timers: a single shared timer silently dropped a
@@ -228,13 +234,24 @@ export default function ProjectDraftingForm({
               {reviewLoading ? "Checking..." : "Run Code of Conduct check"}
             </button>
           )}
+          {onCancel && (
+            <button
+              type="button"
+              className="draft-cancel-btn"
+              onClick={onCancel}
+              disabled={disabled}
+              title="Leave without saving. The project keeps its current text."
+            >
+              Cancel
+            </button>
+          )}
           <button
             type="button"
             className="draft-submit-btn"
             onClick={onSubmit}
             disabled={!canSubmit}
           >
-            Submit project
+            {submitLabel}
           </button>
         </div>
       </div>
