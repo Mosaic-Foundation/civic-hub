@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import RichText from "../components/RichText";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useDraftFlow } from "../hooks/useDraftFlow";
@@ -206,7 +207,7 @@ export default function ProposeDraftVote() {
             <div className="confirm-preview">
               <h3 className="confirm-title">{draft.title}</h3>
               {draft.description && (
-                <p className="confirm-desc">{draft.description}</p>
+                <RichText className="confirm-desc" text={draft.description} />
               )}
               {draft.method === "approval" && draft.custom_options && (
                 <div className="confirm-options">

@@ -33,7 +33,11 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   stamps seen on open. Nothing is approved there — it is an overview. The account dropdown's
   group is supporters-only for everyone now (`/notifications/edits` no longer has an admin mode).
 - **After saving an edit the page says so.** The confirm dialog's button read "Submit for
-  review" on edits; it is "Save changes" (and "Saving…"), and the project page shows a green
+  review" on edits; it is now **"Submit edits"** (Adam's wording; footer button too; dialog title
+  "Submit your edits"), the "your edits go live right away" callout is project-blue
+  (`.confirm-finality-warning--edit`) so it reads as the point of the dialog, and the dialog's
+  description preview renders as rich text (all four types — it showed raw `**` markers). The
+  project page then shows a green
   "Your project has been updated. The change is listed below under 'See what changed'." notice
   (or "Nothing changed, so nothing was saved.") passed via router state — never "submitted".
 - **"Get suggestions" — the writing review, as its own button.** Adam: "maybe we need a new

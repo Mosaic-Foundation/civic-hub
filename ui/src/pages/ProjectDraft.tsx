@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import RichText from "../components/RichText";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useDraftFlow } from "../hooks/useDraftFlow";
@@ -186,7 +187,7 @@ export default function ProjectDraft() {
           lockedFields={lockedFields}
           lockedValues={lockedValues}
           onCancel={editProcessId ? () => navigate(`/project/${editProcessId}`) : undefined}
-          submitLabel={editProcessId ? "Save changes" : undefined}
+          submitLabel={editProcessId ? "Submit edits" : undefined}
           disabled={submitting}
           reviewLoading={flow.reviewing}
           fieldGuidance={flow.config?.field_guidance}
@@ -210,18 +211,18 @@ export default function ProjectDraft() {
               &times;
             </button>
             <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "var(--font-size-xl)", marginBottom: "var(--space-md)" }}>
-              {editProcessId ? "Save your changes" : "Submit your project"}
+              {editProcessId ? "Submit your edits" : "Submit your project"}
             </h2>
             <div className="confirm-preview">
               <h3 className="confirm-title">{draft.title}</h3>
               {draft.description && (
-                <p className="confirm-desc">{draft.description}</p>
+                <RichText className="confirm-desc" text={draft.description} />
               )}
             </div>
 
-            <p className="confirm-finality-warning">
+            <p className={`confirm-finality-warning${editProcessId ? " confirm-finality-warning--edit" : ""}`}>
               {editProcessId
-                ? "Your changes go live right away. The previous version stays visible on the project page under \"See what changed\", and residents who support this project will be told it was edited."
+                ? "Your edits go live right away. The previous version stays visible on the project page under \"See what changed\", and residents who support this project will be told it was edited."
                 : isAdmin
                   ? "Once submitted, your project can only be changed through Edit project, which keeps a visible history of every change."
                   : "Your project will be submitted for review before going live. You'll be notified when an admin has reviewed it."}
@@ -261,7 +262,7 @@ export default function ProjectDraft() {
                 onClick={confirmSubmit}
                 disabled={submitting}
               >
-                {submitting ? (editProcessId ? "Saving..." : "Submitting...") : editProcessId ? "Save changes" : isAdmin ? "Submit project" : "Submit for review"}
+                {submitting ? "Submitting..." : editProcessId ? "Submit edits" : isAdmin ? "Submit project" : "Submit for review"}
               </button>
               <button
                 type="button"

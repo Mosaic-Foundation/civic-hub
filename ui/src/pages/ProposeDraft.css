@@ -176,3 +176,15 @@
   gap: var(--space-sm);
   margin-top: var(--space-md);
 }
+
+/* Edit mode: the "your edits go live right away" callout in the project
+   blue, so it reads as information about THIS action, not a footnote. */
+.confirm-finality-warning--edit {
+  background: var(--type-project-bg, #e3f2fd);
+  border-left-color: var(--type-project-fg, #1565c0);
+  color: var(--color-text);
+}
+
+.confirm-desc.richtext {
+  white-space: normal;
+}
