@@ -2,7 +2,9 @@
 
 .project-banner {
   margin-bottom: var(--space-lg);
-  border-radius: 12px;
+  /* Square on top so the banner meets the section-tab rule above it
+     cleanly; rounded only where it sits on the page (Adam, 2026-09-04). */
+  border-radius: 0 0 12px 12px;
   overflow: hidden;
 }
 

@@ -28,6 +28,9 @@ projects-only policy), `digestEditItems`, `wordDiff`; 671 green. The DB-backed r
 prefetch) were verified end to end on dev, not unit-tested — same as the rest of the hub (CI runs
 `tests/unit` only). UI verification = `cd ui && npm run build`.
 
+**Project banner (2026-09-04):** top corners squared, bottom rounded (`.project-banner`
+`border-radius: 0 0 12px 12px`) — the rounded top left the tab-strip rule overhanging the fillet.
+
 **Open / deferred:** WYSIWYG description editor (TipTap over the same Markdown subset) — offered
 for after the smoke test; project page horizontal padding at narrow widths; Facebook caches the
 old preview for URLs shared before today (Sharing Debugger → Scrape Again); Adam to try the
