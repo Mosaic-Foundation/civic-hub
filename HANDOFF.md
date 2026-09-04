@@ -4,6 +4,37 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Session close — 2026-09-03 (beta smoke test, day 1)
+
+**Where the smoke test stands.** Adam walked the front door, sign-in, the skate park project
+(edit flow), sharing, and the admin review queue; every finding below was fixed, verified on dev,
+committed and deployed the same day. The 20-step checklist artifact
+(https://claude.ai/code/artifact/e593887e-888c-4b06-9c38-28017a4bda6e) resumes at step 2 in
+order; its "Known before you start" note is stale (everything it lists is deployed).
+
+**Commits today (all on main, all deployed; prod = `9cbd1f2` after the last push):** sign-in
+modal names both cases · brief ↔ source pointers · social previews for every page type (+ the
+`page` param fix) · terminal actions at the bottom · share by text, type colors, terracotta
+outcomes · Vercel npm-12 lockfile fixes (3) · description formatting (Markdown subset, toolbar,
+assistant rule, comment bubbles) · project editing (visible history, title lock, digest line,
+supporter badge, creator-only, legacy drafts, admin Edits tab, CoC-only check, Get suggestions,
+cancel button, Submit edits dialog, word-diff stepper, formatting-only rule, in-place diff,
+toast) · admin reviews type pills + filter + header · share row without email.
+
+**Test coverage.** Unit tests cover every pure piece added today: `shareMeta` (+ the vercel.json
+rewrite guard), `markdown`, `processEdits` (diff, locks, formatting rule, `isSubstantiveEdit`,
+projects-only policy), `digestEditItems`, `wordDiff`; 671 green. The DB-backed readers
+(`editNotifications.listEditNotifications` / `listAllEdits`, the digest cron's supporter
+prefetch) were verified end to end on dev, not unit-tested — same as the rest of the hub (CI runs
+`tests/unit` only). UI verification = `cd ui && npm run build`.
+
+**Open / deferred:** WYSIWYG description editor (TipTap over the same Markdown subset) — offered
+for after the smoke test; project page horizontal padding at narrow widths; Facebook caches the
+old preview for URLs shared before today (Sharing Debugger → Scrape Again); Adam to try the
+share sheet's Copy/Messages on his phone.
+
+---
+
 ## Admin process reviews: type pills, type filter, shared header — 2026-09-03
 
 Adam: the review cards need a pill saying what type each is, a dropdown to filter by type, and
