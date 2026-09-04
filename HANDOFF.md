@@ -4,6 +4,36 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Outcomes page had no horizontal padding — 2026-09-04
+
+Adam: "the outcomes page has the same issue as the projects page had — there's no padding on the
+left and right."
+
+Confirmed on prod at 375px and, because this is now the second page with the fault, measured every
+public page rather than fixing the one that was reported. The leftmost content offset:
+
+| Page | class | left |
+|---|---|---|
+| /votes, /projects, /propose, /deliberations | `page page-home` | 24px (cards) |
+| /about | `page about-page` | 24px |
+| /search, /terms, /privacy | `page search-page` / `legal-page` | 16px |
+| detail pages | `page detail-page` | 24px |
+| **/outcomes** | `page outcomes-page` | **0px** |
+
+Outcomes is the only page flush against both screen edges — so a targeted fix is right, not a
+systemic one. The cause: `.page` itself carries no padding. The section list pages inherit their
+indent from `.hub-info` (the "Floyd County, Virginia" block they all render), and detail pages from
+`.detail-page`. Outcomes renders its own `<header>` instead of `.hub-info`, so nothing indented it.
+
+Fix: `.outcomes-page` gets `padding-left/right: var(--space-lg)` (1.5rem — the same value
+`.detail-page` uses, and what the list cards on /votes measure at).
+
+Verified on dev at 375px: heading, intro, filter pills and cards all at 24px with cards 327px wide,
+identical to /votes, no horizontal overflow. At 1100px the page still caps at 780px with the
+heading 24px inside it. UI build clean.
+
+---
+
 ## The assistant offers help with every field; "Done — back to the form" — 2026-09-04
 
 Adam: "I was working with the assistant and we hadn't come up with any sources, but it never

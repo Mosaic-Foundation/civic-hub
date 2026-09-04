@@ -1,5 +1,12 @@
 .outcomes-page {
   max-width: 780px;
+  /* Every other section page indents its content by 1.5rem — the list
+     pages get it from `.hub-info`, the detail pages from `.detail-page`.
+     Outcomes renders its own header instead of `.hub-info`, so it had no
+     horizontal padding at all and sat flush against both screen edges on a
+     phone (Adam, 2026-09-04 — the same fault the project page had). */
+  padding-left: var(--space-lg);
+  padding-right: var(--space-lg);
 }
 
 .outcomes-header h1 {
