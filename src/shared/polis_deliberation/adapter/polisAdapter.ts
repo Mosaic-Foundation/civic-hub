@@ -14,17 +14,63 @@ import type {
 const RETRY_DELAYS = [500, 1500, 3000];
 const REQUEST_TIMEOUT_MS = 15_000;
 
+/** A Polis failure, carrying the upstream status and error code as FIELDS.
+ *
+ *  The body never goes into the message. Polis mints a participant JWT into
+ *  its error responses, and the old message interpolated the whole body — so
+ *  a 409 rendered a live one-year token, for Adam's own account, onto the
+ *  conversation page (2026-09-04). The full body still reaches the server
+ *  log, where it belongs. */
+export interface PolisApiError extends Error {
+  status: number;
+  polisCode?: string;
+}
+
+function polisError(status: number, path: string, body: string): PolisApiError {
+  let code: string | undefined;
+  try {
+    const parsed = JSON.parse(body) as { error?: unknown };
+    if (typeof parsed.error === "string") code = parsed.error;
+  } catch {
+    /* not JSON — the code stays undefined and the log carries the text */
+  }
+  console.error(`[polis] ${status} ${path} — ${body}`);
+  const err = new Error(
+    `Polis API ${status}: ${path}${code ? ` (${code})` : ""}`,
+  ) as PolisApiError;
+  err.status = status;
+  err.polisCode = code;
+  return err;
+}
+
 export function createPolisAdapter(config: PolisAdapterConfig): PolisAdapter {
   const { baseUrl, authToken } = config;
+
+  /**
+   * Only GETs are retried.
+   *
+   * Every method used to be retried on timeout, and that is what wedged a
+   * conversation on 2026-09-04: a POST to /api/v3/comments took longer than
+   * the 15s timeout, the client aborted, and the retry posted the same
+   * statement again — which Polis correctly rejected as
+   * `polis_err_post_comment_duplicate`. A client-side timeout says nothing
+   * about whether the server applied the write, so retrying a POST can only
+   * ever duplicate it. Retrying a read is free; retrying a create is not.
+   */
+  function isRetryable(opts: RequestInit): boolean {
+    return (opts.method ?? "GET").toUpperCase() === "GET";
+  }
 
   async function apiFetch<T>(
     path: string,
     opts: RequestInit = {},
   ): Promise<T> {
     const url = `${baseUrl}${path}`;
+    const retryable = isRetryable(opts);
+    const maxAttempts = retryable ? RETRY_DELAYS.length : 0;
     let lastError: Error | null = null;
 
-    for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+    for (let attempt = 0; attempt <= maxAttempts; attempt++) {
       if (attempt > 0) {
         await sleep(RETRY_DELAYS[attempt - 1]);
       }
@@ -50,13 +96,11 @@ export function createPolisAdapter(config: PolisAdapterConfig): PolisAdapter {
 
         if (!res.ok) {
           const body = await res.text().catch(() => "");
-          if (res.status >= 500 && attempt < RETRY_DELAYS.length) {
-            lastError = new Error(
-              `Polis API ${res.status}: ${path} — ${body}`,
-            );
+          if (res.status >= 500 && attempt < maxAttempts) {
+            lastError = polisError(res.status, path, body);
             continue;
           }
-          throw new Error(`Polis API ${res.status}: ${path} — ${body}`);
+          throw polisError(res.status, path, body);
         }
 
         const text = await res.text();
@@ -66,7 +110,7 @@ export function createPolisAdapter(config: PolisAdapterConfig): PolisAdapter {
         clearTimeout(timeout);
         if (err.name === "AbortError") {
           lastError = new Error(`Polis API timeout: ${path}`);
-          if (attempt < RETRY_DELAYS.length) continue;
+          if (attempt < maxAttempts) continue;
         }
         throw lastError ?? err;
       }
@@ -103,16 +147,41 @@ export function createPolisAdapter(config: PolisAdapterConfig): PolisAdapter {
 
       const conversationId = conv.url.split("/").pop()!;
 
+      // Seeding is best-effort, and deliberately so: the conversation EXISTS
+      // the moment the call above returns, and the id is the only thing the
+      // hub cannot recover on its own. Letting a seed failure throw meant the
+      // id was never returned, so the hub recorded nothing while Polis kept a
+      // live conversation — an orphan, and a second one on every retry
+      // (2026-09-04, proc_5889e8e441d1495e / Polis 5fm62xv5ma). A conversation
+      // that opens with some of its seed statements is far better than one
+      // that is lost.
       if (input.seed_statements?.length) {
+        const failed: string[] = [];
         for (const txt of input.seed_statements) {
-          await apiFetch("/api/v3/comments", {
-            method: "POST",
-            body: JSON.stringify({
-              conversation_id: conversationId,
-              txt,
-              is_seed: true,
-            }),
-          });
+          try {
+            await apiFetch("/api/v3/comments", {
+              method: "POST",
+              body: JSON.stringify({
+                conversation_id: conversationId,
+                txt,
+                is_seed: true,
+              }),
+            });
+          } catch (err) {
+            // A duplicate means the statement is already on the conversation,
+            // which is the state we wanted — not a failure.
+            if ((err as PolisApiError).polisCode === "polis_err_post_comment_duplicate") {
+              continue;
+            }
+            failed.push(txt.slice(0, 60));
+          }
+        }
+        if (failed.length > 0) {
+          console.error(
+            `[polis] conversation ${conversationId} opened, but ${failed.length} of ` +
+              `${input.seed_statements.length} seed statements failed to post: ` +
+              failed.join(" | "),
+          );
         }
       }
 

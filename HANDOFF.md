@@ -60,6 +60,64 @@ page. Backend tsc clean, UI build clean, `tests/unit` 696/696.
 
 ---
 
+## Polis: a leaked participant token, a wedged conversation, and an orphan — 2026-09-04
+
+Adam, on prod: an approved conversation ("Loose dogs and livestock", `proc_5889e8e441d1495e`)
+showed on the feed but read **WAITING TO START**. Pressing Start surfaced a raw Polis 409 —
+including a live JWT — onto the page.
+
+**SECURITY, act on this: the displayed error contained a Polis participant token** for
+`uid: 1` / `creatinglake@gmail.com`, scoped to conversation `5fm62xv5ma`, issued 2026-09-04 and
+valid to **2027-09-04**. Polis mints a participant JWT into its error responses, and
+`polisAdapter` interpolated the entire response body into the thrown message, which the
+conversation page rendered. Not the `POLIS_AUTH_TOKEN` API credential — a participant identity for
+the hub owner's own account, plus the email address. **Revoke/rotate it.** Any 4xx from that
+endpoint would have done the same.
+
+**What actually happened** (not what it looked like). Nothing to do with start times: a duration
+WAS set (`duration_ms` 3628800000, the 6-week default) and the deadline is deliberately computed
+at start so queue time never eats the participation window. The conversation is in `draft` because
+the auto-start at approval failed and `approveReview` logs-and-swallows that failure by design.
+
+The token proves how it failed: it carries `conversation_id: 5fm62xv5ma`, so **Polis created the
+conversation and the hub never recorded it** — an orphan, with another created on each manual Start.
+
+Root cause, now fixed: **`apiFetch` retried every method on timeout, including POSTs.** A
+`/api/v3/comments` write that took longer than the 15s timeout aborted client-side, the retry
+posted the same statement again, and Polis correctly rejected it as
+`polis_err_post_comment_duplicate`. A client-side timeout says nothing about whether the server
+applied the write, so retrying a create can only duplicate it. (Adam's push on "why did this
+happen" is what surfaced this — the plan before it was to retry activation automatically on a
+cron, which would have manufactured orphans forever without ever succeeding.)
+
+Three fixes in `polisAdapter`:
+- **Only GETs are retried.** Reads are free to repeat; creates are not.
+- **`polisError()` keeps the body out of the message** and carries `status` and `polisCode` as
+  fields instead. The full body goes to the server log, where it belongs.
+- **Seeding is best-effort and never loses the conversation id.** The conversation exists the
+  moment create returns, and the id is the one thing the hub cannot recover on its own, so a seed
+  failure now logs and returns the id rather than throwing it away. A duplicate-statement error is
+  treated as success — it means the statement is already there.
+
+`tests/unit/polisAdapterRetry.test.ts` (6) covers all three, and **each was verified to fail when
+the bug is reintroduced** — after shipping a vacuous drift-guard earlier the same day, a green test
+is no longer taken as evidence on its own.
+
+**Still open:**
+- Rotate the leaked token; the orphaned Polis conversation `5fm62xv5ma` (and any from repeated
+  Start presses) should be cleaned up.
+- The universal `activateOnApproval` seam + admin notification on failure — approval still
+  hardcodes two different policies (votes roll back, conversations swallow), and a silent
+  `console.error` is still the only signal. Deferred, and now safe to build on retry semantics
+  that cannot duplicate.
+- Same pattern, lower risk, not changed: `utils/anthropic.ts` and `utils/youtube.ts` also
+  interpolate upstream response bodies into thrown messages. Neither provider is known to echo
+  credentials, but the shape is identical.
+
+Backend tsc clean, `tests/unit` 702/702.
+
+---
+
 ## Tab strip: a tab never rests half-hidden — 2026-09-04
 
 Adam: "if I scroll over a little bit to where I can barely see conversations, it creates a full
