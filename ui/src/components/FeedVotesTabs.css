@@ -47,6 +47,17 @@
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   min-width: 0;
+  /* Come to rest on a whole tab, never mid-word. Without this the strip
+     could settle with a tab half-hidden behind the pinned Feed and the left
+     fade, which reads as a band of empty space with a chopped word after it
+     (Adam, 2026-09-04: "a full word's worth of white space to the left of
+     it"). `proximity`, not `mandatory`: it tidies where the scroll ends
+     without overriding the peek or the centring, which land deliberately. */
+  scroll-snap-type: x proximity;
+}
+
+.feed-votes-tabs-list li {
+  scroll-snap-align: start;
 }
 .feed-votes-tabs-list::-webkit-scrollbar {
   display: none;

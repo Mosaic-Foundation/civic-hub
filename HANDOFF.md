@@ -4,6 +4,26 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Tab strip: a tab never rests half-hidden — 2026-09-04
+
+Adam: "if I scroll over a little bit to where I can barely see conversations, it creates a full
+word's worth of white space to the left of it."
+
+Reproduced and measured. Not a layout bug — it is the left fade doing its job at a bad resting
+place. Scrolled to ~70px, "Conversations" sits at x=24 while the pinned Feed block ends at 78 and
+the 44px left-fade covers everything up to 122, so the word is chopped mid-letter and the band in
+front of it is empty background. The bare chevron (the chip came off earlier the same day) makes
+that band read as nothing at all rather than as a control.
+
+Fix: `scroll-snap-type: x proximity` on the list with `scroll-snap-align: start` on each tab, so
+the strip comes to rest on a whole tab. `proximity`, not `mandatory` — it tidies where a user's
+scroll ends without overriding the peek or the active-tab centring, both of which land
+deliberately. Verified: requesting scrollLeft 30 or 70 both settle at 16 with "Conversations"
+flush after the divider; 110 settles at 157 with "Proposals" flush. The peek still sweeps
+(0 → 247 → rest) with snap enabled.
+
+---
+
 ## List cards take the feed's shape; word-cloud density measured — 2026-09-04
 
 **Cards.** Adam: the process-page cards should look "more like the cards on the feed" — colour bar
