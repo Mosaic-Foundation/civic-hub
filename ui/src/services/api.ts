@@ -489,8 +489,9 @@ export function sendAssistantMessage<D>(
 export function reviewDraftCoC<D>(
   processType: string,
   draftId: string,
+  opts?: { coc_only?: boolean },
 ): Promise<{ response: AssistantResponse; draft: D; review_unavailable?: boolean }> {
-  return request("POST", `/assistant/${processType}/drafts/${draftId}/review`);
+  return request("POST", `/assistant/${processType}/drafts/${draftId}/review`, opts ?? {});
 }
 
 // --- Proposal Drafts ---

@@ -7,6 +7,8 @@
 //   POST /assistant/:processType/drafts/:id/message — conversation turn
 //   POST /assistant/:processType/drafts/:id/review  — Code of Conduct check
 
+import { checkTextAgainstCoC } from "../modules/civic.assistant/service.js";
+import type { Suggestion } from "../modules/civic.assistant/models.js";
 import { Request, Response } from "express";
 import { getAuthUser } from "../middleware/auth.js";
 import { getProcessHandler } from "../processes/registry.js";
@@ -184,6 +186,43 @@ export async function handleAssistantReview(
     const category = config.supportsCategories
       ? ((draft.category ?? "idea") as Category)
       : undefined;
+
+    // Edits of a live process (Adam, 2026-09-03): the hard Code of Conduct
+    // check ONLY — no best-practices advice, no fact-checking, no web
+    // search, no chat turn. Fast, and never a soft "suggestion" card.
+    if (req.body?.coc_only === true) {
+      const state = toDraftState(draft);
+      const fields = [
+        { label: "Title", text: state.title ?? "" },
+        { label: "Description", text: state.description ?? "" },
+        { label: "Sources", text: state.sources ?? "" },
+        { label: "Considerations", text: state.considerations ?? "" },
+        { label: "Seed statements", text: state.seed_statements ?? "" },
+      ];
+      let suggestions: Suggestion[] = [];
+      let unavailable = false;
+      try {
+        suggestions = await checkTextAgainstCoC(fields, getHubConfig());
+      } catch (err) {
+        console.error(`[assistant-review:${processType}] CoC-only check unavailable, failing open:`, err instanceof Error ? err.message : err);
+        unavailable = true;
+      }
+      await config.draftStore.saveReviewResult(draft.id, suggestions);
+      const updated = await config.draftStore.get(draft.id);
+      res.json({
+        response: {
+          message: unavailable
+            ? AUTOMATED_REVIEW_UNAVAILABLE_NOTICE
+            : suggestions.length
+              ? "The Code of Conduct check found something that must be fixed before saving."
+              : "No Code of Conduct issues — you can save your changes.",
+          suggestions,
+        },
+        draft: updated,
+        ...(unavailable ? { review_unavailable: true } : {}),
+      });
+      return;
+    }
 
     const reviewMessage =
       `Please review my current draft against the Code of Conduct and ${config.bestPracticesTitle}. ` +

@@ -71,6 +71,7 @@ export default function ProjectDraft() {
     updateDraft: (id, patch) => updateProjectDraft(id, patch),
     resumeDraft: resumeDraftId ? () => getProjectDraft(resumeDraftId) : undefined,
     applyFields: ["title", "description", "sources"],
+    cocOnly: !!editProcessId,
   });
 
   const [showConfirm, setShowConfirm] = useState(false);
@@ -163,7 +164,7 @@ export default function ProjectDraft() {
         formVersion={draft?.updated_at ?? null}
         error={flow.error}
         reviewNotice={flow.reviewNotice}
-        assistant={flow.shellAssistant}
+        assistant={editProcessId ? null : flow.shellAssistant}
         reviewSuggestions={draft?.last_review_result}
         onApplySuggestion={flow.handleApplySuggestion}
         canApplySuggestion={flow.canApplySuggestion}

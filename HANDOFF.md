@@ -18,6 +18,17 @@ every other type stays uneditable once submitted. Edits are allowed, visible, an
   notified**: `listEditNotifications(userId, isAdmin)` returns EVERY edited process for an admin
   (supporters get the ones they support), so the same avatar dot + menu group ("Projects
   edited") tells the admin, clearing when opened.
+- **Edits get the hard Code of Conduct check ONLY, and no assistant.** Adam (editing the skate
+  park on prod): the check "took like 10 seconds" and a soft fact-checking suggestion appeared —
+  "we don't want editing help with edits, only with the initial process creation." The draft
+  review endpoint now accepts `{coc_only: true}` and runs `checkTextAgainstCoC` (hard blocks
+  only; no best-practices pass, no web search, no chat turn), saving the result the same way so
+  "modified since review" clears. `useDraftFlow({cocOnly})` sends it; `ProjectDraft` sets it in
+  edit mode and passes `assistant={null}` to `DraftShell`, so the help card, switcher and FAB
+  are gone on edits. Verified on dev: clean edit → "No Code of Conduct issues" in ~4 s, 0
+  suggestions, submit applies; a threatening edit → one `hard` block, submit refused 400, live
+  text untouched. `.coc-results` panel: 40vh → 60vh with an inset scroll shadow (a long card
+  clipped flat at the panel border looked like it spilled into the field below).
 - **Registry seam** (`types.ts`): `editPolicy(process)` → `{editable, locked_fields, reason}`,
   `listSupporters(processId)`, `onEdited(process, changes)`. Only `projectAdapter` declares
   them: editable while the `projects` row is `active`; the **title locks once anyone supports**
