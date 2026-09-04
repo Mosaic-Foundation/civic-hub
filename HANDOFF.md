@@ -4,6 +4,21 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Admin process reviews: type pills, type filter, shared header — 2026-09-03
+
+Adam: the review cards need a pill saying what type each is, a dropdown to filter by type, and
+the review page needs the type pill above the title like everywhere else. `AdminReviews.tsx`:
+the grey `review-type-badge` is replaced by the same colored `process-type-pill` the detail
+pages wear (`friendlyType` + `typeColorSlug`, so a new type gets a sensible label and the
+generic color with no change here); a "Type" `<select>` beside the status buttons whose options
+are built from the reviews present (with counts) and combine with the status filter; the review
+page header is the shared `ProcessHeader` (pill → title → review-status chip → "Submitted by"
+line). Verified on dev (27 reviews across the four types): pills colored per type, dropdown
+lists the four with counts, choosing Conversation narrows the list, detail header matches the
+public pages. UI tsc + vite build clean.
+
+---
+
 ## Project editing: visible history, supporters notified — 2026-09-03
 
 Adam: project owners must be able to change the description, sources, banner and related

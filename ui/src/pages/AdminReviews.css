@@ -226,3 +226,28 @@
 .review-conversation-list a {
   word-break: break-all;
 }
+
+/* Type filter beside the status buttons. */
+.admin-review-type-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-left: auto;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.admin-review-type-filter select {
+  font: inherit;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* The colored type pill sits inline before the card title. */
+.process-card .process-type-pill {
+  margin-right: var(--space-xs);
+  vertical-align: middle;
+}

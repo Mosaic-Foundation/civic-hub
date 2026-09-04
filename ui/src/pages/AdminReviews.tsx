@@ -12,6 +12,9 @@ import {
   type ReviewStatus,
 } from "../services/api";
 import AdminTabs from "../components/AdminTabs";
+import ProcessHeader from "../components/ProcessHeader";
+import { friendlyType } from "../components/ProcessLinkPicker";
+import { typeColorSlug } from "../components/typeColor";
 import "./AdminReviews.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import SubmissionPreview from "../components/SubmissionPreview";
@@ -25,12 +28,15 @@ const STATUS_FILTERS: Array<{ id: "all" | ReviewStatus; label: string }> = [
   { id: "withdrawn", label: "Withdrawn" },
 ];
 
-const TYPE_LABELS: Record<string, string> = {
-  "civic.vote": "Vote",
-  "civic.proposal": "Proposal",
-  "civic.polis_deliberation": "Conversation",
-  "civic.project": "Project",
-};
+/** Colored type pill — the same one every process page header wears. */
+function TypePill({ type }: { type: string | undefined }) {
+  const t = type ?? "";
+  return (
+    <span className={`process-type-pill process-type-pill--${typeColorSlug(t)}`}>
+      {friendlyType(t)}
+    </span>
+  );
+}
 
 const STATUS_LABELS: Record<string, string> = {
   pending_review: "Pending review",
@@ -58,6 +64,9 @@ export default function AdminReviews() {
   const [reviews, setReviews] = useState<ProcessReviewSummary[]>([]);
   const [detail, setDetail] = useState<ReviewDetail | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | ReviewStatus>("all");
+  // Filter by process type (Adam, 2026-09-03). Options come from the reviews
+  // themselves, so a type added later appears the moment one is submitted.
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -100,9 +109,22 @@ export default function AdminReviews() {
   }, [routeId]);
 
   const filtered = useMemo(() => {
-    if (statusFilter === "all") return reviews;
-    return reviews.filter((r) => r.status === statusFilter);
-  }, [reviews, statusFilter]);
+    return reviews.filter(
+      (r) =>
+        (statusFilter === "all" || r.status === statusFilter) &&
+        (typeFilter === "all" || (r.process_type ?? "") === typeFilter),
+    );
+  }, [reviews, statusFilter, typeFilter]);
+  const typeOptions = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const r of reviews) {
+      const t = r.process_type ?? "";
+      if (t) seen.set(t, (seen.get(t) ?? 0) + 1);
+    }
+    return [...seen.entries()]
+      .map(([type, count]) => ({ type, label: friendlyType(type), count }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [reviews]);
 
   function backToList() {
     setShowChangesForm(false);
@@ -201,24 +223,23 @@ export default function AdminReviews() {
 
           {detail && (
             <>
-              <h1>{(proc?.title as string) || "Untitled"}</h1>
-
-              <p>
-                <span className="review-type-badge">
-                  {TYPE_LABELS[(proc?.type as string) ?? ""] ?? proc?.type}
-                </span>
-                <span
-                  className={`status-chip review-status-${detail.review.status}`}
-                >
-                  {STATUS_LABELS[detail.review.status] ?? detail.review.status}
-                </span>
-              </p>
-
-              <p style={{ color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)" }}>
-                Submitted by <strong>{detail.review.creator_name}</strong> (
-                {detail.review.creator_email}) on{" "}
-                {formatDate(detail.review.created_at)}
-              </p>
+              {/* Same header as every process page: type pill → title →
+                  status, so the admin sees at a glance what kind of thing
+                  they are reviewing. */}
+              <ProcessHeader
+                type={(proc?.type as string) ?? ""}
+                title={(proc?.title as string) || "Untitled"}
+                status={{
+                  label: STATUS_LABELS[detail.review.status] ?? detail.review.status,
+                  className: `status-chip review-status-${detail.review.status}`,
+                }}
+              >
+                <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)" }}>
+                  Submitted by <strong>{detail.review.creator_name}</strong> (
+                  {detail.review.creator_email}) on{" "}
+                  {formatDate(detail.review.created_at)}
+                </p>
+              </ProcessHeader>
 
               {/* Process content preview — everything the creator submitted,
                   rendered the way the live page will show it, for every
@@ -402,6 +423,21 @@ export default function AdminReviews() {
                 ` (${reviews.filter((r) => r.status === f.id).length})`}
             </button>
           ))}
+          <label className="admin-review-type-filter">
+            <span className="admin-review-type-filter-label">Type</span>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              aria-label="Filter by process type"
+            >
+              <option value="all">All types</option>
+              {typeOptions.map((o) => (
+                <option key={o.type} value={o.type}>
+                  {o.label} ({o.count})
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         {loading && <p>Loading…</p>}
@@ -420,9 +456,7 @@ export default function AdminReviews() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <span className="review-type-badge">
-                  {TYPE_LABELS[r.process_type ?? ""] ?? r.process_type}
-                </span>
+                <TypePill type={r.process_type} />{" "}
                 <strong>{r.process_title || "Untitled"}</strong>
               </div>
               <span className={`status-chip review-status-${r.status}`}>
