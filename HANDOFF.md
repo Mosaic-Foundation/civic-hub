@@ -4,6 +4,41 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## "Get suggestions" is only offered once there is something to suggest on — 2026-09-05
+
+Adam: "you can click get suggestions on a blank form, which doesn't make any sense and is confusing
+for the user." He floated hiding it until the assistant is opened, or moving it to the bottom of
+each form.
+
+Neither move was needed, because the two buttons serve opposite ends of the flow: **write this with
+me** makes sense from empty, **review what I have** does not. So the review button is simply
+withheld until the draft has content, and the affordance's own sentence drops its second half to
+match:
+
+- empty — "The assistant can ask a few questions and write a draft with you. Once you've written
+  something, it can review that too." One button.
+- with content — the original sentence, both buttons.
+
+**One change, in `useDraftFlow`, covering every type present and future.** `applyFields` is already
+each type's declaration of the fields its form renders and the assistant may write, so
+`hasSomethingToReview` reads exactly the person's own content and nothing else — and a type added
+later is covered by declaring the field list it already has to declare. `DraftShell` needed no gate
+of its own: it already renders the button only when `onSuggest` is provided, so withholding the
+callback removes it. Pending edits are checked before the saved draft, so the button appears on the
+keystroke rather than after the next PATCH.
+
+Withheld rather than disabled: a disabled button still says "there is a thing here you can't have",
+and there is no hover tooltip on a phone to explain why.
+
+**Verified on dev, all four forms** — `/deliberations/new`, `/propose/new`, `/votes/new`,
+`/projects/new`. Each showed "Open the assistant" alone on load and both buttons after typing into
+the first field; clearing the field again took it back away.
+
+Cleanup: the four throwaway drafts removed (matched on status `drafting`, this user, last hour, and
+the exact titles typed), `uitest_` sessions dropped.
+
+---
+
 ## The share reminder moves to where the person just acted — 2026-09-05
 
 Adam, once the reminder actually fired: "it just looks busy and small and not really an obvious

@@ -163,8 +163,9 @@ export default function DraftShell({
     <div className="assistant-affordance">
       <div className="assistant-affordance-text">
         <span className="assistant-affordance-label">Want help drafting?</span>{" "}
-        The assistant can ask a few questions and write a draft with you — or
-        review what you have and suggest improvements.
+        {assistant.onSuggest
+          ? "The assistant can ask a few questions and write a draft with you — or review what you have and suggest improvements."
+          : "The assistant can ask a few questions and write a draft with you. Once you've written something, it can review that too."}
       </div>
       <div className="assistant-affordance-actions">
         <button

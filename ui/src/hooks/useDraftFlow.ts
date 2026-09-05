@@ -9,7 +9,7 @@
 // Pages supply their type's API calls; everything else is identical across
 // proposal / vote / project — and any future plugin type.
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "./useRequireAuth";
 import {
@@ -441,6 +441,33 @@ export function useDraftFlow<D extends BaseDraft>({
     if (!draftRef.current) draftPromise.current = null;
   }, [closeAuthModal]);
 
+  /**
+   * Is there anything for "Get suggestions" to actually look at?
+   *
+   * On a blank form the button was offered and would happily run a
+   * best-practices review of nothing (Adam, 2026-09-05: "you can click get
+   * suggestions on a blank form, which doesn't make any sense and is
+   * confusing"). Reviewing what you have and writing it with you are opposite
+   * ends of the flow, and only the second one makes sense from empty.
+   *
+   * `applyFields` is already each type's declaration of the fields its form
+   * renders and the assistant may write, so this reads the user's own content
+   * and nothing else — and a process type added later is covered by declaring
+   * the same field list it already has to declare. Pending edits win over the
+   * saved draft, so the button appears as soon as someone types rather than
+   * after the next PATCH lands.
+   */
+  const hasSomethingToReview = useMemo(() => {
+    const saved = draft as unknown as Record<string, unknown> | null;
+    return applyFields.some((field) => {
+      const value =
+        field in pendingFields ? pendingFields[field] : saved?.[field];
+      if (typeof value === "string") return value.trim().length > 0;
+      if (Array.isArray(value)) return value.length > 0;
+      return false;
+    });
+  }, [applyFields, pendingFields, draft]);
+
   const shellAssistant: DraftShellAssistant | null = config?.available
     ? {
         open: assistantOpen,
@@ -454,7 +481,10 @@ export function useDraftFlow<D extends BaseDraft>({
             ? "Reviewing your draft"
             : "Thinking",
         onOpenRequest: requestAssistantOpen,
-        onSuggest: handleSuggest,
+        // Withheld, not disabled: the affordance's own wording drops the
+        // "or review what you have" half alongside it, so an empty form
+        // offers exactly one thing to do.
+        onSuggest: hasSomethingToReview ? handleSuggest : undefined,
         suggesting,
         onClose: () => setAssistantOpen(false),
         onSendMessage: handleSendMessage,
