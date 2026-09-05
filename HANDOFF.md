@@ -6,9 +6,16 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Admin review buttons went missing between reviews — 2026-09-05
 
-Adam, testing the admin path: the Approve / Request changes / Decline buttons were sometimes absent
-on a review, and a hard refresh brought them back — two tabs on the same URL, one with buttons and
-one without.
+Adam reported the Approve / Request changes / Decline buttons sometimes absent on a review, refresh
+bringing them back. On follow-up, most of what he saw was NOT this bug: the phone case was the
+creator account viewing its own submission at /my-submissions (correctly no admin buttons), and the
+desktop two-tab case was almost certainly a tab left open from before the creator's revise-resubmit
+(status changes_requested → no buttons) that a refresh re-fetched as pending — ordinary staleness in
+a page that does not live-update, not a defect. `reviseAndResubmit` does return the review to
+pending_review (service.ts), so a fresh load always shows the buttons.
+
+The bug BELOW is a real, separate one found while investigating — NOT the thing Adam saw. Kept
+because it is a genuine correctness fix, low-risk.
 
 Not caching. `AdminReviews` is one page that switches between list and detail by the `:id` route
 param, and the buttons render only while `isPending && !actionMessage` (and while no changes/decline
