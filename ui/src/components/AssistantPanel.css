@@ -413,3 +413,20 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
+
+/* Seed-statement revisions render as a numbered list, matching the form's
+   numbered rows, instead of a run-on block. */
+.suggestion-revision-list {
+  margin: var(--space-xs) 0 0;
+  padding-left: 1.4rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.suggestion-revision-list li {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

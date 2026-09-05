@@ -56,7 +56,23 @@ export default function SuggestionCard({ suggestion, onApply, onDismiss, applied
       {suggestion.suggested_revision && (
         <div className="suggestion-revision">
           <span className="suggestion-revision-label">Suggested:</span>
-          <RichText className="suggestion-revision-text" text={suggestion.suggested_revision} />
+          {suggestion.field === "seed_statements" ? (
+            // Seed statements are one-per-line — render them as a numbered
+            // list so the card reads the way the form's numbered rows do,
+            // instead of a run-on block (Adam, 2026-09-05). Field-keyed, so
+            // any type that has a seed_statements field gets it.
+            <ol className="suggestion-revision-list">
+              {suggestion.suggested_revision
+                .split("\n")
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0)
+                .map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+            </ol>
+          ) : (
+            <RichText className="suggestion-revision-text" text={suggestion.suggested_revision} />
+          )}
         </div>
       )}
 
