@@ -38,9 +38,20 @@ export interface ShareButtonProps {
 export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [nudgeHidden, setNudgeHidden] = useState(
-    () => !nudge || nudgeRetired(nudge.processId),
-  );
+  // Which process's reminder this viewer has dismissed in this view — NOT
+  // "is it hidden".
+  //
+  // That distinction is the whole bug. `useState`'s initializer runs once, at
+  // mount, and a process page mounts BEFORE the person engages with it: at
+  // that moment `nudge` is null, so the flag froze at "hidden" and nothing
+  // ever set it back when the vote landed and the parent re-rendered with a
+  // real nudge. The reminder could therefore only appear on a page that was
+  // LOADED after engaging — never at the moment it exists to catch (Adam,
+  // 2026-09-05: "I'm not really seeing a share reminder after engaging").
+  //
+  // Visibility is now derived from the current props on every render, so a
+  // nudge that arrives later shows immediately.
+  const [dismissedFor, setDismissedFor] = useState<string | null>(null);
 
   const retireNudge = () => {
     if (!nudge) return;
@@ -50,7 +61,11 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
       /* best effort */
     }
   };
-  const showNudge = nudge !== null && nudge !== undefined && !nudgeHidden;
+
+  const showNudge =
+    !!nudge &&
+    dismissedFor !== nudge.processId &&
+    !nudgeRetired(nudge.processId);
 
   // The page's canonical address: never the hash. `#edits` opens the change
   // history, and a shared link must land on the plain page (Adam, 2026-09-03).
@@ -227,7 +242,7 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
             className="share-nudge-dismiss"
             onClick={() => {
               retireNudge();
-              setNudgeHidden(true);
+              setDismissedFor(nudge.processId);
             }}
             aria-label="Dismiss"
           >

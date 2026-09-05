@@ -4,6 +4,64 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The share reminder never fired at the only moment it existed for — 2026-09-05
+
+Smoke test step 8. Adam: "I'm not really seeing a share reminder after engaging in a process."
+
+**One line, in the shared component, affecting every process type:**
+
+```tsx
+const [nudgeHidden, setNudgeHidden] = useState(
+  () => !nudge || nudgeRetired(nudge.processId),
+);
+```
+
+`useState`'s initializer runs **once, at mount**. A process page mounts BEFORE the person engages
+with it, so at that instant `nudge` is null and the flag froze at "hidden". When the vote landed and
+the parent re-rendered with a real nudge, nothing ever set it back. The reminder could therefore
+only appear on a page that was *loaded* after engaging — a reload — and never at the moment it
+exists to catch. It was not that the nudge was missing; it rendered correctly, just never when it
+mattered, which is why checking that it renders would not have found it.
+
+Visibility is now derived from the current props on every render, with state holding only what was
+dismissed:
+
+```tsx
+const [dismissedFor, setDismissedFor] = useState<string | null>(null);
+const showNudge =
+  !!nudge && dismissedFor !== nudge.processId && !nudgeRetired(nudge.processId);
+```
+
+**Verified on dev by actually engaging, all four types, no reload:**
+
+| Type | Action | Reminder |
+|---|---|---|
+| Project | Support | "You're backing this — share it so more neighbors find it." |
+| Conversation | 3rd statement vote | "Thanks for taking part — share this so more neighbors do." |
+| Vote | cast a ballot | "Your vote is in — share this so more neighbors vote too." |
+| Proposal | endorse | "You endorsed this — share it so more neighbors can too." |
+
+Dismissal was checked end to end on the project: the × hides it, writes
+`civic:share-prompt:<id>`, and it stays hidden across a reload.
+
+**Not a bug, worth knowing:** a conversation's reminder needs **three** statement votes (or one
+submitted statement) — `DeliberationPanel` fires `onParticipated` at that threshold, because one
+Pass is not taking part. My first attempt used a single Pass and reported no reminder; the
+threshold, not the fix, was the reason.
+
+**Gap this exposes:** there is no test infrastructure for UI components — no jsdom, no
+testing-library — so this entire bug class (state frozen at mount, derived values that never
+recompute) is invisible to CI, which already only runs `tests/unit`. A single component test would
+have caught it. Worth raising before the next round of UI work.
+
+Cleanup: the endorsement, the ballot, and the project support created while verifying were all
+removed, and the `uitest_` session rows deleted. The ballot needed care — `vote_records` carries no
+user id by design (ballot secrecy), so it was matched by process + last 30 minutes and only deleted
+because exactly one row matched. Four neutral "Pass" votes remain on the dev Polis conversation;
+Polis has no unvote, and they are dev-only.
+
+---
+
 ## Share row: the row now differs by device, and each button has one job — 2026-09-05
 
 Smoke test step 7. Adam on a phone: Facebook "just opens Facebook in the browser", no link
