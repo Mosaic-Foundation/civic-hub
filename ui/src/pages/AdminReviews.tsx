@@ -63,7 +63,10 @@ export default function AdminReviews() {
 
   const [reviews, setReviews] = useState<ProcessReviewSummary[]>([]);
   const [detail, setDetail] = useState<ReviewDetail | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"all" | ReviewStatus>("all");
+  // Land on Pending: the reviewer's queue is what needs action, so that is
+  // the default view. The All / Approved / etc. filters stay available (Adam,
+  // 2026-09-05).
+  const [statusFilter, setStatusFilter] = useState<"all" | ReviewStatus>("pending_review");
   // Filter by process type (Adam, 2026-09-03). Options come from the reviews
   // themselves, so a type added later appears the moment one is submitted.
   const [typeFilter, setTypeFilter] = useState<string>("all");
