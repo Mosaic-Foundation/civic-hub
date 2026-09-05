@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import AuthModal from "../components/AuthModal";
 import ShareButton from "../components/ShareButton";
+import SharePrompt from "../components/SharePrompt";
 import Creator from "../components/Creator";
 import CommunityInputPanel from "../components/CommunityInputPanel";
 import ProposalCommentForm from "../components/ProposalCommentForm";
@@ -134,11 +135,6 @@ export default function ProposalDetail() {
         <div className="process-share-row">
           <ShareButton
             title={proposal.title}
-            nudge={
-              proposal.has_supported
-                ? { processId: proposal.id, text: "You endorsed this — share it so more neighbors can too." }
-                : null
-            }
             shareText={`Support this proposal: ${proposal.title}`}
           />
         </div>
@@ -157,7 +153,14 @@ export default function ProposalDetail() {
           <div className="proposal-action">
             {error && <p className="form-error">{error}</p>}
             {proposal.has_supported ? (
-              <p className="endorse-confirmation">You have supported this proposal.</p>
+              <>
+                <p className="endorse-confirmation">You have supported this proposal.</p>
+                <SharePrompt
+                  processId={proposal.id}
+                  title={proposal.title}
+                  line="You endorsed this — share it so more neighbors can too."
+                />
+              </>
             ) : (
               <button
                 className="endorse-button"

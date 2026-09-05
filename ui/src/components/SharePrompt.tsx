@@ -43,8 +43,13 @@ function alreadyRetired(processId: string): boolean {
 }
 
 export default function SharePrompt({ processId, title, line, url }: Props) {
-  const [hidden, setHidden] = useState(() => alreadyRetired(processId));
-  if (hidden) return null;
+  // Derived, not frozen at mount — the same mistake ShareButton carried until
+  // 2026-09-05, where a value computed once in useState's initializer could
+  // never react to a prop arriving later. Harmless while the parent mounts
+  // this only at the moment it should appear, but it costs nothing to be
+  // correct and it stops the bug reappearing by copy-paste.
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  if (dismissed === processId || alreadyRetired(processId)) return null;
 
   const retire = () => {
     try {
@@ -65,7 +70,7 @@ export default function SharePrompt({ processId, title, line, url }: Props) {
           className="share-prompt-dismiss"
           onClick={() => {
             retire();
-            setHidden(true);
+            setDismissed(processId);
           }}
           aria-label="Dismiss this reminder"
         >

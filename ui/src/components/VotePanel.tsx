@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import SharePrompt from "./SharePrompt";
 import type { VoteState } from "../services/api";
 import { submitVote, submitApprovalVote, supportVote, unsupportVote, submitInput } from "../services/api";
 import { useRequireAuth } from "../hooks/useRequireAuth";
@@ -353,6 +354,18 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
                   </Link>
                 </>
               )}
+              {/* The share moment lives HERE, inside the receipt, not up
+                  beside the share icons at the top of the page. On a long
+                  issue page those icons are several screens above where the
+                  ballot is, so the old note appeared where nobody was looking
+                  at the instant it fired (Adam, 2026-09-05: "it just looks
+                  busy and small and not really an obvious reminder"). This is
+                  where the person just acted and is already reading. */}
+              <SharePrompt
+                processId={process.id}
+                title={process.title}
+                line="Your vote is in — share this so more neighbors vote too."
+              />
             </div>
           )}
           {error && <p className="error">{error}</p>}

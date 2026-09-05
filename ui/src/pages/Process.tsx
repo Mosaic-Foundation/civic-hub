@@ -149,13 +149,6 @@ export default function Process() {
         <div className="process-share-row">
           <ShareButton
             title={process.title}
-            nudge={
-              // The page serves votes and proposals; only a vote carries a
-              // ballot, and only a cast one earns the note.
-              process.type === "civic.vote" && process.your_current_vote
-                ? { processId: process.id, text: "Your vote is in — share this so more neighbors vote too." }
-                : null
-            }
             shareText={
               isProposal
                 ? `Endorse this proposal: ${process.title}`

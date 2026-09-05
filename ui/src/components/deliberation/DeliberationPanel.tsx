@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import type { ReactNode } from "react";
 import { useAuth } from "../../context/AuthContext";
 import SourceLinks from "../SourceLinks";
 import type { DeliberationReadModel, ClusterState, VoteDirection } from "../../services/api";
@@ -23,11 +24,18 @@ interface Props {
    *  share — their own statement, or three votes. The page owns the share
    *  bar, so the signal has to travel up to it. */
   onParticipated?: () => void;
+  /** Rendered directly under the statement being voted on — the page owns
+   *  what goes here (today: the share moment) so the panel stays free of
+   *  share concerns. Placed HERE and not after the panel because the vote
+   *  buttons are already below the fold on a phone; anything under the whole
+   *  panel would land further down still, which is the exact mistake the
+   *  share row at the top of the page was making. */
+  afterVoting?: ReactNode;
 }
 
 type Tab = "participate" | "clusters";
 
-export default function DeliberationPanel({ processId, showTopic, onParticipated }: Props) {
+export default function DeliberationPanel({ processId, showTopic, onParticipated, afterVoting }: Props) {
   const { user } = useAuth();
   const [process, setProcess] = useState<DeliberationReadModel | null>(null);
   const [clusters, setClusters] = useState<ClusterState | null>(null);
@@ -164,6 +172,8 @@ export default function DeliberationPanel({ processId, showTopic, onParticipated
               <p>Add your own perspective below, or check back later.</p>
             </div>
           )}
+
+          {afterVoting}
 
           {hasSubmitted ? (
             <div className="statement-submission statement-submission--done">

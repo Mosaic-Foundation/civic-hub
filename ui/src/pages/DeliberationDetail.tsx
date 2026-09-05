@@ -11,6 +11,7 @@ import CompletedDeliberation from "../components/deliberation/CompletedDeliberat
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
 import ShareButton from "../components/ShareButton";
+import SharePrompt from "../components/SharePrompt";
 import SourceLinks from "../components/SourceLinks";
 import RelatedProcesses from "../components/RelatedProcesses";
 import DetailActions from "../components/DetailActions";
@@ -78,11 +79,6 @@ export default function DeliberationDetail() {
       <div className="process-share-row">
         <ShareButton
           title={process.topic}
-          nudge={
-            participated
-              ? { processId: process.process_id, text: "Thanks for taking part — share this so more neighbors do." }
-              : null
-          }
           shareText={`Join the conversation: ${process.topic}`}
         />
       </div>
@@ -111,6 +107,18 @@ export default function DeliberationDetail() {
           processId={process.process_id}
           showTopic={false}
           onParticipated={() => setParticipated(true)}
+          // Rendered inside the panel, directly under the statement they are
+          // voting on. Same threshold as before: three statement votes, or
+          // one submitted statement.
+          afterVoting={
+            participated ? (
+              <SharePrompt
+                processId={process.process_id}
+                title={process.topic}
+                line="Thanks for taking part — share this so more neighbors do."
+              />
+            ) : null
+          }
         />
       )}
       {isCompleted && <CompletedDeliberation process={process} showTopic={false} />}

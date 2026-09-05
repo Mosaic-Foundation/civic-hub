@@ -14,6 +14,7 @@ import {
 } from "../services/api";
 
 import ShareButton from "../components/ShareButton";
+import SharePrompt from "../components/SharePrompt";
 import Creator from "../components/Creator";
 import RelatedProcesses from "../components/RelatedProcesses";
 import { BriefPointer } from "../components/BriefPointer";
@@ -221,11 +222,6 @@ export default function ProjectDetail() {
       <div className="process-share-row">
         <ShareButton
           title={project.title}
-          nudge={
-            project.user_sentiment === "support"
-              ? { processId: project.id, text: "You're backing this — share it so more neighbors find it." }
-              : null
-          }
           shareText={`Check out this project: ${project.title}`}
         />
       </div>
@@ -294,6 +290,16 @@ export default function ProjectDetail() {
             <span className="sentiment-counts">Sign in to show your support</span>
           )}
         </div>
+      )}
+
+      {/* The share moment, directly under the button that was just pressed
+          rather than beside the icons at the top of the page. */}
+      {project.user_sentiment === "support" && (
+        <SharePrompt
+          processId={project.id}
+          title={project.title}
+          line="You're backing this — share it so more neighbors find it."
+        />
       )}
 
       {/* Description — replaced by the diff while the history is open. */}

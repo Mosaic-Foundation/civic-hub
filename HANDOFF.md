@@ -4,6 +4,56 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## The share reminder moves to where the person just acted — 2026-09-05
+
+Adam, once the reminder actually fired: "it just looks busy and small and not really an obvious
+reminder… I'm trying to come up with a mechanism that's more of an obvious reminder but doesn't feel
+annoying." He proposed an exit-intent popup — catch them as they leave the page.
+
+**The real problem was placement, not styling.** Every process page is laid out share icons → issue
+content → the panel where you act. So the reminder rendered at the TOP of the page while the person
+was at the BOTTOM having just voted, often several screens away on a phone. It was not too small so
+much as too far from what they had just done. True on all four types.
+
+**Exit intent was rejected, and not on taste.** There is no such thing on mobile: `beforeunload`
+cannot render your own UI, browsers ignore it when a tab closes, and there is no cursor to detect
+leaving. The only workable version intercepts in-app navigation — putting a dialog between someone
+and the tab they just tapped — which is the pattern people resent most, and it fires at the moment
+they have already decided to leave. The opposite principle applies: **ask at the moment of
+satisfaction, not the moment of departure.**
+
+So the reminder now lives in the confirmation, where the action completed and the eye already is.
+`SharePrompt` was already exactly this component — a line of text, full-size share buttons, a
+dismiss, once per process — and had only ever been wired into My Submissions.
+
+| Type | Now rendered | Measured |
+|---|---|---|
+| Project | under the Support button | 24px below it |
+| Vote | inside `.vote-receipt`, with the receipt and verify link | confirmed nested |
+| Proposal | directly after "You have supported this proposal." | confirmed as next sibling |
+| Conversation | INSIDE `DeliberationPanel`, under the statement card | 28px below it |
+
+The conversation needed a second pass. Placed after the panel it was still too far down — the
+vote buttons already sit at 889px on an 812px viewport, so anything below the whole panel is off
+screen. `DeliberationPanel` grew an `afterVoting?: ReactNode` slot; the page passes the prompt, so
+the panel stays free of share concerns and the page keeps owning the policy.
+
+The old `nudge` prop is gone from all four action pages. It remains on Outcomes and Civic Brief,
+which are read-only pages with no action to hang a moment on — worth revisiting.
+
+`SharePrompt` also carried the same frozen-at-mount `useState` bug that ShareButton had; fixed the
+same way, so it cannot come back by copy-paste.
+
+**Verified on dev by engaging with all four types.** Prompt absent before, present immediately
+after, correct wording each time, old pill gone everywhere; dismissal hides it, writes
+`civic:share-prompt:<id>`, and survives a reload. Verification is DOM measurement — the browser
+pane's screenshot capture went unreliable partway through, so there is a clean visual of the
+project case only.
+
+Cleanup: endorsement, ballot and project support all withdrawn; `uitest_` sessions dropped.
+
+---
+
 ## The share reminder never fired at the only moment it existed for — 2026-09-05
 
 Smoke test step 8. Adam: "I'm not really seeing a share reminder after engaging in a process."
