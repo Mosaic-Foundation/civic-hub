@@ -1,6 +1,10 @@
 import { getDb } from "../../db/client.js";
 import { createEdges } from "../../services/processLinks.js";
-import { draftPathFor, reopenDraftForRevision } from "../../processes/registry.js";
+import {
+  draftPathFor,
+  reopenDraftForRevision,
+  activationOnApproval,
+} from "../../processes/registry.js";
 import { validateLinkSet } from "../civic.process_links/index.js";
 import { generateId } from "../../utils/id.js";
 import { getProcessHandler } from "../../processes/registry.js";
@@ -21,9 +25,10 @@ import {
   notifyCreatorDeclined,
   notifyAdminResubmitted,
   notifyAdminWithdrawn,
+  notifyAdminActivationFailed,
 } from "./email.js";
 import { emitEvent } from "../../events/eventEmitter.js";
-import { executeAction } from "../../services/processService.js";
+import { executeAction, rowToProcess } from "../../services/processService.js";
 import { createProject } from "../civic.projects/index.js";
 import { createProposal } from "../civic.proposals/index.js";
 import { HUB_ID, DEFAULT_JURISDICTION } from "../../config/hub.js";
@@ -247,36 +252,37 @@ export async function approveReview(
     .single();
   if (procErr || !proc) throw new Error("Process not found for review");
 
-  // Determine the live status based on process type:
-  //  - votes start "proposed" (gather support to threshold)
-  //  - conversations start "draft" — they need an explicit "Start" action to
-  //    create the live Polis conversation before participants can join, so the
-  //    UI shows a "Start Conversation" button (going straight to "active" would
-  //    show the participate panel with no Polis conversation behind it)
-  //  - everything else goes "active"
-  const liveStatus =
-    proc.type === "civic.vote"
-      ? "proposed"
-      : proc.type === "civic.polis_deliberation"
-        ? "draft"
-        : "active";
+  // What approval does to this process — the status it lands on, and any
+  // lifecycle action that has to run for it to be real. The handler declares
+  // it (ProcessHandler.activationOnApproval); this service does not know or
+  // ask which type it is holding, so a type registered tomorrow is activated
+  // by the same code path, on its own terms.
+  //
+  //   vote          → "proposed" + process.propose   (required)
+  //   conversation  → "draft"    + start             (best-effort)
+  //   anything else → "active"   + nothing
+  const activation = activationOnApproval(rowToProcess(proc));
+  const liveStatus = activation.status;
 
-  // Whether an approved vote enters the community-support ("proposed") phase
-  // rather than opening for ballots directly. Drives both the lifecycle action
-  // dispatched below and the wording of the approval email — a supported vote
-  // is NOT live until it clears its support threshold.
-  const voteConfig =
-    proc.type === "civic.vote" &&
+  // Whether this approval puts the process into a community-support phase
+  // rather than making it live — today only a vote that must clear a support
+  // threshold before it opens for ballots. It changes what the approval email
+  // tells the creator, because "approved" and "open" are not the same thing.
+  //
+  // Read from the DECLARED activation rather than from the type: "proposed" is
+  // what the support phase means, so any type that adopts the same shape gets
+  // the same honest wording without a second edit here.
+  const entersSupportPhase = activation.status === "proposed";
+  const stateConfig =
+    entersSupportPhase &&
     proc.state &&
     typeof proc.state === "object" &&
     typeof (proc.state as Record<string, unknown>).config === "object"
       ? ((proc.state as Record<string, unknown>).config as Record<string, unknown>)
       : undefined;
-  const voteEntersSupportPhase =
-    proc.type === "civic.vote" && voteConfig?.activation_mode !== "direct";
   const voteSupportThreshold =
-    typeof voteConfig?.support_threshold === "number"
-      ? (voteConfig.support_threshold as number)
+    typeof stateConfig?.support_threshold === "number"
+      ? (stateConfig.support_threshold as number)
       : undefined;
 
   // Atomically claim the review: flip pending_review → approved in a single
@@ -397,19 +403,15 @@ export async function approveReview(
     });
   }
 
-  // Votes are approved into their "proposed" phase: drive the vote's own
-  // lifecycle so its STATE machine enters `proposed` (the process row status
-  // was set above, but addSupport gates on state.status, which createVoteState
-  // leaves at "draft"). This is what activates the "support a proposed vote"
-  // mechanism; at the support threshold the vote auto-activates. A vote
-  // explicitly configured for "direct" activation (admin/dev tooling) is
-  // activated straight away instead.
-  if (proc.type === "civic.vote") {
-    const action = voteEntersSupportPhase
-      ? "process.propose"
-      : "process.activate";
+  // A REQUIRED activation runs inside the claim: the process row's status is
+  // already live, but the type's own state machine is not, and a process that
+  // looks open while refusing every action is worse than one that was never
+  // approved. A failure therefore falls through to the rollback below and the
+  // admin retries cleanly. (Votes: the row says "proposed" but addSupport
+  // gates on state.status, which createVoteState leaves at "draft".)
+  if (activation.action?.onFailure === "required") {
     await executeAction(review.process_id, {
-      type: action,
+      type: activation.action.type,
       actor: review.creator_id,
       payload: {},
     });
@@ -430,26 +432,49 @@ export async function approveReview(
     throw workErr;
   }
 
-  // Conversations: auto-start on approval. The approval is already committed
-  // above (the process is at "draft"); starting creates the live Polis
-  // conversation — passing through any seed statements — and flips it to
-  // "active" so participants can join immediately, with no manual admin
-  // "Start" step. BEST-EFFORT: if Polis is unreachable (e.g. POLIS_AUTH_TOKEN
-  // unset in dev, or a transient outage) we log and LEAVE the conversation in
-  // "draft" so an admin can Start it manually later — we never fail or roll
-  // back the approval over a Polis hiccup (mirrors the close-action guard).
-  if (proc.type === "civic.polis_deliberation") {
+  // A BEST-EFFORT activation runs after the approval has committed, and its
+  // failure never rolls anything back — an outage in a service we don't own
+  // (Polis) must not undo an admin's decision, and the process rests at a
+  // status an admin can drive by hand.
+  //
+  // But it is no longer SILENT. Until now the only trace of a failure here was
+  // a console.error, which is how a conversation approved on 2026-09-01 sat at
+  // "waiting to start" for three days while the admin screen said "approved"
+  // and the resident who created it saw nothing happen. Every admin now gets
+  // an email naming the process, where it is resting, and why.
+  let activationStalled = false;
+  if (activation.action?.onFailure === "best_effort") {
     try {
       await executeAction(review.process_id, {
-        type: "start",
+        type: activation.action.type,
         actor: review.creator_id,
         payload: {},
       });
     } catch (startErr) {
+      activationStalled = true;
+      const reason =
+        startErr instanceof Error ? startErr.message : String(startErr);
       console.error(
-        `[review] auto-start of conversation ${review.process_id} failed — left in "draft" for a manual Start:`,
-        startErr instanceof Error ? startErr.message : startErr,
+        `[review] activation "${activation.action.type}" of ${proc.type} ${review.process_id} failed — resting at "${liveStatus}" for a manual start:`,
+        reason,
       );
+      try {
+        for (const admin of getAdminEmails()) {
+          await notifyAdminActivationFailed({
+            admin_email: admin,
+            process_type: proc.type,
+            title: proc.title,
+            process_id: review.process_id,
+            resting_status: liveStatus,
+            error: reason,
+          });
+        }
+      } catch (mailErr) {
+        console.error(
+          "[review] Failed to alert admins of a stalled activation:",
+          mailErr,
+        );
+      }
     }
   }
 
@@ -461,7 +486,9 @@ export async function approveReview(
       process_type: proc.type,
       title: proc.title,
       process_id: liveId,
-      entered_support_phase: voteEntersSupportPhase,
+      entered_support_phase: entersSupportPhase,
+      // Never invite someone to share a process that did not open.
+      activation_stalled: activationStalled,
       support_threshold: voteSupportThreshold,
     });
   } catch (e) {

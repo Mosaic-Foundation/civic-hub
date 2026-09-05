@@ -136,6 +136,21 @@ export function bootDeliberation(): ProcessHandler {
       "participation_threshold",
     ]);
 
+  // Approval lands a conversation at "draft" and then starts it: creating the
+  // live Polis conversation, passing the seed statements through, and flipping
+  // it to "active" so residents can join with no manual admin step.
+  //
+  // BEST-EFFORT on purpose. Polis is a separate service; an outage there must
+  // not undo an admin's approval, and a conversation that rests at "draft" is
+  // recoverable — the admin sees a "Start Conversation" button. What the
+  // shared service adds, and what was missing when this policy was hardcoded
+  // in it, is that the failure now emails an admin instead of only reaching a
+  // console.error nobody reads.
+  handler.activationOnApproval = () => ({
+    status: "draft",
+    action: { type: "start", onFailure: "best_effort" },
+  });
+
   // Drafting assistant (topic + framing) — declared here, not in the
   // portable shared handler, for the same reason detailPath is: the
   // shared module stays free of hub-specific modules (the config wires

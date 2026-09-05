@@ -4,6 +4,83 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Approval activates through the registry, and never fails silently — 2026-09-05
+
+Adam: "I would imagine we should be building that. I thought it was built already." He was right —
+auto-start on approval has worked since it was written. What was on the list under my own bad
+shorthand ("the activateOnApproval seam") was two narrower things.
+
+**1. The policy was hardcoded three times in a shared service.** `approveReview` branched on
+`proc.type` for the status to write, for the lifecycle action to dispatch, and for what a failure
+meant — with votes and conversations carrying two *different* failure policies, neither declared
+anywhere. CLAUDE.md's first design constraint says process logic never lives in the service layer,
+and this was the exception. A fifth process type got no activation at all until someone remembered
+to edit this file.
+
+`ProcessHandler.activationOnApproval(process): ApprovalActivation` now owns it:
+
+| Type | status | action | onFailure |
+|---|---|---|---|
+| `civic.vote` (support) | `proposed` | `process.propose` | `required` |
+| `civic.vote` (direct) | `active` | `process.activate` | `required` |
+| `civic.polis_deliberation` | `draft` | `start` | `best_effort` |
+| everything else, present and future | `active` | — | — |
+
+`required` means a failure rolls the approval back to `pending_review` so the admin retries cleanly
+— right for votes, whose `processes` row says "proposed" while `addSupport` gates on `state.status`,
+so a half-applied approval would refuse every endorsement while looking open. `best_effort` means
+the approval stands and the process rests at its declared status — right for conversations, because
+an outage in a service we do not own must not undo an admin's decision.
+
+The declaration lives where the type's other hub policy already lives: votes on `voteProcess.ts`,
+conversations on `deliberationBoot.ts` (the shared Polis module stays free of hub-specific imports,
+same reason as `detailPath` and `requiredSchema`). `entersSupportPhase` for the approval email is
+now read from `activation.status === "proposed"` rather than from the type, so the wording follows
+any type that adopts the shape.
+
+**2. A stalled activation was silent.** The only trace was a `console.error`. That is exactly how
+the Loose Dogs conversation sat at "waiting to start" for three days: Polis rejected a duplicate
+seed statement, the catch swallowed it, the admin screen said "approved", and the resident who
+wrote it saw nothing happen. Two emails now:
+
+- **Admin** — `notifyAdminActivationFailed`: names the process, the status it is resting at, why,
+  and says plainly that the approval stands and nothing was lost.
+- **Creator** — a third branch on `notifyCreatorApproved`. Previously they were told it "is now
+  live!" and invited to share the link. They are now told it is approved, not open yet, the admin
+  has been alerted, and to hold off sharing.
+
+**Verified on dev, all four types** (`scratchpad/verifyActivation.ts`, comparing against the process
+as STORED — the first run compared against raw input and reported a false failure, because
+`initializeState` defaults an unset `activation_mode` to `direct`):
+
+```
+PASS civic.vote               declared=proposed action=process.propose  required    actual=proposed state.status=proposed
+PASS civic.vote               declared=active   action=process.activate required    actual=active   state.status=active
+PASS civic.proposal           declared=active   action=-                -           actual=active
+PASS civic.project            declared=active   action=-                -           actual=active
+PASS civic.polis_deliberation declared=draft    action=start            best_effort actual=active
+```
+
+And the failure path, forced by clearing `POLIS_AUTH_TOKEN`: approve did not throw, the review
+stayed `approved`, the process rested at `draft`, and both emails were composed and dispatched
+(Resend refused them only because the dev key cannot send to `adam@civic.social`).
+
+**Test drift guard** (`tests/unit/activationOnApproval.test.ts`, 10 tests) asserts the review
+service contains no `proc.type === "civic.vote"` / `"civic.polis_deliberation"` in the activation
+path. It earned its place immediately: it failed on the first run and caught a leftover branch in
+the approval-email config that I had missed.
+
+**Also, on the process cards:** projects now read `date · N supporters · by CREATOR` — the date
+moves to the left, matching every other type, which all lead with a date (Adam, smoke test step 5).
+
+Cleanup: 20 `uitest_activation` processes archived, and the four Polis conversations they created
+(`9pmbe3ausy`, `9xwdyyaiju`, `47a8fmpypp`, `4hcjfry5c6`) closed and verified `is_active=false`.
+Their `process_reviews` rows stay — `review_turns` is append-only, correctly.
+
+Backend tsc clean, UI build clean, `tests/unit` 717/717.
+
+---
+
 ## One card for every process list — 2026-09-04
 
 Adam, after two rounds of tweaking: "we need some consistency across the card design, across
@@ -171,9 +248,12 @@ as best-effort.
 Priorities". A health-check statement was posted to `7nkkydtpcj` while timing the write path,
 before retiring it.
 
-**Left alone, awaiting a decision** — active on Polis, referenced by neither hub, but the topics
-read like real content rather than tests: `5zzvja66ed` (FY2028 budget — dev has a separate FY2027
-one) and `8db2na5hib` (Green Box Sites — prod has a real green-box VOTE, though no conversation).
+**Left alone** — active on Polis, referenced by neither hub, but the topics read like real content
+rather than tests: `5zzvja66ed` (FY2028 budget — dev has a separate FY2027 one) and `8db2na5hib`
+(Green Box Sites — prod has a real green-box VOTE, though no conversation). Not a pre-flight item
+and not a decision anyone needs to make: nobody can reach them (there is no link from either hub,
+and Polis conversations are not browsable), so leaving them costs two rows in a Polis admin list.
+Revisit next time there is a real reason to be in Polis.
 Plus one row whose id serializes as `undefined` with a date for a topic. Seven more are already
 inactive.
 
@@ -199,11 +279,9 @@ nominally open, and nobody can reach it except through the hub. Worth fixing on 
 not urgent for the beta.
 
 **Still open:**
-- Rotate the leaked participant token.
-- The universal `activateOnApproval` seam + admin notification on failure — approval still
-  hardcodes two different policies (votes roll back, conversations swallow), and a silent
-  `console.error` is still the only signal. Deferred, and now safe to build on retry semantics
-  that cannot duplicate.
+- ~~Rotate the leaked participant token.~~ Done 2026-09-05 (Adam).
+- ~~The universal activation seam + admin notification on failure.~~ Built 2026-09-05 — see
+  "Approval activates through the registry, and never fails silently" above.
 - Same pattern, lower risk, not changed: `utils/anthropic.ts` and `utils/youtube.ts` also
   interpolate upstream response bodies into thrown messages. Neither provider is known to echo
   credentials, but the shape is identical.

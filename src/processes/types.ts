@@ -31,6 +31,47 @@ export interface EditChangeSet {
   current: Record<string, unknown>;
 }
 
+/**
+ * What happens to a process of this type the moment an admin approves it.
+ *
+ * Before this seam the review service branched on `proc.type` three separate
+ * times — for the status to write, for the lifecycle action to dispatch, and
+ * for what to do when that action failed — with votes and conversations
+ * carrying two *different* failure policies hardcoded in a shared service. A
+ * type registered tomorrow silently got neither, and the only signal when a
+ * best-effort activation failed was a console.error nobody reads. (That is
+ * how a conversation approved on 2026-09-01 sat at "waiting to start" for
+ * three days: Polis rejected a duplicate seed statement, the catch swallowed
+ * it, and no one was told.)
+ *
+ * A handler now declares its own answer, and the shared service enforces it
+ * uniformly. A type that declares nothing gets the default — go straight to
+ * "active", dispatch nothing — which is what every other type already did.
+ */
+export interface ApprovalActivation {
+  /**
+   * The `processes.status` to write when the review is approved.
+   * Default "active". Votes use "proposed" (gather support to threshold);
+   * conversations use "draft" until the live Polis conversation exists.
+   */
+  status: string;
+
+  /** A lifecycle action to dispatch once the approval has committed. */
+  action?: {
+    /** Action type, e.g. "process.propose" or "start". */
+    type: string;
+    /**
+     * What a failure means:
+     *  - "required"    — roll the approval back to pending_review so the admin
+     *                    can retry cleanly. Nothing is left half-published.
+     *  - "best_effort" — the approval stands and the process rests at
+     *                    `status`; an admin is emailed so the stall is never
+     *                    silent, and it can be driven manually.
+     */
+    onFailure: "required" | "best_effort";
+  };
+}
+
 /** Open Graph-style preview of one process page. */
 export interface ShareMeta {
   title: string;
@@ -63,6 +104,17 @@ export interface ProcessHandler {
    * field — nothing downstream enumerates process types.
    */
   detailPath?(id: string): string;
+
+  /**
+   * Optional: what approval does to a process of this type — the status it
+   * lands on, and any lifecycle action that has to run for it to be real.
+   *
+   * Same seam as detailPath / editPolicy / generateBrief: the handler owns
+   * the policy, the shared review service enforces it. Omit it and approval
+   * publishes the process as "active" with no action to fail — the right
+   * default for a type that is live the moment it is approved.
+   */
+  activationOnApproval?(process: Process): ApprovalActivation;
 
   /**
    * Optional: the fields a creator submitted, for the "Your submission" /

@@ -99,6 +99,7 @@ export default function Projects() {
                         status="active"
                         title={p.title}
                         meta={[
+                          cardDate(p.created_at),
                           `${p.support_count} supporter${p.support_count !== 1 ? "s" : ""}`,
                           // Kept only when someone actually opposed: it is
                           // participation a resident entered, not noise.
@@ -110,7 +111,6 @@ export default function Projects() {
                             officialTitle={p.creator_official_title}
                             prefix="by"
                           />,
-                          cardDate(p.created_at),
                         ]}
                       />
                     </Link>
@@ -132,6 +132,7 @@ export default function Projects() {
                         status="archived"
                         title={p.title}
                         meta={[
+                          cardDate(p.created_at),
                           `${p.support_count} supporter${p.support_count !== 1 ? "s" : ""}`,
                           <Creator
                             name={p.creator_name}
@@ -140,7 +141,6 @@ export default function Projects() {
                             officialTitle={p.creator_official_title}
                             prefix="by"
                           />,
-                          cardDate(p.created_at),
                         ]}
                       />
                     </Link>

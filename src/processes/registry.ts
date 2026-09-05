@@ -5,6 +5,8 @@
 // Future work may allow dynamic loading, but for now this is static.
 
 import { ProcessHandler, ProcessFactory, ActionDispatcher } from "./types.js";
+import type { ApprovalActivation } from "./types.js";
+import type { Process } from "../models/process.js";
 import voteProcess from "./voteProcess.js";
 import proposalAdapter from "./proposalAdapter.js";
 import projectAdapter from "./projectAdapter.js";
@@ -139,6 +141,19 @@ export async function reopenDraftForRevision(type: string, draftId: string): Pro
     throw new Error(`Process type ${type} does not support revising a draft`);
   }
   await handler.reopenDraft(draftId);
+}
+
+/**
+ * What approving a process of this type should do to it. Handlers declare
+ * `activationOnApproval`; anything without one — including a type registered
+ * tomorrow — is published straight to "active" with no lifecycle action, so
+ * approval always means something definite rather than nothing at all.
+ *
+ * The review service is the only caller. It never asks what type it holds.
+ */
+export function activationOnApproval(process: Process): ApprovalActivation {
+  const handler = processRegistry[process.definition.type];
+  return handler?.activationOnApproval?.(process) ?? { status: "active" };
 }
 
 export function describeSubmission(source: SubmissionSource): SubmissionField[] {

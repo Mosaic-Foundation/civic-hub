@@ -105,6 +105,25 @@ const voteProcess: ProcessHandler = {
 
   getAssistantConfig: () => voteAssistantConfig,
 
+  // Approval does not open a vote for ballots. Unless it is explicitly
+  // configured for "direct" activation (admin/dev tooling), an approved vote
+  // enters the community-support phase and only opens once it clears its
+  // support threshold — so the status is "proposed" and the lifecycle action
+  // is "process.propose".
+  //
+  // Both are REQUIRED: the process row's status is set before the action runs,
+  // but `addSupport` gates on state.status, which createVoteState leaves at
+  // "draft". A vote whose action failed would sit visibly "proposed" while
+  // silently refusing every endorsement — so a failure rolls the whole
+  // approval back and the admin retries.
+  activationOnApproval(process) {
+    const config = (process.state as { config?: { activation_mode?: string } })
+      ?.config;
+    return config?.activation_mode === "direct"
+      ? { status: "active", action: { type: "process.activate", onFailure: "required" } }
+      : { status: "proposed", action: { type: "process.propose", onFailure: "required" } };
+  },
+
   // A vote's submission lives on state (method, options, window) — extend the
   // generic content walk with those keys so the review previews show the
   // whole ballot as submitted.
