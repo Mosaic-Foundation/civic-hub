@@ -35,6 +35,31 @@ client-navigated to review B by popstate (what back/forward does, no reload) —
 buttons, no stale form, no stale message, status pending. Neither review was mutated (only a form
 was opened). UI build clean.
 
+## Suggestion cards: edit in place before applying — 2026-09-05
+
+Adam, on a sources card with four links: "I'm forced to either accept them all or not apply any of
+them" — he wanted to keep some and drop others. Editable suggestions.
+
+Each card now has an **Edit** button (beside Apply). Edit swaps the read-only display — the seed
+numbered list, or prose — for a clean, unnumbered, auto-growing textarea holding the raw
+one-per-line text, so trimming a source or statement is just deleting a line. Apply then writes the
+EDITED text, not the original.
+
+**Edit is a before-Apply action; the card locks after.** This is deliberate and answers Adam's
+duplication worry: `handleApplySuggestion` APPENDS to a non-empty field (`current + "\n\n" +
+revision`), so "apply → edit → apply again" would leave both copies. Once applied, the card shows
+"Applied" (disabled) with no Edit and no re-apply, so there is no duplication path. Further changes
+are made in the form, where the field (and the seed rows) are directly editable.
+
+Wiring: `SuggestionCard.onApply` is now `(revision: string) => void`; both call sites
+(`AssistantPanel`, `DraftShell` inline CoC results) apply `{...s, suggested_revision: revision}` but
+key the applied-state on the ORIGINAL suggestion, so cross-view sync between the panel and the inline
+list is unchanged.
+
+Verified on dev: a 6-statement seed card, edited down to 3 in the box, applied 3 rows to the form
+(not 6); the card then read "Applied", disabled, with Edit gone. No backend change. tsc + UI build
+clean.
+
 ## Assistant: deterministic empty-field help chips — 2026-09-05
 
 Adam, after repeated assistant letdowns (a timed-out review, a mis-targeted card, no easy way to ask

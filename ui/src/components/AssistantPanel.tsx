@@ -132,8 +132,10 @@ export default function AssistantPanel({
                         s.suggested_revision &&
                         onApplySuggestion &&
                         (canApplySuggestion ? canApplySuggestion(s) : true)
-                          ? () => {
-                              onApplySuggestion(s);
+                          ? (revision: string) => {
+                              // Apply the edited text; key the applied-state on
+                              // the ORIGINAL card so cross-view sync still works.
+                              onApplySuggestion({ ...s, suggested_revision: revision });
                               onSuggestionApplied?.(s);
                             }
                           : undefined

@@ -430,3 +430,26 @@
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+
+/* Edit-in-place: the suggestion revision as an editable box, one item per
+   line (clean, unnumbered) so trimming a source or statement is deleting a
+   line. Auto-grown by the component. */
+.suggestion-revision-edit {
+  width: 100%;
+  margin: var(--space-xs) 0 0;
+  padding: var(--space-xs) var(--space-sm);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  resize: none;
+  overflow: hidden;
+}
+
+.suggestion-revision-edit:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}

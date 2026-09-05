@@ -231,8 +231,8 @@ export default function DraftShell({
               s.suggested_revision &&
               onApplySuggestion &&
               (canApplySuggestion ? canApplySuggestion(s) : true)
-                ? () => {
-                    onApplySuggestion(s);
+                ? (revision: string) => {
+                    onApplySuggestion({ ...s, suggested_revision: revision });
                     markApplied(s);
                   }
                 : undefined
