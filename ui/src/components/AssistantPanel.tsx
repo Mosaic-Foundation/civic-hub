@@ -172,7 +172,7 @@ export default function AssistantPanel({
           fieldHelp.length > 0 &&
           onFieldHelp && (
             <div className="field-help">
-              <p className="field-help-label">Want help with a field?</p>
+              <p className="field-help-label">Select which sections you want help with</p>
               <div className="field-help-chips">
                 {fieldHelp.map((f) => (
                   <button

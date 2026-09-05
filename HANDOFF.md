@@ -42,8 +42,8 @@ for help on the empty fields): make the "want help with the empty fields?" offer
 move field coverage OUT of the model's memory (where it kept forgetting or mis-targeting) and into
 deterministic UI, keeping the opening brainstorm flow as-is.
 
-`AssistantPanel` now renders a row of chips at the END of the scroll area — "Want help with a
-field? [Sources] [Seed statements]" — one per field this form still has empty. The list is computed
+`AssistantPanel` now renders a row of chips at the END of the scroll area — "Select which sections
+you want help with" over one chip per field this form still has empty ([Sources] [Seed statements]). The list is computed
 in `useDraftFlow` (`fieldHelp`) from `applyFields` and the current values, the same source as the
 Get-suggestions gate; a field fills (applied OR hand-typed) and its chip disappears. Empty only, no
 "sparse" threshold — a deliberately terse field is never nagged. Shown once past brainstorm, with the
