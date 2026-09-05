@@ -35,6 +35,33 @@ client-navigated to review B by popstate (what back/forward does, no reload) —
 buttons, no stale form, no stale message, status pending. Neither review was mutated (only a form
 was opened). UI build clean.
 
+## Seed rows: a repeat never becomes a row — 2026-09-05
+
+Adam, seeing the assistant's balanced set land a near-duplicate flagged in yellow: "I'm not sure
+what benefit of showing it does. It'd be cleaner just to not include repeats in the display at all."
+
+Repeats now never appear as a row. They are dropped where content arrives from somewhere other than
+a keystroke — a paste, an applied suggestion, a loaded draft (`dropDuplicates`, case/space-
+insensitive, matching the controller's key). The yellow highlight, the per-row "Repeats an earlier
+statement" note, and the "N repeats will be skipped" suffix are gone; the count is just "N
+statements".
+
+Deliberately NOT live per-keystroke deletion — a row vanishing as you type is jarring. A hand-typed
+exact duplicate (rare) is left in place as a plain row and dropped by the backend's submit-time
+dedupe (unchanged). The adoption comparison dedupes BOTH sides, so an incoming echo never yanks a
+manual duplicate out from under the creator; only genuinely new external content replaces the rows.
+
+This also closed the hole behind Adam's screenshot: the assistant's Apply goes through the adoption
+path, which did not dedupe, so an 8-unique + 1-repeat suggestion rendered 9 rows — over the cap of
+8. Deduping adoption brings it to 8.
+
+Verified on dev: a draft stored with 5 lines (two case-variant dups) loads as 3 rows; pasting a
+list whose entries repeat each other and existing rows drops every dup (case-insensitive); a
+hand-typed exact dup stays put through the debounce round trip with no warning. Unused repeat CSS
+removed from SeedStatementRows.css and DraftingForm.css. UI build clean.
+
+---
+
 ## Seed statements become numbered rows — 2026-09-05
 
 Adam, on the plain textarea: "some little more distinguishment between one seed statement and the
