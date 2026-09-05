@@ -11,6 +11,7 @@ import type {
   Suggestion,
   DraftProposal,
   DraftField,
+  DraftState,
   HubConfig,
 } from "./models.js";
 
@@ -90,10 +91,10 @@ export async function callAssistant(
       console.warn("[assistant] reply promised an action twice — returning the honest fallback");
       return { ...nudged, message: COULD_NOT_ACT };
     }
-    return withSomethingToSay(nudged);
+    return withSomethingToSay(dropRedundantSuggestions(nudged, input.draft_state));
   }
 
-  return withSomethingToSay(parsed);
+  return withSomethingToSay(dropRedundantSuggestions(parsed, input.draft_state));
 }
 
 /** What the person gets when the model twice promised to act and twice
@@ -118,6 +119,40 @@ function deliveredNothing(
 }
 
 /** An empty bubble is its own version of saying nothing. */
+/**
+ * Drop soft suggestions whose revision just restates what a field already
+ * holds — the model re-offering a rewrite of a field the person already filled
+ * and applied (Adam, 2026-09-05: "it created a new suggestion for the
+ * description even though I hadn't changed it"). Compared normalized (trimmed,
+ * whitespace-collapsed, case-insensitive) against the current draft value. A
+ * HARD block is never dropped — a Code of Conduct problem on existing text
+ * must still surface. This is the deterministic backstop; the system prompt
+ * also tells the model not to rewrite a filled field unprompted.
+ */
+function dropRedundantSuggestions(
+  response: AssistantResponse,
+  draft: DraftState,
+): AssistantResponse {
+  const norm = (v: string): string =>
+    v.trim().replace(/\s+/g, " ").toLowerCase();
+  const currentOf = (field: string): string => {
+    const raw = (draft as unknown as Record<string, unknown>)[field];
+    return typeof raw === "string" ? norm(raw) : "";
+  };
+  const kept = response.suggestions.filter((sg) => {
+    if (sg.severity === "hard") return true;
+    if (!sg.field || !sg.suggested_revision) return true;
+    const current = currentOf(sg.field);
+    if (current.length === 0) return true; // field empty — a real offer
+    return norm(sg.suggested_revision) !== current; // drop exact no-ops
+  });
+  if (kept.length === response.suggestions.length) return response;
+  console.warn(
+    `[assistant] dropped ${response.suggestions.length - kept.length} no-op suggestion(s) that restated a filled field`,
+  );
+  return { ...response, suggestions: kept };
+}
+
 function withSomethingToSay(response: AssistantResponse): AssistantResponse {
   if (response.message.trim().length > 0) return response;
   return {

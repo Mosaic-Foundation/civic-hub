@@ -35,6 +35,40 @@ client-navigated to review B by popstate (what back/forward does, no reload) —
 buttons, no stale form, no stale message, status pending. Neither review was mutated (only a form
 was opened). UI build clean.
 
+## Assistant: a filled field is done; a seed offer returns a seed card — 2026-09-05
+
+Adam, on mobile: he applied the assistant's description rewrite, said "I think I'm done", and the
+assistant — while correctly nudging that seed statements were still empty — returned ANOTHER
+`description` card (a near-duplicate of what he had already applied) instead of the seed statements
+it had just offered. "It just suggested a whole revision of the description rather than the seed
+statement… even though I hadn't changed it."
+
+This is model adherence, addressed on two fronts:
+
+**Deterministic backstop** (`service.ts`, `dropRedundantSuggestions`): a soft suggestion whose
+`suggested_revision`, normalized (trimmed, whitespace-collapsed, lower-cased), equals the field's
+current value in `draft_state` is dropped before the response reaches the client. A HARD block is
+never dropped — a Code of Conduct problem on existing text must still surface. Applied at both
+return points (normal and the promise-nudge path). This kills the exact no-op re-suggestion; it does
+not catch a reworded near-duplicate, which is what the prompt rules are for.
+
+**Prompt rules** (`systemPrompt.ts`, general, all types): "A filled field is done — leave it alone."
+No unprompted rewrite of a field that already has content; rewrite only when the person asks or it's
+a hard block; and when a message offers to draft content for a specific field, the card returned in
+that turn MUST target that field, never a different one already helped with. The rule is
+field-agnostic (an earlier draft hard-coded "seed_statements" and leaked it into the vote prompt,
+which a standing test caught — the vote form has no such field). The seed-specific binding lives in
+the conversation's `typeGuidance`/seed section only: an offer to draft seeds is answered by a
+`seed_statements` card, one per line, never a `description` card.
+
+`tests/unit/assistantRedundantSuggestion.test.ts` (5): the no-op is dropped; a real edit of a filled
+field and a genuine empty-field (seed) offer survive; a hard block is never dropped; and the built
+prompt carries the new rules. `tests/unit` 722/722, backend tsc + UI build clean.
+
+Honest limit: the prompt rules reduce but cannot guarantee perfect model targeting. If it recurs, a
+harder client guard (suppress a soft card for a field the creator already applied a card to) is the
+next lever.
+
 ## Seed rows: a repeat never becomes a row — 2026-09-05
 
 Adam, seeing the assistant's balanced set land a near-duplicate flagged in yellow: "I'm not sure
