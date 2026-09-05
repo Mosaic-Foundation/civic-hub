@@ -51,7 +51,7 @@ const PLACEHOLDERS = {
   sources:
     "Short title: https://… (one per line, up to six, optional)",
   seeds:
-    "Short, single-idea statements participants vote on first (one per line, optional)",
+    "e.g. I'd use a bike lane on Main Street if it existed",
 };
 
 function getStatusText(draft: DeliberationDraft, reviewFailed?: boolean): string {

@@ -29,6 +29,15 @@ import {
 } from "react";
 import "./SeedStatementRows.css";
 
+// Cap on how many statements a creator adds here. It is a GROWTH cap, not a
+// truncation: the Add button, Enter, and paste all refuse to push past it,
+// and the assistant is told the same limit (deliberationAssistantConfig) — but
+// a value arriving with more (a legacy draft from before the cap) is shown in
+// full rather than silently losing the creator's content. Adam, 2026-09-05:
+// "cap it at eight or something … an add statement button they can keep
+// adding until they get to eight."
+const MAX_SEEDS = 8;
+
 interface Props {
   /** The newline-separated field value. */
   value: string;
@@ -72,9 +81,16 @@ function repeatedRows(rows: string[]): Set<number> {
 }
 
 /** Fit a row's height to its text, so a long statement wraps instead of
- *  scrolling inside a one-line box. */
+ *  scrolling inside a fixed box. An EMPTY row is left to the CSS min-height
+ *  rather than measured: Chromium counts a textarea's placeholder toward
+ *  scrollHeight, so measuring an empty row would inflate it to fit the
+ *  placeholder (and only the first row carries one). */
 function grow(el: HTMLTextAreaElement | null): void {
   if (!el) return;
+  if (el.value.length === 0) {
+    el.style.height = "";
+    return;
+  }
   el.style.height = "auto";
   el.style.height = `${el.scrollHeight}px`;
 }
@@ -174,6 +190,8 @@ export default function SeedStatementRows({
     if (e.key === "Enter" && !e.shiftKey) {
       // Split at the caret: what follows it becomes the new row.
       e.preventDefault();
+      if (rows.length >= MAX_SEEDS) return; // at the cap — no new row
+
       const at = el.selectionStart ?? el.value.length;
       const before = el.value.slice(0, at);
       const after = el.value.slice(at);
@@ -205,8 +223,11 @@ export default function SeedStatementRows({
     // paste these from notes, and the one thing that must not happen is all
     // of it landing in one row with the breaks silently lost.
     e.preventDefault();
-    const lines = text.split(/\r?\n/).map((s) => s.trim()).filter((s) => s.length > 0);
+    let lines = text.split(/\r?\n/).map((s) => s.trim()).filter((s) => s.length > 0);
     if (lines.length === 0) return;
+    // Never let a paste push the total past the cap; take only what fits.
+    const room = Math.max(0, MAX_SEEDS - (rows.length - 1));
+    lines = lines.slice(0, Math.max(1, room));
     const el = e.currentTarget;
     const start = el.selectionStart ?? el.value.length;
     const end = el.selectionEnd ?? start;
@@ -284,14 +305,18 @@ export default function SeedStatementRows({
         })}
       </ol>
       <div className="seed-rows-foot">
-        <button
-          type="button"
-          className="seed-rows-add"
-          onClick={() => insertAfter(rows.length - 1, [""], "end")}
-          disabled={disabled}
-        >
-          + Add statement
-        </button>
+        {rows.length < MAX_SEEDS ? (
+          <button
+            type="button"
+            className="seed-rows-add"
+            onClick={() => insertAfter(rows.length - 1, [""], "end")}
+            disabled={disabled}
+          >
+            + Add statement
+          </button>
+        ) : (
+          <span className="seed-rows-max">Maximum of {MAX_SEEDS} statements</span>
+        )}
         {kept > 0 && (
           <p className="seed-statement-count">
             {kept} statement{kept !== 1 ? "s" : ""}

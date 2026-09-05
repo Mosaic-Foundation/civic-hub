@@ -51,6 +51,22 @@ tsc clean, `tests/unit` 717/717.
 (Screenshots were unavailable — the browser pane returned blank frames all session — so the visual
 was verified from the live DOM and accessibility attributes rather than an image.)
 
+**Follow-up the same day** — Adam, worried the rows looked thin, and wanting a bound: taller rows
+and a cap of 8. Each row now has a ~2-line min-height (52px) so an empty one reads as a block to
+write into, still growing past that for a long statement (measured 202px for ~160 chars). A quirk
+surfaced in passing: Chromium counts a textarea's placeholder toward `scrollHeight`, so auto-grow
+was inflating the first empty row to ~110px to fit the long placeholder — now empty rows are left
+to the CSS min-height (not measured) and the placeholder was shortened to one line.
+
+The cap (`MAX_SEEDS = 8`) is a GROWTH cap, not a truncation: Add hides at 8 (a "Maximum of 8
+statements" note takes its place), Enter makes no 9th row, and a paste only fills up to 8. A value
+arriving with MORE — a draft from before the cap — is shown in FULL rather than silently losing the
+creator's content (verified: a 10-seed draft loads all 10 rows, Add hidden). The assistant was told
+the same limit in all four places its prompt describes seeds (first-draft guidance, the seed
+section, the type guidance, the field hint) — the wire format is unchanged, still one statement per
+line, so Apply still populates the rows through the prop (the `data-controlled` guard keeps it off
+the raw DOM write).
+
 ---
 
 ## "Get suggestions" is only offered once there is something to suggest on — 2026-09-05

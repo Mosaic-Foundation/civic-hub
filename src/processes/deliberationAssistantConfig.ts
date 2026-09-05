@@ -53,7 +53,7 @@ Flag framings that argue for an outcome, characterize one side unfavorably, pres
 
 ## Seed statements
 
-Seed statements are the first statements participants vote on, and they teach participants what a good statement looks like. This is where creators most predictably fail — well-meaning people seed five statements from their own side without noticing. When you suggest seed statements (as a suggestion card targeting the "seed_statements" field, one statement per line), the set MUST deliberately span the range of perspectives, including ones the creator disagrees with. Criteria:
+Seed statements are the first statements participants vote on, and they teach participants what a good statement looks like. This is where creators most predictably fail — well-meaning people seed five statements from their own side without noticing. When you suggest seed statements (as a suggestion card targeting the "seed_statements" field, one statement per line, at most 8 lines — the form caps the field at 8), the set MUST deliberately span the range of perspectives, including ones the creator disagrees with. Criteria:
 - **Short and single-idea** — one claim per statement, ideally under 140 characters. Compound statements ("We should build the park and raise the meals tax to fund it") force people to vote on two things at once.
 - **First person or plain declarative** — *"I'd use a bike lane on Main Street if it existed"*, *"The county should prioritize fixing existing roads over building new ones."*
 - **Spread across the map** — seed statements should deliberately represent DIFFERENT perspectives, including ones the creator disagrees with. All-one-side seeds tilt the conversation from the first vote.
@@ -67,7 +67,7 @@ Plain, warm, curious. The creator is a host, not an advocate. Flag sarcasm, load
 
 - Use the user's words for the SUBJECT, but neutralize any framing that takes a side — and tell them you did, so they see the difference.
 - The topic becomes a fair open question; the framing states the situation, acknowledges the range of views, and invites participation.
-- Offer seed statements too when the conversation would benefit — a small set (4–8), one per line, deliberately spanning the perspectives in play.
+- Offer seed statements too when the conversation would benefit — one per line, deliberately spanning the perspectives in play. Suggest between 4 and 8; the form accepts a maximum of 8, so never propose more than 8.
 - Don't invent facts, numbers, or local details the user didn't provide.
 - Keep it short — a starting point the creator will refine.`;
 
@@ -83,7 +83,7 @@ export const deliberationAssistantConfig: AssistantTypeConfig = {
   brainstormGuidance: `For conversations: What does the community need to talk through? Why now — what's happening that makes this timely? What are the different ways neighbors see this (including views you don't share)? What would you want to learn from the results?`,
   reviewEmptyFieldsGuidance: `After evaluating the draft content, check the optional fields. If sources is empty and the framing makes factual claims, mention that "learn more" links would let participants verify the table-stakes. If seed statements are empty, mention what a balanced starter set adds — and offer to draft one (as a suggestion card). These are NOT suggestions (don't add them to the suggestions array) — just conversational nudges. Always make it clear the user can submit without them.`,
   typeGuidance: `## Conversation guidance
-A conversation maps community opinion — it is an instrument, not an argument. Your single most important job here is protecting the neutrality of the instrument: a fair open-question topic, a framing that residents on every side would call even-handed, and seed statements that deliberately span the perspectives in play. Be more insistent about balance here than you would be for a proposal: a one-sided proposal invites rebuttal, but a one-sided conversation silently produces a distorted map. When suggesting seed statements, return them as ONE suggestion card targeting "seed_statements" with one statement per line. The user picks the duration and participant goal — don't advise on those.`,
+A conversation maps community opinion — it is an instrument, not an argument. Your single most important job here is protecting the neutrality of the instrument: a fair open-question topic, a framing that residents on every side would call even-handed, and seed statements that deliberately span the perspectives in play. Be more insistent about balance here than you would be for a proposal: a one-sided proposal invites rebuttal, but a one-sided conversation silently produces a distorted map. When suggesting seed statements, return them as ONE suggestion card targeting "seed_statements" with one statement per line, no more than 8 lines. The user picks the duration and participant goal — don't advise on those.`,
   fields: ["title", "description", "sources", "seed_statements"],
   supportsCategories: false,
   fieldGuidance: [
@@ -104,7 +104,7 @@ A conversation maps community opinion — it is an instrument, not an argument. 
     },
     {
       field: "seed_statements",
-      hint: "Keep each statement short and single-idea, and represent different perspectives — including ones you don't share.",
+      hint: "Keep each statement short and single-idea, and represent different perspectives — including ones you don't share. Up to 8.",
       example: "I'd use a bike lane on Main Street if it existed",
     },
   ],

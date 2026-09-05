@@ -40,7 +40,10 @@
    to the content, so a long statement wraps rather than scrolls. */
 .seed-row-input {
   width: 100%;
-  min-height: 0;
+  /* ~two lines tall when empty, so a row reads as a block to write a
+     sentence into rather than a cramped single line; it still grows past
+     this as the statement gets longer (the component sets the height). */
+  min-height: 3.25rem;
   line-height: 1.5;
   resize: none;
   overflow: hidden;
@@ -123,4 +126,9 @@
 
 .seed-rows-foot .seed-statement-count {
   margin: 0;
+}
+
+.seed-rows-max {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
 }
