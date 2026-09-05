@@ -35,6 +35,38 @@ client-navigated to review B by popstate (what back/forward does, no reload) —
 buttons, no stale form, no stale message, status pending. Neither review was mutated (only a form
 was opened). UI build clean.
 
+## Assistant: deterministic empty-field help chips — 2026-09-05
+
+Adam, after repeated assistant letdowns (a timed-out review, a mis-targeted card, no easy way to ask
+for help on the empty fields): make the "want help with the empty fields?" offer reliable. Agreed to
+move field coverage OUT of the model's memory (where it kept forgetting or mis-targeting) and into
+deterministic UI, keeping the opening brainstorm flow as-is.
+
+`AssistantPanel` now renders a row of chips at the END of the scroll area — "Want help with a
+field? [Sources] [Seed statements]" — one per field this form still has empty. The list is computed
+in `useDraftFlow` (`fieldHelp`) from `applyFields` and the current values, the same source as the
+Get-suggestions gate; a field fills (applied OR hand-typed) and its chip disappears. Empty only, no
+"sparse" threshold — a deliberately terse field is never nagged. Shown once past brainstorm, with the
+conversation started, and hidden while loading.
+
+**In the scroll area, not the fixed bottom** — so it costs zero fixed height, which was Adam's
+concern. It also needed no nav surgery: on mobile the assistant is already a full-screen overlay
+(`position: fixed; inset: 0`), so the site nav is painted over in that view and never competed for
+space to begin with.
+
+**The chip's request is imperative, and this mattered.** First cut sent "Can you help me with the
+seed statements?" — the model explained and ASKED to draft rather than drafting (exactly the
+round-trip Adam is tired of). Changed to a directive: "Draft a balanced set of seed statements for
+this conversation now… put them in a suggestion card I can apply." Sources is phrased to search, not
+invent URLs. Verified on dev with a real model turn: the soft phrasing produced prose + an offer and
+no card; the imperative phrasing produced ONE seed_statements card (not description), Apply landed
+all six statements in the numbered rows, and the Seed-statements chip then vanished leaving only
+Sources.
+
+New/changed: `AssistantPanel` (chips + `fieldHelp`/`onFieldHelp` props), `useDraftFlow` (`fieldHelp`
+memo + `uiFieldLabel`), `DraftShell` (`DraftShellAssistant.fieldHelp`, passed through),
+`AssistantPanel.css`. tsc clean, UI build clean, `tests/unit` unaffected (722).
+
 ## Assistant: a filled field is done; a seed offer returns a seed card — 2026-09-05
 
 Adam, on mobile: he applied the assistant's description rewrite, said "I think I'm done", and the

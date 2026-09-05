@@ -71,6 +71,22 @@ function friendlyError(msg: string): string {
   return "Something went wrong with the assistant. Try again in a moment.";
 }
 
+/** How an empty-field help chip names its field to the person. Unknown keys
+ *  humanize, so a field a new type declares still gets a sensible label. */
+const FIELD_LABELS: Record<string, string> = {
+  title: "Title",
+  description: "Description",
+  sources: "Sources",
+  seed_statements: "Seed statements",
+  considerations: "Considerations",
+};
+function uiFieldLabel(field: string): string {
+  return (
+    FIELD_LABELS[field] ??
+    field.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
+  );
+}
+
 export function useDraftFlow<D extends BaseDraft>({
   processType,
   createDraft,
@@ -474,6 +490,41 @@ export function useDraftFlow<D extends BaseDraft>({
     });
   }, [applyFields, pendingFields, draft]);
 
+  // Deterministic "want help with an empty field?" offers — the chips the
+  // assistant panel shows after the opening flow. Field coverage lives HERE,
+  // in code, not in the model's memory: it kept forgetting to offer, or
+  // mis-targeting the card (Adam, 2026-09-05). Each empty field this form
+  // renders becomes a chip whose tap sends a scoped request naming that field,
+  // which is the ask the model is reliable at. Fills — applied or hand-typed —
+  // drop the chip. Empty ONLY, no "sparse" threshold: a deliberately terse
+  // field should not be nagged.
+  const fieldHelp = useMemo(() => {
+    const saved = draft as unknown as Record<string, unknown> | null;
+    const noun = config?.content_noun ?? "draft";
+    return applyFields
+      .filter((field) => {
+        const value =
+          field in pendingFields ? pendingFields[field] : saved?.[field];
+        if (typeof value === "string") return value.trim().length === 0;
+        if (Array.isArray(value)) return value.length === 0;
+        return true;
+      })
+      .map((field) => ({
+        field,
+        label: uiFieldLabel(field),
+        // Imperative, not "can you help": a tapped chip is intent to ACT, so
+        // the request tells the model to draft and return a card in one turn
+        // rather than explain and ask (Adam, 2026-09-05: the assistant kept
+        // asking instead of doing). Sources means search, never invent URLs.
+        prompt:
+          field === "sources"
+            ? `Search for a few reliable sources for this ${noun} and put them in a suggestion card I can apply. Don't invent URLs.`
+            : field === "seed_statements"
+              ? `Draft a balanced set of seed statements for this conversation now — spanning the range of views — and put them in a suggestion card I can apply.`
+              : `Draft the ${uiFieldLabel(field).toLowerCase()} for this ${noun} now and put it in a suggestion card I can apply.`,
+      }));
+  }, [applyFields, pendingFields, draft, config]);
+
   const shellAssistant: DraftShellAssistant | null = config?.available
     ? {
         open: assistantOpen,
@@ -491,6 +542,7 @@ export function useDraftFlow<D extends BaseDraft>({
         // "or review what you have" half alongside it, so an empty form
         // offers exactly one thing to do.
         onSuggest: hasSomethingToReview ? handleSuggest : undefined,
+        fieldHelp,
         suggesting,
         onClose: () => setAssistantOpen(false),
         onSendMessage: handleSendMessage,

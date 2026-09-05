@@ -374,3 +374,42 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
+
+/* Empty-field help chips — deterministic offers in the scroll area, after the
+   latest turn. Field coverage lives in code, not the model's memory. Kept
+   light: a quiet label and small pills that wrap. */
+.field-help {
+  margin: var(--space-sm) 0 var(--space-xs);
+}
+
+.field-help-label {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.field-help-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.field-help-chip {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  background: none;
+  border: 1px solid var(--color-primary);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.field-help-chip:hover {
+  background: var(--color-surface-alt);
+}
+
+.field-help-chip:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}

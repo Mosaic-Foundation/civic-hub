@@ -34,6 +34,9 @@ export interface DraftShellAssistant {
    *  and show the cards in the assistant panel. */
   onSuggest?: () => void;
   suggesting?: boolean;
+  /** Deterministic empty-field help offers — chips the panel shows after the
+   *  opening flow, one per field this form still has blank. */
+  fieldHelp?: Array<{ field: string; label: string; prompt: string }>;
 }
 
 interface Props {
@@ -207,6 +210,8 @@ export default function DraftShell({
       placeholder={`Ask for help with your ${typeLabel.toLowerCase()}...`}
       onDone={assistant.onClose}
       doneLabel={`Done — back to the ${typeLabel.toLowerCase()} form`}
+      fieldHelp={assistant.fieldHelp}
+      onFieldHelp={assistant.onSendMessage}
     />
   );
 

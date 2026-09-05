@@ -41,6 +41,11 @@ interface Props {
    *  (Adam, 2026-09-04). Same handler as the panel's close. */
   onDone?: () => void;
   doneLabel?: string;
+  /** Deterministic empty-field help offers, rendered as chips at the end of
+   *  the scroll area. */
+  fieldHelp?: Array<{ field: string; label: string; prompt: string }>;
+  /** Sends the chip's scoped request (same path as typing it). */
+  onFieldHelp?: (prompt: string) => void;
 }
 
 export default function AssistantPanel({
@@ -59,6 +64,8 @@ export default function AssistantPanel({
   placeholder,
   onDone,
   doneLabel,
+  fieldHelp,
+  onFieldHelp,
 }: Props) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -155,6 +162,31 @@ export default function AssistantPanel({
             </div>
           </div>
         )}
+        {/* Empty-field help — deterministic offers, in the scroll area so they
+            cost no fixed height. Shown once the opening flow is past and the
+            conversation has started; a field fills, its chip goes. */}
+        {phase !== "brainstorm" &&
+          !loading &&
+          messages.length > 0 &&
+          fieldHelp &&
+          fieldHelp.length > 0 &&
+          onFieldHelp && (
+            <div className="field-help">
+              <p className="field-help-label">Want help with a field?</p>
+              <div className="field-help-chips">
+                {fieldHelp.map((f) => (
+                  <button
+                    key={f.field}
+                    type="button"
+                    className="field-help-chip"
+                    onClick={() => onFieldHelp(f.prompt)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         <div ref={messagesEndRef} />
       </div>
 
