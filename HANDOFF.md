@@ -4,6 +4,56 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Share row: Facebook via the OS sheet, and no texting from a desktop — 2026-09-05
+
+Smoke test step 7. Adam on a phone: Facebook "just opens Facebook in the browser", no link
+attached. On a Mac: the text button "goes to my wife every time" — the same person on every share.
+
+**Facebook on mobile.** The href we build is correct and does carry the link; what happens after
+the tap is not ours. `facebook.com` is a universal link, so iOS hands the tap to the Facebook app,
+which has no route for `/sharer/sharer.php` and lands on the feed; when it stays in the browser
+instead, a logged-out sharer bounces through a login that drops `u`. Facebook removed pre-filled
+sharing from mobile web years ago, and no query-string change brings it back — the OS share sheet
+is now the only path from a web page into the Facebook app's composer with a link attached.
+
+So on a device that has a sheet, the Facebook button opens it (`navigator.share({title, url})`).
+Desktop, where the web sharer genuinely works, still follows the href. Dismissing the sheet does
+nothing; a real failure (`name !== "AbortError"`) falls back to the web sharer, so the button is
+never dead.
+
+**Texting from a desktop.** `sms:` with no recipient opens macOS Messages on the most recent
+conversation and drops the body into it — the link is addressed to whoever you last texted. There
+is no URI that asks for a recipient picker: `sms:` takes a number or nothing. Windows and Linux
+mostly do nothing at all. A button that reliably messages the wrong person is worse than no button,
+so the sms: icon is now gated on `(hover: none) and (pointer: coarse)` — a phone or a tablet
+without a trackpad. Desktop keeps Copy, Facebook, and the OS share sheet.
+
+Same behaviour reaches the Mac's own share sheet → Messages, but that is macOS choosing the
+recipient after the hand-off, and nothing in our code touches it.
+
+**Verified on dev, all four types, real page loads** (an earlier pushState probe was rejected —
+it re-renders the component without the page, which is how a bad measurement got taken on 09-04):
+
+| | mobile | desktop |
+|---|---|---|
+| Conversation / Vote / Proposal / Project | copy · facebook · sms, each href carrying that page's own link | copy · facebook only |
+
+And with `navigator.share` stubbed: the tap hands `{title, url}` to the sheet and stays on the
+page; dismissal opens nothing; a non-abort rejection opens the web sharer with the link intact.
+(The first run of that check reported a false pass — `defineProperty` without `writable` had made
+the stub read-only, so both cases silently re-ran the original.)
+
+**Not changed, raised by Adam:** the copied link is 61 characters, e.g.
+`https://floyd.civic.social/deliberation/proc_5889e8e441d1495e`. Nothing is appended — no query
+string, no hash — the length is the `proc_` + 32 hex id. A `/s/:prefix` route resolving the first
+8 hex characters and redirecting through `processDetailPath` would take it to ~38 and be universal
+by construction, but it is a new public route and not a beta blocker.
+
+Also: `test-results/` and `playwright-report/` added to `.gitignore` — Playwright failure
+screenshots were sitting untracked and nearly went in with a `git add -A`.
+
+---
+
 ## Approval activates through the registry, and never fails silently — 2026-09-05
 
 Adam: "I would imagine we should be building that. I thought it was built already." He was right —

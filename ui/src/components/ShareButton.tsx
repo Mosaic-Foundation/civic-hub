@@ -64,6 +64,22 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
     typeof navigator !== "undefined" &&
     typeof navigator.share === "function";
 
+  // Can this device actually send a text message? A touch device with no
+  // hover — a phone, or a tablet without a trackpad.
+  //
+  // This gates the sms: button, which is BROKEN on a desktop in a way we
+  // cannot fix from a link: macOS opens Messages on the most recent
+  // conversation and drops the body into it, so the link is addressed to
+  // whoever you last texted (Adam, 2026-09-05: "it goes to my wife every
+  // time"). Windows and Linux mostly do nothing at all. There is no URI that
+  // asks for a recipient picker — sms: takes a number or nothing — so the
+  // honest fix is not to offer the channel where it misfires. Desktop keeps
+  // Copy, Facebook, and the OS share sheet.
+  const canText =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+
   async function handleCopy() {
     setError(null);
     try {
@@ -79,9 +95,33 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
   // A plain link, NOT window.open with width/height: iOS Safari treats a
   // window.open that carries window features as a popup and blocks it
   // silently, which is why Facebook worked on desktop and did nothing on a
-  // phone (Adam, 2026-09-04). An anchor is never popup-blocked. The sms:
-  // channel beside it was already an anchor, and was already working.
+  // phone (Adam, 2026-09-04). An anchor is never popup-blocked.
+  //
+  // This href is the DESKTOP path, where it works. On a phone it does not,
+  // and not for a reason we can fix in the query string: facebook.com is a
+  // universal link, so the tap is handed to the Facebook app, which has no
+  // route for /sharer/sharer.php and lands on the feed — and when it stays
+  // in the browser instead, a logged-out sharer bounces through a login that
+  // drops `u`. Either way the composer never sees the link (Adam,
+  // 2026-09-05: "it just opens Facebook in the browser").
+  //
+  // Facebook removed pre-filled sharing from mobile web years ago; the OS
+  // share sheet is now the only path from a web page into the Facebook app's
+  // composer with a link attached. So on a device that has a sheet, the
+  // Facebook button opens it — see handleFacebook.
   const facebookHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`;
+
+  function handleFacebook(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (!hasNativeShare) return; // desktop: follow the href, which works
+    e.preventDefault();
+    navigator.share({ title, url: fullUrl }).catch((err: unknown) => {
+      // Dismissing the sheet is not a failure — do nothing. Anything else
+      // (no permission, unsupported) falls back to the web sharer, so the
+      // button is never dead.
+      if (err instanceof Error && err.name === "AbortError") return;
+      window.open(facebookHref, "_blank", "noopener,noreferrer");
+    });
+  }
 
   // Plain-link channel that works from any browser, phone or desktop:
   // sms: with an empty number opens the Messages composer with the title
@@ -127,6 +167,7 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
         href={facebookHref}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={handleFacebook}
         aria-label="Share on Facebook"
         title="Share on Facebook"
       >
@@ -135,6 +176,7 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
         </svg>
       </a>
 
+      {canText && (
       <a
         className="share-icon-btn share-icon-btn--sms"
         href={smsHref}
@@ -145,6 +187,7 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
           <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
         </svg>
       </a>
+      )}
 
       {/* The phone's own share sheet — the route to Instagram, Snapchat,
           TikTok, Discord, iMessage. Labeled, so it is not mistaken for

@@ -29,3 +29,7 @@ ui/src/assets/
 # Local DB backups — may contain prod data/PII, never commit
 backups/
 supabase/.temp/
+
+# Playwright failure artifacts — screenshots and traces, never committed
+test-results/
+playwright-report/
