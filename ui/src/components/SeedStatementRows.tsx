@@ -1,6 +1,10 @@
 // Seed statements as numbered rows — one statement per row, Enter makes the
-// next one, pasting several lines splits into rows, a repeat is marked on
-// the row it sits in.
+// next one, pasting several lines splits into rows. A repeat never becomes a
+// row: paste and the assistant/draft-load drop duplicates as they come in, so
+// the creator never sees a flagged "this one won't count" row to clean up
+// (Adam, 2026-09-05: "cleaner just to not include repeats in the display").
+// The backend's submit-time dedupe stays as the backstop for the rare case of
+// hand-typing the same statement twice.
 //
 // This is a UI over the SAME newline-separated string the field has always
 // been. Rows are derived from that string and joined back into it; nothing
@@ -67,17 +71,20 @@ function dedupeKey(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-/** Indexes of rows that repeat an earlier row. First occurrence wins. */
-function repeatedRows(rows: string[]): Set<number> {
+/** Drop rows that repeat an earlier one (first occurrence wins), and drop
+ *  empties. Used at every point content arrives from somewhere other than a
+ *  keystroke — paste, an applied suggestion, a loaded draft — so a duplicate
+ *  never becomes a visible row. Mirrors the controller's dedupe key. */
+function dropDuplicates(rows: string[]): string[] {
   const seen = new Set<string>();
-  const repeats = new Set<number>();
-  rows.forEach((row, i) => {
+  const out: string[] = [];
+  for (const row of rows) {
     const key = dedupeKey(row);
-    if (!key) return;
-    if (seen.has(key)) repeats.add(i);
-    else seen.add(key);
-  });
-  return repeats;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
+  }
+  return out;
 }
 
 /** Fit a row's height to its text, so a long statement wraps instead of
@@ -105,7 +112,10 @@ export default function SeedStatementRows({
   placeholder,
   disabled = false,
 }: Props) {
-  const [rows, setRows] = useState<string[]>(() => parseRows(value));
+  const [rows, setRows] = useState<string[]>(() => {
+    const deduped = dropDuplicates(parseRows(value));
+    return deduped.length > 0 ? deduped : [""];
+  });
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
 
@@ -131,17 +141,22 @@ export default function SeedStatementRows({
   );
 
   useEffect(() => {
-    const incoming = normalize(parseRows(value));
-    if (incoming === normalize(rowsRef.current)) return; // already showing it
+    // External content — a loaded draft, an applied suggestion — is deduped as
+    // it arrives, so a repeat never becomes a row. The comparison also dedupes
+    // the CURRENT rows, so a duplicate the creator hand-typed does not force an
+    // adoption that would then yank it out from under them (it stays put and
+    // the backend drops it at submit); only genuinely new content replaces.
+    const incomingRows = dropDuplicates(parseRows(value));
+    const incoming = normalize(incomingRows);
+    if (incoming === normalize(dropDuplicates(rowsRef.current))) return;
     if (emitted.current.includes(incoming)) return; // our own edit, echoed
     // An EMPTY incoming value never replaces local rows. Creating the draft
     // server-side echoes back seed_statements:"" before the debounced field
     // save lands, and that stale baseline would wipe what the person just
     // typed. Clearing is always a local action (it goes through emit and so is
-    // already showing); the only external changes worth adopting — a loaded
-    // draft, an applied suggestion — carry content.
+    // already showing); the only external changes worth adopting carry content.
     if (incoming.length === 0) return;
-    setRows(parseRows(value));
+    setRows(incomingRows.length > 0 ? incomingRows : [""]);
   }, [value]);
 
   // After any change: size every row to its text, then honour a requested
@@ -225,6 +240,19 @@ export default function SeedStatementRows({
     e.preventDefault();
     let lines = text.split(/\r?\n/).map((s) => s.trim()).filter((s) => s.length > 0);
     if (lines.length === 0) return;
+    // Drop lines that repeat each other or a statement already in the list
+    // (every row except the one being pasted into, which this paste replaces),
+    // so a paste never introduces a duplicate row.
+    const existing = new Set(
+      rows.filter((_, idx) => idx !== i).map(dedupeKey).filter(Boolean),
+    );
+    lines = lines.filter((line) => {
+      const key = dedupeKey(line);
+      if (!key || existing.has(key)) return false;
+      existing.add(key);
+      return true;
+    });
+    if (lines.length === 0) return;
     // Never let a paste push the total past the cap; take only what fits.
     const room = Math.max(0, MAX_SEEDS - (rows.length - 1));
     lines = lines.slice(0, Math.max(1, room));
@@ -247,16 +275,14 @@ export default function SeedStatementRows({
     emit(next);
   };
 
-  const repeats = repeatedRows(rows);
-  const kept = rows.filter((r) => r.trim().length > 0).length - repeats.size;
+  const kept = rows.filter((r) => r.trim().length > 0).length;
 
   return (
     <div className="seed-rows" role="group" aria-labelledby={labelledBy}>
       <ol className="seed-rows-list">
         {rows.map((row, i) => {
-          const isRepeat = repeats.has(i);
           return (
-            <li key={i} className={`seed-row${isRepeat ? " seed-row--repeat" : ""}`}>
+            <li key={i} className="seed-row">
               <span className="seed-row-num" aria-hidden="true">
                 {i + 1}.
               </span>
@@ -280,15 +306,9 @@ export default function SeedStatementRows({
                   onPaste={onPaste(i)}
                   placeholder={i === 0 && rows.length === 1 ? placeholder : undefined}
                   aria-label={`Statement ${i + 1}`}
-                  aria-invalid={isRepeat || undefined}
                   enterKeyHint="next"
                   disabled={disabled}
                 />
-                {isRepeat && (
-                  <span className="seed-row-note">
-                    Repeats an earlier statement — it will be skipped.
-                  </span>
-                )}
               </div>
               <button
                 type="button"
@@ -320,11 +340,6 @@ export default function SeedStatementRows({
         {kept > 0 && (
           <p className="seed-statement-count">
             {kept} statement{kept !== 1 ? "s" : ""}
-            {repeats.size > 0 && (
-              <span className="seed-statement-dupes">
-                {" "}· {repeats.size} repeat{repeats.size !== 1 ? "s" : ""} will be skipped
-              </span>
-            )}
           </p>
         )}
       </div>

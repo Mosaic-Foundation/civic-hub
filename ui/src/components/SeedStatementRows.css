@@ -49,16 +49,6 @@
   overflow: hidden;
 }
 
-.seed-row--repeat .seed-row-input {
-  border-color: var(--color-warning, #b45309);
-  background: var(--color-warning-bg, #fff7ed);
-}
-
-.seed-row-note {
-  font-size: var(--font-size-xs);
-  color: var(--color-warning-fg, #8a5a00);
-}
-
 .seed-row-remove {
   flex: 0 0 auto;
   display: flex;
