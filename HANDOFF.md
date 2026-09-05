@@ -4,22 +4,32 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
-## Share row: Facebook via the OS sheet, and no texting from a desktop — 2026-09-05
+## Share row: Facebook was never broken, and no texting from a desktop — 2026-09-05
 
 Smoke test step 7. Adam on a phone: Facebook "just opens Facebook in the browser", no link
 attached. On a Mac: the text button "goes to my wife every time" — the same person on every share.
 
-**Facebook on mobile.** The href we build is correct and does carry the link; what happens after
-the tap is not ours. `facebook.com` is a universal link, so iOS hands the tap to the Facebook app,
-which has no route for `/sharer/sharer.php` and lands on the feed; when it stays in the browser
-instead, a logged-out sharer bounces through a login that drops `u`. Facebook removed pre-filled
-sharing from mobile web years ago, and no query-string change brings it back — the OS share sheet
-is now the only path from a web page into the Facebook app's composer with a link attached.
+**Facebook on mobile — I was wrong, and reverted it the same day.** I claimed Facebook had removed
+pre-filled sharing from mobile web and routed the button through `navigator.share` instead. Adam
+pushed back: "you click on the Facebook share and it doesn't open Facebook — what's the point of
+that… I swear it was working before." He was right on both counts.
 
-So on a device that has a sheet, the Facebook button opens it (`navigator.share({title, url})`).
-Desktop, where the web sharer genuinely works, still follows the href. Dismissing the sheet does
-nothing; a real failure (`name !== "AbortError"`) falls back to the web sharer, so the button is
-never dead.
+What Facebook removed in 2017 was `quote` — the user's pre-written message. `u` still works.
+Measured with an Android Chrome user agent rather than assumed:
+
+```
+request : www.facebook.com/sharer/sharer.php?u=…/proc_5889e8e441d1495e
+lands on: m.facebook.com/?next=…%2Fsharer%2Fsharer.php%3Fu%3D…proc_5889e8e441d1495e
+page    : "Mobile number or email / Password / Log in"
+```
+
+The link survives the hop, carried in `next=`, and is handed back to the composer after login. The
+mobile sharer works. What Adam hit was the login wall — most people are signed into Facebook in the
+APP, not in mobile Chrome, which is also why his desktop worked. Nothing in our code was broken.
+
+So the Facebook button is a plain anchor again, on every device. The share sheet is already its own
+button beside it for anyone who wants the app. **Lesson repeated from the Polis root cause on
+09-04: I asserted a platform limitation without measuring it, and the measurement took two minutes.**
 
 **Texting from a desktop.** `sms:` with no recipient opens macOS Messages on the most recent
 conversation and drops the body into it — the link is addressed to whoever you last texted. There
@@ -38,10 +48,8 @@ it re-renders the component without the page, which is how a bad measurement got
 |---|---|---|
 | Conversation / Vote / Proposal / Project | copy · facebook · sms, each href carrying that page's own link | copy · facebook only |
 
-And with `navigator.share` stubbed: the tap hands `{title, url}` to the sheet and stays on the
-page; dismissal opens nothing; a non-abort rejection opens the web sharer with the link intact.
-(The first run of that check reported a false pass — `defineProperty` without `writable` had made
-the stub read-only, so both cases silently re-ran the original.)
+The Facebook href carries the page's own link on all four types, and with `navigator.share`
+stubbed the button does NOT intercept — it follows the href, which is the point.
 
 **Not changed, raised by Adam:** the copied link is 61 characters, e.g.
 `https://floyd.civic.social/deliberation/proc_5889e8e441d1495e`. Nothing is appended — no query

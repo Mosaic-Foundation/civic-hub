@@ -97,31 +97,21 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
   // silently, which is why Facebook worked on desktop and did nothing on a
   // phone (Adam, 2026-09-04). An anchor is never popup-blocked.
   //
-  // This href is the DESKTOP path, where it works. On a phone it does not,
-  // and not for a reason we can fix in the query string: facebook.com is a
-  // universal link, so the tap is handed to the Facebook app, which has no
-  // route for /sharer/sharer.php and lands on the feed — and when it stays
-  // in the browser instead, a logged-out sharer bounces through a login that
-  // drops `u`. Either way the composer never sees the link (Adam,
-  // 2026-09-05: "it just opens Facebook in the browser").
+  // This is the whole Facebook integration, on every device, and it is
+  // correct — measured 2026-09-05 with an Android Chrome user agent rather
+  // than assumed. www.facebook.com/sharer redirects a phone to
+  //   m.facebook.com/?next=…%2Fsharer%2Fsharer.php%3Fu%3D<our link>
+  // so the link survives the hop and is handed back to the composer after
+  // login. What Facebook removed in 2017 was the `quote` parameter — the
+  // user's pre-written message — NOT `u`.
   //
-  // Facebook removed pre-filled sharing from mobile web years ago; the OS
-  // share sheet is now the only path from a web page into the Facebook app's
-  // composer with a link attached. So on a device that has a sheet, the
-  // Facebook button opens it — see handleFacebook.
+  // Adam saw "it just opens Facebook and doesn't carry the link" on his
+  // phone: that is the login wall above, because most people are signed into
+  // Facebook in the APP and not in mobile Chrome. Nothing to fix here; a
+  // brief attempt to route mobile through navigator.share instead was
+  // reverted, because tapping a Facebook button should open Facebook. The
+  // share sheet is already its own button beside this one.
   const facebookHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`;
-
-  function handleFacebook(e: React.MouseEvent<HTMLAnchorElement>) {
-    if (!hasNativeShare) return; // desktop: follow the href, which works
-    e.preventDefault();
-    navigator.share({ title, url: fullUrl }).catch((err: unknown) => {
-      // Dismissing the sheet is not a failure — do nothing. Anything else
-      // (no permission, unsupported) falls back to the web sharer, so the
-      // button is never dead.
-      if (err instanceof Error && err.name === "AbortError") return;
-      window.open(facebookHref, "_blank", "noopener,noreferrer");
-    });
-  }
 
   // Plain-link channel that works from any browser, phone or desktop:
   // sms: with an empty number opens the Messages composer with the title
@@ -167,7 +157,6 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
         href={facebookHref}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={handleFacebook}
         aria-label="Share on Facebook"
         title="Share on Facebook"
       >
