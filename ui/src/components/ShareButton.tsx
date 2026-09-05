@@ -97,21 +97,38 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
   // silently, which is why Facebook worked on desktop and did nothing on a
   // phone (Adam, 2026-09-04). An anchor is never popup-blocked.
   //
-  // This is the whole Facebook integration, on every device, and it is
-  // correct — measured 2026-09-05 with an Android Chrome user agent rather
-  // than assumed. www.facebook.com/sharer redirects a phone to
-  //   m.facebook.com/?next=…%2Fsharer%2Fsharer.php%3Fu%3D<our link>
-  // so the link survives the hop and is handed back to the composer after
-  // login. What Facebook removed in 2017 was the `quote` parameter — the
-  // user's pre-written message — NOT `u`.
+  // The web sharer, which is the DESKTOP path and works there. `u` is fine —
+  // what Facebook removed in 2017 was `quote`, the user's pre-written
+  // message, not the link.
   //
-  // Adam saw "it just opens Facebook and doesn't carry the link" on his
-  // phone: that is the login wall above, because most people are signed into
-  // Facebook in the APP and not in mobile Chrome. Nothing to fix here; a
-  // brief attempt to route mobile through navigator.share instead was
-  // reverted, because tapping a Facebook button should open Facebook. The
-  // share sheet is already its own button beside this one.
+  // On an iPhone the tap never reaches a browser. facebook.com is a universal
+  // link, so iOS hands it to the Facebook app, which has no route for
+  // /sharer/sharer.php and lands on the feed with no draft. The evidence was
+  // Adam's, not a measurement of mine: "a little Chrome text at the top left
+  // to go back to Chrome" is iOS's Back-to-Chrome banner, which only appears
+  // once another app has taken the screen. (My own probe found a login wall
+  // and I nearly filed this as "not signed into Facebook in Chrome" — that is
+  // what a BROWSER sees, and his tap never gets that far.)
+  //
+  // Facebook publishes no way to open its app's composer from a web page:
+  // fb:// has no composer variant that accepts a link. The OS share sheet is
+  // the only supported route from a web page into the app WITH the link
+  // attached, so on a device that has a sheet, that is what this button does
+  // (Adam chose it, 2026-09-05, over always-web and over dropping the icon).
+  // One extra tap is the cost of Facebook's own policy.
   const facebookHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`;
+
+  function handleFacebook(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (!hasNativeShare) return; // desktop: follow the href, which works
+    e.preventDefault();
+    navigator.share({ title, url: fullUrl }).catch((err: unknown) => {
+      // Dismissing the sheet is not a failure — do nothing. Anything else
+      // (no permission, sheet unavailable) falls through to the web sharer,
+      // so the button is never dead and the link still travels.
+      if (err instanceof Error && err.name === "AbortError") return;
+      window.open(facebookHref, "_blank", "noopener,noreferrer");
+    });
+  }
 
   // Plain-link channel that works from any browser, phone or desktop:
   // sms: with an empty number opens the Messages composer with the title
@@ -157,6 +174,7 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
         href={facebookHref}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={handleFacebook}
         aria-label="Share on Facebook"
         title="Share on Facebook"
       >
