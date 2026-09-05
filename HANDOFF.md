@@ -4,6 +4,30 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Admin review buttons went missing between reviews — 2026-09-05
+
+Adam, testing the admin path: the Approve / Request changes / Decline buttons were sometimes absent
+on a review, and a hard refresh brought them back — two tabs on the same URL, one with buttons and
+one without.
+
+Not caching. `AdminReviews` is one page that switches between list and detail by the `:id` route
+param, and the buttons render only while `isPending && !actionMessage` (and while no changes/decline
+form is open). The effect that loads a review when `routeId` changes re-fetched the detail but reset
+none of the per-review UI state. So moving between reviews WITHOUT a full page reload — an email
+link followed in the same tab, the in-app list, or browser back/forward (all client-side route
+changes) — carried the previous review's `actionMessage` or open form across, and `!actionMessage`
+hid the buttons on a review that was genuinely pending. A hard refresh remounted the page, cleared
+the state, and the buttons returned — exactly the symptom.
+
+Fix: the `routeId` effect now clears `detail`, `actionMessage`, the changes/decline forms and note
+before loading the next review. Clearing `detail` also stops one review's content showing while the
+next loads.
+
+Verified on dev as admin: opened review A's "Request changes" form (buttons hidden), then
+client-navigated to review B by popstate (what back/forward does, no reload) — B showed all three
+buttons, no stale form, no stale message, status pending. Neither review was mutated (only a form
+was opened). UI build clean.
+
 ## Seed statements become numbered rows — 2026-09-05
 
 Adam, on the plain textarea: "some little more distinguishment between one seed statement and the

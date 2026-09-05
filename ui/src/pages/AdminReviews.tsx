@@ -99,6 +99,20 @@ export default function AdminReviews() {
 
   useEffect(() => {
     if (routeId) {
+      // Reset every piece of per-review UI state before loading the next one.
+      // Without this, moving between reviews WITHOUT a full page reload — an
+      // email link, back/forward, or the in-app list — carried the previous
+      // review's state over: a lingering actionMessage (or an open changes/
+      // decline form) hides the Approve / Request changes / Decline buttons,
+      // because they render only while `isPending && !actionMessage`. That is
+      // the "buttons missing until I refresh" report (Adam, 2026-09-05): a
+      // hard refresh remounted the page and cleared it. Clearing `detail` too
+      // stops another review's content showing while this one loads.
+      setDetail(null);
+      setActionMessage(null);
+      setShowChangesForm(false);
+      setShowDeclineForm(false);
+      setNoteText("");
       setLoading(true);
       setError(null);
       adminGetReview(routeId)
