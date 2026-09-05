@@ -4,33 +4,42 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
-## Share row: Facebook reaches the app via the OS sheet, and no texting from a desktop — 2026-09-05
+## Share row: the row now differs by device, and each button has one job — 2026-09-05
 
 Smoke test step 7. Adam on a phone: Facebook "just opens Facebook in the browser", no link
 attached. On a Mac: the text button "goes to my wife every time" — the same person on every share.
 
-**Facebook on mobile — two wrong turns before the evidence arrived.** First I claimed Facebook had
-removed pre-filled mobile sharing and routed the button through `navigator.share`. Adam pushed back
-("you click on the Facebook share and it doesn't open Facebook… I swear it was working before") and
-a measurement with an Android Chrome UA showed `sharer.php` keeps the link intact through its login
-redirect, carried in `next=`. So I reverted, concluding he simply was not signed into Facebook in
-mobile Chrome.
+**Facebook is now desktop-only.** It took four attempts to get here and the reasoning is worth
+keeping, because every rejected option looked right at the time.
 
-He was signed in, and has the app. The thing that actually settled it was his description, not any
-probe of mine: **"a little Chrome text at the top left to go back to Chrome."** That is iOS's
-Back-to-Chrome banner, which only appears once another app has taken the screen. `facebook.com` is
-a universal link, so iOS hands the tap to the Facebook app before a browser is ever involved; the
-app has no route for `/sharer/sharer.php` and lands on the feed with no draft. My login-wall
-measurement was real but irrelevant — that is what a BROWSER sees, and his tap never gets there.
+The symptom: on Adam's iPhone the button opened Facebook with no draft and no link. The evidence
+that explained it was his, not a probe of mine — **"a little Chrome text at the top left to go back
+to Chrome"**, which is iOS's Back-to-Chrome banner and only appears once another app has the screen.
+`facebook.com` is a universal link; iOS hands the tap to the Facebook app, which has no route for
+`/sharer/sharer.php` and lands on the feed. The tap never reaches a browser, which is why my own
+measurement (a logged-out login wall, link intact in `next=`) was true and beside the point.
 
-Facebook publishes no way to open its app's composer from a web page (`fb://` has no composer
-variant taking a link), so the OS share sheet is the only supported route from a web page into the
-app with the link attached. Adam chose that over always-web and over dropping the icon on phones.
-On a device with a sheet the Facebook button opens it; desktop still follows the href, where it
-works. Dismissal does nothing; a non-abort rejection falls back to the web sharer.
+| Attempt | Why it was dropped |
+|---|---|
+| Keep the web sharer | iOS gives the tap to the app; feed, no draft |
+| `navigator.share()` from the Facebook button | Works — but then it is identical to the Share… button beside it. Adam: "seems to have reverted back to behave exactly like the other share button" |
+| `window.open()` to `m.facebook.com` | Two dodges at once (JS-initiated navigation, a host the app may not claim). Untestable from here, and moot once the button goes |
+| Ask the sheet to surface Facebook first | Not possible. `navigator.share` takes only title/text/url/files; iOS ranks targets by how often that PERSON shares to them. They can reorder it themselves; a page cannot |
 
-**Twice now — the Polis root cause on 09-04, this on 09-05 — I have asserted a platform behaviour
-instead of measuring it, and been corrected by Adam noticing something on his own screen.**
+So the Facebook icon is not rendered on a touch device. On a phone the labelled **Share…** button
+is the route to Facebook — Adam confirmed a real post through it — and copy-link is the backstop.
+Adam: "People can always just copy and paste the link." Desktop keeps the Facebook button, where
+the web sharer genuinely works.
+
+**What each device now shows:**
+
+| | Copy | Facebook | Text | Share… |
+|---|---|---|---|---|
+| Desktop | ✓ | ✓ | — | ✓ where the browser has a sheet |
+| Phone / tablet | ✓ | — | ✓ | ✓ |
+
+**Twice this week — the Polis root cause on 09-04, Facebook on 09-05 — I asserted a platform
+behaviour instead of measuring it, and was corrected by Adam noticing something on his own screen.**
 
 **Texting from a desktop.** `sms:` with no recipient opens macOS Messages on the most recent
 conversation and drops the body into it — the link is addressed to whoever you last texted. There
@@ -49,9 +58,10 @@ it re-renders the component without the page, which is how a bad measurement got
 |---|---|---|
 | Conversation / Vote / Proposal / Project | copy · facebook · sms, each href carrying that page's own link | copy · facebook only |
 
-With `navigator.share` stubbed: the tap hands `{title, url}` to the sheet, stays on the page, and
-does not open the web sharer; dismissal opens nothing; a `NotAllowedError` opens the web sharer with
-the link intact. Without it (desktop) the anchor is followed unchanged.
+Re-verified after the button was dropped: at mobile width all four types show copy · text · Share…
+with no Facebook icon; at desktop width all four show copy · Facebook (href carrying that page's
+own link) and no text button. Checked with real page loads, `h1` confirming the right page each
+time.
 
 **Not changed, raised by Adam:** the copied link is 61 characters, e.g.
 `https://floyd.civic.social/deliberation/proc_5889e8e441d1495e`. Nothing is appended — no query

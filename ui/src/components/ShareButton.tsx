@@ -75,7 +75,7 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
   // asks for a recipient picker — sms: takes a number or nothing — so the
   // honest fix is not to offer the channel where it misfires. Desktop keeps
   // Copy, Facebook, and the OS share sheet.
-  const canText =
+  const isTouchDevice =
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
     window.matchMedia("(hover: none) and (pointer: coarse)").matches;
@@ -97,38 +97,34 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
   // silently, which is why Facebook worked on desktop and did nothing on a
   // phone (Adam, 2026-09-04). An anchor is never popup-blocked.
   //
-  // The web sharer, which is the DESKTOP path and works there. `u` is fine —
-  // what Facebook removed in 2017 was `quote`, the user's pre-written
-  // message, not the link.
+  // DESKTOP ONLY — see the button below, which is not rendered on a phone.
   //
-  // On an iPhone the tap never reaches a browser. facebook.com is a universal
-  // link, so iOS hands it to the Facebook app, which has no route for
-  // /sharer/sharer.php and lands on the feed with no draft. The evidence was
-  // Adam's, not a measurement of mine: "a little Chrome text at the top left
-  // to go back to Chrome" is iOS's Back-to-Chrome banner, which only appears
-  // once another app has taken the screen. (My own probe found a login wall
-  // and I nearly filed this as "not signed into Facebook in Chrome" — that is
-  // what a BROWSER sees, and his tap never gets that far.)
+  // `u` is fine; what Facebook removed in 2017 was `quote`, the user's
+  // pre-written message. Measured 2026-09-05: the link even survives
+  // Facebook's own mobile redirect, carried in `next=`.
   //
-  // Facebook publishes no way to open its app's composer from a web page:
-  // fb:// has no composer variant that accepts a link. The OS share sheet is
-  // the only supported route from a web page into the app WITH the link
-  // attached, so on a device that has a sheet, that is what this button does
-  // (Adam chose it, 2026-09-05, over always-web and over dropping the icon).
-  // One extra tap is the cost of Facebook's own policy.
+  // It is not rendered on a phone because there is no way to make it do
+  // anything useful there. `facebook.com` is a universal link, so iOS hands
+  // the tap to the Facebook app, which has no route for /sharer/sharer.php
+  // and lands on the feed with no draft. (Adam's evidence, not a probe of
+  // mine: "a little Chrome text at the top left to go back to Chrome" — the
+  // Back-to-Chrome banner only appears once another app has the screen.)
+  //
+  // Three things were tried and rejected in turn:
+  //   - navigator.share() from this button: works, but is then identical to
+  //     the Share… button beside it. Adam: "seems to have reverted back to
+  //     behave exactly like the other share button."
+  //   - window.open() to m.facebook.com, to dodge the universal link two
+  //     ways at once (JS-initiated navigation, and a host the app may not
+  //     claim): moot once the button is gone from phones.
+  //   - asking the OS sheet to surface Facebook first: navigator.share takes
+  //     only title/text/url/files. iOS ranks targets by how often that PERSON
+  //     shares to them and gives a page no say. The person can reorder it
+  //     themselves; we cannot do it for them.
+  //
+  // So on a phone the labelled Share… button is the route to Facebook — it
+  // works, Adam confirmed a real post — and copy-link is the backstop.
   const facebookHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`;
-
-  function handleFacebook(e: React.MouseEvent<HTMLAnchorElement>) {
-    if (!hasNativeShare) return; // desktop: follow the href, which works
-    e.preventDefault();
-    navigator.share({ title, url: fullUrl }).catch((err: unknown) => {
-      // Dismissing the sheet is not a failure — do nothing. Anything else
-      // (no permission, sheet unavailable) falls through to the web sharer,
-      // so the button is never dead and the link still travels.
-      if (err instanceof Error && err.name === "AbortError") return;
-      window.open(facebookHref, "_blank", "noopener,noreferrer");
-    });
-  }
 
   // Plain-link channel that works from any browser, phone or desktop:
   // sms: with an empty number opens the Messages composer with the title
@@ -169,12 +165,12 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
         )}
       </button>
 
+      {!isTouchDevice && (
       <a
         className="share-icon-btn share-icon-btn--facebook"
         href={facebookHref}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={handleFacebook}
         aria-label="Share on Facebook"
         title="Share on Facebook"
       >
@@ -182,8 +178,9 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
         </svg>
       </a>
+      )}
 
-      {canText && (
+      {isTouchDevice && (
       <a
         className="share-icon-btn share-icon-btn--sms"
         href={smsHref}
