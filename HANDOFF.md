@@ -4,6 +4,55 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Seed statements become numbered rows — 2026-09-05
+
+Adam, on the plain textarea: "some little more distinguishment between one seed statement and the
+next … when they hit enter that next definitive row marker is generated." Then: "how big of a job
+is it to replace it with numbered rows and have the AI assistant pick that up?"
+
+Smaller than first sized, because the integration point I feared did not exist. `seed_statements`
+is a plain newline-separated STRING the whole way through — draft column, the assistant's
+one-per-line suggestion, Apply-suggestion — and is only split into an array at submit
+(`deliberationDraftController`). So `SeedStatementRows` is a pure UI over that string: rows derive
+from it, edits join back into it. **No backend, schema, spec, or assistant-prompt change.** On the
+wire nothing moves — the four canonical specs govern activities and descriptors, not a draft-form
+control.
+
+`components/SeedStatementRows.tsx` — numbered rows, each an auto-growing one-line textarea:
+Enter splits at the caret and focuses the new row; Backspace at column 0 merges into the previous
+row (the inverse); × removes; **paste of several lines splits into rows** (blank lines and trailing
+newlines dropped) rather than dumping everything into one; a repeat is flagged on its own row
+(case/space-insensitive, mirroring the controller's dedupe) with the count beneath.
+
+**Two bugs found and fixed during verification, not after:**
+
+1. *The empty-baseline clobber.* Creating the draft server-side echoes back `seed_statements:""`
+   before the debounced field save lands, and my first reconciler adopted it — wiping rows the
+   person had just typed. This is the exact round-trip hazard the file's own header comment warns
+   about; my `emitted`-echo guard was necessary but not sufficient. Fix: an empty incoming value
+   never replaces local rows (clearing is always a local action that is already showing). The old
+   uncontrolled textarea sidestepped this by never re-syncing from the prop; a controlled rows
+   editor has to reconcile, so it has to get this right.
+2. *Apply-suggestion's DOM write.* `useDraftFlow` writes applied text straight into
+   `#draft-<field>` because the other forms are uncontrolled. That would have jammed a whole
+   multi-line value into row 1. The rows now carry `data-controlled="true"` and that write skips
+   them; the value reaches them through the draft prop instead.
+
+**Verified on dev, driving React's real event system** (the browser tool's synthetic Enter does not
+reach a React key handler — it silently no-ops, which is why the first scripted pass looked broken;
+dispatched `KeyboardEvent`s exercise the true path). Confirmed: three rows number 1–3; a
+case-different duplicate flags on row 3 with "2 statements · 1 repeat will be skipped"; mid-caret
+Enter splits precisely; Backspace merges at the seam; × and empty-row cleanup; a 4-line paste (with
+a blank and a trailing newline) becomes 3 clean rows; the value survives the debounce + draft-create
+round trip that used to wipe it; the saved string is correct in the DB; and loading a draft with
+`?draft=` repopulates all rows — the same non-empty-adoption path Apply-suggestion uses. Backend
+tsc clean, `tests/unit` 717/717.
+
+(Screenshots were unavailable — the browser pane returned blank frames all session — so the visual
+was verified from the live DOM and accessibility attributes rather than an image.)
+
+---
+
 ## "Get suggestions" is only offered once there is something to suggest on — 2026-09-05
 
 Adam: "you can click get suggestions on a blank form, which doesn't make any sense and is confusing

@@ -423,11 +423,17 @@ export function useDraftFlow<D extends BaseDraft>({
         { skipModifiedFlag: true, assistantApplied: true },
       );
 
+      // The forms' inputs are uncontrolled (defaultValue), so the applied
+      // text is written straight into the DOM to show up. An input that
+      // owns its own value — the seed-statement rows, which derive from the
+      // draft string and would be corrupted by a raw write of the whole
+      // multi-line value into one row — declares data-controlled="true" and
+      // is left alone; the value reaches it through the draft prop instead.
       const el = document.getElementById(`draft-${suggestion.field}`) as
         | HTMLInputElement
         | HTMLTextAreaElement
         | null;
-      if (el) el.value = newValue;
+      if (el && el.dataset.controlled !== "true") el.value = newValue;
     },
     [applyFields, queuePatch],
   );

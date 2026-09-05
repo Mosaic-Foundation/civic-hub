@@ -12,6 +12,7 @@ import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
 import MarkdownTextarea from "./MarkdownTextarea";
+import SeedStatementRows from "./SeedStatementRows";
 
 interface Props {
   draft: DeliberationDraft;
@@ -88,32 +89,6 @@ function getStatusClass(draft: DeliberationDraft, reviewFailed?: boolean): strin
   return "status-ready";
 }
 
-/** Live read-back of how the field's text will actually be split: one line,
- *  one statement, repeats dropped. Mirrors the parse in
- *  deliberationDraftController. */
-function SeedStatementCount({ raw }: { raw: string }) {
-  const lines = raw.split("\n").map((s) => s.trim()).filter((s) => s.length > 0);
-  const seen = new Set<string>();
-  let duplicates = 0;
-  for (const line of lines) {
-    const key = line.toLowerCase().replace(/\s+/g, " ");
-    if (seen.has(key)) duplicates++;
-    else seen.add(key);
-  }
-  if (lines.length === 0) return null;
-  const kept = seen.size;
-  return (
-    <p className="seed-statement-count">
-      {kept} statement{kept !== 1 ? "s" : ""}, one per line
-      {duplicates > 0 && (
-        <span className="seed-statement-dupes">
-          {" "}· {duplicates} repeat{duplicates !== 1 ? "s" : ""} will be skipped
-        </span>
-      )}
-    </p>
-  );
-}
-
 export default function DeliberationDraftingForm({
   draft,
   links,
@@ -135,15 +110,28 @@ export default function DeliberationDraftingForm({
   // the form kept the text but the server never received it.
   const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const handleChange = useCallback(
-    (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const value = e.target.value;
+  const queueField = useCallback(
+    (field: string, value: string) => {
       if (debounceRef.current[field]) clearTimeout(debounceRef.current[field]);
       debounceRef.current[field] = setTimeout(() => {
         onFieldChange(field, value);
       }, 800);
     },
     [onFieldChange],
+  );
+
+  const handleChange = useCallback(
+    (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      queueField(field, e.target.value);
+    },
+    [queueField],
+  );
+
+  // Seed statements arrive as a value, not an event: the rows component owns
+  // its inputs and hands up the joined string.
+  const handleSeedChange = useCallback(
+    (value: string) => queueField("seed_statements", value),
+    [queueField],
   );
 
   const canSubmit =
@@ -219,24 +207,27 @@ export default function DeliberationDraftingForm({
         />
 
         <div className="form-field">
-          <label htmlFor="draft-seed_statements" className="form-label">
+          <label
+            id="draft-seed_statements-label"
+            htmlFor="draft-seed_statements"
+            className="form-label"
+          >
             Seed statements <span className="optional">(optional)</span>
           </label>
-          <textarea
+          {/* Numbered rows over the same newline-joined string the field has
+              always stored. One row = one statement was the whole contract
+              of this field and a plain textarea could not show it — a creator
+              could not see where one statement ended, or that two were the
+              same. A repeat is not cosmetic: Polis rejects it, and before
+              2026-09-04 that aborted the conversation's start entirely. */}
+          <SeedStatementRows
             id="draft-seed_statements"
-            className="form-textarea form-textarea-small"
-            defaultValue={draft.seed_statements}
-            onChange={handleChange("seed_statements")}
+            labelledBy="draft-seed_statements-label"
+            value={draft.seed_statements}
+            onChange={handleSeedChange}
             placeholder={PLACEHOLDERS.seeds}
-            rows={6}
             disabled={disabled}
           />
-          {/* One line = one statement is the whole contract of this field, and
-              nothing on screen said so — a creator could not see how their
-              text would be split, or that two lines were the same statement.
-              A repeat is not cosmetic: Polis rejects it, and before
-              2026-09-04 that aborted the conversation's start entirely. */}
-          <SeedStatementCount raw={draft.seed_statements} />
           <FieldGuide guidance={fieldGuidance} field="seed_statements" />
         </div>
 

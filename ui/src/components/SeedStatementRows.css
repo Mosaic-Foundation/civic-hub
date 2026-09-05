@@ -1,0 +1,126 @@
+/* Seed statements as numbered rows. Matches the vote form's option rows
+   (VoteDraftingForm.css) rather than inventing a second repeater look. */
+
+.seed-rows-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.seed-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+/* The marker the plain textarea could never show. Sized to the input's
+   first line so "1." sits beside the start of the statement. */
+.seed-row-num {
+  flex: 0 0 1.75rem;
+  padding-top: 0.6rem;
+  text-align: right;
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+.seed-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+/* One line tall until the text needs more; the component sets the height
+   to the content, so a long statement wraps rather than scrolls. */
+.seed-row-input {
+  width: 100%;
+  min-height: 0;
+  line-height: 1.5;
+  resize: none;
+  overflow: hidden;
+}
+
+.seed-row--repeat .seed-row-input {
+  border-color: var(--color-warning, #b45309);
+  background: var(--color-warning-bg, #fff7ed);
+}
+
+.seed-row-note {
+  font-size: var(--font-size-xs);
+  color: var(--color-warning-fg, #8a5a00);
+}
+
+.seed-row-remove {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-top: 0.35rem;
+  padding: 0;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.seed-row-remove:hover:not(:disabled) {
+  color: var(--color-error, #dc2626);
+  border-color: var(--color-border);
+}
+
+.seed-row-remove:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.seed-row-remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.seed-rows-foot {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+
+.seed-rows-add {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.seed-rows-add:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+
+.seed-rows-add:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.seed-rows-add:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.seed-rows-foot .seed-statement-count {
+  margin: 0;
+}
