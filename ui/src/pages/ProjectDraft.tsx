@@ -193,6 +193,8 @@ export default function ProjectDraft() {
           disabled={submitting}
           reviewLoading={flow.reviewing}
           fieldGuidance={flow.config?.field_guidance}
+          onGetSuggestions={editProcessId ? undefined : flow.shellAssistant?.onSuggest}
+          suggesting={flow.shellAssistant?.suggesting}
         />
         )}
       </DraftShell>

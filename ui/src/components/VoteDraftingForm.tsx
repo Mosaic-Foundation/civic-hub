@@ -3,6 +3,7 @@ import type { AssistantFieldGuidance, VoteDraft, DraftSuggestion } from "../serv
 import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
+import SuggestFooterButton from "./SuggestFooterButton";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
@@ -20,6 +21,10 @@ interface Props {
   onMethodChange: (method: string, options: string[] | null) => void;
   onReview: () => void;
   onSubmit: () => void;
+  /** shellAssistant.onSuggest — a footer echo of the top affordance's Get
+   *  suggestions, so a mobile creator who scrolls to the bottom still finds it. */
+  onGetSuggestions?: () => void;
+  suggesting?: boolean;
   /** Per-field inline guidance served by the assistant config endpoint. */
   fieldGuidance?: AssistantFieldGuidance[];
   disabled: boolean;
@@ -113,6 +118,8 @@ export default function VoteDraftingForm({
   onMethodChange,
   onReview,
   onSubmit,
+  onGetSuggestions,
+  suggesting,
   disabled,
   reviewLoading,
   reviewFailed,
@@ -338,6 +345,11 @@ export default function VoteDraftingForm({
       </div>
 
       <div className="drafting-form-footer">
+        <SuggestFooterButton
+          onGetSuggestions={onGetSuggestions}
+          suggesting={suggesting}
+          disabled={disabled}
+        />
         <div className={`draft-status ${getStatusClass(draft, reviewFailed)}`}>
           {getStatusText(draft, reviewFailed)}
         </div>

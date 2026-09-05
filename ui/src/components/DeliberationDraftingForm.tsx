@@ -11,6 +11,7 @@ import ProcessLinkField from "./ProcessLinkField";
 import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
+import SuggestFooterButton from "./SuggestFooterButton";
 import MarkdownTextarea from "./MarkdownTextarea";
 import SeedStatementRows from "./SeedStatementRows";
 
@@ -27,6 +28,10 @@ interface Props {
   onThresholdChange: (n: number | null) => void;
   onReview: () => void;
   onSubmit: () => void;
+  /** shellAssistant.onSuggest — a footer echo of the top affordance's Get
+   *  suggestions, so a mobile creator who scrolls to the bottom still finds it. */
+  onGetSuggestions?: () => void;
+  suggesting?: boolean;
   disabled: boolean;
   reviewLoading?: boolean;
   reviewFailed?: boolean;
@@ -100,6 +105,8 @@ export default function DeliberationDraftingForm({
   onThresholdChange,
   onReview,
   onSubmit,
+  onGetSuggestions,
+  suggesting,
   disabled,
   reviewLoading,
   reviewFailed,
@@ -283,6 +290,11 @@ export default function DeliberationDraftingForm({
       </div>
 
       <div className="drafting-form-footer">
+        <SuggestFooterButton
+          onGetSuggestions={onGetSuggestions}
+          suggesting={suggesting}
+          disabled={disabled}
+        />
         <div className={`draft-status ${getStatusClass(draft, reviewFailed)}`}>
           {getStatusText(draft, reviewFailed)}
         </div>

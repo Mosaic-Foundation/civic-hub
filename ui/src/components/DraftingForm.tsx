@@ -4,6 +4,7 @@ import "./DraftingForm.css";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
+import SuggestFooterButton from "./SuggestFooterButton";
 
 /** Inline hint + example under a field — the same best-practices content
  *  the assistant works from, so manual drafters get the quality lift too. */
@@ -41,6 +42,10 @@ interface Props {
   onDurationChange: (ms: number) => void;
   onReview: () => void;
   onSubmit: () => void;
+  /** shellAssistant.onSuggest — a footer echo of the top affordance's Get
+   *  suggestions, so a mobile creator who scrolls to the bottom still finds it. */
+  onGetSuggestions?: () => void;
+  suggesting?: boolean;
   disabled: boolean;
   reviewLoading?: boolean;
   reviewFailed?: boolean;
@@ -127,6 +132,8 @@ export default function DraftingForm({
   onDurationChange,
   onReview,
   onSubmit,
+  onGetSuggestions,
+  suggesting,
   disabled,
   reviewLoading,
   reviewFailed,
@@ -268,6 +275,11 @@ export default function DraftingForm({
       </div>
 
       <div className="drafting-form-footer">
+        <SuggestFooterButton
+          onGetSuggestions={onGetSuggestions}
+          suggesting={suggesting}
+          disabled={disabled}
+        />
         <div className={`draft-status ${getStatusClass(draft, reviewFailed)}`}>
           {getStatusText(draft, reviewFailed)}
         </div>

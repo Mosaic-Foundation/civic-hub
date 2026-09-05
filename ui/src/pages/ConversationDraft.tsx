@@ -185,6 +185,8 @@ export default function ConversationDraft() {
           reviewLoading={flow.reviewing}
           reviewFailed={flow.reviewFailed}
           fieldGuidance={flow.config?.field_guidance}
+          onGetSuggestions={flow.shellAssistant?.onSuggest}
+          suggesting={flow.shellAssistant?.suggesting}
         />
         )}
       </DraftShell>

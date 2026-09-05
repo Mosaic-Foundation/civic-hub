@@ -127,6 +127,28 @@ the raw DOM write).
 
 ---
 
+## "Get suggestions" reaches the bottom of the form too — 2026-09-05
+
+Adam, filling a conversation on his phone: the assistant affordance (with Get suggestions) sits at
+the TOP of the form, so after scrolling down through the fields to the sticky footer he only saw the
+status line and Submit — "I'm afraid they're never gonna see that get suggestions button. Please
+include it at the bottom somewhere the mobile user will recognize."
+
+`components/SuggestFooterButton.tsx` (new) renders "Get suggestions" as the first row of the sticky
+`.drafting-form-footer`, above the status line, on all four draft forms. It is fed the SAME gated
+handler as the top affordance — the page passes `shellAssistant?.onSuggest`, which is undefined
+until the draft has content — so it appears only once there is something to review, exactly like the
+top button, and fires the same review. Shown at every width; on desktop a quiet echo of the top
+card, on mobile the one people actually reach at the bottom.
+
+Universal, not conversation-only: wired through all four forms (Deliberation / DraftingForm(proposal)
+/ Vote / Project) and their four pages. Project's edit mode passes `undefined` (it hides the
+assistant, matching the top affordance).
+
+Verified on dev at mobile width, all four types: the footer button is absent on a blank form and
+reads "Get suggestions" once a title is typed, sitting above the status line; clicking it flips to
+"Reviewing…" and opens the assistant. UI build clean.
+
 ## "Get suggestions" is only offered once there is something to suggest on — 2026-09-05
 
 Adam: "you can click get suggestions on a blank form, which doesn't make any sense and is confusing
