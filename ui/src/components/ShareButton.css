@@ -74,18 +74,17 @@ a.share-icon-btn {
   font-family: var(--font-body);
   font-size: var(--font-size-sm, 0.85rem);
   line-height: 1.4;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  /* Same navy and white as the share buttons it points at, so the two
+     read as one thing (Adam, 2026-09-06). */
+  color: #fff;
+  background: var(--pill-vote-fg, #1e3a5f);
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
   cursor: pointer;
   animation: share-callout-in 0.2s ease-out;
 }
 
-/* The tail: an outlined triangle, drawn as two — border colour beneath,
-   surface colour on top, offset one pixel. */
-.share-callout::before,
+/* The tail, in the bubble's own colour. */
 .share-callout::after {
   content: "";
   position: absolute;
@@ -93,15 +92,7 @@ a.share-icon-btn {
   left: 16px;
   border: 8px solid transparent;
   border-bottom: 0;
-}
-
-.share-callout::before {
-  border-top-color: var(--color-border);
-}
-
-.share-callout::after {
-  margin-top: -1px;
-  border-top-color: var(--color-surface);
+  border-top-color: var(--pill-vote-fg, #1e3a5f);
 }
 
 @keyframes share-callout-in {

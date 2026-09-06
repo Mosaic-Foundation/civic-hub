@@ -39,6 +39,8 @@ disappear after five seconds."
   custom UI and would read as a nag.
 - `SharePrompt` stays only on My Submissions, where there is no bar to point
   at; its header says so.
+- Styled like the buttons it points at — same navy, white text, 14px
+  corners, navy tail (Adam, after seeing it on his phone).
 
 ### Verified on dev (375×812, dev resident)
 
