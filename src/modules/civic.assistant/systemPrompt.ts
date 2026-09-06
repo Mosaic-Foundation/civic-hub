@@ -76,9 +76,6 @@ export function buildSystemPrompt(
     ? `After sources are handled (or skipped), move on to considerations if the field is empty (and the category is issue or project). Again, be specific: suggest actual considerations relevant to this ${noun}, don't just ask generically.`
     : `After sources are handled (or skipped), move on — this ${noun} form has no considerations field.`;
 
-  const draftJsonFields = config.fields
-    .map((f) => `    "${f}": "..."`)
-    .join(",\n");
 
   return `You are a drafting assistant on ${hubConfig.hub_name}, a civic platform for ${hubConfig.community_description}. Your role is to help users write clear, civil, well-grounded ${noun}s that the community can deliberate on. You are friendly and supportive first, and clear about hard limits where the Code of Conduct or civic legitimacy is at stake.
 
@@ -215,27 +212,13 @@ Avoid: corporate phrases, sycophancy, lecturing tone, over-explaining your role,
 
 ${config.typeGuidance}
 
-## Output format
-You MUST respond with valid JSON. No text outside the JSON object.
+## How you reply
+End EVERY turn by calling the \`respond\` tool, exactly once. That call IS your reply — its "message" is what the person reads, and its "suggestions" become the cards they can Apply. Never write your reply as plain text; text outside the tool call does not reach them. If you search first, still finish the turn with \`respond\`.
 
-Return a JSON object with this structure:
-{
-  "message": "your conversational response to the user",
-  "suggestions": [
-    {
-      "severity": "soft" | "hard",
-      "quoted_text": "exact existing text to replace, verbatim — for a targeted edit" | null,
-      "field": ${config.fields.map((f) => `"${f}"`).join(" | ")} | null,
-      "message": "your specific suggestion in plain prose",
-      "suggested_revision": "optional rewrite" | null
-    }
-  ],
-  "draft_proposal": {
-${draftJsonFields}
-  } | null
-}
-
-The "suggestions" array can be empty. The "draft_proposal" field is null unless you are generating a first draft in brainstorm phase. Every suggestion — both soft AND hard — MUST include a "suggested_revision" so the user can click Apply. For hard blocks, the revision should remove or rephrase the offending content.
+In \`respond\`:
+- "message": your conversational reply. Keep it brief — a summary and a pointer to the cards. Content meant for a form field belongs in a suggestion, not here.
+- "suggestions": one entry per suggestion. "field" is one of ${config.fields.map((f) => `"${f}"`).join(", ")}. Every suggestion — soft AND hard — MUST carry a "suggested_revision" so the person can Apply it; for a hard block, the revision removes or rephrases the offending content. For a targeted edit, "quoted_text" is the exact existing text, verbatim. The array may be empty.
+- "draft_proposal": null unless you are generating a first draft in the brainstorm phase after the person says yes.
 
 ## What you never do
 - Write the entire ${noun} without user consent. Generate only when the user says yes in brainstorm.
@@ -262,22 +245,6 @@ ${CODE_OF_CONDUCT}
 
 Do NOT flag opinions, criticism of officials or policy, blunt or emotional rhetoric, or anything the "What we will not remove" section protects. Do NOT offer writing advice, style suggestions, or soft feedback of any kind. If the text is acceptable, return an empty suggestions array.
 
-## Output format
-You MUST respond with valid JSON. No text outside the JSON object.
-
-{
-  "message": "one short sentence summarizing the result",
-  "suggestions": [
-    {
-      "severity": "hard",
-      "quoted_text": "the offending text" | null,
-      "field": null,
-      "message": "what violates the Code of Conduct, in plain prose",
-      "suggested_revision": null
-    }
-  ],
-  "draft_proposal": null
-}
-
-Every suggestion you return must have severity "hard" — you never make soft suggestions.`;
+## How you reply
+Reply by calling the \`respond\` tool, exactly once. "message" is one short sentence summarizing the result. Each entry in "suggestions" is one violation: severity "hard" (you never make soft suggestions), "quoted_text" the offending text verbatim, "field" null, "message" what violates the Code of Conduct in plain prose, "suggested_revision" a civil rephrasing or removal. If the text is acceptable, "suggestions" is empty.`;
 }

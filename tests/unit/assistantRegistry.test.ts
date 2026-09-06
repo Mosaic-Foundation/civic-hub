@@ -113,9 +113,11 @@ describe("prompt honesty — the assistant never claims form writes", () => {
     expect(withSources).not.toContain("NO sources field");
   });
 
-  it("the output template includes seed_statements only when declared", () => {
+  it("the reply contract names seed_statements only when declared", () => {
+    // The reply is now a tool call; the prompt lists the type's fields in its
+    // "How you reply" section, and the schema (buildRespondTool) enforces them.
     const delib = buildSystemPrompt(HUB, undefined, EMPTY_DRAFT, "free_form", config("civic.polis_deliberation"));
-    expect(delib).toContain('"seed_statements": "..."');
+    expect(delib).toContain('"seed_statements"');
 
     const vote = buildSystemPrompt(HUB, undefined, EMPTY_DRAFT, "free_form", config("civic.vote"));
     expect(vote).not.toContain('"seed_statements"');
@@ -151,13 +153,14 @@ describe("buildSystemPrompt — config-driven, no per-type branches", () => {
     expect(vote).not.toContain("move on to considerations");
   });
 
-  it("the output-format JSON lists exactly the declared fields", () => {
+  it("the reply contract lists exactly the declared fields", () => {
     const c = config("civic.vote");
     const prompt = buildSystemPrompt(HUB, undefined, EMPTY_DRAFT, "free_form", c);
     for (const f of c.fields) {
-      expect(prompt).toContain(`"${f}": "..."`);
+      expect(prompt).toContain(`"${f}"`);
     }
-    expect(prompt).not.toContain(`"considerations": "..."`);
+    // A vote declares no considerations field, so it must not be offered.
+    expect(prompt).not.toContain(`"considerations"`);
   });
 
   it("always embeds the shared Code of Conduct", () => {

@@ -35,6 +35,54 @@ client-navigated to review B by popstate (what back/forward does, no reload) —
 buttons, no stale form, no stale message, status pending. Neither review was mutated (only a form
 was opened). UI build clean.
 
+## Assistant replies are now API-validated tool calls, not hand-written JSON — 2026-09-05
+
+Adam's three PDFs of the short-term-rentals conversation showed the assistant cutting off mid-word
+("**1. The") with no suggestion cards, a message saying "click Apply" with no Apply button, and
+"when it worked, it worked." He asked for an assessment and then "make this assistant much more
+reliable."
+
+**Root cause — a deterministic plumbing bug, not model randomness.** The model was asked to
+hand-write its reply as JSON in free text. A review naturally quotes the draft (`"30%"`); when the
+model emitted a raw `"` inside the JSON `message` string, `JSON.parse` threw, and the fallback regex
+in `extractFallbackMessage` captured the message only up to that quote — and the suggestion cards,
+inside the discarded JSON, were lost. Reproduced byte-for-byte in `scratchpad/parsebug.ts`: the
+same input yields exactly `…ranked by importance.\n\n**1. The` and zero cards. PDF 2's retry shows
+the identical review succeed when the model happened to escape `\"30%\"` — a coin flip on escaping,
+which is the non-determinism Adam felt.
+
+**Fix — structured output via tool use.** The reply is now a `respond` tool whose `input_schema`
+the API validates. `buildRespondTool(fields, {includeDraft})` builds the schema from the type's
+declared `config.fields`: a proposal's `field` enum is title/description/sources, a conversation's
+adds seed_statements, `draft_proposal`'s properties are the same list — so a type registered
+tomorrow with two fields or seven gets a matching schema with no code. `callClaudeMultiTurn` gained
+`toolChoice` and `responseTool`, and returns the reply tool's `input` as `structured`. The main
+assistant uses `tool_choice:{type:"any"}` so a turn can web-search and still end on `respond`; the
+Code of Conduct check forces `respond` directly. Text parsing remains only as a fallback for a
+turn with no tool call. Both prompts' "respond with valid JSON + template" sections became "end
+every turn by calling respond". The UI contract (`AssistantResponse`) is unchanged.
+
+**Verified against the live API on dev, all three changed paths:**
+- The exact prompt that failed on prod ("Anything to make the description better?") → a 1,033-char
+  message, intact, CONTAINING double-quotes, plus 3 description chunk-edit cards with Apply.
+- The Sources chip → two web searches, then `respond` → 814-char message, one sources card with
+  4 URLs and Apply. (`tool_choice:any` + server-side search + a terminal reply tool coexist.)
+- Run Code of Conduct check (forced tool, 1024 tokens) → ~3s, "Ready to submit", no error.
+No Anthropic errors or max_tokens warnings in the dev log.
+
+`tests/unit/assistantStructuredOutput.test.ts` (8): structured input is used and the message
+survives with quotes; the OLD text path provably lost the cards (pinned as the regression); the call
+names the reply tool with `tool_choice:any`; text-only still parses as fallback; the schema's field
+enum and draft keys equal each type's declared fields, an arbitrary field list gets a matching
+schema, and the CoC variant has no draft_proposal. Two older assertions that checked the old JSON
+template text were re-pointed to the new contract (same intent). `tests/unit` 730/730, tsc clean.
+
+**What this does and doesn't fix.** It makes the plumbing deterministic — no more truncated
+messages, lost cards, or "click Apply" with nothing to click — which is where every failure in the
+PDFs lived. It does not make the model's judgment deterministic. Still open: long search turns look
+frozen (no streaming/progress) — a "still working" state + client cutoff is the next reliability
+item.
+
 ## Suggestion cards: targeted chunk edits, replace-not-append, supersede — 2026-09-05
 
 Adam, on editing a long description: he did NOT want the whole field crossed out and rewritten in

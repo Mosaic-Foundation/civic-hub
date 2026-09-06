@@ -47,6 +47,11 @@ export interface CallClaudeResult {
   /** How many server-side tool calls (web search) ran during this turn —
    *  lets a caller tell "I searched" from "I said I would search". */
   serverToolUses?: number;
+  /** When the caller named a `responseTool`, the `input` of that tool call —
+   *  the model's reply as an API-validated object. This is the reliable path:
+   *  hand-written JSON in free text broke whenever the model quoted the draft
+   *  with an unescaped `"`, and the whole reply (cards included) was lost. */
+  structured?: unknown;
 }
 
 interface AnthropicContent {
@@ -182,6 +187,12 @@ export interface CallClaudeMultiTurnInput {
   messages: MultiTurnMessage[];
   maxTokens?: number;
   tools?: unknown[];
+  /** Anthropic tool_choice, e.g. {type:"any"} (must call some tool — lets a
+   *  turn search and then reply) or {type:"tool", name:"respond"}. */
+  toolChoice?: unknown;
+  /** Name of the client-defined tool whose call IS the reply. Its input is
+   *  returned as `structured` and ends the turn. */
+  responseTool?: string;
 }
 
 export async function callClaudeMultiTurn(
@@ -226,6 +237,7 @@ async function callClaudeMultiTurnOnce(
     ];
   }
   if (input.tools && input.tools.length > 0) body.tools = input.tools;
+  if (input.toolChoice) body.tool_choice = input.toolChoice;
 
   const MAX_TOOL_ROUNDS = 5;
   let totalUsage = { input_tokens: 0, output_tokens: 0 };
@@ -304,6 +316,28 @@ async function callClaudeMultiTurnOnce(
         `[anthropic] response truncated at max_tokens=${String(body.max_tokens)} — ` +
           "a JSON reply cut here fails to parse and loses its suggestion cards",
       );
+    }
+
+    // The reply itself, as a tool call: return its API-validated input.
+    // Checked before the generic tool_use handling below, which would
+    // otherwise treat our reply tool like a client tool awaiting a result.
+    if (input.responseTool) {
+      const reply = (data.content ?? []).find(
+        (c: AnthropicContent) => c.type === "tool_use" && c.name === input.responseTool,
+      );
+      if (reply) {
+        const text = (data.content ?? [])
+          .filter((c) => c.type === "text" && typeof c.text === "string")
+          .map((c) => c.text as string)
+          .join("");
+        return {
+          text,
+          structured: reply.input,
+          model: data.model ?? input.model,
+          usage: totalUsage,
+          serverToolUses,
+        };
+      }
     }
 
     // If stop_reason is "end_turn" or no tool_use blocks, we're done
