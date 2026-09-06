@@ -35,6 +35,37 @@ client-navigated to review B by popstate (what back/forward does, no reload) —
 buttons, no stale form, no stale message, status pending. Neither review was mutated (only a form
 was opened). UI build clean.
 
+## Assistant: a request that dies mid-flight retries itself — 2026-09-05
+
+With the structured-output fix live, Adam's next run was clean — full review, two chunk-edit diffs,
+a 3-source search — except the very first call: "Something went wrong with the assistant. Try again
+in a moment." He had to tap Try again. His own observation: "I went to a different app while the
+browser was doing the work." He wondered whether the model's thinking time was being cut short.
+
+**Not a token limit** — the retry generated a long reply fine, and a max_tokens cut would surface
+as an empty tool call, not this message. **It is the app switch.** iOS suspends a backgrounded tab
+and kills its in-flight fetches; the rejection is a `TypeError` ("Load failed" on iOS, "Failed to
+fetch" elsewhere), which matched none of `friendlyError`'s branches (rate_limit / API key /
+timeout) and fell through to the generic message. The server had very likely finished the turn —
+`appendConversation` runs before `res.json` — but only the reply TEXT is persisted, not the cards,
+so the lost turn is not silently recoverable; a retry is the right answer.
+
+`useDraftFlow` now wraps all four assistant calls (chat, kickoff, Get suggestions, CoC check) in
+`withNetworkRetry`: on a network-drop error it retries ONCE, showing "Connection dropped — trying
+again" as the loading label. Because a suspended tab delivers the rejection on resume, the retry
+effectively fires when the person comes back — they see "trying again" and then the reply. If the
+retry also fails, `friendlyError` now says what happened: "The connection dropped — that can
+happen if you switch apps while I'm working. Tap Try again." Non-network errors are unchanged.
+
+**Verified on dev with a `fetch` shim** rejecting assistant calls with `TypeError("Load failed")`:
+fail-first → 2 calls, the reconnect label observed, no error, a real reply; fail-all → 2 calls, then
+the network-specific message (not the generic one). tsc + UI build clean; UI-only change.
+
+Known residual: an automatic retry re-runs the model, and if the first call had completed
+server-side the draft's history gains a duplicate assistant line (visible on reload). Rare, and
+the fix is an idempotent turn id (server caches the finished reply) — a small schema addition,
+deferred.
+
 ## Assistant replies are now API-validated tool calls, not hand-written JSON — 2026-09-05
 
 Adam's three PDFs of the short-term-rentals conversation showed the assistant cutting off mid-word

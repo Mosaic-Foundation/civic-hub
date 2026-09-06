@@ -61,7 +61,22 @@ interface Options<D extends BaseDraft> {
   applyFields: string[];
 }
 
+/**
+ * A request that died mid-flight. iOS suspends a backgrounded tab and kills
+ * its in-flight fetches — switching to another app while the assistant is
+ * working surfaces as a TypeError ("Load failed" on iOS, "Failed to fetch"
+ * elsewhere). It reached the user as a bare "Something went wrong" (Adam,
+ * 2026-09-05: "I went to a different app while the browser was doing the
+ * work"). The server usually finished the turn; only our view of it is lost.
+ */
+function isNetworkDrop(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return err instanceof TypeError || /load failed|failed to fetch|network|connection/i.test(msg);
+}
+
 function friendlyError(msg: string): string {
+  if (/load failed|failed to fetch|network|connection/i.test(msg))
+    return "The connection dropped — that can happen if you switch apps while I'm working. Tap Try again.";
   if (msg.includes("rate_limit") || msg.includes("429"))
     return "The assistant is getting too many requests right now. Wait a moment and try again.";
   if (msg.includes("ANTHROPIC_API_KEY"))
@@ -137,6 +152,25 @@ export function useDraftFlow<D extends BaseDraft>({
   const [assistantOpening, setAssistantOpening] = useState(false);
   const [assistantLoading, setAssistantLoading] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+
+  // One automatic retry when a request dies mid-flight (see isNetworkDrop).
+  // The retry itself runs when the tab is foregrounded again — a suspended
+  // tab delivers the rejection on resume — so the person comes back to
+  // "trying again" and then the reply, instead of an error to tap through.
+  const [reconnecting, setReconnecting] = useState(false);
+  const withNetworkRetry = useCallback(async <T,>(run: () => Promise<T>): Promise<T> => {
+    try {
+      return await run();
+    } catch (err) {
+      if (!isNetworkDrop(err)) throw err;
+      setReconnecting(true);
+      try {
+        return await run();
+      } finally {
+        setReconnecting(false);
+      }
+    }
+  }, []);
   const [reviewFailed, setReviewFailed] = useState(false);
   const [reviewNotice, setReviewNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -282,7 +316,7 @@ export function useDraftFlow<D extends BaseDraft>({
       setError(null);
       setMessages((prev) => [...prev, { role: "user", content: text }]);
       try {
-        const result = await sendAssistantMessage<D>(processType, d.id, phase, text);
+        const result = await withNetworkRetry(() => sendAssistantMessage<D>(processType, d.id, phase, text));
         commitDraft(result.draft);
         pushAssistantResponse(result.response);
         if (result.response.draft_proposal) {
@@ -333,11 +367,13 @@ export function useDraftFlow<D extends BaseDraft>({
           setAssistantOpen(true);
           setAssistantLoading(true);
           try {
-            const result = await sendAssistantMessage<D>(
-              processType,
-              d.id,
-              "brainstorm",
-              config.kickoff_message ?? "I want to get started.",
+            const result = await withNetworkRetry(() =>
+              sendAssistantMessage<D>(
+                processType,
+                d.id,
+                "brainstorm",
+                config.kickoff_message ?? "I want to get started.",
+              ),
             );
             commitDraft(result.draft);
             pushAssistantResponse(result.response);
@@ -382,7 +418,7 @@ export function useDraftFlow<D extends BaseDraft>({
         }
         setPhase("review");
         setAssistantOpen(true);
-        const result = await suggestForDraft<D>(processType, d.id);
+        const result = await withNetworkRetry(() => suggestForDraft<D>(processType, d.id));
         commitDraft(result.draft);
         pushAssistantResponse(result.response);
         setPhase("free_form");
@@ -412,7 +448,7 @@ export function useDraftFlow<D extends BaseDraft>({
       setError(null);
       try {
         const d = await ensureDraft();
-        const result = await reviewDraftCoC<D>(processType, d.id);
+        const result = await withNetworkRetry(() => reviewDraftCoC<D>(processType, d.id));
         commitDraft(result.draft);
         setReviewNotice(result.review_unavailable ? result.response.message : null);
         pushAssistantResponse(result.response);
@@ -574,7 +610,9 @@ export function useDraftFlow<D extends BaseDraft>({
         messages,
         loading: assistantLoading,
         phase: phase as "brainstorm" | "free_form" | "review",
-        loadingLabel: reviewing
+        loadingLabel: reconnecting
+          ? "Connection dropped — trying again"
+          : reviewing
           ? "Running Code of Conduct check"
           : suggesting
             ? "Reviewing your draft"
