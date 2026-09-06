@@ -42,11 +42,15 @@
     overflow: visible;
   }
 
+  /* Flows at the END of the form on a phone rather than pinned. Pinned, the
+     Get-suggestions + status + Submit block was about a quarter of the
+     viewport, sitting on the fields being filled in (Adam, 2026-09-05). You
+     scroll to it — which is where you go to submit anyway, and the status
+     line is only actionable at that moment. Safe-area padding stays so the
+     Submit button clears the home indicator at the bottom of the page. */
   .propose-draft-mobile .drafting-form-footer {
-    position: sticky;
-    bottom: 0;
+    position: static;
     padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.06);
   }
 }
 

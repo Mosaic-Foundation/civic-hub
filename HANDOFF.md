@@ -35,6 +35,29 @@ client-navigated to review B by popstate (what back/forward does, no reload) —
 buttons, no stale form, no stale message, status pending. Neither review was mutated (only a form
 was opened). UI build clean.
 
+## Draft form footer flows at the end on a phone, stays pinned on desktop — 2026-09-05
+
+Adam: the pinned bottom block (Get suggestions + status + Submit) "is a bit too much space filling
+up… I want it to just be at the bottom of the process creation flow so they have to scroll down to
+see it." Agreed: on a phone it was about a quarter of the viewport, on top of the fields being
+filled in. The status line is only actionable at the moment you submit, and you scroll there anyway
+— so nothing is lost by letting it flow. Get suggestions (moved into this footer earlier today for
+discoverability) is still at the end of the flow, where a mobile creator ends up.
+
+**Where the change actually lives.** A first attempt added `@media (max-width:768px)
+.drafting-form-footer { position: static }` in `DraftingForm.css` — and did nothing, because
+`ProposeDraft.css` has a deliberate mobile rule `.propose-draft-mobile .drafting-form-footer {
+position: sticky; … }` (safe-area padding + a floating shadow) whose two-class selector outranks it.
+That rule is the one that pins the footer on phones, so it is the one that changed: now
+`position: static`, safe-area bottom padding kept (Submit clears the home indicator at the page
+end), shadow dropped since it no longer floats. The redundant query was removed so there is one
+source of truth. `.propose-draft-mobile` is DraftShell's mobile wrapper for every type, so all four
+forms get it; desktop keeps the base `sticky`.
+
+Verified on dev: at 375px the footer computes `static`, top at 2150px (off-screen until scrolled),
+after the last field, no shadow — conversation and vote both; at a true 1024px it computes `sticky`
+and the mobile wrapper is absent. CSS-only; UI build clean.
+
 ## Assistant: a request that dies mid-flight retries itself — 2026-09-05
 
 With the structured-output fix live, Adam's next run was clean — full review, two chunk-edit diffs,
