@@ -93,9 +93,11 @@ function friendlyError(msg: string): string {
  * rather than corrupting the field (the old code silently appended the whole
  * revision when the quote did not match).
  *
- * Matching is tolerant of whitespace and smart/straight quotes, because a
- * model rarely quotes byte-for-byte — a trimmed space or a curly apostrophe
- * should not defeat an otherwise clear edit.
+ * Matching is tolerant of whitespace, smart/straight quotes, and letter case,
+ * because a model rarely quotes byte-for-byte — a trimmed space, a curly
+ * apostrophe, or a lower-cased first word ("the county…" for "The county…",
+ * which tripped the fail-safe on Adam's phone, 2026-09-05) should not defeat
+ * an otherwise clear edit.
  */
 export function replaceQuotedChunk(
   current: string,
@@ -111,7 +113,7 @@ export function replaceQuotedChunk(
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&") // escape regex metachars
     .replace(/['"]/g, "['\u2018\u2019\u201C\u201D\"']") // any quote style
     .replace(/\s+/g, "\\s+"); // any run of whitespace
-  const re = new RegExp(pattern);
+  const re = new RegExp(pattern, "i"); // case-insensitive — see above
   const m = re.exec(current);
   if (!m) return null;
   return current.slice(0, m.index) + replacement + current.slice(m.index + m[0].length);

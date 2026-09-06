@@ -35,6 +35,22 @@ client-navigated to review B by popstate (what back/forward does, no reload) —
 buttons, no stale form, no stale message, status pending. Neither review was mutated (only a form
 was opened). UI build clean.
 
+## Chunk-edit matcher: letter case is drift, not a mismatch — 2026-09-05
+
+Adam's run on prod was clean except one card: the fail-safe fired — "Couldn't find this passage in
+the field — it may have changed since." The fail-safe was RIGHT to refuse rather than corrupt, but
+the cause was a gap in the tolerant matcher. The model quoted "**t**he county doesn't really have
+clear rules…" (lower-case t, straight apostrophe) against a field holding "**T**he county doesn’t
+really have clear rules…" (capital T, curly apostrophe — iOS converts quotes on entry). The matcher
+tolerated whitespace and quote style but was case-sensitive, so a one-letter case drift defeated an
+otherwise exact quote.
+
+`replaceQuotedChunk` now matches case-insensitively (the exact-`includes` fast path is unchanged).
+Case is the same harmless class as whitespace: a multi-word quote cannot plausibly hit a wrong
+passage on case alone. Validated with the screenshot's exact strings: applies, replaces only that
+sentence, keeps the preceding one; a genuinely missing passage still returns null. Universal
+(`useDraftFlow`, every type). CSS/TS UI-only; build clean.
+
 ## Draft form footer flows at the end on a phone, stays pinned on desktop — 2026-09-05
 
 Adam: the pinned bottom block (Get suggestions + status + Submit) "is a bit too much space filling
