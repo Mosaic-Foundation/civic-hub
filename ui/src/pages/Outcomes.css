@@ -1,27 +1,8 @@
-.outcomes-page {
-  max-width: 780px;
-  /* Every other section page indents its content by 1.5rem — the list
-     pages get it from `.hub-info`, the detail pages from `.detail-page`.
-     Outcomes renders its own header instead of `.hub-info`, so it had no
-     horizontal padding at all and sat flush against both screen edges on a
-     phone (Adam, 2026-09-04 — the same fault the project page had). */
-  padding-left: var(--space-lg);
-  padding-right: var(--space-lg);
-}
-
-.outcomes-header h1 {
-  font-family: var(--font-heading);
-  font-size: var(--font-size-2xl);
-  margin: 0 0 var(--space-xs);
-}
-
-.outcomes-intro {
-  font-family: var(--font-body);
-  color: var(--color-text-muted);
-  margin: 0 0 var(--space-lg);
-  max-width: 60ch;
-  line-height: var(--line-height-relaxed);
-}
+/* Page skeleton, width and horizontal padding all come from the shared
+   .page-home / .section / .section-title rules in App.css — the same ones
+   the Votes, Proposals, Projects and Conversations lists use — so this
+   page can no longer drift narrower than its neighbours. Only the
+   outcomes-specific pieces (filters, count, rows) are styled here. */
 
 .outcomes-filters {
   display: flex;

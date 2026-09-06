@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { getOutcomes, type OutcomeEntry, type OutcomesPage } from "../services/api";
 import { friendlyType } from "../components/ProcessLinkPicker";
 import hub from "../config/hub";
+import HubInfo from "../components/HubInfo";
 import "./Outcomes.css";
 // The filter bar reuses the feed's pill classes so the two surfaces can
 // never drift in style — see .feed-filter-pill--type-* in FeedFilter.css.
@@ -54,15 +55,27 @@ export default function Outcomes() {
   const filtered = type != null || year != null;
 
   return (
-    <div className="page outcomes-page">
-      <header className="outcomes-header">
-        <h1>Outcomes</h1>
-        <p className="outcomes-intro">
-          The permanent record of every completed process on the {hub.name} —
-          what was decided, how many took part, and what it connects to.
-        </p>
-      </header>
+    <div className="page page-home">
+      {/* Same skeleton as Votes / Proposals / Projects / Conversations: the
+          county block first, then .section blocks at the shared width. This
+          page used to render its own 780px header without HubInfo, so on a
+          desktop it sat narrower than every neighbour and lost the county
+          identity (Adam, 2026-09-06). */}
+      <HubInfo />
 
+      <section className="section">
+        <div className="section-header-row">
+          <div>
+            <h2 className="section-title">Outcomes</h2>
+            <p className="section-description">
+              The permanent record of every completed process on the {hub.name} —
+              what was decided, how many took part, and what it connects to.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
       {availableTypes.length > 0 && (
         <div className="outcomes-filters" role="group" aria-label="Filter outcomes">
           {/* Same pill bar as the feed's filter — shared classes from
@@ -155,6 +168,7 @@ export default function Outcomes() {
           </ul>
         </>
       )}
+      </section>
     </div>
   );
 }

@@ -4,6 +4,29 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Outcomes page on the shared list-page skeleton — 2026-09-06
+
+**Working in:** `civic-hub/ui/src/pages/Outcomes.tsx`, `Outcomes.css`
+
+Adam, on desktop: Outcomes was "much narrower than all of the other
+pages", had too little room under the tab strip, and was missing the
+"Floyd County, Virginia" block every other section page opens with.
+
+Cause: the page rendered its own `<header>` inside a `.outcomes-page`
+capped at 780px, and never mounted `HubInfo`. The list pages (Votes,
+Proposals, Projects, Conversations) are all `page page-home` → `<HubInfo />`
+→ `.section` blocks with `.section-title` / `.section-description`, at
+the shared width with the shared 1.5rem gutter.
+
+Outcomes now uses exactly that skeleton. The bespoke width/header CSS is
+gone from `Outcomes.css`; only the outcomes-specific pieces (filter bar,
+count, row headline) remain. The 2026-09-04 phone-padding fix that lived
+in `.outcomes-page` is now supplied by `.section`, so nothing regressed.
+
+Verified on dev: at 1100px Votes and Outcomes both show HubInfo and
+1052px cards; at 375px the cards keep the 1.5rem gutter with no
+horizontal scroll.
+
 ## A process can no longer be offered as a link target for itself — 2026-09-06
 
 **Working in:** `civic-hub/ui/src/components/` (+ `pages/ProjectDraft.tsx`)
