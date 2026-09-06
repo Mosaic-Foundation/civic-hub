@@ -4,6 +4,33 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Facebook share composer now gets the page's Open Graph tags — 2026-09-06
+
+**Working in:** `civic-hub/api/og.ts`
+
+Adam, smoke-test item 7: sharing to Facebook worked and the published post
+carried the full preview, but the composer — while typing the post — showed
+only a bare "civic.social" chip.
+
+I first guessed scrape latency. Adam measured it from his Mac: 0.48s cold,
+0.19s warm as `facebookexternalhit` — not the cause. Second, testable
+hypothesis: Meta uses several fetchers, and `api/og.ts` only recognised
+`facebookexternalhit` / `Facebot`. Meta's `meta-externalfetcher` is the one
+that performs *user-initiated* link fetches for previews — i.e. the
+composer. Adam confirmed:
+`curl -A "meta-externalfetcher/1.1" …/process/proc_861a092e431845a3` returned
+the generic hub `og:title`, not the vote's.
+
+**Fix:** add `meta-externalagent` and `meta-externalfetcher` to `CRAWLER_RE`;
+export `isSocialCrawler(ua)`; `tests/unit/ogCrawlerAgents.test.ts` pins the
+list (8 tests). Nothing else changes: the same `/api/share/meta` path that
+already served the timeline preview now serves the composer too.
+
+**To confirm on prod after the push:** the same curl should print the vote's
+title, and the composer should show the card. No Facebook app or Graph API
+call needed — that route (free, non-expiring app token, ~1h of work) stays
+on the shelf unless something else turns up.
+
 ## Endorsement threshold: wired to Admin Settings, 0 skips the support phase — 2026-09-06
 
 **Working in:** `civic-hub/src/modules/civic.vote/`, `src/services/hubSettings.ts`,

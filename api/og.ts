@@ -13,8 +13,20 @@ import type { IncomingMessage, ServerResponse } from "http";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
+// Meta runs three fetchers, not one. `facebookexternalhit` scrapes for the
+// feed after a post goes up; `meta-externalfetcher` performs the
+// user-initiated fetch that builds the link card in the share composer, and
+// `meta-externalagent` is its general crawler. Only the first was listed, so
+// the composer got the plain SPA page and showed a bare "civic.social" chip
+// while the published post, scraped by the listed agent, had the full
+// preview (Adam, 2026-09-06; confirmed with curl -A "meta-externalfetcher/1.1").
 const CRAWLER_RE =
-  /facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|WhatsApp|Discordbot|TelegramBot|Applebot|Pinterest|Embedly|Quora|vkShare|W3C_Validator/i;
+  /facebookexternalhit|Facebot|meta-external(agent|fetcher)|Twitterbot|LinkedInBot|Slackbot|WhatsApp|Discordbot|TelegramBot|Applebot|Pinterest|Embedly|Quora|vkShare|W3C_Validator/i;
+
+/** Exported for the unit test that pins the crawler list. */
+export function isSocialCrawler(userAgent: string): boolean {
+  return CRAWLER_RE.test(userAgent);
+}
 
 const HUB_NAME =
   process.env.VITE_HUB_PAGE_TITLE ?? "Floyd County, VA — Civic Hub";
