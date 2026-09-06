@@ -4,6 +4,30 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Related-process links in draft forms: title on its own line — 2026-09-06
+
+**Working in:** `civic-hub/ui/src/components/ProcessLinkField.css`
+
+Adam, on his phone, linking the microgrid project to the outages
+conversation: the linked row read "IMPLEMENTS", then the title one word
+per line down a narrow column, then "CONVERSATION ×". He asked whether
+this was projects-only.
+
+**Universal.** All four draft forms (proposal, vote, project, conversation)
+render the same `ProcessLinkField`, so the fix is one CSS change. The row
+was a single flex line with three no-shrink labels (relation, type, ×) and
+the title in whatever remained — about 80px on a 375px phone.
+
+Now a two-line grid per link: relation + type + × on top, the title below
+at full width. Named grid areas keep the DOM order (relation, title, type,
+×) for screen readers. The published-page list (`RelatedProcesses`) already
+wrapped and was not the problem.
+
+Verified on dev at 375px with a project draft linked to
+`proc_beta_conv_energy_001`: relation and type on one line, × at the right
+edge, title full-width below wrapping to two lines. Test draft and
+`uitest_` session deleted.
+
 ## Approval-vote option rows grow to show the whole option — 2026-09-05
 
 **Working in:** `civic-hub/ui/src/components/`

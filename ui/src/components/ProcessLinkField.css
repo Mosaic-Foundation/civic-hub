@@ -40,10 +40,20 @@
   gap: 4px;
 }
 
+/* Two lines per link: the relation, type, and × on top, the title below at
+   full width. One flex line squeezed the title between three no-shrink
+   labels — on a phone that left ~80px, one word per line (Adam,
+   2026-09-06). Named areas keep the DOM order (relation, title, type, ×)
+   for screen readers while laying the title out underneath. */
 .link-field__item {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    "relation type remove"
+    "title title title";
   align-items: baseline;
-  gap: var(--space-sm);
+  column-gap: var(--space-sm);
+  row-gap: 2px;
   padding: 8px 10px;
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
@@ -57,15 +67,16 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
-  flex-shrink: 0;
+  grid-area: relation;
 }
 
 .link-field__title {
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
   color: var(--color-text);
-  flex: 1 1 auto;
+  grid-area: title;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .link-field__type {
@@ -73,7 +84,8 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-subtle, var(--color-text-muted));
   text-transform: uppercase;
-  flex-shrink: 0;
+  grid-area: type;
+  justify-self: start;
 }
 
 .link-field__remove {
@@ -84,7 +96,7 @@
   line-height: 1;
   cursor: pointer;
   padding: 0 2px;
-  flex-shrink: 0;
+  grid-area: remove;
 }
 
 .link-field__remove:hover {
