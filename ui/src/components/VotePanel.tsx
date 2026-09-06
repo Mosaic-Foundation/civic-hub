@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import SharePrompt from "./SharePrompt";
+import ShareMoment from "./ShareMoment";
 import type { VoteState } from "../services/api";
 import { submitVote, submitApprovalVote, supportVote, unsupportVote, submitInput } from "../services/api";
 import { useRequireAuth } from "../hooks/useRequireAuth";
@@ -361,10 +361,9 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
                   at the instant it fired (Adam, 2026-09-05: "it just looks
                   busy and small and not really an obvious reminder"). This is
                   where the person just acted and is already reading. */}
-              <SharePrompt
+              <ShareMoment
                 processId={process.id}
-                title={process.title}
-                line="Your vote is in — share this so more neighbors vote too."
+                text="Your vote is in — share this so more neighbors vote too."
               />
             </div>
           )}

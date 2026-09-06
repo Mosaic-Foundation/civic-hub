@@ -11,7 +11,7 @@ import CompletedDeliberation from "../components/deliberation/CompletedDeliberat
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
 import ShareButton from "../components/ShareButton";
-import SharePrompt from "../components/SharePrompt";
+import ShareMoment from "../components/ShareMoment";
 import SourceLinks from "../components/SourceLinks";
 import RelatedProcesses from "../components/RelatedProcesses";
 import DetailActions from "../components/DetailActions";
@@ -79,6 +79,7 @@ export default function DeliberationDetail() {
       <div className="process-share-row">
         <ShareButton
           title={process.topic}
+          processId={process.process_id}
           shareText={`Join the conversation: ${process.topic}`}
         />
       </div>
@@ -112,10 +113,10 @@ export default function DeliberationDetail() {
           // one submitted statement.
           afterVoting={
             participated ? (
-              <SharePrompt
+              <ShareMoment
                 processId={process.process_id}
-                title={process.topic}
-                line="Thanks for taking part — share this so more neighbors do."
+                text="Thanks for taking part — share this so more neighbors do."
+                reveal="when-visible"
               />
             ) : null
           }

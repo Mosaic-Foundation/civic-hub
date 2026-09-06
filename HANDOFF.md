@@ -4,6 +4,53 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Share reminder: a transient callout on the share bar, not a second bar — 2026-09-06
+
+**Working in:** `civic-hub/ui/src/components/` (ShareButton, ShareMoment,
+shareMomentBus), the four process pages, VotePanel
+
+Adam on the boxed reminder under the endorse confirmation: "it looks very
+redundant to the existing share bar … another thing that somebody has to
+dismiss. Maybe a little bubble pop up and point to the share bar … and just
+disappear after five seconds."
+
+### What changed
+
+- **`shareMomentBus.ts`** — the moment is announced by process id; whichever
+  `ShareButton` carries that `processId` shows it. Pending moments are
+  delivered on subscribe, so render order never matters.
+- **`ShareMoment`** (headless) replaces the boxed `SharePrompt` on the
+  proposal, project, vote and conversation pages at the same spots. Mount it
+  when the person has just acted; it renders nothing.
+- **`ShareButton`** — new `processId` prop. On a moment: retire (once per
+  process per browser, same localStorage key as before so earlier dismissals
+  still hold), bring the bar into view if it is off screen, show a speech
+  bubble with a tail on the buttons for 6s. A tap dismisses early. The old
+  `nudge` prop (Brief, Vote results) now shows the same callout on mount.
+- **Reveal modes** (per-type choice on the universal mechanism):
+  `"scroll"` (default) brings the bar into view now;
+  `"when-visible"` arms the callout and shows it the next time the bar
+  scrolls into view on its own — used by **conversations**, where people
+  vote statement after statement and yanking them to the bar after the
+  third vote would interrupt them (Adam: "they'll vote on a few things and
+  then get scrolled to the share section before they felt like they were
+  done"). Scrolling back up is the natural "done" gesture, and that is when
+  it appears. No navigation blocking — a "leaving the page" hook can't carry
+  custom UI and would read as a nag.
+- `SharePrompt` stays only on My Submissions, where there is no bar to point
+  at; its header says so.
+
+### Verified on dev (375×812, dev resident)
+
+- Proposal: bar off screen (y≈944) → tap Support → bar scrolled into view
+  (top 262), bubble with the right text, old box gone, key retired, bubble
+  gone after 6s.
+- when-visible (announced through Vite's live module with the bar off
+  screen): no bubble, no scroll; scrolling the bar into view → bubble,
+  retired.
+- Brief: bubble on mount, no old note.
+- Test support removed, count reconciled, `uitest_` session deleted.
+
 ## Facebook share composer now gets the page's Open Graph tags — 2026-09-06
 
 **Working in:** `civic-hub/api/og.ts`

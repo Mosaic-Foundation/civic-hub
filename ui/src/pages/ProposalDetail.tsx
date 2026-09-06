@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import AuthModal from "../components/AuthModal";
 import ShareButton from "../components/ShareButton";
-import SharePrompt from "../components/SharePrompt";
+import ShareMoment from "../components/ShareMoment";
 import Creator from "../components/Creator";
 import CommunityInputPanel from "../components/CommunityInputPanel";
 import ProposalCommentForm from "../components/ProposalCommentForm";
@@ -135,6 +135,7 @@ export default function ProposalDetail() {
         <div className="process-share-row">
           <ShareButton
             title={proposal.title}
+            processId={proposal.id}
             shareText={`Support this proposal: ${proposal.title}`}
           />
         </div>
@@ -155,10 +156,9 @@ export default function ProposalDetail() {
             {proposal.has_supported ? (
               <>
                 <p className="endorse-confirmation">You have supported this proposal.</p>
-                <SharePrompt
+                <ShareMoment
                   processId={proposal.id}
-                  title={proposal.title}
-                  line="You endorsed this — share it so more neighbors can too."
+                  text="You endorsed this — share it so more neighbors can too."
                 />
               </>
             ) : (

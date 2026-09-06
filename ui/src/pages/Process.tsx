@@ -149,6 +149,7 @@ export default function Process() {
         <div className="process-share-row">
           <ShareButton
             title={process.title}
+            processId={process.id}
             shareText={
               isProposal
                 ? `Endorse this proposal: ${process.title}`

@@ -53,54 +53,70 @@ a.share-icon-btn {
   color: var(--color-error, #c1351a);
 }
 
-/* --- The "consider sharing this" note ---
-   Sits with the share bar rather than duplicating it. On a phone the icons
-   and the note stack, so the note gets the full width instead of being
-   squeezed beside three buttons. */
+/* --- The "consider sharing this" callout ---
+   A speech bubble above the bar with a tail pointing at the buttons. It is
+   transient (the component hides it after a few seconds) and dismissable
+   by a tap, so it carries no × of its own. Absolutely positioned so it
+   overlaps whatever sits above the bar instead of pushing the page. */
 
-.share-row--nudged {
-  flex-wrap: wrap;
-  row-gap: var(--space-xs);
+.share-row {
+  position: relative;
 }
 
-.share-nudge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: 2px 2px 2px var(--space-sm);
-  font-size: var(--font-size-xs);
-  line-height: 1.35;
-  color: var(--color-text-muted);
-  background: var(--color-surface-muted);
-  border-radius: 999px;
-}
-
-.share-nudge-text {
-  min-width: 0;
-}
-
-.share-nudge-dismiss {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  font-size: 16px;
-  line-height: 1;
-  color: var(--color-text-muted);
-  background: none;
-  border: 0;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.share-nudge-dismiss:hover {
+.share-callout {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  z-index: 5;
+  width: max-content;
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm, 0.85rem);
+  line-height: 1.4;
   color: var(--color-text);
   background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  animation: share-callout-in 0.2s ease-out;
 }
 
-.share-nudge-dismiss:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 1px;
+/* The tail: an outlined triangle, drawn as two — border colour beneath,
+   surface colour on top, offset one pixel. */
+.share-callout::before,
+.share-callout::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 16px;
+  border: 8px solid transparent;
+  border-bottom: 0;
+}
+
+.share-callout::before {
+  border-top-color: var(--color-border);
+}
+
+.share-callout::after {
+  margin-top: -1px;
+  border-top-color: var(--color-surface);
+}
+
+@keyframes share-callout-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-callout {
+    animation: none;
+  }
 }

@@ -1,3 +1,10 @@
+// STANDALONE form of the share reminder — a boxed line with its own share
+// row. Used only where there is no share bar on the page to point at (My
+// Submissions, which lists other pages). On a process's own page use
+// ShareMoment instead: it points a transient callout at the bar that is
+// already there (Adam, 2026-09-06 — this box read as "very redundant to the
+// existing share bar").
+//
 // A one-line reminder that the page can be shared, offered once per process
 // after the person has actually committed to it — voted, endorsed, supported,
 // taken part in a conversation.

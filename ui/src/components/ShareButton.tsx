@@ -1,31 +1,34 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  retireShareMoment,
+  shareMomentRetired,
+  subscribeShareMoments,
+  type ShareMoment,
+} from "./shareMomentBus";
 import "./ShareButton.css";
 
-/** A one-off "consider sharing this" note attached to the bar. Adam
- *  (2026-09-04) on the first cut, which was a card carrying its own copy of
- *  the share row: "it just looks like a redundant share options, especially
- *  on mobile it looks redundant and cramped… maybe we just need a little
- *  note next to the share bar." So the reminder points at the buttons that
- *  are already there. Dismissed once per process, in localStorage. */
+/** A one-off "consider sharing this" callout pointed at the bar. Passed on
+ *  mount for pages that are themselves the moment (a brief, a result), or
+ *  announced later by ShareMoment when the person acts on the page. Shown
+ *  once per process, for a few seconds, and never has to be dismissed —
+ *  Adam (2026-09-04) on the first cut, a card with its own share row: "it
+ *  just looks like a redundant share options"; (2026-09-06) on the note
+ *  with a ×: "another thing that somebody has to dismiss". */
 export interface ShareNudge {
   processId: string;
   text: string;
 }
 
-const NUDGE_KEY_PREFIX = "civic:share-prompt:";
-
-function nudgeRetired(processId: string): boolean {
-  try {
-    return localStorage.getItem(NUDGE_KEY_PREFIX + processId) === "1";
-  } catch {
-    return false;
-  }
-}
+/** How long the callout stays. Long enough to read twice on a phone. */
+const CALLOUT_MS = 6000;
 
 export interface ShareButtonProps {
   title: string;
   url?: string;
-  /** Shows the note beside/below the icons until it is dismissed. */
+  /** The process this bar shares. A ShareMoment announced for the same id
+   *  shows the callout here. */
+  processId?: string;
+  /** A callout to show on mount — for pages that are the moment themselves. */
   nudge?: ShareNudge | null;
   /**
    * Accepted for callers that still pass it, but no longer handed to the
@@ -35,37 +38,66 @@ export interface ShareButtonProps {
   shareText?: string;
 }
 
-export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
+export default function ShareButton({ title, url, nudge, processId }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Which process's reminder this viewer has dismissed in this view — NOT
-  // "is it hidden".
-  //
-  // That distinction is the whole bug. `useState`'s initializer runs once, at
-  // mount, and a process page mounts BEFORE the person engages with it: at
-  // that moment `nudge` is null, so the flag froze at "hidden" and nothing
-  // ever set it back when the vote landed and the parent re-rendered with a
-  // real nudge. The reminder could therefore only appear on a page that was
-  // LOADED after engaging — never at the moment it exists to catch (Adam,
-  // 2026-09-05: "I'm not really seeing a share reminder after engaging").
-  //
-  // Visibility is now derived from the current props on every render, so a
-  // nudge that arrives later shows immediately.
-  const [dismissedFor, setDismissedFor] = useState<string | null>(null);
+  const [callout, setCallout] = useState<string | null>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const hideTimer = useRef<number | undefined>(undefined);
 
-  const retireNudge = () => {
-    if (!nudge) return;
-    try {
-      localStorage.setItem(NUDGE_KEY_PREFIX + nudge.processId, "1");
-    } catch {
-      /* best effort */
-    }
-  };
-
-  const showNudge =
-    !!nudge &&
-    dismissedFor !== nudge.processId &&
-    !nudgeRetired(nudge.processId);
+  // The callout: subscribed by process id for moments announced later (a
+  // vote cast, a proposal endorsed), and shown at once for a nudge passed on
+  // mount. Either way it is retired the moment it shows, so it is once per
+  // process per browser; and if the bar is off screen — the vote page's bar
+  // is several screens above the ballot — the bar is brought into view
+  // first, because a bubble pointing at nothing is noise.
+  const momentId = processId ?? nudge?.processId;
+  const nudgeText = nudge?.processId === momentId ? nudge?.text : undefined;
+  useEffect(() => {
+    if (!momentId) return;
+    let observer: IntersectionObserver | undefined;
+    const present = (text: string) => {
+      retireShareMoment(momentId);
+      setCallout(text);
+      window.clearTimeout(hideTimer.current);
+      hideTimer.current = window.setTimeout(() => setCallout(null), CALLOUT_MS);
+    };
+    const show = ({ text, reveal }: ShareMoment) => {
+      if (shareMomentRetired(momentId)) return;
+      const el = rowRef.current;
+      const r = el?.getBoundingClientRect();
+      const inView = !!r && r.top >= 0 && r.bottom <= window.innerHeight;
+      if (inView || !el) {
+        present(text);
+        return;
+      }
+      if (reveal === "when-visible" && typeof IntersectionObserver === "function") {
+        // Armed: appears when the bar next comes into view on its own.
+        observer?.disconnect();
+        observer = new IntersectionObserver(
+          (entries) => {
+            if (entries.some((e) => e.isIntersecting)) {
+              observer?.disconnect();
+              present(text);
+            }
+          },
+          { threshold: 0.9 },
+        );
+        observer.observe(el);
+        return;
+      }
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+      present(text);
+    };
+    const unsubscribe = subscribeShareMoments(momentId, show);
+    if (nudgeText) show({ text: nudgeText, reveal: "scroll" });
+    return () => {
+      unsubscribe();
+      observer?.disconnect();
+      window.clearTimeout(hideTimer.current);
+    };
+  }, [momentId, nudgeText]);
 
   // The page's canonical address: never the hash. `#edits` opens the change
   // history, and a shared link must land on the plain page (Adam, 2026-09-03).
@@ -160,7 +192,7 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
   }
 
   return (
-    <div className={showNudge ? "share-row share-row--nudged" : "share-row"}>
+    <div className="share-row" ref={rowRef}>
       <button
         type="button"
         className="share-icon-btn share-icon-btn--copy"
@@ -232,23 +264,17 @@ export default function ShareButton({ title, url, nudge }: ShareButtonProps) {
         <span className="share-row-error" role="alert">{error}</span>
       )}
 
-      {/* The note. Text and a dismiss — no buttons of its own, because the
-          buttons it is talking about are right beside it. */}
-      {showNudge && nudge && (
-        <span className="share-nudge">
-          <span className="share-nudge-text">{nudge.text}</span>
-          <button
-            type="button"
-            className="share-nudge-dismiss"
-            onClick={() => {
-              retireNudge();
-              setDismissedFor(nudge.processId);
-            }}
-            aria-label="Dismiss"
-          >
-            &times;
-          </button>
-        </span>
+      {/* The callout. Points down at the buttons it is talking about; goes
+          away on its own, or on a tap. */}
+      {callout && (
+        <div
+          className="share-callout"
+          role="status"
+          onClick={() => setCallout(null)}
+          title="Dismiss"
+        >
+          {callout}
+        </div>
       )}
     </div>
   );

@@ -14,7 +14,7 @@ import {
 } from "../services/api";
 
 import ShareButton from "../components/ShareButton";
-import SharePrompt from "../components/SharePrompt";
+import ShareMoment from "../components/ShareMoment";
 import Creator from "../components/Creator";
 import RelatedProcesses from "../components/RelatedProcesses";
 import { BriefPointer } from "../components/BriefPointer";
@@ -222,6 +222,7 @@ export default function ProjectDetail() {
       <div className="process-share-row">
         <ShareButton
           title={project.title}
+          processId={project.id}
           shareText={`Check out this project: ${project.title}`}
         />
       </div>
@@ -295,10 +296,9 @@ export default function ProjectDetail() {
       {/* The share moment, directly under the button that was just pressed
           rather than beside the icons at the top of the page. */}
       {project.user_sentiment === "support" && (
-        <SharePrompt
+        <ShareMoment
           processId={project.id}
-          title={project.title}
-          line="You're backing this — share it so more neighbors find it."
+          text="You're backing this — share it so more neighbors find it."
         />
       )}
 
