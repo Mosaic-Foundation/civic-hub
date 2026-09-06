@@ -144,8 +144,22 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-sm);
-  flex-wrap: wrap;
+  /* Never wrap on desktop: with wrap, a long title took its full intrinsic
+     width and pushed the pill onto a second line, right-aligned — which read
+     as a blank line under the title (Adam, 2026-09-06). The title column
+     shrinks and wraps instead; the pill stays top-right like every other
+     card. Phones stack the two (media query below). */
+  flex-wrap: nowrap;
   margin: 0 0 var(--space-sm);
+}
+
+.feed-post-head .feed-post-title {
+  min-width: 0;
+}
+
+.feed-post-head .feed-pill {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 @media (max-width: 767px) {

@@ -4,6 +4,20 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Feed card: pill stays top-right beside a long title — 2026-09-06
+
+**Working in:** `civic-hub/ui/src/components/Feed.css`
+
+Adam: an "Official response" card with a two-line title had "a whole line
+of white space" under the title, pill sitting low. `.feed-post-head` was
+`flex-wrap: wrap` and the title kept its intrinsic width, so a long title
+pushed the pill onto a second flex line, right-aligned — the blank line
+was the pill's row. Desktop head is now `nowrap` (title `min-width: 0`
+wraps inside its column; pill `flex-shrink: 0`); the phone layout
+(stacked, pill above title) is unchanged. Verified at 1100px on the
+farm-stand card: two-line title, pill offset 0 from the top and right,
+head no taller than the title.
+
 ## Digest subject: "Sunday, September 6 digest", and the two-email question — 2026-09-06
 
 **Working in:** `civic-hub/src/modules/civic.digest/service.ts`, `ui/src/pages/Settings.tsx`
