@@ -143,3 +143,20 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
 }
+
+/* Option rows are auto-growing single-line textareas (GrowingLineInput):
+   wrap and grow to show a long option, capped at a few lines, then scroll. */
+.growing-line-input {
+  resize: none;
+  overflow: hidden;
+  line-height: 1.4;
+  font-family: inherit;
+}
+
+.approval-option-row {
+  align-items: flex-start; /* the × stays at the top as a row grows */
+}
+
+.approval-option-remove {
+  margin-top: 0.3rem;
+}

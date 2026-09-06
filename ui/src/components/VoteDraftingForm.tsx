@@ -5,6 +5,7 @@ import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
 import SuggestFooterButton from "./SuggestFooterButton";
 import TitleField from "./TitleField";
+import GrowingLineInput from "./GrowingLineInput";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
@@ -257,14 +258,14 @@ export default function VoteDraftingForm({
             <div className="approval-options-editor">
               {localOptions.map((opt, i) => (
                 <div key={i} className="approval-option-row">
-                  <input
-                    type="text"
+                  <GrowingLineInput
                     className="form-input approval-option-input"
                     value={opt}
-                    onChange={(e) => handleOptionChange(i, e.target.value)}
+                    onChange={(v) => handleOptionChange(i, v)}
                     placeholder={`Option ${i + 1}`}
                     maxLength={200}
                     disabled={disabled}
+                    aria-label={`Option ${i + 1}`}
                   />
                   {localOptions.length > 2 && (
                     <button

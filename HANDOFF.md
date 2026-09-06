@@ -4,6 +4,53 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Approval-vote option rows grow to show the whole option — 2026-09-05
+
+**Working in:** `civic-hub/ui/src/components/`
+
+Adam, testing approval voting on his phone (2026-09-05): the assistant
+generated seven options that applied correctly, but "when I view the
+options, it's the same issue that I had with the title before. You can't
+see the whole text, and it's hard to scroll." Each option was a single-line
+`<input>`; anything past ~40 characters on a phone scrolled off the end.
+
+He asked for expandable boxes sized to the option — with a cap on how far
+they grow.
+
+### What changed
+
+- **`GrowingLineInput.tsx` (new)** — the *controlled* sibling of
+  `TitleField`: a `<textarea rows={1}>` that sizes itself to its content on
+  every value change (typing, an applied suggestion, a resumed draft), up to
+  `maxLines` (default 6), then scrolls inside the box. Still one line
+  semantically: Enter is blocked, pasted newlines flatten to spaces. Reusable
+  by any repeater whose rows are short-but-not-single-line values.
+- **`VoteDraftingForm.tsx`** — each `.approval-option-input` is now a
+  `GrowingLineInput` (same `maxLength={200}`, same `handleOptionChange`).
+- **`VoteDraftingForm.css`** — `.growing-line-input` (resize none, line-height
+  1.4); option rows align `flex-start` so the × stays on the first line as a
+  row grows.
+
+### Why a 6-line cap
+
+Options are capped at 200 characters. On a 375px phone that wraps to about
+seven lines, so 6 shows nearly every legal option in full and only the very
+longest scroll their last line. Measured on dev: a 151-char option fit
+without scrolling (147px); a 187-char one showed six of seven lines and
+scrolled. An unbounded box would push the rest of the list around.
+
+### Verified on dev (mobile 375×812, dev resident)
+
+- Short option: one line (40px). Long: grows. Over cap: 6 lines + inner scroll.
+- Typing grows the row live (40 → 83 → 104px); Enter is prevented; a pasted
+  `\n` becomes a space.
+- × aligned to the top of every row (5px inset) regardless of height.
+- Test draft and `uitest_` session deleted afterward.
+
+**Scope:** vote-specific (only approval options use it today), but the
+component is generic — the same grow-with-cap pattern as `TitleField` and
+`SeedStatementRows`, now in a reusable controlled form.
+
 ## Admin review buttons went missing between reviews — 2026-09-05
 
 Adam reported the Approve / Request changes / Decline buttons sometimes absent on a review, refresh
