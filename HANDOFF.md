@@ -4,6 +4,74 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Projects: comments and updates on the shared comment module — 2026-09-06
+
+**Working in:** `civic-hub/src/modules/civic.input/`, `src/controllers/inputController.ts`,
+`src/processes/types.ts` + `projectAdapter.ts`, `src/modules/civic.projects/`,
+`src/controllers/projectController.ts`, `src/routes/projectRoutes.ts`,
+`src/db/schemaContract.ts`, `supabase/migrations/20260906120000_…sql`, `ui/src/`
+
+Adam, smoke test: a project comment with a curse word posted (no word
+list), and "I can't remove the comment as an admin for moderation
+purposes, which I can on other processes. Please make projects more in
+line and universally aligned … in terms of profanity prevention,
+moderation and all of that." Then: "Updates should be moved to that as
+well."
+
+Cause: proposals, votes and conversations all comment through
+`civic.input` → `community_inputs`, which is where the word list, admin
+hide-with-reason + audit log, anonymity policy and signed-out redaction
+live. Projects had their own `project_comments` / `project_updates`
+tables, their own routes and their own form — and none of it.
+
+### What changed
+
+- **`CommentPhase`** gains `"comment"` (a plain comment on any non-vote,
+  non-proposal process) and `"update"` (a creator's post).
+- **`POST /process/:id/input`** now sets the phase from the process type
+  (`civic.vote` → "vote", else "comment"; standalone proposal →
+  "proposal"), and accepts `phase: "update"` from a client **only for the
+  process's creator** (403 otherwise); an update is never anonymous. After
+  storing an update it calls the new registry hook
+  **`ProcessHandler.onUpdatePosted?(process, {id, actor})`** — projects
+  implement it by emitting `civic.project.updated`, so the feed's
+  "Project update" card and the digest line are unchanged. Any type that
+  later wants creator updates declares the hook; the storage and
+  moderation are already universal.
+- **Projects module**: `addProjectComment` / `listProjectComments` /
+  `addProjectUpdate` removed; `listProjectUpdates` (used by the project
+  brief) now reads `community_inputs` with phase "update", hidden
+  excluded; `comment_count` counts visible non-update inputs. Routes
+  `/projects/:id/comments` (GET/POST) and `/projects/:id/updates` removed.
+  `project_updates` / `project_comments` removed from the schema contract.
+- **`processAnonymity`**: the project-comments branch removed — every
+  type's inputs were already gathered from `community_inputs`.
+- **Migration `20260906120000_project_posts_to_community_inputs.sql`**:
+  copies both old tables into `community_inputs` (phase "comment" /
+  "update", author name snapshot from `users`), idempotent; old tables
+  left for a later drop. **Adam runs it in the dev and prod dashboards
+  before the push** (dev already has the equivalent applied by script: 1
+  comment + 4 updates moved).
+- **UI**: `submitInput(…, phase?)`; `ProposalCommentForm` (the one comment
+  form for every type — name predates that) takes `phase="update"`,
+  `heading`, `placeholder`, `submitLabel`: no anonymity toggle, 4000-char
+  limit, the Markdown toolbar. `CommunityInputPanel` config gains
+  `phases`, `heading`, `noun`, `emptyText`, `richText` (default: every
+  phase but "update", so existing pages are unchanged). `ProjectDetail`
+  renders Updates (form for the creator + panel, phase "update", Markdown)
+  and Comments (form + panel) through those; its private form, comment
+  list and state are gone. Admin hide/restore, tombstones and
+  "Resident N" bylines come with the panel.
+
+### Verified on dev (skate park, resident + admin/creator sessions)
+
+Profane comment → 400 profanity; clean comment → 201 phase "comment";
+update as non-creator → 403; update as creator → 201 phase "update",
+`civic.project.updated` carries `update_id` = the input id; profane
+update → 400; admin hide → hidden, `comment_count` 0, signed-out body
+empty with tombstone; project page (375px) shows Updates + Comments
+panels with the admin hide link, Markdown rendered in the update.
+
 ## Conversation statement form shows the server's refusal — 2026-09-06
 
 **Working in:** `civic-hub/ui/src/components/deliberation/StatementSubmission.tsx` (+ `.css`)

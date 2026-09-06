@@ -25,7 +25,6 @@
 import { getDb } from "../db/client.js";
 import { getProcess } from "./processService.js";
 import { getInputsByProcess } from "../modules/civic.input/index.js";
-import { listProjectComments } from "../modules/civic.projects/index.js";
 import { resolveCreators } from "./creatorDisplay.js";
 
 /** A (user id, first-seen timestamp) contribution inside one process. */
@@ -122,13 +121,8 @@ export async function buildProcessAnonNumbers(
           }
         }
       }
-      if (process.definition.type === "civic.project") {
-        for (const comment of await listProjectComments(processId)) {
-          if (comment.user_id) {
-            contributions.push({ id: comment.user_id, at: comment.created_at });
-          }
-        }
-      }
+      // Project comments and updates are community_inputs rows now
+      // (2026-09-06), gathered with every other type's below.
     } else {
       // Standalone proposal — not a processes row.
       const proposalAuthor = await getProposalAuthor(processId);

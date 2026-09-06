@@ -4,15 +4,35 @@ import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
 import AuthModal from "./AuthModal";
+import MarkdownTextarea from "./MarkdownTextarea";
 
 const COMMENT_MAX = 500;
+const UPDATE_MAX = 4000;
 
+// The one comment form for every process type (its name predates that).
+// With `phase="update"` it posts a creator's update: no anonymity toggle,
+// a longer limit, the Markdown toolbar — same server path, same word list,
+// same admin hide.
 interface Props {
+  /** The process being commented on — a proposal, vote, project, conversation. */
   proposalId: string;
   onCommentAdded: () => void;
+  phase?: "update";
+  heading?: string;
+  placeholder?: string;
+  submitLabel?: string;
 }
 
-export default function ProposalCommentForm({ proposalId, onCommentAdded }: Props) {
+export default function ProposalCommentForm({
+  proposalId,
+  onCommentAdded,
+  phase,
+  heading,
+  placeholder,
+  submitLabel,
+}: Props) {
+  const isUpdate = phase === "update";
+  const max = isUpdate ? UPDATE_MAX : COMMENT_MAX;
   const { actorId } = useAuth();
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } = useRequireAuth();
   const [body, setBody] = useState("");
@@ -30,7 +50,8 @@ export default function ProposalCommentForm({ proposalId, onCommentAdded }: Prop
       await submitInput(
         proposalId,
         body.trim(),
-        identityMode === "anonymous_only" || anonymous,
+        !isUpdate && (identityMode === "anonymous_only" || anonymous),
+        phase,
       );
       setBody("");
       setSuccess(true);
@@ -54,19 +75,29 @@ export default function ProposalCommentForm({ proposalId, onCommentAdded }: Prop
         <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
       )}
 
-      <h3>Add a comment</h3>
+      <h3>{heading ?? "Add a comment"}</h3>
 
       <form onSubmit={handleSubmit}>
-        <textarea
-          className="vote-comment-textarea"
-          value={body}
-          onChange={(e) => setBody(e.target.value.slice(0, COMMENT_MAX))}
-          placeholder="Share your thoughts on this proposal"
-          rows={3}
-          maxLength={COMMENT_MAX}
-          disabled={submitting}
-        />
-        {identityMode === "anonymous_optional" && body.trim().length > 0 && (
+        {isUpdate ? (
+          <MarkdownTextarea
+            value={body}
+            onChange={(e) => setBody(e.target.value.slice(0, max))}
+            placeholder={placeholder ?? "Share an update on your project..."}
+            maxLength={max}
+            disabled={submitting}
+          />
+        ) : (
+          <textarea
+            className="vote-comment-textarea"
+            value={body}
+            onChange={(e) => setBody(e.target.value.slice(0, max))}
+            placeholder={placeholder ?? "Share your thoughts on this proposal"}
+            rows={3}
+            maxLength={max}
+            disabled={submitting}
+          />
+        )}
+        {!isUpdate && identityMode === "anonymous_optional" && body.trim().length > 0 && (
           <label className="auth-checkbox-label comment-anonymous-toggle">
             <input
               type="checkbox"
@@ -79,19 +110,19 @@ export default function ProposalCommentForm({ proposalId, onCommentAdded }: Prop
         )}
         <div className="proposal-comment-form-footer">
           <span className="vote-comment-counter">
-            {body.length} / {COMMENT_MAX}
+            {body.length} / {max}
           </span>
           <button
             type="submit"
             className="endorse-button"
             disabled={submitting || body.trim().length === 0}
           >
-            {submitting ? "Submitting..." : "Submit Comment"}
+            {submitting ? "Submitting..." : (submitLabel ?? "Submit Comment")}
           </button>
         </div>
       </form>
 
-      {success && <p className="vote-confirmation">Comment submitted.</p>}
+      {success && <p className="vote-confirmation">{isUpdate ? "Update posted." : "Comment submitted."}</p>}
       {error && <p className="form-error">{error}</p>}
     </div>
   );

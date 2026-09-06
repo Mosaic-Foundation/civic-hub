@@ -119,7 +119,19 @@ export interface ContentLink {
 export interface CommunityInputConfig {
   prompt?: string;
   label: string;
+  /** Which phases to show; default every phase except "update". */
+  phases?: CommentPhase[];
+  /** Section heading; default "Community comments". */
+  heading?: string;
+  /** Noun for the count line; default "comment". */
+  noun?: string;
+  /** Shown instead of nothing when the list is empty. */
+  emptyText?: string;
+  /** Render bodies as Markdown (creator updates are written with the toolbar). */
+  richText?: boolean;
 }
+
+export type CommentPhase = "proposal" | "vote" | "comment" | "update";
 
 export interface AfterVoteInfo {
   body: string;
@@ -745,14 +757,6 @@ export function getProjectDetail(id: string): Promise<ProjectDetail> {
   return request("GET", `/projects/${id}`);
 }
 
-export function addProjectUpdate(
-  id: string,
-  content: string,
-  mediaUrls: string[] = [],
-): Promise<ProjectUpdateEntry> {
-  return request("POST", `/projects/${id}/updates`, { content, media_urls: mediaUrls });
-}
-
 export function completeProject(
   id: string,
 ): Promise<{ ok: boolean; message: string }> {
@@ -766,16 +770,8 @@ export function setProjectSentiment(
   return request("POST", `/projects/${id}/sentiment`, { sentiment });
 }
 
-export function listProjectComments(id: string): Promise<ProjectComment[]> {
-  return request("GET", `/projects/${id}/comments`);
-}
-
-export function addProjectComment(
-  id: string,
-  content: string,
-): Promise<ProjectComment> {
-  return request("POST", `/projects/${id}/comments`, { content });
-}
+// Project comments and creator updates go through submitInput / getInputs —
+// the shared comment module, so projects moderate like every other type.
 
 // --- Project Drafts (AI-augmented project drafting) ---
 
@@ -843,7 +839,7 @@ export interface CommunityInput {
   is_anonymous: boolean;
   body: string;
   submitted_at: string;
-  phase: "proposal" | "vote" | null;
+  phase: CommentPhase | null;
   moderation: CommentModerationView | null;
 }
 
@@ -878,10 +874,13 @@ export function submitInput(
   processId: string,
   body: string,
   isAnonymous = false,
+  /** "update" — a creator's update; the server allows it only for the creator. */
+  phase?: "update",
 ): Promise<CommunityInput> {
   // The author is the authenticated session user — the server ignores
   // any caller-supplied identity.
   return request("POST", `/process/${processId}/input`, {
+    ...(phase ? { phase } : {}),
     body,
     is_anonymous: isAnonymous,
   });

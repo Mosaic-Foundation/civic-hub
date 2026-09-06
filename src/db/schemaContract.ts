@@ -73,8 +73,8 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "proposal_supports", owner: "civic.proposals" },
   { table: "proposal_drafts", columns: ["links"], owner: "civic.proposal_drafts" },
   { table: "projects", owner: "civic.projects" },
-  { table: "project_updates", owner: "civic.projects" },
-  { table: "project_comments", owner: "civic.projects" },
+  // project_updates / project_comments: superseded by community_inputs on
+  // 2026-09-06 (migration 20260906120000); dropped in a later migration.
   { table: "project_sentiments", owner: "civic.projects" },
   { table: "project_drafts", columns: ["links"], owner: "civic.project_drafts" },
   { table: "vote_drafts", columns: ["method", "custom_options", "links"], owner: "civic.vote_drafts" },

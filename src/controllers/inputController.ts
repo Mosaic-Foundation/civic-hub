@@ -8,6 +8,7 @@ import {
   type CommentPhase,
 } from "../modules/civic.input/index.js";
 import { getProcess } from "../services/processService.js";
+import { getProcessHandler } from "../processes/registry.js";
 import { getDb } from "../db/client.js";
 import {
   getAuthUser,
@@ -89,7 +90,10 @@ export async function handleSubmitInput(
     if (process) {
       hubId = process.hubId;
       jurisdiction = process.jurisdiction;
-      phase = "vote";
+      // "vote" keeps its meaning (the panel draws a divider between a
+      // vote's comments and the ones carried over from its proposal);
+      // every other type's comment is just a comment.
+      phase = process.definition.type === "civic.vote" ? "vote" : "comment";
     } else if (await proposalExists(processId)) {
       hubId = HUB_ID;
       jurisdiction = "local";
@@ -101,6 +105,23 @@ export async function handleSubmitInput(
 
     const user = getAuthUser(res);
 
+    // A creator's update: the one phase a client may ask for, and only the
+    // process's creator may post it. Same storage and moderation as a
+    // comment; the type's handler adds whatever an update means to it.
+    const requestedPhase = req.body?.phase;
+    const isUpdate = requestedPhase === "update";
+    if (requestedPhase !== undefined && !isUpdate) {
+      res.status(400).json({ error: "Unknown phase." });
+      return;
+    }
+    if (isUpdate) {
+      if (!process || process.createdBy !== user.id) {
+        res.status(403).json({ error: "Only the creator can post an update." });
+        return;
+      }
+      phase = "update";
+    }
+
     // Hub-wide identity policy for comments. The mode overrides the
     // caller's flag in both directions so a stale client can't bypass
     // the admin's setting.
@@ -108,6 +129,7 @@ export async function handleSubmitInput(
     let isAnonymous = is_anonymous === true;
     if (mode === "real_name") isAnonymous = false;
     if (mode === "anonymous_only") isAnonymous = true;
+    if (isUpdate) isAnonymous = false; // an update is signed by the creator
 
     const input = await submitInput(processId, user.id, String(body), {
       hub_id: hubId,
@@ -120,6 +142,12 @@ export async function handleSubmitInput(
       // legacy Board accounts).
       author_name: user.full_name ?? user.display_name ?? null,
     });
+    if (isUpdate && process) {
+      await getProcessHandler(process.definition.type)?.onUpdatePosted?.(process, {
+        id: input.id,
+        actor: user.id,
+      });
+    }
     res.status(201).json(redactForPublic(input));
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

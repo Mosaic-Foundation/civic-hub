@@ -187,6 +187,16 @@ export interface ProcessHandler {
   onEdited?(process: Process, changes: EditChangeSet): Promise<void>;
 
   /**
+   * A creator's update was posted to this process through the shared
+   * comment module (civic.input, phase "update"). The module stores and
+   * moderates it like any comment; a type that wants an update to mean
+   * something more — a feed card, a digest line — declares it here.
+   * Projects emit civic.project.updated. Optional: most types have no
+   * creator-update concept and never see the hook.
+   */
+  onUpdatePosted?(process: Process, update: { id: string; actor: string }): Promise<void>;
+
+  /**
    * Optional: what a social-media preview of one of this type's pages should
    * say. The default (services/shareMeta.ts) is the process title, its
    * description, and any `*image_url` on its state/content — which is right

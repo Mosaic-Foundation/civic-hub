@@ -3,7 +3,11 @@
 // Community input is stored independently from votes.
 // It is not used in vote tallying or lifecycle transitions.
 
-export type CommentPhase = "proposal" | "vote";
+// "comment" is a plain comment on any process that is not a vote or a
+// proposal (a project, a conversation); "update" is a post by the process's
+// creator — a project update — stored here so it gets the same word list,
+// admin hide and audit trail as every other free-text post (2026-09-06).
+export type CommentPhase = "proposal" | "vote" | "comment" | "update";
 
 export interface CommunityInput {
   id: string;

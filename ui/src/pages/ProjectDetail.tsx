@@ -4,18 +4,16 @@ import { useAuth } from "../context/AuthContext";
 import {
   getProjectDetail,
   setProjectSentiment,
-  addProjectUpdate,
-  addProjectComment,
-  listProjectComments,
   completeProject,
   type ProjectDetail as ProjectDetailType,
-  type ProjectComment,
   type SentimentValue,
 } from "../services/api";
 
 import ShareButton from "../components/ShareButton";
 import ShareMoment from "../components/ShareMoment";
 import Creator from "../components/Creator";
+import ProposalCommentForm from "../components/ProposalCommentForm";
+import CommunityInputPanel from "../components/CommunityInputPanel";
 import RelatedProcesses from "../components/RelatedProcesses";
 import { BriefPointer } from "../components/BriefPointer";
 import "./ProjectDetail.css";
@@ -23,7 +21,6 @@ import AdminArchiveButton from "../components/AdminArchiveButton";
 import DetailActions from "../components/DetailActions";
 import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
-import MarkdownTextarea from "../components/MarkdownTextarea";
 import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
 import { getEditPolicy, startProcessEdit, type EditPolicy } from "../services/api";
@@ -60,14 +57,14 @@ export default function ProjectDetail() {
   const { user, isAdmin } = useAuth();
 
   const [project, setProject] = useState<ProjectDetailType | null>(null);
-  const [comments, setComments] = useState<ProjectComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [updateText, setUpdateText] = useState("");
-  const [updatePosting, setUpdatePosting] = useState(false);
-  const [commentText, setCommentText] = useState("");
-  const [commentPosting, setCommentPosting] = useState(false);
+  // Updates and comments are the shared comment module (civic.input) —
+  // one word list, one admin hide, one audit trail for every type. These
+  // keys re-mount the lists after a post.
+  const [updatesRefresh, setUpdatesRefresh] = useState(0);
+  const [commentsRefresh, setCommentsRefresh] = useState(0);
   const [sentimentLoading, setSentimentLoading] = useState(false);
   const [completing, setCompleting] = useState(false);
 
@@ -106,8 +103,6 @@ export default function ProjectDetail() {
     try {
       const detail = await getProjectDetail(id);
       setProject(detail);
-      const cmts = await listProjectComments(id);
-      setComments(cmts);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -147,34 +142,6 @@ export default function ProjectDetail() {
       handleSentiment("neutral");
     } else {
       handleSentiment(value);
-    }
-  }
-
-  async function handlePostUpdate() {
-    if (!id || !updateText.trim() || updatePosting) return;
-    setUpdatePosting(true);
-    try {
-      await addProjectUpdate(id, updateText.trim());
-      setUpdateText("");
-      await loadProject();
-    } catch {
-      // silent
-    } finally {
-      setUpdatePosting(false);
-    }
-  }
-
-  async function handlePostComment() {
-    if (!id || !commentText.trim() || commentPosting) return;
-    setCommentPosting(true);
-    try {
-      const comment = await addProjectComment(id, commentText.trim());
-      setComments((prev) => [comment, ...prev]);
-      setCommentText("");
-    } catch {
-      // silent
-    } finally {
-      setCommentPosting(false);
     }
   }
 
@@ -317,92 +284,51 @@ export default function ProjectDetail() {
           anything"). */}
       <SourceLinks sources={project.sources} />
 
-      {/* Updates timeline */}
+      {/* Updates — creator posts, through the shared comment module so they
+          carry the same word list and admin hide as everything else. */}
       <div className="project-updates">
-        <h2>Updates ({project.updates.length})</h2>
-
         {isCreator && project.status === "active" && (
-          <div className="project-update-form">
-            <MarkdownTextarea
-              value={updateText}
-              onChange={(e) => setUpdateText(e.target.value)}
-              placeholder="Share an update on your project..."
-            />
-            <button
-              type="button"
-              onClick={handlePostUpdate}
-              disabled={!updateText.trim() || updatePosting}
-            >
-              {updatePosting ? "Posting..." : "Post update"}
-            </button>
-          </div>
+          <ProposalCommentForm
+            proposalId={project.id}
+            phase="update"
+            heading="Post an update"
+            placeholder="Share an update on your project..."
+            submitLabel="Post update"
+            onCommentAdded={() => setUpdatesRefresh((n) => n + 1)}
+          />
         )}
-
-        {project.updates.length === 0 ? (
-          <p className="empty-state-inline">No updates yet.</p>
-        ) : (
-          project.updates.map((u) => (
-            <div key={u.id} className="project-update-item">
-              <RichText className="project-update-content" text={u.content} />
-              <div className="project-update-time">
-                {new Date(u.created_at).toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              </div>
-            </div>
-          ))
-        )}
+        <CommunityInputPanel
+          key={`updates-${updatesRefresh}`}
+          processId={project.id}
+          config={{
+            label: "",
+            heading: "Updates",
+            noun: "update",
+            phases: ["update"],
+            emptyText: "No updates yet.",
+            richText: true,
+          }}
+        />
       </div>
 
-      {/* Comments */}
+      {/* Comments — the same form and panel as proposals and votes. */}
       <div className="project-comments">
-        <h2>Comments ({comments.length})</h2>
-
-        {user && (
-          <div className="project-comment-form">
-            <textarea
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Add a comment..."
-            />
-            <button
-              type="button"
-              onClick={handlePostComment}
-              disabled={!commentText.trim() || commentPosting}
-            >
-              {commentPosting ? "Posting..." : "Comment"}
-            </button>
-          </div>
+        {project.status === "active" && (
+          <ProposalCommentForm
+            proposalId={project.id}
+            placeholder="Add a comment..."
+            onCommentAdded={() => setCommentsRefresh((n) => n + 1)}
+          />
         )}
-
-        {comments.length === 0 ? (
-          <p className="empty-state-inline">No comments yet.</p>
-        ) : (
-          comments.map((c) => (
-            <div key={c.id} className="project-comment-item">
-              <div className="project-comment-content">{c.content}</div>
-              <div className="project-comment-meta">
-                <Creator
-                  name={c.creator_name}
-                  isAdmin={c.creator_is_admin}
-                  officialType={c.creator_official_type}
-                  officialTitle={c.creator_official_title}
-                />
-                <span>
-                  {new Date(c.created_at).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-              </div>
-            </div>
-          ))
-        )}
+        <CommunityInputPanel
+          key={`comments-${commentsRefresh}`}
+          processId={project.id}
+          config={{
+            label: "",
+            heading: "Comments",
+            emptyText: "No comments yet.",
+          }}
+        />
       </div>
 
       <RelatedProcesses

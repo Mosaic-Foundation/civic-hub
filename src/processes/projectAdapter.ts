@@ -18,6 +18,8 @@ import { ProcessHandler } from "./types.js";
 import { getDb } from "../db/client.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { getProject, listProjectUpdates } from "../modules/civic.projects/index.js";
+import { emitProjectUpdated } from "../modules/civic.projects/events.js";
+import { emitEvent } from "../events/eventEmitter.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import { projectAssistantConfig } from "./projectAssistantConfig.js";
 import {
@@ -112,6 +114,13 @@ const projectAdapter: ProcessHandler = {
   },
 
   getAssistantConfig: () => projectAssistantConfig,
+
+  // A project update is stored by civic.input like any comment (word list,
+  // admin hide); this is the project-specific meaning on top — the feed's
+  // "Project update" card and the digest line read civic.project.updated.
+  onUpdatePosted: async (process, update) => {
+    await emitProjectUpdated({ project_id: process.id, emit: emitEvent }, update.actor, { update_id: update.id });
+  },
 
   // The relational `projects` row holds project state; the canonical
   // `processes` row needs no type-specific state.

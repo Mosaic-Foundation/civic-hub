@@ -12,8 +12,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { CommunityInput, CommunityInputConfig } from "../services/api";
+import type { CommentPhase, CommunityInput, CommunityInputConfig } from "../services/api";
 import Creator from "./Creator";
+import RichText from "./RichText";
 import {
   adminHideComment,
   adminRestoreComment,
@@ -66,10 +67,28 @@ export default function CommunityInputPanel({ processId, config }: Props) {
     fetchInputs();
   }, [fetchInputs]);
 
+  // Which phases this panel shows. Default: everything but creator updates,
+  // which a page lists in its own section (projects) — so a plain comments
+  // panel never has to know updates exist.
+  const phases = config?.phases;
+  const shown = inputs.filter((i) =>
+    phases ? phases.includes((i.phase ?? "comment") as CommentPhase) : i.phase !== "update",
+  );
+  const heading = config?.heading ?? "Community comments";
+  const noun = config?.noun ?? "comment";
+
   // Visible-to-residents comments include hidden ones (so the tombstone
   // takes the slot). The empty-list short-circuit must consider all of
-  // them.
-  if (inputs.length === 0) return null;
+  // them — and a page can ask for an empty state instead of nothing.
+  if (shown.length === 0) {
+    if (!config?.emptyText) return null;
+    return (
+      <div className="community-input-panel">
+        <h3>{heading}</h3>
+        <p className="empty-state-inline">{config.emptyText}</p>
+      </div>
+    );
+  }
 
   const label =
     config?.label ??
@@ -112,16 +131,16 @@ export default function CommunityInputPanel({ processId, config }: Props) {
 
   return (
     <div className="community-input-panel">
-      <h3>Community comments</h3>
-      <p className="input-label">{label}</p>
+      <h3>{heading}</h3>
+      {label && <p className="input-label">{label}</p>}
 
       <div className="input-list">
         <p className="input-count">
-          {inputs.length} comment{inputs.length !== 1 ? "s" : ""}
+          {shown.length} {noun}{shown.length !== 1 ? "s" : ""}
         </p>
         {error && <p className="form-error">{error}</p>}
-        {inputs.map((input, idx) => {
-          const prevPhase = idx > 0 ? inputs[idx - 1].phase : null;
+        {shown.map((input, idx) => {
+          const prevPhase = idx > 0 ? shown[idx - 1].phase : null;
           const showPhaseDivider =
             input.phase === "proposal" &&
             prevPhase === "vote";
@@ -139,6 +158,8 @@ export default function CommunityInputPanel({ processId, config }: Props) {
                   This comment was removed by a moderator for violating the{" "}
                   <Link to="/code-of-conduct">Code of Conduct</Link>.
                 </p>
+              ) : config?.richText ? (
+                <RichText className="input-body" text={input.body} />
               ) : (
                 <p className="input-body">{input.body}</p>
               )}

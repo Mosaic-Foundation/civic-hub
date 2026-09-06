@@ -14,10 +14,7 @@ import {
   getProject,
   getProjectReadModel,
   getProjectSummary,
-  addProjectUpdate,
   setProjectSentiment,
-  addProjectComment,
-  listProjectComments,
   completeProject,
 } from "../modules/civic.projects/index.js";
 import type { SentimentValue } from "../modules/civic.projects/models.js";
@@ -179,39 +176,6 @@ export async function handleGetProject(
   }
 }
 
-export async function handleAddUpdate(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  const projectId = req.params.id as string;
-  const { content, media_urls } = req.body;
-
-  if (!content || typeof content !== "string" || !content.trim()) {
-    res.status(400).json({ error: "Update content is required" });
-    return;
-  }
-
-  try {
-    const user = getAuthUser(res);
-    const update = await addProjectUpdate(
-      projectId,
-      user.id,
-      content,
-      media_urls ?? [],
-      emitEvent,
-    );
-    res.status(201).json(update);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    if (message.includes("not found")) {
-      res.status(404).json({ error: message });
-    } else if (message.includes("Only the project creator")) {
-      res.status(403).json({ error: message });
-    } else {
-      res.status(400).json({ error: message });
-    }
-  }
-}
 
 export async function handleSetSentiment(
   req: Request,
@@ -247,57 +211,4 @@ export async function handleSetSentiment(
   }
 }
 
-export async function handleAddComment(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  const projectId = req.params.id as string;
-  const { content } = req.body;
 
-  if (!content || typeof content !== "string" || !content.trim()) {
-    res.status(400).json({ error: "Comment content is required" });
-    return;
-  }
-
-  try {
-    const user = getAuthUser(res);
-    const comment = await addProjectComment(projectId, user.id, content, emitEvent);
-    res.status(201).json(comment);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    if (message.includes("not found")) {
-      res.status(404).json({ error: message });
-    } else {
-      res.status(400).json({ error: message });
-    }
-  }
-}
-
-export async function handleListComments(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  const projectId = req.params.id as string;
-
-  try {
-    const comments = await listProjectComments(projectId);
-    // Attach creator name + admin flag (batched) and redact raw user_id.
-    // Public callers get "Resident N" numbering from the SAME per-process
-    // map as the project byline, so one page never disagrees with itself.
-    const caller = await resolveCallerUser(req);
-    const enriched = await enrichCreators(
-      comments as unknown as Record<string, unknown>[],
-      {
-        rawIdField: "user_id",
-        audience: caller ? "member" : "public",
-        anonNumbers: caller
-          ? undefined
-          : await buildProcessAnonNumbers(projectId),
-      },
-    );
-    res.json(enriched);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
-  }
-}

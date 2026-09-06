@@ -11,7 +11,6 @@ import type {
 import {
   emitProjectCreated,
   emitProjectUpdated,
-  emitProjectCommented,
   emitProjectSentimentChanged,
   emitProjectArchived,
   emitProjectCompleted,
@@ -244,66 +243,29 @@ export async function completeProject(
 
 // --- Project Updates -------------------------------------------------------
 
-export async function addProjectUpdate(
-  projectId: string,
-  actor: string,
-  content: string,
-  mediaUrls: string[],
-  emit: EmitEventFn,
-): Promise<ProjectUpdate> {
-  const project = await getProject(projectId);
-  if (!project) throw new Error(`Project not found: ${projectId}`);
-  if (project.user_id !== actor) {
-    throw new Error("Only the project creator can post updates");
-  }
-  if (!content || content.trim().length === 0) {
-    throw new Error("Update content is required");
-  }
-
-  const id = generateId("pupd");
-
-  const { data, error } = await getDb()
-    .from("project_updates")
-    .insert({
-      id,
-      project_id: projectId,
-      content: content.trim(),
-      media_urls: mediaUrls.filter((u) => u.trim().length > 0),
-    })
-    .select()
-    .single();
-  if (error) throw new Error(`Projects: ${error.message}`);
-
-  await emitProjectUpdated(
-    { project_id: projectId, emit },
-    actor,
-    { update_id: id },
-  );
-
-  return {
-    id: data.id,
-    project_id: data.project_id,
-    content: data.content,
-    media_urls: data.media_urls ?? [],
-    created_at: data.created_at,
-  };
-}
-
+/**
+ * A project's updates — creator posts stored by civic.input with phase
+ * "update" (2026-09-06: projects kept their own tables and so had no word
+ * list, no admin hide, no audit trail; now one module serves every type).
+ * Hidden updates are left out, as they are everywhere else.
+ */
 export async function listProjectUpdates(
   projectId: string,
 ): Promise<ProjectUpdate[]> {
   const { data, error } = await getDb()
-    .from("project_updates")
-    .select("*")
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
+    .from("community_inputs")
+    .select("id, process_id, body, submitted_at")
+    .eq("process_id", projectId)
+    .eq("phase", "update")
+    .is("hidden_at", null)
+    .order("submitted_at", { ascending: false });
   if (error) throw new Error(`Projects: ${error.message}`);
   return (data ?? []).map((r) => ({
     id: r.id,
-    project_id: r.project_id,
-    content: r.content,
-    media_urls: r.media_urls ?? [],
-    created_at: r.created_at,
+    project_id: r.process_id,
+    content: r.body,
+    media_urls: [],
+    created_at: r.submitted_at,
   }));
 }
 
@@ -398,65 +360,8 @@ async function recountSentiments(
 }
 
 // --- Comments --------------------------------------------------------------
-
-export async function addProjectComment(
-  projectId: string,
-  userId: string,
-  content: string,
-  emit: EmitEventFn,
-): Promise<ProjectComment> {
-  const project = await getProject(projectId);
-  if (!project) throw new Error(`Project not found: ${projectId}`);
-  if (!content || content.trim().length === 0) {
-    throw new Error("Comment content is required");
-  }
-
-  const id = generateId("pcmt");
-
-  const { data, error } = await getDb()
-    .from("project_comments")
-    .insert({
-      id,
-      project_id: projectId,
-      user_id: userId,
-      content: content.trim(),
-    })
-    .select()
-    .single();
-  if (error) throw new Error(`Projects: ${error.message}`);
-
-  await emitProjectCommented(
-    { project_id: projectId, emit },
-    userId,
-    { comment_id: id },
-  );
-
-  return {
-    id: data.id,
-    project_id: data.project_id,
-    user_id: data.user_id,
-    content: data.content,
-    created_at: data.created_at,
-  };
-}
-
-export async function listProjectComments(
-  projectId: string,
-): Promise<ProjectComment[]> {
-  const { data, error } = await getDb()
-    .from("project_comments")
-    .select("*")
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(`Projects: ${error.message}`);
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    project_id: r.project_id,
-    user_id: r.user_id,
-    content: r.content,
-    created_at: r.created_at,
-  }));
-}
+// Posted and read through civic.input (POST/GET /process/:id/input), the
+// same module every other type uses. Nothing project-specific remains.
 
 // --- Read model ------------------------------------------------------------
 
@@ -471,9 +376,11 @@ export async function getProjectReadModel(
   const userSentiment = actor ? await getUserSentiment(id, actor) : null;
 
   const { count: commentCount, error: cErr } = await getDb()
-    .from("project_comments")
+    .from("community_inputs")
     .select("*", { count: "exact", head: true })
-    .eq("project_id", id);
+    .eq("process_id", id)
+    .neq("phase", "update")
+    .is("hidden_at", null);
   if (cErr) throw new Error(`Projects: ${cErr.message}`);
 
   return {
@@ -503,9 +410,7 @@ export function getProjectSummary(project: Project): Record<string, unknown> {
 
 export async function clearProjects(): Promise<void> {
   const db = getDb();
-  await db.from("project_comments").delete().neq("project_id", "");
   await db.from("project_sentiments").delete().neq("project_id", "");
-  await db.from("project_updates").delete().neq("project_id", "");
   const { error } = await db.from("projects").delete().neq("id", "");
   if (error) throw new Error(`Projects: failed to clear: ${error.message}`);
 }
