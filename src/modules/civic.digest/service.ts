@@ -303,13 +303,17 @@ function buildSubject(
   itemCount: number,
   now: Date,
 ): string {
+  // "Floyd Civic Hub — Sunday, September 6 digest (5 new items)". Spelled
+  // out, and "digest" rather than "update" — that is what the person opted
+  // into in Settings, and "update" reads like a changed process (Adam,
+  // 2026-09-06). This line is also the subtitle at the top of the email.
   const dateLabel = now.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
+    weekday: "long",
+    month: "long",
     day: "numeric",
   });
   const noun = itemCount === 1 ? "new item" : "new items";
-  return `${hub.hub_name} — ${dateLabel} update (${itemCount} ${noun})`;
+  return `${hub.hub_name} — ${dateLabel} digest (${itemCount} ${noun})`;
 }
 
 // --- Sections ---------------------------------------------------------------
