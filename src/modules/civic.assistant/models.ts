@@ -17,7 +17,9 @@ export type DraftField =
   | "description"
   | "sources"
   | "considerations"
-  | "seed_statements";
+  | "seed_statements"
+  /** Vote drafts whose method needs a choice list (approval): one per line. */
+  | "options";
 
 export interface DraftState {
   title: string;
@@ -26,6 +28,10 @@ export interface DraftState {
   considerations: string;
   /** Conversation (deliberation) drafts only: one statement per line. */
   seed_statements?: string;
+  /** Vote drafts: the choice list, one option per line (approval method). */
+  options?: string;
+  /** Vote drafts: the voting method, so the assistant knows which fields apply. */
+  method?: string;
 }
 
 export interface Suggestion {
@@ -43,6 +49,7 @@ export interface DraftProposal {
   considerations: string;
   /** Present only when the type declares the field (conversations). */
   seed_statements?: string;
+  options?: string;
 }
 
 export interface AssistantResponse {
@@ -86,6 +93,10 @@ export interface AssistantFieldGuidance {
  * the UI without the controller knowing the per-type fields.
  */
 export interface AssistantDraft extends Record<string, unknown> {
+  /** Vote drafts: the choice list as one-per-line text (from custom_options). */
+  options?: string;
+  /** Vote drafts: the voting method; decides whether `options` applies. */
+  method?: string;
   id: string;
   user_id: string;
   status: string;
@@ -145,6 +156,15 @@ export interface AssistantTypeConfig {
   typeGuidance: string;
   /** Which output fields this type's form has. */
   fields: DraftField[];
+  /**
+   * Optional: which of `fields` apply to THIS draft right now. A vote's
+   * "options" exists only when its method needs a choice list; a yes/no vote
+   * must never be offered one. Everything downstream — the prompt's draft
+   * state, the reply schema's field enum, validation — uses the result, so a
+   * method (or type) that declares different fields is handled by declaring
+   * them, never by a branch elsewhere. Default: all of `fields`.
+   */
+  activeFields?: (draft: DraftState) => DraftField[];
   /** Whether the proposal-style category (issue/idea/…) applies. */
   supportsCategories: boolean;
   /** Inline per-field guidance for the form. */

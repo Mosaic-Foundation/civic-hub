@@ -623,6 +623,10 @@ export interface VoteDraft {
   voting_duration_ms: number;
   method: string; // "yes_no_unsure" | "approval"
   custom_options: string[] | null;
+  /** Derived, client-side: custom_options as one-per-line text, so the
+   *  assistant layer (chips, Apply, "has content") treats options like any
+   *  other field. Set by ProposeDraftVote's withOptions(). */
+  options?: string;
   conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
   last_review_result: DraftSuggestion[] | null;
   draft_modified_since_review: boolean;

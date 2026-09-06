@@ -127,6 +127,7 @@ const FIELD_LABELS: Record<string, string> = {
   sources: "Sources",
   seed_statements: "Seed statements",
   considerations: "Considerations",
+  options: "Options",
 };
 function uiFieldLabel(field: string): string {
   return (
@@ -601,7 +602,9 @@ export function useDraftFlow<D extends BaseDraft>({
             ? `Search for a few reliable sources for this ${noun} and put them in a suggestion card I can apply. Don't invent URLs.`
             : field === "seed_statements"
               ? `Draft a balanced set of seed statements for this conversation now — spanning the range of views — and put them in a suggestion card I can apply.`
-              : `Draft the ${uiFieldLabel(field).toLowerCase()} for this ${noun} now and put it in a suggestion card I can apply.`,
+              : field === "options"
+                ? `Draft the options for this vote now — one per line, short and distinct, including "No change" if it's a real position — and put them in a suggestion card I can apply.`
+                : `Draft the ${uiFieldLabel(field).toLowerCase()} for this ${noun} now and put it in a suggestion card I can apply.`,
       }));
   }, [applyFields, pendingFields, draft, config]);
 

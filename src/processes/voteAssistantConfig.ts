@@ -2,13 +2,8 @@
 // via ProcessHandler.getAssistantConfig. See proposalAssistantConfig.ts for
 // the pattern.
 
-import type { AssistantTypeConfig } from "../modules/civic.assistant/index.js";
-import {
-  getVoteDraft,
-  appendVoteConversation,
-  saveVoteReviewResult,
-  applyVoteDraftProposal,
-} from "../modules/civic.vote_drafts/index.js";
+import type { AssistantTypeConfig, DraftField } from "../modules/civic.assistant/index.js";
+import { getVoteDraft, appendVoteConversation, saveVoteReviewResult, applyVoteDraftProposal, updateVoteDraft } from "../modules/civic.vote_drafts/index.js";
 
 const VOTE_BEST_PRACTICES = `# Vote Best Practices — Civic Hub
 
@@ -70,6 +65,21 @@ Same constraints as proposals:
 - Write in everyday language
 - Frame as a genuine question, not a position statement`;
 
+/**
+ * Which extra assistant fields each voting method needs, beyond the shared
+ * title / description / sources. THE place a method declares its fields: the
+ * client mirrors this (ui/src/services/voteMethods.ts) to decide which help
+ * chips to show, and `activeFields` below feeds it to the assistant's prompt
+ * and reply schema. A method added later (ranked choice, say) declares its
+ * own line here and is handled everywhere without another branch (Adam,
+ * 2026-09-05).
+ */
+export const VOTE_METHOD_EXTRA_FIELDS: Record<string, DraftField[]> = {
+  yes_no_unsure: [],
+  approval: ["options"],
+};
+const VOTE_SHARED_FIELDS: DraftField[] = ["title", "description", "sources"];
+
 export const voteAssistantConfig: AssistantTypeConfig = {
   contentNoun: "vote",
   greeting:
@@ -82,8 +92,16 @@ export const voteAssistantConfig: AssistantTypeConfig = {
   brainstormGuidance: `For votes: What should the community vote on? What's the question you want to put to your neighbors? Why does this matter now? What context should voters have to make an informed decision?`,
   reviewEmptyFieldsGuidance: `After evaluating the draft content, check for empty optional fields (description, sources). For each empty field that would strengthen this particular vote, mention it in your message — briefly explain what it could add and offer to help fill it in. These are NOT suggestions (don't add them to the suggestions array) — just a conversational nudge. Always make it clear the user can submit without filling those fields.`,
   typeGuidance: `## Vote guidance
-Votes are questions to the community. Focus on helping the user frame a clear, fair question that neighbors can meaningfully respond to. Ensure the description provides balanced context. Don't advise on vote duration — that's the user's choice.`,
-  fields: ["title", "description", "sources"],
+Votes are questions to the community. Focus on helping the user frame a clear, fair question that neighbors can meaningfully respond to. Ensure the description provides balanced context. Don't advise on vote duration — that's the user's choice.
+
+## Options (approval votes only)
+The draft state names the voting method. When it is Approval, the Options field is the list voters choose from — it is its OWN field, never part of the description. When the person gives you options, or you draft them, return them as ONE suggestion card with "field": "options", one option per line, no numbering or bullets. Keep each option short and distinct; give voters at least 2 and at most 8, and include a status-quo choice ("No change") when it is a real position. When the method is Yes / No / Unsure there is no Options field: never offer, draft, or mention options.`,
+  fields: [...VOTE_SHARED_FIELDS, "options"],
+  // "options" applies only when the method declares it — VOTE_METHOD_EXTRA_FIELDS.
+  activeFields: (draft) => [
+    ...VOTE_SHARED_FIELDS,
+    ...(VOTE_METHOD_EXTRA_FIELDS[draft.method ?? "yes_no_unsure"] ?? []),
+  ],
   supportsCategories: false,
   fieldGuidance: [
     {
@@ -101,18 +119,34 @@ Votes are questions to the community. Focus on helping the user frame a clear, f
       field: "sources",
       hint: "Link sources for any factual claims so voters can verify them.",
     },
+    {
+      field: "options",
+      hint: "One option per line — short, distinct, at least two. Include \"No change\" if it is a real position.",
+      example: "Extend hours to Sundays\nExtend weekday evenings instead\nKeep the current hours",
+    },
   ],
   draftStore: {
     async get(id) {
       const draft = await getVoteDraft(id);
       if (!draft) return undefined;
-      return { ...draft, considerations: "" };
+      // The assistant reads options as one-per-line text; the form stores an
+      // array. Method rides along so activeFields (and the prompt) can tell
+      // whether options apply at all.
+      return {
+        ...draft,
+        considerations: "",
+        options: (draft.custom_options ?? []).filter((o) => o.trim()).join("\n"),
+        method: draft.method,
+      };
     },
     appendConversation: (id, userMessage, assistantMessage) =>
       appendVoteConversation(id, userMessage, assistantMessage),
     saveReviewResult: (id, suggestions) => saveVoteReviewResult(id, suggestions),
     applyGeneratedDraft: async (id, draft) => {
       await applyVoteDraftProposal(id, draft.title, draft.description, draft.sources);
+      // A first draft for an approval vote may carry its options too.
+      const options = (draft.options ?? "").split("\n").map((o) => o.trim()).filter(Boolean);
+      if (options.length >= 2) await updateVoteDraft(id, { custom_options: options });
     },
   },
 };

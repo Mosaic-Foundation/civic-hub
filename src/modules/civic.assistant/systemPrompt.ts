@@ -86,7 +86,7 @@ Be actively helpful. Offer suggestions where you see opportunities to strengthen
 - Community: ${hubConfig.community_description}
 ${categoryLine}
 - Current draft:
-${formatDraftState(draftState, config.fields)}
+${formatDraftState(draftState, config.fields)}${draftState.method ? `\n- Voting method: ${draftState.method === "approval" ? "Approval (voters pick from the Options list)" : "Yes / No / Unsure (no options list)"}` : ""}
 - Conversation phase: ${phase}
 
 ## Code of Conduct (defines hard blocks)

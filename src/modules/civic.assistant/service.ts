@@ -359,6 +359,7 @@ function normalizeAssistantPayload(
         ...(fieldSet.has("seed_statements")
           ? { seed_statements: String(dp.seed_statements ?? "") }
           : {}),
+        ...(fieldSet.has("options") ? { options: String(dp.options ?? "") } : {}),
       }
     : null;
 

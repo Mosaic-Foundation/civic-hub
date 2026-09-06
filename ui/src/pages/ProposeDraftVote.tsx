@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import RichText from "../components/RichText";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { voteAssistantFields, optionsToText, textToOptions } from "../services/voteMethods";
 import { useDraftFlow } from "../hooks/useDraftFlow";
 import AuthModal from "../components/AuthModal";
 import DraftShell from "../components/DraftShell";
@@ -60,13 +61,40 @@ export default function ProposeDraftVote() {
   const resumeDraftId = searchParams.get("draft");
   const reviseReviewId = searchParams.get("review");
 
+  // The voting method decides which assistant fields exist: an approval vote
+  // has an Options field (and so an Options help chip and an applyable
+  // "options" suggestion); a yes/no vote does not. Tracked here so the field
+  // list can be recomputed the moment the method changes, and synced from the
+  // draft once it loads. The map lives in services/voteMethods.ts.
+  const [method, setMethod] = useState<string>("yes_no_unsure");
+
+  // The assistant treats options as one-per-line text; the draft stores an
+  // array. Every draft handed to the flow carries the text form, and a patch
+  // of that text is turned back into the array before it is saved.
+  const withOptions = (d: VoteDraft): VoteDraft => ({ ...d, options: optionsToText(d.custom_options) });
+  const mapPatch = (patch: Record<string, unknown>): Record<string, unknown> => {
+    if (!("options" in patch)) return patch;
+    const { options, ...rest } = patch;
+    return { ...rest, custom_options: textToOptions(String(options ?? "")) };
+  };
+
   const flow = useDraftFlow<VoteDraft>({
     processType: "civic.vote",
-    createDraft: () => createVoteDraft(),
-    updateDraft: (id, patch) => updateVoteDraft(id, patch),
-    resumeDraft: resumeDraftId ? () => getVoteDraft(resumeDraftId) : undefined,
-    applyFields: ["title", "description", "sources"],
+    createDraft: () => createVoteDraft().then(withOptions),
+    updateDraft: (id, patch) =>
+      updateVoteDraft(id, mapPatch(patch) as Parameters<typeof updateVoteDraft>[1]).then(withOptions),
+    resumeDraft: resumeDraftId
+      ? () => getVoteDraft(resumeDraftId).then(withOptions)
+      : undefined,
+    applyFields: voteAssistantFields(method),
   });
+
+  // Keep the method in step with the draft (a resumed draft, or a save that
+  // echoes the method back).
+  useEffect(() => {
+    const m = flow.draft?.method;
+    if (m && m !== method) setMethod(m);
+  }, [flow.draft?.method, method]);
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -99,6 +127,7 @@ export default function ProposeDraftVote() {
 
   const handleMethodChange = useCallback(
     (method: string, options: string[] | null) => {
+      setMethod(method); // the field list follows immediately, not after the save
       void flow.queuePatch({ method, custom_options: options });
     },
     [flow.queuePatch],

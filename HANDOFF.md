@@ -35,6 +35,47 @@ client-navigated to review B by popstate (what back/forward does, no reload) —
 buttons, no stale form, no stale message, status pending. Neither review was mutated (only a form
 was opened). UI build clean.
 
+## Vote assistant fields follow the voting method — 2026-09-05
+
+Adam, creating an approval vote on his phone: he pasted five options and asked the assistant to add
+them; it stuffed them into the DESCRIPTION as a bulleted list, the Options field stayed "Option 1 /
+Option 2", status "All options must have text", and the only chip was Sources. "The chips and the
+fields need to be correlated with the fields available based on which voting method is chosen. And
+this should work for all future voting methods that may have different fields."
+
+Root cause: a vote's assistant field list was static (`title / description / sources`), so the
+assistant had no `options` field to target and the chips had none to offer.
+
+**One declaration, every layer derives from it.** `VOTE_METHOD_EXTRA_FIELDS` in
+`voteAssistantConfig.ts` (`yes_no_unsure: []`, `approval: ["options"]`), mirrored client-side in
+`ui/src/services/voteMethods.ts`. A method added later declares its own line on both sides and is
+handled everywhere without another branch.
+
+- **Server.** `DraftField` gains `"options"`; `DraftState` / `AssistantDraft` / `DraftProposal` carry
+  `options` (one-per-line text) and `method`. New seam `AssistantTypeConfig.activeFields?(draft)`:
+  which of `fields` apply to THIS draft. The vote config declares `fields` incl. options and
+  `activeFields` = shared + the method's extras. The controller narrows the config through it
+  (`effectiveConfig`) at both `callAssistant` sites, so the prompt's draft state, the reply schema's
+  field enum, and validation all follow the method. The prompt's context block now states the
+  voting method; vote `typeGuidance` says options are their own field, never the description, one
+  per line, 2–8, include "No change" when real; `fieldGuidance` gains an options entry. The vote
+  draftStore exposes `options` (from `custom_options`) and `method`; `applyGeneratedDraft` writes
+  options from a first draft.
+- **Client.** `ProposeDraftVote` tracks `method` (set on change, synced from the draft), passes
+  `applyFields = voteAssistantFields(method)` — so the chips and Apply gating follow the method
+  immediately — wraps every draft with a derived `options` text (`withOptions`) so "has content"
+  and chips see it, and maps an `options` patch back to `custom_options` before saving. The vote
+  form's option editor adopts externally-applied options (previously local state only). Chip label
+  "Options" and an options-specific imperative prompt.
+
+**Verified on dev, real model turn, phone width:** approval draft → chips Sources + Options; tap
+Options → ONE card with field `options` (not description), 7 lines, Apply; Apply → the form's
+inputs filled with 7 distinct options ("No change" first), status advanced past "All options must
+have text"; switch to Yes/No → the Options chip is gone. `tests/unit/assistantVoteOptions.test.ts`
+(5): the map, `activeFields` per method (unknown method degrades to shared fields), schema enum per
+method, prompt shows Options + method only for approval, guidance wording. `tests/unit` 735/735,
+tsc + UI build clean.
+
 ## Admin-review links no longer bounce to the home page — 2026-09-05
 
 Adam, on his phone: the "Review it now" link in the new-submission email "just links to the home

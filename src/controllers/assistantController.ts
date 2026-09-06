@@ -38,7 +38,20 @@ function toDraftState(draft: AssistantDraft): DraftState {
     ...(draft.seed_statements !== undefined
       ? { seed_statements: draft.seed_statements }
       : {}),
+    ...(draft.options !== undefined ? { options: draft.options } : {}),
+    ...(draft.method !== undefined ? { method: draft.method } : {}),
   };
+}
+
+/**
+ * The type's config narrowed to the fields that apply to THIS draft — a vote
+ * only has "options" when its method needs a list. Feeds the prompt's draft
+ * state, the reply schema's field enum, and validation alike, so the model
+ * neither sees nor can target a field the form does not have right now.
+ */
+function effectiveConfig(config: AssistantTypeConfig, draft: DraftState): AssistantTypeConfig {
+  const fields = config.activeFields?.(draft) ?? config.fields;
+  return fields === config.fields ? config : { ...config, fields };
 }
 
 /**
@@ -133,7 +146,7 @@ export async function handleAssistantMessage(
     const response = await callAssistant({
       phase: phase as Phase,
       category,
-      config,
+      config: effectiveConfig(config, toDraftState(draft)),
       draft_state: toDraftState(draft),
       conversation_history: draft.conversation_history,
       user_message,
@@ -262,7 +275,7 @@ export async function handleAssistantSuggest(
     const response = await callAssistant({
       phase: "review",
       category,
-      config,
+      config: effectiveConfig(config, toDraftState(draft)),
       draft_state: toDraftState(draft),
       conversation_history: draft.conversation_history,
       user_message: message,

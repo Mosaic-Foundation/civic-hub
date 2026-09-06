@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import type { AssistantFieldGuidance, VoteDraft, DraftSuggestion } from "../services/api";
 import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
@@ -133,6 +133,18 @@ export default function VoteDraftingForm({
   const [localOptions, setLocalOptions] = useState<string[]>(
     draft.custom_options ?? ["", ""],
   );
+
+  // Adopt options that arrive from outside the editor — the assistant's
+  // "options" card applied, or a resumed draft. Local state is the editing
+  // truth, so only a genuinely different, non-empty set replaces it; the
+  // debounced echo of the person's own typing matches local and is ignored.
+  useEffect(() => {
+    const incoming = (draft.custom_options ?? []).map((o) => o.trim()).filter(Boolean);
+    if (incoming.length === 0) return;
+    const current = localOptions.map((o) => o.trim()).filter(Boolean);
+    if (incoming.join("\n") !== current.join("\n")) setLocalOptions(incoming);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.custom_options]);
 
   const handleChange = useCallback(
     (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
