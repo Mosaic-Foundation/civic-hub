@@ -157,9 +157,9 @@ export async function handlePatchSettings(
 
     if (body.support_threshold !== undefined) {
       const n = Number(body.support_threshold);
-      if (!Number.isFinite(n) || n < 1) {
+      if (!Number.isFinite(n) || n < 0) {
         res.status(400).json({
-          error: "support_threshold must be a number >= 1.",
+          error: "support_threshold must be a number >= 0 (0 skips the support phase).",
         });
         return;
       }

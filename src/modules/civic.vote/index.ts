@@ -84,6 +84,26 @@ export const PROCESS_DESCRIPTOR = {
 export const DEFAULT_VOTING_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 const DEFAULT_SUPPORT_THRESHOLD = 5;
 
+/**
+ * State config for a resident-submitted vote, from the hub's endorsement
+ * threshold (Admin Settings). Snapshotted onto the vote at submission, so a
+ * later change to the setting applies only to votes submitted after it.
+ *
+ * 0 means "no support phase": the vote is configured for direct activation
+ * and opens for ballots the moment an admin approves it — admin review is
+ * the only gate (Adam, 2026-09-06). Any positive number is the count of
+ * endorsements a proposed vote needs before it opens.
+ */
+export function supportPhaseConfig(
+  threshold: number,
+): Pick<VoteConfig, "support_threshold" | "activation_mode"> {
+  const n = Math.max(0, Math.round(threshold));
+  return {
+    support_threshold: n,
+    activation_mode: n === 0 ? "direct" : "proposal_required",
+  };
+}
+
 // --- Helpers -----------------------------------------------------------------
 
 /** Resolve the method for a state, defaulting for backward compat */

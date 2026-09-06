@@ -121,7 +121,11 @@ export default function AdminSettings() {
     try {
       const saved = await adminPatchSettings({ support_threshold: threshold });
       setThreshold(saved.support_threshold);
-      setThresholdMessage(`Saved. New proposals need ${saved.support_threshold} endorsement${saved.support_threshold !== 1 ? "s" : ""} to become official votes.`);
+      setThresholdMessage(
+        saved.support_threshold === 0
+          ? "Saved. New votes skip the support phase and open for ballots as soon as they are approved."
+          : `Saved. New votes need ${saved.support_threshold} endorsement${saved.support_threshold !== 1 ? "s" : ""} to open for ballots.`,
+      );
     } catch (err) {
       setThresholdMessage(
         err instanceof Error ? err.message : "Failed to save threshold",
@@ -397,17 +401,19 @@ export default function AdminSettings() {
           </label>
           <p className="form-hint">
             How many community endorsements a proposed vote needs before it
-            becomes an official vote. Applies to new proposals — existing ones
-            keep their original threshold.
+            opens for ballots. Set it to 0 to skip the support phase: approved
+            votes open immediately, with admin review as the only gate.
+            Applies to votes submitted from now on — votes already gathering
+            support keep their original number.
           </p>
           <input
             id="support-threshold"
             className="form-input"
             type="number"
-            min={1}
+            min={0}
             max={100}
             value={threshold}
-            onChange={(e) => setThreshold(Math.max(1, parseInt(e.target.value) || 1))}
+            onChange={(e) => setThreshold(Math.max(0, parseInt(e.target.value) || 0))}
             disabled={!loaded || savingThreshold}
             style={{ maxWidth: "120px" }}
           />

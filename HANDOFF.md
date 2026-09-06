@@ -4,6 +4,50 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Endorsement threshold: wired to Admin Settings, 0 skips the support phase — 2026-09-06
+
+**Working in:** `civic-hub/src/modules/civic.vote/`, `src/services/hubSettings.ts`,
+`src/controllers/voteDraftController.ts`, `adminSettingsController.ts`,
+`ui/src/pages/AdminSettings.tsx`
+
+Adam asked whether lowering the "Endorsements needed" setting would move
+existing proposed votes. Measuring the code: the setting was **read by
+nothing** — the Admin Settings page displayed it, and vote submission used
+a hard-coded 5 (`DEFAULT_SUPPORT_THRESHOLD`). Changing it did nothing.
+
+### What changed
+
+- **`supportPhaseConfig(threshold)`** (civic.vote) — the one place the
+  admin number becomes vote state: `{ support_threshold: n, activation_mode:
+  n === 0 ? "direct" : "proposal_required" }`.
+- **Vote submission** reads `getSupportThreshold()` once and spreads that
+  into the vote's state. Snapshot at submission ⇒ **future votes only**; a
+  vote already gathering support keeps its number, as the page promised.
+- **0 is legal** end to end: `getSupportThreshold` / `setSupportThreshold`
+  accept ≥ 0, the PATCH validation says `>= 0 (0 skips the support phase)`,
+  the UI input has `min={0}`, its hint explains 0, and the saved message
+  reads "New votes skip the support phase and open for ballots as soon as
+  they are approved."
+- Direct activation itself needed nothing new: `activationOnApproval` for
+  votes already returned `active` for `activation_mode: "direct"`. Admin
+  review remains the gate — Adam's reasoning for allowing 0.
+
+### Verified
+
+- `tests/unit/supportPhaseConfig.test.ts` (5 tests): positive ⇒ proposed,
+  0 ⇒ direct, negatives/fractions clamped, 0 survives `createVoteState`
+  (not defaulted to 5), and the registry seam opens a 0-vote on approval.
+  Suite 740/740; `tsc --noEmit` clean; `ui npm run build` clean.
+- Dev end to end: setting → 0, resident submits, admin approves ⇒ process
+  **active**; setting → 2, same flow ⇒ **proposed**. Stored rows carry the
+  snapshot (`threshold 0 / direct`, `threshold 2 / proposal_required`).
+  Setting row removed afterwards (dev back to default 5); test votes
+  archived; drafts and `uitest_` sessions deleted.
+
+**Prod note:** the setting is stored in `hub_settings`; no migration. To
+use it, set the number in Admin Settings — it takes effect for the next
+submitted vote.
+
 ## Outcomes page on the shared list-page skeleton — 2026-09-06
 
 **Working in:** `civic-hub/ui/src/pages/Outcomes.tsx`, `Outcomes.css`

@@ -358,6 +358,12 @@ export async function setCommentIdentityMode(
 }
 
 // --- Support threshold ---
+//
+// Endorsements a resident-submitted vote needs before it opens for ballots.
+// Read once at submission and snapshotted onto the vote (see
+// supportPhaseConfig in civic.vote), so changing it never moves a vote that
+// is already gathering support. 0 is legal and means no support phase at
+// all: approval opens the vote directly.
 
 const HARDCODED_DEFAULT_THRESHOLD = 5;
 
@@ -365,7 +371,7 @@ export async function getSupportThreshold(): Promise<number> {
   const stored = await getSetting(SETTING_KEYS.SUPPORT_THRESHOLD);
   if (stored !== null) {
     const n = parseInt(stored, 10);
-    if (!Number.isNaN(n) && n >= 1) return n;
+    if (!Number.isNaN(n) && n >= 0) return n;
   }
   return HARDCODED_DEFAULT_THRESHOLD;
 }
@@ -374,7 +380,7 @@ export async function setSupportThreshold(
   value: number,
   updatedBy: string | null,
 ): Promise<number> {
-  const clamped = Math.max(1, Math.round(value));
+  const clamped = Math.max(0, Math.round(value));
   await setSetting(SETTING_KEYS.SUPPORT_THRESHOLD, String(clamped), updatedBy);
   return clamped;
 }

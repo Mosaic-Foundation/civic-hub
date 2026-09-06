@@ -10,6 +10,8 @@ import {
 } from "../modules/civic.vote_drafts/index.js";
 import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
+import { supportPhaseConfig } from "../modules/civic.vote/index.js";
+import { getSupportThreshold } from "../services/hubSettings.js";
 
 // Assistant conversation + Code of Conduct review live on the shared
 // /assistant routes (assistantController), dispatched through the registry.
@@ -162,13 +164,16 @@ export async function handleSubmitVoteDraft(
       .filter((l) => l.length > 0);
 
     const voteMethod = draft.method ?? "yes_no_unsure";
-    // All votes go through the proposed phase: born as a "proposed vote",
-    // they gather support and auto-activate at the support threshold. This is
-    // the same regardless of who creates the vote (admins are auto-approved).
+    // The hub's endorsement threshold (Admin Settings) is read here, once,
+    // and snapshotted onto the vote — so a later change applies only to
+    // votes submitted after it. A positive number makes this a "proposed
+    // vote" that gathers support and opens at the threshold; 0 skips the
+    // support phase and the vote opens on approval. Same regardless of who
+    // submits (admins are auto-approved).
     const stateInput: Record<string, unknown> = {
       method: voteMethod,
       voting_duration_ms: draft.voting_duration_ms,
-      activation_mode: "proposal_required",
+      ...supportPhaseConfig(await getSupportThreshold()),
     };
     if (voteMethod === "approval" && Array.isArray(draft.custom_options)) {
       stateInput.options = draft.custom_options;
