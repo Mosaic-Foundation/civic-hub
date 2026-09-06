@@ -4,6 +4,39 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Unsubscribe link lands in Settings with "Unsubscribed" selected — 2026-09-06
+
+**Working in:** `civic-hub/src/controllers/digestController.ts`, `ui/src/pages/Settings.tsx` (+ `.css`)
+
+Adam, checklist item 23: clicked the email's unsubscribe link, then "I
+don't see where it says unsubscribed … there should be some kind of
+indicator in settings near the digest frequency." The mechanism was
+already right — the link set `digest_frequency_days` to null and the
+frequency select already had an "Unsubscribed" option that reflects it —
+but the link landed on a bare confirmation page a step away from the
+control, and nothing in Settings said what had just happened.
+
+- The link now records the unsubscribe and **redirects to
+  `/settings?digest=unsubscribed`** (302). Invalid/expired-token and error
+  cases keep their HTML pages (nothing to land on).
+- Settings shows a tinted notice above the frequency select — while the
+  person is unsubscribed ("Pick a frequency to start receiving it again")
+  and, arriving from the link, "…whenever you want it back" — with
+  "Unsubscribed" selected in the dropdown, changeable on the spot. Signed
+  out (the link opened in a browser without a session), the page still
+  confirms the unsubscribe and says to sign in to change it.
+
+Verified on dev (no `DIGEST_UNSUBSCRIBE_SECRET` there, so the real handler
+was called in-process with a signed token): 302 to the Settings URL,
+frequency null; Settings at 375px signed in → notice + "Unsubscribed"
+selected; signed out → notice + sign-in line. Resident's frequency
+restored; session deleted.
+
+Note for the smoke test: the link is signed for the account the email
+went to. If the phone is signed in as a different account, Settings shows
+that account's frequency — the unsubscribe still applied to the emailed
+one.
+
 ## Projects: comments and updates on the shared comment module — 2026-09-06
 
 **Working in:** `civic-hub/src/modules/civic.input/`, `src/controllers/inputController.ts`,

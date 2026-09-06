@@ -219,3 +219,14 @@
   accent-color: var(--color-primary);
   cursor: pointer;
 }
+
+/* The unsubscribed notice: a quiet tinted line above the frequency control,
+   shown while the person is unsubscribed and right after an email link. */
+.settings-unsubscribed {
+  margin: 0 0 var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-surface-muted);
+  border-left: 3px solid var(--color-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--color-text);
+}

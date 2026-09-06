@@ -6,7 +6,7 @@
 // admins alike see the same page.
 
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { setDigestFrequency } from "../services/api";
 import hub from "../config/hub";
@@ -21,6 +21,11 @@ import "./Settings.css";
 export default function Settings() {
   const { user, logout, loading, updateUser } = useAuth();
   const navigate = useNavigate();
+  // Arrived from an email's unsubscribe link (the server redirects here
+  // after recording it). Say so plainly — the select below shows the
+  // state, but the person just clicked a link and wants confirmation.
+  const [searchParams] = useSearchParams();
+  const cameFromUnsubscribe = searchParams.get("digest") === "unsubscribed";
   // "loading" = haven't fetched yet, number = frequency in days, null = unsubscribed
   const [frequency, setFrequency] = useState<number | null | "loading">("loading");
   const [saving, setSaving] = useState(false);
@@ -162,6 +167,12 @@ export default function Settings() {
     return (
       <div className="page settings-page">
         <h1>Settings</h1>
+        {cameFromUnsubscribe && (
+          <p className="settings-message settings-unsubscribed" role="status">
+            You're unsubscribed from the email digest. Sign in to pick a
+            frequency whenever you want it back.
+          </p>
+        )}
         <p className="settings-status">
           You need to be signed in to manage your settings.{" "}
           <Link to="/">Return to the feed</Link>.
@@ -187,6 +198,14 @@ export default function Settings() {
             announcements. If there's nothing new, we don't send anything.
             Choose how often you'd like to hear from us.
           </p>
+
+          {(cameFromUnsubscribe || frequency === null) && (
+            <p className="settings-message settings-unsubscribed" role="status">
+              {cameFromUnsubscribe
+                ? "You're unsubscribed from the email digest. Pick a frequency below whenever you want it back."
+                : "You're unsubscribed from the email digest. Pick a frequency to start receiving it again."}
+            </p>
+          )}
 
           <label className="form-label" htmlFor="digest-frequency">
             Digest frequency

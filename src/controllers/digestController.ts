@@ -500,15 +500,12 @@ export async function handleUnsubscribeDigest(
     await setDigestFrequency(userId, null);
     console.log(`[digest] unsubscribed user=${userId}`);
 
-    res.status(200).type("html").send(
-      renderUnsubscribePage({
-        title: "Unsubscribed",
-        heading: "You've been unsubscribed",
-        body:
-          `You will no longer receive the email digest from ${escapeHtml(hubName())}. ` +
-          `You can re-subscribe or change your digest frequency any time from the <a href="${escapeHtml(uiBaseUrl())}/settings">Settings</a> page.`,
-      }),
-    );
+    // Land in Settings, where the frequency control shows "Unsubscribed"
+    // selected and can be changed on the spot — not on a bare confirmation
+    // page a step away from it (Adam, 2026-09-06: "I don't see where it
+    // says unsubscribed"). The query flag lets Settings say what just
+    // happened, signed in or not.
+    res.redirect(302, `${uiBaseUrl()}/settings?digest=unsubscribed`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error(`[digest] unsubscribe failed for user=${userId}: ${message}`);
