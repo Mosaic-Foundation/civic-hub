@@ -317,6 +317,13 @@ const ACTIVITY_MAPPINGS: Record<string, ActivityMapping> = {
     buildObject: (e, data, env) =>
       civicObject("civic:Proposal", data, { id: processIri(e, env) }),
   },
+  // Withdrawing support undoes the Like above (spec §3.1 rule 1: AS2's own
+  // verb where one exists).
+  "civic.proposal.support_withdrawn": {
+    type: "Undo",
+    buildObject: (e, data, env) =>
+      civicObject("civic:Proposal", data, { id: processIri(e, env) }),
+  },
   // Emitter exists (civic.proposals/events.ts) but nothing calls it today —
   // mapped so the type stays serializable if the path is ever wired up.
   "civic.proposal.endorsed": {

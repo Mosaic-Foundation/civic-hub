@@ -51,6 +51,22 @@ export async function emitProposalSupported(
   });
 }
 
+export async function emitProposalSupportWithdrawn(
+  ctx: EventContext,
+  actor: string,
+  data: { support_count: number; support_threshold: number },
+): Promise<void> {
+  await ctx.emit({
+    event_type: "civic.proposal.support_withdrawn",
+    actor,
+    process_id: ctx.proposal_id,
+    hub_id: ctx.hub_id ?? HUB_ID,
+    jurisdiction: ctx.jurisdiction ?? "local",
+    processType: "civic.proposal",
+    data: { proposal: data },
+  });
+}
+
 export async function emitProposalClosed(
   ctx: EventContext,
   actor: string,

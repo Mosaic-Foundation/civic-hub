@@ -24,6 +24,7 @@ import type {
 import {
   emitProposalSubmitted,
   emitProposalSupported,
+  emitProposalSupportWithdrawn,
   emitProposalClosed,
   type EmitEventFn,
 } from "./events.js";
@@ -265,6 +266,72 @@ export async function supportProposal(
   const result = rowToProposal(updated as ProposalRow);
 
   await emitProposalSupported(
+    { proposal_id: proposalId, emit },
+    userId,
+    {
+      support_count: result.support_count,
+      support_threshold: config.proposal_support_threshold,
+    },
+  );
+
+  return result;
+}
+
+/**
+ * Withdraw a user's support. Allowed for as long as the proposal is open
+ * (`submitted`); once it has closed and gone to its brief the count is part
+ * of the record and stays (Adam, 2026-09-06). Same recount-from-the-table
+ * discipline as supportProposal, so the two can never disagree.
+ */
+export async function withdrawProposalSupport(
+  proposalId: string,
+  userId: string,
+  emit: EmitEventFn,
+): Promise<Proposal> {
+  const db = getDb();
+
+  const proposal = await getProposal(proposalId);
+  if (!proposal) {
+    throw new Error(`Proposal not found: ${proposalId}`);
+  }
+  if (proposal.status !== "submitted") {
+    throw new Error(
+      "Support can no longer be withdrawn: this proposal has closed and its support is part of the record.",
+    );
+  }
+
+  const { data: removed, error: delErr } = await db
+    .from("proposal_supports")
+    .delete()
+    .eq("proposal_id", proposalId)
+    .eq("user_id", userId)
+    .select();
+  if (delErr) throw new Error(`Proposals: ${delErr.message}`);
+  if (!removed || removed.length === 0) {
+    throw new Error("You haven't supported this proposal");
+  }
+
+  const { count: supportCount, error: countErr } = await db
+    .from("proposal_supports")
+    .select("*", { count: "exact", head: true })
+    .eq("proposal_id", proposalId);
+  if (countErr) throw new Error(`Proposals: ${countErr.message}`);
+  const newCount = supportCount ?? 0;
+
+  const { data: updated, error: updErr } = await db
+    .from("proposals")
+    .update({
+      support_count: newCount,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", proposalId)
+    .select()
+    .single();
+  if (updErr) throw new Error(`Proposals: ${updErr.message}`);
+
+  const result = rowToProposal(updated as ProposalRow);
+
+  await emitProposalSupportWithdrawn(
     { proposal_id: proposalId, emit },
     userId,
     {

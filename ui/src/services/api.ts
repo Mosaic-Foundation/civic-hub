@@ -433,6 +433,13 @@ export function supportCivicProposal(
   return request("POST", `/proposals/${proposalId}/support`, { user_id: userId });
 }
 
+/** Withdraw support from a proposal — allowed while it is still open. */
+export function unsupportCivicProposal(
+  proposalId: string,
+): Promise<{ support_count: number; status: string }> {
+  return request("DELETE", `/proposals/${proposalId}/support`);
+}
+
 // --- Drafting assistant (shared across process types) ---
 //
 // One API surface for every process type: /assistant/:processType/...

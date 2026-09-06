@@ -9,6 +9,7 @@ import {
   createProposal,
   listProposals,
   supportProposal,
+  withdrawProposalSupport,
   getProposalReadModel,
   getProposalSummary,
 } from "../modules/civic.proposals/index.js";
@@ -116,6 +117,29 @@ export async function handleGetProposal(
 /**
  * POST /proposals/:id/support — endorse a proposal
  */
+export async function handleUnsupportProposal(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const id = req.params.id as string;
+
+  try {
+    const user = getAuthUser(res);
+    const proposal = await withdrawProposalSupport(id, user.id, emitEvent);
+    res.json({
+      support_count: proposal.support_count,
+      status: proposal.status,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    if (message.includes("not found")) {
+      res.status(404).json({ error: message });
+    } else {
+      res.status(400).json({ error: message });
+    }
+  }
+}
+
 export async function handleSupportProposal(
   req: Request,
   res: Response,

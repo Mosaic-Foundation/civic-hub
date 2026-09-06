@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { checkWordlist } from "../../src/shared/wordlist/index.js";
+import {
+  checkWordlist,
+  assertPassesWordlist,
+  PROFANITY_BLOCK_MESSAGE,
+  WORDLIST_BLOCK_MESSAGE,
+} from "../../src/shared/wordlist/index.js";
 
 describe("checkWordlist", () => {
   describe("blocks egregious slurs", () => {
@@ -26,10 +31,43 @@ describe("checkWordlist", () => {
     });
   });
 
+  // Adam, 2026-09-06: "using curse words is not an opinion". Strong profanity
+  // is refused with its own, softer message; the slur message is unchanged.
+  describe("blocks strong profanity", () => {
+    it("catches the f-word in a sentence, in any form", () => {
+      expect(checkWordlist("fuck this policy")).toMatchObject({ blocked: true, category: "profanity" });
+      expect(checkWordlist("this is FUCKING ridiculous").blocked).toBe(true);
+      expect(checkWordlist("what a motherfucker.").blocked).toBe(true);
+    });
+
+    it("catches the other strong ones", () => {
+      for (const t of ["shit", "bullshit", "bitch", "asshole", "cunt", "twat"]) {
+        expect(checkWordlist(`total ${t} here`).blocked, t).toBe(true);
+      }
+    });
+
+    it("catches masked and leet spellings", () => {
+      expect(checkWordlist("f*ck").blocked).toBe(true);
+      expect(checkWordlist("sh1t").blocked).toBe(true);
+      expect(checkWordlist("fuuuuck").blocked).toBe(true);
+    });
+
+    it("tells the two apart in the thrown message", () => {
+      expect(() => assertPassesWordlist("fuck this")).toThrow(PROFANITY_BLOCK_MESSAGE);
+      expect(() => assertPassesWordlist("you faggot")).toThrow(WORDLIST_BLOCK_MESSAGE);
+    });
+
+    it("still lets mild and ambiguous words through (whole-word, short list)", () => {
+      for (const t of ["damn", "hell no", "pissed off", "crap", "Dick Jones spoke", "assess the class", "shiitake", "Scunthorpe"]) {
+        expect(checkWordlist(t).blocked, t).toBe(false);
+      }
+    });
+  });
+
   describe("does NOT block civil dissent or innocent words (err toward allowing)", () => {
     const allowed = [
       // General profanity is civil speech here — never blocked.
-      "This policy is absolute bullshit and the Board should be ashamed.",
+      "This policy is absolutely idiotic and the board should be ashamed of itself",
       "I am furious about this decision. It's a damn disgrace.",
       "Screw the new zoning rules, they hurt working families.",
       // The Scunthorpe problem — innocent words that contain slur substrings.

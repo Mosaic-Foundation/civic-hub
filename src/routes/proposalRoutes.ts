@@ -11,6 +11,7 @@ import {
   handleListProposals,
   handleGetProposal,
   handleSupportProposal,
+  handleUnsupportProposal,
 } from "../controllers/proposalController.js";
 import { requireResident } from "../middleware/auth.js";
 
@@ -20,5 +21,6 @@ router.post("/", requireResident, handleSubmitProposal);
 router.get("/", handleListProposals);
 router.get("/:id", handleGetProposal);
 router.post("/:id/support", requireResident, handleSupportProposal);
+router.delete("/:id/support", requireResident, handleUnsupportProposal);
 
 export default router;

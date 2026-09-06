@@ -4,6 +4,76 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Profanity is now refused; proposals can be un-endorsed while open — 2026-09-06
+
+**Working in:** `civic-hub/src/shared/wordlist/`, `src/modules/civic.proposals/`,
+`src/controllers/`, `src/routes/proposalRoutes.ts`, `src/app.ts`, `ui/src/`
+
+### Profanity (a policy change, Adam's call)
+
+Adam, smoke-test item 18: "fuck" posted fine in a proposal comment, a vote
+comment and a conversation seed statement. That was the July design — the
+word list was slurs only, with "fuck this policy" named in its own header
+as civil speech to let through. Adam, 2026-09-06: "using curse words is
+not an opinion, so we definitely want to block curse words."
+
+- `src/shared/wordlist/index.ts` gains a **profanity** list (f-, s-, c-,
+  b-words and their forms, plus masked spellings that survive
+  normalization: f*ck → fck). Whole-word like the slurs, so "assess",
+  "class", "shiitake", "Dick" (a name) never trip it — which is why the
+  ambiguous ones (ass, dick, cock) are deliberately absent. Mild words
+  (damn, hell, crap, pissed off) stay allowed; the operator can add them.
+- `checkWordlist` now returns a **category**; `assertPassesWordlist` throws
+  the slur message for a slur and a softer `PROFANITY_BLOCK_MESSAGE`
+  ("Say it as strongly as you like — just without the swearing") for a
+  swear. Both refuse the post.
+- One list, every instant-post surface: comments on all types
+  (`civic.input`), participant statements (`deliberationController`),
+  word-cloud words — and now a conversation's **seed statements at draft
+  submission** (`deliberationDraftController`), which had never been
+  checked; the creator gets the message at submit rather than the
+  conversation failing to start.
+- Tests: `tests/unit/wordlist.test.ts` — profanity cases, masked/leet
+  forms, message per category, mild/ambiguous words still allowed. The old
+  "bullshit is civil dissent" case is replaced by a profanity-free harsh
+  sentence. 753/753.
+
+**Open (Adam's decision):** the published Code of Conduct lists slurs but
+not profanity and promises not to remove "blunt, emotional, or forceful"
+rhetoric. If profanity is refused, the document should say so — and a
+material change bumps `CURRENT_LEGAL_VERSION`, which puts the
+re-acceptance modal in front of every existing user. Document left
+untouched until he says.
+
+### Un-endorse a proposal
+
+Checklist item 18 promised "endorse, un-endorse, endorse again" for
+proposals, but only proposed VOTES had `process.unsupport`; proposals had
+no route, no module function, no UI. Adam: withdraw for the life of the
+proposal; once it has closed and gone to its brief, no.
+
+- `withdrawProposalSupport(id, user, emit)` — allowed while `submitted`;
+  after close: "Support can no longer be withdrawn: this proposal has
+  closed and its support is part of the record." Deletes the
+  `proposal_supports` row (a missing row → "You haven't supported this
+  proposal"), recounts from the table like `supportProposal`, emits
+  `civic.proposal.support_withdrawn` (serialized as AS2 **Undo** of the
+  Like, `activitySerializer.ts`).
+- `DELETE /proposals/:id/support` (resident) → `handleUnsupportProposal`.
+- UI: `unsupportCivicProposal`; "Remove my support" (`.unendorse-button`,
+  the vote panel's class) under "You have supported this proposal."
+- **CORS:** `src/app.ts` allowed `GET, POST, PATCH, OPTIONS` — no DELETE,
+  so the browser refused the call in dev (preflight 204, then
+  `net::ERR_FAILED`). Prod never hit this: UI and API share one origin via
+  the `/api` rewrite. Added DELETE; the existing
+  `DELETE /process/:id/links/:linkId` had the same dev-only gap.
+
+Verified on dev: profane comment → 400 profanity message; "Damn, this
+plan is idiotic…" → 201; profane seed statement → 400 at submit; support
+→ withdraw → 200/0; withdraw again → 400; withdraw on a closed proposal →
+400 closed message; phone-width page: Support → "Remove my support" →
+back to Support, count cleared. Test comment, draft and session deleted.
+
 ## Share reminder: a transient callout on the share bar, not a second bar — 2026-09-06
 
 **Working in:** `civic-hub/ui/src/components/` (ShareButton, ShareMoment,

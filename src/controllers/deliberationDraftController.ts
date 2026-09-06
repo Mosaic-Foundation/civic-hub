@@ -4,6 +4,7 @@
 // mirrors voteDraftController for the deliberation type.
 
 import { Request, Response } from "express";
+import { assertPassesWordlist } from "../shared/wordlist/index.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { getAuthUser } from "../middleware/auth.js";
 import {
@@ -172,6 +173,13 @@ export async function handleSubmitDeliberationDraft(
         seen.add(key);
         return true;
       });
+
+    // Seed statements are posted to Polis as statements, so they pass the
+    // same word list every participant's statement does — at submission, so
+    // the creator is told which line to fix rather than the conversation
+    // failing to start (Adam, 2026-09-06: a seed with a curse word went
+    // through).
+    for (const seed of seeds) assertPassesWordlist(seed);
 
     // Cap at 6 — a "learn more" list, not a bibliography. The form guide
     // and the assistant's instructions carry the same limit; this is the

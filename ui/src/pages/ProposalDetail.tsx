@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getCivicProposal, supportCivicProposal, type CivicProposalDetail } from "../services/api";
+import { getCivicProposal, supportCivicProposal, unsupportCivicProposal, type CivicProposalDetail } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import AuthModal from "../components/AuthModal";
@@ -73,6 +73,20 @@ export default function ProposalDetail() {
       fetchProposal();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to support");
+    } finally {
+      setSupporting(false);
+    }
+  }
+
+  async function doUnsupport() {
+    if (!id) return;
+    setSupporting(true);
+    setError(null);
+    try {
+      await unsupportCivicProposal(id);
+      fetchProposal();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove support");
     } finally {
       setSupporting(false);
     }
@@ -156,6 +170,18 @@ export default function ProposalDetail() {
             {proposal.has_supported ? (
               <>
                 <p className="endorse-confirmation">You have supported this proposal.</p>
+                {/* Withdrawable while the proposal is open — the same rule a
+                    proposed vote has for its endorsements. Once it closes the
+                    count is part of the record and this button is gone with
+                    the rest of the open-state UI. */}
+                <button
+                  type="button"
+                  className="unendorse-button"
+                  onClick={doUnsupport}
+                  disabled={supporting}
+                >
+                  {supporting ? "Removing..." : "Remove my support"}
+                </button>
                 <ShareMoment
                   processId={proposal.id}
                   text="You endorsed this — share it so more neighbors can too."
