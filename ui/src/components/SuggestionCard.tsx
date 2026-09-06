@@ -4,11 +4,9 @@ import type { DraftSuggestion } from "../services/api";
 
 /**
  * Identity for "has this been applied", by content rather than position.
- *
- * Position would key the panel and the inline Code of Conduct list
- * separately, and they render the SAME suggestions — applying in one would
- * leave the other still offering Apply. Keyed on the ORIGINAL suggestion, so
- * an in-place edit before applying does not change which card is "applied".
+ * Keyed on the ORIGINAL suggestion, so an in-place edit before applying does
+ * not change which card is "applied", and the panel + inline CoC list (which
+ * render the same suggestions) stay in sync.
  */
 export function suggestionKey(s: DraftSuggestion): string {
   return [s.field ?? "", s.quoted_text ?? "", s.suggested_revision ?? ""].join("|");
@@ -16,14 +14,18 @@ export function suggestionKey(s: DraftSuggestion): string {
 
 interface Props {
   suggestion: DraftSuggestion;
-  /** Applies the (possibly edited) revision text. */
-  onApply?: (revision: string) => void;
+  /** Applies the (possibly edited) revision. Resolves false when it could not
+   *  be applied — e.g. a chunk edit whose quoted passage is no longer in the
+   *  field — so the card can say so instead of showing "Applied". */
+  onApply?: (revision: string) => void | Promise<boolean>;
   onDismiss?: () => void;
-  /** Controlled "already applied" state. Pass it where the answer has to
-   *  outlive this component — the drafting panel unmounts every time someone
-   *  switches to the form, and local state took the applied cards with it.
-   *  Omitted, the card falls back to remembering it itself. */
   applied?: boolean;
+}
+
+function grow(el: HTMLTextAreaElement | null): void {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
 }
 
 export default function SuggestionCard({ suggestion, onApply, onDismiss, applied: appliedProp }: Props) {
@@ -31,27 +33,32 @@ export default function SuggestionCard({ suggestion, onApply, onDismiss, applied
   const [appliedLocal, setAppliedLocal] = useState(false);
   const applied = appliedProp ?? appliedLocal;
 
-  // Edit-in-place, BEFORE applying. Once applied the card locks (no Edit, no
-  // re-apply) — Apply appends to a non-empty field, so a second apply of an
-  // edited card would duplicate what the first one wrote (Adam, 2026-09-05).
-  // Further changes are made in the form, where the field is directly editable.
+  // Edit-in-place, BEFORE applying; the card locks after (Apply appends within
+  // a chunk-less field, so a second apply of an edited card would duplicate).
   const [editing, setEditing] = useState(false);
   const [draftText, setDraftText] = useState(suggestion.suggested_revision ?? "");
+  const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {
-    if (!editing) return;
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    if (editing) grow(textareaRef.current);
   }, [editing, draftText]);
 
   const revision = suggestion.suggested_revision;
   const isSeedList = suggestion.field === "seed_statements";
+  // A chunk edit targets a specific passage; render it as old → new so the
+  // rest of a long field is never redrawn (the mobile-friendly case).
+  const isChunkEdit = Boolean(suggestion.quoted_text && revision);
 
-  function handleApply() {
-    onApply?.(editing ? draftText : (revision ?? ""));
+  async function handleApply() {
+    setError(null);
+    const ok = await onApply?.(editing ? draftText : (revision ?? ""));
+    if (ok === false) {
+      setError(
+        "Couldn't find this passage in the field — it may have changed since. Edit the field directly, or ask me for a fresh suggestion.",
+      );
+      return;
+    }
     setAppliedLocal(true);
     setEditing(false);
   }
@@ -72,20 +79,20 @@ export default function SuggestionCard({ suggestion, onApply, onDismiss, applied
         )}
       </div>
 
-      {suggestion.quoted_text && (
-        <blockquote className="suggestion-quote">
-          {suggestion.quoted_text}
-        </blockquote>
+      {/* A bare quote (no replacement) — e.g. "remove this". A chunk edit
+          shows the quote inside the diff instead, so don't repeat it here. */}
+      {suggestion.quoted_text && !isChunkEdit && (
+        <blockquote className="suggestion-quote">{suggestion.quoted_text}</blockquote>
       )}
 
       <p className="suggestion-message">{suggestion.message}</p>
 
       {revision && (
         <div className="suggestion-revision">
-          <span className="suggestion-revision-label">Suggested:</span>
+          <span className="suggestion-revision-label">
+            {isChunkEdit ? "Suggested change:" : "Suggested:"}
+          </span>
           {editing ? (
-            // Clean, unnumbered, line breaks preserved — one statement/source
-            // per line, so trimming is just deleting a line.
             <textarea
               ref={textareaRef}
               className="suggestion-revision-edit"
@@ -93,9 +100,13 @@ export default function SuggestionCard({ suggestion, onApply, onDismiss, applied
               onChange={(e) => setDraftText(e.target.value)}
               aria-label="Edit the suggestion before applying"
             />
+          ) : isChunkEdit ? (
+            // Only the changed passage: what's removed, then what replaces it.
+            <div className="suggestion-diff">
+              <del className="suggestion-diff-old">{suggestion.quoted_text}</del>
+              <ins className="suggestion-diff-new">{revision}</ins>
+            </div>
           ) : isSeedList ? (
-            // Seed statements are one-per-line — a numbered list matching the
-            // form's rows, instead of a run-on block.
             <ol className="suggestion-revision-list">
               {revision
                 .split("\n")
@@ -111,6 +122,8 @@ export default function SuggestionCard({ suggestion, onApply, onDismiss, applied
         </div>
       )}
 
+      {error && <p className="suggestion-error">{error}</p>}
+
       <div className="suggestion-actions">
         {revision && onApply && (
           <button
@@ -122,13 +135,12 @@ export default function SuggestionCard({ suggestion, onApply, onDismiss, applied
             {applied ? "Applied" : "Apply"}
           </button>
         )}
-        {/* Edit / Cancel — only before applying. */}
         {revision && onApply && !applied && (
           editing ? (
             <button
               type="button"
               className="suggestion-action-btn suggestion-dismiss"
-              onClick={() => setEditing(false)}
+              onClick={() => { setEditing(false); setError(null); }}
             >
               Cancel
             </button>

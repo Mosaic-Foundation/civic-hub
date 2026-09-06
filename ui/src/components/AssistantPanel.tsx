@@ -1,4 +1,4 @@
-import { type ReactNode, useState, useRef, useEffect } from "react";
+import { type ReactNode, useState, useRef, useEffect, useMemo } from "react";
 import SuggestionCard, { suggestionKey } from "./SuggestionCard";
 import type { DraftSuggestion } from "../services/api";
 import "./AssistantPanel.css";
@@ -12,7 +12,7 @@ export interface ChatMessage {
 interface Props {
   messages: ChatMessage[];
   onSendMessage: (message: string) => void;
-  onApplySuggestion?: (suggestion: DraftSuggestion) => void;
+  onApplySuggestion?: (suggestion: DraftSuggestion) => void | Promise<boolean>;
   /** Gates the Apply button per card — a suggestion for a field this
    *  form doesn't have must not offer a silent no-op Apply. */
   canApplySuggestion?: (suggestion: DraftSuggestion) => boolean;
@@ -71,6 +71,28 @@ export default function AssistantPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // One outstanding WHOLE-FIELD suggestion per field: when the model offers a
+  // fresh rewrite of a field it already suggested (and the earlier one is not
+  // applied), the earlier card is superseded rather than left to pile up
+  // (Adam, 2026-09-05). Chunk edits (they carry quoted_text) target different
+  // passages and can coexist, so they never suppress. Applied cards stay as
+  // history.
+  const suppressedKeys = useMemo(() => {
+    const latestByField = new Map<string, string>();
+    const suppressed = new Set<string>();
+    for (const msg of messages) {
+      for (const s of msg.suggestions ?? []) {
+        if (s.quoted_text || !s.field) continue;
+        const key = suggestionKey(s);
+        if (appliedSuggestions?.has(key)) continue;
+        const prev = latestByField.get(s.field);
+        if (prev && prev !== key) suppressed.add(prev);
+        latestByField.set(s.field, key);
+      }
+    }
+    return suppressed;
+  }, [messages, appliedSuggestions]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -123,6 +145,7 @@ export default function AssistantPanel({
               <div className="msg-suggestions">
                 {msg.suggestions.map((s, si) => {
                   const key = suggestionKey(s);
+                  if (suppressedKeys.has(key)) return null;
                   return (
                     <SuggestionCard
                       key={si}
@@ -132,11 +155,13 @@ export default function AssistantPanel({
                         s.suggested_revision &&
                         onApplySuggestion &&
                         (canApplySuggestion ? canApplySuggestion(s) : true)
-                          ? (revision: string) => {
-                              // Apply the edited text; key the applied-state on
-                              // the ORIGINAL card so cross-view sync still works.
-                              onApplySuggestion({ ...s, suggested_revision: revision });
-                              onSuggestionApplied?.(s);
+                          ? async (revision: string) => {
+                              // Apply the edited text; mark applied (keyed on
+                              // the ORIGINAL card for cross-view sync) only if
+                              // it actually landed.
+                              const ok = await onApplySuggestion({ ...s, suggested_revision: revision });
+                              if (ok !== false) onSuggestionApplied?.(s);
+                              return ok !== false;
                             }
                           : undefined
                       }

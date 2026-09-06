@@ -181,6 +181,13 @@ When the phase is "review" (user clicked "Review my draft"), evaluate the curren
 
 Soft suggestions never block submission. The user can apply, dismiss, or rewrite. Hard blocks must be resolved before submit (the UI enforces).
 
+## Targeted edits vs. whole-field rewrites
+How you package a suggestion matters as much as its content:
+- **When a field already has substantial content — a paragraph or more, especially the description — do NOT rewrite the whole field.** Target the specific passage: put the EXACT existing text you want changed in "quoted_text" (copied verbatim from the draft, word for word) and the replacement in "suggested_revision". Applying then swaps just that passage and leaves the rest untouched. This keeps the card small and readable on a phone, and it is how you improve one sentence without redrawing five paragraphs.
+- **Quote verbatim.** "quoted_text" must be an exact substring of the current field, or the edit cannot be located and will not apply. Copy it, don't paraphrase it.
+- **A whole-field suggestion (quoted_text null) REPLACES the entire field when applied** — it is not appended. So a whole-field revision must be the COMPLETE new value for that field, including any existing content worth keeping. Use whole-field only for a short or empty field (a title, a fresh set of seed statements), or when the user explicitly asks you to rewrite the whole thing.
+- **One whole-field suggestion per field at a time.** Don't stack two competing full rewrites of the same field; if you're revising, supersede — offer the single best version.
+
 How to engage in review:
 1. Identify the type. Empirical, preference, or mixed?
 2. Read generously. What is the user trying to accomplish?
@@ -217,7 +224,7 @@ Return a JSON object with this structure:
   "suggestions": [
     {
       "severity": "soft" | "hard",
-      "quoted_text": "portion of the draft" | null,
+      "quoted_text": "exact existing text to replace, verbatim — for a targeted edit" | null,
       "field": ${config.fields.map((f) => `"${f}"`).join(" | ")} | null,
       "message": "your specific suggestion in plain prose",
       "suggested_revision": "optional rewrite" | null

@@ -35,6 +35,45 @@ client-navigated to review B by popstate (what back/forward does, no reload) —
 buttons, no stale form, no stale message, status pending. Neither review was mutated (only a form
 was opened). UI build clean.
 
+## Suggestion cards: targeted chunk edits, replace-not-append, supersede — 2026-09-05
+
+Adam, on editing a long description: he did NOT want the whole field crossed out and rewritten in
+one giant suggestion — he wanted a Google-Docs-style change scoped to the passage: show what's
+removed, show what replaces it, apply just that chunk. This reuses a mechanism that already existed
+(`quoted_text`) rather than building an inline-diff editor.
+
+**Chunk edits.** A suggestion carrying `quoted_text` now renders as a diff — the quoted passage
+struck through, the replacement marked as added — and applies surgically (`replaceQuotedChunk`
+swaps only that passage, the rest of the field untouched). The system prompt tells the model to
+prefer this for a field that already has substantial content (especially the description): put the
+exact existing text in `quoted_text`, the replacement in `suggested_revision`. This is what makes
+long-description editing mobile-friendly — the card only ever shows the chunk in play.
+
+**Tolerant matching + fail-safe.** A model rarely quotes byte-for-byte, so the match is tolerant of
+whitespace runs and straight/curly quotes. If the passage still can't be located, apply returns
+false and the card says so ("Couldn't find this passage… edit the field directly") instead of the
+old behavior, which silently APPENDED the whole revision — corruption. Validated in isolation:
+exact, extra-whitespace, and straight-vs-curly all match; a missing passage returns null.
+
+**Replace, not append.** A whole-field suggestion (no `quoted_text`) now REPLACES the field on apply
+rather than appending — the source of the duplicated text Adam saw on a second apply. The prompt
+says a whole-field revision must be the COMPLETE new value, and whole-field is for short/empty
+fields (title, a fresh seed set) or an explicit "rewrite the whole thing".
+
+**One outstanding whole-field suggestion per field (B).** `AssistantPanel` suppresses an earlier
+UNAPPLIED whole-field card for a field once a newer one arrives, so competing full rewrites don't
+pile up. Chunk edits (different passages) coexist; applied cards stay as history.
+
+`onApply`/`onApplySuggestion`/`handleApplySuggestion` now thread a boolean so the card can show the
+fail-safe. Verified on dev: asked to tighten one sentence of a 4-sentence description, the model
+returned a `description` chunk edit (not a rewrite), the card showed the old→new diff, and Apply
+changed only that sentence (+8 chars, first sentences untouched, old text gone). tsc + build clean,
+`tests/unit` 722.
+
+Honest limit: the model must quote verbatim for the exact path; tolerant matching covers most drift,
+and the fail-safe prevents corruption when it can't. The "prefer chunk edits" behavior is a prompt
+lean, not a guarantee.
+
 ## Suggestion cards: edit in place before applying — 2026-09-05
 
 Adam, on a sources card with four links: "I'm forced to either accept them all or not apply any of

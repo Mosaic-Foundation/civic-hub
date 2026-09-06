@@ -71,6 +71,37 @@ function friendlyError(msg: string): string {
   return "Something went wrong with the assistant. Try again in a moment.";
 }
 
+/**
+ * Replace one passage inside a field's current text — the mechanism behind a
+ * chunk edit (a suggestion carrying `quoted_text`). Returns the new field
+ * value, or null when the passage cannot be located, so the caller FAILS SAFE
+ * rather than corrupting the field (the old code silently appended the whole
+ * revision when the quote did not match).
+ *
+ * Matching is tolerant of whitespace and smart/straight quotes, because a
+ * model rarely quotes byte-for-byte — a trimmed space or a curly apostrophe
+ * should not defeat an otherwise clear edit.
+ */
+export function replaceQuotedChunk(
+  current: string,
+  quote: string,
+  replacement: string,
+): string | null {
+  if (current.includes(quote)) return current.replace(quote, replacement);
+  const normalizeQuotes = (t: string) =>
+    t.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
+  // Build a whitespace-tolerant, quote-tolerant pattern from the quote.
+  const pattern = normalizeQuotes(quote)
+    .trim()
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&") // escape regex metachars
+    .replace(/['"]/g, "['\u2018\u2019\u201C\u201D\"']") // any quote style
+    .replace(/\s+/g, "\\s+"); // any run of whitespace
+  const re = new RegExp(pattern);
+  const m = re.exec(current);
+  if (!m) return null;
+  return current.slice(0, m.index) + replacement + current.slice(m.index + m[0].length);
+}
+
 /** How an empty-field help chip names its field to the person. Unknown keys
  *  humanize, so a field a new type declares still gets a sensible label. */
 const FIELD_LABELS: Record<string, string> = {
@@ -419,18 +450,28 @@ export function useDraftFlow<D extends BaseDraft>({
    * this — marks the draft assistant_helped (assistant_applied flag).
    */
   const handleApplySuggestion = useCallback(
-    async (suggestion: DraftSuggestion) => {
+    async (suggestion: DraftSuggestion): Promise<boolean> => {
       const d = draftRef.current;
-      if (!d || !suggestion.field || !suggestion.suggested_revision) return;
-      if (!applyFields.includes(suggestion.field)) return;
+      if (!d || !suggestion.field || !suggestion.suggested_revision) return false;
+      if (!applyFields.includes(suggestion.field)) return false;
 
       const current = String((d as Record<string, unknown>)[suggestion.field] ?? "");
       let newValue: string;
-      if (suggestion.quoted_text && current.includes(suggestion.quoted_text)) {
-        newValue = current.replace(suggestion.quoted_text, suggestion.suggested_revision);
-      } else if (current.trim()) {
-        newValue = current.trim() + "\n\n" + suggestion.suggested_revision;
+      if (suggestion.quoted_text) {
+        // Chunk edit: replace only the quoted passage, and fail safe if it
+        // can't be found rather than dumping the revision into the field.
+        const replaced = replaceQuotedChunk(
+          current,
+          suggestion.quoted_text,
+          suggestion.suggested_revision,
+        );
+        if (replaced === null) return false;
+        newValue = replaced;
       } else {
+        // Whole-field suggestion: REPLACE the field, never append. Appending
+        // was the source of duplicated text on a second apply (Adam,
+        // 2026-09-05); one outstanding whole-field card per field (enforced in
+        // AssistantPanel) plus replace makes re-suggesting overwrite cleanly.
         newValue = suggestion.suggested_revision;
       }
 
@@ -450,6 +491,7 @@ export function useDraftFlow<D extends BaseDraft>({
         | HTMLTextAreaElement
         | null;
       if (el && el.dataset.controlled !== "true") el.value = newValue;
+      return true;
     },
     [applyFields, queuePatch],
   );

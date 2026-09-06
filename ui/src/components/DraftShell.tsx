@@ -55,7 +55,7 @@ interface Props {
   reviewSuggestions?: DraftSuggestion[] | null;
   /** Applies assistant-produced text into the form (marks assistant_helped).
    *  Used by both the inline results block and the panel's cards. */
-  onApplySuggestion?: (s: DraftSuggestion) => void;
+  onApplySuggestion?: (s: DraftSuggestion) => void | Promise<boolean>;
   /** Gates Apply per card — suggestions for fields this form doesn't have
    *  must not offer a silent no-op Apply button. */
   canApplySuggestion?: (s: DraftSuggestion) => boolean;
@@ -231,9 +231,10 @@ export default function DraftShell({
               s.suggested_revision &&
               onApplySuggestion &&
               (canApplySuggestion ? canApplySuggestion(s) : true)
-                ? (revision: string) => {
-                    onApplySuggestion({ ...s, suggested_revision: revision });
-                    markApplied(s);
+                ? async (revision: string) => {
+                    const ok = await onApplySuggestion({ ...s, suggested_revision: revision });
+                    if (ok !== false) markApplied(s);
+                    return ok !== false;
                   }
                 : undefined
             }
