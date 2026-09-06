@@ -44,7 +44,7 @@
 
 .official-row {
   display: grid;
-  grid-template-columns: 2fr 1.4fr 1.4fr 1.4fr auto;
+  grid-template-columns: 2fr 1.4fr 1.4fr 1.4fr auto auto;
   gap: var(--space-sm);
   margin-bottom: var(--space-sm);
   align-items: center;
@@ -114,4 +114,30 @@
 
 .admin-waitlist-table td {
   color: var(--color-text);
+}
+
+/* The per-official "sends briefs" flag: a checkbox in the row on desktop,
+   labelled in the stacked phone layout where the column header is gone. */
+.official-sends-briefs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  justify-self: center;
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+}
+
+.official-sends-briefs-text {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .official-sends-briefs-text {
+    display: inline;
+  }
+}
+
+.official-extra-recipients {
+  margin-top: var(--space-md);
+  max-width: 36rem;
 }

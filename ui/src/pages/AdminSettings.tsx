@@ -25,13 +25,15 @@ export default function AdminSettings() {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // --- Brief recipients ---
-  const [recipientsText, setRecipientsText] = useState("");
-  const [savingRecipients, setSavingRecipients] = useState(false);
-  const [recipientsMessage, setRecipientsMessage] = useState<string | null>(null);
-
-  // --- Officials ---
-  const [officials, setOfficials] = useState<Official[]>([]);
+  // --- Officials & brief recipients ---
+  // One section (Adam, 2026-09-06): the officials ARE the default brief
+  // recipients. Each row carries a "sends briefs" flag; the hub-wide
+  // recipient list is derived on save as the flagged officials plus any
+  // standing addresses without an account (a clerk, a shared inbox). The
+  // review page still lets the admin adjust the list per brief.
+  type OfficialRow = Official & { sends_briefs: boolean };
+  const [officials, setOfficials] = useState<OfficialRow[]>([]);
+  const [extraRecipientsText, setExtraRecipientsText] = useState("");
   const [savingOfficials, setSavingOfficials] = useState(false);
   const [officialsMessage, setOfficialsMessage] = useState<string | null>(null);
 
@@ -58,8 +60,14 @@ export default function AdminSettings() {
   useEffect(() => {
     adminGetSettings()
       .then((s) => {
-        setRecipientsText(s.brief_recipient_emails.join(", "));
-        setOfficials(s.officials);
+        const recipients = new Set(s.brief_recipient_emails.map((e) => e.toLowerCase()));
+        const officialEmails = new Set(s.officials.map((o) => o.email.toLowerCase()));
+        setOfficials(
+          s.officials.map((o) => ({ ...o, sends_briefs: recipients.has(o.email.toLowerCase()) })),
+        );
+        setExtraRecipientsText(
+          s.brief_recipient_emails.filter((e) => !officialEmails.has(e.toLowerCase())).join(", "),
+        );
         setThreshold(s.support_threshold);
         setAllowlistText(s.beta_allowlist.join(", "));
         setWaitlist(s.waitlist);
@@ -71,31 +79,7 @@ export default function AdminSettings() {
       });
   }, []);
 
-  async function saveRecipients() {
-    setSavingRecipients(true);
-    setRecipientsMessage(null);
-    try {
-      const input = recipientsText
-        .split(/[,\n]/)
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-      const saved = await adminPatchSettings({ brief_recipient_emails: input });
-      setRecipientsText(saved.brief_recipient_emails.join(", "));
-      setRecipientsMessage(
-        saved.brief_recipient_emails.length === 0
-          ? "Cleared — brief approvals will be blocked until a recipient is set."
-          : `Saved. Briefs will be delivered to ${saved.brief_recipient_emails.length} recipient(s).`,
-      );
-    } catch (err) {
-      setRecipientsMessage(
-        err instanceof Error ? err.message : "Failed to save recipients",
-      );
-    } finally {
-      setSavingRecipients(false);
-    }
-  }
-
-  function updateOfficial(i: number, patch: Partial<Official>) {
+  function updateOfficial(i: number, patch: Partial<OfficialRow>) {
     setOfficials((cur) => cur.map((o, idx) => (idx === i ? { ...o, ...patch } : o)));
   }
 
@@ -107,6 +91,7 @@ export default function AdminSettings() {
         name: "",
         official_type: "board_of_supervisors",
         official_title: OFFICIAL_TYPE_LABELS.board_of_supervisors,
+        sends_briefs: true,
       },
     ]);
   }
@@ -188,6 +173,7 @@ export default function AdminSettings() {
     setOfficialsMessage(null);
     try {
       const cleaned: Official[] = [];
+      const recipientEmails: string[] = [];
       for (const o of officials) {
         const email = o.email.trim();
         const name = (o.name ?? "").trim();
@@ -204,13 +190,27 @@ export default function AdminSettings() {
           official_type: o.official_type,
           official_title: title,
         });
+        if (o.sends_briefs) recipientEmails.push(email);
       }
-      const saved = await adminPatchSettings({ officials: cleaned });
-      setOfficials(saved.officials);
+      const extras = extraRecipientsText
+        .split(/[,\n]/)
+        .map((e) => e.trim())
+        .filter((e) => e.length > 0);
+      const saved = await adminPatchSettings({
+        officials: cleaned,
+        brief_recipient_emails: [...recipientEmails, ...extras],
+      });
+      const recipients = new Set(saved.brief_recipient_emails.map((e) => e.toLowerCase()));
+      const officialEmails = new Set(saved.officials.map((o) => o.email.toLowerCase()));
+      setOfficials(
+        saved.officials.map((o) => ({ ...o, sends_briefs: recipients.has(o.email.toLowerCase()) })),
+      );
+      setExtraRecipientsText(
+        saved.brief_recipient_emails.filter((e) => !officialEmails.has(e.toLowerCase())).join(", "),
+      );
+      const n = saved.brief_recipient_emails.length;
       setOfficialsMessage(
-        saved.officials.length === 0
-          ? "Cleared — only admins can post announcements."
-          : `Saved. ${saved.officials.length} official(s) can post announcements.`,
+        `Saved. ${saved.officials.length} official(s); briefs go to ${n} recipient${n === 1 ? "" : "s"} by default.`,
       );
     } catch (err) {
       setOfficialsMessage(
@@ -232,50 +232,21 @@ export default function AdminSettings() {
 
         {error && <p className="form-error">{error}</p>}
 
-        {/* --- Brief recipients --- */}
+        {/* --- Officials & brief recipients --- */}
         <section className="admin-settings-panel">
-          <h3>Brief recipients</h3>
-          <label className="form-label" htmlFor="brief-recipients">
-            Brief recipient emails
-          </label>
-          <p className="form-hint">
-            Comma- or newline-separated list of addresses that receive the brief
-            on approval. Changes take effect on the next approval.
-          </p>
-          <textarea
-            id="brief-recipients"
-            className="form-textarea"
-            rows={2}
-            value={recipientsText}
-            onChange={(e) => setRecipientsText(e.target.value)}
-            disabled={!loaded || savingRecipients}
-            placeholder="board@floyd.gov, clerk@floyd.gov"
-          />
-          <div className="admin-settings-actions">
-            <button
-              type="button"
-              className="admin-convert-button"
-              onClick={saveRecipients}
-              disabled={!loaded || savingRecipients}
-            >
-              {savingRecipients ? "Saving…" : "Save recipients"}
-            </button>
-            {recipientsMessage && (
-              <span className="admin-settings-message">{recipientsMessage}</span>
-            )}
-          </div>
-        </section>
-
-        {/* --- Officials --- */}
-        <section className="admin-settings-panel">
-          <h3>Officials</h3>
+          <h3>Officials &amp; brief recipients</h3>
           <p className="form-hint">
             Accounts that hold a public office. The title shows as a pill next
             to their name everywhere they post — announcements, proposals,
-            projects, and comments — and they can post announcements. Leave
-            name blank to use the person's own account name. Admins can always
-            post and only need to be listed here if they also hold an office
-            (they will show both badges).
+            projects, and comments — and they can post announcements and
+            respond to briefs. Leave name blank to use the person's own
+            account name. Admins can always post and only need to be listed
+            here if they also hold an office (they will show both badges).
+          </p>
+          <p className="form-hint">
+            Officials marked <strong>Sends briefs</strong> receive every
+            published brief by email. You can add or remove recipients for a
+            particular brief while reviewing it.
           </p>
 
           {officials.length === 0 && (
@@ -292,6 +263,7 @@ export default function AdminSettings() {
               <span className="official-col-label">
                 Title <span className="official-col-note">(public pill)</span>
               </span>
+              <span className="official-col-label">Sends briefs</span>
               <span />
             </div>
           )}
@@ -357,6 +329,16 @@ export default function AdminSettings() {
                 disabled={!loaded || savingOfficials}
                 maxLength={50}
               />
+              <label className="official-sends-briefs">
+                <input
+                  type="checkbox"
+                  checked={official.sends_briefs}
+                  onChange={(e) => updateOfficial(i, { sends_briefs: e.target.checked })}
+                  aria-label={`Official ${i + 1} receives briefs`}
+                  disabled={!loaded || savingOfficials}
+                />
+                <span className="official-sends-briefs-text">Sends briefs</span>
+              </label>
               <button
                 type="button"
                 className="admin-remove-section"
@@ -378,6 +360,24 @@ export default function AdminSettings() {
             + Add official
           </button>
 
+          <div className="official-extra-recipients">
+            <label className="form-label" htmlFor="extra-brief-recipients">
+              Also send briefs to{" "}
+              <span className="official-col-note">
+                (standing addresses that aren't a person's office — a clerk, a shared board inbox)
+              </span>
+            </label>
+            <input
+              id="extra-brief-recipients"
+              className="form-input"
+              type="text"
+              value={extraRecipientsText}
+              onChange={(e) => setExtraRecipientsText(e.target.value)}
+              placeholder="clerk@floyd.gov, board@floyd.gov"
+              disabled={!loaded || savingOfficials}
+            />
+          </div>
+
           <div className="admin-settings-actions" style={{ marginTop: "var(--space-md)" }}>
             <button
               type="button"
@@ -385,7 +385,7 @@ export default function AdminSettings() {
               onClick={saveOfficials}
               disabled={!loaded || savingOfficials}
             >
-              {savingOfficials ? "Saving…" : "Save officials"}
+              {savingOfficials ? "Saving…" : "Save officials & recipients"}
             </button>
             {officialsMessage && (
               <span className="admin-settings-message">{officialsMessage}</span>

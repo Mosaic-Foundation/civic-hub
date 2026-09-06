@@ -4,6 +4,37 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Admin Settings: one section — Officials & brief recipients — 2026-09-06
+
+**Working in:** `civic-hub/ui/src/pages/AdminSettings.tsx` (+ `.css`)
+
+Adam, checklist item 27: "the officials list is the same as the brief
+recipients … one section." Facts established first:
+
+- The **brief review page already has a per-brief recipient picker**
+  ("Delivery recipients": rows of email + public label, prefilled from the
+  hub-wide list with labels matched from the officials roster, quick-add
+  buttons per official, "+ Add by email" for a third party specific to
+  that brief). Votes go through it too — a closed vote spawns a
+  `civic.brief`; the old Vote-results page no longer receives records.
+- An official does **not** need an account: `setOfficials` creates a
+  shell user row for an unknown email, so a listed Supervisor receives
+  briefs before ever signing in.
+
+**Change:** the separate "Brief recipients" textarea is gone. The
+officials section is now "Officials & brief recipients": each row has a
+**Sends briefs** checkbox (new rows default on), and below the rows a
+single "Also send briefs to" line for standing addresses that aren't a
+person's office (a clerk, a shared board inbox). One save writes both
+`officials` and `brief_recipient_emails` (= flagged officials ∪ standing
+addresses) in the existing PATCH — no server change, and the review
+page's prefill keeps working (an unmatched standing address prefills with
+an empty public label the admin fills in, as before).
+
+Verified on dev at 1100px: section renders with the flag column; check +
+standing address → stored `[official, clerk]`, message "briefs go to 2
+recipients by default"; revert → `[]`.
+
 ## Feed card: pill stays top-right beside a long title — 2026-09-06
 
 **Working in:** `civic-hub/ui/src/components/Feed.css`
