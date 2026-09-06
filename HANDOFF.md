@@ -4,6 +4,36 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Digest subject: "Sunday, September 6 digest", and the two-email question — 2026-09-06
+
+**Working in:** `civic-hub/src/modules/civic.digest/service.ts`, `ui/src/pages/Settings.tsx`
+
+Adam, checklist item 23, on the digest email.
+
+**Subject line.** Was "Floyd Civic Hub — Sun, Sep 6 update (5 new items)";
+now "Floyd Civic Hub — Sunday, September 6 digest (5 new items)". "Digest"
+is what the person chose in Settings; "update" read like a changed
+process. The same string is the subtitle at the top of the email.
+
+**"Two emails, one buried."** Not two sends to one person: one digest to
+`creatinglake+test1` and one to `creatinglake+test3` — two hub accounts
+that are plus-aliases of one Gmail inbox. Gmail threads them (same
+sender, same subject) and collapses the second's identical body behind
+its "…" toggle. The sender loop is once per user per run, gated by
+`last_digest_sent_at` and the user's frequency
+(`digestController.ts:282-300`). No change.
+
+**Unsubscribe landed with "Every 3 days" selected.** Same cause: the link
+was signed for the +alias account the email went to; the browser was
+signed in as creatinglake@gmail.com, so Settings showed that account. The
+first cut of the notice said "you're unsubscribed" regardless, which was
+wrong for that case. Settings now decides on first load: the flag plus
+`digest_frequency_days === null` → "You're unsubscribed…"; the flag plus
+a frequency → "That unsubscribe link was for a different account than the
+one you're signed in as (email). The account the email went to is now
+unsubscribed; this one is unchanged." Decided once, and cleared when the
+person changes the select.
+
 ## Unsubscribe link lands in Settings with "Unsubscribed" selected — 2026-09-06
 
 **Working in:** `civic-hub/src/controllers/digestController.ts`, `ui/src/pages/Settings.tsx` (+ `.css`)

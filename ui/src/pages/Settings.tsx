@@ -26,6 +26,13 @@ export default function Settings() {
   // state, but the person just clicked a link and wants confirmation.
   const [searchParams] = useSearchParams();
   const cameFromUnsubscribe = searchParams.get("digest") === "unsubscribed";
+  // What the link did, judged against THIS account once it loads. The link
+  // is signed for the account the email went to; if the browser is signed
+  // in as someone else (Adam, 2026-09-06: digest to a +alias, signed in as
+  // his own account), this account still has a frequency and the honest
+  // message is "that link was for a different account". Decided once, on
+  // first load, so changing the select afterwards doesn't flip it.
+  const [arrival, setArrival] = useState<"unsubscribed" | "other-account" | null>(null);
   // "loading" = haven't fetched yet, number = frequency in days, null = unsubscribed
   const [frequency, setFrequency] = useState<number | null | "loading">("loading");
   const [saving, setSaving] = useState(false);
@@ -61,6 +68,9 @@ export default function Settings() {
       .then(({ user: u }) => {
         setFrequency(u.digest_frequency_days);
         setHideDraftingHelp(u.hide_ai_drafting_help === true);
+        if (cameFromUnsubscribe) {
+          setArrival(u.digest_frequency_days === null ? "unsubscribed" : "other-account");
+        }
       })
       .catch((err: Error) => {
         setError(`Could not load settings: ${err.message}`);
@@ -136,6 +146,7 @@ export default function Settings() {
   }
 
   async function onFrequencyChange(value: string) {
+    setArrival(null);
     const next = value === "off" ? null : parseInt(value, 10);
     setSaving(true);
     setMessage(null);
@@ -199,11 +210,23 @@ export default function Settings() {
             Choose how often you'd like to hear from us.
           </p>
 
-          {(cameFromUnsubscribe || frequency === null) && (
+          {arrival === "other-account" && (
             <p className="settings-message settings-unsubscribed" role="status">
-              {cameFromUnsubscribe
-                ? "You're unsubscribed from the email digest. Pick a frequency below whenever you want it back."
-                : "You're unsubscribed from the email digest. Pick a frequency to start receiving it again."}
+              That unsubscribe link was for a different account than the one
+              you're signed in as ({user.email}). The account the email went
+              to is now unsubscribed; this one is unchanged.
+            </p>
+          )}
+          {arrival === "unsubscribed" && (
+            <p className="settings-message settings-unsubscribed" role="status">
+              You're unsubscribed from the email digest. Pick a frequency
+              below whenever you want it back.
+            </p>
+          )}
+          {arrival === null && frequency === null && (
+            <p className="settings-message settings-unsubscribed" role="status">
+              You're unsubscribed from the email digest. Pick a frequency to
+              start receiving it again.
             </p>
           )}
 
