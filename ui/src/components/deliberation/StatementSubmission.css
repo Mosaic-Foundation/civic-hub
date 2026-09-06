@@ -67,6 +67,14 @@
   cursor: not-allowed;
 }
 
+.statement-error-msg {
+  margin: var(--space-sm, 0.5rem) 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm, 0.85rem);
+  line-height: 1.4;
+  color: var(--color-error, #c1351a);
+}
+
 .statement-submitted-msg {
   font-size: 0.85rem;
   color: #16a34a;

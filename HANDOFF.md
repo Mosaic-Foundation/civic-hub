@@ -4,6 +4,24 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Conversation statement form shows the server's refusal — 2026-09-06
+
+**Working in:** `civic-hub/ui/src/components/deliberation/StatementSubmission.tsx` (+ `.css`)
+
+Adam, testing the new profanity rule on a live conversation: a statement
+with a curse word was refused (correct) but "there's no error letting the
+user know … like on the other processes." `handleSubmit` was
+`try/finally` with no `catch`, so the 400 became an unhandled rejection —
+text left in the box, nothing shown. Every other form catches and
+displays. Now: the server's message renders under the box
+(`.statement-error-msg`, `role="alert"`), the text stays so it can be
+edited, and the message clears on the next keystroke. Applies to any
+refusal — word list or Polis.
+
+Verified on dev (375px, "How much can Floyd's water support?"): profane
+statement → the profanity message under the box, text kept, no
+"submitted" line. Session deleted.
+
 ## Profanity is now refused; proposals can be un-endorsed while open — 2026-09-06
 
 **Working in:** `civic-hub/src/shared/wordlist/`, `src/modules/civic.proposals/`,
