@@ -41,6 +41,12 @@ disappear after five seconds."
   at; its header says so.
 - Styled like the buttons it points at — same navy, white text, 14px
   corners, navy tail (Adam, after seeing it on his phone).
+- Sits BELOW the bar with the tail pointing up. Above, it slid behind the
+  sticky nav whenever the bar was near the top (Adam, desktop). And "in
+  view" now means visible, not merely inside the viewport: a bar parked
+  under the sticky nav (checked with elementFromPoint) is scrolled clear
+  first. Verified at 1100px: covered bar at top 40px → scrolled to 263px →
+  bubble unobstructed.
 
 ### Verified on dev (375×812, dev resident)
 

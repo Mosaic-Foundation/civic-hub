@@ -54,10 +54,12 @@ a.share-icon-btn {
 }
 
 /* --- The "consider sharing this" callout ---
-   A speech bubble above the bar with a tail pointing at the buttons. It is
-   transient (the component hides it after a few seconds) and dismissable
+   A speech bubble BELOW the bar with a tail pointing up at the buttons. It
+   is transient (the component hides it after a few seconds) and dismissable
    by a tap, so it carries no × of its own. Absolutely positioned so it
-   overlaps whatever sits above the bar instead of pushing the page. */
+   overlaps whatever sits under the bar instead of pushing the page. Below,
+   not above: the bar often sits just under the sticky nav, and a bubble
+   above it slid behind the nav (Adam, 2026-09-06, desktop). */
 
 .share-row {
   position: relative;
@@ -66,7 +68,7 @@ a.share-icon-btn {
 .share-callout {
   position: absolute;
   left: 0;
-  bottom: calc(100% + 10px);
+  top: calc(100% + 10px);
   z-index: 5;
   width: max-content;
   max-width: min(22rem, calc(100vw - 2rem));
@@ -84,21 +86,21 @@ a.share-icon-btn {
   animation: share-callout-in 0.2s ease-out;
 }
 
-/* The tail, in the bubble's own colour. */
+/* The tail, in the bubble's own colour, pointing up at the buttons. */
 .share-callout::after {
   content: "";
   position: absolute;
-  top: 100%;
+  bottom: 100%;
   left: 16px;
   border: 8px solid transparent;
-  border-bottom: 0;
-  border-top-color: var(--pill-vote-fg, #1e3a5f);
+  border-top: 0;
+  border-bottom-color: var(--pill-vote-fg, #1e3a5f);
 }
 
 @keyframes share-callout-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(-4px);
   }
   to {
     opacity: 1;

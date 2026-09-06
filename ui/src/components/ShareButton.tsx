@@ -66,7 +66,12 @@ export default function ShareButton({ title, url, nudge, processId }: ShareButto
       if (shareMomentRetired(momentId)) return;
       const el = rowRef.current;
       const r = el?.getBoundingClientRect();
-      const inView = !!r && r.top >= 0 && r.bottom <= window.innerHeight;
+      // "In view" means actually visible: inside the viewport AND not
+      // covered — the sticky nav sits over the top of the page, and a bar
+      // parked under it is on screen by the numbers and invisible in fact.
+      const covered =
+        !!el && !!r && !el.contains(document.elementFromPoint(r.left + 2, r.top + 2));
+      const inView = !!r && r.top >= 0 && r.bottom <= window.innerHeight && !covered;
       if (inView || !el) {
         present(text);
         return;
