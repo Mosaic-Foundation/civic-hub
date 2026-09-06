@@ -39,6 +39,11 @@ interface Props {
   disabled?: boolean;
   /** Type of the process being created — sets the default relation. */
   processType?: string;
+  /** Id of the process this form is editing, so the picker never offers it
+   *  as a link target — the process's own title is the best match for its
+   *  own draft, so without this it was the top suggestion (Adam, 2026-09-06).
+   *  A brand-new draft has no id yet and leaves this unset. */
+  selfId?: string;
 }
 
 export default function ProcessLinkField({
@@ -50,6 +55,7 @@ export default function ProcessLinkField({
   seedDescription = "",
   disabled = false,
   processType,
+  selfId,
 }: Props) {
   const [picking, setPicking] = useState(false);
 
@@ -142,7 +148,7 @@ export default function ProcessLinkField({
 
       {picking ? (
         <ProcessLinkPicker
-          exclude={value.map((l) => l.to_id)}
+          exclude={[...value.map((l) => l.to_id), ...(selfId ? [selfId] : [])]}
           seedTitle={seedTitle}
           seedDescription={seedDescription}
           processType={processType}

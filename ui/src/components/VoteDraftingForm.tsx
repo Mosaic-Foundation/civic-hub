@@ -15,6 +15,8 @@ interface Props {
    *  field defaults empty and staying empty is a valid answer. */
   links: ProposedLink[];
   onLinksChange: (links: ProposedLink[]) => void;
+  /** When editing a published process: its id, kept out of the link picker. */
+  linkSelfId?: string;
   linkTitles: Record<string, { title: string; type: string }>;
   onLinkTitlesChange: (t: Record<string, { title: string; type: string }>) => void;
   draft: VoteDraft;
@@ -113,6 +115,7 @@ export default function VoteDraftingForm({
   draft,
   links,
   onLinksChange,
+  linkSelfId,
   linkTitles,
   onLinkTitlesChange,
   onFieldChange,
@@ -352,6 +355,7 @@ export default function VoteDraftingForm({
           seedTitle={draft.title}
           seedDescription={draft.description}
           processType="civic.vote"
+          selfId={linkSelfId}
           disabled={disabled}
         />
       </div>

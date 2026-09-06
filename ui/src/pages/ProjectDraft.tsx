@@ -180,6 +180,7 @@ export default function ProjectDraft() {
           draft={displayDraft}
           links={draft?.links ?? localLinks}
           onLinksChange={handleLinksChange}
+          linkSelfId={editProcessId ?? undefined}
           linkTitles={linkTitles}
           onLinkTitlesChange={setLinkTitles}
           onFieldChange={handleFieldChange}

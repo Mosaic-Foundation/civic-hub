@@ -79,11 +79,14 @@
   border-top: 1px solid var(--color-border);
 }
 
+/* Title on its own line, type label beneath. Side by side, the no-shrink
+   type label left a phone-width title two words per line (same squeeze as
+   the picked-link rows in ProcessLinkField, fixed the same day). */
 .link-picker__result {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-sm);
+  gap: 2px var(--space-sm);
   width: 100%;
   text-align: left;
   background: none;
@@ -100,8 +103,10 @@
 }
 
 .link-picker__result-title {
+  flex: 1 1 100%;
   font-size: var(--font-size-base);
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .link-picker__result-meta {

@@ -4,6 +4,47 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## A process can no longer be offered as a link target for itself — 2026-09-06
+
+**Working in:** `civic-hub/ui/src/components/` (+ `pages/ProjectDraft.tsx`)
+
+Adam, editing the microgrid project on his phone: the related-process
+picker suggested the project itself — its own title is the best match for
+its own draft, so it was the top suggestion. The server already refused a
+self-link at submit (`validateLink` → `self_link`, run with the real id in
+`processEdits.ts` and the review service), so the bug was UI-only: the
+picker was never told which process it was editing.
+
+### What changed
+
+- **`ProcessLinkField`** — new `selfId?: string` prop, folded into the
+  picker's existing `exclude` list alongside already-picked targets. The
+  server-side candidate search honours `exclude` for both the auto-suggest
+  and typed-search paths, so the process disappears from both.
+- **All four draft forms** (`ProjectDraftingForm`, `DraftingForm`,
+  `VoteDraftingForm`, `DeliberationDraftingForm`) — new `linkSelfId?`
+  prop threaded to the field. Only project editing exists today; any type
+  that adopts editing passes its id and inherits the exclusion.
+- **`ProjectDraft`** — passes `linkSelfId={editProcessId}`.
+- A brand-new draft has no process id yet and leaves it unset — nothing to
+  exclude, nothing changes.
+
+### Also: picker candidate rows
+
+The results list had the same squeeze as the picked-link rows fixed
+earlier today: a no-shrink type label beside the title left a phone-width
+title two words per line. Now the title takes the full row and the type
+label sits beneath it (`ProcessLinkPicker.css`).
+
+### Verified on dev at 375px
+
+Skate park project (`proc_beta_dev_skatepark_001`) edit page as its
+creator: suggestion request carries `exclude=proc_beta_dev_skatepark_001`;
+typing "skate" returns only the recreation conversation; curl without the
+exclusion returns the project, with it does not. Candidate title spans the
+row (219px, three lines) with CONVERSATION below. `uitest_` session deleted;
+nine stale `[uitest]` project drafts from 2026-09-04 deleted as well.
+
 ## Related-process links in draft forms: title on its own line — 2026-09-06
 
 **Working in:** `civic-hub/ui/src/components/ProcessLinkField.css`
