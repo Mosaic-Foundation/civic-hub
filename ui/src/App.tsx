@@ -52,6 +52,7 @@ import ReAcceptModal from "./components/ReAcceptModal";
 import BetaBanner from "./components/BetaBanner";
 import BetaWelcomeDialog from "./components/BetaWelcomeDialog";
 import { usePreviewMode } from "./hooks/usePreviewMode";
+import AuthModal from "./components/AuthModal";
 import "./App.css";
 
 // Routes that show the hub banner above the nav. Detail/action pages
@@ -60,10 +61,29 @@ import "./App.css";
 const BANNER_ROUTES = new Set(["/", "/votes", "/propose", "/projects", "/deliberations", "/outcomes"]);
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { isAdmin, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
+  const { pathname } = useLocation();
+  const [dismissed, setDismissed] = useState(false);
   if (loading) return null;
-  if (!isAdmin) return <Navigate to="/" replace />;
-  return <>{children}</>;
+  if (isAdmin) return <>{children}</>;
+
+  if (user) {
+    // Signed in, not an admin. This used to bounce to the home page with no
+    // explanation — which is what an admin-review link from an email did when
+    // tapped on a phone signed in as the CREATOR (Adam, 2026-09-05). An admin
+    // review and the creator's own view of it share the review id, so send
+    // them to their submission — where they can read it and withdraw it —
+    // rather than to nowhere.
+    const review = pathname.match(/^\/admin\/reviews\/([^/]+)/);
+    return <Navigate to={review ? `/my-submissions/${review[1]}` : "/my-submissions"} replace />;
+  }
+
+  // Signed out. Sign in HERE, in place, instead of navigating away: the URL
+  // survives, so an admin who opens a review link from an email on a phone
+  // lands on that review the moment they finish signing in. Dismissing the
+  // modal is the one case that goes home.
+  if (dismissed) return <Navigate to="/" replace />;
+  return <AuthModal onComplete={() => {}} onDismiss={() => setDismissed(true)} />;
 }
 
 function BannerSlot() {

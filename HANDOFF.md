@@ -35,6 +35,32 @@ client-navigated to review B by popstate (what back/forward does, no reload) —
 buttons, no stale form, no stale message, status pending. Neither review was mutated (only a form
 was opened). UI build clean.
 
+## Admin-review links no longer bounce to the home page — 2026-09-05
+
+Adam, on his phone: the "Review it now" link in the new-submission email "just links to the home
+page… it should link to the person's process being submitted for review and allow them to withdraw
+the submission." The link was correct (`/admin/reviews/<id>`); the phone's browser session was the
+CREATOR account, and `AdminGuard` did `if (!isAdmin) <Navigate to="/" />` — a silent bounce for
+anyone not an admin, signed-out visitors included.
+
+`AdminGuard` now branches on who is there:
+- **Admin** → the page, unchanged.
+- **Signed in, not admin** → `/my-submissions/<id>` when the URL is an admin review. An admin review
+  and the creator's own view of it share the review id, so a creator who follows an admin link
+  lands on their submission — readable, with Withdraw — instead of nowhere. Any other admin URL →
+  `/my-submissions`.
+- **Signed out** → the sign-in modal rendered IN PLACE, so the URL survives and an admin who opens
+  a review link from an email on a phone lands on that review the moment they finish signing in
+  (there was no return-to mechanism; not navigating away makes one unnecessary). Dismissing the
+  modal is the one path that goes home.
+
+The creator's own confirmation email (`notifyCreatorSubmitted`) already linked to
+`/my-submissions/<id>` and was not the email in the screenshot.
+
+Verified on dev at phone width: creator session → `/my-submissions/rev_…` with "Your submission"
+and Withdraw; signed out → modal shown, `location.pathname` still the admin URL; admin token on
+that same URL → the review with Approve / Request changes / Decline. UI-only; build clean.
+
 ## Chunk-edit matcher: letter case is drift, not a mismatch — 2026-09-05
 
 Adam's run on prod was clean except one card: the fail-safe fired — "Couldn't find this passage in
