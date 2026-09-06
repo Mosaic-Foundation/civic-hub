@@ -4,6 +4,7 @@ import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
 import SuggestFooterButton from "./SuggestFooterButton";
+import TitleField from "./TitleField";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
@@ -222,10 +223,8 @@ export default function VoteDraftingForm({
           <label htmlFor="draft-title" className="form-label">
             Vote question <span className="required">*</span>
           </label>
-          <input
+          <TitleField
             id="draft-title"
-            type="text"
-            className="form-input"
             defaultValue={draft.title}
             onChange={handleChange("title")}
             placeholder={draft.method === "approval"

@@ -453,3 +453,18 @@
   outline: none;
   border-color: var(--color-primary);
 }
+
+/* Completion handoff — replaces the chips when every field has content, so
+   applying the last suggestion ends with a clear "you're done" rather than
+   silence. */
+.field-help--done {
+  padding: var(--space-sm);
+  background: var(--color-success-bg, var(--color-surface-alt));
+  border-radius: var(--radius-sm);
+}
+
+.field-help-done-hint {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}

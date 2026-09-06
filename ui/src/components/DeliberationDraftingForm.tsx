@@ -12,6 +12,7 @@ import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
 import SuggestFooterButton from "./SuggestFooterButton";
+import TitleField from "./TitleField";
 import MarkdownTextarea from "./MarkdownTextarea";
 import SeedStatementRows from "./SeedStatementRows";
 
@@ -156,10 +157,8 @@ export default function DeliberationDraftingForm({
           <label htmlFor="draft-title" className="form-label">
             Topic <span className="required">*</span>
           </label>
-          <input
+          <TitleField
             id="draft-title"
-            type="text"
-            className="form-input"
             defaultValue={draft.title}
             onChange={handleChange("title")}
             placeholder={PLACEHOLDERS.title}

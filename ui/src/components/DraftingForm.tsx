@@ -5,6 +5,7 @@ import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
 import SuggestFooterButton from "./SuggestFooterButton";
+import TitleField from "./TitleField";
 
 /** Inline hint + example under a field — the same best-practices content
  *  the assistant works from, so manual drafters get the quality lift too. */
@@ -197,10 +198,8 @@ export default function DraftingForm({
           <label htmlFor="draft-title" className="form-label">
             Title <span className="required">*</span>
           </label>
-          <input
+          <TitleField
             id="draft-title"
-            type="text"
-            className="form-input"
             defaultValue={draft.title}
             onChange={handleChange("title")}
             placeholder={getPlaceholder(subType, "title")}

@@ -166,15 +166,15 @@ export default function AssistantPanel({
         )}
         {/* Empty-field help — deterministic offers, in the scroll area so they
             cost no fixed height. Shown once the opening flow is past and the
-            conversation has started; a field fills, its chip goes. */}
-        {phase !== "brainstorm" &&
-          !loading &&
-          messages.length > 0 &&
-          fieldHelp &&
-          fieldHelp.length > 0 &&
-          onFieldHelp && (
+            conversation has started; a field fills, its chip goes. When none
+            are left, a completion handoff takes their place so applying the
+            last one is not a dead end. */}
+        {phase !== "brainstorm" && !loading && messages.length > 0 && fieldHelp && (
+          fieldHelp.length > 0 && onFieldHelp ? (
             <div className="field-help">
-              <p className="field-help-label">Select which sections you want help with</p>
+              <p className="field-help-label">
+                Tap a section below and I'll help you with it:
+              </p>
               <div className="field-help-chips">
                 {fieldHelp.map((f) => (
                   <button
@@ -188,7 +188,19 @@ export default function AssistantPanel({
                 ))}
               </div>
             </div>
-          )}
+          ) : (
+            <div className="field-help field-help--done">
+              <p className="field-help-label">
+                That's every section filled in. Anything else you'd like help
+                with — or a section you want me to take another look at?
+              </p>
+              <p className="field-help-done-hint">
+                When you're happy with it, tap{" "}
+                <strong>{doneLabel ?? "Done"}</strong> below to go back and submit.
+              </p>
+            </div>
+          )
+        )}
         <div ref={messagesEndRef} />
       </div>
 

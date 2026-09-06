@@ -5,6 +5,7 @@ import PostImagePicker from "./PostImagePicker";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
 import SuggestFooterButton from "./SuggestFooterButton";
+import TitleField from "./TitleField";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
@@ -139,10 +140,8 @@ export default function ProjectDraftingForm({
               {lockedValues?.title ?? draft.title}
             </p>
           ) : (
-            <input
+            <TitleField
               id="draft-title"
-              type="text"
-              className="form-input"
               defaultValue={draft.title}
               onChange={handleChange("title")}
               placeholder={PLACEHOLDERS.title}

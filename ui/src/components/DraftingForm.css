@@ -227,3 +227,12 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* The title as an auto-growing textarea: wraps and grows so a long title is
+   fully visible, instead of scrolling off the end of a one-line input. */
+.title-field {
+  resize: none;
+  overflow: hidden;
+  line-height: 1.4;
+  font-family: inherit;
+}
