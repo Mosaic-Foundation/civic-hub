@@ -7,6 +7,7 @@
 import { Request, Response } from "express";
 import { getProcess } from "../services/processService.js";
 import { getDb } from "../db/client.js";
+import { NON_PUBLIC_STATUSES } from "../services/processLifecycle.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { getAuthUser } from "../middleware/auth.js";
 import type { OfficialIdentity } from "../shared/officialTypes.js";
@@ -183,11 +184,17 @@ export async function handleListBriefs(
   res: Response,
 ): Promise<void> {
   try {
+    // Published briefs that are still public. Archiving a brief sets the
+    // process status, not publication_status, and this index used to look
+    // only at the latter — an archived brief stayed on Outcomes while its
+    // own page 404'd (Adam, 2026-09-06). Same non-public set every other
+    // public read uses.
     const { data, error } = await getDb()
       .from("processes")
       .select("id, title, state")
       .eq("type", "civic.brief")
-      .eq("state->>publication_status", "published");
+      .eq("state->>publication_status", "published")
+      .not("status", "in", `(${[...NON_PUBLIC_STATUSES].join(",")})`);
     if (error) throw new Error(error.message);
 
     const rows = (data ?? []) as Array<{

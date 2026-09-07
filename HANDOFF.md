@@ -4,6 +4,18 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Outcomes index drops archived briefs — 2026-09-06
+
+**Working in:** `civic-hub/src/controllers/briefController.ts`
+
+Adam archived the test brief and it stayed on Outcomes ("this one vote
+isn't archiving"). The archive worked — the brief's own page 404'd — but
+`GET /brief` (the Outcomes index) filtered only on
+`state.publication_status = published` and never on the process status.
+Now it also excludes `NON_PUBLIC_STATUSES` (archived, pending_review),
+the same set every other public read uses. Verified on dev by archiving
+and restoring a published brief: listed → gone → listed.
+
 ## Byline: an office titled "admin" no longer doubles the Admin badge — 2026-09-06
 
 **Working in:** `civic-hub/src/shared/officialTypes.ts`, `tests/unit/officialTypes.test.ts`
