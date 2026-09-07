@@ -4,6 +4,33 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Brief delivery sends through Resend, like every other email — 2026-09-06
+
+**Working in:** `civic-hub/src/services/mailer.ts`, `tests/unit/mailer.test.ts`
+
+Adam, item 27, first real brief approval on prod: "Email delivery failed:
+Invalid login: 535 Authentication credentials invalid." That is SMTP.
+`services/mailer.ts` — used only by the brief and vote-results approval
+flows — was nodemailer over `SMTP_*` env vars that nobody maintained,
+while sign-in codes, digests, review notices and feedback all go through
+Resend (`utils/email.ts`) and work.
+
+The mailer now delegates to the Resend helper, keeping its contract for
+the approval flows: one send **per recipient** (officials and third
+parties never see each other's addresses), resolve when all sent, throw
+`Email delivery failed: <recipient>: <reason>` if any fails so approval
+halts before publishing, and log-and-resolve when `RESEND_API_KEY` is
+unset (local dev). `nodemailer` is no longer imported (left in
+package.json; removing it is a lockfile change for another day). The
+`SMTP_*` variables on Vercel are now unused and can be deleted.
+
+Tests pin the fan-out, the failure message, a throwing provider, and the
+no-key fallback. Suite 757/757.
+
+**Prod:** the failed approval halted before publishing, so the test brief
+is still pending — after the push, approve it again and the email goes
+out via Resend.
+
 ## Admin Settings: one section — Officials & brief recipients — 2026-09-06
 
 **Working in:** `civic-hub/ui/src/pages/AdminSettings.tsx` (+ `.css`)

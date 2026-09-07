@@ -1,18 +1,25 @@
-// Mailer service — SMTP delivery with console fallback.
+// Mailer service — the brief / vote-results delivery mailer.
 //
-// Used by the admin brief approval flow (and any future hub feature that
-// needs to send email). Callers pass a fully-formatted message
-// (subject, html, text, recipients); this module handles transport.
+// Callers pass a fully-formatted message (subject, html, text, recipients);
+// this module handles transport. Since 2026-09-06 transport is Resend via
+// utils/email — the same sender every other email on the hub uses (sign-in
+// codes, digests, review notices, feedback). It was nodemailer over SMTP,
+// configured by SMTP_* env vars nobody maintained: the first real brief
+// approval on prod halted with "535 Authentication credentials invalid"
+// while every other email worked (Adam, smoke test item 27).
 //
-// SMTP config comes from env vars:
-//   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+// Contract, unchanged for callers:
+//   - resolves when every recipient was sent;
+//   - throws `Email delivery failed: …` if any recipient fails, so the
+//     approval flows halt before publishing;
+//   - with no RESEND_API_KEY configured (local dev), logs the message and
+//     resolves — the flow stays testable end to end with a visible trail.
 //
-// If any of those are missing, we DO NOT throw — instead we log the
-// message to the console and treat delivery as successful. This keeps
-// local dev runnable without SMTP credentials and makes approval flows
-// testable end-to-end with a visible audit trail.
+// One send per recipient, never one message with many `to`s: recipients
+// are officials and third parties who should not see each other's
+// addresses.
 
-import nodemailer, { Transporter } from "nodemailer";
+import { sendEmail as sendViaResend } from "../utils/email.js";
 
 export interface EmailMessage {
   to: string[];
@@ -21,51 +28,11 @@ export interface EmailMessage {
   text: string;
 }
 
-let transporterSingleton: Transporter | null = null;
-
-function loadConfig(): {
-  host: string;
-  port: number;
-  user: string;
-  pass: string;
-  from: string;
-} | null {
-  const host = process.env.SMTP_HOST;
-  const portRaw = process.env.SMTP_PORT;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM;
-  if (!host || !portRaw || !user || !pass || !from) return null;
-  const port = Number.parseInt(portRaw, 10);
-  if (!Number.isFinite(port)) return null;
-  return { host, port, user, pass, from };
-}
-
-function getTransporter(): Transporter | null {
-  if (transporterSingleton) return transporterSingleton;
-  const cfg = loadConfig();
-  if (!cfg) return null;
-  transporterSingleton = nodemailer.createTransport({
-    host: cfg.host,
-    port: cfg.port,
-    secure: cfg.port === 465,
-    auth: { user: cfg.user, pass: cfg.pass },
-  });
-  return transporterSingleton;
-}
-
-/**
- * Deliver an email. Falls back to console logging when SMTP is unconfigured.
- * Throws on actual delivery failure so callers can halt on error.
- */
 export async function sendEmail(message: EmailMessage): Promise<void> {
-  const cfg = loadConfig();
-  const transporter = getTransporter();
-
-  if (!cfg || !transporter) {
+  if (!process.env.RESEND_API_KEY) {
     // Visible, structured fallback so local dev runs can see what would
     // have been sent. Treated as success for flow purposes.
-    console.log("---- [mailer] SMTP unconfigured — logging email ----");
+    console.log("---- [mailer] RESEND_API_KEY unset — logging email ----");
     console.log(`To:      ${message.to.join(", ")}`);
     console.log(`Subject: ${message.subject}`);
     console.log("");
@@ -74,20 +41,25 @@ export async function sendEmail(message: EmailMessage): Promise<void> {
     return;
   }
 
-  try {
-    await transporter.sendMail({
-      from: cfg.from,
-      to: message.to,
-      subject: message.subject,
-      html: message.html,
-      text: message.text,
-    });
-    console.log(
-      `[mailer] delivered "${message.subject}" to ${message.to.length} recipient(s)`,
-    );
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    throw new Error(`Email delivery failed: ${msg}`);
+  const failures: string[] = [];
+  for (const to of message.to) {
+    try {
+      const result = await sendViaResend({
+        to,
+        subject: message.subject,
+        html: message.html,
+        text: message.text,
+      });
+      if (!result.sent) failures.push(`${to}: ${result.error ?? "unknown error"}`);
+    } catch (err) {
+      failures.push(`${to}: ${err instanceof Error ? err.message : "Unknown error"}`);
+    }
   }
-}
 
+  if (failures.length > 0) {
+    throw new Error(`Email delivery failed: ${failures.join("; ")}`);
+  }
+  console.log(
+    `[mailer] delivered "${message.subject}" to ${message.to.length} recipient(s)`,
+  );
+}
