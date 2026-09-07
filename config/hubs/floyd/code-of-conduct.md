@@ -1,7 +1,7 @@
 # Code of Conduct
 
-*Last updated: 2026-08-10*
-*Version: 1.1*
+*Last updated: 2026-09-07*
+*Version: 1.2*
 
 The Floyd Civic Hub is a place for residents of Floyd County to engage with each other and with local government. For that to work, everyone needs to be able to participate without being harassed, attacked, or drowned out. This Code of Conduct describes how we keep the Hub civil — and, just as important, how we avoid the far worse problem of silencing opinions we happen to disagree with.
 
@@ -20,6 +20,7 @@ Content that:
 - **Attacks a person** rather than an idea. "Your argument ignores X" is fair game. "You're an idiot for thinking that" is not.
 - **Harasses, threatens, or intimidates** another user, an official, or any identifiable person. This includes sustained targeting of an individual across multiple posts or comments.
 - **Uses slurs or targets people for who they are** — based on race, ethnicity, religion, national origin, sex, gender identity, sexual orientation, disability, or age. Criticism of groups' *actions* is permitted; dehumanizing attacks on who they are is not.
+- **Uses profanity or vulgar language.** This is a matter of decorum, not opinion. You can be blunt, frustrated, and forceful about an issue without swearing, and we want a tone where a neighbor who'd be put off by coarse language can still take part. Criticism doesn't lose any force when it's clean.
 - **Shares someone's private information without consent** (doxxing), including home addresses, phone numbers not already public, workplace details, or medical information. Public officials' publicly listed contact information is fair to share.
 - **Imports or reposts private content about specific people from other platforms** — for example, screenshots or copied social-media posts. Keep discussion on the Hub self-contained: engage with what people say *here*, not with what they said somewhere else. Linking to authoritative or official sources as references is permitted.
 - **Is spam or obvious off-topic noise** — repetitive posts, commercial solicitation, or content unrelated to Floyd County civic matters.
@@ -41,11 +42,13 @@ If you complain to us that a post should be removed because it's "wrong" or "hur
 
 ## How moderation works
 
+- **Two automatic checks run before anything posts.** Comments, conversation statements, and word-cloud entries pass through a list of slurs and profanity: if your submission contains one, it isn't posted, and you'll be told why so you can rephrase. When you create a proposal, vote, project, or conversation, an automated check reads your draft against this Code and tells you what must be fixed before you can submit it. That check looks for violations of the rules above and nothing else — not writing quality, not whether your facts are right, and not whether we agree with you.
+- **You can dispute what an automatic check concludes.** These checks are not the last word. If one flags something you believe is fine, email contact@civic.social and a person will look at it. And if the check can't run at all, your submission goes to human review rather than being blocked.
 - An admin reviews reported content and content they encounter in the normal course of running the Hub.
 - If the admin concludes a piece of content violates this Code, they remove it and note the reason in an internal log.
 - Where we can identify how to reach you, we'll tell you your content was removed and why.
 - If you disagree, you can appeal by emailing contact@civic.social. A human will re-examine the decision. We aim to respond within 7 days.
-- Removal decisions are made by admins, not by an algorithm. This means they won't be instant, but they also won't be arbitrary.
+- Beyond those checks, moderation is human — and every new proposal, vote, project, and conversation is read by an admin before it appears, whatever the automatic check said. Removal decisions are made by admins, not by an algorithm. This means they won't be instant, but they also won't be arbitrary.
 
 ## Repeat violations
 

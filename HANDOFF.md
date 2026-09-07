@@ -4,6 +4,54 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Code of Conduct 1.2: the profanity rule, and both automatic checks disclosed — 2026-09-07
+
+**Working in:** `civic-hub/ui/src/content/legal/` (all three docs), `ui/src/config/legal.ts`,
+`config/hubs/floyd/code-of-conduct.md`. Content + version change only; no behaviour
+change, no migration; ships alone.
+
+The Code was silent about both automatic checks, so a blocked resident
+read either as a bug; it also said "Removal decisions are made by admins,
+not by an algorithm," which was true when written and is now imprecise.
+Adam (2026-09-07) supplied the text.
+
+- **"What we may remove"**: new bullet after slurs — *Uses profanity or
+  vulgar language* ("a matter of decorum, not opinion … criticism doesn't
+  lose any force when it's clean").
+- **"How moderation works"**: two new bullets first — *Two automatic
+  checks run before anything posts* (the slur/profanity list on comments,
+  conversation statements and word-cloud entries; the automated
+  Code-of-Conduct read of a draft at process creation, rules only) and
+  *You can dispute what an automatic check concludes* (email
+  contact@civic.social; if the check can't run, human review, not a
+  block). The "not by an algorithm" line is now prefaced: *Beyond those
+  checks, moderation is human — and every new proposal, vote, project,
+  and conversation is read by an admin before it appears.*
+- **Versions**, following the 1.0→1.1 bump (`0fc659a`): `Version: 1.2`
+  on all three documents; `Last updated` moved only on the Code of
+  Conduct (terms.md and privacy.md keep theirs — privacy's stale
+  vote/anonymity wording is queued for the pre-public-launch counsel
+  review, untouched here); `CURRENT_LEGAL_VERSION = "1.2"`,
+  `CURRENT_LEGAL_LAST_UPDATED = "2026-09-07"`; the
+  `config/hubs/floyd` copy synced (it was byte-identical before).
+- **Deliberate departure from 1.1's convention:** the copy of the Code
+  embedded in the AI check prompt (`src/modules/civic.assistant/content.ts`)
+  is NOT updated — adding the profanity bullet there would change what
+  the draft check flags, and the brief was document-only. The word list
+  already refuses profanity at submission. Reconcile when the prompt is
+  next revised.
+
+### Verified on dev
+
+- `/code-of-conduct` renders 1.2 / 2026-09-07 with all three new
+  bullets and the replaced line; no horizontal scroll at 1100px or 375px.
+- Re-acceptance: resident set to 1.1 → modal on load, once; accepting
+  stores 1.2 and clears it; reload shows no modal. New signups accept
+  with `CURRENT_LEGAL_VERSION` (`AuthModal.tsx:251`), so they land on 1.2.
+- Behaviour unchanged: profane comment → 400 profanity message; blunt-
+  but-clean comment → 201 (removed after). Draft CoC check untouched
+  (prompt not edited); suite 764/764.
+
 ## Admin Settings officials grid: headers over their fields — 2026-09-07
 
 **Working in:** `civic-hub/ui/src/pages/AdminSettings.css`
