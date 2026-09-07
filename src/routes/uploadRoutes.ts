@@ -23,4 +23,14 @@ router.post(
   handlePostImageUpload,
 );
 
+// A screenshot on a bug report (feedback form). Same validation and bucket
+// as the other images; signed-in residents only — the feedback form offers
+// the picker only when signed in, and the service refuses a screenshot on
+// an anonymous submission.
+router.post(
+  "/feedback-screenshot",
+  requireResident,
+  handlePostImageUpload,
+);
+
 export default router;

@@ -33,6 +33,8 @@ export interface FeedbackSubmission {
   email: string | null;
   user_id: string | null;
   user_agent: string | null;
+  /** Optional screenshot on a bug report — public URL in the image bucket. */
+  screenshot_url: string | null;
 }
 
 export interface SubmitFeedbackInput {
@@ -42,4 +44,5 @@ export interface SubmitFeedbackInput {
   email?: string | null;
   user_id?: string | null;
   user_agent?: string | null;
+  screenshot_url?: string | null;
 }

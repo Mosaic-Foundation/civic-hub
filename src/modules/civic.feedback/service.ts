@@ -73,7 +73,31 @@ function rowToSubmission(row: Record<string, unknown>): FeedbackSubmission {
     email: row.email ? String(row.email) : null,
     user_id: row.user_id ? String(row.user_id) : null,
     user_agent: row.user_agent ? String(row.user_agent) : null,
+    screenshot_url: row.screenshot_url ? String(row.screenshot_url) : null,
   };
+}
+
+/** Screenshot URLs may only be https, short, and — since the upload route
+ *  is signed-in only — only accompany an attributed submission. Anything
+ *  else is refused rather than silently dropped, so the form can say why. */
+export const SCREENSHOT_URL_MAX_LEN = 2000;
+export function normalizeScreenshotUrl(
+  raw: unknown,
+  userId: string | null | undefined,
+): string | null {
+  if (raw === undefined || raw === null || raw === "") return null;
+  if (typeof raw !== "string") {
+    throw new FeedbackValidationError("screenshot_url must be a string");
+  }
+  const url = raw.trim();
+  if (!url) return null;
+  if (!userId) {
+    throw new FeedbackValidationError("Sign in to attach a screenshot.");
+  }
+  if (url.length > SCREENSHOT_URL_MAX_LEN || !/^https:\/\/[^\s]+$/i.test(url)) {
+    throw new FeedbackValidationError("screenshot_url must be an https URL");
+  }
+  return url;
 }
 
 export async function submitFeedback(
@@ -102,6 +126,8 @@ export async function submitFeedback(
     ? input.user_agent.trim().slice(0, UA_MAX_LEN)
     : null;
 
+  const screenshotUrl = normalizeScreenshotUrl(input.screenshot_url, input.user_id);
+
   const row = {
     id: generateId("fb"),
     category: input.category,
@@ -110,6 +136,7 @@ export async function submitFeedback(
     email,
     user_id: input.user_id ?? null,
     user_agent: userAgent,
+    screenshot_url: screenshotUrl,
   };
 
   const { data, error } = await getDb()
@@ -251,6 +278,7 @@ function renderOperatorEmail(s: FeedbackSubmission): string {
       <h1 style="font-size:18px;font-weight:600;margin:0 0 12px;">New Civic Hub feedback — ${escapeHtml(s.category)}</h1>
       <p style="margin:0 0 4px;color:#374151;"><strong>From:</strong> ${fromLabel}</p>
       <p style="margin:12px 0 4px;color:#374151;"><strong>Submitted:</strong> ${escapeHtml(formatDateUS(s.created_at))}</p>
+      ${s.screenshot_url ? `<p style="margin:4px 0;color:#374151;"><strong>Screenshot:</strong> <a href="${escapeHtml(s.screenshot_url)}">${escapeHtml(s.screenshot_url)}</a></p>` : ""}
       <div style="margin:16px 0 0;padding:14px 18px;background:#f3f4f6;border-radius:8px;line-height:1.5;font-size:14px;">${messageHtml}</div>
       <p style="margin:20px 0 0;color:#6b7280;font-size:12px;">
         Submission id: <code>${escapeHtml(s.id)}</code>

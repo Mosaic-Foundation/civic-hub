@@ -31,6 +31,9 @@ interface Props {
   onChange: (next: { image_url: string | null; image_alt: string | null }) => void;
   disabled?: boolean;
   uploadFn?: (file: Blob) => Promise<UploadedImage>;
+  /** Skip the alt-text field — for an image nobody else will see (a
+   *  screenshot on a bug report), where describing it is busywork. */
+  hideAlt?: boolean;
 }
 
 type Status =
@@ -44,6 +47,7 @@ export default function PostImagePicker({
   onChange,
   disabled,
   uploadFn = uploadPostImage,
+  hideAlt = false,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -125,6 +129,8 @@ export default function PostImagePicker({
             </button>
           </div>
 
+          {!hideAlt && (
+            <>
           <label className="post-image-picker-alt-label" htmlFor="post-image-alt">
             Describe this image for people using screen readers <span className="optional">(optional but recommended)</span>
           </label>
@@ -142,6 +148,8 @@ export default function PostImagePicker({
             disabled={disabled || status.kind === "uploading"}
             placeholder="Brief description of the image"
           />
+            </>
+          )}
           <span className="form-counter">
             {localAlt.length} / {ALT_MAX}
           </span>

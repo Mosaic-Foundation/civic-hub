@@ -4,6 +4,46 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Feedback: a bug report can carry a screenshot (signed-in only) — 2026-09-07
+
+**Working in:** `civic-hub/src/modules/civic.feedback/`, `src/controllers/feedbackController.ts`,
+`src/routes/uploadRoutes.ts`, `src/modules/civic.admin_digest/service.ts`, `src/db/schemaContract.ts`,
+`supabase/migrations/20260907120000_feedback_screenshot_url.sql`, `ui/src/pages/Feedback.tsx`,
+`ui/src/pages/AdminFeedback.tsx` (+ `.css`), `ui/src/components/PostImagePicker.tsx`, `ui/src/services/api.ts`
+
+Adam: let a bug reporter attach a screenshot, and suggest it. Signed-in
+only (his call) — the upload route requires a resident, so no anonymous
+file uploads.
+
+- **Form:** with the **Bug** category, a "Screenshot (optional — it really
+  helps)" field: signed in, the existing `PostImagePicker` (client-side
+  resize to 2000px, WebP) with a new `hideAlt` prop — alt text is busywork
+  for an image only the admin sees; signed out, "Sign in to attach a
+  screenshot." Sent only with a bug report.
+- **Upload:** `POST /upload/feedback-screenshot` (requireResident), the
+  same handler, validation and bucket as project/announcement images.
+- **Storage:** `feedback_submissions.screenshot_url` (migration
+  20260907120000; in the schema contract). `normalizeScreenshotUrl`
+  refuses a screenshot on an anonymous submission ("Sign in to attach a
+  screenshot.") and anything that isn't an https URL — refused, not
+  dropped, so the form can say why. Four unit tests.
+- **Admin:** a thumbnail on the Feedback item that opens full size; the
+  daily admin digest row reads "[screenshot attached]"; the immediate
+  moderation email (the only category that still emails) links it.
+
+Verified on dev: anonymous upload → 401; resident upload → 201 with a
+bucket URL; anonymous feedback carrying a screenshot URL → 400 "Sign in
+to attach a screenshot."; a non-https URL → 400; form shows the picker
+(no alt field) signed in and the sign-in hint signed out; the field is
+absent for other categories. **Adam runs the migration in dev and prod
+before the push** — until then every feedback insert fails, since the
+row now carries the column.
+
+Dev environment note: the dev Supabase project had no `post-images`
+bucket, so every image upload (projects, announcements too) failed there
+with "Bucket not found". Created it (public, 5 MB, image MIME types) on
+2026-09-07 so the path is testable on dev. Prod already had it.
+
 ## Code of Conduct 1.2: the profanity rule, and both automatic checks disclosed — 2026-09-07
 
 **Working in:** `civic-hub/ui/src/content/legal/` (all three docs), `ui/src/config/legal.ts`,

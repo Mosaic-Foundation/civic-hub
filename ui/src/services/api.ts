@@ -2100,12 +2100,34 @@ export interface SubmitFeedbackInput {
    * server returns 200 either way so spam can't probe the difference.
    */
   website?: string;
+  /** Signed-in only; the form offers the picker only when signed in. */
+  screenshot_url?: string | null;
 }
 
 export function submitFeedback(
   input: SubmitFeedbackInput,
 ): Promise<{ message: string; submission_id?: string }> {
   return request("POST", "/feedback", input);
+}
+
+/** A screenshot for a bug report — same validation and bucket as the other
+ *  image uploads; signed-in only. */
+export async function uploadFeedbackScreenshot(file: Blob): Promise<UploadedImage> {
+  const headers: Record<string, string> = {};
+  const token = getStoredToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE}/upload/feedback-screenshot`, {
+    method: "POST",
+    headers,
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? `Upload failed: ${res.status}`);
+  }
+  return res.json();
 }
 
 /** One row of the admin feedback archive. Admin-only — carries PII. */
@@ -2118,6 +2140,8 @@ export interface FeedbackSubmission {
   email: string | null;
   user_id: string | null;
   user_agent: string | null;
+  /** Optional screenshot on a bug report. */
+  screenshot_url: string | null;
 }
 
 /**

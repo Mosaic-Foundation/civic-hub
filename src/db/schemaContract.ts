@@ -65,7 +65,7 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "pending_verifications", columns: ["attempts", "locked_until"], owner: "civic.auth" },
   { table: "hub_settings", columns: ["key", "value"], owner: "core/hubSettings" },
   { table: "waitlist", columns: ["email", "name", "wants_test_user"], owner: "core/waitlist" },
-  { table: "feedback_submissions", owner: "civic.feedback" },
+  { table: "feedback_submissions", columns: ["screenshot_url"], owner: "civic.feedback" },
   { table: "community_inputs", columns: ["is_anonymous", "author_name"], owner: "civic.input" },
   { table: "process_reviews", owner: "civic.review" },
   { table: "review_turns", owner: "civic.review" },

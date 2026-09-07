@@ -117,7 +117,7 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
   try {
     feedbackItems = (await listFeedback({ since })).map((f) => ({
       id: f.id,
-      title: `${f.category} — ${excerpt(f.message)}`,
+      title: `${f.category} — ${excerpt(f.message)}${f.screenshot_url ? " [screenshot attached]" : ""}`,
       created_at: f.created_at,
     }));
   } catch (err) {

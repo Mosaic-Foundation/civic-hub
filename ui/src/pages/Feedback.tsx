@@ -13,7 +13,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { submitFeedback, type FeedbackCategory } from "../services/api";
+import { submitFeedback, uploadFeedbackScreenshot, type FeedbackCategory } from "../services/api";
+import PostImagePicker from "../components/PostImagePicker";
 import "./Feedback.css";
 
 const OPERATOR_EMAIL = "contact@civic.social";
@@ -43,6 +44,10 @@ export default function Feedback() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState(""); // honeypot
+  // A screenshot for a bug report — offered only to signed-in users, since
+  // the upload route requires one (Adam, 2026-09-07). Kept if the person
+  // switches category and back; sent only with a bug report.
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +67,7 @@ export default function Feedback() {
         name: user ? null : name.trim() || null,
         email: user ? null : email.trim() || null, // signed-in path uses user_id; backend has the email
         website: website || undefined,
+        screenshot_url: category === "bug" && user ? screenshotUrl : null,
       });
       setSubmitted(true);
     } catch (err) {
@@ -154,6 +160,35 @@ export default function Feedback() {
               {remaining.toLocaleString()} characters remaining
             </p>
           </div>
+
+          {category === "bug" && (
+            <div className="form-field">
+              <label className="form-label">
+                Screenshot <span className="optional">(optional — it really helps)</span>
+              </label>
+              {user ? (
+                <>
+                  <p className="form-hint">
+                    A picture of what you saw saves a lot of back-and-forth.
+                    Anything on the screen you'd rather not share, crop out first.
+                  </p>
+                  <PostImagePicker
+                    imageUrl={screenshotUrl}
+                    imageAlt={null}
+                    hideAlt
+                    onChange={(next) => setScreenshotUrl(next.image_url)}
+                    disabled={submitting}
+                    uploadFn={uploadFeedbackScreenshot}
+                  />
+                </>
+              ) : (
+                <p className="form-hint">
+                  Sign in to attach a screenshot. You can still describe what
+                  happened below.
+                </p>
+              )}
+            </div>
+          )}
 
           {!user && (
             <>

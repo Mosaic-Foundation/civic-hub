@@ -173,6 +173,18 @@ export default function AdminFeedback() {
                   </span>
                 </div>
                 <p className="admin-feedback-message">{item.message}</p>
+                {item.screenshot_url && (
+                  <a
+                    className="admin-feedback-screenshot"
+                    href={item.screenshot_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Open the screenshot full size"
+                  >
+                    <img src={item.screenshot_url} alt="Screenshot attached to this report" loading="lazy" />
+                    <span>Screenshot</span>
+                  </a>
+                )}
               </li>
             ))}
           </ul>

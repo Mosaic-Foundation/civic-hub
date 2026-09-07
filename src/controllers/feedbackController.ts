@@ -31,6 +31,7 @@ export async function handleSubmitFeedback(
   const message = body.message;
   const name = typeof body.name === "string" ? body.name : null;
   const email = typeof body.email === "string" ? body.email : null;
+  const screenshotUrl = typeof body.screenshot_url === "string" ? body.screenshot_url : null;
 
   if (typeof message !== "string" || message.trim().length === 0) {
     res.status(400).json({ error: "message is required" });
@@ -71,6 +72,7 @@ export async function handleSubmitFeedback(
       email: resolvedEmail,
       user_id: userId,
       user_agent: userAgent,
+      screenshot_url: screenshotUrl,
     });
     res.json({
       message: "Thanks for the feedback.",
