@@ -4,6 +4,26 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Announcement page: the archive confirm button was white on white — 2026-09-06
+
+**Working in:** `civic-hub/ui/src/App.css`
+
+Adam, item 32: "the archive button is just white … it worked when I
+clicked it." `.announcement-admin-toolbar button { background: white }`
+styled every button inside the toolbar — including the shared archive
+control's "Yes, archive", whose own terracotta rule lost on specificity.
+Scoped the toolbar rule (and its `.danger` variant) to direct children.
+Announcement page only; on other pages the control sits in
+`DetailActions`, which has no such rule. Verified on dev: confirm button
+`rgb(168, 93, 56)` with white text; "Remove announcement" unchanged.
+
+For the record, the two controls differ on purpose: **Remove** is the
+Code-of-Conduct moderation action — reason required, recorded in the
+moderation log, the page shows "Removed · reason" to admins and can be
+restored from there. **Archive** is the soft-remove for stale content:
+hidden from the site and feed entirely, no tombstone, restorable from
+Admin → Archived.
+
 ## Meeting summary disclaimer: one line, no "admin-reviewed" — 2026-09-06
 
 **Working in:** `civic-hub/src/modules/civic.meeting_summary/service.ts`,
