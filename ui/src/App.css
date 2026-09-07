@@ -544,7 +544,11 @@
   font-size: var(--font-size-sm);
 }
 
-.announcement-admin-toolbar button {
+/* The toolbar's OWN buttons only (direct children). It also hosts the
+   shared archive control, whose "Yes, archive" carries its own colours —
+   this rule used to reach it too and painted it white on white (Adam,
+   2026-09-06: "the archive button is just white"). */
+.announcement-admin-toolbar > button {
   font: inherit;
   padding: 4px 10px;
   border: 1px solid var(--color-border, #d1d5db);
@@ -553,7 +557,7 @@
   cursor: pointer;
 }
 
-.announcement-admin-toolbar .danger {
+.announcement-admin-toolbar > .danger {
   color: #8c1c1c;
   border-color: #c87c7c;
 }
