@@ -40,8 +40,11 @@ it. Nothing stays lit for an item left in a queue on purpose.
   dev and prod before the push**; until then the endpoint 500s and the
   tabs simply show no badges (best-effort fetch).
 
-Verified: typecheck, build, 761/761. Count behaviour on dev pending the
-columns.
+Verified on dev once the columns were in: counts `{reviews 0, briefs 1,
+feedback 3, edits 4}` → `POST /admin/queues/briefs/seen` → briefs 0, the
+rest unchanged; unknown queue → 400. Prod deployed `444ec53` before its
+SQL ran — `/api/health` reported the gap (`users.feedback_seen_at`); Adam
+ran the migration after.
 
 Noted, not changed: the admin *digest* still counts `civic.vote_results`
 for "briefs awaiting approval" — a type no longer produced — so its brief
