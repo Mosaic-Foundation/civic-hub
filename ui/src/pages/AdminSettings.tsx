@@ -244,9 +244,9 @@ export default function AdminSettings() {
             here if they also hold an office (they will show both badges).
           </p>
           <p className="form-hint">
-            Officials marked <strong>Sends briefs</strong> receive every
-            published brief by email. You can add or remove recipients for a
-            particular brief while reviewing it.
+            Officials marked <strong>Receives briefs</strong> get an email
+            from the hub each time a brief is published. You can add or remove
+            recipients for a particular brief while reviewing it.
           </p>
 
           {officials.length === 0 && (
@@ -263,7 +263,7 @@ export default function AdminSettings() {
               <span className="official-col-label">
                 Title <span className="official-col-note">(public pill)</span>
               </span>
-              <span className="official-col-label">Sends briefs</span>
+              <span className="official-col-label">Receives briefs</span>
               <span />
             </div>
           )}
@@ -337,7 +337,7 @@ export default function AdminSettings() {
                   aria-label={`Official ${i + 1} receives briefs`}
                   disabled={!loaded || savingOfficials}
                 />
-                <span className="official-sends-briefs-text">Sends briefs</span>
+                <span className="official-sends-briefs-text">Receives briefs</span>
               </label>
               <button
                 type="button"

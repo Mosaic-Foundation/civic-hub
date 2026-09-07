@@ -195,7 +195,7 @@ recipients … one section." Facts established first:
 
 **Change:** the separate "Brief recipients" textarea is gone. The
 officials section is now "Officials & brief recipients": each row has a
-**Sends briefs** checkbox (new rows default on), and below the rows a
+**Receives briefs** checkbox (new rows default on; it was labelled "Sends briefs" for a day — Adam: "it's like a sent from?" — every brief is sent from the hub's RESEND_FROM address, never from a person), and below the rows a
 single "Also send briefs to" line for standing addresses that aren't a
 person's office (a clerk, a shared board inbox). One save writes both
 `officials` and `brief_recipient_emails` (= flagged officials ∪ standing
