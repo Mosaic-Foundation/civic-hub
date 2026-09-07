@@ -190,3 +190,20 @@ describe("authorBadges — what renders next to a name", () => {
     expect(new Set(badges.map((b) => b.kind)).size).toBe(badges.length);
   });
 });
+
+describe("authorBadges — an office titled 'admin' is not a second pill", () => {
+  it("drops the office pill for an admin whose only 'office' is admin", () => {
+    const badges = authorBadges({ isAdmin: true, officialType: "other", officialTitle: "admin" });
+    expect(badges.map((b) => b.kind)).toEqual(["admin"]);
+  });
+
+  it("keeps a real office beside the admin badge", () => {
+    const badges = authorBadges({ isAdmin: true, officialType: "board_of_supervisors", officialTitle: "Board of Supervisors" });
+    expect(badges.map((b) => b.kind)).toEqual(["official", "admin"]);
+  });
+
+  it("still shows an 'admin' office for a non-admin (nothing else says it)", () => {
+    const badges = authorBadges({ isAdmin: false, officialType: "other", officialTitle: "Admin" });
+    expect(badges.map((b) => b.kind)).toEqual(["official"]);
+  });
+});

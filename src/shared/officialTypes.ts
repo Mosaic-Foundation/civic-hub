@@ -149,7 +149,12 @@ export function authorBadges(input: {
 }): AuthorBadge[] {
   const badges: AuthorBadge[] = [];
   const official = toOfficialIdentity(input.officialType, input.officialTitle);
-  if (official) {
+  // An "office" that is just the word admin is not an office — it is the
+  // platform role the Admin badge already shows (an admin account listed in
+  // the officials roster with title "admin" rendered "admin · Admin";
+  // Adam, 2026-09-06). Drop the office pill; keep the badge.
+  const isAdminTitle = !!official && /^admin(istrator)?$/i.test(official.title);
+  if (official && !(input.isAdmin && isAdminTitle)) {
     badges.push({
       kind: "official",
       text: official.title,

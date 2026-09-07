@@ -4,6 +4,27 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Byline: an office titled "admin" no longer doubles the Admin badge — 2026-09-06
+
+**Working in:** `civic-hub/src/shared/officialTypes.ts`, `tests/unit/officialTypes.test.ts`
+
+Adam's test announcement on prod showed "admin · Admin". The record:
+`creator_official_type: "other"`, `creator_official_title: "admin"` —
+his own account is in the officials roster (from the legacy
+announcement-authors list) with the title "admin", so `authorBadges`
+rendered the office pill and then the platform Admin badge.
+
+`authorBadges` now drops the office pill when the viewer's `isAdmin` is
+true and the office title is just "admin"/"administrator" (case-
+insensitive) — that "office" is the platform role the badge already
+shows. A real office (Board of Supervisors) beside the Admin badge is
+unchanged, and a non-admin with an "Admin" title still gets the pill
+(nothing else would say it). Three tests added.
+
+Data side: Adam should remove his own row from Settings → Officials &
+brief recipients (admins post announcements without it) — the code fix
+just makes the byline right either way.
+
 ## Announcement page: the archive confirm button was white on white — 2026-09-06
 
 **Working in:** `civic-hub/ui/src/App.css`
