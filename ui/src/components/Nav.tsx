@@ -257,7 +257,9 @@ export default function Nav() {
               className={`civic-nav-feedback${onFeedbackPage ? " is-active" : ""}`}
               aria-label="Give feedback"
             >
-              Feedback
+              {/* The label hides below the header's icon-only breakpoint
+                  (Nav.css); the aria-label keeps the name for readers. */}
+              <span className="civic-nav-feedback-label">Feedback</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M2 8.5L2 15.5L7 15.5L14 20L14 4L7 8.5Z" fill="currentColor"/>
                 <ellipse cx="14" cy="12" rx="1.2" ry="4.5" fill="currentColor" opacity="0.3"/>

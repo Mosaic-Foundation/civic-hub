@@ -15,13 +15,28 @@
   max-width: var(--max-width-shell);
   margin: 0 auto;
   position: relative;
+  /* Size container for the icon-only rule below. Measured in rem so a
+     phone with a large system font (which grows every rem-sized thing
+     in the header) collapses at the same *content* width as a small
+     phone at the default size. The drawer and the account menu are
+     positioned against .civic-nav / .civic-nav-right, so the
+     containment here does not move them. */
+  container-type: inline-size;
 }
 
+/* Header layout rule: the wordmark is the ONLY thing allowed to give.
+   Every control keeps its size (hamburger, feedback, sign-in / avatar)
+   and the wordmark truncates with an ellipsis before anything can slide
+   over it. Before this, a 360px Android with a large system font — or
+   any 320px phone — crushed the hamburger to nothing and drew the
+   Feedback pill across "Floyd Civic Hub" when signed out (Adam's mom's
+   screenshot, 2026-09-07). */
 .civic-nav-left {
   display: flex;
   align-items: center;
   gap: var(--space-lg);
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .civic-nav-right {
@@ -29,6 +44,7 @@
   align-items: center;
   gap: var(--space-md);
   position: relative;
+  flex: 0 0 auto;
 }
 
 /* Slice 10.5 — desktop search affordance lives in the right cluster.
@@ -60,6 +76,11 @@
   text-decoration: none;
   letter-spacing: -0.005em;
   white-space: nowrap;
+  /* Flex item: may shrink, truncates rather than overlapping the
+     controls to its right (see the header layout rule above). */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .civic-nav-wordmark:hover {
@@ -119,6 +140,7 @@
    + sign-in) so the wordmark area stays calm; primary surfaces (Feed,
    Votes, About) and the legal pages all live in the drawer. */
 .civic-nav-hamburger {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -231,6 +253,9 @@
     padding: 5px 10px;
     gap: 4px;
     font-size: 12px;
+  }
+  .civic-nav-right {
+    gap: var(--space-sm);
   }
 }
 
@@ -457,6 +482,43 @@
 
   .civic-nav-left {
     gap: var(--space-sm);
+  }
+}
+
+/* Narrow-header tiers — after the width breakpoints on purpose: they
+   override the wordmark size and sign-in padding those set. Container widths are the header's content box
+   (viewport minus 8px padding each side), in rem so a phone with an
+   enlarged system font hits the same tier at the same *content* width.
+   Browsers without container queries (pre-2023) keep the label; the
+   wordmark ellipsis above still prevents any overlap.
+
+   ≤ 23rem (viewport ≤ 384px at the default size; ≤ 430px at "Large"):
+   icon-only Feedback and a tighter Sign in. A 360px Android lands here;
+   a 393px iPhone at the default size keeps the label. The pill stays a
+   36px round target and keeps its aria-label. */
+@container (max-width: 23rem) {
+  .civic-nav-feedback-label {
+    display: none;
+  }
+  .civic-nav-feedback {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+  .civic-nav-feedback svg {
+    width: 18px;
+    height: 18px;
+  }
+  .civic-nav-signin {
+    padding-inline: var(--space-sm);
+  }
+}
+
+/* ≤ 19rem (a 320px phone; a 360px phone at the largest font size): the
+   wordmark steps down one size so the hub name still shows in full. */
+@container (max-width: 19rem) {
+  .civic-nav-wordmark {
+    font-size: var(--font-size-base);
   }
 }
 

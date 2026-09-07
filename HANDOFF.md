@@ -4,6 +4,55 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Header never overlaps on narrow phones or large system fonts — 2026-09-07
+
+Adam's mom's Android showed the Feedback pill drawn across "Floyd Civic
+Hub" with the hamburger gone, signed out. Measured on dev (signed-out
+header, `.civic-nav`): at 360px — the most common Android CSS width — the
+header only fit by crushing the hamburger to 8px; at 360px with the
+system font at "Large" (root 18–20px), or on any 320px phone, the right
+cluster slid over the wordmark. Signed in was never affected: the avatar
+is narrower than "Sign in". 393px (iPhone 15) and 412px fit.
+
+Cause: nothing in the header could shrink except the hamburger, and the
+wordmark was `nowrap` with no overflow handling.
+
+Fix (`ui/src/components/Nav.css`, `Nav.tsx`):
+- Layout rule: the wordmark is the only thing allowed to give. Hamburger
+  and the right cluster are `flex: 0 0 auto`; the wordmark is
+  `min-width: 0; overflow: hidden; text-overflow: ellipsis` — the
+  last-resort guarantee that nothing overlaps on any width.
+- `.civic-nav-inner` is a size container; two tiers in **rem**, so a
+  phone with an enlarged system font hits the same tier at the same
+  content width (container widths are the header's content box):
+  - `≤ 23rem` (viewport ≤ 384px at the default size, ≤ 430px at "Large"):
+    the "Feedback" label hides (`.civic-nav-feedback-label`), the pill
+    becomes a 36px round icon button (aria-label unchanged), and Sign in
+    tightens to `padding-inline: var(--space-sm)`.
+  - `≤ 19rem` (320px phones; 360px at the largest font): the wordmark
+    drops one size (`--font-size-base`) so the hub name stays whole.
+  - Tiers sit AFTER the width breakpoints on purpose (the 768px rule sets
+    the wordmark size; source order decides).
+- The right cluster gap is `--space-sm` on all ≤767px widths.
+- Browsers without container queries (pre-2023) keep the label; the
+  ellipsis rule still prevents overlap.
+
+Measured after the fix (hamburger 44px, no overlap, nothing truncated):
+320@16px, 360@16/18/20px, 393@16px (label kept), 412@16px (label kept),
+412@18px (icon-only — the label would not fit at that font size).
+
+Not changed: the horizontal tab strip under the banner (Feed ·
+Conversations · Proposals ›) scrolls by design; on a narrow phone only
+the first two or three tabs show, which is what she saw as "only some of
+the nav".
+
+Digest link → "Process not found": `GET /process/:id` returns 404
+"Process not found" for archived (non-public) processes to non-admins
+(`processController.ts:63`). A digest sent before the pre-launch archive
+pass links to processes that have since been archived, so the link now
+404s. Expected; a friendlier "this item was archived" page is a possible
+follow-up, not built.
+
 ## Feedback: a bug report can carry a screenshot (signed-in only) — 2026-09-07
 
 **Working in:** `civic-hub/src/modules/civic.feedback/`, `src/controllers/feedbackController.ts`,
