@@ -176,6 +176,7 @@ export default function Feedback() {
                     imageUrl={screenshotUrl}
                     imageAlt={null}
                     hideAlt
+                    addLabel="Add screenshot"
                     onChange={(next) => setScreenshotUrl(next.image_url)}
                     disabled={submitting}
                     uploadFn={uploadFeedbackScreenshot}

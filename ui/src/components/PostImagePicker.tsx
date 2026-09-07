@@ -34,6 +34,9 @@ interface Props {
   /** Skip the alt-text field — for an image nobody else will see (a
    *  screenshot on a bug report), where describing it is busywork. */
   hideAlt?: boolean;
+  /** The add button's label. Default "Add featured image" (announcements,
+   *  projects); the feedback form says "Add screenshot". */
+  addLabel?: string;
 }
 
 type Status =
@@ -48,6 +51,7 @@ export default function PostImagePicker({
   disabled,
   uploadFn = uploadPostImage,
   hideAlt = false,
+  addLabel = "Add featured image",
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -162,7 +166,7 @@ export default function PostImagePicker({
             onClick={pickFile}
             disabled={disabled || status.kind === "uploading"}
           >
-            {status.kind === "uploading" ? "Uploading…" : "Add featured image"}
+            {status.kind === "uploading" ? "Uploading…" : addLabel}
           </button>
           <p className="form-hint">
             Optional. JPEG, PNG, WebP, or GIF. Resized to {MAX_LONG_EDGE_PX} px on the long edge before upload.
