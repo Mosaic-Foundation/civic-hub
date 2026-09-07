@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  adminMarkQueueSeen,
+  notifyAdminQueuesChanged,
   adminAcceptMeetingSummaryRevision,
   adminApproveMeetingSummary,
   adminDiscardMeetingSummaryRevision,
@@ -39,6 +41,11 @@ export default function AdminMeetingSummaries() {
   const view: "list" | "review" = routeId ? "review" : "list";
 
   const [summaries, setSummaries] = useState<MeetingSummarySummary[]>([]);
+
+  // Opening this tab: its "new since you last looked" count clears.
+  useEffect(() => {
+    adminMarkQueueSeen("meeting_summaries").then(notifyAdminQueuesChanged).catch(() => {});
+  }, []);
   const [selected, setSelected] = useState<MeetingSummaryDetail | null>(null);
   const [statusFilter, setStatusFilter] =
     useState<"all" | MeetingSummaryApprovalStatus>("all");

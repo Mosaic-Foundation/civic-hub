@@ -99,7 +99,10 @@ export function humanizeKey(key: string): string {
 // Value helpers
 // ---------------------------------------------------------------------------
 
-const URL_RE = /https?:\/\/\S+/;
+import { URL_IN_LINE, normalizeUrl } from "./sourceLine.js";
+
+// Scheme-less domains count too — the same rule as shared/sourceLine.ts.
+const URL_RE = URL_IN_LINE;
 
 function isUrlish(s: string): boolean {
   return URL_RE.test(s);
@@ -110,7 +113,7 @@ function isUrlish(s: string): boolean {
 export function parseLinkLine(line: string): { label: string; url: string } | null {
   const m = line.match(URL_RE);
   if (!m || m.index === undefined) return null;
-  const url = m[0].replace(/[).,;]+$/, "");
+  const url = normalizeUrl(m[0]);
   const label = (line.slice(0, m.index) + line.slice(m.index + m[0].length))
     .replace(/^[\s:—–-]+/, "")
     .replace(/[\s:—–-]+$/, "")

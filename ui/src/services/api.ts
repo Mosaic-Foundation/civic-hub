@@ -2355,6 +2355,29 @@ export function adminListEdits(): Promise<{ items: AdminEditRow[]; unseen: numbe
   return request("GET", "/admin/edits");
 }
 
+/** The numbers on the admin tabs and the admin's account-menu dot: what is
+ *  NEW in each queue since this admin last opened that tab. Opening a tab
+ *  clears its count (adminMarkQueueSeen). */
+export type AdminQueue = "reviews" | "briefs" | "meeting_summaries" | "feedback" | "edits";
+
+export type AdminQueueCounts = Record<AdminQueue, number> & { total: number };
+
+export function adminQueueCounts(): Promise<AdminQueueCounts> {
+  return request("GET", "/admin/queue-counts");
+}
+
+/** Opening a tab: everything in that queue up to now has been seen. */
+export function adminMarkQueueSeen(queue: AdminQueue): Promise<{ ok: boolean }> {
+  return request("POST", `/admin/queues/${queue}/seen`);
+}
+
+/** Pages fire this after an action that changes a queue (approve, decline,
+ *  mark seen) so the admin tabs refetch their counts without a navigation. */
+export const ADMIN_QUEUES_CHANGED = "civic:admin-queues-changed";
+export function notifyAdminQueuesChanged(): void {
+  window.dispatchEvent(new CustomEvent(ADMIN_QUEUES_CHANGED));
+}
+
 export function getReviewDetail(reviewId: string): Promise<ReviewDetail> {
   return request("GET", `/reviews/${reviewId}`);
 }

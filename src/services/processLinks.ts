@@ -105,6 +105,15 @@ export async function hydratePeers(
     // should never have extended to something deliberately removed.
     if (row.status === "archived") continue;
 
+    // A brief is public only once PUBLISHED: /brief/:id 404s for pending and
+    // approved-but-unpublished records, so a "Summarized by" pointer to one
+    // dead-ends for everyone, admins included (Adam, 2026-09-06: "Brief not
+    // found"). The admin reaches a pending brief through the Briefs tab.
+    if (row.type === "civic.brief") {
+      const ps = (row.state as { publication_status?: unknown } | null)?.publication_status;
+      if (ps !== "published") continue;
+    }
+
     const visible =
       isPubliclyFetchable(row.status as never) ||
       opts.isAdmin === true ||

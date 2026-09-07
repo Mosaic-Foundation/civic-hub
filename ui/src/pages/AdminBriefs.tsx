@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  adminMarkQueueSeen,
+  notifyAdminQueuesChanged,
   adminListBriefs,
   adminGetBrief,
   adminPatchBrief,
@@ -72,6 +74,11 @@ export default function AdminBriefs() {
   const view: "list" | "review" = routeId ? "review" : "list";
 
   const [records, setRecords] = useState<BriefSummary[]>([]);
+
+  // Opening this tab: its "new since you last looked" count clears.
+  useEffect(() => {
+    adminMarkQueueSeen("briefs").then(notifyAdminQueuesChanged).catch(() => {});
+  }, []);
   const [selected, setSelected] = useState<BriefDetail | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | BriefPublicationStatus>("all");
   const [loading, setLoading] = useState(true);

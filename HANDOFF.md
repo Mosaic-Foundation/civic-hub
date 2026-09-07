@@ -4,6 +4,78 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Admin tabs count what is new since you last opened them — 2026-09-06
+
+**Working in:** `civic-hub/src/services/adminQueues.ts` (new),
+`src/controllers/adminQueueController.ts` (new), `src/routes/adminRoutes.ts`,
+`src/db/schemaContract.ts`, `supabase/migrations/20260906180000_admin_queue_seen_at.sql`,
+`ui/src/components/AdminTabs.tsx`, `ui/src/components/Nav.tsx`,
+`ui/src/pages/Admin{Reviews,Briefs,MeetingSummaries,Feedback}.tsx`, `ui/src/services/api.ts`
+
+Adam: "how am I supposed to know … if I have new process reviews, new
+briefs, new meeting summaries … feedback, edits" — and then, on a first
+cut that showed backlog for the approval queues: "I don't want a poor
+signal that makes it look like there's something new. New is defined by
+items that I haven't viewed." So: **every tab counts what arrived in its
+queue since this admin last opened that tab**, and opening the tab clears
+it. Nothing stays lit for an item left in a queue on purpose.
+
+- **`GET /admin/queue-counts`** → `{ reviews, briefs, meeting_summaries,
+  feedback, edits, total }`. Reviews: pending ones updated since
+  `reviews_seen_at`. Briefs / meeting summaries: pending ones created
+  since `briefs_seen_at` / `meeting_summaries_seen_at`. Feedback: rows
+  since `feedback_seen_at`. Edits: the existing `edits_seen_at`
+  mechanism. Moderation is a read-only log: no count.
+- **`POST /admin/queues/:queue/seen`** stamps the cursor; each of the
+  four queue pages calls it on open (Reviews already stamped its own via
+  `markReviewsSeen`) and fires `civic:admin-queues-changed` so the tabs
+  refetch without a navigation.
+- **AdminTabs** badges from that endpoint, refetched on every navigation
+  and on the event. **Nav**: an admin's dot and "Admin panel" badge are
+  the total; residents keep "your submissions need attention". No double
+  count with the edit-notification list.
+- **Migration `20260906180000_admin_queue_seen_at.sql`** — three columns
+  on `users` (`feedback_seen_at`, `briefs_seen_at`,
+  `meeting_summaries_seen_at`), in the schema contract. **Adam runs it in
+  dev and prod before the push**; until then the endpoint 500s and the
+  tabs simply show no badges (best-effort fetch).
+
+Verified: typecheck, build, 761/761. Count behaviour on dev pending the
+columns.
+
+Noted, not changed: the admin *digest* still counts `civic.vote_results`
+for "briefs awaiting approval" — a type no longer produced — so its brief
+count is always 0. Worth aligning to `civic.brief`.
+
+## Submission page: links render as links; no pointer to an unpublished brief; "View it live" — 2026-09-06
+
+**Working in:** `civic-hub/src/shared/sourceLine.ts`, `src/shared/submissionPreview.ts`,
+`src/services/processLinks.ts`, `ui/src/pages/MySubmissions.tsx`,
+`tests/unit/schemelessUrls.test.ts`
+
+Adam, from My submissions on the test vote: the "Links" block showed raw
+JSON; "Summarized by … BRIEF" led to "Brief not found"; and the page
+didn't obviously lead to the live vote.
+
+- **Scheme-less URLs.** `www.civic.social` typed as a source has no
+  `https://`, so every parser treated the line as "no URL": stored bare as
+  `{url, label}` = the line, classified as JSON by the preview, and a
+  relative path if clicked. `shared/sourceLine.ts` now matches bare
+  domains too and `normalizeUrl` adds `https://`; the preview classifier
+  shares the rule. Verified on dev: a vote submitted with source
+  `www.civic.social` stores `{url: "https://www.civic.social", label:
+  "civic.social"}` and the submission field is kind `links`. Existing
+  rows that were stored bare still render as links now (the classifier
+  normalizes on read).
+- **Unpublished brief pointer.** `hydratePeers` now withholds a
+  `civic.brief` peer unless `publication_status === "published"`, for
+  everyone including admins — `/brief/:id` 404s for pending records, so
+  the pointer only dead-ended. The admin reaches a pending brief through
+  the Briefs tab. Verified on dev: closed vote → pending brief → the
+  vote's links show no pointer as admin or signed out; `/brief/:id` → 404.
+- **"View it live →"** on an approved submission's page, above the share
+  prompt, linking to `detail_path`. Verified on dev.
+
 ## Brief delivery sends through Resend, like every other email — 2026-09-06
 
 **Working in:** `civic-hub/src/services/mailer.ts`, `tests/unit/mailer.test.ts`

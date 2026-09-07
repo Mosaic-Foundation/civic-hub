@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   getMyReviews,
@@ -233,6 +233,18 @@ export default function MySubmissions() {
                 is live, and this is where the creator comes to check
                 (Adam, 2026-09-04). Same one-per-process dismissal as
                 everywhere else. */}
+            {/* The obvious way from "approved & live" to the live page. This
+                page is the record of the submission and its review; the
+                process itself is at detail_path (Adam, 2026-09-06: "my
+                submissions should have linked to this one where it actually
+                shows the completed and where it looks right"). */}
+            {detail.review.status === "approved" && detail.detail_path && (
+              <p className="submission-live-link">
+                <Link to={detail.detail_path} className="endorse-button">
+                  View it live →
+                </Link>
+              </p>
+            )}
             {detail.review.status === "approved" && detail.detail_path && (
               <SharePrompt
                 processId={detail.review.process_id ?? detail.review.id}

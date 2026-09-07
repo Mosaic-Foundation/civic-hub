@@ -3,6 +3,7 @@
 // the CIVIC_ADMIN_EMAILS env var.
 
 import { Router } from "express";
+import { handleAdminQueueCounts, handleMarkAdminQueueSeen } from "../controllers/adminQueueController.js";
 import { handleAdminListEdits } from "../controllers/editNotificationController.js";
 import {
   handleAdminListProposals,
@@ -132,6 +133,12 @@ router.post("/processes/:id/restore", handleRestoreProcess);
 // feedback form, newest first, optionally filtered to one category.
 // Read-only on purpose — see adminFeedbackController.
 router.get("/feedback", handleAdminListFeedback);
+
+// The numbers on the admin tabs and the account-menu dot: what is new in
+// each queue since this admin last opened that tab. Opening a tab stamps
+// its cursor. See services/adminQueues.ts.
+router.get("/queue-counts", handleAdminQueueCounts);
+router.post("/queues/:queue/seen", handleMarkAdminQueueSeen);
 
 // Hub settings (admin-configurable; overrides env var fallbacks)
 router.get("/settings", handleGetSettings);

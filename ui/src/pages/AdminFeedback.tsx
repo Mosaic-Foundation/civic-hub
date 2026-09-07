@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { adminListFeedback } from "../services/api";
+import { adminListFeedback, adminMarkQueueSeen, notifyAdminQueuesChanged } from "../services/api";
 import type { FeedbackCategory, FeedbackSubmission } from "../services/api";
 import AdminTabs from "../components/AdminTabs";
 import "./AdminFeedback.css";
@@ -82,6 +82,9 @@ export default function AdminFeedback() {
     adminListFeedback(filter)
       .then((res) => {
         if (!cancelled) setItems(res.items);
+        // Seen: everything up to now. Clears the tab's "new since you
+        // looked" count; the tabs refetch on the event.
+        return adminMarkQueueSeen("feedback").then(notifyAdminQueuesChanged).catch(() => {});
       })
       .catch((err: Error) => {
         if (!cancelled) setError(err.message);

@@ -19,12 +19,26 @@ export interface ParsedSourceLine {
  * https://…"). A browser treats that as a RELATIVE path and lands on a blank
  * hub page — the bug Adam hit on 2026-09-04.
  */
+/**
+ * A URL people type without the scheme — "www.civic.social",
+ * "floydcountyva.gov/board" — is still a URL. Stored bare, the browser
+ * treats it as a relative path on the hub (Adam, 2026-09-06: a vote's Links
+ * rendered as raw JSON with `www.civic.social` as both url and label).
+ * Match either form; give the bare one https://.
+ */
+export const URL_IN_LINE = /(?:https?:\/\/\S+|(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/\S*)?)/i;
+
+export function normalizeUrl(raw: string): string {
+  const trimmed = raw.trim().replace(/[).,;]+$/, "");
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 export function parseSourceLine(line: string): ParsedSourceLine | null {
-  const match = line.match(/https?:\/\/\S+/);
+  const match = line.match(URL_IN_LINE);
   if (!match || match.index === undefined) return null;
 
   // Trailing punctuation is prose, not URL.
-  const url = match[0].replace(/[).,;]+$/, "");
+  const url = normalizeUrl(match[0]);
 
   let label = (line.slice(0, match.index) + line.slice(match.index + match[0].length))
     .replace(/^[\s:—–-]+/, "")

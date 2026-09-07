@@ -5,6 +5,7 @@ import {
   getReviewNotificationCount,
   getEditNotifications,
   markEditsSeen,
+  adminQueueCounts,
   type EditNotification,
 } from "../services/api";
 import AuthModal from "./AuthModal";
@@ -169,9 +170,12 @@ export default function Nav() {
     }
     let active = true;
     const fetchCount = () => {
-      getReviewNotificationCount()
-        .then((r) => {
-          if (active) setNotifCount(r.count);
+      // An admin's dot is the sum of the admin tabs' counts — what is new in
+      // each queue since that tab was last opened (Adam, 2026-09-06). A
+      // resident's dot is still "your submissions need attention".
+      (isAdmin ? adminQueueCounts().then((c) => c.total) : getReviewNotificationCount().then((r) => r.count))
+        .then((n) => {
+          if (active) setNotifCount(n);
         })
         .catch(() => {
           /* best-effort — a failed poll shouldn't disrupt the nav */
@@ -190,7 +194,11 @@ export default function Nav() {
       active = false;
       clearInterval(interval);
     };
-  }, [user, location.pathname]);
+  }, [user, isAdmin, location.pathname]);
+
+  // The queue total already counts an admin's edits; only residents add
+  // their edit notifications on top of the review count.
+  const attention = isAdmin ? notifCount : notifCount + editNotifs.length;
 
   const initial = user?.email?.[0]?.toUpperCase() ?? "?";
   const bg = user ? avatarColor(user.email) : AVATAR_COLORS[0];
@@ -272,10 +280,10 @@ export default function Nav() {
                   onClick={() => setMenuOpen((v) => !v)}
                 >
                   <span aria-hidden="true">{initial}</span>
-                  {notifCount + editNotifs.length > 0 && (
+                  {attention > 0 && (
                     <span
                       className="civic-nav-avatar-dot"
-                      aria-label={`${notifCount + editNotifs.length} item${notifCount + editNotifs.length === 1 ? "" : "s"} need your attention`}
+                      aria-label={`${attention} item${attention === 1 ? "" : "s"} need your attention`}
                     />
                   )}
                 </button>

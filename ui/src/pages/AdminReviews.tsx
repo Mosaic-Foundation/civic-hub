@@ -7,6 +7,7 @@ import {
   adminRequestChanges,
   adminDeclineReview,
   markReviewsSeen,
+  notifyAdminQueuesChanged,
   type ProcessReviewSummary,
   type ReviewDetail,
   type ReviewStatus,
@@ -97,7 +98,7 @@ export default function AdminReviews() {
 
   // Opening the review queue clears the admin attention badge.
   useEffect(() => {
-    markReviewsSeen().catch(() => {});
+    markReviewsSeen().then(notifyAdminQueuesChanged).catch(() => {});
   }, []);
 
   useEffect(() => {
