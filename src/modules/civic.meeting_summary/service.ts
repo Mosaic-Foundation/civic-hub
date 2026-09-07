@@ -20,8 +20,13 @@ import {
   emitMeetingSummaryUpdated,
 } from "./events.js";
 
-export const AI_ATTRIBUTION_LABEL =
-  "AI-generated, admin-reviewed. Not an authoritative transcript.";
+// The one line every summary carries. Hub-wide copy, not per-record data —
+// the read models return this constant rather than what was stored at
+// creation, so a wording change reaches every summary already published.
+// "Admin-reviewed" was dropped on 2026-09-06 (Adam: it shifted
+// accountability onto him); the page's detail line no longer repeats the
+// "not authoritative" clause.
+export const AI_ATTRIBUTION_LABEL = "AI-generated. Not an authoritative transcript.";
 
 // --- State creation --------------------------------------------------------
 
@@ -200,7 +205,7 @@ export function getAdminReadModel(
     revised_at: state.revised_at ?? null,
     ai_instructions_used: state.ai_instructions_used,
     ai_model: state.ai_model,
-    ai_attribution_label: state.ai_attribution_label,
+    ai_attribution_label: AI_ATTRIBUTION_LABEL,
     created_at: processMeta.createdAt,
     created_by: processMeta.createdBy,
   };
@@ -235,7 +240,7 @@ export function getPublicReadModel(
     awaiting_minutes: !state.source_minutes_url,
     revised_at: state.revised_at ?? null,
     ai_model: state.ai_model,
-    ai_attribution_label: state.ai_attribution_label,
+    ai_attribution_label: AI_ATTRIBUTION_LABEL,
   };
 }
 

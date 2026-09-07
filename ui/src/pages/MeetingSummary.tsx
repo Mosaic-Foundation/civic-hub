@@ -55,9 +55,13 @@ export default function MeetingSummaryPage() {
   }
 
   const hasVideo = summary.source_video_url !== null;
-  const disclaimer = hasVideo
-    ? "AI-generated, admin-reviewed. Not an authoritative transcript. Click a timestamp to jump to that moment on YouTube."
-    : "AI-generated from minutes document only — no video recording available. Admin-reviewed. Not an authoritative transcript.";
+  // The bold line is the server's attribution label ("AI-generated. Not an
+  // authoritative transcript."). This is only what to add under it — never
+  // a repeat of it (Adam, 2026-09-06: "it says not an authoritative
+  // transcript twice").
+  const disclaimerDetail = hasVideo
+    ? "Click a timestamp to jump to that moment on YouTube."
+    : "Generated from the minutes document — no recording of this meeting is available.";
 
   return (
     <article className="page meeting-summary-page">
@@ -116,7 +120,7 @@ export default function MeetingSummaryPage() {
 
       <div className="meeting-disclaimer">
         <strong>{summary.ai_attribution_label}</strong>
-        <span>{disclaimerDetail(disclaimer)}</span>
+        <span>{disclaimerDetail}</span>
       </div>
 
       <div className="meeting-provenance">
@@ -247,15 +251,6 @@ export default function MeetingSummaryPage() {
       <RelatedProcesses processId={id!} readOnly />
     </article>
   );
-}
-
-function disclaimerDetail(full: string): string {
-  // Show only the post-first-sentence detail so the <strong> carries the
-  // attribution label and the detail line carries the "not authoritative"
-  // copy. Everything after the first period is the detail.
-  const idx = full.indexOf(".");
-  if (idx < 0) return full;
-  return full.slice(idx + 1).trim();
 }
 
 function youTubeAtTime(watchUrl: string, seconds: number): string {

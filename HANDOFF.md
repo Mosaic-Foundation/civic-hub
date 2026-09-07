@@ -4,6 +4,23 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Meeting summary disclaimer: one line, no "admin-reviewed" — 2026-09-06
+
+**Working in:** `civic-hub/src/modules/civic.meeting_summary/service.ts`,
+`ui/src/pages/MeetingSummary.tsx`
+
+Adam: the box said "Not an authoritative transcript" twice (bold label,
+then the detail line again), and "admin-reviewed" put accountability on
+him he'd rather not carry. Now the bold line is
+`AI-generated. Not an authoritative transcript.` and the detail line is
+only the hint — "Click a timestamp to jump to that moment on YouTube."
+with a recording, "Generated from the minutes document — no recording of
+this meeting is available." without.
+
+The label is hub-wide copy, not per-record data, so the read models now
+return the constant instead of the value stored at creation — every
+already-published summary shows the new wording without a data change.
+
 ## Admin tabs count what is new since you last opened them — 2026-09-06
 
 **Working in:** `civic-hub/src/services/adminQueues.ts` (new),
