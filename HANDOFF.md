@@ -4,6 +4,20 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Admin Settings officials grid: headers over their fields — 2026-09-07
+
+**Working in:** `civic-hub/ui/src/pages/AdminSettings.css`
+
+Adam: "the labels in those columns aren't really lined up." Two causes:
+header labels had no inset while inputs have 0.75rem padding, and the
+`fr` tracks resolved differently in the header row (short spans) and the
+data rows (inputs with larger min-content) — Name and Office headers sat
+~18px right of their fields. Now: labels inset by the input padding, the
+checkbox header centred over its 7rem track, and every track
+`minmax(0, …fr)` so all rows share one grid; Email narrowed
+(1.6fr) to give the two fixed end columns room. Measured at 1200px:
+every header 0px from its field's text; checkbox header centred to 0px.
+
 ## Outcomes index drops archived briefs — 2026-09-06
 
 **Working in:** `civic-hub/src/controllers/briefController.ts`

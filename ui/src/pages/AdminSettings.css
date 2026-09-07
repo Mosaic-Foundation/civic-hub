@@ -42,23 +42,40 @@
   color: var(--color-text-muted);
 }
 
+/* Email gets less room than before so the two fixed columns at the end
+   (the Receives-briefs checkbox and the ×) have space to sit under their
+   headers instead of being squeezed (Adam, 2026-09-07). */
 .official-row {
   display: grid;
-  grid-template-columns: 2fr 1.4fr 1.4fr 1.4fr auto auto;
+  /* minmax(0, …fr): fr tracks otherwise keep each cell's min-content as a
+     floor, and the header row (short labels) and data rows (inputs) then
+     resolve to different widths — the Name and Office headers sat ~18px
+     right of their fields. Zero floors make every row share one grid. */
+  grid-template-columns:
+    minmax(0, 1.6fr) minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 1.2fr) 7rem 2rem;
   gap: var(--space-sm);
   margin-bottom: var(--space-sm);
   align-items: center;
 }
 
-/* Column headers above the officials rows. */
+/* Column headers above the officials rows: same grid, and each label is
+   inset by the inputs' own horizontal padding so it sits over the text in
+   the field below, not over the field's border. */
 .official-head {
   margin-bottom: var(--space-xs);
 }
 
 .official-col-label {
+  padding-left: 0.75rem;
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-text-muted);
+}
+
+/* The checkbox column: header and checkbox both centred in the track. */
+.official-head .official-col-label:nth-child(5) {
+  padding-left: 0;
+  text-align: center;
 }
 
 .official-col-note {
