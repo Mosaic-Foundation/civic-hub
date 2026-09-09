@@ -173,11 +173,38 @@
   flex: 3;
 }
 
+/* Bundle marker on a grouped recipient row — reads as the office the
+   public receipt will collapse this person into. */
+.admin-recipient-group-chip {
+  flex: 0 0 auto;
+  padding: 2px var(--space-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--type-brief-fg, #8c4a2b);
+  background: var(--type-brief-bg, #f4e1d2);
+  border-radius: var(--radius-pill);
+}
+
 .admin-recipient-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-sm);
   margin-top: var(--space-sm);
+}
+
+/* The whole-office adds lead the row and carry the brief accent so they
+   read as a different kind of action than the one-person adds. */
+.admin-recipient-group-add {
+  font-weight: 600;
+  border-color: var(--type-brief-fg, #8c4a2b);
+  color: var(--type-brief-fg, #8c4a2b);
+}
+
+@media (max-width: 640px) {
+  .admin-recipient-group-chip {
+    align-self: flex-start;
+  }
 }
 
 @media (max-width: 640px) {

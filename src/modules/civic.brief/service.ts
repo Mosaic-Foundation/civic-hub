@@ -157,9 +157,14 @@ export function normalizeRecipients(raw: unknown): BriefRecipient[] {
   const seen = new Set<string>();
   const out: BriefRecipient[] = [];
   for (const entry of raw) {
-    const e = (entry ?? {}) as { email?: unknown; label?: unknown };
+    const e = (entry ?? {}) as {
+      email?: unknown;
+      label?: unknown;
+      group?: unknown;
+    };
     const email = typeof e.email === "string" ? e.email.trim() : "";
     const label = typeof e.label === "string" ? e.label.trim() : "";
+    const group = typeof e.group === "string" ? e.group.trim() : "";
     if (email.length === 0 && label.length === 0) continue; // blank row
     if (!EMAIL_SHAPE.test(email)) {
       throw new Error(`"${email || "(empty)"}" is not a valid email address.`);
@@ -175,10 +180,43 @@ export function normalizeRecipients(raw: unknown): BriefRecipient[] {
         `Recipient labels must be ${RECIPIENT_LABEL_MAX} characters or fewer.`,
       );
     }
+    if (group.length > RECIPIENT_LABEL_MAX) {
+      throw new Error(
+        `Recipient group names must be ${RECIPIENT_LABEL_MAX} characters or fewer.`,
+      );
+    }
     const key = email.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ email, label });
+    // Omit the field entirely when empty, so an ungrouped recipient stays
+    // shaped exactly as before (no `group: ""` noise in stored state).
+    out.push(group.length > 0 ? { email, label, group } : { email, label });
+  }
+  return out;
+}
+
+/**
+ * The public "Sent to …" labels for a selection: recipients that share a
+ * `group` collapse to that group name (emitted once, at the position of
+ * its first member), and ungrouped recipients keep their own label. This
+ * is what turns five individually-emailed supervisors into a single
+ * "Board of Supervisors" on the permanent public receipt while every
+ * address is still delivered to. First-seen order is preserved so the
+ * receipt reads in the order the admin built it.
+ */
+export function collapseRecipientLabels(
+  recipients: readonly BriefRecipient[],
+): string[] {
+  const out: string[] = [];
+  const emittedGroups = new Set<string>();
+  for (const r of recipients) {
+    if (r.group && r.group.length > 0) {
+      if (emittedGroups.has(r.group)) continue;
+      emittedGroups.add(r.group);
+      out.push(r.group);
+    } else {
+      out.push(r.label);
+    }
   }
   return out;
 }
@@ -262,7 +300,10 @@ export async function approveBrief(
   const selected = state.recipients;
   const toEmails =
     selected !== undefined ? selected.map((r) => r.email) : deps.fallbackRecipients;
-  const toLabels = selected !== undefined ? selected.map((r) => r.label) : [];
+  // Public receipt labels — grouped offices collapse to one name (see
+  // collapseRecipientLabels). The email list above stays one-per-person.
+  const toLabels =
+    selected !== undefined ? collapseRecipientLabels(selected) : [];
 
   // Step 1: approved
   assertPublicationTransition(state.publication_status, "approved");

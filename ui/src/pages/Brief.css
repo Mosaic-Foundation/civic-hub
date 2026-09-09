@@ -2,42 +2,63 @@
    Layered on top of VoteResults.css (the shared public-record page
    language); only what responses add lives here. */
 
-/* --- Status line: a quiet chip + a neutral invitation ------------------ */
+/* --- Response status: one prominent affordance ------------------------- */
 
-.brief-response-status-row {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
+.brief-response-cta {
   margin: 0 0 var(--space-lg);
 }
 
-.brief-response-status {
-  display: inline-block;
-  padding: 2px var(--space-sm);
-  font-size: var(--font-size-xs);
+.brief-response-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-base, 1rem);
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.2;
   border-radius: var(--radius-pill);
-  white-space: nowrap;
+  text-decoration: none;
 }
 
-/* Awaiting wears the brief's own dark-blue palette — visible without
-   reading as an alarm; the invitation copy beside it does the framing. */
-.brief-response-status--awaiting {
-  background: var(--type-brief-bg, #f4e1d2);
+/* Awaiting — a plain, non-interactive status in the brief's own palette.
+   Bigger than the old chip, but nothing to click until a response lands. */
+.brief-response-cta-btn--awaiting {
   color: var(--type-brief-fg, #8c4a2b);
+  background: var(--type-brief-bg, #f4e1d2);
+  cursor: default;
 }
 
-/* Responded shares the feed's official-response gold. */
-.brief-response-status--responded {
-  background: var(--pill-brief-response-bg, #fdf1e0);
-  color: var(--pill-brief-response-fg, #8a5a13);
+/* Responded — an actual button that jumps to the responses below, in the
+   feed's official-response gold. The ↓ tells the reader it moves them. */
+.brief-response-cta-btn--responded {
+  color: #fff;
+  background: var(--pill-brief-response-fg, #8a5a13);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
 }
 
-.brief-response-status-note {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted, #5b6470);
+.brief-response-cta-btn--responded::after {
+  content: "↓";
+  font-weight: 700;
+}
+
+.brief-response-cta-btn--responded:hover {
+  background: var(--color-primary-hover, #6f4810);
+}
+
+.brief-response-cta-btn--responded:active {
+  transform: translateY(1px);
+}
+
+.brief-response-cta-btn--responded:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* The responses section is the button's scroll + focus target; it should
+   never show a focus ring of its own when jumped to. */
+.brief-responses:focus {
+  outline: none;
 }
 
 /* --- Responses: public correspondence, oldest first -------------------- */

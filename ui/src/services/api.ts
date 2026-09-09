@@ -1160,10 +1160,13 @@ export interface BriefSummary {
 
 /** One delivery recipient picked during review. The email is where the
  *  brief is sent (admin-only); the label is what the published page's
- *  "Sent to …" receipt shows. */
+ *  "Sent to …" receipt shows. `group`, when set, bundles this recipient
+ *  under one office name on that receipt (all supervisors → "Board of
+ *  Supervisors") while each address is still emailed individually. */
 export interface BriefRecipient {
   email: string;
   label: string;
+  group?: string;
 }
 
 export interface BriefDetail extends BriefSummary {

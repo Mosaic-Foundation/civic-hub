@@ -6,6 +6,7 @@ import type {
 import {
   RECIPIENT_LABEL_MAX,
   approveBrief,
+  collapseRecipientLabels,
   createBriefState,
   getPublicReadModel,
   normalizeRecipients,
@@ -204,5 +205,100 @@ describe("getPublicReadModel — the Sent-to receipt", () => {
     expect(model.delivered_recipient_count).toBe(1);
     expect(model.sent_to).toEqual([]);
     expect(JSON.stringify(model)).not.toContain("clerk@floyd.gov");
+  });
+});
+
+// --- Office bundling (group) ------------------------------------------------
+
+const SUP_A = {
+  email: "a@floyd.gov",
+  label: "Anita Ray, Board of Supervisors",
+  group: "Board of Supervisors",
+};
+const SUP_B = {
+  email: "b@floyd.gov",
+  label: "Bo Tran, Board of Supervisors",
+  group: "Board of Supervisors",
+};
+
+describe("normalizeRecipients — group", () => {
+  it("keeps and trims a group name", () => {
+    const out = normalizeRecipients([
+      { email: " a@floyd.gov ", label: "Anita Ray", group: " Board of Supervisors " },
+    ]);
+    expect(out).toEqual([
+      { email: "a@floyd.gov", label: "Anita Ray", group: "Board of Supervisors" },
+    ]);
+  });
+
+  it("omits the field entirely for an ungrouped recipient", () => {
+    const out = normalizeRecipients([JANE]);
+    expect(out[0]).not.toHaveProperty("group");
+  });
+
+  it("caps group length", () => {
+    expect(() =>
+      normalizeRecipients([
+        { email: "a@floyd.gov", label: "A", group: "x".repeat(RECIPIENT_LABEL_MAX + 1) },
+      ]),
+    ).toThrow(/group names must be/);
+  });
+});
+
+describe("collapseRecipientLabels", () => {
+  it("collapses same-group members to the group name once, at first position", () => {
+    expect(collapseRecipientLabels([SUP_A, SUP_B, JANE])).toEqual([
+      "Board of Supervisors",
+      JANE.label,
+    ]);
+  });
+
+  it("keeps ungrouped recipients as their own labels, in order", () => {
+    expect(collapseRecipientLabels([JANE, SAM])).toEqual([JANE.label, SAM.label]);
+  });
+
+  it("distinguishes two different groups", () => {
+    const council = { email: "c@floyd.gov", label: "Cy Ng", group: "Town Council" };
+    expect(collapseRecipientLabels([SUP_A, council, SUP_B])).toEqual([
+      "Board of Supervisors",
+      "Town Council",
+    ]);
+  });
+});
+
+describe("approveBrief — grouped delivery", () => {
+  it("emails every member but records ONE bundled label on the public receipt", async () => {
+    const state = pendingState();
+    setRecipients(state, [SUP_A, SUP_B, JANE]);
+    const d = {
+      fallbackRecipients: ["clerk@floyd.gov"],
+      hubLabel: "Test Hub",
+      publicBriefUrl: "https://hub/brief/brief_1",
+      sendEmail: vi.fn(async () => undefined),
+      finalizeSource: vi.fn(async () => undefined),
+    };
+
+    await approveBrief(state, "admin", ctx, d);
+
+    // Every address is still emailed individually…
+    expect(d.sendEmail.mock.calls[0]![0].to).toEqual([
+      SUP_A.email,
+      SUP_B.email,
+      JANE.email,
+    ]);
+    // …but the public receipt bundles the office to one name.
+    expect(state.delivered_to_labels).toEqual([
+      "Board of Supervisors",
+      JANE.label,
+    ]);
+
+    const model = getPublicReadModel(state, {
+      id: "brief_1",
+      title: "Water supply",
+      createdAt: "2026-08-28T00:00:00.000Z",
+    })!;
+    expect(model.sent_to).toEqual(["Board of Supervisors", JANE.label]);
+    // The bundle never leaks an address.
+    expect(JSON.stringify(model)).not.toContain("@floyd.gov");
   });
 });

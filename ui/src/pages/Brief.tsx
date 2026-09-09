@@ -174,33 +174,36 @@ export default function BriefPage() {
         </p>
       ) : null}
 
-      {/* Response status — a neutral invitation, not a callout. "Awaiting"
-          states a fact and what will appear; it names no one and sets no
-          deadline. Flips to "Responded" (anchored to the FIRST response's
-          date) the moment an official goes on the record below. */}
-      <p className="brief-response-status-row">
-        {brief.response_status === "responded" && brief.responded_at ? (
-          <span className="brief-response-status brief-response-status--responded">
-            Responded{" "}
-            {new Date(brief.responded_at).toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </span>
+      {/* Response status as a single prominent affordance. It names no
+          responder — any official may respond, not only the recipients,
+          so the old "from the Board of Supervisors" note is gone. While
+          awaiting it is a plain status; once an official is on the record
+          below it becomes a button that jumps down to the responses. */}
+      <div className="brief-response-cta">
+        {brief.response_status === "responded" && brief.responses.length > 0 ? (
+          <a
+            href="#brief-responses"
+            className="brief-response-cta-btn brief-response-cta-btn--responded"
+            onClick={(e) => {
+              e.preventDefault();
+              const el = document.getElementById("brief-responses");
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+                el.focus();
+              }
+            }}
+          >
+            {brief.responses.length > 1 ? "See responses" : "See response"}
+          </a>
         ) : (
-          <>
-            <span className="brief-response-status brief-response-status--awaiting">
-              Awaiting response
-            </span>
-            <span className="brief-response-status-note">
-              {brief.delivered_recipient_count > 0
-                ? `A public response from the ${hub.governing_body_name} will appear here when one is posted.`
-                : "A public response from an official will appear here when one is posted."}
-            </span>
-          </>
+          <span
+            className="brief-response-cta-btn brief-response-cta-btn--awaiting"
+            role="status"
+          >
+            Awaiting response
+          </span>
         )}
-      </p>
+      </div>
 
       {brief.image_url && (
         <PostFeaturedImage src={brief.image_url} alt={brief.image_alt ?? ""} />
@@ -269,7 +272,11 @@ export default function BriefPage() {
           time. Any official may respond, and may add a follow-up later —
           the record reads as correspondence, never as an edit. */}
       {(brief.responses.length > 0 || official) && (
-        <section className="vote-results-section brief-responses">
+        <section
+          id="brief-responses"
+          className="vote-results-section brief-responses"
+          tabIndex={-1}
+        >
           <h2>
             {brief.responses.length > 1
               ? "Official responses"

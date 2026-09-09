@@ -17,6 +17,12 @@ import {
 import AdminTabs from "../components/AdminTabs";
 import PostImagePicker from "../components/PostImagePicker";
 import hub from "../config/hub";
+import {
+  OFFICIAL_TYPES,
+  OFFICIAL_TYPE_LABELS,
+  normalizeOfficialType,
+  type OfficialType,
+} from "../../../src/shared/officialTypes";
 // Reuse the vote-results admin styles — same layout language.
 import "./AdminVoteResults.css";
 
@@ -337,8 +343,10 @@ export default function AdminBriefs() {
                 Who receives this brief by email when you approve it. The{" "}
                 <strong>display label</strong> is what the published page
                 shows in its "Sent to …" receipt — email addresses are never
-                shown publicly. Leave the list empty to publish without an
-                email delivery.
+                shown publicly. Use <strong>+ All …</strong> to add a whole
+                office at once; those members are still emailed individually
+                but appear on the public receipt as one office name. Leave
+                the list empty to publish without an email delivery.
               </p>
               {recipients.map((r, i) => (
                 <div key={i} className="admin-recipient-row">
@@ -367,6 +375,14 @@ export default function AdminBriefs() {
                       )
                     }
                   />
+                  {r.group && (
+                    <span
+                      className="admin-recipient-group-chip"
+                      title={`Shown on the public brief as "${r.group}", bundled with the rest of this office.`}
+                    >
+                      {r.group}
+                    </span>
+                  )}
                   <button
                     type="button"
                     className="admin-cancel-button"
@@ -385,6 +401,46 @@ export default function AdminBriefs() {
                 </p>
               )}
               <div className="admin-recipient-actions">
+                {/* Whole-office quick-add. For every office type with two
+                    or more people on the roster, one click adds all of its
+                    members who aren't already picked, tagged with the
+                    office name so the public receipt bundles them (all
+                    supervisors → "Board of Supervisors" instead of five
+                    names). Only offices with someone left to add appear. */}
+                {OFFICIAL_TYPES.map((type) => {
+                  const members = rosterOfficials.filter(
+                    (o) =>
+                      (normalizeOfficialType(o.official_type) ??
+                        ("other" as OfficialType)) === type,
+                  );
+                  const toAdd = members.filter(
+                    (o) =>
+                      !recipients.some(
+                        (r) => r.email.toLowerCase() === o.email.toLowerCase(),
+                      ),
+                  );
+                  if (members.length < 2 || toAdd.length === 0) return null;
+                  const groupName = OFFICIAL_TYPE_LABELS[type];
+                  return (
+                    <button
+                      key={`group-${type}`}
+                      type="button"
+                      className="admin-archive-button admin-recipient-group-add"
+                      onClick={() =>
+                        setRecipients((prev) => [
+                          ...prev,
+                          ...toAdd.map((o) => ({
+                            email: o.email,
+                            label: officialLabel(o),
+                            group: groupName,
+                          })),
+                        ])
+                      }
+                    >
+                      + All {groupName}
+                    </button>
+                  );
+                })}
                 {rosterOfficials
                   .filter(
                     (o) =>

@@ -74,10 +74,18 @@ export interface BriefContent {
  * sent and stays SERVER-SIDE forever; `label` is the public-safe display
  * string ("Jane Doe, Board of Supervisors") the published page shows in
  * its "Sent to …" receipt. No read model may ever surface the email.
+ *
+ * `group` is an optional bundle name ("Board of Supervisors"). When the
+ * admin adds a whole office at once, every member carries the same group,
+ * and the public receipt collapses them to that one name instead of
+ * listing each person — so "Sent to Board of Supervisors and Jane Q.
+ * Public", not five supervisors by name (Adam, 2026-09-08). The email
+ * still goes to each individual address; the group only changes display.
  */
 export interface BriefRecipient {
   email: string;
   label: string;
+  group?: string;
 }
 
 /**

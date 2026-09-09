@@ -4,6 +4,57 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Brief: prominent response button + office-bundled recipients — 2026-09-08
+
+Three changes to the brief/outcome page and its review, all universal
+across every source type (proposal, vote, project, conversation), from
+Adam's read of the energy-resilience brief.
+
+**1. The response status is now one prominent button, and names no one.**
+`ui/src/pages/Brief.tsx` + `Brief.css`. The old small chip + "A public
+response from the Board of Supervisors will appear here" note is gone —
+any official may respond, not only the recipients, so the note was
+presumptuous. In its place, above Summary:
+- Awaiting → a bigger, plain status button "Awaiting response" (brief
+  palette, non-interactive).
+- Once ≥1 response exists → an actual button "See response" / "See
+  responses" (count-based, feed gold, ↓) that smooth-scrolls to the
+  responses section and focuses it. Anchor `#brief-responses`,
+  `tabIndex={-1}` added to that `<section>`.
+Verified on dev: awaiting renders as the span button; after posting a
+real official response the button flipped to "See response" and the
+click scrolled from y=0 to the section (focused). Removed the classes
+`.brief-response-status*`.
+
+**2. Whole-office quick-add in brief review.** `ui/src/pages/AdminBriefs.tsx`
++ `AdminVoteResults.css`. For every office type with ≥2 roster members
+not all added, a "+ All {office}" button adds them in one click (before
+the per-person buttons). Each added recipient carries `group` = the
+office name. Grouped rows show a bundle chip. Verified on dev with two
+board members: the button added both with chips and vanished once all
+were in.
+
+**3. The public "Sent to …" receipt bundles a whole office to one name.**
+`src/modules/civic.brief/{models,service}.ts`. `BriefRecipient` gains an
+optional `group`. New `collapseRecipientLabels()` collapses same-group
+members to the group name once (first-seen order), leaving ungrouped
+recipients as their own labels; `approveBrief` uses it for
+`delivered_to_labels`. So "Sent to Board of Supervisors and Jane Q.
+Public", never five supervisors by name — while each address is STILL
+emailed individually (`delivered_to`/the email `to` list is unchanged).
+The email never leaks: only the collapsed labels reach the public model.
+
+Data: `recipients` is JSON in process state, so the new optional field
+needs NO migration. Legacy/fallback deliveries (no per-brief selection)
+are untouched and keep the governing-body receipt line.
+
+Tests: `tests/unit/briefRecipients.test.ts` +7 (group normalize/trim/cap,
+collapse ordering + two groups, grouped approval emails-all-bundles-one,
+no address leak). Full unit suite 775 pass; tsc clean; UI build clean.
+
+Note: three pre-existing "[uitest] pending brief pointer …" briefs sit
+pending on dev from an earlier session — left as-is, not created here.
+
 ## Header never overlaps on narrow phones or large system fonts — 2026-09-07
 
 Adam's mom's Android showed the Feedback pill drawn across "Floyd Civic
