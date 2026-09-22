@@ -43,6 +43,7 @@ import {
   setOfficials,
 } from "../services/officials.js";
 import { getAuthUser } from "../middleware/auth.js";
+import { currentHubId } from "../config/hubContext.js";
 
 interface SettingsResponse {
   brief_recipient_emails: string[];
@@ -56,14 +57,15 @@ interface SettingsResponse {
 }
 
 async function loadSettings(): Promise<SettingsResponse> {
+  const hubId = currentHubId();
   return {
-    brief_recipient_emails: await getVoteResultsRecipients(),
+    brief_recipient_emails: await getVoteResultsRecipients(hubId),
     officials: await listOfficialsWithLegacy(),
-    announcement_authors: await getAnnouncementAuthors(),
-    beta_allowlist: await getBetaAllowlist(),
+    announcement_authors: await getAnnouncementAuthors(hubId),
+    beta_allowlist: await getBetaAllowlist(hubId),
     waitlist: await getWaitlist(),
-    support_threshold: await getSupportThreshold(),
-    comment_identity_mode: await getCommentIdentityMode(),
+    support_threshold: await getSupportThreshold(hubId),
+    comment_identity_mode: await getCommentIdentityMode(hubId),
   };
 }
 
@@ -104,7 +106,7 @@ export async function handlePatchSettings(
       const input = body.brief_recipient_emails.filter(
         (e): e is string => typeof e === "string",
       );
-      await setVoteResultsRecipients(input, actor);
+      await setVoteResultsRecipients(currentHubId(), input, actor);
     }
 
     if (body.officials !== undefined) {
@@ -139,7 +141,7 @@ export async function handlePatchSettings(
           input.push(name ? { email: e.email, name, label: e.label } : { email: e.email, label: e.label });
         }
       }
-      await setAnnouncementAuthors(input, actor);
+      await setAnnouncementAuthors(currentHubId(), input, actor);
     }
 
     if (body.beta_allowlist !== undefined) {
@@ -152,7 +154,7 @@ export async function handlePatchSettings(
       const input = body.beta_allowlist.filter(
         (e): e is string => typeof e === "string",
       );
-      await setBetaAllowlist(input, actor);
+      await setBetaAllowlist(currentHubId(), input, actor);
     }
 
     if (body.support_threshold !== undefined) {
@@ -163,7 +165,7 @@ export async function handlePatchSettings(
         });
         return;
       }
-      await setSupportThreshold(n, actor);
+      await setSupportThreshold(currentHubId(), n, actor);
     }
 
     if (body.comment_identity_mode !== undefined) {
@@ -175,7 +177,7 @@ export async function handlePatchSettings(
         return;
       }
       // setCommentIdentityMode validates the value and throws on junk.
-      await setCommentIdentityMode(body.comment_identity_mode, actor);
+      await setCommentIdentityMode(currentHubId(), body.comment_identity_mode, actor);
     }
 
     res.json(await loadSettings());

@@ -103,10 +103,16 @@ reader (`src/services/hubSettings.ts`) owns parsing; callers never parse
 `value` themselves.
 
 **Public subset.** Only `identity.*`, `copy.*`, `legal.*`, `beta.enabled`,
-`beta.waitlist_enabled`, `moderation.comment_identity_mode`, and
-`plugin.<id>.enabled` are served by `/api/hub-config`. `people.*`,
-`email.*`, `beta.allowlist` and every other `plugin.<id>.<setting>` are
-admin-only. The public subset is a list of keys, not of namespaces: a new
+`beta.waitlist_enabled`, `moderation.comment_identity_mode`,
+`plugin.<id>.enabled`, `plugin.conversation.polis_url` and
+`plugin.wordcloud.onboarding_id` are served by `/api/hub-config`. `people.*`,
+`email.*`, `beta.allowlist`, `beta.demo_mode`, `beta.demo_bypass_code` and
+every other `plugin.<id>.<setting>` are admin-only.
+
+The last two plugin keys were added 2026-09-22, confirmed with Adam: the
+client renders both — a URL that becomes a link, and the id of a public
+process — and both already shipped in the bundle as `VITE_` variables, so
+serving them discloses nothing that was not already public. The public subset is a list of keys, not of namespaces: a new
 `moderation.*` key is admin-only until it is added to the list. The comment
 identity mode is on it because the comment form has to render the anonymity
 toggle before anyone is signed in.
@@ -514,9 +520,27 @@ It never goes to the browser: the UI only ever gets the publishable key.
 
 From `supabase/.temp` and `supabase/config.toml` (no credentials read):
 
-- The linked project is **`nfhyypwoporfggqcerli` ("Civic-Hub-Floyd")**,
-  Postgres 17.6.1, PostgREST v14.5, GoTrue v2.190.0 — all recent enough to
-  support JWT signing keys. There is **no `supabase/config.toml` in
+- **Which project is which** (confirmed with Adam, 2026-09-22):
+
+  | Role | Ref | Name | Org | Notes |
+  |---|---|---|---|---|
+  | **Production** | `nfhyypwoporfggqcerli` | Civic-Hub-Floyd | `ewarqaimzbloqcjlgbrt` (paid) | Serves `floyd.civic.social`. Postgres 17.6.1, PostgREST v14.5, GoTrue v2.190.0. |
+  | **Dev** | `urfmvqhzmamigssqwsya` | civic_hub_floyd_Dev | `fahhqxdrsszbzpaivjik` (free) | Paused when idle; wake it before use. What the local `.env` points at. |
+
+  Other projects in these orgs are not part of this work: `ehcyahlmqbqmewdbxdls`
+  (Website-Civic-Social, the marketing site, linked from the monorepo root),
+  `cxeiiogotnrfzeekowih` (Representative Space) and `diavaxiwxwofayizrmsl`
+  (civic-hub-demo, inactive).
+
+  **The CLI link stays on dev for the whole of this work.** It was pointing at
+  production, which meant a `supabase db push` typed in the wrong directory
+  would have reached the live database; it was relinked to
+  `urfmvqhzmamigssqwsya` on 2026-09-22. **Production migrations are applied
+  only in the cutover session, by Adam, from the runbook** — no build session
+  pushes to production, and no session relinks to it.
+
+- The production project is Postgres 17.6.1, PostgREST v14.5, GoTrue v2.190.0
+  — all recent enough to support JWT signing keys. There is **no `supabase/config.toml` in
   `civic-hub/`**: the CLI is used only for `db push`, so nothing about local
   auth configuration is pinned today. Phase 3 adds a `config.toml` so the
   spike is reproducible and so `supabase start` becomes the rehearsal

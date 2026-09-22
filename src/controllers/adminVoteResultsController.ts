@@ -49,6 +49,7 @@ import {
 import { getAuthUser } from "../middleware/auth.js";
 import { sendEmail } from "../services/mailer.js";
 import { getVoteResultsRecipients } from "../services/hubSettings.js";
+import { currentHubId } from "../config/hubContext.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { extractUrls } from "../modules/civic.link_preview/index.js";
 import { warmPreviewsInBackground } from "../services/linkPreviewCache.js";
@@ -253,7 +254,7 @@ export async function handleApproveVoteResults(
     // (BOARD_RECIPIENT_EMAIL) as safety-net fallback so existing
     // deploys keep working before an admin has opened the settings
     // panel for the first time.
-    const recipients = await getVoteResultsRecipients();
+    const recipients = await getVoteResultsRecipients(currentHubId());
     if (recipients.length === 0) {
       res.status(503).json({
         error:

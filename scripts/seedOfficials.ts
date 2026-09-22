@@ -71,6 +71,8 @@ const { getAnnouncementAuthors, setOfficialsMigrated, areOfficialsMigrated } =
 const { inferOfficialType } = await import("../src/shared/officialTypes.js");
 const { generateId } = await import("../src/utils/id.js");
 
+const HUB_ID = process.env.CIVIC_SEED_HUB?.trim() || "floyd";
+
 const DRY_RUN = process.argv.includes("--dry-run");
 
 /**
@@ -116,7 +118,7 @@ async function main(): Promise<void> {
       : "LIVE RUN — writing to the database.\n",
   );
 
-  if (await areOfficialsMigrated()) {
+  if (await areOfficialsMigrated(HUB_ID)) {
     console.log(
       "officials_migrated is already set: this database has been migrated.\n" +
         "The roster is managed in the admin panel. Nothing to do.",
@@ -124,14 +126,14 @@ async function main(): Promise<void> {
     return;
   }
 
-  const authors = await getAnnouncementAuthors();
+  const authors = await getAnnouncementAuthors(HUB_ID);
   if (authors.length === 0) {
     console.log(
       "No legacy authors found (hub_settings.announcement_authors is empty\n" +
         "and CIVIC_BOARD_EMAILS is unset). Nothing to copy.",
     );
     if (!DRY_RUN) {
-      await setOfficialsMigrated(null);
+      await setOfficialsMigrated(HUB_ID, null);
       console.log("\nSet officials_migrated — the admin panel is now the roster.");
     }
     return;
@@ -246,7 +248,7 @@ async function main(): Promise<void> {
     console.log(`  wrote ${change.email} → ${change.type} / "${change.title}"`);
   }
 
-  await setOfficialsMigrated(null);
+  await setOfficialsMigrated(HUB_ID, null);
   console.log(
     "\nSet officials_migrated. The managed role is now the only source of\n" +
       "official status — edit the roster in Admin → Settings → Officials.",

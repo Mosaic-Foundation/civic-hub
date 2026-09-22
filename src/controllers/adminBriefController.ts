@@ -30,6 +30,7 @@ import { finalizeBriefSource } from "../services/briefFinalize.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { sendEmail } from "../services/mailer.js";
 import { getVoteResultsRecipients } from "../services/hubSettings.js";
+import { currentHubId } from "../config/hubContext.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { extractUrls } from "../modules/civic.link_preview/index.js";
 import { warmPreviewsInBackground } from "../services/linkPreviewCache.js";
@@ -213,7 +214,7 @@ export async function handleApproveBrief(
     // setting is only the fallback for briefs whose review predates the
     // picker. Empty is allowed either way — the brief still publishes to
     // the feed, just without an email.
-    const fallbackRecipients = await getVoteResultsRecipients();
+    const fallbackRecipients = await getVoteResultsRecipients(currentHubId());
 
     const actor = getAuthUser(res).id;
     const ctx = {

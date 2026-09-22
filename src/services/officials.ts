@@ -20,6 +20,7 @@
 
 import { getDb } from "../db/client.js";
 import { generateId } from "../utils/id.js";
+import { currentHubId } from "../config/hubContext.js";
 import {
   areOfficialsMigrated,
   getAnnouncementAuthors,
@@ -96,11 +97,11 @@ export async function listOfficials(): Promise<OfficialRecord[]> {
  */
 export async function listOfficialsWithLegacy(): Promise<OfficialRecord[]> {
   const managed = await listOfficials();
-  if (await areOfficialsMigrated()) return managed;
+  if (await areOfficialsMigrated(currentHubId())) return managed;
 
   const seen = new Set(managed.map((o) => o.email.toLowerCase()));
   const merged = [...managed];
-  for (const legacy of await getAnnouncementAuthors()) {
+  for (const legacy of await getAnnouncementAuthors(currentHubId())) {
     const email = legacy.email.trim().toLowerCase();
     if (!email || seen.has(email)) continue;
     seen.add(email);
@@ -201,7 +202,7 @@ export async function setOfficials(
   // migration so the legacy list stops re-granting anyone the operator
   // just removed — without this, demotion silently un-does itself on the
   // next request.
-  await setOfficialsMigrated(updatedBy);
+  await setOfficialsMigrated(currentHubId(), updatedBy);
 
   return listOfficials();
 }

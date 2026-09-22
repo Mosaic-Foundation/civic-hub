@@ -11,7 +11,13 @@
 
 import { NextFunction, Request, Response } from "express";
 import { getUserFromToken, type User } from "../modules/civic.auth/index.js";
-import { areOfficialsMigrated, lookupAuthor } from "../services/hubSettings.js";
+import {
+  areOfficialsMigrated,
+  getAdminEmailsSync,
+  getBoardEmailsSync,
+  lookupAuthor,
+} from "../services/hubSettings.js";
+import { currentHub, currentHubId, currentHubIdOrNull } from "../config/hubContext.js";
 import { lookupOfficialByEmail } from "../services/officials.js";
 import {
   type OfficialIdentity,
@@ -27,21 +33,21 @@ function extractToken(req: Request): string | null {
   return null;
 }
 
-function parseEmailList(raw: string | undefined): Set<string> {
-  return new Set(
-    (raw ?? "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter((e) => e.length > 0),
-  );
-}
-
+/**
+ * The admin roster for the hub serving this request.
+ *
+ * Per hub, not per deployment: an Athens admin is not a Floyd admin. Reads
+ * the request-scoped settings snapshot, which the resolver loaded, so this
+ * stays synchronous — it gates fourteen call sites, several of them on read
+ * paths that run for every visitor. Outside a request it falls back to
+ * CIVIC_ADMIN_EMAILS, so crons and scripts behave as they always did.
+ */
 function adminEmails(): Set<string> {
-  return parseEmailList(process.env.CIVIC_ADMIN_EMAILS);
+  return new Set(getAdminEmailsSync());
 }
 
 function boardEmails(): Set<string> {
-  return parseEmailList(process.env.CIVIC_BOARD_EMAILS);
+  return new Set(getBoardEmailsSync());
 }
 
 /**
@@ -97,8 +103,8 @@ async function resolveOfficialParts(
 
   const [managed, migrated, legacy] = await Promise.all([
     lookupOfficialByEmail(email),
-    areOfficialsMigrated(),
-    lookupAuthor(email),
+    areOfficialsMigrated(currentHubIdOrNull()),
+    lookupAuthor(currentHubIdOrNull(), email),
   ]);
 
   if (managed) return { official: managed, legacy: null };

@@ -1,122 +1,219 @@
-// Hub settings service — read/write for the hub_settings key-value table.
+// Hub settings service — every per-hub configuration value comes from here.
 //
-// First consumer: vote-results recipient emails (the Board of Supervisors,
-// historically). The admin UI writes here, the vote-results approval
-// flow reads here first and falls back to the BOARD_RECIPIENT_EMAIL
-// env var if no row exists yet.
+// Contract: BUILD-PLAN-multi-tenant.md → "Contracts / 2. hub_settings".
+// Key names, aliases, env fallbacks and value encoding live in
+// src/models/hubSettings.ts; storage lives in src/db/hubSettingsStore.ts.
+// This module is the only thing either of those is for.
 //
-// Extendable: add more keys as other admin-configurable settings appear.
+// RESOLUTION ORDER for every read, in order:
+//   1. the hub's row under the canonical dotted key
+//   2. the hub's row under the legacy alias key, if the key has one
+//   3. the environment variable(s) the key falls back to
+//   4. the caller's default
+//
+// Step 3 is the bridge, not the destination. It is what lets a deployment
+// that has not been seeded behave exactly as it did before, and what makes a
+// single-hub self-host with no settings rows a supported configuration.
+//
+// TWO SHAPES OF READ, on purpose:
+//
+//   getX(hubId)      async, hits the cached store. Use when you have a hub id
+//                    and may not be inside a request — crons, scripts, admin
+//                    writes.
+//   getXSync()       synchronous, reads the request-scoped snapshot the
+//                    resolver loaded. Use on hot paths inside a request.
+//                    Returns the env/default answer outside a request rather
+//                    than throwing, so a script that calls one still works.
+//
+// Both go through the same resolution order, so they cannot disagree.
 
-import { getDb } from "../db/client.js";
+import {
+  fetchHubSettings,
+  fetchHubSettingRows,
+  writeHubSetting,
+  writeHubSettings,
+  invalidateHubSettings,
+  type SettingsMap,
+} from "../db/hubSettingsStore.js";
+import { currentHubSettings } from "../config/hubContext.js";
+import {
+  KEYS,
+  KEY_ALIASES,
+  ENV_FALLBACKS,
+  asBoolean,
+  asEmailList,
+  asList,
+  asNumber,
+  encodeList,
+  publicSubset,
+} from "../models/hubSettings.js";
 
-// IMPORTANT: the underlying DB key remains "brief_recipient_emails" for
-// historical reasons — it predates Slice 8.5's rename and live operator
-// configurations already use this name. Renaming the storage key would
-// require a separate hub_settings migration and operator coordination,
-// neither of which is in scope here. Only the JS/TS function name was
-// updated for code-level clarity.
-export const SETTING_KEYS = {
-  VOTE_RESULTS_RECIPIENT_EMAILS: "brief_recipient_emails",
-  ANNOUNCEMENT_AUTHORS: "announcement_authors",
-  BETA_ALLOWLIST: "beta_allowlist",
-  SUPPORT_THRESHOLD: "support_threshold",
-  COMMENT_IDENTITY_MODE: "comment_identity_mode",
-  /**
-   * Latch: set once the legacy email-keyed announcement_authors list has
-   * been copied onto users.official_type/official_title. While unset, the
-   * auth middleware still honours the legacy list (and, through it,
-   * CIVIC_BOARD_EMAILS) so a deploy that lands before the seed runs does
-   * not lock officials out. Once set, the managed role is the only source
-   * of official status — which is what makes demotion in the admin panel
-   * stick.
-   */
-  OFFICIALS_MIGRATED: "officials_migrated",
-} as const;
-
-export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];
+export { KEYS, publicSubset, invalidateHubSettings };
+export type { SettingsMap };
 
 /**
- * A non-admin user the admin has authorized to post Civic Hub
- * announcements. `label` is rendered verbatim on the feed and the public
- * announcement page ("{label} announcement: …", eyebrow "{LABEL}
- * ANNOUNCEMENT"). Free-form so a hub can use "Board member", "Planning
- * Committee", "Guest speaker", etc.
+ * Legacy export. The old flat key names, kept so existing imports compile
+ * while the call sites move over.
  *
- * Admins always post and are displayed as "Admin" regardless of whether
- * they appear in this list.
+ * @deprecated Use KEYS from src/models/hubSettings.ts.
  */
-export interface AnnouncementAuthor {
-  email: string;
-  /** Admin-curated display name for this author. Optional — falls back to
-   *  the poster's own account name when blank. */
-  name?: string;
-  label: string;
+export const SETTING_KEYS = {
+  VOTE_RESULTS_RECIPIENT_EMAILS: KEYS.PEOPLE_BRIEF_RECIPIENTS,
+  ANNOUNCEMENT_AUTHORS: KEYS.PEOPLE_ANNOUNCEMENT_AUTHORS,
+  BETA_ALLOWLIST: KEYS.BETA_ALLOWLIST,
+  SUPPORT_THRESHOLD: KEYS.PLUGIN_VOTE_SUPPORT_THRESHOLD,
+  COMMENT_IDENTITY_MODE: KEYS.MODERATION_COMMENT_IDENTITY_MODE,
+  OFFICIALS_MIGRATED: KEYS.PEOPLE_OFFICIALS_MIGRATED,
+} as const;
+
+// --- resolution -----------------------------------------------------------
+
+function fromEnv(key: string): string | undefined {
+  for (const name of ENV_FALLBACKS[key] ?? []) {
+    const v = process.env[name]?.trim();
+    if (v) return v;
+  }
+  return undefined;
 }
 
-interface SettingRow {
-  key: string;
-  value: string;
-  updated_at: string;
-  updated_by: string | null;
+/** Steps 1-3 against an already-loaded map. */
+function resolve(map: SettingsMap | null, key: string): string | undefined {
+  if (map) {
+    const direct = map[key];
+    if (direct !== undefined && direct !== "") return direct;
+    const alias = KEY_ALIASES[key];
+    if (alias) {
+      const aliased = map[alias];
+      if (aliased !== undefined && aliased !== "") return aliased;
+    }
+  }
+  return fromEnv(key);
 }
 
-export async function getSetting(key: string): Promise<string | null> {
-  const { data, error } = await getDb()
-    .from("hub_settings")
-    .select("value")
-    .eq("key", key)
-    .maybeSingle();
-  if (error) throw new Error(`hubSettings.get: ${error.message}`);
-  return (data as { value: string } | null)?.value ?? null;
+// --- generic accessors ----------------------------------------------------
+
+/**
+ * One raw value for a named hub, or undefined.
+ *
+ * `hubId` may be null — a cron, a script or a test that has no hub in scope.
+ * The read then skips the database and answers from the env fallbacks, which
+ * is the behaviour every one of these values had before it became a setting.
+ * Writes take a non-null hub, because a write that does not know its hub must
+ * not guess.
+ */
+export async function getSetting(
+  hubId: string | null,
+  key: string,
+): Promise<string | undefined> {
+  if (!hubId) return fromEnv(key);
+  return resolve(await fetchHubSettings(hubId), key);
 }
 
+/** One raw value for the hub serving this request, or undefined. */
+export function getSettingSync(key: string): string | undefined {
+  return resolve(currentHubSettings(), key);
+}
+
+/** Write one value for a named hub. Always writes the canonical key. */
 export async function setSetting(
+  hubId: string,
   key: string,
   value: string,
   updatedBy: string | null,
 ): Promise<void> {
-  const { error } = await getDb()
-    .from("hub_settings")
-    .upsert({ key, value, updated_by: updatedBy }, { onConflict: "key" });
-  if (error) throw new Error(`hubSettings.set: ${error.message}`);
+  await writeHubSetting(hubId, key, value, updatedBy);
 }
 
-export async function getAllSettings(): Promise<Record<string, SettingRow>> {
-  const { data, error } = await getDb()
-    .from("hub_settings")
-    .select("*");
-  if (error) throw new Error(`hubSettings.getAll: ${error.message}`);
-  const out: Record<string, SettingRow> = {};
-  for (const row of (data ?? []) as SettingRow[]) {
-    out[row.key] = row;
-  }
+/** Write many values for a named hub in one round trip. */
+export async function setSettings(
+  hubId: string,
+  entries: ReadonlyArray<{ key: string; value: string }>,
+  updatedBy: string | null,
+): Promise<void> {
+  await writeHubSettings(hubId, entries, updatedBy);
+}
+
+/** Every stored row for a hub, with metadata. Admin surface only. */
+export async function getAllSettings(hubId: string): Promise<
+  Record<
+    string,
+    { key: string; value: string; updated_at: string; updated_by: string | null }
+  >
+> {
+  const rows = await fetchHubSettingRows(hubId);
+  const out: Record<
+    string,
+    { key: string; value: string; updated_at: string; updated_by: string | null }
+  > = {};
+  for (const row of rows) out[row.key] = row;
   return out;
 }
 
+/** Everything resolved for a hub, for the public config endpoint. */
+export async function getResolvedSettings(
+  hubId: string | null,
+): Promise<SettingsMap> {
+  return hubId ? fetchHubSettings(hubId) : {};
+}
+
+// --- identity and copy ----------------------------------------------------
+
+export function getBannerUrl(): string | undefined {
+  return getSettingSync(KEYS.IDENTITY_BANNER_URL);
+}
+
+// --- people ---------------------------------------------------------------
+
 /**
- * Resolve the vote-results recipient list — DB setting first,
- * BOARD_RECIPIENT_EMAIL env var as a safety-net fallback. Returns a
- * trimmed, deduped, non-empty list. Empty result means "no recipient
- * configured anywhere".
+ * Admin email addresses for the hub serving this request.
+ *
+ * Synchronous because it gates fourteen call sites, several on read paths
+ * that run for every visitor. An Athens admin is not a Floyd admin: the list
+ * is per hub, and outside a request this falls back to CIVIC_ADMIN_EMAILS so
+ * crons and scripts keep the behaviour they had.
  */
-export async function getVoteResultsRecipients(): Promise<string[]> {
-  const stored = await getSetting(SETTING_KEYS.VOTE_RESULTS_RECIPIENT_EMAILS);
-  const raw = stored ?? process.env.BOARD_RECIPIENT_EMAIL ?? "";
+export function getAdminEmailsSync(): string[] {
+  return asEmailList(getSettingSync(KEYS.PEOPLE_ADMIN_EMAILS));
+}
+
+export function getBoardEmailsSync(): string[] {
+  return asEmailList(getSettingSync(KEYS.PEOPLE_BOARD_EMAILS));
+}
+
+export async function getAdminEmails(hubId: string | null): Promise<string[]> {
+  return asEmailList(await getSetting(hubId, KEYS.PEOPLE_ADMIN_EMAILS));
+}
+
+export async function setAdminEmails(
+  hubId: string,
+  emails: readonly string[],
+  updatedBy: string | null,
+): Promise<string[]> {
+  const cleaned = asEmailList(encodeList([...emails]));
+  await setSetting(hubId, KEYS.PEOPLE_ADMIN_EMAILS, encodeList(cleaned), updatedBy);
+  return cleaned;
+}
+
+/**
+ * Vote-results recipients. Trimmed, deduped, non-empty; an empty result means
+ * no recipient is configured anywhere.
+ */
+export async function getVoteResultsRecipients(hubId: string | null): Promise<string[]> {
+  const stored = await getSetting(hubId, KEYS.PEOPLE_BRIEF_RECIPIENTS);
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const part of raw.split(",")) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
-    const lower = trimmed.toLowerCase();
+  for (const entry of asList(stored)) {
+    const lower = entry.toLowerCase();
     if (seen.has(lower)) continue;
     seen.add(lower);
-    out.push(trimmed);
+    out.push(entry);
   }
   return out;
 }
 
 export async function setVoteResultsRecipients(
-  emails: string[],
+  hubId: string,
+  emails: readonly string[],
   updatedBy: string | null,
 ): Promise<string[]> {
   const seen = new Set<string>();
@@ -130,49 +227,60 @@ export async function setVoteResultsRecipients(
     cleaned.push(trimmed);
   }
   await setSetting(
-    SETTING_KEYS.VOTE_RESULTS_RECIPIENT_EMAILS,
-    cleaned.join(","),
+    hubId,
+    KEYS.PEOPLE_BRIEF_RECIPIENTS,
+    encodeList(cleaned),
     updatedBy,
   );
   return cleaned;
 }
 
 /**
- * Read the admin-configured author list. Falls back to the
- * CIVIC_BOARD_EMAILS env var (each entry labeled "Board member") when no
- * DB row exists, so deploys before an admin has visited the settings
- * panel keep working with their prior env-var configuration.
+ * A non-admin user the admin has authorized to post announcements. `label` is
+ * rendered verbatim next to their name, so a hub can use "Board member",
+ * "Planning Committee", "Guest speaker" or anything else.
+ *
+ * Admins always post, and always display as "Admin", whether or not they
+ * appear here.
  */
-export async function getAnnouncementAuthors(): Promise<AnnouncementAuthor[]> {
-  const stored = await getSetting(SETTING_KEYS.ANNOUNCEMENT_AUTHORS);
+export interface AnnouncementAuthor {
+  email: string;
+  /** Admin-curated display name. Falls back to the poster's account name. */
+  name?: string;
+  label: string;
+}
+
+export async function getAnnouncementAuthors(
+  hubId: string | null,
+): Promise<AnnouncementAuthor[]> {
+  const stored = await getSetting(hubId, KEYS.PEOPLE_ANNOUNCEMENT_AUTHORS);
   if (stored) {
     try {
       const parsed = JSON.parse(stored) as unknown;
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.every((e) => typeof e === "object")) {
         return normalizeAuthors(parsed);
       }
     } catch {
-      // Fall through to env var — corrupt row shouldn't lock out Board
-      // members who worked yesterday.
+      // A corrupt row must not lock out board members who posted yesterday.
     }
   }
-  // Env var fallback: CIVIC_BOARD_EMAILS → all entries labeled "Board member"
-  const envRaw = process.env.CIVIC_BOARD_EMAILS ?? "";
-  const envList = envRaw
-    .split(",")
-    .map((e) => e.trim())
-    .filter((e) => e.length > 0)
-    .map((email) => ({ email, label: "Board member" }));
-  return normalizeAuthors(envList);
+  // Board emails, each labelled generically, so a hub that has only ever set
+  // the roster still has working authors.
+  const board = await getSetting(hubId, KEYS.PEOPLE_BOARD_EMAILS);
+  return normalizeAuthors(
+    asList(board).map((email) => ({ email, label: "Board member" })),
+  );
 }
 
 export async function setAnnouncementAuthors(
-  authors: AnnouncementAuthor[],
+  hubId: string,
+  authors: readonly AnnouncementAuthor[],
   updatedBy: string | null,
 ): Promise<AnnouncementAuthor[]> {
-  const cleaned = normalizeAuthors(authors);
+  const cleaned = normalizeAuthors([...authors]);
   await setSetting(
-    SETTING_KEYS.ANNOUNCEMENT_AUTHORS,
+    hubId,
+    KEYS.PEOPLE_ANNOUNCEMENT_AUTHORS,
     JSON.stringify(cleaned),
     updatedBy,
   );
@@ -193,124 +301,109 @@ function normalizeAuthors(raw: unknown[]): AnnouncementAuthor[] {
     const lower = email.toLowerCase();
     if (seen.has(lower)) continue;
     seen.add(lower);
-    // Store name only when present, so existing { email, label } rows stay clean.
     out.push(name ? { email, name, label } : { email, label });
   }
   return out;
 }
 
-// --- Officials migration latch ---
+export async function lookupAuthor(
+  hubId: string | null,
+  email: string | undefined | null,
+): Promise<AnnouncementAuthor | null> {
+  if (!email) return null;
+  const lower = email.toLowerCase();
+  for (const a of await getAnnouncementAuthors(hubId)) {
+    if (a.email.toLowerCase() === lower) return a;
+  }
+  return null;
+}
+
+export async function lookupAuthorLabel(
+  hubId: string | null,
+  email: string | undefined | null,
+): Promise<string | null> {
+  return (await lookupAuthor(hubId, email))?.label ?? null;
+}
+
+// --- officials migration latch -------------------------------------------
 
 /**
- * True once the officials roster lives on user rows. See
- * SETTING_KEYS.OFFICIALS_MIGRATED. Any unreadable / unset value means
- * "not yet", which keeps the legacy fallbacks live — failing toward
+ * True once the officials roster lives on user rows. Anything unreadable
+ * means "not yet", which keeps the legacy fallbacks live — failing toward
  * people still being able to post, never toward locking them out.
  */
-export async function areOfficialsMigrated(): Promise<boolean> {
+export async function areOfficialsMigrated(hubId: string | null): Promise<boolean> {
   try {
-    return (await getSetting(SETTING_KEYS.OFFICIALS_MIGRATED)) === "true";
+    return (await getSetting(hubId, KEYS.PEOPLE_OFFICIALS_MIGRATED)) === "true";
   } catch {
     return false;
   }
 }
 
 export async function setOfficialsMigrated(
+  hubId: string,
   updatedBy: string | null,
 ): Promise<void> {
-  await setSetting(SETTING_KEYS.OFFICIALS_MIGRATED, "true", updatedBy);
+  await setSetting(hubId, KEYS.PEOPLE_OFFICIALS_MIGRATED, "true", updatedBy);
 }
 
-// --- Beta allowlist ---
+// --- email ----------------------------------------------------------------
 
-export interface WaitlistEntry {
-  email: string;
-  created_at: string;
-  /** Optional — the form never requires it. */
-  name: string | null;
-  notes: string | null;
-  /** Opted in to "I'd like to be a test user" on the waitlist form. */
-  wants_test_user: boolean;
+export function getEmailFromNameSync(): string | undefined {
+  return getSettingSync(KEYS.EMAIL_FROM_NAME);
 }
 
-export async function getBetaAllowlist(): Promise<string[]> {
-  const stored = await getSetting(SETTING_KEYS.BETA_ALLOWLIST);
-  const raw = stored ?? "";
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const part of raw.split(",")) {
-    const trimmed = part.trim().toLowerCase();
-    if (!trimmed) continue;
-    if (seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    out.push(trimmed);
-  }
-  return out;
+export function getEmailFromAddressSync(): string | undefined {
+  return getSettingSync(KEYS.EMAIL_FROM_ADDRESS);
+}
+
+export function getPostalAddressSync(): string | undefined {
+  return getSettingSync(KEYS.EMAIL_POSTAL_ADDRESS);
+}
+
+// --- beta -----------------------------------------------------------------
+
+export async function getBetaAllowlist(hubId: string | null): Promise<string[]> {
+  return asEmailList(await getSetting(hubId, KEYS.BETA_ALLOWLIST));
 }
 
 export async function setBetaAllowlist(
-  emails: string[],
+  hubId: string,
+  emails: readonly string[],
   updatedBy: string | null,
 ): Promise<string[]> {
-  const seen = new Set<string>();
-  const cleaned: string[] = [];
-  for (const raw of emails) {
-    const trimmed = typeof raw === "string" ? raw.trim().toLowerCase() : "";
-    if (!trimmed) continue;
-    if (seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    cleaned.push(trimmed);
-  }
-  await setSetting(SETTING_KEYS.BETA_ALLOWLIST, cleaned.join(","), updatedBy);
+  const cleaned = asEmailList(encodeList([...emails]));
+  await setSetting(hubId, KEYS.BETA_ALLOWLIST, encodeList(cleaned), updatedBy);
   return cleaned;
 }
 
 export async function isEmailOnBetaAllowlist(
+  hubId: string | null,
   email: string,
 ): Promise<boolean> {
-  const list = await getBetaAllowlist();
-  return list.includes(email.trim().toLowerCase());
+  return (await getBetaAllowlist(hubId)).includes(email.trim().toLowerCase());
 }
 
-export async function getWaitlist(): Promise<WaitlistEntry[]> {
-  const { data, error } = await getDb()
-    .from("waitlist")
-    .select("email, created_at, name, notes, wants_test_user")
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(`hubSettings.getWaitlist: ${error.message}`);
-  return (data ?? []) as WaitlistEntry[];
-}
-
-// --- Announcement authors ---
-
-/**
- * Look up an email in the announcement author list. Returns the label to
- * stamp on new announcements and render on their public page, or null if
- * the email isn't authorized.
- */
-export async function lookupAuthorLabel(
-  email: string | undefined | null,
-): Promise<string | null> {
-  return (await lookupAuthor(email))?.label ?? null;
+export function isBetaEnabledSync(): boolean {
+  return asBoolean(getSettingSync(KEYS.BETA_ENABLED), false);
 }
 
 /**
- * Look up an email in the announcement author list. Returns the full author
- * entry (label + admin-curated name), or null if the email isn't authorized.
+ * Is this hub a demo? A demo hub does not email sign-in codes and accepts any
+ * six digits, so visitors can look around without an inbox.
+ *
+ * Never public: the client is told it is a demo by the sign-in response, not
+ * by the config endpoint, so nothing about the bypass is in the bundle.
  */
-export async function lookupAuthor(
-  email: string | undefined | null,
-): Promise<AnnouncementAuthor | null> {
-  if (!email) return null;
-  const lower = email.toLowerCase();
-  const authors = await getAnnouncementAuthors();
-  for (const a of authors) {
-    if (a.email.toLowerCase() === lower) return a;
-  }
-  return null;
+export function isDemoHubSync(): boolean {
+  return asBoolean(getSettingSync(KEYS.BETA_DEMO_MODE), false);
 }
 
-// --- Comment identity mode ---
+export async function isDemoHub(hubId: string | null): Promise<boolean> {
+  return asBoolean(await getSetting(hubId, KEYS.BETA_DEMO_MODE), false);
+}
+
+// --- moderation -----------------------------------------------------------
 
 /**
  * Hub-wide identity policy for community comments:
@@ -319,9 +412,8 @@ export async function lookupAuthor(
  *                        anonymity per comment (launch default)
  *   anonymous_only     — all comments are anonymous
  *
- * Votes are always ballot-secret and process creation is always
- * real-name — those are structural, not settings. This key only
- * governs comments.
+ * Votes are always ballot-secret and process creation is always real-name.
+ * Those are structural, not settings; this key only governs comments.
  */
 export type CommentIdentityMode =
   | "real_name"
@@ -336,15 +428,29 @@ export const COMMENT_IDENTITY_MODES: CommentIdentityMode[] = [
 
 const DEFAULT_COMMENT_IDENTITY_MODE: CommentIdentityMode = "anonymous_optional";
 
-export async function getCommentIdentityMode(): Promise<CommentIdentityMode> {
-  const stored = await getSetting(SETTING_KEYS.COMMENT_IDENTITY_MODE);
-  if (stored && (COMMENT_IDENTITY_MODES as string[]).includes(stored)) {
-    return stored as CommentIdentityMode;
+function coerceIdentityMode(raw: string | undefined): CommentIdentityMode {
+  if (raw && (COMMENT_IDENTITY_MODES as string[]).includes(raw)) {
+    return raw as CommentIdentityMode;
   }
   return DEFAULT_COMMENT_IDENTITY_MODE;
 }
 
+export async function getCommentIdentityMode(
+  hubId: string | null,
+): Promise<CommentIdentityMode> {
+  return coerceIdentityMode(
+    await getSetting(hubId, KEYS.MODERATION_COMMENT_IDENTITY_MODE),
+  );
+}
+
+export function getCommentIdentityModeSync(): CommentIdentityMode {
+  return coerceIdentityMode(
+    getSettingSync(KEYS.MODERATION_COMMENT_IDENTITY_MODE),
+  );
+}
+
 export async function setCommentIdentityMode(
+  hubId: string,
   mode: string,
   updatedBy: string | null,
 ): Promise<CommentIdentityMode> {
@@ -353,34 +459,71 @@ export async function setCommentIdentityMode(
       `Invalid comment identity mode "${mode}". Valid: ${COMMENT_IDENTITY_MODES.join(", ")}`,
     );
   }
-  await setSetting(SETTING_KEYS.COMMENT_IDENTITY_MODE, mode, updatedBy);
+  await setSetting(
+    hubId,
+    KEYS.MODERATION_COMMENT_IDENTITY_MODE,
+    mode,
+    updatedBy,
+  );
   return mode as CommentIdentityMode;
 }
 
-// --- Support threshold ---
-//
-// Endorsements a resident-submitted vote needs before it opens for ballots.
-// Read once at submission and snapshotted onto the vote (see
-// supportPhaseConfig in civic.vote), so changing it never moves a vote that
-// is already gathering support. 0 is legal and means no support phase at
-// all: approval opens the vote directly.
+// --- plugin settings ------------------------------------------------------
 
-const HARDCODED_DEFAULT_THRESHOLD = 5;
+/** Everything is on unless a hub explicitly switches it off. */
+export function isPluginEnabledSync(pluginId: string): boolean {
+  return asBoolean(getSettingSync(`plugin.${pluginId}.enabled`), true);
+}
 
-export async function getSupportThreshold(): Promise<number> {
-  const stored = await getSetting(SETTING_KEYS.SUPPORT_THRESHOLD);
-  if (stored !== null) {
-    const n = parseInt(stored, 10);
-    if (!Number.isNaN(n) && n >= 0) return n;
-  }
-  return HARDCODED_DEFAULT_THRESHOLD;
+export async function isPluginEnabled(
+  hubId: string | null,
+  pluginId: string,
+): Promise<boolean> {
+  return asBoolean(await getSetting(hubId, `plugin.${pluginId}.enabled`), true);
+}
+
+/**
+ * Endorsements a resident-submitted vote needs before it opens for ballots.
+ * Read once at submission and snapshotted onto the vote, so changing it never
+ * moves a vote that is already gathering support. 0 means no support phase:
+ * approval opens the vote directly.
+ */
+const DEFAULT_SUPPORT_THRESHOLD = 5;
+
+export async function getSupportThreshold(hubId: string | null): Promise<number> {
+  const n = asNumber(
+    await getSetting(hubId, KEYS.PLUGIN_VOTE_SUPPORT_THRESHOLD),
+    DEFAULT_SUPPORT_THRESHOLD,
+  );
+  return n >= 0 ? n : DEFAULT_SUPPORT_THRESHOLD;
 }
 
 export async function setSupportThreshold(
+  hubId: string,
   value: number,
   updatedBy: string | null,
 ): Promise<number> {
   const clamped = Math.max(0, Math.round(value));
-  await setSetting(SETTING_KEYS.SUPPORT_THRESHOLD, String(clamped), updatedBy);
+  await setSetting(
+    hubId,
+    KEYS.PLUGIN_VOTE_SUPPORT_THRESHOLD,
+    String(clamped),
+    updatedBy,
+  );
   return clamped;
 }
+
+// --- waitlist -------------------------------------------------------------
+//
+// Not a setting — a table — but it has always lived behind this module's
+// front door and the admin surface reads it alongside the settings.
+
+export interface WaitlistEntry {
+  email: string;
+  created_at: string;
+  name: string | null;
+  notes: string | null;
+  wants_test_user: boolean;
+}
+
+export { getWaitlist } from "../db/waitlistStore.js";

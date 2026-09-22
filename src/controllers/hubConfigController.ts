@@ -18,6 +18,7 @@
 
 import type { Request, Response } from "express";
 import { getCommentIdentityMode } from "../services/hubSettings.js";
+import { currentHubId } from "../config/hubContext.js";
 import type { Hub } from "../models/hub.js";
 
 /** The hub fields the contract makes public. */
@@ -160,7 +161,7 @@ async function publicSettings(hub: Hub): Promise<Record<string, string>> {
  */
 async function safeCommentIdentityMode(): Promise<string | undefined> {
   try {
-    return await getCommentIdentityMode();
+    return await getCommentIdentityMode(currentHubId());
   } catch (e) {
     console.error(
       `[hub-config] comment identity mode unavailable: ${e instanceof Error ? e.message : String(e)}`,

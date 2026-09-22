@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getHubByHostname: vi.fn(),
   getHubBySlug: vi.fn(),
+  fetchHubSettings: vi.fn(),
 }));
 
 vi.mock("../../src/db/hubs.js", () => ({
@@ -20,6 +21,16 @@ vi.mock("../../src/db/hubs.js", () => ({
   getHubBySlug: mocks.getHubBySlug,
   listActiveHubs: vi.fn(),
   invalidateHubCache: vi.fn(),
+}));
+
+// The resolver loads the hub's settings into the request scope. That is a
+// database read, and this layer has no database.
+vi.mock("../../src/db/hubSettingsStore.js", () => ({
+  fetchHubSettings: mocks.fetchHubSettings,
+  fetchHubSettingRows: vi.fn(),
+  writeHubSetting: vi.fn(),
+  writeHubSettings: vi.fn(),
+  invalidateHubSettings: vi.fn(),
 }));
 
 const {
@@ -113,6 +124,8 @@ beforeEach(() => {
   mocks.getHubBySlug.mockReset();
   mocks.getHubByHostname.mockResolvedValue(null);
   mocks.getHubBySlug.mockResolvedValue(null);
+  mocks.fetchHubSettings.mockReset();
+  mocks.fetchHubSettings.mockResolvedValue({});
   process.env.NODE_ENV = "development";
   delete process.env.CIVIC_DEV_HUB;
 });

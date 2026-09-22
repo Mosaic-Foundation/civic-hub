@@ -15,10 +15,20 @@ vi.mock("../../src/services/officials.js", () => ({
   lookupOfficialByEmail: mocks.lookupOfficialByEmail,
 }));
 
-vi.mock("../../src/services/hubSettings.js", () => ({
-  lookupAuthor: mocks.lookupAuthor,
-  areOfficialsMigrated: mocks.areOfficialsMigrated,
-}));
+// Only the two lookups are stubbed. The admin/board rosters come from the
+// real readers, which fall back to CIVIC_ADMIN_EMAILS / CIVIC_BOARD_EMAILS
+// when no hub is in scope — which is the case here, since these functions are
+// called directly rather than through a request. Stubbing them too would mean
+// the test no longer exercises the env fallback that every cron and script
+// depends on.
+vi.mock("../../src/services/hubSettings.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/services/hubSettings.js")>();
+  return {
+    ...actual,
+    lookupAuthor: mocks.lookupAuthor,
+    areOfficialsMigrated: mocks.areOfficialsMigrated,
+  };
+});
 
 const { resolveAuthorship, resolveOfficial, isAdminEmail } = await import(
   "../../src/middleware/auth.js"

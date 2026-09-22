@@ -15,6 +15,7 @@ import { getDb } from "../../db/client.js";
 import { generateId } from "../../utils/id.js";
 import { sendEmail } from "../../utils/email.js";
 import { isEmailOnBetaAllowlist } from "../../services/hubSettings.js";
+import { currentHubId } from "../../config/hubContext.js";
 import type { User, PendingVerification, Session } from "./models.js";
 
 export type { User, PendingVerification, Session } from "./models.js";
@@ -152,7 +153,7 @@ export async function requestVerification(
       .map((e) => e.trim().toLowerCase())
       .filter((e) => e.length > 0);
     if (!adminEmails.includes(normalizedEmail)) {
-      const allowed = await isEmailOnBetaAllowlist(normalizedEmail);
+      const allowed = await isEmailOnBetaAllowlist(currentHubId(), normalizedEmail);
       if (!allowed) {
         throw new Error("This hub is currently in private beta.");
       }

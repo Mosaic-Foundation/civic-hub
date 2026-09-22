@@ -20,6 +20,7 @@
 
 import type { NextFunction, Request, Response } from "express";
 import { getHubByHostname, getHubBySlug } from "../db/hubs.js";
+import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { runWithHub } from "../config/hubContext.js";
 import { isWellFormedHubSlug, type Hub } from "../models/hub.js";
 
@@ -236,6 +237,12 @@ export async function resolveHub(
     return;
   }
 
+  // Load the hub's settings once, here, and carry them with the hub for the
+  // rest of the request. Loading them per read would put a round trip inside
+  // isAdminEmail(), which runs on paths served to every visitor; loading them
+  // here is what lets those readers stay synchronous.
+  const settings = await fetchHubSettings(hub.id);
+
   req.hub = hub;
-  runWithHub(hub, () => next());
+  runWithHub(hub, settings, () => next());
 }

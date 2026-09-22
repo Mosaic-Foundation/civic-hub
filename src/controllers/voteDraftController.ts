@@ -12,6 +12,7 @@ import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/inde
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { supportPhaseConfig } from "../modules/civic.vote/index.js";
 import { getSupportThreshold } from "../services/hubSettings.js";
+import { currentHubId } from "../config/hubContext.js";
 
 // Assistant conversation + Code of Conduct review live on the shared
 // /assistant routes (assistantController), dispatched through the registry.
@@ -173,7 +174,7 @@ export async function handleSubmitVoteDraft(
     const stateInput: Record<string, unknown> = {
       method: voteMethod,
       voting_duration_ms: draft.voting_duration_ms,
-      ...supportPhaseConfig(await getSupportThreshold()),
+      ...supportPhaseConfig(await getSupportThreshold(currentHubId())),
     };
     if (voteMethod === "approval" && Array.isArray(draft.custom_options)) {
       stateInput.options = draft.custom_options;

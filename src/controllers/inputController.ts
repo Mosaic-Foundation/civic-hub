@@ -23,6 +23,7 @@ import {
 } from "../services/creatorDisplay.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import { HUB_ID } from "../config/hub.js";
+import { currentHubId } from "../config/hubContext.js";
 
 
 async function proposalExists(id: string): Promise<boolean> {
@@ -125,7 +126,7 @@ export async function handleSubmitInput(
     // Hub-wide identity policy for comments. The mode overrides the
     // caller's flag in both directions so a stale client can't bypass
     // the admin's setting.
-    const mode = await getCommentIdentityMode();
+    const mode = await getCommentIdentityMode(currentHubId());
     let isAnonymous = is_anonymous === true;
     if (mode === "real_name") isAnonymous = false;
     if (mode === "anonymous_only") isAnonymous = true;
@@ -165,7 +166,7 @@ export async function handleGetCommentIdentityMode(
   res: Response,
 ): Promise<void> {
   try {
-    const mode = await getCommentIdentityMode();
+    const mode = await getCommentIdentityMode(currentHubId());
     res.json({ mode });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
