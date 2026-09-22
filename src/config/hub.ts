@@ -1,3 +1,23 @@
+// Hub identity + jurisdiction for whichever hub is serving the request.
+//
+// MULTI-TENANT NOTE (Phase 1). These used to be deployment-wide constants read
+// from env. They now read the hub resolved by src/middleware/hub.ts, via the
+// request-scoped accessor in ./hubContext.ts, and fall back to the env vars
+// only when no request is in scope — crons, scripts, boot — or when a
+// single-hub self-hosted deployment has no hubs row to find. The env vars stay
+// documented in .env.example for exactly that case.
+//
+// Two exports are deliberately NOT request-scoped yet:
+//   HUB_ID               the PROTOCOL identity stamped on published
+//                        activities as source.hub_id. It is not hubs.id and
+//                        must not be derived from it (BUILD-PLAN contract 1).
+//   DEFAULT_JURISDICTION the event `jurisdiction` field. It becomes per-hub
+//                        in Phase 2, together with the rest of event
+//                        emission; converting it here alone would leave
+//                        events half hub-scoped.
+//
+// Original note follows.
+//
 // Single source of truth for this deployment's hub identity + jurisdiction.
 // Previously "civic-hub-local" / "local" were hardcoded in ~9 files, so prod
 // Floyd events carried hub_id "civic-hub-local", and the discovery manifest
@@ -9,6 +29,7 @@
 //   CIVIC_JURISDICTION=us-va-floyd
 //   CIVIC_SPACE_DID=did:web:floyd.civic.social
 import { baseUrl } from "../utils/baseUrl.js";
+import { currentHub } from "./hubContext.js";
 
 export const HUB_ID = process.env.CIVIC_HUB_ID ?? "civic-hub-local";
 export const DEFAULT_JURISDICTION = process.env.CIVIC_JURISDICTION ?? "local";
@@ -40,8 +61,16 @@ export function normalizePlaceCode(
   return trimmed;
 }
 
-/** This deployment's own place code, or null when it has no civic geography. */
+/**
+ * The serving hub's place code, or null when it has no civic geography.
+ *
+ * Reads the hub resolved for the request in flight. Falls back to the env var
+ * when there is no request in scope — crons, scripts, boot — which is also
+ * what keeps a single-hub self-hosted deployment working unchanged.
+ */
 export function civicPlaceCode(): string | null {
+  const hub = currentHub();
+  if (hub) return normalizePlaceCode(hub.jurisdiction_code);
   return normalizePlaceCode(process.env.CIVIC_JURISDICTION ?? DEFAULT_JURISDICTION);
 }
 
@@ -50,12 +79,19 @@ export function civicPlaceCode(): string | null {
  * Optional — when unset, serialized `location` objects carry only the code.
  */
 export function civicPlaceName(): string | null {
+  const hub = currentHub();
+  if (hub) {
+    const fromHub = hub.jurisdiction_name?.trim();
+    return fromHub ? fromHub : null;
+  }
   const name = process.env.CIVIC_JURISDICTION_NAME?.trim();
   return name ? name : null;
 }
 
 /** Display name of this space, used in `generator.name` and email surfaces. */
 export function hubName(): string {
+  const hub = currentHub();
+  if (hub) return hub.name;
   return process.env.HUB_NAME?.trim() || "Floyd Civic Hub";
 }
 
@@ -71,6 +107,8 @@ export function hubName(): string {
  * with CIVIC_SPACE_DID once the space's DID is minted.
  */
 export function spaceDid(): string {
+  const hub = currentHub();
+  if (hub) return hub.space_did;
   const configured = process.env.CIVIC_SPACE_DID?.trim();
   if (configured) return configured;
   return deriveDidWeb(baseUrl());

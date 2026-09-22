@@ -50,6 +50,7 @@ import {
 import { handleListAnnouncements } from "./controllers/announcementController.js";
 import { assertSpaceIdentityConfigured } from "./config/hub.js";
 import { ensureSeeded } from "./debug/autoSeed.js";
+import { resolveHub } from "./middleware/hub.js";
 import { pingDb } from "./db/client.js";
 import { validateEmailConfig } from "./utils/email.js";
 import { validateSchemaAtStartup, getSchemaReport } from "./db/schemaCheck.js";
@@ -101,6 +102,13 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Hub resolution — hostname to hub, before anything reads or writes data.
+// One deployment serves many hubs, so which hub a request belongs to is the
+// first thing that has to be true. A hostname no hub claims stops here.
+// Exempt: /health and /internal/* (the deployment's own surfaces, not any
+// hub's). See src/middleware/hub.ts.
+app.use(resolveHub as express.RequestHandler);
 
 app.use(express.json());
 
