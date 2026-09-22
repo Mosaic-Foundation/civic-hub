@@ -278,4 +278,215 @@ _checklist to be pasted_
 
 ## Phase 3 approach (verified)
 
-<!-- PHASE3_VERIFIED -->
+Verified 2026-09-22 against a throwaway local Supabase (`supabase start`,
+CLI 2.110.0, Postgres 17.6, PostgREST v14.15, supabase-js 2.103). The table
+and the local stack were deleted afterwards; nothing here touched any hosted
+project. Both signing paths were exercised — the legacy HS256 shared secret
+and an asymmetric ES256 signing key — and both isolate hubs correctly.
+
+### The mechanism
+
+A `hub_id` claim in the request's JWT, read by a forced RLS policy. The
+server mints a short-lived token per request; the database, not the code, is
+what stops a query from crossing hubs.
+
+```sql
+alter table public.<t> enable row level security;
+alter table public.<t> force  row level security;
+
+-- (select ...) so the claim is evaluated once per statement, not once per row.
+create policy tenant_isolation on public.<t>
+  as permissive for all to authenticated
+  using      (hub_id = (select current_setting('request.jwt.claims', true)::json->>'hub_id'))
+  with check (hub_id = (select current_setting('request.jwt.claims', true)::json->>'hub_id'));
+
+grant select, insert, update, delete on public.<t> to authenticated, service_role;
+```
+
+`auth.jwt()` is the same value — locally it is defined as
+`coalesce(current_setting('request.jwt.claim'), current_setting('request.jwt.claims'))::jsonb`
+— so `auth.jwt()->>'hub_id'` works identically. Prefer `current_setting`,
+which has no dependency on the `auth` schema and keeps the policy readable
+in a plain `psql` session.
+
+### Minting the token (the snippet `forHub()` will use)
+
+ES256, which is the production path (see "Which key to use" below). The
+private key is a JWK on the server; `kid` in the header tells PostgREST
+which JWKS entry to verify with.
+
+```js
+import { createPrivateKey, createSign } from "node:crypto";
+
+const jwk = JSON.parse(process.env.CIVIC_HUB_SIGNING_KEY); // { kty:"EC", crv:"P-256", d, x, y, kid, alg:"ES256" }
+const privateKey = createPrivateKey({ key: jwk, format: "jwk" });
+const b64url = (s) => Buffer.from(s).toString("base64url");
+
+/** Short-lived, hub-scoped. 60 s is ample: it is minted per request. */
+export function mintHubToken(hubId, ttlSeconds = 60) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "ES256", kid: jwk.kid, typ: "JWT" };
+  const payload = {
+    iss: "civic-hub",
+    role: "authenticated", // MUST be a real Postgres role
+    hub_id: hubId,         // the claim the RLS policy reads
+    iat: now,
+    exp: now + ttlSeconds,
+  };
+  const input = `${b64url(JSON.stringify(header))}.${b64url(JSON.stringify(payload))}`;
+  // ES256 signatures are raw r||s (64 bytes), not DER — hence ieee-p1363.
+  const sig = createSign("SHA256")
+    .update(input)
+    .sign({ key: privateKey, dsaEncoding: "ieee-p1363" });
+  return `${input}.${sig.toString("base64url")}`;
+}
+
+export function clientForHub(hubId) {
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${mintHubToken(hubId)}` } },
+  });
+}
+```
+
+The HS256 variant is the same function with
+`createHmac("sha256", JWT_SECRET).update(input).digest("base64url")` and a
+header of `{ alg: "HS256", typ: "JWT" }` (no `kid`). It was verified first
+and behaves identically; it is the fallback if the signing-keys migration
+slips.
+
+### What the spike proved
+
+Five rows, two rows for hub `a` and three for hub `b`:
+
+| Caller | Result |
+|---|---|
+| Publishable key + token with `hub_id: 'a'` | hub a's 2 rows only |
+| Publishable key + token with `hub_id: 'b'` | hub b's 3 rows only |
+| Publishable key, no user token (`anon` role) | denied, no rows |
+| Secret key (`sb_secret_…`, `service_role`) | all 5 rows — RLS bypassed |
+| As hub a, `insert { hub_id: 'b' }` | rejected, SQLSTATE 42501, `new row violates row-level security policy` |
+| As hub a, `insert { hub_id: 'a' }` | accepted |
+| As hub a, `update … where hub_id = 'b'` | 0 rows affected |
+| Tampered signature | 401 `PGRST301` — `None of the keys was able to decode the JWT` |
+
+### Findings that change what Phase 2 and Phase 3 must do
+
+1. **Migrations must grant table privileges explicitly.** The 47 existing
+   migrations contain zero `GRANT` statements; they work because the hosted
+   project's `supabase_admin` default ACLs grant `authenticated` and
+   `service_role` full DML on new tables in `public`. On a local stack a
+   table created by the `postgres` role gets only `TRUNCATE/REFERENCES/
+   TRIGGER` for those roles, so the first spike run had the service role
+   denied on its own table. Every migration from Phase 2 on ends with an
+   explicit `grant select, insert, update, delete on <table> to
+   authenticated, service_role;`, and the Phase 6 rehearsal (restoring a
+   production dump locally) will otherwise diverge from production.
+
+2. **A token with no `role` claim silently becomes `anon`.** It is not an
+   error; PostgREST simply runs the request as `anon`, which under
+   default-deny returns "permission denied". `mintHubToken` must always set
+   `role`, and a unit test must assert it — a missing claim would look like
+   a permissions bug, not an auth bug.
+
+3. **PostgREST tolerates about 30 seconds of expiry slack.** Measured: a
+   token expired by 5, 15 or 30 seconds was accepted; 45 seconds and beyond
+   returned 401 `PGRST303 JWT expired`. Fine for clock skew, but it means a
+   60-second TTL is really up to 90 seconds of validity. Do not treat the
+   token as a revocation mechanism; hub suspension is enforced by the
+   resolver, not by token expiry.
+
+4. **`hub_id` needs an index on every table.** The policy is an equality
+   filter evaluated against candidate rows; without the index, every
+   policy-checked scan is a seq scan. Phase 2 adds
+   `create index <t>_hub_id_idx on <t> (hub_id)` in the same migration as
+   the column.
+
+5. **The control plane keeps the service role.** It reads `hubs` and does
+   cross-hub work, and `service_role` has `rolbypassrls = true`, so it is
+   unaffected by the policies. That is exactly why the lint rule in Phase 2
+   matters: the service-role client must not be reachable from request
+   handlers.
+
+### Which key to use in production
+
+Supabase now has two systems, and the local stack runs both, which is what
+made the difference visible:
+
+- **Legacy shared secret (HS256).** One `JWT_SECRET` signs everything,
+  including the `anon` and `service_role` keys. The docs call this "no
+  longer recommended", and HS256 specifically "not recommended for
+  production". Supabase's API-keys documentation states it is **"deprecating
+  the `anon` and `service_role` keys by the end of 2026"**.
+- **JWT signing keys (ES256 / RS256).** Asymmetric; the public key is
+  served at `/auth/v1/.well-known/jwks.json`, the private key is held by
+  whoever mints tokens, and each key has a `kid`. ES256 is Supabase's
+  recommendation. Paired with the new API keys: `sb_publishable_…` in place
+  of `anon`, `sb_secret_…` in place of `service_role` (it still resolves to
+  the `service_role` Postgres role and still bypasses RLS — confirmed in
+  the spike).
+
+**Recommendation: mint hub tokens with an ES256 signing key, and move the
+server to `sb_publishable_…` / `sb_secret_…` in the same phase.** Reasons:
+the legacy keys are on a stated end-of-2026 deprecation, Floyd's project
+predates the signing-keys system so it has to be migrated at some point
+anyway, and doing it during the tenancy conversion means one coordinated
+key change rather than two. The migration is non-breaking while it lasts:
+with no `signing_keys_path` set, the local stack's PostgREST held **both**
+an ES256 JWKS entry and the HS256 `oct` secret and accepted tokens signed
+either way — that is the hosted "Migrate JWT secret" window, where old and
+new tokens both verify. Once `signing_keys_path` pointed at a generated
+key, PostgREST held only the ES256 key and the HS256 token was refused with
+`PGRST301 No suitable key was found to decode the JWT` — which is exactly
+what revoking the legacy secret looks like, and is the step that must come
+last.
+
+Generate the production key with the CLI, never by hand:
+
+```bash
+supabase gen signing-key --algorithm ES256
+```
+
+It emits a JWK with `d` (the private scalar). Import the public half in the
+dashboard under JWT signing keys; keep the private JWK in
+`CIVIC_HUB_SIGNING_KEY` on Vercel (Production scope only) and nowhere else.
+It never goes to the browser: the UI only ever gets the publishable key.
+
+### What the current civic-hub Supabase project means for this
+
+From `supabase/.temp` and `supabase/config.toml` (no credentials read):
+
+- The linked project is **`nfhyypwoporfggqcerli` ("Civic-Hub-Floyd")**,
+  Postgres 17.6.1, PostgREST v14.5, GoTrue v2.190.0 — all recent enough to
+  support JWT signing keys. There is **no `supabase/config.toml` in
+  `civic-hub/`**: the CLI is used only for `db push`, so nothing about local
+  auth configuration is pinned today. Phase 3 adds a `config.toml` so the
+  spike is reproducible and so `supabase start` becomes the rehearsal
+  environment for the cutover.
+- The monorepo root is linked to a **different** project,
+  `ehcyahlmqbqmewdbxdls` ("Website-Civic-Social"), the marketing site. Run
+  every CLI command from `civic-hub/`; a `db push` from the repo root would
+  target the wrong database.
+- The hub authenticates today with `SUPABASE_SERVICE_ROLE_KEY`, a legacy
+  key, from all 51 files that import `getDb()`. So the key change and the
+  `forHub()` conversion are the same piece of work, which is why Phase 2
+  (`forHub()` + lint rule) must land before Phase 3 turns the policies on —
+  enabling forced RLS while any request handler still holds a service-role
+  client would hide the leak the policies are meant to catch.
+- **Do not enable the policies and the new keys in one deploy.** Phase 3's
+  order is: add policies in `permissive` form with the column already
+  back-filled, switch the app to minted tokens, verify against a restored
+  dump locally, and only then revoke the legacy secret.
+
+### Reproducing the spike
+
+The scripts are not committed (they are throwaway, and they contain a local
+private key). To rebuild: `supabase init`, `supabase gen signing-key
+--algorithm ES256 > supabase/signing_keys.json` wrapped in a JSON array,
+set `signing_keys_path` under `[auth]` in `config.toml`, `supabase start`,
+apply the policy above to a two-column table, and run the mint snippet.
+Note that changing `signing_keys_path` requires the containers to be
+**recreated**, not just restarted — a `supabase stop` that leaves the REST
+container up will keep serving the old JWKS and every new token fails with
+"No suitable key".
+
