@@ -7,6 +7,8 @@ import '@fontsource-variable/manrope/index.css'
 import './styles/theme.css'
 import './index.css'
 import App from './App.tsx'
+import { loadHubConfig, applyHubHead } from './config/hubConfig'
+import { HubConfigProvider } from './config/HubConfigContext'
 
 // Slice 11 follow-up: hard-disable pinch zoom on iOS.
 // `maximum-scale=1` in the viewport meta is increasingly ignored by
@@ -53,8 +55,18 @@ if (typeof document !== "undefined") {
   );
 }
 
+// Which hub is this? Decided by the hostname, so it has to be fetched before
+// anything renders: a first paint with the wrong hub's name and banner, then
+// a correction, is worse than waiting one round trip. loadHubConfig never
+// rejects — if the hub cannot be reached we render on the build-time
+// VITE_HUB_* fallbacks rather than showing nothing.
+await loadHubConfig()
+applyHubHead()
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <HubConfigProvider>
+      <App />
+    </HubConfigProvider>
   </StrictMode>,
 )

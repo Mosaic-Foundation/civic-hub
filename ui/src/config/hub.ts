@@ -1,104 +1,183 @@
 /**
- * Hub branding config — read at build time from VITE_HUB_* env vars,
- * with Floyd County defaults baked in. This lets a single codebase
- * power multiple Vercel projects (Floyd production, civic.social
- * demo, future per-county hubs) without per-deployment branches:
- * the same `main` build serves everywhere; each Vercel project
- * sets its own VITE_HUB_* values and gets its own branding.
+ * Hub branding — read from the API at boot, with build-time VITE_HUB_*
+ * variables as fallbacks.
  *
- * Add a new field by extending the `hub` object below and the
- * VITE_HUB_* env-var read above it. Keep the Floyd default
- * accurate so production deployments without overrides keep
- * working.
+ * This used to be a plain object evaluated at import time from VITE_HUB_*
+ * env vars, so each deployment baked one hub's identity into its bundle.
+ * With one deployment serving many hubs, identity is decided by the hostname
+ * at request time: main.tsx fetches /api/hub-config before React renders, and
+ * every property below reads that response.
  *
- * NOT an env-driven concern (these stay code-side):
- *   - Theme colors / fonts (use a separate VITE_HUB_THEME flag and
- *     CSS variable overrides if/when that's needed).
- *   - Legal copy (lives in /content/legal/*.md; see LegalPage.tsx).
- *   - Per-page UI copy that's intrinsically Floyd-civic-specific
- *     (e.g. About-page content describing the hub's mission).
+ * The shape and the import surface are unchanged on purpose — every consumer
+ * still writes `hub.name`. The properties are getters, so they resolve when
+ * read rather than when this module is imported, which is what lets the fetch
+ * happen first without every caller having to await anything.
+ *
+ * Resolution order for each field:
+ *   1. the value the hub serves from /api/hub-config
+ *   2. the VITE_HUB_* build-time variable, for a single-hub self-hosted
+ *      deployment or when the fetch failed
+ *   3. the default baked in below
+ *
+ * NOT served by the API, and deliberately build-time only:
+ *   demo_mode / demo_bypass_code — a sign-in bypass must never be reachable
+ *   from a public endpoint, whatever the convenience. The build plan marks
+ *   these admin-only and they stay compiled in, set only on demo deployments.
+ *
+ * To add a field: add the settings key to the server's public subset in
+ * src/controllers/hubConfigController.ts, then add a getter here. Keep the
+ * fallback accurate so deployments without the row keep working.
  */
+
+import { getLoadedHubConfig, setting } from "./hubConfig";
+
+/** Env var, trimmed, or undefined when unset or blank. */
+function env(value: string | undefined): string | undefined {
+  const v = value?.trim();
+  return v ? v : undefined;
+}
 
 const hub = {
   /**
-   * Display name / wordmark — appears in the top-nav, footer,
-   * intro popup, settings, search header, etc. Not the geographic
-   * jurisdiction.
+   * Display name / wordmark — top-nav, footer, intro popup, settings,
+   * search header. Not the geographic jurisdiction. The hubs row is the
+   * source of truth for this one.
    */
-  name: import.meta.env.VITE_HUB_NAME ?? "Floyd Civic Hub",
+  get name(): string {
+    return (
+      getLoadedHubConfig()?.hub.name ??
+      env(import.meta.env.VITE_HUB_NAME) ??
+      "Floyd Civic Hub"
+    );
+  },
+
   /**
-   * Geographic jurisdiction — appears on the banner / hub-info
-   * card and in residency-affirmation copy. The "place this hub
-   * serves." Stays accurate to the actual served community even
-   * when `name` is rebranded for demo / white-label use.
+   * Geographic jurisdiction — banner, hub-info card, residency copy. The
+   * place this hub serves, which stays accurate even when `name` is
+   * rebranded for demo or white-label use.
    */
-  jurisdiction:
-    import.meta.env.VITE_HUB_JURISDICTION ?? "Floyd County, Virginia",
+  get jurisdiction(): string {
+    return (
+      getLoadedHubConfig()?.hub.jurisdiction_name ??
+      env(import.meta.env.VITE_HUB_JURISDICTION) ??
+      "Floyd County, Virginia"
+    );
+  },
+
+  /** Type label — small caps under the jurisdiction on the banner. */
+  get label(): string {
+    return (
+      setting("identity.label") ?? env(import.meta.env.VITE_HUB_LABEL) ?? "Civic Hub"
+    );
+  },
+
+  /** One-sentence tagline rendered under the jurisdiction. */
+  get tagline(): string {
+    return (
+      setting("identity.tagline") ??
+      env(import.meta.env.VITE_HUB_TAGLINE) ??
+      "Stay informed on Floyd County government, raise the issues that matter, work on projects together, and see where our community stands."
+    );
+  },
+
   /**
-   * Type label — small caps under the jurisdiction on the banner.
+   * Banner image path, relative to the deployment root. Drop new banner
+   * files into ui/public/ and point the hub's setting at their path.
    */
-  label: import.meta.env.VITE_HUB_LABEL ?? "Civic Hub",
+  get banner_url(): string {
+    return (
+      setting("identity.banner_url") ??
+      env(import.meta.env.VITE_HUB_BANNER_URL) ??
+      "/floyd-banner.jpg"
+    );
+  },
+
+  /** Alt text for the banner — also used as og:image:alt. */
+  get banner_alt(): string {
+    return (
+      setting("identity.banner_alt") ??
+      env(import.meta.env.VITE_HUB_BANNER_ALT) ??
+      "Downtown Floyd, Virginia — the Floyd Civic Hub"
+    );
+  },
+
   /**
-   * One-sentence tagline rendered under the jurisdiction.
+   * Governance terminology. The elected body votes are delivered to and
+   * whose meetings get summarized: a Board of Supervisors, a Town Council,
+   * a City Council. The long form is for delivered-to text and admin pages;
+   * the short form is for pills and filter labels where width matters.
    */
-  tagline:
-    import.meta.env.VITE_HUB_TAGLINE ??
-    "Stay informed on Floyd County government, raise the issues that matter, work on projects together, and see where our community stands.",
+  get governing_body_name(): string {
+    return (
+      setting("copy.governing_body_name") ??
+      env(import.meta.env.VITE_HUB_GOVERNING_BODY_NAME) ??
+      "Board of Supervisors"
+    );
+  },
+
+  get governing_body_short(): string {
+    return (
+      setting("copy.governing_body_short") ??
+      env(import.meta.env.VITE_HUB_GOVERNING_BODY_SHORT) ??
+      "BOS"
+    );
+  },
+
+  /** Welcome-popup body and the residency-intro copy in the auth modal. */
+  get intro_body(): string {
+    return (
+      setting("copy.intro_body") ??
+      env(import.meta.env.VITE_HUB_INTRO_BODY) ??
+      "This is where Floyd County residents keep up with county government, raise topics that matter, help make sense of issues together, and have conversations to see where our community stands."
+    );
+  },
+
+  get residency_intro(): string {
+    return (
+      setting("copy.residency_intro") ??
+      env(import.meta.env.VITE_HUB_RESIDENCY_INTRO) ??
+      "To participate in the Floyd Civic Hub, please confirm your residency and review the policies below."
+    );
+  },
+
   /**
-   * Banner image path. Relative to the deployment root — drop new
-   * banner files into `civic-hub/ui/public/` and point this var at
-   * their path. Free-tier deploys get same domain/CDN, so /demo-
-   * banner.jpg works.
+   * Demo affordances — the bypass-code hint on the sign-in modal. BUILD-TIME
+   * ONLY, never served by /api/hub-config: a sign-in bypass that a public
+   * endpoint hands out is not a bypass, it is an open door. Set only on
+   * demo and preview deployments, NEVER on production.
    */
-  banner_url: import.meta.env.VITE_HUB_BANNER_URL ?? "/floyd-banner.jpg",
+  get demo_mode(): boolean {
+    return import.meta.env.VITE_DEMO_MODE === "true";
+  },
+  get demo_bypass_code(): string {
+    return env(import.meta.env.VITE_DEMO_BYPASS_CODE) ?? "";
+  },
+
+  get beta_mode(): boolean {
+    const served = setting("beta.enabled");
+    if (served !== undefined) return served === "true";
+    return import.meta.env.VITE_BETA_MODE === "true";
+  },
+
   /**
-   * Alt text for the banner — also used in og:image:alt.
+   * Polis deliberation instance. When non-empty the Conversations nav item
+   * appears and /deliberations shows the conversations list.
    */
-  banner_alt:
-    import.meta.env.VITE_HUB_BANNER_ALT ??
-    "Downtown Floyd, Virginia — the Floyd Civic Hub",
-  /**
-   * Slice 19a — governance terminology. Per-jurisdiction copy for
-   * the elected body that votes are delivered to and whose meetings
-   * get summarized. Floyd's BoS is "Board of Supervisors"; a town
-   * demo's might be "Town Council"; a city might be "City Council."
-   *
-   * `governing_body_name` is the long form (delivered-to text, admin
-   * pages); `governing_body_short` is the abbreviation used in pills
-   * and filter labels where width matters.
-   */
-  governing_body_name:
-    import.meta.env.VITE_HUB_GOVERNING_BODY_NAME ??
-    "Board of Supervisors",
-  governing_body_short:
-    import.meta.env.VITE_HUB_GOVERNING_BODY_SHORT ?? "BOS",
-  /**
-   * Welcome-popup body and AuthModal residency-intro copy. These are
-   * jurisdiction-specific freeform strings that don't generalize via
-   * a templating placeholder, so they're full-body env-overridable.
-   */
-  intro_body:
-    import.meta.env.VITE_HUB_INTRO_BODY ??
-    "This is where Floyd County residents keep up with county government, raise topics that matter, help make sense of issues together, and have conversations to see where our community stands.",
-  residency_intro:
-    import.meta.env.VITE_HUB_RESIDENCY_INTRO ??
-    "To participate in the Floyd Civic Hub, please confirm your residency and review the policies below.",
-  /**
-   * When true, the UI shows demo-specific affordances (e.g. the
-   * bypass-code hint on the sign-in modal). Set only on demo/preview
-   * Vercel projects — NEVER on production deployments.
-   */
-  demo_mode: import.meta.env.VITE_DEMO_MODE === "true",
-  demo_bypass_code: import.meta.env.VITE_DEMO_BYPASS_CODE ?? "",
-  beta_mode: import.meta.env.VITE_BETA_MODE === "true",
-  /**
-   * Polis deliberation instance URL. When non-empty, the
-   * "Conversations" nav item appears and the /deliberations route
-   * shows the conversations list. Set to "" to disable.
-   */
-  polis_url: import.meta.env.VITE_HUB_POLIS_URL ?? "https://polis.civic.social",
-  onboarding_wordcloud_id:
-    import.meta.env.VITE_HUB_ONBOARDING_WORDCLOUD_ID ?? "",
+  get polis_url(): string {
+    return (
+      setting("plugin.conversation.polis_url") ??
+      env(import.meta.env.VITE_HUB_POLIS_URL) ??
+      "https://polis.civic.social"
+    );
+  },
+
+  get onboarding_wordcloud_id(): string {
+    return (
+      setting("plugin.wordcloud.onboarding_id") ??
+      env(import.meta.env.VITE_HUB_ONBOARDING_WORDCLOUD_ID) ??
+      ""
+    );
+  },
 };
 
 export default hub;

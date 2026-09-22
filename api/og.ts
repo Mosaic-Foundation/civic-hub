@@ -28,15 +28,76 @@ export function isSocialCrawler(userAgent: string): boolean {
   return CRAWLER_RE.test(userAgent);
 }
 
-const HUB_NAME =
+// Build-time fallbacks. Used only when the hub cannot be reached, or on a
+// single-hub self-hosted deployment that has no hubs row.
+const FALLBACK_HUB_NAME =
   process.env.VITE_HUB_PAGE_TITLE ?? "Floyd County, VA — Civic Hub";
-const BANNER_URL =
+const FALLBACK_BANNER_URL =
   process.env.VITE_HUB_BANNER_URL ?? "/floyd-banner.jpg";
-const SITE_URL = (
-  process.env.CIVIC_UI_BASE_URL ??
-  process.env.BASE_URL ??
-  "https://floyd.civic.social"
-).replace(/\/$/, "");
+
+/**
+ * This request's own origin.
+ *
+ * Previously read from env, which made it a per-deployment constant. One
+ * deployment now serves many hubs, so the origin has to come from the request
+ * that arrived — otherwise every hub's share cards would carry the primary
+ * hub's domain, and the /api calls below would resolve the wrong hub.
+ */
+function siteUrlFor(req: IncomingMessage): string {
+  const host = (req.headers.host ?? "").trim().toLowerCase();
+  if (!host) {
+    return (
+      process.env.CIVIC_UI_BASE_URL ??
+      process.env.BASE_URL ??
+      "https://floyd.civic.social"
+    ).replace(/\/$/, "");
+  }
+  const isLocal = host.startsWith("localhost") || host.startsWith("127.0.0.1");
+  return `${isLocal ? "http" : "https"}://${host}`;
+}
+
+interface HubBranding {
+  name: string;
+  bannerUrl: string;
+}
+
+/** Cached per host for the life of the instance; identity rarely changes. */
+const brandingByHost = new Map<string, HubBranding>();
+
+/**
+ * The serving hub's name and banner, from the same /api/hub-config the UI
+ * reads, so a share card and the page it links to never disagree.
+ */
+async function fetchBranding(siteUrl: string): Promise<HubBranding> {
+  const cached = brandingByHost.get(siteUrl);
+  if (cached) return cached;
+
+  const fallback: HubBranding = {
+    name: FALLBACK_HUB_NAME,
+    bannerUrl: FALLBACK_BANNER_URL,
+  };
+  try {
+    const res = await fetch(`${siteUrl}/api/hub-config`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return fallback;
+    const body = (await res.json()) as {
+      hub?: { name?: string };
+      settings?: Record<string, string>;
+    };
+    const branding: HubBranding = {
+      name:
+        body.settings?.["identity.page_title"] ||
+        body.hub?.name ||
+        fallback.name,
+      bannerUrl: body.settings?.["identity.banner_url"] || fallback.bannerUrl,
+    };
+    brandingByHost.set(siteUrl, branding);
+    return branding;
+  } catch {
+    return fallback;
+  }
+}
 
 let cachedIndexHtml: string | null = null;
 
@@ -72,10 +133,14 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;");
 }
 
-function absoluteImage(img: string | undefined | null): string {
-  if (!img) return `${SITE_URL}${BANNER_URL}`;
+function absoluteImage(
+  img: string | undefined | null,
+  siteUrl: string,
+  bannerUrl: string,
+): string {
+  if (!img) return `${siteUrl}${bannerUrl}`;
   if (img.startsWith("http")) return img;
-  return `${SITE_URL}${img}`;
+  return `${siteUrl}${img}`;
 }
 
 interface OgData {
@@ -91,12 +156,15 @@ interface OgData {
  * handler has a detailPath and vercel.json routes that section here
  * (tests/unit/shareMeta.test.ts guards that list).
  */
-async function fetchOgData(pathname: string): Promise<OgData | null> {
+async function fetchOgData(
+  pathname: string,
+  siteUrl: string,
+): Promise<OgData | null> {
   try {
     // `page`, not `path`: Vercel's /api/:path* rewrite appends its own
     // `path=` capture to the query and would clobber ours.
     const res = await fetch(
-      `${SITE_URL}/api/share/meta?page=${encodeURIComponent(pathname)}`,
+      `${siteUrl}/api/share/meta?page=${encodeURIComponent(pathname)}`,
     );
     if (!res.ok) return null;
     const data = (await res.json()) as Partial<OgData>;
@@ -111,12 +179,17 @@ async function fetchOgData(pathname: string): Promise<OgData | null> {
   }
 }
 
-function ogHtml(og: OgData, pathname: string): string {
-  const url = `${SITE_URL}${pathname}`;
-  const image = absoluteImage(og.image);
+function ogHtml(
+  og: OgData,
+  pathname: string,
+  siteUrl: string,
+  branding: HubBranding,
+): string {
+  const url = `${siteUrl}${pathname}`;
+  const image = absoluteImage(og.image, siteUrl, branding.bannerUrl);
   const t = escapeHtml(og.title);
   const d = escapeHtml(og.description);
-  const hubName = escapeHtml(HUB_NAME);
+  const hubName = escapeHtml(branding.name);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -151,12 +224,16 @@ export default async function handler(
   // Vercel's rewrite appends its `:id` capture as a query string; the
   // canonical og:url must be the bare path.
   const pathname = (req.url ?? "/").split("?")[0];
+  const siteUrl = siteUrlFor(req);
 
   if (CRAWLER_RE.test(ua)) {
-    const og = await fetchOgData(pathname);
+    const [og, branding] = await Promise.all([
+      fetchOgData(pathname, siteUrl),
+      fetchBranding(siteUrl),
+    ]);
     if (og) {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(ogHtml(og, pathname));
+      res.end(ogHtml(og, pathname, siteUrl, branding));
       return;
     }
   }
@@ -172,7 +249,7 @@ export default async function handler(
     // catch-all rewrite). We fetch it once and cache for subsequent
     // requests to avoid repeated round-trips.
     try {
-      const cdnRes = await fetch(`${SITE_URL}/index.html`);
+      const cdnRes = await fetch(`${siteUrl}/index.html`);
       if (cdnRes.ok) {
         cachedIndexHtml = await cdnRes.text();
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
