@@ -4,6 +4,136 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Multi-tenant Phase 1 part one: hub registry and runtime config — 2026-09-22
+
+**Branch:** `multi-tenant`, seven commits, not merged. No production change.
+One deployment now serves two hubs from one build, chosen by hostname.
+
+**The shape of it.** `hubs` is a table, the hostname picks the row, the row
+travels with the request through AsyncLocalStorage, and the UI fetches the
+public part of it at boot instead of compiling it in. Floyd's identity moved
+out of four env vars and into a row.
+
+**What runs now that did not before.** `civic-hub/` had no
+`supabase/config.toml`: the CLI was used only for `db push`. There is one
+now, pinning Postgres 17 to match production. Bringing that stack up
+reproduced the Phase 0 finding immediately and completely — not one of the 47
+migrations contains a `GRANT`, so the service role was denied on every table
+and the app could not boot at all. `20260922000000_grant_table_privileges.sql`
+grants DML on every table and usage on every sequence to `authenticated` and
+`service_role`. On the hosted project it is a no-op in effect, because default
+privileges were quietly covering for it. It widens nothing: RLS is on
+everywhere with no permissive policies, so a grant is permission to attempt a
+query and the policy still decides the rows. Granting `authenticated` now is
+what lets Phase 3 turn on policies without also handing out privileges in the
+same step.
+
+Consequence worth having: `tests/api` runs from a clean checkout for the first
+time — 8 files, 68 tests. `npm test` is 73 files, 876 tests. TESTING.md's
+standing note said the CLI-local-stack option for CI "needs `supabase init`
+first"; that blocker is gone and the bonus it hoped for is collected, since
+the migration set is now proven to build a working schema from scratch.
+Wiring it into the workflow is left to Adam because it adds container pull
+time to every push.
+
+**`hubs`.** Exactly the build plan's columns, with four check constraints:
+status, slug shape (2-32 lowercase alphanumerics and hyphens, no leading or
+trailing hyphen), the ten reserved slugs, and hostname stored lowercase —
+a mixed-case hostname would be a row the resolver could never match. Floyd is
+seeded in the migration from the values its deployment carries today. Athens
+is in `supabase/seed.sql`, not in a migration, because seed.sql runs on
+`supabase start` and `db reset` and is never applied by `db push`, so nothing
+there can reach a hosted project.
+
+**The resolver** (`src/middleware/hub.ts`) runs before body parsing and
+seeding. Exact hostname match; then, in development only, a `?hub=` override
+and `<slug>.localhost`, with a bare `localhost` resolving to `CIVIC_DEV_HUB`.
+Both overrides are off in production — a query parameter that changes which
+tenant's data you see is a hole, not a convenience. Dead ends are plain pages
+that name no hub and read nothing from the database. Unknown host is 404; a
+suspended hub is **503, not 404**, because the hub exists and is coming back
+and a 404 tells crawlers to forget it. JSON or HTML is decided by the Accept
+header, not the path: in production every API request is rewritten through
+`/api` and the prefix is stripped before Express sees it, so the path cannot
+tell a navigation from a fetch. `/health` and `/internal/*` are exempt as
+deployment surfaces rather than any hub's.
+
+Identity reaches call sites through AsyncLocalStorage rather than new
+parameters, so `hubName()`, `spaceDid()`, `civicPlaceCode()` and
+`civicPlaceName()` are per-request with env as the fallback when nothing is in
+scope. `HUB_ID` stays env-only: it is the protocol identity on published
+activities, not `hubs.id`. `DEFAULT_JURISDICTION` deliberately waits for
+Phase 2, when event emission becomes hub-scoped as a whole; converting it
+alone would leave events half tenant-aware.
+
+**`GET /api/hub-config`** returns the six public `hubs` columns plus the
+public settings subset under the new dotted names. Phase 1 part one moves the
+NAMES, not the storage: values still come from env via the build plan's alias
+map, so part two can swap in `hub_settings` rows without the UI learning
+anything changed. `Cache-Control: private`, not public — the response differs
+per hostname and a shared cache that keyed it wrongly would put one hub's
+identity on another hub's domain.
+
+**The UI** fetches it in `main.tsx` before the first render. `config/hub.ts`
+keeps its shape and its import surface — all 26 consumers still write
+`hub.name` — but its properties are getters, which is why this is one file
+changed and not twenty-six. Fetching before render rather than correcting
+after is deliberate: a flash of the wrong hub's name is worse than one round
+trip. The loader never rejects and times out at two seconds, falling back to
+the build-time values, so a single-hub self-hosted deployment is unaffected.
+`api/og.ts` now takes its origin from the request's Host and reads the same
+config, so a share card and the page it links to cannot disagree.
+
+**Verified in a browser:** `localhost:5173` and `athens.localhost:5173`, one
+dev server, one build, each showing its own name, jurisdiction and tab title.
+
+**Two things for Adam.**
+
+1. **Confirm two settings keys, or tell me to pull them.** The endpoint serves
+   `plugin.conversation.polis_url` and `plugin.wordcloud.onboarding_id`. The
+   build plan's public subset lists only `plugin.<id>.enabled`, so these are
+   outside the contract as written. They are served because the Conversations
+   nav has nothing to link to without the first and onboarding cannot find its
+   wordcloud without the second; both are already in the client bundle today
+   as `VITE_` variables and are public by nature — a URL rendered as a link,
+   and the id of a public process. **BUILD-PLAN-multi-tenant.md is
+   deliberately unchanged**; the difference lives only in
+   `src/controllers/hubConfigController.ts`, flagged in a comment.
+
+2. **The banner does not differ between hubs yet, and cannot until part two.**
+   Everything sourced from the `hubs` row varies per hostname today: name,
+   jurisdiction, place code, DID. Everything still sourced from env is
+   deployment-wide, and `identity.banner_url` is in that second group. The
+   "Done when" for this slice said name *and banner*; the name half is done
+   and the banner half needs `hub_settings` rows, which is explicitly part
+   two's work.
+
+**Also worth knowing.**
+- The local `.env` points at Supabase project `urfmvqhzmamigssqwsya`, while
+  `supabase/.temp` links `nfhyypwoporfggqcerli` ("Civic-Hub-Floyd"). Two
+  different projects. Nothing was run against either — this session used only
+  a local stack — but somebody should confirm which is which before Phase 6.
+- `demo_bypass_code` remains compiled into the client bundle as a `VITE_`
+  variable. That is pre-existing and correct for a demo deployment, and it is
+  precisely why the build plan keeps it off the public endpoint. Worth a look
+  before launch anyway: on any deployment where it is set, it is readable by
+  anyone who views source.
+- `useCommentIdentityMode()` still makes its own API call for a value that
+  `/api/hub-config` now also carries. Harmless, but it is a second source for
+  one setting; folding it into the config is a small follow-up.
+- The bare `/` route still serves `index.html` with build-time
+  `%VITE_HUB_*%` substitutions for crawlers that do not run JavaScript.
+  Routing `/` through `api/og.ts` would fix it and would put a serverless
+  invocation on the most-visited page, so it was not done.
+
+**Not in this slice, by instruction:** moving settings into `hub_settings`,
+the place-name string sweep, admin UI, and `hub_id` on any other table.
+
+**Tests:** `npm test` — 73 files, 876 tests, green. Backend `tsc` and the UI
+build both clean.
+
+---
+
 ## Multi-tenant Phase 0: prep, contracts, and the token spike — 2026-09-22
 
 **Branch:** `multi-tenant` (created from `main`; not merged). Four commits,

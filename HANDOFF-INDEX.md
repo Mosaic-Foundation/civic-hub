@@ -1,11 +1,11 @@
 # HANDOFF-INDEX.md — read this, not HANDOFF.md
 
-HANDOFF.md is the full build log: 179 dated entries, newest first, ~11,400 lines.
+HANDOFF.md is the full build log: 180 dated entries, newest first, ~11,500 lines.
 Reading it whole costs most of a session's context. Use this index to find the
 entry you need, then read only that line range (`sed -n START,ENDp HANDOFF.md`).
 Line numbers are as of 2026-09-22; new entries are prepended at the top, so add
-the length of anything newer than "Multi-tenant Phase 0" (line 7) to the numbers
-below, or just grep the heading.
+the length of anything newer than "Multi-tenant Phase 1 part one" (line 7) to
+the numbers below, or just grep the heading.
 
 ## Where things are
 
@@ -19,7 +19,9 @@ below, or just grep the heading.
 | Auth, sessions, admin/board resolution | `src/middleware/auth.ts`, `src/modules/civic.auth/` |
 | Process registry and per-type handlers | `src/processes/registry.ts`, `src/processes/*Process.ts` |
 | DB client (service role, the thing tenancy replaces) | `src/db/client.ts` |
-| Migrations (47 files, 30 tables) | `supabase/migrations/` |
+| Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |
+| Local Supabase stack (ports, auth, seed) | `supabase/config.toml`, `supabase/seed.sql` |
+| Migrations (49 files, 31 tables) | `supabase/migrations/` |
 | Cron routes | `vercel.json` "crons" + `src/app.ts` `/internal/*` |
 | Ideas backlog incl. multi-tenancy section | `IDEAS.md` (lines ~137–240) |
 | Multi-tenant contracts and phase checklists | `BUILD-PLAN-multi-tenant.md` |
@@ -46,7 +48,8 @@ below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
-- Phase 0: prep, contracts, and the token spike — 7–104. Contracts live in
+- Phase 1 part one: hubs table, hostname resolver, /api/hub-config, UI — 7–136
+- Phase 0: prep, contracts, and the token spike — 137–253. Contracts live in
   `BUILD-PLAN-multi-tenant.md`; decisions in `../decisions/2026-09-22-multi-tenant.md`.
 
 ### Config, settings, per-hub things (most relevant to multi-tenancy)
