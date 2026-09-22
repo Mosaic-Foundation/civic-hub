@@ -46,9 +46,13 @@ enabled = true
 schema_paths = []
 
 [db.seed]
-# Seeding is the application's job (`GET /debug/seed`, gated behind
-# CIVIC_ALLOW_SEED), not the CLI's. There is no supabase/seed.sql.
-enabled = false
+# Local-only fixtures, applied after migrations on `supabase start` and
+# `supabase db reset`, and never by `supabase db push`. It holds the second
+# hub row (athens) so tenancy is always developed against two tenants.
+# Process/content seeding remains the application's job (`GET /debug/seed`,
+# gated behind CIVIC_ALLOW_SEED).
+enabled = true
+sql_paths = ["./seed.sql"]
 
 [auth]
 enabled = true
