@@ -1,11 +1,11 @@
 # HANDOFF-INDEX.md — read this, not HANDOFF.md
 
-HANDOFF.md is the full build log: 178 dated entries, newest first, ~11,300 lines.
+HANDOFF.md is the full build log: 179 dated entries, newest first, ~11,400 lines.
 Reading it whole costs most of a session's context. Use this index to find the
 entry you need, then read only that line range (`sed -n START,ENDp HANDOFF.md`).
 Line numbers are as of 2026-09-22; new entries are prepended at the top, so add
-the length of anything newer than "Brief: prominent response button" (line 7) to
-the numbers below, or just grep the heading.
+the length of anything newer than "Multi-tenant Phase 0" (line 7) to the numbers
+below, or just grep the heading.
 
 ## Where things are
 
@@ -22,6 +22,7 @@ the numbers below, or just grep the heading.
 | Migrations (47 files, 30 tables) | `supabase/migrations/` |
 | Cron routes | `vercel.json` "crons" + `src/app.ts` `/internal/*` |
 | Ideas backlog incl. multi-tenancy section | `IDEAS.md` (lines ~137–240) |
+| Multi-tenant contracts and phase checklists | `BUILD-PLAN-multi-tenant.md` |
 | Future plans | `BUILD-PLAN-*.md` |
 
 ## HANDOFF.md by topic (line ranges)
@@ -43,6 +44,10 @@ the numbers below, or just grep the heading.
 - Public anonymity: names hidden from signed-out viewers — 3584–3719
 - Read paths stop trusting `?actor=` — 5838–5883
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
+
+### Multi-tenancy (the `multi-tenant` branch)
+- Phase 0: prep, contracts, and the token spike — 7–104. Contracts live in
+  `BUILD-PLAN-multi-tenant.md`; decisions in `../decisions/2026-09-22-multi-tenant.md`.
 
 ### Config, settings, per-hub things (most relevant to multi-tenancy)
 - Multi-deployment + demo-hub.civic.social launch, and the "Multi-tenant SaaS path" note — 8384–8616 (note at ~8602)

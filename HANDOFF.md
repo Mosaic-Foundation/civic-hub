@@ -4,6 +4,104 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Multi-tenant Phase 0: prep, contracts, and the token spike — 2026-09-22
+
+**Branch:** `multi-tenant` (created from `main`; not merged). Four commits,
+one per deliverable. No production change, no schema change, no code change.
+
+Phase 0 of converting civic-hub from one Supabase project per hub to one
+deployment and one shared database with `hub_id` on every table and forced
+row-level security. Floyd is hub #1 and will be converted in place.
+
+**Session docs.** `HANDOFF-INDEX.md` and `SESSION-START.md` are now
+committed. HANDOFF.md is ~11,300 lines and reading it whole costs most of a
+session; the index maps its 178 entries to line ranges so a session opens
+only what it needs. SESSION-START.md is the opening message every later
+multi-tenant session pastes.
+
+**`BUILD-PLAN-multi-tenant.md`** holds the contracts later sessions build
+against, fixed and not to be changed without asking Adam: the `hubs` table
+and its reserved slugs (`www`, `admin`, `api`, `polis`, `representative`,
+`demo`, `staging`, `dev`, `mail`, `app`); `hub_settings` keyed on
+`(hub_id, key)` with dotted key names (`identity.*`, `copy.*`, `legal.*`,
+`people.*`, `email.*`, `beta.*`, `plugin.<id>.*`); `forHub(hubId): HubDb`
+in `src/db/forHub.ts` as the only way request code reaches the database;
+and the hostname → `req.hub` → `/api/hub-config` request flow. It also
+carries an alias map so the six existing settings keys
+(`brief_recipient_emails`, `announcement_authors`, `beta_allowlist`,
+`comment_identity_mode`, `support_threshold`, `officials_migrated`) and
+roughly forty env vars keep working until they are migrated. Phase 1–6 are
+headings with an acceptance check each; Adam pastes the checklists.
+
+**`../decisions/2026-09-22-multi-tenant.md` (ADR-004)** records four
+decisions: shared database with `hub_id` and forced RLS over
+database-per-hub; Floyd converted in place rather than exported and
+reimported; one user row per hub with a reserved `identity_did` column as
+the seam for portable identity; scheduled encrypted dumps instead of PITR,
+because PITR restores are whole-project and would roll every hub back
+together.
+
+**The token spike ran and passed**, against a throwaway local Supabase that
+has since been deleted. A forced RLS policy comparing `hub_id` to
+`current_setting('request.jwt.claims', true)::json->>'hub_id'` isolates
+hubs exactly: a minted token for hub a saw hub a's rows and none of hub b's,
+an insert with a spoofed `hub_id` was rejected with SQLSTATE 42501, an
+update aimed at the other hub affected zero rows, and the service role
+still saw everything. Both signing paths were exercised — the legacy HS256
+shared secret and an ES256 signing key with `kid` — and the working snippet
+is in the plan under "Phase 3 approach (verified)".
+
+Four findings from the spike change what later phases must do:
+
+- **Migrations must grant table privileges explicitly.** All 47 existing
+  migrations contain zero `GRANT` statements and rely on the hosted
+  project's default ACLs. Locally that is not true, and the service role was
+  denied on its own table until granted. Every Phase 2+ migration ends with
+  an explicit grant, or the Phase 6 rehearsal against a restored dump will
+  not match production.
+- **A token with no `role` claim silently runs as `anon`** rather than
+  failing, so a missing claim would present as a permissions bug.
+- **PostgREST allows about 30 seconds of expiry slack** (5/15/30s expired
+  accepted, 45s+ rejected), so a short TTL is not a revocation mechanism.
+- **`hub_id` needs an index on every table**, since the policy is an
+  equality filter evaluated per candidate row.
+
+**Recommendation recorded:** mint hub tokens with an ES256 signing key and
+move to the `sb_publishable_…` / `sb_secret_…` API keys in the same phase.
+Supabase's docs state the `anon` and `service_role` keys are being
+deprecated by the end of 2026, Floyd's project predates the signing-keys
+system, and doing both at once is one coordinated key change instead of
+two. The migration window is non-breaking: a stack without
+`signing_keys_path` accepted both HS256 and ES256 tokens, and only refused
+HS256 once the signing key was the sole verification key — which is what
+revoking the legacy secret looks like, and must be the last step.
+
+**Operator facts recorded in the plan:** the Floyd Vercel project is on
+**Pro** (wildcard domains and per-minute crons available, no upgrade
+needed), and DNS for `civic.social` is at **GoDaddy** (Phase 5 adds
+`*.civic.social` as a CNAME there).
+
+**Also noticed, not acted on:** `civic-hub/` has no `supabase/config.toml`,
+so local auth configuration is unpinned; Phase 3 adds one. The monorepo
+root is linked to a different Supabase project (the marketing site), so
+every CLI command must be run from `civic-hub/`.
+
+**Tests:** `npx vitest run tests/unit` — 63 files, 775 tests, all passing.
+`npm test` additionally runs `tests/api`, which needs a dev server on
+:3000 and was not run; see "Running integration tests in CI" in TESTING.md.
+
+**Incomplete / open questions.**
+- Phase 1–6 checklists are placeholders until Adam pastes them.
+- `comment_identity_mode` was mapped to `plugin.vote.comment_identity_mode`
+  because votes own comments today. It is hub-wide policy and may belong in
+  a `moderation.` namespace instead — flagged in the plan for Adam.
+- `POLIS_AUTH_TOKEN` is a per-hub credential, not a setting. The plan
+  proposes `POLIS_AUTH_TOKEN__<HUB_ID>` with the bare name as fallback;
+  unconfirmed.
+- Nothing is merged to `main`.
+
+---
+
 ## Brief: prominent response button + office-bundled recipients — 2026-09-08
 
 Three changes to the brief/outcome page and its review, all universal
