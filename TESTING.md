@@ -19,6 +19,11 @@ Updated alongside HANDOFF.md after every session that adds or modifies features.
 ```bash
 cd civic-hub
 
+# Local database — brings up Postgres + PostgREST and applies every
+# migration. Needed by the API and E2E layers; the unit layer does not
+# use it. Added 2026-09-22 with supabase/config.toml.
+supabase start
+
 # API integration tests (requires dev server running on :3000)
 npm run test
 
@@ -33,7 +38,17 @@ npm run test:e2e:ui
 
 # Watch mode for API tests during development
 npm run test:watch
+
+# Tear the local database down (--no-backup discards its data)
+supabase stop
 ```
+
+Point the dev server at the local stack rather than at a hosted project
+before running the API or E2E layers. `supabase start` prints the URL and
+keys to use for `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; everything
+else can stay as it is in `.env.example`. As of 2026-09-22 all 8 API test
+files (68 tests) pass against a stack brought up this way, which is the
+first time that layer has been runnable from a clean checkout.
 
 ---
 

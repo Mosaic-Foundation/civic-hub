@@ -1,0 +1,98 @@
+# Supabase CLI config for civic-hub.
+#
+# Why this file exists (Phase 0 finding, BUILD-PLAN-multi-tenant.md): until
+# now the CLI was used only for `supabase db push`, so nothing about the
+# local stack was pinned and there was no reproducible environment to develop
+# row-level security against. `supabase start` now brings up Postgres +
+# PostgREST + Auth configured the way the hub expects, applies every file in
+# supabase/migrations in order, and gives Phase 6 something to restore a
+# production dump into.
+#
+# This configures the LOCAL stack only. It never touches a hosted project;
+# `supabase db push` still targets whatever `supabase link` points at, which
+# must be run from this directory (the monorepo root is linked to a
+# different project — the marketing site).
+#
+#   supabase start     bring the local stack up, migrations applied
+#   supabase stop      take it down (add --no-backup to discard data)
+#   supabase db reset  re-apply every migration from scratch
+#
+# Ports are the CLI defaults (54320-54329). They avoid both the
+# Apple-reserved range and the Polis ports (5100/8880/8443/8180).
+
+project_id = "civic-hub"
+
+[api]
+enabled = true
+port = 54321
+# Schemas exposed over PostgREST. The hub uses `public` only; `graphql_public`
+# is the CLI default and is harmless.
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+# The hub paginates its own reads; this is the backstop PostgREST applies
+# when a query asks for everything.
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+# MUST track production. The linked project runs Postgres 17 (17.6.x as of
+# 2026-09-22). A mismatch here means migrations can pass locally and fail on
+# deploy, which is the exact failure this file exists to prevent.
+major_version = 17
+
+[db.migrations]
+enabled = true
+schema_paths = []
+
+[db.seed]
+# Seeding is the application's job (`GET /debug/seed`, gated behind
+# CIVIC_ALLOW_SEED), not the CLI's. There is no supabase/seed.sql.
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:3000", "http://localhost:5173"]
+# One hour. The hub does not use Supabase Auth for its own sessions — civic
+# .auth issues those — but PostgREST validates whatever JWT arrives, so this
+# governs the lifetime of tokens minted against this stack.
+jwt_expiry = 3600
+enable_signup = false
+
+# JWT signing keys (Phase 3). Uncomment once you have generated a key:
+#
+#   supabase gen signing-key --algorithm ES256 > supabase/signing_keys.json
+#
+# and wrap the result in a JSON array — the CLI emits a bare object but the
+# config loader expects `[{...}]`. The file is a PRIVATE key: it is
+# gitignored, is generated per developer, and must never be committed.
+#
+# Leaving it commented out is the correct default for today. The stack then
+# runs an auto-generated ES256 key AND accepts the legacy HS256 shared
+# secret, which mirrors the hosted project's current state. Setting it makes
+# the ES256 key the only accepted signer, which is what the hosted project
+# looks like AFTER the legacy secret is revoked — useful for rehearsing that
+# step, and a change that requires the containers to be recreated
+# (`supabase stop` then `supabase start`), not merely restarted.
+#
+# signing_keys_path = "./signing_keys.json"
+
+[auth.email]
+enable_signup = false
+# The hub sends its own mail through Resend/SMTP. Local Auth mail goes
+# nowhere and should not prompt for confirmation.
+enable_confirmations = false
+
+# Services the hub does not use locally. Turning them off keeps `supabase
+# start` to Postgres, PostgREST, Auth and the gateway, which is a much
+# faster and smaller stack to bring up in a test run.
+[realtime]
+enabled = false
+
+[storage]
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
