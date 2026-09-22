@@ -51,6 +51,7 @@ import { handleListAnnouncements } from "./controllers/announcementController.js
 import { assertSpaceIdentityConfigured } from "./config/hub.js";
 import { ensureSeeded } from "./debug/autoSeed.js";
 import { resolveHub } from "./middleware/hub.js";
+import hubConfigRoutes from "./routes/hubConfigRoutes.js";
 import { pingDb } from "./db/client.js";
 import { validateEmailConfig } from "./utils/email.js";
 import { validateSchemaAtStartup, getSchemaReport } from "./db/schemaCheck.js";
@@ -114,6 +115,12 @@ app.use(express.json());
 
 // Ensure seed data exists on every request (handles Vercel multi-instance cold starts)
 app.use(ensureSeeded as express.RequestHandler);
+
+// Hub configuration — the UI reads this once at boot to learn which hub it
+// is rendering. Mounted early and with no auth: it is the public identity of
+// whichever hub the hostname resolved to, and the UI needs it before it can
+// draw anything at all.
+app.use(hubConfigRoutes);
 
 // Auth endpoints — email-based authentication
 app.use("/auth", authRoutes);
