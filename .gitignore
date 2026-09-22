@@ -29,6 +29,11 @@ ui/src/assets/
 # Local DB backups — may contain prod data/PII, never commit
 backups/
 supabase/.temp/
+# Supabase JWT signing keys — private keys, generated per developer with
+# `supabase gen signing-key`. The committed config.toml points at this path;
+# the file itself never goes in git.
+supabase/signing_keys.json
+
 
 # Playwright failure artifacts — screenshots and traces, never committed
 test-results/

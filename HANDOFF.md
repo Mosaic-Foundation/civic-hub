@@ -90,14 +90,33 @@ every CLI command must be run from `civic-hub/`.
 `npm test` additionally runs `tests/api`, which needs a dev server on
 :3000 and was not run; see "Running integration tests in CI" in TESTING.md.
 
+**Resolved with Adam the same day, and folded into the plan.**
+`comment_identity_mode` moves to a new `moderation.` namespace as
+`moderation.comment_identity_mode`, not under `plugin.vote.` — it is
+hub-wide policy governing comments everywhere they appear, so no process
+type owns it. It is in the public subset of `/api/hub-config` because the
+comment form renders the anonymity toggle before anyone signs in, and the
+subset is a list of keys rather than of namespaces so a later
+`moderation.*` key stays admin-only by default. The per-hub
+`POLIS_AUTH_TOKEN__<HUB_ID>` convention is confirmed. Phase 3 now also has
+to add `civic-hub/supabase/config.toml`.
+
+**Per-plugin credentials — a direction, recorded, not scheduled.** Adam
+wants operators to enter their own plugin credentials (a Polis auth token,
+a connector key) from the admin panel rather than asking whoever owns the
+deployment to set an env var. The plan records three things that must be
+settled first: credentials do not belong in `hub_settings`, which is read
+in bulk by `getAllSettings()` and the admin settings endpoint, so they need
+their own table with no bulk accessor; they need encryption at rest with a
+key the database does not hold, or a dump hands over every token; and the
+admin field must be write-only, or a compromised admin session reads every
+hub's credentials and per-hub storage has made the blast radius bigger, not
+smaller. Until then, per-hub credentials stay env vars under the
+`<NAME>__<HUB_ID>` convention, which is chosen so the eventual move is a
+change of reader rather than of every call site.
+
 **Incomplete / open questions.**
 - Phase 1–6 checklists are placeholders until Adam pastes them.
-- `comment_identity_mode` was mapped to `plugin.vote.comment_identity_mode`
-  because votes own comments today. It is hub-wide policy and may belong in
-  a `moderation.` namespace instead — flagged in the plan for Adam.
-- `POLIS_AUTH_TOKEN` is a per-hub credential, not a setting. The plan
-  proposes `POLIS_AUTH_TOKEN__<HUB_ID>` with the bare name as fallback;
-  unconfirmed.
 - Nothing is merged to `main`.
 
 ---

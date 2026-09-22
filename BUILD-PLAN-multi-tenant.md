@@ -83,11 +83,19 @@ Key naming is dotted, lowercase, and namespaced. The canonical keys:
 | `people.` | `people.admin_emails`, `people.board_emails`, `people.brief_recipients`, `people.announcement_authors` |
 | `email.` | `email.from_name`, `email.from_address`, `email.postal_address` |
 | `beta.` | `beta.enabled`, `beta.allowlist`, `beta.waitlist_enabled` |
+| `moderation.` | `moderation.comment_identity_mode` |
 | `plugin.<id>.` | `plugin.<id>.enabled` and `plugin.<id>.<setting>` |
 
 `<id>` is the registry id: `vote`, `proposal`, `project`, `announcement`,
 `brief`, `meeting_summary`, `wordcloud`, `conversation`, `assistant`,
 `digest`, `admin_digest`, `search`, `feedback`, `news_sync`.
+
+`moderation.` holds hub-wide participation policy that no single process
+type owns. `comment_identity_mode` (`real_name` / `anonymous_optional` /
+`anonymous_only`) lives here rather than under `plugin.vote.` because it
+governs comments everywhere they appear — proposals, projects and votes —
+and a hub sets it once. Ballot secrecy and real-name process creation stay
+structural, not settings; do not add them here.
 
 Value encoding: strings are stored as-is; lists are JSON arrays; booleans
 are the strings `true` / `false`; numbers are decimal strings. A settings
@@ -95,9 +103,13 @@ reader (`src/services/hubSettings.ts`) owns parsing; callers never parse
 `value` themselves.
 
 **Public subset.** Only `identity.*`, `copy.*`, `legal.*`, `beta.enabled`,
-`beta.waitlist_enabled`, and `plugin.<id>.enabled` are served by
-`/api/hub-config`. `people.*`, `email.*`, `beta.allowlist` and every other
-`plugin.<id>.<setting>` are admin-only.
+`beta.waitlist_enabled`, `moderation.comment_identity_mode`, and
+`plugin.<id>.enabled` are served by `/api/hub-config`. `people.*`,
+`email.*`, `beta.allowlist` and every other `plugin.<id>.<setting>` are
+admin-only. The public subset is a list of keys, not of namespaces: a new
+`moderation.*` key is admin-only until it is added to the list. The comment
+identity mode is on it because the comment form has to render the anonymity
+toggle before anyone is signed in.
 
 #### Alias map — existing keys that keep working until migrated
 
@@ -112,7 +124,7 @@ only after the cutover.
 | `brief_recipient_emails` | `people.brief_recipients` | comma list today → JSON array |
 | `announcement_authors` | `people.announcement_authors` | already JSON |
 | `beta_allowlist` | `beta.allowlist` | comma list today → JSON array |
-| `comment_identity_mode` | `plugin.vote.comment_identity_mode` | hub-wide comment policy; lives under `vote` because votes own comments today. Ask Adam if it should move to a `moderation.` namespace. |
+| `comment_identity_mode` | `moderation.comment_identity_mode` | hub-wide comment policy, so it is not owned by a process type (decided with Adam, 2026-09-22) |
 | `support_threshold` | `plugin.vote.support_threshold` | decimal string |
 | `officials_migrated` | `people.officials_migrated` | latch; stays a string `true` |
 
@@ -145,7 +157,7 @@ fallback until the cutover writes the row):
 | `MEETING_SUMMARY_ENABLED`, `MEETING_SOURCE_URL`, `MEETING_CONNECTOR_ID`, `MEETING_EXTRACTION_INSTRUCTIONS`, `MEETING_TITLE_FILTER`, `MEETING_TYPE_EXCLUDE`, `MEETING_WIX_COLLECTION`, `MEETING_YOUTUBE_CHANNEL_ID`, `MEETING_SUMMARY_AUTO_PUBLISH`, `MEETING_SUMMARY_CUTOFF_DATE`, `MEETING_SUMMARY_MAX_PER_RUN` | `plugin.meeting_summary.enabled`, `.source_url`, `.connector_id`, `.extraction_instructions`, `.title_filter`, `.type_exclude`, `.wix_collection`, `.youtube_channel_id`, `.auto_publish`, `.cutoff_date`, `.max_per_run` |
 | `FLOYD_NEWS_SYNC_ENABLED`, `FLOYD_NEWS_SOURCE_URL`, `FLOYD_NEWS_SYNC_MAX_PER_RUN` | `plugin.news_sync.enabled`, `.source_url`, `.max_per_run` (module `civic.floyd_news_sync` is renamed `civic.news_sync` in Phase 4; the word Floyd leaves `src/`) |
 | `VITE_HUB_POLIS_URL`, `POLIS_BASE_URL` | `plugin.conversation.polis_url` |
-| `POLIS_AUTH_TOKEN` | stays an env var (a credential), but is looked up per hub in Phase 4: `POLIS_AUTH_TOKEN__<HUB_ID>` with `POLIS_AUTH_TOKEN` as the fallback |
+| `POLIS_AUTH_TOKEN` | stays an env var (a credential), looked up per hub in Phase 4: `POLIS_AUTH_TOKEN__<HUB_ID>`, with the bare `POLIS_AUTH_TOKEN` as the fallback (confirmed with Adam, 2026-09-22). See "Per-plugin credentials" below for where this is headed. |
 | `VITE_HUB_ONBOARDING_WORDCLOUD_ID` | `plugin.wordcloud.onboarding_id` |
 | `CIVIC_DEMO_BYPASS_CODE`, `VITE_DEMO_MODE`, `VITE_DEMO_BYPASS_CODE` | `beta.demo_bypass_code`, `beta.demo_mode` (admin-only; never in the public subset) |
 
@@ -158,6 +170,39 @@ site), `BASE_URL` / `CIVIC_UI_BASE_URL` (computed from `req.hub.hostname`),
 `CIVIC_ALLOW_SEED`, `CIVIC_SEED_FIXTURE`, `NODE_ENV`, `PORT`,
 `IMAGE_UPLOAD_MAX_MB`, `LINK_PREVIEW_USER_AGENT`, `CIVIC_HUB_ID` (the
 protocol identity, see Contract 1).
+
+#### Per-plugin credentials (direction, not a contract yet)
+
+Where this is headed, from the 2026-09-22 planning conversation: an operator
+opens the admin panel, picks a plugin, and enters their own credential for it
+— their Polis auth token, their meeting-transcript connector key — instead of
+asking whoever runs the deployment to set an env var. That is the right end
+state for a hosted offering, and it is what makes a hub genuinely
+self-service. It is deliberately **not** in Phases 1–6.
+
+Three things have to be settled before it is built, and none of them are
+settled now:
+
+1. **Secrets do not belong in `hub_settings`.** That table is read in bulk:
+   `getAllSettings()` exists today and the admin settings endpoint returns
+   every row. One careless read and a token is on the wire. A credential
+   belongs in its own table — say `hub_secrets (hub_id, key, ciphertext,
+   updated_at, updated_by)` — behind a reader that fetches one key at a time
+   and has no bulk accessor at all.
+2. **Encryption at rest, with a key the database does not hold.** Storing a
+   token in a column means anyone with a database dump has the token, which
+   is worse than the env var it replaced. The options are Supabase Vault or
+   application-level envelope encryption with a platform key held in Vercel.
+   Either way the plaintext exists only in the process that uses it.
+3. **The admin UI must be write-only.** The field shows whether a credential
+   is set and when it changed, never the value, and the API never echoes it
+   back. Otherwise a compromised admin session reads every hub's
+   credentials, and per-hub credentials have made the blast radius larger
+   rather than smaller.
+
+Until that is designed, per-hub credentials stay env vars with the
+`<NAME>__<HUB_ID>` convention above. The convention is chosen so the move to
+a table is a change of reader, not a change of every call site.
 
 ### 3. Data layer — `forHub(hubId): HubDb`
 
@@ -243,7 +288,20 @@ _checklist to be pasted_
 
 Done when: every table has `FORCE ROW LEVEL SECURITY` and a `hub_id` policy;
 the app runs end-to-end as `authenticated` with a minted token; a query
-with the wrong `hub_id` returns zero rows; service role still sees all.
+with the wrong `hub_id` returns zero rows; service role still sees all; and
+`civic-hub/supabase/config.toml` is committed so `supabase start` reproduces
+the auth configuration the policies assume.
+
+**Add `supabase/config.toml` in this phase.** `civic-hub/` has none today —
+the CLI is used only for `db push`, so nothing about local auth is pinned,
+and the spike had to `supabase init` into a scratch directory to get a stack
+at all. Without it there is no reproducible local environment for the RLS
+work, and Phase 6's rehearsal (restoring a production dump and replaying the
+cutover) has nothing to restore into. The file must pin at least the
+`[auth]` block including `signing_keys_path`, and the `[api]` schemas. Note
+that `signing_keys.json` itself is a private key and is gitignored, never
+committed; the committed config points at a path each developer generates
+with `supabase gen signing-key --algorithm ES256`.
 
 See "Phase 3 approach (verified)" below for the verified mechanism.
 
