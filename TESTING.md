@@ -519,15 +519,23 @@ it at all. Considered and rejected 2026-08-26; don't re-tread it.
 
 Two options that do work:
 
-**1. Supabase CLI local stack** — *correct, more setup.*
+**1. Supabase CLI local stack** — *correct, more setup.* **Now unblocked.**
 Add `supabase/setup-cli` to the workflow and run `supabase start`: a real
 Postgres + PostgREST per run, applying `supabase/migrations/` from empty.
-Isolated, disposable, no secrets in CI. Needs `supabase init` first (there is
-no `config.toml` today) and adds image-pull time to every run.
-*Bonus worth having anyway:* it proves the migration set builds a working
-schema from scratch, which has never been verified. As of 2026-08-26 all 28
-tables the code needs ARE created by migration files — none by hand in the
-Supabase console — so this should work.
+Isolated, disposable, no secrets in CI. Adds image-pull time to every run.
+
+*Update 2026-09-22:* the blocker is gone. `supabase/config.toml` now exists
+(Phase 1 of the multi-tenant work), and the whole thing has been done by hand:
+`supabase db reset` builds the schema from the migration set alone and all 8
+API test files — 68 tests — pass against it. The bonus this note hoped for is
+therefore collected: **the migration set does build a working schema from
+scratch.** It needed one fix to get there, `20260922000000_grant_table_
+privileges.sql`, because not one migration contained a `GRANT` and the hosted
+project's default privileges had been silently covering for that.
+
+What remains is a workflow change: add the CLI step, start the stack, start
+the dev server against it, and run `tests/api`. Adam's call, since it adds
+container pull time to every push.
 
 **2. A Supabase project dedicated to CI** — *quick, degrades over time.*
 A second free project; `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` as GitHub
@@ -540,4 +548,7 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-08-26 — added the archive/restore inventory, the unit-test layer (which CI runs and this file had never documented), the process-linking coverage inventory, and the standing note above on running integration tests in CI.*
+*Last updated: 2026-09-22 — recorded that the Supabase CLI local stack now
+works end to end, that the migration set builds a working schema from scratch,
+and added the hub-config API tests. Previously: 2026-08-26 — added the
+archive/restore inventory, the unit-test layer (which CI runs and this file had never documented), the process-linking coverage inventory, and the standing note above on running integration tests in CI.*
