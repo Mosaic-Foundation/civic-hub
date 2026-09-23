@@ -76,6 +76,8 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** Whatever the server said when the code was requested. */
+  const [serverNotice, setServerNotice] = useState<string | null>(null);
   // Set when the backend rejects the email because the hub is in private
   // beta and the address isn't on the allow-list. Instead of a dead-end
   // error we swap the email form for a waitlist capture.
@@ -114,7 +116,12 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
 
     setLoading(true);
     try {
-      await requestCode(email.trim());
+      // The server decides what to say here. A demo hub answers "enter any six
+      // digits" and emails nothing; an ordinary hub answers with the usual
+      // "we sent a code". The client holds no demo flag and no bypass code —
+      // there is nothing to hold, since a demo hub accepts any six digits.
+      const { message } = await requestCode(email.trim());
+      setServerNotice(message ?? null);
       setStep("code");
     } catch (err) {
       const message =
@@ -403,11 +410,7 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
             <p className="auth-description">
               We sent a 6-digit code to <strong>{email}</strong>
             </p>
-            {hub.demo_mode && hub.demo_bypass_code && (
-              <p className="auth-hint">
-                Use code: {hub.demo_bypass_code}
-              </p>
-            )}
+            {serverNotice && <p className="auth-hint">{serverNotice}</p>}
 
             <div className="form-field">
               <label htmlFor="auth-code" className="form-label">Verification code</label>

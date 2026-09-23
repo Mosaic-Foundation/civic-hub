@@ -88,13 +88,6 @@ export default function IntroPopup({ onDismiss }: Props) {
 
         <p className="intro-popup-text">{hub.intro_body}</p>
 
-        {hub.demo_mode && hub.demo_bypass_code && (
-          <p className="intro-popup-demo-hint">
-            To try it out, sign in with any email and use the code{" "}
-            <strong>{hub.demo_bypass_code}</strong>.
-          </p>
-        )}
-
         <div className="intro-popup-actions">
           <button
             type="button"

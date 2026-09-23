@@ -11,6 +11,7 @@
 // request that checks one.
 
 import { getDb } from "./client.js";
+import { DOCUMENT_KEYS } from "../models/hubSettings.js";
 
 const CACHE_TTL_MS = 60_000;
 
@@ -24,14 +25,27 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 
+/** Documents are cached separately, keyed `<hubId>:<key>`. */
+const documentCache = new Map<string, { value: string | null; expiresAt: number }>();
+
+/** PostgREST `in` list for the document keys, so the snapshot can exclude them. */
+const DOCUMENT_KEY_LIST = `(${DOCUMENT_KEYS.join(",")})`;
+
 /**
  * Drop cached settings — for one hub, or all of them. Call after any write,
  * so an admin who changes a setting sees it on the next request rather than
  * within a minute.
  */
 export function invalidateHubSettings(hubId?: string): void {
-  if (hubId) cache.delete(hubId);
-  else cache.clear();
+  if (hubId) {
+    cache.delete(hubId);
+    for (const k of documentCache.keys()) {
+      if (k.startsWith(`${hubId}:`)) documentCache.delete(k);
+    }
+  } else {
+    cache.clear();
+    documentCache.clear();
+  }
 }
 
 /**
@@ -46,10 +60,14 @@ export async function fetchHubSettings(hubId: string): Promise<SettingsMap> {
   const cached = cache.get(hubId);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
+  // Document-sized values are excluded: see DOCUMENT_KEYS. Every request pays
+  // for this query on a cache miss, and no request should pay 30 KB of
+  // markdown for a page that does not render it.
   const { data, error } = await getDb()
     .from("hub_settings")
     .select("key, value")
-    .eq("hub_id", hubId);
+    .eq("hub_id", hubId)
+    .not("key", "in", DOCUMENT_KEY_LIST);
 
   if (error) {
     console.error(`[hub_settings] load for "${hubId}" failed: ${error.message}`);
@@ -116,4 +134,61 @@ export async function fetchHubSettingRows(hubId: string): Promise<
     updated_at: string;
     updated_by: string | null;
   }>;
+}
+
+/**
+ * One document-sized value — a legal page, the About text.
+ *
+ * Separate from the snapshot on purpose (see DOCUMENT_KEYS): loaded only when
+ * something renders it, cached for the same 60 seconds, and a miss returns
+ * null rather than throwing so a page falls back to its bundled default
+ * instead of failing.
+ */
+export async function fetchHubDocument(
+  hubId: string,
+  key: string,
+): Promise<string | null> {
+  const cacheKey = `${hubId}:${key}`;
+  const cached = documentCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const { data, error } = await getDb()
+    .from("hub_settings")
+    .select("value")
+    .eq("hub_id", hubId)
+    .eq("key", key)
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      `[hub_settings] document "${key}" for "${hubId}" failed: ${error.message}`,
+    );
+    return null;
+  }
+  const value = (data as { value: string } | null)?.value ?? null;
+  documentCache.set(cacheKey, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+  return value;
+}
+
+/** Every document for a hub, for the endpoint that serves them together. */
+export async function fetchHubDocuments(
+  hubId: string,
+): Promise<Record<string, string>> {
+  const { data, error } = await getDb()
+    .from("hub_settings")
+    .select("key, value")
+    .eq("hub_id", hubId)
+    .in("key", [...DOCUMENT_KEYS]);
+
+  if (error) {
+    console.error(
+      `[hub_settings] documents for "${hubId}" failed: ${error.message}`,
+    );
+    return {};
+  }
+  const out: Record<string, string> = {};
+  for (const row of (data ?? []) as Array<{ key: string; value: string }>) {
+    out[row.key] = row.value;
+  }
+  return out;
 }

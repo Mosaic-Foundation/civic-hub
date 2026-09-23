@@ -217,6 +217,32 @@ const PUBLIC_KEYS: ReadonlySet<string> = new Set<string>([
   KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID,
 ]);
 
+/**
+ * Keys whose values are whole documents rather than short configuration.
+ *
+ * These are deliberately kept OUT of the per-request settings snapshot. The
+ * four legal documents plus the About page are around 30 KB of markdown
+ * between them, and almost no request needs any of them: pulling that into
+ * memory to answer "is this person an admin" would make every request pay for
+ * a page that is read occasionally. They are loaded on demand instead, with
+ * their own cache, and served by their own endpoint.
+ *
+ * A key belongs here when its value is prose measured in kilobytes. A short
+ * string, however wordy, does not — `copy.intro_body` is a sentence and stays
+ * in the snapshot.
+ */
+export const DOCUMENT_KEYS: readonly string[] = [
+  KEYS.LEGAL_TERMS,
+  KEYS.LEGAL_PRIVACY,
+  KEYS.LEGAL_CODE_OF_CONDUCT,
+  KEYS.LEGAL_PROPOSAL_BEST_PRACTICES,
+  KEYS.COPY_ABOUT,
+];
+
+export function isDocumentKey(key: string): boolean {
+  return DOCUMENT_KEYS.includes(key);
+}
+
 /** Is this key safe to serve to anyone? `plugin.<id>.enabled` always is. */
 export function isPublicKey(key: string): boolean {
   if (PUBLIC_KEYS.has(key)) return true;

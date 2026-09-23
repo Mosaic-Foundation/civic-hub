@@ -14,7 +14,7 @@ import { randomInt } from "node:crypto";
 import { getDb } from "../../db/client.js";
 import { generateId } from "../../utils/id.js";
 import { sendEmail } from "../../utils/email.js";
-import { isEmailOnBetaAllowlist } from "../../services/hubSettings.js";
+import { isDemoHubSync, isEmailOnBetaAllowlist } from "../../services/hubSettings.js";
 import { currentHubId } from "../../config/hubContext.js";
 import type { User, PendingVerification, Session } from "./models.js";
 
@@ -117,33 +117,32 @@ export async function requestVerification(
     throw new Error("Invalid email address");
   }
 
-  // Slice 19c — when CIVIC_DEMO_BYPASS_CODE is set, the deployment
-  // is a demo (e.g. demo-hub.civic.social) where any visitor signs
-  // in with the displayed bypass code instead of a real OTP. Skip
-  // the OTP generation, the pending_verifications insert, and the
-  // Resend send entirely so demo signups don't:
-  //   1. fire a real email to throwaway addresses,
-  //   2. burn against the Resend monthly quota,
-  //   3. confuse visitors who weren't expecting an email and now
-  //      wonder why one arrived with a different code than the one
-  //      the IntroPopup told them to use.
-  // verifyCode() already accepts the bypass code without needing a
-  // pending_verifications row (it short-circuits the existence
-  // check), so skipping the insert here doesn't break the flow.
-  // The demo bypass is inert in production: even if CIVIC_DEMO_BYPASS_CODE is
-  // accidentally set on a prod deployment, it resolves to undefined here, so
-  // the static code can never skip real OTP in prod. Fail-safe (inert), not
-  // fail-loud (refuse-to-boot) — a misconfig can't cause an outage.
-  const demoBypass =
-    process.env.NODE_ENV === "production"
-      ? undefined
-      : process.env.CIVIC_DEMO_BYPASS_CODE?.trim();
-  if (demoBypass) {
+  // A demo hub does not email sign-in codes. Any visitor can look around, so
+  // the OTP generation, the pending_verifications insert and the Resend send
+  // are all skipped: a demo signup should not mail a throwaway address, burn
+  // Resend quota, or confuse someone who was not expecting an email.
+  //
+  // WHAT CHANGED, AND WHY IT MATTERS (Phase 1 part two).
+  //
+  // This used to key off `NODE_ENV !== "production"`, which was the right
+  // guard when a demo was its own deployment: production could not be
+  // bypassed even if the env var leaked onto it. One deployment now serves
+  // every hub, so NODE_ENV is "production" for the demo hub too — that guard
+  // would have switched the demo OFF rather than protected Floyd. The test is
+  // now per hub, and the protection is that `beta.demo_mode` is an admin-only
+  // settings row that Floyd's hub simply does not have.
+  //
+  // There is also no longer a code to leak. A demo hub accepts any six
+  // digits, so nothing is displayed to the visitor, nothing is compiled into
+  // the bundle and nothing is served by the config endpoint. A shared static
+  // code printed on the sign-in screen was never a secret; this removes the
+  // pretence and the thing that could be exfiltrated at the same time.
+  if (isDemoHubSync()) {
     console.log(
-      `[auth] Demo-mode signin requested for ${normalizedEmail} — bypass code active, skipping email.`,
+      `[auth] Demo hub signin for ${normalizedEmail} — no code emailed.`,
     );
     return {
-      message: "Demo mode — use the displayed bypass code to sign in.",
+      message: "This is a demo hub. Enter any six digits to sign in.",
     };
   }
 
@@ -267,14 +266,12 @@ export async function verifyCode(
 
   if (pendErr) throw new Error(`Auth: ${pendErr.message}`);
 
-  // Inert in production (see requestCode): a prod deployment with the var set
-  // still cannot be bypassed, because this resolves to undefined there.
-  const demoBypass =
-    process.env.NODE_ENV === "production"
-      ? undefined
-      : process.env.CIVIC_DEMO_BYPASS_CODE;
-  if (demoBypass && code === demoBypass) {
-    // Demo-mode bypass — only active outside production (dev/preview).
+  // A demo hub accepts any six digits (see requestVerification). Gated on the
+  // hub's own `beta.demo_mode` row, so it can never apply to a hub that has
+  // not been deliberately marked a demo. The shape check is deliberate: it
+  // keeps the sign-in form's validation honest and stops an empty submission
+  // walking straight in.
+  if (isDemoHubSync() && /^\d{6}$/.test(code.trim())) {
     if (pending) {
       await db
         .from("pending_verifications")

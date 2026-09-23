@@ -19,10 +19,9 @@
  *      deployment or when the fetch failed
  *   3. the default baked in below
  *
- * NOT served by the API, and deliberately build-time only:
- *   demo_mode / demo_bypass_code — a sign-in bypass must never be reachable
- *   from a public endpoint, whatever the convenience. The build plan marks
- *   these admin-only and they stay compiled in, set only on demo deployments.
+ * NOT here, and never to be added: anything to do with the demo sign-in
+ * bypass. A demo hub is a server-side settings row and accepts any six
+ * digits, so the client holds no code at all.
  *
  * To add a field: add the settings key to the server's public subset in
  * src/controllers/hubConfigController.ts, then add a getter here. Keep the
@@ -141,17 +140,16 @@ const hub = {
   },
 
   /**
-   * Demo affordances — the bypass-code hint on the sign-in modal. BUILD-TIME
-   * ONLY, never served by /api/hub-config: a sign-in bypass that a public
-   * endpoint hands out is not a bypass, it is an open door. Set only on
-   * demo and preview deployments, NEVER on production.
+   * REMOVED in Phase 1 part two: `demo_mode` and `demo_bypass_code`.
+   *
+   * A demo hub is now a `beta.demo_mode` settings row, read only on the
+   * server, and it accepts any six digits — so there is no code for the
+   * client to hold, display or leak. The sign-in screen shows whatever the
+   * server's response says instead of a value compiled into this bundle.
+   *
+   * Do not reintroduce either of these. A sign-in bypass that ships in the
+   * client is readable by anyone who views source.
    */
-  get demo_mode(): boolean {
-    return import.meta.env.VITE_DEMO_MODE === "true";
-  },
-  get demo_bypass_code(): string {
-    return env(import.meta.env.VITE_DEMO_BYPASS_CODE) ?? "";
-  },
 
   get beta_mode(): boolean {
     const served = setting("beta.enabled");
