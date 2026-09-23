@@ -4,8 +4,8 @@ HANDOFF.md is the full build log: 181 dated entries, newest first, ~11,650 lines
 Reading it whole costs most of a session's context. Use this index to find the
 entry you need, then read only that line range (`sed -n START,ENDp HANDOFF.md`).
 Line numbers are as of 2026-09-22; new entries are prepended at the top, so add
-the length of anything newer than "Login hardening" (line 7) to the numbers
-below, or just grep the heading.
+the length of anything newer than "Login hardening" (now ~line 190) to the
+numbers below, or just grep the heading.
 
 ## Where things are
 
@@ -53,6 +53,8 @@ below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- Phase 1 part three: legal pages per hub, real sender, dev safety, admin
+  roster — 7–188 (line numbers below this entry are its length out of date)
 - Login hardening, generic proposal guide, dev deploy prep — 7–110
 - Phase 1 part two: per-hub settings, hubs.mode, shared legal documents — 111–256
 - Phase 1 part one: hubs table, hostname resolver, /api/hub-config, UI — 153–282

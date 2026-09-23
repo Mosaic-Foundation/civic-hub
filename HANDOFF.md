@@ -4,6 +4,181 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Multi-tenant Phase 1 part three: fixes from the walkthrough — 2026-09-23
+
+**Branch:** `multi-tenant`, three commits (16 total), pushed. Production
+untouched. `civic-hub-dev` redeploys itself from the branch.
+
+### Legal pages name their own hub
+
+Athens's Terms said it was operated by Adam Lake, told residents to write to
+contact@civic.social, and described itself as being "at floyd.civic.social" —
+three statements true of Floyd and false of Athens, in documents whose whole
+job is to be true. Two settings carry it now, `legal.operator_name` (free
+text: an operator may be a person, a committee or a town) and
+`legal.contact_email`, both editable in a new **Hub identity** section at the
+top of Admin Settings. `{HOSTNAME}` comes from the `hubs` row and from nowhere
+else; an env var deciding which domain a legal document names is the same bug
+one level down.
+
+Four other lines were bound to one place and are now bound to the hub: "the
+Board" became `{GOVERNING_BODY}` in three documents, "the laws of the
+Commonwealth of Virginia" became "the laws of `{STATE}`" — a shared template
+cannot assume a commonwealth — and "a `{PLACE}` resident" became "a resident
+of `{PLACE}`", which reads the same for Floyd County and is grammatical for
+Athens. The golden-copy test moved to `tests/fixtures/floyd-legal/` and was
+regenerated once, deliberately, for exactly those four lines.
+
+**The UI's bundled copies are gone.** Each legal page imported a markdown file
+with Vite's `?raw` and rendered it until the hub's own arrived. That was safe
+while one deployment served one hub and became a leak the moment two shared a
+build: a failed fetch meant serving Floyd's terms under Athens's name. The
+pages render three states now, and "this hub has not published one" is better
+than a document about somebody else.
+
+**The welcome essay moved the same way, for a stronger reason.** It names a
+person, a county and 25 years of living there, so no substitution makes it
+true anywhere else. It is Floyd's `copy.welcome` document now, seeded from
+`config/hubs/floyd/welcome.md`, and the PDF link and contact address that were
+hardcoded beside it in `Welcome.tsx` moved into the document they belong to.
+Athens's /welcome says it has not published an introduction.
+
+The existing "Identity & anonymity" section is renamed "Comments &
+anonymity" — it governs comment display, and two sections called identity on
+one page is a reading problem.
+
+### Why Athens sent no sign-in mail, from the logs
+
+Not what we assumed. `RESEND_FROM` was not set to the sandbox on
+civic-hub-dev — **it was not set at all** in the Production scope (it exists
+only in Preview), so every hub fell through to the hardcoded
+`Civic Hub <onboarding@resend.dev>` in `src/utils/email.ts`. Resend's reply,
+from the dev function logs: `403 validation_error — You can only send testing
+emails to your own email address (creatinglake@gmail.com)`. Every dev boot had
+been logging `[email] RESEND_FROM is not set` as a *warning* for fourteen
+hours; it is an error now, with wording that says what actually happens.
+
+`RESEND_FROM` on civic-hub-dev is now `noreply@civic.social` — a bare address,
+because the address and the display name have different owners. Mail leaves
+from a domain the **provider** has verified, which is a property of the
+deployment; the name beside it is the hub's `email.from_name`. One verified
+address, every hub under its own name. Athens on dev carried
+`email.from_address = "Athens Civic Hub (demo) <demo@civic.social>"`, and
+because a row beats the environment that row would have kept it on an
+unverified address even after the fix — the seed script no longer writes one
+and the dev row was removed.
+
+### What the dev deployment had already done by itself
+
+`vercel.json` travels with the repo, so civic-hub-dev inherited production's
+four crons the day it was created. From its logs, since the first deploy:
+
+| Route | Time (UTC) | What it did |
+|---|---|---|
+| `meeting-summary/run` | 11:30 | 500, aborted — no source configured |
+| `floyd-news-sync/run` | 12:00 | **fetched floydcova.gov and created 5 announcement processes**, 10 events |
+| `digest/run` | 13:00 | attempted **57 users**; 1 delivered, 56 refused by the sandbox |
+| `admin-digest/run` | 13:30 | 1 recipient (adam@civic.social), refused |
+
+The one delivered digest went to the Resend account owner, which is why the
+sender looked like it was working. **The only thing standing between dev and
+56 real inboxes was the sandbox restriction** — the very thing being removed.
+That is why the sender fix and the guards are one commit.
+
+`HUB_CRON_ENABLED` (default true, `false` on civic-hub-dev) makes every
+`/internal/*/run` answer 200 with the body `disabled` and do nothing. It is
+middleware on the mount rather than four checks in four controllers, so a cron
+added next month is covered without anyone remembering to cover it. 200 rather
+than 503: Vercel Cron retries and alerts on a failure, and a deployment that is
+deliberately idle is not failing.
+
+The mailer is the second guard, for the request-triggered paths crons do not
+cover. A hub whose mode is not `live` delivers only to addresses on its own
+admin roster or beta allow list, and logs the rest as `[email] SUPPRESSED`
+with the hub id. It runs before the transport check, so the decision is
+visible in local development too.
+
+### Admins are data
+
+`people.admin_emails` was already resolved row-first by the settings reader,
+so the rule was half true and nothing said so: the comments, the 503 message
+and the docstrings all still named `CIVIC_ADMIN_EMAILS` as the source. It is
+the **bootstrap** — the answer for a hub with no row, which is how a fresh
+deployment gets its first administrator — and it stops having a say the moment
+a hub writes one.
+
+`POST /admin/hub/people` is the new surface, with an **Admins & board** section
+in the admin panel. Deliberately not part of `PATCH /admin/settings`:
+everything on that endpoint is recoverable by an admin who still has their
+account, and this is what decides who that is. It takes a fresh emailed code —
+the same step-up a mode change takes, now extracted into
+`src/controllers/adminStepUp.ts` so there is one rule rather than two
+implementations of it. The last admin cannot be removed, and every guard runs
+**before** the code is consumed: a code is single-use, so a rejected change
+must leave the hub exactly as it was, including the code the caller still
+holds.
+
+### Verified
+
+Against a local stack, both hubs on one process:
+
+- Athens's four documents contain no Floyd value and no unresolved
+  placeholder; Floyd's render to its golden copies byte for byte. Checked in
+  a browser at both hostnames.
+- Signed in as the Athens admin with a real code read from
+  `pending_verifications`: a save with no code refused, the last-admin removal
+  refused, a second admin added, the same code refused on reuse, one log line
+  naming the actor and the delta.
+- All four cron routes answer `disabled` with 200 under
+  `HUB_CRON_ENABLED=false`, including the manual-trigger path.
+- `sendEmail` inside a hub scope: on `demo` and `beta` a stranger is
+  suppressed and the admin gets through; on `live` both do. The composed
+  header is `"Athens Civic Hub (demo)" <noreply@civic.social>` — quoted,
+  because unquoted parentheses are an RFC 5322 comment and "(demo)" would be
+  dropped.
+
+**Tests:** `npm test` — 82 files, 967 tests, green with crons enabled (CI's
+shape); 959 with them disabled (dev's), where the cron auth-gate assertions
+skip with a reason rather than producing twelve red lines about the switch
+working. Backend `tsc` and the UI build clean.
+
+### Two things for Adam
+
+**1. The mail guard will suppress brief delivery on production's Floyd.**
+Floyd is `beta`, and briefs and vote results are addressed to officials, who
+are on neither the admin roster nor the beta allow list. Once this branch
+reaches production either Floyd moves to `live` at launch, or
+`people.brief_recipients` joins the allow set — one line, in
+`allowedRecipients()` in `src/services/mailGuard.ts`. Flagged rather than
+decided, because which one is right depends on the launch plan.
+
+**2. `users.email` is `NOT NULL UNIQUE` across the whole table.** Found while
+tracking down where the digest cursor lives. On a shared database that makes
+it impossible for one person to hold an account on two hubs; the
+plus-addressed Athens admin works today only because it is literally a
+different string. Phase 2 has to replace it with `unique (hub_id, email)`,
+which is a real schema change rather than an additive one — the
+additive-only rule bends there. Recorded in BUILD-PLAN-multi-tenant.md under
+Phase 2, along with the answer to the question that turned it up: the cursor
+is `users.last_digest_sent_at`, a column on `users`, so it inherits `hub_id`
+for free and survives the cutover in place. That matters — a reset falls back
+to `created_at` and would mail every long-standing subscriber their entire
+history in one message.
+
+### Still open
+
+- **`ui/src/config/hub.ts` still holds Floyd literals as fallbacks** — the
+  hub name, jurisdiction, tagline, banner path and banner alt text. They apply
+  only when the config fetch failed AND no `VITE_` variable is set, so no hub
+  on the dev deployment reaches them. The intro copy Adam asked about
+  (`copy.intro_body`, `copy.residency_intro`) is converted; the identity
+  defaults are Phase 4's explicit deliverable and were left there.
+- `config/hubs/floyd/code-of-conduct.md` exists but nothing seeds it. It is
+  either Floyd's intended override — in which case the seed script needs a
+  line — or a leftover from part two.
+
+---
+
 ## Login hardening, a generic proposal guide, and the dev deploy prep — 2026-09-22
 
 **Branch:** `multi-tenant`, three more commits (13 total), **not pushed and not
