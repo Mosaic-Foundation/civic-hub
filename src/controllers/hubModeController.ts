@@ -3,9 +3,8 @@
 // Two steps on purpose. Moving a hub between beta and live changes who may
 // sign in at all, so it is not something an open admin tab should be able to
 // do by itself: the caller has to prove, right now, that they hold the
-// mailbox. That is the same one-time code the sign-in flow uses, checked by
-// the same function, so the lockout, the expiry and the single-use rule are
-// not reimplemented here in a weaker form.
+// mailbox. The rule lives in controllers/adminStepUp.ts, shared with the
+// admin roster, which needs the same proof for the same reason.
 //
 //   POST /admin/hub/mode/request-code   emails the caller a code
 //   POST /admin/hub/mode                { mode, code } applies the change
@@ -18,42 +17,13 @@
 import type { Request, Response } from "express";
 import { getDb } from "../db/client.js";
 import { invalidateHubCache } from "../db/hubs.js";
-import { requestVerification, consumePendingCode } from "../modules/civic.auth/index.js";
 import { hubModeChangeRejectionReason } from "../models/hub.js";
 import { hubModeFor } from "../services/hubSettings.js";
-import type { User } from "../modules/civic.auth/index.js";
+import { caller, requireStepUpCode } from "./adminStepUp.js";
 
-function caller(res: Response): User | undefined {
-  return res.locals.authUser as User | undefined;
-}
-
-/**
- * Send the caller a fresh code for a mode change.
- *
- * Reuses the ordinary sign-in request, which already throttles, respects the
- * lockout, and — because an admin is a privileged account — always sends a
- * real email even on a demo hub.
- */
-export async function handleRequestModeChangeCode(
-  _req: Request,
-  res: Response,
-): Promise<void> {
-  const user = caller(res);
-  if (!user) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
-  }
-  try {
-    await requestVerification(user.email);
-    res.json({
-      message: `A confirmation code has been sent to ${user.email}.`,
-    });
-  } catch (err) {
-    res
-      .status(400)
-      .json({ error: err instanceof Error ? err.message : "Unknown error" });
-  }
-}
+// Kept as an export under its old name: the route and its tests have used it
+// since the hardening pass, and it is now the shared step-up handler.
+export { handleRequestStepUpCode as handleRequestModeChangeCode } from "./adminStepUp.js";
 
 export async function handleSetHubMode(
   req: Request,
@@ -71,32 +41,20 @@ export async function handleSetHubMode(
   }
 
   const body = req.body as { mode?: unknown; code?: unknown };
-  const code = typeof body.code === "string" ? body.code.trim() : "";
-  if (!code) {
-    res.status(400).json({
-      error:
-        "A confirmation code is required. Request one, then submit it with the new mode.",
-    });
-    return;
-  }
 
+  // The requested mode is checked BEFORE the code is spent. A code is
+  // single-use, so an admin who asks for something the rules forbid should
+  // not also have to go and fetch another one.
   const rejection = hubModeChangeRejectionReason(hubModeFor(hub), body.mode);
   if (rejection) {
     res.status(400).json({ error: rejection });
     return;
   }
-  const mode = body.mode as string;
 
-  // Prove the mailbox BEFORE touching anything. A wrong code here counts
-  // toward the same lockout as a wrong sign-in code.
-  try {
-    await consumePendingCode(user.email, code);
-  } catch (err) {
-    res
-      .status(400)
-      .json({ error: err instanceof Error ? err.message : "Unknown error" });
-    return;
-  }
+  // Then prove the mailbox, before anything is written.
+  if (!(await requireStepUpCode(res, body.code))) return;
+
+  const mode = body.mode as string;
 
   const { error } = await getDb()
     .from("hubs")

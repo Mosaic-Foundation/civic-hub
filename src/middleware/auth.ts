@@ -3,7 +3,7 @@
 // Three guards, ordered from loosest to strictest:
 //   requireAuth      — valid session token (user exists, token not expired)
 //   requireResident  — requireAuth + user.is_resident === true
-//   requireAdmin     — requireAuth + email ∈ CIVIC_ADMIN_EMAILS
+//   requireAdmin     — requireAuth + email ∈ the hub's admin roster
 //
 // The authenticated user is placed on `res.locals.authUser`. Controllers
 // read the actor from there, NOT from request bodies. This closes the hole
@@ -39,8 +39,14 @@ function extractToken(req: Request): string | null {
  * Per hub, not per deployment: an Athens admin is not a Floyd admin. Reads
  * the request-scoped settings snapshot, which the resolver loaded, so this
  * stays synchronous — it gates fourteen call sites, several of them on read
- * paths that run for every visitor. Outside a request it falls back to
- * CIVIC_ADMIN_EMAILS, so crons and scripts behave as they always did.
+ * paths that run for every visitor.
+ *
+ * THE ROSTER IS `people.admin_emails`, a hub_settings row an admin edits in
+ * the admin panel. CIVIC_ADMIN_EMAILS is the BOOTSTRAP only: it answers for a
+ * hub that has written no row, which is how a fresh deployment gets its first
+ * administrator, and it stops having a say the moment one is written. Outside
+ * a request there is no hub, so the bootstrap answers — which is what crons
+ * and scripts have always read.
  */
 function adminEmails(): Set<string> {
   return new Set(getAdminEmailsSync());
@@ -119,7 +125,7 @@ async function resolveOfficialParts(
  * A signed-in user's posting authority, split into its two independent
  * halves.
  *
- * `isAdmin` is a PLATFORM capability (CIVIC_ADMIN_EMAILS — reaches
+ * `isAdmin` is a PLATFORM capability (the hub's admin roster — reaches
  * /admin/*). `official` is a PUBLIC IDENTITY (an office an admin
  * designated). They are orthogonal: a county administrator who also sits
  * on the Board is both, and must render both badges. This function
@@ -276,8 +282,9 @@ export async function requireResident(
 }
 
 /**
- * Require an authenticated user whose email is in CIVIC_ADMIN_EMAILS.
- * The env var is a comma-separated list; email matching is case-insensitive.
+ * Require an authenticated user on this hub's admin roster
+ * (`people.admin_emails`, with CIVIC_ADMIN_EMAILS as the bootstrap).
+ * Matching is case-insensitive.
  */
 export async function requireAdmin(
   req: Request,
@@ -291,9 +298,13 @@ export async function requireAdmin(
     const allowed = adminEmails();
     if (allowed.size === 0) {
       // Fail safely: no admins configured means nobody is admin.
+      // Fail closed AND say how to recover. A hub in this state has nobody
+      // who can add an administrator through the admin panel, which is
+      // exactly why the roster endpoint refuses to empty it.
       res.status(503).json({
         error:
-          "Admin access is not configured. Set CIVIC_ADMIN_EMAILS on the server.",
+          "This hub has no administrators. Add one to people.admin_emails, " +
+          "or set CIVIC_ADMIN_EMAILS on the server to bootstrap.",
       });
       return;
     }
@@ -307,8 +318,8 @@ export async function requireAdmin(
 
 /**
  * Require an authenticated user authorized to post announcements —
- * either an admin, or a user in the admin-managed author list (with
- * CIVIC_BOARD_EMAILS as an env-var fallback for the author list).
+ * either an admin, or a user in the admin-managed author list (with the
+ * hub's `people.board_emails` roster as the fallback for the author list).
  *
  * Sets two values on res.locals for the handler to use:
  *   - `effectiveRole`: "admin" | "author"

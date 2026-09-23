@@ -1673,6 +1673,36 @@ export function adminPatchSettings(
   return request("PATCH", "/admin/settings", patch);
 }
 
+// --- Who administers the hub -------------------------------------------------
+//
+// Its own endpoint, not part of /admin/settings, because it takes a fresh
+// emailed code. Everything on the settings page is recoverable by an admin who
+// still has their account; the admin roster is what decides who that is.
+
+export interface HubPeople {
+  admin_emails: string[];
+  board_emails: string[];
+  /** The roster is still the deployment's CIVIC_ADMIN_EMAILS bootstrap. */
+  admins_from_env: boolean;
+}
+
+export function adminGetHubPeople(): Promise<HubPeople> {
+  return request("GET", "/admin/hub/people");
+}
+
+/** Email the signed-in admin a code. Required before adminSetHubPeople. */
+export function adminRequestPeopleCode(): Promise<{ message: string }> {
+  return request("POST", "/admin/hub/people/request-code", {});
+}
+
+export function adminSetHubPeople(patch: {
+  admin_emails?: string[];
+  board_emails?: string[];
+  code: string;
+}): Promise<HubPeople> {
+  return request("POST", "/admin/hub/people", patch);
+}
+
 // --- User settings (Slice 5) ---
 
 /**

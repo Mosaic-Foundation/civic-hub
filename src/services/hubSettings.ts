@@ -266,6 +266,38 @@ export async function setAdminEmails(
   return cleaned;
 }
 
+export async function getBoardEmails(hubId: string | null): Promise<string[]> {
+  return asEmailList(await getSetting(hubId, KEYS.PEOPLE_BOARD_EMAILS));
+}
+
+export async function setBoardEmails(
+  hubId: string,
+  emails: readonly string[],
+  updatedBy: string | null,
+): Promise<string[]> {
+  const cleaned = asEmailList(encodeList([...emails]));
+  await setSetting(hubId, KEYS.PEOPLE_BOARD_EMAILS, encodeList(cleaned), updatedBy);
+  return cleaned;
+}
+
+/**
+ * Is this hub's admin roster still the deployment's bootstrap?
+ *
+ * True when the hub has written no `people.admin_emails` row, so the answer
+ * is coming from CIVIC_ADMIN_EMAILS — which every unseeded hub on the same
+ * deployment shares. The admin panel says so rather than presenting a list
+ * that looks like this hub's own.
+ */
+export async function adminsAreFromEnv(hubId: string): Promise<boolean> {
+  try {
+    const rows = await getAllSettings(hubId);
+    return rows[KEYS.PEOPLE_ADMIN_EMAILS] === undefined;
+  } catch {
+    // Unable to tell — do not claim the roster belongs to the hub.
+    return true;
+  }
+}
+
 /**
  * Vote-results recipients. Trimmed, deduped, non-empty; an empty result means
  * no recipient is configured anywhere.

@@ -61,6 +61,11 @@ import {
   handleRequestModeChangeCode,
   handleSetHubMode,
 } from "../controllers/hubModeController.js";
+import { handleRequestStepUpCode } from "../controllers/adminStepUp.js";
+import {
+  handleGetHubPeople,
+  handleSetHubPeople,
+} from "../controllers/hubPeopleController.js";
 
 const router = Router();
 
@@ -146,9 +151,16 @@ router.post("/queues/:queue/seen", handleMarkAdminQueueSeen);
 
 // Hub settings (admin-configurable; overrides env var fallbacks)
 // Changing what the hub IS takes a fresh code, not just an open admin tab.
-// See src/controllers/hubModeController.ts.
+// See src/controllers/adminStepUp.ts for which acts and why.
 router.post("/hub/mode/request-code", handleRequestModeChangeCode);
 router.post("/hub/mode", handleSetHubMode);
+
+// Who administers this hub. A settings row, not an env var — see
+// src/controllers/hubPeopleController.ts. Same step-up as a mode change:
+// adding an admin makes access permanent, removing them makes it exclusive.
+router.get("/hub/people", handleGetHubPeople);
+router.post("/hub/people/request-code", handleRequestStepUpCode);
+router.post("/hub/people", handleSetHubPeople);
 
 router.get("/settings", handleGetSettings);
 router.patch("/settings", handlePatchSettings);
