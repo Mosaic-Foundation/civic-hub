@@ -4,6 +4,152 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Multi-tenant Phase 1 part two: per-hub settings in the database — 2026-09-22
+
+**Branch:** `multi-tenant`, nine commits, not merged. No production change.
+Two hubs on one process now differ in banner, About text, code of conduct,
+governing body and admin roster, with every value coming from a `hub_settings`
+row.
+
+**`hub_settings` is keyed on `(hub_id, key)`.** The migration adds the column
+with a default, backfills, constrains, then swaps the primary key — ordered to
+be safe against a live database. `key` alone was unique across the whole
+table, which is precisely what stopped two hubs having their own value for it.
+The `DEFAULT 'floyd'` is a migration device; Phase 2 drops it once every
+writer passes a hub.
+
+Resolution for every read: the hub's row, then the legacy alias key, then the
+environment variable, then the caller's default. The env step is the bridge,
+not the destination — it is what lets an unseeded deployment behave exactly as
+it did, and what makes a single-hub self-host with no rows a supported
+configuration rather than an accident.
+
+Reads take `string | null` and writes take `string`. A read outside a request
+answers from env; a write that does not know its hub must not guess.
+
+**The resolver loads a hub's settings once per request**, into the same
+AsyncLocalStorage scope as the hub, cached 60 seconds. That is what lets
+`isAdminEmail()` stay synchronous — it gates fourteen call sites, several on
+paths served to every visitor. The admin and board rosters are now per hub: an
+Athens admin is not a Floyd admin.
+
+**Two corrections came out of Adam's questions mid-session, and both were
+real.**
+
+*Documents would have ridden along in that snapshot.* The four legal documents
+are 30 KB between them and almost no request renders one, so paying for them
+to answer "is this person an admin" is waste. They are excluded from the
+snapshot query, loaded on demand with their own cache, and served by
+`GET /hub-config/documents` rather than in the boot config.
+
+*The demo gate would have broken in the dangerous direction.* It keyed off
+`NODE_ENV !== "production"`, correct while a demo was its own deployment. With
+one deployment serving every hub, `NODE_ENV` is production for the demo too,
+so that guard would have switched the demo OFF rather than protected Floyd.
+
+**`hubs.mode` replaces two booleans** (Adam's call). `CIVIC_BETA_MODE` and the
+demo bypass were independent flags that could both be true, describing a state
+with no meaning: demo admits anyone with any code, beta admits only the
+allowlist. The only reason that was not already a bug is that the demo check
+returned before the beta check ran.
+
+| mode | sign-in | who may join | banner |
+|---|---|---|---|
+| `demo` | any six digits, nothing emailed | anyone | demo |
+| `beta` | real code by email | allowlist, waitlist for everyone else | beta |
+| `live` | real code by email | anyone | none |
+
+Nullable with no default, deliberately: null means unset and the reader falls
+back to env, so Floyd's row stays null and production keeps reading
+`CIVIC_BETA_MODE` until a mode is written. A `DEFAULT 'live'` would have
+silently un-gated a hub that is in private beta.
+
+**A hub admin may set `beta` or `live`; only the control plane may put a hub
+INTO `demo`** (Adam, clarified twice). Demo is the one mode that turns off
+email verification, so an admin who chose it — by accident, or with a taken
+over account — would open a real jurisdiction to anyone signing in as anyone.
+The restriction runs one way: a hub created in demo stays there until its own
+admin graduates it, which is a real decision and theirs. The admin UI does not
+exist yet, so the rule lives in `hubModeChangeRejectionReason()` with tests
+that say what the future form must answer.
+
+**There is no demo bypass code any more.** A demo hub accepts any six digits,
+so nothing is displayed, compiled into the bundle or served by the config
+endpoint. `demo_mode` and `demo_bypass_code` are gone from the client. The
+sign-in screen renders whatever the server replied, so the explanation comes
+from the only place that knows. A shared static code printed on the sign-in
+screen was never a secret; this drops the pretence and the thing that could
+leak together.
+
+**Legal documents are one shared set with the names substituted** (Adam's
+call), not a copy per hub. `{PLACE}` and `{STATE}` are derived from
+`jurisdiction_name`, so a hub does not state the same thing three times. A hub
+can still override any document with its own row; Athens overrides its code of
+conduct, which is what proved the path worked — and then showed a literal
+`{HUB_NAME}` in the browser, because overrides were not being substituted.
+Fixed: both paths substitute.
+
+**Floyd's documents are byte-identical to what production serves today**,
+verified by hashing the substituted template against the original file, on
+disk and over HTTP. That check is a test, not a one-off: templating is a
+refactor of how the words are stored and must not change a word of them.
+
+**CI runs the API layer** (Adam's call), as its own job using the committed
+Supabase config. That layer has existed since August and had never run on
+push. It also proves on every push that the migration set builds a working
+schema from empty — true by luck rather than by check until the missing GRANTs
+were found exactly that way. Separate job from the unit one: it pulls
+container images and takes minutes, and its failures mean something different.
+
+**Supabase projects, recorded and acted on.** Production is
+`nfhyypwoporfggqcerli` (Civic-Hub-Floyd, paid org); dev is
+`urfmvqhzmamigssqwsya` (civic_hub_floyd_Dev, free org, paused when idle). The
+CLI had been linked to **production**, so a `supabase db push` typed in the
+wrong directory would have reached the live database. Relinked to dev, and the
+build plan now says it stays there: production migrations happen only in the
+cutover session, by Adam, from the runbook.
+
+**Verified against a local stack, both hubs on one process:**
+
+```
+floyd    /floyd-banner.jpg    Board of Supervisors  admin@example.test
+athens   /athens-banner.jpg   Town Council          demo-admin@athens.example
+```
+
+Athens serves its own code of conduct and About; its shared documents carry
+its own name. Floyd's four documents hash identical to the production files.
+Checked in a browser at both hostnames.
+
+**Tests:** `npm test` — 76 files, 897 tests, green. Backend `tsc` and the UI
+build clean.
+
+**Open questions and gaps, stated rather than hidden.**
+- **The proposal best-practices guide is not really shareable yet.** It
+  contains Floyd-specific *examples* — a farmers market, a town park, "everyone
+  in Floyd knows" — which are not names and cannot be substituted. It renders
+  on Athens with those intact. Making it genuinely shared is an editing pass on
+  the examples: writing, not code.
+- **A wrong code on a NON-demo hub is not covered by tests.** `tests/api`
+  speaks HTTP only and cannot read the real one-time code out of
+  `pending_verifications` to supply a genuinely wrong one. Closing it needs a
+  fixture hub in beta or live mode plus database access from the test. The
+  demo-hub semantics ARE covered, and a malformed code is still refused.
+- **Cron routes still read from env.** The four `/internal/*` controllers have
+  no hub in scope, so their settings reads fall back to environment variables.
+  Behaviour is unchanged; Phase 2 makes crons iterate hubs.
+- **`copy.welcome` and `copy.resident_noun` have no reader yet.** They are in
+  the contract and nothing consumes them; the string sweep is where they land.
+- The local `.env` points at the dev project, which is correct, but it also
+  sets `CIVIC_DEMO_BYPASS_CODE`, so a locally-seeded Floyd comes out in demo
+  mode. Fine for tests — it is how they sign in — but it means local Floyd is
+  not shaped like production Floyd.
+
+**Not in this slice, by instruction:** the string sweep of hardcoded "Floyd"
+text, the admin UI for editing settings, and `hub_id` on tables other than
+`hubs` and `hub_settings`.
+
+---
+
 ## Multi-tenant Phase 1 part one: hub registry and runtime config — 2026-09-22
 
 **Branch:** `multi-tenant`, seven commits, not merged. No production change.
