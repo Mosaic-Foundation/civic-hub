@@ -4,8 +4,8 @@ HANDOFF.md is the full build log: 181 dated entries, newest first, ~11,650 lines
 Reading it whole costs most of a session's context. Use this index to find the
 entry you need, then read only that line range (`sed -n START,ENDp HANDOFF.md`).
 Line numbers are as of 2026-09-22; new entries are prepended at the top, so add
-the length of anything newer than "Multi-tenant Phase 1 part two" (line 7) to
-the numbers below, or just grep the heading.
+the length of anything newer than "Login hardening" (line 7) to the numbers
+below, or just grep the heading.
 
 ## Where things are
 
@@ -19,6 +19,8 @@ the numbers below, or just grep the heading.
 | Settings key names, aliases, env fallbacks, public list | `src/models/hubSettings.ts` |
 | Shared legal documents + per-hub substitution | `config/legal/`, `src/services/hubDocuments.ts` |
 | Seeding a hub's settings from env | `scripts/seed-hub-settings.ts` |
+| Dev deployment runbook + Preview env checklist | `DEPLOY-dev.md` |
+| Guards: production db push, deploy env safety | `scripts/db-push.sh`, `scripts/check-deploy-env.ts` |
 | Auth, sessions, admin/board resolution | `src/middleware/auth.ts`, `src/modules/civic.auth/` |
 | Process registry and per-type handlers | `src/processes/registry.ts`, `src/processes/*Process.ts` |
 | DB client (service role, the thing tenancy replaces) | `src/db/client.ts` |
@@ -51,7 +53,8 @@ the numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
-- Phase 1 part two: per-hub settings, hubs.mode, shared legal documents — 7–152
+- Login hardening, generic proposal guide, dev deploy prep — 7–110
+- Phase 1 part two: per-hub settings, hubs.mode, shared legal documents — 111–256
 - Phase 1 part one: hubs table, hostname resolver, /api/hub-config, UI — 153–282
 - Phase 0: prep, contracts, and the token spike — 283–399. Contracts live in
   `BUILD-PLAN-multi-tenant.md`; decisions in `../decisions/2026-09-22-multi-tenant.md`.

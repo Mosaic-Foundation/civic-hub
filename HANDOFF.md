@@ -4,6 +4,103 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Login hardening, a generic proposal guide, and the dev deploy prep — 2026-09-22
+
+**Branch:** `multi-tenant`, three more commits (13 total), **not pushed and not
+merged**. Production untouched. Adam asked for the branch NOT to be pushed
+until Vercel's Preview environment variables are confirmed to point at dev.
+
+### Login hardening
+
+**A hub's mode comes only from the database.** The env fallbacks are gone,
+`hubs.mode` is NOT NULL, and Floyd is backfilled to `beta` — confirmed with
+Adam rather than derived, because getting it wrong the other way opens a real
+jurisdiction's hub to anyone. Outside a request the answer is `live`, the
+strictest of the three: code with no hub in scope must not assume it may skip
+verification.
+
+**Moving a hub INTO demo is refused by a trigger**, not only by code. "No code
+path does this" has to be re-proved on every change, and the control plane, a
+migration, a script and a future admin form are four paths; a trigger is one.
+It caught a real bug within a minute: the seed script was creating Athens and
+then moving it into demo. Fixed the right way — Athens is created as a demo in
+`seed.sql`, because creation is the only moment demo can be set.
+
+**A demo hub still protects the people who run it.** An admin, board member,
+announcement author or managed official always gets a real emailed code, even
+there. An admin who can be impersonated by typing six digits is not an admin,
+and a hub that later graduates out of demo would carry that account in with
+it. `isPrivilegedEmail()` fails CLOSED: a lookup that throws counts as
+privileged.
+
+**Sessions carry the hub they were minted on**, and are looked up and
+destroyed scoped to it. A token is a bearer credential, so without this a
+session from a demo hub would authenticate its holder on a real jurisdiction's
+hub on the same deployment. That is why `sessions` gets `hub_id` now rather
+than in Phase 2 with the other thirty tables: the rest are data, this one is
+identity.
+
+**Changing a hub's mode takes a fresh emailed code.** `POST
+/admin/hub/mode/request-code` then `POST /admin/hub/mode`. The one-time-code
+rule — lockout, expiry, wrong-guess counter, single use — was extracted into
+`consumePendingCode()` so the step-up path enforces the same rules rather than
+growing a weaker copy.
+
+**`scripts/db-push.sh`** refuses a push to production unless the operator names
+the project ref, which cannot be typed by accident. Proved in both directions.
+
+Eight new API tests: a cross-hub session refused, a wrong code on a non-demo
+hub, a spent code, malformed codes, the lockout, and an admin refused the demo
+shortcut while an ordinary visitor is offered it.
+
+### The proposal guide
+
+The shared guide was Floyd's with the names swapped, and its worked examples
+named a farmers market, a town park and "everyone in Floyd knows" — specific
+in ways no placeholder can fix, so Athens was being handed advice about
+somewhere it has never heard of. The shared version is now placeless, same
+structure and advice word for word. **Floyd's version is unchanged and became
+Floyd's own override row**, seeded from the file: it is better writing for
+Floyd and there was no reason to blunt it for a hub it was never written for.
+
+### Dev deploy preparation (Adam runs it)
+
+`DEPLOY-dev.md` is the runbook. `scripts/check-deploy-env.ts` proves an
+environment cannot reach production: it decodes the service-role key and names
+the project the key actually belongs to, because a production key beside a dev
+URL still opens production, and it fails on any variable the hardening pass
+removed.
+
+`assertSpaceIdentityConfigured` no longer refuses to boot production without
+`CIVIC_SPACE_DID`. Right while a deployment served one space; now every hub
+carries `space_did` NOT NULL, one deployment cannot have one correct value,
+and the assertion would have blocked every multi-hub deployment over a value
+nothing reads. A value that IS set must still be a DID.
+
+Athens's admin is derived from the deployment's own by plus-addressing
+(`you+athens@…`) rather than a fixed `@athens.example` address, which could
+never have received the code a privileged account now always needs.
+
+**Two link findings, both recorded in the runbook.** `civic-hub/.vercel/`
+links this directory to a Vercel project named `civic-hub`; if that is
+production, `vercel deploy --prod` typed here reaches it. The Supabase CLI
+link was on production and has been moved to dev.
+
+### Test environment change worth knowing
+
+Bare `localhost` now resolves to **athens** (`CIVIC_DEV_HUB=athens`), locally
+and in CI. Floyd is seeded in beta to mirror production, so a test cannot sign
+in there without being on the allowlist; Athens is the demo, which is where
+tests sign in. Tests that care about Floyd set the Host header.
+
+**Tests:** `npm test` — 77 files, 911 tests, green. `tsc` and the UI build
+clean.
+
+**Not done, and waiting on Adam:** the deploy itself, and everything in
+Phase 2. Nothing is merged and the branch is not pushed.
+
+---
+
 ## Multi-tenant Phase 1 part two: per-hub settings in the database — 2026-09-22
 
 **Branch:** `multi-tenant`, nine commits, not merged. No production change.
