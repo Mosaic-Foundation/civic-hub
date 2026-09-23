@@ -3,10 +3,16 @@
 // POST /internal/admin-digest/run
 //   Cron-triggered. CRON_SECRET bearer auth (Vercel Cron auto-injects).
 //   Counts pending items in each admin-review queue and emails every
-//   admin in CIVIC_ADMIN_EMAILS. Empty digests are skipped silently.
+//   admin in the people.admin_emails hub setting (falls back to
+//   CIVIC_ADMIN_EMAILS). Empty digests are skipped silently.
+
+// TODO(phase2): this runs from a cron with no hub in scope, so the reads
+// below resolve from env rather than per hub. Phase 2 makes crons iterate
+// hubs and run once per hub.
 
 import type { Request, Response } from "express";
 import { runAdminDigest } from "../modules/civic.admin_digest/index.js";
+import { getAdminEmailsSync } from "../services/hubSettings.js";
 
 function requireCronSecret(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -25,10 +31,7 @@ function adminDigestEnabled(): boolean {
 }
 
 function adminRecipients(): string[] {
-  return (process.env.CIVIC_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => e.length > 0);
+  return getAdminEmailsSync();
 }
 
 export async function handleRunAdminDigest(

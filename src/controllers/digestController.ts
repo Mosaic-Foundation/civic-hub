@@ -17,6 +17,10 @@
 //
 // Slice 5.
 
+// TODO(phase2): this runs from a cron with no hub in scope, so the reads
+// below resolve from env rather than per hub. Phase 2 makes crons iterate
+// hubs and run once per hub.
+
 import { Request, Response } from "express";
 import { getEventsSince } from "../events/eventStore.js";
 import { getProcess } from "../services/processService.js";
@@ -43,6 +47,8 @@ import {
 import { sendEmail } from "../utils/email.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 import { getAuthUser } from "../middleware/auth.js";
+import { getSettingSync } from "../services/hubSettings.js";
+import { KEYS } from "../models/hubSettings.js";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 // Slack subtracted from the next-due calculation so a daily cron firing at a
@@ -58,7 +64,7 @@ function hubName(): string {
 
 function postalAddress(): string {
   return (
-    process.env.HUB_POSTAL_ADDRESS?.trim() ||
+    getSettingSync(KEYS.EMAIL_POSTAL_ADDRESS)?.trim() ||
     "Floyd, VA"
   );
 }

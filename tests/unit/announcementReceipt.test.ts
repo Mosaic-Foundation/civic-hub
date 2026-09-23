@@ -15,7 +15,7 @@ const BASE = {
 
 describe("receiptRecipients", () => {
   it("puts the author first, then the admins", () => {
-    expect(receiptRecipients("sup@floyd.gov", "boss@floyd.gov,two@floyd.gov")).toEqual([
+    expect(receiptRecipients("sup@floyd.gov", ["boss@floyd.gov", "two@floyd.gov"])).toEqual([
       "sup@floyd.gov",
       "boss@floyd.gov",
       "two@floyd.gov",
@@ -25,34 +25,37 @@ describe("receiptRecipients", () => {
   it("sends ONE email to an admin posting under their own office", () => {
     // The dedupe that would otherwise double-send on every post an
     // admin-official makes — the exact account this feature protects.
-    expect(receiptRecipients("boss@floyd.gov", "boss@floyd.gov")).toEqual([
+    expect(receiptRecipients("boss@floyd.gov", ["boss@floyd.gov"])).toEqual([
       "boss@floyd.gov",
     ]);
   });
 
   it("dedupes case-insensitively", () => {
-    expect(receiptRecipients("Boss@Floyd.GOV", "boss@floyd.gov")).toHaveLength(1);
+    expect(receiptRecipients("Boss@Floyd.GOV", ["boss@floyd.gov"])).toHaveLength(1);
   });
 
   it("still notifies the admins when the author email is missing", () => {
     // Losing the author's address must not cost the admins their copy —
     // they are the ones who can take a fraudulent post down.
-    expect(receiptRecipients(null, "boss@floyd.gov")).toEqual(["boss@floyd.gov"]);
-    expect(receiptRecipients(undefined, "boss@floyd.gov")).toEqual(["boss@floyd.gov"]);
+    expect(receiptRecipients(null, ["boss@floyd.gov"])).toEqual(["boss@floyd.gov"]);
+    expect(receiptRecipients(undefined, ["boss@floyd.gov"])).toEqual(["boss@floyd.gov"]);
   });
 
   it("still notifies the author when no admins are configured", () => {
     expect(receiptRecipients("sup@floyd.gov", undefined)).toEqual(["sup@floyd.gov"]);
-    expect(receiptRecipients("sup@floyd.gov", "")).toEqual(["sup@floyd.gov"]);
+    expect(receiptRecipients("sup@floyd.gov", [])).toEqual(["sup@floyd.gov"]);
   });
 
   it("returns nobody when there is nobody to tell", () => {
-    expect(receiptRecipients(null, "")).toEqual([]);
-    expect(receiptRecipients("  ", "  ,  ")).toEqual([]);
+    expect(receiptRecipients(null, [])).toEqual([]);
+    expect(receiptRecipients("  ", ["  ", "  "])).toEqual([]);
   });
 
   it("ignores blank entries and whitespace in the admin list", () => {
-    expect(receiptRecipients(null, " a@b.co , , c@d.co ")).toEqual([
+    // The list now arrives already resolved from hub_settings, but the
+    // trimming stays: a hub's roster is typed by a person, and a stray space
+    // must not become a recipient nobody can see is wrong.
+    expect(receiptRecipients(null, [" a@b.co ", "", " ", " c@d.co "])).toEqual([
       "a@b.co",
       "c@d.co",
     ]);

@@ -14,7 +14,7 @@ import { randomInt } from "node:crypto";
 import { getDb } from "../../db/client.js";
 import { generateId } from "../../utils/id.js";
 import { sendEmail } from "../../utils/email.js";
-import { isDemoHubSync, isEmailOnBetaAllowlist } from "../../services/hubSettings.js";
+import { isDemoHubSync, isEmailOnBetaAllowlist, getAdminEmailsSync } from "../../services/hubSettings.js";
 import { currentHubId } from "../../config/hubContext.js";
 import type { User, PendingVerification, Session } from "./models.js";
 
@@ -147,10 +147,7 @@ export async function requestVerification(
   }
 
   if (process.env.CIVIC_BETA_MODE === "true") {
-    const adminEmails = (process.env.CIVIC_ADMIN_EMAILS ?? "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter((e) => e.length > 0);
+    const adminEmails = getAdminEmailsSync();
     if (!adminEmails.includes(normalizedEmail)) {
       const allowed = await isEmailOnBetaAllowlist(currentHubId(), normalizedEmail);
       if (!allowed) {

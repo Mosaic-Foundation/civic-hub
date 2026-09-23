@@ -161,12 +161,24 @@ export async function handleSubmitInput(
  * to decide whether to render the "post anonymously" toggle (or force
  * anonymity) per the admin-configured hub policy.
  */
+/**
+ * @deprecated Since 2026-09-22. The comment identity mode is part of
+ * `GET /api/hub-config`, which the UI already fetches once at boot, so this
+ * endpoint is a second round trip for a value the client is holding.
+ *
+ * Kept as an alias, returning exactly the same `{ mode }`, because a cached
+ * bundle from before the change still calls it. Remove it once no deployed
+ * client does — not before, or the anonymity toggle silently reverts to its
+ * default for anyone on an old tab.
+ */
 export async function handleGetCommentIdentityMode(
   _req: Request,
   res: Response,
 ): Promise<void> {
   try {
     const mode = await getCommentIdentityMode(currentHubId());
+    res.set("Deprecation", "true");
+    res.set("Link", '</api/hub-config>; rel="successor-version"');
     res.json({ mode });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

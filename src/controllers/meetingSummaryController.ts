@@ -5,8 +5,9 @@
 //     discovers meeting entries, summarizes new ones via Claude, creates
 //     a civic.meeting_summary draft process per entry. Protected by
 //     CRON_SECRET bearer auth (shared with the digest cron). Respects
-//     MEETING_SUMMARY_ENABLED=false. Per-meeting failures are isolated;
-//     one bad meeting does not abort the batch.
+//     the plugin.meeting_summary.enabled hub setting (off via
+//     isPluginEnabledSync("meeting_summary")). Per-meeting failures are
+//     isolated; one bad meeting does not abort the batch.
 //
 //   GET /admin/meeting-summaries            (mounted in adminRoutes.ts)
 //   GET /admin/meeting-summaries/:id        (mounted in adminRoutes.ts)
@@ -16,6 +17,10 @@
 //
 //   GET /meeting-summary/:id
 //     Public read of published summaries only.
+
+// TODO(phase2): this runs from a cron with no hub in scope, so the reads
+// below resolve from env rather than per hub. Phase 2 makes crons iterate
+// hubs and run once per hub.
 
 import { Request, Response } from "express";
 import { emitEvent } from "../events/eventEmitter.js";
@@ -66,6 +71,8 @@ import {
   findBrokenPublications,
   type BrokenPublication,
 } from "../services/feedHealth.js";
+import { getSettingSync, isPluginEnabledSync, getAdminEmailsSync } from "../services/hubSettings.js";
+import { KEYS } from "../models/hubSettings.js";
 
 // "auto" tries every connector whose configuration is present, in descending
 // order of source quality, and uses the first that returns meetings. This is
@@ -84,7 +91,7 @@ const DEFAULT_MAX_PER_RUN = 3;
 const REVISION_NAG_DAYS = 14;
 
 function maxPerRun(): number {
-  const raw = process.env.MEETING_SUMMARY_MAX_PER_RUN?.trim();
+  const raw = getSettingSync(KEYS.PLUGIN_MEETING_MAX_PER_RUN)?.trim();
   if (!raw) return DEFAULT_MAX_PER_RUN;
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 1) return DEFAULT_MAX_PER_RUN;
@@ -212,8 +219,7 @@ function isApprovalStatus(s: string): s is MeetingSummaryApprovalStatus {
 }
 
 function enabled(): boolean {
-  const v = process.env.MEETING_SUMMARY_ENABLED?.trim().toLowerCase();
-  return v !== "false";
+  return isPluginEnabledSync("meeting_summary");
 }
 
 function requireCronSecret(req: Request): boolean {
@@ -235,23 +241,20 @@ function connectorFor(id: string | undefined): MeetingSourceConnector | null {
 }
 
 function autoPublish(): boolean {
-  const v = process.env.MEETING_SUMMARY_AUTO_PUBLISH?.trim().toLowerCase();
+  const v = getSettingSync(KEYS.PLUGIN_MEETING_AUTO_PUBLISH)?.trim().toLowerCase();
   return v === "true";
 }
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function cutoffDate(): string | null {
-  const v = process.env.MEETING_SUMMARY_CUTOFF_DATE?.trim();
+  const v = getSettingSync(KEYS.PLUGIN_MEETING_CUTOFF_DATE)?.trim();
   if (!v || !ISO_DATE_RE.test(v)) return null;
   return v;
 }
 
 function adminRecipients(): string[] {
-  return (process.env.CIVIC_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => e.length > 0);
+  return getAdminEmailsSync();
 }
 
 interface CronOutcome {
@@ -521,7 +524,7 @@ export async function handleRunMeetingSummary(
     return;
   }
 
-  const connectorId = process.env.MEETING_CONNECTOR_ID?.trim() || DEFAULT_CONNECTOR_ID;
+  const connectorId = getSettingSync(KEYS.PLUGIN_MEETING_CONNECTOR_ID)?.trim() || DEFAULT_CONNECTOR_ID;
   if (connectorId !== "auto" && !CONNECTORS[connectorId]) {
     await failRun(
       res,
@@ -532,17 +535,17 @@ export async function handleRunMeetingSummary(
     return;
   }
 
-  const sourceUrl = process.env.MEETING_SOURCE_URL?.trim() ?? "";
-  const channelId = process.env.MEETING_YOUTUBE_CHANNEL_ID?.trim() ?? "";
+  const sourceUrl = getSettingSync(KEYS.PLUGIN_MEETING_SOURCE_URL)?.trim() ?? "";
+  const channelId = getSettingSync(KEYS.PLUGIN_MEETING_YOUTUBE_CHANNEL_ID)?.trim() ?? "";
 
   const cfg: MeetingSummaryConfig = {
     source_url: sourceUrl,
     channel_id: channelId,
-    title_filter: process.env.MEETING_TITLE_FILTER?.trim() ?? "",
-    type_exclude: process.env.MEETING_TYPE_EXCLUDE?.trim() ?? "",
-    collection_name: process.env.MEETING_WIX_COLLECTION?.trim() ?? "",
+    title_filter: getSettingSync(KEYS.PLUGIN_MEETING_TITLE_FILTER)?.trim() ?? "",
+    type_exclude: getSettingSync(KEYS.PLUGIN_MEETING_TYPE_EXCLUDE)?.trim() ?? "",
+    collection_name: getSettingSync(KEYS.PLUGIN_MEETING_WIX_COLLECTION)?.trim() ?? "",
     extraction_instructions: resolveEffectiveInstructions(
-      process.env.MEETING_EXTRACTION_INSTRUCTIONS ?? "",
+      getSettingSync(KEYS.PLUGIN_MEETING_EXTRACTION_INSTRUCTIONS) ?? "",
     ),
     model: modelName(),
   };

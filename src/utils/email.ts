@@ -4,9 +4,14 @@
 // Env vars:
 //   RESEND_API_KEY   — secret key from resend.com. If unset, email is
 //                       NOT sent (caller should log a fallback).
-//   RESEND_FROM      — the "From" header, e.g.
-//                       "Floyd Civic Hub <noreply@floyd.civic.social>"
-//                       Defaults to the Resend sandbox if unset.
+//
+// The "From" header is the email.from_address hub setting (KEYS.EMAIL_FROM_ADDRESS,
+// falling back to RESEND_FROM / SMTP_FROM), e.g.
+// "Floyd Civic Hub <noreply@floyd.civic.social>". Defaults to the Resend
+// sandbox if unset.
+
+import { getSettingSync } from "../services/hubSettings.js";
+import { KEYS } from "../models/hubSettings.js";
 
 /**
  * Validate email configuration at startup. Logs warnings for missing
@@ -15,7 +20,7 @@
  */
 export function validateEmailConfig(): void {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM;
+  const from = getSettingSync(KEYS.EMAIL_FROM_ADDRESS);
   const isProd = process.env.NODE_ENV === "production";
 
   if (!apiKey) {
@@ -75,7 +80,7 @@ export async function sendEmail(
   }
 
   const from =
-    process.env.RESEND_FROM ?? "Civic Hub <onboarding@resend.dev>";
+    getSettingSync(KEYS.EMAIL_FROM_ADDRESS) ?? "Civic Hub <onboarding@resend.dev>";
 
   try {
     const res = await fetch("https://api.resend.com/emails", {

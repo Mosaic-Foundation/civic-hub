@@ -20,6 +20,7 @@
 // publish. See handleCreateAnnouncement.
 
 import { sendEmail } from "../../utils/email.js";
+import { getAdminEmailsSync } from "../../services/hubSettings.js";
 
 function esc(s: string): string {
   return String(s)
@@ -115,7 +116,7 @@ function formatTimestamp(iso: string): string {
  */
 export function receiptRecipients(
   authorEmail: string | null | undefined,
-  adminEmailsRaw: string | undefined,
+  adminEmails: readonly string[] | undefined,
 ): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -128,7 +129,7 @@ export function receiptRecipients(
     out.push(trimmed);
   };
   if (authorEmail) push(authorEmail);
-  for (const part of (adminEmailsRaw ?? "").split(",")) push(part);
+  for (const admin of adminEmails ?? []) push(admin);
   return out;
 }
 
@@ -143,10 +144,10 @@ export async function sendAnnouncementReceipt(
   input: AnnouncementReceiptInput,
   authorEmail: string | null | undefined,
 ): Promise<void> {
-  const recipients = receiptRecipients(authorEmail, process.env.CIVIC_ADMIN_EMAILS);
+  const recipients = receiptRecipients(authorEmail, getAdminEmailsSync());
   if (recipients.length === 0) {
     console.warn(
-      "[announcement] no receipt recipients (no author email, no CIVIC_ADMIN_EMAILS) — receipt skipped",
+      "[announcement] no receipt recipients (no author email, and this hub has no admins configured) — receipt skipped",
     );
     return;
   }

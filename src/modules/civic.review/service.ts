@@ -32,13 +32,11 @@ import { executeAction, rowToProcess } from "../../services/processService.js";
 import { createProject } from "../civic.projects/index.js";
 import { createProposal } from "../civic.proposals/index.js";
 import { HUB_ID, DEFAULT_JURISDICTION } from "../../config/hub.js";
+import { getAdminEmailsSync } from "../../services/hubSettings.js";
 
 
 function getAdminEmails(): string[] {
-  return (process.env.CIVIC_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => e.length > 0);
+  return getAdminEmailsSync();
 }
 
 function takeSnapshot(process: {

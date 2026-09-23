@@ -12,6 +12,8 @@
 import { getDb } from "../../db/client.js";
 import { sendEmail } from "../../utils/email.js";
 import { generateId } from "../../utils/id.js";
+import { getSettingSync } from "../../services/hubSettings.js";
+import { KEYS, asEmailList } from "../../models/hubSettings.js";
 import {
   FEEDBACK_CATEGORIES,
   type FeedbackCategory,
@@ -225,7 +227,7 @@ export async function listFeedback(
 
 async function notifyOperator(s: FeedbackSubmission): Promise<void> {
   const recipient =
-    process.env.FEEDBACK_RECIPIENT_EMAIL?.trim() || "adam@civic.social";
+    asEmailList(getSettingSync(KEYS.PLUGIN_FEEDBACK_RECIPIENTS))[0] || "adam@civic.social";
   const subject = `[Civic Hub feedback] ${s.category} — ${s.message.slice(0, 60)}`;
   const html = renderOperatorEmail(s);
   const result = await sendEmail({ to: recipient, subject, html });

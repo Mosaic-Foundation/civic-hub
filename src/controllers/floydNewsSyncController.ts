@@ -14,6 +14,10 @@
 // document scans are unreadable), body comes from the RSS description
 // when present (otherwise empty), no Claude usage on this path.
 
+// TODO(phase2): this runs from a cron with no hub in scope, so the reads
+// below resolve from env rather than per hub. Phase 2 makes crons iterate
+// hubs and run once per hub.
+
 import { Request, Response } from "express";
 import {
   discoverNewsEntries,
@@ -35,6 +39,8 @@ import {
   type AnnouncementProcessState,
   type AnnouncementSource,
 } from "../modules/civic.announcement/index.js";
+import { getSettingSync, isPluginEnabledSync } from "../services/hubSettings.js";
+import { KEYS } from "../models/hubSettings.js";
 
 const DEFAULT_SOURCE_URL = "https://www.floydcova.gov/blog-feed.xml";
 const DEFAULT_MAX_PER_RUN = 5;
@@ -51,13 +57,12 @@ function requireCronSecret(req: Request): boolean {
 }
 
 function enabled(): boolean {
-  // Default: enabled. Operator opts out via FLOYD_NEWS_SYNC_ENABLED=false.
-  const v = process.env.FLOYD_NEWS_SYNC_ENABLED?.trim().toLowerCase();
-  return v !== "false";
+  // Default: enabled. Operator opts out via plugin.news_sync.enabled=false.
+  return isPluginEnabledSync("news_sync");
 }
 
 function maxPerRun(): number {
-  const raw = process.env.FLOYD_NEWS_SYNC_MAX_PER_RUN?.trim();
+  const raw = getSettingSync(KEYS.PLUGIN_NEWS_SYNC_MAX_PER_RUN)?.trim();
   if (!raw) return DEFAULT_MAX_PER_RUN;
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 1) return DEFAULT_MAX_PER_RUN;
@@ -65,7 +70,7 @@ function maxPerRun(): number {
 }
 
 function sourceUrl(): string {
-  return process.env.FLOYD_NEWS_SOURCE_URL?.trim() || DEFAULT_SOURCE_URL;
+  return getSettingSync(KEYS.PLUGIN_NEWS_SYNC_SOURCE_URL)?.trim() || DEFAULT_SOURCE_URL;
 }
 
 function modelName(): string {

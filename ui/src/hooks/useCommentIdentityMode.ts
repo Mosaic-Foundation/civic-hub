@@ -1,28 +1,20 @@
-import { useEffect, useState } from "react";
-import { getCommentIdentityMode, type CommentIdentityMode } from "../services/api";
+import type { CommentIdentityMode } from "../services/api";
+import { useHubSetting } from "../config/HubConfigContext";
 
 /**
- * Fetch the hub's comment identity policy for the composers. Falls back
- * to "anonymous_optional" (the launch default) if the fetch fails — the
- * server re-enforces the real mode on submit either way, so the toggle
- * is only ever cosmetic.
+ * The hub's comment identity policy: whether a comment carries the author's
+ * real name, may be anonymous at the author's option, or is always anonymous.
+ *
+ * Reads the config the app already fetched at boot. It used to make its own
+ * request to /process/input/identity-mode on every mount of every comment
+ * form — a round trip for a value the client was already holding, and a
+ * second source of truth for one setting. That endpoint still exists as a
+ * deprecated alias for older cached bundles.
+ *
+ * The default matches the server's: real name by default, with anonymity
+ * available. A hub that has not set a policy gets the launch behaviour.
  */
 export function useCommentIdentityMode(): CommentIdentityMode {
-  const [mode, setMode] = useState<CommentIdentityMode>("anonymous_optional");
-
-  useEffect(() => {
-    let cancelled = false;
-    getCommentIdentityMode()
-      .then(({ mode: m }) => {
-        if (!cancelled) setMode(m);
-      })
-      .catch(() => {
-        /* keep the default */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return mode;
+  const served = useHubSetting("moderation.comment_identity_mode");
+  return (served as CommentIdentityMode | undefined) ?? "anonymous_optional";
 }

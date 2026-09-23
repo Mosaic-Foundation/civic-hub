@@ -2,12 +2,14 @@
 //
 // Mirrors the pattern civic.feedback's notifyOperator and the meeting-summary
 // cron's notifyCronOutcome already use: send through the shared Resend helper,
-// address every admin in CIVIC_ADMIN_EMAILS, and treat a failed send as a log
-// line, never an error. The signup is already persisted by the time we get
-// here — a bounced notification must not turn a successful signup into a 500
-// for the person who just filled in the form.
+// address every admin in the people.admin_emails hub setting (falls back to
+// CIVIC_ADMIN_EMAILS), and treat a failed send as a log line, never an error.
+// The signup is already persisted by the time we get here — a bounced
+// notification must not turn a successful signup into a 500 for the person
+// who just filled in the form.
 
 import { sendEmail } from "../utils/email.js";
+import { getAdminEmailsSync } from "./hubSettings.js";
 
 export interface WaitlistSignup {
   email: string;
@@ -19,12 +21,9 @@ export interface WaitlistSignup {
   created_at: string;
 }
 
-/** Admins in CIVIC_ADMIN_EMAILS — same parse the cron alerts use. */
+/** Admins for the hub in scope — same reader the cron alerts use. */
 function adminRecipients(): string[] {
-  return (process.env.CIVIC_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => e.length > 0);
+  return getAdminEmailsSync();
 }
 
 function escapeHtml(text: string): string {
