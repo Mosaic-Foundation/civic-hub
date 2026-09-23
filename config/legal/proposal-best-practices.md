@@ -10,9 +10,9 @@
 
 Strong titles are specific enough that a reader scrolling the proposals page can understand the subject without opening the proposal. Weak titles are vague or generic — they ask the community to consider something without revealing what.
 
-Examples of weak titles: *"We need change"*, *"Floyd should do better"*, *"An important issue."*
+Examples of weak titles: *"We need change"*, *"{PLACE} should do better"*, *"An important issue."*
 
-Examples of strong titles: *"Should {PLACE} add sidewalks on Main Street between First and Third?"*, *"Create a community composting program at the Floyd Farmers Market"*, *"Concerns about Flock camera data collection at the Highway 8 intersection."*
+Examples of strong titles: *"Should {PLACE} add sidewalks on Main Street between First and Third?"*, *"Create a community composting program at the farmers market"*, *"Concerns about Flock camera data collection at the Highway 8 intersection."*
 
 Flag titles when they fail to identify the subject. Do not flag titles for length alone — a longer title that earns the space is preferable to a short title that obscures the subject.
 
@@ -47,7 +47,7 @@ Strong sources are authoritative and verifiable: government documents, official 
 
 Weaker sources: personal forum posts, hearsay, unattributed claims.
 
-Personal experience is welcome but should be framed as personal experience: *"I drive past that intersection daily and have seen..."* rather than *"Everyone in Floyd knows that..."*
+Personal experience is welcome but should be framed as personal experience: *"I drive past that intersection daily and have seen..."* rather than *"Everyone here knows that..."*
 
 Flag empirical claims that lack any source. Do not flag preferences, values, or feelings — these don't require sources. Distinguish between a claim (*"the cameras collect X"*) and a concern (*"I'm worried about what the cameras might collect"*); the latter doesn't require a source.
 
@@ -55,13 +55,13 @@ When the user can't source a specific claim, suggest rephrasing to acknowledge u
 
 ## Balance and framing on contested topics
 
-For proposals touching contested topics — where reasonable people in Floyd are likely to disagree — credibility comes from acknowledging the disagreement rather than pretending it isn't there.
+For proposals touching contested topics — where reasonable people in {PLACE} are likely to disagree — credibility comes from acknowledging the disagreement rather than pretending it isn't there.
 
 This does not mean writing a both-sides essay. It means naming the strongest argument a reasonable opponent would make and responding to it briefly, or marking where the author and a reasonable opponent would diverge.
 
 Example: a proposal opposing surveillance cameras gains credibility by acknowledging that some neighbors value cameras for security, then explaining why privacy concerns outweigh that for the author. A proposal supporting cameras gains credibility by acknowledging the privacy tradeoff.
 
-Preference proposals (most Ideas, some Projects) typically don't need this. *"We should have a skate park"* is a preference, not a claim about contested facts. But if any proposal makes claims that other Floyd residents would actively contest, invite a counterargument.
+Preference proposals (most Ideas, some Projects) typically don't need this. *"We should have a skate park"* is a preference, not a claim about contested facts. But if any proposal makes claims that other residents would actively contest, invite a counterargument.
 
 Flag missing counterarguments only when:
 - The proposal touches a topic with active disagreement in the community
@@ -90,7 +90,7 @@ For Issues: a clear outcome the user wants. *"I'm concerned about X"* is incompl
 
 For Ideas: enough specificity that supporters know what they're supporting. *"We need more community spaces"* is vague; *"Open the old elementary school gym for evening community use"* is specific.
 
-For Projects: rough scope and organizing responsibility. *"Build a skate park"* is incomplete; *"Build a skate park at the south end of Floyd Town Park; I'm willing to organize a working group"* is specific.
+For Projects: rough scope and organizing responsibility. *"Build a skate park"* is incomplete; *"Build a skate park at the south end of the town park; I'm willing to organize a working group"* is specific.
 
 Flag proposals where the ask is unclear enough that an endorser couldn't articulate what they're endorsing.
 
@@ -113,7 +113,7 @@ If a proposal has clearly bundled multiple distinct asks, suggest splitting it i
 A proposal is not a complaint, a manifesto, or a finished document. It is an invitation to neighbors to deliberate. Three patterns help:
 
 1. **Constructive over reactive.** Even when raising an issue, point toward what could be different. *"What I'd want to see is..."* lands better than *"this is unacceptable."*
-2. **Name who's affected.** When relevant, identify who in Floyd is impacted or who would benefit. This grounds the proposal in real lives.
+2. **Name who's affected.** When relevant, identify who is affected or who would benefit. This grounds the proposal in real lives.
 3. **Leave room for the community.** Phrase the proposal as something the community deliberates on, not as a settled position being announced. The community's endorsement is the point.
 
 Flag proposals that read as pronouncements rather than invitations — particularly when the framing forecloses on community input.

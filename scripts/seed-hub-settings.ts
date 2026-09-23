@@ -24,6 +24,8 @@
  * runbook (BUILD-PLAN-multi-tenant.md → Phase 6).
  */
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { getDb } from "../src/db/client.js";
 import { KEYS } from "../src/models/hubSettings.js";
 import { encodeList } from "../src/models/hubSettings.js";
@@ -36,6 +38,16 @@ const HUB_ID = (() => {
   const i = args.indexOf("--hub");
   return i >= 0 && args[i + 1] ? args[i + 1] : "floyd";
 })();
+
+/** A file from the repo, or undefined when it is not there. */
+function readLocalFile(relativePath: string): string | undefined {
+  try {
+    return readFileSync(resolve(process.cwd(), relativePath), "utf-8");
+  } catch {
+    console.warn(`  (skipping ${relativePath} — not found)`);
+    return undefined;
+  }
+}
 
 /** Trimmed env var, or undefined when unset or blank. */
 function env(name: string): string | undefined {
@@ -65,6 +77,19 @@ function putList(out: Entry[], key: string, raw: string | undefined): void {
  */
 function floydEntries(): Entry[] {
   const out: Entry[] = [];
+
+  // Floyd's proposal guide is its own document, not the shared one.
+  //
+  // The shared guide in config/legal/ is written to work anywhere: its worked
+  // examples name no place. Floyd's version names the farmers market and the
+  // town park, which is better writing FOR FLOYD and nonsense anywhere else.
+  // So the specific version becomes Floyd's override and the generic one
+  // stays the default that every other hub gets.
+  put(
+    out,
+    KEYS.LEGAL_PROPOSAL_BEST_PRACTICES,
+    readLocalFile("config/hubs/floyd/proposal-best-practices.md"),
+  );
 
   put(out, KEYS.IDENTITY_NAME, env("HUB_NAME") ?? env("VITE_HUB_NAME"));
   put(out, KEYS.IDENTITY_LABEL, env("VITE_HUB_LABEL"));
