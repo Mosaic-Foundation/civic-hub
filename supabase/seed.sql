@@ -8,13 +8,17 @@
 -- resolver, /api/hub-config and the UI are all developed against a case
 -- where picking the wrong hub is visible immediately.
 
-INSERT INTO hubs (id, hostname, name, jurisdiction_code, jurisdiction_name, space_did)
+-- `mode` is set HERE, at creation, because it cannot be set later: a trigger
+-- on `hubs` refuses any update that moves a hub into demo. That is the rule
+-- working as intended — a hub becomes a demo when it is created, or never.
+INSERT INTO hubs (id, hostname, name, jurisdiction_code, jurisdiction_name, space_did, mode)
 VALUES (
   'athens',
   'athens.localhost',
   'Athens Civic Hub',
   'us-va-athens',
   'Athens, Virginia',
-  'did:web:athens.localhost'
+  'did:web:athens.localhost',
+  'demo'
 )
 ON CONFLICT (id) DO NOTHING;

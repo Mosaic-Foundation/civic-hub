@@ -27,7 +27,6 @@
 import { getDb } from "../src/db/client.js";
 import { KEYS } from "../src/models/hubSettings.js";
 import { encodeList } from "../src/models/hubSettings.js";
-import type { HubMode } from "../src/models/hub.js";
 
 type Entry = { key: string; value: string };
 
@@ -190,13 +189,20 @@ function athensEntries(): Entry[] {
   return out;
 }
 
-/** Floyd keeps whatever its environment says; Athens is a demo by definition. */
-function modeFor(hubId: string): HubMode | null {
-  if (hubId === "athens") return "demo";
-  if (process.env.CIVIC_DEMO_BYPASS_CODE?.trim()) return "demo";
-  if (process.env.CIVIC_BETA_MODE === "true") return "beta";
-  // Null rather than "live": an unset mode keeps reading the env vars, and
-  // guessing "live" at a hub that is quietly in beta would open its doors.
+/**
+ * This script does not set a hub's mode, and cannot.
+ *
+ * `hubs.mode` is authoritative in the database and a trigger refuses any
+ * update that moves a hub INTO demo, so a demo hub is created as one — Athens
+ * comes out of supabase/seed.sql with `mode = 'demo'` — and everything else
+ * moves between beta and live through the admin path, which requires a fresh
+ * emailed code.
+ *
+ * Kept as a function so the intent is written down rather than merely absent:
+ * if a future change wants to set a mode here, this comment is the argument
+ * against it.
+ */
+function modeIsNotThisScriptsBusiness(): null {
   return null;
 }
 
@@ -205,7 +211,7 @@ async function main(): Promise<void> {
 
   const { data: hub, error: hubErr } = await db
     .from("hubs")
-    .select("id, name")
+    .select("id, name, mode")
     .eq("id", HUB_ID)
     .maybeSingle();
   if (hubErr) throw new Error(`hubs lookup: ${hubErr.message}`);
@@ -217,10 +223,10 @@ async function main(): Promise<void> {
   }
 
   const entries = HUB_ID === "athens" ? athensEntries() : floydEntries();
-  const mode = modeFor(HUB_ID);
+  const mode = modeIsNotThisScriptsBusiness();
 
   console.log(`\nHub: ${HUB_ID} (${(hub as { name: string }).name})`);
-  console.log(`Mode: ${mode ?? "(leave unset — falls back to env)"}`);
+  console.log(`Mode: ${(hub as { mode?: string }).mode ?? "?"} (set at creation; not changed here)`);
   console.log(`Settings to write: ${entries.length}\n`);
   for (const e of entries) {
     const shown = e.value.length > 68 ? `${e.value.slice(0, 68)}…` : e.value;
@@ -246,14 +252,6 @@ async function main(): Promise<void> {
     .from("hub_settings")
     .upsert(rows, { onConflict: "hub_id,key" });
   if (error) throw new Error(`upsert: ${error.message}`);
-
-  if (mode) {
-    const { error: modeErr } = await db
-      .from("hubs")
-      .update({ mode })
-      .eq("id", HUB_ID);
-    if (modeErr) throw new Error(`mode: ${modeErr.message}`);
-  }
 
   console.log(`\nWrote ${rows.length} settings for "${HUB_ID}".\n`);
 }

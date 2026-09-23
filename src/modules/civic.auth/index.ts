@@ -14,8 +14,14 @@ import { randomInt } from "node:crypto";
 import { getDb } from "../../db/client.js";
 import { generateId } from "../../utils/id.js";
 import { sendEmail } from "../../utils/email.js";
-import { isDemoHubSync, isEmailOnBetaAllowlist, getAdminEmailsSync } from "../../services/hubSettings.js";
-import { currentHubId } from "../../config/hubContext.js";
+import {
+  getAdminEmailsSync,
+  isBetaEnabledSync,
+  isDemoHubSync,
+  isEmailOnBetaAllowlist,
+} from "../../services/hubSettings.js";
+import { isPrivilegedEmail } from "../../services/privilegedAccounts.js";
+import { currentHubId, currentHubIdOrNull } from "../../config/hubContext.js";
 import type { User, PendingVerification, Session } from "./models.js";
 
 export type { User, PendingVerification, Session } from "./models.js";
@@ -137,7 +143,13 @@ export async function requestVerification(
   // the bundle and nothing is served by the config endpoint. A shared static
   // code printed on the sign-in screen was never a secret; this removes the
   // pretence and the thing that could be exfiltrated at the same time.
-  if (isDemoHubSync()) {
+  // A demo hub does not email sign-in codes to ordinary visitors — that is
+  // what makes it a demo — but a PRIVILEGED account gets the real flow even
+  // here. An admin or an official can moderate, publish, and change what the
+  // hub is; "any six digits" for those accounts would mean anyone who knows
+  // an admin's email address can be that admin. The relaxation is for people
+  // looking around, never for the people running the place.
+  if (isDemoHubSync() && !(await isPrivilegedEmail(normalizedEmail))) {
     console.log(
       `[auth] Demo hub signin for ${normalizedEmail} — no code emailed.`,
     );
@@ -146,7 +158,7 @@ export async function requestVerification(
     };
   }
 
-  if (process.env.CIVIC_BETA_MODE === "true") {
+  if (isBetaEnabledSync()) {
     const adminEmails = getAdminEmailsSync();
     if (!adminEmails.includes(normalizedEmail)) {
       const allowed = await isEmailOnBetaAllowlist(currentHubId(), normalizedEmail);
@@ -244,6 +256,88 @@ function renderOtpEmail(code: string): string {
 }
 
 /**
+ * Check a one-time code and spend it.
+ *
+ * Extracted from verifyCode so that anything else needing proof of the
+ * mailbox — changing a hub's mode, for one — enforces the SAME rules rather
+ * than growing its own weaker copy. Lockout, expiry, the wrong-guess counter
+ * and single use all live here, once.
+ *
+ * Throws on every failure, with the message the caller shows. On success the
+ * pending row is deleted, which is what makes a code single-use: a second
+ * attempt finds no row and is refused.
+ *
+ * `pending` may be passed in when the caller has already fetched it, to avoid
+ * a second read of the same row.
+ */
+export async function consumePendingCode(
+  email: string,
+  code: string,
+  pending?: {
+    code: string;
+    expires_at: string;
+    attempts?: number | null;
+    locked_until?: string | null;
+  } | null,
+): Promise<void> {
+  const db = getDb();
+  const normalizedEmail = email.trim().toLowerCase();
+
+  let row = pending;
+  if (row === undefined) {
+    const { data, error } = await db
+      .from("pending_verifications")
+      .select("*")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+    if (error) throw new Error(`Auth: ${error.message}`);
+    row = data;
+  }
+
+  if (!row) {
+    throw new Error(
+      "No pending verification for this email. Request a new code.",
+    );
+  }
+  // Lockout: if the email is in its post-brute-force cooldown, refuse to
+  // verify regardless of the code entered.
+  if (row.locked_until && new Date() < new Date(row.locked_until)) {
+    throw new Error(lockoutMessage(row.locked_until));
+  }
+  if (new Date() > new Date(row.expires_at)) {
+    await db
+      .from("pending_verifications")
+      .delete()
+      .eq("email", normalizedEmail);
+    throw new Error("Verification code expired. Request a new code.");
+  }
+  if (row.code !== code) {
+    // Count the wrong guess; after MAX_VERIFY_ATTEMPTS, lock the email for
+    // LOCKOUT_MS (both verify and request-code refuse until it passes). This
+    // is the core anti-brute-force defense.
+    const attempts = (row.attempts ?? 0) + 1;
+    if (attempts >= MAX_VERIFY_ATTEMPTS) {
+      const lockedUntil = new Date(Date.now() + LOCKOUT_MS).toISOString();
+      await db
+        .from("pending_verifications")
+        .update({ attempts, locked_until: lockedUntil })
+        .eq("email", normalizedEmail);
+      throw new Error(lockoutMessage(lockedUntil));
+    }
+    await db
+      .from("pending_verifications")
+      .update({ attempts })
+      .eq("email", normalizedEmail);
+    throw new Error("Invalid verification code");
+  }
+  // Spend it. A code works once.
+  await db
+    .from("pending_verifications")
+    .delete()
+    .eq("email", normalizedEmail);
+}
+
+/**
  * Step 2: Verify the code and create/login user.
  * Returns a session token and user object.
  */
@@ -263,12 +357,20 @@ export async function verifyCode(
 
   if (pendErr) throw new Error(`Auth: ${pendErr.message}`);
 
-  // A demo hub accepts any six digits (see requestVerification). Gated on the
-  // hub's own `beta.demo_mode` row, so it can never apply to a hub that has
-  // not been deliberately marked a demo. The shape check is deliberate: it
-  // keeps the sign-in form's validation honest and stops an empty submission
-  // walking straight in.
-  if (isDemoHubSync() && /^\d{6}$/.test(code.trim())) {
+  // A demo hub accepts any six digits from an ordinary visitor (see
+  // requestVerification). Gated on the hub's own `mode`, which lives only in
+  // the database, so nothing in a deployment's configuration can turn this on
+  // for a hub that is not a demo.
+  //
+  // Privileged accounts are excluded and fall through to the real code path,
+  // because an admin who can be impersonated by typing six digits is not an
+  // admin. The shape check keeps the form's validation honest and stops an
+  // empty submission walking in.
+  if (
+    isDemoHubSync() &&
+    !(await isPrivilegedEmail(normalizedEmail)) &&
+    /^\d{6}$/.test(code.trim())
+  ) {
     if (pending) {
       await db
         .from("pending_verifications")
@@ -276,49 +378,7 @@ export async function verifyCode(
         .eq("email", normalizedEmail);
     }
   } else {
-    if (!pending) {
-      throw new Error(
-        "No pending verification for this email. Request a new code.",
-      );
-    }
-    // Lockout: if the email is in its post-brute-force cooldown, refuse to
-    // verify regardless of the code entered.
-    if (
-      pending.locked_until &&
-      new Date() < new Date(pending.locked_until)
-    ) {
-      throw new Error(lockoutMessage(pending.locked_until));
-    }
-    if (new Date() > new Date(pending.expires_at)) {
-      await db
-        .from("pending_verifications")
-        .delete()
-        .eq("email", normalizedEmail);
-      throw new Error("Verification code expired. Request a new code.");
-    }
-    if (pending.code !== code) {
-      // Count the wrong guess; after MAX_VERIFY_ATTEMPTS, lock the email for
-      // LOCKOUT_MS (both verify and request-code refuse until it passes). This
-      // is the core anti-brute-force defense.
-      const attempts = (pending.attempts ?? 0) + 1;
-      if (attempts >= MAX_VERIFY_ATTEMPTS) {
-        const lockedUntil = new Date(Date.now() + LOCKOUT_MS).toISOString();
-        await db
-          .from("pending_verifications")
-          .update({ attempts, locked_until: lockedUntil })
-          .eq("email", normalizedEmail);
-        throw new Error(lockoutMessage(lockedUntil));
-      }
-      await db
-        .from("pending_verifications")
-        .update({ attempts })
-        .eq("email", normalizedEmail);
-      throw new Error("Invalid verification code");
-    }
-    await db
-      .from("pending_verifications")
-      .delete()
-      .eq("email", normalizedEmail);
+    await consumePendingCode(normalizedEmail, code, pending);
   }
 
   // --- Find or create the user ---
@@ -388,9 +448,13 @@ export async function verifyCode(
   const token = generateToken();
   const sessionExpires = new Date(Date.now() + SESSION_TTL_MS).toISOString();
 
+  // Stamped with the hub it was minted on. A session is a bearer credential,
+  // so without this a token from one hub would authenticate its holder on
+  // every other hub this deployment serves.
   const { error: sessErr } = await db.from("sessions").insert({
     token,
     user_id: user.id,
+    hub_id: currentHubIdOrNull() ?? "floyd",
     expires_at: sessionExpires,
   });
 
@@ -484,11 +548,23 @@ export async function getUserFromToken(
   if (!token) return undefined;
   const db = getDb();
 
-  const { data: session, error } = await db
+  // The hub filter is the point, not an optimisation. A token is valid only
+  // on the hub it was minted on: a resident of a demo hub holding a session
+  // must not be authenticated on a real jurisdiction's hub served by the same
+  // deployment. A token presented to the wrong hub reads as no session at
+  // all, which is what it is.
+  //
+  // Outside a request there is no hub to compare against, and the query is
+  // left unfiltered — scripts and crons do not authenticate users, and
+  // failing to resolve a session there would break tooling without closing
+  // anything.
+  const hubId = currentHubIdOrNull();
+  let query = db
     .from("sessions")
     .select("user_id, expires_at")
-    .eq("token", token)
-    .maybeSingle();
+    .eq("token", token);
+  if (hubId) query = query.eq("hub_id", hubId);
+  const { data: session, error } = await query.maybeSingle();
 
   if (error || !session) return undefined;
 
@@ -527,7 +603,12 @@ export async function getUser(userId: string): Promise<User | undefined> {
  */
 export async function logout(token: string): Promise<void> {
   if (!token) return;
-  await getDb().from("sessions").delete().eq("token", token);
+  const hubId = currentHubIdOrNull();
+  let query = getDb().from("sessions").delete().eq("token", token);
+  // Scoped for the same reason the lookup is: one hub must not be able to
+  // destroy a session belonging to another.
+  if (hubId) query = query.eq("hub_id", hubId);
+  await query;
 }
 
 /**

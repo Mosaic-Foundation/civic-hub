@@ -84,7 +84,9 @@ jobs:
       # They are public, identical on every machine, and reach nothing but the
       # container started above. No secret belongs in this job.
       - name: Seed hub settings
-        run: npx tsx scripts/seed-hub-settings.ts
+        run: |
+          npx tsx scripts/seed-hub-settings.ts
+          npx tsx scripts/seed-hub-settings.ts --hub athens
         working-directory: civic-hub
         env:
           SUPABASE_URL: http://127.0.0.1:54321
@@ -106,8 +108,12 @@ jobs:
           PORT: "3000"
           NODE_ENV: development
           CIVIC_ALLOW_SEED: "true"
-          CIVIC_DEMO_BYPASS_CODE: "000000"
           CIVIC_ADMIN_EMAILS: admin@example.test
+          # Bare localhost resolves to the DEMO hub. Floyd is seeded in beta,
+          # mirroring production, so a test cannot sign in there without being
+          # on the allowlist. Athens is the demo, which is where a test signs
+          # in; the tests that care about Floyd set the Host header.
+          CIVIC_DEV_HUB: athens
           CIVIC_ANON_SECRET: ci-only-anon-secret
           CRON_SECRET: ci-only-cron-secret
 

@@ -57,3 +57,27 @@ describe("who may set which mode", () => {
     expect(reason).toContain("demo, beta, live");
   });
 });
+
+describe("mode is not configurable from the environment", () => {
+  it("has no env fallback for demo mode or a bypass code", async () => {
+    // The whole point of the hardening pass: an environment variable must not
+    // be able to decide whether a hub checks email addresses. If either of
+    // these reappears in ENV_FALLBACKS, a deployment could turn a real
+    // jurisdiction's hub into one where anyone signs in as anyone.
+    const { ENV_FALLBACKS } = await import("../../src/models/hubSettings.js");
+    const names = Object.values(ENV_FALLBACKS).flat();
+    expect(names).not.toContain("CIVIC_DEMO_BYPASS_CODE");
+    expect(names).not.toContain("VITE_DEMO_MODE");
+    expect(names).not.toContain("CIVIC_BETA_MODE");
+  });
+
+  it("answers live when there is no hub in scope", async () => {
+    // Strictest of the three. Code with no hub must not assume it is allowed
+    // to skip verification.
+    const { hubModeFor } = await import("../../src/services/hubSettings.js");
+    expect(hubModeFor(null)).toBe("live");
+    expect(hubModeFor({ mode: null })).toBe("live");
+    expect(hubModeFor({ mode: "nonsense" })).toBe("live");
+    expect(hubModeFor({ mode: "demo" })).toBe("demo");
+  });
+});

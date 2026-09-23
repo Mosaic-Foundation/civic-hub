@@ -418,11 +418,16 @@ export async function isEmailOnBetaAllowlist(
 /**
  * The hub's lifecycle state — demo, beta or live.
  *
- * Resolution: the `hubs.mode` column when it is set, otherwise the old
- * environment variables, so a deployment that has not been given a mode
- * behaves exactly as it did. The env fallback reproduces the historical
- * precedence, in which the demo bypass short-circuited before the beta gate
- * was ever consulted — the accident that made two booleans appear to work.
+ * THE DATABASE IS THE ONLY SOURCE (hardening pass, 2026-09-22). There is no
+ * environment fallback and no way to influence this from a deployment's
+ * configuration. `hubs.mode` is NOT NULL, so a hub always has one, and an
+ * environment variable can no longer decide whether a hub checks email
+ * addresses — which is the property that makes the demo relaxation safe to
+ * have at all.
+ *
+ * Outside a request there is no hub, and the answer is "live": the strictest
+ * of the three, because code with no hub in scope must not assume it is
+ * allowed to skip verification.
  */
 export function hubModeSync(): HubMode {
   return hubModeFor(currentHub());
@@ -430,19 +435,7 @@ export function hubModeSync(): HubMode {
 
 /** The mode of a given hub row, for code that has one but is not in a request. */
 export function hubModeFor(hub: { mode?: string | null } | null): HubMode {
-  if (isHubMode(hub?.mode)) return hub.mode;
-  return modeFromEnv();
-}
-
-function modeFromEnv(): HubMode {
-  if (
-    process.env.CIVIC_DEMO_BYPASS_CODE?.trim() ||
-    process.env.VITE_DEMO_MODE === "true"
-  ) {
-    return "demo";
-  }
-  if (process.env.CIVIC_BETA_MODE === "true") return "beta";
-  return "live";
+  return isHubMode(hub?.mode) ? hub.mode : "live";
 }
 
 /**

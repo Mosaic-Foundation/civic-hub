@@ -57,6 +57,10 @@ import {
 import { handleAdminListFeedback } from "../controllers/adminFeedbackController.js";
 import { cleanOrphanedEvents } from "../services/processService.js";
 import { requireAdmin } from "../middleware/auth.js";
+import {
+  handleRequestModeChangeCode,
+  handleSetHubMode,
+} from "../controllers/hubModeController.js";
 
 const router = Router();
 
@@ -141,6 +145,11 @@ router.get("/queue-counts", handleAdminQueueCounts);
 router.post("/queues/:queue/seen", handleMarkAdminQueueSeen);
 
 // Hub settings (admin-configurable; overrides env var fallbacks)
+// Changing what the hub IS takes a fresh code, not just an open admin tab.
+// See src/controllers/hubModeController.ts.
+router.post("/hub/mode/request-code", handleRequestModeChangeCode);
+router.post("/hub/mode", handleSetHubMode);
+
 router.get("/settings", handleGetSettings);
 router.patch("/settings", handlePatchSettings);
 
