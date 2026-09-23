@@ -4,14 +4,17 @@
 // Env vars:
 //   RESEND_API_KEY   — secret key from resend.com. If unset, email is
 //                       NOT sent (caller should log a fallback).
+//   RESEND_FROM      — the verified sending address for the deployment.
 //
-// The "From" header is the email.from_address hub setting (KEYS.EMAIL_FROM_ADDRESS,
-// falling back to RESEND_FROM / SMTP_FROM), e.g.
-// "Floyd Civic Hub <noreply@floyd.civic.social>". Defaults to the Resend
-// sandbox if unset.
+// THE ONE PLACE MAIL LEAVES THIS SERVICE. Every sender in src/ ends up here,
+// which is why the two guards live here and not in eleven call sites:
+//   - services/emailSender.ts composes the From, deployment address + hub name
+//   - services/mailGuard.ts    refuses a recipient a non-live hub must not
+//                              write to
+// Both are no-ops for a live hub on a properly configured deployment.
 
-import { getSettingSync } from "../services/hubSettings.js";
-import { KEYS } from "../models/hubSettings.js";
+import { currentSender, isSandboxSender } from "../services/emailSender.js";
+import { allowDelivery } from "../services/mailGuard.js";
 
 /**
  * Validate email configuration at startup. Logs warnings for missing
@@ -20,7 +23,7 @@ import { KEYS } from "../models/hubSettings.js";
  */
 export function validateEmailConfig(): void {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = getSettingSync(KEYS.EMAIL_FROM_ADDRESS);
+  const from = process.env.RESEND_FROM?.trim() || process.env.SMTP_FROM?.trim();
   const isProd = process.env.NODE_ENV === "production";
 
   if (!apiKey) {
@@ -34,9 +37,13 @@ export function validateEmailConfig(): void {
   }
 
   if (!from) {
-    console.warn(
-      '[email] ⚠️  RESEND_FROM is not set — using Resend sandbox sender. ' +
-      'Emails may land in spam or be rejected.',
+    // Not "may be rejected" — WILL be, for everyone but one address. This
+    // wording was too mild to act on: it appeared in every dev function log
+    // for fourteen hours while sign-in mail silently failed.
+    console.error(
+      "[email] ❌ RESEND_FROM is not set — falling back to the Resend sandbox " +
+      "sender, which delivers ONLY to the Resend account owner's own address. " +
+      "Every other recipient will be refused with 403 validation_error.",
     );
   } else {
     const emailMatch = from.match(/<([^>]+)>/);
@@ -74,13 +81,27 @@ export interface SendEmailResult {
 export async function sendEmail(
   input: SendEmailInput,
 ): Promise<SendEmailResult> {
+  // BEFORE the transport check, not after. Whether a hub may write to this
+  // address is a decision about the hub, not about how mail happens to be
+  // configured — and putting it first means the suppression is visible in
+  // local development too, where there is no API key and the fallback path
+  // would otherwise swallow it.
+  if (!allowDelivery(input.to, input.subject)) {
+    return { sent: false, error: "suppressed by hub mode" };
+  }
+
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     return { sent: false, error: "RESEND_API_KEY is not configured" };
   }
 
-  const from =
-    getSettingSync(KEYS.EMAIL_FROM_ADDRESS) ?? "Civic Hub <onboarding@resend.dev>";
+  const sender = currentSender();
+  if (isSandboxSender(sender.address)) {
+    console.warn(
+      `[email] sending as the Resend sandbox (${sender.address}) — only the ` +
+      "Resend account owner will receive this. Set RESEND_FROM.",
+    );
+  }
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -90,7 +111,7 @@ export async function sendEmail(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from,
+        from: sender.from,
         to: [input.to],
         subject: input.subject,
         html: input.html,

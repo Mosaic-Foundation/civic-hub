@@ -146,7 +146,16 @@ function floydEntries(): Entry[] {
   putList(out, KEYS.PEOPLE_BOARD_EMAILS, env("CIVIC_BOARD_EMAILS"));
   putList(out, KEYS.PEOPLE_BRIEF_RECIPIENTS, env("BOARD_RECIPIENT_EMAIL"));
 
-  put(out, KEYS.EMAIL_FROM_ADDRESS, env("RESEND_FROM") ?? env("SMTP_FROM"));
+  // RESEND_FROM holds both halves ("Floyd Civic Hub <noreply@…>"). They have
+  // different owners — the address belongs to the deployment that verified
+  // the domain, the display name belongs to the hub — so they are stored
+  // apart. See src/services/emailSender.ts.
+  const sender = env("RESEND_FROM") ?? env("SMTP_FROM");
+  if (sender) {
+    const angled = sender.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+    put(out, KEYS.EMAIL_FROM_NAME, angled ? angled[1].replace(/^"(.*)"$/, "$1") : undefined);
+    put(out, KEYS.EMAIL_FROM_ADDRESS, angled ? angled[2] : sender);
+  }
   put(out, KEYS.EMAIL_POSTAL_ADDRESS, env("HUB_POSTAL_ADDRESS"));
 
   put(out, KEYS.PLUGIN_CONVERSATION_POLIS_URL,
@@ -257,8 +266,13 @@ function athensEntries(): Entry[] {
   put(out, KEYS.LEGAL_OPERATOR_NAME, "Athens Moderator Group");
   put(out, KEYS.LEGAL_CONTACT_EMAIL, "athens@example.com");
 
+  // A display name and NO address. A hub cannot choose its own sending
+  // address: mail leaves from a domain the provider has verified, which is
+  // a property of the deployment. Athens used to carry
+  // "Athens Civic Hub (demo) <demo@civic.social>" here, and because a row
+  // beats the environment, that row would have kept Athens on an address the
+  // deployment had not verified even after RESEND_FROM was set correctly.
   put(out, KEYS.EMAIL_FROM_NAME, "Athens Civic Hub (demo)");
-  put(out, KEYS.EMAIL_FROM_ADDRESS, "Athens Civic Hub (demo) <demo@civic.social>");
   put(out, KEYS.EMAIL_POSTAL_ADDRESS, "1 Example Street, Athens, VA 24000");
 
   // A demo has nothing to deliver and nobody to mail.

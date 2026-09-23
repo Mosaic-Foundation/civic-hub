@@ -326,6 +326,33 @@ Done when: every one of the 30 tables has `hub_id not null default
 'floyd'` with an index, all 51 raw-client importers go through `forHub()`,
 the lint rule passes, and `npm test` is green.
 
+#### Two findings from Phase 1 part three (2026-09-23)
+
+**1. `users.email` is `NOT NULL UNIQUE` across the whole table.** Added in
+`20260416000000_initial_schema.sql`, correct while one database served one
+hub, and a blocker on a shared one: it makes it impossible for one person to
+hold an account on two hubs. The plus-addressed Athens admin
+(`you+athens@…`) works today only because it is literally a different
+string. Phase 2 must replace the constraint with `unique (hub_id, email)` in
+the same migration that adds the column, and that is a genuine schema change
+rather than an additive one — the additive-only rule bends here, so it is
+called out rather than discovered mid-phase. Note the ordering: the unique
+index has to be dropped and recreated after `hub_id` is backfilled, not
+before.
+
+**2. Per-user "last digest sent" needs no column of its own, and survives the
+cutover.** It lives as `users.last_digest_sent_at`
+(`20260423000000_digest_subscription.sql`), a column on `users` rather than
+its own table, so it inherits `hub_id` when `users` gets one and is scoped
+per (hub, person) for free. Floyd's rows are converted in place at cutover
+with their values intact, so nobody gets a re-send and nobody gets a gap —
+which matters, because the cursor is what bounds the digest window: a reset
+to null falls back to `created_at` and would mail every long-standing
+subscriber their entire history in one message. The same is true of
+`digest_frequency_days` and the unsubscribe state beside it. Confirm the
+column survives the Phase 6 rehearsal rather than assuming it; it is a
+one-line check against the restored dump.
+
 _checklist to be pasted_
 
 ### Phase 3 — forced RLS with the JWT claim

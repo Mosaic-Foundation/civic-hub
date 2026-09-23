@@ -111,8 +111,29 @@ hubs would then show the same value for it.
 | `CRON_SECRET` | any long random string | Gates `/internal/*`. |
 | `DIGEST_UNSUBSCRIBE_SECRET` | any long random string | |
 | `RESEND_API_KEY` | a working key | **Required for the walkthrough.** Admins always need a real emailed code, so without this you cannot sign in as an admin on either hub. |
-| `RESEND_FROM` | a verified sender on a domain you control | Real mail goes out from this deployment. |
+| `RESEND_FROM` | `noreply@civic.social` | **Set 2026-09-23.** A bare address: the display name beside it comes from each hub's `email.from_name`. It was missing entirely before that, so both hubs sent as the Resend sandbox, which delivers only to the Resend account owner — see below. |
+| `HUB_CRON_ENABLED` | `false` | **Set 2026-09-23.** This deployment does not run scheduled work. |
 | `ANTHROPIC_API_KEY` | optional | Only the drafting assistant needs it. |
+
+#### Why those last two were added, and why together
+
+`vercel.json` travels with the repo, so this project inherited production's
+four crons the day it was created. In its first fourteen hours it fetched a
+county government's news feed and created five announcement processes from it,
+and attempted to email **fifty-seven** people their daily digest. Fifty-six of
+those failed only because `RESEND_FROM` was unset and the fallback sender is
+Resend's sandbox, which refuses every address but the account owner's.
+
+So setting a real sender without also stopping the crons would have mailed
+fifty-six real people from a development deployment on the next run. The two
+changes belong in the same breath, and `HUB_CRON_ENABLED=false` is the first
+thing to check if this project is ever recreated.
+
+The second guard is in the code rather than the configuration: a hub whose
+`mode` is not `live` delivers only to addresses on its own admin roster or
+beta allow list, and logs everything else as `[email] SUPPRESSED`. Grep for
+that string after a walkthrough to see what the deployment decided not to
+send.
 
 Do **not** set `CIVIC_DEV_HUB`. The `<slug>.localhost` and `?hub=` overrides
 are switched off when `NODE_ENV=production`, which is what Vercel sets, so on a

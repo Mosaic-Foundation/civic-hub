@@ -47,6 +47,7 @@ import {
   digestUnsubscribeRouter,
   userSettingsRouter,
 } from "./routes/digestRoutes.js";
+import { cronKillSwitch } from "./config/cron.js";
 import { handleListAnnouncements } from "./controllers/announcementController.js";
 import { assertSpaceIdentityConfigured } from "./config/hub.js";
 import { ensureSeeded } from "./debug/autoSeed.js";
@@ -230,6 +231,11 @@ app.use("/meeting-summary", meetingSummaryRoutes);
 //   /internal/meeting-summary/run
 //   /internal/floyd-news-sync/run
 //   /internal/admin-digest/run
+// Scheduled work is switched off as a whole on deployments that must not do
+// a hub's real work — see src/config/cron.ts. Mounted AHEAD of the four
+// routers so it covers the manual-trigger path too, and so a cron added later
+// is covered without anyone remembering to cover it.
+app.use("/internal", cronKillSwitch);
 app.use("/internal", digestCronRouter);
 app.use("/internal", meetingSummaryCronRouter);
 app.use("/internal", floydNewsSyncCronRouter);
