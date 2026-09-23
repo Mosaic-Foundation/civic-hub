@@ -124,13 +124,14 @@ export async function hubDocuments(hub: Hub): Promise<HubDocuments> {
   const out: HubDocuments = {};
 
   for (const [key, fileName] of Object.entries(TEMPLATES)) {
+    // A hub's own document goes through substitution too. Whoever authored it
+    // gets the same placeholders as the shared templates, so they can write
+    // "{HUB_NAME}" instead of hard-coding a name that a rename would strand.
     const override = overrides[key];
-    if (override) {
-      out[key] = override;
-      continue;
+    const source = override || readTemplate(fileName);
+    if (source !== null && source !== undefined) {
+      out[key] = applySubstitutions(source, values);
     }
-    const template = readTemplate(fileName);
-    if (template !== null) out[key] = applySubstitutions(template, values);
   }
 
   // copy.about has no shared template — a hub either writes one or has none.
