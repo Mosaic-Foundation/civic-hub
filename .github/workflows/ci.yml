@@ -42,3 +42,84 @@ jobs:
       - name: UI build
         run: npm run build
         working-directory: ui
+
+  # --- API integration tests against a real Supabase stack -----------------
+  #
+  # Added 2026-09-22. This layer existed since 2026-08 but had never run on
+  # push: CI had no database, and a bare postgres container cannot stand in,
+  # because the app talks exclusively through PostgREST. The Supabase CLI
+  # brings up Postgres AND PostgREST and applies supabase/migrations from
+  # empty, so this job also proves, on every push, that the migration set
+  # builds a working schema from scratch — which was true by luck rather than
+  # by check until the missing GRANTs were found this way.
+  #
+  # Separate job, not appended to the one above: it pulls container images and
+  # takes minutes rather than seconds, and a failure here means something
+  # different from a type error. The unit job stays the fast signal.
+  api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Applies every migration, then supabase/seed.sql, which is where the
+      # second hub (athens) comes from. The API tests assert that two
+      # hostnames resolve to two different hubs, so the seed is not optional.
+      - name: Start Supabase
+        run: supabase start
+        working-directory: civic-hub
+
+      - name: Install
+        run: npm install --include=dev
+        working-directory: civic-hub
+
+      # The keys below are the Supabase CLI's fixed local development keys.
+      # They are public, identical on every machine, and reach nothing but the
+      # container started above. No secret belongs in this job.
+      - name: Seed hub settings
+        run: npx tsx scripts/seed-hub-settings.ts
+        working-directory: civic-hub
+        env:
+          SUPABASE_URL: http://127.0.0.1:54321
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.LOCAL_SERVICE_ROLE_KEY }}
+
+      - name: Start the hub
+        run: |
+          node --import tsx src/index.ts > /tmp/hub.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/health >/dev/null && exit 0
+            sleep 1
+          done
+          echo "hub did not become healthy:"; cat /tmp/hub.log; exit 1
+        working-directory: civic-hub
+        env:
+          SUPABASE_URL: http://127.0.0.1:54321
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.LOCAL_SERVICE_ROLE_KEY }}
+          BASE_URL: http://localhost:3000
+          PORT: "3000"
+          NODE_ENV: development
+          CIVIC_ALLOW_SEED: "true"
+          CIVIC_DEMO_BYPASS_CODE: "000000"
+          CIVIC_ADMIN_EMAILS: admin@example.test
+          CIVIC_ANON_SECRET: ci-only-anon-secret
+          CRON_SECRET: ci-only-cron-secret
+
+      - name: API tests
+        run: npx vitest run tests/api
+        working-directory: civic-hub
+
+      - name: Hub log on failure
+        if: failure()
+        run: cat /tmp/hub.log || true
+
+env:
+  # The Supabase CLI's fixed local key. Public by design — it is printed by
+  # `supabase start` on every machine and is scoped to the local container.
+  LOCAL_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU

@@ -1,6 +1,8 @@
 import privacyMd from "../content/legal/privacy.md?raw";
 import LegalPage from "../components/LegalPage";
+import { useHubDocument } from "../hooks/useHubDocument";
 
 export default function Privacy() {
-  return <LegalPage markdown={privacyMd} title="Privacy Policy" />;
+  const markdown = useHubDocument("legal.privacy", privacyMd);
+  return <LegalPage markdown={markdown} title="Privacy Policy" />;
 }

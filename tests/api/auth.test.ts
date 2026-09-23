@@ -51,18 +51,37 @@ describe("Auth endpoints", () => {
     expect(body.user.is_resident).toBe(false);
   });
 
-  it("POST /auth/verify rejects wrong code", async () => {
+  it("POST /auth/verify rejects a malformed code", async () => {
+    // WHAT CHANGED, 2026-09-22. This used to assert that "999999" was
+    // rejected, and it passed because the local hub had a demo bypass code
+    // that had to match exactly. A demo hub now accepts ANY six digits, by
+    // design: there is no shared code to display or leak, so a demo has
+    // nothing to guess. Six digits therefore signs in here, and asserting
+    // otherwise would be asserting the old design.
+    //
+    // What is still true on a demo hub, and worth holding, is that the code
+    // has to look like a code. An empty or malformed submission does not walk
+    // in.
+    //
+    // COVERAGE GAP, stated rather than hidden: the security-relevant case — a
+    // wrong code rejected on a hub that is NOT a demo — is not exercised
+    // here. This suite talks to the server over HTTP only, so it cannot read
+    // the real one-time code out of pending_verifications to supply a
+    // genuinely wrong one against a live hub. Closing it needs a fixture hub
+    // in beta or live mode plus database access from the test. See HANDOFF.
     const wrongEmail = `wrong-code-${Date.now()}@civic.social`;
     await api("/auth/request-code", {
       method: "POST",
       body: JSON.stringify({ email: wrongEmail }),
     });
 
-    const { status } = await apiJson("/auth/verify", {
-      method: "POST",
-      body: JSON.stringify({ email: wrongEmail, code: "999999" }),
-    });
-    expect(status).toBe(400);
+    for (const code of ["", "12345", "1234567", "abcdef"]) {
+      const { status } = await apiJson("/auth/verify", {
+        method: "POST",
+        body: JSON.stringify({ email: wrongEmail, code }),
+      });
+      expect(status, `code "${code}" should be refused`).toBe(400);
+    }
   });
 
   it("GET /auth/me returns current user when authenticated", async () => {
