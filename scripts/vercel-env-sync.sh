@@ -114,6 +114,24 @@ add_literal CIVIC_UI_BASE_URL "$DEV_URL"
 # and a missing origin here shows up as CORS failures on the second hub only.
 add_literal CIVIC_ALLOWED_ORIGINS "$DEV_URL,$ATHENS_URL"
 
+# Secrets this deployment needs that are not in .env, generated fresh.
+#
+# None of them block boot, which is why they were easy to miss: without
+# CIVIC_ANON_SECRET anonymous comments degrade to a safe but less private
+# derivation, and DIGEST_UNSUBSCRIBE_SECRET only throws at the moment a digest
+# tries to issue an unsubscribe link. Generating them here means the dev
+# deployment behaves like a real one rather than quietly differently.
+#
+# Fresh random values, never copied from production: a dev deployment that
+# shared production's signing secrets could mint tokens production would honour.
+for secret in CIVIC_ANON_SECRET CRON_SECRET DIGEST_UNSUBSCRIBE_SECRET; do
+  if grep -qE "^${secret}=." .env 2>/dev/null; then
+    echo "  $secret already came from .env"
+  else
+    add_literal "$secret" "$(node -e 'process.stdout.write(require("crypto").randomBytes(32).toString("base64url"))')"
+  fi
+done
+
 echo
 $DRY_RUN && echo "Dry run — nothing changed." || cat <<DONE
 Done. Verify before the first build:

@@ -41,6 +41,31 @@ function refIn(value: string | undefined): string | null {
 const url = process.env.SUPABASE_URL?.trim();
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
+/**
+ * `vercel env pull` writes `[SENSITIVE]` in place of any value Vercel marks
+ * as such, so a file pulled from a deployment cannot be checked this way. Say
+ * that outright instead of reporting a malformed URL, which is what it looks
+ * like otherwise and sends the reader to the wrong problem.
+ */
+if (url === "[SENSITIVE]" || key === "[SENSITIVE]") {
+  console.log(`
+This file came from \`vercel env pull\`, which masks secret values as
+[SENSITIVE]. Nothing here can be verified from it.
+
+Check the deployment instead, once it is running. Its hubs table is the proof:
+the dev database has rows for civic-hub-dev.vercel.app and
+athens-civic-hub-dev.vercel.app, and production has no such rows and has not
+been migrated at all. A deployment that resolves either hostname to a hub is
+therefore talking to dev.
+
+  curl -s https://civic-hub-dev.vercel.app/api/hub-config | head -c 200
+
+To check credentials directly, run this against the .env you are about to
+upload rather than against a pulled file.
+`);
+  process.exit(0);
+}
+
 if (!url) {
   fail("SUPABASE_URL is not set. The deployment has no database at all.");
 } else {

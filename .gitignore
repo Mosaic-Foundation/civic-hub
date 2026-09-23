@@ -38,3 +38,6 @@ supabase/signing_keys.json
 # Playwright failure artifacts — screenshots and traces, never committed
 test-results/
 playwright-report/
+
+# Claude Code per-machine permissions
+.claude/settings.local.json
