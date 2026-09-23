@@ -2,11 +2,13 @@
 
 *An introduction for Floyd County residents: what it is, what it isn't, and where I hope it can go.*
 
+[Download as PDF (4 pages)](/floyd-civic-hub-introduction.pdf)
+
 ---
 
 ## What it is
 
-The Floyd Civic Hub is a new online space at **[floyd.civic.social](https://floyd.civic.social)**, an interface for tracking what's happening in Floyd County government and for organizing as a community, whether that's responding to a decision in front of the Board, raising an issue that isn't being addressed, or building support around a project residents would like to see happen.
+The Floyd Civic Hub is a new online space at **[{HOSTNAME}](https://{HOSTNAME})**, an interface for tracking what's happening in Floyd County government and for organizing as a community, whether that's responding to a decision in front of the Board, raising an issue that isn't being addressed, or building support around a project residents would like to see happen.
 
 The Hub does two main things at launch:
 
@@ -69,13 +71,13 @@ These are illustrative, not promised. The current Civic Hub is just a foundation
 
 If you have time, the most useful things you can do are:
 
-- **Take a look at [floyd.civic.social](https://floyd.civic.social).** This is a soft launch: the site is live, and I'm gathering initial feedback before sharing it more widely with the community. Tell me what you like, what's confusing, what's missing, and what feels off.
+- **Take a look at [{HOSTNAME}](https://{HOSTNAME}).** This is a soft launch: the site is live, and I'm gathering initial feedback before sharing it more widely with the community. Tell me what you like, what's confusing, what's missing, and what feels off.
 - **Create an account on the Hub** so you can receive the daily email digest of new county activity, and let me know how that experience feels.
 - **Tell me what you wish worked better** in terms of how Floyd County government and residents communicate. What's broken? What would actually help?
 - **Suggest what the Hub should do next.** If there's a feature on the list above that matters to you, or one I haven't thought of, I want to hear it.
 - **Share it with a few people you think could give thoughtful feedback** on the soft launch version of the site (which could include passing this document along to them). I'd like to work out any bugs before sharing it more widely.
 
-You can send feedback by email to **contact@civic.social**, or use the **Feedback** item in the site menu at floyd.civic.social to leave it directly through the Hub.
+You can send feedback by email to **{CONTACT_EMAIL}**, or use the **Feedback** item in the site menu at {HOSTNAME} to leave it directly through the Hub.
 
 This is the beginning of something I hope to build with Floyd over the long term, not something I'm dropping in and walking away from. I'd much rather hear hard feedback now than build in the wrong direction.
 
@@ -90,3 +92,7 @@ Part of what motivates this work is the conviction that we actually agree on mor
 If you'd like to talk, share feedback, or get involved, please reach out.
 
 **Adam Lake** — adam@civic.social
+
+---
+
+Have feedback? [Send it through the Hub](/feedback) or email [{CONTACT_EMAIL}](mailto:{CONTACT_EMAIL}).

@@ -7,15 +7,15 @@
 
 ## Agreement
 
-By using the {HUB_NAME} ("the Hub") at floyd.civic.social, you agree to these Terms of Service ("Terms"). If you don't agree, please don't use the Hub.
+By using the {HUB_NAME} ("the Hub") at {HOSTNAME}, you agree to these Terms of Service ("Terms"). If you don't agree, please don't use the Hub.
 
-The Hub is operated by Adam Lake ("we," "us," "our"). We're an independent civic participation platform — **we are not affiliated with or operated by the {PLACE} government or the {GOVERNING_BODY}**, even though we exist to serve {PLACE} civic life.
+The Hub is operated by {OPERATOR} ("we," "us," "our"). We're an independent civic participation platform — **we are not affiliated with or operated by the {PLACE} government or the {GOVERNING_BODY}**, even though we exist to serve {PLACE} civic life.
 
 ## Who can use the Hub
 
 - You must be at least 13 years old.
 - Some civic activities on the Hub — notably advisory votes — may be further restricted by the process itself. Each activity will state its eligibility rules clearly.
-- You may create an account if you affirm, honestly, that you are a {PLACE} resident. We do not verify this claim against external records; we rely on your honesty. Misrepresenting residency to participate in civic processes is a violation of these Terms.
+- You may create an account if you affirm, honestly, that you are a resident of {PLACE}. We do not verify this claim against external records; we rely on your honesty. Misrepresenting residency to participate in civic processes is a violation of these Terms.
 - One account per person. If you lose access to your account, contact us.
 
 ## What you can expect from us
@@ -59,11 +59,11 @@ These are clearly labeled as AI-assisted and admin-reviewed. They are our best e
 
 We enforce a [Code of Conduct](/code-of-conduct) that focuses on decorum, not opinion. We may remove content that violates the Code; we do not remove content just because we disagree with it.
 
-If your content is removed, we'll tell you why when we can identify how to reach you. You can appeal by emailing contact@civic.social; a human will review. Repeated or severe violations may result in temporary or permanent restriction of your account.
+If your content is removed, we'll tell you why when we can identify how to reach you. You can appeal by emailing {CONTACT_EMAIL}; a human will review. Repeated or severe violations may result in temporary or permanent restriction of your account.
 
 ## Disclaimers
 
-**The Hub is not an official government channel.** The {GOVERNING_BODY} is not obligated to consider, respond to, or act on any civic process conducted on the Hub. Votes here are *advisory*. We provide the Board with vote results when votes close, but the Board makes its own decisions using its own processes.
+**The Hub is not an official government channel.** The {GOVERNING_BODY} is not obligated to consider, respond to, or act on any civic process conducted on the Hub. Votes here are *advisory*. We provide the {GOVERNING_BODY} with vote results when votes close, but they make their own decisions through their own processes.
 
 **AI-generated content is summarization, not verbatim record.** Meeting summaries and related content are produced by an AI system and reviewed by an admin. They may contain errors, omissions, or misinterpretations. Always check the underlying minutes PDF or YouTube video for authoritative detail.
 
@@ -71,7 +71,7 @@ If your content is removed, we'll tell you why when we can identify how to reach
 
 ## Limitation of liability
 
-To the fullest extent allowed by law, Adam Lake and its contributors are not liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Hub. Our total liability for any claim related to the Hub is limited to $100.
+To the fullest extent allowed by law, {OPERATOR} and its contributors are not liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Hub. Our total liability for any claim related to the Hub is limited to $100.
 
 Some jurisdictions don't allow these limitations. In those jurisdictions, our liability is limited to the minimum allowed.
 
@@ -92,15 +92,15 @@ We may update these Terms as the Hub evolves. Material changes will be announced
 
 ## Governing law
 
-These Terms are governed by the laws of the Commonwealth of {STATE}, without regard to conflict-of-laws principles. Any legal action arising from these Terms or your use of the Hub must be brought in the state or federal courts serving {JURISDICTION}.
+These Terms are governed by the laws of {STATE}, without regard to conflict-of-laws principles. Any legal action arising from these Terms or your use of the Hub must be brought in the state or federal courts serving {JURISDICTION}.
 
 ## Contact
 
 For questions about these Terms or to report a concern:
 
-Adam Lake
-contact@civic.social
+{OPERATOR}
+{CONTACT_EMAIL}
 
 ---
 
-*These Terms apply to the {HUB_NAME} at floyd.civic.social. They do not apply to the {PLACE} government website or any other site we link to.*
+*These Terms apply to the {HUB_NAME} at {HOSTNAME}. They do not apply to the {PLACE} government website or any other site we link to.*

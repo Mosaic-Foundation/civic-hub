@@ -36,6 +36,20 @@ function env(value: string | undefined): string | undefined {
   return v ? v : undefined;
 }
 
+/**
+ * The hub's display name, for the copy fallbacks below that mention it.
+ * Duplicates `hub.name`'s resolution rather than reading `this.name`, because
+ * these getters are read through destructured references often enough that
+ * `this` cannot be relied on.
+ */
+function hubDisplayName(): string {
+  return (
+    getLoadedHubConfig()?.hub.name ??
+    env(import.meta.env.VITE_HUB_NAME) ??
+    "this hub"
+  );
+}
+
 const hub = {
   /**
    * Display name / wordmark — top-nav, footer, intro popup, settings,
@@ -127,7 +141,7 @@ const hub = {
     return (
       setting("copy.intro_body") ??
       env(import.meta.env.VITE_HUB_INTRO_BODY) ??
-      "This is where Floyd County residents keep up with county government, raise topics that matter, help make sense of issues together, and have conversations to see where our community stands."
+      "This is where residents keep up with local government, raise topics that matter, help make sense of issues together, and have conversations to see where the community stands."
     );
   },
 
@@ -135,8 +149,23 @@ const hub = {
     return (
       setting("copy.residency_intro") ??
       env(import.meta.env.VITE_HUB_RESIDENCY_INTRO) ??
-      "To participate in the Floyd Civic Hub, please confirm your residency and review the policies below."
+      `To participate in ${hubDisplayName()}, please confirm your residency and review the policies below.`
     );
+  },
+
+  /**
+   * Who runs this hub, and how to reach them. Both are printed on the legal
+   * pages, which the server renders; these getters are for the places that
+   * name the operator OUTSIDE a document. Empty string when a hub has not
+   * said, so a caller can test truthiness and leave the sentence out rather
+   * than render "contact ".
+   */
+  get operator_name(): string {
+    return setting("legal.operator_name") ?? "";
+  },
+
+  get contact_email(): string {
+    return setting("legal.contact_email") ?? "";
   },
 
   /**

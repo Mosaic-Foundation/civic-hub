@@ -1,9 +1,12 @@
 // Admin settings page — hub-wide configuration.
 //
 // Holds all admin-editable settings that aren't tied to a single
-// proposal or brief review flow. Today: brief recipient emails and the
-// officials roster. Future additions (theme, jurisdiction, email
-// templates, etc.) should land here too.
+// proposal or brief review flow. Future additions (theme, jurisdiction,
+// email templates, etc.) should land here too.
+//
+// Section order is deliberate: "Hub identity" is first because it is what
+// the public legal pages say about who runs this place, and it is the one
+// section a newly created hub must fill in before it has honest terms.
 
 import { useEffect, useState } from "react";
 import {
@@ -37,6 +40,13 @@ export default function AdminSettings() {
   const [savingOfficials, setSavingOfficials] = useState(false);
   const [officialsMessage, setOfficialsMessage] = useState<string | null>(null);
 
+  // --- Hub identity (what the legal pages say about the operator) ---
+  const [operatorName, setOperatorName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [hostname, setHostname] = useState("");
+  const [savingIdentity, setSavingIdentity] = useState(false);
+  const [identityMessage, setIdentityMessage] = useState<string | null>(null);
+
   // --- Support threshold ---
   const [threshold, setThreshold] = useState(5);
   const [savingThreshold, setSavingThreshold] = useState(false);
@@ -68,6 +78,9 @@ export default function AdminSettings() {
         setExtraRecipientsText(
           s.brief_recipient_emails.filter((e) => !officialEmails.has(e.toLowerCase())).join(", "),
         );
+        setOperatorName(s.operator_name);
+        setContactEmail(s.contact_email);
+        setHostname(s.hostname);
         setThreshold(s.support_threshold);
         setAllowlistText(s.beta_allowlist.join(", "));
         setWaitlist(s.waitlist);
@@ -98,6 +111,28 @@ export default function AdminSettings() {
 
   function removeOfficial(i: number) {
     setOfficials((cur) => cur.filter((_, idx) => idx !== i));
+  }
+
+  async function saveIdentity() {
+    setSavingIdentity(true);
+    setIdentityMessage(null);
+    try {
+      const saved = await adminPatchSettings({
+        operator_name: operatorName.trim(),
+        contact_email: contactEmail.trim(),
+      });
+      setOperatorName(saved.operator_name);
+      setContactEmail(saved.contact_email);
+      setIdentityMessage(
+        "Saved. The Terms, Privacy Policy and Code of Conduct use these now.",
+      );
+    } catch (err) {
+      setIdentityMessage(
+        err instanceof Error ? err.message : "Failed to save hub identity",
+      );
+    } finally {
+      setSavingIdentity(false);
+    }
   }
 
   async function saveThreshold() {
@@ -231,6 +266,81 @@ export default function AdminSettings() {
         </p>
 
         {error && <p className="form-error">{error}</p>}
+
+        {/* --- Hub identity --- */}
+        <section className="admin-settings-panel">
+          <h3>Hub identity</h3>
+          <p className="form-hint">
+            What the <a href="/terms">Terms</a>, <a href="/privacy">Privacy
+            Policy</a> and <a href="/code-of-conduct">Code of Conduct</a> say
+            about who runs this hub. Those documents are shared templates with
+            these values substituted in, so changing them here changes all
+            three at once.
+          </p>
+
+          <label className="form-label" htmlFor="operator-name">
+            Operated by
+          </label>
+          <p className="form-hint">
+            A person or a group — whoever is answerable for this hub. Printed
+            verbatim, e.g. "Athens Moderator Group" or a named individual.
+          </p>
+          <input
+            id="operator-name"
+            className="form-input"
+            type="text"
+            value={operatorName}
+            onChange={(e) => setOperatorName(e.target.value)}
+            placeholder="Who runs this hub"
+            disabled={!loaded || savingIdentity}
+            maxLength={120}
+            style={{ maxWidth: "420px" }}
+          />
+
+          <label
+            className="form-label"
+            htmlFor="contact-email"
+            style={{ marginTop: "var(--space-md)" }}
+          >
+            Contact address
+          </label>
+          <p className="form-hint">
+            Where the documents tell residents to write with a question, an
+            appeal, or a data request. A shared inbox is fine.
+          </p>
+          <input
+            id="contact-email"
+            className="form-input"
+            type="email"
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            placeholder="contact@example.com"
+            disabled={!loaded || savingIdentity}
+            style={{ maxWidth: "420px" }}
+          />
+
+          {hostname && (
+            <p className="form-hint" style={{ marginTop: "var(--space-md)" }}>
+              The documents also name this hub's address,{" "}
+              <strong>{hostname}</strong>, which comes from the hub record and
+              is not editable here.
+            </p>
+          )}
+
+          <div className="admin-settings-actions">
+            <button
+              type="button"
+              className="admin-convert-button"
+              onClick={saveIdentity}
+              disabled={!loaded || savingIdentity}
+            >
+              {savingIdentity ? "Saving…" : "Save hub identity"}
+            </button>
+            {identityMessage && (
+              <span className="admin-settings-message">{identityMessage}</span>
+            )}
+          </div>
+        </section>
 
         {/* --- Officials & brief recipients --- */}
         <section className="admin-settings-panel">
@@ -432,9 +542,9 @@ export default function AdminSettings() {
           </div>
         </section>
 
-        {/* --- Identity & anonymity --- */}
+        {/* --- Comments & anonymity --- */}
         <section className="admin-settings-panel">
-          <h3>Identity &amp; anonymity</h3>
+          <h3>Comments &amp; anonymity</h3>
           <p className="form-hint">
             Votes are always anonymous (ballot secrecy) and creating a
             process always carries the creator's real name — those are

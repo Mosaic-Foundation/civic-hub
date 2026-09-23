@@ -70,7 +70,7 @@ We commit to being honest about our moderation:
 
 ## Things admins won't do
 
-- Admins won't use their moderation privileges to silence critics of themselves or the Board.
+- Admins won't use their moderation privileges to silence critics of themselves or the Board of Supervisors.
 - Admins won't remove content based on its political viewpoint.
 - Admins won't moderate in secret — every removal is logged.
 - Admins won't share information about one resident with another except as required by law or safety.

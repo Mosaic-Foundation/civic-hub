@@ -38,6 +38,16 @@ export const KEYS = {
   LEGAL_CODE_OF_CONDUCT: "legal.code_of_conduct",
   LEGAL_PROPOSAL_BEST_PRACTICES: "legal.proposal_best_practices",
 
+  // Who is answerable for this hub, and where to reach them. Added
+  // 2026-09-23 after Athens served Floyd's operator and Floyd's address on
+  // its own legal pages. They are short strings, not documents: the four
+  // documents above substitute them in, so a hub states each once.
+  //
+  // `legal.operator_name` is free text because an operator is not always a
+  // person — "Athens Moderator Group", "the Town of X", a named individual.
+  LEGAL_OPERATOR_NAME: "legal.operator_name",
+  LEGAL_CONTACT_EMAIL: "legal.contact_email",
+
   PEOPLE_ADMIN_EMAILS: "people.admin_emails",
   PEOPLE_BOARD_EMAILS: "people.board_emails",
   PEOPLE_BRIEF_RECIPIENTS: "people.brief_recipients",
@@ -196,8 +206,6 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
 
   KEYS.COPY_INTRO_BODY,
   KEYS.COPY_RESIDENCY_INTRO,
-  KEYS.COPY_WELCOME,
-  KEYS.COPY_ABOUT,
   KEYS.COPY_RESIDENT_NOUN,
   KEYS.COPY_GOVERNING_BODY_NAME,
   KEYS.COPY_GOVERNING_BODY_SHORT,
@@ -206,6 +214,13 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   KEYS.LEGAL_PRIVACY,
   KEYS.LEGAL_CODE_OF_CONDUCT,
   KEYS.LEGAL_PROPOSAL_BEST_PRACTICES,
+
+  // Both are printed verbatim on the public legal pages, so serving them
+  // discloses nothing the documents do not. The client needs them for the
+  // places that name the operator outside a document — the welcome page
+  // footer, the "who do I complain to" line.
+  KEYS.LEGAL_OPERATOR_NAME,
+  KEYS.LEGAL_CONTACT_EMAIL,
 
   KEYS.BETA_WAITLIST_ENABLED,
 
@@ -240,6 +255,10 @@ export const DOCUMENT_KEYS: readonly string[] = [
   KEYS.LEGAL_CODE_OF_CONDUCT,
   KEYS.LEGAL_PROPOSAL_BEST_PRACTICES,
   KEYS.COPY_ABOUT,
+  // The welcome essay, 9 KB of it, joined the documents on 2026-09-23. It
+  // used to be compiled into the UI bundle from a file — which is how Athens
+  // came to serve a personal introduction to another county.
+  KEYS.COPY_WELCOME,
 ];
 
 export function isDocumentKey(key: string): boolean {

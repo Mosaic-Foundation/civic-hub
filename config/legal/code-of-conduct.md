@@ -43,11 +43,11 @@ If you complain to us that a post should be removed because it's "wrong" or "hur
 ## How moderation works
 
 - **Two automatic checks run before anything posts.** Comments, conversation statements, and word-cloud entries pass through a list of slurs and profanity: if your submission contains one, it isn't posted, and you'll be told why so you can rephrase. When you create a proposal, vote, project, or conversation, an automated check reads your draft against this Code and tells you what must be fixed before you can submit it. That check looks for violations of the rules above and nothing else — not writing quality, not whether your facts are right, and not whether we agree with you.
-- **You can dispute what an automatic check concludes.** These checks are not the last word. If one flags something you believe is fine, email contact@civic.social and a person will look at it. And if the check can't run at all, your submission goes to human review rather than being blocked.
+- **You can dispute what an automatic check concludes.** These checks are not the last word. If one flags something you believe is fine, email {CONTACT_EMAIL} and a person will look at it. And if the check can't run at all, your submission goes to human review rather than being blocked.
 - An admin reviews reported content and content they encounter in the normal course of running the Hub.
 - If the admin concludes a piece of content violates this Code, they remove it and note the reason in an internal log.
 - Where we can identify how to reach you, we'll tell you your content was removed and why.
-- If you disagree, you can appeal by emailing contact@civic.social. A human will re-examine the decision. We aim to respond within 7 days.
+- If you disagree, you can appeal by emailing {CONTACT_EMAIL}. A human will re-examine the decision. We aim to respond within 7 days.
 - Beyond those checks, moderation is human — and every new proposal, vote, project, and conversation is read by an admin before it appears, whatever the automatic check said. Removal decisions are made by admins, not by an algorithm. This means they won't be instant, but they also won't be arbitrary.
 
 ## Repeat violations
@@ -70,17 +70,17 @@ We commit to being honest about our moderation:
 
 ## Things admins won't do
 
-- Admins won't use their moderation privileges to silence critics of themselves or the Board.
+- Admins won't use their moderation privileges to silence critics of themselves or the {GOVERNING_BODY}.
 - Admins won't remove content based on its political viewpoint.
 - Admins won't moderate in secret — every removal is logged.
 - Admins won't share information about one resident with another except as required by law or safety.
 
-If you believe an admin has violated any of these, tell us at contact@civic.social. If the admin is the subject of the complaint, we'll escalate to an independent reviewer.
+If you believe an admin has violated any of these, tell us at {CONTACT_EMAIL}. If the admin is the subject of the complaint, we'll escalate to an independent reviewer.
 
 ## Contact
 
 To report a Code of Conduct violation or appeal a moderation decision:
 
-contact@civic.social
+{CONTACT_EMAIL}
 
 Please include the URL of the content or a description of the situation, and what specifically you believe violates (or doesn't) this Code.

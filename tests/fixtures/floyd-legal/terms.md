@@ -15,7 +15,7 @@ The Hub is operated by Adam Lake ("we," "us," "our"). We're an independent civic
 
 - You must be at least 13 years old.
 - Some civic activities on the Hub — notably advisory votes — may be further restricted by the process itself. Each activity will state its eligibility rules clearly.
-- You may create an account if you affirm, honestly, that you are a Floyd County resident. We do not verify this claim against external records; we rely on your honesty. Misrepresenting residency to participate in civic processes is a violation of these Terms.
+- You may create an account if you affirm, honestly, that you are a resident of Floyd County. We do not verify this claim against external records; we rely on your honesty. Misrepresenting residency to participate in civic processes is a violation of these Terms.
 - One account per person. If you lose access to your account, contact us.
 
 ## What you can expect from us
@@ -63,7 +63,7 @@ If your content is removed, we'll tell you why when we can identify how to reach
 
 ## Disclaimers
 
-**The Hub is not an official government channel.** The Board of Supervisors is not obligated to consider, respond to, or act on any civic process conducted on the Hub. Votes here are *advisory*. We provide the Board with vote results when votes close, but the Board makes its own decisions using its own processes.
+**The Hub is not an official government channel.** The Board of Supervisors is not obligated to consider, respond to, or act on any civic process conducted on the Hub. Votes here are *advisory*. We provide the Board of Supervisors with vote results when votes close, but they make their own decisions through their own processes.
 
 **AI-generated content is summarization, not verbatim record.** Meeting summaries and related content are produced by an AI system and reviewed by an admin. They may contain errors, omissions, or misinterpretations. Always check the underlying minutes PDF or YouTube video for authoritative detail.
 
@@ -92,7 +92,7 @@ We may update these Terms as the Hub evolves. Material changes will be announced
 
 ## Governing law
 
-These Terms are governed by the laws of the Commonwealth of Virginia, without regard to conflict-of-laws principles. Any legal action arising from these Terms or your use of the Hub must be brought in the state or federal courts serving Floyd County, Virginia.
+These Terms are governed by the laws of Virginia, without regard to conflict-of-laws principles. Any legal action arising from these Terms or your use of the Hub must be brought in the state or federal courts serving Floyd County, Virginia.
 
 ## Contact
 

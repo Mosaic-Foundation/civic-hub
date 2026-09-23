@@ -7,9 +7,9 @@
 
 ## Who runs this site
 
-The {HUB_NAME} ("the Hub," "we," "us") is operated by Adam Lake, based in {JURISDICTION}. The Hub is an independent civic participation platform. **We are not affiliated with or operated by the {PLACE} government or the {GOVERNING_BODY}.** The Hub exists to help residents participate in local civic life.
+The {HUB_NAME} ("the Hub," "we," "us") is operated by {OPERATOR}, based in {JURISDICTION}. The Hub is an independent civic participation platform. **We are not affiliated with or operated by the {PLACE} government or the {GOVERNING_BODY}.** The Hub exists to help residents participate in local civic life.
 
-If you have questions about this policy or about your data, contact us at contact@civic.social.
+If you have questions about this policy or about your data, contact us at {CONTACT_EMAIL}.
 
 ## What this policy covers
 
@@ -101,7 +101,7 @@ You have the right to:
 - **Opt out of the digest** — at any time, either through the Settings page or via the one-click unsubscribe link in every digest email.
 - **Complain** — to us directly (we'll take it seriously) or to the {STATE} Attorney General's office if you believe we've violated {STATE}'s Consumer Data Protection Act.
 
-To exercise any of these rights, email contact@civic.social. We'll respond within 30 days.
+To exercise any of these rights, email {CONTACT_EMAIL}. We'll respond within 30 days.
 
 ## Children
 
@@ -121,9 +121,9 @@ We may update this policy as the Hub evolves. Material changes will be announced
 
 For privacy questions, data requests, or concerns about this policy:
 
-Adam Lake
-contact@civic.social
+{OPERATOR}
+{CONTACT_EMAIL}
 
 ---
 
-*This policy applies to the {HUB_NAME} at floyd.civic.social. It does not apply to the {PLACE} government website (floydcova.gov) or to any other site we link to.*
+*This policy applies to the {HUB_NAME} at {HOSTNAME}. It does not apply to the {PLACE} government website or to any other site we link to.*

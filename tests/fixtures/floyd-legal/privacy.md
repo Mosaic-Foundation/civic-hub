@@ -126,4 +126,4 @@ contact@civic.social
 
 ---
 
-*This policy applies to the Floyd Civic Hub at floyd.civic.social. It does not apply to the Floyd County government website (floydcova.gov) or to any other site we link to.*
+*This policy applies to the Floyd Civic Hub at floyd.civic.social. It does not apply to the Floyd County government website or to any other site we link to.*

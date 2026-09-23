@@ -1646,6 +1646,13 @@ export interface Official {
 }
 
 export interface AdminSettings {
+  /** Who the legal pages name as running this hub. Free text. */
+  operator_name: string;
+  /** Where the legal pages tell people to write. */
+  contact_email: string;
+  /** From the hubs row; shown so the admin can see what the documents say. */
+  readonly hostname: string;
+
   brief_recipient_emails: string[];
   officials: Official[];
   /** @deprecated superseded by `officials`; returned read-only. */

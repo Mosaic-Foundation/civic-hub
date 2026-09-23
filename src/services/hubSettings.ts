@@ -193,6 +193,47 @@ export function getBannerUrl(): string | undefined {
   return getSettingSync(KEYS.IDENTITY_BANNER_URL);
 }
 
+// --- the operator -----------------------------------------------------------
+//
+// Who is answerable for this hub, and where to reach them. The four legal
+// documents substitute both in, so a hub states each once rather than three
+// times across three documents — which is how Floyd's name and address came
+// to be written into the shared templates as literals and served on Athens.
+//
+// Free text, both of them. An operator may be a person, a committee or a
+// town; a contact address may be a shared inbox. Neither has an env fallback:
+// there was never a variable for them, and inventing one now would mean a
+// deployment could put one hub's operator on another hub's terms page, which
+// is the bug being fixed.
+
+export async function getOperatorName(hubId: string | null): Promise<string> {
+  return (await getSetting(hubId, KEYS.LEGAL_OPERATOR_NAME)) ?? "";
+}
+
+export async function getContactEmail(hubId: string | null): Promise<string> {
+  return (await getSetting(hubId, KEYS.LEGAL_CONTACT_EMAIL)) ?? "";
+}
+
+export async function setOperatorName(
+  hubId: string,
+  name: string,
+  updatedBy: string | null,
+): Promise<string> {
+  const cleaned = name.trim();
+  await setSetting(hubId, KEYS.LEGAL_OPERATOR_NAME, cleaned, updatedBy);
+  return cleaned;
+}
+
+export async function setContactEmail(
+  hubId: string,
+  email: string,
+  updatedBy: string | null,
+): Promise<string> {
+  const cleaned = email.trim().toLowerCase();
+  await setSetting(hubId, KEYS.LEGAL_CONTACT_EMAIL, cleaned, updatedBy);
+  return cleaned;
+}
+
 // --- people ---------------------------------------------------------------
 
 /**

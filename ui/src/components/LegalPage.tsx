@@ -1,30 +1,34 @@
-// Slice 11 — render a markdown-backed legal page (Privacy Policy,
-// Terms of Service, or Code of Conduct).
+// Render a markdown-backed legal page (Privacy Policy, Terms of
+// Service, Code of Conduct) served by the hub.
 //
-// The markdown content is bundled at build time via Vite's `?raw`
-// import (no network fetch, no runtime CMS), so the documents ship
-// inside the JS bundle. Internal cross-links between the three
-// documents (e.g. /code-of-conduct from /terms) route through React
-// Router instead of triggering a full page load — a CustomLink mapped
-// onto react-markdown's anchor renderer handles that.
+// The document comes from the server, not the bundle. It used to be a
+// `?raw` import, which compiled one hub's terms into a build that now
+// serves several — see useHubDocument for why that had to go. This
+// component therefore renders three states, not one: loading, the
+// document, and "this hub has not published one".
 //
-// Operator note: the markdown files keep `{OPERATOR_NAME}`,
-// `{CONTACT_EMAIL}`, `{OPERATOR_MAILING_ADDRESS}` placeholders.
-// Substitution is the operator's job before public launch — see
-// HANDOFF.md for the checklist. We render placeholders verbatim so
-// they're impossible to miss in QA.
+// Internal cross-links between the documents (e.g. /code-of-conduct
+// from /terms) route through React Router instead of triggering a full
+// page load — a CustomLink mapped onto react-markdown's anchor renderer
+// handles that.
+//
+// Placeholders the server could not fill (`{GOVERNING_BODY}` on a hub
+// that has not named one) are rendered verbatim, deliberately: they are
+// impossible to miss in review, and a sentence with a visible hole is
+// better than a sentence with an invisible one.
 
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import hub from "../config/hub";
+import type { HubDocument } from "../hooks/useHubDocument";
 import "./LegalPage.css";
 
 interface Props {
-  /** The full markdown document, imported via `?raw`. */
-  markdown: string;
-  /** Document title — used as the browser tab title. */
+  /** The hub's document, in whichever of its three states it is in. */
+  document: HubDocument;
+  /** Document title — the browser tab title and the fallback heading. */
   title: string;
 }
 
@@ -55,7 +59,7 @@ function CustomLink({
   );
 }
 
-export default function LegalPage({ markdown, title }: Props) {
+export default function LegalPage({ document: doc, title }: Props) {
   // Set the document title so the legal page is identifiable in the
   // browser tab. We don't reset on unmount — React Router's next page
   // will overwrite it if it cares.
@@ -69,12 +73,29 @@ export default function LegalPage({ markdown, title }: Props) {
         &larr; Home
       </Link>
       <div className="legal-prose">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={{ a: CustomLink }}
-        >
-          {markdown}
-        </ReactMarkdown>
+        {doc.status === "ready" ? (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{ a: CustomLink }}
+          >
+            {doc.markdown}
+          </ReactMarkdown>
+        ) : doc.status === "loading" ? (
+          <p className="legal-page-status">Loading…</p>
+        ) : (
+          <>
+            <h1>{title}</h1>
+            <p className="legal-page-status">
+              {hub.name} has not published this document yet.
+            </p>
+            {hub.contact_email && (
+              <p className="legal-page-status">
+                For questions in the meantime, contact{" "}
+                <a href={`mailto:${hub.contact_email}`}>{hub.contact_email}</a>.
+              </p>
+            )}
+          </>
+        )}
       </div>
     </article>
   );

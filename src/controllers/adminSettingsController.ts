@@ -36,6 +36,10 @@ import {
   setSupportThreshold,
   getCommentIdentityMode,
   setCommentIdentityMode,
+  getOperatorName,
+  getContactEmail,
+  setOperatorName,
+  setContactEmail,
 } from "../services/hubSettings.js";
 import {
   type OfficialRecord,
@@ -43,9 +47,22 @@ import {
   setOfficials,
 } from "../services/officials.js";
 import { getAuthUser } from "../middleware/auth.js";
-import { currentHubId } from "../config/hubContext.js";
+import { currentHub, currentHubId } from "../config/hubContext.js";
 
 interface SettingsResponse {
+  /**
+   * What the legal documents will say about who runs this hub.
+   *
+   * `hostname` is here READ-ONLY and comes from the `hubs` row, because the
+   * documents name it and an admin should be able to see what they are about
+   * to publish without going and finding it. It is not editable from the hub
+   * admin panel: changing which hostname a hub answers on is a control-plane
+   * act, not a settings edit.
+   */
+  operator_name: string;
+  contact_email: string;
+  hostname: string;
+
   brief_recipient_emails: string[];
   officials: OfficialRecord[];
   /** @deprecated superseded by `officials`; read-only. */
@@ -59,6 +76,9 @@ interface SettingsResponse {
 async function loadSettings(): Promise<SettingsResponse> {
   const hubId = currentHubId();
   return {
+    operator_name: await getOperatorName(hubId),
+    contact_email: await getContactEmail(hubId),
+    hostname: currentHub()?.hostname ?? "",
     brief_recipient_emails: await getVoteResultsRecipients(hubId),
     officials: await listOfficialsWithLegacy(),
     announcement_authors: await getAnnouncementAuthors(hubId),
@@ -88,6 +108,8 @@ export async function handlePatchSettings(
   try {
     const actor = getAuthUser(res).id;
     const body = (req.body ?? {}) as {
+      operator_name?: unknown;
+      contact_email?: unknown;
       brief_recipient_emails?: unknown;
       officials?: unknown;
       announcement_authors?: unknown;
@@ -95,6 +117,33 @@ export async function handlePatchSettings(
       support_threshold?: unknown;
       comment_identity_mode?: unknown;
     };
+
+    if (body.operator_name !== undefined) {
+      if (typeof body.operator_name !== "string") {
+        res.status(400).json({ error: "operator_name must be a string." });
+        return;
+      }
+      await setOperatorName(currentHubId(), body.operator_name, actor);
+    }
+
+    if (body.contact_email !== undefined) {
+      if (typeof body.contact_email !== "string") {
+        res.status(400).json({ error: "contact_email must be a string." });
+        return;
+      }
+      // Shape-checked, not verified. A hub that types its address wrong gets
+      // a wrong address on its terms page either way; what this catches is a
+      // value that is not an address at all, which would render as prose in
+      // the middle of a legal document.
+      const cleaned = body.contact_email.trim();
+      if (cleaned !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned)) {
+        res.status(400).json({
+          error: `"${cleaned}" is not an email address. The legal pages print this verbatim.`,
+        });
+        return;
+      }
+      await setContactEmail(currentHubId(), cleaned, actor);
+    }
 
     if (body.brief_recipient_emails !== undefined) {
       if (!Array.isArray(body.brief_recipient_emails)) {

@@ -13,11 +13,16 @@
  * IDEMPOTENT. Every write is an upsert on (hub_id, key), so running it twice
  * changes nothing the second time. Safe to rerun after adding a key.
  *
- * WHAT IT WILL NOT DO. It never invents a value. A key whose environment
- * variable is unset is skipped entirely, so a missing row keeps meaning "not
- * configured" and keeps falling back the way it did. That is what makes the
- * result for Floyd identical to what production serves today: every row it
- * writes holds the value that was already in force.
+ * WHAT IT WILL NOT DO. It never invents a value for a key that has an
+ * environment variable behind it. A key whose variable is unset is skipped
+ * entirely, so a missing row keeps meaning "not configured" and keeps falling
+ * back the way it did.
+ *
+ * The exceptions are the handful of keys that never had an environment
+ * variable because their value lived inside a document as a literal —
+ * `legal.operator_name`, `legal.contact_email`, `copy.welcome`. There is
+ * nothing to fall back to for those, so this script is where the value is
+ * stated. They are marked at the call site.
  *
  * NOT FOR PRODUCTION. Point it at a local stack or the dev project. The
  * production rows are written in the cutover session, by Adam, from the
@@ -107,6 +112,21 @@ function floydEntries(): Entry[] {
     KEYS.LEGAL_PROPOSAL_BEST_PRACTICES,
     readLocalFile("config/hubs/floyd/proposal-best-practices.md"),
   );
+
+  // The welcome essay is Floyd's and only Floyd's — a personal introduction
+  // naming a person, a county and 25 years of living there. There is no
+  // shared version and there should not be one; another hub writes its own or
+  // has none. It used to be compiled into the UI bundle, which is how Athens
+  // came to serve it.
+  put(out, KEYS.COPY_WELCOME, readLocalFile("config/hubs/floyd/welcome.md"));
+
+  // Who is answerable for this hub and where to reach them. No env var has
+  // ever held these — the values were written into the legal templates as
+  // literals, which is what put Floyd's operator on Athens's terms page. They
+  // are seeded rather than derived because there is nothing to derive them
+  // from, and an unset operator is a legal document with a hole in it.
+  put(out, KEYS.LEGAL_OPERATOR_NAME, "Adam Lake");
+  put(out, KEYS.LEGAL_CONTACT_EMAIL, "contact@civic.social");
 
   put(out, KEYS.IDENTITY_NAME, env("HUB_NAME") ?? env("VITE_HUB_NAME"));
   put(out, KEYS.IDENTITY_LABEL, env("VITE_HUB_LABEL"));
@@ -231,6 +251,13 @@ function athensEntries(): Entry[] {
   );
   putList(out, KEYS.PEOPLE_BOARD_EMAILS, "demo-council@athens.example");
 
+  // Athens is operated by a group, not a person — which is the case this
+  // setting exists to cover, and the reason `legal.operator_name` is free
+  // text rather than a name field.
+  put(out, KEYS.LEGAL_OPERATOR_NAME, "Athens Moderator Group");
+  put(out, KEYS.LEGAL_CONTACT_EMAIL, "athens@example.com");
+
+  put(out, KEYS.EMAIL_FROM_NAME, "Athens Civic Hub (demo)");
   put(out, KEYS.EMAIL_FROM_ADDRESS, "Athens Civic Hub (demo) <demo@civic.social>");
   put(out, KEYS.EMAIL_POSTAL_ADDRESS, "1 Example Street, Athens, VA 24000");
 

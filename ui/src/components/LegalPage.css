@@ -93,3 +93,14 @@
   color: var(--color-text-muted, #6b7280);
   font-style: italic;
 }
+
+/*
+ * The two states that are not a document: still fetching, and this hub has
+ * not published one. Deliberately quiet — neither is an error, and neither
+ * should look like the page failed.
+ */
+.legal-page-status {
+  color: var(--color-text-muted, #666);
+  font-size: 0.95rem;
+  margin: var(--space-md, 1rem) 0;
+}

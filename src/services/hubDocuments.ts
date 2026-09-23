@@ -82,6 +82,16 @@ function readTemplate(fileName: string): string | null {
  * being their own settings, because "Floyd County, Virginia" already contains
  * both and a hub should not have to state the same thing three times.
  *
+ * `{HOSTNAME}` comes from the `hubs` row and from nowhere else — not from an
+ * env var, not from a literal. A legal document that names the wrong domain
+ * is a document about somebody else's website, which is exactly what Athens
+ * was serving before 2026-09-23.
+ *
+ * `{OPERATOR}` and `{CONTACT_EMAIL}` are the two settings added the same day.
+ * Terms and a privacy policy have to name who is answerable and how to reach
+ * them; shared templates cannot, so the hub says it once and all four
+ * documents read it.
+ *
  * A placeholder with no value is LEFT AS IT IS, deliberately. The documents
  * are draft starter content and say so; a hub that has not configured its
  * governing body should show `{GOVERNING_BODY}` in review, not quietly render
@@ -94,12 +104,19 @@ export function substitutions(hub: Hub): Record<string, string> {
 
   const out: Record<string, string> = {};
   if (hub.name) out.HUB_NAME = hub.name;
+  if (hub.hostname) out.HOSTNAME = hub.hostname;
   if (jurisdiction) out.JURISDICTION = jurisdiction;
   if (place?.trim()) out.PLACE = place.trim();
   if (state) out.STATE = state;
 
   const governingBody = getSettingSync(KEYS.COPY_GOVERNING_BODY_NAME);
   if (governingBody) out.GOVERNING_BODY = governingBody;
+
+  const operator = getSettingSync(KEYS.LEGAL_OPERATOR_NAME);
+  if (operator) out.OPERATOR = operator;
+
+  const contactEmail = getSettingSync(KEYS.LEGAL_CONTACT_EMAIL);
+  if (contactEmail) out.CONTACT_EMAIL = contactEmail;
 
   return out;
 }
@@ -134,9 +151,14 @@ export async function hubDocuments(hub: Hub): Promise<HubDocuments> {
     }
   }
 
-  // copy.about has no shared template — a hub either writes one or has none.
-  const about = overrides[KEYS.COPY_ABOUT];
-  if (about) out[KEYS.COPY_ABOUT] = applySubstitutions(about, values);
+  // copy.about and copy.welcome have no shared template — a hub either writes
+  // one or has none. There is no generic version of "why I built this and who
+  // I am", and a hub that has not written one should show nothing rather than
+  // somebody else's introduction.
+  for (const key of [KEYS.COPY_ABOUT, KEYS.COPY_WELCOME]) {
+    const authored = overrides[key];
+    if (authored) out[key] = applySubstitutions(authored, values);
+  }
 
   return out;
 }
