@@ -3,40 +3,63 @@
 Adam runs this. Written 2026-09-22, at the end of Phase 1 part two plus the
 login-hardening pass. Nothing here touches production.
 
+Target project: **`civic-hub-dev`** (team creatinglake, Pro, repo
+`Mosaic-Foundation/civic-hub`, root `./`). Never `civic-hub`, which is
+production.
+
 The goal is one deployment serving two hubs at two hostnames, backed only by
 the Floyd **dev** database, so both can be walked through before Phase 2.
 
+| Hub | Hostname | Mode |
+|---|---|---|
+| Floyd | `civic-hub-dev.vercel.app` | `beta` |
+| Athens | `athens-civic-hub-dev.vercel.app` | `demo` |
+
+Both are already written to the dev database (section 3 is done). Athens has
+its own hostname rather than a `?hub=` query override: the override is
+development-only and stays that way, because a query parameter that changes
+which tenant you see is a hole, and Vercel gives a project extra `.vercel.app`
+names with no DNS work.
+
 ---
 
-## 0. Read this first: do not push the branch yet
+## 0. Read this first
 
-**`git push` of `multi-tenant` may trigger a Vercel Preview build on its own.**
-If Preview inherits environment variables that point at the production
-database, that build would run migrations-aware code against live Floyd data.
-
-So the order is: **check the Preview environment variables first, push
-second.** Section 1 is that check. Nothing has been pushed; the branch exists
-only on this machine.
+The branch **is pushed** (2026-09-23, on Adam's instruction). One risk came
+with it and is still open: `civic-hub` and `civic-hub-dev` are both connected
+to the same GitHub repo, so pushing a branch can trigger a build on EITHER. If
+`civic-hub` builds branches as Previews and its Preview environment points at
+the production database, that build runs this branch's code against live Floyd
+data. **Check `civic-hub` → Settings → Git → Ignored Build Step, or its
+Preview environment variables, and confirm no Preview built from
+`multi-tenant`.**
 
 Two other things found while preparing this, both worth knowing:
 
-- **`civic-hub/.vercel/project.json` links this directory to Vercel project
-  `civic-hub`** (`prj_je4tO378drjg6RNYELk2qYvwuhdG`, team
-  `team_NqVqLwk9waLQbiDxH5hajSOK`). If that is the production Floyd project,
-  then `vercel deploy --prod` typed in this directory goes straight to
-  production. Confirm which project it is before running any Vercel command
-  here.
+- **`civic-hub/.vercel/project.json` still links this directory to the
+  PRODUCTION project `civic-hub`.** Relink it (`vercel link`, choose
+  `civic-hub-dev`) before running any Vercel command here.
+  `./scripts/vercel-deploy.sh` refuses to deploy while the link names
+  `civic-hub`, with no override flag: unlike a database push, which the
+  cutover legitimately has to make, there is no circumstance in which a build
+  session should be what deploys production.
 - **The Supabase CLI link was pointing at production** and has been moved to
   dev. `./scripts/db-push.sh` now refuses a production push unless you name
   the project ref, so a mistyped command cannot reach it.
 
 ---
 
-## 1. Check Vercel → Settings → Environment Variables → **Preview**
+## 1. Set Vercel → `civic-hub-dev` → Settings → Environment Variables
 
-For the project that will build this branch. Filter the list to the **Preview**
-environment and check every row below. A variable set for "All Environments"
-counts as set for Preview.
+Scope these to **Production**, because `multi-tenant` becomes that project's
+production branch. Leaving Preview empty is deliberate: a Preview build with no
+database configured fails to boot, which is the safe direction.
+
+The project currently holds ~43 variables with EMPTY values, created by the
+import form. Remove them all first — an empty value is not the same as unset,
+and several would shadow a hub's settings row with a blank.
+
+Check every row below. The same table also applies if you scope to Preview.
 
 ### 1a. The two that decide which database is written to
 
@@ -50,7 +73,7 @@ inheriting a Production-scoped value; check what "All Environments" contains.
 
 ### 1b. The ones that must NOT exist any more
 
-Delete these from Preview if present. They no longer do anything, and their
+Delete these if present. They no longer do anything, and their
 presence means the environment predates the hardening pass.
 
 | Variable | Why it is gone |
@@ -78,11 +101,11 @@ and every `MEETING_*` and `FLOYD_NEWS_*`.
 Leaving any of them set is not dangerous — it is just misleading, because both
 hubs would then show the same value for it.
 
-### 1d. The ones that should be set for Preview
+### 1d. The ones that should be set
 
 | Variable | Value | Note |
 |---|---|---|
-| `CIVIC_ALLOWED_ORIGINS` | both dev hostnames, comma separated | The server refuses to start in production without it. |
+| `CIVIC_ALLOWED_ORIGINS` | `https://civic-hub-dev.vercel.app,https://athens-civic-hub-dev.vercel.app` | The server refuses to start in production without it. |
 | `CIVIC_ADMIN_EMAILS` | your address | Seeds Floyd's admin roster. Athens's is derived from it as `you+athens@…`. |
 | `CIVIC_ANON_SECRET` | any long random string, **different from production's** | Used to derive anonymous comment identities. |
 | `CRON_SECRET` | any long random string | Gates `/internal/*`. |
@@ -100,124 +123,64 @@ property being tested.
 
 ```bash
 cd ~/Developer/Civic-Social-Mono/civic-hub
-vercel env pull .env.preview --environment=preview
-node --env-file=.env.preview --import tsx scripts/check-deploy-env.ts
-rm .env.preview
+vercel link                                          # choose civic-hub-dev
+vercel env pull .env.dev --environment=production
+node --env-file=.env.dev --import tsx scripts/check-deploy-env.ts
+rm .env.dev
 ```
 
 It decodes the service-role key and names the project it actually belongs to,
-catches a URL and key that disagree, and fails on any variable from 1b. It
-must print `PASS` before you push. Delete `.env.preview` afterwards — it holds
-a service role key.
+catches a URL and key that disagree, and fails on any variable from 1b. It must
+print `PASS` before the first real build. Delete the pulled file afterwards —
+it holds a service role key.
 
 ---
 
-## 2. Apply the migrations to the dev database
+## 2-5. Database: DONE (2026-09-23)
 
-```bash
-cd ~/Developer/Civic-Social-Mono/civic-hub
-cat supabase/.temp/linked-project.json    # must read urfmvqhzmamigssqwsya
-./scripts/db-push.sh
-```
+Already applied to `civic_hub_floyd_Dev` (`urfmvqhzmamigssqwsya`). Recorded
+here so the cutover knows what dev looks like.
 
-The wrapper prints which project it is about to change and refuses production.
-Eleven migrations are new on this branch; the ones that matter:
+- The dev database had the old schema but **no migration history**, so
+  `db push` tried to replay from the first migration and failed on
+  `CREATE TABLE users`. The 47 pre-branch migrations were recorded as applied
+  with `supabase migration repair --status applied <version>`, which writes
+  history only and changes no schema; the 6 new ones then applied cleanly.
+  **Production will have the same problem** if its history is also empty —
+  check before the cutover.
+- `hubs` now holds both rows with the hostnames above. Floyd's `space_did` was
+  repointed to the dev host so activities emitted from dev do not claim
+  production's identity.
+- Athens was created with `mode = 'demo'` **in the INSERT**, because the
+  trigger refuses any later move into demo.
+- Settings seeded for both. Floyd's identity rows were written from the values
+  its UI has as defaults, so the deployment shows Floyd's identity coming from
+  the database rather than from a code fallback.
 
-- `hubs` table, with Floyd seeded
-- `hub_settings` re-keyed to `(hub_id, key)`
-- `hubs.mode`, backfilled — **Floyd becomes `beta`**
-- `sessions.hub_id`
-- the trigger that refuses any move into `demo`
-
-Afterwards, confirm Floyd came out in beta:
-
-```bash
-# in the Supabase SQL editor for civic_hub_floyd_Dev
-select id, hostname, mode, status from hubs order by id;
-```
-
----
-
-## 3. Create the Athens hub on the dev database
-
-Athens is created by `supabase/seed.sql` locally, which `db push` does not
-apply. On dev, insert it by hand. **`mode` must be set in this INSERT** — a
-trigger refuses any later move into demo, which is the rule working.
-
-Replace the two hostnames with the ones you are going to use.
+Verify any time:
 
 ```sql
-insert into hubs (id, hostname, name, jurisdiction_code, jurisdiction_name, space_did, mode)
-values (
-  'athens',
-  'athens-dev.civic.social',          -- the Athens hostname
-  'Athens Civic Hub',
-  'us-va-athens',
-  'Athens, Virginia',
-  'did:web:athens-dev.civic.social',
-  'demo'
-)
-on conflict (id) do nothing;
-
--- Floyd's row was seeded with its production hostname. On dev it has to match
--- the hostname this deployment is actually served at, or the resolver will
--- never find it.
-update hubs set hostname = 'floyd-dev.civic.social' where id = 'floyd';
-
-select id, hostname, mode from hubs order by id;
+select id, hostname, mode, status from hubs order by id;
+select hub_id, count(*) from hub_settings group by hub_id;
 ```
-
----
-
-## 4. Seed both hubs' settings
-
-```bash
-cd ~/Developer/Civic-Social-Mono/civic-hub
-vercel env pull .env.preview --environment=preview
-node --env-file=.env.preview --import tsx scripts/check-deploy-env.ts   # PASS first
-node --env-file=.env.preview --import tsx scripts/seed-hub-settings.ts --dry-run
-node --env-file=.env.preview --import tsx scripts/seed-hub-settings.ts
-node --env-file=.env.preview --import tsx scripts/seed-hub-settings.ts --hub athens
-rm .env.preview
-```
-
-Idempotent, so rerunning is safe. Floyd's rows come from the environment;
-Athens's are the demo fixture. Neither sets a mode.
-
----
-
-## 5. Hostnames
-
-Two hostnames pointing at the same Vercel project. Either works:
-
-- **Vercel subdomains**, nothing to configure in DNS: add
-  `floyd-dev-<project>.vercel.app` and `athens-dev-<project>.vercel.app` as
-  domains on the project, then put those exact strings in `hubs.hostname`.
-- **Custom subdomains** on `civic.social`, DNS at GoDaddy: `floyd-dev` and
-  `athens-dev` as CNAMEs to `cname.vercel-dns.com`, added as domains on the
-  Vercel project.
-
-Whichever you choose, `hubs.hostname` must hold the hostname **exactly**,
-lowercase and without a port. A mismatch shows the "No hub here" page, which
-is the resolver working correctly on a hostname no hub claims.
-
----
 
 ## 6. Deploy
 
-```bash
-cd ~/Developer/Civic-Social-Mono/civic-hub
-git push -u origin multi-tenant     # only after section 1 passed
-```
+The branch is pushed. Set `multi-tenant` as the production branch on
+**`civic-hub-dev`** (Settings → Git → Production Branch), then redeploy.
 
-A Preview build should appear. Confirm the deployment's environment is the
-Preview one you checked.
+Environment variables on `civic-hub-dev` are set for the **Production**
+environment, so the build must be a production one for that project — a
+Preview build there would have no database configured and would fail to boot,
+which is the safe direction.
 
 ---
 
 ## 7. What to check, in order
 
-1. Both hostnames load and show **different** names, banners and taglines.
+1. `https://civic-hub-dev.vercel.app` shows **Floyd Civic Hub**, and
+   `https://athens-civic-hub-dev.vercel.app` shows **Athens Civic Hub** —
+   different names, banners and taglines, one build.
 2. `/code-of-conduct` differs: Athens has its own short demo version.
 3. `/terms` is the same document on both, carrying each hub's own name and no
    mention of the other place.
