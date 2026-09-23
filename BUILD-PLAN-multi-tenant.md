@@ -42,6 +42,8 @@ create table hubs (
   space_type        text not null default 'civic-hub',
   status            text not null default 'active'
                     check (status in ('active', 'suspended')),
+  mode              text
+                    check (mode is null or mode in ('demo', 'beta', 'live')),
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now()
 );
@@ -65,6 +67,42 @@ create table hubs (
   Do not rename it, back-fill it, or derive it from `hubs.id`.
 - `status = 'suspended'` makes the resolver serve the "no hub here" page
   for that hostname while leaving the data in place.
+- **`mode` is the hub's lifecycle state** (added 2026-09-22, with Adam). It
+  replaces two independent booleans — `CIVIC_BETA_MODE` and the demo bypass —
+  which could both be true at once and described a state with no meaning: demo
+  admits anyone with any code, beta admits only the allowlist. The only reason
+  that was not already a bug is that the demo check returned before the beta
+  check ran.
+
+  | mode | sign-in | who may join | banner |
+  |---|---|---|---|
+  | `demo` | any six digits, no email sent | anyone | demo |
+  | `beta` | real code by email | allowlist only, waitlist for everyone else | beta |
+  | `live` | real code by email | anyone | none |
+
+  `mode` and `status` are different axes: `status` answers "is this hub
+  serving at all", `mode` answers "how open is it, and to whom".
+
+  **Null means unset**, and the reader falls back to the environment
+  variables. That is what makes the column safe to add to a live database:
+  Floyd's row stays null, production keeps reading `CIVIC_BETA_MODE`, and
+  nothing changes until a mode is written deliberately. A `default 'live'`
+  would have silently un-gated a hub that is in private beta.
+
+  **A hub admin may set `beta` or `live` only. `demo` is settable solely by
+  the control plane or a seed script, never from the hub admin UI** (Adam,
+  2026-09-22). Demo is the one mode that turns off email verification, so an
+  admin who chose it — by accident, or with a taken-over account — would open
+  a real jurisdiction's hub to anyone signing in as anyone. Moving between
+  beta and live is an ordinary operator decision; putting a hub into demo is a
+  decision about what that hub *is*.
+
+  The restriction runs one way only. **A hub created in demo stays in demo
+  until its own admin moves it to beta or live** — a demo graduating into a
+  real hub is a real decision, and its admin is the right person to make it.
+  What no admin may do is move a hub INTO demo. Enforced by
+  `hubModeChangeRejectionReason()` in `src/models/hub.ts`, which every admin
+  write path must call.
 
 ### 2. `hub_settings`
 
@@ -82,7 +120,7 @@ Key naming is dotted, lowercase, and namespaced. The canonical keys:
 | `legal.` | `legal.terms`, `legal.privacy`, `legal.code_of_conduct`, `legal.proposal_best_practices` |
 | `people.` | `people.admin_emails`, `people.board_emails`, `people.brief_recipients`, `people.announcement_authors` |
 | `email.` | `email.from_name`, `email.from_address`, `email.postal_address` |
-| `beta.` | `beta.enabled`, `beta.allowlist`, `beta.waitlist_enabled` |
+| `beta.` | `beta.allowlist`, `beta.waitlist_enabled` (there is no `beta.enabled`: see `hubs.mode`) |
 | `moderation.` | `moderation.comment_identity_mode` |
 | `plugin.<id>.` | `plugin.<id>.enabled` and `plugin.<id>.<setting>` |
 

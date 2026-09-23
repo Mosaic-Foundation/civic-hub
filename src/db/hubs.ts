@@ -27,7 +27,7 @@ const byHostname = new Map<string, CacheEntry<Hub | null>>();
 const bySlug = new Map<string, CacheEntry<Hub | null>>();
 
 const COLUMNS =
-  "id, hostname, name, jurisdiction_code, jurisdiction_name, space_did, space_type, status, created_at, updated_at";
+  "id, hostname, name, jurisdiction_code, jurisdiction_name, space_did, space_type, status, mode, created_at, updated_at";
 
 function fresh<T>(entry: CacheEntry<T> | undefined): entry is CacheEntry<T> {
   return entry !== undefined && entry.expiresAt > Date.now();

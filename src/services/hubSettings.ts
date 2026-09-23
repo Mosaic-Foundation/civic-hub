@@ -35,7 +35,8 @@ import {
   invalidateHubSettings,
   type SettingsMap,
 } from "../db/hubSettingsStore.js";
-import { currentHubSettings } from "../config/hubContext.js";
+import { currentHub, currentHubSettings } from "../config/hubContext.js";
+import { isHubMode, type HubMode } from "../models/hub.js";
 import {
   KEYS,
   KEY_ALIASES,
@@ -46,6 +47,8 @@ import {
   asNumber,
   encodeList,
   publicSubset,
+  PUBLIC_KEY_LIST,
+  PLUGIN_IDS,
 } from "../models/hubSettings.js";
 
 export { KEYS, publicSubset, invalidateHubSettings };
@@ -146,6 +149,34 @@ export async function getAllSettings(hubId: string): Promise<
     { key: string; value: string; updated_at: string; updated_by: string | null }
   > = {};
   for (const row of rows) out[row.key] = row;
+  return out;
+}
+
+/**
+ * The public settings for a hub, each one fully resolved.
+ *
+ * Resolves key by key rather than filtering the stored map, because a value
+ * may come from the row, from the legacy alias, or from the env fallback, and
+ * only the resolution order knows which. Keys with no value anywhere are
+ * omitted, so "absent" means "not configured" rather than "empty".
+ *
+ * Document-sized keys are included here only if a hub has overridden them;
+ * the defaults are shared files served by the documents endpoint.
+ */
+export async function getPublicSettings(
+  hubId: string | null,
+): Promise<Record<string, string>> {
+  const map = hubId ? await fetchHubSettings(hubId) : null;
+  const out: Record<string, string> = {};
+
+  for (const key of PUBLIC_KEY_LIST) {
+    const value = resolve(map, key);
+    if (value !== undefined && value !== "") out[key] = value;
+  }
+  for (const id of PLUGIN_IDS) {
+    const key = `plugin.${id}.enabled`;
+    out[key] = asBoolean(resolve(map, key), true) ? "true" : "false";
+  }
   return out;
 }
 
@@ -384,23 +415,51 @@ export async function isEmailOnBetaAllowlist(
   return (await getBetaAllowlist(hubId)).includes(email.trim().toLowerCase());
 }
 
+/**
+ * The hub's lifecycle state — demo, beta or live.
+ *
+ * Resolution: the `hubs.mode` column when it is set, otherwise the old
+ * environment variables, so a deployment that has not been given a mode
+ * behaves exactly as it did. The env fallback reproduces the historical
+ * precedence, in which the demo bypass short-circuited before the beta gate
+ * was ever consulted — the accident that made two booleans appear to work.
+ */
+export function hubModeSync(): HubMode {
+  return hubModeFor(currentHub());
+}
+
+/** The mode of a given hub row, for code that has one but is not in a request. */
+export function hubModeFor(hub: { mode?: string | null } | null): HubMode {
+  if (isHubMode(hub?.mode)) return hub.mode;
+  return modeFromEnv();
+}
+
+function modeFromEnv(): HubMode {
+  if (
+    process.env.CIVIC_DEMO_BYPASS_CODE?.trim() ||
+    process.env.VITE_DEMO_MODE === "true"
+  ) {
+    return "demo";
+  }
+  if (process.env.CIVIC_BETA_MODE === "true") return "beta";
+  return "live";
+}
+
+/**
+ * Is this hub in private beta? Sign-in is limited to the allowlist, and
+ * everyone else is offered the waitlist.
+ */
 export function isBetaEnabledSync(): boolean {
-  return asBoolean(getSettingSync(KEYS.BETA_ENABLED), false);
+  return hubModeSync() === "beta";
 }
 
 /**
  * Is this hub a demo? A demo hub does not email sign-in codes and accepts any
- * six digits, so visitors can look around without an inbox.
- *
- * Never public: the client is told it is a demo by the sign-in response, not
- * by the config endpoint, so nothing about the bypass is in the bundle.
+ * six digits, so a visitor can look around without an inbox. There is no code
+ * to display or leak.
  */
 export function isDemoHubSync(): boolean {
-  return asBoolean(getSettingSync(KEYS.BETA_DEMO_MODE), false);
-}
-
-export async function isDemoHub(hubId: string | null): Promise<boolean> {
-  return asBoolean(await getSetting(hubId, KEYS.BETA_DEMO_MODE), false);
+  return hubModeSync() === "demo";
 }
 
 // --- moderation -----------------------------------------------------------

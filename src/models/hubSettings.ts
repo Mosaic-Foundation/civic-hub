@@ -48,11 +48,12 @@ export const KEYS = {
   EMAIL_FROM_ADDRESS: "email.from_address",
   EMAIL_POSTAL_ADDRESS: "email.postal_address",
 
-  BETA_ENABLED: "beta.enabled",
   BETA_ALLOWLIST: "beta.allowlist",
   BETA_WAITLIST_ENABLED: "beta.waitlist_enabled",
-  BETA_DEMO_MODE: "beta.demo_mode",
-  BETA_DEMO_BYPASS_CODE: "beta.demo_bypass_code",
+  // NOTE: there is no beta.enabled, beta.demo_mode or beta.demo_bypass_code.
+  // Those were two booleans that could contradict each other; a hub's
+  // lifecycle is now the single `hubs.mode` column (demo | beta | live).
+  // See src/models/hub.ts.
 
   MODERATION_COMMENT_IDENTITY_MODE: "moderation.comment_identity_mode",
 
@@ -145,10 +146,6 @@ export const ENV_FALLBACKS: Readonly<Record<string, readonly string[]>> = {
   [KEYS.EMAIL_FROM_ADDRESS]: ["RESEND_FROM", "SMTP_FROM"],
   [KEYS.EMAIL_POSTAL_ADDRESS]: ["HUB_POSTAL_ADDRESS"],
 
-  [KEYS.BETA_ENABLED]: ["CIVIC_BETA_MODE"],
-  [KEYS.BETA_DEMO_MODE]: ["VITE_DEMO_MODE"],
-  [KEYS.BETA_DEMO_BYPASS_CODE]: ["CIVIC_DEMO_BYPASS_CODE"],
-
   [KEYS.PLUGIN_CONVERSATION_POLIS_URL]: ["VITE_HUB_POLIS_URL", "POLIS_BASE_URL"],
   [KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID]: ["VITE_HUB_ONBOARDING_WORDCLOUD_ID"],
   [KEYS.PLUGIN_FEEDBACK_RECIPIENTS]: ["FEEDBACK_RECIPIENT_EMAIL"],
@@ -182,7 +179,12 @@ export const ENV_FALLBACKS: Readonly<Record<string, readonly string[]>> = {
  * demo bypass code, every people.* and email.* key, every plugin setting
  * that is not `enabled` — is admin-only.
  */
-const PUBLIC_KEYS: ReadonlySet<string> = new Set<string>([
+/**
+ * The public keys, in order, so a caller can resolve each one rather than
+ * filtering a map — which matters because a value may come from the row, the
+ * legacy alias or the env fallback, and only the service knows which.
+ */
+export const PUBLIC_KEY_LIST: readonly string[] = [
   KEYS.IDENTITY_NAME,
   KEYS.IDENTITY_LABEL,
   KEYS.IDENTITY_TAGLINE,
@@ -205,7 +207,6 @@ const PUBLIC_KEYS: ReadonlySet<string> = new Set<string>([
   KEYS.LEGAL_CODE_OF_CONDUCT,
   KEYS.LEGAL_PROPOSAL_BEST_PRACTICES,
 
-  KEYS.BETA_ENABLED,
   KEYS.BETA_WAITLIST_ENABLED,
 
   KEYS.MODERATION_COMMENT_IDENTITY_MODE,
@@ -215,7 +216,9 @@ const PUBLIC_KEYS: ReadonlySet<string> = new Set<string>([
   // shipped in the bundle as VITE_ variables.
   KEYS.PLUGIN_CONVERSATION_POLIS_URL,
   KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID,
-]);
+];
+
+const PUBLIC_KEYS: ReadonlySet<string> = new Set(PUBLIC_KEY_LIST);
 
 /**
  * Keys whose values are whole documents rather than short configuration.
