@@ -138,13 +138,23 @@ export function assertSpaceIdentityConfigured(
 
   if (!configured) {
     if (isProd) {
-      throw new Error(
-        "CIVIC_SPACE_DID must be set in production. It is this space's stable " +
-          "identifier (`generator.id` on every emitted activity) and must not " +
-          "be derived from BASE_URL, which changes when the deployment moves. " +
-          "Set it once — e.g. did:web:floyd.civic.social — and never change it; " +
-          "a new value reads to consumers as a different space.",
+      // NO LONGER FATAL (2026-09-22). Every hub carries its own `space_did`,
+      // NOT NULL on the `hubs` row, and that is what is stamped on activities
+      // — so the identity this assertion protects is guaranteed by the
+      // database rather than by an environment variable. With one deployment
+      // serving many hubs, a single CIVIC_SPACE_DID could not be correct for
+      // all of them anyway; refusing to boot without one would block every
+      // multi-hub deployment for the sake of a value nothing reads.
+      //
+      // The warning stays: an env var that is set but ignored is worth
+      // knowing about, and a deployment with no hubs rows at all still falls
+      // back to it.
+      console.warn(
+        "[config] CIVIC_SPACE_DID is unset. Each hub's space_did comes from " +
+          "its `hubs` row, so this is expected on a multi-hub deployment. It " +
+          "is used only as a fallback when no hub is in scope.",
       );
+      return;
     }
     console.warn(
       `[config] CIVIC_SPACE_DID is unset — deriving "${deriveDidWeb(baseUrl())}" ` +

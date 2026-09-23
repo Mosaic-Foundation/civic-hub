@@ -39,6 +39,23 @@ const HUB_ID = (() => {
   return i >= 0 && args[i + 1] ? args[i + 1] : "floyd";
 })();
 
+/**
+ * Turn a comma list of addresses into their `+athens` variants, so a demo
+ * hub's admin is a distinct address that still reaches the same person.
+ * Returns the example address when there is nothing to derive from.
+ */
+function plusAddressed(raw: string | undefined): string {
+  const items = (raw ?? "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter((e) => e.includes("@"))
+    .map((e) => {
+      const [local, domain] = e.split("@");
+      return `${local.split("+")[0]}+athens@${domain}`;
+    });
+  return items.length > 0 ? items.join(",") : "demo-admin@athens.example";
+}
+
 /** A file from the repo, or undefined when it is not there. */
 function readLocalFile(relativePath: string): string | undefined {
   try {
@@ -199,7 +216,19 @@ function athensEntries(): Entry[] {
       "The real hubs run a considered Code of Conduct that moderates how things are said and not " +
       "what may be thought. This page stands in for it.\n");
 
-  putList(out, KEYS.PEOPLE_ADMIN_EMAILS, "demo-admin@athens.example");
+  // Athens's admin has to be an address that can RECEIVE mail, because a
+  // privileged account always gets a real emailed code — even on a demo hub.
+  // An @athens.example admin could never sign in.
+  //
+  // So it is derived from this deployment's own admin by plus-addressing:
+  // adam@example.com -> adam+athens@example.com. A different address, which
+  // is what makes "an Athens admin is not a Floyd admin" visible, but one
+  // that still reaches the same inbox. Override with CIVIC_ATHENS_ADMIN_EMAILS.
+  putList(
+    out,
+    KEYS.PEOPLE_ADMIN_EMAILS,
+    env("CIVIC_ATHENS_ADMIN_EMAILS") ?? plusAddressed(env("CIVIC_ADMIN_EMAILS")),
+  );
   putList(out, KEYS.PEOPLE_BOARD_EMAILS, "demo-council@athens.example");
 
   put(out, KEYS.EMAIL_FROM_ADDRESS, "Athens Civic Hub (demo) <demo@civic.social>");

@@ -13,10 +13,31 @@ import { describe, it, expect } from "vitest";
 import { assertSpaceIdentityConfigured } from "../../src/config/hub.js";
 
 describe("assertSpaceIdentityConfigured", () => {
-  it("refuses to boot production without an explicit space DID", () => {
+  it("boots production without CIVIC_SPACE_DID, because hubs carry their own", () => {
+    // CHANGED 2026-09-22. This used to be fatal, and was right to be while a
+    // deployment served exactly one space: deriving the DID from BASE_URL
+    // meant moving the deployment silently minted a new identity.
+    //
+    // Every hub now carries `space_did` on its own row, NOT NULL, and that is
+    // what gets stamped on activities — so the identity this protected is
+    // guaranteed by the database instead. One deployment serving many hubs
+    // could not have one correct value for the variable anyway, and refusing
+    // to boot without it would block every multi-hub deployment over a value
+    // nothing reads.
     expect(() =>
       assertSpaceIdentityConfigured({ NODE_ENV: "production" }),
-    ).toThrow(/CIVIC_SPACE_DID must be set in production/);
+    ).not.toThrow();
+  });
+
+  it("still refuses a malformed DID in production", () => {
+    // A value that IS set has to be a DID. Garbage here would be stamped on
+    // activities for any hub with no row, which is worse than absence.
+    expect(() =>
+      assertSpaceIdentityConfigured({
+        NODE_ENV: "production",
+        CIVIC_SPACE_DID: "floyd.civic.social",
+      }),
+    ).toThrow(/not a DID/);
   });
 
   it("allows the derived default outside production", () => {

@@ -18,6 +18,18 @@ import { API_BASE } from "../fixtures/helpers.js";
 const FLOYD = "floyd.civic.social";
 const ATHENS = "athens.localhost";
 
+/**
+ * Athens's admin, as the seed script derives it.
+ *
+ * A demo hub's admin must be able to RECEIVE mail, because a privileged
+ * account always gets a real emailed code. So the seed plus-addresses the
+ * deployment's own admin — CIVIC_ADMIN_EMAILS is `admin@example.test` here and
+ * in CI — giving a genuinely different address that reaches the same inbox.
+ * That is what makes "an Athens admin is not a Floyd admin" true and usable at
+ * the same time.
+ */
+const ATHENS_ADMIN = "admin+athens@example.test";
+
 function call(
   method: string,
   path: string,
@@ -134,7 +146,7 @@ describe("one-time codes", () => {
     // The lockout is the anti-brute-force defence. Athens's admin is a
     // privileged account, so the real code path applies even though the hub
     // is a demo — which is exactly the case worth locking.
-    const email = "demo-admin@athens.example";
+    const email = ATHENS_ADMIN;
     await call("POST", "/auth/request-code", ATHENS, { email });
 
     let sawLockout = false;
@@ -159,7 +171,7 @@ describe("a demo hub still protects the people who run it", () => {
     // not: an admin who can be impersonated by typing six digits is not an
     // admin, and the hub could later graduate out of demo with that account
     // already compromised.
-    const email = "demo-admin@athens.example";
+    const email = ATHENS_ADMIN;
     const requested = await call("POST", "/auth/request-code", ATHENS, { email });
     // A real code was emailed rather than the demo shortcut being offered.
     expect(String(requested.body.message ?? "")).not.toMatch(/any six digits/i);
