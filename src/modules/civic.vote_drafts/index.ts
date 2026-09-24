@@ -1,4 +1,5 @@
-import { getDb } from "../../db/client.js";
+import { forHub, type HubDb } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
 import type { Suggestion } from "../civic.assistant/models.js";
 import type {
@@ -9,6 +10,11 @@ import type {
 } from "./models.js";
 
 export type { VoteDraft, VoteDraftStatus, CreateVoteDraftInput, UpdateVoteDraftInput } from "./models.js";
+
+/** The hub in scope. Vote drafts are only ever read or written inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 const MIN_DURATION_MS = 14 * 24 * 60 * 60 * 1000;   // 2 weeks
 const MAX_DURATION_MS = 90 * 24 * 60 * 60 * 1000;    // 3 months
@@ -60,35 +66,33 @@ function rowToDraft(row: DraftRow): VoteDraft {
 export async function createVoteDraft(input: CreateVoteDraftInput): Promise<VoteDraft> {
   const id = generateId("vdraft");
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("vote_drafts")
     .insert({ id, user_id: input.user_id })
-    .select()
+    .select<DraftRow>()
     .single();
 
-  if (error) throw new Error(`VoteDrafts: failed to create: ${error.message}`);
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function getVoteDraft(id: string): Promise<VoteDraft | undefined> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("vote_drafts")
-    .select("*")
+    .select<DraftRow>("*")
     .eq("id", id)
     .maybeSingle();
 
-  if (error) throw new Error(`VoteDrafts: ${error.message}`);
   if (!data) return undefined;
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function listUserVoteDrafts(
   userId: string,
   statusFilter?: VoteDraftStatus,
 ): Promise<VoteDraft[]> {
-  let query = getDb()
+  let query = db()
     .from("vote_drafts")
-    .select("*")
+    .select<DraftRow>("*")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
@@ -96,9 +100,8 @@ export async function listUserVoteDrafts(
     query = query.eq("status", statusFilter);
   }
 
-  const { data, error } = await query;
-  if (error) throw new Error(`VoteDrafts: ${error.message}`);
-  return (data ?? []).map((r) => rowToDraft(r as DraftRow));
+  const rows = await query;
+  return rows.map((r) => rowToDraft(r));
 }
 
 export async function updateVoteDraft(
@@ -150,15 +153,14 @@ export async function updateVoteDraft(
     updates.draft_modified_since_review = true;
   }
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("vote_drafts")
     .update(updates)
     .eq("id", id)
-    .select()
+    .select<DraftRow>()
     .single();
 
-  if (error) throw new Error(`VoteDrafts: ${error.message}`);
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function appendVoteConversation(
@@ -178,27 +180,23 @@ export async function appendVoteConversation(
   // Talking to the assistant does NOT flag the draft as AI-helped — the
   // disclosure fires only when assistant-produced text lands in the form
   // (applyVoteDraftProposal, or updateVoteDraft with assistant_applied).
-  const { error } = await getDb()
+  await db()
     .from("vote_drafts")
     .update({ conversation_history: history })
     .eq("id", id);
-
-  if (error) throw new Error(`VoteDrafts: ${error.message}`);
 }
 
 export async function saveVoteReviewResult(
   id: string,
   suggestions: Suggestion[],
 ): Promise<void> {
-  const { error } = await getDb()
+  await db()
     .from("vote_drafts")
     .update({
       last_review_result: suggestions,
       draft_modified_since_review: false,
     })
     .eq("id", id);
-
-  if (error) throw new Error(`VoteDrafts: ${error.message}`);
 }
 
 export async function applyVoteDraftProposal(
@@ -207,7 +205,7 @@ export async function applyVoteDraftProposal(
   description: string,
   sources: string,
 ): Promise<VoteDraft> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("vote_drafts")
     .update({
       title,
@@ -216,21 +214,18 @@ export async function applyVoteDraftProposal(
       assistant_helped: true,
     })
     .eq("id", id)
-    .select()
+    .select<DraftRow>()
     .single();
 
-  if (error) throw new Error(`VoteDrafts: ${error.message}`);
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function setVoteDraftStatus(
   id: string,
   status: VoteDraftStatus,
 ): Promise<void> {
-  const { error } = await getDb()
+  await db()
     .from("vote_drafts")
     .update({ status })
     .eq("id", id);
-
-  if (error) throw new Error(`VoteDrafts: ${error.message}`);
 }

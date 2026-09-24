@@ -13,57 +13,13 @@
 // fetch, because the hostname is the variable under test.
 
 import { beforeAll, describe, expect, it } from "vitest";
-import { request } from "node:http";
-import { API_BASE } from "../fixtures/helpers.js";
+import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession, mintSessionForUser } from "../fixtures/adminSession.js";
 
 const ATHENS = "athens.localhost";
 const FLOYD = "floyd.civic.social";
 /** On Floyd's roster: CI seeds people.admin_emails from CIVIC_ADMIN_EMAILS. */
 const FLOYD_ADMIN = "admin@example.test";
-
-function call(
-  method: string,
-  path: string,
-  host: string,
-  body?: unknown,
-  token?: string,
-): Promise<{ status: number; body: any }> {
-  const url = new URL(`${API_BASE}${path}`);
-  const payload = body === undefined ? undefined : JSON.stringify(body);
-  return new Promise((resolve, reject) => {
-    const req = request(
-      {
-        hostname: url.hostname,
-        port: url.port,
-        path: url.pathname + url.search,
-        method,
-        headers: {
-          Accept: "application/json",
-          Host: host,
-          "Content-Type": "application/json",
-          ...(payload ? { "Content-Length": Buffer.byteLength(payload) } : {}),
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      },
-      (res) => {
-        let raw = "";
-        res.setEncoding("utf8");
-        res.on("data", (c) => (raw += c));
-        res.on("end", () => {
-          try {
-            resolve({ status: res.statusCode ?? 0, body: raw ? JSON.parse(raw) : {} });
-          } catch {
-            resolve({ status: res.statusCode ?? 0, body: { raw } });
-          }
-        });
-      },
-    );
-    req.on("error", reject);
-    if (payload) req.write(payload);
-    req.end();
-  });
-}
 
 const run = Date.now();
 let floydAdmin = "";

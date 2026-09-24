@@ -4,12 +4,14 @@
 // Input is stored independently from votes and is NOT used
 // in vote tallying or lifecycle transitions.
 //
-// Storage: Postgres (community_inputs table).
+// Storage: Postgres (community_inputs table), through forHub(): every read,
+// write and the dev clear are the request's hub only (Phase 2b).
 //
 // GUARDRAIL: This module MUST NOT import from civic.vote or any
 // lifecycle/results code. Community input is a parallel data stream.
 
-import { getDb } from "../../db/client.js";
+import { forHub } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
 import { assertPassesWordlist } from "../../shared/wordlist/index.js";
 import type { CommunityInput, CommentModeration, CommentPhase, InputContext } from "./models.js";
@@ -37,6 +39,10 @@ interface InputRow {
   hidden_by: string | null;
   hidden_reason: string | null;
   restored_at: string | null;
+}
+
+function db() {
+  return forHub(currentHubId());
 }
 
 function rowToInput(row: InputRow): CommunityInput {
@@ -105,7 +111,11 @@ export async function submitInput(
   const isAnonymous = identity?.is_anonymous === true;
   const authorName = isAnonymous ? null : identity?.author_name ?? null;
 
-  const { data, error } = await getDb()
+  // Phase used to be set by a second update, to ride out PostgREST schema
+  // cache lag when the column was new; that update's failure was ignored, so
+  // a comment could report a phase it did not store. The column has long
+  // since settled: one insert, and a failure throws.
+  const data = await db()
     .from("community_inputs")
     .insert({
       id,
@@ -114,24 +124,12 @@ export async function submitInput(
       body: trimmed,
       is_anonymous: isAnonymous,
       author_name: authorName,
+      ...(phase ? { phase } : {}),
     })
-    .select()
+    .select<InputRow>()
     .single();
 
-  if (error) throw new Error(`Input: ${error.message}`);
-
-  // Phase is set in a separate update to tolerate PostgREST schema cache
-  // lag after the column was added. Once the cache has refreshed this
-  // could be inlined into the insert, but the two-step is harmless.
-  if (phase) {
-    await getDb()
-      .from("community_inputs")
-      .update({ phase })
-      .eq("id", id);
-  }
-
-  const input = rowToInput(data as InputRow);
-  input.phase = phase ?? null;
+  const input = rowToInput(data);
 
   // Emit the participation event. The preview is truncated so events stay
   // cheap to index and distribute; consumers that want the full body read
@@ -162,13 +160,12 @@ export async function submitInput(
 export async function getInputsByProcess(
   process_id: string,
 ): Promise<CommunityInput[]> {
-  const { data, error } = await getDb()
+  const rows = await db()
     .from("community_inputs")
-    .select("*")
+    .select<InputRow>("*")
     .eq("process_id", process_id)
     .order("submitted_at", { ascending: true });
-  if (error) throw new Error(`Input: ${error.message}`);
-  return (data ?? []).map((r) => rowToInput(r as InputRow));
+  return rows.map(rowToInput);
 }
 
 
@@ -180,14 +177,12 @@ export async function getInputsByProcess(
 export async function getInputById(
   id: string,
 ): Promise<CommunityInput | undefined> {
-  const { data, error } = await getDb()
+  const row = await db()
     .from("community_inputs")
-    .select("*")
+    .select<InputRow>("*")
     .eq("id", id)
     .maybeSingle();
-  if (error) throw new Error(`Input: ${error.message}`);
-  if (!data) return undefined;
-  return rowToInput(data as InputRow);
+  return row ? rowToInput(row) : undefined;
 }
 
 /**
@@ -222,19 +217,19 @@ export async function hideComment(
   if (existing.moderation?.hidden) return existing;
 
   const now = new Date().toISOString();
-  const { data, error } = await getDb()
-    .from("community_inputs")
-    .update({
-      hidden_at: now,
-      hidden_by: admin_id,
-      hidden_reason: trimmedReason,
-      restored_at: null,
-    })
-    .eq("id", comment_id)
-    .select()
-    .single();
-  if (error) throw new Error(`Input: ${error.message}`);
-  const updated = rowToInput(data as InputRow);
+  const updated = rowToInput(
+    await db()
+      .from("community_inputs")
+      .update({
+        hidden_at: now,
+        hidden_by: admin_id,
+        hidden_reason: trimmedReason,
+        restored_at: null,
+      })
+      .eq("id", comment_id)
+      .select<InputRow>()
+      .single(),
+  );
 
   await ctx.emit({
     event_type: "civic.process.updated",
@@ -274,14 +269,14 @@ export async function restoreComment(
   if (!existing.moderation?.hidden) return existing;
 
   const now = new Date().toISOString();
-  const { data, error } = await getDb()
-    .from("community_inputs")
-    .update({ restored_at: now })
-    .eq("id", comment_id)
-    .select()
-    .single();
-  if (error) throw new Error(`Input: ${error.message}`);
-  const updated = rowToInput(data as InputRow);
+  const updated = rowToInput(
+    await db()
+      .from("community_inputs")
+      .update({ restored_at: now })
+      .eq("id", comment_id)
+      .select<InputRow>()
+      .single(),
+  );
 
   await ctx.emit({
     event_type: "civic.process.updated",
@@ -305,11 +300,7 @@ export async function restoreComment(
   return updated;
 }
 
-/** Clear all inputs — dev/seed only. */
+/** Clear this hub's inputs — dev/seed only. Other hubs' are untouched. */
 export async function clearInputs(): Promise<void> {
-  const { error } = await getDb()
-    .from("community_inputs")
-    .delete()
-    .neq("id", "");
-  if (error) throw new Error(`Input: failed to clear: ${error.message}`);
+  await db().from("community_inputs").delete().neq("id", "");
 }

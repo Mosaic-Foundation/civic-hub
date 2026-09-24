@@ -12,7 +12,8 @@
 // The conversion to a vote is handled by the service/controller layer,
 // which coordinates between this module and the vote module.
 
-import { getDb } from "../../db/client.js";
+import { forHub, HubDbError, type HubDb } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
 import type {
   Proposal,
@@ -38,6 +39,10 @@ export type {
   ProposalConfig,
 } from "./models.js";
 export { DEFAULT_PROPOSAL_CONFIG } from "./models.js";
+
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 // --- Configuration ---------------------------------------------------------
 
@@ -115,17 +120,13 @@ export async function createProposal(
   if (input.assistant_helped !== undefined) row.assistant_helped = input.assistant_helped;
   if (input.closes_at !== undefined) row.closes_at = input.closes_at;
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("proposals")
     .insert(row)
-    .select()
+    .select<ProposalRow>()
     .single();
 
-  if (error) {
-    throw new Error(`Proposals: failed to create: ${error.message}`);
-  }
-
-  const proposal = rowToProposal(data as ProposalRow);
+  const proposal = rowToProposal(data);
 
   console.log(
     `[proposal] created "${proposal.title}" (${id}) by ${proposal.submitted_by}`,
@@ -144,14 +145,13 @@ export async function createProposal(
  * Get a proposal by ID.
  */
 export async function getProposal(id: string): Promise<Proposal | undefined> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("proposals")
-    .select("*")
+    .select<ProposalRow>("*")
     .eq("id", id)
     .maybeSingle();
-  if (error) throw new Error(`Proposals: ${error.message}`);
   if (!data) return undefined;
-  return rowToProposal(data as ProposalRow);
+  return rowToProposal(data);
 }
 
 /**
@@ -165,9 +165,9 @@ export async function getProposal(id: string): Promise<Proposal | undefined> {
 export async function listProposals(
   statusFilter?: ProposalStatus,
 ): Promise<Proposal[]> {
-  let query = getDb()
+  let query = db()
     .from("proposals")
-    .select("*")
+    .select<ProposalRow>("*")
     .order("created_at", { ascending: false });
 
   if (statusFilter) {
@@ -178,9 +178,8 @@ export async function listProposals(
     query = query.neq("status", "archived");
   }
 
-  const { data, error } = await query;
-  if (error) throw new Error(`Proposals: ${error.message}`);
-  return (data ?? []).map((r) => rowToProposal(r as ProposalRow));
+  const data = await query;
+  return data.map(rowToProposal);
 }
 
 /**
@@ -188,14 +187,13 @@ export async function listProposals(
  * Most supported first, then most recent.
  */
 export async function listEndorsedProposals(): Promise<Proposal[]> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("proposals")
-    .select("*")
+    .select<ProposalRow>("*")
     .eq("status", "endorsed")
     .order("support_count", { ascending: false })
     .order("created_at", { ascending: false });
-  if (error) throw new Error(`Proposals: ${error.message}`);
-  return (data ?? []).map((r) => rowToProposal(r as ProposalRow));
+  return data.map(rowToProposal);
 }
 
 // --- Support / Endorsement -------------------------------------------------
@@ -213,7 +211,7 @@ export async function supportProposal(
   userId: string,
   emit: EmitEventFn,
 ): Promise<Proposal> {
-  const db = getDb();
+  const hubDb = db();
 
   // Load current proposal and validate state.
   const proposal = await getProposal(proposalId);
@@ -228,42 +226,39 @@ export async function supportProposal(
   }
 
   // Insert support — composite PK catches duplicates atomically.
-  const { error: supErr } = await db.from("proposal_supports").insert({
-    proposal_id: proposalId,
-    user_id: userId,
-  });
-
-  if (supErr) {
-    if (supErr.code === "23505") {
+  try {
+    await hubDb.from("proposal_supports").insert({
+      proposal_id: proposalId,
+      user_id: userId,
+    });
+  } catch (err) {
+    if (err instanceof HubDbError && err.code === "23505") {
       throw new Error("You have already supported this proposal");
     }
-    throw new Error(`Proposals: ${supErr.message}`);
+    throw err;
   }
 
   // Recount from the authoritative source (the supports table).
-  const { count: supportCount, error: countErr } = await db
+  const newCount = await hubDb
     .from("proposal_supports")
-    .select("*", { count: "exact", head: true })
+    .count()
     .eq("proposal_id", proposalId);
-  if (countErr) throw new Error(`Proposals: ${countErr.message}`);
-  const newCount = supportCount ?? 0;
 
   // Update the proposal row with the new count. Status stays unchanged —
   // Slice B removed the auto-promotion to "endorsed" when crossing the
   // support threshold. Proposals remain in "submitted" status regardless
   // of support count.
-  const { data: updated, error: updErr } = await db
+  const updated = await hubDb
     .from("proposals")
     .update({
       support_count: newCount,
       updated_at: new Date().toISOString(),
     })
     .eq("id", proposalId)
-    .select()
+    .select<ProposalRow>()
     .single();
-  if (updErr) throw new Error(`Proposals: ${updErr.message}`);
 
-  const result = rowToProposal(updated as ProposalRow);
+  const result = rowToProposal(updated);
 
   await emitProposalSupported(
     { proposal_id: proposalId, emit },
@@ -288,7 +283,7 @@ export async function withdrawProposalSupport(
   userId: string,
   emit: EmitEventFn,
 ): Promise<Proposal> {
-  const db = getDb();
+  const hubDb = db();
 
   const proposal = await getProposal(proposalId);
   if (!proposal) {
@@ -300,36 +295,32 @@ export async function withdrawProposalSupport(
     );
   }
 
-  const { data: removed, error: delErr } = await db
+  const removed = await hubDb
     .from("proposal_supports")
     .delete()
     .eq("proposal_id", proposalId)
     .eq("user_id", userId)
     .select();
-  if (delErr) throw new Error(`Proposals: ${delErr.message}`);
   if (!removed || removed.length === 0) {
     throw new Error("You haven't supported this proposal");
   }
 
-  const { count: supportCount, error: countErr } = await db
+  const newCount = await hubDb
     .from("proposal_supports")
-    .select("*", { count: "exact", head: true })
+    .count()
     .eq("proposal_id", proposalId);
-  if (countErr) throw new Error(`Proposals: ${countErr.message}`);
-  const newCount = supportCount ?? 0;
 
-  const { data: updated, error: updErr } = await db
+  const updated = await hubDb
     .from("proposals")
     .update({
       support_count: newCount,
       updated_at: new Date().toISOString(),
     })
     .eq("id", proposalId)
-    .select()
+    .select<ProposalRow>()
     .single();
-  if (updErr) throw new Error(`Proposals: ${updErr.message}`);
 
-  const result = rowToProposal(updated as ProposalRow);
+  const result = rowToProposal(updated);
 
   await emitProposalSupportWithdrawn(
     { proposal_id: proposalId, emit },
@@ -350,13 +341,12 @@ export async function hasUserSupported(
   proposalId: string,
   userId: string,
 ): Promise<boolean> {
-  const { count, error } = await getDb()
+  const count = await db()
     .from("proposal_supports")
-    .select("*", { count: "exact", head: true })
+    .count()
     .eq("proposal_id", proposalId)
     .eq("user_id", userId);
-  if (error) throw new Error(`Proposals: ${error.message}`);
-  return (count ?? 0) > 0;
+  return count > 0;
 }
 
 
@@ -380,22 +370,20 @@ export async function archiveProposal(proposalId: string): Promise<void> {
   }
 
   const now = new Date().toISOString();
-  const { error } = await getDb()
+  await db()
     .from("proposals")
     .update({
       status: "archived" as ProposalStatus,
       updated_at: now,
     })
     .eq("id", proposalId);
-  if (error) throw new Error(`Proposals: ${error.message}`);
 
   // Keep the canonical processes row in sync (no-op for any legacy proposal
   // that predates the unified processes row).
-  const { error: procErr } = await getDb()
+  await db()
     .from("processes")
     .update({ status: "archived", updated_at: now })
     .eq("id", proposalId);
-  if (procErr) throw new Error(`Proposals: failed to archive process row: ${procErr.message}`);
 }
 
 /**
@@ -423,22 +411,20 @@ export async function closeExpiredProposal(
   // reads previously both passed the status check above and both updated +
   // emitted, producing duplicate civic.proposal.closed events. The conditional
   // update means only one wins the row; the loser gets an empty result.
-  const { data: claimed, error } = await getDb()
+  const claimed = await db()
     .from("proposals")
     .update({ status: "closed" as ProposalStatus, updated_at: now })
     .eq("id", proposalId)
     .eq("status", "submitted")
-    .select("id");
-  if (error) throw new Error(`Proposals: failed to close: ${error.message}`);
+    .select<{ id: string }>("id");
   if (!claimed || claimed.length === 0) return false; // lost the race — no-op
 
   // Keep the canonical processes row in sync (source of truth for the unified
   // read layer). No-op for any legacy proposal without a processes row.
-  const { error: procErr } = await getDb()
+  await db()
     .from("processes")
     .update({ status: "closed", updated_at: now })
     .eq("id", proposalId);
-  if (procErr) throw new Error(`Proposals: failed to close process row: ${procErr.message}`);
 
   console.log(`[auto-close] Proposal ${proposalId} past deadline ${proposal.closes_at}, closed.`);
 
@@ -520,10 +506,9 @@ export function getProposalSummary(proposal: Proposal): Record<string, unknown> 
 
 /** Clear all proposals — dev/seed only. ON DELETE CASCADE removes supports. */
 export async function clearProposals(): Promise<void> {
-  const db = getDb();
+  const hubDb = db();
   // Explicit delete of supports first (belt-and-suspenders; FK cascade would
   // handle it, but being explicit avoids any surprise if FK is modified).
-  await db.from("proposal_supports").delete().neq("proposal_id", "");
-  const { error } = await db.from("proposals").delete().neq("id", "");
-  if (error) throw new Error(`Proposals: failed to clear: ${error.message}`);
+  await hubDb.from("proposal_supports").delete().neq("proposal_id", "");
+  await hubDb.from("proposals").delete().neq("id", "");
 }

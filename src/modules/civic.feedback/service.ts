@@ -9,7 +9,8 @@
 // listFeedback() is the admin read path (/admin/feedback). It is the only
 // reader: feedback never flows through emitEvent() and is never public.
 
-import { getDb } from "../../db/client.js";
+import { forHub, type HubDb } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
 import { sendEmail } from "../../utils/email.js";
 import { generateId } from "../../utils/id.js";
 import { getAdminEmailsSync, getSettingSync } from "../../services/hubSettings.js";
@@ -20,6 +21,10 @@ import {
   type FeedbackSubmission,
   type SubmitFeedbackInput,
 } from "./models.js";
+
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 const MESSAGE_MAX_LEN = 4000;
 const DEFAULT_LIST_LIMIT = 200;
@@ -141,15 +146,12 @@ export async function submitFeedback(
     screenshot_url: screenshotUrl,
   };
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("feedback_submissions")
     .insert(row)
     .select()
     .single();
 
-  if (error) {
-    throw new Error(`feedback: ${error.message}`);
-  }
   const submission = rowToSubmission(data);
 
   // Operator notification, for the categories that still get one. When it
@@ -209,7 +211,7 @@ export async function listFeedback(
     MAX_LIST_LIMIT,
   );
 
-  let query = getDb()
+  let query = db()
     .from("feedback_submissions")
     .select("*")
     .order("created_at", { ascending: false })
@@ -218,11 +220,8 @@ export async function listFeedback(
   if (options.category) query = query.eq("category", options.category);
   if (options.since) query = query.gte("created_at", options.since);
 
-  const { data, error } = await query;
-  if (error) {
-    throw new Error(`feedback: ${error.message}`);
-  }
-  return (data ?? []).map((row) => rowToSubmission(row as Record<string, unknown>));
+  const data = await query;
+  return data.map((row) => rowToSubmission(row as Record<string, unknown>));
 }
 
 /**

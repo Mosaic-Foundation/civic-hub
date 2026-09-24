@@ -1,4 +1,5 @@
-import { getDb } from "../../db/client.js";
+import { forHub, type HubDb } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
 import type { Suggestion } from "../civic.assistant/models.js";
 import type {
@@ -9,6 +10,11 @@ import type {
 } from "./models.js";
 
 export type { ProposalDraft, DraftStatus, CreateDraftInput, UpdateDraftInput } from "./models.js";
+
+/** The hub in scope. Proposal drafts are only ever read or written inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 // --- Row mapping ---
 
@@ -63,39 +69,37 @@ function rowToDraft(row: DraftRow): ProposalDraft {
 export async function createDraft(input: CreateDraftInput): Promise<ProposalDraft> {
   const id = generateId("pdraft");
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("proposal_drafts")
     .insert({
       id,
       user_id: input.user_id,
       category: input.category ?? null,
     })
-    .select()
+    .select<DraftRow>()
     .single();
 
-  if (error) throw new Error(`Drafts: failed to create: ${error.message}`);
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function getDraft(id: string): Promise<ProposalDraft | undefined> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("proposal_drafts")
-    .select("*")
+    .select<DraftRow>("*")
     .eq("id", id)
     .maybeSingle();
 
-  if (error) throw new Error(`Drafts: ${error.message}`);
   if (!data) return undefined;
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function listUserDrafts(
   userId: string,
   statusFilter?: DraftStatus,
 ): Promise<ProposalDraft[]> {
-  let query = getDb()
+  let query = db()
     .from("proposal_drafts")
-    .select("*")
+    .select<DraftRow>("*")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
@@ -103,9 +107,8 @@ export async function listUserDrafts(
     query = query.eq("status", statusFilter);
   }
 
-  const { data, error } = await query;
-  if (error) throw new Error(`Drafts: ${error.message}`);
-  return (data ?? []).map((r) => rowToDraft(r as DraftRow));
+  const rows = await query;
+  return rows.map((r) => rowToDraft(r));
 }
 
 export async function updateDraft(
@@ -133,15 +136,14 @@ export async function updateDraft(
     updates.draft_modified_since_review = true;
   }
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("proposal_drafts")
     .update(updates)
     .eq("id", id)
-    .select()
+    .select<DraftRow>()
     .single();
 
-  if (error) throw new Error(`Drafts: ${error.message}`);
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function appendConversation(
@@ -163,27 +165,23 @@ export async function appendConversation(
   // assistant-produced text lands in the form: applyDraftProposal (a
   // generated starting draft) or updateDraft with assistant_applied
   // (Apply on a suggestion card).
-  const { error } = await getDb()
+  await db()
     .from("proposal_drafts")
     .update({ conversation_history: history })
     .eq("id", id);
-
-  if (error) throw new Error(`Drafts: ${error.message}`);
 }
 
 export async function saveReviewResult(
   id: string,
   suggestions: Suggestion[],
 ): Promise<void> {
-  const { error } = await getDb()
+  await db()
     .from("proposal_drafts")
     .update({
       last_review_result: suggestions,
       draft_modified_since_review: false,
     })
     .eq("id", id);
-
-  if (error) throw new Error(`Drafts: ${error.message}`);
 }
 
 export async function applyDraftProposal(
@@ -193,7 +191,7 @@ export async function applyDraftProposal(
   sources: string,
   considerations: string,
 ): Promise<ProposalDraft> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("proposal_drafts")
     .update({
       title,
@@ -203,23 +201,20 @@ export async function applyDraftProposal(
       assistant_helped: true,
     })
     .eq("id", id)
-    .select()
+    .select<DraftRow>()
     .single();
 
-  if (error) throw new Error(`Drafts: ${error.message}`);
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function setDraftStatus(
   id: string,
   status: DraftStatus,
 ): Promise<void> {
-  const { error } = await getDb()
+  await db()
     .from("proposal_drafts")
     .update({ status })
     .eq("id", id);
-
-  if (error) throw new Error(`Drafts: ${error.message}`);
 }
 
 /**
@@ -229,13 +224,12 @@ export async function setDraftStatus(
  * WHERE makes this the single source of truth against double submission.
  */
 export async function claimDraftForSubmission(id: string): Promise<boolean> {
-  const { data, error } = await getDb()
+  const rows = await db()
     .from("proposal_drafts")
     .update({ status: "submitted" as DraftStatus })
     .eq("id", id)
     .eq("status", "drafting")
-    .select("id");
+    .select<{ id: string }>("id");
 
-  if (error) throw new Error(`Drafts: ${error.message}`);
-  return !!data && data.length > 0;
+  return rows.length > 0;
 }

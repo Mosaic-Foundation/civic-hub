@@ -1,4 +1,5 @@
-import { getDb } from "../../db/client.js";
+import { forHub, type HubDb } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
 import type { Suggestion } from "../civic.assistant/models.js";
 import type {
@@ -15,6 +16,11 @@ export type {
   UpdateDeliberationDraftInput,
 } from "./models.js";
 export { DEFAULT_DELIBERATION_DURATION_MS } from "./models.js";
+
+/** The hub in scope. Deliberation drafts are only ever read or written inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 // Duration picker bounds — 2 weeks to 3 months, same as votes.
 const MIN_DURATION_MS = 14 * 24 * 60 * 60 * 1000;
@@ -78,28 +84,26 @@ export async function createDeliberationDraft(
 ): Promise<DeliberationDraft> {
   const id = generateId("ddraft");
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("deliberation_drafts")
     .insert({ id, user_id: input.user_id })
-    .select()
+    .select<DraftRow>()
     .single();
 
-  if (error) throw new Error(`DeliberationDrafts: failed to create: ${error.message}`);
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function getDeliberationDraft(
   id: string,
 ): Promise<DeliberationDraft | undefined> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("deliberation_drafts")
-    .select("*")
+    .select<DraftRow>("*")
     .eq("id", id)
     .maybeSingle();
 
-  if (error) throw new Error(`DeliberationDrafts: ${error.message}`);
   if (!data) return undefined;
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function updateDeliberationDraft(
@@ -144,15 +148,14 @@ export async function updateDeliberationDraft(
     updates.draft_modified_since_review = true;
   }
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("deliberation_drafts")
     .update(updates)
     .eq("id", id)
-    .select()
+    .select<DraftRow>()
     .single();
 
-  if (error) throw new Error(`DeliberationDrafts: ${error.message}`);
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function appendDeliberationConversation(
@@ -173,27 +176,23 @@ export async function appendDeliberationConversation(
   // disclosure fires only when assistant-produced text lands in the form
   // (applyDeliberationDraftProposal, or updateDeliberationDraft with
   // assistant_applied).
-  const { error } = await getDb()
+  await db()
     .from("deliberation_drafts")
     .update({ conversation_history: history })
     .eq("id", id);
-
-  if (error) throw new Error(`DeliberationDrafts: ${error.message}`);
 }
 
 export async function saveDeliberationReviewResult(
   id: string,
   suggestions: Suggestion[],
 ): Promise<void> {
-  const { error } = await getDb()
+  await db()
     .from("deliberation_drafts")
     .update({
       last_review_result: suggestions,
       draft_modified_since_review: false,
     })
     .eq("id", id);
-
-  if (error) throw new Error(`DeliberationDrafts: ${error.message}`);
 }
 
 export async function applyDeliberationDraftProposal(
@@ -203,7 +202,7 @@ export async function applyDeliberationDraftProposal(
   sources: string,
   seedStatements: string,
 ): Promise<DeliberationDraft> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("deliberation_drafts")
     .update({
       title,
@@ -213,21 +212,18 @@ export async function applyDeliberationDraftProposal(
       assistant_helped: true,
     })
     .eq("id", id)
-    .select()
+    .select<DraftRow>()
     .single();
 
-  if (error) throw new Error(`DeliberationDrafts: ${error.message}`);
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function setDeliberationDraftStatus(
   id: string,
   status: DeliberationDraftStatus,
 ): Promise<void> {
-  const { error } = await getDb()
+  await db()
     .from("deliberation_drafts")
     .update({ status })
     .eq("id", id);
-
-  if (error) throw new Error(`DeliberationDrafts: ${error.message}`);
 }

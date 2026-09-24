@@ -1,5 +1,4 @@
-import { getDb } from "../../db/client.js";
-import { forHub } from "../../db/forHub.js";
+import { forHub, type HubDb } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { createEdges } from "../../services/processLinks.js";
 import {
@@ -30,12 +29,17 @@ import {
   notifyAdminActivationFailed,
 } from "./email.js";
 import { emitEvent } from "../../events/eventEmitter.js";
-import { executeAction, rowToProcess } from "../../services/processService.js";
+import { executeAction, rowToProcess, type ProcessRow } from "../../services/processService.js";
 import { createProject } from "../civic.projects/index.js";
 import { createProposal } from "../civic.proposals/index.js";
 import { DEFAULT_JURISDICTION } from "../../config/hub.js";
 import { getAdminEmailsSync } from "../../services/hubSettings.js";
 
+
+/** The hub in scope. Reviews are only ever created, read or transitioned inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 function getAdminEmails(): string[] {
   return getAdminEmailsSync();
@@ -87,12 +91,8 @@ export async function submitForReview(
     created_by: input.creator_id,
   };
 
-  // Through forHub so the process is stamped with the hub it was submitted
-  // on (Phase 2a: processes are read per hub). The rest of this module's
-  // tables are converted in Phase 2b.
-  await forHub(currentHubId())
-    .from("processes")
-    .insert(processRow);
+  // Through forHub so the process is stamped with the hub it was submitted on.
+  await db().from("processes").insert(processRow);
 
   // Materialize the creator's proposed links. Done here — the one funnel every
   // process type passes through — so creation-time linking is universal rather
@@ -125,24 +125,21 @@ export async function submitForReview(
     status: "pending_review" as ReviewStatus,
   };
 
-  const { data: reviewData, error: revErr } = await getDb()
+  const reviewData = await db()
     .from("process_reviews")
     .insert(reviewRow)
     .select()
     .single();
-  if (revErr) {
-    throw new Error(`Failed to create review: ${revErr.message}`);
-  }
 
   // Now link the process back to the review
-  await getDb()
+  await db()
     .from("processes")
     .update({ review_id: reviewId })
     .eq("id", processId);
 
   // Insert the first turn
   const turnId = generateId("turn");
-  const { error: turnErr } = await getDb().from("review_turns").insert({
+  await db().from("review_turns").insert({
     id: turnId,
     review_id: reviewId,
     turn_number: 1,
@@ -157,9 +154,6 @@ export async function submitForReview(
       config: input.config ?? null,
     }),
   });
-  if (turnErr) {
-    throw new Error(`Failed to create review turn: ${turnErr.message}`);
-  }
 
   // Emit review event
   await emitReviewEvent({
@@ -244,12 +238,11 @@ export async function approveReview(
   }
 
   // Load the process
-  const { data: proc, error: procErr } = await getDb()
+  const proc = await db()
     .from("processes")
-    .select("*")
+    .select<ProcessRow>("*")
     .eq("id", review.process_id)
     .single();
-  if (procErr || !proc) throw new Error("Process not found for review");
 
   // What approval does to this process — the status it lands on, and any
   // lifecycle action that has to run for it to be real. The handler declares
@@ -289,14 +282,13 @@ export async function approveReview(
   // concurrent or duplicate approve (double-click, network retry, stale UI)
   // affects 0 rows and bails out here, BEFORE creating a proposal/project.
   // This is the real guard against duplicate postings.
-  const { data: claimedRows, error: revErr } = await getDb()
+  const claimedRows = await db()
     .from("process_reviews")
     .update({ status: "approved" as ReviewStatus })
     .eq("id", reviewId)
     .eq("status", "pending_review")
     .select();
-  if (revErr) throw new Error(`Failed to update review: ${revErr.message}`);
-  if (!claimedRows || claimedRows.length === 0) {
+  if (claimedRows.length === 0) {
     // Someone already approved this between our read and write.
     throw new Error("Review has already been approved");
   }
@@ -315,16 +307,15 @@ export async function approveReview(
   try {
   // Update process status to live (safe to run once we've claimed the review)
   const now = new Date().toISOString();
-  const { error: updErr } = await getDb()
+  await db()
     .from("processes")
     .update({ status: liveStatus, updated_at: now })
     .eq("id", review.process_id);
-  if (updErr) throw new Error(`Failed to activate process: ${updErr.message}`);
 
   // Add the approval turn
   const nextTurn = await getNextTurnNumber(reviewId);
   const turnId = generateId("turn");
-  await getDb().from("review_turns").insert({
+  await db().from("review_turns").insert({
     id: turnId,
     review_id: reviewId,
     turn_number: nextTurn,
@@ -419,11 +410,11 @@ export async function approveReview(
     // Posting failed after we claimed the review — revert review + process
     // to pending_review so the admin can retry cleanly rather than hitting
     // "Cannot approve review in status: approved".
-    await getDb()
+    await db()
       .from("process_reviews")
       .update({ status: "pending_review" as ReviewStatus })
       .eq("id", reviewId);
-    await getDb()
+    await db()
       .from("processes")
       .update({ status: "pending_review" })
       .eq("id", review.process_id);
@@ -513,18 +504,17 @@ export async function requestChanges(
   }
 
   // Update review status
-  const { data: updatedReview, error: revErr } = await getDb()
+  const updatedReview = await db()
     .from("process_reviews")
     .update({ status: "changes_requested" as ReviewStatus })
     .eq("id", reviewId)
     .select()
     .single();
-  if (revErr) throw new Error(`Failed to update review: ${revErr.message}`);
 
   // Add the turn
   const nextTurn = await getNextTurnNumber(reviewId);
   const turnId = generateId("turn");
-  await getDb().from("review_turns").insert({
+  await db().from("review_turns").insert({
     id: turnId,
     review_id: reviewId,
     turn_number: nextTurn,
@@ -546,9 +536,9 @@ export async function requestChanges(
 
   // Notify creator
   try {
-    const { data: proc } = await getDb()
+    const proc = await db()
       .from("processes")
-      .select("type, title")
+      .select<{ type: string; title: string }>("type, title")
       .eq("id", review.process_id)
       .single();
 
@@ -580,24 +570,23 @@ export async function declineReview(
 
   // Archive the process
   const now = new Date().toISOString();
-  await getDb()
+  await db()
     .from("processes")
     .update({ status: "archived", updated_at: now })
     .eq("id", review.process_id);
 
   // Update review status
-  const { data: updatedReview, error: revErr } = await getDb()
+  const updatedReview = await db()
     .from("process_reviews")
     .update({ status: "declined" as ReviewStatus })
     .eq("id", reviewId)
     .select()
     .single();
-  if (revErr) throw new Error(`Failed to update review: ${revErr.message}`);
 
   // Add the turn
   const nextTurn = await getNextTurnNumber(reviewId);
   const turnId = generateId("turn");
-  await getDb().from("review_turns").insert({
+  await db().from("review_turns").insert({
     id: turnId,
     review_id: reviewId,
     turn_number: nextTurn,
@@ -619,9 +608,9 @@ export async function declineReview(
 
   // Notify creator
   try {
-    const { data: proc } = await getDb()
+    const proc = await db()
       .from("processes")
-      .select("type, title")
+      .select<{ type: string; title: string }>("type, title")
       .eq("id", review.process_id)
       .single();
 
@@ -670,28 +659,26 @@ export async function reviseAndResubmit(
     // Same path as submitForReview: the handler turns raw submit input into
     // its initial state, so a revised vote/conversation is exactly what a
     // fresh submission of the same draft would be.
-    const { data: current } = await getDb()
+    const current = await db()
       .from("processes")
-      .select("type")
+      .select<{ type: string }>("type")
       .eq("id", review.process_id)
       .single();
-    const handler = current ? getProcessHandler(String(current.type)) : undefined;
+    const handler = getProcessHandler(String(current.type));
     updates.state = handler ? handler.initializeState(input.state) : input.state;
   }
 
-  const { error: procErr } = await getDb()
+  await db()
     .from("processes")
     .update(updates)
     .eq("id", review.process_id);
-  if (procErr)
-    throw new Error(`Failed to update process: ${procErr.message}`);
 
   // Related processes: the revised draft's picks replace the creator's
   // earlier ones (an admin's additions during review are not the creator's
   // and are kept). Best-effort, like creation-time linking.
   if (input.links !== undefined) {
     try {
-      await getDb()
+      await db()
         .from("process_links")
         .delete()
         .eq("from_id", review.process_id)
@@ -710,25 +697,30 @@ export async function reviseAndResubmit(
   }
 
   // Read back the updated process for the snapshot
-  const { data: proc } = await getDb()
+  const proc = await db()
     .from("processes")
-    .select("title, description, content, config, type")
+    .select<{
+      title: string;
+      description: string;
+      content?: Record<string, unknown> | null;
+      config?: Record<string, unknown> | null;
+      type: string;
+    }>("title, description, content, config, type")
     .eq("id", review.process_id)
     .single();
 
   // Update review status back to pending_review
-  const { data: updatedReview, error: revErr } = await getDb()
+  const updatedReview = await db()
     .from("process_reviews")
     .update({ status: "pending_review" as ReviewStatus })
     .eq("id", reviewId)
     .select()
     .single();
-  if (revErr) throw new Error(`Failed to update review: ${revErr.message}`);
 
   // Add the turn with a snapshot
   const nextTurn = await getNextTurnNumber(reviewId);
   const turnId = generateId("turn");
-  await getDb().from("review_turns").insert({
+  await db().from("review_turns").insert({
     id: turnId,
     review_id: reviewId,
     turn_number: nextTurn,
@@ -792,24 +784,23 @@ export async function withdrawReview(
 
   // Archive the process
   const now = new Date().toISOString();
-  await getDb()
+  await db()
     .from("processes")
     .update({ status: "archived", updated_at: now })
     .eq("id", review.process_id);
 
   // Update review status
-  const { data: updatedReview, error: revErr } = await getDb()
+  const updatedReview = await db()
     .from("process_reviews")
     .update({ status: "withdrawn" as ReviewStatus })
     .eq("id", reviewId)
     .select()
     .single();
-  if (revErr) throw new Error(`Failed to update review: ${revErr.message}`);
 
   // Add the turn
   const nextTurn = await getNextTurnNumber(reviewId);
   const turnId = generateId("turn");
-  await getDb().from("review_turns").insert({
+  await db().from("review_turns").insert({
     id: turnId,
     review_id: reviewId,
     turn_number: nextTurn,
@@ -831,9 +822,9 @@ export async function withdrawReview(
 
   // Notify admin
   try {
-    const { data: proc } = await getDb()
+    const proc = await db()
       .from("processes")
-      .select("type, title")
+      .select<{ type: string; title: string }>("type, title")
       .eq("id", review.process_id)
       .single();
 
@@ -858,66 +849,61 @@ export async function withdrawReview(
 export async function getReview(
   reviewId: string,
 ): Promise<ProcessReview | null> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("process_reviews")
-    .select("*")
+    .select<ProcessReview>("*")
     .eq("id", reviewId)
     .maybeSingle();
-  if (error) throw new Error(`Failed to get review: ${error.message}`);
-  return data as ProcessReview | null;
+  return data;
 }
 
 export async function getReviewByProcessId(
   processId: string,
 ): Promise<ProcessReview | null> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("process_reviews")
-    .select("*")
+    .select<ProcessReview>("*")
     .eq("process_id", processId)
     .maybeSingle();
-  if (error) throw new Error(`Failed to get review: ${error.message}`);
-  return data as ProcessReview | null;
+  return data;
 }
 
 export async function getReviewTurns(
   reviewId: string,
 ): Promise<ReviewTurn[]> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("review_turns")
-    .select("*")
+    .select<ReviewTurn>("*")
     .eq("review_id", reviewId)
     .order("turn_number", { ascending: true });
-  if (error) throw new Error(`Failed to get review turns: ${error.message}`);
-  return (data ?? []) as ReviewTurn[];
+  return data;
 }
 
 export async function listReviews(
   statusFilter?: string,
 ): Promise<ProcessReview[]> {
-  let query = getDb()
+  let query = db()
     .from("process_reviews")
-    .select("*")
+    .select<ProcessReview>("*")
     .order("updated_at", { ascending: false });
 
   if (statusFilter) {
     query = query.eq("status", statusFilter);
   }
 
-  const { data, error } = await query;
-  if (error) throw new Error(`Failed to list reviews: ${error.message}`);
-  return (data ?? []) as ProcessReview[];
+  const data = await query;
+  return data;
 }
 
 export async function listCreatorReviews(
   creatorId: string,
 ): Promise<ProcessReview[]> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("process_reviews")
-    .select("*")
+    .select<ProcessReview>("*")
     .eq("creator_id", creatorId)
     .order("updated_at", { ascending: false });
-  if (error) throw new Error(`Failed to list creator reviews: ${error.message}`);
-  return (data ?? []) as ProcessReview[];
+  return data;
 }
 
 // --- Notification indicator ---
@@ -935,16 +921,16 @@ export async function countReviewNotifications(
   userId: string,
   isAdmin: boolean,
 ): Promise<number> {
-  const { data: userRow } = await getDb()
+  const userRow = await db()
     .from("users")
-    .select("reviews_seen_at")
+    .select<{ reviews_seen_at: string | null }>("reviews_seen_at")
     .eq("id", userId)
     .maybeSingle();
-  const seenAt = (userRow?.reviews_seen_at as string | null) ?? EPOCH;
+  const seenAt = userRow?.reviews_seen_at ?? EPOCH;
 
-  let query = getDb()
+  let query = db()
     .from("process_reviews")
-    .select("id", { count: "exact", head: true })
+    .count()
     .gt("updated_at", seenAt);
 
   if (isAdmin) {
@@ -953,9 +939,7 @@ export async function countReviewNotifications(
     query = query.eq("creator_id", userId).eq("status", "changes_requested");
   }
 
-  const { count, error } = await query;
-  if (error) throw new Error(`Failed to count notifications: ${error.message}`);
-  return count ?? 0;
+  return await query;
 }
 
 /**
@@ -963,35 +947,32 @@ export async function countReviewNotifications(
  * predate `draft_id` (before 2026-09-02). Only ever fills a null.
  */
 export async function setReviewDraftId(reviewId: string, draftId: string): Promise<void> {
-  const { error } = await getDb()
+  await db()
     .from("process_reviews")
     .update({ draft_id: draftId })
     .eq("id", reviewId)
     .is("draft_id", null);
-  if (error) throw new Error(`Failed to record draft on review: ${error.message}`);
 }
 
 /** Stamp reviews_seen_at = now() for the user, clearing their badge. */
 export async function markReviewsSeen(userId: string): Promise<void> {
-  const { error } = await getDb()
+  await db()
     .from("users")
     .update({ reviews_seen_at: new Date().toISOString() })
     .eq("id", userId);
-  if (error) throw new Error(`Failed to mark reviews seen: ${error.message}`);
 }
 
 // --- Helpers ---
 
 async function getNextTurnNumber(reviewId: string): Promise<number> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("review_turns")
-    .select("turn_number")
+    .select<{ turn_number: number }>("turn_number")
     .eq("review_id", reviewId)
     .order("turn_number", { ascending: false })
     .limit(1);
-  if (error) throw new Error(`Failed to get turn count: ${error.message}`);
-  if (!data || data.length === 0) return 1;
-  return (data[0].turn_number as number) + 1;
+  if (data.length === 0) return 1;
+  return Number(data[0].turn_number) + 1;
 }
 
 
@@ -1016,12 +997,12 @@ export async function reopenForRevision(
   }
   if (!review.draft_id) return null;
 
-  const { data: proc } = await getDb()
+  const proc = await db()
     .from("processes")
-    .select("type")
+    .select<{ type: string }>("type")
     .eq("id", review.process_id)
     .single();
-  const type = proc ? String(proc.type) : "";
+  const type = String(proc.type);
   const path = draftPathFor(type, review.draft_id);
   if (!path) return null;
 

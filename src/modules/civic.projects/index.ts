@@ -1,4 +1,5 @@
-import { getDb } from "../../db/client.js";
+import { forHub, type HubDb } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
 import type {
   Project,
@@ -25,6 +26,10 @@ export type {
   SentimentValue,
   CreateProjectInput,
 } from "./models.js";
+
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 // --- Row <-> model mapping -------------------------------------------------
 
@@ -75,7 +80,7 @@ export async function createProject(
   const id = input.id ?? generateId("proj");
   const sources = (input.sources ?? []).filter((s) => s.trim().length > 0);
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("projects")
     .insert({
       id,
@@ -90,14 +95,10 @@ export async function createProject(
       banner_image_url: input.banner_image_url ?? null,
       banner_image_alt: input.banner_image_alt ?? null,
     })
-    .select()
+    .select<ProjectRow>()
     .single();
 
-  if (error) {
-    throw new Error(`Projects: failed to create: ${error.message}`);
-  }
-
-  const project = rowToProject(data as ProjectRow);
+  const project = rowToProject(data);
 
   console.log(
     `[project] created "${project.title}" (${id}) by ${project.user_id}`,
@@ -113,22 +114,21 @@ export async function createProject(
 }
 
 export async function getProject(id: string): Promise<Project | undefined> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("projects")
-    .select("*")
+    .select<ProjectRow>("*")
     .eq("id", id)
     .maybeSingle();
-  if (error) throw new Error(`Projects: ${error.message}`);
   if (!data) return undefined;
-  return rowToProject(data as ProjectRow);
+  return rowToProject(data);
 }
 
 export async function listProjects(
   statusFilter?: ProjectStatus,
 ): Promise<Project[]> {
-  let query = getDb()
+  let query = db()
     .from("projects")
-    .select("*")
+    .select<ProjectRow>("*")
     .order("created_at", { ascending: false });
 
   if (statusFilter) {
@@ -139,9 +139,8 @@ export async function listProjects(
     query = query.neq("status", "archived");
   }
 
-  const { data, error } = await query;
-  if (error) throw new Error(`Projects: ${error.message}`);
-  return (data ?? []).map((r) => rowToProject(r as ProjectRow));
+  const data = await query;
+  return data.map(rowToProject);
 }
 
 export async function updateProject(
@@ -163,14 +162,13 @@ export async function updateProject(
   if (patch.description !== undefined) updates.description = patch.description.trim();
   if (patch.sources !== undefined) updates.sources = patch.sources;
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("projects")
     .update(updates)
     .eq("id", id)
-    .select()
+    .select<ProjectRow>()
     .single();
-  if (error) throw new Error(`Projects: ${error.message}`);
-  return rowToProject(data as ProjectRow);
+  return rowToProject(data);
 }
 
 export async function archiveProject(
@@ -185,21 +183,19 @@ export async function archiveProject(
   }
 
   const now = new Date().toISOString();
-  const { error } = await getDb()
+  await db()
     .from("projects")
     .update({ status: "archived" as ProjectStatus, updated_at: now })
     .eq("id", id);
-  if (error) throw new Error(`Projects: ${error.message}`);
 
   // Keep the canonical processes row in sync (source of truth for the unified
   // read layer). Without this, an archived project would still surface in
   // getAllProcesses, which filters on the processes-row status. No-op for any
   // legacy project that predates the unified processes row.
-  const { error: procErr } = await getDb()
+  await db()
     .from("processes")
     .update({ status: "archived", updated_at: now })
     .eq("id", id);
-  if (procErr) throw new Error(`Projects: failed to archive process row: ${procErr.message}`);
 
   // Archive is a terminal lifecycle transition — emit an event so the change
   // is recorded in the event log (the source of truth) rather than silent.
@@ -226,17 +222,15 @@ export async function completeProject(
   }
 
   const now = new Date().toISOString();
-  const { error } = await getDb()
+  await db()
     .from("projects")
     .update({ status: "completed" as ProjectStatus, updated_at: now })
     .eq("id", id);
-  if (error) throw new Error(`Projects: ${error.message}`);
 
-  const { error: procErr } = await getDb()
+  await db()
     .from("processes")
     .update({ status: "closed", updated_at: now })
     .eq("id", id);
-  if (procErr) throw new Error(`Projects: failed to complete process row: ${procErr.message}`);
 
   await emitProjectCompleted({ project_id: id, emit }, actor);
 }
@@ -252,15 +246,16 @@ export async function completeProject(
 export async function listProjectUpdates(
   projectId: string,
 ): Promise<ProjectUpdate[]> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("community_inputs")
-    .select("id, process_id, body, submitted_at")
+    .select<{ id: string; process_id: string; body: string; submitted_at: string }>(
+      "id, process_id, body, submitted_at",
+    )
     .eq("process_id", projectId)
     .eq("phase", "update")
     .is("hidden_at", null)
     .order("submitted_at", { ascending: false });
-  if (error) throw new Error(`Projects: ${error.message}`);
-  return (data ?? []).map((r) => ({
+  return data.map((r) => ({
     id: r.id,
     project_id: r.process_id,
     content: r.body,
@@ -283,20 +278,20 @@ export async function setProjectSentiment(
     throw new Error("Cannot change sentiment on an archived project");
   }
 
-  const db = getDb();
+  const hubDb = db();
 
   if (sentiment === "neutral") {
-    await db
+    await hubDb
       .from("project_sentiments")
       .delete()
       .eq("project_id", projectId)
       .eq("user_id", userId);
   } else {
-    await db
+    await hubDb
       .from("project_sentiments")
       .upsert(
         { project_id: projectId, user_id: userId, sentiment },
-        { onConflict: "project_id,user_id" },
+        { onConflict: "hub_id,project_id,user_id" },
       );
   }
 
@@ -318,40 +313,34 @@ export async function getUserSentiment(
   projectId: string,
   userId: string,
 ): Promise<SentimentValue | null> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("project_sentiments")
-    .select("sentiment")
+    .select<{ sentiment: SentimentValue }>("sentiment")
     .eq("project_id", projectId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (error) throw new Error(`Projects: ${error.message}`);
   if (!data) return null;
-  return data.sentiment as SentimentValue;
+  return data.sentiment;
 }
 
 async function recountSentiments(
   projectId: string,
 ): Promise<{ support_count: number; oppose_count: number }> {
-  const db = getDb();
+  const hubDb = db();
 
-  const { count: supportCount, error: sErr } = await db
+  const support_count = await hubDb
     .from("project_sentiments")
-    .select("*", { count: "exact", head: true })
+    .count()
     .eq("project_id", projectId)
     .eq("sentiment", "support");
-  if (sErr) throw new Error(`Projects: ${sErr.message}`);
 
-  const { count: opposeCount, error: oErr } = await db
+  const oppose_count = await hubDb
     .from("project_sentiments")
-    .select("*", { count: "exact", head: true })
+    .count()
     .eq("project_id", projectId)
     .eq("sentiment", "oppose");
-  if (oErr) throw new Error(`Projects: ${oErr.message}`);
 
-  const support_count = supportCount ?? 0;
-  const oppose_count = opposeCount ?? 0;
-
-  await db
+  await hubDb
     .from("projects")
     .update({ support_count, oppose_count, updated_at: new Date().toISOString() })
     .eq("id", projectId);
@@ -375,19 +364,18 @@ export async function getProjectReadModel(
   const updates = await listProjectUpdates(id);
   const userSentiment = actor ? await getUserSentiment(id, actor) : null;
 
-  const { count: commentCount, error: cErr } = await getDb()
+  const commentCount = await db()
     .from("community_inputs")
-    .select("*", { count: "exact", head: true })
+    .count()
     .eq("process_id", id)
     .neq("phase", "update")
     .is("hidden_at", null);
-  if (cErr) throw new Error(`Projects: ${cErr.message}`);
 
   return {
     ...project,
     updates,
     user_sentiment: userSentiment,
-    comment_count: commentCount ?? 0,
+    comment_count: commentCount,
   };
 }
 
@@ -409,8 +397,7 @@ export function getProjectSummary(project: Project): Record<string, unknown> {
 // --- Dev/test utilities ----------------------------------------------------
 
 export async function clearProjects(): Promise<void> {
-  const db = getDb();
-  await db.from("project_sentiments").delete().neq("project_id", "");
-  const { error } = await db.from("projects").delete().neq("id", "");
-  if (error) throw new Error(`Projects: failed to clear: ${error.message}`);
+  const hubDb = db();
+  await hubDb.from("project_sentiments").delete().neq("project_id", "");
+  await hubDb.from("projects").delete().neq("id", "");
 }

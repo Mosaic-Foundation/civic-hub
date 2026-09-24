@@ -8,7 +8,8 @@
 // Lifecycle: draft → active → closed (subset per ADR-003).
 // Evergreen mode stays in active indefinitely; admin can snapshot or close.
 
-import { getDb } from "../../db/client.js";
+import { forHub, type HubDb } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
 import { assertPassesWordlist } from "../../shared/wordlist/index.js";
 import { aggregateSubmissions } from "./aggregation.js";
@@ -34,6 +35,10 @@ export type {
 } from "./models.js";
 export { DEFAULT_CONFIG } from "./models.js";
 export { aggregateSubmissions, extractWords } from "./aggregation.js";
+
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 // --- DB row mapping ---------------------------------------------------------
 
@@ -173,21 +178,20 @@ export async function submitResponse(
 
   // Enforce one submission per author per prompt
   if (actor) {
-    const { count, error: countErr } = await getDb()
+    const count = await db()
       .from("wordcloud_submissions")
-      .select("*", { count: "exact", head: true })
+      .count()
       .eq("process_id", ctx.process_id)
       .eq("prompt_id", payload.prompt_id)
       .eq("author_id", actor);
-    if (countErr) throw new Error(`Wordcloud: ${countErr.message}`);
-    if (count && count > 0) {
+    if (count > 0) {
       throw new Error("You have already submitted a response to this prompt");
     }
   }
 
   const id = generateId("wcsub");
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("wordcloud_submissions")
     .insert({
       id,
@@ -197,12 +201,10 @@ export async function submitResponse(
       body,
       device_token: payload.device_token ?? null,
     })
-    .select()
+    .select<SubmissionRow>()
     .single();
 
-  if (error) throw new Error(`Wordcloud: ${error.message}`);
-
-  const submission = rowToSubmission(data as SubmissionRow);
+  const submission = rowToSubmission(data);
 
   // Restricted event — raw text stays out of the public feed
   await ctx.emit({
@@ -313,16 +315,14 @@ export async function buildClouds(
   const clouds: PromptCloud[] = [];
 
   for (const prompt of state.prompts) {
-    const { data, error } = await getDb()
+    const data = await db()
       .from("wordcloud_submissions")
-      .select("body")
+      .select<{ body: string }>("body")
       .eq("process_id", processId)
       .eq("prompt_id", prompt.id)
       .is("hidden_at", null);
 
-    if (error) throw new Error(`Wordcloud: ${error.message}`);
-
-    const bodies = (data ?? []).map((r: { body: string }) => r.body);
+    const bodies = data.map((r) => r.body);
     const entries = aggregateSubmissions(bodies, state.config);
 
     clouds.push({
@@ -337,21 +337,14 @@ export async function buildClouds(
 }
 
 export async function getSubmissionCount(processId: string): Promise<number> {
-  const { count, error } = await getDb()
+  return await db()
     .from("wordcloud_submissions")
-    .select("*", { count: "exact", head: true })
+    .count()
     .eq("process_id", processId);
-  if (error) throw new Error(`Wordcloud: ${error.message}`);
-  return count ?? 0;
 }
 
 // --- Dev/seed ---------------------------------------------------------------
 
 export async function clearWordcloudSubmissions(): Promise<void> {
-  const { error } = await getDb()
-    .from("wordcloud_submissions")
-    .delete()
-    .neq("id", "");
-  if (error)
-    throw new Error(`Wordcloud: failed to clear submissions: ${error.message}`);
+  await db().from("wordcloud_submissions").delete().neq("id", "");
 }

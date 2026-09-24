@@ -1,4 +1,5 @@
-import { getDb } from "../../db/client.js";
+import { forHub, type HubDb } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
 import type { Suggestion } from "../civic.assistant/models.js";
 import type {
@@ -9,6 +10,11 @@ import type {
 } from "./models.js";
 
 export type { ProjectDraft, ProjectDraftStatus, CreateProjectDraftInput, UpdateProjectDraftInput } from "./models.js";
+
+/** The hub in scope. Project drafts are only ever read or written inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 interface DraftRow {
   id: string;
@@ -55,35 +61,33 @@ function rowToDraft(row: DraftRow): ProjectDraft {
 export async function createProjectDraft(input: CreateProjectDraftInput): Promise<ProjectDraft> {
   const id = generateId("pdraft");
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("project_drafts")
     .insert({ id, user_id: input.user_id })
-    .select()
+    .select<DraftRow>()
     .single();
 
-  if (error) throw new Error(`ProjectDrafts: failed to create: ${error.message}`);
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function getProjectDraft(id: string): Promise<ProjectDraft | undefined> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("project_drafts")
-    .select("*")
+    .select<DraftRow>("*")
     .eq("id", id)
     .maybeSingle();
 
-  if (error) throw new Error(`ProjectDrafts: ${error.message}`);
   if (!data) return undefined;
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function listUserProjectDrafts(
   userId: string,
   statusFilter?: ProjectDraftStatus,
 ): Promise<ProjectDraft[]> {
-  let query = getDb()
+  let query = db()
     .from("project_drafts")
-    .select("*")
+    .select<DraftRow>("*")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
@@ -91,9 +95,8 @@ export async function listUserProjectDrafts(
     query = query.eq("status", statusFilter);
   }
 
-  const { data, error } = await query;
-  if (error) throw new Error(`ProjectDrafts: ${error.message}`);
-  return (data ?? []).map((r) => rowToDraft(r as DraftRow));
+  const rows = await query;
+  return rows.map((r) => rowToDraft(r));
 }
 
 export async function updateProjectDraft(
@@ -120,15 +123,14 @@ export async function updateProjectDraft(
     updates.draft_modified_since_review = true;
   }
 
-  const { data, error } = await getDb()
+  const data = await db()
     .from("project_drafts")
     .update(updates)
     .eq("id", id)
-    .select()
+    .select<DraftRow>()
     .single();
 
-  if (error) throw new Error(`ProjectDrafts: ${error.message}`);
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function appendProjectConversation(
@@ -148,27 +150,23 @@ export async function appendProjectConversation(
   // Talking to the assistant does NOT flag the draft as AI-helped — the
   // disclosure fires only when assistant-produced text lands in the form
   // (applyProjectDraftProposal, or updateProjectDraft with assistant_applied).
-  const { error } = await getDb()
+  await db()
     .from("project_drafts")
     .update({ conversation_history: history })
     .eq("id", id);
-
-  if (error) throw new Error(`ProjectDrafts: ${error.message}`);
 }
 
 export async function saveProjectReviewResult(
   id: string,
   suggestions: Suggestion[],
 ): Promise<void> {
-  const { error } = await getDb()
+  await db()
     .from("project_drafts")
     .update({
       last_review_result: suggestions,
       draft_modified_since_review: false,
     })
     .eq("id", id);
-
-  if (error) throw new Error(`ProjectDrafts: ${error.message}`);
 }
 
 export async function applyProjectDraftProposal(
@@ -177,7 +175,7 @@ export async function applyProjectDraftProposal(
   description: string,
   sources: string,
 ): Promise<ProjectDraft> {
-  const { data, error } = await getDb()
+  const data = await db()
     .from("project_drafts")
     .update({
       title,
@@ -186,21 +184,18 @@ export async function applyProjectDraftProposal(
       assistant_helped: true,
     })
     .eq("id", id)
-    .select()
+    .select<DraftRow>()
     .single();
 
-  if (error) throw new Error(`ProjectDrafts: ${error.message}`);
-  return rowToDraft(data as DraftRow);
+  return rowToDraft(data);
 }
 
 export async function setProjectDraftStatus(
   id: string,
   status: ProjectDraftStatus,
 ): Promise<void> {
-  const { error } = await getDb()
+  await db()
     .from("project_drafts")
     .update({ status })
     .eq("id", id);
-
-  if (error) throw new Error(`ProjectDrafts: ${error.message}`);
 }
