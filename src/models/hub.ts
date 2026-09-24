@@ -9,10 +9,17 @@ export interface Hub {
    * hub_id from Phase 2 on.
    *
    * NOT the protocol identity carried on published activities as
-   * `source.hub_id` — that is CIVIC_HUB_ID (`HUB_ID` in config/hub.ts) and is
-   * a separate, unrelated identifier. Do not substitute one for the other.
+   * `source.hub_id` — that is `protocol_hub_id` below, a separate,
+   * unrelated identifier. Do not substitute one for the other.
    */
   id: string;
+  /**
+   * `source.hub_id` on every event this hub publishes. Floyd's is
+   * 'civic-hub-local', the identity its published events already carry; a
+   * new hub's is 'civic-hub-<slug>', written once by scripts/create-hub.ts
+   * and never recomputed from `id`.
+   */
+  protocol_hub_id: string;
   /** Lowercase host the resolver matches on. No scheme, no port. */
   hostname: string;
   name: string;

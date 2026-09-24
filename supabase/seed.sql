@@ -11,9 +11,10 @@
 -- `mode` is set HERE, at creation, because it cannot be set later: a trigger
 -- on `hubs` refuses any update that moves a hub into demo. That is the rule
 -- working as intended — a hub becomes a demo when it is created, or never.
-INSERT INTO hubs (id, hostname, name, jurisdiction_code, jurisdiction_name, space_did, mode)
+INSERT INTO hubs (id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, space_did, mode)
 VALUES (
   'athens',
+  'civic-hub-athens',
   'athens.localhost',
   'Athens Civic Hub',
   'us-va-athens',

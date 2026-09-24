@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import type { Process } from "../models/process.js";
 import { emitEvent } from "../events/eventEmitter.js";
-import { HUB_ID, DEFAULT_JURISDICTION } from "../config/hub.js";
+import { DEFAULT_JURISDICTION } from "../config/hub.js";
+import { currentHubId } from "../config/hubContext.js";
 import {
   getAuthUser,
   resolveCallerUser,
@@ -62,7 +63,7 @@ export async function handleCompleteProject(
           title: project.title,
           description: project.description ?? "",
           status: "closed",
-          hubId: HUB_ID,
+          hubId: currentHubId(),
           jurisdiction: DEFAULT_JURISDICTION,
           createdBy: project.user_id,
           createdAt: project.created_at,

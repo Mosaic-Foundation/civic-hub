@@ -54,6 +54,7 @@ function hub(overrides: Record<string, unknown> = {}) {
     jurisdiction_code: "us-va-floyd",
     jurisdiction_name: "Floyd County, Virginia",
     space_did: "did:web:floyd.civic.social",
+    protocol_hub_id: "civic-hub-local",
     space_type: "civic-hub",
     status: "active",
     created_at: "2026-09-22T00:00:00Z",

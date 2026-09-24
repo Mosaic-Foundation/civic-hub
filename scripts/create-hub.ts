@@ -102,8 +102,14 @@ async function main(): Promise<void> {
   // `space_did` is the protocol identity on everything this hub publishes, so
   // it is derived from the hostname and is stable for the hub's lifetime — it
   // does not follow a later hostname change.
+  //
+  // `protocol_hub_id` is `source.hub_id` on its events. Derived from the slug
+  // HERE, once, at creation; nothing recomputes it from `id` afterwards, so a
+  // later rename cannot silently change who a hub's past events say they are
+  // from.
   const row = {
     id,
+    protocol_hub_id: `civic-hub-${id}`,
     hostname,
     name,
     jurisdiction_code: null,

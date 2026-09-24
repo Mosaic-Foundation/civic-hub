@@ -64,7 +64,7 @@ export interface ProcessRow {
   status: ProcessStatus;
   content: ProcessContent | null;
   state: Record<string, unknown>;
-  hub_id: string | null;
+  hub_id: string;
   created_by: string | null;
   source_proposal_id: string | null;
   starts_at: string | null;
@@ -85,7 +85,7 @@ export function rowToProcess(row: ProcessRow): Process {
     title: row.title,
     description: row.description ?? "",
     status: row.status,
-    hubId: row.hub_id ?? HUB_ID,
+    hubId: row.hub_id,
     jurisdiction: row.jurisdiction ?? DEFAULT_JURISDICTION,
     createdBy: row.created_by ?? "",
     createdAt: row.created_at,
@@ -118,7 +118,6 @@ export async function createProcess(
     | undefined;
   const status: ProcessStatus = resolveInitialStatus(stateStatus);
 
-  const hubId = input.hubId ?? HUB_ID;
   const jurisdiction = input.jurisdiction ?? DEFAULT_JURISDICTION;
 
   const row: Partial<ProcessRow> & { id: string } = {
@@ -131,7 +130,6 @@ export async function createProcess(
     status,
     content: input.content ?? null,
     state: initialState,
-    hub_id: hubId,
     created_by: input.createdBy,
     source_proposal_id:
       ((input.state ?? {}) as Record<string, unknown>).source_proposal_id as

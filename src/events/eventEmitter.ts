@@ -14,6 +14,7 @@ import { appendEvent } from "./eventStore.js";
 import { validateForEmission } from "./activitySerializer.js";
 import { generateId } from "../utils/id.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
+import { protocolHubId } from "../config/hub.js";
 
 /**
  * Create and durably store a spec-compliant civic event.
@@ -56,8 +57,10 @@ export async function emitEvent(input: CreateEventInput): Promise<CivicEvent> {
     actor: input.actor,
     jurisdiction: input.jurisdiction,
     action_url: isAbsolute ? path : `${ui}${path}`,
+    // The protocol identity of the hub publishing this, from its hubs row —
+    // never the tenant id a caller may be carrying (see CreateEventInput).
     source: {
-      hub_id: input.hub_id,
+      hub_id: protocolHubId(),
       hub_url: hub,
     },
     data,

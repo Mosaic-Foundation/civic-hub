@@ -27,6 +27,7 @@ const ATHENS: Hub = {
   jurisdiction_code: null,
   jurisdiction_name: "Athens, Virginia",
   space_did: "did:web:athens.example",
+  protocol_hub_id: "civic-hub-athens",
   space_type: "civic-hub",
   status: "active",
   mode: "demo",

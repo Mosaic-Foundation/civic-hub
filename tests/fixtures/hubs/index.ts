@@ -15,6 +15,7 @@ import type { SettingsMap } from "../../../src/db/hubSettingsStore.js";
 
 function hub(fields: Partial<Hub> & Pick<Hub, "id" | "hostname" | "name">): Hub {
   return {
+    protocol_hub_id: `civic-hub-${fields.id}`,
     jurisdiction_code: null,
     jurisdiction_name: null,
     space_did: `did:web:${fields.hostname}`,
@@ -29,6 +30,7 @@ function hub(fields: Partial<Hub> & Pick<Hub, "id" | "hostname" | "name">): Hub 
 
 export const FLOYD_HUB: Hub = hub({
   id: "floyd",
+  protocol_hub_id: "civic-hub-local",
   hostname: "floyd.civic.social",
   name: "Floyd Civic Hub",
   jurisdiction_code: "us-va-floyd",

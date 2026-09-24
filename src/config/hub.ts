@@ -8,9 +8,11 @@
 // documented in .env.example for exactly that case.
 //
 // Two exports are deliberately NOT request-scoped yet:
-//   HUB_ID               the PROTOCOL identity stamped on published
-//                        activities as source.hub_id. It is not hubs.id and
-//                        must not be derived from it (BUILD-PLAN contract 1).
+//   HUB_ID               the bootstrap PROTOCOL identity: source.hub_id for
+//                        code with no hub in scope. Inside a hub it is the
+//                        hub's own `protocol_hub_id` — see protocolHubId().
+//                        Neither is hubs.id, and neither is derived from it
+//                        (BUILD-PLAN contract 1).
 //   DEFAULT_JURISDICTION the event `jurisdiction` field. It becomes per-hub
 //                        in Phase 2, together with the rest of event
 //                        emission; converting it here alone would leave
@@ -130,6 +132,18 @@ export function hubName(): string {
  * `/.well-known/did.json` — good enough for dev, and overridable in prod
  * with CIVIC_SPACE_DID once the space's DID is minted.
  */
+/**
+ * The protocol identity of the hub in scope: `source.hub_id` on every event
+ * it publishes, and `hub_id` in its discovery manifest.
+ *
+ * Per hub since 2026-09-24 (`hubs.protocol_hub_id`). HUB_ID is the answer
+ * only when no hub is in scope. Three identifiers, never derived from each
+ * other at runtime: hubs.id (tenant), protocol_hub_id (this), space_did.
+ */
+export function protocolHubId(): string {
+  return currentHub()?.protocol_hub_id ?? HUB_ID;
+}
+
 export function spaceDid(): string {
   const hub = currentHub();
   if (hub) return hub.space_did;

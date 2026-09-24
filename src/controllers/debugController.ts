@@ -124,7 +124,6 @@ async function seedDeliberation(
     status,
     content: null,
     state: p.state as unknown as Record<string, unknown>,
-    hub_id: HUB_ID,
     created_by: p.createdBy,
     source_proposal_id: null,
     starts_at: null,

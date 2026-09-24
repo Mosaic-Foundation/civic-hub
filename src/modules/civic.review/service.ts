@@ -82,7 +82,6 @@ export async function submitForReview(
     content: input.content ?? null,
     config: input.config ?? null,
     state: initialState,
-    hub_id: HUB_ID,
     created_by: input.creator_id,
   };
 

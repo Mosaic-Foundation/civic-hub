@@ -30,6 +30,7 @@ function hub(id: string): Hub {
     jurisdiction_code: null,
     jurisdiction_name: null,
     space_did: `did:web:${id}.example`,
+    protocol_hub_id: `civic-hub-${id}`,
     space_type: "civic-hub",
     status: "active",
     mode: "live",

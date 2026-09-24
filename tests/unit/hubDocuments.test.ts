@@ -257,6 +257,7 @@ describe("a hub's substitutions come from its own row", () => {
       jurisdiction_code: "us-va-athens",
       jurisdiction_name: "Athens, Virginia",
       space_did: "did:web:athens.example",
+      protocol_hub_id: "civic-hub-athens",
       space_type: "civic-hub",
       status: "active",
       mode: "demo",

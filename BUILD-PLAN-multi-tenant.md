@@ -355,6 +355,54 @@ subscriber their entire history in one message. The same is true of
 column survives the Phase 6 rehearsal rather than assuming it; it is a
 one-line check against the restored dump.
 
+#### Phase 2a (2026-09-24): the tables, and three identifiers
+
+**Three identifiers, three jobs, never derived from each other at runtime**
+(Adam, 2026-09-24, when the collision below turned up):
+
+| Column | Is | Example |
+|---|---|---|
+| `hubs.id` | the tenant key, stamped into every table's `hub_id` | `floyd` |
+| `hubs.protocol_hub_id` | `source.hub_id` on every event the hub publishes | `civic-hub-local` |
+| `hubs.space_did` | the space's DID, `generator.id` on activities | `did:web:floyd.civic.social` |
+
+`protocol_hub_id` is new (`20260924000000`), NOT NULL and unique. Floyd's is
+`civic-hub-local`, the identity every event it has already published
+carries; any other hub's is `civic-hub-<slug>`, written once by
+`scripts/create-hub.ts` at creation and never recomputed from `id`.
+`emitEvent()` stamps `source.hub_id` from the hub in scope
+(`protocolHubId()` in `src/config/hub.ts`); the `HUB_ID` env constant is the
+bootstrap fallback for code with no hub in scope, nothing more.
+
+**`processes.hub_id` already existed and meant the protocol id.** It was a
+nullable per-row copy of `CIVIC_HUB_ID` (`20260416000200`), echoed into
+`source.hub_id` through `process.hubId`. It is **repurposed** as the tenant
+column like every other table's: backfilled to `floyd` (with the
+`updated_at` and search-doc triggers held off so no process reads as edited
+today), NOT NULL, default, FK. `Process.hubId` is the tenant now.
+
+**`hub_id text not null default 'floyd' references hubs(id)` on these 28
+tables** (`20260924010000`), in addition to `hub_settings` and `sessions`,
+which had it from Phase 1 — 30 of the 31 tables; `hubs` is the registry:
+
+`active_vote_keys`, `brief_responses`, `community_inputs`,
+`deliberation_drafts`, `deliberation_submissions`, `deliberation_votes`,
+`events`, `feedback_submissions`, `link_previews`, `pending_verifications`,
+`process_links`, `process_reviews`, `processes` (repurposed),
+`project_comments`, `project_drafts`, `project_sentiments`,
+`project_updates`, `projects`, `proposal_drafts`, `proposal_supports`,
+`proposals`, `review_turns`, `users`, `vote_drafts`, `vote_participation`,
+`vote_records`, `waitlist`, `wordcloud_submissions`.
+
+Foreign keys on these are `ON DELETE RESTRICT`, not `CASCADE` as on
+`hub_settings` and `sessions`: settings and credentials are litter once a hub
+is gone, but this is what residents said and did, so deleting a hub that
+still holds any of it fails. Suspension is how a hub stops serving.
+
+Each table has one hub-leading index on its main lookup path, named
+`<table>_hub_..._idx`; where that path is an equality lookup made unique per
+hub (the next section), the unique constraint is the index.
+
 _checklist to be pasted_
 
 ### Phase 3 — forced RLS with the JWT claim

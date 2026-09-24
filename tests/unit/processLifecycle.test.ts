@@ -89,7 +89,7 @@ describe("rowToProcess — row → model mapping + defaults", () => {
       status: "active",
       content: null,
       state: { foo: "bar" },
-      hub_id: "civic-hub-floyd",
+      hub_id: "floyd",
       created_by: "user_1",
       source_proposal_id: null,
       starts_at: null,
@@ -107,7 +107,7 @@ describe("rowToProcess — row → model mapping + defaults", () => {
       title: "Park funding",
       description: "Should we fund the park?",
       status: "active",
-      hubId: "civic-hub-floyd",
+      hubId: "floyd",
       jurisdiction: "floyd-va",
       createdBy: "user_1",
       createdAt: "2026-06-01T00:00:00Z",
@@ -122,14 +122,15 @@ describe("rowToProcess — row → model mapping + defaults", () => {
       row({
         description: null,
         jurisdiction: null,
-        hub_id: null,
         created_by: null,
         state: null as unknown as ProcessRow["state"],
       }),
     );
     expect(p.description).toBe("");
     expect(p.jurisdiction).toBe("local");
-    expect(p.hubId).toBe("civic-hub-local");
+    // hub_id is NOT NULL since Phase 2 and is the tenant, never defaulted
+    // to the protocol id.
+    expect(p.hubId).toBe("floyd");
     expect(p.createdBy).toBe("");
     expect(p.state).toEqual({});
   });

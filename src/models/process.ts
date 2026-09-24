@@ -60,6 +60,10 @@ export interface Process {
   title: string;
   description: string;
   status: ProcessStatus;
+  /**
+   * The hub (hubs.id) this process belongs to — the tenant. Not the protocol
+   * identity on its events; that is the hub's protocol_hub_id.
+   */
   hubId: string;
   jurisdiction: string;
   createdBy: string; // userId or DID
@@ -74,7 +78,6 @@ export interface CreateProcessInput {
   definition: ProcessDefinition;
   title: string;
   description: string;
-  hubId?: string;
   jurisdiction?: string;
   createdBy: string;
   state?: Record<string, unknown>;

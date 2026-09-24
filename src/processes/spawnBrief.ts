@@ -42,7 +42,6 @@ export async function spawnBriefFromClosedProcess(
     // Mirror the source's title; the "Brief" pill/tab/heading disambiguate.
     title: source.title,
     description: source.description,
-    hubId: source.hubId,
     jurisdiction: source.jurisdiction,
     createdBy: actor,
     state: {
