@@ -233,6 +233,14 @@ function floydEntries(): Entry[] {
     }
   }
 
+  // Anything else Floyd's seed file states and the environment left unset.
+  // The file is the answer for a fresh database — CI, a new local stack —
+  // where no VITE_HUB_* variable exists to seed from.
+  const written = new Set(out.map((e) => e.key));
+  for (const [key, value] of Object.entries(seed)) {
+    if (!written.has(key)) put(out, key, value);
+  }
+
   return out;
 }
 

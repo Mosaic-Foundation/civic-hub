@@ -4,7 +4,8 @@
     "Read by scripts/seed-hub-settings.ts and by nothing else. An environment variable that is set wins over a value here, so seeding from production's environment writes production's values.",
     "news_sync: Floyd's news sync has always been the Wix blog feed of floydcova.gov. Until 2026-09-24 that URL was the code default.",
     "meeting_summary: Floyd's production configuration, which .env.example carried as its worked example until 2026-09-24. The connector ladder's defaults are empty; these are Floyd's.",
-    "legal: who is answerable for Floyd's hub and where to reach them. No env var ever held these; until 2026-09-24 they were literals in scripts/seed-hub-settings.ts."
+    "legal: who is answerable for Floyd's hub and where to reach them. No env var ever held these; until 2026-09-24 they were literals in scripts/seed-hub-settings.ts.",
+    "identity/copy: Floyd's banner and governing body, as on the dev project. Production sets them from VITE_HUB_* env vars, which win when set; these are what a fresh database (CI, a new local stack) gets."
   ],
   "legal.operator_name": "Adam Lake",
   "legal.contact_email": "contact@civic.social",
@@ -13,5 +14,9 @@
   "plugin.meeting_summary.connector_id": "auto",
   "plugin.meeting_summary.source_url": "https://www.floydcova.gov/agendas-minutes",
   "plugin.meeting_summary.youtube_channel_id": "UCxyzO8F2UfiN1NVOax2s27Q",
-  "plugin.meeting_summary.type_exclude": "EMS Board,EMS Meeting"
+  "plugin.meeting_summary.type_exclude": "EMS Board,EMS Meeting",
+  "identity.banner_url": "/floyd-banner.jpg",
+  "identity.banner_alt": "Downtown Floyd, Virginia — the Floyd Civic Hub",
+  "copy.governing_body_name": "Board of Supervisors",
+  "copy.governing_body_short": "BOS"
 }

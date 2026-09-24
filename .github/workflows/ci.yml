@@ -101,6 +101,10 @@ jobs:
         env:
           SUPABASE_URL: http://127.0.0.1:54321
           SUPABASE_SERVICE_ROLE_KEY: ${{ env.LOCAL_SERVICE_ROLE_KEY }}
+          # Athens's admin is derived from this by plus-addressing
+          # (admin+athens@example.test), which is the address the login
+          # hardening tests sign in as. Must match the hub step below.
+          CIVIC_ADMIN_EMAILS: admin@example.test
 
       - name: Start the hub
         run: |
