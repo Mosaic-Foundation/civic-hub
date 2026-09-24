@@ -30,6 +30,13 @@ jobs:
         run: npm install --include=dev
       - name: Backend typecheck
         run: npm run build
+      # No string in src/ or ui/src/ may name a place: a place name is a hub's
+      # data (its hubs row or hub_settings), never code. Comments are exempt;
+      # anything else needs an entry with a reason in
+      # scripts/place-name-allowlist.txt. Its own step, ahead of the tests, so
+      # the failure says what it is. Added 2026-09-24 (multi-tenant Phase 4).
+      - name: Place-name check
+        run: npx tsx scripts/check-place-names.ts
       - name: Backend unit tests
         # tests/unit only — tests/api and tests/e2e need a live Supabase/dev
         # server and are not runnable in CI. `npm test` would run everything.

@@ -5,7 +5,12 @@
  * running on API_BASE before tests execute.
  */
 
-export const API_BASE = "http://localhost:3000";
+/**
+ * Overridable so a second checkout or session can run the API layer against
+ * its own server without taking port 3000 from one that is already up:
+ * `CIVIC_API_BASE=http://localhost:3100 npm test`.
+ */
+export const API_BASE = process.env.CIVIC_API_BASE?.trim() || "http://localhost:3000";
 export const UI_BASE = "http://localhost:5173";
 
 // ---------------------------------------------------------------------------

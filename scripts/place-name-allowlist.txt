@@ -1,0 +1,26 @@
+# Place names that must stay in src/ or ui/src/, and why.
+#
+#   <path> | <text that must appear on the hit line> | <reason>
+#
+# Read by scripts/check-place-names.ts. Comments are already exempt, so an
+# entry here is for CODE that names a place. Every entry needs a reason, and
+# an entry that stops matching fails the check, so remove it with the thing it
+# excused. Keep this list short: each line is a place where one hub's identity
+# is still compiled into every hub.
+
+# Legacy env var names, read as fallbacks until the cutover writes Floyd's
+# plugin.news_sync.* rows (BUILD-PLAN-multi-tenant.md, env-var table). Delete
+# with the fallbacks after the cutover.
+src/models/hubSettings.ts | "FLOYD_NEWS_SOURCE_URL" | env fallback for plugin.news_sync.source_url until the cutover; production's Vercel env may carry it
+src/models/hubSettings.ts | "FLOYD_NEWS_SYNC_MAX_PER_RUN" | env fallback for plugin.news_sync.max_per_run until the cutover
+src/models/hubSettings.ts | "FLOYD_NEWS_SYNC_ENABLED" | env fallback for plugin.news_sync.enabled until the cutover
+
+# Deprecated aliases for names that shipped. Delete after the cutover.
+src/routes/newsSyncRoutes.ts | "/floyd-news-sync/run" | deprecated cron path; production's vercel.json on main schedules it until the cutover
+src/modules/civic.meeting_summary/connectors/index.ts | "floyd-minutes-page" | pre-rename connector id; a stored row or env var may still select it until the cutover rewrites them
+
+# The database's own default. Goes when Phase 2 drops the column defaults.
+src/models/hub.ts | MIGRATION_DEFAULT_HUB_ID = "floyd" | the hub the migrations create and stamp as hub_id's column default; the one place code may spell it
+
+# Not a place: a kind of governing body, alongside Town Council and School Board.
+src/shared/officialTypes.ts | board_of_supervisors: "Board of Supervisors" | admin-panel label for a generic body type in the officials catalogue; the stored enum value it labels is data in production rows
