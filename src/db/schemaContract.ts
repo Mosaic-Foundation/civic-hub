@@ -95,6 +95,60 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
 ];
 
 /**
+ * One hub's data, table by table — what an export of a single hub walks
+ * (exit rights; Adam, 2026-09-24). Every table that carries hub_id is here,
+ * and only those: `hubs` is the registry and goes with the hub as one row,
+ * not as rows filtered by hub_id.
+ *
+ * `rows: "omit"` marks a table whose rows must NOT leave with an export:
+ * live credentials, which would let whoever holds the export sign in as the
+ * hub's residents, and a cache the next host rebuilds for itself. The table
+ * is still listed, so an exporter decides about it rather than missing it.
+ *
+ * tests/unit/exportManifest.test.ts derives the tables with hub_id from the
+ * migrations and fails when this list and the schema disagree.
+ */
+export interface ExportManifestEntry {
+  table: string;
+  rows: "export" | "omit";
+  /** Why a table is omitted. Required when rows is "omit". */
+  reason?: string;
+}
+
+export const EXPORT_MANIFEST: readonly ExportManifestEntry[] = [
+  { table: "active_vote_keys", rows: "export" },
+  { table: "brief_responses", rows: "export" },
+  { table: "community_inputs", rows: "export" },
+  { table: "deliberation_drafts", rows: "export" },
+  { table: "deliberation_submissions", rows: "export" },
+  { table: "deliberation_votes", rows: "export" },
+  { table: "events", rows: "export" },
+  { table: "feedback_submissions", rows: "export" },
+  { table: "hub_settings", rows: "export" },
+  { table: "link_previews", rows: "omit", reason: "a cache of other sites' metadata; the next host refetches it" },
+  { table: "pending_verifications", rows: "omit", reason: "live sign-in codes" },
+  { table: "process_links", rows: "export" },
+  { table: "process_reviews", rows: "export" },
+  { table: "processes", rows: "export" },
+  { table: "project_comments", rows: "export" },
+  { table: "project_drafts", rows: "export" },
+  { table: "project_sentiments", rows: "export" },
+  { table: "project_updates", rows: "export" },
+  { table: "projects", rows: "export" },
+  { table: "proposal_drafts", rows: "export" },
+  { table: "proposal_supports", rows: "export" },
+  { table: "proposals", rows: "export" },
+  { table: "review_turns", rows: "export" },
+  { table: "sessions", rows: "omit", reason: "bearer credentials; residents sign in again on the new host" },
+  { table: "users", rows: "export" },
+  { table: "vote_drafts", rows: "export" },
+  { table: "vote_participation", rows: "export" },
+  { table: "vote_records", rows: "export" },
+  { table: "waitlist", rows: "export" },
+  { table: "wordcloud_submissions", rows: "export" },
+];
+
+/**
  * Fold duplicate requirements for the same table into one probe, unioning
  * their columns. Two owners needing the same table is normal, and probing it
  * twice would just make the log harder to read.
