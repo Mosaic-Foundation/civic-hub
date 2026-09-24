@@ -7,9 +7,19 @@
 // The schema enforces append-only at the database level via a trigger
 // that blocks UPDATE/DELETE on the events table. clearEvents() is the
 // only DELETE path, and it is gated to dev-only callers.
+//
+// Per hub since Phase 2a: every read and the append go through forHub(), so
+// GET /events, the feed and the digest see only the hub in scope, and an
+// event is stored under the hub that emitted it.
 
-import { getDb } from "../db/client.js";
+import { forHub, type HubDb } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { CivicEvent } from "../models/event.js";
+
+/** The hub in scope. The log is only ever read or appended inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 // --- Row <-> model mapping -------------------------------------------------
 
@@ -71,7 +81,7 @@ function eventToRow(event: CivicEvent): EventRow {
 // --- Public API ------------------------------------------------------------
 
 export async function appendEvent(event: CivicEvent): Promise<void> {
-  const { error } = await getDb().from("events").insert(eventToRow(event));
+  const { error } = await db().from("events").insert(eventToRow(event));
   if (error) {
     // Events are the source of truth; never silently drop.
     throw new Error(`EventStore: failed to append event: ${error.message}`);
@@ -79,7 +89,7 @@ export async function appendEvent(event: CivicEvent): Promise<void> {
 }
 
 export async function getAllEvents(): Promise<CivicEvent[]> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("events")
     .select("*")
     .order("created_at", { ascending: false });
@@ -90,7 +100,7 @@ export async function getAllEvents(): Promise<CivicEvent[]> {
 export async function getEventsByProcessId(
   processId: string,
 ): Promise<CivicEvent[]> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("events")
     .select("*")
     .eq("process_id", processId)
@@ -107,7 +117,7 @@ export async function getEventsByProcessId(
  * Used by the Slice 5 digest cron endpoint.
  */
 export async function getEventsSince(sinceIso: string): Promise<CivicEvent[]> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("events")
     .select("*")
     .gt("created_at", sinceIso)
@@ -155,7 +165,7 @@ export interface EventPage {
  * second query or a count.
  */
 export async function getEventPage(query: EventPageQuery): Promise<EventPage> {
-  let q = getDb().from("events").select("*");
+  let q = db().from("events").select("*");
 
   if (query.processId) q = q.eq("process_id", query.processId);
   if (query.eventTypes?.length) q = q.in("event_type", query.eventTypes);
@@ -203,7 +213,7 @@ export interface EventCountQuery {
  * (Civic Activity Spec v0.2 §5.2) exists to prevent.
  */
 export async function countEvents(query: EventCountQuery = {}): Promise<number> {
-  let q = getDb().from("events").select("*", { count: "exact", head: true });
+  let q = db().from("events").select("*", { count: "exact", head: true });
   if (query.processId) q = q.eq("process_id", query.processId);
   if (query.eventTypes?.length) q = q.in("event_type", query.eventTypes);
   if (query.since) q = q.gt("created_at", query.since);
@@ -227,7 +237,7 @@ export async function countEvents(query: EventCountQuery = {}): Promise<number> 
 }
 
 export async function getEventById(id: string): Promise<CivicEvent | null> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("events")
     .select("*")
     .eq("id", id)
@@ -237,7 +247,7 @@ export async function getEventById(id: string): Promise<CivicEvent | null> {
 }
 
 export async function getEventCount(): Promise<number> {
-  const { count, error } = await getDb()
+  const { count, error } = await db()
     .from("events")
     .select("*", { count: "exact", head: true });
   if (error) throw new Error(`EventStore: ${error.message}`);
@@ -252,7 +262,7 @@ export async function getEventCount(): Promise<number> {
  * the Supabase client API, we use a filter that matches every row.
  */
 export async function clearEvents(): Promise<void> {
-  const { error } = await getDb().from("events").delete().neq("id", "");
+  const { error } = await db().from("events").delete().neq("id", "");
   if (error) {
     // If the append-only trigger is firing (shouldn't — it's BEFORE UPDATE/DELETE
     // on individual rows, not bulk), surface the error clearly.

@@ -4,7 +4,9 @@
 // Events are the primary public interface of the hub.
 // All external systems should rely on events, not internal process APIs.
 //
-// Storage: Postgres (processes table).
+// Storage: Postgres (processes table), through forHub(): every read, write
+// and lifecycle event is confined to the hub in scope (Phase 2a), so one
+// hub's feed, process list or action never reaches another hub's process.
 // This service delegates all process-specific logic to registered handlers
 // and owns: storage, ID generation, lifecycle events, and the dispatch loop.
 //
@@ -33,7 +35,8 @@ import {
   spawnBriefFromClosedProcess,
   findExistingBriefId,
 } from "../processes/spawnBrief.js";
-import { getDb } from "../db/client.js";
+import { forHub, type HubDb } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import {
   resolveInitialStatus,
   isPubliclyFetchable,
@@ -49,7 +52,12 @@ import {
   redactForAudience,
   type Audience,
 } from "./creatorDisplay.js";
-import { HUB_ID, DEFAULT_JURISDICTION } from "../config/hub.js";
+import { DEFAULT_JURISDICTION } from "../config/hub.js";
+
+/** The hub in scope. Processes are only ever read or written inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 
 // --- Row <-> model mapping -------------------------------------------------
@@ -137,7 +145,7 @@ export async function createProcess(
         | undefined ?? null,
   };
 
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("processes")
     .insert(row)
     .select()
@@ -190,7 +198,7 @@ setActionDispatcher(executeAction);
 // --- Read ------------------------------------------------------------------
 
 export async function getProcess(id: string): Promise<Process | undefined> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("processes")
     .select("*")
     .eq("id", id)
@@ -210,7 +218,7 @@ export async function getProcess(id: string): Promise<Process | undefined> {
  * pass, 2026-08-28).
  */
 export async function getAllProcesses(types?: string[]): Promise<Process[]> {
-  let q = getDb()
+  let q = db()
     .from("processes")
     .select("*")
     .not("status", "in", nonPublicStatusFilter());
@@ -254,7 +262,7 @@ export async function executeAction(
 
   // Persist the mutated process back.
   const now = new Date().toISOString();
-  const { error: updErr } = await getDb()
+  const { error: updErr } = await db()
     .from("processes")
     .update({
       status: process.status,
@@ -506,7 +514,7 @@ async function enrichProcessCreator(
  */
 export async function saveProcessState(process: Process): Promise<void> {
   const now = new Date().toISOString();
-  const { error } = await getDb()
+  const { error } = await db()
     .from("processes")
     .update({
       status: process.status,
@@ -579,7 +587,7 @@ export async function archiveProcess(
   };
   const nextState = { ...(process.state ?? {}), archive };
 
-  const { error } = await getDb()
+  const { error } = await db()
     .from("processes")
     .update({ status: "archived", state: nextState, updated_at: now })
     .eq("id", id);
@@ -594,7 +602,6 @@ export async function archiveProcess(
     event_type: "civic.process.updated",
     actor: adminId,
     process_id: id,
-    hub_id: process.hubId || HUB_ID,
     jurisdiction: process.jurisdiction || DEFAULT_JURISDICTION,
     processType: process.definition.type,
     visibility: "restricted",
@@ -655,7 +662,7 @@ export async function restoreProcess(
       | undefined;
   delete (nextState as Record<string, unknown>).archive;
 
-  const { error } = await getDb()
+  const { error } = await db()
     .from("processes")
     .update({ status: restoreStatus, state: nextState, updated_at: now })
     .eq("id", id);
@@ -667,7 +674,6 @@ export async function restoreProcess(
     event_type: "civic.process.updated",
     actor: adminId,
     process_id: id,
-    hub_id: process.hubId || HUB_ID,
     jurisdiction: process.jurisdiction || DEFAULT_JURISDICTION,
     processType: process.definition.type,
     visibility: "restricted",
@@ -707,7 +713,7 @@ export async function restoreProcess(
  * the feed already fetches all events, so this is one extra round-trip.
  */
 export async function getNonPublicProcessIds(): Promise<Set<string>> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("processes")
     .select("id")
     .in("status", [...NON_PUBLIC_STATUSES]);
@@ -722,7 +728,7 @@ export async function getNonPublicProcessIds(): Promise<Set<string>> {
  * by design (admin-only surface).
  */
 export async function getArchivedProcesses(): Promise<Process[]> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("processes")
     .select("*")
     .eq("status", "archived")
@@ -748,16 +754,17 @@ export async function getArchivedProcesses(): Promise<Process[]> {
  */
 
 /**
- * Delete events whose process_id doesn't match any existing process.
- * Returns the count of orphaned events removed.
+ * Delete this hub's events whose process_id doesn't match any of this hub's
+ * processes. Returns the count of orphaned events removed. Scoped on both
+ * sides: unscoped, another hub's events would all look orphaned.
  */
 export async function cleanOrphanedEvents(): Promise<number> {
-  const { data: processes } = await getDb()
+  const { data: processes } = await db()
     .from("processes")
     .select("id");
   const validIds = new Set((processes ?? []).map((p: { id: string }) => p.id));
 
-  const { data: events } = await getDb()
+  const { data: events } = await db()
     .from("events")
     .select("id, process_id");
   if (!events || events.length === 0) return 0;
@@ -767,7 +774,7 @@ export async function cleanOrphanedEvents(): Promise<number> {
     .map((e) => e.id);
   if (orphanIds.length === 0) return 0;
 
-  const { error } = await getDb()
+  const { error } = await db()
     .from("events")
     .delete()
     .in("id", orphanIds);
@@ -778,7 +785,7 @@ export async function cleanOrphanedEvents(): Promise<number> {
 }
 
 export async function clearProcesses(): Promise<void> {
-  const { error } = await getDb().from("processes").delete().neq("id", "");
+  const { error } = await db().from("processes").delete().neq("id", "");
   if (error) {
     throw new Error(`ProcessService: failed to clear processes: ${error.message}`);
   }

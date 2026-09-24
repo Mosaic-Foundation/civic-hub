@@ -1,4 +1,6 @@
 import { getDb } from "../../db/client.js";
+import { forHub } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
 import { createEdges } from "../../services/processLinks.js";
 import {
   draftPathFor,
@@ -85,7 +87,10 @@ export async function submitForReview(
     created_by: input.creator_id,
   };
 
-  const { error: procErr } = await getDb()
+  // Through forHub so the process is stamped with the hub it was submitted
+  // on (Phase 2a: processes are read per hub). The rest of this module's
+  // tables are converted in Phase 2b.
+  const { error: procErr } = await forHub(currentHubId())
     .from("processes")
     .insert(processRow);
   if (procErr) {

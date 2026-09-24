@@ -30,6 +30,9 @@ import {
 } from "../debug/seedData.js";
 import { localizeScenario } from "../debug/localizeScenario.js";
 import { getDb } from "../db/client.js";
+import { forHub } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
+import { seedIdForHub } from "../debug/autoSeed.js";
 import { HUB_ID } from "../config/hub.js";
 
 // Production Supabase hostnames that MUST NEVER be seeded against.
@@ -79,7 +82,12 @@ async function reseedBlocker(): Promise<string | null> {
 async function runScenario(
   scenario: SeedScenario,
 ): Promise<Record<string, unknown>> {
-  const process = await createProcess(scenario.process);
+  const process = await createProcess({
+    ...scenario.process,
+    ...(scenario.process.id
+      ? { id: seedIdForHub(scenario.process.id, currentHubId()) }
+      : {}),
+  });
 
   for (const action of scenario.actions ?? []) {
     await executeAction(process.id, action);
@@ -111,7 +119,8 @@ async function runScenario(
 async function seedDeliberation(
   scenario: DeliberationSeedScenario,
 ): Promise<Record<string, unknown>> {
-  const { process: p, status } = scenario;
+  const { status } = scenario;
+  const p = { ...scenario.process, id: seedIdForHub(scenario.process.id, currentHubId()) };
   const now = new Date().toISOString();
 
   const row = {
@@ -132,7 +141,8 @@ async function seedDeliberation(
     updated_at: now,
   };
 
-  const { error } = await getDb().from("processes").insert(row);
+  // Stamped with the hub being seeded (processes are read per hub).
+  const { error } = await forHub(currentHubId()).from("processes").insert(row);
   if (error) {
     throw new Error(`Failed to seed deliberation "${p.title}": ${error.message}`);
   }

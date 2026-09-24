@@ -16,7 +16,8 @@ import {
 import { submitInput } from "../modules/civic.input/index.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { getEventCount } from "../events/eventStore.js";
-import { getDb } from "../db/client.js";
+import { forHub } from "../db/forHub.js";
+import { currentHubIdOrNull } from "../config/hubContext.js";
 import {
   emitPublicationEvents as emitAnnouncementPublicationEvents,
   type AnnouncementProcessContext,
@@ -85,8 +86,21 @@ function selectScenarios(): SeedScenario[] {
   }
 }
 
-async function runScenario(scenario: SeedScenario): Promise<void> {
-  const proc = await createProcess(scenario.process);
+/**
+ * The id a seed process gets on one hub. Scenario ids are fixed so a seed is
+ * deterministic, but process ids are globally unique and every hub on a
+ * deployment seeds the same scenarios. Suffixing the hub keeps each hub's
+ * seed deterministic and lets two hubs seed without colliding.
+ */
+export function seedIdForHub(id: string, hubId: string): string {
+  return `${id}_${hubId}`;
+}
+
+async function runScenario(scenario: SeedScenario, hubId: string): Promise<void> {
+  const proc = await createProcess({
+    ...scenario.process,
+    ...(scenario.process.id ? { id: seedIdForHub(scenario.process.id, hubId) } : {}),
+  });
 
   // Slice 19b follow-up — type-aware dispatch. The vote/proposal
   // path uses the generic action dispatcher; announcements and
@@ -170,16 +184,22 @@ async function runMeetingSummarySeed(
   await saveProcessState(proc);
 }
 
-// Memoize the seed run so concurrent requests don't trigger duplicate seeding.
-let seedPromise: Promise<void> | null = null;
+// Memoize the seed run per hub so concurrent requests don't trigger duplicate
+// seeding. Per hub since Phase 2a: processes are read per hub, so each hub is
+// seeded — or found already seeded — on its own first request, in its scope.
+const seedPromises = new Map<string, Promise<void>>();
 
 export async function seedOnStartup(): Promise<void> {
   if (!allowSeed()) return;
-  if (seedPromise) return seedPromise;
+  // /health and /internal/* run with no hub in scope: nothing to seed.
+  const hubId = currentHubIdOrNull();
+  if (!hubId) return;
+  const pending = seedPromises.get(hubId);
+  if (pending) return pending;
 
-  seedPromise = (async () => {
-    // Skip seeding if the processes table already has data.
-    const { count, error } = await getDb()
+  const seedPromise = (async () => {
+    // Skip seeding if this hub already has processes.
+    const { count, error } = await forHub(hubId)
       .from("processes")
       .select("*", { count: "exact", head: true });
     if (error) throw error;
@@ -194,18 +214,19 @@ export async function seedOnStartup(): Promise<void> {
 
     const scenarios = selectScenarios();
     const fixtureName = process.env.CIVIC_SEED_FIXTURE?.trim().toLowerCase() || "default";
-    console.log(`[auto-seed] Seeding initial data (fixture: ${fixtureName})...`);
+    console.log(`[auto-seed] Seeding hub "${hubId}" (fixture: ${fixtureName})...`);
     for (const scenario of scenarios) {
-      await runScenario(scenario);
+      await runScenario(scenario, hubId);
     }
     console.log("[auto-seed] Done\n");
   })().catch((err) => {
     console.error("[auto-seed] failed:", err);
     // Reset so a later request can retry (e.g., transient DB error)
-    seedPromise = null;
+    seedPromises.delete(hubId);
     throw err;
   });
 
+  seedPromises.set(hubId, seedPromise);
   return seedPromise;
 }
 
