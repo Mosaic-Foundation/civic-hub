@@ -221,15 +221,35 @@ export async function requestVerification(
   if (result.sent) {
     console.log(`[auth] Sent verification code to ${normalizedEmail} (resend id: ${result.id})`);
   } else {
-    // Fallback: log to console so dev/preview still works without a key.
-    // In production, misconfiguration here would be silent to the user, so
-    // we log the failure prominently. The user still gets "code sent"
-    // because we don't want to leak whether the address is deliverable.
+    // The failure is always logged prominently: a misconfiguration here is
+    // silent to the user, who is told "code sent" either way because we do
+    // not leak whether an address is deliverable.
     console.warn(
-      `[auth] Email NOT sent for ${normalizedEmail} (${result.error}). ` +
-      `Falling back to console log (dev only).`,
+      `[auth] Email NOT sent for ${normalizedEmail} (${result.error}).`,
     );
-    console.log(`\n[auth] Verification code for ${normalizedEmail}: ${code}\n`);
+
+    // THE CODE ITSELF IS LOGGED ONLY WHEN NO MAILER IS CONFIGURED.
+    //
+    // This used to log on ANY send failure, and the comment beside it said
+    // "(dev only)" while the code checked nothing — so a deployment with a
+    // working key that hit a provider outage, a rate limit or an unverified
+    // domain wrote live one-time codes into its function log in plaintext.
+    // Found 2026-09-23, when exactly that happened on the dev deployment:
+    // Resend refused an unverified domain and every requested code appeared
+    // in the log stream. Anyone who can read logs could then sign in as
+    // anyone who had tried to.
+    //
+    // Keyless is a different case and is genuinely local development: there
+    // is no mailer at all, the console IS the mailbox, and no real user is
+    // waiting on an email that will not arrive.
+    if (!process.env.RESEND_API_KEY) {
+      console.log(`\n[auth] Verification code for ${normalizedEmail}: ${code}\n`);
+    } else {
+      console.warn(
+        `[auth] The code was NOT logged: a mailer is configured, so this is a ` +
+        `delivery failure rather than local development. Fix the mailer.`,
+      );
+    }
   }
 
   return { message: "Verification code sent" };
