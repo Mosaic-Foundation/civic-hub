@@ -4,6 +4,134 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Multi-tenant Phase 2a: hub_id on every table, and forHub() — 2026-09-24
+
+**Branch:** `multi-tenant`, 18 commits, pushed. Dev database migrated;
+production untouched. Mid-session an exit-rights audit (four rules: one door
+to hub data, hubs share through the protocol not the database, a small named
+dependency surface, portable by construction) was run and sorted by Adam; its
+"now" items are in this slice, the rest are recorded in the build plan under
+Phase 2a "Exit rights", 2b, 3 and the cleanup migration.
+
+| Step | Commit | What |
+|---|---|---|
+| 1 | `fa8bab3` | `hub_id` on 28 more tables (30 of 31); `hubs.protocol_hub_id` |
+| 2 | `d0cff6e` | per-hub uniqueness beside the global constraints |
+| 3 | `30a72ca` | `users.identity_did`, reserved |
+| 4 | `7cc80ab`, `7b3eb42` | `forHub()`; then rows-and-throw instead of `{ data, error }` |
+| 5 | `ebf9257`, `b23a360`, `3343ee3`, `b67a403` | settings + officials; sign-in; processes + events; votes + receipts |
+| — | `d547a8b`, `76c723d`, `b267d68`, `37a259b` | exit rights a–d: `db_ref`/`redirect_to`, export manifest, scoped search, waitlist |
+| — | `c16746e` | `emitEvent` inputs lose the dead `hub_id` |
+| 6 | `5037b7b` | feedback falls back to the hub's admins |
+| 7 | `cd6f1f7` | API isolation tests |
+| — | `7c2d7b3`, `a6e8c64` | build plan |
+
+`npm test` pieces: tests/unit 83 files / 1016 green; tests/api 15 files / 138
+green against a local stack (server on :3200, launch config `hub-api-2a`).
+`tsc` and the place-name check clean. UI build clean (only step 5/1 touched
+the UI). Playwright not run.
+
+### The shape of it
+
+**Three identifiers, never derived from each other at runtime** (Adam, when
+the collision below turned up): `hubs.id` is the tenant key; the new
+`hubs.protocol_hub_id` is `source.hub_id` on published events
+(`civic-hub-local` for Floyd, as it has always published; `civic-hub-<slug>`
+for any other hub, written once by `create-hub`); `hubs.space_did` is the DID.
+`emitEvent` stamps `source.hub_id` from the hub in scope, `HUB_ID` is only the
+fallback outside one, and `CreateEventInput.hub_id` is gone.
+
+**`processes.hub_id` already existed and held the protocol id.** Repurposed as
+the tenant column (backfilled with the `updated_at` and search triggers held
+off, so no process reads as edited today). `Process.hubId` is the tenant now.
+
+**`hub_id text not null default 'floyd' references hubs(id) on delete
+restrict`** on every tenant table, each with a hub-leading index; RESTRICT
+because residents' records must not vanish with a hub (settings and sessions
+keep CASCADE). Per-hub uniques sit beside the old global ones until the
+cleanup migration: `users (hub_id, email)`, `pending_verifications`,
+`waitlist`, `link_previews`, and the three upsert targets. Until then **one
+email is one account on one hub**, and a collision says so without naming the
+other hub.
+
+**`forHub(hubId)`** (`src/db/forHub.ts`) keeps the builder shape the code uses
+but not Supabase's result: `select` → rows, `maybeSingle` → row or null,
+`count()` → number, writes → null or rows with `.select()`, failures throw
+`HubDbError` with the Postgres `code`. Reads, updates and deletes carry the
+hub filter from construction; inserts and upserts are stamped; another hub's
+`hub_id` anywhere is an error; an upsert must name `hub_id` in its conflict
+target; an update or delete re-checks its filter when it runs; `rpc` passes
+`p_hub_id`. `client.ts` is tagged `@civic-raw-client` for the 2b lint rule.
+
+**What the conversions changed in behaviour.**
+- Sign-in: an email, a code and a session are resolved on the request's hub
+  only. A session from another hub, or an Athens session naming a Floyd
+  user, is nobody (401). The officials guard from `617da2a` is gone: the
+  roster is per hub. Waitlist reads and writes are per hub.
+- The feed: `/process`, `/events`, the digest window and search see one hub.
+  Review approval and the debug seeder insert through `forHub` too.
+- Two reads that ignored errors now fail closed: the lockout read in
+  request-code, and `cleanOrphanedEvents` (a failed processes read used to
+  make every event look orphaned and delete it).
+- Receipts: ballot secrecy unchanged; `hub_id` adds no link (both tables
+  already carry `process_id`). Checked live: a vote cast then changed
+  updates the same receipt, all three rows carry the hub.
+- Feedback with no recipient goes to the hub's `people.admin_emails`, never
+  a personal address.
+
+**Bridges, marked in code, removed in 2b.** The two digest crons run inside
+the migration-default hub's scope (`withMigrationDefaultHub` in
+`cronHubs.ts`), exactly the rows they read before; a hub created since is not
+mailed until the crons iterate hubs. Dev auto-seed runs per hub, with seed
+ids suffixed by hub (`seedIdForHub`), since ids are global.
+
+### Found on the way
+
+- **The default backfilled dev wrongly.** On production every row is Floyd's;
+  on the shared dev database, accounts created on Athens and Utopia were
+  stamped Floyd. `scripts/repair-hub-backfill.ts` (dev only, refuses
+  production, dry run by default) moves an account whose every session is on
+  one other hub. **Applied on dev with Adam's OK: one account,
+  `adam+utopia@civic.social` → utopia.** `adam@civic.social` has sessions on
+  Floyd and Athens and stays Floyd's. No content had been created on Athens
+  or Utopia since 09-22.
+- `/debug/seed` still clears `community_inputs` and proposals across every
+  hub (their modules are 2b); receipts, auth, processes and events now clear
+  one hub.
+
+### For Adam
+
+1. **Driver question (Ben):** assessed in-session (recommendation was to
+   switch to `pg` + Kysely before 2b). The brief that followed stays on
+   `supabase-js` behind a driver-neutral result contract (rows and throw)
+   and adds two atomic RPCs at the end of 2b (`transition_process`,
+   `cast_vote`); recorded in the plan. **Confirm that is the decision**, not
+   just this session's scope, before 2b converts the remaining ~200 calls.
+2. `src/processes/*` and several services still read `processes` raw
+   (`spawnBrief`, `projectAdapter`, `proposalAdapter`, `wordcloudProcess`,
+   `processLinks`, `processEdits`, `editNotifications`, `feedMeta`,
+   `creatorDisplay`, `processAnonymity`, `adminQueues`): those reads are not
+   yet hub-filtered, though every process they are handed now comes from a
+   scoped read. They are the start of 2b.
+
+### Still on the raw client (Phase 2b starts here)
+
+`src/app.ts`; controllers `briefController`, `debugController`,
+`deliberationController`, `hubModeController`, `inputController`,
+`reviewController`, `wordcloudController`; modules
+`civic.deliberation_drafts`, `civic.feedback/service`, `civic.input`,
+`civic.project_drafts`, `civic.projects`, `civic.proposal_drafts`,
+`civic.proposals`, `civic.review/service`, `civic.vote_drafts`,
+`civic.wordcloud`; processes `projectAdapter`, `proposalAdapter`,
+`spawnBrief`, `wordcloudProcess`; services `adminQueues`, `briefResponses`,
+`creatorDisplay`, `editNotifications`, `feedMeta`, `linkPreviewCache`,
+`processAnonymity`, `processEdits`, `processLinks`; and
+`postImageStorage` (the one permitted storage module). Inside `src/db/`,
+`hubs.ts` and `schemaCheck.ts` keep it by design. Scripts: every one under
+`scripts/` that talks to the database, as operator tools.
+
+---
+
 ## Hub theming: a Theme section in Settings — 2026-09-24
 
 **Branch:** `multi-tenant`, same session as part five, after Adam agreed the

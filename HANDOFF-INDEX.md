@@ -55,6 +55,9 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- Phase 2a: hub_id on every table, protocol_hub_id, forHub() (rows and
+  throw), sign-in/feed/receipts converted, exit-rights items, dev backfill
+  repair — 7–~131 (every range below shifts down by its length)
 - Hub theming: Settings → Theme, `src/shared/theme.ts`, presets, contrast
   auto-adjust, live preview — 7–66 (every range below shifts by its length)
 - Phase 1 part five: hub admin Settings page (one endpoint, eight sections,
