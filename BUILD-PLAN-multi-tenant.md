@@ -438,6 +438,66 @@ slug columns outside `hubs`.
 **`users.identity_did`** (`20260924030000`): nullable text, no reader. The
 seam ADR-004 reserves for portable identity.
 
+#### Exit rights, from the audit (Adam, 2026-09-24)
+
+An audit against four exit-rights rules (one door to hub data; hubs share
+through the protocol, never the database; a small named dependency
+surface; portable by construction) sorted its findings into now, 2b, 3,
+cleanup and outside the repo. Done in Phase 2a:
+
+- **`hubs.db_ref text not null default 'shared'`, `hubs.redirect_to text
+  null`** (`20260924040000`). Nothing reads them. `db_ref` names the
+  database holding a hub's rows (`shared` = the multi-tenant one);
+  `redirect_to` is where a hub's hostname lives after it leaves.
+- **Export manifest**: `EXPORT_MANIFEST` in `src/db/schemaContract.ts`, the
+  30 tables with `hub_id`, each `export` or `omit`. Omitted, with reasons:
+  `sessions` (bearer credentials), `pending_verifications` (live codes),
+  `link_previews` (a cache). `tests/unit/exportManifest.test.ts` derives the
+  tables with `hub_id` from the migrations and fails on any disagreement,
+  including with `forHub()`'s table list.
+- **Search is per hub**: `search_processes` / `search_processes_count` take a
+  required first argument `p_hub_id` (`20260924050000`), called through
+  `forHub().rpc()`, which is where the `p_hub_id` name for RPC hub arguments
+  is fixed. The old signatures are deprecated wrappers for the
+  migration-default hub until the cleanup migration.
+- **The waitlist** reads and writes through `forHub()`.
+
+**Phase 2b adds** (recorded, not done):
+1. **First, as its own step with a staging rehearsal:** `unique (hub_id, id)`
+   on every parent table and composite foreign keys `(hub_id, x_id) →
+   (hub_id, id)` for all 14 row-to-row references (`process_links.from_id`
+   and `.to_id`, `sessions.user_id`, `proposal_supports.proposal_id`,
+   `feedback_submissions.user_id`, `project_updates` / `project_sentiments` /
+   `project_comments.project_id`, `wordcloud_submissions.process_id`,
+   `process_reviews.process_id`, `review_turns.review_id`,
+   `processes.review_id`, `brief_responses.brief_id` and `.responder_id`).
+   Today the database allows a row in one hub to reference another hub's
+   row.
+2. **A per-hub base URL from `hubs.hostname`.** `baseUrl()` / `uiBaseUrl()`
+   read `BASE_URL` / `CIVIC_UI_BASE_URL`, so every hub on the shared
+   deployment stamps the same `source.hub_url` and `action_url` on its events.
+3. **A cron registry in code**, one list that the Vercel schedule, the
+   `/internal` mounts and the route docs are generated from or checked
+   against (today: `vercel.json` "crons", `src/app.ts` mounts and docs).
+4. **The `post-images` bucket created by a migration** (today it exists
+   only as a comment in `20260427100000`).
+5. **GRANTs to Supabase role names guarded** so they no-op on plain
+   Postgres where `authenticated` / `service_role` do not exist.
+6. **Generic fallbacks for `VERCEL_*` env reads** (`src/app.ts`:
+   `VERCEL_GIT_COMMIT_SHA`, `VERCEL_DEPLOYMENT_ID`).
+
+**The cleanup migration after cutover** drops, with the `DEFAULT 'floyd'`s
+and the deprecated search wrappers: `users_email_key`,
+`pending_verifications_pkey` (email), `waitlist_pkey` (email),
+`link_previews_pkey` (url); the per-hub constraints beside them become the
+keys.
+
+**Owned by the self-hosting plan, outside this repo:** idempotent early
+migrations or a baseline schema, and a migration-history writer for the
+bundle (the Supabase CLI records applied migrations in
+`supabase_migrations.schema_migrations (version text not null, statements
+text[], name text)`, a plain table the bundle can reproduce).
+
 _checklist to be pasted_
 
 ### Phase 3 — forced RLS with the JWT claim
@@ -460,6 +520,18 @@ committed; the committed config points at a path each developer generates
 with `supabase gen signing-key --algorithm ES256`.
 
 See "Phase 3 approach (verified)" below for the verified mechanism.
+
+**Phase 3 adds, from the exit-rights audit (Adam, 2026-09-24):**
+- `FORCE ROW LEVEL SECURITY` on the ten tables that have RLS enabled but not
+  forced: `deliberation_drafts`, `hub_settings`, `project_comments`,
+  `project_drafts`, `project_sentiments`, `project_updates`, `projects`,
+  `proposal_drafts`, `vote_drafts`, `waitlist`.
+- **Tokens are verified by PostgREST with its configured key** — the
+  Supabase signing key on the hosted project, PostgREST's `jwt-secret` (or a
+  static JWK) self-hosted — **never via GoTrue's JWKS endpoint**, so Supabase
+  Auth is not a dependency. Where "Phase 3 approach (verified)" below
+  mentions `/auth/v1/.well-known/jwks.json`, read it as how the hosted
+  project exposes the key, not as what the app relies on.
 
 _checklist to be pasted_
 
