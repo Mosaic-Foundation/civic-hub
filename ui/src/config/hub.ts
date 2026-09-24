@@ -139,6 +139,18 @@ const hub = {
     );
   },
 
+  /** A small image beside the hub's name in the header. Empty = none. */
+  get logo_url(): string {
+    return setting("identity.logo_url") ?? "";
+  },
+
+  /** The accent colour, #rrggbb, or empty for the default palette. */
+  get theme(): string {
+    return (
+      setting("identity.theme") ?? env(import.meta.env.VITE_HUB_THEME) ?? ""
+    );
+  },
+
   /** Alt text for the banner — also used as og:image:alt. */
   get banner_alt(): string {
     return (

@@ -20,9 +20,11 @@ import { imageSize } from "image-size";
 import { getAuthUser } from "../middleware/auth.js";
 import {
   POST_IMAGE_MIME_WHITELIST,
+  hubImagePrefix,
   imageUploadMaxBytes,
   uploadPostImage,
 } from "../services/postImageStorage.js";
+import { currentHubId } from "../config/hubContext.js";
 
 // Image dimension caps. The lower bound rejects accidental favicons /
 // 1×1 tracking pixels; the upper bound caps storage cost and rendering
@@ -127,9 +129,79 @@ function parseSingleFile(
   });
 }
 
-export async function handlePostImageUpload(
+/**
+ * What one upload route accepts. The defaults are the post-image limits every
+ * route used before hub images existed.
+ */
+export interface ImageUploadLimits {
+  minWidth: number;
+  minHeight: number;
+  maxDimension: number;
+  maxBytes: () => number;
+  /** Bucket prefix for the stored key, or undefined for the shared layout. */
+  prefix?: (req: Request, res: Response) => string | undefined;
+}
+
+const POST_IMAGE_LIMITS: ImageUploadLimits = {
+  minWidth: MIN_DIMENSION,
+  minHeight: MIN_DIMENSION,
+  maxDimension: MAX_DIMENSION,
+  maxBytes: imageUploadMaxBytes,
+};
+
+/**
+ * A hub's own images, uploaded from the admin Settings page. They land under
+ * the hub's prefix in the bucket (see hubImagePrefix).
+ *
+ * A banner is a wide strip, so its floor is a width, not a square; a logo is
+ * drawn at header height, so it may be small but is capped at 1 MB — it is
+ * fetched on every page by every visitor.
+ */
+export const HUB_IMAGE_LIMITS: Readonly<Record<"banner" | "logo", ImageUploadLimits>> = {
+  banner: {
+    minWidth: 600,
+    minHeight: 100,
+    maxDimension: MAX_DIMENSION,
+    maxBytes: imageUploadMaxBytes,
+    prefix: () => hubImagePrefix(currentHubId()),
+  },
+  logo: {
+    minWidth: 32,
+    minHeight: 32,
+    maxDimension: 2000,
+    maxBytes: () => Math.min(imageUploadMaxBytes(), 1024 * 1024),
+    prefix: () => hubImagePrefix(currentHubId()),
+  },
+};
+
+export function makeImageUploadHandler(limits: ImageUploadLimits) {
+  return async function handleImageUpload(
+    req: Request,
+    res: Response,
+  ): Promise<void> {
+    await uploadImage(req, res, limits);
+  };
+}
+
+export const handlePostImageUpload = makeImageUploadHandler(POST_IMAGE_LIMITS);
+
+/** POST /upload/hub-image?kind=banner|logo — admin only. */
+export async function handleHubImageUpload(
   req: Request,
   res: Response,
+): Promise<void> {
+  const kind = String(req.query.kind ?? "");
+  if (kind !== "banner" && kind !== "logo") {
+    res.status(400).json({ error: 'kind must be "banner" or "logo".' });
+    return;
+  }
+  await uploadImage(req, res, HUB_IMAGE_LIMITS[kind]);
+}
+
+async function uploadImage(
+  req: Request,
+  res: Response,
+  limits: ImageUploadLimits,
 ): Promise<void> {
   try {
     const user = getAuthUser(res);
@@ -140,7 +212,7 @@ export async function handlePostImageUpload(
       return;
     }
 
-    const maxBytes = imageUploadMaxBytes();
+    const maxBytes = limits.maxBytes();
     const parsed = await parseSingleFile(req, maxBytes);
 
     if (!POST_IMAGE_MIME_WHITELIST.has(parsed.mime)) {
@@ -161,20 +233,21 @@ export async function handlePostImageUpload(
     }
     const w = dims.width ?? 0;
     const h = dims.height ?? 0;
-    if (w < MIN_DIMENSION || h < MIN_DIMENSION) {
+    if (w < limits.minWidth || h < limits.minHeight) {
       res.status(400).json({
-        error: `Image is too small (${w}×${h}). Minimum ${MIN_DIMENSION}×${MIN_DIMENSION}.`,
+        error: `Image is too small (${w}×${h}). Minimum ${limits.minWidth}×${limits.minHeight}.`,
       });
       return;
     }
-    if (w > MAX_DIMENSION || h > MAX_DIMENSION) {
+    if (w > limits.maxDimension || h > limits.maxDimension) {
       res.status(400).json({
-        error: `Image is too large (${w}×${h}). Resize to ${MAX_DIMENSION} px on the long edge before uploading. (The composer does this automatically — if you're seeing this on the web app, refresh and try again.)`,
+        error: `Image is too large (${w}×${h}). Resize to ${limits.maxDimension} px on the long edge before uploading. (The composer does this automatically — if you're seeing this on the web app, refresh and try again.)`,
       });
       return;
     }
 
-    const { url } = await uploadPostImage(parsed.buffer, parsed.mime);
+    const prefix = limits.prefix?.(req, res);
+    const { url } = await uploadPostImage(parsed.buffer, parsed.mime, prefix);
     res.status(201).json({ url, width: w, height: h, mime: parsed.mime });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Upload failed";

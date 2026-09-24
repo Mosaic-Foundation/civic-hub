@@ -36,6 +36,11 @@ import {
   handlePatchSettings,
 } from "../controllers/adminSettingsController.js";
 import {
+  handleGetHubSettings,
+  handlePutHubSettings,
+  handleGetSettingTemplate,
+} from "../controllers/hubSettingsController.js";
+import {
   handleAdminListReviews,
   handleAdminGetReview,
   handleAdminApprove,
@@ -161,6 +166,13 @@ router.post("/hub/mode", handleSetHubMode);
 router.get("/hub/people", handleGetHubPeople);
 router.post("/hub/people/request-code", handleRequestStepUpCode);
 router.post("/hub/people", handleSetHubPeople);
+
+// What the hub is called, what its pages say, its legal documents and its
+// mail — every key checked against the build plan's list. See
+// src/controllers/hubSettingsController.ts.
+router.get("/hub/settings", handleGetHubSettings);
+router.put("/hub/settings", handlePutHubSettings);
+router.get("/hub/settings/template/:key", handleGetSettingTemplate);
 
 router.get("/settings", handleGetSettings);
 router.patch("/settings", handlePatchSettings);

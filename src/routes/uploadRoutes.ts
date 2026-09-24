@@ -6,8 +6,11 @@
 // no router-level disabling is required.
 
 import { Router } from "express";
-import { requireAnnouncementPoster, requireResident } from "../middleware/auth.js";
-import { handlePostImageUpload } from "../controllers/uploadController.js";
+import { requireAdmin, requireAnnouncementPoster, requireResident } from "../middleware/auth.js";
+import {
+  handleHubImageUpload,
+  handlePostImageUpload,
+} from "../controllers/uploadController.js";
 
 const router = Router();
 
@@ -32,5 +35,10 @@ router.post(
   requireResident,
   handlePostImageUpload,
 );
+
+// A hub's banner or logo, from the admin Settings page. Stored under the
+// hub's own prefix in the bucket; the URL it returns is what the Identity
+// section then saves to identity.banner_url / identity.logo_url.
+router.post("/hub-image", requireAdmin, handleHubImageUpload);
 
 export default router;

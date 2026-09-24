@@ -1646,24 +1646,8 @@ export interface Official {
 }
 
 export interface AdminSettings {
-  /** Display name. Empty = using the registry name from the hubs row. */
-  name: string;
-  /** That registry name, so the form can offer it as a placeholder. */
-  readonly registry_name: string;
-  /** The sentence under the hub name. Empty = the shared default. */
-  tagline: string;
-  /** The small caps line above it. Empty = the shared default. */
-  label: string;
-  /** Who the legal pages name as running this hub. Free text. */
-  operator_name: string;
-  /** Where the legal pages tell people to write. */
-  contact_email: string;
-  /** From the hubs row; shown so the admin can see what the documents say. */
-  readonly hostname: string;
-  /** The "who runs this site" paragraph. Empty = using the shared default. */
-  who_runs_this: string;
-  /** That default, so the form can offer it as a placeholder. */
-  readonly who_runs_this_default: string;
+  // The hub's name, tagline, label, operator, contact address and "who runs
+  // this site" moved to adminGetHubSettings / adminPutHubSettings.
   /** demo | beta | live. Changed through adminSetHubMode, not this endpoint. */
   readonly mode: string;
 
@@ -1685,6 +1669,69 @@ export function adminPatchSettings(
   patch: Partial<AdminSettings>,
 ): Promise<AdminSettings> {
   return request("PATCH", "/admin/settings", patch);
+}
+
+/**
+ * The Settings page's Identity, Copy & pages, Legal and Email sections.
+ * Shape: src/controllers/hubSettingsController.ts → HubSettingsResponse.
+ */
+export interface HubSettings {
+  hub: {
+    id: string;
+    registry_name: string;
+    hostname: string;
+    jurisdiction_name: string | null;
+    mode: string;
+  };
+  /** The hub's own value per key; "" where it has none. */
+  values: Record<string, string>;
+  /** What applies when it has none, where the deployment sets one. */
+  fallbacks: Record<string, string>;
+  changed: Record<string, { at: string; by: string | null }>;
+  platform: { from_address: string };
+  /** Document keys with a shared default to restore. */
+  restorable: string[];
+}
+
+export function adminGetHubSettings(): Promise<HubSettings> {
+  return request("GET", "/admin/hub/settings");
+}
+
+/** Save one section. Values for keys outside it are refused by the server. */
+export function adminPutHubSettings(
+  section: string,
+  values: Record<string, string | boolean | number>,
+): Promise<HubSettings> {
+  return request("PUT", "/admin/hub/settings", { section, values });
+}
+
+/** A document's shared default, placeholders unfilled. */
+export function adminGetSettingTemplate(
+  key: string,
+): Promise<{ key: string; template: string }> {
+  return request("GET", `/admin/hub/settings/template/${encodeURIComponent(key)}`);
+}
+
+/** Upload a banner or logo under this hub's storage prefix. Admin only. */
+export async function uploadHubImage(
+  kind: "banner" | "logo",
+  file: Blob,
+): Promise<UploadedImage> {
+  const headers: Record<string, string> = {};
+  const token = getStoredToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE}/upload/hub-image?kind=${kind}`, {
+    method: "POST",
+    headers,
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? `Upload failed: ${res.status}`);
+  }
+  return res.json();
 }
 
 // --- Who administers the hub -------------------------------------------------

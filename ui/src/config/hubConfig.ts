@@ -128,6 +128,7 @@ export function applyHubHead(): void {
   const imageAlt = setting("identity.banner_alt");
 
   document.title = title;
+  applyThemeColor(setting("identity.theme"));
   setMeta("name", "description", description);
   setMeta("property", "og:title", title);
   setMeta("property", "og:description", description);
@@ -149,4 +150,35 @@ function setMeta(
     document.head.appendChild(el);
   }
   el.setAttribute("content", value);
+}
+
+/**
+ * The hub's accent colour, `identity.theme`, applied over the design tokens.
+ *
+ * Only the primary and its hover shade change: every accent in the app is
+ * derived from those two (index.css maps --primary-color, --accent-color and
+ * --bar-color onto them), so one setting recolours buttons, links, the active
+ * tab and the results bars together. Anything that is not #rrggbb is ignored
+ * and the default palette stands.
+ */
+export function applyThemeColor(value: string | undefined): void {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (!value || !/^#[0-9a-f]{6}$/i.test(value)) {
+    root.style.removeProperty("--color-primary");
+    root.style.removeProperty("--color-primary-hover");
+    return;
+  }
+  root.style.setProperty("--color-primary", value);
+  root.style.setProperty("--color-primary-hover", darken(value, 0.15));
+}
+
+/** #rrggbb moved `amount` (0–1) of the way towards black. */
+function darken(hex: string, amount: number): string {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const channel = (shift: number) =>
+    Math.round(((n >> shift) & 0xff) * (1 - amount))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(16)}${channel(8)}${channel(0)}`;
 }

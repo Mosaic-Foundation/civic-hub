@@ -130,7 +130,12 @@ export function substitutions(hub: Hub): Record<string, string> {
   if (governingBody) out.GOVERNING_BODY = governingBody;
 
   const operator = getSettingSync(KEYS.LEGAL_OPERATOR_NAME);
-  if (operator) out.OPERATOR = operator;
+  if (operator) {
+    out.OPERATOR = operator;
+    // The name the admin panel shows beside the editor, matching the key.
+    // {OPERATOR} is what the shared templates were written with; both work.
+    out.OPERATOR_NAME = operator;
+  }
 
   const contactEmail = getSettingSync(KEYS.LEGAL_CONTACT_EMAIL);
   if (contactEmail) out.CONTACT_EMAIL = contactEmail;
@@ -221,4 +226,23 @@ export async function hubDocument(
   key: string,
 ): Promise<string | null> {
   return (await hubDocuments(hub))[key] ?? null;
+}
+
+/**
+ * The shared template behind a document, UNSUBSTITUTED — placeholders and
+ * all — or null when the key has none.
+ *
+ * For the admin panel's "restore default". Raw rather than filled in, because
+ * what the admin restores is what gets stored, and a stored document is
+ * substituted at render time: restoring the filled-in text would freeze
+ * today's hub name into it, and a rename would strand it.
+ *
+ * `legal.who_runs_this` is included: it is a fragment rather than a page, but
+ * it is edited the same way and has a shared default the same way.
+ * `copy.welcome` has no template (see hubDocuments above) and answers null.
+ */
+export function documentTemplate(key: string): string | null {
+  if (key === KEYS.LEGAL_WHO_RUNS_THIS) return readTemplate(WHO_RUNS_THIS_TEMPLATE);
+  const fileName = TEMPLATES[key];
+  return fileName ? readTemplate(fileName) : null;
 }

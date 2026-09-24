@@ -75,8 +75,10 @@ export async function handleGetHubConfig(
 
   // `private`, not `public`: this response differs per hostname, and a shared
   // cache that keyed it wrongly would serve one hub's identity on another's
-  // domain. Sixty seconds in the browser is all the caching this needs.
-  res.set("Cache-Control", "private, max-age=60");
+  // domain. `no-cache` rather than a max-age since 2026-09-24: a hub admin
+  // edits these values from the Settings page and expects the next reload to
+  // show them. Express's ETag makes the revalidation a 304 with no body.
+  res.set("Cache-Control", "private, no-cache");
   const body: HubConfigResponse = { hub: publicHub(hub), settings };
   res.json(body);
 }
@@ -98,6 +100,9 @@ export async function handleGetHubDocuments(
     res.status(404).json({ error: "no_hub" });
     return;
   }
-  res.set("Cache-Control", "private, max-age=300");
+  // Revalidated every time, for the same reason as the config: an admin who
+  // edits a document expects to see it on the next reload. ETag keeps the
+  // unchanged case to a 304.
+  res.set("Cache-Control", "private, no-cache");
   res.json({ documents: await hubDocuments(hub) });
 }

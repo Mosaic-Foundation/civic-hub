@@ -57,12 +57,29 @@ function extFor(mime: string): string {
  * Generate a storage key of the form `YYYY/MM/<uuid>.<ext>`. The
  * year-month prefix keeps the bucket browsable in the Supabase dashboard
  * and is friendly to future per-month archive policies.
+ *
+ * With a `prefix`, the key is `<prefix>/YYYY/MM/<uuid>.<ext>`. A hub's own
+ * images (its banner, its logo) go under `hubs/<hub id>/`, so everything a
+ * hub owns in the bucket can be listed, exported or removed by prefix.
  */
-export function makeImageKey(mime: string, now: Date = new Date()): string {
+export function makeImageKey(
+  mime: string,
+  now: Date = new Date(),
+  prefix?: string,
+): string {
   const yyyy = now.getUTCFullYear();
   const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
   const uuid = crypto.randomUUID();
-  return `${yyyy}/${mm}/${uuid}.${extFor(mime)}`;
+  const key = `${yyyy}/${mm}/${uuid}.${extFor(mime)}`;
+  return prefix ? `${prefix}/${key}` : key;
+}
+
+/** Where a hub's own images live in the bucket. */
+export function hubImagePrefix(hubId: string): string {
+  if (!/^[a-z0-9-]{2,32}$/.test(hubId)) {
+    throw new Error(`Not a hub id: "${hubId}"`);
+  }
+  return `hubs/${hubId}`;
 }
 
 /**
@@ -72,9 +89,10 @@ export function makeImageKey(mime: string, now: Date = new Date()): string {
 export async function uploadPostImage(
   bytes: Buffer,
   mime: string,
+  prefix?: string,
 ): Promise<{ key: string; url: string }> {
   const bucket = postImageBucket();
-  const key = makeImageKey(mime);
+  const key = makeImageKey(mime, new Date(), prefix);
   const db = getDb();
 
   const upload = await db.storage.from(bucket).upload(key, bytes, {

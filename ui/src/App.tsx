@@ -175,6 +175,7 @@ function AppContent() {
             element={<AdminGuard><AdminMeetingSummaries /></AdminGuard>}
           />
           <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
+          <Route path="/admin/settings/:section" element={<AdminGuard><AdminSettings /></AdminGuard>} />
           <Route path="/vote-results/:id" element={<VoteResults />} />
           {/* Public brief page — the permanent record of a completed process
               (the /brief path is reclaimed from the old Slice 8.5 redirect;

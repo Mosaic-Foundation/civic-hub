@@ -36,17 +36,8 @@ import {
   setSupportThreshold,
   getCommentIdentityMode,
   setCommentIdentityMode,
-  getOperatorName,
-  getContactEmail,
-  setOperatorName,
-  setContactEmail,
-  getWhoRunsThis,
-  setWhoRunsThis,
   hubModeFor,
-  getSetting,
-  setSetting,
 } from "../services/hubSettings.js";
-import { KEYS } from "../models/hubSettings.js";
 import {
   type OfficialRecord,
   listOfficialsWithLegacy,
@@ -54,38 +45,13 @@ import {
 } from "../services/officials.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { currentHub, currentHubId } from "../config/hubContext.js";
-import { whoRunsThisDefault } from "../services/hubDocuments.js";
 
 interface SettingsResponse {
-  /**
-   * What the legal documents will say about who runs this hub.
-   *
-   * `hostname` is here READ-ONLY and comes from the `hubs` row, because the
-   * documents name it and an admin should be able to see what they are about
-   * to publish without going and finding it. It is not editable from the hub
-   * admin panel: changing which hostname a hub answers on is a control-plane
-   * act, not a settings edit.
-   */
-  /**
-   * The hub's display name. Empty means it is using the registry name from
-   * the `hubs` row, which `registry_name` carries so the form can show it.
-   */
-  name: string;
-  registry_name: string;
-  /** The sentence under the hub name on every page with a header. */
-  tagline: string;
-  /** The small caps line above it — "Civic Hub". */
-  label: string;
-  operator_name: string;
-  contact_email: string;
-  hostname: string;
-  /**
-   * The "who runs this site" paragraph. Empty means the hub is showing the
-   * shared default, which `who_runs_this_default` carries so the form can
-   * offer it as a placeholder rather than as a value the admin must keep.
-   */
-  who_runs_this: string;
-  who_runs_this_default: string;
+  // The hub's name, tagline, label, operator, contact address and "who runs
+  // this site" moved to GET/PUT /admin/hub/settings on 2026-09-24, so every
+  // key on the Settings page has exactly one writer. See
+  // src/controllers/hubSettingsController.ts.
+
   /**
    * The hub's lifecycle mode, read-only here. It is CHANGED through
    * POST /admin/hub/mode, which takes a fresh emailed code — see
@@ -107,15 +73,6 @@ interface SettingsResponse {
 async function loadSettings(): Promise<SettingsResponse> {
   const hubId = currentHubId();
   return {
-    name: (await getSetting(hubId, KEYS.IDENTITY_NAME)) ?? "",
-    registry_name: currentHub()?.name ?? "",
-    tagline: (await getSetting(hubId, KEYS.IDENTITY_TAGLINE)) ?? "",
-    label: (await getSetting(hubId, KEYS.IDENTITY_LABEL)) ?? "",
-    operator_name: await getOperatorName(hubId),
-    contact_email: await getContactEmail(hubId),
-    hostname: currentHub()?.hostname ?? "",
-    who_runs_this: await getWhoRunsThis(hubId),
-    who_runs_this_default: whoRunsThisDefault(currentHub()),
     mode: hubModeFor(currentHub()),
     brief_recipient_emails: await getVoteResultsRecipients(hubId),
     officials: await listOfficialsWithLegacy(),
@@ -146,12 +103,6 @@ export async function handlePatchSettings(
   try {
     const actor = getAuthUser(res).id;
     const body = (req.body ?? {}) as {
-      name?: unknown;
-      tagline?: unknown;
-      label?: unknown;
-      operator_name?: unknown;
-      contact_email?: unknown;
-      who_runs_this?: unknown;
       brief_recipient_emails?: unknown;
       officials?: unknown;
       announcement_authors?: unknown;
@@ -159,59 +110,6 @@ export async function handlePatchSettings(
       support_threshold?: unknown;
       comment_identity_mode?: unknown;
     };
-
-    // Short identity strings. Empty is meaningful — it clears the row and
-    // returns the hub to the shared default — so they are stored as written.
-    for (const [field, key] of [
-      ["name", KEYS.IDENTITY_NAME],
-      ["tagline", KEYS.IDENTITY_TAGLINE],
-      ["label", KEYS.IDENTITY_LABEL],
-    ] as const) {
-      const value = (body as Record<string, unknown>)[field];
-      if (value === undefined) continue;
-      if (typeof value !== "string") {
-        res.status(400).json({ error: `${field} must be a string.` });
-        return;
-      }
-      await setSetting(currentHubId(), key, value.trim(), actor);
-    }
-
-    if (body.operator_name !== undefined) {
-      if (typeof body.operator_name !== "string") {
-        res.status(400).json({ error: "operator_name must be a string." });
-        return;
-      }
-      await setOperatorName(currentHubId(), body.operator_name, actor);
-    }
-
-    if (body.contact_email !== undefined) {
-      if (typeof body.contact_email !== "string") {
-        res.status(400).json({ error: "contact_email must be a string." });
-        return;
-      }
-      // Shape-checked, not verified. A hub that types its address wrong gets
-      // a wrong address on its terms page either way; what this catches is a
-      // value that is not an address at all, which would render as prose in
-      // the middle of a legal document.
-      const cleaned = body.contact_email.trim();
-      if (cleaned !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned)) {
-        res.status(400).json({
-          error: `"${cleaned}" is not an email address. The legal pages print this verbatim.`,
-        });
-        return;
-      }
-      await setContactEmail(currentHubId(), cleaned, actor);
-    }
-
-    if (body.who_runs_this !== undefined) {
-      if (typeof body.who_runs_this !== "string") {
-        res.status(400).json({ error: "who_runs_this must be a string." });
-        return;
-      }
-      // An empty string is meaningful: it clears the row and returns the hub
-      // to the shared default. So it is stored as written, not rejected.
-      await setWhoRunsThis(currentHubId(), body.who_runs_this, actor);
-    }
 
     if (body.brief_recipient_emails !== undefined) {
       if (!Array.isArray(body.brief_recipient_emails)) {

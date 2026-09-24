@@ -241,3 +241,233 @@
 .admin-settings-section-body .form-label {
   display: block;
 }
+
+/* --- One Settings page: section list + one section's form (2026-09-24) --- */
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+  margin-top: var(--space-md);
+}
+
+.settings-nav {
+  position: sticky;
+  top: var(--space-md);
+}
+
+.settings-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: var(--font-size-sm, 0.95rem);
+}
+
+.settings-nav-link:hover {
+  background: var(--color-surface-muted);
+}
+
+.settings-nav-link.is-active {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.settings-nav-link.is-disabled {
+  color: var(--color-text-subtle);
+  cursor: default;
+}
+
+.settings-nav-link.is-disabled:hover {
+  background: none;
+}
+
+.settings-nav-note {
+  font-size: 0.75rem;
+  color: var(--color-text-subtle);
+}
+
+.settings-nav-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-warning, #b7791f);
+  flex: none;
+}
+
+.settings-content {
+  min-width: 0;
+}
+
+.settings-section {
+  padding: var(--space-md) var(--space-lg) var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.settings-section-title {
+  margin: 0 0 var(--space-xs);
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  color: var(--color-brand);
+}
+
+.settings-section-intro .form-hint {
+  margin: 0 0 var(--space-md);
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: var(--space-md);
+}
+
+.settings-field .form-label {
+  display: block;
+  margin-bottom: var(--space-xs);
+}
+
+.settings-field .form-hint {
+  margin: 0 0 var(--space-sm);
+}
+
+.settings-field .form-input,
+.settings-field .form-textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-document-editor {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.settings-document-meta {
+  margin-top: var(--space-xs);
+}
+
+.settings-placeholders code {
+  font-size: 0.8rem;
+}
+
+.settings-document-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.settings-document-status .form-hint {
+  margin: 0;
+}
+
+.settings-image--logo .post-image-picker img {
+  max-height: 96px;
+  width: auto;
+}
+
+.settings-color {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.settings-color-swatch {
+  width: 44px;
+  height: 36px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--color-surface);
+}
+
+.settings-field .settings-color-text {
+  width: 110px;
+  display: inline-block;
+}
+
+.settings-boolean-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-boolean .form-hint {
+  margin: var(--space-xs) 0 0 1.6rem;
+}
+
+.settings-readonly {
+  margin: 0 0 var(--space-xs);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.9rem;
+}
+
+.settings-form-footer {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.settings-unsaved {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.settings-last-changed {
+  margin: var(--space-sm) 0 0;
+  color: var(--color-text-subtle);
+  font-size: 0.85rem;
+}
+
+.settings-legacy .admin-settings-panel:first-child {
+  margin-top: 0;
+}
+
+@media (max-width: 760px) {
+  .settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-md);
+  }
+
+  .settings-nav {
+    position: static;
+  }
+
+  .settings-nav ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .settings-nav-link {
+    border: 1px solid var(--color-border);
+    padding: 0.35rem 0.7rem;
+  }
+
+  .settings-section {
+    padding: var(--space-md);
+  }
+}

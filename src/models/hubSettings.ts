@@ -24,6 +24,10 @@ export const KEYS = {
   IDENTITY_BANNER_URL: "identity.banner_url",
   IDENTITY_BANNER_ALT: "identity.banner_alt",
   IDENTITY_THEME: "identity.theme",
+  // Added 2026-09-24 (Adam, Phase 1 part five): an uploaded image shown in
+  // the header beside the hub's name. Public, because the header renders it
+  // for every visitor — the one key that session added to the public list.
+  IDENTITY_LOGO_URL: "identity.logo_url",
 
   COPY_INTRO_BODY: "copy.intro_body",
   COPY_RESIDENCY_INTRO: "copy.residency_intro",
@@ -84,6 +88,15 @@ export const KEYS = {
   PLUGIN_CONVERSATION_POLIS_URL: "plugin.conversation.polis_url",
   PLUGIN_WORDCLOUD_ONBOARDING_ID: "plugin.wordcloud.onboarding_id",
   PLUGIN_FEEDBACK_RECIPIENTS: "plugin.feedback.recipients",
+
+  PLUGIN_DIGEST_ENABLED: "plugin.digest.enabled",
+  PLUGIN_ADMIN_DIGEST_ENABLED: "plugin.admin_digest.enabled",
+  // The hour of the day, 0–23 in UTC, the resident digest goes out. Added
+  // 2026-09-24 (Adam). STORED ONLY until Phase 2: the digest cron runs once
+  // a day with no hub in scope, and `users` has no hub_id, so running it per
+  // hub would mail every user on the shared table once per hub. Phase 2 makes
+  // the cron hourly and per hub, and this is what it reads.
+  PLUGIN_DIGEST_SEND_HOUR: "plugin.digest.send_hour",
 
   PLUGIN_MEETING_SOURCE_URL: "plugin.meeting_summary.source_url",
   PLUGIN_MEETING_CONNECTOR_ID: "plugin.meeting_summary.connector_id",
@@ -191,8 +204,8 @@ export const ENV_FALLBACKS: Readonly<Record<string, readonly string[]>> = {
   [KEYS.PLUGIN_NEWS_SYNC_SOURCE_URL]: ["FLOYD_NEWS_SOURCE_URL"],
   [KEYS.PLUGIN_NEWS_SYNC_MAX_PER_RUN]: ["FLOYD_NEWS_SYNC_MAX_PER_RUN"],
 
-  "plugin.digest.enabled": ["DIGEST_ENABLED"],
-  "plugin.admin_digest.enabled": ["ADMIN_DIGEST_ENABLED"],
+  [KEYS.PLUGIN_DIGEST_ENABLED]: ["DIGEST_ENABLED"],
+  [KEYS.PLUGIN_ADMIN_DIGEST_ENABLED]: ["ADMIN_DIGEST_ENABLED"],
   "plugin.meeting_summary.enabled": ["MEETING_SUMMARY_ENABLED"],
   "plugin.news_sync.enabled": ["FLOYD_NEWS_SYNC_ENABLED"],
 };
@@ -220,6 +233,7 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   KEYS.IDENTITY_BANNER_URL,
   KEYS.IDENTITY_BANNER_ALT,
   KEYS.IDENTITY_THEME,
+  KEYS.IDENTITY_LOGO_URL,
 
   KEYS.COPY_INTRO_BODY,
   KEYS.COPY_RESIDENCY_INTRO,

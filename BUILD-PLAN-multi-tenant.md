@@ -115,7 +115,7 @@ Key naming is dotted, lowercase, and namespaced. The canonical keys:
 
 | Namespace | Keys |
 |---|---|
-| `identity.` | `identity.name`, `identity.label`, `identity.tagline`, `identity.page_title`, `identity.description`, `identity.banner_url`, `identity.banner_alt`, `identity.theme` |
+| `identity.` | `identity.name`, `identity.label`, `identity.tagline`, `identity.page_title`, `identity.description`, `identity.banner_url`, `identity.banner_alt`, `identity.theme`, `identity.logo_url` (added 2026-09-24, Adam) |
 | `copy.` | `copy.intro_body`, `copy.residency_intro`, `copy.welcome`, `copy.about`, `copy.resident_noun`, `copy.governing_body_name`, `copy.governing_body_short` |
 | `legal.` | `legal.terms`, `legal.privacy`, `legal.code_of_conduct`, `legal.proposal_best_practices` |
 | `people.` | `people.admin_emails`, `people.board_emails`, `people.brief_recipients`, `people.announcement_authors` |
@@ -143,7 +143,8 @@ reader (`src/services/hubSettings.ts`) owns parsing; callers never parse
 **Public subset.** Only `identity.*`, `copy.*`, `legal.*`, `beta.enabled`,
 `beta.waitlist_enabled`, `moderation.comment_identity_mode`,
 `plugin.<id>.enabled`, `plugin.conversation.polis_url` and
-`plugin.wordcloud.onboarding_id` are served by `/api/hub-config`. `people.*`,
+`plugin.wordcloud.onboarding_id` are served by `/api/hub-config`
+(`identity.*` includes `identity.logo_url`, added 2026-09-24). `people.*`,
 `email.*`, `beta.allowlist`, `beta.demo_mode`, `beta.demo_bypass_code` and
 every other `plugin.<id>.<setting>` are admin-only.
 
@@ -423,6 +424,36 @@ After that, the seven entries in `scripts/place-name-allowlist.txt` marked
 - The place-name check keeps Floyd's names only. Widening it to every hub's
   names belongs with that seed-data work, since Athens's demo set in `src/` is
   the only thing it would catch today.
+
+#### Hub admin edits in the UI (Phase 1 part five, 2026-09-24)
+
+Recorded from Adam's part-five prompt, whose steps list these values; the
+code's copy is `src/shared/hubSettingsSections.ts`, and the settings endpoint
+(`PUT /admin/hub/settings`) refuses any key not in it. Change both or neither.
+
+| Section | Keys | Notes |
+|---|---|---|
+| Identity | `identity.name`, `.label`, `.tagline`, `.page_title`, `.description`, `.banner_url`, `.banner_alt`, `.logo_url`, `.theme` | `identity.name` is the display name; the registry name (`hubs.name`) is unchanged by it. Banner and logo upload under `hubs/<hub id>/` in the image bucket. |
+| Copy & pages | `copy.intro_body`, `.residency_intro`, `.welcome`, `.about`, `.resident_noun`, `.governing_body_name`, `.governing_body_short` | `copy.welcome` and `copy.about` are documents. |
+| Legal | `legal.terms`, `.privacy`, `.code_of_conduct`, `.proposal_best_practices`, `.operator_name`, `.contact_email`, `.who_runs_this` | A document saved identical to its shared template is stored as `""`, so the hub keeps following the template ("restore default"). |
+| Email | `email.from_name`, `email.postal_address`, `plugin.digest.enabled`, `plugin.digest.send_hour`, `plugin.admin_digest.enabled` | `email.from_address` is shown read-only: the sending domain is the platform's. |
+| Mode | `hubs.mode` (beta / live) | Its own endpoint with the emailed-code step-up; a demo hub shows "set by the platform". |
+| Admins & board | `people.admin_emails`, `people.board_emails` | Existing `POST /admin/hub/people`, step-up. |
+| Officials | officials roster + `people.brief_recipients` | Existing `PATCH /admin/settings`. |
+
+**Three keys added with Adam, 2026-09-24:**
+- `identity.logo_url` — shown in the header beside the hub's name. **Public**:
+  the one addition to the public subset in part five, because the header
+  renders it for every visitor.
+- `identity.theme` is now read: a `#rrggbb` accent the UI applies over
+  `--color-primary` (and a derived hover shade) at boot. Empty = default palette.
+- `plugin.digest.send_hour` — 0–23, UTC. **Stored only until Phase 2.** The
+  digest cron runs once a day (13:00 UTC) with no hub in scope, and `users`
+  has no `hub_id`, so running it per hub now would mail every user on the
+  shared table once per hub. `plugin.digest.enabled` and
+  `plugin.admin_digest.enabled` are stored per hub on the same terms; the
+  cron still reads `DIGEST_ENABLED` / `ADMIN_DIGEST_ENABLED`. Phase 2 makes the
+  digest crons hourly and per hub, and they read these three.
 
 _checklist to be pasted_
 
