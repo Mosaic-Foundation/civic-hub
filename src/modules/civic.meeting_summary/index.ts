@@ -84,7 +84,20 @@ export {
   resolveEffectiveInstructions,
 } from "./prompts.js";
 
-export { floydMinutesConnector } from "./connectors/floydMinutes.js";
+export { minutesPageConnector, sitePdfPattern } from "./connectors/minutesPage.js";
+
+export {
+  AUTO_ORDER,
+  CONNECTORS,
+  PAGE_CONNECTOR_IDS,
+  canonicalConnectorId,
+  isConfigured,
+} from "./connectors/index.js";
+
+export {
+  resolveMeetingSummaryConfig,
+  type MeetingSummaryResolution,
+} from "./config.js";
 
 export {
   channelFeedUrl,

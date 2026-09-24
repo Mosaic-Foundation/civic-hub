@@ -363,7 +363,7 @@ export const wixCmsConnector: MeetingSourceConnector = {
     const pageUrl = (cfg.source_url ?? "").trim();
     if (!pageUrl) {
       throw new Error(
-        "MEETING_SOURCE_URL must be set for the wix-cms connector — point it at " +
+        "plugin.meeting_summary.source_url must be set for the wix-cms connector — point it at " +
           "the jurisdiction's agendas-and-minutes page.",
       );
     }
@@ -372,7 +372,7 @@ export const wixCmsConnector: MeetingSourceConnector = {
     try {
       siteOrigin = new URL(pageUrl).origin;
     } catch {
-      throw new Error(`MEETING_SOURCE_URL="${pageUrl}" is not a valid URL.`);
+      throw new Error(`plugin.meeting_summary.source_url="${pageUrl}" is not a valid URL.`);
     }
 
     let collection = (cfg.collection_name ?? "").trim();
@@ -381,8 +381,8 @@ export const wixCmsConnector: MeetingSourceConnector = {
       if (!found) {
         throw new Error(
           `Could not determine which CMS collection ${pageUrl} displays. Set ` +
-            `MEETING_WIX_COLLECTION explicitly (open the page, view source, and ` +
-            `search for "collectionName"), or use a different MEETING_CONNECTOR_ID.`,
+            `plugin.meeting_summary.wix_collection explicitly (open the page, view source, and ` +
+            `search for "collectionName"), or use a different plugin.meeting_summary.connector_id.`,
         );
       }
       collection = found;
@@ -409,7 +409,7 @@ export const wixCmsConnector: MeetingSourceConnector = {
     if (rows.length > 0 && entries.length === 0) {
       console.warn(
         `[meeting-summary] collection "${collection}" had ${rows.length} row(s) but ` +
-          `none survived filtering. Check MEETING_TITLE_FILTER / MEETING_TYPE_EXCLUDE ` +
+          `none survived filtering. Check plugin.meeting_summary.title_filter / plugin.meeting_summary.type_exclude ` +
           `against the collection's actual meeting-type values.`,
       );
     }

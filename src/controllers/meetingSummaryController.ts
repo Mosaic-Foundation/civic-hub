@@ -1,7 +1,7 @@
 // Meeting-summary controllers — five HTTP surfaces in one file:
 //
-//   POST /internal/meeting-summary/run
-//     Cron-triggered. Loads the configured MeetingSourceConnector,
+//   GET /internal/meeting-summary/run
+//     Cron-triggered. For each hub, loads its configured MeetingSourceConnector,
 //     discovers meeting entries, summarizes new ones via Claude, creates
 //     a civic.meeting_summary draft process per entry. Protected by
 //     CRON_SECRET bearer auth (shared with the digest cron). Respects
@@ -18,9 +18,10 @@
 //   GET /meeting-summary/:id
 //     Public read of published summaries only.
 
-// TODO(phase2): this runs from a cron with no hub in scope, so the reads
-// below resolve from env rather than per hub. Phase 2 makes crons iterate
-// hubs and run once per hub.
+// The cron runs once per active hub, inside that hub's scope
+// (src/services/cronHubs.ts), so every setting it reads is that hub's
+// `plugin.meeting_summary.*` — see src/modules/civic.meeting_summary/config.ts.
+// Manual runs may pass `?hub=<slug>` to run one hub only.
 
 import { Request, Response } from "express";
 import { emitEvent } from "../events/eventEmitter.js";
@@ -32,19 +33,19 @@ import {
   discoverMeetings,
   editMeetingSummary,
   emitCreationEvents,
-  floydMinutesConnector,
   getAdminReadModel,
   getAdminSummary,
   getPublicReadModel,
   acceptRevision,
   discardRevision,
-  resolveEffectiveInstructions,
   sourceFingerprints,
   stageRevision,
   summarizeMeeting,
   UPGRADEABLE_SOURCE_TYPES,
-  wixCmsConnector,
-  youtubeChannelConnector,
+  AUTO_ORDER,
+  CONNECTORS,
+  isConfigured,
+  resolveMeetingSummaryConfig,
   type MeetingEntry,
   type MeetingSourceConnector,
   type MeetingSourceType,
@@ -71,14 +72,11 @@ import {
   findBrokenPublications,
   type BrokenPublication,
 } from "../services/feedHealth.js";
-import { getSettingSync, isPluginEnabledSync, getAdminEmailsSync } from "../services/hubSettings.js";
+import { getSettingSync, getAdminEmailsSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
+import { processJurisdiction } from "../config/hub.js";
+import { forEachActiveHub, requestedHub } from "../services/cronHubs.js";
 
-// "auto" tries every connector whose configuration is present, in descending
-// order of source quality, and uses the first that returns meetings. This is
-// what makes "point it at your government's site" true across platforms
-// without the operator having to know which kind of site they have.
-const DEFAULT_CONNECTOR_ID = "auto";
 const CRON_ACTOR = "system:meeting-summary-cron";
 const DEFAULT_MAX_PER_RUN = 3;
 
@@ -97,36 +95,6 @@ function maxPerRun(): number {
   if (!Number.isFinite(n) || n < 1) return DEFAULT_MAX_PER_RUN;
   return Math.floor(n);
 }
-
-// Connector registry — supporting a new publishing platform is a new entry
-// here plus one module under modules/civic.meeting_summary/connectors.
-//
-//   wix-cms             Reads the CMS collection behind a Wix page. Structured
-//                       rows, works even when the page renders client-side.
-//                       Needs MEETING_SOURCE_URL.
-//   floyd-minutes-page  Generic HTML + Claude reader. Works on ANY
-//                       server-rendered listing page, whatever engine — the
-//                       universal fallback. Needs MEETING_SOURCE_URL.
-//   youtube-channel     Reads a government's YouTube channel feed. Recordings
-//                       only, no documents. Needs MEETING_YOUTUBE_CHANNEL_ID.
-const CONNECTORS: Record<string, MeetingSourceConnector> = {
-  "wix-cms": wixCmsConnector,
-  "floyd-minutes-page": floydMinutesConnector,
-  "youtube-channel": youtubeChannelConnector,
-};
-
-/** Connectors that read a page and therefore require MEETING_SOURCE_URL. */
-const PAGE_CONNECTOR_IDS = new Set(["wix-cms", "floyd-minutes-page"]);
-
-/**
- * The order "auto" tries connectors in — best source first.
- *
- * Structured data beats prompt-driven HTML extraction (exact fields, no model
- * drift, full history). Documents beat recordings, because minutes are the
- * authoritative record and a transcript is a fallback. A connector whose
- * configuration is absent is skipped, not failed.
- */
-const AUTO_ORDER = ["wix-cms", "floyd-minutes-page", "youtube-channel"] as const;
 
 /**
  * Identity of a meeting for dedupe and upgrade matching.
@@ -201,13 +169,6 @@ function offersNewSources(
   return false;
 }
 
-/** Whether a connector has enough configuration to be worth attempting. */
-function isConfigured(id: string, cfg: MeetingSummaryConfig): boolean {
-  if (PAGE_CONNECTOR_IDS.has(id)) return Boolean(cfg.source_url);
-  if (id === "youtube-channel") return Boolean(cfg.channel_id);
-  return true;
-}
-
 function summaryState(
   record: { state: Record<string, unknown> },
 ): MeetingSummaryProcessState {
@@ -216,10 +177,6 @@ function summaryState(
 
 function isApprovalStatus(s: string): s is MeetingSummaryApprovalStatus {
   return s === "pending" || s === "approved" || s === "published";
-}
-
-function enabled(): boolean {
-  return isPluginEnabledSync("meeting_summary");
 }
 
 function requireCronSecret(req: Request): boolean {
@@ -233,11 +190,6 @@ function requireCronSecret(req: Request): boolean {
 
 function modelName(): string {
   return process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL;
-}
-
-function connectorFor(id: string | undefined): MeetingSourceConnector | null {
-  const lookup = id?.trim() || DEFAULT_CONNECTOR_ID;
-  return CONNECTORS[lookup] ?? null;
 }
 
 function autoPublish(): boolean {
@@ -417,7 +369,7 @@ async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
  * to return 500 and tell nobody.
  */
 async function failRun(
-  res: Response,
+  res: RunSink,
   status: number,
   message: string,
   partial: Partial<CronOutcome> = {},
@@ -501,6 +453,23 @@ async function runDiscovery(
 
 // --- POST /internal/meeting-summary/run ------------------------------------
 
+/**
+ * Where one hub's run writes its outcome. The run was written against an
+ * Express response and still reads that way — `res.status(…).json(…)` — but
+ * with several hubs per request no single run owns the response, so each
+ * writes here and the handler reports them together.
+ */
+export class RunSink {
+  result: { status: number; body: Record<string, unknown> } | null = null;
+  status(code: number): { json(body: Record<string, unknown>): void } {
+    return {
+      json: (body) => {
+        this.result = { status: code, body };
+      },
+    };
+  }
+}
+
 export async function handleRunMeetingSummary(
   req: Request,
   res: Response,
@@ -510,8 +479,53 @@ export async function handleRunMeetingSummary(
     return;
   }
 
-  if (!enabled()) {
-    res.status(200).json({ skipped: true, reason: "meeting summary disabled" });
+  const only = requestedHub(req.query);
+  if (only === undefined) {
+    res.status(400).json({ error: "hub must be a hub slug" });
+    return;
+  }
+
+  const runs = await forEachActiveHub(
+    async () => {
+      const sink = new RunSink();
+      await runMeetingSummaryForHub(sink);
+      return sink.result ?? { status: 500, body: { error: "run wrote no outcome" } };
+    },
+    { onlyHub: only },
+  );
+  if (only && runs.length === 0) {
+    res.status(404).json({ error: `no active hub "${only}"` });
+    return;
+  }
+
+  // One failing hub fails the cron, so Vercel still alerts on it — the
+  // behaviour a single-hub deployment always had.
+  const hubs: Record<string, unknown> = {};
+  let status = 200;
+  for (const run of runs) {
+    if (run.error !== undefined) {
+      hubs[run.hub_id] = { error: run.error };
+      status = 500;
+    } else if (run.result) {
+      hubs[run.hub_id] = run.result.body;
+      status = Math.max(status, run.result.status);
+    }
+  }
+  res.status(status).json({ hubs });
+}
+
+/**
+ * One hub's run, inside that hub's scope: its connector, its source, its
+ * filters, its admins for the alert, its jurisdiction on what it creates.
+ */
+export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
+  const resolved = resolveMeetingSummaryConfig(modelName());
+  if (resolved.status === "skipped") {
+    res.status(200).json({ skipped: true, reason: resolved.reason });
+    return;
+  }
+  if (resolved.status === "invalid") {
+    await failRun(res, 500, resolved.reason, { connector_id: resolved.connectorId });
     return;
   }
 
@@ -524,54 +538,7 @@ export async function handleRunMeetingSummary(
     return;
   }
 
-  const connectorId = getSettingSync(KEYS.PLUGIN_MEETING_CONNECTOR_ID)?.trim() || DEFAULT_CONNECTOR_ID;
-  if (connectorId !== "auto" && !CONNECTORS[connectorId]) {
-    await failRun(
-      res,
-      500,
-      `Unknown MEETING_CONNECTOR_ID "${connectorId}". Known: auto, ${Object.keys(CONNECTORS).join(", ")}`,
-      { connector_id: connectorId },
-    );
-    return;
-  }
-
-  const sourceUrl = getSettingSync(KEYS.PLUGIN_MEETING_SOURCE_URL)?.trim() ?? "";
-  const channelId = getSettingSync(KEYS.PLUGIN_MEETING_YOUTUBE_CHANNEL_ID)?.trim() ?? "";
-
-  const cfg: MeetingSummaryConfig = {
-    source_url: sourceUrl,
-    channel_id: channelId,
-    title_filter: getSettingSync(KEYS.PLUGIN_MEETING_TITLE_FILTER)?.trim() ?? "",
-    type_exclude: getSettingSync(KEYS.PLUGIN_MEETING_TYPE_EXCLUDE)?.trim() ?? "",
-    collection_name: getSettingSync(KEYS.PLUGIN_MEETING_WIX_COLLECTION)?.trim() ?? "",
-    extraction_instructions: resolveEffectiveInstructions(
-      getSettingSync(KEYS.PLUGIN_MEETING_EXTRACTION_INSTRUCTIONS) ?? "",
-    ),
-    model: modelName(),
-  };
-
-  if (connectorId !== "auto" && !isConfigured(connectorId, cfg)) {
-    await failRun(
-      res,
-      500,
-      PAGE_CONNECTOR_IDS.has(connectorId)
-        ? `MEETING_SOURCE_URL must be set for the "${connectorId}" connector.`
-        : `MEETING_YOUTUBE_CHANNEL_ID must be set for the "${connectorId}" connector.`,
-      { connector_id: connectorId },
-    );
-    return;
-  }
-
-  if (connectorId === "auto" && !sourceUrl && !channelId) {
-    await failRun(
-      res,
-      500,
-      "No source configured. Set MEETING_SOURCE_URL (the jurisdiction's " +
-        "agendas-and-minutes page) and/or MEETING_YOUTUBE_CHANNEL_ID.",
-      { connector_id: "auto" },
-    );
-    return;
-  }
+  const { connectorId, cfg } = resolved;
 
   const started = Date.now();
   let discovered = 0;
@@ -796,7 +763,7 @@ export async function handleRunMeetingSummary(
           definition: { type: "civic.meeting_summary", version: "0.1" },
           title: `Meeting summary: ${entry.meeting_date}`,
           description,
-          jurisdiction: "us-va-floyd",
+          jurisdiction: processJurisdiction(),
           createdBy: CRON_ACTOR,
           state: createInput as unknown as Record<string, unknown>,
         });

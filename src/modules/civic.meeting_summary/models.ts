@@ -322,6 +322,11 @@ export interface MeetingSummaryConfig {
   extraction_instructions: string;
   /** Anthropic model name to use for both prompts. */
   model: string;
+  /**
+   * The hub's `copy.governing_body_name`, used only in the worked examples of
+   * the minutes-page discovery prompt. Optional; absent reads as generic.
+   */
+  governing_body_name?: string;
 }
 
 // --- Connector interface ---------------------------------------------------

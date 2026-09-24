@@ -2,8 +2,13 @@
   "_comment": [
     "Floyd's settings that used to be compiled into src/ as defaults, or lived only as example values in .env.example.",
     "Read by scripts/seed-hub-settings.ts and by nothing else. An environment variable that is set wins over a value here, so seeding from production's environment writes production's values.",
-    "news_sync: Floyd's news sync has always been the Wix blog feed of floydcova.gov. Until 2026-09-24 that URL was the code default."
+    "news_sync: Floyd's news sync has always been the Wix blog feed of floydcova.gov. Until 2026-09-24 that URL was the code default.",
+    "meeting_summary: Floyd's production configuration, which .env.example carried as its worked example until 2026-09-24. The connector ladder's defaults are empty; these are Floyd's."
   ],
   "plugin.news_sync.connector": "wix-cms",
-  "plugin.news_sync.source_url": "https://www.floydcova.gov/blog-feed.xml"
+  "plugin.news_sync.source_url": "https://www.floydcova.gov/blog-feed.xml",
+  "plugin.meeting_summary.connector_id": "auto",
+  "plugin.meeting_summary.source_url": "https://www.floydcova.gov/agendas-minutes",
+  "plugin.meeting_summary.youtube_channel_id": "UCxyzO8F2UfiN1NVOax2s27Q",
+  "plugin.meeting_summary.type_exclude": "EMS Board,EMS Meeting"
 }

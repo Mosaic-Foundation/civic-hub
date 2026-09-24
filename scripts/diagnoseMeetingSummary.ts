@@ -1,11 +1,15 @@
 // Meeting-summary diagnostic + manual run.
 //
-//   npx tsx --env-file=.env scripts/diagnoseMeetingSummary.ts            # dry run
-//   npx tsx --env-file=.env scripts/diagnoseMeetingSummary.ts --summarize # + Claude
+//   npx tsx --env-file=.env scripts/diagnoseMeetingSummary.ts --hub <slug>             # dry run
+//   npx tsx --env-file=.env scripts/diagnoseMeetingSummary.ts --hub <slug> --summarize # + Claude
+//
+// It diagnoses ONE hub, reading that hub's plugin.meeting_summary.* settings
+// through the same resolver the cron uses (src/modules/civic.meeting_summary/
+// config.ts), so what it reports is what the cron would do for that hub.
 //
 // WHY THIS EXISTS
-// The cron went quiet for weeks in 2026 and nothing said so: Floyd County
-// moved its agendas-and-minutes page to client-side rendering, `fetch()`
+// The cron went quiet for weeks in 2026 and nothing said so: the first hub's
+// county moved its agendas-and-minutes page to client-side rendering, `fetch()`
 // started returning a shell with no meeting links, and "discovery found 0
 // meetings" is indistinguishable from "there were no meetings" unless
 // something goes looking. This script is that something — it checks the
@@ -18,36 +22,23 @@
 // end-to-end (this DOES spend Anthropic tokens; it still writes nothing).
 
 import {
+  AUTO_ORDER,
+  CONNECTORS,
   discoverMeetings,
   summarizeMeeting,
   channelFeedUrl,
-  floydMinutesConnector,
+  isConfigured,
   isValidChannelId,
-  resolveEffectiveInstructions,
-  wixCmsConnector,
-  youtubeChannelConnector,
+  resolveMeetingSummaryConfig,
   type MeetingEntry,
-  type MeetingSourceConnector,
-  type MeetingSummaryConfig,
 } from "../src/modules/civic.meeting_summary/index.js";
 import { callClaude, DEFAULT_MODEL } from "../src/utils/anthropic.js";
 import { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../src/utils/http.js";
 import { fetchYouTubeTranscript } from "../src/utils/youtube.js";
-
-const CONNECTORS: Record<string, MeetingSourceConnector> = {
-  "wix-cms": wixCmsConnector,
-  "floyd-minutes-page": floydMinutesConnector,
-  "youtube-channel": youtubeChannelConnector,
-};
-const PAGE_CONNECTOR_IDS = new Set(["wix-cms", "floyd-minutes-page"]);
-const AUTO_ORDER = ["wix-cms", "floyd-minutes-page", "youtube-channel"];
-const DEFAULT_CONNECTOR_ID = "auto";
-
-function isConfigured(id: string, cfg: MeetingSummaryConfig): boolean {
-  if (PAGE_CONNECTOR_IDS.has(id)) return Boolean(cfg.source_url);
-  if (id === "youtube-channel") return Boolean(cfg.channel_id);
-  return true;
-}
+import { getHubBySlug } from "../src/db/hubs.js";
+import { fetchHubSettings } from "../src/db/hubSettingsStore.js";
+import { withHubScope } from "../src/config/hubContext.js";
+import { getAdminEmailsSync } from "../src/services/hubSettings.js";
 
 const ok = (s: string) => console.log(`  ✅ ${s}`);
 const warn = (s: string) => console.log(`  ⚠️  ${s}`);
@@ -70,6 +61,23 @@ function reportKey(name: string, opts: { required: boolean; hint: string }): boo
 }
 
 async function main(): Promise<void> {
+  const i = process.argv.indexOf("--hub");
+  const slug = i >= 0 ? process.argv[i + 1] : undefined;
+  if (!slug) {
+    console.error("Usage: diagnoseMeetingSummary.ts --hub <slug> [--summarize]");
+    process.exit(2);
+  }
+  const hub = await getHubBySlug(slug);
+  if (!hub) {
+    console.error(`No hub "${slug}".`);
+    process.exit(2);
+  }
+  const settings = await fetchHubSettings(hub.id);
+  console.log(`Hub: ${hub.id} (${hub.name})`);
+  await withHubScope(hub, settings, diagnose);
+}
+
+async function diagnose(): Promise<void> {
   const doSummarize = process.argv.includes("--summarize");
 
   console.log("Meeting-summary pipeline diagnostic");
@@ -78,15 +86,18 @@ async function main(): Promise<void> {
   // --- 1. Configuration ----------------------------------------------------
   heading("1. Configuration");
 
-  const enabled = process.env.MEETING_SUMMARY_ENABLED?.trim().toLowerCase() !== "false";
-  if (enabled) ok("MEETING_SUMMARY_ENABLED is on");
-  else bad("MEETING_SUMMARY_ENABLED=false — the cron exits immediately without doing anything");
-
-  const connectorId = process.env.MEETING_CONNECTOR_ID?.trim() || DEFAULT_CONNECTOR_ID;
-  if (connectorId !== "auto" && !CONNECTORS[connectorId]) {
-    bad(`MEETING_CONNECTOR_ID="${connectorId}" is unknown. Known: auto, ${Object.keys(CONNECTORS).join(", ")}`);
+  const resolved = resolveMeetingSummaryConfig(
+    process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL,
+  );
+  if (resolved.status === "skipped") {
+    bad(`${resolved.reason} — the cron skips this hub without doing anything`);
     process.exit(1);
   }
+  if (resolved.status === "invalid") {
+    bad(resolved.reason);
+    process.exit(1);
+  }
+  const { connectorId, cfg } = resolved;
   if (connectorId === "auto") {
     ok(`connector "auto" — tries ${AUTO_ORDER.join(" → ")}, first with meetings wins`);
   } else {
@@ -106,55 +117,24 @@ async function main(): Promise<void> {
     hint: "without it, YouTube transcripts fall back to a path that usually fails on cloud hosts",
   });
 
-  const admins = (process.env.CIVIC_ADMIN_EMAILS ?? "")
-    .split(",").map((e) => e.trim()).filter(Boolean);
-  if (admins.length > 0) ok(`CIVIC_ADMIN_EMAILS has ${admins.length} recipient(s) — failures will be emailed`);
-  else bad("CIVIC_ADMIN_EMAILS is empty — nobody receives the failure alert. This cron would fail silently.");
+  const admins = getAdminEmailsSync();
+  if (admins.length > 0) ok(`people.admin_emails has ${admins.length} recipient(s) — failures will be emailed`);
+  else bad("people.admin_emails is empty — nobody receives the failure alert. This cron would fail silently.");
 
-  const channelId = process.env.MEETING_YOUTUBE_CHANNEL_ID?.trim() ?? "";
-  const sourceUrl = process.env.MEETING_SOURCE_URL?.trim() ?? "";
-  const titleFilter = process.env.MEETING_TITLE_FILTER?.trim() ?? "";
-
+  const channelId = cfg.channel_id ?? "";
   if (connectorId === "youtube-channel" || (connectorId === "auto" && channelId)) {
-    if (!channelId) {
-      bad("MEETING_YOUTUBE_CHANNEL_ID is not set — the youtube-channel connector cannot run");
-      process.exit(1);
-    } else if (!isValidChannelId(channelId)) {
-      bad(`MEETING_YOUTUBE_CHANNEL_ID="${channelId}" is not a UC… channel id (an @handle will not work)`);
-      process.exit(1);
-    } else {
-      ok(`channel ${channelId}`);
-      console.log(`     feed: ${channelFeedUrl(channelId)}`);
-    }
-    if (titleFilter) ok(`title filter: "${titleFilter}"`);
-    else warn("MEETING_TITLE_FILTER is empty — every video on the channel counts as a meeting");
-  }
-
-  if (PAGE_CONNECTOR_IDS.has(connectorId) || (connectorId === "auto" && sourceUrl)) {
-    if (!sourceUrl) {
-      bad(`MEETING_SOURCE_URL is not set — required by the "${connectorId}" connector`);
+    if (!isValidChannelId(channelId)) {
+      bad(`plugin.meeting_summary.youtube_channel_id="${channelId}" is not a UC… channel id (an @handle will not work)`);
       process.exit(1);
     }
-    ok(`source page: ${sourceUrl}`);
+    ok(`channel ${channelId}`);
+    console.log(`     feed: ${channelFeedUrl(channelId)}`);
+    if (cfg.title_filter) ok(`title filter: "${cfg.title_filter}"`);
+    else warn("plugin.meeting_summary.title_filter is empty — every video on the channel counts as a meeting");
   }
-  if (connectorId === "auto" && !sourceUrl && !channelId) {
-    bad("Neither MEETING_SOURCE_URL nor MEETING_YOUTUBE_CHANNEL_ID is set — nothing to try");
-    process.exit(1);
-  }
-  const typeExclude = process.env.MEETING_TYPE_EXCLUDE?.trim() ?? "";
-  if (typeExclude) ok(`excluding meeting types matching: "${typeExclude}"`);
+  if (cfg.source_url) ok(`source page: ${cfg.source_url}`);
+  if (cfg.type_exclude) ok(`excluding meeting types matching: "${cfg.type_exclude}"`);
 
-  const cfg: MeetingSummaryConfig = {
-    source_url: sourceUrl,
-    channel_id: channelId,
-    title_filter: titleFilter,
-    type_exclude: typeExclude,
-    collection_name: process.env.MEETING_WIX_COLLECTION?.trim() ?? "",
-    extraction_instructions: resolveEffectiveInstructions(
-      process.env.MEETING_EXTRACTION_INSTRUCTIONS ?? "",
-    ),
-    model: process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL,
-  };
   ok(`model: ${cfg.model}`);
 
   // --- 2. Discovery --------------------------------------------------------
@@ -200,15 +180,16 @@ async function main(): Promise<void> {
     console.log("");
     if (winner === "youtube-channel" || connectorId === "youtube-channel") {
       console.log("    1. Open the feed URL above in a browser. Does it list videos?");
-      console.log("    2. If it lists videos but we found no meetings, MEETING_TITLE_FILTER");
+      console.log("    2. If it lists videos but we found no meetings, plugin.meeting_summary.title_filter");
       console.log("       is too narrow — compare it against the actual video titles.");
       console.log("    3. If the channel id is wrong the feed returns an error page, not videos.");
     } else {
       console.log("    1. Fetch the source page and count its links. If a browser shows");
       console.log("       meetings but fetch() finds none, the page is client-rendered and");
-      console.log("       this connector cannot read it — that is exactly what Floyd County's");
-      console.log("       Wix redesign did. Switch to the youtube-channel connector, or point");
-      console.log("       MEETING_SOURCE_URL at a server-rendered listing.");
+      console.log("       this connector cannot read it — that is exactly what a Wix redesign");
+      console.log("       did to the first hub's source. Switch to the wix-cms or youtube-channel");
+      console.log("       connector, or point plugin.meeting_summary.source_url at a");
+      console.log("       server-rendered listing.");
       console.log("    2. Check the page hasn't moved (the county added /archive-agendas-minutes).");
     }
     process.exit(1);

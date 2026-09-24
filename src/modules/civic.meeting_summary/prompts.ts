@@ -24,7 +24,15 @@ export function buildDiscoveryPrompt(input: {
   extraction_instructions: string;
   trimmed_html: string;
   source_url: string;
+  /**
+   * The hub's `copy.governing_body_name`, for the worked example. Floyd's
+   * reads "Board of Supervisors Regular Meeting" exactly as the literal it
+   * replaced; a hub without one gets a plain "Regular Meeting".
+   */
+  governing_body?: string | null;
 }): string {
+  const body = input.governing_body?.trim();
+  const exampleTitle = body ? `${body} Regular Meeting` : "Regular Meeting";
   return `You are extracting a structured list of government meetings from an agendas-and-minutes page.
 
 CRITICAL CONSTRAINTS (apply before anything else):
@@ -41,13 +49,13 @@ ${input.trimmed_html}
 </trimmed_html>
 
 For each meeting entry visible on the page, extract:
-- meeting_title: short human-readable name (e.g. "Board of Supervisors Regular Meeting", "Budget Workshop"). Do NOT include the date in this field.
+- meeting_title: short human-readable name (e.g. "${exampleTitle}", "Budget Workshop"). Do NOT include the date in this field.
 - meeting_date: ISO 8601 date (YYYY-MM-DD). Infer year if missing but prefer pages where the year is explicit.
 - source_minutes_url: the full https:// URL of the minutes PDF for that meeting, or null if no minutes PDF is linked. Must end in .pdf. Look for links labeled "Minutes" — do NOT confuse "Agenda" links with "Minutes" links.
 - source_agenda_url: the full https:// URL of the agenda PDF for that meeting, or null if no agenda PDF is linked. Must end in .pdf. Look for links labeled "Agenda".
 - source_video_url: the full https:// URL of the primary YouTube recording for that meeting, or null if no recording is available. If multiple recordings exist for the same meeting (e.g. "Video Recording 1" and "Video Recording 2"), this is the FIRST one.
 - additional_video_urls: array of any additional YouTube URLs for the same meeting (segment 2, continuation, retry after stream drop). Empty array if only one recording exists.
-- source_id: a stable dedupe key. Use the source_minutes_url when available (the PDF URL). For meetings with no minutes, use the format "YYYY-MM-DD:<meeting_title>" (e.g. "2026-06-09:Board of Supervisors Regular Meeting").
+- source_id: a stable dedupe key. Use the source_minutes_url when available (the PDF URL). For meetings with no minutes, use the format "YYYY-MM-DD:<meeting_title>" (e.g. "2026-06-09:${exampleTitle}").
 
 IMPORTANT: Include meetings even if they only have an agenda and/or video but no minutes. A meeting entry is valid as long as it has at least one PDF link (minutes or agenda) OR a video recording.
 

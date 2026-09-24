@@ -297,13 +297,13 @@ export const youtubeChannelConnector: MeetingSourceConnector = {
     const channelId = (cfg.channel_id ?? "").trim();
     if (!channelId) {
       throw new Error(
-        "MEETING_YOUTUBE_CHANNEL_ID must be set for the youtube-channel connector " +
+        "plugin.meeting_summary.youtube_channel_id must be set for the youtube-channel connector " +
           "(e.g. UCxyzO8F2UfiN1NVOax2s27Q — the UC… id, not the @handle).",
       );
     }
     if (!isValidChannelId(channelId)) {
       throw new Error(
-        `MEETING_YOUTUBE_CHANNEL_ID="${channelId}" is not a YouTube channel id. ` +
+        `plugin.meeting_summary.youtube_channel_id="${channelId}" is not a YouTube channel id. ` +
           `Expected a 24-character id starting with "UC". Open the channel, view ` +
           `source, and read the "channelId" value — an @handle will not work here.`,
       );
@@ -331,7 +331,7 @@ export const youtubeChannelConnector: MeetingSourceConnector = {
     if (videos.length > 0 && entries.length === 0) {
       console.warn(
         `[meeting-summary] channel feed had ${videos.length} video(s) but none ` +
-          `matched MEETING_TITLE_FILTER="${filter}". Check the filter against the ` +
+          `matched plugin.meeting_summary.title_filter="${filter}". Check the filter against the ` +
           `channel's actual video titles.`,
       );
     }

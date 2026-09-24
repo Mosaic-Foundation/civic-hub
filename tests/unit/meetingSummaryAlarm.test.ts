@@ -56,9 +56,9 @@ describe("cronAlertReason — when the cron must speak up", () => {
     const reason = cronAlertReason({
       ...healthy,
       discovered: 0,
-      connector_id: "floyd-minutes-page",
+      connector_id: "minutes-page",
     });
-    expect(reason).toContain("floyd-minutes-page");
+    expect(reason).toContain("minutes-page");
   });
 
   it("ALERTS when individual meetings failed to summarize", () => {
