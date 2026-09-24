@@ -1,4 +1,12 @@
-// Supabase client — the single point of database access for the backend.
+// @civic-raw-client — CONTROL PLANE AND MIGRATIONS ONLY.
+//
+// The raw, service-role Supabase client. It sees every hub's rows. Request
+// code reaches tenant data through forHub(hubId) in ./forHub.ts, which wraps
+// this client with the hub filter and stamp. Legitimate importers: src/db/
+// (forHub itself, the hubs registry), src/control/, and scripts/ that run
+// migrations or operator tasks. The `@civic-raw-client` tag above is what the
+// Phase 2b `no-restricted-imports` rule keys on; every other importer is a
+// module not yet converted (list in HANDOFF.md, Phase 2a entry).
 //
 // This module initializes one Supabase client using the SERVICE ROLE key.
 // The service role key bypasses Row Level Security; it MUST only be used

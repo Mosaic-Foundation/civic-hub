@@ -18,7 +18,7 @@ import { randomBytes } from "node:crypto";
 const LOCAL_SERVICE_ROLE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 
-function localStack(): { url: string; key: string } {
+export function localStack(): { url: string; key: string } {
   const url = (process.env.SUPABASE_URL?.trim() || "http://127.0.0.1:54321").replace(/\/$/, "");
   const host = new URL(url).hostname;
   if (host !== "127.0.0.1" && host !== "localhost") {
@@ -54,8 +54,10 @@ async function rest(path: string, init: RequestInit = {}): Promise<unknown> {
  */
 export async function mintSession(hubId: string, email: string): Promise<string> {
   const normalized = email.trim().toLowerCase();
+  // Accounts belong to a hub since Phase 2a: look up, and create, the user
+  // on the hub the session is for.
   const found = (await rest(
-    `users?select=id&email=eq.${encodeURIComponent(normalized)}`,
+    `users?select=id&hub_id=eq.${encodeURIComponent(hubId)}&email=eq.${encodeURIComponent(normalized)}`,
   )) as Array<{ id: string }>;
 
   let userId = found[0]?.id;
@@ -65,6 +67,7 @@ export async function mintSession(hubId: string, email: string): Promise<string>
       method: "POST",
       body: JSON.stringify({
         id: userId,
+        hub_id: hubId,
         email: normalized,
         email_verified: true,
         is_resident: true,
