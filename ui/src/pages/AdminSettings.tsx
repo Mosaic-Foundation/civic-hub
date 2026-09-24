@@ -14,6 +14,7 @@ import {
   useHubSettings,
 } from "./settings/HubSettingsContext";
 import IdentitySection from "./settings/IdentitySection";
+import CopySection from "./settings/CopySection";
 import LegacySettings from "./settings/LegacySettings";
 import "./AdminSettings.css";
 
@@ -27,6 +28,7 @@ interface SectionEntry {
 
 const SECTIONS: readonly SectionEntry[] = [
   { id: "identity", label: "Identity", render: () => <IdentitySection /> },
+  { id: "copy", label: "Copy & pages", render: () => <CopySection /> },
   { id: "other", label: "Other settings", render: () => <LegacySettings /> },
   { id: "plugins", label: "Plugins", comingNote: "Coming next" },
 ];

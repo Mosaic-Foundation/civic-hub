@@ -64,8 +64,9 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "identity.theme", kind: "color" },
   ],
   copy: [
-    { key: "copy.intro_body", kind: "markdown", maxLength: 1000 },
-    { key: "copy.residency_intro", kind: "markdown", maxLength: 600 },
+    // Both render as plain text (the welcome popup, the sign-up gate).
+    { key: "copy.intro_body", kind: "textarea", maxLength: 1000 },
+    { key: "copy.residency_intro", kind: "textarea", maxLength: 600 },
     { key: "copy.welcome", kind: "document" },
     { key: "copy.about", kind: "document" },
     { key: "copy.resident_noun", kind: "text", maxLength: 40 },
