@@ -176,3 +176,47 @@ describe("forHub against the database — another hub's rows", () => {
     expect(row.data).toEqual({ hub_id: "floyd", code: "111111" });
   });
 });
+
+describe("search is scoped to the hub (search_processes with p_hub_id)", () => {
+  // One active process per hub, both matching a word nothing else contains.
+  const WORD = `zqx${run}`;
+  const ids = { floyd: `proc_isosearch_f_${run}`, athens: `proc_isosearch_a_${run}` };
+
+  beforeAll(async () => {
+    for (const [hub, id] of Object.entries(ids)) {
+      const res = await hubDbFrom(raw, hub).from("processes").insert({
+        id,
+        type: "civic.vote",
+        title: `Isolation ${WORD}`,
+        status: "active",
+        state: {},
+      });
+      if (res.error) throw new Error(`seed ${hub}: ${res.error.message}`);
+    }
+  });
+
+  afterAll(async () => {
+    await raw.from("processes").delete().in("id", Object.values(ids));
+  });
+
+  it("each hub finds only its own process", async () => {
+    const a = await athens.rpc("search_processes", { p_q: WORD });
+    const f = await floyd.rpc("search_processes", { p_q: WORD });
+    expect(a.error).toBeNull();
+    expect((a.data as Array<{ id: string }>).map((r) => r.id)).toEqual([ids.athens]);
+    expect((f.data as Array<{ id: string }>).map((r) => r.id)).toEqual([ids.floyd]);
+  });
+
+  it("the count agrees", async () => {
+    const a = await athens.rpc("search_processes_count", { p_q: WORD });
+    expect(Number(a.data)).toBe(1);
+  });
+
+  it("the deprecated unscoped signature answers for the migration-default hub only", async () => {
+    const old = await raw.rpc("search_processes", { p_q: WORD });
+    expect(old.error).toBeNull();
+    expect((old.data as Array<{ id: string }>).map((r) => r.id)).toEqual([ids.floyd]);
+    const oldCount = await raw.rpc("search_processes_count", { p_q: WORD });
+    expect(Number(oldCount.data)).toBe(1);
+  });
+});

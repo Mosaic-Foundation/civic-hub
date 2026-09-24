@@ -4,8 +4,13 @@
 // adapter between the module's injected callbacks and the actual
 // `search_processes` / `search_processes_count` RPC functions defined
 // in the migration.
+//
+// Hub-scoped since Phase 2a: both calls go through forHub().rpc(), which
+// passes the hub in scope as p_hub_id, and the functions filter on it
+// (20260924050000). One hub's search never returns another hub's processes.
 
-import { getDb } from "../db/client.js";
+import { forHub } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import type {
   SearchCountFn,
   SearchExecuteFn,
@@ -24,7 +29,7 @@ interface SearchProcessesRow {
 }
 
 export const executeSearchRpc: SearchExecuteFn = async (filters) => {
-  const { data, error } = await getDb().rpc("search_processes", {
+  const { data, error } = await forHub(currentHubId()).rpc("search_processes", {
     p_q: filters.q,
     p_types: filters.internalTypes,
     p_from: filters.from,
@@ -50,7 +55,7 @@ export const executeSearchRpc: SearchExecuteFn = async (filters) => {
 };
 
 export const countSearchRpc: SearchCountFn = async (filters) => {
-  const { data, error } = await getDb().rpc("search_processes_count", {
+  const { data, error } = await forHub(currentHubId()).rpc("search_processes_count", {
     p_q: filters.q,
     p_types: filters.internalTypes,
     p_from: filters.from,
