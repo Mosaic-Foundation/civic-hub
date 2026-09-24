@@ -30,6 +30,11 @@ export function localStack(): { url: string; key: string } {
   return { url, key: process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || LOCAL_SERVICE_ROLE_KEY };
 }
 
+/** A PostgREST call against the LOCAL stack, as the service role. */
+export async function localRest(path: string, init: RequestInit = {}): Promise<unknown> {
+  return rest(path, init);
+}
+
 async function rest(path: string, init: RequestInit = {}): Promise<unknown> {
   const { url, key } = localStack();
   const res = await fetch(`${url}/rest/v1/${path}`, {
@@ -76,6 +81,25 @@ export async function mintSession(hubId: string, email: string): Promise<string>
     });
   }
 
+  const token = `sess_${randomBytes(12).toString("hex")}`;
+  await rest("sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      token,
+      user_id: userId,
+      hub_id: hubId,
+      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    }),
+  });
+  return token;
+}
+
+/**
+ * A session row on `hubId` for an existing account, wherever that account
+ * lives. For the cross-hub cases: a session whose user belongs to another hub
+ * must not authenticate anyone.
+ */
+export async function mintSessionForUser(hubId: string, userId: string): Promise<string> {
   const token = `sess_${randomBytes(12).toString("hex")}`;
   await rest("sessions", {
     method: "POST",

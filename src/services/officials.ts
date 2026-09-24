@@ -13,12 +13,16 @@
 //
 // The ADMIN still types an EMAIL, because the hub has no user-directory
 // endpoint to pick from. Designating an email with no account yet creates
-// a shell users row the same way civic.auth's verifyCode does; unique(email)
-// means that person's first sign-in adopts the very same row. This
-// preserves the operator's ability to pre-authorize a board member before
-// they have ever signed in.
+// a shell users row the same way civic.auth's verifyCode does; unique
+// (hub_id, email) means that person's first sign-in on this hub adopts the
+// very same row. This preserves the operator's ability to pre-authorize a
+// board member before they have ever signed in.
+//
+// Per hub since Phase 2a: accounts carry hub_id, and every read and write
+// here goes through forHub(), so one hub's roster never lists, promotes or
+// demotes another hub's officials.
 
-import { getDb } from "../db/client.js";
+import { forHub, type HubDb } from "../db/forHub.js";
 import { generateId } from "../utils/id.js";
 import { currentHubId } from "../config/hubContext.js";
 import {
@@ -52,12 +56,17 @@ interface OfficialUserRow {
   official_title: string | null;
 }
 
+/** The hub in scope. Officials are only ever read or written inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
+
 /**
- * Every account currently designated an official, for the admin panel.
- * Ordered by title so the list reads as a roster.
+ * Every account currently designated an official on this hub, for the admin
+ * panel. Ordered by title so the list reads as a roster.
  */
 export async function listOfficials(): Promise<OfficialRecord[]> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("users")
     .select("*")
     .not("official_type", "is", null)
@@ -127,7 +136,7 @@ export async function lookupOfficialByEmail(
   // select("*") rather than naming the two columns, for the same reason
   // creatorDisplay does it: naming a column a pre-migration database does
   // not have is a hard error, where "*" simply returns what exists.
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("users")
     .select("*")
     .eq("email", email.trim().toLowerCase())
@@ -160,7 +169,7 @@ export async function setOfficials(
   updatedBy: string | null,
 ): Promise<OfficialRecord[]> {
   const cleaned = normalizeOfficialRecords(records);
-  const db = getDb();
+  const hubDb = db();
 
   // Resolve every listed email to a user id, creating shell rows as needed.
   const keep = new Set<string>();
@@ -177,12 +186,12 @@ export async function setOfficials(
     // it only when supplied; blank means "use whatever they have set".
     if (record.name) patch.display_name = record.name;
 
-    const { error } = await db.from("users").update(patch).eq("id", userId);
+    const { error } = await hubDb.from("users").update(patch).eq("id", userId);
     if (error) throw new Error(`officials.set(${record.email}): ${error.message}`);
   }
 
-  // Demote anyone dropped from the list.
-  const { data: current, error: curErr } = await db
+  // Demote anyone dropped from this hub's list.
+  const { data: current, error: curErr } = await hubDb
     .from("users")
     .select("id")
     .not("official_type", "is", null);
@@ -191,7 +200,7 @@ export async function setOfficials(
     .map((r) => r.id)
     .filter((id) => !keep.has(id));
   if (demote.length > 0) {
-    const { error } = await db
+    const { error } = await hubDb
       .from("users")
       .update({ official_type: null, official_title: null })
       .in("id", demote);
@@ -217,10 +226,10 @@ export async function setOfficials(
  * someone an official is not an affirmation of residency on their behalf.
  */
 async function findOrCreateUserByEmail(email: string): Promise<string> {
-  const db = getDb();
+  const hubDb = db();
   const normalized = email.trim().toLowerCase();
 
-  const { data: existing, error: selErr } = await db
+  const { data: existing, error: selErr } = await hubDb
     .from("users")
     .select("id")
     .eq("email", normalized)
@@ -235,17 +244,25 @@ async function findOrCreateUserByEmail(email: string): Promise<string> {
     is_resident: false,
     digest_frequency_days: 1,
   };
-  const { data, error } = await db.from("users").insert(row).select("id").single();
+  const { data, error } = await hubDb.from("users").insert(row).select("id").single();
   if (error) {
     // 23505 = unique_violation — a concurrent sign-in created it first.
     if (error.code === "23505") {
-      const { data: refetch, error: refErr } = await db
+      const { data: refetch, error: refErr } = await hubDb
         .from("users")
         .select("id")
         .eq("email", normalized)
-        .single();
+        .maybeSingle();
       if (refErr) throw new Error(`officials.findOrCreate: ${refErr.message}`);
-      return (refetch as { id: string }).id;
+      if (refetch) return (refetch as { id: string }).id;
+      // Not on this hub, so the violation was the GLOBAL users_email_key:
+      // the address has an account on another hub. One email is one hub
+      // until the cleanup migration drops that constraint. The admin is
+      // not told which hub, only that it cannot be designated yet.
+      console.error(`[officials] ${normalized} is in use on another hub (global unique email)`);
+      throw new Error(
+        `${normalized} cannot be designated on this hub yet: the address is in use elsewhere on this platform.`,
+      );
     }
     throw new Error(`officials.findOrCreate: ${error.message}`);
   }

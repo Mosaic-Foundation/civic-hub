@@ -45,7 +45,6 @@ import {
 } from "../services/officials.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { currentHub, currentHubId } from "../config/hubContext.js";
-import { MIGRATION_DEFAULT_HUB_ID } from "../models/hub.js";
 
 interface SettingsResponse {
   // The hub's name, tagline, label, operator, contact address and "who runs
@@ -63,11 +62,6 @@ interface SettingsResponse {
 
   brief_recipient_emails: string[];
   officials: OfficialRecord[];
-  /**
-   * Whether this hub may see and edit the officials roster at all. See
-   * officialsBelongHere().
-   */
-  officials_available: boolean;
   /** @deprecated superseded by `officials`; read-only. */
   announcement_authors: AnnouncementAuthor[];
   beta_allowlist: string[];
@@ -76,26 +70,12 @@ interface SettingsResponse {
   comment_identity_mode: CommentIdentityMode;
 }
 
-/**
- * The officials roster lives on `users` (official_type / official_title), and
- * `users` has no hub_id until Phase 2. So on a shared database every hub's
- * roster is the same rows: another hub's admin would see this hub's officials'
- * emails, and saving — which demotes every official not in the list — would
- * strip them. Until accounts belong to a hub, the roster is visible and
- * editable only on the hub those accounts were created for, the migration
- * default. Found 2026-09-24 while planning hub-defined official categories.
- */
-function officialsBelongHere(): boolean {
-  return currentHubId() === MIGRATION_DEFAULT_HUB_ID;
-}
-
 async function loadSettings(): Promise<SettingsResponse> {
   const hubId = currentHubId();
   return {
     mode: hubModeFor(currentHub()),
     brief_recipient_emails: await getVoteResultsRecipients(hubId),
-    officials: officialsBelongHere() ? await listOfficialsWithLegacy() : [],
-    officials_available: officialsBelongHere(),
+    officials: await listOfficialsWithLegacy(),
     announcement_authors: await getAnnouncementAuthors(hubId),
     beta_allowlist: await getBetaAllowlist(hubId),
     waitlist: await getWaitlist(),
@@ -156,13 +136,6 @@ export async function handlePatchSettings(
       // email or no title (the DB's both-or-neither CHECK), narrows an
       // unrecognized type to "other" rather than rejecting the save, and
       // demotes any account absent from the list.
-      if (!officialsBelongHere()) {
-        res.status(409).json({
-          error:
-            "Officials cannot be edited on this hub yet: accounts are not tied to a hub until the next phase of the multi-hub work.",
-        });
-        return;
-      }
       await setOfficials(body.officials, actor);
     }
 

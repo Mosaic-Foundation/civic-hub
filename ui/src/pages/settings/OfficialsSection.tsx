@@ -25,7 +25,6 @@ export default function OfficialsSection() {
   const { setDirty } = useHubSettings();
 
   const [loaded, setLoaded] = useState(false);
-  const [available, setAvailable] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [officials, setOfficials] = useState<OfficialRow[]>([]);
   const [extraRecipientsText, setExtraRecipientsText] = useState("");
@@ -48,7 +47,6 @@ export default function OfficialsSection() {
         setOfficials(nextOfficials);
         setExtraRecipientsText(nextExtra);
         setSavedSnapshot(JSON.stringify({ officials: nextOfficials, extra: nextExtra }));
-        setAvailable(s.officials_available);
         setLoaded(true);
       })
       .catch((err: Error) => {
@@ -112,13 +110,10 @@ export default function OfficialsSection() {
         .split(/[,\n]/)
         .map((e) => e.trim())
         .filter((e) => e.length > 0);
-      // Where the roster is not this hub's to edit yet, only the standing
-      // brief addresses are saved; they are a per-hub setting already.
-      const saved = await adminPatchSettings(
-        available
-          ? { officials: cleaned, brief_recipient_emails: [...recipientEmails, ...extras] }
-          : { brief_recipient_emails: extras },
-      );
+      const saved = await adminPatchSettings({
+        officials: cleaned,
+        brief_recipient_emails: [...recipientEmails, ...extras],
+      });
       const recipients = new Set(saved.brief_recipient_emails.map((e) => e.toLowerCase()));
       const officialEmails = new Set(saved.officials.map((o) => o.email.toLowerCase()));
       const nextOfficials = saved.officials.map((o) => ({
@@ -133,9 +128,7 @@ export default function OfficialsSection() {
       setSavedSnapshot(JSON.stringify({ officials: nextOfficials, extra: nextExtra }));
       const n = saved.brief_recipient_emails.length;
       setOfficialsMessage(
-        available
-          ? `Saved. ${saved.officials.length} official(s); briefs go to ${n} recipient${n === 1 ? "" : "s"} by default.`
-          : `Saved. Briefs go to ${n} standing address${n === 1 ? "" : "es"} by default.`,
+        `Saved. ${saved.officials.length} official(s); briefs go to ${n} recipient${n === 1 ? "" : "s"} by default.`,
       );
     } catch (err) {
       setOfficialsMessage(
@@ -166,16 +159,6 @@ export default function OfficialsSection() {
         recipients for a particular brief while reviewing it.
       </p>
 
-      {loaded && !available ? (
-        <p className="form-hint settings-note">
-          <strong>Officials cannot be listed on this hub yet.</strong> Accounts
-          are shared between hubs until the next phase of the multi-hub work,
-          so a roster here would show, and could remove, another hub&apos;s
-          officials. The standing brief addresses below are this hub&apos;s own
-          and can be saved.
-        </p>
-      ) : (
-        <>
       {officials.length === 0 && (
         <p className="empty-state-inline" style={{ margin: "var(--space-sm) 0" }}>
           No officials configured. Only admins can post announcements.
@@ -286,9 +269,6 @@ export default function OfficialsSection() {
       >
         + Add official
       </button>
-
-        </>
-      )}
 
       <div className="official-extra-recipients">
         <label className="form-label" htmlFor="extra-brief-recipients">

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { request } from "node:http";
 import { API_BASE } from "../fixtures/helpers.js";
-import { mintSession, storedSetting } from "../fixtures/adminSession.js";
+import { localRest, mintSession, mintSessionForUser, storedSetting } from "../fixtures/adminSession.js";
 
 /**
  * The hub admin settings endpoint, over HTTP: every section round-trips, an
@@ -140,8 +140,15 @@ describe("one hub's admin cannot reach another hub's settings", () => {
     expect(write.status).toBe(401);
   });
 
-  it("the Athens admin, signed in on Floyd, is not Floyd's admin", async () => {
-    const onFloyd = await mintSession("floyd", ATHENS_ADMIN);
+  it("the Athens admin's account, carried onto a Floyd session, is not Floyd's admin", async () => {
+    // Accounts belong to a hub since Phase 2a, and until the cleanup migration
+    // one email is one account on one hub, so the Athens admin cannot also
+    // hold a Floyd account. The nearest case: a Floyd session row pointing at
+    // the Athens admin's own account.
+    const [athensUser] = (await localRest(
+      `users?select=id&hub_id=eq.athens&email=eq.${encodeURIComponent(ATHENS_ADMIN)}`,
+    )) as Array<{ id: string }>;
+    const onFloyd = await mintSessionForUser("floyd", athensUser.id);
     const before = await storedSetting("floyd", "identity.tagline");
     expect((await call("GET", "/admin/hub/settings", FLOYD, undefined, onFloyd)).status).toBe(403);
     const write = await call(
@@ -164,18 +171,52 @@ describe("one hub's admin cannot reach another hub's settings", () => {
   });
 });
 
-describe("the officials roster stays with the hub its accounts belong to", () => {
-  // `users` has no hub_id until Phase 2, so the roster is one set of rows for
-  // every hub. Another hub's admin must neither see it nor be able to save
-  // over it — saving demotes everyone absent from the list.
-  it("is hidden from, and refused to, another hub's admin", async () => {
+describe("the officials roster is per hub", () => {
+  // Officials are columns on `users`, which carries hub_id since Phase 2a.
+  // Until then the roster was one set of rows for every hub, and saving
+  // Athens's (which demotes everyone absent from the list) would have
+  // stripped Floyd's officials. The guard that hid it (617da2a) is gone.
+  const FLOYD_OFFICIAL = `clerk-${Date.now()}@floyd-officials.example.test`;
+  let floydOfficialId = "";
+
+  beforeAll(async () => {
+    floydOfficialId = `user_offtest_${Date.now()}`;
+    await localRest("users", {
+      method: "POST",
+      body: JSON.stringify({
+        id: floydOfficialId,
+        hub_id: "floyd",
+        email: FLOYD_OFFICIAL,
+        official_type: "other",
+        official_title: "Test Clerk",
+      }),
+    });
+  });
+
+  afterAll(async () => {
+    await localRest(`users?id=eq.${floydOfficialId}`, { method: "DELETE" });
+  });
+
+  it("Athens's admin sees Athens's roster, and not Floyd's official", async () => {
     const read = await call("GET", "/admin/settings", ATHENS, undefined, admin);
     expect(read.status).toBe(200);
-    expect(read.body.officials_available).toBe(false);
-    expect(read.body.officials).toEqual([]);
+    const emails = (read.body.officials as Array<{ email: string }>).map((o) => o.email);
+    expect(emails).not.toContain(FLOYD_OFFICIAL);
+    expect(read.body).not.toHaveProperty("officials_available");
+  });
 
+  it("saving Athens's roster leaves Floyd's official in office", async () => {
+    const before = (await call("GET", "/admin/settings", ATHENS, undefined, admin)).body
+      .officials;
     const write = await call("PATCH", "/admin/settings", ATHENS, { officials: [] }, admin);
-    expect(write.status).toBe(409);
+    expect(write.status).toBe(200);
+    const row = (await localRest(
+      `users?select=hub_id,official_title&id=eq.${floydOfficialId}`,
+    )) as Array<{ hub_id: string; official_title: string | null }>;
+    expect(row).toEqual([{ hub_id: "floyd", official_title: "Test Clerk" }]);
+    // Put Athens's own roster back.
+    const restore = await call("PATCH", "/admin/settings", ATHENS, { officials: before }, admin);
+    expect(restore.status).toBe(200);
   });
 });
 

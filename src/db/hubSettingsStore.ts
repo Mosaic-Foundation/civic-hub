@@ -1,7 +1,7 @@
 // hub_settings reads and writes — the only place that queries that table.
 //
-// In src/db/ because it uses the raw service-role client, which nothing
-// outside this directory and the future control plane may import.
+// Reads and writes go through forHub(hubId), so a settings row can only be
+// read from, or written to, the hub it names (Phase 2a).
 //
 // A hub's settings are loaded ONCE per request, as a whole, and cached for 60
 // seconds. Loading the whole set rather than one key at a time is what lets
@@ -10,7 +10,7 @@
 // and an admin check that does its own round trip is a round trip on every
 // request that checks one.
 
-import { getDb } from "./client.js";
+import { forHub } from "./forHub.js";
 import { DOCUMENT_KEYS } from "../models/hubSettings.js";
 
 const CACHE_TTL_MS = 60_000;
@@ -63,10 +63,9 @@ export async function fetchHubSettings(hubId: string): Promise<SettingsMap> {
   // Document-sized values are excluded: see DOCUMENT_KEYS. Every request pays
   // for this query on a cache miss, and no request should pay 30 KB of
   // markdown for a page that does not render it.
-  const { data, error } = await getDb()
+  const { data, error } = await forHub(hubId)
     .from("hub_settings")
     .select("key, value")
-    .eq("hub_id", hubId)
     .not("key", "in", DOCUMENT_KEY_LIST);
 
   if (error) {
@@ -89,12 +88,9 @@ export async function writeHubSetting(
   value: string,
   updatedBy: string | null,
 ): Promise<void> {
-  const { error } = await getDb()
+  const { error } = await forHub(hubId)
     .from("hub_settings")
-    .upsert(
-      { hub_id: hubId, key, value, updated_by: updatedBy },
-      { onConflict: "hub_id,key" },
-    );
+    .upsert({ key, value, updated_by: updatedBy }, { onConflict: "hub_id,key" });
   if (error) throw new Error(`hubSettings.set(${key}): ${error.message}`);
   invalidateHubSettings(hubId);
 }
@@ -107,12 +103,11 @@ export async function writeHubSettings(
 ): Promise<void> {
   if (entries.length === 0) return;
   const rows = entries.map((e) => ({
-    hub_id: hubId,
     key: e.key,
     value: e.value,
     updated_by: updatedBy,
   }));
-  const { error } = await getDb()
+  const { error } = await forHub(hubId)
     .from("hub_settings")
     .upsert(rows, { onConflict: "hub_id,key" });
   if (error) throw new Error(`hubSettings.setMany: ${error.message}`);
@@ -123,10 +118,9 @@ export async function writeHubSettings(
 export async function fetchHubSettingRows(hubId: string): Promise<
   Array<{ key: string; value: string; updated_at: string; updated_by: string | null }>
 > {
-  const { data, error } = await getDb()
+  const { data, error } = await forHub(hubId)
     .from("hub_settings")
-    .select("key, value, updated_at, updated_by")
-    .eq("hub_id", hubId);
+    .select("key, value, updated_at, updated_by");
   if (error) throw new Error(`hubSettings.getAll: ${error.message}`);
   return (data ?? []) as Array<{
     key: string;
@@ -152,10 +146,9 @@ export async function fetchHubDocument(
   const cached = documentCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
-  const { data, error } = await getDb()
+  const { data, error } = await forHub(hubId)
     .from("hub_settings")
     .select("value")
-    .eq("hub_id", hubId)
     .eq("key", key)
     .maybeSingle();
 
@@ -174,10 +167,9 @@ export async function fetchHubDocument(
 export async function fetchHubDocuments(
   hubId: string,
 ): Promise<Record<string, string>> {
-  const { data, error } = await getDb()
+  const { data, error } = await forHub(hubId)
     .from("hub_settings")
     .select("key, value")
-    .eq("hub_id", hubId)
     .in("key", [...DOCUMENT_KEYS]);
 
   if (error) {
