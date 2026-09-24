@@ -144,13 +144,15 @@ working. Backend `tsc` and the UI build clean.
 
 ### Two things for Adam
 
-**1. The mail guard will suppress brief delivery on production's Floyd.**
-Floyd is `beta`, and briefs and vote results are addressed to officials, who
-are on neither the admin roster nor the beta allow list. Once this branch
-reaches production either Floyd moves to `live` at launch, or
-`people.brief_recipients` joins the allow set — one line, in
-`allowedRecipients()` in `src/services/mailGuard.ts`. Flagged rather than
-decided, because which one is right depends on the launch plan.
+**1. SETTLED — briefs are not delivered from a beta hub, and that is
+intended.** Floyd is `beta`, so its brief and vote-results delivery is
+suppressed until it goes live. Adam's answer when asked: briefs only need to
+go out in live mode. Coherent — a brief is a hub telling its officials what
+its residents decided, and a hub in private beta has not yet asked anyone
+anything it should be sending on. Do not "fix" it by adding
+`people.brief_recipients` to the allow set; the note in `mailGuard.ts` says
+so. What keeps it safe is that every withheld message logs
+`[email] SUPPRESSED` with the hub and the reason.
 
 **2. `users.email` is `NOT NULL UNIQUE` across the whole table.** Found while
 tracking down where the digest cursor lives. On a shared database that makes

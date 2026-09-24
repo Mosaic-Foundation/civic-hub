@@ -21,12 +21,20 @@
 // scheduled work at all, and no request-triggered mail to anyone but the
 // people running the hub.
 //
-// ONE CONSEQUENCE TO SETTLE BEFORE THIS REACHES PRODUCTION, flagged rather
-// than decided here: production's Floyd is `beta`, so once this branch is
-// merged its brief and vote-results delivery — which is addressed to
-// officials, who are on neither list — would be suppressed. Either Floyd
-// moves to `live` at launch, or `people.brief_recipients` joins the allow
-// set. It is a one-line change in `allowedRecipients()` below.
+// BRIEFS ARE NOT DELIVERED FROM A BETA HUB, AND THAT IS INTENDED (Adam,
+// 2026-09-23). Production's Floyd is `beta`, so its brief and vote-results
+// delivery — addressed to officials, who are on neither list — is suppressed
+// until Floyd goes live. Asked about it directly and the answer was that
+// briefs only need to go out in live mode, which is coherent: a brief is a
+// hub telling its elected officials what its residents decided, and a hub
+// still in private beta has not yet asked its residents anything it should be
+// sending anyone.
+//
+// So do NOT add `people.brief_recipients` to the allow set to "fix" this. It
+// is the behaviour that was chosen. What makes it safe is that the
+// suppression is loud: every withheld message logs `[email] SUPPRESSED` with
+// the hub and the reason, so a brief that does not arrive is visible in the
+// log rather than silently missing.
 
 import { currentHub, currentHubIdOrNull } from "../config/hubContext.js";
 import { getSettingSync, hubModeSync } from "./hubSettings.js";
