@@ -7,7 +7,8 @@ Updated after every Claude Code session. Records what was built, what's incomple
 ## Multi-tenant Phase 1 part five: the hub admin settings surface — 2026-09-24
 
 **Branch:** `multi-tenant`, eight commits (one per numbered step, plus one
-fix found on the way) and this entry. **Not pushed:** `git push` was refused
+fix found on the way) and this entry, then three more after Adam's first
+look (below). **Not pushed:** `git push` was refused
 by this session's permission settings, so the dev deployments have not built
 any of it and the dev walkthrough has not happened. Production untouched.
 Steps 3–4 and 6 were scaffolded by Sonnet subagents from the Identity/Copy
@@ -115,6 +116,38 @@ emailed code. The new API file puts every value it changes back, because
 `hubSettings.test.ts` asserts Athens's seeded values. The local stack runs
 with storage disabled, so the upload-prefix test is a unit test with the
 bucket stubbed; the real upload is the dev walkthrough's to prove.
+
+### Added after Adam's first look at Utopia
+
+- **`d190452` — a demo hub's admin can graduate it** (see item 1 above).
+- **Utopia's home heading said "Utopia, Virginia"** after Adam set the page
+  title to California. The heading is `hubs.jurisdiction_name`, not a
+  setting, and the registry is not editable from Settings (changing a hub's
+  jurisdiction belongs to the Phase 5 control plane). **The dev row was
+  corrected by hand** to "Utopia, California", `jurisdiction_code` left
+  null as it was. Its Terms and Privacy now say California. Dev project
+  only; production untouched.
+- **`7699d04` — the logo is the tab icon and a home-page mark.** At text
+  height in the nav bar it was unrecognisable. Now it is the browser-tab and
+  home-screen icon, plus a 64 px mark left of the place name. It must be a
+  square PNG of at least 256 × 256, checked by the server, and the picker
+  keeps it a PNG. **Found on the way:** the static `favicon.svg` drew
+  Floyd's "F", titled "Floyd Civic Hub", on every hub. With no logo, a hub's
+  icon is now its own initial on its theme colour.
+- **`617da2a` — the officials roster was not per hub.** It is columns on
+  `users`, which has no `hub_id`, so Athens's and Utopia's Officials sections
+  listed Floyd's officials and their emails, and saving would have demoted
+  them. Until Phase 2 the roster is shown and editable only on the
+  migration-default hub; other hubs get an explanation and can still save
+  their standing brief addresses.
+
+**Next sessions, agreed with Adam.** Plans are in
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Future Tasks/`:
+`civic-hub-theming-plan.md` (a Theme section: a small palette, derived
+border/pill pairs, contrast enforced, presets, live preview; no dependency)
+and `civic-hub-official-categories-plan.md` ("Admins & officials" with
+hub-defined categories, folding `people.board_emails` in). **Theming first:
+categories need Phase 2**, because the roster lives on `users`.
 
 ### Walkthrough (after the push; the same on each hub)
 
