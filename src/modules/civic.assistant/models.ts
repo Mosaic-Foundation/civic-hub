@@ -61,6 +61,13 @@ export interface AssistantResponse {
 export interface HubConfig {
   hub_name: string;
   community_description: string;
+  /**
+   * The hub's own Code of Conduct, exactly as its residents read it on the
+   * Code of Conduct page. The assistant used to carry an embedded copy of
+   * Floyd's, which had drifted a version behind the published one — so the
+   * automated check enforced a code nobody could read, on every hub.
+   */
+  code_of_conduct: string;
 }
 
 export interface CallAssistantInput {
@@ -146,6 +153,13 @@ export interface AssistantTypeConfig {
   returningGreeting: string;
   /** Full best-practices document, loaded into the system prompt. */
   bestPractices: string;
+  /**
+   * Optional: a hub document key (e.g. "legal.proposal_best_practices")
+   * whose text REPLACES `bestPractices` for the hub in scope. For a type
+   * whose guide a hub may author itself — its worked examples are about a
+   * place — so the assistant coaches from the same guide the hub publishes.
+   */
+  bestPracticesDocument?: string;
   /** Display title of that document ("Vote Best Practices"). */
   bestPracticesTitle: string;
   /** Brainstorm-phase question guidance for this type. */

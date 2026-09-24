@@ -30,8 +30,8 @@ import {
 } from "../modules/civic.meeting_summary/index.js";
 import type { Process } from "../models/process.js";
 import {
-  FLOYD_FLOCK_CAMERA,
-  FLOYD_GREEN_BOX,
+  FLOCK_CAMERA_VOTE,
+  GREEN_BOX_VOTE,
   type SeedScenario,
 } from "./seedData.js";
 import {
@@ -40,6 +40,7 @@ import {
   ATHENS_GREEN_BOX,
   ATHENS_MEETING_SUMMARIES,
 } from "./seedDataAthens.js";
+import { localizeScenario } from "./localizeScenario.js";
 
 function allowSeed(): boolean {
   return process.env.CIVIC_ALLOW_SEED === "true";
@@ -47,9 +48,11 @@ function allowSeed(): boolean {
 
 /**
  * Slice 19b — fixture selector. Each Vercel deployment can pick which
- * jurisdiction's seed data to load via CIVIC_SEED_FIXTURE. Floyd is
- * the default so production behavior is unchanged; the Athens fixture
- * powers the public demo at demo-hub.civic.social.
+ * jurisdiction's seed data to load via CIVIC_SEED_FIXTURE. The default
+ * set is placeless (its scenarios are filled with the seeding hub's own
+ * place, governing body, and jurisdiction code via localizeScenario())
+ * so production behavior is unchanged; the Athens fixture powers the
+ * public demo at demo-hub.civic.social.
  *
  * Add a new fixture by exporting scenarios from a new seed-data
  * module and adding a case below — handlers should be cheap (just
@@ -70,15 +73,15 @@ function selectScenarios(): SeedScenario[] {
         ...ATHENS_ANNOUNCEMENTS,
         ...ATHENS_MEETING_SUMMARIES,
       ];
-    case "floyd":
+    case "default":
     case undefined:
     case "":
-      return [FLOYD_GREEN_BOX, FLOYD_FLOCK_CAMERA];
+      return [GREEN_BOX_VOTE, FLOCK_CAMERA_VOTE].map((s) => localizeScenario(s));
     default:
       console.warn(
-        `[auto-seed] Unknown CIVIC_SEED_FIXTURE="${fixture}" — falling back to floyd.`,
+        `[auto-seed] Unknown CIVIC_SEED_FIXTURE="${fixture}" — using the default set.`,
       );
-      return [FLOYD_GREEN_BOX, FLOYD_FLOCK_CAMERA];
+      return [GREEN_BOX_VOTE, FLOCK_CAMERA_VOTE].map((s) => localizeScenario(s));
   }
 }
 
@@ -190,7 +193,7 @@ export async function seedOnStartup(): Promise<void> {
     }
 
     const scenarios = selectScenarios();
-    const fixtureName = process.env.CIVIC_SEED_FIXTURE?.trim().toLowerCase() || "floyd";
+    const fixtureName = process.env.CIVIC_SEED_FIXTURE?.trim().toLowerCase() || "default";
     console.log(`[auto-seed] Seeding initial data (fixture: ${fixtureName})...`);
     for (const scenario of scenarios) {
       await runScenario(scenario);

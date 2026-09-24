@@ -6,6 +6,8 @@
 // contains no per-type branches (the config strings ARE the type).
 
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { getProcessHandler, getRegisteredTypes } from "../../src/processes/registry.js";
 import { buildSystemPrompt, buildCocCheckPrompt } from "../../src/modules/civic.assistant/systemPrompt.js";
 import type {
@@ -14,9 +16,12 @@ import type {
   HubConfig,
 } from "../../src/modules/civic.assistant/models.js";
 
+// The shared template, as a hub with no override of its own would be handed
+// it. The assistant embeds whatever Code of Conduct the hub publishes.
 const HUB: HubConfig = {
   hub_name: "Test Hub",
   community_description: "residents of Testville",
+  code_of_conduct: readFileSync(resolve(__dirname, "../../config/legal/code-of-conduct.md"), "utf-8"),
 };
 
 const EMPTY_DRAFT: DraftState = {
@@ -163,7 +168,7 @@ describe("buildSystemPrompt — config-driven, no per-type branches", () => {
     expect(prompt).not.toContain(`"considerations"`);
   });
 
-  it("always embeds the shared Code of Conduct", () => {
+  it("always embeds the hub's Code of Conduct", () => {
     const prompt = buildSystemPrompt(HUB, undefined, EMPTY_DRAFT, "review", config("civic.project"));
     expect(prompt).toContain("Code of Conduct (defines hard blocks)");
     expect(prompt).toContain("decorum, not opinion");
@@ -171,6 +176,12 @@ describe("buildSystemPrompt — config-driven, no per-type branches", () => {
 });
 
 describe("buildCocCheckPrompt — CoC-only, no writing advice", () => {
+  it("holds a submission to the hard limits when the hub's code could not be loaded", () => {
+    const prompt = buildCocCheckPrompt({ ...HUB, code_of_conduct: "" });
+    expect(prompt).toContain("could not be loaded");
+    expect(prompt).toContain("no threats of violence");
+  });
+
   it("embeds the CoC and forbids soft suggestions", () => {
     const prompt = buildCocCheckPrompt(HUB);
     expect(prompt).toContain("decorum, not opinion");

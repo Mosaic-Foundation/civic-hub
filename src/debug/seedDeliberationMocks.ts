@@ -502,7 +502,7 @@ const FLOCK_STATEMENTS: MockStatement[] = [
   },
   {
     id: 13,
-    text: "The Board of Supervisors should have voted on this publicly before the cameras were installed, not after.",
+    text: "The board should have voted on this publicly before the cameras were installed, not after.",
     is_seed: false,
     created: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
   },
@@ -617,7 +617,7 @@ const FLOCK_CLUSTERS: MockClusterState = {
       },
       {
         statement_id: 13,
-        text: "The Board of Supervisors should have voted on this publicly before the cameras were installed, not after.",
+        text: "The board should have voted on this publicly before the cameras were installed, not after.",
         agree_rate: 0.81,
         vote_count: 47,
       },

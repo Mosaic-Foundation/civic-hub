@@ -20,7 +20,7 @@ export interface DeliberationSeedScenario {
 }
 
 // 1. Active conversation — broadband infrastructure
-export const FLOYD_BROADBAND_CONVERSATION: DeliberationSeedScenario = {
+export const BROADBAND_CONVERSATION: DeliberationSeedScenario = {
   status: "active",
   process: {
     id: "proc_delib_broadband_001",
@@ -29,13 +29,13 @@ export const FLOYD_BROADBAND_CONVERSATION: DeliberationSeedScenario = {
     description:
       "Help shape the county's approach to expanding broadband internet access to underserved areas.",
     createdBy: "user:civic-admin",
-    jurisdiction: "us-va-floyd",
+    jurisdiction: "{JURISDICTION}",
     state: {
       polis_conversation_id: "seed-conv-broadband-001",
       polis_base_url: "https://polis.civic.social/seed-conv-broadband-001",
       topic: "Rural Broadband Expansion Priorities",
       framing:
-        "Floyd County is exploring options for expanding broadband internet access. Many rural areas still lack reliable high-speed internet, affecting education, healthcare, and economic opportunity. What should the county prioritize?",
+        "{PLACE} is exploring options for expanding broadband internet access. Many rural areas still lack reliable high-speed internet, affecting education, healthcare, and economic opportunity. What should the county prioritize?",
       deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
       participation_threshold: 50,
     duration_ms: null,
@@ -51,16 +51,16 @@ export const FLOYD_BROADBAND_CONVERSATION: DeliberationSeedScenario = {
 };
 
 // 2. Active conversation — county budget
-export const FLOYD_BUDGET_CONVERSATION: DeliberationSeedScenario = {
+export const BUDGET_CONVERSATION: DeliberationSeedScenario = {
   status: "active",
   process: {
     id: "proc_delib_budget_001",
     definition: { type: "civic.polis_deliberation", version: "1.0" },
     title: "FY2027 Budget Priorities",
     description:
-      "What should Floyd County prioritize in next year's budget?",
+      "What should {PLACE} prioritize in next year's budget?",
     createdBy: "user:civic-admin",
-    jurisdiction: "us-va-floyd",
+    jurisdiction: "{JURISDICTION}",
     state: {
       polis_conversation_id: "seed-conv-budget-001",
       polis_base_url: "https://polis.civic.social/seed-conv-budget-001",
@@ -180,22 +180,22 @@ const SHORT_TERM_RENTAL_SUMMARY: DeliberationSummary = {
   },
 };
 
-export const FLOYD_RENTALS_CONVERSATION: DeliberationSeedScenario = {
+export const RENTALS_CONVERSATION: DeliberationSeedScenario = {
   status: "finalized",
   process: {
     id: "proc_delib_rentals_001",
     definition: { type: "civic.polis_deliberation", version: "1.0" },
     title: "Short-Term Rental Regulation",
     description:
-      "How should Floyd County approach regulating short-term rentals like Airbnb and VRBO?",
+      "How should {PLACE} approach regulating short-term rentals like Airbnb and VRBO?",
     createdBy: "user:civic-admin",
-    jurisdiction: "us-va-floyd",
+    jurisdiction: "{JURISDICTION}",
     state: {
       polis_conversation_id: "seed-conv-rentals-001",
       polis_base_url: "https://polis.civic.social/seed-conv-rentals-001",
       topic: "Short-Term Rental Regulation",
       framing:
-        "Short-term vacation rentals have grown significantly in Floyd County. Some residents see them as economic opportunity; others are concerned about housing availability and neighborhood impact. How should the county approach regulation?",
+        "Short-term vacation rentals have grown significantly in {PLACE}. Some residents see them as economic opportunity; others are concerned about housing availability and neighborhood impact. How should the county approach regulation?",
       deadline: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       participation_threshold: 50,
     duration_ms: null,
@@ -211,7 +211,7 @@ export const FLOYD_RENTALS_CONVERSATION: DeliberationSeedScenario = {
 };
 
 // 4. Draft conversation — emergency services
-export const FLOYD_EMERGENCY_CONVERSATION: DeliberationSeedScenario = {
+export const EMERGENCY_CONVERSATION: DeliberationSeedScenario = {
   status: "draft",
   process: {
     id: "proc_delib_emergency_001",
@@ -220,13 +220,13 @@ export const FLOYD_EMERGENCY_CONVERSATION: DeliberationSeedScenario = {
     description:
       "How should the county support volunteer fire and rescue departments facing recruitment challenges?",
     createdBy: "user:civic-admin",
-    jurisdiction: "us-va-floyd",
+    jurisdiction: "{JURISDICTION}",
     state: {
       polis_conversation_id: "",
       polis_base_url: "",
       topic: "Volunteer Fire & Rescue Funding",
       framing:
-        "Floyd County's volunteer fire and rescue departments are the backbone of emergency response, but many are struggling with declining volunteer numbers and aging equipment. How should the county invest in supporting these organizations?",
+        "{PLACE}'s volunteer fire and rescue departments are the backbone of emergency response, but many are struggling with declining volunteer numbers and aging equipment. How should the county invest in supporting these organizations?",
       deadline: null,
       participation_threshold: null,
     duration_ms: null,
@@ -242,22 +242,22 @@ export const FLOYD_EMERGENCY_CONVERSATION: DeliberationSeedScenario = {
 };
 
 // 5. Active conversation — Flock Camera (production demo)
-export const FLOYD_FLOCK_CONVERSATION: DeliberationSeedScenario = {
+export const FLOCK_CONVERSATION: DeliberationSeedScenario = {
   status: "active",
   process: {
     id: "proc_delib_flock_001",
     definition: { type: "civic.polis_deliberation", version: "1.0" },
-    title: "Floyd County Flock Camera Use",
+    title: "{PLACE} Flock Camera Use",
     description:
-      "Should Floyd County continue using Flock Safety license plate reader cameras? Share your perspective.",
+      "Should {PLACE} continue using Flock Safety license plate reader cameras? Share your perspective.",
     createdBy: "user:civic-admin",
-    jurisdiction: "us-va-floyd",
+    jurisdiction: "{JURISDICTION}",
     state: {
       polis_conversation_id: "seed-conv-flock-001",
       polis_base_url: "https://polis.civic.social/seed-conv-flock-001",
-      topic: "Floyd County Flock Camera Use",
+      topic: "{PLACE} Flock Camera Use",
       framing:
-        "Flock Safety cameras are automated license plate readers used by law enforcement in Floyd County. Some residents see them as a valuable public safety tool; others are concerned about surveillance, privacy, and the lack of public input before they were installed. What do you think?",
+        "Flock Safety cameras are automated license plate readers used by law enforcement in {PLACE}. Some residents see them as a valuable public safety tool; others are concerned about surveillance, privacy, and the lack of public input before they were installed. What do you think?",
       deadline: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
       participation_threshold: 75,
     duration_ms: null,
@@ -273,10 +273,10 @@ export const FLOYD_FLOCK_CONVERSATION: DeliberationSeedScenario = {
 };
 
 export const ALL_DELIBERATION_SEEDS: DeliberationSeedScenario[] = [
-  FLOYD_BROADBAND_CONVERSATION,
-  FLOYD_BUDGET_CONVERSATION,
-  FLOYD_RENTALS_CONVERSATION,
-  FLOYD_EMERGENCY_CONVERSATION,
+  BROADBAND_CONVERSATION,
+  BUDGET_CONVERSATION,
+  RENTALS_CONVERSATION,
+  EMERGENCY_CONVERSATION,
 ];
 
 // --- Standard seed scenarios (votes, proposals) --------------------------
@@ -302,17 +302,17 @@ export interface SeedScenario {
   inputs?: { author_id: string; body: string }[];
 }
 
-// --- Floyd County Green Box Dumpster Sites (active vote) ---
+// --- Green Box Dumpster Sites (active vote) ---
 
-export const FLOYD_GREEN_BOX: SeedScenario = {
+export const GREEN_BOX_VOTE: SeedScenario = {
   process: {
-    id: "proc_greenbox_floyd_001",
+    id: "proc_greenbox_001",
     definition: { type: "civic.vote", version: "0.1" },
     title: "Add More Secure Dumpster (Green Box) Sites",
     description:
-      "Should Floyd County invest in building additional fenced-in dumpster (green box) sites to improve access and reduce wildlife interference?",
+      "Should {PLACE} invest in building additional fenced-in dumpster (green box) sites to improve access and reduce wildlife interference?",
     createdBy: "user:civic-admin",
-    jurisdiction: "us-va-floyd",
+    jurisdiction: "{JURISDICTION}",
     state: {
       options: [
         "Yes \u2014 build additional fenced-in dumpster sites in key areas",
@@ -325,12 +325,12 @@ export const FLOYD_GREEN_BOX: SeedScenario = {
     },
     content: {
       core_question:
-        "Should Floyd County invest in building additional fenced-in dumpster (green box) sites to improve access and reduce wildlife interference?",
+        "Should {PLACE} invest in building additional fenced-in dumpster (green box) sites to improve access and reduce wildlife interference?",
       sections: [
         {
           title: "Background",
           body: [
-            "Floyd County residents rely on green box dumpster sites for waste disposal. In recent years, bears and other wildlife have increasingly accessed these dumpsters, creating mess, safety concerns, and additional maintenance costs.",
+            "{PLACE} residents rely on green box dumpster sites for waste disposal. In recent years, bears and other wildlife have increasingly accessed these dumpsters, creating mess, safety concerns, and additional maintenance costs.",
             "The county has built a fenced-in dumpster facility on Christiansburg Pike that has significantly reduced wildlife access and improved cleanliness. However, for many residents, this location is not convenient, requiring longer travel times for regular waste disposal.",
             "Expanding secure, fenced-in dumpster sites across the county could improve accessibility while also addressing wildlife-related issues.",
           ],
@@ -347,7 +347,7 @@ export const FLOYD_GREEN_BOX: SeedScenario = {
         {
           title: "Potential locations (examples)",
           body: [
-            "Northern Floyd County",
+            "Northern {PLACE}",
             "Near Check / Indian Valley area",
             "Additional site in eastern or western portions of the county",
             "North Route 8 at the old Green Box site",
@@ -357,7 +357,7 @@ export const FLOYD_GREEN_BOX: SeedScenario = {
           title: "What your vote means",
           body: [
             "This vote provides a community signal to county officials about whether residents support expanding secure dumpster infrastructure.",
-            "Results are advisory but intended to reflect the preferences of participating Floyd County residents.",
+            "Results are advisory but intended to reflect the preferences of participating {PLACE} residents.",
           ],
         },
       ],
@@ -370,7 +370,7 @@ export const FLOYD_GREEN_BOX: SeedScenario = {
       after_vote: {
         body: "This vote is advisory and does not directly determine policy. The goal is to provide a clear signal of community sentiment to county officials.",
         recipients: [
-          "Floyd County Board of Supervisors",
+          "{PLACE} {GOVERNING_BODY}",
         ],
       },
     },
@@ -382,16 +382,16 @@ export const FLOYD_GREEN_BOX: SeedScenario = {
   inputs: [],
 };
 
-// --- Floyd County Flock Camera Issue (real pilot issue) ---
+// --- Flock Camera Issue (real pilot issue) ---
 
-export const FLOYD_FLOCK_CAMERA: SeedScenario = {
+export const FLOCK_CAMERA_VOTE: SeedScenario = {
   process: {
-    id: "proc_flockcam_floyd_001",
+    id: "proc_flockcam_001",
     definition: { type: "civic.vote", version: "0.1" },
-    title: "Floyd County Flock Camera Use",
-    description: "Should Floyd County continue using Flock Safety license plate reader cameras?",
+    title: "{PLACE} Flock Camera Use",
+    description: "Should {PLACE} continue using Flock Safety license plate reader cameras?",
     createdBy: "user:civic-admin",
-    jurisdiction: "us-va-floyd",
+    jurisdiction: "{JURISDICTION}",
     state: {
       options: [
         "Yes \u2014 continue using the cameras",
@@ -402,7 +402,7 @@ export const FLOYD_FLOCK_CAMERA: SeedScenario = {
       activation_mode: "proposal_required",
     },
     content: {
-      core_question: "Should Floyd County continue using Flock Safety license plate reader cameras?",
+      core_question: "Should {PLACE} continue using Flock Safety license plate reader cameras?",
       sections: [
         {
           title: "What are Flock cameras?",
@@ -437,7 +437,7 @@ export const FLOYD_FLOCK_CAMERA: SeedScenario = {
           title: "Local context",
           body: [
             "Flock cameras are typically deployed in coordination with local law enforcement.",
-            "In Floyd County, their continued use would likely depend on decisions made by the Floyd County Sheriff\u2019s Office and the Board of Supervisors.",
+            "In {PLACE}, their continued use would likely depend on decisions made by the {PLACE} Sheriff\u2019s Office and the {GOVERNING_BODY}.",
             "This proposal was created as part of a pilot to explore better ways for the community to understand public sentiment.",
             "This vote is intended to understand community sentiment and does not directly determine policy.",
           ],
@@ -458,20 +458,20 @@ export const FLOYD_FLOCK_CAMERA: SeedScenario = {
       after_vote: {
         body: "The goal is to provide a clear signal of community sentiment between elections. This vote is advisory and does not directly determine policy.",
         recipients: [
-          "Floyd County Board of Supervisors",
+          "{PLACE} {GOVERNING_BODY}",
         ],
       },
     },
   },
   actions: [
     { type: "process.propose", actor: "user:civic-admin", payload: {} },
-    { type: "process.support", actor: "user:floyd-resident-1", payload: {} },
-    { type: "process.support", actor: "user:floyd-resident-2", payload: {} },
-    { type: "process.support", actor: "user:floyd-resident-3", payload: {} },
+    { type: "process.support", actor: "user:resident-1", payload: {} },
+    { type: "process.support", actor: "user:resident-2", payload: {} },
+    { type: "process.support", actor: "user:resident-3", payload: {} },
   ],
   inputs: [
-    { author_id: "user:floyd-resident-1", body: "I'm worried about the data retention policies. How long are plate images stored, and who has access?" },
-    { author_id: "user:floyd-resident-4", body: "These cameras helped recover my neighbor's stolen truck last year. They work." },
-    { author_id: "user:floyd-resident-2", body: "I don't think most people even know these exist. We need more transparency before making a decision." },
+    { author_id: "user:resident-1", body: "I'm worried about the data retention policies. How long are plate images stored, and who has access?" },
+    { author_id: "user:resident-4", body: "These cameras helped recover my neighbor's stolen truck last year. They work." },
+    { author_id: "user:resident-2", body: "I don't think most people even know these exist. We need more transparency before making a decision." },
   ],
 };

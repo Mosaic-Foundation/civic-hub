@@ -22,7 +22,11 @@ import type { NextFunction, Request, Response } from "express";
 import { getHubByHostname, getHubBySlug } from "../db/hubs.js";
 import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { runWithHub } from "../config/hubContext.js";
-import { isWellFormedHubSlug, type Hub } from "../models/hub.js";
+import {
+  isWellFormedHubSlug,
+  MIGRATION_DEFAULT_HUB_ID,
+  type Hub,
+} from "../models/hub.js";
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -104,7 +108,9 @@ export function devHubSlugFromHostname(hostname: string): string | null {
 /** The slug a bare localhost resolves to. */
 export function devDefaultHubSlug(): string {
   const configured = process.env.CIVIC_DEV_HUB?.trim().toLowerCase();
-  return configured && isWellFormedHubSlug(configured) ? configured : "floyd";
+  return configured && isWellFormedHubSlug(configured)
+    ? configured
+    : MIGRATION_DEFAULT_HUB_ID;
 }
 
 /**

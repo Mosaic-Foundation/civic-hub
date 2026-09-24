@@ -36,6 +36,18 @@ export interface Hub {
 export type HubStatus = "active" | "suspended";
 
 /**
+ * The hub the migrations create first, and the column default they stamp on
+ * `hub_id` (hub_settings and sessions today, every table in Phase 2).
+ *
+ * Code names it here and nowhere else, and only where the database already
+ * assumes it: the slug a bare `localhost` resolves to when CIVIC_DEV_HUB is
+ * unset, and the hub a session is minted on when no hub is in scope — the
+ * value the column default would have supplied anyway. It goes when Phase 2
+ * drops the column defaults. Allow-listed in scripts/place-name-allowlist.txt.
+ */
+export const MIGRATION_DEFAULT_HUB_ID = "floyd";
+
+/**
  * Where a hub is in its life. One ordered state, not a set of flags: demo and
  * beta are contradictory (demo lets anyone in with any code, beta lets only
  * allowlisted people in), so a hub must be in exactly one of them.

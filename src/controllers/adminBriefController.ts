@@ -29,13 +29,12 @@ import {
 import { finalizeBriefSource } from "../services/briefFinalize.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { sendEmail } from "../services/mailer.js";
-import { getVoteResultsRecipients } from "../services/hubSettings.js";
+import { getVoteResultsRecipients, hubDisplayNameSync } from "../services/hubSettings.js";
 import { currentHubId } from "../config/hubContext.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { extractUrls } from "../modules/civic.link_preview/index.js";
 import { warmPreviewsInBackground } from "../services/linkPreviewCache.js";
 
-const HUB_LABEL = "Floyd Civic Hub";
 const BRIEF_TYPE = "civic.brief";
 
 function briefState(record: { state: Record<string, unknown> }): BriefProcessState {
@@ -226,7 +225,7 @@ export async function handleApproveBrief(
 
     await approveBrief(state, actor, ctx, {
       fallbackRecipients,
-      hubLabel: HUB_LABEL,
+      hubLabel: hubDisplayNameSync(),
       publicBriefUrl: publicBriefUrl(record.id),
       sendEmail,
       finalizeSource: finalizeBriefSource,

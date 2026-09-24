@@ -19,7 +19,7 @@ import { proposalAssistantConfig } from "../../src/processes/proposalAssistantCo
 import { deliberationAssistantConfig } from "../../src/processes/deliberationAssistantConfig";
 
 const baseInput = {
-  hub_config: { hub_name: "Test Hub", community_description: "a test community" },
+  hub_config: { hub_name: "Test Hub", community_description: "a test community", code_of_conduct: "Be civil." },
   category: "idea" as const,
   draft_state: {
     title: "Short-term rentals",

@@ -47,7 +47,7 @@ import {
 import { sendEmail } from "../utils/email.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 import { getAuthUser } from "../middleware/auth.js";
-import { getSettingSync } from "../services/hubSettings.js";
+import { getSettingSync, hubDisplayNameSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -56,17 +56,9 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 // completion timestamp (which silently halved the send frequency). Comfortably
 // smaller than a day, so it can't cause a double-send within one cron cadence.
 const CADENCE_SLACK_MS = 6 * 60 * 60 * 1000; // 6 hours
-const HUB_NAME_FALLBACK = "Floyd Civic Hub";
-
-function hubName(): string {
-  return process.env.HUB_NAME?.trim() || HUB_NAME_FALLBACK;
-}
 
 function postalAddress(): string {
-  return (
-    getSettingSync(KEYS.EMAIL_POSTAL_ADDRESS)?.trim() ||
-    "Floyd, VA"
-  );
+  return getSettingSync(KEYS.EMAIL_POSTAL_ADDRESS)?.trim() || "";
 }
 
 function digestEnabled(): boolean {
@@ -320,7 +312,7 @@ export async function handleRunDigest(
         }
 
         const hub: DigestHubContext = {
-          hub_name: hubName(),
+          hub_name: hubDisplayNameSync(),
           ui_base_url: uiBase,
           postal_address: postalAddress(),
           unsubscribe_url: buildUnsubscribeUrl({
@@ -438,7 +430,7 @@ function renderUnsubscribePage(opts: {
   <div class="card">
     <h1>${escapeHtml(opts.heading)}</h1>
     <p>${opts.body}</p>
-    <p><a href="${escapeHtml(ui)}">Return to ${escapeHtml(hubName())}</a></p>
+    <p><a href="${escapeHtml(ui)}">Return to ${escapeHtml(hubDisplayNameSync())}</a></p>
   </div>
 </body>
 </html>`;

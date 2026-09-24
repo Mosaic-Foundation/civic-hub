@@ -19,9 +19,11 @@ import {
   isBetaEnabledSync,
   isDemoHubSync,
   isEmailOnBetaAllowlist,
+  hubDisplayNameSync,
 } from "../../services/hubSettings.js";
 import { isPrivilegedEmail } from "../../services/privilegedAccounts.js";
 import { currentHubId, currentHubIdOrNull } from "../../config/hubContext.js";
+import { MIGRATION_DEFAULT_HUB_ID } from "../../models/hub.js";
 import type { User, PendingVerification, Session } from "./models.js";
 
 export type { User, PendingVerification, Session } from "./models.js";
@@ -212,10 +214,11 @@ export async function requestVerification(
 
   // Send the OTP via email. If Resend is not configured (dev), fall back
   // to logging so local development still works.
+  const hubDisplayName = hubDisplayNameSync();
   const result = await sendEmail({
     to: normalizedEmail,
-    subject: "Your Floyd Civic Hub sign-in code",
-    html: renderOtpEmail(code),
+    subject: `Your ${hubDisplayName} sign-in code`,
+    html: renderOtpEmail(code, hubDisplayName),
   });
 
   if (result.sent) {
@@ -255,12 +258,19 @@ export async function requestVerification(
   return { message: "Verification code sent" };
 }
 
-function renderOtpEmail(code: string): string {
+function renderOtpEmail(code: string, rawHubName: string): string {
+  // The hub's display name is admin-authored text, so it is escaped before it
+  // goes into HTML like anything else a person typed.
+  const hubDisplayName = rawHubName
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #1f2937;">
       <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 16px;">Your sign-in code</h1>
       <p style="font-size: 15px; line-height: 1.5; margin: 0 0 24px;">
-        Enter this code in the Floyd Civic Hub to finish signing in:
+        Enter this code in the ${hubDisplayName} to finish signing in:
       </p>
       <div style="font-size: 32px; font-weight: 600; letter-spacing: 8px; background: #f3f4f6; padding: 16px 24px; border-radius: 8px; text-align: center; margin: 0 0 24px;">
         ${code}
@@ -269,7 +279,7 @@ function renderOtpEmail(code: string): string {
         This code expires in 10 minutes. If you didn't request it, you can ignore this email.
       </p>
       <p style="font-size: 13px; color: #6b7280; line-height: 1.5; margin: 0;">
-        — The Floyd Civic Hub
+        — The ${hubDisplayName}
       </p>
     </div>
   `;
@@ -474,7 +484,7 @@ export async function verifyCode(
   const { error: sessErr } = await db.from("sessions").insert({
     token,
     user_id: user.id,
-    hub_id: currentHubIdOrNull() ?? "floyd",
+    hub_id: currentHubIdOrNull() ?? MIGRATION_DEFAULT_HUB_ID,
     expires_at: sessionExpires,
   });
 

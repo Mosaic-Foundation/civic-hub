@@ -5,6 +5,11 @@ import {
   type MultiTurnMessage,
 } from "../../utils/anthropic.js";
 import { buildSystemPrompt, buildCocCheckPrompt } from "./systemPrompt.js";
+import { currentHub } from "../../config/hubContext.js";
+import { civicPlaceName } from "../../config/hub.js";
+import { hubDisplayNameSync } from "../../services/hubSettings.js";
+import { hubDocument } from "../../services/hubDocuments.js";
+import { KEYS } from "../../models/hubSettings.js";
 import type {
   CallAssistantInput,
   AssistantResponse,
@@ -17,13 +22,26 @@ import type {
 
 export type CallClaudeMultiTurnFn = typeof callClaudeMultiTurn;
 
-/** Hub identity handed to the assistant. Single source — every caller
- *  (draft assistant, CoC-only check) uses this rather than re-declaring. */
-export function getHubConfig(): HubConfig {
+/**
+ * Hub identity handed to the assistant, for the hub serving this request.
+ * Single source — every caller (draft assistant, CoC-only check) uses this
+ * rather than re-declaring.
+ *
+ * Name, place and Code of Conduct are the hub's own: its display name, its
+ * `jurisdiction_name`, and the same resolved Code of Conduct document its
+ * residents read (its override, or the shared template with its names). The
+ * community line used to be one county's, with a sentence of scenery that no
+ * setting holds; a hub with no civic geography gets a neutral line.
+ */
+export async function getHubConfig(): Promise<HubConfig> {
+  const hub = currentHub();
+  const place = civicPlaceName();
   return {
-    hub_name: process.env.HUB_NAME ?? "Floyd Civic Hub",
-    community_description:
-      "residents of Floyd County, Virginia — a small rural community in the Blue Ridge Mountains",
+    hub_name: hubDisplayNameSync(),
+    community_description: place
+      ? `residents of ${place}`
+      : "the residents of the community it serves",
+    code_of_conduct: hub ? (await hubDocument(hub, KEYS.LEGAL_CODE_OF_CONDUCT)) ?? "" : "",
   };
 }
 

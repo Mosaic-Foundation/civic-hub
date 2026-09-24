@@ -236,7 +236,7 @@ export async function handleCreateDeliberation(req: Request, res: Response): Pro
             ? [{ label: "Seed statements", text: seed_statements.join("\n") }]
             : []),
         ],
-        getHubConfig(),
+        await getHubConfig(),
       );
       if (findings.length > 0) {
         res.status(400).json({

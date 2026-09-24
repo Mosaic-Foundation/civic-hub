@@ -158,7 +158,7 @@ const hub = {
     return (
       setting("copy.governing_body_name") ??
       env(import.meta.env.VITE_HUB_GOVERNING_BODY_NAME) ??
-      "Board of Supervisors"
+      "Governing Body"
     );
   },
 
@@ -166,7 +166,7 @@ const hub = {
     return (
       setting("copy.governing_body_short") ??
       env(import.meta.env.VITE_HUB_GOVERNING_BODY_SHORT) ??
-      "BOS"
+      "Board"
     );
   },
 

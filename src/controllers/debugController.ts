@@ -22,12 +22,13 @@ import { clearProposals } from "../modules/civic.proposals/index.js";
 import { clearAuth } from "../modules/civic.auth/index.js";
 import { clearReceipts } from "../modules/civic.receipts/index.js";
 import {
-  FLOYD_FLOCK_CAMERA,
-  FLOYD_GREEN_BOX,
+  FLOCK_CAMERA_VOTE,
+  GREEN_BOX_VOTE,
   ALL_DELIBERATION_SEEDS,
   type SeedScenario,
   type DeliberationSeedScenario,
 } from "../debug/seedData.js";
+import { localizeScenario } from "../debug/localizeScenario.js";
 import { getDb } from "../db/client.js";
 import { HUB_ID } from "../config/hub.js";
 
@@ -222,15 +223,15 @@ export async function handleSeed(
 
     const createdProcesses: Record<string, unknown>[] = [];
 
-    // Floyd County Green Box — active vote
-    createdProcesses.push(await runScenario(FLOYD_GREEN_BOX));
+    // Green Box — active vote
+    createdProcesses.push(await runScenario(localizeScenario(GREEN_BOX_VOTE)));
 
-    // Floyd County Flock Camera — proposed vote
-    createdProcesses.push(await runScenario(FLOYD_FLOCK_CAMERA));
+    // Flock Camera — proposed vote
+    createdProcesses.push(await runScenario(localizeScenario(FLOCK_CAMERA_VOTE)));
 
     // Deliberation / conversation seed data — bypasses Polis API
     for (const scenario of ALL_DELIBERATION_SEEDS) {
-      createdProcesses.push(await seedDeliberation(scenario));
+      createdProcesses.push(await seedDeliberation(localizeScenario(scenario)));
     }
 
     const eventCount = await getEventCount();

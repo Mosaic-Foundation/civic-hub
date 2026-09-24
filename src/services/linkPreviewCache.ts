@@ -102,7 +102,7 @@ export async function getOrRefreshPreview(url: string): Promise<LinkPreview> {
 
   const userAgent =
     process.env.LINK_PREVIEW_USER_AGENT ||
-    "Floyd Civic Hub Link Preview Bot (+https://floyd.civic.social)";
+    "Civic Hub Link Preview Bot (+https://civic.social)";
 
   const fresh = await fetchLinkPreview(url, {
     fetchHtml: fetchHtmlForPreview,

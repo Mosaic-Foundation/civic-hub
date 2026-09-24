@@ -875,7 +875,7 @@ export default function AdminSettings() {
                 onChange={(e) =>
                   updateOfficial(i, { official_title: e.target.value })
                 }
-                placeholder="Board of Supervisors"
+                placeholder="Town Council"
                 aria-label={`Official ${i + 1} title`}
                 disabled={!loaded || savingOfficials}
                 maxLength={50}

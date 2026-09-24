@@ -36,6 +36,7 @@ import {
   type SettingsMap,
 } from "../db/hubSettingsStore.js";
 import { currentHub, currentHubSettings } from "../config/hubContext.js";
+import { hubName } from "../config/hub.js";
 import { isHubMode, type HubMode } from "../models/hub.js";
 import {
   KEYS,
@@ -613,6 +614,18 @@ export async function setCommentIdentityMode(
     updatedBy,
   );
   return mode as CommentIdentityMode;
+}
+
+// --- display name ---------------------------------------------------------
+
+/**
+ * What the hub calls itself: `identity.name` when the hub has chosen one, the
+ * registry name (`hubs.name`) otherwise. The server-side twin of the UI's
+ * `hub.name` getter and of `{HUB_NAME}` in hub documents — email subjects and
+ * assistant prompts use this so a resident sees one name everywhere.
+ */
+export function hubDisplayNameSync(): string {
+  return getSettingSync(KEYS.IDENTITY_NAME)?.trim() || hubName();
 }
 
 // --- plugin settings ------------------------------------------------------

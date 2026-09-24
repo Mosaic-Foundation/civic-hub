@@ -290,7 +290,7 @@ app.get("/", (_req, res) => {
       "GET /admin/proposals/:id": "Get full proposal detail for admin",
       "POST /auth/request-code": "Request email verification code",
       "POST /auth/verify": "Verify code and get session token",
-      "POST /auth/residency": "Affirm Floyd County residency (requires auth)",
+      "POST /auth/residency": "Affirm residency (requires auth)",
       "GET /auth/me": "Get current authenticated user",
       "POST /auth/logout": "Destroy session",
       "GET /votes/:id/log": "Public vote audit log (available after vote closes)",

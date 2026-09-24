@@ -49,7 +49,7 @@ export interface FetchHtmlFn {
 export const FETCH_TIMEOUT_MS = 8000;
 export const FETCH_MAX_REDIRECTS = 3;
 export const DEFAULT_USER_AGENT =
-  "Floyd Civic Hub Link Preview Bot (+https://floyd.civic.social)";
+  "Civic Hub Link Preview Bot (+https://civic.social)";
 
 /** Cache TTLs as exposed for the host hub's controller layer. */
 export const PREVIEW_TTL_SUCCESS_MS = 7 * 24 * 60 * 60 * 1000; // 7 days

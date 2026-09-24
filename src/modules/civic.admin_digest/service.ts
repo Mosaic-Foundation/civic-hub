@@ -13,6 +13,7 @@ import { getAllProcesses } from "../../services/processService.js";
 import { listFeedback } from "../civic.feedback/index.js";
 import { sendEmail } from "../../utils/email.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
+import { hubDisplayNameSync } from "../../services/hubSettings.js";
 import type {
   AdminDigestPayload,
   PendingItemSummary,
@@ -23,11 +24,6 @@ const DISPLAY_CAP = 5;
 /** The digest runs daily, so "new feedback" means the last 24 hours. */
 const FEEDBACK_WINDOW_MS = 24 * 60 * 60 * 1000;
 const FEEDBACK_EXCERPT_LEN = 90;
-const HUB_NAME_FALLBACK = "Floyd Civic Hub";
-
-function hubName(): string {
-  return process.env.HUB_NAME?.trim() || HUB_NAME_FALLBACK;
-}
 
 function toPendingItem(p: Proposal): PendingItemSummary {
   return { id: p.id, title: p.title, created_at: p.created_at };
@@ -140,7 +136,7 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
   const feedback = snapshotFromList(feedbackItems, `${ui}/admin/feedback`);
 
   return {
-    hub_name: hubName(),
+    hub_name: hubDisplayNameSync(),
     generated_at: new Date().toISOString(),
     proposals,
     vote_results: voteResults,

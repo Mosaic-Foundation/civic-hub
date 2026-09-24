@@ -116,7 +116,7 @@ export function processJurisdiction(): string | undefined {
 export function hubName(): string {
   const hub = currentHub();
   if (hub) return hub.name;
-  return process.env.HUB_NAME?.trim() || "Floyd Civic Hub";
+  return process.env.HUB_NAME?.trim() || "Civic Hub";
 }
 
 /**
@@ -190,7 +190,7 @@ export function assertSpaceIdentityConfigured(
   if (!/^did:[a-z0-9]+:.+/.test(configured)) {
     throw new Error(
       `CIVIC_SPACE_DID="${configured}" is not a DID. Expected did:<method>:<id>, ` +
-        `e.g. did:web:floyd.civic.social.`,
+        `e.g. did:web:example.civic.social.`,
     );
   }
 }

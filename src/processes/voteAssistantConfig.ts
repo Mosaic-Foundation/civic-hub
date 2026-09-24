@@ -18,7 +18,7 @@ const VOTE_BEST_PRACTICES = `# Vote Best Practices — Civic Hub
 The title IS the vote question. It should be phrased as something neighbors can meaningfully say yes or no to (or choose between options on). Strong titles are specific enough that a voter scrolling the list understands what they're weighing in on without opening the details.
 
 Weak: *"Traffic issues"*, *"We need change"*, *"Library funding"*
-Strong: *"Should Floyd County add sidewalks on Main Street between First and Third?"*, *"Should the county extend library hours to include Sundays?"*, *"Should Floyd allow food trucks on Main Street during the Saturday market?"*
+Strong: *"Should we add sidewalks on Main Street between First and Third?"*, *"Should the county extend library hours to include Sundays?"*, *"Should food trucks be allowed on Main Street during the Saturday market?"*
 
 Flag titles that are topics rather than questions. A vote title should be something a voter can respond to.
 

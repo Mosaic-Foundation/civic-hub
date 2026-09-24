@@ -36,7 +36,7 @@ This is the single most important thing the assistant protects: neutrality of th
 The topic should name a genuine open question or area of community interest — something residents actually disagree or wonder about — phrased so that a person on any side recognizes it as fair.
 
 Weak: *"Why we need more housing development"* (a position, not a question), *"Growth"* (a topic so vague nobody knows what they're weighing in on), *"Should the county stop wasting money on the bypass?"* (loaded).
-Strong: *"How should Floyd County balance growth and rural character?"*, *"What should the future of the old elementary school building be?"*, *"How is parking downtown working for residents and businesses?"*
+Strong: *"How should we balance growth and rural character?"*, *"What should the future of the old elementary school building be?"*, *"How is parking downtown working for residents and businesses?"*
 
 Flag topics that presuppose an answer, embed loaded language, or advocate rather than ask. Flag topics too vague for a participant to know what the conversation is about.
 
@@ -90,13 +90,13 @@ A conversation maps community opinion — it is an instrument, not an argument. 
     {
       field: "title",
       hint: "Pose a genuine open question that a neighbor on any side would call fair — not a position.",
-      example: "How should Floyd County balance growth and rural character?",
+      example: "How should we balance growth and rural character?",
     },
     {
       field: "description",
       hint: "Set the table: the situation, why it's timely, and that reasonable neighbors see it differently. Invite every side in.",
       example:
-        "The county is updating its comprehensive plan. Some neighbors want more housing and business; others worry about losing what makes Floyd rural. This conversation maps where we agree and differ.",
+        "The county is updating its comprehensive plan. Some neighbors want more housing and business; others worry about losing what makes this place rural. This conversation maps where we agree and differ.",
     },
     {
       field: "sources",

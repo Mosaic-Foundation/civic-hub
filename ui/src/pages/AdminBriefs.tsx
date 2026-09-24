@@ -365,7 +365,7 @@ export default function AdminBriefs() {
                   />
                   <input
                     className="form-input"
-                    placeholder="Display label, e.g. Jane Doe, Board of Supervisors"
+                    placeholder="Display label, e.g. Jane Doe, Town Council"
                     value={r.label}
                     onChange={(e) =>
                       setRecipients((prev) =>

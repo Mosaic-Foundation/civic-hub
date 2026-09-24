@@ -432,7 +432,7 @@ export function formatDigestHtml(
       &nbsp;·&nbsp;
       <a href="${escapeAttr(hub.unsubscribe_url)}" style="color:#2c7be5;">Unsubscribe</a>
     </p>
-    <p style="font-size:12px;color:#8a8a8a;margin:12px 0 0;">${escapeHtml(hub.postal_address)}</p>
+    ${hub.postal_address ? `<p style="font-size:12px;color:#8a8a8a;margin:12px 0 0;">${escapeHtml(hub.postal_address)}</p>` : ""}
   </div>
 </body>
 </html>`;
@@ -523,7 +523,7 @@ export function formatDigestText(
     "---",
     `Change digest frequency: ${hub.manage_subscriptions_url}`,
     `Unsubscribe: ${hub.unsubscribe_url}`,
-    hub.postal_address,
+    ...(hub.postal_address ? [hub.postal_address] : []),
   ].join("\n");
 }
 

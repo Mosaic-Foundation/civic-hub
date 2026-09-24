@@ -12,6 +12,8 @@ import type { Suggestion } from "../modules/civic.assistant/models.js";
 import { Request, Response } from "express";
 import { getAuthUser } from "../middleware/auth.js";
 import { getProcessHandler } from "../processes/registry.js";
+import { currentHub } from "../config/hubContext.js";
+import { hubDocument } from "../services/hubDocuments.js";
 import {
   callAssistant,
   getHubConfig,
@@ -27,6 +29,19 @@ const VALID_PHASES = new Set(["brainstorm", "review", "free_form"]);
 
 function lookupConfig(processType: string): AssistantTypeConfig | undefined {
   return getProcessHandler(processType)?.getAssistantConfig?.();
+}
+
+/**
+ * The type's config with its best-practices guide replaced by the hub's own
+ * document, when the type names one. A guide whose worked examples are about
+ * a place belongs to the hub, and the assistant should coach from the same
+ * text the hub publishes rather than from a copy compiled into the server.
+ */
+async function withHubGuide(config: AssistantTypeConfig): Promise<AssistantTypeConfig> {
+  if (!config.bestPracticesDocument) return config;
+  const hub = currentHub();
+  const doc = hub ? await hubDocument(hub, config.bestPracticesDocument) : null;
+  return doc ? { ...config, bestPractices: doc } : config;
 }
 
 function toDraftState(draft: AssistantDraft): DraftState {
@@ -146,11 +161,11 @@ export async function handleAssistantMessage(
     const response = await callAssistant({
       phase: phase as Phase,
       category,
-      config: effectiveConfig(config, toDraftState(draft)),
+      config: effectiveConfig(await withHubGuide(config), toDraftState(draft)),
       draft_state: toDraftState(draft),
       conversation_history: draft.conversation_history,
       user_message,
-      hub_config: getHubConfig(),
+      hub_config: await getHubConfig(),
     });
 
     await config.draftStore.appendConversation(draft.id, user_message, response.message);
@@ -214,7 +229,7 @@ export async function handleAssistantReview(
       let suggestions: Suggestion[] = [];
       let unavailable = false;
       try {
-        suggestions = await checkTextAgainstCoC(fields, getHubConfig());
+        suggestions = await checkTextAgainstCoC(fields, await getHubConfig());
       } catch (err) {
         console.error(`[assistant-review:${processType}] CoC check unavailable, failing open to human review:`, err instanceof Error ? err.message : err);
         unavailable = true;
@@ -275,11 +290,11 @@ export async function handleAssistantSuggest(
     const response = await callAssistant({
       phase: "review",
       category,
-      config: effectiveConfig(config, toDraftState(draft)),
+      config: effectiveConfig(await withHubGuide(config), toDraftState(draft)),
       draft_state: toDraftState(draft),
       conversation_history: draft.conversation_history,
       user_message: message,
-      hub_config: getHubConfig(),
+      hub_config: await getHubConfig(),
     });
     // Advice is a conversation turn, not writing assistance until applied
     // (Apply is what marks assistant_helped).
