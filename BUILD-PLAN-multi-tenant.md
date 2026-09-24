@@ -257,18 +257,37 @@ a table is a change of reader, not a change of every call site.
 File: `src/db/forHub.ts`.
 
 ```ts
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 export type HubDb = {
-  /** Same builder surface as SupabaseClient["from"], hub-scoped. */
-  from<T extends TableName>(table: T): HubQueryBuilder<T>;
-  /** For .rpc() calls; hub_id is passed as a named argument. */
-  rpc: SupabaseClient["rpc"];
+  /** A hub-scoped table: the builder shape the code uses, not Supabase's result shape. */
+  from(table: TableName): HubQueryBuilder;
+  /** A database function; the hub is passed as the named argument `p_hub_id`. */
+  rpc<T = unknown>(fn: string, args?: Row): PromiseLike<T>;
   readonly hubId: string;
 };
 
+export interface HubQueryBuilder {
+  select<T = Row>(columns?: string): HubSelect<T>;   // await → T[]; .maybeSingle() → T | null; .single() → T
+  count(): HubCount;                                 // await → number
+  insert<T = Row>(values: Row | Row[]): HubWrite<T>; // await → null; .select() → T[]
+  upsert<T = Row>(values: Row | Row[], options: { onConflict: string }): HubWrite<T>;
+  update<T = Row>(values: Row): HubWrite<T>;
+  delete<T = Row>(): HubWrite<T>;
+}
+
+export class HubDbError extends Error { code?: string; details?: string }
+
 export function forHub(hubId: string): HubDb;
 ```
+
+**Methods throw on error and return rows, never Supabase's `{ data, error }`
+pair** (Adam, 2026-09-24, so that shape stays inside `src/db/` and a later
+change of driver is a change of `forHub.ts`, not of every caller). A failure
+throws `HubDbError` carrying the Postgres SQLSTATE in `code` (`23505` for a
+unique violation, `PGRST116` for `.single()` finding no row). Filters and
+modifiers (`eq`, `in`, `or`, `order`, `limit`, …) chain as before. The
+contract as first written (Phase 0) exposed `SupabaseClient["from"]` and
+`SupabaseClient["rpc"]`; the builder surface stayed, the result shape did
+not. A database function's hub argument is named `p_hub_id`.
 
 - `forHub()` returns a client whose every `select` / `update` / `delete`
   carries `.eq("hub_id", hubId)` and whose every `insert` / `upsert` has
@@ -284,8 +303,13 @@ export function forHub(hubId: string): HubDb;
 - Nothing outside `src/db/` and `src/control/` imports
   `@supabase/supabase-js` or `src/db/client.ts`. A lint rule
   (`no-restricted-imports`) enforces this from Phase 2.
-- Tests: `tests/unit/forHub.test.ts` asserts the filter and the stamp with
-  a stubbed client; no database needed.
+- An upsert whose conflict target does not name `hub_id` throws (a conflict
+  on a global key would update whichever hub's row it hit), and an update or
+  delete re-checks its hub filter when it runs.
+- Tests: `tests/unit/forHub.test.ts` asserts the filter, the stamp and the
+  result shape with a stubbed client; no database needed.
+  `tests/api/forHubIsolation.test.ts` runs every operation against two seeded
+  hubs in the local stack.
 
 ### 4. Request flow
 
@@ -485,6 +509,16 @@ cleanup and outside the repo. Done in Phase 2a:
    Postgres where `authenticated` / `service_role` do not exist.
 6. **Generic fallbacks for `VERCEL_*` env reads** (`src/app.ts`:
    `VERCEL_GIT_COMMIT_SHA`, `VERCEL_DEPLOYMENT_ID`).
+7. **The lint rule**: `no-restricted-imports` banning `@supabase/supabase-js`
+   and `src/db/client.ts` outside `src/db/` and `src/control/`, keyed on the
+   `@civic-raw-client` tag in `client.ts`.
+8. **At the end of 2b, two atomic Postgres functions called through
+   `forHub().rpc()`**: `transition_process` (a process state change and its
+   event, in one transaction) and `cast_vote` (ballot, receipt,
+   participation and event, in one transaction). Today each is several
+   separate calls: a failure between them leaves state without its event,
+   or an event without its state, and a ballot's three writes rely on
+   hand-written rollbacks.
 
 **The cleanup migration after cutover** drops, with the `DEFAULT 'floyd'`s
 and the deprecated search wrappers: `users_email_key`,
@@ -522,6 +556,10 @@ with `supabase gen signing-key --algorithm ES256`.
 See "Phase 3 approach (verified)" below for the verified mechanism.
 
 **Phase 3 adds, from the exit-rights audit (Adam, 2026-09-24):**
+- **Every policy calls one SQL function, `current_hub_id()`**, which reads the
+  JWT claim now (`current_setting('request.jwt.claims', true)::json->>'hub_id'`).
+  One definition means a later change of where the hub comes from is one
+  function, not thirty policies.
 - `FORCE ROW LEVEL SECURITY` on the ten tables that have RLS enabled but not
   forced: `deliberation_drafts`, `hub_settings`, `project_comments`,
   `project_drafts`, `project_sentiments`, `project_updates`, `projects`,
