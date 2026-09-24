@@ -18,7 +18,9 @@ import CopySection from "./settings/CopySection";
 import LegalSection from "./settings/LegalSection";
 import EmailSection from "./settings/EmailSection";
 import ModeSection from "./settings/ModeSection";
-import LegacySettings from "./settings/LegacySettings";
+import PeopleSection from "./settings/PeopleSection";
+import OfficialsSection from "./settings/OfficialsSection";
+import ParticipationSection from "./settings/ParticipationSection";
 import "./AdminSettings.css";
 
 interface SectionEntry {
@@ -35,7 +37,9 @@ const SECTIONS: readonly SectionEntry[] = [
   { id: "legal", label: "Legal", render: () => <LegalSection /> },
   { id: "email", label: "Email", render: () => <EmailSection /> },
   { id: "mode", label: "Mode", render: () => <ModeSection /> },
-  { id: "other", label: "Other settings", render: () => <LegacySettings /> },
+  { id: "people", label: "Admins & board", render: () => <PeopleSection /> },
+  { id: "officials", label: "Officials", render: () => <OfficialsSection /> },
+  { id: "participation", label: "Participation", render: () => <ParticipationSection /> },
   { id: "plugins", label: "Plugins", comingNote: "Coming next" },
 ];
 
