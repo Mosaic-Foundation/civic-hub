@@ -487,9 +487,12 @@ function classifyAnnouncement(
         ? "Admin"
         : rawRole;
   const isAdmin = normalized === "Admin";
-  // Synced-from-external announcements (Floyd County Gov cron) reuse the admin
-  // palette so they group with admin-authored ones under the same filter pill.
-  const isSynced = ann?.source?.origin === "floyd-news";
+  // Synced-from-external announcements (the news-sync cron, e.g. Floyd County
+  // Gov) reuse the admin palette so they group with admin-authored ones under
+  // the same filter pill. Keyed on the presence of `source`, not on its
+  // origin string: only a sync writes one, and the origin value changed when
+  // the module was renamed, so older rows carry a different one.
+  const isSynced = Boolean(ann?.source);
   return {
     surface: "announcement",
     // Non-admin authors (board members, committees) get a distinct pill +

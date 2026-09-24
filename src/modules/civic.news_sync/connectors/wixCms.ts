@@ -1,10 +1,11 @@
-// civic.floyd_news_sync — RSS feed parser
+// civic.news_sync — the "wix-cms" connector: a Wix site's blog RSS feed
 //
-// Floyd's Wix site exposes /blog-feed.xml as a structured RSS 2.0 feed
-// with title, link, pubDate, and (sometimes) description per item. We
-// use this instead of scraping the /news listing because:
+// A Wix site exposes /blog-feed.xml as a structured RSS 2.0 feed with title,
+// link, pubDate, and (sometimes) description per item. Floyd County's site was
+// the first one read this way, and it is why this connector exists. We use the
+// feed instead of scraping the /news listing because:
 //   - It's structured XML — no Claude needed for discovery (faster + free).
-//   - It exposes more posts than the listing page (19 vs 3).
+//   - It exposes more posts than the listing page (19 vs 3 on Floyd's).
 //   - Real publication dates instead of relative "X days ago" strings.
 //   - When authors include a description, we get it directly.
 //
@@ -12,19 +13,26 @@
 // have any description text at all. The other ~75% are
 // title-and-permalink only. The card UI handles this gracefully:
 // when body is empty the card just renders title + pill + timestamp.
+//
+// Nothing here names a site. The hub's `plugin.news_sync.source_url` is the
+// feed; the post permalinks it accepts are Wix's `/post/<slug>` shape on THAT
+// feed's origin, so a feed can never smuggle in links to somebody else's site.
 
 import * as cheerio from "cheerio";
-import type { FloydNewsEntry } from "./models.js";
+import type { NewsConnector, NewsEntry } from "../models.js";
 
 /**
- * Parse an RSS 2.0 XML document into FloydNewsEntry objects.
+ * Parse a Wix blog RSS 2.0 document into NewsEntry objects.
  *
- * Skips malformed items but doesn't throw on unrecognized fields. The
- * caller is responsible for filtering by date and validating URLs.
+ * `siteOrigin` is the origin of the configured feed (e.g.
+ * "https://www.example.gov"); an item whose link is not a Wix post on that
+ * origin is dropped. Skips malformed items but doesn't throw on unrecognized
+ * fields. The caller is responsible for filtering by date.
  */
-export function parseRssFeed(rawXml: string): FloydNewsEntry[] {
+export function parseRssFeed(rawXml: string, siteOrigin: string): NewsEntry[] {
   const $ = cheerio.load(rawXml, { xmlMode: true });
-  const entries: FloydNewsEntry[] = [];
+  const entries: NewsEntry[] = [];
+  const shareUrlPattern = wixPostUrlPattern(siteOrigin);
 
   $("item").each((_i, el) => {
     const $item = $(el);
@@ -34,7 +42,7 @@ export function parseRssFeed(rawXml: string): FloydNewsEntry[] {
     const pubDateText = ($item.find("pubDate").first().text() ?? "").trim();
 
     if (title.length === 0 || link.length === 0) return;
-    if (!SHARE_URL_PATTERN.test(link)) return;
+    if (!shareUrlPattern.test(link)) return;
 
     const event_date = parseEventDate(title, link);
     const pub_date_iso = parseRfc822ToIso(pubDateText);
@@ -54,8 +62,16 @@ export function parseRssFeed(rawXml: string): FloydNewsEntry[] {
   return entries;
 }
 
-const SHARE_URL_PATTERN =
-  /^https:\/\/www\.floydcova\.gov\/post\/[A-Za-z0-9_-]+$/;
+/**
+ * A Wix blog post permalink on this origin: `<origin>/post/<slug>`.
+ *
+ * Exported for tests. The origin is escaped, so a dot in a hostname matches
+ * only a dot.
+ */
+export function wixPostUrlPattern(siteOrigin: string): RegExp {
+  const escaped = siteOrigin.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  return new RegExp(`^${escaped}/post/[A-Za-z0-9_-]+$`);
+}
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -160,9 +176,30 @@ function stripHtml(s: string): string {
  * controller can stamp a single "now" for an entire run.
  */
 export function isFutureOrUndated(
-  entry: FloydNewsEntry,
+  entry: NewsEntry,
   today_iso: string,
 ): boolean {
   if (entry.event_date === null) return true;
   return entry.event_date >= today_iso;
 }
+
+export const wixCmsNewsConnector: NewsConnector = {
+  id: "wix-cms",
+  description:
+    "The blog RSS feed of a Wix-hosted site (…/blog-feed.xml). Structured " +
+    "XML, no model call; accepts only /post/ permalinks on the feed's own origin.",
+
+  async discover(cfg, deps) {
+    let siteOrigin: string;
+    try {
+      siteOrigin = new URL(cfg.source_url).origin;
+    } catch {
+      throw new Error(`plugin.news_sync.source_url="${cfg.source_url}" is not a valid URL.`);
+    }
+    const rawXml = await deps.fetchText(cfg.source_url);
+    console.log(
+      `[news-sync] fetched feed url=${cfg.source_url} bytes=${rawXml.length}`,
+    );
+    return parseRssFeed(rawXml, siteOrigin);
+  },
+};

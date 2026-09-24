@@ -4,6 +4,7 @@
  *   npx tsx scripts/seed-hub-settings.ts                # floyd, from env
  *   npx tsx scripts/seed-hub-settings.ts --hub athens   # the demo fixture
  *   npx tsx scripts/seed-hub-settings.ts --dry-run      # show, write nothing
+ *   npx tsx scripts/seed-hub-settings.ts --only plugin.news_sync.   # one prefix
  *
  * WHAT THIS IS FOR. Phase 1 part one moved the NAMES of these values to the
  * dotted scheme while they still lived in environment variables. This writes
@@ -39,6 +40,15 @@ type Entry = { key: string; value: string };
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes("--dry-run");
+/**
+ * `--only <prefix>` writes just the keys that start with it, e.g.
+ * `--only plugin.news_sync.` — so one plugin's rows can be seeded on a hub
+ * whose other rows an admin has since edited, without putting those back.
+ */
+const ONLY = (() => {
+  const i = args.indexOf("--only");
+  return i >= 0 && args[i + 1] ? args[i + 1] : null;
+})();
 const HUB_ID = (() => {
   const i = args.indexOf("--hub");
   return i >= 0 && args[i + 1] ? args[i + 1] : "floyd";
@@ -71,6 +81,23 @@ function readLocalFile(relativePath: string): string | undefined {
   }
 }
 
+/**
+ * A hub's seed values from config/hubs/<hub>/settings.json: the values that
+ * used to be compiled into src/ as defaults. This script is the only reader of
+ * that folder — nothing in src/ may read a hub's seed data, or it would be a
+ * default again. Keys starting with "_" are notes, not settings.
+ */
+function hubSeedFile(hubId: string): Record<string, string> {
+  const raw = readLocalFile(`config/hubs/${hubId}/settings.json`);
+  if (!raw) return {};
+  const parsed = JSON.parse(raw) as Record<string, unknown>;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(parsed)) {
+    if (!k.startsWith("_") && typeof v === "string") out[k] = v;
+  }
+  return out;
+}
+
 /** Trimmed env var, or undefined when unset or blank. */
 function env(name: string): string | undefined {
   const v = process.env[name]?.trim();
@@ -99,6 +126,7 @@ function putList(out: Entry[], key: string, raw: string | undefined): void {
  */
 function floydEntries(): Entry[] {
   const out: Entry[] = [];
+  const seed = hubSeedFile("floyd");
 
   // Floyd's proposal guide is its own document, not the shared one.
   //
@@ -164,20 +192,32 @@ function floydEntries(): Entry[] {
       env("VITE_HUB_ONBOARDING_WORDCLOUD_ID"));
   putList(out, KEYS.PLUGIN_FEEDBACK_RECIPIENTS, env("FEEDBACK_RECIPIENT_EMAIL"));
 
-  put(out, KEYS.PLUGIN_MEETING_SOURCE_URL, env("MEETING_SOURCE_URL"));
-  put(out, KEYS.PLUGIN_MEETING_CONNECTOR_ID, env("MEETING_CONNECTOR_ID"));
+  // Environment first — seeding from production's environment writes what
+  // production runs — then Floyd's seed file for anything the env leaves unset.
+  const envOrSeed = (varName: string, key: string) => env(varName) ?? seed[key];
+
+  put(out, KEYS.PLUGIN_MEETING_SOURCE_URL,
+      envOrSeed("MEETING_SOURCE_URL", KEYS.PLUGIN_MEETING_SOURCE_URL));
+  put(out, KEYS.PLUGIN_MEETING_CONNECTOR_ID,
+      envOrSeed("MEETING_CONNECTOR_ID", KEYS.PLUGIN_MEETING_CONNECTOR_ID));
   put(out, KEYS.PLUGIN_MEETING_EXTRACTION_INSTRUCTIONS,
       env("MEETING_EXTRACTION_INSTRUCTIONS"));
   put(out, KEYS.PLUGIN_MEETING_TITLE_FILTER, env("MEETING_TITLE_FILTER"));
-  put(out, KEYS.PLUGIN_MEETING_TYPE_EXCLUDE, env("MEETING_TYPE_EXCLUDE"));
+  put(out, KEYS.PLUGIN_MEETING_TYPE_EXCLUDE,
+      envOrSeed("MEETING_TYPE_EXCLUDE", KEYS.PLUGIN_MEETING_TYPE_EXCLUDE));
   put(out, KEYS.PLUGIN_MEETING_WIX_COLLECTION, env("MEETING_WIX_COLLECTION"));
   put(out, KEYS.PLUGIN_MEETING_YOUTUBE_CHANNEL_ID,
-      env("MEETING_YOUTUBE_CHANNEL_ID"));
+      envOrSeed("MEETING_YOUTUBE_CHANNEL_ID", KEYS.PLUGIN_MEETING_YOUTUBE_CHANNEL_ID));
   put(out, KEYS.PLUGIN_MEETING_AUTO_PUBLISH, env("MEETING_SUMMARY_AUTO_PUBLISH"));
   put(out, KEYS.PLUGIN_MEETING_CUTOFF_DATE, env("MEETING_SUMMARY_CUTOFF_DATE"));
   put(out, KEYS.PLUGIN_MEETING_MAX_PER_RUN, env("MEETING_SUMMARY_MAX_PER_RUN"));
 
-  put(out, KEYS.PLUGIN_NEWS_SYNC_SOURCE_URL, env("FLOYD_NEWS_SOURCE_URL"));
+  // The connector never had an env var: until 2026-09-24 there was one code
+  // path, and Floyd's feed URL was its compiled-in default. Both are Floyd's
+  // data now, and a hub with neither does not sync news at all.
+  put(out, KEYS.PLUGIN_NEWS_SYNC_CONNECTOR, seed[KEYS.PLUGIN_NEWS_SYNC_CONNECTOR]);
+  put(out, KEYS.PLUGIN_NEWS_SYNC_SOURCE_URL,
+      envOrSeed("FLOYD_NEWS_SOURCE_URL", KEYS.PLUGIN_NEWS_SYNC_SOURCE_URL));
   put(out, KEYS.PLUGIN_NEWS_SYNC_MAX_PER_RUN, env("FLOYD_NEWS_SYNC_MAX_PER_RUN"));
 
   for (const [id, varName] of [
@@ -317,7 +357,9 @@ async function main(): Promise<void> {
     );
   }
 
-  const entries = HUB_ID === "athens" ? athensEntries() : floydEntries();
+  const entries = (HUB_ID === "athens" ? athensEntries() : floydEntries()).filter(
+    (e) => ONLY === null || e.key.startsWith(ONLY),
+  );
   const mode = modeIsNotThisScriptsBusiness();
 
   console.log(`\nHub: ${HUB_ID} (${(hub as { name: string }).name})`);

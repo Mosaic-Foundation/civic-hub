@@ -32,7 +32,7 @@ import searchRoutes from "./routes/searchRoutes.js";
 import meetingSummaryRoutes, {
   meetingSummaryCronRouter,
 } from "./routes/meetingSummaryRoutes.js";
-import { floydNewsSyncCronRouter } from "./routes/floydNewsSyncRoutes.js";
+import { newsSyncCronRouter } from "./routes/newsSyncRoutes.js";
 import { adminDigestCronRouter } from "./routes/adminDigestRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import projectDraftRoutes from "./routes/projectDraftRoutes.js";
@@ -224,12 +224,12 @@ app.use("/waitlist", waitlistRoutes);
 //   /meeting-summary/:id    — public read of published summaries
 app.use("/meeting-summary", meetingSummaryRoutes);
 
-// Digest (Slice 5) + Meeting summary (Slice 6) + Floyd-news-sync
-// (Slice 13) + Admin-digest (Slice 16) crons all mount here. Vercel
-// Cron POSTs with the CRON_SECRET bearer, auto-injected.
+// Digest (Slice 5) + Meeting summary (Slice 6) + News sync (Slice 13, first
+// written as Floyd's news sync) + Admin-digest (Slice 16) crons all mount
+// here. Vercel Cron GETs with the CRON_SECRET bearer, auto-injected.
 //   /internal/digest/run
 //   /internal/meeting-summary/run
-//   /internal/floyd-news-sync/run
+//   /internal/news-sync/run          (old path kept as a deprecated alias)
 //   /internal/admin-digest/run
 // Scheduled work is switched off as a whole on deployments that must not do
 // a hub's real work — see src/config/cron.ts. Mounted AHEAD of the four
@@ -238,7 +238,7 @@ app.use("/meeting-summary", meetingSummaryRoutes);
 app.use("/internal", cronKillSwitch);
 app.use("/internal", digestCronRouter);
 app.use("/internal", meetingSummaryCronRouter);
-app.use("/internal", floydNewsSyncCronRouter);
+app.use("/internal", newsSyncCronRouter);
 app.use("/internal", adminDigestCronRouter);
 app.use("/unsubscribe", digestUnsubscribeRouter);
 app.use("/user/settings", userSettingsRouter);
@@ -314,7 +314,7 @@ app.get("/", (_req, res) => {
       "GET /unsubscribe/digest?token=X": "Unsubscribe from the daily digest",
       "PATCH /user/settings/digest": "Toggle digest subscription (authed)",
       "POST /internal/meeting-summary/run": "Cron-triggered meeting discovery + summarization (CRON_SECRET bearer)",
-      "POST /internal/floyd-news-sync/run": "Cron-triggered Floyd news/announcement sync (CRON_SECRET bearer)",
+      "GET /internal/news-sync/run": "Cron-triggered news/announcement sync, once per hub that configured it (CRON_SECRET bearer; ?hub=<slug> for one)",
       "POST /internal/admin-digest/run": "Cron-triggered admin queue digest (CRON_SECRET bearer)",
       "GET /admin/meeting-summaries": "List meeting summaries for admin review (optional ?status=)",
       "GET /admin/meeting-summaries/:id": "Get full meeting summary detail for admin",

@@ -38,6 +38,9 @@ beforeAll(async () => {
 });
 
 const CRON_PATHS = [
+  "/internal/news-sync/run",
+  // Deprecated alias, kept until the cutover because production's vercel.json
+  // on main still schedules it. Delete this line when the alias is removed.
   "/internal/floyd-news-sync/run",
   "/internal/digest/run",
   "/internal/meeting-summary/run",

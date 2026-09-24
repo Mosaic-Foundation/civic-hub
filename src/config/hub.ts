@@ -88,6 +88,30 @@ export function civicPlaceName(): string | null {
   return name ? name : null;
 }
 
+/**
+ * The place itself, without its state: "Floyd County" from "Floyd County,
+ * Virginia". Null when the hub has no civic geography.
+ *
+ * The same first-segment derivation the legal documents use for `{PLACE}`
+ * (src/services/hubDocuments.ts) and the UI uses for `hub.place`, so a
+ * sentence a plugin writes and a sentence a document writes name the place
+ * the same way.
+ */
+export function civicPlaceShortName(): string | null {
+  const place = civicPlaceName()?.split(",")[0]?.trim();
+  return place ? place : null;
+}
+
+/**
+ * The jurisdiction a plugin stamps on a process it creates for this hub, or
+ * undefined to let processService apply its default. A place code from the
+ * hubs row when there is one — never a literal, which is how every synced
+ * announcement on every hub would have been filed under one county.
+ */
+export function processJurisdiction(): string | undefined {
+  return civicPlaceCode() ?? undefined;
+}
+
 /** Display name of this space, used in `generator.name` and email surfaces. */
 export function hubName(): string {
   const hub = currentHub();

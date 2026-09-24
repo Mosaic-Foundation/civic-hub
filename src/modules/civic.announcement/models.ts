@@ -83,8 +83,18 @@ export interface AnnouncementProcessState {
 }
 
 export interface AnnouncementSource {
-  /** Discriminator for the sync origin. Add new values as new connectors land. */
-  origin: "floyd-news";
+  /**
+   * Which sync produced it. "news-sync" since the module rename (2026-09-24);
+   * rows synced before then carry the module's old, place-named value, which
+   * is why readers test for the presence of `source` rather than comparing
+   * this string.
+   */
+  origin: string;
+  /**
+   * The news-sync connector that read it, e.g. "wix-cms". Absent on rows
+   * synced before connectors were chosen per hub.
+   */
+  connector?: string;
   /** External permalink — also serves as the dedupe key. */
   share_url: string;
   /** ISO 8601 timestamp of when the sync ingested this entry. */

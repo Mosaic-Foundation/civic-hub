@@ -200,6 +200,7 @@ fallback until the cutover writes the row):
 | `ADMIN_DIGEST_ENABLED` | `plugin.admin_digest.enabled` |
 | `MEETING_SUMMARY_ENABLED`, `MEETING_SOURCE_URL`, `MEETING_CONNECTOR_ID`, `MEETING_EXTRACTION_INSTRUCTIONS`, `MEETING_TITLE_FILTER`, `MEETING_TYPE_EXCLUDE`, `MEETING_WIX_COLLECTION`, `MEETING_YOUTUBE_CHANNEL_ID`, `MEETING_SUMMARY_AUTO_PUBLISH`, `MEETING_SUMMARY_CUTOFF_DATE`, `MEETING_SUMMARY_MAX_PER_RUN` | `plugin.meeting_summary.enabled`, `.source_url`, `.connector_id`, `.extraction_instructions`, `.title_filter`, `.type_exclude`, `.wix_collection`, `.youtube_channel_id`, `.auto_publish`, `.cutoff_date`, `.max_per_run` |
 | `FLOYD_NEWS_SYNC_ENABLED`, `FLOYD_NEWS_SOURCE_URL`, `FLOYD_NEWS_SYNC_MAX_PER_RUN` | `plugin.news_sync.enabled`, `.source_url`, `.max_per_run` (module `civic.floyd_news_sync` is renamed `civic.news_sync` in Phase 4; the word Floyd leaves `src/`) |
+| (none — was the only code path) | `plugin.news_sync.connector` — which connector reads the feed; `wix-cms` is the one that exists. Added 2026-09-24 with the rename, per Adam's Phase 4 part four prompt. No env fallback and no default: a hub with neither connector nor `source_url` does not sync news. Floyd's `wix-cms` + its feed URL are seed data in `config/hubs/floyd/settings.json`. |
 | `VITE_HUB_POLIS_URL`, `POLIS_BASE_URL` | `plugin.conversation.polis_url` |
 | `POLIS_AUTH_TOKEN` | stays an env var (a credential), looked up per hub in Phase 4: `POLIS_AUTH_TOKEN__<HUB_ID>`, with the bare `POLIS_AUTH_TOKEN` as the fallback (confirmed with Adam, 2026-09-22). See "Per-plugin credentials" below for where this is headed. |
 | `VITE_HUB_ONBOARDING_WORDCLOUD_ID` | `plugin.wordcloud.onboarding_id` |
@@ -383,6 +384,14 @@ _checklist to be pasted_
 Done when: the alias map above is live, every `VITE_HUB_*` / place-name
 env var has a settings key, `grep -ri floyd src ui/src` returns only
 comments and test fixtures, and the admin Settings tab edits the new keys.
+
+#### Part four (2026-09-24): the backend sweep
+
+**Utopia is in `beta` mode.** Adam's part-four prompt asked for it to be set
+at the start of the session; it already was (`hubs.mode = 'beta'` on the dev
+project when checked, 2026-09-24), so nothing was written. Utopia was created
+`live` in part three as the one hub that could email a stranger; in `beta` the
+mail guard suppresses anyone off its admin roster and allow list, like Floyd.
 
 _checklist to be pasted_
 

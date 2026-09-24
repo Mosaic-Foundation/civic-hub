@@ -98,6 +98,10 @@ export const KEYS = {
   PLUGIN_MEETING_CUTOFF_DATE: "plugin.meeting_summary.cutoff_date",
   PLUGIN_MEETING_MAX_PER_RUN: "plugin.meeting_summary.max_per_run",
 
+  // Which connector reads the hub's news feed ("wix-cms"), chosen per hub.
+  // Added 2026-09-24 with the module rename; it has no env fallback because
+  // it never had an env var — the one connector was the only code path.
+  PLUGIN_NEWS_SYNC_CONNECTOR: "plugin.news_sync.connector",
   PLUGIN_NEWS_SYNC_SOURCE_URL: "plugin.news_sync.source_url",
   PLUGIN_NEWS_SYNC_MAX_PER_RUN: "plugin.news_sync.max_per_run",
 } as const;
