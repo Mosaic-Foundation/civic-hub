@@ -393,6 +393,28 @@ CNAME, Vercel Pro), a new hub can be created from `/control/hubs` by a
 platform admin with the reserved-slug check enforced, and the Athens demo
 runs as hub #2 on the same deployment.
 
+#### The sending domain belongs to the platform, not to a hub (2026-09-23)
+
+**Only `floyd.civic.social` is verified in Resend.** The apex `civic.social`
+is not, so every hub on the deployment must currently send as
+`noreply@floyd.civic.social` — Athens's mail goes out as
+"Athens Civic Hub (demo) <noreply@floyd.civic.social>". Tolerable on dev,
+wrong in production: a hub's mail should not authenticate as another hub's
+domain, and a resident who checks the sender learns the wrong thing about who
+wrote to them. It is the same class of bug as Floyd's operator appearing on
+Athens's terms page, one layer down.
+
+The fix is to verify a platform-owned sending domain — `civic.social` itself,
+or `mail.civic.social` — and point `RESEND_FROM` at it. Verifying the apex
+does NOT disturb the marketing site: Resend's records are a DKIM `TXT` plus an
+`MX`/SPF pair on a `send.` subdomain, none of which touch the apex `A`/`CNAME`
+that Firebase serves from. Per-hub sending domains (a hub bringing its own
+verified domain via `email.from_address`) already work and stay the exception,
+not the default.
+
+Until then `email.from_name` carries the per-hub identity, which is why that
+setting exists separately from the address at all.
+
 _checklist to be pasted_
 
 ### Phase 6 — cutover runbook (Adam runs by hand)
