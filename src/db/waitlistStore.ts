@@ -1,8 +1,11 @@
-// Waitlist reads. In src/db/ because it uses the raw client; it was inlined
-// in services/hubSettings.ts, which is a settings module and had no business
-// querying a table of people.
+// Waitlist reads. It was inlined in services/hubSettings.ts, which is a
+// settings module and had no business querying a table of people.
+//
+// Per hub since Phase 2a: a hub's admin sees the people waiting for THAT hub,
+// read through forHub(). Before, every hub's Mode section listed everyone who
+// had asked to join any hub on the deployment.
 
-import { getDb } from "./client.js";
+import { forHub } from "./forHub.js";
 
 export interface WaitlistEntry {
   email: string;
@@ -14,8 +17,8 @@ export interface WaitlistEntry {
   wants_test_user: boolean;
 }
 
-export async function getWaitlist(): Promise<WaitlistEntry[]> {
-  const { data, error } = await getDb()
+export async function getWaitlist(hubId: string): Promise<WaitlistEntry[]> {
+  const { data, error } = await forHub(hubId)
     .from("waitlist")
     .select("email, created_at, name, notes, wants_test_user")
     .order("created_at", { ascending: false });

@@ -78,7 +78,7 @@ async function loadSettings(): Promise<SettingsResponse> {
     officials: await listOfficialsWithLegacy(),
     announcement_authors: await getAnnouncementAuthors(hubId),
     beta_allowlist: await getBetaAllowlist(hubId),
-    waitlist: await getWaitlist(),
+    waitlist: await getWaitlist(hubId),
     support_threshold: await getSupportThreshold(hubId),
     comment_identity_mode: await getCommentIdentityMode(hubId),
   };

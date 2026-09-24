@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
-import { getDb } from "../db/client.js";
+import { forHub } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { notifyAdminsOfWaitlistSignup } from "../services/waitlistNotify.js";
 
 const NAME_MAX_LEN = 200;
@@ -51,13 +52,29 @@ export async function handleJoinWaitlist(
   const createdAt = new Date().toISOString();
 
   try {
-    const { error } = await getDb()
+    // On this hub's waitlist only. The conflict target names hub_id, so a
+    // second signup updates this hub's row and never another hub's.
+    const { error } = await forHub(currentHubId())
       .from("waitlist")
       .upsert(
         { email, name, notes, wants_test_user: wantsTestUser, created_at: createdAt },
-        { onConflict: "email" },
+        { onConflict: "hub_id,email" },
       );
-    if (error) throw error;
+    if (error) {
+      // 23505 here is the still-global waitlist primary key (email): the
+      // address is waiting for another hub on this deployment. Until the
+      // cleanup migration makes (hub_id, email) the key, one address can wait
+      // for one hub. Say so without naming the other hub.
+      if (error.code === "23505") {
+        console.warn(`[waitlist] ${email} is already waiting for another hub (global key)`);
+        res.status(409).json({
+          error:
+            "This address can't be added to this hub's waitlist yet. Please use a different address.",
+        });
+        return;
+      }
+      throw error;
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error(`[waitlist] insert failed: ${msg}`);
