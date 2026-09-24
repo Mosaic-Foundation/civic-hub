@@ -118,6 +118,15 @@ ids suffixed by hub (`seedIdForHub`), since ids are global.
    yet hub-filtered, though every process they are handed now comes from a
    scoped read. They are the start of 2b.
 
+### Dev check, after the push deploys
+
+Floyd `civic-hub-dev.vercel.app`, Athens `athens-civic-hub-dev.vercel.app`,
+Utopia `utopia-civic-hub-dev.vercel.app` (sign in as `adam+utopia@` there;
+its account was moved to Utopia). Expected: Floyd's feed shows its five
+news-sync announcements and everything older; Utopia's and Athens's show
+none of them (on dev, nothing has been created on either since 09-22, so
+they may be empty). The same on `/api/events` per host.
+
 ### Still on the raw client (Phase 2b starts here)
 
 `src/app.ts`; controllers `briefController`, `debugController`,
