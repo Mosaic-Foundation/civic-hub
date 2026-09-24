@@ -1656,6 +1656,8 @@ export interface AdminSettings {
   who_runs_this: string;
   /** That default, so the form can offer it as a placeholder. */
   readonly who_runs_this_default: string;
+  /** demo | beta | live. Changed through adminSetHubMode, not this endpoint. */
+  readonly mode: string;
 
   brief_recipient_emails: string[];
   officials: Official[];
@@ -1705,6 +1707,25 @@ export function adminSetHubPeople(patch: {
   code: string;
 }): Promise<HubPeople> {
   return request("POST", "/admin/hub/people", patch);
+}
+
+// --- The hub's lifecycle mode ------------------------------------------------
+//
+// Same step-up as the roster, for a related reason: mode decides who may sign
+// in at all. An admin may choose beta or live; only the control plane can put
+// a hub INTO demo, because demo is the one mode that turns off email
+// verification — see src/models/hub.ts.
+
+/** Email the signed-in admin a code. Required before adminSetHubMode. */
+export function adminRequestModeCode(): Promise<{ message: string }> {
+  return request("POST", "/admin/hub/mode/request-code", {});
+}
+
+export function adminSetHubMode(
+  mode: string,
+  code: string,
+): Promise<{ hub_id: string; mode: string }> {
+  return request("POST", "/admin/hub/mode", { mode, code });
 }
 
 // --- User settings (Slice 5) ---

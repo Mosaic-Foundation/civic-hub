@@ -42,6 +42,7 @@ import {
   setContactEmail,
   getWhoRunsThis,
   setWhoRunsThis,
+  hubModeFor,
 } from "../services/hubSettings.js";
 import {
   type OfficialRecord,
@@ -72,6 +73,13 @@ interface SettingsResponse {
    */
   who_runs_this: string;
   who_runs_this_default: string;
+  /**
+   * The hub's lifecycle mode, read-only here. It is CHANGED through
+   * POST /admin/hub/mode, which takes a fresh emailed code — see
+   * src/controllers/hubModeController.ts. It is reported here so the admin
+   * page can show the current state and re-read it after a change.
+   */
+  mode: string;
 
   brief_recipient_emails: string[];
   officials: OfficialRecord[];
@@ -90,7 +98,8 @@ async function loadSettings(): Promise<SettingsResponse> {
     contact_email: await getContactEmail(hubId),
     hostname: currentHub()?.hostname ?? "",
     who_runs_this: await getWhoRunsThis(hubId),
-    who_runs_this_default: whoRunsThisDefault(),
+    who_runs_this_default: whoRunsThisDefault(currentHub()),
+    mode: hubModeFor(currentHub()),
     brief_recipient_emails: await getVoteResultsRecipients(hubId),
     officials: await listOfficialsWithLegacy(),
     announcement_authors: await getAnnouncementAuthors(hubId),

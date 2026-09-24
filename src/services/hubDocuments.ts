@@ -148,11 +148,19 @@ function resolveWhoRunsThis(
 }
 
 /**
- * The shared default, unsubstituted, for the admin form to show as the
- * placeholder a hub is currently using.
+ * The shared default AS THIS HUB RENDERS IT, for the admin form's placeholder.
+ *
+ * Substituted, not raw. The form shows this greyed out to mean "this is what
+ * you are publishing"; a placeholder full of {PLACE} and {GOVERNING_BODY}
+ * would show the mechanism instead of the sentence, and an admin deciding
+ * whether the default is true of them needs to read the sentence.
  */
-export function whoRunsThisDefault(): string {
-  return readTemplate(WHO_RUNS_THIS_TEMPLATE)?.trim() ?? "";
+export function whoRunsThisDefault(hub: Hub | null): string {
+  const template = readTemplate(WHO_RUNS_THIS_TEMPLATE);
+  if (!template) return "";
+  return hub
+    ? applySubstitutions(template, substitutions(hub)).trim()
+    : template.trim();
 }
 
 /** Replace `{NAME}` with its value, leaving unknown placeholders untouched. */

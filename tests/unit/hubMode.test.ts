@@ -8,10 +8,13 @@ import {
 } from "../../src/models/hub.js";
 
 // A hub's mode decides whether email verification happens at all, so the rule
-// about who may set what is a security boundary, not a preference. It is
-// pinned here because the admin UI does not exist yet: whoever writes that
-// form will call hubModeChangeRejectionReason, and these tests say what it
-// must answer before the form exists to get it wrong.
+// about who may set what is a security boundary, not a preference.
+//
+// These were written before the admin form existed, to say what it would have
+// to answer. The form exists now (ui/src/pages/AdminSettings.tsx, "Who can
+// sign in") and builds its options from ADMIN_SETTABLE_HUB_MODES, so the
+// pinning matters more rather than less: adding `demo` to that list would put
+// it in a dropdown on every hub.
 
 describe("hub modes", () => {
   it("has exactly three", () => {
@@ -79,5 +82,43 @@ describe("mode is not configurable from the environment", () => {
     expect(hubModeFor({ mode: null })).toBe("live");
     expect(hubModeFor({ mode: "nonsense" })).toBe("live");
     expect(hubModeFor({ mode: "demo" })).toBe("demo");
+  });
+});
+
+// --- The admin panel's mode control ----------------------------------------
+//
+// Added 2026-09-23 with the UI. Until then the rule lived only in the model
+// and the endpoint, and the note in HANDOFF said "tests that say what the
+// future form must answer". This is that form, so these are the answers.
+
+describe("what the admin mode control may offer", () => {
+  it("offers beta and live, and never demo, to a hub that is not one", () => {
+    // The form builds its options from ADMIN_SETTABLE_HUB_MODES, so if demo
+    // is ever added there it appears in a dropdown on every hub — which is
+    // the failure this guards.
+    expect([...ADMIN_SETTABLE_HUB_MODES].sort()).toEqual(["beta", "live"]);
+    expect(ADMIN_SETTABLE_HUB_MODES).not.toContain("demo");
+  });
+
+  it("lets a demo hub graduate, in either direction out", () => {
+    // The restriction runs one way only. A demo hub becoming real is its
+    // admin's decision and theirs to make.
+    expect(hubModeChangeRejectionReason("demo", "beta")).toBeNull();
+    expect(hubModeChangeRejectionReason("demo", "live")).toBeNull();
+  });
+
+  it("refuses every route back into demo", () => {
+    for (const from of ["demo", "beta", "live"] as const) {
+      expect(
+        hubModeChangeRejectionReason(from, "demo"),
+        `${from} -> demo`,
+      ).toBeTruthy();
+    }
+  });
+
+  it("refuses a mode that is not a mode", () => {
+    for (const junk of ["", "DEMO", "production", null, undefined, 7]) {
+      expect(hubModeChangeRejectionReason("live", junk)).toBeTruthy();
+    }
   });
 });

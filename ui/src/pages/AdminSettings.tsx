@@ -15,6 +15,8 @@ import {
   adminGetHubPeople,
   adminRequestPeopleCode,
   adminSetHubPeople,
+  adminRequestModeCode,
+  adminSetHubMode,
   type Official,
   type WaitlistEntry,
   type CommentIdentityMode,
@@ -51,6 +53,18 @@ export default function AdminSettings() {
   const [whoRunsThisDefault, setWhoRunsThisDefault] = useState("");
   const [savingIdentity, setSavingIdentity] = useState(false);
   const [identityMessage, setIdentityMessage] = useState<string | null>(null);
+
+  // --- Hub mode ---
+  // The same step-up as the roster, for a related reason: mode decides who
+  // may sign in at all. `demo` is deliberately absent from the choices — it
+  // is the one mode that turns off email verification, so only the control
+  // plane may put a hub into it. A hub that IS a demo can graduate out.
+  const [mode, setMode] = useState("");
+  const [pendingMode, setPendingMode] = useState("");
+  const [modeCode, setModeCode] = useState("");
+  const [modeCodeSent, setModeCodeSent] = useState(false);
+  const [savingMode, setSavingMode] = useState(false);
+  const [modeMessage, setModeMessage] = useState<string | null>(null);
 
   // --- Admins & board ---
   // A roster change is the one edit on this page that takes a fresh emailed
@@ -100,6 +114,8 @@ export default function AdminSettings() {
         setHostname(s.hostname);
         setWhoRunsThis(s.who_runs_this);
         setWhoRunsThisDefault(s.who_runs_this_default);
+        setMode(s.mode);
+        setPendingMode(s.mode);
         setThreshold(s.support_threshold);
         setAllowlistText(s.beta_allowlist.join(", "));
         setWaitlist(s.waitlist);
@@ -163,6 +179,38 @@ export default function AdminSettings() {
       );
     } finally {
       setSavingIdentity(false);
+    }
+  }
+
+  async function requestModeCode() {
+    setModeMessage(null);
+    try {
+      const { message } = await adminRequestModeCode();
+      setModeCodeSent(true);
+      setModeMessage(message);
+    } catch (err) {
+      setModeMessage(err instanceof Error ? err.message : "Could not send a code");
+    }
+  }
+
+  async function saveMode() {
+    setSavingMode(true);
+    setModeMessage(null);
+    try {
+      const saved = await adminSetHubMode(pendingMode, modeCode.trim());
+      setMode(saved.mode);
+      setPendingMode(saved.mode);
+      setModeCode("");
+      setModeCodeSent(false);
+      setModeMessage(
+        saved.mode === "beta"
+          ? "Saved. Only people on the beta allowlist can sign in now; everyone else is offered the waitlist."
+          : "Saved. Anyone can sign in, and the beta banner is gone.",
+      );
+    } catch (err) {
+      setModeMessage(err instanceof Error ? err.message : "Failed to change the mode");
+    } finally {
+      setSavingMode(false);
     }
   }
 
@@ -442,6 +490,108 @@ export default function AdminSettings() {
             </button>
             {identityMessage && (
               <span className="admin-settings-message">{identityMessage}</span>
+            )}
+          </div>
+        </section>
+
+        {/* --- Hub mode --- */}
+        <section className="admin-settings-panel">
+          <h3>Who can sign in</h3>
+          <p className="form-hint">
+            This hub is currently <strong>{mode || "…"}</strong>.
+          </p>
+          {mode === "demo" ? (
+            <p className="form-hint">
+              A demo hub accepts any six digits instead of emailing a code, so
+              anyone can look around without an inbox — which is why nothing
+              here can put a hub back into demo once it leaves. Moving to beta
+              or live turns real email verification on for everyone.
+            </p>
+          ) : (
+            <p className="form-hint">
+              Beta limits sign-in to the allowlist below and offers everyone
+              else the waitlist. Live is open to anyone. Both send a real code
+              by email.
+            </p>
+          )}
+
+          <label className="form-label" htmlFor="hub-mode">
+            Mode
+          </label>
+          <select
+            id="hub-mode"
+            className="form-input"
+            value={pendingMode}
+            onChange={(e) => setPendingMode(e.target.value)}
+            disabled={!loaded || savingMode || modeCodeSent}
+            style={{ maxWidth: "320px" }}
+          >
+            {mode === "demo" && (
+              <option value="demo">Demo — any six digits, no email sent</option>
+            )}
+            <option value="beta">Beta — allowlist only, waitlist for everyone else</option>
+            <option value="live">Live — open to anyone</option>
+          </select>
+
+          {pendingMode !== mode && (
+            <p className="form-hint" style={{ marginTop: "var(--space-sm)" }}>
+              Changing who may sign in takes a code emailed to you now.
+              {mode === "demo" && (
+                <> This hub cannot be moved back to demo afterwards.</>
+              )}
+            </p>
+          )}
+
+          <div className="admin-settings-actions">
+            {pendingMode !== mode && !modeCodeSent && (
+              <button
+                type="button"
+                className="admin-convert-button"
+                onClick={requestModeCode}
+                disabled={savingMode}
+              >
+                Email me a code
+              </button>
+            )}
+            {modeCodeSent && (
+              <>
+                <input
+                  className="form-input"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={modeCode}
+                  onChange={(e) => setModeCode(e.target.value)}
+                  placeholder="6-digit code"
+                  aria-label="Confirmation code"
+                  disabled={savingMode}
+                  style={{ maxWidth: "160px" }}
+                />
+                <button
+                  type="button"
+                  className="admin-convert-button"
+                  onClick={saveMode}
+                  disabled={savingMode || modeCode.trim().length === 0}
+                >
+                  {savingMode ? "Saving…" : `Switch to ${pendingMode}`}
+                </button>
+                <button
+                  type="button"
+                  className="admin-remove-section"
+                  onClick={() => {
+                    setModeCodeSent(false);
+                    setModeCode("");
+                    setPendingMode(mode);
+                    setModeMessage(null);
+                  }}
+                  disabled={savingMode}
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+            {modeMessage && (
+              <span className="admin-settings-message">{modeMessage}</span>
             )}
           </div>
         </section>
