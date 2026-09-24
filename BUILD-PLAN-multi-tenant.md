@@ -403,6 +403,36 @@ Each table has one hub-leading index on its main lookup path, named
 `<table>_hub_..._idx`; where that path is an equality lookup made unique per
 hub (the next section), the unique constraint is the index.
 
+**Per-hub uniqueness, beside the old** (`20260924020000`). The new
+constraint is added now; the old global one stays until the **cleanup
+migration a week after cutover** drops it together with the `DEFAULT
+'floyd'`s. Until then the old one still wins: one email is one account on
+one hub, so a Floyd resident cannot yet sign up on Utopia with the same
+address.
+
+| Table | Old (dropped in cleanup) | New (Phase 2a) |
+|---|---|---|
+| `users` | `users_email_key` UNIQUE (email) | `users_hub_email_key` UNIQUE (hub_id, email) |
+| `pending_verifications` | `pending_verifications_pkey` PK (email) | `pending_verifications_hub_email_key` UNIQUE (hub_id, email) — cleanup makes it the PK |
+| `waitlist` | `waitlist_pkey` PK (email) | `waitlist_hub_email_key` UNIQUE (hub_id, email) — cleanup makes it the PK |
+| `link_previews` | `link_previews_pkey` PK (url) | `link_previews_hub_url_key` UNIQUE (hub_id, url) — cleanup makes it the PK |
+| `project_sentiments` | PK (project_id, user_id) | UNIQUE (hub_id, project_id, user_id) |
+| `deliberation_submissions` | PK (process_id, user_id) | UNIQUE (hub_id, process_id, user_id) |
+| `deliberation_votes` | PK (process_id, user_id, statement_id) | UNIQUE (hub_id, process_id, user_id, statement_id) |
+| `hub_settings` | (global `key` PK, gone since Phase 1) | PK (hub_id, key), unchanged |
+
+The last three never disagree with their old keys (a process or project id
+pins one hub); they exist because **`forHub().upsert()` refuses a conflict
+target that does not name `hub_id`** — an upsert that conflicts on a global
+key updates whichever hub's row it hits.
+
+**Stay global, by design:** generated identifiers — every `id`,
+`sessions.token`, `vote_records.receipt_id`. They are random, so a global
+unique never blocks a second hub and is strictly stronger. The receipts'
+double-vote guard is the existing `(user_id, process_id)` key on
+`vote_participation`, already per hub because both ids are. There are no
+slug columns outside `hubs`.
+
 _checklist to be pasted_
 
 ### Phase 3 — forced RLS with the JWT claim
