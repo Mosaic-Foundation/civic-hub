@@ -393,6 +393,30 @@ project when checked, 2026-09-24), so nothing was written. Utopia was created
 `live` in part three as the one hub that could email a stranger; in `beta` the
 mail guard suppresses anyone off its admin roster and allow list, like Floyd.
 
+**Crons for per-hub plugins iterate hubs now.** News sync and meeting
+summaries run once per active hub inside that hub's scope
+(`src/services/cronHubs.ts`), because their configuration is exactly the
+per-hub data this phase moves out of the code. The digest crons still run
+unscoped until Phase 2. What these crons create still lands in the shared
+`processes` table until Phase 2 adds `hub_id`.
+
+**Cutover hazard — Phase 6 must act on it.** Env fallbacks are
+deployment-wide: a hub with no row reads the env var. On the shared production
+deployment, `MEETING_SOURCE_URL` / `MEETING_YOUTUBE_CHANNEL_ID` / etc. would
+answer for every hub without its own row (a new hub would summarize Floyd's
+meetings), and a lone `FLOYD_NEWS_SOURCE_URL` would make every hub's news
+sync invalid. The runbook seeds Floyd's plugin rows
+(`scripts/seed-hub-settings.ts --only plugin.`) and then removes the
+`MEETING_*` and `FLOYD_NEWS_*` env vars from production in the same session.
+After that, the seven entries in `scripts/place-name-allowlist.txt` marked
+"until the cutover" are deleted with the code they excuse.
+
+**Values with no home, open with Adam** (HANDOFF, 2026-09-24): the
+assistant's scenery clause for Floyd's community line; a configurable
+synced-post author label (derived as `"<place> Government"` today); the four
+one-off production content scripts; whether the place-name check should
+cover every hub's names, not only Floyd's.
+
 _checklist to be pasted_
 
 ### Phase 5 — control plane + wildcard hostname

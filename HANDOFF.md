@@ -4,6 +4,139 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Multi-tenant Phase 1 part four: the backend place-name sweep — 2026-09-24
+
+**Branch:** `multi-tenant`, six commits (one per numbered step) plus this
+entry, pushed. Production untouched. Design and review on the main model; the
+mechanical replacement in steps 3 and 4 ran as three Sonnet batches, each
+reviewed and tested before the next.
+
+| Step | Commit | What |
+|---|---|---|
+| 1 | `455e85f` | `civic.floyd_news_sync` → `civic.news_sync`, per-hub connector |
+| 2 | `7066196` | meeting summaries read the resolved hub's settings |
+| 3 | `4cd4968` | `src/` + `ui/src/` sweep, incl. the assistant's documents |
+| 4 | `7f05e62` | `scripts/`, `config/`, `.env.example` |
+| 5 | `4134e81` | CI place-name check + allow-list |
+| 6 | `4702891` | cron-level tests: Athens reads Athens's sources, never Floyd's |
+
+**`scripts/check-place-names.ts` passes: 0 hits, 7 allow-listed**, each with
+a reason and all but one gone at the cutover (three `FLOYD_NEWS_*` env names,
+the deprecated cron alias, the pre-rename connector id, the migration default
+slug, and "Board of Supervisors" as a generic body type in the officials
+catalogue). `npm test`: tests/unit 76 files / 929 green; tests/api 12 files
+green against a local stack. `tsc` and the UI build clean.
+
+### The shape of it
+
+**Crons run once per hub, in that hub's scope** (`src/services/cronHubs.ts`).
+Settings reads in a cron used to fall through to env — one answer for the
+deployment. News sync and meeting summaries now enter each active hub's scope
+like a request would, so every existing reader answers for that hub. `?hub=`
+runs one; one hub failing fails the cron, so Vercel still alerts. The digest
+crons are unchanged (Phase 2). **Until Phase 2 puts `hub_id` on `processes`,
+what a cron creates lands in the shared table** — harmless while Floyd is the
+only hub with a source configured.
+
+**News sync.** `plugin.news_sync.connector` (new key, recorded in the build
+plan) + `source_url`, no defaults. Neither set = skipped; half set or unknown
+connector = invalid (500). `wix-cms` is the one connector; it accepts `/post/`
+permalinks on the configured feed's own origin. Jurisdiction from the hubs
+row; author label `"<place> Government"` derived from `jurisdiction_name`.
+New rows write `origin: "news-sync"` + `connector`; the feed classifier keys
+on the presence of `source`, so old rows classify the same. The cron path is
+`/internal/news-sync/run`; `/internal/floyd-news-sync/run` is a deprecated
+alias because `main`'s vercel.json schedules it.
+
+**Meeting summaries.** `resolveMeetingSummaryConfig()` in the module reads
+every `plugin.meeting_summary.*` for the hub in scope. `floyd-minutes-page` →
+`minutes-page` (old id still resolves); its PDF check is the configured
+site's origin. **Behaviour change: a hub with no source is now SKIPPED, not a
+500 + admin alert** — otherwise every hub that never set it up would page its
+admins daily. An explicit connector missing its source still fails.
+`scripts/diagnoseMeetingSummary.ts` takes `--hub <slug>` and uses the resolver.
+
+**Floyd's values are seed data** in `config/hubs/floyd/settings.json`
+(news connector + feed, meeting source/channel/exclusions/connector, operator
+and contact), read only by `scripts/seed-hub-settings.ts` (new `--only
+<prefix>`). Seeded on the **dev** project for Floyd with `--only
+plugin.news_sync.` and `--only plugin.meeting_summary.` — six rows, nothing
+else touched.
+
+### Dry runs against the real source (Floyd, dev rows, old vs new)
+
+- **News:** the old module (from `HEAD` before step 1) and the new one in
+  Floyd's scope, same fetch of floydcova.gov's feed: 15 entries,
+  byte-identical; jurisdiction `us-va-floyd`; author "Floyd County Government".
+  The paraphrase prompt differs in one example only — it named two Floyd roads.
+- **Meetings:** the config resolved from Floyd's rows is byte-identical to the
+  one the old controller built from the pre-change `.env.example` (which is
+  production's documented config — production's actual env was not read). The
+  `wix-cms` rung read 297 meetings, newest 2026-09-22.
+
+### The assistant was the real find
+
+It carried Floyd's Code of Conduct and proposal guide as string constants on
+every hub — and **the embedded Code of Conduct was v1.1 while the published
+page is v1.2**, so the automated pre-check was enforcing a code residents
+could not read (no profanity rule, no dispute path). It now resolves the hub's
+own documents through `hubDocument()`, the helper written for this and never
+called. Floyd's proposal guide is unchanged (byte-identical to its override
+row); **Floyd's CoC check now enforces v1.2, including the profanity rule** —
+a real behaviour change, and the correct one.
+
+Also in step 3: `hubDisplayNameSync()` (identity.name, else registry name) in
+the sign-in email, digests and brief labels; `MIGRATION_DEFAULT_HUB_ID` as the
+one spelling of the default slug; demo seed scenarios are `{PLACE}`
+templates filled per hub (Floyd's read word for word; fixture `floyd` →
+`default`); worked examples placeless; digest footer omits an unset postal
+address instead of printing "Floyd, VA".
+
+### For Adam — values the sweep found with no home in the build plan
+
+1. **"— a small rural community in the Blue Ridge Mountains"**, the tail of
+   the assistant's community line. No key holds scenery; it was dropped, and
+   Floyd's line is now "residents of Floyd County, Virginia". If it matters,
+   it needs a key (a `copy.*` one would be the natural home).
+2. **The synced-post author label** is derived, `"<place> Government"`. Exact
+   for Floyd; a town whose news should read "Town of X" or "X Town Council"
+   would need `plugin.news_sync.author_label` or similar. Not invented.
+3. **Four one-off production content scripts** — `seedBetaSlate`,
+   `seedProdDemo`, `seedProdWordcloud`, `seedProdConversation` — are Floyd's
+   live content by nature and were not swept. `config/hubs/floyd/` is the
+   settings seed and "the seed script is the only reader", so they have
+   nowhere to go without a decision: archive them, or allow per-hub content
+   seeds under `config/hubs/<hub>/`.
+4. **Athens is a place too.** `src/debug/seedDataAthens.ts` names the
+   fictional Town of Athens throughout, and the CI literal list is Floyd's
+   names only. Should the check also cover every hub's names (read from the
+   hubs table / seed.sql), which would move Athens's demo set out of `src/`?
+
+### A cutover hazard this surfaced (also in the build plan, Phase 4 part four)
+
+**The env fallbacks are deployment-wide.** A hub with no row falls back to the
+env var, so on the shared production deployment `MEETING_SOURCE_URL` et al.
+would answer for Utopia and every new hub — which would then summarize
+Floyd's meetings under its own name — and a lone `FLOYD_NEWS_SOURCE_URL` would
+make every hub's news sync "invalid". The Phase 6 runbook must seed Floyd's
+plugin rows and then **remove the `MEETING_*` and `FLOYD_NEWS_*` env vars**
+from production in the same session.
+
+### Also worth knowing
+
+- **Utopia was already `beta`** on dev when checked; nothing written. Noted in
+  the build plan.
+- Admin Settings does not yet edit `plugin.news_sync.*` or
+  `plugin.meeting_summary.*` — the last clause of Phase 4's done-when.
+- `tests/fixtures/helpers.ts` takes `CIVIC_API_BASE`, because another
+  session's server held :3000 all session; the API layer ran against a server
+  on :3100 (launch config `hub-api-tests` in the monorepo's untracked
+  `.claude/launch.json`).
+- `ui/public/digest-sample.html` is stale against the current pill palette
+  (regenerating it changes two colours); left as committed.
+
+---
+
 ## Multi-tenant Phase 1 part three: fixes from the walkthrough — 2026-09-23
 
 **Branch:** `multi-tenant`, three commits (16 total), pushed. Production

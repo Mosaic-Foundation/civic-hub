@@ -27,7 +27,9 @@ numbers below, or just grep the heading.
 | Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |
 | Local Supabase stack (ports, auth, seed) | `supabase/config.toml`, `supabase/seed.sql` |
 | Migrations (51 files, 31 tables) | `supabase/migrations/` |
-| Cron routes | `vercel.json` "crons" + `src/app.ts` `/internal/*` |
+| Cron routes | `vercel.json` "crons" + `src/app.ts` `/internal/*`; per-hub runner `src/services/cronHubs.ts` |
+| Place-name CI check + allow-list | `scripts/check-place-names.ts`, `scripts/place-name-allowlist.txt` |
+| A hub's seed values (read only by the seed script) | `config/hubs/<hub>/settings.json` |
 | Ideas backlog incl. multi-tenancy section | `IDEAS.md` (lines ~137–240) |
 | Multi-tenant contracts and phase checklists | `BUILD-PLAN-multi-tenant.md` |
 | Future plans | `BUILD-PLAN-*.md` |
@@ -53,6 +55,9 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- Phase 1 part four: backend place-name sweep, news_sync connector, crons per
+  hub, assistant reads hub documents, CI place-name check — 7–139 (every
+  range below this entry shifts down by its length)
 - Phase 1 part three: legal pages per hub, real sender, dev safety, admin
   roster — 7–188 (line numbers below this entry are its length out of date)
 - Login hardening, generic proposal guide, dev deploy prep — 7–110
