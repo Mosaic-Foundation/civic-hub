@@ -140,27 +140,17 @@ describe("one hub's admin cannot reach another hub's settings", () => {
     expect(write.status).toBe(401);
   });
 
-  it("the Athens admin's account, carried onto a Floyd session, is nobody on Floyd", async () => {
+  it("the Athens admin's account cannot be carried onto a Floyd session", async () => {
     // Accounts belong to a hub since Phase 2a, and until the cleanup migration
     // one email is one account on one hub, so the Athens admin cannot also
-    // hold a Floyd account. The nearest case: a Floyd session row pointing at
-    // the Athens admin's own account.
+    // hold a Floyd account. The nearest case, a Floyd session row pointing at
+    // the Athens admin's own account, is refused by the database since 2b's
+    // composite foreign keys, so Floyd's settings cannot be reached with it.
     const [athensUser] = (await localRest(
       `users?select=id&hub_id=eq.athens&email=eq.${encodeURIComponent(ATHENS_ADMIN)}`,
     )) as Array<{ id: string }>;
-    const onFloyd = await mintSessionForUser("floyd", athensUser.id);
     const before = await storedSetting("floyd", "identity.tagline");
-    // Sign-in resolves the session's user on the session's hub (Phase 2a), so
-    // an account from another hub is no one here: 401, not merely 403.
-    expect((await call("GET", "/admin/hub/settings", FLOYD, undefined, onFloyd)).status).toBe(401);
-    const write = await call(
-      "PUT",
-      "/admin/hub/settings",
-      FLOYD,
-      { section: "identity", values: { "identity.tagline": "written from Athens" } },
-      onFloyd,
-    );
-    expect(write.status).toBe(401);
+    await expect(mintSessionForUser("floyd", athensUser.id)).rejects.toThrow(/"23503"/);
     expect(await storedSetting("floyd", "identity.tagline")).toBe(before);
   });
 

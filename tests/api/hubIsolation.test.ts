@@ -210,10 +210,9 @@ describe("an Athens session cannot read a Floyd user", () => {
     expect(res.status).toBe(401);
   });
 
-  it("an Athens session row naming a Floyd user id resolves to nobody", async () => {
-    const forged = await mintSessionForUser("athens", floydAdminUserId);
-    const res = await call("GET", "/auth/me", ATHENS, undefined, forged);
-    expect(res.status).toBe(401);
-    expect(JSON.stringify(res.body)).not.toContain(FLOYD_ADMIN);
+  it("an Athens session row naming a Floyd user id cannot be written", async () => {
+    // Phase 2a made such a row authenticate nobody; since 2b's composite
+    // foreign keys the database refuses to hold it at all.
+    await expect(mintSessionForUser("athens", floydAdminUserId)).rejects.toThrow(/"23503"/);
   });
 });

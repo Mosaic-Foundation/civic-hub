@@ -218,3 +218,76 @@ describe("search is scoped to the hub (search_processes with p_hub_id)", () => {
     expect(Number(oldCount.data)).toBe(1);
   });
 });
+
+describe("composite foreign keys: a row references only its own hub's rows", () => {
+  // Phase 2b step 1 (20260924060000). The database refuses a cross-hub
+  // reference whoever writes it: through forHub(), and through the raw
+  // service-role client, which is what the control plane holds.
+  const floydUser = `user_fkfloyd_${run}`;
+  const athensUser = `user_fkathens_${run}`;
+
+  beforeAll(async () => {
+    await floyd.from("users").insert({ id: floydUser, email: `fk-floyd-${run}@example.test` });
+    await athens.from("users").insert({ id: athensUser, email: `fk-athens-${run}@example.test` });
+  });
+
+  afterAll(async () => {
+    await raw.from("sessions").delete().in("user_id", [floydUser, athensUser]);
+    await raw.from("feedback_submissions").delete().like("id", `fb_fk%_${run}`);
+    await raw.from("users").delete().in("id", [floydUser, athensUser]);
+  });
+
+  const session = (userId: string) => ({
+    token: `sess_fk_${randomBytes(8).toString("hex")}`,
+    user_id: userId,
+    expires_at: new Date(Date.now() + 60_000).toISOString(),
+  });
+
+  it("a session for a Floyd user under Athens's hub_id is rejected", async () => {
+    const err = await athens
+      .from("sessions")
+      .insert(session(floydUser))
+      .then(() => null, (e: unknown) => e);
+    expect(err).toBeInstanceOf(HubDbError);
+    expect((err as HubDbError).code).toBe("23503");
+    expect((err as HubDbError).message).toContain("sessions_hub_user_id_fkey");
+  });
+
+  it("…also when written with the raw client, past forHub()", async () => {
+    const res = await raw.from("sessions").insert({ ...session(floydUser), hub_id: "athens" });
+    expect(res.error?.code).toBe("23503");
+  });
+
+  it("control: the same session on the user's own hub is accepted", async () => {
+    await expect(floyd.from("sessions").insert(session(floydUser))).resolves.toBeNull();
+    await expect(athens.from("sessions").insert(session(athensUser))).resolves.toBeNull();
+  });
+
+  it("a nullable reference is refused across hubs, and a null is not checked", async () => {
+    const cross = await athens
+      .from("feedback_submissions")
+      .insert({ id: `fb_fkcross_${run}`, category: "general", message: "x", user_id: floydUser })
+      .then(() => null, (e: unknown) => e);
+    expect((cross as HubDbError).code).toBe("23503");
+    await expect(
+      athens
+        .from("feedback_submissions")
+        .insert({ id: `fb_fknull_${run}`, category: "general", message: "x", user_id: null }),
+    ).resolves.toBeNull();
+  });
+
+  it("deleting a user nulls its feedback's user_id and keeps the row's hub (SET NULL (user_id))", async () => {
+    const tmp = `user_fktmp_${run}`;
+    await athens.from("users").insert({ id: tmp, email: `fk-tmp-${run}@example.test` });
+    await athens
+      .from("feedback_submissions")
+      .insert({ id: `fb_fktmp_${run}`, category: "general", message: "x", user_id: tmp });
+    await athens.from("users").delete().eq("id", tmp);
+    const row = await athens
+      .from("feedback_submissions")
+      .select("user_id, hub_id")
+      .eq("id", `fb_fktmp_${run}`)
+      .single();
+    expect(row).toEqual({ user_id: null, hub_id: "athens" });
+  });
+});
