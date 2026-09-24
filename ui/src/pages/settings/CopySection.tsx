@@ -35,7 +35,7 @@ export default function CopySection() {
             f={f}
             k="copy.governing_body_name"
             label="Governing body"
-            placeholder="Board of Supervisors, Town Council…"
+            placeholder="Town Council, County Commission…"
             hint="The full name of the local government residents are addressing. Briefs, announcements and the legal documents use it."
           />
           <TextField
