@@ -13,6 +13,10 @@ import {
 import { assembleDigestForUser } from "../src/modules/civic.digest/index.js";
 import type { DigestEvent } from "../src/modules/civic.digest/index.js";
 import { writeFileSync } from "node:fs";
+import {
+  VERIFY_PHASE3_SYNCED_ANNOUNCEMENT_DATA,
+  VERIFY_PHASE3_HUB,
+} from "../tests/fixtures/samples/verifyPhase3.js";
 
 type Case = { label: string; ev: ClassifierEvent };
 
@@ -36,7 +40,7 @@ const cases: Case[] = [
   { label: "vote results (legacy brief_id)", ev: mk("civic.process.result_published", { brief_id: "b1" }) },
   { label: "announcement (admin)", ev: mk("civic.process.result_published", { announcement: { author_role: "admin", title: "Road closure" } }) },
   { label: "announcement (board)", ev: mk("civic.process.result_published", { announcement: { author_role: "board", title: "Budget note" } }) },
-  { label: "announcement (synced gov)", ev: mk("civic.process.result_published", { announcement: { author_role: "Floyd County Government", source: { origin: "floyd-news" } } }) },
+  { label: "announcement (synced gov)", ev: mk("civic.process.result_published", VERIFY_PHASE3_SYNCED_ANNOUNCEMENT_DATA) },
   { label: "meeting summary (new)", ev: mk("civic.process.result_published", { process: { type: "civic.meeting_summary" }, meeting_summary: { meeting_title: "BoS Regular", meeting_date: "2026-06-20", block_count: 4 } }) },
   { label: "meeting summary (legacy summary_id)", ev: mk("civic.process.result_published", { summary_id: "s1" }) },
   { label: "wordcloud result (legacy snapshot)", ev: mk("civic.process.result_published", { wordcloud_snapshot: {} }, "wc_1") },
@@ -99,13 +103,7 @@ const digestEvents: DigestEvent[] = cases
 const digest = assembleDigestForUser({
   user: { id: "u1", email: "you@example.com", created_at: "2026-01-01T00:00:00Z", last_digest_sent_at: null },
   events: digestEvents,
-  hub: {
-    hub_name: "Floyd Civic Hub",
-    ui_base_url: "https://hub.example",
-    postal_address: "Floyd, VA",
-    unsubscribe_url: "https://hub.example/u",
-    manage_subscriptions_url: "https://hub.example/settings",
-  },
+  hub: VERIFY_PHASE3_HUB,
   since: "2026-06-01T00:00:00Z",
   process_titles: {
     proc_x: "Park funding vote",

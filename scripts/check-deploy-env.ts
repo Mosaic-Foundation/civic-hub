@@ -74,7 +74,7 @@ if (!url) {
   if (ref === PRODUCTION_REF) {
     fail(
       `SUPABASE_URL points at PRODUCTION (${PRODUCTION_REF}). ` +
-        `A deployment with this value writes to the live Floyd database.`,
+        `A deployment with this value writes to the live production database.`,
     );
   } else if (ref === DEV_REF) {
     notes.push(`              -> dev project (${DEV_REF}). Correct for a dev deployment.`);

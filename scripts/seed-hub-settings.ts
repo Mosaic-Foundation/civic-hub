@@ -35,6 +35,7 @@ import { resolve } from "node:path";
 import { getDb } from "../src/db/client.js";
 import { KEYS } from "../src/models/hubSettings.js";
 import { encodeList } from "../src/models/hubSettings.js";
+import { MIGRATION_DEFAULT_HUB_ID } from "../src/models/hub.js";
 
 type Entry = { key: string; value: string };
 
@@ -51,7 +52,7 @@ const ONLY = (() => {
 })();
 const HUB_ID = (() => {
   const i = args.indexOf("--hub");
-  return i >= 0 && args[i + 1] ? args[i + 1] : "floyd";
+  return i >= 0 && args[i + 1] ? args[i + 1] : MIGRATION_DEFAULT_HUB_ID;
 })();
 
 /**
@@ -153,8 +154,8 @@ function floydEntries(): Entry[] {
   // literals, which is what put Floyd's operator on Athens's terms page. They
   // are seeded rather than derived because there is nothing to derive them
   // from, and an unset operator is a legal document with a hole in it.
-  put(out, KEYS.LEGAL_OPERATOR_NAME, "Adam Lake");
-  put(out, KEYS.LEGAL_CONTACT_EMAIL, "contact@civic.social");
+  put(out, KEYS.LEGAL_OPERATOR_NAME, seed[KEYS.LEGAL_OPERATOR_NAME]);
+  put(out, KEYS.LEGAL_CONTACT_EMAIL, seed[KEYS.LEGAL_CONTACT_EMAIL]);
 
   put(out, KEYS.IDENTITY_NAME, env("HUB_NAME") ?? env("VITE_HUB_NAME"));
   put(out, KEYS.IDENTITY_LABEL, env("VITE_HUB_LABEL"));

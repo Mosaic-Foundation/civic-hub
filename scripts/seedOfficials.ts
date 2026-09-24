@@ -70,8 +70,9 @@ const { getAnnouncementAuthors, setOfficialsMigrated, areOfficialsMigrated } =
   await import("../src/services/hubSettings.js");
 const { inferOfficialType } = await import("../src/shared/officialTypes.js");
 const { generateId } = await import("../src/utils/id.js");
+const { MIGRATION_DEFAULT_HUB_ID } = await import("../src/models/hub.js");
 
-const HUB_ID = process.env.CIVIC_SEED_HUB?.trim() || "floyd";
+const HUB_ID = process.env.CIVIC_SEED_HUB?.trim() || MIGRATION_DEFAULT_HUB_ID;
 
 const DRY_RUN = process.argv.includes("--dry-run");
 

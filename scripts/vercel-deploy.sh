@@ -36,7 +36,7 @@ if [[ "$NAME" == "$PRODUCTION_PROJECT" ]]; then
 
 REFUSED: this directory is linked to the PRODUCTION project ($NAME).
 
-Deploying from here would ship to floyd.civic.social. Production deploys are
+Deploying from here would ship to production. Production deploys are
 not made from a build session.
 
 Relink first:

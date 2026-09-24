@@ -12,6 +12,8 @@
  * Run: npm run test:flow  (server must be running on port 3000)
  */
 
+import { FLOYD_HUB } from "../tests/fixtures/hubs/index.js";
+
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 
 async function request(method: string, path: string, body?: unknown) {
@@ -53,13 +55,13 @@ async function run() {
     title: "Test Vote: Park Improvements",
     description: "Should we add benches to the park?",
     createdBy: "user:testrunner",
-    jurisdiction: "us-va-floyd",
+    jurisdiction: FLOYD_HUB.jurisdiction_code!,
     state: { options: ["yes", "no", "abstain"] },
   });
   assert(createRes.status === 201, "Process created with 201");
   assert(createRes.data.id !== undefined, "Process has an ID");
   assert(createRes.data.status === "draft", "Process status is draft");
-  assert(createRes.data.jurisdiction === "us-va-floyd", "Process has jurisdiction");
+  assert(createRes.data.jurisdiction === FLOYD_HUB.jurisdiction_code!, "Process has jurisdiction");
 
   const processId = createRes.data.id;
   log("Created Process", createRes.data);
@@ -194,7 +196,7 @@ async function run() {
   const createdEvt = processEvents.find((e: any) => e.event_type === "civic.process.created");
   assert(createdEvt.data.process?.type === "civic.vote", "civic.process.created data has process.type");
   assert(typeof createdEvt.data.process?.title === "string", "civic.process.created data has process.title");
-  assert(createdEvt.jurisdiction === "us-va-floyd", "civic.process.created has correct jurisdiction");
+  assert(createdEvt.jurisdiction === FLOYD_HUB.jurisdiction_code!, "civic.process.created has correct jurisdiction");
 
   const startedEvt = processEvents.find((e: any) => e.event_type === "civic.process.started");
   assert(typeof startedEvt.data.process?.voting_opens_at === "string", "started event has voting_opens_at");
@@ -255,7 +257,7 @@ async function run() {
     title: "Test Proposal: New Dog Park",
     description: "Should we build a dog park?",
     createdBy: "user:testrunner",
-    jurisdiction: "us-va-floyd",
+    jurisdiction: FLOYD_HUB.jurisdiction_code!,
     state: {
       options: ["yes", "no"],
       support_threshold: 2,

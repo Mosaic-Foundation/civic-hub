@@ -9,6 +9,7 @@ import "../src/services/processService.js";
 import { getProcessHandler } from "../src/processes/registry.js";
 import type { Process } from "../src/models/process.js";
 import type { BriefContent } from "../src/modules/civic.brief/index.js";
+import { VERIFY_CONVERSATION_BRIEF_TOPIC } from "../tests/fixtures/samples/verifyConversationBrief.js";
 
 function ok(cond: boolean, msg: string) {
   console.log(`${cond ? "  ✓" : "  ✗ FAIL:"} ${msg}`);
@@ -44,7 +45,7 @@ async function main() {
     createdBy: "system",
     createdAt: "now",
     updatedAt: "now",
-    state: { topic: "How much can Floyd's water support?", summary, summary_status: "complete" },
+    state: { topic: VERIFY_CONVERSATION_BRIEF_TOPIC, summary, summary_status: "complete" },
   } as unknown as Process;
 
   const brief = (await handler.generateBrief!(process)) as BriefContent;

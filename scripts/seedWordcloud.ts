@@ -2,6 +2,12 @@
 // Run: node --env-file=.env --import tsx scripts/seedWordcloud.ts
 
 import { createProcess, executeAction } from "../src/services/processService.js";
+import {
+  SEED_WORDCLOUD_TITLE,
+  SEED_WORDCLOUD_DESCRIPTION,
+  SEED_WORDCLOUD_PROMPT_TEXT,
+  SEED_WORDCLOUD_SAMPLES,
+} from "../tests/fixtures/samples/seedWordcloud.js";
 
 const PROCESS_ID = "proc-wordcloud-test";
 
@@ -11,12 +17,12 @@ async function seed() {
   const process = await createProcess({
     id: PROCESS_ID,
     definition: { type: "civic.wordcloud", version: "0.1" },
-    title: "What do you love about Floyd?",
-    description: "Share what makes Floyd County special to you.",
+    title: SEED_WORDCLOUD_TITLE,
+    description: SEED_WORDCLOUD_DESCRIPTION,
     createdBy: "admin",
     state: {
       prompts: [
-        { id: "p1", text: "In a few words, what do you love about Floyd?" },
+        { id: "p1", text: SEED_WORDCLOUD_PROMPT_TEXT },
       ],
       lifecycle_mode: "evergreen",
     },
@@ -34,23 +40,7 @@ async function seed() {
   console.log("Active!");
 
   // Submit sample responses
-  const samples = [
-    { actor: "user-1", text: "Mountains and music" },
-    { actor: "user-2", text: "Small town community" },
-    { actor: "user-3", text: "Beautiful mountains" },
-    { actor: "user-4", text: "The community spirit" },
-    { actor: "user-5", text: "Friday night jamboree" },
-    { actor: "user-6", text: "Local farms and community" },
-    { actor: "user-7", text: "Peace and quiet mountains" },
-    { actor: "user-8", text: "Small town charm" },
-    { actor: "user-9", text: "Blue Ridge mountains" },
-    { actor: "user-10", text: "Friendly neighbors and community" },
-    { actor: "user-11", text: "Nature and hiking trails" },
-    { actor: "user-12", text: "Music heritage and traditions" },
-    { actor: "user-13", text: "Farm to table food" },
-    { actor: "user-14", text: "Stars at night" },
-    { actor: "user-15", text: "Community events and gatherings" },
-  ];
+  const samples = SEED_WORDCLOUD_SAMPLES;
 
   for (const s of samples) {
     try {

@@ -14,6 +14,11 @@
  * (or archive it from the brief page).
  */
 import { getDb } from "../src/db/client.js";
+import {
+  SEED_DEV_PENDING_BRIEF_JURISDICTION,
+  SEED_DEV_PENDING_BRIEF_HUB_ID,
+  SEED_DEV_PENDING_BRIEF_CONTENT,
+} from "../tests/fixtures/samples/seedDevPendingBrief.js";
 
 const BRIEF_ID = "proc_brief_devtest_001";
 const db = getDb();
@@ -35,31 +40,7 @@ const state = {
   approved_at: null,
   published_at: null,
   delivered_to: [],
-  content: {
-    title: "TEST — Sidewalk connectivity in the town of Floyd",
-    headline: "Broad agreement that the gaps on Main Street come first",
-    summary:
-      "Residents talked through where new sidewalk segments would matter most. " +
-      "The clearest common ground: closing the two gaps along Main Street " +
-      "between the school and the library, before any new segments elsewhere.\n\n" +
-      "This is a seeded TEST brief for exercising the review flow — safe to " +
-      "edit, approve, and respond to on dev.",
-    sections: [
-      {
-        heading: "Where the community agreed",
-        body: "Main Street gaps first; school walking routes second; decorative extensions last.",
-      },
-    ],
-    participation_label: "23 participants",
-    participation_count: 23,
-    comments: [
-      "My kids walk that stretch every day — the gap by the library is the scary part.",
-      "Fix what's half-built before starting anything new.",
-    ],
-    admin_notes: "",
-    image_url: null,
-    image_alt: null,
-  },
+  content: SEED_DEV_PENDING_BRIEF_CONTENT,
 };
 
 const row = {
@@ -68,10 +49,10 @@ const row = {
   process_version: "0.1",
   title: state.content.title,
   description: "",
-  jurisdiction: "us-va-floyd",
+  jurisdiction: SEED_DEV_PENDING_BRIEF_JURISDICTION,
   status: "active",
   state,
-  hub_id: "floyd-civic-hub",
+  hub_id: SEED_DEV_PENDING_BRIEF_HUB_ID,
   created_by: "system_seed",
 };
 

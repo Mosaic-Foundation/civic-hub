@@ -29,6 +29,8 @@
  *      BYPASS_CODE=000000 npx tsx scripts/testBriefFlow.ts
  */
 
+import { FLOYD_HUB } from "../tests/fixtures/hubs/index.js";
+
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const BYPASS_CODE = process.env.BYPASS_CODE ?? "000000";
@@ -122,7 +124,7 @@ async function run(): Promise<void> {
       definition: { type: "civic.vote", version: "0.1" },
       title: "Test: add a downtown crosswalk",
       description: "Should the county add a signalized crosswalk at Main & 2nd?",
-      jurisdiction: "us-va-floyd",
+      jurisdiction: FLOYD_HUB.jurisdiction_code!,
       createdBy: admin.userId,
       state: { options: ["yes", "no"] },
     },
