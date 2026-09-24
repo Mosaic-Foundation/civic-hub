@@ -4,6 +4,67 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Hub theming: a Theme section in Settings — 2026-09-24
+
+**Branch:** `multi-tenant`, same session as part five, after Adam agreed the
+plan in `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Future Tasks/civic-hub-theming-plan.md`.
+Official categories were deliberately NOT started: they wait for Phase 2
+(the roster lives on `users`, which has no `hub_id`).
+
+Adam's answers to the plan's questions: **colours only** (no fonts);
+**auto-adjust** a failing colour and show it (don't refuse); the four
+presets as proposed.
+
+| Step | Commit | What |
+|---|---|---|
+| 1 | `e053dfc` | `src/shared/theme.ts`, boot application, undefined tokens defined, `.theme-scope` |
+| 2 | `3e2518f` | Settings → Theme: presets, base colours, per-type colours, adjustments, live preview |
+| 3 | `2f630d1` | hard-coded brand colours onto tokens |
+
+### The shape of it
+
+**A theme is a few picks, never tokens.** Preset, primary, accent,
+background, and one hue per process type (votes, proposals, conversations,
+projects, announcements, meeting summaries, civic briefs, word clouds).
+`resolveTheme()` derives the 50–950 scales, hover shades, the page paper
+tones and each type's **dark edge + light pill** pair, and emits only what
+was chosen, so the Default theme sets nothing and today's palette stands
+unchanged. Votes follow primary, and announcements and briefs follow accent,
+as they do by default, unless given their own hue.
+
+**Readability is adjusted, not refused.** Primary is darkened until white
+button text passes AA (4.5:1). Accent is darkened until its bold label
+passes 3:1. Background is lightened until the site's lightest grey text
+passes AA. A type pair passes AA both ways. The Theme section lists every
+adjustment (from → to, and why) before saving. Tests hold every preset to
+needing none, and today's palette to the same rules.
+
+**Stored** in `identity.theme` as canonical JSON, now its own "theme"
+section with a validated "theme" kind. The part-five single `#rrggbb` still
+reads, as the primary. Public, as before.
+
+**Preview is the real stylesheet.** The app's token layers
+(`styles/theme.css`, `index.css`) also apply to `.theme-scope`, and
+`previewVars()` fills every themable primitive with its default before the
+draft's, so the preview box shows the draft over the defaults, not over
+whatever the page is wearing. The design-system files are untouched.
+
+**Why "Raise something" never followed a theme:** seven names in component
+CSS (`--color-action-accent`, `--civic-rust`, `--color-primary-wash`…) were
+used with a literal fallback and never defined, so they always rendered the
+fallback. They are defined on the palette now.
+
+### Not themed, on purpose or for now
+
+- **Status colours** (errors, warnings, success) are not theme colours.
+- **Digest and brief emails** still use the literal pill colours in
+  `civic.digest/service.ts` (email clients can't read CSS variables). They
+  can follow the hub's theme once the digest runs per hub (Phase 2).
+- **Dark mode**: not offered; nothing in the derivations assumes light.
+- The crawler view (`index.html` before JS) keeps the default palette.
+
+---
+
 ## Multi-tenant Phase 1 part five: the hub admin settings surface — 2026-09-24
 
 **Branch:** `multi-tenant`, eight commits (one per numbered step, plus one
