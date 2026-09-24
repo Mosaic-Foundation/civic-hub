@@ -7,6 +7,11 @@ import hub from "../config/hub";
  * the text, both, or neither.
  */
 export default function HubBanner() {
+  // A hub that has not chosen a banner shows none. The default used to be
+  // one hub's photograph, so every unconfigured hub wore a picture of
+  // somewhere else — which reads as a claim about the place, not as a
+  // missing asset.
+  if (!hub.banner_url) return null;
   return (
     <div className="hub-banner" aria-hidden="true">
       <img src={hub.banner_url} alt="" className="hub-banner-img" />

@@ -43,7 +43,10 @@ import {
   getWhoRunsThis,
   setWhoRunsThis,
   hubModeFor,
+  getSetting,
+  setSetting,
 } from "../services/hubSettings.js";
+import { KEYS } from "../models/hubSettings.js";
 import {
   type OfficialRecord,
   listOfficialsWithLegacy,
@@ -63,6 +66,10 @@ interface SettingsResponse {
    * admin panel: changing which hostname a hub answers on is a control-plane
    * act, not a settings edit.
    */
+  /** The sentence under the hub name on every page with a header. */
+  tagline: string;
+  /** The small caps line above it — "Civic Hub". */
+  label: string;
   operator_name: string;
   contact_email: string;
   hostname: string;
@@ -94,6 +101,8 @@ interface SettingsResponse {
 async function loadSettings(): Promise<SettingsResponse> {
   const hubId = currentHubId();
   return {
+    tagline: (await getSetting(hubId, KEYS.IDENTITY_TAGLINE)) ?? "",
+    label: (await getSetting(hubId, KEYS.IDENTITY_LABEL)) ?? "",
     operator_name: await getOperatorName(hubId),
     contact_email: await getContactEmail(hubId),
     hostname: currentHub()?.hostname ?? "",
@@ -129,6 +138,8 @@ export async function handlePatchSettings(
   try {
     const actor = getAuthUser(res).id;
     const body = (req.body ?? {}) as {
+      tagline?: unknown;
+      label?: unknown;
       operator_name?: unknown;
       contact_email?: unknown;
       who_runs_this?: unknown;
@@ -139,6 +150,21 @@ export async function handlePatchSettings(
       support_threshold?: unknown;
       comment_identity_mode?: unknown;
     };
+
+    // Short identity strings. Empty is meaningful — it clears the row and
+    // returns the hub to the shared default — so they are stored as written.
+    for (const [field, key] of [
+      ["tagline", KEYS.IDENTITY_TAGLINE],
+      ["label", KEYS.IDENTITY_LABEL],
+    ] as const) {
+      const value = (body as Record<string, unknown>)[field];
+      if (value === undefined) continue;
+      if (typeof value !== "string") {
+        res.status(400).json({ error: `${field} must be a string.` });
+        return;
+      }
+      await setSetting(currentHubId(), key, value.trim(), actor);
+    }
 
     if (body.operator_name !== undefined) {
       if (typeof body.operator_name !== "string") {

@@ -60,7 +60,7 @@ const hub = {
     return (
       getLoadedHubConfig()?.hub.name ??
       env(import.meta.env.VITE_HUB_NAME) ??
-      "Floyd Civic Hub"
+      "Civic Hub"
     );
   },
 
@@ -73,7 +73,7 @@ const hub = {
     return (
       getLoadedHubConfig()?.hub.jurisdiction_name ??
       env(import.meta.env.VITE_HUB_JURISDICTION) ??
-      "Floyd County, Virginia"
+      ""
     );
   },
 
@@ -89,7 +89,7 @@ const hub = {
     return (
       setting("identity.tagline") ??
       env(import.meta.env.VITE_HUB_TAGLINE) ??
-      "Stay informed on Floyd County government, raise the issues that matter, work on projects together, and see where our community stands."
+      "Stay informed on local government, raise the issues that matter, work on projects together, and see where our community stands."
     );
   },
 
@@ -97,11 +97,20 @@ const hub = {
    * Banner image path, relative to the deployment root. Drop new banner
    * files into ui/public/ and point the hub's setting at their path.
    */
+  /**
+   * Banner image path, relative to the deployment root. Drop new banner
+   * files into ui/public/ and point the hub's setting at their path.
+   *
+   * EMPTY WHEN A HUB HAS NOT CHOSEN ONE, and HubBanner then renders nothing.
+   * The default used to be Floyd's photograph, so a hub with no banner set
+   * showed a picture of somewhere else as its own header — which is worse
+   * than showing no picture, and was doing exactly that on Utopia.
+   */
   get banner_url(): string {
     return (
       setting("identity.banner_url") ??
       env(import.meta.env.VITE_HUB_BANNER_URL) ??
-      "/floyd-banner.jpg"
+      ""
     );
   },
 
@@ -110,7 +119,7 @@ const hub = {
     return (
       setting("identity.banner_alt") ??
       env(import.meta.env.VITE_HUB_BANNER_ALT) ??
-      "Downtown Floyd, Virginia — the Floyd Civic Hub"
+      ""
     );
   },
 

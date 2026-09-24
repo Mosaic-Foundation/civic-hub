@@ -46,6 +46,8 @@ export default function AdminSettings() {
   const [officialsMessage, setOfficialsMessage] = useState<string | null>(null);
 
   // --- Hub identity (what the legal pages say about the operator) ---
+  const [tagline, setTagline] = useState("");
+  const [label, setLabel] = useState("");
   const [operatorName, setOperatorName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [hostname, setHostname] = useState("");
@@ -109,6 +111,8 @@ export default function AdminSettings() {
         setExtraRecipientsText(
           s.brief_recipient_emails.filter((e) => !officialEmails.has(e.toLowerCase())).join(", "),
         );
+        setTagline(s.tagline);
+        setLabel(s.label);
         setOperatorName(s.operator_name);
         setContactEmail(s.contact_email);
         setHostname(s.hostname);
@@ -163,10 +167,14 @@ export default function AdminSettings() {
     setIdentityMessage(null);
     try {
       const saved = await adminPatchSettings({
+        tagline: tagline.trim(),
+        label: label.trim(),
         operator_name: operatorName.trim(),
         contact_email: contactEmail.trim(),
         who_runs_this: whoRunsThis.trim(),
       });
+      setTagline(saved.tagline);
+      setLabel(saved.label);
       setOperatorName(saved.operator_name);
       setContactEmail(saved.contact_email);
       setWhoRunsThis(saved.who_runs_this);
@@ -387,8 +395,11 @@ export default function AdminSettings() {
         {error && <p className="form-error">{error}</p>}
 
         {/* --- Hub identity --- */}
-        <section className="admin-settings-panel">
-          <h3>Hub identity</h3>
+        <SettingsSection
+          id="identity"
+          title="Hub identity"
+          defaultOpen={true}
+        >
           <p className="form-hint">
             What the <a href="/terms">Terms</a>, <a href="/privacy">Privacy
             Policy</a> and <a href="/code-of-conduct">Code of Conduct</a> say
@@ -397,7 +408,52 @@ export default function AdminSettings() {
             three at once.
           </p>
 
-          <label className="form-label" htmlFor="operator-name">
+          <label className="form-label" htmlFor="hub-tagline">
+            Tagline
+          </label>
+          <p className="form-hint">
+            The sentence under your hub's name on every page with a header.
+            Say what this hub is for, in your own words. Leave it empty for
+            the generic wording.
+          </p>
+          <textarea
+            id="hub-tagline"
+            className="form-textarea"
+            rows={2}
+            value={tagline}
+            onChange={(e) => setTagline(e.target.value)}
+            placeholder="Stay informed on local government, raise the issues that matter, work on projects together, and see where our community stands."
+            disabled={!loaded || savingIdentity}
+            maxLength={300}
+          />
+
+          <label
+            className="form-label"
+            htmlFor="hub-label"
+            style={{ marginTop: "var(--space-md)" }}
+          >
+            Label
+          </label>
+          <p className="form-hint">
+            The small line above the tagline — "Civic Hub" by default.
+          </p>
+          <input
+            id="hub-label"
+            className="form-input"
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Civic Hub"
+            disabled={!loaded || savingIdentity}
+            maxLength={40}
+            style={{ maxWidth: "260px" }}
+          />
+
+          <label
+            className="form-label"
+            htmlFor="operator-name"
+            style={{ marginTop: "var(--space-md)" }}
+          >
             Operated by
           </label>
           <p className="form-hint">
@@ -492,11 +548,14 @@ export default function AdminSettings() {
               <span className="admin-settings-message">{identityMessage}</span>
             )}
           </div>
-        </section>
+        </SettingsSection>
 
         {/* --- Hub mode --- */}
-        <section className="admin-settings-panel">
-          <h3>Who can sign in</h3>
+        <SettingsSection
+          id="mode"
+          title="Who can sign in"
+          defaultOpen={true}
+        >
           <p className="form-hint">
             This hub is currently <strong>{mode || "…"}</strong>.
           </p>
@@ -594,11 +653,14 @@ export default function AdminSettings() {
               <span className="admin-settings-message">{modeMessage}</span>
             )}
           </div>
-        </section>
+        </SettingsSection>
 
         {/* --- Admins & board --- */}
-        <section className="admin-settings-panel">
-          <h3>Admins &amp; board</h3>
+        <SettingsSection
+          id="people"
+          title="Admins & board"
+          defaultOpen={false}
+        >
           <p className="form-hint">
             Admins reach every page under /admin and can post announcements.
             Board members can post announcements and are offered as brief
@@ -686,11 +748,14 @@ export default function AdminSettings() {
               <span className="admin-settings-message">{peopleMessage}</span>
             )}
           </div>
-        </section>
+        </SettingsSection>
 
         {/* --- Officials & brief recipients --- */}
-        <section className="admin-settings-panel">
-          <h3>Officials &amp; brief recipients</h3>
+        <SettingsSection
+          id="officials"
+          title="Officials & brief recipients"
+          defaultOpen={false}
+        >
           <p className="form-hint">
             Accounts that hold a public office. The title shows as a pill next
             to their name everywhere they post — announcements, proposals,
@@ -847,11 +912,14 @@ export default function AdminSettings() {
               <span className="admin-settings-message">{officialsMessage}</span>
             )}
           </div>
-        </section>
+        </SettingsSection>
 
         {/* --- Support threshold --- */}
-        <section className="admin-settings-panel">
-          <h3>Proposal endorsement threshold</h3>
+        <SettingsSection
+          id="threshold"
+          title="Proposal endorsement threshold"
+          defaultOpen={false}
+        >
           <label className="form-label" htmlFor="support-threshold">
             Endorsements needed
           </label>
@@ -886,11 +954,14 @@ export default function AdminSettings() {
               <span className="admin-settings-message">{thresholdMessage}</span>
             )}
           </div>
-        </section>
+        </SettingsSection>
 
         {/* --- Comments & anonymity --- */}
-        <section className="admin-settings-panel">
-          <h3>Comments &amp; anonymity</h3>
+        <SettingsSection
+          id="comments"
+          title="Comments & anonymity"
+          defaultOpen={false}
+        >
           <p className="form-hint">
             Votes are always anonymous (ballot secrecy) and creating a
             process always carries the creator's real name — those are
@@ -935,11 +1006,14 @@ export default function AdminSettings() {
               <span className="admin-settings-message">{identityModeMessage}</span>
             )}
           </div>
-        </section>
+        </SettingsSection>
 
         {/* --- Beta allowlist --- */}
-        <section className="admin-settings-panel">
-          <h3>Beta allowlist</h3>
+        <SettingsSection
+          id="allowlist"
+          title="Beta allowlist"
+          defaultOpen={false}
+        >
           <label className="form-label" htmlFor="beta-allowlist">
             Allowed emails
           </label>
@@ -970,11 +1044,14 @@ export default function AdminSettings() {
               <span className="admin-settings-message">{allowlistMessage}</span>
             )}
           </div>
-        </section>
+        </SettingsSection>
 
         {/* --- Waitlist --- */}
-        <section className="admin-settings-panel">
-          <h3>Waitlist</h3>
+        <SettingsSection
+          id="waitlist"
+          title="Waitlist"
+          defaultOpen={false}
+        >
           <p className="form-hint">
             People who signed up for access on the beta landing page.
           </p>
@@ -1024,7 +1101,7 @@ export default function AdminSettings() {
               </div>
             </>
           )}
-        </section>
+        </SettingsSection>
       </div>
     </div>
   );
@@ -1104,5 +1181,69 @@ function EmailListEditor({
         {addLabel}
       </button>
     </div>
+  );
+}
+
+/**
+ * One collapsible settings section.
+ *
+ * The page had eight sections and will keep growing — every new per-hub
+ * setting lands here — so it had become a long scroll in which finding
+ * anything meant reading everything. Collapsed by default is wrong (an admin
+ * arriving to change one thing would have to open every section to find
+ * which one holds it), so each section remembers its own state and the two
+ * most-used open on a first visit.
+ *
+ * <details>/<summary> rather than a button and a state hook: it is keyboard
+ * accessible, findable by the browser's own find-in-page when open, and
+ * needs no JavaScript to toggle.
+ */
+function SettingsSection({
+  id,
+  title,
+  subtitle,
+  defaultOpen = false,
+  children,
+}: {
+  id: string;
+  title: string;
+  subtitle?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const storageKey = `civic_admin_section_${id}`;
+  const [open, setOpen] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved !== null) return saved === "true";
+    } catch {
+      // Private mode, blocked storage — fall through to the default.
+    }
+    return defaultOpen;
+  });
+
+  function toggle(next: boolean) {
+    setOpen(next);
+    try {
+      localStorage.setItem(storageKey, String(next));
+    } catch {
+      // A remembered section is a convenience, never a requirement.
+    }
+  }
+
+  return (
+    <details
+      className="admin-settings-panel admin-settings-section"
+      open={open}
+      onToggle={(e) => toggle((e.currentTarget as HTMLDetailsElement).open)}
+    >
+      <summary className="admin-settings-summary">
+        <span className="admin-settings-summary-title">{title}</span>
+        {subtitle && (
+          <span className="admin-settings-summary-sub">{subtitle}</span>
+        )}
+      </summary>
+      <div className="admin-settings-section-body">{children}</div>
+    </details>
   );
 }

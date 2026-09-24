@@ -158,3 +158,86 @@
   margin-top: var(--space-md);
   max-width: 36rem;
 }
+
+/*
+ * Collapsible settings sections.
+ *
+ * The page had eight and will keep growing, so each one collapses. The
+ * summary row is the whole clickable target rather than a small chevron:
+ * a heading that is also the control should feel like one.
+ */
+.admin-settings-section {
+  padding: 0;
+}
+
+.admin-settings-summary {
+  cursor: pointer;
+  list-style: none;
+  padding: var(--space-md, 1rem);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm, 0.5rem);
+  user-select: none;
+  border-radius: inherit;
+}
+
+/* The default disclosure triangle, replaced below with one we can position. */
+.admin-settings-summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-settings-summary::before {
+  content: "";
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.15rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 120ms ease;
+  opacity: 0.55;
+}
+
+.admin-settings-section[open] > .admin-settings-summary::before {
+  transform: rotate(45deg);
+}
+
+.admin-settings-summary:hover {
+  background: var(--color-surface-hover, rgba(0, 0, 0, 0.03));
+}
+
+.admin-settings-summary:focus-visible {
+  outline: 2px solid var(--color-accent, #2b4c7e);
+  outline-offset: -2px;
+}
+
+.admin-settings-summary-title {
+  font-weight: 600;
+}
+
+.admin-settings-summary-sub {
+  color: var(--color-text-muted, #666);
+  font-size: 0.9rem;
+}
+
+.admin-settings-section-body {
+  padding: 0 var(--space-md, 1rem) var(--space-md, 1rem);
+}
+
+/* The h3 margins these sections used to rely on are gone with the h3. */
+.admin-settings-section-body > *:first-child {
+  margin-top: 0;
+}
+
+/*
+ * `.form-label` is inline globally, and `.form-input` is inline-block, so a
+ * label following an input used to land on the same line as it. The older
+ * sections never hit this because every label happened to be preceded by a
+ * block `.form-hint` paragraph — which made the layout depend on whether a
+ * field had explanatory text. Inside a settings section a label always
+ * starts its own line.
+ */
+.admin-settings-section-body .form-label {
+  display: block;
+}

@@ -1646,6 +1646,10 @@ export interface Official {
 }
 
 export interface AdminSettings {
+  /** The sentence under the hub name. Empty = the shared default. */
+  tagline: string;
+  /** The small caps line above it. Empty = the shared default. */
+  label: string;
   /** Who the legal pages name as running this hub. Free text. */
   operator_name: string;
   /** Where the legal pages tell people to write. */
