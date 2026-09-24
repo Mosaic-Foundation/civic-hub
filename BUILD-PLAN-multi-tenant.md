@@ -61,10 +61,12 @@ create table hubs (
 - `jurisdiction_code` / `jurisdiction_name` replace `CIVIC_JURISDICTION` /
   `CIVIC_JURISDICTION_NAME`. Null means "no civic geography" (the current
   `local` / `none` / `unknown` sentinels are never stored).
-- **`source.hub_id` on published activities is NOT this id.** The protocol
-  identity string (`HUB_ID` in `src/config/hub.ts`, `civic-hub-local` on
-  production today) is a separate field and is unchanged by this work.
-  Do not rename it, back-fill it, or derive it from `hubs.id`.
+- **`source.hub_id` on published activities is NOT this id.** It is
+  `hubs.protocol_hub_id` (added in Phase 2a, 2026-09-24, with Adam):
+  `civic-hub-local` for Floyd, as production has always published, and
+  `civic-hub-<slug>` for a hub created since. `HUB_ID` in `src/config/hub.ts`
+  is only the fallback with no hub in scope. Never derived from `hubs.id` at
+  runtime; see "Phase 2a" below for the three identifiers.
 - `status = 'suspended'` makes the resolver serve the "no hub here" page
   for that hostname while leaving the data in place.
 - **`mode` is the hub's lifecycle state** (added 2026-09-22, with Adam). It
@@ -432,6 +434,9 @@ unique never blocks a second hub and is strictly stronger. The receipts'
 double-vote guard is the existing `(user_id, process_id)` key on
 `vote_participation`, already per hub because both ids are. There are no
 slug columns outside `hubs`.
+
+**`users.identity_did`** (`20260924030000`): nullable text, no reader. The
+seam ADR-004 reserves for portable identity.
 
 _checklist to be pasted_
 
