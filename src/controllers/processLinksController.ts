@@ -13,7 +13,7 @@ import type { Request, Response } from "express";
 import { emitEvent } from "../events/eventEmitter.js";
 import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
 import { getUserFromToken } from "../modules/civic.auth/index.js";
-import { HUB_ID, DEFAULT_JURISDICTION } from "../config/hub.js";
+import { DEFAULT_JURISDICTION } from "../config/hub.js";
 import { processDetailPath } from "../processes/registry.js";
 import type { RenderedLink, RenderedLinks } from "../modules/civic.process_links/index.js";
 import {
@@ -174,7 +174,6 @@ export async function handleCreateLink(req: Request, res: Response): Promise<voi
       event_type: "civic.process.updated",
       actor: user.id,
       process_id: fromId,
-      hub_id: HUB_ID,
       jurisdiction: DEFAULT_JURISDICTION,
       processType: source.type,
       action_url_path: processDetailPath(source.type, fromId),
@@ -241,7 +240,6 @@ export async function handleDeleteLink(req: Request, res: Response): Promise<voi
       event_type: "civic.process.updated",
       actor: user.id,
       process_id: edge.from_id,
-      hub_id: HUB_ID,
       jurisdiction: DEFAULT_JURISDICTION,
       processType: source?.type,
       action_url_path: processDetailPath(source?.type ?? "", edge.from_id),

@@ -22,7 +22,6 @@ import {
   redactForAudience,
 } from "../services/creatorDisplay.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
-import { HUB_ID } from "../config/hub.js";
 import { currentHubId } from "../config/hubContext.js";
 
 
@@ -84,19 +83,16 @@ export async function handleSubmitInput(
 
   try {
     const process = await getProcess(processId);
-    let hubId: string;
     let jurisdiction: string;
     let phase: CommentPhase;
 
     if (process) {
-      hubId = process.hubId;
       jurisdiction = process.jurisdiction;
       // "vote" keeps its meaning (the panel draws a divider between a
       // vote's comments and the ones carried over from its proposal);
       // every other type's comment is just a comment.
       phase = process.definition.type === "civic.vote" ? "vote" : "comment";
     } else if (await proposalExists(processId)) {
-      hubId = HUB_ID;
       jurisdiction = "local";
       phase = "proposal";
     } else {
@@ -133,7 +129,6 @@ export async function handleSubmitInput(
     if (isUpdate) isAnonymous = false; // an update is signed by the creator
 
     const input = await submitInput(processId, user.id, String(body), {
-      hub_id: hubId,
       jurisdiction,
       emit: emitEvent,
     }, phase, {

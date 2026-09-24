@@ -11,7 +11,6 @@ import type { EmitEventFn, VoteProcessState, VoteResult } from "./models.js";
 interface EventContext {
   emit: EmitEventFn;
   process_id: string;
-  hub_id: string;
   jurisdiction: string;
 }
 
@@ -24,7 +23,6 @@ export async function emitProposed(
     event_type: "civic.process.proposed",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: "civic.vote",
     data: {
@@ -46,7 +44,6 @@ export async function emitThresholdMet(
     event_type: "civic.process.threshold_met",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: "civic.vote",
     data: {
@@ -67,7 +64,6 @@ export async function emitStarted(
     event_type: "civic.process.started",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: "civic.vote",
     data: {
@@ -98,7 +94,6 @@ export async function emitVoteSubmitted(
     event_type: "civic.process.vote_submitted",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: "civic.vote",
     visibility: "restricted",
@@ -117,7 +112,6 @@ export async function emitEnded(
     event_type: "civic.process.ended",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: "civic.vote",
     data: {
@@ -148,7 +142,6 @@ export async function emitAggregationCompleted(
     event_type: "civic.process.aggregation_completed",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: "civic.vote",
     data: {
@@ -169,7 +162,6 @@ export async function emitResultPublished(
     event_type: "civic.process.result_published",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: "civic.vote",
     data: {

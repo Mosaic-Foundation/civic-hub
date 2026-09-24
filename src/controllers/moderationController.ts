@@ -62,7 +62,6 @@ export async function handleHideComment(
       return;
     }
     const updated = await hideComment(commentId, admin.id, reason, {
-      hub_id: process.hubId,
       jurisdiction: process.jurisdiction,
       emit: emitEvent,
     });
@@ -91,7 +90,6 @@ export async function handleRestoreComment(
       return;
     }
     const updated = await restoreComment(commentId, admin.id, {
-      hub_id: process.hubId,
       jurisdiction: process.jurisdiction,
       emit: emitEvent,
     });
@@ -128,7 +126,6 @@ export async function handleRemoveAnnouncement(
     const state = getState(record);
     await removeAnnouncement(state, admin.id, reason, {
       process_id: record.id,
-      hub_id: record.hubId,
       jurisdiction: record.jurisdiction,
       emit: emitEvent,
     });
@@ -157,7 +154,6 @@ export async function handleRestoreAnnouncement(
     const state = getState(record);
     await restoreAnnouncement(state, admin.id, {
       process_id: record.id,
-      hub_id: record.hubId,
       jurisdiction: record.jurisdiction,
       emit: emitEvent,
     });

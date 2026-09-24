@@ -1,5 +1,5 @@
 import { emitEvent } from "../../events/eventEmitter.js";
-import { HUB_ID, DEFAULT_JURISDICTION } from "../../config/hub.js";
+import { DEFAULT_JURISDICTION } from "../../config/hub.js";
 
 
 export async function emitReviewEvent(input: {
@@ -13,7 +13,6 @@ export async function emitReviewEvent(input: {
     event_type: input.event_type,
     actor: input.actor,
     process_id: input.process_id,
-    hub_id: HUB_ID,
     jurisdiction: DEFAULT_JURISDICTION,
     data: {
       ...input.data,

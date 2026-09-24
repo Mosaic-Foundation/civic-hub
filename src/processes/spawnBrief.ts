@@ -57,7 +57,6 @@ export async function spawnBriefFromClosedProcess(
   await emitBriefAggregationCompleted(
     {
       process_id: brief.id,
-      hub_id: brief.hubId,
       jurisdiction: brief.jurisdiction,
       emit: emitEvent,
     },

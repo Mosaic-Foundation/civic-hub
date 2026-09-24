@@ -168,7 +168,6 @@ export async function createProcess(
     event_type: "civic.process.created",
     actor: input.createdBy,
     process_id: id,
-    hub_id: process.hubId,
     jurisdiction: process.jurisdiction,
     data: {
       process: {
@@ -284,7 +283,6 @@ export async function executeAction(
       event_type: "civic.process.updated",
       actor: action.actor,
       process_id: process.id,
-      hub_id: process.hubId,
       jurisdiction: process.jurisdiction,
       processType: process.definition.type,
       data: {

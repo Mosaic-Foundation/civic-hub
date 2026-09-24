@@ -165,7 +165,6 @@ export async function handlePatchBrief(
     const actor = getAuthUser(res).id;
     const ctx = {
       process_id: record.id,
-      hub_id: record.hubId,
       jurisdiction: record.jurisdiction,
       emit: emitEvent,
     };
@@ -218,7 +217,6 @@ export async function handleApproveBrief(
     const actor = getAuthUser(res).id;
     const ctx = {
       process_id: record.id,
-      hub_id: record.hubId,
       jurisdiction: record.jurisdiction,
       emit: emitEvent,
     };

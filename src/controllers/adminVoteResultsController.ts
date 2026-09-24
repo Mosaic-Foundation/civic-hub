@@ -193,7 +193,6 @@ export async function handlePatchVoteResults(
     const actor = getAuthUser(res).id;
     const ctx = {
       process_id: record.id,
-      hub_id: record.hubId,
       jurisdiction: record.jurisdiction,
       emit: emitEvent,
     };
@@ -265,7 +264,6 @@ export async function handleApproveVoteResults(
     const actor = getAuthUser(res).id;
     const ctx = {
       process_id: record.id,
-      hub_id: record.hubId,
       jurisdiction: record.jurisdiction,
       emit: emitEvent,
     };
@@ -291,7 +289,6 @@ export async function handleApproveVoteResults(
       }
       const voteCtx = {
         process_id: voteRecord.id,
-        hub_id: voteRecord.hubId,
         jurisdiction: voteRecord.jurisdiction,
         emit: emitEvent,
       };

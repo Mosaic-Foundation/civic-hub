@@ -121,7 +121,6 @@ async function runScenario(scenario: SeedScenario, hubId: string): Promise<void>
     if (scenario.inputs) {
       for (const input of scenario.inputs) {
         await submitInput(proc.id, input.author_id, input.body, {
-          hub_id: proc.hubId,
           jurisdiction: proc.jurisdiction,
           emit: emitEvent,
         });
@@ -148,7 +147,6 @@ async function runAnnouncementSeed(
   const state = proc.state as unknown as AnnouncementProcessState;
   const ctx: AnnouncementProcessContext = {
     process_id: proc.id,
-    hub_id: proc.hubId,
     jurisdiction: proc.jurisdiction,
     emit: emitEvent,
   };
@@ -174,7 +172,6 @@ async function runMeetingSummarySeed(
   const state = proc.state as unknown as MeetingSummaryProcessState;
   const ctx: MeetingSummaryProcessContext = {
     process_id: proc.id,
-    hub_id: proc.hubId,
     jurisdiction: proc.jurisdiction,
     emit: emitEvent,
   };

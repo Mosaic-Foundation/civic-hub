@@ -133,7 +133,6 @@ export async function handlePostBriefResponse(
     await emitBriefResponseAdded(
       {
         process_id: record!.id,
-        hub_id: record!.hubId,
         jurisdiction: record!.jurisdiction,
         emit: emitEvent,
       },

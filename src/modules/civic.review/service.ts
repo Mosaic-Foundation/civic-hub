@@ -33,7 +33,7 @@ import { emitEvent } from "../../events/eventEmitter.js";
 import { executeAction, rowToProcess } from "../../services/processService.js";
 import { createProject } from "../civic.projects/index.js";
 import { createProposal } from "../civic.proposals/index.js";
-import { HUB_ID, DEFAULT_JURISDICTION } from "../../config/hub.js";
+import { DEFAULT_JURISDICTION } from "../../config/hub.js";
 import { getAdminEmailsSync } from "../../services/hubSettings.js";
 
 
@@ -394,7 +394,6 @@ export async function approveReview(
       event_type: "civic.process.created",
       actor: review.creator_id,
       process_id: review.process_id,
-      hub_id: HUB_ID,
       jurisdiction: DEFAULT_JURISDICTION,
       data: {
         process: {

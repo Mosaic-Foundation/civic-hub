@@ -136,7 +136,6 @@ export interface EmitEventFn {
     event_type: string;
     actor: string;
     process_id: string;
-    hub_id: string;
     jurisdiction: string;
     data: Record<string, unknown>;
     processType?: string;
@@ -168,7 +167,6 @@ export interface FinalizeSourceFn {
 
 export interface BriefProcessContext {
   process_id: string;
-  hub_id: string;
   jurisdiction: string;
   emit: EmitEventFn;
 }

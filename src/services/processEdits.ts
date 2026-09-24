@@ -264,7 +264,6 @@ export async function applyEdit(
     event_type: "civic.process.updated",
     actor: editor.id,
     process_id: processId,
-    hub_id: process.hubId,
     jurisdiction: process.jurisdiction,
     processType: process.definition.type,
     action_url_path: processDetailPath(process.definition.type, processId),

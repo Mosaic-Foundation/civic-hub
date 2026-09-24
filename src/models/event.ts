@@ -47,13 +47,6 @@ export interface CreateEventInput {
   event_type: string;
   actor: string;
   process_id: string;
-  /**
-   * IGNORED. `source.hub_id` is the protocol identity of the hub in scope
-   * (`hubs.protocol_hub_id`), stamped by emitEvent. Callers still pass this —
-   * usually `process.hubId`, which is the TENANT id since 2026-09-24 — and it
-   * is removed with the events conversion to forHub().
-   */
-  hub_id?: string;
   jurisdiction: string;
   data: Record<string, unknown>;
   dedupe_key?: string;

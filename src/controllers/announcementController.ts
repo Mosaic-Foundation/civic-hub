@@ -49,7 +49,6 @@ function getState(record: { state: Record<string, unknown> }): AnnouncementProce
 function ctxFor(record: { id: string; hubId: string; jurisdiction: string }) {
   return {
     process_id: record.id,
-    hub_id: record.hubId,
     jurisdiction: record.jurisdiction,
     emit: emitEvent,
   };

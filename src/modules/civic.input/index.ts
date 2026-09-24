@@ -142,7 +142,6 @@ export async function submitInput(
     event_type: "civic.process.comment_added",
     actor: isAnonymous ? "anonymous" : author_id,
     process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     data: {
       comment: {
@@ -241,7 +240,6 @@ export async function hideComment(
     event_type: "civic.process.updated",
     actor: admin_id,
     process_id: existing.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     visibility: "restricted",
     data: {
@@ -289,7 +287,6 @@ export async function restoreComment(
     event_type: "civic.process.updated",
     actor: admin_id,
     process_id: existing.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     visibility: "restricted",
     data: {

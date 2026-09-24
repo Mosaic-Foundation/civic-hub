@@ -36,7 +36,6 @@ export async function finalizeBriefSource(
     );
     await finalizeVote(vState, actor, ballots, {
       process_id: src.id,
-      hub_id: src.hubId,
       jurisdiction: src.jurisdiction,
       emit: emitEvent,
     });

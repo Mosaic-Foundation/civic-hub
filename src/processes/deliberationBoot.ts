@@ -14,7 +14,7 @@ import type { PolisHostInterface } from "../shared/polis_deliberation/hostInterf
 import type { PolisAdapter } from "../shared/polis_deliberation/adapter/types.js";
 import type { PolisDeliberationState } from "../shared/polis_deliberation/types.js";
 import type { BriefContent, BriefSection } from "../modules/civic.brief/index.js";
-import { HUB_ID, DEFAULT_JURISDICTION } from "../config/hub.js";
+import { DEFAULT_JURISDICTION } from "../config/hub.js";
 import { deliberationAssistantConfig } from "./deliberationAssistantConfig.js";
 import { getSettingSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
@@ -89,7 +89,6 @@ export function bootDeliberation(): ProcessHandler {
         event_type: input.event_type,
         actor: input.actor,
         process_id: processId,
-        hub_id: HUB_ID,
         jurisdiction: input.jurisdiction || DEFAULT_JURISDICTION,
         processType,
         data: input.data,

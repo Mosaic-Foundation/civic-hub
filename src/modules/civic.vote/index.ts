@@ -158,7 +158,6 @@ export function createVoteState(
 
 interface ProcessContext {
   process_id: string;
-  hub_id: string;
   jurisdiction: string;
   emit: EmitEventFn;
 }

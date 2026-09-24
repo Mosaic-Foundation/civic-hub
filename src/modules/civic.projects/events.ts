@@ -1,12 +1,10 @@
 import type { CreateEventInput } from "../../models/event.js";
-import { HUB_ID } from "../../config/hub.js";
 
 export type EmitEventFn = (input: CreateEventInput) => Promise<unknown>;
 
 
 interface EventContext {
   project_id: string;
-  hub_id?: string;
   jurisdiction?: string;
   emit: EmitEventFn;
 }
@@ -20,7 +18,6 @@ export async function emitProjectCreated(
     event_type: "civic.project.created",
     actor,
     process_id: ctx.project_id,
-    hub_id: ctx.hub_id ?? HUB_ID,
     jurisdiction: ctx.jurisdiction ?? "local",
     processType: "civic.project",
     action_url_path: `/project/${ctx.project_id}`,
@@ -37,7 +34,6 @@ export async function emitProjectUpdated(
     event_type: "civic.project.updated",
     actor,
     process_id: ctx.project_id,
-    hub_id: ctx.hub_id ?? HUB_ID,
     jurisdiction: ctx.jurisdiction ?? "local",
     processType: "civic.project",
     action_url_path: `/project/${ctx.project_id}`,
@@ -54,7 +50,6 @@ export async function emitProjectCommented(
     event_type: "civic.project.comment_added",
     actor,
     process_id: ctx.project_id,
-    hub_id: ctx.hub_id ?? HUB_ID,
     jurisdiction: ctx.jurisdiction ?? "local",
     processType: "civic.project",
     action_url_path: `/project/${ctx.project_id}`,
@@ -70,7 +65,6 @@ export async function emitProjectArchived(
     event_type: "civic.project.archived",
     actor,
     process_id: ctx.project_id,
-    hub_id: ctx.hub_id ?? HUB_ID,
     jurisdiction: ctx.jurisdiction ?? "local",
     processType: "civic.project",
     action_url_path: `/project/${ctx.project_id}`,
@@ -86,7 +80,6 @@ export async function emitProjectCompleted(
     event_type: "civic.project.updated",
     actor,
     process_id: ctx.project_id,
-    hub_id: ctx.hub_id ?? HUB_ID,
     jurisdiction: ctx.jurisdiction ?? "local",
     processType: "civic.project",
     action_url_path: `/project/${ctx.project_id}`,
@@ -103,7 +96,6 @@ export async function emitProjectSentimentChanged(
     event_type: "civic.project.sentiment_changed",
     actor,
     process_id: ctx.project_id,
-    hub_id: ctx.hub_id ?? HUB_ID,
     jurisdiction: ctx.jurisdiction ?? "local",
     processType: "civic.project",
     action_url_path: `/project/${ctx.project_id}`,

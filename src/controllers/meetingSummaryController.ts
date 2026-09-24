@@ -771,7 +771,6 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
         const state = summaryState(newProcess);
         const ctx = {
           process_id: newProcess.id,
-          hub_id: newProcess.hubId,
           jurisdiction: newProcess.jurisdiction,
           emit: emitEvent,
         };
@@ -1194,7 +1193,6 @@ export async function handlePatchMeetingSummary(
     const actor = getAuthUser(res).id;
     const ctx = {
       process_id: record.id,
-      hub_id: record.hubId,
       jurisdiction: record.jurisdiction,
       emit: emitEvent,
     };
@@ -1247,7 +1245,6 @@ export async function handleApproveMeetingSummary(
     const actor = getAuthUser(res).id;
     const ctx = {
       process_id: record.id,
-      hub_id: record.hubId,
       jurisdiction: record.jurisdiction,
       emit: emitEvent,
     };
@@ -1395,7 +1392,6 @@ export async function handleBatchApproveMeetingSummaries(
           : emitEvent;
         const ctx = {
           process_id: record.id,
-          hub_id: record.hubId,
           jurisdiction: record.jurisdiction,
           emit,
         };

@@ -26,7 +26,6 @@ export async function emitBriefCreated(
     event_type: "civic.process.created",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: PROCESS_TYPE,
     action_url_path: publicPath(ctx.process_id),
@@ -48,7 +47,6 @@ export async function emitBriefAggregationCompleted(
     event_type: "civic.process.aggregation_completed",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: PROCESS_TYPE,
     data: {
@@ -68,7 +66,6 @@ export async function emitBriefUpdated(
     event_type: "civic.process.updated",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: PROCESS_TYPE,
     data: {
@@ -87,7 +84,6 @@ export async function emitBriefOutcomeRecorded(
     event_type: "civic.process.outcome_recorded",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: PROCESS_TYPE,
     data: {
@@ -121,7 +117,6 @@ export async function emitBriefResponseAdded(
     event_type: "civic.process.action_taken",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: PROCESS_TYPE,
     action_url_path: publicPath(ctx.process_id),
@@ -153,7 +148,6 @@ export async function emitBriefResultPublished(
     event_type: "civic.process.result_published",
     actor,
     process_id: ctx.process_id,
-    hub_id: ctx.hub_id,
     jurisdiction: ctx.jurisdiction,
     processType: PROCESS_TYPE,
     action_url_path: publicPath(ctx.process_id),

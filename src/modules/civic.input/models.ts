@@ -89,7 +89,6 @@ export interface EmitEventFn {
     event_type: string;
     actor: string;
     process_id: string;
-    hub_id: string;
     jurisdiction: string;
     data: Record<string, unknown>;
     /** Phase 3 — canonical process type, stamped into data.process.type. */
@@ -108,7 +107,6 @@ export interface EmitEventFn {
  * emit a spec-compliant event without knowing the hub's identity.
  */
 export interface InputContext {
-  hub_id: string;
   jurisdiction: string;
   emit: EmitEventFn;
 }

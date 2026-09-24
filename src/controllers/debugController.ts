@@ -33,7 +33,6 @@ import { getDb } from "../db/client.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { seedIdForHub } from "../debug/autoSeed.js";
-import { HUB_ID } from "../config/hub.js";
 
 // Production Supabase hostnames that MUST NEVER be seeded against.
 // Add a new entry whenever a new production project is provisioned.
@@ -96,7 +95,6 @@ async function runScenario(
   if (scenario.inputs) {
     for (const input of scenario.inputs) {
       await submitInput(process.id, input.author_id, input.body, {
-        hub_id: process.hubId,
         jurisdiction: process.jurisdiction,
         emit: emitEvent,
       });
@@ -152,7 +150,6 @@ async function seedDeliberation(
     event_type: "civic.process.created",
     actor: p.createdBy,
     process_id: p.id,
-    hub_id: HUB_ID,
     jurisdiction: p.jurisdiction ?? "local",
     data: {
       process: {

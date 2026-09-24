@@ -25,7 +25,6 @@ function getState(process: Process): WordcloudProcessState {
 function makeContext(process: Process) {
   return {
     process_id: process.id,
-    hub_id: process.hubId,
     jurisdiction: process.jurisdiction,
     emit: emitEvent,
   };

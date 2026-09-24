@@ -277,7 +277,6 @@ export async function runNewsSyncForHub(): Promise<NewsSyncHubOutcome> {
         const state = announcementState(record);
         const ctx: AnnouncementProcessContext = {
           process_id: record.id,
-          hub_id: record.hubId,
           jurisdiction: record.jurisdiction,
           emit: emitEvent,
         };
