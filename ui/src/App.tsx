@@ -230,7 +230,11 @@ function SiteFooter() {
         <div className="app-footer-brand">
           <strong>{hub.name}</strong>
           <span className="app-footer-tagline">
-            Operated by Adam Lake · Powered by{" "}
+            {/* The hub's own operator (legal.operator_name, Settings → Legal).
+                This named one person on every hub until 2026-09-24; a hub
+                that has not said who runs it now says nothing here. */}
+            {hub.operator_name && <>Operated by {hub.operator_name} · </>}
+            Powered by{" "}
             <a
               href="https://civic.social"
               target="_blank"
