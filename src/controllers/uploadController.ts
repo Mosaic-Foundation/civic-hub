@@ -138,6 +138,10 @@ export interface ImageUploadLimits {
   minHeight: number;
   maxDimension: number;
   maxBytes: () => number;
+  /** Narrower than the shared whitelist, when set. */
+  mimeTypes?: ReadonlySet<string>;
+  /** Width and height within 2% of each other. */
+  square?: boolean;
   /** Bucket prefix for the stored key, or undefined for the shared layout. */
   prefix?: (req: Request, res: Response) => string | undefined;
 }
@@ -153,9 +157,11 @@ const POST_IMAGE_LIMITS: ImageUploadLimits = {
  * A hub's own images, uploaded from the admin Settings page. They land under
  * the hub's prefix in the bucket (see hubImagePrefix).
  *
- * A banner is a wide strip, so its floor is a width, not a square; a logo is
- * drawn at header height, so it may be small but is capped at 1 MB — it is
- * fetched on every page by every visitor.
+ * A banner is a wide strip, so its floor is a width, not a square. A logo is
+ * the browser-tab icon and a mark on the home page (Adam, 2026-09-24), so it
+ * is a square PNG — transparency survives, and a square is what an icon slot
+ * is — at least 256 px so it stays sharp on a phone's home screen, and at
+ * most 1 MB.
  */
 export const HUB_IMAGE_LIMITS: Readonly<Record<"banner" | "logo", ImageUploadLimits>> = {
   banner: {
@@ -166,9 +172,11 @@ export const HUB_IMAGE_LIMITS: Readonly<Record<"banner" | "logo", ImageUploadLim
     prefix: () => hubImagePrefix(currentHubId()),
   },
   logo: {
-    minWidth: 32,
-    minHeight: 32,
+    minWidth: 256,
+    minHeight: 256,
     maxDimension: 2000,
+    mimeTypes: new Set(["image/png"]),
+    square: true,
     maxBytes: () => Math.min(imageUploadMaxBytes(), 1024 * 1024),
     prefix: () => hubImagePrefix(currentHubId()),
   },
@@ -215,6 +223,10 @@ async function uploadImage(
     const maxBytes = limits.maxBytes();
     const parsed = await parseSingleFile(req, maxBytes);
 
+    if (limits.mimeTypes && !limits.mimeTypes.has(parsed.mime)) {
+      res.status(400).json({ error: "This image must be a PNG." });
+      return;
+    }
     if (!POST_IMAGE_MIME_WHITELIST.has(parsed.mime)) {
       res.status(400).json({
         error: `Unsupported image type "${parsed.mime}". Allowed: JPEG, PNG, WebP, GIF.`,
@@ -236,6 +248,12 @@ async function uploadImage(
     if (w < limits.minWidth || h < limits.minHeight) {
       res.status(400).json({
         error: `Image is too small (${w}×${h}). Minimum ${limits.minWidth}×${limits.minHeight}.`,
+      });
+      return;
+    }
+    if (limits.square && Math.abs(w - h) > Math.max(w, h) * 0.02) {
+      res.status(400).json({
+        error: `Image must be square (this one is ${w}×${h}).`,
       });
       return;
     }

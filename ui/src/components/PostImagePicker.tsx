@@ -37,6 +37,13 @@ interface Props {
   /** The add button's label. Default "Add featured image" (announcements,
    *  projects); the feedback form says "Add screenshot". */
   addLabel?: string;
+  /** "png" keeps the file a PNG (and its transparency) instead of
+   *  re-encoding to WebP — for a hub's logo. Default "webp". */
+  format?: "webp" | "png";
+  /** Longest edge after resize. Default MAX_LONG_EDGE_PX. */
+  maxLongEdge?: number;
+  /** Replaces the default "JPEG, PNG, WebP, or GIF…" line under the button. */
+  formatHint?: string;
 }
 
 type Status =
@@ -52,6 +59,9 @@ export default function PostImagePicker({
   uploadFn = uploadPostImage,
   hideAlt = false,
   addLabel = "Add featured image",
+  format = "webp",
+  maxLongEdge = MAX_LONG_EDGE_PX,
+  formatHint,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -71,7 +81,10 @@ export default function PostImagePicker({
   async function handleFile(file: File) {
     setStatus({ kind: "uploading", progress: null });
     try {
-      const blob = await resizeAndEncode(file);
+      if (format === "png" && file.type !== "image/png") {
+        throw new Error("Choose a PNG file.");
+      }
+      const blob = await resizeAndEncode(file, format, maxLongEdge);
       const result = await uploadFn(blob);
       onChange({ image_url: result.url, image_alt: imageAlt ?? "" });
       setStatus({ kind: "idle" });
@@ -103,7 +116,7 @@ export default function PostImagePicker({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept={format === "png" ? "image/png" : "image/jpeg,image/png,image/webp,image/gif"}
         className="post-image-picker-file"
         onChange={onFileInputChange}
         disabled={disabled || status.kind === "uploading"}
@@ -169,7 +182,8 @@ export default function PostImagePicker({
             {status.kind === "uploading" ? "Uploading…" : addLabel}
           </button>
           <p className="form-hint">
-            Optional. JPEG, PNG, WebP, or GIF. Resized to {MAX_LONG_EDGE_PX} px on the long edge before upload.
+            {formatHint ??
+              `Optional. JPEG, PNG, WebP, or GIF. Resized to ${MAX_LONG_EDGE_PX} px on the long edge before upload.`}
           </p>
         </div>
       )}
@@ -186,7 +200,11 @@ export default function PostImagePicker({
  * re-encode to WebP at WEBP_QUALITY. The canvas re-encode strips EXIF
  * metadata (camera, GPS, etc.) as a side effect — that is desired.
  */
-async function resizeAndEncode(file: File): Promise<Blob> {
+async function resizeAndEncode(
+  file: File,
+  format: "webp" | "png" = "webp",
+  maxLongEdge: number = MAX_LONG_EDGE_PX,
+): Promise<Blob> {
   // createImageBitmap honors the orientation hint so portrait photos
   // arrive right-side-up. Falls back to <img> on browsers that lack
   // imageOrientation support.
@@ -200,7 +218,7 @@ async function resizeAndEncode(file: File): Promise<Blob> {
     const sourceWidth = "width" in bitmap ? bitmap.width : 0;
     const sourceHeight = "height" in bitmap ? bitmap.height : 0;
     const longEdge = Math.max(sourceWidth, sourceHeight);
-    const scale = longEdge > MAX_LONG_EDGE_PX ? MAX_LONG_EDGE_PX / longEdge : 1;
+    const scale = longEdge > maxLongEdge ? maxLongEdge / longEdge : 1;
     const targetWidth = Math.max(1, Math.round(sourceWidth * scale));
     const targetHeight = Math.max(1, Math.round(sourceHeight * scale));
 
@@ -211,6 +229,13 @@ async function resizeAndEncode(file: File): Promise<Blob> {
     if (!ctx) throw new Error("Canvas context unavailable.");
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(bitmap as CanvasImageSource, 0, 0, targetWidth, targetHeight);
+
+    if (format === "png") {
+      // PNG is lossless and keeps the alpha channel, which is the point.
+      const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!png) throw new Error("Browser could not encode the image.");
+      return png;
+    }
 
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, "image/webp", WEBP_QUALITY),

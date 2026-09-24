@@ -75,7 +75,8 @@ export default function IdentitySection() {
             kind="logo"
             label="Logo"
             addLabel="Upload a logo"
-            hint="Shown beside the hub's name in the header, at text height. A square image works best; at most 1 MB."
+            hint="The icon in the browser tab and on a phone's home screen, and a mark beside the place name on the home page. Leave it empty for none."
+            formatHint="A square PNG, at least 256 × 256 pixels. A transparent background works best."
           />
           <ColorField
             f={f}

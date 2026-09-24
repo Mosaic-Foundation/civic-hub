@@ -45,6 +45,33 @@
   padding: var(--space-lg) var(--space-md) var(--space-md);
 }
 
+/* identity.logo_url, left of the place name. The text block keeps its own
+   layout, so a hub with no logo renders exactly as before. */
+.hub-info--with-logo {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+.hub-info-logo {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin-top: 0.15rem;
+}
+
+.hub-info-text {
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .hub-info-logo {
+    width: 48px;
+    height: 48px;
+  }
+}
+
 /* Mobile: shorter banner so `object-fit: cover` actually crops the
    image vertically (otherwise the photo's pale sky shows at the top
    and reads as whitespace). object-position: center center crops the

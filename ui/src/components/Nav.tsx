@@ -227,10 +227,6 @@ export default function Nav() {
             </button>
 
             <Link to="/" className="civic-nav-wordmark" aria-label={`${hub.jurisdiction} home`}>
-              {hub.logo_url && (
-                // Decorative: the name beside it is the link's text.
-                <img src={hub.logo_url} alt="" className="civic-nav-logo" />
-              )}
               {hub.name}
             </Link>
 

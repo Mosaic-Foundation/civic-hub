@@ -197,7 +197,13 @@ export function ImageField({
   kind,
   altKey,
   addLabel,
-}: Common & { kind: "banner" | "logo"; altKey?: string; addLabel: string }) {
+  formatHint,
+}: Common & {
+  kind: "banner" | "logo";
+  altKey?: string;
+  addLabel: string;
+  formatHint?: string;
+}) {
   const url = f.value(k);
   return (
     <div className="settings-field">
@@ -215,6 +221,11 @@ export function ImageField({
           hideAlt={!altKey}
           addLabel={addLabel}
           disabled={f.disabled}
+          // A logo stays a PNG, so its transparent background survives; it is
+          // shown at most at icon size, so 512 px is plenty.
+          format={kind === "logo" ? "png" : "webp"}
+          maxLongEdge={kind === "logo" ? 512 : undefined}
+          formatHint={formatHint}
         />
       </div>
     </div>

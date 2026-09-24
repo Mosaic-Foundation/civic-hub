@@ -442,9 +442,12 @@ code's copy is `src/shared/hubSettingsSections.ts`, and the settings endpoint
 | Officials | officials roster + `people.brief_recipients` | Existing `PATCH /admin/settings`. |
 
 **Three keys added with Adam, 2026-09-24:**
-- `identity.logo_url` — shown in the header beside the hub's name. **Public**:
-  the one addition to the public subset in part five, because the header
-  renders it for every visitor.
+- `identity.logo_url` — the hub's browser-tab and home-screen icon, and a
+  64 px mark left of the place name on the home page (moved out of the nav
+  bar after the walkthrough: at text height it was unrecognisable). A square
+  PNG, at least 256 × 256. With none, the icon is the hub's initial on its
+  theme colour. **Public**: the one addition to the public subset in part
+  five, because every visitor's page renders it.
 - `identity.theme` is now read: a `#rrggbb` accent the UI applies over
   `--color-primary` (and a derived hover shade) at boot. Empty = default palette.
 - `plugin.digest.send_hour` — 0–23, UTC. **Stored only until Phase 2.** The

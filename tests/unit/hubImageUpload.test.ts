@@ -61,11 +61,11 @@ function png(width: number, height: number): Buffer {
   ]);
 }
 
-function multipartRequest(file: Buffer, query: Record<string, string>) {
+function multipartRequest(file: Buffer, query: Record<string, string>, mime = "image/png") {
   const boundary = "----settingsTestBoundary";
   const body = Buffer.concat([
     Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="image.png"\r\nContent-Type: image/png\r\n\r\n`,
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="image.png"\r\nContent-Type: ${mime}\r\n\r\n`,
     ),
     file,
     Buffer.from(`\r\n--${boundary}--\r\n`),
@@ -100,9 +100,10 @@ async function upload(
   hub: typeof ATHENS_HUB,
   file: Buffer,
   kind: string,
+  mime = "image/png",
   userId = `user_${Math.random().toString(36).slice(2)}`,
 ) {
-  const req = multipartRequest(file, { kind });
+  const req = multipartRequest(file, { kind }, mime);
   const res = fakeResponse(userId);
   await runWithHub(hub, {}, () =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,9 +143,27 @@ describe("POST /upload/hub-image", () => {
 
   it("stores the same upload under Floyd when Floyd is the hub in scope", async () => {
     uploads.length = 0;
-    const res = await upload(FLOYD_HUB, png(64, 64), "logo");
+    const res = await upload(FLOYD_HUB, png(256, 256), "logo");
     expect(res.statusCode).toBe(201);
     expect(uploads[0]).toMatch(/^hubs\/floyd\//);
+  });
+
+  it("takes a logo only as a square PNG of at least 256 px", async () => {
+    uploads.length = 0;
+    const notPng = await upload(ATHENS_HUB, png(300, 300), "logo", "image/webp");
+    expect(notPng.statusCode).toBe(400);
+    expect((notPng.body as { error: string }).error).toMatch(/PNG/);
+
+    const oblong = await upload(ATHENS_HUB, png(400, 300), "logo");
+    expect(oblong.statusCode).toBe(400);
+    expect((oblong.body as { error: string }).error).toMatch(/square/);
+
+    const small = await upload(ATHENS_HUB, png(128, 128), "logo");
+    expect(small.statusCode).toBe(400);
+    expect(uploads).toHaveLength(0);
+
+    const nearlySquare = await upload(ATHENS_HUB, png(512, 506), "logo");
+    expect(nearlySquare.statusCode).toBe(201);
   });
 
   it("applies the banner's size floor and the logo's", async () => {
@@ -164,7 +183,7 @@ describe("POST /upload/hub-image", () => {
   it("refuses a file over the logo's 1 MB limit before storing it", async () => {
     uploads.length = 0;
     // Incompressible bytes after a valid header, so the body really is > 1 MB.
-    const oversized = Buffer.concat([png(64, 64), randomBytes(1_100_000)]);
+    const oversized = Buffer.concat([png(256, 256), randomBytes(1_100_000)]);
     const res = await upload(ATHENS_HUB, oversized, "logo");
     expect(res.statusCode).toBe(400);
     expect((res.body as { error: string }).error).toMatch(/upload limit/);

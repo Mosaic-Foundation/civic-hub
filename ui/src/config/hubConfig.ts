@@ -129,6 +129,7 @@ export function applyHubHead(): void {
 
   document.title = title;
   applyThemeColor(setting("identity.theme"));
+  applyHubIcon(setting("identity.logo_url"));
   setMeta("name", "description", description);
   setMeta("property", "og:title", title);
   setMeta("property", "og:description", description);
@@ -181,4 +182,40 @@ function darken(hex: string, amount: number): string {
       .toString(16)
       .padStart(2, "0");
   return `#${channel(16)}${channel(8)}${channel(0)}`;
+}
+
+/**
+ * The hub's browser-tab and home-screen icon: its logo when it has one,
+ * otherwise the first letter of its name on its theme colour.
+ *
+ * The generated initial replaced a static favicon.svg that drew Floyd's "F"
+ * on every hub (2026-09-24). It is built from the same name the header
+ * shows, so a hub is recognisable among open tabs without uploading anything.
+ */
+export function applyHubIcon(url: string | undefined): void {
+  if (typeof document === "undefined" || !loaded) return;
+  const href = url || initialIcon(setting("identity.name") ?? loaded.hub.name, setting("identity.theme"));
+  for (const rel of ["icon", "apple-touch-icon"]) {
+    let el = document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+    if (!el) {
+      el = document.createElement("link");
+      el.rel = rel;
+      document.head.appendChild(el);
+    }
+    el.removeAttribute("type");
+    el.href = href;
+  }
+}
+
+function initialIcon(name: string, theme: string | undefined): string {
+  const letter = (name.trim().match(/[\p{L}\p{N}]/u)?.[0] ?? "").toUpperCase();
+  const fill = theme && /^#[0-9a-f]{6}$/i.test(theme) ? theme : "#1e3a5f";
+  const escaped = letter.replace(/[<>&"']/g, "");
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
+    `<circle cx="50" cy="50" r="50" fill="${fill}"/>` +
+    `<text x="50" y="50" text-anchor="middle" dominant-baseline="central" ` +
+    `font-family="Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" ` +
+    `font-size="64" font-weight="700" fill="#ffffff">${escaped}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
