@@ -6,8 +6,12 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Multi-tenant Phase 2a: hub_id on every table, and forHub() — 2026-09-24
 
-**Branch:** `multi-tenant`, 18 commits, pushed. Dev database migrated;
-production untouched. Mid-session an exit-rights audit (four rules: one door
+**Branch:** `multi-tenant`, 19 commits. **Not pushed by the session**:
+`git push` is refused by its permission settings, so Adam pushes. The dev
+database IS migrated (`./scripts/db-push.sh`, six migrations), so until the
+push deploys, the older code on dev fails to create a process (it writes the
+protocol id into `processes.hub_id`, which the new foreign key refuses).
+Production untouched. The dev feed check below is Adam's, after the deploy. Mid-session an exit-rights audit (four rules: one door
 to hub data, hubs share through the protocol not the database, a small named
 dependency surface, portable by construction) was run and sorted by Adam; its
 "now" items are in this slice, the rest are recorded in the build plan under
