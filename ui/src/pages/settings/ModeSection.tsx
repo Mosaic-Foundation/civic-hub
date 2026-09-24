@@ -5,10 +5,10 @@
 // because it decides who may sign in at all. The beta allowlist and the
 // waitlist live here too — they only mean anything in beta.
 //
-// A demo hub shows its mode and no control. Demo is the one mode that turns
-// email verification off, so only the platform puts a hub into it, and this
-// page does not offer a way out of it either (Adam, 2026-09-24): a demo hub's
-// graduation is arranged with the platform.
+// A demo hub may graduate to beta or live from here (Adam, 2026-09-24,
+// matching the build plan): only moving a hub INTO demo is reserved for the
+// platform, so demo is never offered as a choice, and the page says the move
+// cannot be undone before the code is requested.
 
 import { useEffect, useState } from "react";
 import {
@@ -101,24 +101,28 @@ export default function ModeSection() {
 
         {!data ? (
           <p className="form-hint">Loading…</p>
-        ) : mode === "demo" ? (
-          <>
-            <p className="settings-mode-current">
-              <strong>Demo mode, set by the platform.</strong>
-            </p>
-            <p className="form-hint">
-              A demo hub accepts any six digits instead of emailing a code, so
-              anyone can look around without an inbox. Because that turns
-              email verification off, only the platform puts a hub into demo
-              or takes it out. Nothing here changes it.
-            </p>
-          </>
         ) : (
           <>
-            <p className="form-hint">
-              Who may sign in to this hub. Both modes send a real code by
-              email; they differ in who is let in.
-            </p>
+            {mode === "demo" ? (
+              <>
+                <p className="settings-mode-current">
+                  This hub is in <strong>demo mode</strong>, set by the platform.
+                </p>
+                <p className="form-hint">
+                  A demo hub accepts any six digits instead of emailing a
+                  code, so anyone can look around without an inbox. You can
+                  move it to beta or live below, which turns real email
+                  verification on for everyone.{" "}
+                  <strong>Only the platform can put a hub back into demo</strong>,
+                  so this cannot be undone from here.
+                </p>
+              </>
+            ) : (
+              <p className="form-hint">
+                Who may sign in to this hub. Both modes send a real code by
+                email; they differ in who is let in.
+              </p>
+            )}
 
             <fieldset className="settings-mode-choices" disabled={saving || codeSent}>
               <legend className="visually-hidden">Mode</legend>
@@ -154,6 +158,7 @@ export default function ModeSection() {
                 <p className="form-hint">
                   Changing who may sign in takes a code emailed to you now. An
                   open admin tab is not enough on its own.
+                  {mode === "demo" && <> This hub cannot return to demo afterwards.</>}
                 </p>
               )}
               <div className="admin-settings-actions">

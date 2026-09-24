@@ -85,11 +85,11 @@ serve the old value for up to a minute.
 
 ### For Adam
 
-1. **Demo hubs show no mode control.** Your prompt asks for "Demo mode, set
-   by the platform" with no control; the build plan says a demo hub's own
-   admin may graduate it to beta or live. The page follows the prompt; the
-   server rule is unchanged. If graduation should stay self-service, it is
-   a small change in `ModeSection.tsx`.
+1. **SETTLED — a demo hub's admin can graduate it.** The prompt asked for
+   no control on a demo hub; the build plan lets its own admin move it to
+   beta or live. Adam chose the build plan after the report: the Mode
+   section shows Beta/Live on a demo hub, says demo cannot be returned to,
+   and still never offers demo as a choice.
 2. **`copy.resident_noun` has no reader.** It is editable and the field says
    it is not shown anywhere yet: the site says "resident" ~20 times, with
    plurals. Wiring it is its own piece of work.
