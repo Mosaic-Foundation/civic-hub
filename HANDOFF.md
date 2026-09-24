@@ -218,8 +218,57 @@ there gets a real code from `noreply@civic.social`. Correct behaviour — that
 is what live means — but it is the URL to be careful with, and it is worth
 remembering when reading the guard: `live` means unguarded, everywhere.
 
+### Follow-ups from the walkthrough, same session
+
+**A mode control.** `POST /admin/hub/mode` had existed since the hardening
+pass with no way to reach it from the product. "Who can sign in" is that flow.
+`demo` appears only as the current value on a hub that already is one — the
+restriction runs one way, and the form says so before the change rather than
+after.
+
+**The tagline and the banner.** Utopia opened with "Stay informed on Floyd
+County government" under a photograph of Floyd: `identity.tagline` and
+`identity.banner_url` fell back to literals in `ui/src/config/hub.ts`. The
+fallbacks are placeless now and the banner's is empty — a hub with no banner
+renders no banner strip, because a missing image reads as a missing image
+while another county's main street reads as a claim about this place. Tagline
+and label are editable in Hub identity.
+
+**Settings sections collapse.** Eight of them and every future per-hub setting
+lands there. `<details>`/`<summary>`, each remembering its own state; Hub
+identity and Who can sign in open on a first visit, because collapsing
+everything makes an admin open every section to find the one they came for.
+A layout bug surfaced doing it and is worth knowing: `.form-label` is inline
+globally and `.form-input` is inline-block, so a label after an input landed
+beside it — the older sections only looked right because every label happened
+to follow a block `.form-hint`.
+
+**`grep -ri floyd ui/src` returns only comments**, which is Phase 4's
+acceptance line for the UI half. A test walks every `.ts`/`.tsx`, strips
+comments and fails on a rendered string naming one hub's county.
+
+**About was the real find.** 134 lines of hardcoded prose, while `copy.about`
+existed as a key with an override path and no default — so a hub that authored
+an About page had it stored and never rendered. Athens wrote one on 09-22 and
+the app has been showing Floyd's since. The prose was not Floyd's at all: it
+describes what a Civic Hub *is*, the same everywhere, with a name dropped in
+four times. It is `config/legal/about.md` now, Floyd renders it with its own
+names, and Athens's override finally appears.
+
+**OTP codes were being logged in plaintext on any send failure**, with a
+comment beside them saying "(dev only)" and no check. Found when Resend
+refused the unverified domain and every requested code — including an
+admin's — appeared in the dev log stream. Now logged only when there is no
+`RESEND_API_KEY` at all.
+
 ### Still open
 
+- **The backend half of the Phase 4 sweep.** `grep -ri floyd src` still hits
+  ~20 files with rendered strings, as against the UI's zero: the
+  `civic.floyd_news_sync` module (renamed `civic.news_sync` in Phase 4 per the
+  build plan), the meeting-summary connectors and prompts, the assistant
+  content, and the seed fixtures. Bigger than the UI half and none of it is
+  visible on a page, so it was left.
 - **Utopia has no contact email** and no `legal.who_runs_this`. It is the
   natural hub to try the new block on, since a town-run hub is exactly the
   case the shared default gets wrong.
