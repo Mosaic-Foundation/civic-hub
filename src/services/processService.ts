@@ -145,17 +145,13 @@ export async function createProcess(
         | undefined ?? null,
   };
 
-  const { data, error } = await db()
+  const data = await db()
     .from("processes")
     .insert(row)
-    .select()
+    .select<ProcessRow>()
     .single();
 
-  if (error) {
-    throw new Error(`ProcessService: failed to insert process: ${error.message}`);
-  }
-
-  const process = rowToProcess(data as ProcessRow);
+  const process = rowToProcess(data);
 
   console.log(
     `[process] created ${process.definition.type} "${process.title}" (${id})`,
@@ -197,14 +193,13 @@ setActionDispatcher(executeAction);
 // --- Read ------------------------------------------------------------------
 
 export async function getProcess(id: string): Promise<Process | undefined> {
-  const { data, error } = await db()
+  const data = await db()
     .from("processes")
-    .select("*")
+    .select<ProcessRow>("*")
     .eq("id", id)
     .maybeSingle();
-  if (error) throw new Error(`ProcessService: ${error.message}`);
   if (!data) return undefined;
-  return rowToProcess(data as ProcessRow);
+  return rowToProcess(data);
 }
 
 /**
@@ -219,14 +214,13 @@ export async function getProcess(id: string): Promise<Process | undefined> {
 export async function getAllProcesses(types?: string[]): Promise<Process[]> {
   let q = db()
     .from("processes")
-    .select("*")
+    .select<ProcessRow>("*")
     .not("status", "in", nonPublicStatusFilter());
   if (types && types.length > 0) {
     q = q.in("type", types);
   }
-  const { data, error } = await q.order("created_at", { ascending: false });
-  if (error) throw new Error(`ProcessService: ${error.message}`);
-  return (data ?? []).map((r) => rowToProcess(r as ProcessRow));
+  const data = await q.order("created_at", { ascending: false });
+  return data.map((r) => rowToProcess(r));
 }
 
 // --- Action dispatch -------------------------------------------------------
@@ -261,7 +255,7 @@ export async function executeAction(
 
   // Persist the mutated process back.
   const now = new Date().toISOString();
-  const { error: updErr } = await db()
+  await db()
     .from("processes")
     .update({
       status: process.status,
@@ -270,11 +264,6 @@ export async function executeAction(
     })
     .eq("id", process.id);
 
-  if (updErr) {
-    throw new Error(
-      `ProcessService: failed to persist action result: ${updErr.message}`,
-    );
-  }
   process.updatedAt = now;
 
   // Emit process.updated only when a meaningful state change occurred.
@@ -512,7 +501,7 @@ async function enrichProcessCreator(
  */
 export async function saveProcessState(process: Process): Promise<void> {
   const now = new Date().toISOString();
-  const { error } = await db()
+  await db()
     .from("processes")
     .update({
       status: process.status,
@@ -520,11 +509,6 @@ export async function saveProcessState(process: Process): Promise<void> {
       updated_at: now,
     })
     .eq("id", process.id);
-  if (error) {
-    throw new Error(
-      `ProcessService: failed to save process ${process.id}: ${error.message}`,
-    );
-  }
   process.updatedAt = now;
 }
 
@@ -585,13 +569,10 @@ export async function archiveProcess(
   };
   const nextState = { ...(process.state ?? {}), archive };
 
-  const { error } = await db()
+  await db()
     .from("processes")
     .update({ status: "archived", state: nextState, updated_at: now })
     .eq("id", id);
-  if (error) {
-    throw new Error(`ProcessService: failed to archive ${id}: ${error.message}`);
-  }
 
   // Restricted-visibility lifecycle event so the moderation log picks it up
   // (mirrors the announcement remove/restore emit shape) and the public feed
@@ -660,13 +641,10 @@ export async function restoreProcess(
       | undefined;
   delete (nextState as Record<string, unknown>).archive;
 
-  const { error } = await db()
+  await db()
     .from("processes")
     .update({ status: restoreStatus, state: nextState, updated_at: now })
     .eq("id", id);
-  if (error) {
-    throw new Error(`ProcessService: failed to restore ${id}: ${error.message}`);
-  }
 
   await emitEvent({
     event_type: "civic.process.updated",
@@ -711,12 +689,11 @@ export async function restoreProcess(
  * the feed already fetches all events, so this is one extra round-trip.
  */
 export async function getNonPublicProcessIds(): Promise<Set<string>> {
-  const { data, error } = await db()
+  const data = await db()
     .from("processes")
-    .select("id")
+    .select<{ id: string }>("id")
     .in("status", [...NON_PUBLIC_STATUSES]);
-  if (error) throw new Error(`ProcessService: ${error.message}`);
-  return new Set((data ?? []).map((r: { id: string }) => r.id));
+  return new Set(data.map((r) => r.id));
 }
 
 
@@ -726,13 +703,12 @@ export async function getNonPublicProcessIds(): Promise<Set<string>> {
  * by design (admin-only surface).
  */
 export async function getArchivedProcesses(): Promise<Process[]> {
-  const { data, error } = await db()
+  const data = await db()
     .from("processes")
-    .select("*")
+    .select<ProcessRow>("*")
     .eq("status", "archived")
     .order("updated_at", { ascending: false });
-  if (error) throw new Error(`ProcessService: ${error.message}`);
-  return (data ?? []).map((r) => rowToProcess(r as ProcessRow));
+  return data.map((r) => rowToProcess(r));
 }
 
 /*
@@ -757,34 +733,28 @@ export async function getArchivedProcesses(): Promise<Process[]> {
  * sides: unscoped, another hub's events would all look orphaned.
  */
 export async function cleanOrphanedEvents(): Promise<number> {
-  const { data: processes } = await db()
+  const processes = await db()
     .from("processes")
-    .select("id");
-  const validIds = new Set((processes ?? []).map((p: { id: string }) => p.id));
+    .select<{ id: string }>("id");
+  const validIds = new Set(processes.map((p) => p.id));
 
-  const { data: events } = await db()
+  const events = await db()
     .from("events")
-    .select("id, process_id");
+    .select<{ id: string; process_id: string }>("id, process_id");
   if (!events || events.length === 0) return 0;
 
-  const orphanIds = (events as Array<{ id: string; process_id: string }>)
+  const orphanIds = events
     .filter((e) => !validIds.has(e.process_id))
     .map((e) => e.id);
   if (orphanIds.length === 0) return 0;
 
-  const { error } = await db()
+  await db()
     .from("events")
     .delete()
     .in("id", orphanIds);
-  if (error) {
-    throw new Error(`Failed to clean orphaned events: ${error.message}`);
-  }
   return orphanIds.length;
 }
 
 export async function clearProcesses(): Promise<void> {
-  const { error } = await db().from("processes").delete().neq("id", "");
-  if (error) {
-    throw new Error(`ProcessService: failed to clear processes: ${error.message}`);
-  }
+  await db().from("processes").delete().neq("id", "");
 }

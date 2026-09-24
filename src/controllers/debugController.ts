@@ -140,10 +140,7 @@ async function seedDeliberation(
   };
 
   // Stamped with the hub being seeded (processes are read per hub).
-  const { error } = await forHub(currentHubId()).from("processes").insert(row);
-  if (error) {
-    throw new Error(`Failed to seed deliberation "${p.title}": ${error.message}`);
-  }
+  await forHub(currentHubId()).from("processes").insert(row);
 
   // Emit a creation event so it shows in the feed
   await emitEvent({

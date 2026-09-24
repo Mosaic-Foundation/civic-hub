@@ -18,10 +18,8 @@ export interface WaitlistEntry {
 }
 
 export async function getWaitlist(hubId: string): Promise<WaitlistEntry[]> {
-  const { data, error } = await forHub(hubId)
+  return forHub(hubId)
     .from("waitlist")
-    .select("email, created_at, name, notes, wants_test_user")
+    .select<WaitlistEntry>("email, created_at, name, notes, wants_test_user")
     .order("created_at", { ascending: false });
-  if (error) throw new Error(`waitlist.get: ${error.message}`);
-  return (data ?? []) as WaitlistEntry[];
 }

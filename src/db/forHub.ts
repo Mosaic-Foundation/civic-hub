@@ -2,13 +2,26 @@
 //
 // Contract: BUILD-PLAN-multi-tenant.md → "Contracts / 3. Data layer".
 //
-// The only way request code reaches tenant data. It wraps the same
-// query-builder surface the code already uses — `from(table).select/insert/
-// upsert/update/delete`, then any filter or modifier — so converting a module
-// is replacing `getDb()` with `forHub(hubId)` and nothing else. What it adds:
+// The only way request code reaches tenant data. It keeps the query-builder
+// SHAPE the code already uses — `from(table).select/insert/upsert/update/
+// delete`, then filters and modifiers — but not Supabase's result shape:
 //
-//   select / update / delete   `.eq("hub_id", hubId)`, applied when the builder
-//                              is created, so no chain can leave it off
+//   await …select(…)            rows (an array)
+//   await ….maybeSingle()       one row, or null
+//   await ….single()            one row (throws if there is not exactly one)
+//   await …count()              a number
+//   await …insert/upsert/update/delete(…)
+//                               null, or rows when `.select()` is chained
+//   any failure                 throws HubDbError, with the Postgres `code`
+//
+// Supabase's `{ data, error }` pair never leaves src/db/ (Adam, 2026-09-24),
+// so a later change of driver is a change of this file, not of every caller.
+//
+// What it adds on top of the builder:
+//
+//   select / count / update / delete   `.eq("hub_id", hubId)`, applied when
+//                                      the builder is created, so no chain
+//                                      can leave it off
 //   insert / upsert            `hub_id: hubId` stamped on every row
 //   another hub's hub_id       in a payload, an update or an rpc argument, is
 //                              an error — never an override
@@ -71,27 +84,82 @@ const TABLE_SET: ReadonlySet<string> = new Set(HUB_TABLES);
 /** Same shape as `hubs.id`: see the slug check in 20260922010000_hubs.sql. */
 const HUB_ID_SHAPE = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])$/;
 
-type RawQueryBuilder = ReturnType<SupabaseClient["from"]>;
+/** A row as the code reads it today: untyped columns, cast by the caller. */
+export type Row = Record<string, any>;
 
 /**
- * The builder surface of `SupabaseClient["from"]`, hub-scoped. The generic
- * names the table for the contract; row types stay as loose as the untyped
- * client the code uses today.
+ * A database failure, thrown by every forHub() operation. `code` is the
+ * Postgres SQLSTATE (e.g. "23505" for a unique violation) or PostgREST's own
+ * code (e.g. "PGRST116" for `.single()` finding no row), so callers can branch
+ * on a conflict without seeing the driver's result shape.
  */
-export type HubQueryBuilder<T extends TableName = TableName> = Pick<
-  RawQueryBuilder,
-  "select" | "insert" | "upsert" | "update" | "delete"
->;
+export class HubDbError extends Error {
+  readonly code: string | undefined;
+  readonly details: string | undefined;
+  constructor(message: string, code?: string, details?: string) {
+    super(message);
+    this.name = "HubDbError";
+    this.code = code;
+    this.details = details;
+  }
+}
+
+/** Filters and modifiers, shared by reads and writes. Each returns the query. */
+export interface HubFilters<Q> {
+  eq(column: string, value: unknown): Q;
+  neq(column: string, value: unknown): Q;
+  gt(column: string, value: unknown): Q;
+  gte(column: string, value: unknown): Q;
+  lt(column: string, value: unknown): Q;
+  lte(column: string, value: unknown): Q;
+  like(column: string, pattern: string): Q;
+  ilike(column: string, pattern: string): Q;
+  is(column: string, value: null | boolean): Q;
+  in(column: string, values: readonly unknown[]): Q;
+  not(column: string, operator: string, value: unknown): Q;
+  or(filters: string): Q;
+  contains(column: string, value: unknown): Q;
+  order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): Q;
+  limit(count: number): Q;
+  range(from: number, to: number): Q;
+}
+
+/** A read. Awaiting it gives the rows. */
+export interface HubSelect<T> extends HubFilters<HubSelect<T>>, PromiseLike<T[]> {
+  /** Exactly one row, or HubDbError (code "PGRST116" when there is none). */
+  single(): PromiseLike<T>;
+  /** One row, or null. */
+  maybeSingle(): PromiseLike<T | null>;
+}
+
+/** A count. Awaiting it gives the number of matching rows in this hub. */
+export interface HubCount extends HubFilters<HubCount>, PromiseLike<number> {}
+
+/** A write. Awaiting it gives null; chain `.select()` to get the rows back. */
+export interface HubWrite<T> extends HubFilters<HubWrite<T>>, PromiseLike<null> {
+  select<U = T>(columns?: string): HubSelect<U>;
+}
+
+/** The builder surface of one hub-scoped table. */
+export interface HubQueryBuilder {
+  select<T = Row>(columns?: string): HubSelect<T>;
+  count(): HubCount;
+  insert<T = Row>(values: Row | Row[]): HubWrite<T>;
+  upsert<T = Row>(
+    values: Row | Row[],
+    options: { onConflict: string; ignoreDuplicates?: boolean },
+  ): HubWrite<T>;
+  update<T = Row>(values: Row): HubWrite<T>;
+  delete<T = Row>(): HubWrite<T>;
+}
 
 export type HubDb = {
-  /** Same builder surface as SupabaseClient["from"], hub-scoped. */
-  from<T extends TableName>(table: T): HubQueryBuilder<T>;
-  /** For .rpc() calls; hub_id is passed as the named argument `p_hub_id`. */
-  rpc: SupabaseClient["rpc"];
+  /** A hub-scoped table. `hubs` is not one: see src/db/hubs.ts. */
+  from(table: TableName): HubQueryBuilder;
+  /** A database function; the hub is passed as the named argument `p_hub_id`. */
+  rpc<T = unknown>(fn: string, args?: Row): PromiseLike<T>;
   readonly hubId: string;
 };
-
-type Row = Record<string, unknown>;
 
 function foreignHub(where: string, hubId: string, found: unknown): Error {
   return new Error(
@@ -116,26 +184,55 @@ function stampAll(hubId: string, table: string, values: Row | Row[]): Row | Row[
     : stamp(hubId, table, values);
 }
 
+interface PostgrestResult {
+  data: unknown;
+  error: { message: string; code?: string; details?: string } | null;
+  count?: number | null;
+}
+
+type Thenable = {
+  url: URL;
+  then: (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise<unknown>;
+};
+
 /**
- * Refuse to run an update or delete whose hub filter is gone. The builder is
- * a thenable whose filters mutate `url` in place and return `this`, so the
- * object the caller finally awaits is the one checked here.
+ * Make an awaited builder resolve to rows (or a count) and throw HubDbError on
+ * failure. The builder is a thenable whose filters and modifiers mutate it and
+ * return `this`, so replacing `then` on the instance covers whatever the caller
+ * chains before awaiting it.
+ *
+ * `guard` names an update or delete, which is refused at execution if its hub
+ * filter is gone.
  */
-function guardExecution<B>(builder: B, hubId: string, table: string, op: string): B {
-  const b = builder as unknown as {
-    url: URL;
-    then: (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise<unknown>;
-  };
-  const send = b.then.bind(builder);
+function settle<B>(
+  builder: B,
+  hubId: string,
+  table: string,
+  mode: "data" | "count",
+  guard?: "update" | "delete",
+): B {
+  const b = builder as unknown as Thenable;
+  const send = b.then.bind(builder) as (
+    ok: (r: PostgrestResult) => unknown,
+  ) => Promise<unknown>;
   b.then = (ok, bad) => {
-    if (!b.url.searchParams.getAll("hub_id").includes(`eq.${hubId}`)) {
+    if (guard && !b.url.searchParams.getAll("hub_id").includes(`eq.${hubId}`)) {
       return Promise.reject(
         new Error(
-          `forHub("${hubId}").from("${table}").${op}(): refusing to run without its hub filter.`,
+          `forHub("${hubId}").from("${table}").${guard}(): refusing to run without its hub filter.`,
         ),
       ).then(ok, bad);
     }
-    return send(ok, bad);
+    return send((r) => {
+      if (r.error) {
+        throw new HubDbError(
+          `${table}: ${r.error.message}`,
+          r.error.code || undefined,
+          r.error.details || undefined,
+        );
+      }
+      return mode === "count" ? (r.count ?? 0) : (r.data ?? null);
+    }).then(ok, bad);
   };
   return builder;
 }
@@ -147,41 +244,48 @@ function scopedTable(client: SupabaseClient, hubId: string, table: string): HubQ
         "The registry (hubs) is read through src/db/hubs.ts.",
     );
   }
-  // The wrappers call the real builder through a loose signature: its
-  // generics are deeper than the compiler will follow through a wrapper, and
-  // the public type (HubQueryBuilder) is the builder's own.
-  type Loose = any;
+  // The real builder is called through a loose signature: its generics are
+  // deeper than the compiler will follow through a wrapper, and the public
+  // types are this file's own.
+    type Loose = any;
   const raw = (): Loose => client.from(table);
+  const done = (q: Loose, guard?: "update" | "delete"): Loose =>
+    settle(q, hubId, table, "data", guard);
 
-  const select = (columns?: string, options?: object): Loose =>
-    raw().select(columns, options).eq("hub_id", hubId);
+  return {
+    select: (columns?: string) => done(raw().select(columns ?? "*").eq("hub_id", hubId)),
 
-  const insert = (values: Row | Row[], options?: object): Loose =>
-    raw().insert(stampAll(hubId, table, values), options);
+    count: () =>
+      settle(
+        raw().select("*", { count: "exact", head: true }).eq("hub_id", hubId),
+        hubId,
+        table,
+        "count",
+      ),
 
-  const upsert = (values: Row | Row[], options?: { onConflict?: string }): Loose => {
-    const target = (options?.onConflict ?? "").split(",").map((c) => c.trim());
-    if (!target.includes("hub_id")) {
-      throw new Error(
-        `forHub("${hubId}").from("${table}").upsert(): onConflict must include hub_id ` +
-          `(got "${options?.onConflict ?? "the primary key"}"). A conflict on a global ` +
-          "key would update whichever hub's row it hit.",
-      );
-    }
-    return raw().upsert(stampAll(hubId, table, values), options);
-  };
+    insert: (values: Row | Row[]) => done(raw().insert(stampAll(hubId, table, values))),
 
-  const update = (values: Row, options?: object): Loose => {
-    if (values && "hub_id" in values && values.hub_id !== undefined && values.hub_id !== hubId) {
-      throw foreignHub(`an update of ${table}`, hubId, values.hub_id);
-    }
-    return guardExecution(raw().update(values, options).eq("hub_id", hubId), hubId, table, "update");
-  };
+    upsert: (values: Row | Row[], options: { onConflict: string; ignoreDuplicates?: boolean }) => {
+      const target = (options?.onConflict ?? "").split(",").map((c) => c.trim());
+      if (!target.includes("hub_id")) {
+        throw new Error(
+          `forHub("${hubId}").from("${table}").upsert(): onConflict must include hub_id ` +
+            `(got "${options?.onConflict ?? "the primary key"}"). A conflict on a global ` +
+            "key would update whichever hub's row it hit.",
+        );
+      }
+      return done(raw().upsert(stampAll(hubId, table, values), options));
+    },
 
-  const del = (options?: object): Loose =>
-    guardExecution(raw().delete(options).eq("hub_id", hubId), hubId, table, "delete");
+    update: (values: Row) => {
+      if (values && "hub_id" in values && values.hub_id !== undefined && values.hub_id !== hubId) {
+        throw foreignHub(`an update of ${table}`, hubId, values.hub_id);
+      }
+      return done(raw().update(values).eq("hub_id", hubId), "update");
+    },
 
-  return { select, insert, upsert, update, delete: del } as HubQueryBuilder;
+    delete: () => done(raw().delete().eq("hub_id", hubId), "delete"),
+  } as HubQueryBuilder;
 }
 
 /**
@@ -192,21 +296,23 @@ export function hubDbFrom(client: SupabaseClient, hubId: string): HubDb {
   if (typeof hubId !== "string" || !HUB_ID_SHAPE.test(hubId)) {
     throw new Error(`forHub: "${String(hubId)}" is not a hub id.`);
   }
-  const rpc = ((fn: string, args: Row = {}, options?: object) => {
+  const rpc = <T = unknown>(fn: string, args: Row = {}): PromiseLike<T> => {
     if ("p_hub_id" in args && args.p_hub_id !== hubId) {
       throw foreignHub(`rpc ${fn}'s p_hub_id`, hubId, args.p_hub_id);
     }
-    return (client.rpc as (f: string, a: Row, o?: object) => unknown)(
-      fn,
-      { ...args, p_hub_id: hubId },
-      options,
-    );
-  }) as unknown as SupabaseClient["rpc"];
+    return (client.rpc(fn, { ...args, p_hub_id: hubId }) as unknown as PromiseLike<PostgrestResult>)
+      .then((r) => {
+        if (r.error) {
+          throw new HubDbError(`rpc ${fn}: ${r.error.message}`, r.error.code || undefined, r.error.details || undefined);
+        }
+        return r.data as T;
+      });
+  };
 
   return {
     hubId,
     rpc,
-    from: <T extends TableName>(table: T) => scopedTable(client, hubId, table) as HubQueryBuilder<T>,
+    from: (table: TableName) => scopedTable(client, hubId, table),
   };
 }
 

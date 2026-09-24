@@ -90,12 +90,9 @@ export async function submitForReview(
   // Through forHub so the process is stamped with the hub it was submitted
   // on (Phase 2a: processes are read per hub). The rest of this module's
   // tables are converted in Phase 2b.
-  const { error: procErr } = await forHub(currentHubId())
+  await forHub(currentHubId())
     .from("processes")
     .insert(processRow);
-  if (procErr) {
-    throw new Error(`Failed to create process for review: ${procErr.message}`);
-  }
 
   // Materialize the creator's proposed links. Done here — the one funnel every
   // process type passes through — so creation-time linking is universal rather

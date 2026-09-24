@@ -13,7 +13,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { hubDbFrom, type HubDb } from "../../src/db/forHub.js";
+import { hubDbFrom, HubDbError, type HubDb } from "../../src/db/forHub.js";
 import { localStack } from "../fixtures/adminSession.js";
 
 const { url, key } = localStack();
@@ -36,9 +36,8 @@ function feedback(id: string, message: string) {
 }
 
 beforeAll(async () => {
-  const a = await floyd.from("feedback_submissions").insert(feedback(FLOYD_ROW, "floyd's"));
-  const b = await athens.from("feedback_submissions").insert(feedback(ATHENS_ROW, "athens's"));
-  if (a.error || b.error) throw new Error(`seed: ${a.error?.message ?? b.error?.message}`);
+  await floyd.from("feedback_submissions").insert(feedback(FLOYD_ROW, "floyd's"));
+  await athens.from("feedback_submissions").insert(feedback(ATHENS_ROW, "athens's"));
 });
 
 afterAll(async () => {
@@ -66,19 +65,19 @@ describe("forHub against the database — own hub", () => {
       .select("id")
       .eq("id", FLOYD_ROW)
       .maybeSingle();
-    expect(one.data).toEqual({ id: FLOYD_ROW });
+    expect(one).toEqual({ id: FLOYD_ROW });
 
     const mine = await athens
       .from("feedback_submissions")
       .select("id")
       .in("id", [FLOYD_ROW, ATHENS_ROW]);
-    expect(mine.data).toEqual([{ id: ATHENS_ROW }]);
+    expect(mine).toEqual([{ id: ATHENS_ROW }]);
 
     const counted = await athens
       .from("feedback_submissions")
-      .select("*", { count: "exact", head: true })
+      .count()
       .in("id", [FLOYD_ROW, ATHENS_ROW]);
-    expect(counted.count).toBe(1);
+    expect(counted).toBe(1);
   });
 
   it("update and delete work on this hub's row", async () => {
@@ -87,16 +86,15 @@ describe("forHub against the database — own hub", () => {
       .update({ message: "athens's, edited" })
       .eq("id", ATHENS_ROW)
       .select("message");
-    expect(up.data).toEqual([{ message: "athens's, edited" }]);
+    expect(up).toEqual([{ message: "athens's, edited" }]);
 
-    const ins = await athens.from("feedback_submissions").insert(feedback(`${ATHENS_ROW}_up`, "x"));
-    expect(ins.error).toBeNull();
+    expect(await athens.from("feedback_submissions").insert(feedback(`${ATHENS_ROW}_up`, "x"))).toBeNull();
     const del = await athens
       .from("feedback_submissions")
       .delete()
       .eq("id", `${ATHENS_ROW}_up`)
       .select("id");
-    expect(del.data).toEqual([{ id: `${ATHENS_ROW}_up` }]);
+    expect(del).toEqual([{ id: `${ATHENS_ROW}_up` }]);
   });
 
   it("upsert within the hub, on a hub-leading conflict target", async () => {
@@ -104,14 +102,13 @@ describe("forHub against the database — own hub", () => {
       .from("users")
       .upsert({ id: `user_iso_${run}`, email: EMAIL }, { onConflict: "hub_id,email" })
       .select("id, hub_id");
-    expect(first.error).toBeNull();
-    expect(first.data).toEqual([{ id: `user_iso_${run}`, hub_id: "athens" }]);
+    expect(first).toEqual([{ id: `user_iso_${run}`, hub_id: "athens" }]);
 
     const again = await athens
       .from("users")
       .upsert({ id: `user_iso_${run}`, email: EMAIL, full_name: "Iso" }, { onConflict: "hub_id,email" })
       .select("full_name");
-    expect(again.data).toEqual([{ full_name: "Iso" }]);
+    expect(again).toEqual([{ full_name: "Iso" }]);
   });
 });
 
@@ -122,8 +119,7 @@ describe("forHub against the database — another hub's rows", () => {
       .select("id")
       .eq("id", FLOYD_ROW)
       .maybeSingle();
-    expect(byId.error).toBeNull();
-    expect(byId.data).toBeNull();
+    expect(byId).toBeNull();
   });
 
   it("an update by id changes nothing", async () => {
@@ -132,14 +128,14 @@ describe("forHub against the database — another hub's rows", () => {
       .update({ message: "overwritten from athens" })
       .eq("id", FLOYD_ROW)
       .select("id");
-    expect(res.data).toEqual([]);
+    expect(res).toEqual([]);
     const still = await raw.from("feedback_submissions").select("message").eq("id", FLOYD_ROW).single();
     expect(still.data?.message).toBe("floyd's");
   });
 
   it("a delete by id removes nothing", async () => {
     const res = await athens.from("feedback_submissions").delete().eq("id", FLOYD_ROW).select("id");
-    expect(res.data).toEqual([]);
+    expect(res).toEqual([]);
     const still = await raw.from("feedback_submissions").select("id").eq("id", FLOYD_ROW);
     expect(still.data).toHaveLength(1);
   });
@@ -164,14 +160,18 @@ describe("forHub against the database — another hub's rows", () => {
     // hub-leading target. The global primary key (email) still stands, so the
     // database refuses — and Floyd's row is left exactly as it was.
     const expires = new Date(Date.now() + 600_000).toISOString();
-    const f = await floyd
+    await floyd
       .from("pending_verifications")
       .upsert({ email: EMAIL, code: "111111", expires_at: expires }, { onConflict: "hub_id,email" });
-    expect(f.error).toBeNull();
-    const a = await athens
+    const refused = await athens
       .from("pending_verifications")
-      .upsert({ email: EMAIL, code: "222222", expires_at: expires }, { onConflict: "hub_id,email" });
-    expect(a.error?.code).toBe("23505");
+      .upsert({ email: EMAIL, code: "222222", expires_at: expires }, { onConflict: "hub_id,email" })
+      .then(
+        () => null,
+        (e: unknown) => e,
+      );
+    expect(refused).toBeInstanceOf(HubDbError);
+    expect((refused as HubDbError).code).toBe("23505");
     const row = await raw.from("pending_verifications").select("hub_id, code").eq("email", EMAIL).single();
     expect(row.data).toEqual({ hub_id: "floyd", code: "111111" });
   });
@@ -184,14 +184,13 @@ describe("search is scoped to the hub (search_processes with p_hub_id)", () => {
 
   beforeAll(async () => {
     for (const [hub, id] of Object.entries(ids)) {
-      const res = await hubDbFrom(raw, hub).from("processes").insert({
+      await hubDbFrom(raw, hub).from("processes").insert({
         id,
         type: "civic.vote",
         title: `Isolation ${WORD}`,
         status: "active",
         state: {},
       });
-      if (res.error) throw new Error(`seed ${hub}: ${res.error.message}`);
     }
   });
 
@@ -200,16 +199,15 @@ describe("search is scoped to the hub (search_processes with p_hub_id)", () => {
   });
 
   it("each hub finds only its own process", async () => {
-    const a = await athens.rpc("search_processes", { p_q: WORD });
-    const f = await floyd.rpc("search_processes", { p_q: WORD });
-    expect(a.error).toBeNull();
-    expect((a.data as Array<{ id: string }>).map((r) => r.id)).toEqual([ids.athens]);
-    expect((f.data as Array<{ id: string }>).map((r) => r.id)).toEqual([ids.floyd]);
+    const a = await athens.rpc<Array<{ id: string }>>("search_processes", { p_q: WORD });
+    const f = await floyd.rpc<Array<{ id: string }>>("search_processes", { p_q: WORD });
+    expect(a.map((r) => r.id)).toEqual([ids.athens]);
+    expect(f.map((r) => r.id)).toEqual([ids.floyd]);
   });
 
   it("the count agrees", async () => {
     const a = await athens.rpc("search_processes_count", { p_q: WORD });
-    expect(Number(a.data)).toBe(1);
+    expect(Number(a)).toBe(1);
   });
 
   it("the deprecated unscoped signature answers for the migration-default hub only", async () => {

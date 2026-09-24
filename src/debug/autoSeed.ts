@@ -196,11 +196,8 @@ export async function seedOnStartup(): Promise<void> {
 
   const seedPromise = (async () => {
     // Skip seeding if this hub already has processes.
-    const { count, error } = await forHub(hubId)
-      .from("processes")
-      .select("*", { count: "exact", head: true });
-    if (error) throw error;
-    if ((count ?? 0) > 0) {
+    const count = await forHub(hubId).from("processes").count();
+    if (count > 0) {
       const evCount = await getEventCount();
       console.log(
         `[auto-seed] Skipping — ${count} process(es) and ${evCount} event(s) already present. ` +

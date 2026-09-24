@@ -29,7 +29,7 @@ interface SearchProcessesRow {
 }
 
 export const executeSearchRpc: SearchExecuteFn = async (filters) => {
-  const { data, error } = await forHub(currentHubId()).rpc("search_processes", {
+  const rows = await forHub(currentHubId()).rpc<SearchProcessesRow[]>("search_processes", {
     p_q: filters.q,
     p_types: filters.internalTypes,
     p_from: filters.from,
@@ -38,11 +38,7 @@ export const executeSearchRpc: SearchExecuteFn = async (filters) => {
     p_limit: filters.limit,
     p_offset: filters.offset,
   });
-  if (error) {
-    throw new Error(`search RPC failed: ${error.message}`);
-  }
-  const rows = (data ?? []) as SearchProcessesRow[];
-  return rows.map<SearchHitRow>((r) => ({
+  return (rows ?? []).map<SearchHitRow>((r) => ({
     id: r.id,
     type: r.type,
     title: r.title ?? "",
@@ -55,15 +51,12 @@ export const executeSearchRpc: SearchExecuteFn = async (filters) => {
 };
 
 export const countSearchRpc: SearchCountFn = async (filters) => {
-  const { data, error } = await forHub(currentHubId()).rpc("search_processes_count", {
+  const data = await forHub(currentHubId()).rpc<number | string>("search_processes_count", {
     p_q: filters.q,
     p_types: filters.internalTypes,
     p_from: filters.from,
     p_to: filters.to,
   });
-  if (error) {
-    throw new Error(`search count RPC failed: ${error.message}`);
-  }
   // The RPC returns a bigint that supabase-js surfaces as a string in
   // some configurations and a number in others. Normalize.
   if (typeof data === "number") return data;

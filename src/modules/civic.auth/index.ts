@@ -22,7 +22,7 @@
 // GUARDRAIL: This module MUST NOT import from civic.vote or civic.proposals.
 
 import { randomInt } from "node:crypto";
-import { forHub, type HubDb } from "../../db/forHub.js";
+import { forHub, HubDbError, type HubDb, type Row } from "../../db/forHub.js";
 import { generateId } from "../../utils/id.js";
 import { sendEmail } from "../../utils/email.js";
 import {
@@ -192,9 +192,13 @@ export async function requestVerification(
     }
   }
 
-  const { data: recent } = await db()
+  // A failed read throws rather than skipping the checks below: before
+  // Phase 2a an error here was ignored, which failed OPEN on the lockout.
+  const recent = await db()
     .from("pending_verifications")
-    .select("created_at, locked_until")
+    .select<{ created_at: string | null; locked_until: string | null }>(
+      "created_at, locked_until",
+    )
     .eq("email", normalizedEmail)
     .maybeSingle();
   // Lockout: if this email is in its post-brute-force cooldown, refuse to issue
@@ -216,7 +220,8 @@ export async function requestVerification(
   const now = new Date();
   const expires = new Date(now.getTime() + OTP_TTL_MS);
 
-  const { error } = await db()
+  try {
+    await db()
     .from("pending_verifications")
     .upsert(
       {
@@ -229,16 +234,15 @@ export async function requestVerification(
       },
       { onConflict: "hub_id,email" },
     );
-
-  if (error) {
+  } catch (err) {
     // 23505 on (hub_id, email) cannot happen — that is the conflict target —
     // so it is the global primary key: this address has a pending code on
     // another hub.
-    if (error.code === "23505") {
+    if (err instanceof HubDbError && err.code === "23505") {
       console.warn(`[auth] ${normalizedEmail} has a pending code on another hub (global key)`);
       throw new Error(ADDRESS_IN_USE_ELSEWHERE);
     }
-    throw new Error(`Auth: failed to store verification: ${error.message}`);
+    throw new Error(`Auth: failed to store verification: ${(err as Error).message}`);
   }
 
   // Send the OTP via email. If Resend is not configured (dev), fall back
@@ -344,13 +348,16 @@ export async function consumePendingCode(
 
   let row = pending;
   if (row === undefined) {
-    const { data, error } = await hubDb
+    row = await hubDb
       .from("pending_verifications")
-      .select("*")
+      .select<{
+        code: string;
+        expires_at: string;
+        attempts: number | null;
+        locked_until: string | null;
+      }>("*")
       .eq("email", normalizedEmail)
       .maybeSingle();
-    if (error) throw new Error(`Auth: ${error.message}`);
-    row = data;
   }
 
   if (!row) {
@@ -408,13 +415,16 @@ export async function verifyCode(
   const hubDb = db();
 
   // --- Validate the OTP ---
-  const { data: pending, error: pendErr } = await hubDb
+  const pending = await hubDb
     .from("pending_verifications")
-    .select("*")
+    .select<{
+      code: string;
+      expires_at: string;
+      attempts: number | null;
+      locked_until: string | null;
+    }>("*")
     .eq("email", normalizedEmail)
     .maybeSingle();
-
-  if (pendErr) throw new Error(`Auth: ${pendErr.message}`);
 
   // A demo hub accepts any six digits from an ordinary visitor (see
   // requestVerification). Gated on the hub's own `mode`, which lives only in
@@ -441,27 +451,24 @@ export async function verifyCode(
   }
 
   // --- Find or create the user, on this hub ---
-  const { data: existing, error: selErr } = await hubDb
+  const existing = await hubDb
     .from("users")
     .select("*")
     .eq("email", normalizedEmail)
     .maybeSingle();
-
-  if (selErr) throw new Error(`Auth: ${selErr.message}`);
 
   let user: User;
 
   if (existing) {
     // Mark email_verified if it wasn't already
     if (!existing.email_verified) {
-      const { data, error } = await hubDb
+      const updated = await hubDb
         .from("users")
         .update({ email_verified: true })
         .eq("id", existing.id)
         .select()
         .single();
-      if (error) throw new Error(`Auth: ${error.message}`);
-      user = rowToUser(data);
+      user = rowToUser(updated);
     } else {
       user = rowToUser(existing);
     }
@@ -478,34 +485,30 @@ export async function verifyCode(
       digest_frequency_days: 1,
     };
 
-    const { data, error } = await hubDb
-      .from("users")
-      .insert(newRow)
-      .select()
-      .single();
-
-    if (error) {
+    let inserted: Row | null = null;
+    try {
+      inserted = await hubDb.from("users").insert(newRow).select().single();
+    } catch (err) {
       // 23505 = unique_violation — another request created the user first.
-      if (error.code === "23505") {
-        const { data: refetch, error: refErr } = await hubDb
-          .from("users")
-          .select("*")
-          .eq("email", normalizedEmail)
-          .maybeSingle();
-        if (refErr) throw new Error(`Auth: ${refErr.message}`);
-        if (!refetch) {
-          // Not on this hub: the violation was the global users_email_key,
-          // so the address has an account on another hub.
-          console.warn(`[auth] ${normalizedEmail} has an account on another hub (global key)`);
-          throw new Error(ADDRESS_IN_USE_ELSEWHERE);
-        }
-        user = rowToUser(refetch);
-      } else {
-        throw new Error(`Auth: ${error.message}`);
-      }
-    } else {
-      user = rowToUser(data);
+      if (!(err instanceof HubDbError && err.code === "23505")) throw err;
+    }
+
+    if (inserted) {
+      user = rowToUser(inserted);
       console.log(`[auth] New user created: ${user.id} (${normalizedEmail})`);
+    } else {
+      const refetch = await hubDb
+        .from("users")
+        .select("*")
+        .eq("email", normalizedEmail)
+        .maybeSingle();
+      if (!refetch) {
+        // Not on this hub: the violation was the global users_email_key,
+        // so the address has an account on another hub.
+        console.warn(`[auth] ${normalizedEmail} has an account on another hub (global key)`);
+        throw new Error(ADDRESS_IN_USE_ELSEWHERE);
+      }
+      user = rowToUser(refetch);
     }
   }
 
@@ -516,13 +519,11 @@ export async function verifyCode(
   // Stamped with the hub it was minted on, by forHub. A session is a bearer
   // credential, so without this a token from one hub would authenticate its
   // holder on every other hub this deployment serves.
-  const { error: sessErr } = await hubDb.from("sessions").insert({
+  await hubDb.from("sessions").insert({
     token,
     user_id: user.id,
     expires_at: sessionExpires,
   });
-
-  if (sessErr) throw new Error(`Auth: ${sessErr.message}`);
 
   return { token, user };
 }
@@ -540,14 +541,13 @@ export async function affirmResidency(
   if (fullName !== undefined) {
     patch.full_name = normalizeFullName(fullName);
   }
-  const { data, error } = await db()
+  const data = await db()
     .from("users")
     .update(patch)
     .eq("id", userId)
     .select()
     .maybeSingle();
 
-  if (error) throw new Error(`Auth: ${error.message}`);
   if (!data) throw new Error("User not found");
 
   console.log(`[auth] User ${userId} affirmed residency`);
@@ -564,13 +564,12 @@ export async function updateFullName(
   fullName: string,
 ): Promise<User> {
   const value = normalizeFullName(fullName);
-  const { data, error } = await db()
+  const data = await db()
     .from("users")
     .update({ full_name: value })
     .eq("id", userId)
     .select()
     .maybeSingle();
-  if (error) throw new Error(`Auth: ${error.message}`);
   if (!data) throw new Error("User not found");
   return rowToUser(data);
 }
@@ -588,13 +587,12 @@ export async function acceptLegalTerms(
   version: string,
 ): Promise<User> {
   const now = new Date().toISOString();
-  const { data, error } = await db()
+  const data = await db()
     .from("users")
     .update({ tos_version_accepted: version, tos_accepted_at: now })
     .eq("id", userId)
     .select()
     .maybeSingle();
-  if (error) throw new Error(`Auth: ${error.message}`);
   if (!data) throw new Error("User not found");
   console.log(`[auth] User ${userId} accepted legal v${version}`);
   return rowToUser(data);
@@ -624,42 +622,46 @@ export async function getUserFromToken(
   if (!hubId) return undefined;
   const hubDb = forHub(hubId);
 
-  const { data: session, error } = await hubDb
-    .from("sessions")
-    .select("user_id, expires_at")
-    .eq("token", token)
-    .maybeSingle();
+  // A lookup that fails reads as no session, as it always has: a database
+  // error must not authenticate anyone, and a sign-in check is not the place
+  // to turn a blip into a 500 on every page.
+  try {
+    const session = await hubDb
+      .from("sessions")
+      .select<{ user_id: string; expires_at: string }>("user_id, expires_at")
+      .eq("token", token)
+      .maybeSingle();
+    if (!session) return undefined;
 
-  if (error || !session) return undefined;
+    if (new Date() > new Date(session.expires_at)) {
+      // Opportunistic cleanup of the expired session.
+      await hubDb.from("sessions").delete().eq("token", token);
+      return undefined;
+    }
 
-  if (new Date() > new Date(session.expires_at)) {
-    // Opportunistic cleanup of the expired session.
-    await hubDb.from("sessions").delete().eq("token", token);
+    const user = await hubDb
+      .from("users")
+      .select("*")
+      .eq("id", session.user_id)
+      .maybeSingle();
+    return user ? rowToUser(user) : undefined;
+  } catch (err) {
+    console.error(`[auth] session lookup failed: ${(err as Error).message}`);
     return undefined;
   }
-
-  const { data: user, error: userErr } = await hubDb
-    .from("users")
-    .select("*")
-    .eq("id", session.user_id)
-    .maybeSingle();
-
-  if (userErr || !user) return undefined;
-  return rowToUser(user);
 }
 
 /**
  * Get user by ID.
  */
 export async function getUser(userId: string): Promise<User | undefined> {
-  const { data, error } = await db()
-    .from("users")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error || !data) return undefined;
-  return rowToUser(data);
+  try {
+    const data = await db().from("users").select("*").eq("id", userId).maybeSingle();
+    return data ? rowToUser(data) : undefined;
+  } catch (err) {
+    console.error(`[auth] getUser failed: ${(err as Error).message}`);
+    return undefined;
+  }
 }
 
 /**
@@ -708,8 +710,7 @@ export async function deleteAccount(
   // race a fresh signup against the in-flight delete. This hub's only: the
   // same person's account on another hub is theirs to delete there.
   await hubDb.from("pending_verifications").delete().eq("email", email.toLowerCase());
-  const { error } = await hubDb.from("users").delete().eq("id", userId);
-  if (error) throw new Error(`Auth: ${error.message}`);
+  await hubDb.from("users").delete().eq("id", userId);
 }
 
 /**
@@ -728,13 +729,12 @@ export async function updateHideAiDraftingHelp(
   userId: string,
   hide: boolean,
 ): Promise<User> {
-  const { data, error } = await db()
+  const data = await db()
     .from("users")
     .update({ hide_ai_drafting_help: hide })
     .eq("id", userId)
     .select()
     .maybeSingle();
-  if (error) throw new Error(`Auth: ${error.message}`);
   if (!data) throw new Error("User not found");
   return rowToUser(data);
 }
@@ -744,13 +744,12 @@ export async function updateDisplayName(
   displayName: string | null,
 ): Promise<User> {
   const value = displayName?.trim() || null;
-  const { data, error } = await db()
+  const data = await db()
     .from("users")
     .update({ display_name: value })
     .eq("id", userId)
     .select()
     .maybeSingle();
-  if (error) throw new Error(`Auth: ${error.message}`);
   if (!data) throw new Error("User not found");
   return rowToUser(data);
 }
@@ -766,14 +765,13 @@ export async function setDigestFrequency(
   userId: string,
   frequencyDays: number | null,
 ): Promise<User> {
-  const { data, error } = await db()
+  const data = await db()
     .from("users")
     .update({ digest_frequency_days: frequencyDays })
     .eq("id", userId)
     .select()
     .maybeSingle();
 
-  if (error) throw new Error(`Auth: ${error.message}`);
   if (!data) throw new Error("User not found");
   return rowToUser(data);
 }
@@ -788,11 +786,10 @@ export async function markDigestSent(
   userId: string,
   timestamp: string,
 ): Promise<void> {
-  const { error } = await forHub(hubId)
+  await forHub(hubId)
     .from("users")
     .update({ last_digest_sent_at: timestamp })
     .eq("id", userId);
-  if (error) throw new Error(`Auth: ${error.message}`);
 }
 
 /**
@@ -803,12 +800,11 @@ export async function markDigestSent(
  * Takes the hub explicitly because the digest cron runs outside a request.
  */
 export async function listSubscribedUsers(hubId: string): Promise<User[]> {
-  const { data, error } = await forHub(hubId)
+  const rows = await forHub(hubId)
     .from("users")
     .select("*")
     .not("digest_frequency_days", "is", null);
-  if (error) throw new Error(`Auth: ${error.message}`);
-  return (data ?? []).map((row) => rowToUser(row));
+  return rows.map((row) => rowToUser(row));
 }
 
 /** Clear this hub's auth data — used by debug/seed only. */

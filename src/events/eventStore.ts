@@ -81,32 +81,27 @@ function eventToRow(event: CivicEvent): EventRow {
 // --- Public API ------------------------------------------------------------
 
 export async function appendEvent(event: CivicEvent): Promise<void> {
-  const { error } = await db().from("events").insert(eventToRow(event));
-  if (error) {
-    // Events are the source of truth; never silently drop.
-    throw new Error(`EventStore: failed to append event: ${error.message}`);
-  }
+  // Events are the source of truth; never silently drop — forHub() throws.
+  await db().from("events").insert(eventToRow(event));
 }
 
 export async function getAllEvents(): Promise<CivicEvent[]> {
-  const { data, error } = await db()
+  const data = await db()
     .from("events")
-    .select("*")
+    .select<EventRow>("*")
     .order("created_at", { ascending: false });
-  if (error) throw new Error(`EventStore: ${error.message}`);
-  return (data ?? []).map(rowToEvent);
+  return data.map(rowToEvent);
 }
 
 export async function getEventsByProcessId(
   processId: string,
 ): Promise<CivicEvent[]> {
-  const { data, error } = await db()
+  const data = await db()
     .from("events")
-    .select("*")
+    .select<EventRow>("*")
     .eq("process_id", processId)
     .order("created_at", { ascending: false });
-  if (error) throw new Error(`EventStore: ${error.message}`);
-  return (data ?? []).map(rowToEvent);
+  return data.map(rowToEvent);
 }
 
 /**
@@ -117,13 +112,12 @@ export async function getEventsByProcessId(
  * Used by the Slice 5 digest cron endpoint.
  */
 export async function getEventsSince(sinceIso: string): Promise<CivicEvent[]> {
-  const { data, error } = await db()
+  const data = await db()
     .from("events")
-    .select("*")
+    .select<EventRow>("*")
     .gt("created_at", sinceIso)
     .order("created_at", { ascending: true });
-  if (error) throw new Error(`EventStore: ${error.message}`);
-  return (data ?? []).map(rowToEvent);
+  return data.map(rowToEvent);
 }
 
 // --- Paged reads (the AS2 collection endpoint) -----------------------------
@@ -165,7 +159,7 @@ export interface EventPage {
  * second query or a count.
  */
 export async function getEventPage(query: EventPageQuery): Promise<EventPage> {
-  let q = db().from("events").select("*");
+  let q = db().from("events").select<EventRow>("*");
 
   if (query.processId) q = q.eq("process_id", query.processId);
   if (query.eventTypes?.length) q = q.in("event_type", query.eventTypes);
@@ -177,13 +171,11 @@ export async function getEventPage(query: EventPageQuery): Promise<EventPage> {
     );
   }
 
-  const { data, error } = await q
+  const rows = await q
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(query.limit + 1);
-  if (error) throw new Error(`EventStore: ${error.message}`);
 
-  const rows = (data ?? []) as EventRow[];
   const hasMore = rows.length > query.limit;
   const page = hasMore ? rows.slice(0, query.limit) : rows;
   const last = page[page.length - 1];
@@ -213,7 +205,7 @@ export interface EventCountQuery {
  * (Civic Activity Spec v0.2 §5.2) exists to prevent.
  */
 export async function countEvents(query: EventCountQuery = {}): Promise<number> {
-  let q = db().from("events").select("*", { count: "exact", head: true });
+  let q = db().from("events").count();
   if (query.processId) q = q.eq("process_id", query.processId);
   if (query.eventTypes?.length) q = q.in("event_type", query.eventTypes);
   if (query.since) q = q.gt("created_at", query.since);
@@ -231,27 +223,20 @@ export async function countEvents(query: EventCountQuery = {}): Promise<number> 
       `process_id.is.null,process_id.not.in.(${query.excludeProcessIds.join(",")})`,
     );
   }
-  const { count, error } = await q;
-  if (error) throw new Error(`EventStore: ${error.message}`);
-  return count ?? 0;
+  return await q;
 }
 
 export async function getEventById(id: string): Promise<CivicEvent | null> {
-  const { data, error } = await db()
+  const data = await db()
     .from("events")
-    .select("*")
+    .select<EventRow>("*")
     .eq("id", id)
     .maybeSingle();
-  if (error) throw new Error(`EventStore: ${error.message}`);
-  return data ? rowToEvent(data as EventRow) : null;
+  return data ? rowToEvent(data) : null;
 }
 
 export async function getEventCount(): Promise<number> {
-  const { count, error } = await db()
-    .from("events")
-    .select("*", { count: "exact", head: true });
-  if (error) throw new Error(`EventStore: ${error.message}`);
-  return count ?? 0;
+  return await db().from("events").count();
 }
 
 /**
@@ -262,10 +247,7 @@ export async function getEventCount(): Promise<number> {
  * the Supabase client API, we use a filter that matches every row.
  */
 export async function clearEvents(): Promise<void> {
-  const { error } = await db().from("events").delete().neq("id", "");
-  if (error) {
-    // If the append-only trigger is firing (shouldn't — it's BEFORE UPDATE/DELETE
-    // on individual rows, not bulk), surface the error clearly.
-    throw new Error(`EventStore: failed to clear events: ${error.message}`);
-  }
+  // If the append-only trigger is firing (shouldn't — it's BEFORE UPDATE/DELETE
+  // on individual rows, not bulk), forHub() throws and surfaces it clearly.
+  await db().from("events").delete().neq("id", "");
 }

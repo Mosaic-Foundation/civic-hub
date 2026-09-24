@@ -10,7 +10,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { createClient } from "@supabase/supabase-js";
-import { hubDbFrom, HUB_TABLES } from "../../src/db/forHub.js";
+import { hubDbFrom, HUB_TABLES, HubDbError } from "../../src/db/forHub.js";
 
 interface Captured {
   method: string;
@@ -20,6 +20,12 @@ interface Captured {
 }
 
 let calls: Captured[] = [];
+
+/** What the stub answers. Tests set it; beforeEach resets it. */
+let reply: { status: number; body: unknown; headers?: Record<string, string> } = {
+  status: 200,
+  body: [],
+};
 
 const stub = createClient("http://stub.invalid", "stub-key", {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -32,9 +38,11 @@ const stub = createClient("http://stub.invalid", "stub-key", {
         body: init?.body ? JSON.parse(String(init.body)) : undefined,
         prefer: headers.get("Prefer"),
       });
-      return new Response("[]", {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
+      // An undefined body is an empty response, as PostgREST sends for a
+      // write without return=representation.
+      return new Response(reply.body === undefined ? "" : JSON.stringify(reply.body), {
+        status: reply.status,
+        headers: { "Content-Type": "application/json", ...(reply.headers ?? {}) },
       });
     },
   },
@@ -55,6 +63,7 @@ function hubFilters(c: Captured): string[] {
 
 beforeEach(() => {
   calls = [];
+  reply = { status: 200, body: [] };
 });
 
 describe("forHub — construction", () => {
@@ -88,13 +97,12 @@ describe("forHub — reads are filtered", () => {
     expect(last().url.searchParams.get("id")).toBe("eq.proc_1");
   });
 
-  it("select with count/head", async () => {
-    await athens
-      .from("vote_participation")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", "u");
+  it("count", async () => {
+    reply = { status: 200, body: null, headers: { "Content-Range": "0-2/3" } };
+    const n = await athens.from("vote_participation").count().eq("user_id", "u");
     expect(last().method).toBe("HEAD");
     expect(hubFilters(last())).toEqual(["eq.athens"]);
+    expect(n).toBe(3);
   });
 
   it("single / maybeSingle keep the filter", async () => {
@@ -109,6 +117,56 @@ describe("forHub — reads are filtered", () => {
     const a = last();
     expect(hubFilters(f)).toEqual(["eq.floyd"]);
     expect(hubFilters(a)).toEqual(["eq.athens"]);
+  });
+});
+
+describe("forHub — results are rows, failures throw (never { data, error })", () => {
+  it("a select resolves to the rows", async () => {
+    reply = { status: 200, body: [{ id: "p1" }, { id: "p2" }] };
+    const rows = await floyd.from("processes").select("id");
+    expect(rows).toEqual([{ id: "p1" }, { id: "p2" }]);
+  });
+
+  it("maybeSingle resolves to the row, or null", async () => {
+    reply = { status: 200, body: [{ id: "p1" }] };
+    expect(await floyd.from("processes").select("id").eq("id", "p1").maybeSingle()).toEqual({
+      id: "p1",
+    });
+    reply = { status: 200, body: [] };
+    expect(await floyd.from("processes").select("id").eq("id", "nope").maybeSingle()).toBeNull();
+  });
+
+  it("a write resolves to null, or to the rows when .select() is chained", async () => {
+    reply = { status: 201, body: undefined };
+    expect(await floyd.from("processes").insert({ id: "p1" })).toBeNull();
+    reply = { status: 201, body: [{ id: "p1", hub_id: "floyd" }] };
+    expect(await floyd.from("processes").insert({ id: "p1" }).select()).toEqual([
+      { id: "p1", hub_id: "floyd" },
+    ]);
+  });
+
+  it("a database error throws HubDbError carrying the Postgres code", async () => {
+    reply = {
+      status: 409,
+      body: { code: "23505", message: "duplicate key value", details: "Key (email)=(a@b.c)" },
+    };
+    const err = await floyd
+      .from("users")
+      .insert({ email: "a@b.c" })
+      .then(
+        () => null,
+        (e: unknown) => e,
+      );
+    expect(err).toBeInstanceOf(HubDbError);
+    expect((err as HubDbError).code).toBe("23505");
+    expect((err as HubDbError).message).toMatch(/users: duplicate key value/);
+  });
+
+  it("an rpc resolves to its data and throws on error", async () => {
+    reply = { status: 200, body: 7 };
+    expect(await floyd.rpc("search_processes_count", { p_q: "x" })).toBe(7);
+    reply = { status: 400, body: { code: "42883", message: "function does not exist" } };
+    await expect(floyd.rpc("nope")).rejects.toBeInstanceOf(HubDbError);
   });
 });
 

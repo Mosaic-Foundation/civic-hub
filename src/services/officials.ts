@@ -22,7 +22,7 @@
 // here goes through forHub(), so one hub's roster never lists, promotes or
 // demotes another hub's officials.
 
-import { forHub, type HubDb } from "../db/forHub.js";
+import { forHub, HubDbError, type HubDb } from "../db/forHub.js";
 import { generateId } from "../utils/id.js";
 import { currentHubId } from "../config/hubContext.js";
 import {
@@ -66,22 +66,24 @@ function db(): HubDb {
  * panel. Ordered by title so the list reads as a roster.
  */
 export async function listOfficials(): Promise<OfficialRecord[]> {
-  const { data, error } = await db()
-    .from("users")
-    .select("*")
-    .not("official_type", "is", null)
-    .order("official_title", { ascending: true });
-  if (error) {
+  let rows: OfficialUserRow[];
+  try {
+    rows = await db()
+      .from("users")
+      .select<OfficialUserRow>("*")
+      .not("official_type", "is", null)
+      .order("official_title", { ascending: true });
+  } catch (err) {
     // A database that has not applied the official-role migration has no
     // such column to filter on. Degrade to an empty roster so the admin
     // settings page still loads (and still shows the legacy list beneath)
     // instead of 500-ing on every setting it holds.
-    console.error(`[officials] list failed, returning empty roster: ${error.message}`);
+    console.error(`[officials] list failed, returning empty roster: ${(err as Error).message}`);
     return [];
   }
 
   const out: OfficialRecord[] = [];
-  for (const row of (data ?? []) as OfficialUserRow[]) {
+  for (const row of rows) {
     const identity = toOfficialIdentity(row.official_type, row.official_title);
     if (!identity || !row.email) continue;
     out.push({
@@ -136,19 +138,20 @@ export async function lookupOfficialByEmail(
   // select("*") rather than naming the two columns, for the same reason
   // creatorDisplay does it: naming a column a pre-migration database does
   // not have is a hard error, where "*" simply returns what exists.
-  const { data, error } = await db()
-    .from("users")
-    .select("*")
-    .eq("email", email.trim().toLowerCase())
-    .maybeSingle();
-  if (error) {
+  let row: { official_type?: unknown; official_title?: unknown } | null;
+  try {
+    row = await db()
+      .from("users")
+      .select("*")
+      .eq("email", email.trim().toLowerCase())
+      .maybeSingle();
+  } catch (err) {
     // A DB that has not applied the migration must not lock officials —
     // or anyone else — out of posting. Degrade to "not an official" and
     // let the caller fall through to its next resolution tier.
-    console.error(`[officials] lookup failed, treating as resident: ${error.message}`);
+    console.error(`[officials] lookup failed, treating as resident: ${(err as Error).message}`);
     return null;
   }
-  const row = data as { official_type?: unknown; official_title?: unknown } | null;
   if (!row) return null;
   return toOfficialIdentity(row.official_type, row.official_title);
 }
@@ -186,25 +189,22 @@ export async function setOfficials(
     // it only when supplied; blank means "use whatever they have set".
     if (record.name) patch.display_name = record.name;
 
-    const { error } = await hubDb.from("users").update(patch).eq("id", userId);
-    if (error) throw new Error(`officials.set(${record.email}): ${error.message}`);
+    await hubDb.from("users").update(patch).eq("id", userId);
   }
 
   // Demote anyone dropped from this hub's list.
-  const { data: current, error: curErr } = await hubDb
+  const current = await hubDb
     .from("users")
-    .select("id")
+    .select<{ id: string }>("id")
     .not("official_type", "is", null);
-  if (curErr) throw new Error(`officials.set: ${curErr.message}`);
-  const demote = ((current ?? []) as { id: string }[])
+  const demote = current
     .map((r) => r.id)
     .filter((id) => !keep.has(id));
   if (demote.length > 0) {
-    const { error } = await hubDb
+    await hubDb
       .from("users")
       .update({ official_type: null, official_title: null })
       .in("id", demote);
-    if (error) throw new Error(`officials.set(demote): ${error.message}`);
   }
 
   // An explicit save from the admin panel IS the roster. Latch the
@@ -229,13 +229,12 @@ async function findOrCreateUserByEmail(email: string): Promise<string> {
   const hubDb = db();
   const normalized = email.trim().toLowerCase();
 
-  const { data: existing, error: selErr } = await hubDb
+  const existing = await hubDb
     .from("users")
-    .select("id")
+    .select<{ id: string }>("id")
     .eq("email", normalized)
     .maybeSingle();
-  if (selErr) throw new Error(`officials.findOrCreate: ${selErr.message}`);
-  if (existing) return (existing as { id: string }).id;
+  if (existing) return existing.id;
 
   const row = {
     id: generateId("user"),
@@ -244,17 +243,18 @@ async function findOrCreateUserByEmail(email: string): Promise<string> {
     is_resident: false,
     digest_frequency_days: 1,
   };
-  const { data, error } = await hubDb.from("users").insert(row).select("id").single();
-  if (error) {
+  let created: { id: string };
+  try {
+    created = await hubDb.from("users").insert(row).select<{ id: string }>("id").single();
+  } catch (err) {
     // 23505 = unique_violation — a concurrent sign-in created it first.
-    if (error.code === "23505") {
-      const { data: refetch, error: refErr } = await hubDb
+    if (err instanceof HubDbError && err.code === "23505") {
+      const refetch = await hubDb
         .from("users")
-        .select("id")
+        .select<{ id: string }>("id")
         .eq("email", normalized)
         .maybeSingle();
-      if (refErr) throw new Error(`officials.findOrCreate: ${refErr.message}`);
-      if (refetch) return (refetch as { id: string }).id;
+      if (refetch) return refetch.id;
       // Not on this hub, so the violation was the GLOBAL users_email_key:
       // the address has an account on another hub. One email is one hub
       // until the cleanup migration drops that constraint. The admin is
@@ -264,10 +264,10 @@ async function findOrCreateUserByEmail(email: string): Promise<string> {
         `${normalized} cannot be designated on this hub yet: the address is in use elsewhere on this platform.`,
       );
     }
-    throw new Error(`officials.findOrCreate: ${error.message}`);
+    throw err;
   }
   console.log(`[officials] shell account created for ${normalized}`);
-  return (data as { id: string }).id;
+  return created.id;
 }
 
 /**

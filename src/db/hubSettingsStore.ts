@@ -63,18 +63,19 @@ export async function fetchHubSettings(hubId: string): Promise<SettingsMap> {
   // Document-sized values are excluded: see DOCUMENT_KEYS. Every request pays
   // for this query on a cache miss, and no request should pay 30 KB of
   // markdown for a page that does not render it.
-  const { data, error } = await forHub(hubId)
-    .from("hub_settings")
-    .select("key, value")
-    .not("key", "in", DOCUMENT_KEY_LIST);
-
-  if (error) {
-    console.error(`[hub_settings] load for "${hubId}" failed: ${error.message}`);
+  let rows: Array<{ key: string; value: string }>;
+  try {
+    rows = await forHub(hubId)
+      .from("hub_settings")
+      .select<{ key: string; value: string }>("key, value")
+      .not("key", "in", DOCUMENT_KEY_LIST);
+  } catch (err) {
+    console.error(`[hub_settings] load for "${hubId}" failed: ${(err as Error).message}`);
     return {};
   }
 
   const map: Record<string, string> = {};
-  for (const row of (data ?? []) as Array<{ key: string; value: string }>) {
+  for (const row of rows) {
     map[row.key] = row.value;
   }
   cache.set(hubId, { value: map, expiresAt: Date.now() + CACHE_TTL_MS });
@@ -88,10 +89,9 @@ export async function writeHubSetting(
   value: string,
   updatedBy: string | null,
 ): Promise<void> {
-  const { error } = await forHub(hubId)
+  await forHub(hubId)
     .from("hub_settings")
     .upsert({ key, value, updated_by: updatedBy }, { onConflict: "hub_id,key" });
-  if (error) throw new Error(`hubSettings.set(${key}): ${error.message}`);
   invalidateHubSettings(hubId);
 }
 
@@ -107,10 +107,7 @@ export async function writeHubSettings(
     value: e.value,
     updated_by: updatedBy,
   }));
-  const { error } = await forHub(hubId)
-    .from("hub_settings")
-    .upsert(rows, { onConflict: "hub_id,key" });
-  if (error) throw new Error(`hubSettings.setMany: ${error.message}`);
+  await forHub(hubId).from("hub_settings").upsert(rows, { onConflict: "hub_id,key" });
   invalidateHubSettings(hubId);
 }
 
@@ -118,16 +115,11 @@ export async function writeHubSettings(
 export async function fetchHubSettingRows(hubId: string): Promise<
   Array<{ key: string; value: string; updated_at: string; updated_by: string | null }>
 > {
-  const { data, error } = await forHub(hubId)
+  return forHub(hubId)
     .from("hub_settings")
-    .select("key, value, updated_at, updated_by");
-  if (error) throw new Error(`hubSettings.getAll: ${error.message}`);
-  return (data ?? []) as Array<{
-    key: string;
-    value: string;
-    updated_at: string;
-    updated_by: string | null;
-  }>;
+    .select<{ key: string; value: string; updated_at: string; updated_by: string | null }>(
+      "key, value, updated_at, updated_by",
+    );
 }
 
 /**
@@ -146,19 +138,20 @@ export async function fetchHubDocument(
   const cached = documentCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
-  const { data, error } = await forHub(hubId)
-    .from("hub_settings")
-    .select("value")
-    .eq("key", key)
-    .maybeSingle();
-
-  if (error) {
+  let value: string | null;
+  try {
+    const row = await forHub(hubId)
+      .from("hub_settings")
+      .select<{ value: string }>("value")
+      .eq("key", key)
+      .maybeSingle();
+    value = row?.value ?? null;
+  } catch (err) {
     console.error(
-      `[hub_settings] document "${key}" for "${hubId}" failed: ${error.message}`,
+      `[hub_settings] document "${key}" for "${hubId}" failed: ${(err as Error).message}`,
     );
     return null;
   }
-  const value = (data as { value: string } | null)?.value ?? null;
   documentCache.set(cacheKey, { value, expiresAt: Date.now() + CACHE_TTL_MS });
   return value;
 }
@@ -167,19 +160,20 @@ export async function fetchHubDocument(
 export async function fetchHubDocuments(
   hubId: string,
 ): Promise<Record<string, string>> {
-  const { data, error } = await forHub(hubId)
-    .from("hub_settings")
-    .select("key, value")
-    .in("key", [...DOCUMENT_KEYS]);
-
-  if (error) {
+  let rows: Array<{ key: string; value: string }>;
+  try {
+    rows = await forHub(hubId)
+      .from("hub_settings")
+      .select<{ key: string; value: string }>("key, value")
+      .in("key", [...DOCUMENT_KEYS]);
+  } catch (err) {
     console.error(
-      `[hub_settings] documents for "${hubId}" failed: ${error.message}`,
+      `[hub_settings] documents for "${hubId}" failed: ${(err as Error).message}`,
     );
     return {};
   }
   const out: Record<string, string> = {};
-  for (const row of (data ?? []) as Array<{ key: string; value: string }>) {
+  for (const row of rows) {
     out[row.key] = row.value;
   }
   return out;
