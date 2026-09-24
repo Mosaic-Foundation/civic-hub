@@ -16,6 +16,7 @@ import {
 import IdentitySection from "./settings/IdentitySection";
 import CopySection from "./settings/CopySection";
 import LegalSection from "./settings/LegalSection";
+import EmailSection from "./settings/EmailSection";
 import LegacySettings from "./settings/LegacySettings";
 import "./AdminSettings.css";
 
@@ -31,6 +32,7 @@ const SECTIONS: readonly SectionEntry[] = [
   { id: "identity", label: "Identity", render: () => <IdentitySection /> },
   { id: "copy", label: "Copy & pages", render: () => <CopySection /> },
   { id: "legal", label: "Legal", render: () => <LegalSection /> },
+  { id: "email", label: "Email", render: () => <EmailSection /> },
   { id: "other", label: "Other settings", render: () => <LegacySettings /> },
   { id: "plugins", label: "Plugins", comingNote: "Coming next" },
 ];

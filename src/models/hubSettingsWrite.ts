@@ -109,7 +109,14 @@ export function normalizeValue(
     }
 
     case "hour": {
-      const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw.trim()) : NaN;
+      // Number("") is 0, so an empty string must be refused before it is
+      // read as midnight.
+      const n =
+        typeof raw === "number"
+          ? raw
+          : typeof raw === "string" && raw.trim() !== ""
+            ? Number(raw.trim())
+            : NaN;
       if (!Number.isInteger(n) || n < 0 || n > 23) {
         return { error: `${key} must be a whole hour from 0 to 23.` };
       }
