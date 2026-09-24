@@ -994,19 +994,19 @@
   font-weight: 600;
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(30, 58, 95, 0.06);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-brand) 6%, transparent);
   transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .vote-button:hover:not(:disabled) {
   background: var(--pill-vote-bg, #e3eaf6);
-  box-shadow: 0 3px 10px rgba(30, 58, 95, 0.14);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--color-brand) 14%, transparent);
   transform: translateY(-1px);
 }
 
 .vote-button:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(30, 58, 95, 0.1);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-brand) 10%, transparent);
 }
 
 .vote-button:disabled {
@@ -1018,7 +1018,7 @@
   background: var(--pill-vote-fg, #1e3a5f);
   border-color: var(--pill-vote-fg, #1e3a5f);
   color: #ffffff;
-  box-shadow: 0 2px 6px rgba(30, 58, 95, 0.2);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--color-brand) 20%, transparent);
 }
 
 .vote-button.voted::before {

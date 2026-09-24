@@ -75,8 +75,8 @@
 
 .deliberation-tab--active {
   color: #fff;
-  background: #1e3a5f;
-  border-bottom-color: #1e3a5f;
+  background: var(--color-brand);
+  border-bottom-color: var(--color-brand);
 }
 
 .deliberation-tab--active:hover {

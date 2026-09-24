@@ -174,7 +174,7 @@
 .project-update-form button {
   margin-top: var(--space-xs);
   padding: 8px 16px;
-  background: #1565c0;
+  background: var(--type-project-fg);
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -240,7 +240,7 @@
 .project-comment-form button {
   margin-top: var(--space-xs);
   padding: 8px 16px;
-  background: #1565c0;
+  background: var(--type-project-fg);
   color: #fff;
   border: none;
   border-radius: 6px;

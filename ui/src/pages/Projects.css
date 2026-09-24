@@ -32,6 +32,6 @@
 }
 
 .status-active {
-  background: #e3f2fd;
-  color: #1565c0;
+  background: var(--type-project-bg);
+  color: var(--type-project-fg);
 }
