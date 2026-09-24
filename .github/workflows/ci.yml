@@ -63,6 +63,12 @@ jobs:
   # Separate job, not appended to the one above: it pulls container images and
   # takes minutes rather than seconds, and a failure here means something
   # different from a type error. The unit job stays the fast signal.
+  #
+  # Every step runs at the repository root. This workflow belongs to the
+  # civic-hub repository, whose root IS civic-hub/ — until 2026-09-24 each
+  # step said `working-directory: civic-hub`, the path as seen from the
+  # monorepo, and the job failed in seconds on every push without ever
+  # reaching a test.
   api-tests:
     runs-on: ubuntu-latest
     steps:
@@ -81,11 +87,9 @@ jobs:
       # hostnames resolve to two different hubs, so the seed is not optional.
       - name: Start Supabase
         run: supabase start
-        working-directory: civic-hub
 
       - name: Install
         run: npm install --include=dev
-        working-directory: civic-hub
 
       # The keys below are the Supabase CLI's fixed local development keys.
       # They are public, identical on every machine, and reach nothing but the
@@ -94,7 +98,6 @@ jobs:
         run: |
           npx tsx scripts/seed-hub-settings.ts
           npx tsx scripts/seed-hub-settings.ts --hub athens
-        working-directory: civic-hub
         env:
           SUPABASE_URL: http://127.0.0.1:54321
           SUPABASE_SERVICE_ROLE_KEY: ${{ env.LOCAL_SERVICE_ROLE_KEY }}
@@ -107,7 +110,6 @@ jobs:
             sleep 1
           done
           echo "hub did not become healthy:"; cat /tmp/hub.log; exit 1
-        working-directory: civic-hub
         env:
           SUPABASE_URL: http://127.0.0.1:54321
           SUPABASE_SERVICE_ROLE_KEY: ${{ env.LOCAL_SERVICE_ROLE_KEY }}
@@ -126,7 +128,6 @@ jobs:
 
       - name: API tests
         run: npx vitest run tests/api
-        working-directory: civic-hub
 
       - name: Hub log on failure
         if: failure()
