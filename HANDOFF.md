@@ -4,6 +4,134 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Multi-tenant Phase 1 part five: the hub admin settings surface — 2026-09-24
+
+**Branch:** `multi-tenant`, eight commits (one per numbered step, plus one
+fix found on the way) and this entry. **Not pushed:** `git push` was refused
+by this session's permission settings, so the dev deployments have not built
+any of it and the dev walkthrough has not happened. Production untouched.
+Steps 3–4 and 6 were scaffolded by Sonnet subagents from the Identity/Copy
+pattern; every diff was reviewed, and the review changed each of them.
+
+| Step | Commit | What |
+|---|---|---|
+| 1 | `daa87a4` | one settings endpoint, the Identity section, hub image upload |
+| 2 | `6bcd5a2` | Copy & pages |
+| 3 | `07dedec` | Legal |
+| 4 | `ca39948` | Email |
+| 5 | `3c15292` | Mode |
+| — | `6635bff` | the site footer named one person as operator on every hub |
+| 6 | `7ab8a43` | Admins & board, Officials, Participation join the section list |
+| 7 | `15d159f` | tests |
+
+`npm test` pieces: tests/unit 79 files / 958 green; tests/api 13 files / 114
+green against a local stack (server on :3100). `tsc`, the UI build and the
+place-name check (0 hits) clean. **Playwright not run**: another session held
+:3000 and :5173, which the E2E config would have reused.
+
+### The shape of it
+
+**One page, `/admin/settings/<section>`**, a section list on the left
+(chips on a phone): Identity, Copy & pages, Legal, Email, Mode, Admins &
+board, Officials, Participation, and Plugins disabled ("Coming next").
+Each hub_settings section is a `SectionForm`: Save at the bottom, Discard,
+"Unsaved changes", a dot on the section in the list, a confirm before
+leaving (section list, any in-app link, tab close), and "Last changed by X
+on date" from `hub_settings.updated_at`/`updated_by`. A save sends only the
+keys the admin changed, so an untouched key keeps its own history.
+
+**One writer: `GET`/`PUT /admin/hub/settings`** (`hubSettingsController.ts`).
+Keys are checked against `src/shared/hubSettingsSections.ts` — shared with
+the UI, and recorded in the build plan as "Hub admin edits in the UI" (the
+prompt pointed at that table; it did not exist, so steps 1–5's lists became
+it, with Adam's OK). An unknown key, a key from another section, or one bad
+value refuses the whole write. The six identity/legal fields left
+`PATCH /admin/settings`, so each key has exactly one writer. Nothing was
+added to the public list except `identity.logo_url` (below).
+
+**Documents** open with the text residents actually read — the hub's own
+version or the shared template, placeholders unfilled — in the same
+Markdown editor + Preview the description fields use, with the placeholder
+list and "Using the shared default" / "This hub's own version". **Restore
+default** reloads the template (`GET /admin/hub/settings/template/:key`);
+a document saved identical to its template is stored as `""`, so the hub
+follows the shared text from then on instead of holding a stale copy.
+`{OPERATOR_NAME}` now works beside `{OPERATOR}`.
+
+**Images** go through the existing upload handler, now parametrised:
+`POST /upload/hub-image?kind=banner|logo`, admin only, stored under
+`hubs/<hub id>/YYYY/MM/` in the post-images bucket. Banner ≥ 600×100,
+≤ 5 MB; logo ≥ 32×32, ≤ 2000 px, ≤ 1 MB; JPEG/PNG/WebP/GIF, re-encoded to
+WebP client-side as before.
+
+**Seen on the public site after reload**: `/hub-config` and
+`/hub-config/documents` were browser-cached 60 s and 300 s, so a saved
+change could not show on reload. Both are `private, no-cache` now (ETag
+makes the unchanged case a 304). The server's own settings cache is still
+60 s **per function instance**, so on Vercel another warm instance can
+serve the old value for up to a minute.
+
+### Decided with Adam this session
+
+- **`identity.logo_url`** — new, public (the one public addition), shown
+  beside the name in the header.
+- **`identity.theme`** is read now: `#rrggbb` over `--color-primary` plus a
+  derived hover shade, applied at boot. Empty = today's palette.
+- **Digest on/off and send time are stored per hub and do nothing until
+  Phase 2.** New key `plugin.digest.send_hour` (0–23, UTC, shown beside the
+  admin's clock). The digest cron runs once, unscoped, at 13:00 UTC, and
+  `users` has no `hub_id`; running it per hub now would mail every user once
+  per hub. The Email section says so on the page.
+
+### For Adam
+
+1. **Demo hubs show no mode control.** Your prompt asks for "Demo mode, set
+   by the platform" with no control; the build plan says a demo hub's own
+   admin may graduate it to beta or live. The page follows the prompt; the
+   server rule is unchanged. If graduation should stay self-service, it is
+   a small change in `ModeSection.tsx`.
+2. **`copy.resident_noun` has no reader.** It is editable and the field says
+   it is not shown anywhere yet: the site says "resident" ~20 times, with
+   plurals. Wiring it is its own piece of work.
+3. **The footer said "Operated by Adam Lake" on every hub** (`App.tsx`). A
+   person, not a place, so the CI check never saw it. It reads
+   `legal.operator_name` now and says only "Powered by" when unset.
+4. **Same class, not fixed:** `src/modules/civic.feedback/service.ts:230`
+   falls back to `adam@civic.social` when a hub sets no feedback recipient.
+5. The proposal guide has no public page (only the assistant reads it), so
+   its editor links nowhere.
+6. Where the old sections went: the beta allowlist and waitlist are under
+   **Mode**; the endorsement threshold and comment identity are
+   **Participation**.
+7. `TESTING.md`'s "Running integration tests in CI" still says the API
+   layer never runs on push; it has since 09-24 (`0e221cf`, `7c4c5ce`).
+
+### Test fixture worth knowing
+
+`tests/fixtures/adminSession.ts` writes a user and session row straight
+into the **local** stack (it refuses any other host) — the only way the API
+layer can act as an admin, since privileged accounts always get a real
+emailed code. The new API file puts every value it changes back, because
+`hubSettings.test.ts` asserts Athens's seeded values. The local stack runs
+with storage disabled, so the upload-prefix test is a unit test with the
+bucket stubbed; the real upload is the dev walkthrough's to prove.
+
+### Walkthrough (after the push; the same on each hub)
+
+Athens `athens-civic-hub-dev.vercel.app` (demo, `adam+athens@civic.social`),
+Utopia `utopia-civic-hub-dev.vercel.app` (beta, `adam+utopia@civic.social`),
+Floyd `civic-hub-dev.vercel.app` (beta). Sign in → **Admin** → **Settings**:
+
+1. **Identity** → Hub name, Tagline → Banner "Replace image" (wide, ≥ 600×100)
+   → Save. Reload `/`: header name, tagline, banner.
+2. **Copy & pages** → About page → edit → Save → `/about`.
+3. **Legal** → Operated by → Code of Conduct → edit → Save →
+   `/code-of-conduct` and the footer. Then "Restore default" → Save.
+4. **Email** → Digest send time → Save → the "Last changed by" line.
+5. Open the other two hubs: unchanged.
+
+---
+
 ## Multi-tenant Phase 1 part four: the backend place-name sweep — 2026-09-24
 
 **Branch:** `multi-tenant`, six commits (one per numbered step) plus this
