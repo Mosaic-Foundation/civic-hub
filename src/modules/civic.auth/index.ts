@@ -8,10 +8,21 @@
 // Storage: Postgres via Supabase (tables: users, sessions, pending_verifications)
 // Identity: DID-compatible — user.id is a text field, replaceable with a DID later.
 //
+// Per hub since Phase 2a: accounts, sessions and sign-in codes all carry
+// hub_id, and every query here goes through forHub(). A person has one
+// account per hub (ADR-004). An email is found, a code checked and a session
+// resolved only on the hub the request is for, so a session minted on one hub
+// is not a session on another, and neither is its user.
+//
+// Until the cleanup migration drops the global `users_email_key` and
+// `pending_verifications_pkey (email)`, one address can hold an account (or a
+// pending code) on one hub only; a collision with another hub is refused
+// with a message that does not say which hub.
+//
 // GUARDRAIL: This module MUST NOT import from civic.vote or civic.proposals.
 
 import { randomInt } from "node:crypto";
-import { getDb } from "../../db/client.js";
+import { forHub, type HubDb } from "../../db/forHub.js";
 import { generateId } from "../../utils/id.js";
 import { sendEmail } from "../../utils/email.js";
 import {
@@ -23,7 +34,6 @@ import {
 } from "../../services/hubSettings.js";
 import { isPrivilegedEmail } from "../../services/privilegedAccounts.js";
 import { currentHubId, currentHubIdOrNull } from "../../config/hubContext.js";
-import { MIGRATION_DEFAULT_HUB_ID } from "../../models/hub.js";
 import type { User, PendingVerification, Session } from "./models.js";
 
 export type { User, PendingVerification, Session } from "./models.js";
@@ -42,6 +52,18 @@ const REQUEST_THROTTLE_MS = 30 * 1000; // 30s between code requests per email
 // patient brute-force attacker at 5 guesses per lockout window (negligible),
 // while staying forgiving for a legit user who mistyped a few times.
 const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+/** The hub in scope. Everything here runs inside a request for one hub. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
+
+/**
+ * Shown when an address collides with the still-global unique email on
+ * another hub. Deliberately does not name the hub, or say that there is one.
+ */
+const ADDRESS_IN_USE_ELSEWHERE =
+  "This address can't be used to sign in to this hub yet. Please use a different address.";
 
 // --- OTP / token generation ---
 
@@ -170,7 +192,7 @@ export async function requestVerification(
     }
   }
 
-  const { data: recent } = await getDb()
+  const { data: recent } = await db()
     .from("pending_verifications")
     .select("created_at, locked_until")
     .eq("email", normalizedEmail)
@@ -194,7 +216,7 @@ export async function requestVerification(
   const now = new Date();
   const expires = new Date(now.getTime() + OTP_TTL_MS);
 
-  const { error } = await getDb()
+  const { error } = await db()
     .from("pending_verifications")
     .upsert(
       {
@@ -205,10 +227,17 @@ export async function requestVerification(
         attempts: 0, // fresh code, reset the wrong-guess counter
         locked_until: null, // and clear any expired lockout
       },
-      { onConflict: "email" },
+      { onConflict: "hub_id,email" },
     );
 
   if (error) {
+    // 23505 on (hub_id, email) cannot happen — that is the conflict target —
+    // so it is the global primary key: this address has a pending code on
+    // another hub.
+    if (error.code === "23505") {
+      console.warn(`[auth] ${normalizedEmail} has a pending code on another hub (global key)`);
+      throw new Error(ADDRESS_IN_USE_ELSEWHERE);
+    }
     throw new Error(`Auth: failed to store verification: ${error.message}`);
   }
 
@@ -310,12 +339,12 @@ export async function consumePendingCode(
     locked_until?: string | null;
   } | null,
 ): Promise<void> {
-  const db = getDb();
+  const hubDb = db();
   const normalizedEmail = email.trim().toLowerCase();
 
   let row = pending;
   if (row === undefined) {
-    const { data, error } = await db
+    const { data, error } = await hubDb
       .from("pending_verifications")
       .select("*")
       .eq("email", normalizedEmail)
@@ -335,7 +364,7 @@ export async function consumePendingCode(
     throw new Error(lockoutMessage(row.locked_until));
   }
   if (new Date() > new Date(row.expires_at)) {
-    await db
+    await hubDb
       .from("pending_verifications")
       .delete()
       .eq("email", normalizedEmail);
@@ -348,20 +377,20 @@ export async function consumePendingCode(
     const attempts = (row.attempts ?? 0) + 1;
     if (attempts >= MAX_VERIFY_ATTEMPTS) {
       const lockedUntil = new Date(Date.now() + LOCKOUT_MS).toISOString();
-      await db
+      await hubDb
         .from("pending_verifications")
         .update({ attempts, locked_until: lockedUntil })
         .eq("email", normalizedEmail);
       throw new Error(lockoutMessage(lockedUntil));
     }
-    await db
+    await hubDb
       .from("pending_verifications")
       .update({ attempts })
       .eq("email", normalizedEmail);
     throw new Error("Invalid verification code");
   }
   // Spend it. A code works once.
-  await db
+  await hubDb
     .from("pending_verifications")
     .delete()
     .eq("email", normalizedEmail);
@@ -376,10 +405,10 @@ export async function verifyCode(
   code: string,
 ): Promise<{ token: string; user: User }> {
   const normalizedEmail = email.trim().toLowerCase();
-  const db = getDb();
+  const hubDb = db();
 
   // --- Validate the OTP ---
-  const { data: pending, error: pendErr } = await db
+  const { data: pending, error: pendErr } = await hubDb
     .from("pending_verifications")
     .select("*")
     .eq("email", normalizedEmail)
@@ -402,7 +431,7 @@ export async function verifyCode(
     /^\d{6}$/.test(code.trim())
   ) {
     if (pending) {
-      await db
+      await hubDb
         .from("pending_verifications")
         .delete()
         .eq("email", normalizedEmail);
@@ -411,8 +440,8 @@ export async function verifyCode(
     await consumePendingCode(normalizedEmail, code, pending);
   }
 
-  // --- Find or create the user ---
-  const { data: existing, error: selErr } = await db
+  // --- Find or create the user, on this hub ---
+  const { data: existing, error: selErr } = await hubDb
     .from("users")
     .select("*")
     .eq("email", normalizedEmail)
@@ -425,7 +454,7 @@ export async function verifyCode(
   if (existing) {
     // Mark email_verified if it wasn't already
     if (!existing.email_verified) {
-      const { data, error } = await db
+      const { data, error } = await hubDb
         .from("users")
         .update({ email_verified: true })
         .eq("id", existing.id)
@@ -437,7 +466,7 @@ export async function verifyCode(
       user = rowToUser(existing);
     }
   } else {
-    // Create new user. Race-safe: unique(email) will reject duplicates.
+    // Create new user. Race-safe: unique (hub_id, email) rejects duplicates.
     // digest_frequency_days defaults to 1 (daily, opt-out model). Setting
     // it explicitly here documents the intent and protects against a
     // future default change in the migration.
@@ -449,7 +478,7 @@ export async function verifyCode(
       digest_frequency_days: 1,
     };
 
-    const { data, error } = await db
+    const { data, error } = await hubDb
       .from("users")
       .insert(newRow)
       .select()
@@ -458,12 +487,18 @@ export async function verifyCode(
     if (error) {
       // 23505 = unique_violation — another request created the user first.
       if (error.code === "23505") {
-        const { data: refetch, error: refErr } = await db
+        const { data: refetch, error: refErr } = await hubDb
           .from("users")
           .select("*")
           .eq("email", normalizedEmail)
-          .single();
+          .maybeSingle();
         if (refErr) throw new Error(`Auth: ${refErr.message}`);
+        if (!refetch) {
+          // Not on this hub: the violation was the global users_email_key,
+          // so the address has an account on another hub.
+          console.warn(`[auth] ${normalizedEmail} has an account on another hub (global key)`);
+          throw new Error(ADDRESS_IN_USE_ELSEWHERE);
+        }
         user = rowToUser(refetch);
       } else {
         throw new Error(`Auth: ${error.message}`);
@@ -478,13 +513,12 @@ export async function verifyCode(
   const token = generateToken();
   const sessionExpires = new Date(Date.now() + SESSION_TTL_MS).toISOString();
 
-  // Stamped with the hub it was minted on. A session is a bearer credential,
-  // so without this a token from one hub would authenticate its holder on
-  // every other hub this deployment serves.
-  const { error: sessErr } = await db.from("sessions").insert({
+  // Stamped with the hub it was minted on, by forHub. A session is a bearer
+  // credential, so without this a token from one hub would authenticate its
+  // holder on every other hub this deployment serves.
+  const { error: sessErr } = await hubDb.from("sessions").insert({
     token,
     user_id: user.id,
-    hub_id: currentHubIdOrNull() ?? MIGRATION_DEFAULT_HUB_ID,
     expires_at: sessionExpires,
   });
 
@@ -506,7 +540,7 @@ export async function affirmResidency(
   if (fullName !== undefined) {
     patch.full_name = normalizeFullName(fullName);
   }
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("users")
     .update(patch)
     .eq("id", userId)
@@ -530,7 +564,7 @@ export async function updateFullName(
   fullName: string,
 ): Promise<User> {
   const value = normalizeFullName(fullName);
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("users")
     .update({ full_name: value })
     .eq("id", userId)
@@ -554,7 +588,7 @@ export async function acceptLegalTerms(
   version: string,
 ): Promise<User> {
   const now = new Date().toISOString();
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("users")
     .update({ tos_version_accepted: version, tos_accepted_at: now })
     .eq("id", userId)
@@ -576,35 +610,35 @@ export async function getUserFromToken(
   token: string,
 ): Promise<User | undefined> {
   if (!token) return undefined;
-  const db = getDb();
 
   // The hub filter is the point, not an optimisation. A token is valid only
   // on the hub it was minted on: a resident of a demo hub holding a session
   // must not be authenticated on a real jurisdiction's hub served by the same
   // deployment. A token presented to the wrong hub reads as no session at
-  // all, which is what it is.
+  // all, which is what it is — and so does a session whose user belongs to
+  // another hub, since the user is looked up on this hub too.
   //
-  // Outside a request there is no hub to compare against, and the query is
-  // left unfiltered — scripts and crons do not authenticate users, and
-  // failing to resolve a session there would break tooling without closing
-  // anything.
+  // Outside a request there is no hub, and so no session: nothing outside a
+  // request authenticates users.
   const hubId = currentHubIdOrNull();
-  let query = db
+  if (!hubId) return undefined;
+  const hubDb = forHub(hubId);
+
+  const { data: session, error } = await hubDb
     .from("sessions")
     .select("user_id, expires_at")
-    .eq("token", token);
-  if (hubId) query = query.eq("hub_id", hubId);
-  const { data: session, error } = await query.maybeSingle();
+    .eq("token", token)
+    .maybeSingle();
 
   if (error || !session) return undefined;
 
   if (new Date() > new Date(session.expires_at)) {
     // Opportunistic cleanup of the expired session.
-    await db.from("sessions").delete().eq("token", token);
+    await hubDb.from("sessions").delete().eq("token", token);
     return undefined;
   }
 
-  const { data: user, error: userErr } = await db
+  const { data: user, error: userErr } = await hubDb
     .from("users")
     .select("*")
     .eq("id", session.user_id)
@@ -618,7 +652,7 @@ export async function getUserFromToken(
  * Get user by ID.
  */
 export async function getUser(userId: string): Promise<User | undefined> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("users")
     .select("*")
     .eq("id", userId)
@@ -633,12 +667,11 @@ export async function getUser(userId: string): Promise<User | undefined> {
  */
 export async function logout(token: string): Promise<void> {
   if (!token) return;
-  const hubId = currentHubIdOrNull();
-  let query = getDb().from("sessions").delete().eq("token", token);
   // Scoped for the same reason the lookup is: one hub must not be able to
   // destroy a session belonging to another.
-  if (hubId) query = query.eq("hub_id", hubId);
-  await query;
+  const hubId = currentHubIdOrNull();
+  if (!hubId) return;
+  await forHub(hubId).from("sessions").delete().eq("token", token);
 }
 
 /**
@@ -670,11 +703,12 @@ export async function deleteAccount(
   if (!userId || !email) {
     throw new Error("Auth: deleteAccount requires both userId and email.");
   }
-  const db = getDb();
+  const hubDb = db();
   // pending_verifications first so a stale code can't be used to
-  // race a fresh signup against the in-flight delete.
-  await db.from("pending_verifications").delete().eq("email", email.toLowerCase());
-  const { error } = await db.from("users").delete().eq("id", userId);
+  // race a fresh signup against the in-flight delete. This hub's only: the
+  // same person's account on another hub is theirs to delete there.
+  await hubDb.from("pending_verifications").delete().eq("email", email.toLowerCase());
+  const { error } = await hubDb.from("users").delete().eq("id", userId);
   if (error) throw new Error(`Auth: ${error.message}`);
 }
 
@@ -694,7 +728,7 @@ export async function updateHideAiDraftingHelp(
   userId: string,
   hide: boolean,
 ): Promise<User> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("users")
     .update({ hide_ai_drafting_help: hide })
     .eq("id", userId)
@@ -710,7 +744,7 @@ export async function updateDisplayName(
   displayName: string | null,
 ): Promise<User> {
   const value = displayName?.trim() || null;
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("users")
     .update({ display_name: value })
     .eq("id", userId)
@@ -732,7 +766,7 @@ export async function setDigestFrequency(
   userId: string,
   frequencyDays: number | null,
 ): Promise<User> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("users")
     .update({ digest_frequency_days: frequencyDays })
     .eq("id", userId)
@@ -750,10 +784,11 @@ export async function setDigestFrequency(
  * the cron endpoint after a successful Resend send.
  */
 export async function markDigestSent(
+  hubId: string,
   userId: string,
   timestamp: string,
 ): Promise<void> {
-  const { error } = await getDb()
+  const { error } = await forHub(hubId)
     .from("users")
     .update({ last_digest_sent_at: timestamp })
     .eq("id", userId);
@@ -761,12 +796,14 @@ export async function markDigestSent(
 }
 
 /**
- * List every user currently subscribed to the digest (frequency > 0).
- * The cron endpoint iterates this set and checks per-user timing.
- * Returns an empty array when nobody is subscribed.
+ * List every user on one hub currently subscribed to the digest
+ * (frequency > 0). The cron endpoint iterates this set and checks per-user
+ * timing. Returns an empty array when nobody is subscribed.
+ *
+ * Takes the hub explicitly because the digest cron runs outside a request.
  */
-export async function listSubscribedUsers(): Promise<User[]> {
-  const { data, error } = await getDb()
+export async function listSubscribedUsers(hubId: string): Promise<User[]> {
+  const { data, error } = await forHub(hubId)
     .from("users")
     .select("*")
     .not("digest_frequency_days", "is", null);
@@ -774,12 +811,13 @@ export async function listSubscribedUsers(): Promise<User[]> {
   return (data ?? []).map((row) => rowToUser(row));
 }
 
-/** Clear all auth data — used by debug/seed only. */
+/** Clear this hub's auth data — used by debug/seed only. */
 export async function clearAuth(): Promise<void> {
-  const db = getDb();
+  const hubDb = db();
   // Supabase requires a filter on DELETE to avoid accidental full-table wipes.
-  // neq("<col>", "") matches every row since our IDs/emails are non-empty.
-  await db.from("pending_verifications").delete().neq("email", "");
-  await db.from("sessions").delete().neq("token", "");
-  await db.from("users").delete().neq("id", "");
+  // neq("<col>", "") matches every row since our IDs/emails are non-empty;
+  // forHub confines it to this hub.
+  await hubDb.from("pending_verifications").delete().neq("email", "");
+  await hubDb.from("sessions").delete().neq("token", "");
+  await hubDb.from("users").delete().neq("id", "");
 }

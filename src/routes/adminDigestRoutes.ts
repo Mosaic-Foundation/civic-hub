@@ -7,6 +7,11 @@
 
 import { Router } from "express";
 import { handleRunAdminDigest } from "../controllers/adminDigestController.js";
+import { withMigrationDefaultHub } from "../services/cronHubs.js";
 
 export const adminDigestCronRouter = Router();
-adminDigestCronRouter.get("/admin-digest/run", handleRunAdminDigest);
+// Phase 2a bridge: runs as the migration-default hub until the admin digest
+// iterates hubs (Phase 2b). See withMigrationDefaultHub.
+adminDigestCronRouter.get("/admin-digest/run", (req, res, next) => {
+  withMigrationDefaultHub(() => handleRunAdminDigest(req, res)).catch(next);
+});

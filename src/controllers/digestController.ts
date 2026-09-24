@@ -22,6 +22,7 @@
 // hubs and run once per hub.
 
 import { Request, Response } from "express";
+import { currentHubId } from "../config/hubContext.js";
 import { getEventsSince } from "../events/eventStore.js";
 import { getProcess } from "../services/processService.js";
 import { getProcessHandler, processDetailPath } from "../processes/registry.js";
@@ -171,7 +172,7 @@ export async function handleRunDigest(
   let failed = 0;
 
   try {
-    const users = await listSubscribedUsers();
+    const users = await listSubscribedUsers(currentHubId());
 
     // Pull the earliest cursor across the whole subscribed set so we
     // query the event store once, then filter in-memory per user. This
@@ -368,7 +369,7 @@ export async function handleRunDigest(
           continue;
         }
 
-        await markDigestSent(user.id, new Date().toISOString());
+        await markDigestSent(currentHubId(), user.id, new Date().toISOString());
         console.log(
           `[digest] user=${user.id} events=${digest.item_count} sent=true resend_id=${result.id ?? "?"}`,
         );

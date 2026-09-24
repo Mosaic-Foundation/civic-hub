@@ -14,9 +14,14 @@ import {
   handleUnsubscribeDigest,
 } from "../controllers/digestController.js";
 import { requireAuth } from "../middleware/auth.js";
+import { withMigrationDefaultHub } from "../services/cronHubs.js";
 
 export const digestCronRouter = Router();
-digestCronRouter.get("/digest/run", handleRunDigest);
+// Phase 2a bridge: the digest reads per-hub data but does not yet iterate
+// hubs, so it runs as the migration-default hub (see withMigrationDefaultHub).
+digestCronRouter.get("/digest/run", (req, res, next) => {
+  withMigrationDefaultHub(() => handleRunDigest(req, res)).catch(next);
+});
 
 export const digestUnsubscribeRouter = Router();
 digestUnsubscribeRouter.get("/digest", handleUnsubscribeDigest);

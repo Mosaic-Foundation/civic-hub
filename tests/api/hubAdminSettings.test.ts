@@ -140,7 +140,7 @@ describe("one hub's admin cannot reach another hub's settings", () => {
     expect(write.status).toBe(401);
   });
 
-  it("the Athens admin's account, carried onto a Floyd session, is not Floyd's admin", async () => {
+  it("the Athens admin's account, carried onto a Floyd session, is nobody on Floyd", async () => {
     // Accounts belong to a hub since Phase 2a, and until the cleanup migration
     // one email is one account on one hub, so the Athens admin cannot also
     // hold a Floyd account. The nearest case: a Floyd session row pointing at
@@ -150,7 +150,9 @@ describe("one hub's admin cannot reach another hub's settings", () => {
     )) as Array<{ id: string }>;
     const onFloyd = await mintSessionForUser("floyd", athensUser.id);
     const before = await storedSetting("floyd", "identity.tagline");
-    expect((await call("GET", "/admin/hub/settings", FLOYD, undefined, onFloyd)).status).toBe(403);
+    // Sign-in resolves the session's user on the session's hub (Phase 2a), so
+    // an account from another hub is no one here: 401, not merely 403.
+    expect((await call("GET", "/admin/hub/settings", FLOYD, undefined, onFloyd)).status).toBe(401);
     const write = await call(
       "PUT",
       "/admin/hub/settings",
@@ -158,7 +160,7 @@ describe("one hub's admin cannot reach another hub's settings", () => {
       { section: "identity", values: { "identity.tagline": "written from Athens" } },
       onFloyd,
     );
-    expect(write.status).toBe(403);
+    expect(write.status).toBe(401);
     expect(await storedSetting("floyd", "identity.tagline")).toBe(before);
   });
 
