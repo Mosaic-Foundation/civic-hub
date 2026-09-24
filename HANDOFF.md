@@ -127,6 +127,21 @@ news-sync announcements and everything older; Utopia's and Athens's show
 none of them (on dev, nothing has been created on either since 09-22, so
 they may be empty). The same on `/api/events` per host.
 
+**Run after Adam's push (all three hosts on `096087c`, schema check ok),
+signed out:**
+
+| Hub | `/api/process` | `/api/events` totalItems | `/api/feed` |
+|---|---|---|---|
+| Floyd | 30 (5 news-sync announcements) | 171 | 171 items |
+| Athens | 0 | 0 | 0 |
+| Utopia | 0 | 0 | 0 |
+
+No process id appears on two hubs. **Seen on the way:** Athens's and
+Utopia's event collections give their `id` as
+`https://civic-hub-dev.vercel.app/events`, Floyd's host, because the base
+URL is still one env var for the deployment. That is the recorded 2b item
+"per-hub base URL from `hubs.hostname`", now visible on the wire.
+
 ### Still on the raw client (Phase 2b starts here)
 
 `src/app.ts`; controllers `briefController`, `debugController`,
