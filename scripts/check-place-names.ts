@@ -1,5 +1,6 @@
 /**
- * No string in src/ or ui/src/ may name a place.
+ * No string in src/, ui/src/ or api/ — nor in ui/.env or ui/index.html — may
+ * name a place.
  *
  *   npx tsx scripts/check-place-names.ts          # exit 1 on any hit
  *   npx tsx scripts/check-place-names.ts --list   # print hits, always exit 0
@@ -12,8 +13,9 @@
  * the tagline, the banner, the legal operator), and every time the page
  * looked plausible, which is why nobody noticed.
  *
- * WHAT IS SCANNED. Every .ts/.tsx/.js/.css file under src/ and ui/src/, with
- * comments removed first. Comments are exempt on purpose: a great many of
+ * WHAT IS SCANNED. Every .ts/.tsx/.js/.css file under src/, ui/src/ and api/,
+ * plus ui/.env and ui/index.html (everything compiled into, or served with,
+ * the one build every hub shares), with comments removed first. Comments are exempt on purpose: a great many of
  * them explain *why* a value is data by describing what went wrong when it
  * was not, and that history is worth more than the word it costs. Removal
  * uses the TypeScript scanner, not a regex, so a `//` inside a URL string or
@@ -40,7 +42,11 @@ import { relative, resolve } from "node:path";
 import ts from "typescript";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const SCAN_DIRS = ["src", "ui/src"];
+// ui/.env, ui/index.html and api/ are compiled or served for every hub just
+// like src/ — ui/.env held Floyd's whole branding until 2026-09-24, which is
+// how Utopia came to greet visitors as Floyd County residents.
+const SCAN_DIRS = ["src", "ui/src", "api"];
+const SCAN_FILES = ["ui/.env", "ui/index.html"];
 const ALLOWLIST = resolve(ROOT, "scripts/place-name-allowlist.txt");
 
 /**
@@ -82,6 +88,13 @@ function sourceFiles(dir: string): string[] {
  * literals and JSX text, which is the whole point of using it.
  */
 export function blankComments(text: string, fileName: string): string {
+  const blank = (c: string) => c.replace(/[^\n]/g, " ");
+  if (fileName.endsWith(".env") || /\.env\.[^/]+$/.test(fileName)) {
+    return text.replace(/^\s*#.*$/gm, blank);
+  }
+  if (fileName.endsWith(".html")) {
+    return text.replace(/<!--[\s\S]*?-->/g, blank);
+  }
   if (fileName.endsWith(".css")) {
     return text.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, " "));
   }
@@ -145,12 +158,15 @@ function regexMayFollow(prev: ts.SyntaxKind): boolean {
   }
 }
 
-/** Every place-name hit in src/ and ui/src/, comments excluded. */
+/** Every place-name hit in the scanned code, comments excluded. */
 export function findPlaceNameHits(root: string = ROOT): Hit[] {
   const hits: Hit[] = [];
-  for (const dir of SCAN_DIRS) {
-    const abs = resolve(root, dir);
-    for (const file of sourceFiles(abs)) {
+  const files = [
+    ...SCAN_DIRS.flatMap((dir) => sourceFiles(resolve(root, dir))),
+    ...SCAN_FILES.map((f) => resolve(root, f)),
+  ];
+  {
+    for (const file of files) {
       const code = blankComments(readFileSync(file, "utf-8"), file);
       const lines = code.split("\n");
       lines.forEach((text, i) => {
@@ -231,7 +247,7 @@ function main(): void {
 
   const ok = offenders.length === 0 && errors.length === 0;
   console.log(
-    `\n${offenders.length} place name(s) in src/ and ui/src/, ` +
+    `\n${offenders.length} place name(s) in the shared code, ` +
       `${allowed.length} allow-listed, ${errors.length} allow-list error(s).`,
   );
   if (!ok && !listOnly) {

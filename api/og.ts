@@ -30,10 +30,10 @@ export function isSocialCrawler(userAgent: string): boolean {
 
 // Build-time fallbacks. Used only when the hub cannot be reached, or on a
 // single-hub self-hosted deployment that has no hubs row.
-const FALLBACK_HUB_NAME =
-  process.env.VITE_HUB_PAGE_TITLE ?? "Floyd County, VA — Civic Hub";
-const FALLBACK_BANNER_URL =
-  process.env.VITE_HUB_BANNER_URL ?? "/floyd-banner.jpg";
+// Placeless: this function serves every hub, and a card that names one hub
+// is wrong on all the others.
+const FALLBACK_HUB_NAME = process.env.VITE_HUB_PAGE_TITLE?.trim() || "Civic Hub";
+const FALLBACK_BANNER_URL = process.env.VITE_HUB_BANNER_URL?.trim() || "";
 
 /**
  * This request's own origin.
@@ -49,7 +49,8 @@ function siteUrlFor(req: IncomingMessage): string {
     return (
       process.env.CIVIC_UI_BASE_URL ??
       process.env.BASE_URL ??
-      "https://floyd.civic.social"
+      // The platform, not a hub: a request with no Host names no hub.
+      "https://civic.social"
     ).replace(/\/$/, "");
   }
   const isLocal = host.startsWith("localhost") || host.startsWith("127.0.0.1");
@@ -138,7 +139,9 @@ function absoluteImage(
   siteUrl: string,
   bannerUrl: string,
 ): string {
-  if (!img) return `${siteUrl}${bannerUrl}`;
+  // No image and no banner: no og:image at all, rather than the bare site
+  // URL posing as one.
+  if (!img) return bannerUrl ? `${siteUrl}${bannerUrl}` : "";
   if (img.startsWith("http")) return img;
   return `${siteUrl}${img}`;
 }
@@ -201,12 +204,12 @@ function ogHtml(
   <meta property="og:description" content="${d}" />
   <meta property="og:type" content="article" />
   <meta property="og:url" content="${escapeHtml(url)}" />
-  <meta property="og:image" content="${escapeHtml(image)}" />
+  ${image ? `<meta property="og:image" content="${escapeHtml(image)}" />` : ""}
   <meta property="og:site_name" content="${hubName}" />
-  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:card" content="${image ? "summary_large_image" : "summary"}" />
   <meta name="twitter:title" content="${t}" />
   <meta name="twitter:description" content="${d}" />
-  <meta name="twitter:image" content="${escapeHtml(image)}" />
+  ${image ? `<meta name="twitter:image" content="${escapeHtml(image)}" />` : ""}
 </head>
 <body>
   <h1>${t}</h1>

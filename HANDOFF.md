@@ -118,6 +118,37 @@ dropped — the community line is generic; (2) the author label stays derived;
 content work; (4) the check keeps Floyd's names only until then. Recorded in
 the build plan under Phase 4 part four.
 
+### Added after the push: the leak was in the repo, not in Vercel
+
+Checking the dev deployment, Utopia opened with Floyd's tagline and intro
+("This is where Floyd County residents…"). The cause was **the committed
+`ui/.env`**, which held Floyd's whole branding and which Vite compiles into
+the one bundle every hub is served — the step-4 sweep covered `ui/src/` and
+missed it. The dev Vercel project had no `VITE_HUB_*` variables at all, so no
+Vercel change was needed. `ui/.env` now holds only neutral values for
+`index.html`'s crawler view; Floyd's tagline, page title, description, intro,
+residency line and onboarding word cloud moved to its seed file, and the two
+it had no dev row for (`identity.description`, `plugin.wordcloud.onboarding_id`)
+were seeded on the dev project. `api/og.ts` had two Floyd fallbacks of the same
+kind (page title/banner, and `https://floyd.civic.social` as the origin for a
+request with no Host) — now placeless, with `og:image` omitted rather than
+pointing at the bare site when a hub has no banner. The place-name check now
+also scans `api/`, `ui/.env` and `ui/index.html`, which is how the `og.ts`
+origin was found.
+
+**Crawler view on `/`, worth knowing for the cutover:** a link to a hub's
+bare home page, unfurled by a crawler that runs no JavaScript, now shows
+"Civic Hub" with no image, where Floyd's used to show its own title and
+banner. That is correct for every other hub and a small regression for Floyd.
+Part one's note already has the fix: route `/` through `api/og.ts`.
+
+Utopia's feed still shows Floyd's processes: `processes` has no `hub_id` until
+Phase 2, so every hub on the shared database sees all of them.
+
+**CI is green** for the first time on this branch: the `api-tests` job had
+run in a directory that does not exist since it was added (`0e221cf`), and
+then needed the fresh database seeded the way the tests assume (`7c4c5ce`).
+
 ### A cutover hazard this surfaced (also in the build plan, Phase 4 part four)
 
 **The env fallbacks are deployment-wide.** A hub with no row falls back to the
