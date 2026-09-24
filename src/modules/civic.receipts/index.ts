@@ -22,10 +22,24 @@
 // GUARDRAIL: vote_records and vote_participation MUST NOT acquire a
 // shared join key. active_vote_keys is the ONLY bridge, and only during
 // the active window.
+//
+// Per hub since Phase 2a: all three tables carry hub_id and every query here
+// goes through forHub(), so a receipt, a ballot or a participation row is
+// read, written or cleared only on the hub whose vote it belongs to. hub_id
+// is NOT a join key in the sense of the guardrail above: both tables already
+// carry process_id, and a process belongs to exactly one hub, so hub_id adds
+// nothing that links a voter to a ballot. The ballot-secrecy layout from the
+// July audit is unchanged; only its scope is.
 
 import crypto from "crypto";
-import { getDb } from "../../db/client.js";
+import { forHub, type HubDb } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
 import type { VoteRecord, UserParticipation } from "./models.js";
+
+/** The hub in scope. Votes are only ever cast, read or cleared inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 // --- Receipt generation ----------------------------------------------------
 
@@ -63,10 +77,10 @@ export async function recordOrUpdateVote(
   userId: string,
   choice: string,
 ): Promise<{ receipt_id: string; updated: boolean }> {
-  const db = getDb();
+  const hubDb = db();
 
   // Try to reserve participation. PK collision = re-vote path.
-  const { error: partErr } = await db.from("vote_participation").insert({
+  const { error: partErr } = await hubDb.from("vote_participation").insert({
     user_id: userId,
     process_id: processId,
     has_voted: true,
@@ -75,7 +89,7 @@ export async function recordOrUpdateVote(
   if (partErr) {
     if (partErr.code === "23505") {
       // Re-vote: look up the user's existing receipt and update its choice.
-      const { data: keyRow, error: keyErr } = await db
+      const { data: keyRow, error: keyErr } = await hubDb
         .from("active_vote_keys")
         .select("receipt_id")
         .eq("user_id", userId)
@@ -89,7 +103,7 @@ export async function recordOrUpdateVote(
         throw new Error("You have already voted on this process");
       }
 
-      const { error: updateErr } = await db
+      const { error: updateErr } = await hubDb
         .from("vote_records")
         .update({ choice })
         .eq("receipt_id", keyRow.receipt_id);
@@ -104,14 +118,14 @@ export async function recordOrUpdateVote(
   // First-time vote.
   const receipt_id = generateReceiptId();
 
-  const { error: voteErr } = await db.from("vote_records").insert({
+  const { error: voteErr } = await hubDb.from("vote_records").insert({
     receipt_id,
     process_id: processId,
     choice,
   });
 
   if (voteErr) {
-    await db
+    await hubDb
       .from("vote_participation")
       .delete()
       .eq("user_id", userId)
@@ -119,7 +133,7 @@ export async function recordOrUpdateVote(
     throw new Error(`Receipts: ${voteErr.message}`);
   }
 
-  const { error: keyInsertErr } = await db.from("active_vote_keys").insert({
+  const { error: keyInsertErr } = await hubDb.from("active_vote_keys").insert({
     user_id: userId,
     process_id: processId,
     receipt_id,
@@ -127,8 +141,8 @@ export async function recordOrUpdateVote(
 
   if (keyInsertErr) {
     // Roll back both prior writes so the user can retry cleanly.
-    await db.from("vote_records").delete().eq("receipt_id", receipt_id);
-    await db
+    await hubDb.from("vote_records").delete().eq("receipt_id", receipt_id);
+    await hubDb
       .from("vote_participation")
       .delete()
       .eq("user_id", userId)
@@ -150,8 +164,8 @@ export async function getActiveChoice(
   userId: string,
   processId: string,
 ): Promise<string | null> {
-  const db = getDb();
-  const { data: keyRow, error: keyErr } = await db
+  const hubDb = db();
+  const { data: keyRow, error: keyErr } = await hubDb
     .from("active_vote_keys")
     .select("receipt_id")
     .eq("user_id", userId)
@@ -160,7 +174,7 @@ export async function getActiveChoice(
   if (keyErr) throw new Error(`Receipts: ${keyErr.message}`);
   if (!keyRow) return null;
 
-  const { data: record, error: recErr } = await db
+  const { data: record, error: recErr } = await hubDb
     .from("vote_records")
     .select("choice")
     .eq("receipt_id", keyRow.receipt_id)
@@ -177,7 +191,7 @@ export async function getActiveChoice(
 export async function getBallotChoicesForProcess(
   processId: string,
 ): Promise<string[]> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("vote_records")
     .select("choice")
     .eq("process_id", processId);
@@ -193,7 +207,7 @@ export async function getBallotChoicesForProcess(
 export async function clearActiveVoteKeysForProcess(
   processId: string,
 ): Promise<void> {
-  const { error } = await getDb()
+  const { error } = await db()
     .from("active_vote_keys")
     .delete()
     .eq("process_id", processId);
@@ -209,7 +223,7 @@ export async function verifyReceipt(
   receiptId: string,
   processId: string,
 ): Promise<{ receipt_id: string; choice: string } | null> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("vote_records")
     .select("receipt_id, choice, process_id")
     .eq("receipt_id", receiptId)
@@ -231,7 +245,7 @@ export async function verifyReceipt(
 export async function getVoteLog(
   processId: string,
 ): Promise<{ receipt_id: string; choice: string }[]> {
-  const { data, error } = await getDb()
+  const { data, error } = await db()
     .from("vote_records")
     .select("receipt_id, choice")
     .eq("process_id", processId);
@@ -260,7 +274,7 @@ export async function hasUserVoted(
   userId: string,
   processId: string,
 ): Promise<boolean> {
-  const { count, error } = await getDb()
+  const { count, error } = await db()
     .from("vote_participation")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
@@ -269,13 +283,13 @@ export async function hasUserVoted(
   return (count ?? 0) > 0;
 }
 
-/** Clear all receipt data — dev/test reset only. */
+/** Clear this hub's receipt data — dev/test reset only. */
 export async function clearReceipts(): Promise<void> {
-  const db = getDb();
-  const a = await db.from("vote_records").delete().neq("receipt_id", "");
+  const hubDb = db();
+  const a = await hubDb.from("vote_records").delete().neq("receipt_id", "");
   if (a.error) throw new Error(`Receipts: ${a.error.message}`);
-  const b = await db.from("vote_participation").delete().neq("user_id", "");
+  const b = await hubDb.from("vote_participation").delete().neq("user_id", "");
   if (b.error) throw new Error(`Receipts: ${b.error.message}`);
-  const c = await db.from("active_vote_keys").delete().neq("user_id", "");
+  const c = await hubDb.from("active_vote_keys").delete().neq("user_id", "");
   if (c.error) throw new Error(`Receipts: ${c.error.message}`);
 }
