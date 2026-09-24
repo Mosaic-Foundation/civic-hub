@@ -9,10 +9,7 @@ import {
   adminGetHubPeople,
   adminRequestPeopleCode,
   adminSetHubPeople,
-  adminRequestModeCode,
-  adminSetHubMode,
   type Official,
-  type WaitlistEntry,
   type CommentIdentityMode,
 } from "../../services/api";
 import {
@@ -37,18 +34,6 @@ export default function LegacySettings() {
   const [savingOfficials, setSavingOfficials] = useState(false);
   const [officialsMessage, setOfficialsMessage] = useState<string | null>(null);
 
-  // --- Hub mode ---
-  // The same step-up as the roster, for a related reason: mode decides who
-  // may sign in at all. `demo` is deliberately absent from the choices — it
-  // is the one mode that turns off email verification, so only the control
-  // plane may put a hub into it. A hub that IS a demo can graduate out.
-  const [mode, setMode] = useState("");
-  const [pendingMode, setPendingMode] = useState("");
-  const [modeCode, setModeCode] = useState("");
-  const [modeCodeSent, setModeCodeSent] = useState(false);
-  const [savingMode, setSavingMode] = useState(false);
-  const [modeMessage, setModeMessage] = useState<string | null>(null);
-
   // --- Admins & board ---
   // A roster change is the one edit on this page that takes a fresh emailed
   // code, so it carries its own little state machine: edit the lists, ask for
@@ -65,15 +50,6 @@ export default function LegacySettings() {
   const [threshold, setThreshold] = useState(5);
   const [savingThreshold, setSavingThreshold] = useState(false);
   const [thresholdMessage, setThresholdMessage] = useState<string | null>(null);
-
-  // --- Beta allowlist ---
-  const [allowlistText, setAllowlistText] = useState("");
-  const [savingAllowlist, setSavingAllowlist] = useState(false);
-  const [allowlistMessage, setAllowlistMessage] = useState<string | null>(null);
-
-  // --- Waitlist ---
-  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
-  const [copiedWaitlist, setCopiedWaitlist] = useState(false);
 
   // --- Comment identity ---
   const [identityMode, setIdentityMode] =
@@ -92,11 +68,7 @@ export default function LegacySettings() {
         setExtraRecipientsText(
           s.brief_recipient_emails.filter((e) => !officialEmails.has(e.toLowerCase())).join(", "),
         );
-        setMode(s.mode);
-        setPendingMode(s.mode);
         setThreshold(s.support_threshold);
-        setAllowlistText(s.beta_allowlist.join(", "));
-        setWaitlist(s.waitlist);
         setIdentityMode(s.comment_identity_mode);
         setLoaded(true);
       })
@@ -134,38 +106,6 @@ export default function LegacySettings() {
 
   function removeOfficial(i: number) {
     setOfficials((cur) => cur.filter((_, idx) => idx !== i));
-  }
-
-  async function requestModeCode() {
-    setModeMessage(null);
-    try {
-      const { message } = await adminRequestModeCode();
-      setModeCodeSent(true);
-      setModeMessage(message);
-    } catch (err) {
-      setModeMessage(err instanceof Error ? err.message : "Could not send a code");
-    }
-  }
-
-  async function saveMode() {
-    setSavingMode(true);
-    setModeMessage(null);
-    try {
-      const saved = await adminSetHubMode(pendingMode, modeCode.trim());
-      setMode(saved.mode);
-      setPendingMode(saved.mode);
-      setModeCode("");
-      setModeCodeSent(false);
-      setModeMessage(
-        saved.mode === "beta"
-          ? "Saved. Only people on the beta allowlist can sign in now; everyone else is offered the waitlist."
-          : "Saved. Anyone can sign in, and the beta banner is gone.",
-      );
-    } catch (err) {
-      setModeMessage(err instanceof Error ? err.message : "Failed to change the mode");
-    } finally {
-      setSavingMode(false);
-    }
   }
 
   async function requestPeopleCode() {
@@ -228,30 +168,6 @@ export default function LegacySettings() {
     }
   }
 
-  async function saveAllowlist() {
-    setSavingAllowlist(true);
-    setAllowlistMessage(null);
-    try {
-      const input = allowlistText
-        .split(/[,\n]/)
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-      const saved = await adminPatchSettings({ beta_allowlist: input });
-      setAllowlistText(saved.beta_allowlist.join(", "));
-      setAllowlistMessage(
-        saved.beta_allowlist.length === 0
-          ? "Cleared — no one can sign in during beta (except admins)."
-          : `Saved. ${saved.beta_allowlist.length} email(s) on the allowlist.`,
-      );
-    } catch (err) {
-      setAllowlistMessage(
-        err instanceof Error ? err.message : "Failed to save allowlist",
-      );
-    } finally {
-      setSavingAllowlist(false);
-    }
-  }
-
   async function saveIdentityMode() {
     setSavingIdentityMode(true);
     setIdentityModeMessage(null);
@@ -266,14 +182,6 @@ export default function LegacySettings() {
     } finally {
       setSavingIdentityMode(false);
     }
-  }
-
-  function copyWaitlistEmails() {
-    const emails = waitlist.map((w) => w.email).join(", ");
-    navigator.clipboard.writeText(emails).then(() => {
-      setCopiedWaitlist(true);
-      setTimeout(() => setCopiedWaitlist(false), 2000);
-    });
   }
 
   async function saveOfficials() {
@@ -332,111 +240,6 @@ export default function LegacySettings() {
   return (
     <div className="settings-legacy">
         {error && <p className="form-error">{error}</p>}
-
-        {/* --- Hub mode --- */}
-        <SettingsSection
-          id="mode"
-          title="Who can sign in"
-          defaultOpen={true}
-        >
-          <p className="form-hint">
-            This hub is currently <strong>{mode || "…"}</strong>.
-          </p>
-          {mode === "demo" ? (
-            <p className="form-hint">
-              A demo hub accepts any six digits instead of emailing a code, so
-              anyone can look around without an inbox — which is why nothing
-              here can put a hub back into demo once it leaves. Moving to beta
-              or live turns real email verification on for everyone.
-            </p>
-          ) : (
-            <p className="form-hint">
-              Beta limits sign-in to the allowlist below and offers everyone
-              else the waitlist. Live is open to anyone. Both send a real code
-              by email.
-            </p>
-          )}
-
-          <label className="form-label" htmlFor="hub-mode">
-            Mode
-          </label>
-          <select
-            id="hub-mode"
-            className="form-input"
-            value={pendingMode}
-            onChange={(e) => setPendingMode(e.target.value)}
-            disabled={!loaded || savingMode || modeCodeSent}
-            style={{ maxWidth: "320px" }}
-          >
-            {mode === "demo" && (
-              <option value="demo">Demo — any six digits, no email sent</option>
-            )}
-            <option value="beta">Beta — allowlist only, waitlist for everyone else</option>
-            <option value="live">Live — open to anyone</option>
-          </select>
-
-          {pendingMode !== mode && (
-            <p className="form-hint" style={{ marginTop: "var(--space-sm)" }}>
-              Changing who may sign in takes a code emailed to you now.
-              {mode === "demo" && (
-                <> This hub cannot be moved back to demo afterwards.</>
-              )}
-            </p>
-          )}
-
-          <div className="admin-settings-actions">
-            {pendingMode !== mode && !modeCodeSent && (
-              <button
-                type="button"
-                className="admin-convert-button"
-                onClick={requestModeCode}
-                disabled={savingMode}
-              >
-                Email me a code
-              </button>
-            )}
-            {modeCodeSent && (
-              <>
-                <input
-                  className="form-input"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  value={modeCode}
-                  onChange={(e) => setModeCode(e.target.value)}
-                  placeholder="6-digit code"
-                  aria-label="Confirmation code"
-                  disabled={savingMode}
-                  style={{ maxWidth: "160px" }}
-                />
-                <button
-                  type="button"
-                  className="admin-convert-button"
-                  onClick={saveMode}
-                  disabled={savingMode || modeCode.trim().length === 0}
-                >
-                  {savingMode ? "Saving…" : `Switch to ${pendingMode}`}
-                </button>
-                <button
-                  type="button"
-                  className="admin-remove-section"
-                  onClick={() => {
-                    setModeCodeSent(false);
-                    setModeCode("");
-                    setPendingMode(mode);
-                    setModeMessage(null);
-                  }}
-                  disabled={savingMode}
-                >
-                  Cancel
-                </button>
-              </>
-            )}
-            {modeMessage && (
-              <span className="admin-settings-message">{modeMessage}</span>
-            )}
-          </div>
-        </SettingsSection>
 
         {/* --- Admins & board --- */}
         <SettingsSection
@@ -791,100 +594,6 @@ export default function LegacySettings() {
           </div>
         </SettingsSection>
 
-        {/* --- Beta allowlist --- */}
-        <SettingsSection
-          id="allowlist"
-          title="Beta allowlist"
-          defaultOpen={false}
-        >
-          <label className="form-label" htmlFor="beta-allowlist">
-            Allowed emails
-          </label>
-          <p className="form-hint">
-            Comma- or newline-separated list of emails allowed to sign in
-            during beta. Admin emails are always allowed regardless of this
-            list. Only takes effect when CIVIC_BETA_MODE is enabled.
-          </p>
-          <textarea
-            id="beta-allowlist"
-            className="form-textarea"
-            rows={3}
-            value={allowlistText}
-            onChange={(e) => setAllowlistText(e.target.value)}
-            disabled={!loaded || savingAllowlist}
-            placeholder="friend@example.com, tester@example.com"
-          />
-          <div className="admin-settings-actions">
-            <button
-              type="button"
-              className="admin-convert-button"
-              onClick={saveAllowlist}
-              disabled={!loaded || savingAllowlist}
-            >
-              {savingAllowlist ? "Saving…" : "Save allowlist"}
-            </button>
-            {allowlistMessage && (
-              <span className="admin-settings-message">{allowlistMessage}</span>
-            )}
-          </div>
-        </SettingsSection>
-
-        {/* --- Waitlist --- */}
-        <SettingsSection
-          id="waitlist"
-          title="Waitlist"
-          defaultOpen={false}
-        >
-          <p className="form-hint">
-            People who signed up for access on the beta landing page.
-          </p>
-
-          {waitlist.length === 0 ? (
-            <p className="empty-state-inline" style={{ margin: "var(--space-sm) 0" }}>
-              No one on the waitlist yet.
-            </p>
-          ) : (
-            <>
-              <p className="form-hint" style={{ margin: "0 0 var(--space-sm)" }}>
-                {waitlist.length} {waitlist.length === 1 ? "person" : "people"} on the waitlist.
-              </p>
-              <div className="admin-waitlist-table-wrap">
-                <table className="admin-waitlist-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Signed up</th>
-                      <th>Test user</th>
-                      <th>Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {waitlist.map((w) => (
-                      <tr key={w.email}>
-                        <td>{w.name ?? "—"}</td>
-                        <td>{w.email}</td>
-                        <td>{new Date(w.created_at).toLocaleDateString()}</td>
-                        <td>{w.wants_test_user ? "Yes" : "—"}</td>
-                        <td>{w.notes ?? "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="admin-settings-actions" style={{ marginTop: "var(--space-sm)" }}>
-                <button
-                  type="button"
-                  className="admin-convert-button"
-                  onClick={copyWaitlistEmails}
-                  disabled={waitlist.length === 0}
-                >
-                  {copiedWaitlist ? "Copied!" : "Copy all emails"}
-                </button>
-              </div>
-            </>
-          )}
-        </SettingsSection>
     </div>
   );
 }

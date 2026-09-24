@@ -17,6 +17,8 @@ interface HubSettingsState {
     section: string,
     values: Record<string, string | boolean | number>,
   ) => Promise<HubSettings>;
+  /** Fetch again — after a change made through another endpoint (mode). */
+  reload: () => Promise<void>;
   /** Sections with edits that have not been saved. */
   dirty: ReadonlySet<string>;
   setDirty: (section: string, isDirty: boolean) => void;
@@ -44,6 +46,10 @@ export function HubSettingsProvider({ children }: { children: React.ReactNode })
     [],
   );
 
+  const reload = useCallback(async () => {
+    setData(await adminGetHubSettings());
+  }, []);
+
   const setDirty = useCallback((section: string, isDirty: boolean) => {
     setDirtySet((cur) => {
       if (cur.has(section) === isDirty) return cur;
@@ -55,7 +61,7 @@ export function HubSettingsProvider({ children }: { children: React.ReactNode })
   }, []);
 
   return (
-    <Ctx.Provider value={{ data, error, save, dirty, setDirty }}>{children}</Ctx.Provider>
+    <Ctx.Provider value={{ data, error, save, reload, dirty, setDirty }}>{children}</Ctx.Provider>
   );
 }
 
