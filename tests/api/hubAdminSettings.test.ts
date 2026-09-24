@@ -164,6 +164,21 @@ describe("one hub's admin cannot reach another hub's settings", () => {
   });
 });
 
+describe("the officials roster stays with the hub its accounts belong to", () => {
+  // `users` has no hub_id until Phase 2, so the roster is one set of rows for
+  // every hub. Another hub's admin must neither see it nor be able to save
+  // over it — saving demotes everyone absent from the list.
+  it("is hidden from, and refused to, another hub's admin", async () => {
+    const read = await call("GET", "/admin/settings", ATHENS, undefined, admin);
+    expect(read.status).toBe(200);
+    expect(read.body.officials_available).toBe(false);
+    expect(read.body.officials).toEqual([]);
+
+    const write = await call("PATCH", "/admin/settings", ATHENS, { officials: [] }, admin);
+    expect(write.status).toBe(409);
+  });
+});
+
 describe("unknown keys", () => {
   it("are refused by name, and nothing in the write is stored", async () => {
     const res = await put("identity", {

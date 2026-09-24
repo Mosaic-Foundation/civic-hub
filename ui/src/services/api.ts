@@ -1653,6 +1653,8 @@ export interface AdminSettings {
 
   brief_recipient_emails: string[];
   officials: Official[];
+  /** False on a hub whose accounts are not yet its own (until Phase 2). */
+  officials_available: boolean;
   /** @deprecated superseded by `officials`; returned read-only. */
   announcement_authors: AnnouncementAuthor[];
   beta_allowlist: string[];
