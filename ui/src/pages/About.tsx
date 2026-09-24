@@ -1,9 +1,31 @@
+// What this hub is — served, not compiled in.
+//
+// This was 134 lines of hardcoded prose that named one county four times,
+// while `copy.about` existed as a settings key with an override path and no
+// default. So a hub that authored an About page had it stored and never
+// rendered: Athens wrote one in the seed and the app went on showing Floyd's.
+//
+// The prose itself turned out not to be Floyd's at all. It describes what a
+// Civic Hub IS — the process, what it is not, how results are used — which is
+// the same everywhere, with a name and a place dropped in. So it became a
+// shared template like the legal documents (config/legal/about.md), and the
+// four literals became substitutions. A hub that wants to say something
+// different overrides it, which is what Athens does.
+//
+// The welcome-reset control stays in the page: it is a button, not prose.
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import hub from "../config/hub";
 import { clearIntroSeen } from "../components/IntroPopup";
+import { useHubDocument } from "../hooks/useHubDocument";
+import "../components/LegalPage.css";
 
 export default function About() {
   const [introCleared, setIntroCleared] = useState(false);
+  const doc = useHubDocument("copy.about");
 
   function handleShowWelcomeAgain() {
     clearIntroSeen();
@@ -14,121 +36,36 @@ export default function About() {
     <div className="page about-page">
       <Link to="/" className="back-link">&larr; Home</Link>
 
-      <h1>About the Floyd County Civic Hub</h1>
+      <div className="legal-prose">
+        {doc.status === "ready" ? (
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {doc.markdown}
+          </ReactMarkdown>
+        ) : doc.status === "loading" ? (
+          <p className="legal-page-status">Loading…</p>
+        ) : (
+          <>
+            <h1>About {hub.name}</h1>
+            <p className="legal-page-status">
+              This hub has not published an About page yet.
+            </p>
+          </>
+        )}
+      </div>
 
-      <section className="about-section">
-        <h2>What is the Floyd County Civic Hub?</h2>
-        <p>
-          The Floyd County Civic Hub is a pilot program aimed at improving how
-          our community understands and expresses public sentiment on local issues.
-        </p>
-        <p>
-          Between elections, there is often no clear way to understand what
-          residents actually think about specific topics. This platform is
-          designed to provide a simple, structured way to make that visible.
-        </p>
-      </section>
-
-      <section className="about-section">
-        <h2>What does this platform do?</h2>
-        <p>The Civic Hub provides a process for:</p>
-        <ul>
-          <li>Proposing issues</li>
-          <li>Gathering initial support</li>
-          <li>Holding time-bound votes</li>
-          <li>Sharing results publicly</li>
-        </ul>
-        <p>
-          Each issue includes clear context and tradeoffs to support informed
-          participation.
-        </p>
-      </section>
-
-      <section className="about-section">
-        <h2>What this platform is NOT</h2>
-        <p>This platform is not:</p>
-        <ul>
-          <li>A political campaign or advocacy effort</li>
-          <li>A discussion forum or social network</li>
-          <li>A replacement for official elections or governance</li>
-        </ul>
-        <p>It does not make decisions or set policy.</p>
-      </section>
-
-      <section className="about-section">
-        <h2>How are results used?</h2>
-        <p>Results from votes are:</p>
-        <ul>
-          <li>Publicly visible</li>
-          <li>Shared with relevant local officials</li>
-          <li>Intended as an advisory signal only</li>
-        </ul>
-      </section>
-
-      <section className="about-section">
-        <h2>Neutrality and nonpartisanship</h2>
-        <p>This platform is strictly nonpartisan.</p>
-        <p>
-          Issues are presented with an effort toward neutral framing, including:
-        </p>
-        <ul>
-          <li>A clear question</li>
-          <li>Brief context</li>
-          <li>Multiple perspectives where appropriate</li>
-        </ul>
-      </section>
-
-      <section className="about-section">
-        <h2>Participation and integrity</h2>
-        <p>
-          To maintain basic integrity while keeping participation accessible:
-        </p>
-        <ul>
-          <li>Voting is limited to one vote per verified account</li>
-          <li>
-            Participants must confirm whether they are Floyd County residents
-            before participating
-          </li>
-          <li>
-            Individual votes are not publicly associated with identities.
-            Only aggregated results are displayed.
-          </li>
-        </ul>
-      </section>
-
-      <section className="about-section">
-        <h2>What comes next</h2>
-        <p>This is an early pilot program.</p>
-        <p>Future iterations may include:</p>
-        <ul>
-          <li>Additional civic processes</li>
-          <li>Improved identity verification options</li>
-          <li>Expanded ways to interpret results</li>
-        </ul>
-      </section>
-
-      <section className="about-section about-contact">
-        <h2>Contact</h2>
-        <p>
-          For questions or feedback:{" "}
-          <a href="mailto:contact@civic.social">contact@civic.social</a>
-        </p>
-        <p className="about-welcome-reset">
-          {introCleared ? (
-            <span>
-              Welcome will reappear next time you visit the home page.
-            </span>
-          ) : (
-            <button
-              type="button"
-              className="about-welcome-reset-button"
-              onClick={handleShowWelcomeAgain}
-            >
-              Show me the welcome again
-            </button>
-          )}
-        </p>
-      </section>
+      <p className="about-welcome-reset">
+        {introCleared ? (
+          <span>Welcome will reappear next time you visit the home page.</span>
+        ) : (
+          <button
+            type="button"
+            className="about-welcome-reset-button"
+            onClick={handleShowWelcomeAgain}
+          >
+            Show me the welcome again
+          </button>
+        )}
+      </p>
     </div>
   );
 }

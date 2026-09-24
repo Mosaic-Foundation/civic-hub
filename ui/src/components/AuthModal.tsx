@@ -490,7 +490,7 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
                 />
                 <p className="auth-hint">
                   Please use your real name. It appears next to proposals,
-                  votes, and comments you create on the Floyd Civic Hub.
+                  votes, and comments you create on {hub.name}.
                 </p>
               </div>
             )}

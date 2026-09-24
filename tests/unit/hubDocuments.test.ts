@@ -168,6 +168,7 @@ describe("no shared template names a hub, a person or a domain", () => {
     "config/legal/privacy.md",
     "config/legal/code-of-conduct.md",
     "config/legal/proposal-best-practices.md",
+    "config/legal/about.md",
     // The "who runs this site" block is a fragment, not a page, but it is
     // shared text that names people and places and so is held to the same
     // rule as the documents it is substituted into.
@@ -348,5 +349,45 @@ describe("who runs this site is the hub's own paragraph", () => {
       "operated by {OPERATOR}",
     );
     expect(values.WHO_RUNS_THIS).toBe("operated by {CONTACT_EMAIL}");
+  });
+});
+
+describe("no page in ui/src names a place", () => {
+  // The rule from SESSION-START.md: no string in src/ or ui/src/ may name a
+  // place. It was true of the legal documents from the first day of this
+  // phase and quietly untrue of everything else — Utopia opened with "Stay
+  // informed on Floyd County government" under a photograph of Floyd, and
+  // its About page described a pilot program in a county it has never heard
+  // of. Comments are exempt: this file is full of the word Floyd explaining
+  // why none of the rendered strings are.
+  const UI = resolve(root, "ui/src");
+
+  function sourceFiles(dir: string): string[] {
+    const { readdirSync, statSync } = require("node:fs") as typeof import("node:fs");
+    const out: string[] = [];
+    for (const name of readdirSync(dir)) {
+      const full = resolve(dir, name);
+      if (statSync(full).isDirectory()) out.push(...sourceFiles(full));
+      else if (/\.(ts|tsx)$/.test(name)) out.push(full);
+    }
+    return out;
+  }
+
+  /** Strip // lines, /* *\/ blocks and {/* *\/} JSX comments. */
+  function withoutComments(text: string): string {
+    return text
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+  }
+
+  it("has no rendered string naming one hub's county", () => {
+    const offenders: string[] = [];
+    for (const file of sourceFiles(UI)) {
+      const code = withoutComments(readFileSync(file, "utf-8"));
+      if (/Floyd/i.test(code)) {
+        offenders.push(file.slice(UI.length + 1));
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });

@@ -53,7 +53,7 @@ const DURATION_OPTIONS = [
 ];
 
 const PLACEHOLDERS = {
-  title: "e.g., How should Floyd County balance growth and rural character?",
+  title: "e.g., How should we balance growth and rural character?",
   description:
     "Set the table for participants — what's the situation, why now, and what range of views exist?",
   sources:

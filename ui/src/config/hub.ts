@@ -77,6 +77,19 @@ const hub = {
     );
   },
 
+  /**
+   * The place on its own — "Floyd County" out of "Floyd County, Virginia".
+   *
+   * The same derivation the server does for `{PLACE}` in the shared
+   * documents, so prose that names the place reads the same on both sides.
+   * A hub with no jurisdiction gets "where you live", which is the phrasing
+   * that survives having no place at all.
+   */
+  get place(): string {
+    const [first] = (this.jurisdiction ?? "").split(",");
+    return first?.trim() || "where you live";
+  },
+
   /** Type label — small caps under the jurisdiction on the banner. */
   get label(): string {
     return (

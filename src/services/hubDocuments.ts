@@ -32,6 +32,12 @@ const TEMPLATES: Readonly<Record<string, string>> = {
   [KEYS.LEGAL_PRIVACY]: "privacy.md",
   [KEYS.LEGAL_CODE_OF_CONDUCT]: "code-of-conduct.md",
   [KEYS.LEGAL_PROPOSAL_BEST_PRACTICES]: "proposal-best-practices.md",
+  // `copy.about` joined the templated documents on 2026-09-23. It had an
+  // override path and no default, so a hub that authored one had it stored
+  // and never rendered — Athens wrote an About page in the seed and the app
+  // went on showing Floyd's, because About was a React page of hardcoded
+  // prose rather than a document at all.
+  [KEYS.COPY_ABOUT]: "about.md",
 };
 
 /**
@@ -194,14 +200,13 @@ export async function hubDocuments(hub: Hub): Promise<HubDocuments> {
     }
   }
 
-  // copy.about and copy.welcome have no shared template — a hub either writes
-  // one or has none. There is no generic version of "why I built this and who
-  // I am", and a hub that has not written one should show nothing rather than
-  // somebody else's introduction.
-  for (const key of [KEYS.COPY_ABOUT, KEYS.COPY_WELCOME]) {
-    const authored = overrides[key];
-    if (authored) out[key] = applySubstitutions(authored, values);
-  }
+  // copy.welcome has no shared template — a hub either writes one or has
+  // none. There is no generic version of "why I built this and who I am", and
+  // a hub that has not written one should show nothing rather than somebody
+  // else's introduction. (copy.about is different: what a Civic Hub IS is the
+  // same everywhere, so it has a template like the legal documents do.)
+  const welcome = overrides[KEYS.COPY_WELCOME];
+  if (welcome) out[KEYS.COPY_WELCOME] = applySubstitutions(welcome, values);
 
   return out;
 }

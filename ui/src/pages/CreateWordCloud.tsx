@@ -80,7 +80,7 @@ export default function CreateWordCloud() {
             value={title}
             onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX))}
             maxLength={TITLE_MAX}
-            placeholder="e.g. What do you love about Floyd County?"
+            placeholder="e.g. What do you love about where you live?"
             disabled={submitting}
           />
           <span className="form-counter">

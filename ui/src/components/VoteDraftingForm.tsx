@@ -52,7 +52,7 @@ const METHOD_OPTIONS = [
 ];
 
 const PLACEHOLDERS = {
-  title: "e.g., Should Floyd County add sidewalks on Main Street between First and Third?",
+  title: "e.g., Should we add sidewalks on Main Street between First and Third?",
   description:
     "Give voters the context they need — what's the current situation, who's affected, and why this matters.",
   sources: "Links to relevant information, one per line (optional)",
@@ -244,7 +244,7 @@ export default function VoteDraftingForm({
             defaultValue={draft.title}
             onChange={handleChange("title")}
             placeholder={draft.method === "approval"
-              ? "e.g., Which improvements should Floyd County prioritize for Main Street?"
+              ? "e.g., Which improvements should we prioritize for Main Street?"
               : PLACEHOLDERS.title}
             maxLength={200}
             disabled={disabled}

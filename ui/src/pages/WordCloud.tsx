@@ -573,8 +573,8 @@ export default function WordCloud() {
         <div className="wordcloud-onboarding-banner">
           <h2>One quick thing before you dive in</h2>
           <p>
-            This is optional — tell us in a few words what you love about
-            Floyd, or skip straight to the feed.
+            This is optional — tell us in a few words what you love about{" "}
+            {hub.place}, or skip straight to the feed.
           </p>
         </div>
       )}

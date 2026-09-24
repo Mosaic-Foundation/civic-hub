@@ -894,7 +894,7 @@ export default function AdminSettings() {
               type="text"
               value={extraRecipientsText}
               onChange={(e) => setExtraRecipientsText(e.target.value)}
-              placeholder="clerk@floyd.gov, board@floyd.gov"
+              placeholder="clerk@example.gov, board@example.gov"
               disabled={!loaded || savingOfficials}
             />
           </div>
