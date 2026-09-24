@@ -68,11 +68,42 @@ describe("settings are scoped by hub", () => {
   });
 
   it("does not leak one hub's About text to the other", async () => {
+    // Both hubs have an About page now. Until 2026-09-23 `copy.about` had an
+    // override path and no shared template, so Athens's authored page was
+    // stored and never rendered while the app showed Floyd's hardcoded one to
+    // everybody. The assertion that Floyd had none was describing that bug.
     const floyd = await get("/hub-config/documents", FLOYD);
     const athens = await get("/hub-config/documents", ATHENS);
+
+    // Athens authored its own, so it gets its own.
     expect(athens.body.documents["copy.about"]).toContain("demonstration");
-    // Floyd has authored none, so it must have none — not Athens's.
-    expect(floyd.body.documents["copy.about"]).toBeUndefined();
+
+    // Floyd gets the shared template under its own name, not Athens's page.
+    const floydAbout = floyd.body.documents["copy.about"] as string;
+    expect(floydAbout).toBeDefined();
+    expect(floydAbout).not.toContain("demonstration");
+    expect(floydAbout).not.toContain("Athens");
+    expect(floydAbout).toContain("pilot program");
+
+    // And neither is the other.
+    expect(floydAbout).not.toBe(athens.body.documents["copy.about"]);
+  });
+
+  it("calls a hub by the name it chose, not the one in the registry", async () => {
+    // `identity.name` is the DISPLAY name and `hubs.name` is the REGISTRY
+    // name. They were the same thing until an admin needed to be "Floyd
+    // County Civic Hub" rather than "Floyd Civic Hub", so as not to be
+    // mistaken for the Town of Floyd — a distinction only that hub knows it
+    // needs. The settings key had existed since Phase 1 part one and nothing
+    // read it, so the name was not editable at all.
+    const config = await get("/hub-config", FLOYD);
+    const chosen = config.body.settings["identity.name"];
+    if (!chosen) return; // no row seeded in this environment
+
+    const { body } = await get("/hub-config/documents", FLOYD);
+    for (const key of ["copy.about", "legal.terms", "legal.privacy"]) {
+      expect(body.documents[key], key).toContain(chosen);
+    }
   });
 });
 

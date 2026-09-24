@@ -53,11 +53,23 @@ function hubDisplayName(): string {
 const hub = {
   /**
    * Display name / wordmark — top-nav, footer, intro popup, settings,
-   * search header. Not the geographic jurisdiction. The hubs row is the
-   * source of truth for this one.
+   * search header, and {HUB_NAME} in every document. Not the geographic
+   * jurisdiction.
+   *
+   * TWO SOURCES, AND THE SETTING WINS (2026-09-23). `hubs.name` is the
+   * REGISTRY name: what the control plane calls this tenant, stable, and
+   * not something a hub admin should be able to edit — renaming your own
+   * row in a shared registry is a control-plane act. `identity.name` is the
+   * DISPLAY name, which is the hub's own business.
+   *
+   * They were the same thing until an admin wanted to be "Floyd County
+   * Civic Hub" rather than "Floyd Civic Hub", so as not to be mistaken for
+   * the Town of Floyd — a distinction only that hub knows it needs. The
+   * settings key had existed since Phase 1 part one and nothing read it.
    */
   get name(): string {
     return (
+      setting("identity.name") ??
       getLoadedHubConfig()?.hub.name ??
       env(import.meta.env.VITE_HUB_NAME) ??
       "Civic Hub"

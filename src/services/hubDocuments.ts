@@ -116,7 +116,11 @@ export function substitutions(hub: Hub): Record<string, string> {
   const state = rest.join(",").trim();
 
   const out: Record<string, string> = {};
-  if (hub.name) out.HUB_NAME = hub.name;
+  // The DISPLAY name where a hub has chosen one, the registry name otherwise.
+  // Must match ui/src/config/hub.ts's `name` getter, or a document and the
+  // page around it would call the same hub two different things.
+  const displayName = getSettingSync(KEYS.IDENTITY_NAME)?.trim() || hub.name;
+  if (displayName) out.HUB_NAME = displayName;
   if (hub.hostname) out.HOSTNAME = hub.hostname;
   if (jurisdiction) out.JURISDICTION = jurisdiction;
   if (place?.trim()) out.PLACE = place.trim();

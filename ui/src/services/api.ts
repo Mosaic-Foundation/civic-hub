@@ -1646,6 +1646,10 @@ export interface Official {
 }
 
 export interface AdminSettings {
+  /** Display name. Empty = using the registry name from the hubs row. */
+  name: string;
+  /** That registry name, so the form can offer it as a placeholder. */
+  readonly registry_name: string;
   /** The sentence under the hub name. Empty = the shared default. */
   tagline: string;
   /** The small caps line above it. Empty = the shared default. */

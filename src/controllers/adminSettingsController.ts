@@ -66,6 +66,12 @@ interface SettingsResponse {
    * admin panel: changing which hostname a hub answers on is a control-plane
    * act, not a settings edit.
    */
+  /**
+   * The hub's display name. Empty means it is using the registry name from
+   * the `hubs` row, which `registry_name` carries so the form can show it.
+   */
+  name: string;
+  registry_name: string;
   /** The sentence under the hub name on every page with a header. */
   tagline: string;
   /** The small caps line above it — "Civic Hub". */
@@ -101,6 +107,8 @@ interface SettingsResponse {
 async function loadSettings(): Promise<SettingsResponse> {
   const hubId = currentHubId();
   return {
+    name: (await getSetting(hubId, KEYS.IDENTITY_NAME)) ?? "",
+    registry_name: currentHub()?.name ?? "",
     tagline: (await getSetting(hubId, KEYS.IDENTITY_TAGLINE)) ?? "",
     label: (await getSetting(hubId, KEYS.IDENTITY_LABEL)) ?? "",
     operator_name: await getOperatorName(hubId),
@@ -138,6 +146,7 @@ export async function handlePatchSettings(
   try {
     const actor = getAuthUser(res).id;
     const body = (req.body ?? {}) as {
+      name?: unknown;
       tagline?: unknown;
       label?: unknown;
       operator_name?: unknown;
@@ -154,6 +163,7 @@ export async function handlePatchSettings(
     // Short identity strings. Empty is meaningful — it clears the row and
     // returns the hub to the shared default — so they are stored as written.
     for (const [field, key] of [
+      ["name", KEYS.IDENTITY_NAME],
       ["tagline", KEYS.IDENTITY_TAGLINE],
       ["label", KEYS.IDENTITY_LABEL],
     ] as const) {

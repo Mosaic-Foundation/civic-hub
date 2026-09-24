@@ -46,6 +46,8 @@ export default function AdminSettings() {
   const [officialsMessage, setOfficialsMessage] = useState<string | null>(null);
 
   // --- Hub identity (what the legal pages say about the operator) ---
+  const [hubName, setHubName] = useState("");
+  const [registryName, setRegistryName] = useState("");
   const [tagline, setTagline] = useState("");
   const [label, setLabel] = useState("");
   const [operatorName, setOperatorName] = useState("");
@@ -111,6 +113,8 @@ export default function AdminSettings() {
         setExtraRecipientsText(
           s.brief_recipient_emails.filter((e) => !officialEmails.has(e.toLowerCase())).join(", "),
         );
+        setHubName(s.name);
+        setRegistryName(s.registry_name);
         setTagline(s.tagline);
         setLabel(s.label);
         setOperatorName(s.operator_name);
@@ -167,12 +171,14 @@ export default function AdminSettings() {
     setIdentityMessage(null);
     try {
       const saved = await adminPatchSettings({
+        name: hubName.trim(),
         tagline: tagline.trim(),
         label: label.trim(),
         operator_name: operatorName.trim(),
         contact_email: contactEmail.trim(),
         who_runs_this: whoRunsThis.trim(),
       });
+      setHubName(saved.name);
       setTagline(saved.tagline);
       setLabel(saved.label);
       setOperatorName(saved.operator_name);
@@ -408,7 +414,31 @@ export default function AdminSettings() {
             three at once.
           </p>
 
-          <label className="form-label" htmlFor="hub-tagline">
+          <label className="form-label" htmlFor="hub-name">
+            Hub name
+          </label>
+          <p className="form-hint">
+            What this hub calls itself, everywhere its name appears — the top
+            of every page, the legal documents, the emails it sends. Leave it
+            empty to use <strong>{registryName}</strong>.
+          </p>
+          <input
+            id="hub-name"
+            className="form-input"
+            type="text"
+            value={hubName}
+            onChange={(e) => setHubName(e.target.value)}
+            placeholder={registryName}
+            disabled={!loaded || savingIdentity}
+            maxLength={80}
+            style={{ maxWidth: "420px" }}
+          />
+
+          <label
+            className="form-label"
+            htmlFor="hub-tagline"
+            style={{ marginTop: "var(--space-md)" }}
+          >
             Tagline
           </label>
           <p className="form-hint">
