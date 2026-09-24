@@ -165,8 +165,67 @@ for free and survives the cutover in place. That matters — a reset falls back
 to `created_at` and would mail every long-standing subscriber their entire
 history in one message.
 
+### Deployed, and what it took (added after the push)
+
+**`multi-tenant` was not the dev project's production branch**, so the push
+built a *Preview* and `athens-civic-hub-dev.vercel.app` went on serving a
+19-hour-old build. The session prompt's "civic-hub-dev redeploys itself" is
+only true for the production branch. Fixed at the source: **Settings →
+Environments → Production → Branch Tracking** is now `multi-tenant`, so a
+plain `git push` builds production from here on. Note the setting moved — it
+is no longer on the Git page, and there is no Domains page either (domains are
+under Networking now, though `vercel domains add` still works).
+
+`vercel deploy --prod` returns **Not authorized** on this project even though
+the CLI is authenticated and `vercel env add` succeeds. Not diagnosed; the Git
+path works and is the better route anyway.
+
+**Do not "Promote to Production" a preview here.** A promoted build carries
+the env vars it was BUILT with — the Preview scope — which had no
+`HUB_CRON_ENABLED` and would have come up with crons enabled and a working
+sender. `HUB_CRON_ENABLED=false` was added to the Preview scope as well before
+the deploy, so both scopes are safe now, but the Preview scope still carries
+stale `CIVIC_DEMO_BYPASS_CODE` and `SMTP_*` rows.
+
+**Verified against the live deployment**: commit `99e1500`; Athens's five
+documents carry no Floyd value; Floyd serves `copy.welcome` (which only exists
+on this branch); all four cron routes answer `disabled`. Production is
+untouched and provably so — `floyd.civic.social` reports commit `3283f48`
+(= `main`) and answers **404** on `/api/hub-config/documents`, an endpoint
+that only exists on this branch.
+
+### A third hub: Utopia, in live mode
+
+`utopia-civic-hub-dev.vercel.app`, `mode = live`, admin
+`adam+utopia@civic.social`. Created with the new `scripts/create-hub.ts` —
+the manual stand-in for the Phase 5 control plane, which writes the `hubs` row
+and the starter settings together because **a hub created without an admin
+roster cannot be fixed from the UI**: `requireAdmin` fails closed, every
+`/admin` route answers 503, and the only repair is a database write. It
+refuses the production project ref, refuses to replace an existing slug, and
+refuses to create a demo hub.
+
+NOT `utopia.civic.social`. The wildcard is Phase 5, and `civic.social`'s apex
+serves the marketing site on Firebase, so pointing a subdomain of it at the
+dev deployment is a DNS decision with production reach. One-line hostname
+change in the row when Phase 5 lands.
+
+**Utopia is the one hub on this deployment that can email a stranger.** The
+mail guard only suppresses when mode is not `live`, so anyone who signs in
+there gets a real code from `noreply@civic.social`. Correct behaviour — that
+is what live means — but it is the URL to be careful with, and it is worth
+remembering when reading the guard: `live` means unguarded, everywhere.
+
 ### Still open
 
+- **Utopia has no contact email** and no `legal.who_runs_this`. It is the
+  natural hub to try the new block on, since a town-run hub is exactly the
+  case the shared default gets wrong.
+- **`{LIKE_THIS}` still shows in the draft-warning banner** on Terms and
+  Privacy. Intentional — the banner is explaining what a placeholder looks
+  like — but it reads oddly now that everything around it is filled in.
+- A 22-hour-old **Error** production deployment at commit `5860ad8` sits in
+  the dev project's history, superseded and unexamined.
 - **`ui/src/config/hub.ts` still holds Floyd literals as fallbacks** — the
   hub name, jurisdiction, tagline, banner path and banner alt text. They apply
   only when the config fetch failed AND no `VITE_` variable is set, so no hub
