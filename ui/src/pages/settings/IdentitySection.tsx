@@ -1,5 +1,5 @@
 import SectionForm from "./SectionForm";
-import { ColorField, ImageField, TextAreaField, TextField } from "./fields";
+import { ImageField, TextAreaField, TextField } from "./fields";
 
 export default function IdentitySection() {
   return (
@@ -77,12 +77,6 @@ export default function IdentitySection() {
             addLabel="Upload a logo"
             hint="The icon in the browser tab and on a phone's home screen, and a mark beside the place name on the home page. Leave it empty for none."
             formatHint="A square PNG, at least 256 × 256 pixels. A transparent background works best."
-          />
-          <ColorField
-            f={f}
-            k="identity.theme"
-            label="Theme colour"
-            hint="The accent colour for buttons, links and the active tab. Pick something dark enough for white text to read on it."
           />
         </>
       )}

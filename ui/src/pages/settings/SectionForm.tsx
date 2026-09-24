@@ -39,6 +39,8 @@ interface Props {
   intro?: React.ReactNode;
   /** Said after a successful save. */
   savedMessage?: string;
+  /** After a successful save, with what the server stored. */
+  onSaved?: (fresh: HubSettings) => void;
   children: (f: FormApi) => React.ReactNode;
 }
 
@@ -47,6 +49,7 @@ export default function SectionForm({
   title,
   intro,
   savedMessage = "Saved. Visitors see it on their next page load.",
+  onSaved,
   children,
 }: Props) {
   const { data, error, save, setDirty } = useHubSettings();
@@ -129,6 +132,7 @@ export default function SectionForm({
       setInitial(next);
       setDraft(next);
       setMessage({ text: savedMessage, error: false });
+      onSaved?.(fresh);
     } catch (err) {
       setMessage({
         text: err instanceof Error ? err.message : "Could not save.",

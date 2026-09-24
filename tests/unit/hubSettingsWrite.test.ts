@@ -59,14 +59,14 @@ describe("validateSettingsWrite", () => {
   it("accepts a section's own keys and returns them normalised", () => {
     const r = validateSettingsWrite("identity", {
       "identity.name": "  Test Hub  ",
-      "identity.theme": "#1F5F8B",
+      "identity.tagline": " A line. ",
     });
     expect(r).toEqual({
       ok: true,
       section: "identity",
       entries: [
         { key: "identity.name", value: "Test Hub" },
-        { key: "identity.theme", value: "#1f5f8b" },
+        { key: "identity.tagline", value: "A line." },
       ],
     });
   });
@@ -143,11 +143,25 @@ describe("normalizeValue by kind", () => {
     expect(normalizeValue(spec("legal.contact_email"), "ops at example")).toHaveProperty("error");
   });
 
-  it("colours are #rrggbb only", () => {
-    expect(normalizeValue(spec("identity.theme"), "#ABCDEF")).toBe("#abcdef");
-    for (const bad of ["red", "#abc", "abcdef", "#abcdeg"]) {
-      expect(normalizeValue(spec("identity.theme"), bad), bad).toHaveProperty("error");
+  it("the theme is stored as canonical JSON, and a bare hex still reads as primary", () => {
+    const k = spec("identity.theme");
+    expect(normalizeValue(k, { types: { vote: "#8B1E3F" }, preset: "forest" })).toBe(
+      '{"preset":"forest","types":{"vote":"#8b1e3f"}}',
+    );
+    expect(normalizeValue(k, "#ABCDEF")).toBe('{"primary":"#abcdef"}');
+    expect(normalizeValue(k, "")).toBe("");
+    for (const bad of ["red", "#abc", { primary: "red" }, { preset: "neon" }]) {
+      expect(normalizeValue(k, bad), JSON.stringify(bad)).toHaveProperty("error");
     }
+  });
+
+  it("the theme has its own section", () => {
+    expect(validateSettingsWrite("identity", { "identity.theme": "" }).ok).toBe(false);
+    expect(validateSettingsWrite("theme", { "identity.theme": { preset: "brick" } })).toEqual({
+      ok: true,
+      section: "theme",
+      entries: [{ key: "identity.theme", value: '{"preset":"brick"}' }],
+    });
   });
 
   it("images are an http(s) URL or a root-relative path, nothing else", () => {

@@ -216,9 +216,13 @@ describe("every section round-trips: save, reload, values match", () => {
         "identity.banner_url": "https://images.example.test/hubs/athens/banner.webp",
         "identity.banner_alt": "A test banner",
         "identity.logo_url": "https://images.example.test/hubs/athens/logo.webp",
-        "identity.theme": "#2A6F4E",
       },
-      { "identity.theme": "#2a6f4e" },
+      {},
+    ],
+    [
+      "theme",
+      { "identity.theme": { preset: "harbor-teal", types: { conversation: "#2A6F4E" } } },
+      { "identity.theme": '{"preset":"harbor-teal","types":{"conversation":"#2a6f4e"}}' },
     ],
     [
       "copy",
@@ -294,7 +298,9 @@ describe("every section round-trips: save, reload, values match", () => {
     expect(config.body.settings["identity.logo_url"]).toBe(
       "https://images.example.test/hubs/athens/logo.webp",
     );
-    expect(config.body.settings["identity.theme"]).toBe("#2a6f4e");
+    expect(config.body.settings["identity.theme"]).toBe(
+      '{"preset":"harbor-teal","types":{"conversation":"#2a6f4e"}}',
+    );
     // Admin-only keys stay admin-only.
     expect(config.body.settings["plugin.digest.send_hour"]).toBeUndefined();
     expect(config.body.settings["email.postal_address"]).toBeUndefined();

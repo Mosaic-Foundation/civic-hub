@@ -14,6 +14,7 @@ import {
   useHubSettings,
 } from "./settings/HubSettingsContext";
 import IdentitySection from "./settings/IdentitySection";
+import ThemeSection from "./settings/ThemeSection";
 import CopySection from "./settings/CopySection";
 import LegalSection from "./settings/LegalSection";
 import EmailSection from "./settings/EmailSection";
@@ -33,6 +34,7 @@ interface SectionEntry {
 
 const SECTIONS: readonly SectionEntry[] = [
   { id: "identity", label: "Identity", render: () => <IdentitySection /> },
+  { id: "theme", label: "Theme", render: () => <ThemeSection /> },
   { id: "copy", label: "Copy & pages", render: () => <CopySection /> },
   { id: "legal", label: "Legal", render: () => <LegalSection /> },
   { id: "email", label: "Email", render: () => <EmailSection /> },

@@ -232,49 +232,6 @@ export function ImageField({
   );
 }
 
-const DEFAULT_SWATCH = "#1f5f8b";
-
-export function ColorField({ f, k, label, hint }: Common) {
-  const id = useId();
-  const value = f.value(k);
-  return (
-    <div className="settings-field">
-      <Label id={id} label={label} hint={hint} />
-      <div className="settings-color">
-        <input
-          id={id}
-          type="color"
-          className="settings-color-swatch"
-          value={value || DEFAULT_SWATCH}
-          onChange={(e) => f.set(k, e.target.value)}
-          disabled={f.disabled}
-          aria-label={`${label} picker`}
-        />
-        <input
-          className="form-input settings-color-text"
-          type="text"
-          value={value}
-          onChange={(e) => f.set(k, e.target.value.trim())}
-          placeholder="Default colours"
-          aria-label={`${label} hex value`}
-          maxLength={7}
-          disabled={f.disabled}
-        />
-        {value && (
-          <button
-            type="button"
-            className="admin-remove-section"
-            onClick={() => f.set(k, "")}
-            disabled={f.disabled}
-          >
-            Use default colours
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function BooleanField({ f, k, label, hint }: Common) {
   const id = useId();
   return (

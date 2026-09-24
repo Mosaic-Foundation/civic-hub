@@ -37,7 +37,9 @@ export type SettingFieldKind =
   /** An hour of the day, 0–23, UTC. */
   | "hour"
   /** #rrggbb. */
-  | "color";
+  | "color"
+  /** A theme object (src/shared/theme.ts), stored as canonical JSON. */
+  | "theme";
 
 export interface SettingFieldSpec {
   key: string;
@@ -46,7 +48,7 @@ export interface SettingFieldSpec {
   maxLength?: number;
 }
 
-export const SETTINGS_SECTION_IDS = ["identity", "copy", "legal", "email"] as const;
+export const SETTINGS_SECTION_IDS = ["identity", "copy", "legal", "email", "theme"] as const;
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
 
 export const SETTINGS_SECTIONS: Readonly<
@@ -61,7 +63,6 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "identity.banner_url", kind: "image" },
     { key: "identity.banner_alt", kind: "text", maxLength: 200 },
     { key: "identity.logo_url", kind: "image" },
-    { key: "identity.theme", kind: "color" },
   ],
   copy: [
     // Both render as plain text (the welcome popup, the sign-up gate).
@@ -89,6 +90,8 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "plugin.digest.send_hour", kind: "hour" },
     { key: "plugin.admin_digest.enabled", kind: "boolean" },
   ],
+  // Its own section since 2026-09-24: a theme is a palette, not one colour.
+  theme: [{ key: "identity.theme", kind: "theme" }],
 };
 
 /** A document is a page; 100 KB is several times the longest one today. */

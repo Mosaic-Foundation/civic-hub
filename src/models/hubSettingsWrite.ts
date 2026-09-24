@@ -16,6 +16,7 @@ import {
   type SettingFieldSpec,
   type SettingsSectionId,
 } from "../shared/hubSettingsSections.js";
+import { validateThemeValue } from "../shared/theme.js";
 
 export type SettingsWriteResult =
   | {
@@ -121,6 +122,12 @@ export function normalizeValue(
         return { error: `${key} must be a whole hour from 0 to 23.` };
       }
       return String(n);
+    }
+
+    case "theme": {
+      // An object or its JSON; stored canonical, "" for the default palette.
+      const result = validateThemeValue(raw);
+      return "error" in result ? { error: result.error } : result.value;
     }
 
     default:
