@@ -9,7 +9,7 @@
 
 By using the {HUB_NAME} ("the Hub") at {HOSTNAME}, you agree to these Terms of Service ("Terms"). If you don't agree, please don't use the Hub.
 
-The Hub is operated by {OPERATOR} ("we," "us," "our"). We're an independent civic participation platform — **we are not affiliated with or operated by the {PLACE} government or the {GOVERNING_BODY}**, even though we exist to serve {PLACE} civic life.
+{WHO_RUNS_THIS}
 
 ## Who can use the Hub
 

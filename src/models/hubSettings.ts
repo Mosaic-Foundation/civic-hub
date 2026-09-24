@@ -48,6 +48,19 @@ export const KEYS = {
   LEGAL_OPERATOR_NAME: "legal.operator_name",
   LEGAL_CONTACT_EMAIL: "legal.contact_email",
 
+  // The whole "who runs this site" paragraph, not just the name in it.
+  //
+  // Added 2026-09-23 (Adam). Substituting an operator's name into a fixed
+  // sentence is not enough, because the sentence itself is only true of some
+  // operators: the shared default says "we are not affiliated with or
+  // operated by the {PLACE} government", which is exactly backwards for a hub
+  // a town council runs itself. Who runs a hub, and what their relationship
+  // to local government is, is a statement only that hub can make.
+  //
+  // A hub that sets nothing gets the default in config/legal/who-runs-this.md
+  // with its own names substituted, so this changes nothing until it is used.
+  LEGAL_WHO_RUNS_THIS: "legal.who_runs_this",
+
   PEOPLE_ADMIN_EMAILS: "people.admin_emails",
   PEOPLE_BOARD_EMAILS: "people.board_emails",
   PEOPLE_BRIEF_RECIPIENTS: "people.brief_recipients",
@@ -221,6 +234,7 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   // footer, the "who do I complain to" line.
   KEYS.LEGAL_OPERATOR_NAME,
   KEYS.LEGAL_CONTACT_EMAIL,
+  KEYS.LEGAL_WHO_RUNS_THIS,
 
   KEYS.BETA_WAITLIST_ENABLED,
 

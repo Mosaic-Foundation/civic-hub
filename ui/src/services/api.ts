@@ -1652,6 +1652,10 @@ export interface AdminSettings {
   contact_email: string;
   /** From the hubs row; shown so the admin can see what the documents say. */
   readonly hostname: string;
+  /** The "who runs this site" paragraph. Empty = using the shared default. */
+  who_runs_this: string;
+  /** That default, so the form can offer it as a placeholder. */
+  readonly who_runs_this_default: string;
 
   brief_recipient_emails: string[];
   officials: Official[];

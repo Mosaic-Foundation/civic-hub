@@ -47,6 +47,8 @@ export default function AdminSettings() {
   const [operatorName, setOperatorName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [hostname, setHostname] = useState("");
+  const [whoRunsThis, setWhoRunsThis] = useState("");
+  const [whoRunsThisDefault, setWhoRunsThisDefault] = useState("");
   const [savingIdentity, setSavingIdentity] = useState(false);
   const [identityMessage, setIdentityMessage] = useState<string | null>(null);
 
@@ -96,6 +98,8 @@ export default function AdminSettings() {
         setOperatorName(s.operator_name);
         setContactEmail(s.contact_email);
         setHostname(s.hostname);
+        setWhoRunsThis(s.who_runs_this);
+        setWhoRunsThisDefault(s.who_runs_this_default);
         setThreshold(s.support_threshold);
         setAllowlistText(s.beta_allowlist.join(", "));
         setWaitlist(s.waitlist);
@@ -145,9 +149,11 @@ export default function AdminSettings() {
       const saved = await adminPatchSettings({
         operator_name: operatorName.trim(),
         contact_email: contactEmail.trim(),
+        who_runs_this: whoRunsThis.trim(),
       });
       setOperatorName(saved.operator_name);
       setContactEmail(saved.contact_email);
+      setWhoRunsThis(saved.who_runs_this);
       setIdentityMessage(
         "Saved. The Terms, Privacy Policy and Code of Conduct use these now.",
       );
@@ -383,6 +389,39 @@ export default function AdminSettings() {
             disabled={!loaded || savingIdentity}
             style={{ maxWidth: "420px" }}
           />
+
+          <label
+            className="form-label"
+            htmlFor="who-runs-this"
+            style={{ marginTop: "var(--space-md)" }}
+          >
+            "Who runs this site"
+          </label>
+          <p className="form-hint">
+            The paragraph that opens the Privacy Policy and the Terms. Leave it
+            empty to use the shared default shown below, which fills in your
+            hub's own names. Write your own if the default is not true of you —
+            in particular, it says the Hub is <em>not</em> run by local
+            government, which is wrong for a hub a council runs itself.
+            Markdown, and <code>{"{OPERATOR}"}</code>,{" "}
+            <code>{"{HUB_NAME}"}</code>, <code>{"{PLACE}"}</code>,{" "}
+            <code>{"{GOVERNING_BODY}"}</code> and{" "}
+            <code>{"{CONTACT_EMAIL}"}</code> are filled in for you.
+          </p>
+          <textarea
+            id="who-runs-this"
+            className="form-textarea"
+            rows={5}
+            value={whoRunsThis}
+            onChange={(e) => setWhoRunsThis(e.target.value)}
+            placeholder={whoRunsThisDefault}
+            disabled={!loaded || savingIdentity}
+          />
+          {whoRunsThis.trim() === "" && (
+            <p className="form-hint">
+              Using the shared default (shown above as placeholder text).
+            </p>
+          )}
 
           {hostname && (
             <p className="form-hint" style={{ marginTop: "var(--space-md)" }}>

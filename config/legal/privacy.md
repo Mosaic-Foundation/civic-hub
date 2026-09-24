@@ -7,9 +7,7 @@
 
 ## Who runs this site
 
-The {HUB_NAME} ("the Hub," "we," "us") is operated by {OPERATOR}, based in {JURISDICTION}. The Hub is an independent civic participation platform. **We are not affiliated with or operated by the {PLACE} government or the {GOVERNING_BODY}.** The Hub exists to help residents participate in local civic life.
-
-If you have questions about this policy or about your data, contact us at {CONTACT_EMAIL}.
+{WHO_RUNS_THIS}
 
 ## What this policy covers
 

@@ -8,6 +8,8 @@ import {
 } from "../../src/services/hubDocuments.js";
 import type { Hub } from "../../src/models/hub.js";
 
+const root = resolve(import.meta.dirname, "../..");
+
 // The documents are shared by every hub, with the place-specific names
 // substituted. The thing that has to stay true is that Floyd's rendering
 // matches the text it serves: templating is a refactor of how the words are
@@ -25,7 +27,7 @@ import type { Hub } from "../../src/models/hub.js";
 // shared template cannot assume a commonwealth. Regenerating them is a
 // deliberate act; if this test fails, find out which.
 
-const FLOYD = {
+const FLOYD_NAMES = {
   HUB_NAME: "Floyd Civic Hub",
   HOSTNAME: "floyd.civic.social",
   PLACE: "Floyd County",
@@ -36,7 +38,25 @@ const FLOYD = {
   CONTACT_EMAIL: "contact@civic.social",
 };
 
-const root = resolve(import.meta.dirname, "../..");
+/**
+ * `{WHO_RUNS_THIS}` resolves in TWO passes, and the test has to do the same
+ * two passes or it is not testing what the server does: the block is a
+ * fragment that itself contains placeholders, so it is substituted first and
+ * the result becomes the value substituted into the documents.
+ */
+function withBlock(
+  names: Record<string, string>,
+  block?: string,
+): Record<string, string> {
+  const source =
+    block ??
+    readFileSync(resolve(root, "config/legal/who-runs-this.md"), "utf-8");
+  return { ...names, WHO_RUNS_THIS: applySubstitutions(source, names).trim() };
+}
+
+const FLOYD = withBlock(FLOYD_NAMES);
+
+
 // The three documents Floyd takes from the SHARED set. Substituting Floyd's
 // values into each must reproduce the text production serves today.
 //
@@ -148,6 +168,10 @@ describe("no shared template names a hub, a person or a domain", () => {
     "config/legal/privacy.md",
     "config/legal/code-of-conduct.md",
     "config/legal/proposal-best-practices.md",
+    // The "who runs this site" block is a fragment, not a page, but it is
+    // shared text that names people and places and so is held to the same
+    // rule as the documents it is substituted into.
+    "config/legal/who-runs-this.md",
   ];
 
   it.each(SHARED)("%s contains no place, person or hostname literal", (path) => {
@@ -177,7 +201,7 @@ describe("no shared template names a hub, a person or a domain", () => {
   });
 
   it("renders every shared document cleanly for a hub that is not Floyd", () => {
-    const athens = {
+    const athens = withBlock({
       HUB_NAME: "Athens Civic Hub",
       HOSTNAME: "athens-civic-hub-dev.vercel.app",
       PLACE: "Athens",
@@ -186,7 +210,7 @@ describe("no shared template names a hub, a person or a domain", () => {
       GOVERNING_BODY: "Town Council",
       OPERATOR: "Athens Moderator Group",
       CONTACT_EMAIL: "athens@example.com",
-    };
+    });
     for (const path of SHARED) {
       const rendered = applySubstitutions(
         readFileSync(resolve(root, path), "utf-8"),
@@ -267,5 +291,62 @@ describe("a hub's substitutions come from its own row", () => {
     expect(applySubstitutions("operated by {OPERATOR}", values)).toBe(
       "operated by {OPERATOR}",
     );
+  });
+});
+
+describe("who runs this site is the hub's own paragraph", () => {
+  const names = {
+    HUB_NAME: "Utopia Civic Hub",
+    PLACE: "Utopia",
+    GOVERNING_BODY: "Town Council",
+    OPERATOR: "the Town of Utopia",
+    CONTACT_EMAIL: "clerk@utopia.example",
+  };
+
+  it("appears in both the Terms and the Privacy Policy", () => {
+    // One paragraph, two documents. A hub says who runs it once.
+    for (const path of ["config/legal/terms.md", "config/legal/privacy.md"]) {
+      expect(readFileSync(resolve(root, path), "utf-8"), path).toMatch(
+        /\{WHO_RUNS_THIS\}/,
+      );
+    }
+  });
+
+  it("uses the shared default when a hub has written nothing", () => {
+    const rendered = applySubstitutions(
+      readFileSync(resolve(root, "config/legal/privacy.md"), "utf-8"),
+      withBlock(names),
+    );
+    expect(rendered).toMatch(/operated by the Town of Utopia/);
+    expect(rendered).toMatch(/not affiliated with or operated by/);
+  });
+
+  it("lets a government-run hub say the opposite of the default", () => {
+    // The reason this is a whole block and not just a name. The default
+    // asserts the Hub is NOT run by local government, which is exactly
+    // backwards for a hub a council runs itself — and no amount of
+    // name-substitution fixes a sentence whose claim is wrong.
+    const own =
+      "The {HUB_NAME} is run by the {GOVERNING_BODY} of {PLACE}. " +
+      "It is an official channel of the town. Write to {CONTACT_EMAIL}.";
+    const rendered = applySubstitutions(
+      readFileSync(resolve(root, "config/legal/privacy.md"), "utf-8"),
+      withBlock(names, own),
+    );
+    expect(rendered).toMatch(
+      /run by the Town Council of Utopia.*official channel/s,
+    );
+    expect(rendered).not.toMatch(/not affiliated with/);
+  });
+
+  it("does not let a hub's block expand a placeholder twice", () => {
+    // applySubstitutions does not recurse, on purpose: a hub's own text must
+    // not be able to expand into something else by writing a placeholder
+    // whose value contains another one.
+    const values = withBlock(
+      { ...names, OPERATOR: "{CONTACT_EMAIL}" },
+      "operated by {OPERATOR}",
+    );
+    expect(values.WHO_RUNS_THIS).toBe("operated by {CONTACT_EMAIL}");
   });
 });

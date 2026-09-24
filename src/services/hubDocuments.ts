@@ -34,6 +34,13 @@ const TEMPLATES: Readonly<Record<string, string>> = {
   [KEYS.LEGAL_PROPOSAL_BEST_PRACTICES]: "proposal-best-practices.md",
 };
 
+/**
+ * The shared default for the one block a hub is most likely to rewrite.
+ * Not in TEMPLATES: it is a fragment substituted INTO the documents, not a
+ * document anyone navigates to.
+ */
+const WHO_RUNS_THIS_TEMPLATE = "who-runs-this.md";
+
 export type HubDocuments = Record<string, string>;
 
 /**
@@ -121,6 +128,33 @@ export function substitutions(hub: Hub): Record<string, string> {
   return out;
 }
 
+/**
+ * Resolve `{WHO_RUNS_THIS}` — the hub's own paragraph, or the shared default.
+ *
+ * TWO PASSES, and the order matters. The block itself contains placeholders
+ * ({OPERATOR}, {PLACE}), so it is substituted first and the RESULT becomes
+ * the value of {WHO_RUNS_THIS}. applySubstitutions does not recurse, which is
+ * deliberate — a hub's own text must not be able to expand into something
+ * else by writing a placeholder that expands again.
+ */
+function resolveWhoRunsThis(
+  values: Record<string, string>,
+  override: string | undefined,
+): void {
+  const source = override?.trim() || readTemplate(WHO_RUNS_THIS_TEMPLATE);
+  if (source) {
+    values.WHO_RUNS_THIS = applySubstitutions(source, values).trim();
+  }
+}
+
+/**
+ * The shared default, unsubstituted, for the admin form to show as the
+ * placeholder a hub is currently using.
+ */
+export function whoRunsThisDefault(): string {
+  return readTemplate(WHO_RUNS_THIS_TEMPLATE)?.trim() ?? "";
+}
+
 /** Replace `{NAME}` with its value, leaving unknown placeholders untouched. */
 export function applySubstitutions(
   template: string,
@@ -138,6 +172,7 @@ export function applySubstitutions(
 export async function hubDocuments(hub: Hub): Promise<HubDocuments> {
   const overrides = await fetchHubDocuments(hub.id);
   const values = substitutions(hub);
+  resolveWhoRunsThis(values, getSettingSync(KEYS.LEGAL_WHO_RUNS_THIS));
   const out: HubDocuments = {};
 
   for (const [key, fileName] of Object.entries(TEMPLATES)) {

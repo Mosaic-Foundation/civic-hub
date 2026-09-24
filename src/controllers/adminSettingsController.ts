@@ -40,6 +40,8 @@ import {
   getContactEmail,
   setOperatorName,
   setContactEmail,
+  getWhoRunsThis,
+  setWhoRunsThis,
 } from "../services/hubSettings.js";
 import {
   type OfficialRecord,
@@ -48,6 +50,7 @@ import {
 } from "../services/officials.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { currentHub, currentHubId } from "../config/hubContext.js";
+import { whoRunsThisDefault } from "../services/hubDocuments.js";
 
 interface SettingsResponse {
   /**
@@ -62,6 +65,13 @@ interface SettingsResponse {
   operator_name: string;
   contact_email: string;
   hostname: string;
+  /**
+   * The "who runs this site" paragraph. Empty means the hub is showing the
+   * shared default, which `who_runs_this_default` carries so the form can
+   * offer it as a placeholder rather than as a value the admin must keep.
+   */
+  who_runs_this: string;
+  who_runs_this_default: string;
 
   brief_recipient_emails: string[];
   officials: OfficialRecord[];
@@ -79,6 +89,8 @@ async function loadSettings(): Promise<SettingsResponse> {
     operator_name: await getOperatorName(hubId),
     contact_email: await getContactEmail(hubId),
     hostname: currentHub()?.hostname ?? "",
+    who_runs_this: await getWhoRunsThis(hubId),
+    who_runs_this_default: whoRunsThisDefault(),
     brief_recipient_emails: await getVoteResultsRecipients(hubId),
     officials: await listOfficialsWithLegacy(),
     announcement_authors: await getAnnouncementAuthors(hubId),
@@ -110,6 +122,7 @@ export async function handlePatchSettings(
     const body = (req.body ?? {}) as {
       operator_name?: unknown;
       contact_email?: unknown;
+      who_runs_this?: unknown;
       brief_recipient_emails?: unknown;
       officials?: unknown;
       announcement_authors?: unknown;
@@ -143,6 +156,16 @@ export async function handlePatchSettings(
         return;
       }
       await setContactEmail(currentHubId(), cleaned, actor);
+    }
+
+    if (body.who_runs_this !== undefined) {
+      if (typeof body.who_runs_this !== "string") {
+        res.status(400).json({ error: "who_runs_this must be a string." });
+        return;
+      }
+      // An empty string is meaningful: it clears the row and returns the hub
+      // to the shared default. So it is stored as written, not rejected.
+      await setWhoRunsThis(currentHubId(), body.who_runs_this, actor);
     }
 
     if (body.brief_recipient_emails !== undefined) {

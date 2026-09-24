@@ -7,9 +7,9 @@
 
 ## Who runs this site
 
-The Floyd Civic Hub ("the Hub," "we," "us") is operated by Adam Lake, based in Floyd County, Virginia. The Hub is an independent civic participation platform. **We are not affiliated with or operated by the Floyd County government or the Board of Supervisors.** The Hub exists to help residents participate in local civic life.
+The Floyd Civic Hub ("the Hub," "we," "us") is operated by Adam Lake. The Hub is an independent civic participation platform — **we are not affiliated with or operated by the Floyd County government or the Board of Supervisors** — and it exists to help residents take part in local civic life.
 
-If you have questions about this policy or about your data, contact us at contact@civic.social.
+If you have a question about the Hub, or about your data, write to contact@civic.social.
 
 ## What this policy covers
 

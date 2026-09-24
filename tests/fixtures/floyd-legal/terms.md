@@ -9,7 +9,9 @@
 
 By using the Floyd Civic Hub ("the Hub") at floyd.civic.social, you agree to these Terms of Service ("Terms"). If you don't agree, please don't use the Hub.
 
-The Hub is operated by Adam Lake ("we," "us," "our"). We're an independent civic participation platform — **we are not affiliated with or operated by the Floyd County government or the Board of Supervisors**, even though we exist to serve Floyd County civic life.
+The Floyd Civic Hub ("the Hub," "we," "us") is operated by Adam Lake. The Hub is an independent civic participation platform — **we are not affiliated with or operated by the Floyd County government or the Board of Supervisors** — and it exists to help residents take part in local civic life.
+
+If you have a question about the Hub, or about your data, write to contact@civic.social.
 
 ## Who can use the Hub
 

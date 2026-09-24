@@ -224,6 +224,28 @@ export async function setOperatorName(
   return cleaned;
 }
 
+/**
+ * The "who runs this site" paragraph, or "" when the hub has not written one
+ * and is therefore showing the shared default.
+ *
+ * Empty means "using the default" rather than "blank", so the admin form can
+ * show the default as a placeholder and a hub can return to it by clearing
+ * the field.
+ */
+export async function getWhoRunsThis(hubId: string | null): Promise<string> {
+  return (await getSetting(hubId, KEYS.LEGAL_WHO_RUNS_THIS)) ?? "";
+}
+
+export async function setWhoRunsThis(
+  hubId: string,
+  text: string,
+  updatedBy: string | null,
+): Promise<string> {
+  const cleaned = text.trim();
+  await setSetting(hubId, KEYS.LEGAL_WHO_RUNS_THIS, cleaned, updatedBy);
+  return cleaned;
+}
+
 export async function setContactEmail(
   hubId: string,
   email: string,
