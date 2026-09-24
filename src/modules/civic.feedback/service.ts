@@ -12,7 +12,7 @@
 import { getDb } from "../../db/client.js";
 import { sendEmail } from "../../utils/email.js";
 import { generateId } from "../../utils/id.js";
-import { getSettingSync } from "../../services/hubSettings.js";
+import { getAdminEmailsSync, getSettingSync } from "../../services/hubSettings.js";
 import { KEYS, asEmailList } from "../../models/hubSettings.js";
 import {
   FEEDBACK_CATEGORIES,
@@ -225,20 +225,48 @@ export async function listFeedback(
   return (data ?? []).map((row) => rowToSubmission(row as Record<string, unknown>));
 }
 
+/**
+ * Who hears about new feedback on this hub: its configured feedback recipient
+ * (the first of `plugin.feedback.recipients`, as before), else everyone on its
+ * admin roster (`people.admin_emails`).
+ *
+ * The fallback used to be one person's address, hardcoded — so every hub on
+ * the deployment that had not set a recipient mailed its residents' feedback
+ * to the same individual, who runs none of them. Found in the Phase 1 part
+ * five review; fixed in Phase 2a. With neither set, nobody is mailed.
+ */
+export function feedbackRecipients(
+  configured: readonly string[],
+  admins: readonly string[],
+): string[] {
+  if (configured.length > 0) return [configured[0]];
+  return [...new Set(admins)];
+}
+
 async function notifyOperator(s: FeedbackSubmission): Promise<void> {
-  const recipient =
-    asEmailList(getSettingSync(KEYS.PLUGIN_FEEDBACK_RECIPIENTS))[0] || "adam@civic.social";
+  const recipients = feedbackRecipients(
+    asEmailList(getSettingSync(KEYS.PLUGIN_FEEDBACK_RECIPIENTS)),
+    getAdminEmailsSync(),
+  );
+  if (recipients.length === 0) {
+    console.warn(
+      `[feedback] ${s.id} stored, but this hub has no feedback recipient and no admins to notify`,
+    );
+    return;
+  }
   const subject = `[Civic Hub feedback] ${s.category} — ${s.message.slice(0, 60)}`;
   const html = renderOperatorEmail(s);
-  const result = await sendEmail({ to: recipient, subject, html });
-  if (result.sent) {
-    console.log(
-      `[feedback] Operator notified for ${s.id} (resend id: ${result.id ?? "?"})`,
-    );
-  } else {
-    console.warn(
-      `[feedback] Operator email NOT sent for ${s.id}: ${result.error ?? "unknown"}`,
-    );
+  for (const to of recipients) {
+    const result = await sendEmail({ to, subject, html });
+    if (result.sent) {
+      console.log(
+        `[feedback] Operator notified for ${s.id} (resend id: ${result.id ?? "?"})`,
+      );
+    } else {
+      console.warn(
+        `[feedback] Operator email NOT sent for ${s.id}: ${result.error ?? "unknown"}`,
+      );
+    }
   }
 }
 
