@@ -16,6 +16,8 @@
  * the key names, "4. Request flow" item 5 for the response shape.
  */
 
+import { parseTheme, resolveTheme } from "../../../src/shared/theme";
+
 export interface HubIdentity {
   id: string;
   name: string;
@@ -128,7 +130,7 @@ export function applyHubHead(): void {
   const imageAlt = setting("identity.banner_alt");
 
   document.title = title;
-  applyThemeColor(setting("identity.theme"));
+  applyTheme(setting("identity.theme"));
   applyHubIcon(setting("identity.logo_url"));
   setMeta("name", "description", description);
   setMeta("property", "og:title", title);
@@ -154,34 +156,21 @@ function setMeta(
 }
 
 /**
- * The hub's accent colour, `identity.theme`, applied over the design tokens.
- *
- * Only the primary and its hover shade change: every accent in the app is
- * derived from those two (index.css maps --primary-color, --accent-color and
- * --bar-color onto them), so one setting recolours buttons, links, the active
- * tab and the results bars together. Anything that is not #rrggbb is ignored
- * and the default palette stands.
+ * The hub's theme, `identity.theme`, applied over the design tokens at the
+ * root. src/shared/theme.ts derives every variable from the few colours the
+ * admin picked; an empty theme sets nothing, so the stylesheet's own palette
+ * stands. Variables a previous call set are removed first, so switching
+ * themes (the Settings page re-applies after a save) leaves nothing behind.
  */
-export function applyThemeColor(value: string | undefined): void {
+let appliedThemeVars: string[] = [];
+
+export function applyTheme(raw: string | undefined): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  if (!value || !/^#[0-9a-f]{6}$/i.test(value)) {
-    root.style.removeProperty("--color-primary");
-    root.style.removeProperty("--color-primary-hover");
-    return;
-  }
-  root.style.setProperty("--color-primary", value);
-  root.style.setProperty("--color-primary-hover", darken(value, 0.15));
-}
-
-/** #rrggbb moved `amount` (0–1) of the way towards black. */
-function darken(hex: string, amount: number): string {
-  const n = Number.parseInt(hex.slice(1), 16);
-  const channel = (shift: number) =>
-    Math.round(((n >> shift) & 0xff) * (1 - amount))
-      .toString(16)
-      .padStart(2, "0");
-  return `#${channel(16)}${channel(8)}${channel(0)}`;
+  for (const name of appliedThemeVars) root.style.removeProperty(name);
+  const { vars } = resolveTheme(parseTheme(raw));
+  for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value);
+  appliedThemeVars = Object.keys(vars);
 }
 
 /**
@@ -194,7 +183,8 @@ function darken(hex: string, amount: number): string {
  */
 export function applyHubIcon(url: string | undefined): void {
   if (typeof document === "undefined" || !loaded) return;
-  const href = url || initialIcon(setting("identity.name") ?? loaded.hub.name, setting("identity.theme"));
+  const primary = resolveTheme(parseTheme(setting("identity.theme"))).effective.primary;
+  const href = url || initialIcon(setting("identity.name") ?? loaded.hub.name, primary);
   for (const rel of ["icon", "apple-touch-icon"]) {
     let el = document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
     if (!el) {
@@ -207,9 +197,8 @@ export function applyHubIcon(url: string | undefined): void {
   }
 }
 
-function initialIcon(name: string, theme: string | undefined): string {
+function initialIcon(name: string, fill: string): string {
   const letter = (name.trim().match(/[\p{L}\p{N}]/u)?.[0] ?? "").toUpperCase();
-  const fill = theme && /^#[0-9a-f]{6}$/i.test(theme) ? theme : "#1e3a5f";
   const escaped = letter.replace(/[<>&"']/g, "");
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +

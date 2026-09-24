@@ -6,7 +6,8 @@
  * everywhere. New components MUST reference the canonical tokens.
  */
 
-:root {
+:root,
+.theme-scope {
   --primary-color: var(--color-primary);
   --primary-hover: var(--color-primary-hover);
   --background-color: var(--color-surface);

@@ -15,7 +15,11 @@
 @import "./design-system/base.css";
 @import "./design-system/components.css";
 
-:root {
+/* `.theme-scope` re-declares this whole layer on an element, so a theme's
+   variables set on that element (Settings → Theme's live preview) flow
+   through every token below it. At :root it is the same declaration. */
+:root,
+.theme-scope {
   /* --- Color: surfaces --- */
   --color-bg: var(--ds-color-bg-page);
   --color-surface: var(--ds-color-bg-surface);
@@ -158,6 +162,17 @@
   --shadow-popover: var(--ds-shadow-lg);
 
   /* --- Layout (hub-specific) --- */
+  /* Names component CSS used with a literal fallback and nothing defined,
+     so they could never follow the palette (found 2026-09-24 building the
+     Theme section: "Raise something" stayed terracotta on every theme). */
+  --color-action-accent: var(--ds-color-action-accent);
+  --color-action-accent-hover: var(--ds-color-action-accent-hover);
+  --color-link-hover: var(--ds-color-text-link-hover);
+  --color-primary-wash: var(--ds-color-primary-50);
+  --color-primary-bg: var(--ds-color-primary-50);
+  --color-primary-border: var(--ds-color-primary-200);
+  --civic-rust: var(--ds-color-accent-600);
+
   --max-width-shell: 1100px;
   --max-width-feed: 640px;
 }
