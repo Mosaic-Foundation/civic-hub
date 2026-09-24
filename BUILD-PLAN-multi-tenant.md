@@ -411,11 +411,18 @@ sync invalid. The runbook seeds Floyd's plugin rows
 After that, the seven entries in `scripts/place-name-allowlist.txt` marked
 "until the cutover" are deleted with the code they excuse.
 
-**Values with no home, open with Adam** (HANDOFF, 2026-09-24): the
-assistant's scenery clause for Floyd's community line; a configurable
-synced-post author label (derived as `"<place> Government"` today); the four
-one-off production content scripts; whether the place-name check should
-cover every hub's names, not only Floyd's.
+**Values with no home — decided with Adam, 2026-09-24:**
+- The assistant's scenery clause ("a small rural community in the Blue Ridge
+  Mountains") is dropped for good; the community line is generic,
+  `residents of <jurisdiction_name>`. No key.
+- The synced-post author label stays derived, `"<place> Government"`. No key.
+- Seed data stays as it is for now: Floyd's one-off production content
+  scripts and Athens's demo set in `src/debug/seedDataAthens.ts`. How a new
+  hub gets starter content — generic seed data, perhaps launching in demo
+  mode — is a later piece of work.
+- The place-name check keeps Floyd's names only. Widening it to every hub's
+  names belongs with that seed-data work, since Athens's demo set in `src/` is
+  the only thing it would catch today.
 
 _checklist to be pasted_
 

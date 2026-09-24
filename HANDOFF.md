@@ -112,6 +112,12 @@ address instead of printing "Floyd, VA".
    names only. Should the check also cover every hub's names (read from the
    hubs table / seed.sql), which would move Athens's demo set out of `src/`?
 
+**Decided with Adam after the session report:** (1) the scenery clause stays
+dropped — the community line is generic; (2) the author label stays derived;
+(3) seed data, Floyd's and Athens's, stays as it is until the per-hub starter
+content work; (4) the check keeps Floyd's names only until then. Recorded in
+the build plan under Phase 4 part four.
+
 ### A cutover hazard this surfaced (also in the build plan, Phase 4 part four)
 
 **The env fallbacks are deployment-wide.** A hub with no row falls back to the
