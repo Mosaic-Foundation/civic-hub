@@ -10,16 +10,20 @@
 // as seed examples later.
 //
 // Run against PRODUCTION:
-//   node --env-file=.env.prod --import tsx scripts/exportProdProcesses.ts
+//   node --env-file=.env.prod --import tsx scripts/exportProdProcesses.ts --hub <slug>
 //   (reads PROD_SUPABASE_URL / PROD_SUPABASE_SERVICE_ROLE_KEY)
 //
 // Run against DEV (sanity check first):
-//   node --env-file=.env --import tsx scripts/exportProdProcesses.ts --dev
+//   node --env-file=.env --import tsx scripts/exportProdProcesses.ts --hub <slug> --dev
 //   (reads SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)
 
 import { createClient } from "@supabase/supabase-js";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { hubArg } from "./lib/hubScope.js";
+
+// A missing/malformed --hub must fail before anything touches the network.
+const HUB = hubArg();
 
 const useDev = process.argv.includes("--dev");
 
@@ -68,12 +72,14 @@ async function main() {
   const { data: processes, error: pErr } = await db
     .from("processes")
     .select("*")
+    .eq("hub_id", HUB)
     .order("created_at", { ascending: true });
   if (pErr) throw new Error(`processes: ${pErr.message}`);
 
   const { data: wc, error: wcErr } = await db
     .from("wordcloud_submissions")
     .select("*")
+    .eq("hub_id", HUB)
     .order("submitted_at", { ascending: true });
   if (wcErr) throw new Error(`wordcloud_submissions: ${wcErr.message}`);
 

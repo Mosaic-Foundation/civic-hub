@@ -1,10 +1,9 @@
-// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 // Integration check of the VOTE → brief migration against the real DB.
 // Drives create → activate → vote×3 → close through the service layer and
 // verifies a civic.brief spawns with the tally (no more civic.vote_results).
-// Usage: node --env-file=.env --import tsx scripts/verifyVoteBriefFlow.ts
+// Usage: node --env-file=.env --import tsx scripts/verifyVoteBriefFlow.ts --hub <slug>
 
-import { getDb } from "../src/db/client.js";
+import { forHub } from "../src/db/forHub.js";
 import {
   createProcess,
   executeAction,
@@ -12,21 +11,24 @@ import {
 } from "../src/services/processService.js";
 import { findExistingBriefId } from "../src/processes/spawnBrief.js";
 import type { BriefProcessState } from "../src/modules/civic.brief/index.js";
-import { HUB_ID, DEFAULT_JURISDICTION } from "../src/config/hub.js";
+import { DEFAULT_JURISDICTION, processJurisdiction } from "../src/config/hub.js";
+import type { Hub } from "../src/models/hub.js";
+import { withScriptHub } from "./lib/hubScope.js";
 
 function ok(cond: boolean, msg: string) {
   console.log(`${cond ? "  ✓" : "  ✗ FAIL:"} ${msg}`);
   if (!cond) process.exitCode = 1;
 }
 
-async function main() {
+async function main(hub: Hub) {
+  const db = forHub(hub.id);
   // 1. Create + directly activate a yes/no/unsure vote.
   const vote = await createProcess({
     definition: { type: "civic.vote", version: "0.1" },
     title: "E2E Vote Brief Test",
     description: "Should the test pass?",
-    hubId: HUB_ID,
-    jurisdiction: DEFAULT_JURISDICTION,
+    hubId: hub.id,
+    jurisdiction: processJurisdiction() ?? DEFAULT_JURISDICTION,
     createdBy: "verify-script",
     state: {
       method: "yes_no_unsure",
@@ -50,7 +52,7 @@ async function main() {
   const closed = await getProcess(id);
   ok(closed?.status === "closed", `vote is closed (got "${closed?.status}")`);
 
-  const { data: voteResults } = await getDb()
+  const voteResults = await db
     .from("processes")
     .select("id")
     .eq("type", "civic.vote_results")
@@ -73,14 +75,14 @@ async function main() {
   console.log("    section:", bs.content.sections[0]?.body.replace(/\n/g, " | "));
 
   // Cleanup — brief + vote + receipts.
-  await getDb().from("processes").delete().eq("id", briefId);
-  await getDb().from("processes").delete().eq("id", id);
-  await getDb().from("vote_records").delete().eq("process_id", id);
-  await getDb().from("vote_participation").delete().eq("process_id", id);
+  await db.from("processes").delete().eq("id", briefId);
+  await db.from("processes").delete().eq("id", id);
+  await db.from("vote_records").delete().eq("process_id", id);
+  await db.from("vote_participation").delete().eq("process_id", id);
   console.log("  ✓ cleaned up");
 }
 
-main().then(() => {
+withScriptHub(main).then(() => {
   console.log(process.exitCode ? "\nFAILED" : "\nALL CHECKS PASSED");
   process.exit(process.exitCode ?? 0);
 });

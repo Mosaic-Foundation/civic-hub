@@ -14,18 +14,20 @@
  * apply here — check your .env before running.
  *
  * Run from civic-hub/:
- *   node --env-file=.env --import tsx scripts/seedDevActivities.ts
+ *   node --env-file=.env --import tsx scripts/seedDevActivities.ts --hub <slug>
  */
 
 import { createProcess, executeAction } from "../src/services/processService.js";
 import { submitInput } from "../src/modules/civic.input/index.js";
 import { emitEvent } from "../src/events/eventEmitter.js";
 import { getEventCount } from "../src/events/eventStore.js";
-import { HUB_ID, DEFAULT_JURISDICTION } from "../src/config/hub.js";
+import { DEFAULT_JURISDICTION, processJurisdiction } from "../src/config/hub.js";
+import type { Hub } from "../src/models/hub.js";
+import { withScriptHub } from "./lib/hubScope.js";
 
 const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
 
-async function main(): Promise<void> {
+async function main(hub: Hub): Promise<void> {
   const before = await getEventCount();
 
   const process_ = await createProcess({
@@ -34,8 +36,8 @@ async function main(): Promise<void> {
     description:
       "A dev-only vote used to populate the activity log with a full lifecycle.",
     createdBy: "user:civic-admin",
-    jurisdiction: DEFAULT_JURISDICTION,
-    hubId: HUB_ID,
+    jurisdiction: processJurisdiction() ?? DEFAULT_JURISDICTION,
+    hubId: hub.id,
     state: {
       options: ["Yes", "No", "Unsure"],
       support_threshold: 1,
@@ -66,7 +68,7 @@ async function main(): Promise<void> {
     process_.id,
     "user:dev-resident-1",
     "Dev fixture comment — this exercises the comment_added activity.",
-    { hub_id: HUB_ID, jurisdiction: DEFAULT_JURISDICTION, emit: emitEvent },
+    { hub_id: hub.id, jurisdiction: processJurisdiction() ?? DEFAULT_JURISDICTION, emit: emitEvent },
   );
 
   await executeAction(process_.id, {
@@ -81,7 +83,7 @@ async function main(): Promise<void> {
   );
 }
 
-main().catch((err) => {
+withScriptHub(main).catch((err) => {
   console.error("[seed-dev-activities] failed:", err);
   process.exit(1);
 });

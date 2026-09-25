@@ -1,7 +1,7 @@
 // Focused check of the CONVERSATION generateBrief mapping (Polis summary →
 // BriefContent). The full close path needs a live Polis instance; this
 // exercises the pure mapping the handler runs on state.summary.
-// Usage: node --env-file=.env --import tsx scripts/verifyConversationBrief.ts
+// Usage: node --env-file=.env --import tsx scripts/verifyConversationBrief.ts --hub <slug>
 
 // Import via processService so the registry boots in the app's normal order
 // (importing deliberationBoot directly triggers a circular-import TDZ).
@@ -10,13 +10,15 @@ import { getProcessHandler } from "../src/processes/registry.js";
 import type { Process } from "../src/models/process.js";
 import type { BriefContent } from "../src/modules/civic.brief/index.js";
 import { VERIFY_CONVERSATION_BRIEF_TOPIC } from "../tests/fixtures/samples/verifyConversationBrief.js";
+import type { Hub } from "../src/models/hub.js";
+import { withScriptHub } from "./lib/hubScope.js";
 
 function ok(cond: boolean, msg: string) {
   console.log(`${cond ? "  ✓" : "  ✗ FAIL:"} ${msg}`);
   if (!cond) process.exitCode = 1;
 }
 
-async function main() {
+async function main(_hub: Hub) {
   const handler = getProcessHandler("civic.polis_deliberation")!;
   ok(typeof handler.generateBrief === "function", "conversation handler implements generateBrief");
 
@@ -65,7 +67,7 @@ async function main() {
   ok((await handler.generateBrief!(noSummary)) === null, "returns null when the summary isn't complete");
 }
 
-main().then(() => {
+withScriptHub(main).then(() => {
   console.log(process.exitCode ? "\nFAILED" : "\nALL CHECKS PASSED");
   process.exit(process.exitCode ?? 0);
 });

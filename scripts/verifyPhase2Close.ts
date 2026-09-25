@@ -1,4 +1,3 @@
-// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 /**
  * Phase 2 verification — one lazy, type-agnostic deadline-close + lifecycle
  * gating. Exercises the new paths directly against the configured Supabase
@@ -10,7 +9,7 @@
  * call), which is out of bounds for local verification. It's verified by
  * construction (same dispatch path as votes) + the guarded close action.
  *
- * Run: node --env-file=.env --import tsx scripts/verifyPhase2Close.ts
+ * Run: node --env-file=.env --import tsx scripts/verifyPhase2Close.ts --hub <slug>
  */
 
 import {
@@ -22,7 +21,9 @@ import {
 } from "../src/services/processService.js";
 import { createProposal } from "../src/modules/civic.proposals/index.js";
 import { emitEvent } from "../src/events/eventEmitter.js";
-import { getDb } from "../src/db/client.js";
+import { forHub, type HubDb } from "../src/db/forHub.js";
+import type { Hub } from "../src/models/hub.js";
+import { withScriptHub } from "./lib/hubScope.js";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -37,8 +38,8 @@ function assert(cond: boolean, msg: string) {
 const PAST = new Date(Date.now() - 60_000).toISOString();
 const ids: string[] = [];
 
-async function eventExists(processId: string, eventType: string): Promise<boolean> {
-  const { data } = await getDb()
+async function eventExists(db: HubDb, processId: string, eventType: string): Promise<boolean> {
+  const data = await db
     .from("events")
     .select("id")
     .eq("process_id", processId)
@@ -47,12 +48,13 @@ async function eventExists(processId: string, eventType: string): Promise<boolea
   return (data?.length ?? 0) > 0;
 }
 
-async function rowStatus(table: string, id: string): Promise<string | null> {
-  const { data } = await getDb().from(table).select("status").eq("id", id).maybeSingle();
+async function rowStatus(db: HubDb, table: "processes" | "proposals", id: string): Promise<string | null> {
+  const data = await db.from(table).select("status").eq("id", id).maybeSingle();
   return (data?.status as string) ?? null;
 }
 
-async function run() {
+async function run(hub: Hub) {
+  const db = forHub(hub.id);
   console.log("🏛️  Phase 2 — deadline-close + lifecycle verification\n");
   console.log(`Target: ${process.env.SUPABASE_URL}\n`);
 
@@ -74,10 +76,10 @@ async function run() {
   (vp!.state as Record<string, unknown>).voting_closes_at = PAST;
   await saveProcessState(vp!);
 
-  const vState = (await getProcessState(voteId)) as Record<string, unknown>;
+  const vState = (await getProcessState(voteId, { audience: "member" })) as Record<string, unknown>;
   assert(vState?.status === "closed", `vote auto-closed on read (status=${vState?.status})`);
-  assert(await eventExists(voteId, "civic.process.ended"), "vote emitted civic.process.ended");
-  assert((await rowStatus("processes", voteId)) === "closed", "vote processes-row persisted as closed");
+  assert(await eventExists(db, voteId, "civic.process.ended"), "vote emitted civic.process.ended");
+  assert((await rowStatus(db, "processes", voteId)) === "closed", "vote processes-row persisted as closed");
   // Clean up the spawned vote-results record too.
   const followUps = ((await getProcess(voteId))?.state as Record<string, unknown>)
     ?.follow_up_process_ids as string[] | undefined;
@@ -99,7 +101,7 @@ async function run() {
   const bvp = await getProcess(badVoteId);
   (bvp!.state as Record<string, unknown>).voting_closes_at = "not-a-date";
   await saveProcessState(bvp!);
-  const bvState = (await getProcessState(badVoteId)) as Record<string, unknown>;
+  const bvState = (await getProcessState(badVoteId, { audience: "member" })) as Record<string, unknown>;
   assert(bvState?.status === "active", `malformed-deadline vote stays active (status=${bvState?.status})`);
 
   // ── 3. Proposal: past closes_at auto-closes on read ──────────────────────
@@ -112,7 +114,7 @@ async function run() {
     emitEvent,
   );
   // Canonical processes row (active), keyed by the same id — what approval creates.
-  await getDb().from("processes").insert({
+  await db.from("processes").insert({
     id: propId,
     type: "civic.proposal",
     process_version: "1.0",
@@ -121,15 +123,14 @@ async function run() {
     jurisdiction: "local",
     status: "active",
     state: {},
-    hub_id: "civic-hub-local",
     created_by: "user:p2verify",
   });
 
-  const pState = (await getProcessState(propId)) as Record<string, unknown>;
+  const pState = (await getProcessState(propId, { audience: "member" })) as Record<string, unknown>;
   assert(pState?.status === "closed", `proposal auto-closed on read (status=${pState?.status})`);
-  assert((await rowStatus("proposals", propId)) === "closed", "proposal child-row persisted as closed");
-  assert((await rowStatus("processes", propId)) === "closed", "proposal processes-row persisted as closed");
-  assert(await eventExists(propId, "civic.proposal.closed"), "proposal emitted civic.proposal.closed");
+  assert((await rowStatus(db, "proposals", propId)) === "closed", "proposal child-row persisted as closed");
+  assert((await rowStatus(db, "processes", propId)) === "closed", "proposal processes-row persisted as closed");
+  assert(await eventExists(db, propId, "civic.proposal.closed"), "proposal emitted civic.proposal.closed");
 
   // ── 4. Proposal: no deadline must NOT close (guard) ───────────────────────
   // (proposals.closes_at is a timestamptz column, so a *malformed* value is
@@ -141,38 +142,38 @@ async function run() {
     { id: badPropId, title: "P2 verify no-deadline proposal", description: "throwaway", submitted_by: "user:p2verify" },
     emitEvent,
   );
-  await getDb().from("processes").insert({
+  await db.from("processes").insert({
     id: badPropId, type: "civic.proposal", process_version: "1.0", title: "P2 verify no-deadline proposal",
     description: "throwaway", jurisdiction: "local", status: "active", state: {},
-    hub_id: "civic-hub-local", created_by: "user:p2verify",
+    created_by: "user:p2verify",
   });
-  const bpState = (await getProcessState(badPropId)) as Record<string, unknown>;
+  const bpState = (await getProcessState(badPropId, { audience: "member" })) as Record<string, unknown>;
   assert(bpState?.status === "active", `no-deadline proposal stays active (status=${bpState?.status})`);
-  assert((await rowStatus("proposals", badPropId)) === "submitted", "no-deadline proposal child stays submitted");
+  assert((await rowStatus(db, "proposals", badPropId)) === "submitted", "no-deadline proposal child stays submitted");
 
   // ── 5. Lifecycle gate: pending_review / archived not fetchable by id ──────
   console.log("\n── 5. getProcessState gating ──");
   const pendId = `p2v_pending_${Date.now()}`;
   ids.push(pendId);
-  await getDb().from("processes").insert({
+  await db.from("processes").insert({
     id: pendId, type: "civic.vote", process_version: "1.0", title: "P2 verify pending",
     description: "throwaway", jurisdiction: "local", status: "pending_review",
     state: { type: "civic.vote", status: "draft", options: ["yes", "no"], votes: {}, supporters: {}, support_count: 0, config: { support_threshold: 5, voting_duration_ms: 1, activation_mode: "proposal_required" }, voting_opens_at: null, voting_closes_at: null, result: null },
-    hub_id: "civic-hub-local", created_by: "user:p2verify",
+    created_by: "user:p2verify",
   });
-  assert((await getProcessState(pendId)) === undefined, "pending_review process not fetchable by id (404)");
+  assert((await getProcessState(pendId, { audience: "member" })) === undefined, "pending_review process not fetchable by id (404)");
 
   const archId = `p2v_archived_${Date.now()}`;
   ids.push(archId);
-  await getDb().from("processes").insert({
+  await db.from("processes").insert({
     id: archId, type: "civic.project", process_version: "1.0", title: "P2 verify archived",
     description: "throwaway", jurisdiction: "local", status: "archived", state: {},
-    hub_id: "civic-hub-local", created_by: "user:p2verify",
+    created_by: "user:p2verify",
   });
-  assert((await getProcessState(archId)) === undefined, "archived process not fetchable by id (404)");
+  assert((await getProcessState(archId, { audience: "member" })) === undefined, "archived process not fetchable by id (404)");
 }
 
-async function cleanup() {
+async function cleanup(db: HubDb) {
   console.log("\n── Cleanup ──");
   for (const id of ids) {
     try {
@@ -180,9 +181,9 @@ async function cleanup() {
       // deleted a processes row while `proposals` / `projects` have NO foreign
       // key to it, so it silently orphaned child rows. This script owns only
       // its own throwaway "p2v_" ids, so it cleans them up directly.
-      await getDb().from("proposals").delete().eq("id", id);
-      await getDb().from("events").delete().eq("process_id", id);
-      await getDb().from("processes").delete().eq("id", id);
+      await db.from("proposals").delete().eq("id", id);
+      await db.from("events").delete().eq("process_id", id);
+      await db.from("processes").delete().eq("id", id);
     } catch (e) {
       console.warn(`  (cleanup) ${id}: ${e instanceof Error ? e.message : e}`);
     }
@@ -190,13 +191,15 @@ async function cleanup() {
   console.log(`  cleaned ${ids.length} throwaway ids`);
 }
 
-run()
-  .catch((e) => {
-    console.error("FATAL:", e);
-    failures++;
-  })
-  .finally(async () => {
-    await cleanup();
-    console.log(`\n${failures === 0 ? "✅ ALL CHECKS PASSED" : `❌ ${failures} CHECK(S) FAILED`}`);
-    process.exit(failures === 0 ? 0 : 1);
-  });
+withScriptHub(async (hub) => {
+  await run(hub)
+    .catch((e) => {
+      console.error("FATAL:", e?.stack ?? e);
+      failures++;
+    })
+    .finally(async () => {
+      await cleanup(forHub(hub.id));
+      console.log(`\n${failures === 0 ? "✅ ALL CHECKS PASSED" : `❌ ${failures} CHECK(S) FAILED`}`);
+      process.exit(failures === 0 ? 0 : 1);
+    });
+});

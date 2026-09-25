@@ -2,7 +2,7 @@
 // don't dispatch. Used to verify Slice 16 wiring against dev
 // Supabase without needing CRON_SECRET locally.
 //
-// Run with:  node --env-file=.env --import tsx scripts/dryRunAdminDigest.ts
+// Run with:  node --env-file=.env --import tsx scripts/dryRunAdminDigest.ts --hub <slug>
 //
 // Pass --stub to render a non-empty payload regardless of the live DB
 // state (useful to verify the email layout when dev queues are empty).
@@ -12,8 +12,10 @@ import {
   renderAdminDigestEmail,
 } from "../src/modules/civic.admin_digest/index.js";
 import { buildStubAdminDigestPayload } from "../tests/fixtures/samples/dryRunAdminDigest.js";
+import type { Hub } from "../src/models/hub.js";
+import { withScriptHub } from "./lib/hubScope.js";
 
-async function main() {
+async function main(_hub: Hub) {
   const useStub = process.argv.includes("--stub");
   const payload = useStub ? buildStubAdminDigestPayload(new Date().toISOString()) : await buildAdminDigest();
   console.log("--- payload ---");
@@ -31,7 +33,7 @@ async function main() {
   console.log(text);
 }
 
-main().catch((err) => {
+withScriptHub(main).catch((err) => {
   console.error("dry-run failed:", err);
   process.exit(1);
 });

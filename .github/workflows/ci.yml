@@ -102,7 +102,7 @@ jobs:
       # container started above. No secret belongs in this job.
       - name: Seed hub settings
         run: |
-          npx tsx scripts/seed-hub-settings.ts
+          npx tsx scripts/seed-hub-settings.ts --hub floyd
           npx tsx scripts/seed-hub-settings.ts --hub athens
         env:
           SUPABASE_URL: http://127.0.0.1:54321

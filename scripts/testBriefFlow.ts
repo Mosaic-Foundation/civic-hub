@@ -26,11 +26,12 @@
  *     (SMTP vars can stay unset — delivery will console-log.)
  *
  * Run: BASE_URL=http://localhost:3000 ADMIN_EMAIL=you@example.com \
- *      BYPASS_CODE=000000 npx tsx scripts/testBriefFlow.ts
+ *      BYPASS_CODE=000000 npx tsx scripts/testBriefFlow.ts --hub <slug>
  */
 
-import { FLOYD_HUB } from "../tests/fixtures/hubs/index.js";
+import { hubArg } from "./lib/hubScope.js";
 
+const HUB = hubArg();
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const BYPASS_CODE = process.env.BYPASS_CODE ?? "000000";
@@ -39,6 +40,22 @@ if (!ADMIN_EMAIL) {
   console.error("Set ADMIN_EMAIL env var (must match CIVIC_ADMIN_EMAILS).");
   process.exit(1);
 }
+
+// The dev server resolves `<slug>.localhost` subdomains to that hub. Against
+// a real deployment (staging/prod), the hub is whatever BASE's hostname maps
+// to — --hub cannot steer that, so we just say so.
+const baseUrl = new URL(BASE);
+const TARGET =
+  baseUrl.hostname === "localhost"
+    ? `http://${HUB}.localhost:${baseUrl.port}`
+    : BASE;
+if (baseUrl.hostname !== "localhost") {
+  console.warn(
+    `BASE_URL (${BASE}) is not localhost — the hub being hit is determined by its hostname, not --hub.`,
+  );
+}
+
+let JURISDICTION_CODE: string;
 
 interface HttpResult<T = unknown> {
   status: number;
@@ -53,7 +70,7 @@ async function request<T = unknown>(
 ): Promise<HttpResult<T>> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${TARGET}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
@@ -103,7 +120,15 @@ async function authAs(email: string): Promise<{ token: string; userId: string }>
 }
 
 async function run(): Promise<void> {
-  console.log(`🏛️  Civic Brief Flow Test\n  Target: ${BASE}\n  Admin:  ${ADMIN_EMAIL}`);
+  console.log(`🏛️  Civic Brief Flow Test\n  Target: ${TARGET}\n  Admin:  ${ADMIN_EMAIL}`);
+
+  // 0. Hub config — fetched instead of imported from a fixture, since the
+  // hub is now chosen by --hub rather than a hardcoded fixture.
+  step("0. Fetch hub config");
+  const hubConfigRes = await request<{ hub: { jurisdiction_code: string } }>("GET", "/hub-config");
+  assert(hubConfigRes.status === 200, "Hub config retrieved");
+  JURISDICTION_CODE = hubConfigRes.data.hub.jurisdiction_code;
+  assert(typeof JURISDICTION_CODE === "string", "Hub config has hub.jurisdiction_code");
 
   // 1. Health
   step("1. Health");
@@ -124,7 +149,7 @@ async function run(): Promise<void> {
       definition: { type: "civic.vote", version: "0.1" },
       title: "Test: add a downtown crosswalk",
       description: "Should the county add a signalized crosswalk at Main & 2nd?",
-      jurisdiction: FLOYD_HUB.jurisdiction_code!,
+      jurisdiction: JURISDICTION_CODE,
       createdBy: admin.userId,
       state: { options: ["yes", "no"] },
     },

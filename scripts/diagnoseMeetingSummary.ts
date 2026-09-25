@@ -35,10 +35,8 @@ import {
 import { callClaude, DEFAULT_MODEL } from "../src/utils/anthropic.js";
 import { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../src/utils/http.js";
 import { fetchYouTubeTranscript } from "../src/utils/youtube.js";
-import { getHubBySlug } from "../src/db/hubs.js";
-import { fetchHubSettings } from "../src/db/hubSettingsStore.js";
-import { withHubScope } from "../src/config/hubContext.js";
 import { getAdminEmailsSync } from "../src/services/hubSettings.js";
+import { withScriptHub } from "./lib/hubScope.js";
 
 const ok = (s: string) => console.log(`  ✅ ${s}`);
 const warn = (s: string) => console.log(`  ⚠️  ${s}`);
@@ -58,23 +56,6 @@ function reportKey(name: string, opts: { required: boolean; hint: string }): boo
   if (opts.required) bad(`${name} is NOT set — ${opts.hint}`);
   else warn(`${name} is not set — ${opts.hint}`);
   return false;
-}
-
-async function main(): Promise<void> {
-  const i = process.argv.indexOf("--hub");
-  const slug = i >= 0 ? process.argv[i + 1] : undefined;
-  if (!slug) {
-    console.error("Usage: diagnoseMeetingSummary.ts --hub <slug> [--summarize]");
-    process.exit(2);
-  }
-  const hub = await getHubBySlug(slug);
-  if (!hub) {
-    console.error(`No hub "${slug}".`);
-    process.exit(2);
-  }
-  const settings = await fetchHubSettings(hub.id);
-  console.log(`Hub: ${hub.id} (${hub.name})`);
-  await withHubScope(hub, settings, diagnose);
 }
 
 async function diagnose(): Promise<void> {
@@ -261,7 +242,7 @@ function formatSeconds(total: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-main().catch((err) => {
+withScriptHub(diagnose).catch((err) => {
   console.error("\nDiagnostic crashed:", err instanceof Error ? err.stack : err);
   process.exit(1);
 });

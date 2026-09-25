@@ -11,12 +11,16 @@
 //
 // Dry-run by default; pass --apply to write. Prints the connecting host.
 //
-//   DRY RUN: node --env-file=.env.prod --import tsx scripts/cleanupProdLegacyTables.ts
-//   APPLY:   node --env-file=.env.prod --import tsx scripts/cleanupProdLegacyTables.ts --apply
+//   DRY RUN: node --env-file=.env.prod --import tsx scripts/cleanupProdLegacyTables.ts --hub <slug>
+//   APPLY:   node --env-file=.env.prod --import tsx scripts/cleanupProdLegacyTables.ts --hub <slug> --apply
 
 import { createClient } from "@supabase/supabase-js";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { hubArg } from "./lib/hubScope.js";
+
+// A missing/malformed --hub must fail before anything touches the network.
+const HUB = hubArg();
 
 const apply = process.argv.includes("--apply");
 const useDev = process.argv.includes("--dev");
@@ -31,9 +35,9 @@ async function main() {
   console.log(`\n${apply ? "APPLY" : "DRY RUN"} — ${hostOf(url!)}  [${env}]\n`);
   const db = createClient(url!, key!, { auth: { persistSession: false, autoRefreshToken: false } });
 
-  const { data: proposals, error: pe } = await db.from("proposals").select("*").order("created_at", { ascending: false });
+  const { data: proposals, error: pe } = await db.from("proposals").select("*").eq("hub_id", HUB).order("created_at", { ascending: false });
   if (pe) throw new Error(`proposals: ${pe.message}`);
-  const { data: projects, error: je } = await db.from("projects").select("*").order("created_at", { ascending: false });
+  const { data: projects, error: je } = await db.from("projects").select("*").eq("hub_id", HUB).order("created_at", { ascending: false });
   if (je) throw new Error(`projects: ${je.message}`);
 
   console.log(`proposals to delete: ${proposals?.length ?? 0}`);
@@ -70,9 +74,9 @@ async function main() {
   if (!apply) { console.log(`\nDRY RUN — no deletes. Re-run with --apply.\n`); return; }
 
   // Delete (cascades handle child rows).
-  const { error: dpe, count: dpc } = await db.from("proposals").delete({ count: "exact" }).neq("id", "");
+  const { error: dpe, count: dpc } = await db.from("proposals").delete({ count: "exact" }).neq("id", "").eq("hub_id", HUB);
   if (dpe) throw new Error(`delete proposals: ${dpe.message}`);
-  const { error: dje, count: djc } = await db.from("projects").delete({ count: "exact" }).neq("id", "");
+  const { error: dje, count: djc } = await db.from("projects").delete({ count: "exact" }).neq("id", "").eq("hub_id", HUB);
   if (dje) throw new Error(`delete projects: ${dje.message}`);
 
   console.log(`\nAPPLIED: deleted ${dpc ?? 0} proposals + ${djc ?? 0} projects.\n`);

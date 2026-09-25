@@ -9,11 +9,11 @@
  *
  * Run from: ~/Developer/Civic-Social-Mono/civic-hub
  *
- *   npx tsx scripts/seedBetaSlate.ts --env dev  --dry-run   # print the plan
- *   npx tsx scripts/seedBetaSlate.ts --env dev              # rehearse on dev
- *   npx tsx scripts/seedBetaSlate.ts --env prod --dry-run
- *   npx tsx scripts/seedBetaSlate.ts --env prod             # the real thing
- *   npx tsx scripts/seedBetaSlate.ts --env prod --remove    # clear the slate
+ *   npx tsx scripts/seedBetaSlate.ts --hub <slug> --env dev  --dry-run   # print the plan
+ *   npx tsx scripts/seedBetaSlate.ts --hub <slug> --env dev              # rehearse on dev
+ *   npx tsx scripts/seedBetaSlate.ts --hub <slug> --env prod --dry-run
+ *   npx tsx scripts/seedBetaSlate.ts --hub <slug> --env prod             # the real thing
+ *   npx tsx scripts/seedBetaSlate.ts --hub <slug> --env prod --remove    # clear the slate
  *
  * --env dev  reads .env (the dev Supabase project).
  * --env prod reads .env.prod (PROD_SUPABASE_URL / PROD_SUPABASE_SERVICE_ROLE_KEY)
@@ -73,6 +73,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import type { Hub } from "../src/models/hub.js";
+import { hubArg, withScriptHub } from "./lib/hubScope.js";
 
 // ---------------------------------------------------------------------------
 // CLI + environment bootstrap (MUST run before any src/ import — config is
@@ -80,12 +82,15 @@ import { randomUUID } from "node:crypto";
 // ---------------------------------------------------------------------------
 
 const argv = process.argv.slice(2);
+// Fails fast (before any env or DB setup below) when --hub is missing or
+// malformed. The real hub row is resolved later, by withScriptHub(main).
+const HUB_SLUG = hubArg(argv);
 const DRY_RUN = argv.includes("--dry-run");
 const REMOVE = argv.includes("--remove");
 const envIdx = argv.indexOf("--env");
 const ENV = envIdx >= 0 ? argv[envIdx + 1] : undefined;
 if (ENV !== "dev" && ENV !== "prod") {
-  console.error("Usage: npx tsx scripts/seedBetaSlate.ts --env dev|prod [--dry-run] [--remove]");
+  console.error("Usage: npx tsx scripts/seedBetaSlate.ts --hub <slug> --env dev|prod [--dry-run] [--remove]");
   process.exit(1);
 }
 
@@ -169,8 +174,9 @@ const {
   restoreProcess,
 } = await import("../src/services/processService.js");
 const { emitEvent } = await import("../src/events/eventEmitter.js");
-const { HUB_ID, DEFAULT_JURISDICTION } = await import("../src/config/hub.js");
+const { DEFAULT_JURISDICTION } = await import("../src/config/hub.js");
 const { uiBaseUrl } = await import("../src/utils/baseUrl.js");
+const { hubDisplayNameSync } = await import("../src/services/hubSettings.js");
 const { createProposal, supportProposal } = await import("../src/modules/civic.proposals/index.js");
 const {
   createProject,
@@ -196,6 +202,11 @@ type VoteProcessState = import("../src/modules/civic.vote/index.js").VoteProcess
 const db = getDb();
 const JURISDICTION = DEFAULT_JURISDICTION;
 const POLIS_BASE_URL = (process.env.POLIS_BASE_URL || "https://polis.civic.social").replace(/\/+$/, "");
+
+/** Set at the top of main() (withScriptHub's resolved hub). Referenced by
+ *  helpers defined below at module scope, all of which only run once main is
+ *  under way. */
+let HUB: Hub;
 
 // ---------------------------------------------------------------------------
 // Time helpers — the slate's timeline is relative to "now"
@@ -607,7 +618,7 @@ async function resolveAdmin(): Promise<void> {
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
-  const { data, error } = await db.from("users").select("id,email,full_name,display_name");
+  const { data, error } = await db.from("users").select("id,email,full_name,display_name").eq("hub_id", HUB.id);
   if (error) throw new Error(`users read failed: ${error.message}`);
   const match = (data ?? []).find((u) => admins.includes(String(u.email).toLowerCase()));
   if (match) {
@@ -621,7 +632,7 @@ async function resolveAdmin(): Promise<void> {
 }
 
 async function processExists(id: string): Promise<boolean> {
-  const { data } = await db.from("processes").select("id").eq("id", id).maybeSingle();
+  const { data } = await db.from("processes").select("id").eq("id", id).eq("hub_id", HUB.id).maybeSingle();
   return !!data;
 }
 
@@ -644,7 +655,7 @@ async function stampRow(
 ): Promise<void> {
   const patch: Record<string, string> = { [createdCol]: createdAt };
   if (updatedAt !== undefined) patch.updated_at = updatedAt;
-  let q = db.from(table).update(patch);
+  let q = db.from(table).update(patch).eq("hub_id", HUB.id);
   for (const [k, v] of Object.entries(match)) q = q.eq(k, v);
   const { error } = await q;
   if (error) throw new Error(`stamp ${table}: ${error.message}`);
@@ -683,7 +694,7 @@ async function insertBallots(
   fromIso: string,
   toIso: string,
 ): Promise<number> {
-  const rows: Array<{ receipt_id: string; process_id: string; choice: string; created_at: string }> = [];
+  const rows: Array<{ receipt_id: string; process_id: string; choice: string; created_at: string; hub_id: string }> = [];
   const from = new Date(fromIso).getTime();
   const to = new Date(toIso).getTime();
   const pool: string[] = [];
@@ -702,6 +713,7 @@ async function insertBallots(
       process_id: processId,
       choice: serializeBallot(method, opt),
       created_at: new Date(t).toISOString(),
+      hub_id: HUB.id,
     });
   });
   const { error } = await db.from("vote_records").insert(rows);
@@ -720,7 +732,7 @@ async function comment(
     processId,
     user.id,
     body,
-    { hub_id: HUB_ID, jurisdiction: JURISDICTION, emit: emitAt(at) },
+    { hub_id: HUB.id, jurisdiction: JURISDICTION, emit: emitAt(at) },
     phase,
     { is_anonymous: false, author_name: user.full_name },
   );
@@ -790,11 +802,12 @@ async function readMatrix(): Promise<MatrixRow[]> {
   const { data: procs, error } = await db
     .from("processes")
     .select("id,type,status,title,state")
+    .eq("hub_id", HUB.id)
     .in("type", ["civic.polis_deliberation", "civic.vote", "civic.proposal", "civic.project", "civic.wordcloud"])
     .neq("status", "archived")
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
-  const { data: briefs } = await db.from("processes").select("id,state").eq("type", "civic.brief");
+  const { data: briefs } = await db.from("processes").select("id,state").eq("hub_id", HUB.id).eq("type", "civic.brief");
   const briefBySource = new Map<string, string>();
   for (const b of briefs ?? []) {
     const s = b.state as { source_process_id?: string; publication_status?: string };
@@ -843,7 +856,7 @@ async function createStandardProcess(input: {
     description: input.description,
     createdBy: input.createdBy,
     jurisdiction: JURISDICTION,
-    hubId: HUB_ID,
+    hubId: HUB.id,
     state: input.state,
     content: input.content as unknown as ProcessContent | undefined,
     eventTimestamp: input.at,
@@ -859,6 +872,7 @@ async function buildSeedPlan(): Promise<void> {
       const { error } = await db.from("users").upsert(
         {
           id: u.id,
+          hub_id: HUB.id,
           email: u.email,
           email_verified: true,
           is_resident: true,
@@ -970,12 +984,12 @@ async function buildSeedPlan(): Promise<void> {
     await saveProcessState(p);
     // The lifecycle events the real start/close actions would have emitted.
     await emitAt(plus(T_ENERGY_CREATED, 1))({
-      event_type: "civic.process.started", actor: ADMIN_ID, process_id: ID.CONV_ENERGY, hub_id: HUB_ID, jurisdiction: JURISDICTION,
+      event_type: "civic.process.started", actor: ADMIN_ID, process_id: ID.CONV_ENERGY, hub_id: HUB.id, jurisdiction: JURISDICTION,
       processType: "civic.polis_deliberation",
       data: { process_id: ID.CONV_ENERGY, process_type: "civic.polis_deliberation", polis_conversation_id: ID.ENERGY_POLIS_ID, topic: CONV_ENERGY.topic },
     });
     await emitAt(T_ENERGY_CLOSED)({
-      event_type: "civic.process.ended", actor: "system:auto-close", process_id: ID.CONV_ENERGY, hub_id: HUB_ID, jurisdiction: JURISDICTION,
+      event_type: "civic.process.ended", actor: "system:auto-close", process_id: ID.CONV_ENERGY, hub_id: HUB.id, jurisdiction: JURISDICTION,
       processType: "civic.polis_deliberation",
       data: { process_id: ID.CONV_ENERGY, process_type: "civic.polis_deliberation", summary_status: "complete", participation_stats: (st.summary as ReturnType<typeof energySummary>).participation_stats },
     });
@@ -1042,15 +1056,15 @@ async function buildSeedPlan(): Promise<void> {
     await supportProposal(ID.PROP_FARMSTAND, REUBEN.id, emitAt(daysAgo(22)));
     await stampRow("proposal_supports", { proposal_id: ID.PROP_FARMSTAND, user_id: REUBEN.id }, daysAgo(22));
     // Advanced: "converted" is the proposal's outcome vocabulary; it points at the vote.
-    const { error: pe } = await db.from("proposals").update({ status: "converted", converted_to_process_id: ID.VOTE_FARMSTAND, updated_at: T_PROP_CONVERTED }).eq("id", ID.PROP_FARMSTAND);
+    const { error: pe } = await db.from("proposals").update({ status: "converted", converted_to_process_id: ID.VOTE_FARMSTAND, updated_at: T_PROP_CONVERTED }).eq("id", ID.PROP_FARMSTAND).eq("hub_id", HUB.id);
     if (pe) throw new Error(`proposal convert: ${pe.message}`);
-    const { error: pe2 } = await db.from("processes").update({ status: "closed", updated_at: T_PROP_CONVERTED }).eq("id", ID.PROP_FARMSTAND);
+    const { error: pe2 } = await db.from("processes").update({ status: "closed", updated_at: T_PROP_CONVERTED }).eq("id", ID.PROP_FARMSTAND).eq("hub_id", HUB.id);
     if (pe2) throw new Error(`proposal process close: ${pe2.message}`);
     // civic.proposal.closed is the canonical close event (feed-silent by
     // design — the vote's brief is the announcement); the pointer to the vote
     // rides along in data and on the proposals row.
     await emitAt(T_PROP_CONVERTED)({
-      event_type: "civic.proposal.closed", actor: "system:proposal-threshold", process_id: ID.PROP_FARMSTAND, hub_id: HUB_ID, jurisdiction: JURISDICTION,
+      event_type: "civic.proposal.closed", actor: "system:proposal-threshold", process_id: ID.PROP_FARMSTAND, hub_id: HUB.id, jurisdiction: JURISDICTION,
       processType: "civic.proposal",
       data: { proposal: { support_count: 5, support_threshold: 5, converted_to_process_id: ID.VOTE_FARMSTAND } },
     });
@@ -1161,12 +1175,12 @@ async function buildSeedPlan(): Promise<void> {
   add(`Skate-park project ${KEEP.SKATE_PARK}: retitle to "Floyd Skate Park at Lineberry Park" (Draft §PROJECT verbatim), +2 updates (12 and 2 days ago); links → Recreation conversation + trails vote`, async () => {
     const bk = await backup(KEEP.SKATE_PARK, { update_ids: [] as string[] });
     const p = await loadProcess(KEEP.SKATE_PARK);
-    const { error: e1 } = await db.from("processes").update({ title: PROJ_SKATEPARK.title, description: PROJ_SKATEPARK.description }).eq("id", KEEP.SKATE_PARK);
+    const { error: e1 } = await db.from("processes").update({ title: PROJ_SKATEPARK.title, description: PROJ_SKATEPARK.description }).eq("id", KEEP.SKATE_PARK).eq("hub_id", HUB.id);
     if (e1) throw new Error(e1.message);
-    const { error: e2 } = await db.from("projects").update({ title: PROJ_SKATEPARK.title, description: PROJ_SKATEPARK.description }).eq("id", KEEP.SKATE_PARK);
+    const { error: e2 } = await db.from("projects").update({ title: PROJ_SKATEPARK.title, description: PROJ_SKATEPARK.description }).eq("id", KEEP.SKATE_PARK).eq("hub_id", HUB.id);
     if (e2) throw new Error(e2.message);
     if (!(Array.isArray(bk.update_ids) && (bk.update_ids as string[]).length > 0)) {
-      const { data: proj } = await db.from("projects").select("user_id").eq("id", KEEP.SKATE_PARK).single();
+      const { data: proj } = await db.from("projects").select("user_id").eq("id", KEEP.SKATE_PARK).eq("hub_id", HUB.id).single();
       const creator = (proj?.user_id as string) ?? p.createdBy;
       const ids: string[] = [];
       const at = [daysAgo(12), daysAgo(2)];
@@ -1199,10 +1213,10 @@ async function buildSeedPlan(): Promise<void> {
       } catch (err) {
         log(`   ⚠ Polis reopen failed (${err instanceof Error ? err.message : err}) — continuing; check polis.civic.social admin`);
       }
-      const { error } = await db.from("processes").update({ status: "active", state: { ...fresh.state, deadline: daysAhead(42) }, updated_at: new Date().toISOString() }).eq("id", conv.id);
+      const { error } = await db.from("processes").update({ status: "active", state: { ...fresh.state, deadline: daysAhead(42) }, updated_at: new Date().toISOString() }).eq("id", conv.id).eq("hub_id", HUB.id);
       if (error) throw new Error(error.message);
       await emitEvent({
-        event_type: "civic.process.updated", actor: ADMIN_ID, process_id: conv.id, hub_id: HUB_ID, jurisdiction: JURISDICTION,
+        event_type: "civic.process.updated", actor: ADMIN_ID, process_id: conv.id, hub_id: HUB.id, jurisdiction: JURISDICTION,
         processType: "civic.polis_deliberation",
         data: { process: { previous_status: p.status, status: "active" }, reason: "beta slate: reopened" },
       });
@@ -1268,7 +1282,7 @@ async function publishDemoBrief(
 
   await approveBrief(state, ADMIN_ID, ctxAt(publishedAt), {
     fallbackRecipients: [],
-    hubLabel: "Floyd Civic Hub",
+    hubLabel: hubDisplayNameSync(),
     publicBriefUrl: `${uiBaseUrl()}/brief/${record.id}`,
     sendEmail: sendEmailSuppressed,
     // Mirrors services/briefFinalize.ts, with the planned timestamp on the
@@ -1296,7 +1310,7 @@ async function publishDemoBrief(
   await saveProcessState(record);
   await stampRow("processes", { id: briefId }, closedAt, publishedAt);
   {
-    const { error } = await db.from("processes").update({ updated_at: publishedAt }).eq("id", sourceId);
+    const { error } = await db.from("processes").update({ updated_at: publishedAt }).eq("id", sourceId).eq("hub_id", HUB.id);
     if (error) throw new Error(`stamp source updated_at: ${error.message}`);
   }
   log(`   brief ${briefId} published; sent_to = ${JSON.stringify(state.delivered_to_labels)}; status "Awaiting response"`);
@@ -1308,7 +1322,7 @@ async function publishDemoBrief(
 
 async function del(table: string, col: string, values: string[]): Promise<void> {
   if (values.length === 0) return;
-  const { error } = await db.from(table).delete().in(col, values);
+  const { error } = await db.from(table).delete().in(col, values).eq("hub_id", HUB.id);
   if (error) throw new Error(`delete ${table}.${col}: ${error.message}`);
 }
 
@@ -1317,7 +1331,7 @@ async function buildRemovePlan(): Promise<void> {
 
   add(`Close the live Polis conversations the script created (best-effort)`, async () => {
     for (const id of [ID.CONV_AGREE, ID.CONV_DONKENNY, ...(ENV === "dev" ? [KEEP.WATER, KEEP.RECREATION] : [])]) {
-      const { data } = await db.from("processes").select("state").eq("id", id).maybeSingle();
+      const { data } = await db.from("processes").select("state").eq("id", id).eq("hub_id", HUB.id).maybeSingle();
       const cid = (data?.state as { polis_conversation_id?: string } | null)?.polis_conversation_id;
       if (!cid || cid.startsWith("seed-")) continue;
       try { await polisPost("/api/v3/conversation/close", { conversation_id: cid }); log(`   closed Polis ${cid}`); }
@@ -1358,7 +1372,7 @@ async function buildRemovePlan(): Promise<void> {
           }
           delete p.state[BACKUP_KEY];
           await saveProcessState(p);
-          const { error } = await db.from("events").delete().eq("process_id", KEEP.TRAILS_VOTE).in("actor", DEMO_USER_IDS);
+          const { error } = await db.from("events").delete().eq("process_id", KEEP.TRAILS_VOTE).in("actor", DEMO_USER_IDS).eq("hub_id", HUB.id);
           if (error) throw new Error(error.message);
           log("   trails vote restored");
         }
@@ -1369,7 +1383,7 @@ async function buildRemovePlan(): Promise<void> {
         const bk = p?.state[BACKUP_KEY] as { comment_ids?: string[] } | undefined;
         if (p && bk) {
           await del("community_inputs", "id", bk.comment_ids ?? []);
-          const { error } = await db.from("events").delete().eq("process_id", KEEP.TOOL_LIBRARY).in("actor", DEMO_USER_IDS);
+          const { error } = await db.from("events").delete().eq("process_id", KEEP.TOOL_LIBRARY).in("actor", DEMO_USER_IDS).eq("hub_id", HUB.id);
           if (error) throw new Error(error.message);
           delete p.state[BACKUP_KEY];
           await saveProcessState(p);
@@ -1383,16 +1397,16 @@ async function buildRemovePlan(): Promise<void> {
         if (p && bk) {
           const ids = bk.update_ids ?? [];
           if (ids.length) {
-            const { data: ups } = await db.from("project_updates").select("id,created_at").in("id", ids);
+            const { data: ups } = await db.from("project_updates").select("id,created_at").in("id", ids).eq("hub_id", HUB.id);
             for (const u of ups ?? []) {
-              await db.from("events").delete().eq("process_id", KEEP.SKATE_PARK).eq("event_type", "civic.project.updated").eq("created_at", u.created_at);
+              await db.from("events").delete().eq("process_id", KEEP.SKATE_PARK).eq("event_type", "civic.project.updated").eq("created_at", u.created_at).eq("hub_id", HUB.id);
             }
             await del("project_updates", "id", ids);
           }
-          await db.from("processes").update({ title: bk.title, description: bk.description }).eq("id", KEEP.SKATE_PARK);
-          await db.from("projects").update({ title: bk.title, description: bk.description }).eq("id", KEEP.SKATE_PARK);
-          await db.from("process_links").delete().eq("from_id", KEEP.SKATE_PARK).in("to_id", [KEEP.RECREATION, KEEP.TRAILS_VOTE]);
-          await db.from("process_links").delete().eq("from_id", KEEP.TRAILS_VOTE).eq("to_id", KEEP.RECREATION);
+          await db.from("processes").update({ title: bk.title, description: bk.description }).eq("id", KEEP.SKATE_PARK).eq("hub_id", HUB.id);
+          await db.from("projects").update({ title: bk.title, description: bk.description }).eq("id", KEEP.SKATE_PARK).eq("hub_id", HUB.id);
+          await db.from("process_links").delete().eq("from_id", KEEP.SKATE_PARK).in("to_id", [KEEP.RECREATION, KEEP.TRAILS_VOTE]).eq("hub_id", HUB.id);
+          await db.from("process_links").delete().eq("from_id", KEEP.TRAILS_VOTE).eq("to_id", KEEP.RECREATION).eq("hub_id", HUB.id);
           const fresh = await loadProcess(KEEP.SKATE_PARK);
           delete fresh.state[BACKUP_KEY];
           await saveProcessState(fresh);
@@ -1408,8 +1422,8 @@ async function buildRemovePlan(): Promise<void> {
           if (cid) { try { await polisPost("/api/v3/conversation/close", { conversation_id: cid }); } catch { /* best-effort */ } }
           const state = { ...p.state, deadline: bk.deadline ?? null };
           delete (state as Record<string, unknown>)[BACKUP_KEY];
-          await db.from("processes").update({ status: bk.status ?? "finalized", state, updated_at: new Date().toISOString() }).eq("id", id);
-          await db.from("events").delete().eq("process_id", id).eq("event_type", "civic.process.updated").contains("data", { reason: "beta slate: reopened" });
+          await db.from("processes").update({ status: bk.status ?? "finalized", state, updated_at: new Date().toISOString() }).eq("id", id).eq("hub_id", HUB.id);
+          await db.from("events").delete().eq("process_id", id).eq("event_type", "civic.process.updated").contains("data", { reason: "beta slate: reopened" }).eq("hub_id", HUB.id);
           log(`   ${id} restored to ${bk.status}`);
         }
       }
@@ -1432,10 +1446,11 @@ async function buildRemovePlan(): Promise<void> {
 // Main
 // ---------------------------------------------------------------------------
 
-async function main(): Promise<void> {
+async function main(hub: Hub): Promise<void> {
+  HUB = hub;
   const host = new URL(process.env.SUPABASE_URL!).host;
-  console.log(`seedBetaSlate — env=${ENV} (${host}) ${DRY_RUN ? "DRY RUN" : REMOVE ? "REMOVE" : "SEED"}`);
-  console.log(`  BASE_URL=${process.env.BASE_URL}  jurisdiction=${JURISDICTION}  hub_id=${HUB_ID}  polis=${POLIS_BASE_URL}`);
+  console.log(`seedBetaSlate — hub=${HUB_SLUG} env=${ENV} (${host}) ${DRY_RUN ? "DRY RUN" : REMOVE ? "REMOVE" : "SEED"}`);
+  console.log(`  BASE_URL=${process.env.BASE_URL}  jurisdiction=${JURISDICTION}  hub_id=${HUB.id}  polis=${POLIS_BASE_URL}`);
   console.log(`  mail transport: none (SMTP_*/RESEND_API_KEY scrubbed from env; brief delivery uses a logging stub)`);
 
   await resolveAdmin();
@@ -1468,7 +1483,7 @@ async function main(): Promise<void> {
   console.log("\nDone.");
 }
 
-main().then(() => process.exit(0)).catch((err) => {
+withScriptHub(main).then(() => process.exit(0)).catch((err) => {
   console.error("\nFAILED:", err instanceof Error ? err.stack ?? err.message : err);
   process.exit(1);
 });

@@ -1,11 +1,10 @@
-// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 /**
  * One-time migration script: copy the legacy announcement-authors list onto
  * the managed official role (users.official_type / official_title).
  *
  * Run from: ~/Developer/Civic-Social-Mono/civic-hub
- * Usage:    npx tsx scripts/seedOfficials.ts --dry-run
- *           npx tsx scripts/seedOfficials.ts
+ * Usage:    npx tsx scripts/seedOfficials.ts --hub <slug> --dry-run
+ *           npx tsx scripts/seedOfficials.ts --hub <slug>
  *
  * Source of truth for the copy is getAnnouncementAuthors(), which reads
  * hub_settings.announcement_authors and falls back to the CIVIC_BOARD_EMAILS
@@ -39,7 +38,7 @@
  *
  * If you do run it against another environment, pass the env file to NODE,
  * not to `env`:
- *   node --env-file=.env.production --import tsx scripts/seedOfficials.ts --dry-run
+ *   node --env-file=.env.production --import tsx scripts/seedOfficials.ts --hub <slug> --dry-run
  * `env $(grep -v '^#' file | xargs)` word-splits on any value containing a
  * space (CIVIC_JURISDICTION_NAME="Floyd County, VA" makes it try to run a
  * command called `County,`). --env-file parses the file properly.
@@ -48,6 +47,7 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { Hub } from "../src/models/hub.js";
 
 // Load .env manually (no dotenv dependency) — same pattern as the other
 // scripts in this folder. Existing env vars always win, so the prod
@@ -66,14 +66,12 @@ try {
   // .env not found — rely on existing env vars
 }
 
-const { getDb } = await import("../src/db/client.js");
+const { forHub } = await import("../src/db/forHub.js");
 const { getAnnouncementAuthors, setOfficialsMigrated, areOfficialsMigrated } =
   await import("../src/services/hubSettings.js");
 const { inferOfficialType } = await import("../src/shared/officialTypes.js");
 const { generateId } = await import("../src/utils/id.js");
-const { MIGRATION_DEFAULT_HUB_ID } = await import("../src/models/hub.js");
-
-const HUB_ID = process.env.CIVIC_SEED_HUB?.trim() || MIGRATION_DEFAULT_HUB_ID;
+const { withScriptHub } = await import("./lib/hubScope.js");
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
@@ -110,9 +108,9 @@ interface PlannedChange {
   note: string;
 }
 
-async function main(): Promise<void> {
+async function main(hub: Hub): Promise<void> {
   announceTarget();
-  const db = getDb();
+  const db = forHub(hub.id);
 
   console.log(
     DRY_RUN
@@ -120,7 +118,7 @@ async function main(): Promise<void> {
       : "LIVE RUN — writing to the database.\n",
   );
 
-  if (await areOfficialsMigrated(HUB_ID)) {
+  if (await areOfficialsMigrated(hub.id)) {
     console.log(
       "officials_migrated is already set: this database has been migrated.\n" +
         "The roster is managed in the admin panel. Nothing to do.",
@@ -128,14 +126,14 @@ async function main(): Promise<void> {
     return;
   }
 
-  const authors = await getAnnouncementAuthors(HUB_ID);
+  const authors = await getAnnouncementAuthors(hub.id);
   if (authors.length === 0) {
     console.log(
       "No legacy authors found (hub_settings.announcement_authors is empty\n" +
         "and CIVIC_BOARD_EMAILS is unset). Nothing to copy.",
     );
     if (!DRY_RUN) {
-      await setOfficialsMigrated(HUB_ID, null);
+      await setOfficialsMigrated(hub.id, null);
       console.log("\nSet officials_migrated — the admin panel is now the roster.");
     }
     return;
@@ -148,12 +146,11 @@ async function main(): Promise<void> {
     const title = author.label.trim();
     const type = inferOfficialType(title);
 
-    const { data: existing, error } = await db
+    const existing = await db
       .from("users")
       .select("id, display_name, full_name, official_type, official_title")
       .eq("email", email)
       .maybeSingle();
-    if (error) throw new Error(`lookup ${email}: ${error.message}`);
 
     const row = existing as {
       id: string;
@@ -222,20 +219,14 @@ async function main(): Promise<void> {
         is_resident: false,
         digest_frequency_days: 1,
       };
-      const { data, error } = await db
-        .from("users")
-        .insert(insert)
-        .select("id")
-        .single();
-      if (error) throw new Error(`create ${change.email}: ${error.message}`);
+      const data = await db.from("users").insert(insert).select("id").single();
       userId = (data as { id: string }).id;
     } else {
-      const { data, error } = await db
+      const data = await db
         .from("users")
         .select("id")
         .eq("email", change.email)
         .single();
-      if (error) throw new Error(`refetch ${change.email}: ${error.message}`);
       userId = (data as { id: string }).id;
     }
 
@@ -245,19 +236,18 @@ async function main(): Promise<void> {
     };
     if (change.setDisplayName) patch.display_name = change.setDisplayName;
 
-    const { error: upErr } = await db.from("users").update(patch).eq("id", userId);
-    if (upErr) throw new Error(`update ${change.email}: ${upErr.message}`);
+    await db.from("users").update(patch).eq("id", userId);
     console.log(`  wrote ${change.email} → ${change.type} / "${change.title}"`);
   }
 
-  await setOfficialsMigrated(HUB_ID, null);
+  await setOfficialsMigrated(hub.id, null);
   console.log(
     "\nSet officials_migrated. The managed role is now the only source of\n" +
       "official status — edit the roster in Admin → Settings → Officials.",
   );
 }
 
-main().catch((err) => {
+withScriptHub(main).catch((err) => {
   console.error(`\nFAILED: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });

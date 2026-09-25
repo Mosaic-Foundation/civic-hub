@@ -19,13 +19,17 @@
 //   • Prints the connecting host so you can confirm dev vs prod.
 //
 // Run:
-//   DRY RUN (prod):  node --env-file=.env.prod --import tsx scripts/cleanupProdProcesses.ts
-//   APPLY   (prod):  node --env-file=.env.prod --import tsx scripts/cleanupProdProcesses.ts --apply
+//   DRY RUN (prod):  node --env-file=.env.prod --import tsx scripts/cleanupProdProcesses.ts --hub <slug>
+//   APPLY   (prod):  node --env-file=.env.prod --import tsx scripts/cleanupProdProcesses.ts --hub <slug> --apply
 //   (add --dev to target the dev project via SUPABASE_URL/SERVICE_ROLE_KEY)
 
 import { createClient } from "@supabase/supabase-js";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { hubArg } from "./lib/hubScope.js";
+
+// A missing/malformed --hub must fail before anything touches the network.
+const HUB = hubArg();
 
 const apply = process.argv.includes("--apply");
 const useDev = process.argv.includes("--dev");
@@ -73,7 +77,10 @@ async function main() {
   });
 
   // --- Gather targets ---
-  const { data: allProcs, error: pErr } = await db.from("processes").select("*");
+  const { data: allProcs, error: pErr } = await db
+    .from("processes")
+    .select("*")
+    .eq("hub_id", HUB);
   if (pErr) throw new Error(`processes: ${pErr.message}`);
 
   const toArchive = (allProcs ?? []).filter(
@@ -88,7 +95,8 @@ async function main() {
     const { data: evs, error: eErr } = await db
       .from("events")
       .select("*")
-      .in("process_id", archiveIds);
+      .in("process_id", archiveIds)
+      .eq("hub_id", HUB);
     if (eErr) throw new Error(`events: ${eErr.message}`);
     targetEvents = evs ?? [];
   }
@@ -96,7 +104,8 @@ async function main() {
   // All word-cloud submissions (cleared so the cloud starts blank).
   const { data: wcSubs, error: wcErr } = await db
     .from("wordcloud_submissions")
-    .select("*");
+    .select("*")
+    .eq("hub_id", HUB);
   if (wcErr) throw new Error(`wordcloud_submissions: ${wcErr.message}`);
 
   // --- Report ---
@@ -153,7 +162,8 @@ async function main() {
     const { error, count } = await db
       .from("events")
       .delete({ count: "exact" })
-      .in("process_id", chunk);
+      .in("process_id", chunk)
+      .eq("hub_id", HUB);
     if (error) throw new Error(`delete events: ${error.message}`);
     deletedEvents += count ?? 0;
   }
@@ -165,7 +175,8 @@ async function main() {
     const { error, count } = await db
       .from("wordcloud_submissions")
       .delete({ count: "exact" })
-      .in("process_id", wcIds);
+      .in("process_id", wcIds)
+      .eq("hub_id", HUB);
     if (error) throw new Error(`delete wc submissions: ${error.message}`);
     deletedSubs = count ?? 0;
   }
@@ -177,7 +188,8 @@ async function main() {
     const { error, count } = await db
       .from("processes")
       .update({ status: "archived" }, { count: "exact" })
-      .in("id", chunk);
+      .in("id", chunk)
+      .eq("hub_id", HUB);
     if (error) throw new Error(`archive processes: ${error.message}`);
     archived += count ?? 0;
   }

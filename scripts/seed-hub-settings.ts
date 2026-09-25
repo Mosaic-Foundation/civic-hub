@@ -2,10 +2,10 @@
 /**
  * Seed a hub's settings rows from the values this deployment already carries.
  *
- *   npx tsx scripts/seed-hub-settings.ts                # floyd, from env
- *   npx tsx scripts/seed-hub-settings.ts --hub athens   # the demo fixture
- *   npx tsx scripts/seed-hub-settings.ts --dry-run      # show, write nothing
- *   npx tsx scripts/seed-hub-settings.ts --only plugin.news_sync.   # one prefix
+ *   npx tsx scripts/seed-hub-settings.ts --hub floyd                # floyd, from env
+ *   npx tsx scripts/seed-hub-settings.ts --hub athens               # the demo fixture
+ *   npx tsx scripts/seed-hub-settings.ts --hub floyd --dry-run      # show, write nothing
+ *   npx tsx scripts/seed-hub-settings.ts --hub floyd --only plugin.news_sync.   # one prefix
  *
  * WHAT THIS IS FOR. Phase 1 part one moved the NAMES of these values to the
  * dotted scheme while they still lived in environment variables. This writes
@@ -36,7 +36,7 @@ import { resolve } from "node:path";
 import { getDb } from "../src/db/client.js";
 import { KEYS } from "../src/models/hubSettings.js";
 import { encodeList } from "../src/models/hubSettings.js";
-import { MIGRATION_DEFAULT_HUB_ID } from "../src/models/hub.js";
+import { hubArg } from "./lib/hubScope.js";
 
 type Entry = { key: string; value: string };
 
@@ -51,10 +51,7 @@ const ONLY = (() => {
   const i = args.indexOf("--only");
   return i >= 0 && args[i + 1] ? args[i + 1] : null;
 })();
-const HUB_ID = (() => {
-  const i = args.indexOf("--hub");
-  return i >= 0 && args[i + 1] ? args[i + 1] : MIGRATION_DEFAULT_HUB_ID;
-})();
+const HUB_ID = hubArg(args);
 
 /**
  * Turn a comma list of addresses into their `+athens` variants, so a demo

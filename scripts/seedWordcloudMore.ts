@@ -1,7 +1,9 @@
 // Add more submissions to the existing word cloud process for stress-testing.
-// Run: node --env-file=.env --import tsx scripts/seedWordcloudMore.ts
+// Run: node --env-file=.env --import tsx scripts/seedWordcloudMore.ts --hub <slug>
 
 import { executeAction } from "../src/services/processService.js";
+import type { Hub } from "../src/models/hub.js";
+import { withScriptHub } from "./lib/hubScope.js";
 
 const PROCESS_ID = "proc-wordcloud-test";
 
@@ -53,7 +55,7 @@ const samples = [
   { actor: "user-60", text: "Small business community" },
 ];
 
-async function seed() {
+async function seed(_hub: Hub) {
   let success = 0;
   for (const s of samples) {
     try {
@@ -73,7 +75,7 @@ async function seed() {
   console.log(`View at: http://localhost:5173/wordcloud/${PROCESS_ID}`);
 }
 
-seed().catch((err) => {
+withScriptHub(seed).catch((err) => {
   console.error("Seed failed:", err);
   process.exit(1);
 });

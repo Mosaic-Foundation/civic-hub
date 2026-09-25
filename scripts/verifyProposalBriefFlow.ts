@@ -1,11 +1,10 @@
-// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 // Integration check of the PROPOSAL → brief flow against the real DB.
 // Creates a proposal with a past support window, runs the adapter's
 // closeIfExpired (its real lazy-close path), and verifies the brief spawns
 // with the endorsement count.
-// Usage: node --env-file=.env --import tsx scripts/verifyProposalBriefFlow.ts
+// Usage: node --env-file=.env --import tsx scripts/verifyProposalBriefFlow.ts --hub <slug>
 
-import { getDb } from "../src/db/client.js";
+import { forHub } from "../src/db/forHub.js";
 import { getProcess } from "../src/services/processService.js";
 import proposalAdapter from "../src/processes/proposalAdapter.js";
 import {
@@ -16,14 +15,17 @@ import { findExistingBriefId } from "../src/processes/spawnBrief.js";
 import { emitEvent } from "../src/events/eventEmitter.js";
 import type { BriefProcessState } from "../src/modules/civic.brief/index.js";
 import type { Process } from "../src/models/process.js";
-import { HUB_ID, DEFAULT_JURISDICTION } from "../src/config/hub.js";
+import { DEFAULT_JURISDICTION, processJurisdiction } from "../src/config/hub.js";
+import type { Hub } from "../src/models/hub.js";
+import { withScriptHub } from "./lib/hubScope.js";
 
 function ok(cond: boolean, msg: string) {
   console.log(`${cond ? "  ✓" : "  ✗ FAIL:"} ${msg}`);
   if (!cond) process.exitCode = 1;
 }
 
-async function main() {
+async function main(hub: Hub) {
+  const db = forHub(hub.id);
   const pastClose = new Date(Date.now() - 60_000).toISOString();
   const proposal = await createProposal(
     {
@@ -53,8 +55,8 @@ async function main() {
     title: proposal.title,
     description: proposal.description ?? "",
     status: "active",
-    hubId: HUB_ID,
-    jurisdiction: DEFAULT_JURISDICTION,
+    hubId: hub.id,
+    jurisdiction: processJurisdiction() ?? DEFAULT_JURISDICTION,
     createdBy: "verify-script",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -71,16 +73,16 @@ async function main() {
     ok(bs.source_process_type === "civic.proposal", `brief source_process_type is civic.proposal`);
     console.log("    headline:", bs.content.headline);
     console.log("    participation:", bs.content.participation_label);
-    await getDb().from("processes").delete().eq("id", briefId);
+    await db.from("processes").delete().eq("id", briefId);
   }
 
   // Cleanup.
-  await getDb().from("processes").delete().eq("id", id);
-  await getDb().from("proposals").delete().eq("id", id);
+  await db.from("processes").delete().eq("id", id);
+  await db.from("proposals").delete().eq("id", id);
   console.log("  ✓ cleaned up");
 }
 
-main().then(() => {
+withScriptHub(main).then(() => {
   console.log(process.exitCode ? "\nFAILED" : "\nALL CHECKS PASSED");
   process.exit(process.exitCode ?? 0);
 });

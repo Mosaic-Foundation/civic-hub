@@ -1,5 +1,5 @@
 // Seed a word cloud process with sample submissions for testing.
-// Run: node --env-file=.env --import tsx scripts/seedWordcloud.ts
+// Run: node --env-file=.env --import tsx scripts/seedWordcloud.ts --hub <slug>
 
 import { createProcess, executeAction } from "../src/services/processService.js";
 import {
@@ -8,10 +8,12 @@ import {
   SEED_WORDCLOUD_PROMPT_TEXT,
   SEED_WORDCLOUD_SAMPLES,
 } from "../tests/fixtures/samples/seedWordcloud.js";
+import type { Hub } from "../src/models/hub.js";
+import { withScriptHub } from "./lib/hubScope.js";
 
 const PROCESS_ID = "proc-wordcloud-test";
 
-async function seed() {
+async function seed(_hub: Hub) {
   console.log("Creating word cloud process...");
 
   const process = await createProcess({
@@ -59,7 +61,7 @@ async function seed() {
   console.log(`\nDone! View at: http://localhost:5173/wordcloud/${PROCESS_ID}`);
 }
 
-seed().catch((err) => {
+withScriptHub(seed).catch((err) => {
   console.error("Seed failed:", err);
   process.exit(1);
 });

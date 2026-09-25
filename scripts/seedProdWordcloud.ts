@@ -3,17 +3,21 @@
  * Seed a word cloud process with sample submissions into the production database.
  *
  * Run from: ~/Developer/Civic-Social-Mono/civic-hub
- * Usage:    env SUPABASE_URL=<prod_url> SUPABASE_SERVICE_ROLE_KEY=<prod_key> npx tsx scripts/seedProdWordcloud.ts
+ * Usage:    env SUPABASE_URL=<prod_url> SUPABASE_SERVICE_ROLE_KEY=<prod_key> npx tsx scripts/seedProdWordcloud.ts --hub <slug>
  *
  * Safe to run multiple times — uses upsert for the process, skips existing submissions.
  *
  * To remove:
- *   env SUPABASE_URL=<prod_url> SUPABASE_SERVICE_ROLE_KEY=<prod_key> npx tsx scripts/seedProdWordcloud.ts --remove
+ *   env SUPABASE_URL=<prod_url> SUPABASE_SERVICE_ROLE_KEY=<prod_key> npx tsx scripts/seedProdWordcloud.ts --hub <slug> --remove
  */
 
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { hubArg } from "./lib/hubScope.js";
+
+// A missing/malformed --hub must fail before anything touches the network.
+const HUB = hubArg();
 
 // Load .env manually (no dotenv dependency)
 try {
@@ -68,7 +72,7 @@ const PROCESS_ROW = {
       max_submission_length: 280,
     },
   },
-  hub_id: "civic-hub-local",
+  hub_id: HUB,
   created_by: "user:civic-admin",
   source_proposal_id: null,
   starts_at: null,
@@ -133,6 +137,7 @@ async function seed() {
           author_id: s.actor,
           body: s.text,
           device_token: null,
+          hub_id: HUB,
         },
         { onConflict: "id" },
       );
@@ -152,13 +157,15 @@ async function remove() {
   await db
     .from("wordcloud_submissions")
     .delete()
-    .eq("process_id", PROCESS_ID);
+    .eq("process_id", PROCESS_ID)
+    .eq("hub_id", HUB);
   console.log("  Submissions removed");
 
   await db
     .from("processes")
     .delete()
-    .eq("id", PROCESS_ID);
+    .eq("id", PROCESS_ID)
+    .eq("hub_id", HUB);
   console.log("  Process removed");
 
   console.log("Done.");

@@ -1,8 +1,7 @@
-// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 // One-off verification of the universal brief flow against the real DB.
-// Usage: node --env-file=.env --import tsx scripts/verifyBriefFlow.ts <sourceProcessId>
+// Usage: node --env-file=.env --import tsx scripts/verifyBriefFlow.ts --hub <slug> <sourceProcessId>
 
-import { getDb } from "../src/db/client.js";
+import { forHub } from "../src/db/forHub.js";
 import { getProcess, saveProcessState } from "../src/services/processService.js";
 import {
   approveBrief,
@@ -10,20 +9,26 @@ import {
 } from "../src/modules/civic.brief/index.js";
 import { emitEvent } from "../src/events/eventEmitter.js";
 import { finalizeBriefSource } from "../src/services/briefFinalize.js";
+import type { Hub } from "../src/models/hub.js";
+import { withScriptHub } from "./lib/hubScope.js";
 
 function ok(cond: boolean, msg: string) {
   console.log(`${cond ? "  ✓" : "  ✗ FAIL:"} ${msg}`);
   if (!cond) process.exitCode = 1;
 }
 
-async function main() {
-  const sourceId = process.argv[2];
+async function main(hub: Hub) {
+  const db = forHub(hub.id);
+  const args = process.argv.slice(2);
+  const sourceId = args.filter(
+    (a, i) => a !== "--hub" && !a.startsWith("--hub=") && args[i - 1] !== "--hub",
+  )[0];
   if (!sourceId) throw new Error("pass the source process id");
 
   // 1. The source should now be closed/completed. Projects live in the
   //    projects table (no processes row), so check both.
   const source = await getProcess(sourceId);
-  const { data: projRow } = await getDb()
+  const projRow = await db
     .from("projects")
     .select("status")
     .eq("id", sourceId)
@@ -36,7 +41,7 @@ async function main() {
   );
 
   // 2. A civic.brief should have spawned, linked to the source.
-  const { data: briefs } = await getDb()
+  const briefs = await db
     .from("processes")
     .select("id, status, state")
     .eq("type", "civic.brief")
@@ -79,7 +84,7 @@ async function main() {
   // 4. The source's terminal status holds after publish (projects stay
   //    "completed"; other types finalize on the processes row).
   const after = await getProcess(sourceId);
-  const { data: projAfter } = await getDb()
+  const projAfter = await db
     .from("projects")
     .select("status")
     .eq("id", sourceId)
@@ -91,13 +96,13 @@ async function main() {
   );
 
   // 5. Cleanup — remove the test brief + source so dev data stays clean.
-  await getDb().from("processes").delete().eq("id", briefRow.id);
-  await getDb().from("processes").delete().eq("id", sourceId);
-  await getDb().from("projects").delete().eq("id", sourceId);
+  await db.from("processes").delete().eq("id", briefRow.id);
+  await db.from("processes").delete().eq("id", sourceId);
+  await db.from("projects").delete().eq("id", sourceId);
   console.log("  ✓ cleaned up test rows");
 }
 
-main().then(() => {
+withScriptHub(main).then(() => {
   console.log(process.exitCode ? "\nFAILED" : "\nALL CHECKS PASSED");
   process.exit(process.exitCode ?? 0);
 });

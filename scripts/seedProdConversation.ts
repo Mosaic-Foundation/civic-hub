@@ -5,18 +5,22 @@
  * and a seed- conversation ID so the mock data layer serves demo statements.
  *
  * Run from: ~/Developer/Civic-Social-Mono/civic-hub
- * Usage:    npx tsx scripts/seedProdConversation.ts
+ * Usage:    npx tsx scripts/seedProdConversation.ts --hub <slug>
  *
  * Reads SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY from .env (via dotenv).
  * Safe to run multiple times — uses upsert so it won't duplicate.
  *
  * To remove the demo data later:
- *   npx tsx scripts/seedProdConversation.ts --remove
+ *   npx tsx scripts/seedProdConversation.ts --hub <slug> --remove
  */
 
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { hubArg } from "./lib/hubScope.js";
+
+// A missing/malformed --hub must fail before anything touches the network.
+const HUB = hubArg();
 
 // Load .env manually (no dotenv dependency)
 try {
@@ -74,7 +78,7 @@ const FLOCK_CONVERSATION_ROW = {
     summary_status: "pending",
     continued_from_response_id: null,
   },
-  hub_id: "civic-hub-local",
+  hub_id: HUB,
   created_by: "user:civic-admin",
   source_proposal_id: null,
   starts_at: null,
@@ -107,7 +111,8 @@ async function remove() {
   const { error } = await db
     .from("processes")
     .delete()
-    .eq("id", PROCESS_ID);
+    .eq("id", PROCESS_ID)
+    .eq("hub_id", HUB);
 
   if (error) {
     console.error("Failed to remove:", error.message);

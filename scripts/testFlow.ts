@@ -9,15 +9,32 @@
  *   7. Test proposal lifecycle (draft → proposed → support → threshold → active)
  *   8. Test community input
  *
- * Run: npm run test:flow  (server must be running on port 3000)
+ * Run: npx tsx scripts/testFlow.ts --hub <slug>  (server must be running on port 3000)
  */
 
-import { FLOYD_HUB } from "../tests/fixtures/hubs/index.js";
+import { hubArg } from "./lib/hubScope.js";
 
+const HUB = hubArg();
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 
+// The dev server resolves `<slug>.localhost` subdomains to that hub. Against
+// a real deployment (staging/prod), the hub is whatever BASE's hostname maps
+// to — --hub cannot steer that, so we just say so.
+const baseUrl = new URL(BASE);
+const TARGET =
+  baseUrl.hostname === "localhost"
+    ? `http://${HUB}.localhost:${baseUrl.port}`
+    : BASE;
+if (baseUrl.hostname !== "localhost") {
+  console.warn(
+    `BASE_URL (${BASE}) is not localhost — the hub being hit is determined by its hostname, not --hub.`,
+  );
+}
+
+let JURISDICTION_CODE: string;
+
 async function request(method: string, path: string, body?: unknown) {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${TARGET}${path}`, {
     method,
     headers: { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
@@ -41,7 +58,15 @@ function assert(condition: boolean, message: string) {
 
 async function run() {
   console.log("🏛️  Civic Hub — Test Flow\n");
-  console.log(`Target: ${BASE}`);
+  console.log(`Target: ${TARGET}`);
+
+  // 0. Hub config — fetched instead of imported from a fixture, since the
+  // hub is now chosen by --hub rather than a hardcoded fixture.
+  console.log("\n── Step 0: Fetch hub config ──");
+  const hubConfigRes = await request("GET", "/hub-config");
+  assert(hubConfigRes.status === 200, "Hub config retrieved");
+  JURISDICTION_CODE = (hubConfigRes.data as any).hub.jurisdiction_code;
+  assert(typeof JURISDICTION_CODE === "string", "Hub config has hub.jurisdiction_code");
 
   // 1. Health check
   console.log("\n── Step 1: Health check ──");
@@ -55,13 +80,13 @@ async function run() {
     title: "Test Vote: Park Improvements",
     description: "Should we add benches to the park?",
     createdBy: "user:testrunner",
-    jurisdiction: FLOYD_HUB.jurisdiction_code!,
+    jurisdiction: JURISDICTION_CODE,
     state: { options: ["yes", "no", "abstain"] },
   });
   assert(createRes.status === 201, "Process created with 201");
   assert(createRes.data.id !== undefined, "Process has an ID");
   assert(createRes.data.status === "draft", "Process status is draft");
-  assert(createRes.data.jurisdiction === FLOYD_HUB.jurisdiction_code!, "Process has jurisdiction");
+  assert(createRes.data.jurisdiction === JURISDICTION_CODE, "Process has jurisdiction");
 
   const processId = createRes.data.id;
   log("Created Process", createRes.data);
@@ -196,7 +221,7 @@ async function run() {
   const createdEvt = processEvents.find((e: any) => e.event_type === "civic.process.created");
   assert(createdEvt.data.process?.type === "civic.vote", "civic.process.created data has process.type");
   assert(typeof createdEvt.data.process?.title === "string", "civic.process.created data has process.title");
-  assert(createdEvt.jurisdiction === FLOYD_HUB.jurisdiction_code!, "civic.process.created has correct jurisdiction");
+  assert(createdEvt.jurisdiction === JURISDICTION_CODE, "civic.process.created has correct jurisdiction");
 
   const startedEvt = processEvents.find((e: any) => e.event_type === "civic.process.started");
   assert(typeof startedEvt.data.process?.voting_opens_at === "string", "started event has voting_opens_at");
@@ -257,7 +282,7 @@ async function run() {
     title: "Test Proposal: New Dog Park",
     description: "Should we build a dog park?",
     createdBy: "user:testrunner",
-    jurisdiction: FLOYD_HUB.jurisdiction_code!,
+    jurisdiction: JURISDICTION_CODE,
     state: {
       options: ["yes", "no"],
       support_threshold: 2,

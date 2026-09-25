@@ -4,17 +4,21 @@
  * Inserts realistic Floyd County civic data for demo purposes.
  *
  * Run from: ~/Developer/Civic-Social-Mono/civic-hub
- * Usage:    env SUPABASE_URL=<prod_url> SUPABASE_SERVICE_ROLE_KEY=<prod_key> npx tsx scripts/seedProdDemo.ts
+ * Usage:    env SUPABASE_URL=<prod_url> SUPABASE_SERVICE_ROLE_KEY=<prod_key> npx tsx scripts/seedProdDemo.ts --hub <slug>
  *
  * Safe to run multiple times — uses upsert so it won't duplicate.
  *
  * To remove the demo data:
- *   env SUPABASE_URL=<prod_url> SUPABASE_SERVICE_ROLE_KEY=<prod_key> npx tsx scripts/seedProdDemo.ts --remove
+ *   env SUPABASE_URL=<prod_url> SUPABASE_SERVICE_ROLE_KEY=<prod_key> npx tsx scripts/seedProdDemo.ts --hub <slug> --remove
  */
 
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { hubArg } from "./lib/hubScope.js";
+
+// A missing/malformed --hub must fail before anything touches the network.
+const HUB = hubArg();
 
 // Load .env manually (no dotenv dependency)
 try {
@@ -122,7 +126,7 @@ async function seed() {
     console.log(`  Proposal: "${p.title}"`);
     const { error } = await db
       .from("proposals")
-      .upsert(p, { onConflict: "id" });
+      .upsert({ ...p, hub_id: HUB }, { onConflict: "id" });
     if (error) {
       console.error(`    FAILED: ${error.message}`);
     } else {
@@ -134,7 +138,7 @@ async function seed() {
     console.log(`  Project: "${p.title}"`);
     const { error } = await db
       .from("projects")
-      .upsert(p, { onConflict: "id" });
+      .upsert({ ...p, hub_id: HUB }, { onConflict: "id" });
     if (error) {
       console.error(`    FAILED: ${error.message}`);
     } else {
@@ -151,13 +155,15 @@ async function remove() {
   const { error: pe } = await db
     .from("proposals")
     .delete()
-    .in("id", DEMO_PROPOSAL_IDS);
+    .in("id", DEMO_PROPOSAL_IDS)
+    .eq("hub_id", HUB);
   console.log(pe ? `  Proposals FAILED: ${pe.message}` : "  Proposals removed");
 
   const { error: re } = await db
     .from("projects")
     .delete()
-    .in("id", DEMO_PROJECT_IDS);
+    .in("id", DEMO_PROJECT_IDS)
+    .eq("hub_id", HUB);
   console.log(re ? `  Projects FAILED: ${re.message}` : "  Projects removed");
 
   console.log("\nDone.");
