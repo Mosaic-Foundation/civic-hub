@@ -4,6 +4,108 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Multi-tenant Phase 4 part one: cutover runbook, rehearsed on dev against production's data — 2026-09-25
+
+**Branch:** `multi-tenant`, nine step commits plus this entry, **not pushed**
+(Adam pushes). **Production was read (dump, public GETs, one read-only RPC),
+never written.** Dev now holds a fresh copy of production's data, migrated,
+on ES256 hub tokens and an `sb_secret_` server key, with its legacy JWT
+secret revoked.
+
+| Step | Commit | What |
+|---|---|---|
+| 1 | `ddbcdc2` | `scripts/dev-refresh-from-dump.sh` (dump → dev, one transaction, dev ref only), `scripts/dev-refresh-reseed.ts` (Floyd's dev host, Athens demo, Utopia, saved admin edits) |
+| 2 | `36fed95` | Migrations on production's copy; `seed-hub-settings.ts` refuses Vercel's `[SENSITIVE]` |
+| 3 | `a369798` | ES256 signing key + `sb_secret_` server key; runbook's key section |
+| 4 | `084a62e` | Uploads on the hub token (`src/db/storage.ts`); storage in the leak harness; `uploadHubPrefix.test.ts`; Storage on in `config.toml` |
+| 5 | `dab2d1d` | `scripts/check-tenancy.ts` / `npm run check:tenancy` — the pre-switch check |
+| 6 | `db226e1` | Wildcard domain steps (written, not applied) |
+| 7 | `c640cf2` | Rollback exercised both ways |
+| 8 | `d550326` | Smoke test on dev, tokens on; Playwright |
+| 9 | `0d8748f` | `RUNBOOK-cutover.md`, complete |
+
+**Tests:** API layer 24 files / 223 passed / 5 skipped in **both** modes
+(local :3700 off, :3701 on); unit 90 / 1074; lint, `tsc`, place-name check
+clean. Playwright with tokens on: 17 passed, 6 failed — exactly the six known.
+Mutation checks: storage insert policy loosened → the three refusal cases
+fail; `waitlist` un-FORCEd → `check-tenancy` names it, exit 1.
+
+### Rehearsal timings (dev)
+Dump 26 s · restore 5 s · history repair 3 s · push of the 17: 7.7 s ·
+re-seed 3 s · Floyd settings 1 s · signing-key redeploy 42 s · secret-key
+redeploy 45 s · `main` build for rollback 40 s · promote back: seconds.
+Runbook budget for the quiet window: 90 min (~25 min of steps).
+
+### Found, and what was done
+- **Production's migration history is empty.** Push would replay all 64 and
+  fail on the first. Runbook: repair `main`'s 47 as applied, then push 17.
+  First, `main`'s 47 were built into a scratch database and diffed against
+  production's schema: they match except production **lacks the
+  `set_vote_drafts_updated_at` trigger** (`vote_drafts.updated_at` never
+  updates on production — a small live bug, not fixed here), one column
+  comment, has two unmigrated functions (`set_comment_phase`, unused;
+  Supabase's `rls_auto_enable`), and one column order.
+- **`vercel env pull` writes `[SENSITIVE]`** for Sensitive vars; the Floyd
+  seed stored it (name, postal address, Polis URL, meeting source;
+  `DIGEST_ENABLED` read as true). The script now refuses and says how to pass
+  values; the runbook has Adam supply five values (1a).
+- **Supabase won't revoke the legacy secret while legacy API keys are
+  enabled**, and dev's server was on an `eyJ…` service_role key. The server
+  moves to `sb_secret_` first (dev done; `.env` updated by Adam). `main` uses
+  the same supabase-js, so rollback is unaffected.
+- **`main`'s settings upsert (`onConflict: "key"`) fails on the migrated
+  `(hub_id, key)` key, `42P10`.** Adam chose a rollback SQL step
+  (`CREATE UNIQUE INDEX … hub_settings_key_rollback ON hub_settings (key)`),
+  rehearsed on a local copy of production; not runnable on dev (hubs share keys).
+- **`main` won't boot without `CIVIC_SPACE_DID`** (dev lacked it; production
+  has it). Production's old env vars stay until cleanup.
+- **Signed-out parity:** dev (`multi-tenant`, tokens) vs production
+  (`main`) — process pages, proposals, 404s byte-identical; list and search
+  the same items; the feed identical once `anon-…` pseudonyms are masked
+  (per-deployment `CIVIC_ANON_SECRET`; derivation unchanged, so production's
+  pseudonyms survive).
+- Hosted Storage enforces the four policies on an ES256 token; Floyd's 7
+  existing images (whole URLs on production's bucket, `2026/…` keys) load.
+- Wildcard: Vercel also needs `_acme-challenge` delegated (2 NS records) under
+  outside DNS; `dig` shows no existing `_acme-challenge` and every subdomain
+  has its own record, so nothing is shadowed.
+
+### Decisions (Adam, this session)
+- Production dump taken via a scratch-folder link Adam made (the
+  `supabase link` deny rule stays).
+- Rollback's settings problem: the SQL step.
+- Code reaches production by **merging `multi-tenant` into `main`**.
+- `MEETING_*` / `FLOYD_NEWS_*` removed **at cleanup**, not in the window
+  (the plan said the window; rollback needs them).
+
+### State left behind
+- **Dev**: production's data (real beta testers' emails — Floyd is `beta`, so
+  dev mails only its roster/allowlist); ES256 key imported as standby;
+  `CIVIC_HUB_SIGNING_KEY` = that key; `SUPABASE_SERVICE_ROLE_KEY` =
+  `sb_secret_` (`civic_hub_server`); legacy API keys disabled, legacy secret
+  revoked; `CIVIC_SPACE_DID=did:web:civic-hub-dev.vercel.app` added (for the
+  `main` test; harmless). Live deployment: `multi-tenant` `eb80e77` build
+  (`dpl_E1Hv…`), *not* this session's code — Adam pushes, then Promote.
+  A Preview-scoped `SUPABASE_SERVICE_ROLE_KEY` on `civic-hub-dev` is probably
+  the old legacy key; Preview builds would lose the database (harmless).
+- Local stack: Storage on (`supabase start` pulls one more image).
+- Dev private JWK and the production dump live only in this session's
+  scratchpad; nothing secret in any commit.
+
+### For Adam
+1. Push `multi-tenant`, then Promote the new build on `civic-hub-dev`.
+2. Read `RUNBOOK-cutover.md` end to end before choosing a window.
+3. Open question: fix production's missing `vote_drafts` trigger with an
+   additive migration in the cutover set, or leave it?
+
+### For the next session
+- The cleanup migration (runbook §7) is described, not written; it drops
+  things, so it needs Adam's approval of the list.
+- The alias map has no copy script and needs none (the reader falls back);
+  delete alias entries after cleanup.
+- First flag-off API run after a fresh reset+seed can fail three files from
+  a server started before the seed; restart the server after seeding.
+
 ## Multi-tenant Phase 3: forced RLS, minted hub token, leak harness — 2026-09-25
 
 **Branch:** `multi-tenant`, five commits plus this entry, **not pushed by the

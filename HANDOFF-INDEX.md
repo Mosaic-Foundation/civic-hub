@@ -32,6 +32,7 @@ numbers below, or just grep the heading.
 | A hub's public URLs | `src/utils/baseUrl.ts` (from `hubs.hostname`) |
 | Operator scripts' hub | `scripts/lib/hubScope.ts` (`--hub <slug>`, required) |
 | Hub tokens, the RLS switch | `src/db/hubToken.ts`, `hubTokensEnabled()` / `getHubTokenDb()` in `src/db/client.ts`; policies `20260925000000`, catalog `tenancy_catalog()` `20260925010000` |
+| Cutover runbook, dev refresh from a prod dump, pre-switch check | `RUNBOOK-cutover.md`, `scripts/dev-refresh-from-dump.sh`, `scripts/dev-refresh-reseed.ts`, `scripts/check-tenancy.ts` |
 | Leak harness, RLS catalog test | `tests/api/leakHarness.test.ts`, `leakHarnessDb.test.ts`, `rlsCatalog.test.ts`, rules in `tests/fixtures/tenancyCatalog.ts` |
 | Atomic DB functions | `transition_process`, `cast_vote` (`20260924080000`), called via `src/db/atomic.ts` |
 | Place-name CI check + allow-list | `scripts/check-place-names.ts`, `scripts/place-name-allowlist.txt` |
@@ -61,6 +62,11 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- Phase 4 part one: cutover runbook (`RUNBOOK-cutover.md`) rehearsed on dev
+  against production's data — empty prod migration history, `[SENSITIVE]`
+  seed guard, ES256 + `sb_secret_`, uploads on the hub token,
+  `check-tenancy.ts`, rollback (settings index), parity with production —
+  7–~140 (every range below shifts down by its length)
 - Phase 3: forced RLS from one template, minted hub token behind
   `CIVIC_HUB_MINTED_TOKEN`, leak harness (both modes), catalog test, CI twice,
   dev migrated + checked with the flag on locally — 7–~150 (every range

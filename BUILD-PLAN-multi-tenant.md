@@ -850,6 +850,15 @@ Done when: the runbook has been rehearsed against a restored dump of
 production in a local Supabase, with timings, and the rollback step has
 been exercised once.
 
+**The runbook is `RUNBOOK-cutover.md`** (Phase 4 part one, 2026-09-25):
+rehearsed against a fresh production dump loaded into the **dev project**
+(Adam's call for that session, in place of a local stack), timed, with the
+rollback exercised both ways. Decisions made there: code reaches production
+by merging `multi-tenant` into `main`; `MEETING_*` / `FLOYD_NEWS_*` leave
+production at cleanup, not in the window (the hazard note in Phase 4 said
+the window; rollback needs them for the week); a rollback re-adds a unique
+index on `hub_settings (key)` for `main`'s settings writer.
+
 _checklist to be pasted_
 
 ---
