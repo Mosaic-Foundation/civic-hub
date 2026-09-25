@@ -9,7 +9,7 @@ import {
 } from "../modules/civic.input/index.js";
 import { getProcess } from "../services/processService.js";
 import { getProcessHandler } from "../processes/registry.js";
-import { getDb } from "../db/client.js";
+import { forHub } from "../db/forHub.js";
 import {
   getAuthUser,
   isAdminEmail,
@@ -24,24 +24,26 @@ import {
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import { currentHubId } from "../config/hubContext.js";
 
+function db() {
+  return forHub(currentHubId());
+}
 
 async function proposalExists(id: string): Promise<boolean> {
-  const { data } = await getDb()
+  const data = await db()
     .from("proposals")
-    .select("id")
+    .select<{ id: string }>("id")
     .eq("id", id)
     .maybeSingle();
   return !!data;
 }
 
 async function getSourceProposalId(processId: string): Promise<string | null> {
-  const { data } = await getDb()
+  const data = await db()
     .from("processes")
-    .select("source_proposal_id")
+    .select<{ source_proposal_id: string | null }>("source_proposal_id")
     .eq("id", processId)
     .maybeSingle();
-  return (data as { source_proposal_id: string | null } | null)
-    ?.source_proposal_id ?? null;
+  return data?.source_proposal_id ?? null;
 }
 
 /**

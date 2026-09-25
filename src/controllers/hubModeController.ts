@@ -15,8 +15,7 @@
 // check is the readable error rather than the only defence.
 
 import type { Request, Response } from "express";
-import { getDb } from "../db/client.js";
-import { invalidateHubCache } from "../db/hubs.js";
+import { setHubMode } from "../db/hubs.js";
 import { hubModeChangeRejectionReason } from "../models/hub.js";
 import { hubModeFor } from "../services/hubSettings.js";
 import { caller, requireStepUpCode } from "./adminStepUp.js";
@@ -56,22 +55,19 @@ export async function handleSetHubMode(
 
   const mode = body.mode as string;
 
-  const { error } = await getDb()
-    .from("hubs")
-    .update({ mode })
-    .eq("id", hub.id);
-
-  if (error) {
+  try {
+    await setHubMode(hub.id, mode);
+  } catch (err) {
+    const raw = err instanceof Error ? err.message : String(err);
     // The trigger refuses any move into demo. Surface it as the rule it is
     // rather than as a database error.
-    const message = /demo mode/i.test(error.message)
+    const message = /demo mode/i.test(raw)
       ? "A hub cannot be moved into demo mode. Demo is set when the hub is created."
-      : error.message;
+      : raw;
     res.status(400).json({ error: message });
     return;
   }
 
-  invalidateHubCache();
   console.log(
     `[hub] mode changed: ${hub.id} ${hubModeFor(hub)} -> ${mode} by ${user.email}`,
   );

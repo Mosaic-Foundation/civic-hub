@@ -29,10 +29,13 @@ import {
   type DeliberationSeedScenario,
 } from "../debug/seedData.js";
 import { localizeScenario } from "../debug/localizeScenario.js";
-import { getDb } from "../db/client.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { seedIdForHub } from "../debug/autoSeed.js";
+
+function db() {
+  return forHub(currentHubId());
+}
 
 // Production Supabase hostnames that MUST NEVER be seeded against.
 // Add a new entry whenever a new production project is provisioned.
@@ -64,11 +67,14 @@ const MANUAL_WIPE_HINT =
  * when it can. Checked before anything is deleted.
  */
 async function reseedBlocker(): Promise<string | null> {
-  const { count, error } = await getDb()
-    .from("review_turns")
-    .select("*", { count: "exact", head: true });
-  if (error) return `Could not inspect review_turns (${error.message}).`;
-  if ((count ?? 0) > 0) {
+  let count: number;
+  try {
+    count = await db().from("review_turns").count();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return `Could not inspect review_turns (${message}).`;
+  }
+  if (count > 0) {
     return (
       `Refusing to reseed: ${count} append-only review_turns row(s) block the ` +
       `processes wipe, and clearing events first would leave the database ` +
@@ -140,7 +146,7 @@ async function seedDeliberation(
   };
 
   // Stamped with the hub being seeded (processes are read per hub).
-  await forHub(currentHubId()).from("processes").insert(row);
+  await db().from("processes").insert(row);
 
   // Emit a creation event so it shows in the feed
   await emitEvent({

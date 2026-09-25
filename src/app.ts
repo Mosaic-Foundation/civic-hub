@@ -53,7 +53,7 @@ import { assertSpaceIdentityConfigured } from "./config/hub.js";
 import { ensureSeeded } from "./debug/autoSeed.js";
 import { resolveHub } from "./middleware/hub.js";
 import hubConfigRoutes from "./routes/hubConfigRoutes.js";
-import { pingDb } from "./db/client.js";
+import { pingDb } from "./db/health.js";
 import { validateEmailConfig } from "./utils/email.js";
 import { validateSchemaAtStartup, getSchemaReport } from "./db/schemaCheck.js";
 

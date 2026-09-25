@@ -8,7 +8,8 @@
 
 import { Request, Response } from "express";
 import { getProcess } from "../services/processService.js";
-import { getDb } from "../db/client.js";
+import { forHub } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { resolveCallerId } from "../middleware/auth.js";
 import {
   buildClouds,
@@ -16,8 +17,60 @@ import {
   type WordcloudProcessState,
 } from "../modules/civic.wordcloud/index.js";
 
+function db() {
+  return forHub(currentHubId());
+}
+
 function getState(process: { state: Record<string, unknown> }): WordcloudProcessState {
   return process.state as unknown as WordcloudProcessState;
+}
+
+/** Visible submissions for a word cloud process, newest first. */
+interface WordcloudResponseRow {
+  id: string;
+  body: string;
+  submitted_at: string;
+  prompt_id: string | null;
+}
+
+async function listWordcloudResponses(
+  processId: string,
+  promptId: string | undefined,
+): Promise<WordcloudResponseRow[]> {
+  let query = db()
+    .from("wordcloud_submissions")
+    .select<WordcloudResponseRow>("id, body, submitted_at, prompt_id")
+    .eq("process_id", processId)
+    .is("hidden_at", null)
+    .order("submitted_at", { ascending: false });
+
+  if (promptId) {
+    query = query.eq("prompt_id", promptId);
+  }
+
+  return query;
+}
+
+/**
+ * Whether this user has a visible submission on this word cloud process.
+ * The count read is treated as best-effort here, matching the pre-forHub
+ * behaviour of only flipping to true when the count query succeeded.
+ */
+async function hasWordcloudSubmission(
+  processId: string,
+  authorId: string,
+): Promise<boolean> {
+  try {
+    const count = await db()
+      .from("wordcloud_submissions")
+      .count()
+      .eq("process_id", processId)
+      .eq("author_id", authorId)
+      .is("hidden_at", null);
+    return count > 0;
+  } catch {
+    return false;
+  }
 }
 
 export async function handleGetWordcloudCloud(
@@ -61,21 +114,9 @@ export async function handleGetWordcloudResponses(
       return;
     }
 
-    let query = getDb()
-      .from("wordcloud_submissions")
-      .select("id, body, submitted_at, prompt_id")
-      .eq("process_id", id)
-      .is("hidden_at", null)
-      .order("submitted_at", { ascending: false });
+    const responses = await listWordcloudResponses(id, promptId);
 
-    if (promptId) {
-      query = query.eq("prompt_id", promptId);
-    }
-
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-
-    res.json({ responses: data ?? [] });
+    res.json({ responses });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });
@@ -103,16 +144,7 @@ export async function handleGetWordcloud(
     // their id). Anonymous callers get the public read model with
     // has_submitted false.
     const actor = await resolveCallerId(req);
-    let hasSubmitted = false;
-    if (actor) {
-      const { count, error: countErr } = await getDb()
-        .from("wordcloud_submissions")
-        .select("id", { count: "exact", head: true })
-        .eq("process_id", id)
-        .eq("author_id", actor)
-        .is("hidden_at", null);
-      if (!countErr && (count ?? 0) > 0) hasSubmitted = true;
-    }
+    const hasSubmitted = actor ? await hasWordcloudSubmission(id, actor) : false;
 
     res.json({
       id: process.id,

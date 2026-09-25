@@ -1,4 +1,5 @@
-// Hub registry reads — the only place that queries the `hubs` table.
+// @civic-raw-client-importer: the hubs registry has no hub_id and is read before any hub is known.
+// The hub registry — the only place that queries the `hubs` table.
 //
 // Lives in src/db/ because it uses the raw service-role client, which nothing
 // outside this directory and the future control plane may import (a lint rule
@@ -111,4 +112,17 @@ export async function listActiveHubs(): Promise<Hub[]> {
 
   if (error) throw new Error(`hubs.listActive: ${error.message}`);
   return (data ?? []) as Hub[];
+}
+
+/**
+ * Set a hub's lifecycle mode. The one registry write a hub's own admin can
+ * make (through POST /admin/hub/mode, after the step-up code); the rules on
+ * which moves are allowed live in hubModeChangeRejectionReason(), and a
+ * trigger refuses any move INTO demo whatever the caller. Throws with the
+ * database's message on failure; the cache is dropped on success.
+ */
+export async function setHubMode(hubId: string, mode: string): Promise<void> {
+  const { error } = await getDb().from("hubs").update({ mode }).eq("id", hubId);
+  if (error) throw new Error(error.message);
+  invalidateHubCache();
 }

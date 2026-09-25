@@ -18,7 +18,30 @@ import {
   markReviewsSeen,
 } from "../modules/civic.review/index.js";
 import { processDetailPath } from "../processes/registry.js";
-import { getDb } from "../db/client.js";
+import { forHub } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
+
+function db() {
+  return forHub(currentHubId());
+}
+
+/** The process row backing a review (type/title/description only), for list views. */
+async function getProcessSummary(
+  processId: string,
+): Promise<{ type: string; title: string; description: string } | null> {
+  return db()
+    .from("processes")
+    .select<{ type: string; title: string; description: string }>(
+      "type, title, description",
+    )
+    .eq("id", processId)
+    .single();
+}
+
+/** The full process row backing a review, for detail views. */
+async function getProcessRow(processId: string): Promise<Record<string, unknown>> {
+  return db().from("processes").select("*").eq("id", processId).single();
+}
 
 // --- Notification indicator ---
 
@@ -217,15 +240,11 @@ export async function handleGetMyReviews(
 
     const enriched = await Promise.all(
       reviews.map(async (review) => {
-        const { data: proc } = await getDb()
-          .from("processes")
-          .select("type, title, description")
-          .eq("id", review.process_id)
-          .single();
+        const proc = await getProcessSummary(review.process_id);
         return {
           ...review,
-          process_type: (proc as Record<string, unknown> | null)?.type ?? null,
-          process_title: (proc as Record<string, unknown> | null)?.title ?? null,
+          process_type: proc?.type ?? null,
+          process_title: proc?.title ?? null,
         };
       }),
     );
@@ -257,11 +276,7 @@ export async function handleGetReview(
     }
 
     const turns = await getReviewTurns(reviewId);
-    const { data: proc } = await getDb()
-      .from("processes")
-      .select("*")
-      .eq("id", review.process_id)
-      .single();
+    const proc = await getProcessRow(review.process_id);
 
     res.json({ review, turns, process: proc, submission: submissionFor(proc), detail_path: detailPathFor(proc) });
   } catch (err) {
@@ -282,15 +297,11 @@ export async function handleAdminListReviews(
 
     const enriched = await Promise.all(
       reviews.map(async (review) => {
-        const { data: proc } = await getDb()
-          .from("processes")
-          .select("type, title, description")
-          .eq("id", review.process_id)
-          .single();
+        const proc = await getProcessSummary(review.process_id);
         return {
           ...review,
-          process_type: (proc as Record<string, unknown> | null)?.type ?? null,
-          process_title: (proc as Record<string, unknown> | null)?.title ?? null,
+          process_type: proc?.type ?? null,
+          process_title: proc?.title ?? null,
         };
       }),
     );
@@ -316,11 +327,7 @@ export async function handleAdminGetReview(
     }
 
     const turns = await getReviewTurns(reviewId);
-    const { data: proc } = await getDb()
-      .from("processes")
-      .select("*")
-      .eq("id", review.process_id)
-      .single();
+    const proc = await getProcessRow(review.process_id);
 
     res.json({ review, turns, process: proc, submission: submissionFor(proc), detail_path: detailPathFor(proc) });
   } catch (err) {

@@ -1,4 +1,5 @@
 // @civic-raw-client — CONTROL PLANE AND MIGRATIONS ONLY.
+// @civic-raw-client-importer: this is the raw client; it wraps supabase-js.
 //
 // The raw, service-role Supabase client. It sees every hub's rows. Request
 // code reaches tenant data through forHub(hubId) in ./forHub.ts, which wraps
@@ -54,24 +55,4 @@ export function getDb(): SupabaseClient {
   });
 
   return cached;
-}
-
-/**
- * Lightweight connectivity probe. Returns `{ ok: true }` on success,
- * `{ ok: false, error }` on failure. Used by /health.
- */
-export async function pingDb(): Promise<
-  { ok: true } | { ok: false; error: string }
-> {
-  try {
-    // HEAD + count is the cheapest query that proves the connection works
-    // and RLS policy is respected by the service role.
-    const { error } = await getDb()
-      .from("users")
-      .select("id", { count: "exact", head: true });
-    if (error) return { ok: false, error: error.message };
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
 }

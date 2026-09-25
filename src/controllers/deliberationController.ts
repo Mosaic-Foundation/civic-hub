@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import { getAuthUser, resolveCallerId } from "../middleware/auth.js";
 import { getPolisAdapter } from "../processes/deliberationBoot.js";
-import { getDb } from "../db/client.js";
+import { forHub } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import * as processService from "../services/processService.js";
 import type { PolisDeliberationState } from "../shared/polis_deliberation/types.js";
 import type { VoteDirection } from "../shared/polis_deliberation/adapter/types.js";
@@ -15,6 +16,78 @@ import {
 import { submitAsCreator } from "../modules/civic.review/index.js";
 import { checkTextAgainstCoC, getHubConfig } from "../modules/civic.assistant/index.js";
 import { assertPassesWordlist } from "../shared/wordlist/index.js";
+
+function db() {
+  return forHub(currentHubId());
+}
+
+/**
+ * Record a local vote so we can distinguish new participants from users who
+ * have voted on everything (Polis returns null for both). Best-effort: a
+ * failure here must not fail the vote itself.
+ */
+async function recordLocalVoteTracking(
+  processId: string,
+  userId: string,
+  statementId: number,
+): Promise<void> {
+  await db()
+    .from("deliberation_votes")
+    .upsert(
+      { process_id: processId, user_id: userId, statement_id: statementId },
+      { onConflict: "hub_id,process_id,user_id,statement_id" },
+    );
+}
+
+/** Whether this user has already submitted a statement in this conversation. */
+async function findExistingSubmission(
+  processId: string,
+  userId: string,
+): Promise<{ user_id: string } | null> {
+  return db()
+    .from("deliberation_submissions")
+    .select<{ user_id: string }>("user_id")
+    .eq("process_id", processId)
+    .eq("user_id", userId)
+    .maybeSingle();
+}
+
+/** Record that this user has submitted a statement in this conversation. */
+async function recordSubmission(processId: string, userId: string): Promise<void> {
+  await db()
+    .from("deliberation_submissions")
+    .upsert(
+      { process_id: processId, user_id: userId },
+      { onConflict: "hub_id,process_id,user_id" },
+    );
+}
+
+/** The statement ids this user has already voted on, in this conversation. */
+async function getVotedStatementIds(
+  processId: string,
+  userId: string,
+): Promise<Set<number>> {
+  const votes = await db()
+    .from("deliberation_votes")
+    .select<{ statement_id: number }>("statement_id")
+    .eq("process_id", processId)
+    .eq("user_id", userId);
+  return new Set(votes.map((v) => v.statement_id));
+}
+
+/** Whether this user has submitted a statement in this conversation. */
+async function hasSubmittedStatement(
+  processId: string,
+  userId: string,
+): Promise<boolean> {
+  const data = await db()
+    .from("deliberation_submissions")
+    .select<{ user_id: string }>("user_id")
+    .eq("process_id", processId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return !!data;
+}
 
 async function getConversationId(processId: string): Promise<string> {
   const process = await processService.getProcess(processId);
@@ -63,9 +136,7 @@ export async function vote(req: Request, res: Response): Promise<void> {
     // Track vote locally so we can distinguish new participants from
     // users who have voted on everything (Polis returns null for both).
     try {
-      await getDb()
-        .from("deliberation_votes")
-        .upsert({ process_id: processId, user_id: user.id, statement_id });
+      await recordLocalVoteTracking(processId, user.id, statement_id);
     } catch {
       // Non-critical — don't fail the vote if local tracking fails
     }
@@ -93,12 +164,7 @@ export async function submitStatement(req: Request, res: Response): Promise<void
     // passes through untouched.
     assertPassesWordlist(text);
 
-    const { data: existing } = await getDb()
-      .from("deliberation_submissions")
-      .select("user_id")
-      .eq("process_id", processId)
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const existing = await findExistingSubmission(processId, user.id);
 
     if (existing) {
       res.status(409).json({ error: "You have already submitted a statement in this conversation" });
@@ -110,18 +176,14 @@ export async function submitStatement(req: Request, res: Response): Promise<void
     // Seed conversations use mock data
     if (isSeedConversation(conversationId)) {
       const stmt = addMockStatement(conversationId, text.trim());
-      await getDb()
-        .from("deliberation_submissions")
-        .upsert({ process_id: processId, user_id: user.id });
+      await recordSubmission(processId, user.id);
       res.status(201).json(stmt ?? { id: 0, text: text.trim() });
       return;
     }
 
     const adapter = getPolisAdapter();
     const result = await adapter.submitStatement(conversationId, user.id, text.trim());
-    await getDb()
-      .from("deliberation_submissions")
-      .upsert({ process_id: processId, user_id: user.id });
+    await recordSubmission(processId, user.id);
     res.status(201).json(result);
   } catch (err: any) {
     handleError(res, err);
@@ -150,13 +212,7 @@ export async function getNextStatement(req: Request, res: Response): Promise<voi
     // returns null even though there ARE statements. For those users,
     // fall back to serving unvoted statements from the full list.
     if (!statement) {
-      const { data: votes } = await getDb()
-        .from("deliberation_votes")
-        .select("statement_id")
-        .eq("process_id", processId)
-        .eq("user_id", user.id);
-
-      const votedIds = new Set((votes ?? []).map((v: { statement_id: number }) => v.statement_id));
+      const votedIds = await getVotedStatementIds(processId, user.id);
 
       // If zero votes, definitely a new participant. If some votes,
       // check for unvoted statements in case Polis lost track.
@@ -367,16 +423,7 @@ export async function getDeliberation(req: Request, res: Response): Promise<void
     const actor = await resolveCallerId(req);
     const readModel = handler.getReadModel(process, actor);
 
-    let has_submitted = false;
-    if (actor) {
-      const { data } = await getDb()
-        .from("deliberation_submissions")
-        .select("user_id")
-        .eq("process_id", processId)
-        .eq("user_id", actor)
-        .maybeSingle();
-      has_submitted = !!data;
-    }
+    const has_submitted = actor ? await hasSubmittedStatement(processId, actor) : false;
 
     res.json({ ...readModel, has_submitted });
   } catch (err: any) {
