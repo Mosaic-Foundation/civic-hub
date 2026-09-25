@@ -1,17 +1,15 @@
-// civic.news_sync controller — GET /internal/news-sync/run
+// civic.news_sync — the "news_sync" job (src/jobs/registry.ts).
 //
-// Cron-triggered (and manually triggerable with the same CRON_SECRET). For
-// each active hub that has configured it, discovers new posts from the hub's
+// Run once per active hub by the job runner. For a hub that has configured it, discovers new posts from the hub's
 // own news feed through the hub's own connector, filters out past-dated
 // events, dedupes against already-ingested rows, and creates one
 // civic.announcement per new entry (auto-published, no admin review).
 // Per-entry failures are isolated; one bad post does not abort the run, and
 // one hub's broken feed does not stop the next hub's.
 //
-// Renamed from the Floyd news sync on 2026-09-24. The old path,
-// /internal/floyd-news-sync/run, is still mounted as a deprecated alias — see
-// src/routes/newsSyncRoutes.ts — because production's vercel.json on `main`
-// calls it until the cutover.
+// Renamed from the Floyd news sync on 2026-09-24. The old path is still
+// mounted as a deprecated alias (the job's deprecatedPaths in the registry),
+// because production's vercel.json on `main` calls it until the cutover.
 //
 // Per Slice 13 design: synced announcements have `state.source` set so the
 // event emitter routes the action_url to the external permalink. The
@@ -20,9 +18,6 @@
 // document scans are unreadable), body comes from the feed's description when
 // present, otherwise a strict Claude paraphrase of the title, otherwise empty.
 //
-// Manual runs may pass `?hub=<slug>` to run one hub only.
-
-import { Request, Response } from "express";
 import {
   discoverNewsEntries,
   paraphraseTitle,
@@ -47,18 +42,8 @@ import {
 import { getSettingSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 import { civicPlaceShortName, processJurisdiction } from "../config/hub.js";
-import { forEachActiveHub, requestedHub } from "../services/cronHubs.js";
 
 const CRON_ACTOR = "system:news-sync-cron";
-
-function requireCronSecret(req: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const header = req.headers.authorization ?? "";
-  if (!header.startsWith("Bearer ")) return false;
-  const token = header.slice(7).trim();
-  return token.length > 0 && token === secret;
-}
 
 function modelName(): string {
   return process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL;
@@ -109,43 +94,6 @@ async function existingShareUrls(): Promise<Set<string>> {
 export interface NewsSyncHubOutcome {
   status: number;
   body: Record<string, unknown>;
-}
-
-export async function handleRunNewsSync(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  if (!requireCronSecret(req)) {
-    res.status(401).json({ error: "Invalid or missing cron credential" });
-    return;
-  }
-
-  const only = requestedHub(req.query);
-  if (only === undefined) {
-    res.status(400).json({ error: "hub must be a hub slug" });
-    return;
-  }
-
-  const runs = await forEachActiveHub(() => runNewsSyncForHub(), { onlyHub: only });
-  if (only && runs.length === 0) {
-    res.status(404).json({ error: `no active hub "${only}"` });
-    return;
-  }
-
-  // One failing hub fails the cron, so Vercel still alerts on it — the
-  // behaviour a single-hub deployment always had.
-  const hubs: Record<string, unknown> = {};
-  let status = 200;
-  for (const run of runs) {
-    if (run.error !== undefined) {
-      hubs[run.hub_id] = { error: run.error };
-      status = 500;
-    } else if (run.result) {
-      hubs[run.hub_id] = run.result.body;
-      status = Math.max(status, run.result.status);
-    }
-  }
-  res.status(status).json({ hubs });
 }
 
 /**

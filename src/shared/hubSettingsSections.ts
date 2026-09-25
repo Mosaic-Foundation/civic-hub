@@ -34,8 +34,10 @@ export type SettingFieldKind =
   | "image"
   | "email"
   | "boolean"
-  /** An hour of the day, 0–23, UTC. */
+  /** An hour of the day, 0–23, in the hub's identity.timezone (UTC when unset). */
   | "hour"
+  /** An IANA time zone name, e.g. "America/New_York"; empty means UTC. */
+  | "timezone"
   /** #rrggbb. */
   | "color"
   /** A theme object (src/shared/theme.ts), stored as canonical JSON. */
@@ -63,6 +65,7 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "identity.banner_url", kind: "image" },
     { key: "identity.banner_alt", kind: "text", maxLength: 200 },
     { key: "identity.logo_url", kind: "image" },
+    { key: "identity.timezone", kind: "timezone" },
   ],
   copy: [
     // Both render as plain text (the welcome popup, the sign-up gate).

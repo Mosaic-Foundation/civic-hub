@@ -1,11 +1,14 @@
-// Digest controllers — three HTTP surfaces:
+// Digest — the job and two HTTP surfaces:
 //
-//   POST /internal/digest/run
-//     Cron-triggered. Iterates every subscribed user, assembles a
-//     per-user digest over their "since" window, sends via Resend
-//     (utils/email). Updates last_digest_sent_at only on a successful
-//     send. Empty digests are skipped silently — no email, no cursor
-//     update.
+//   runDigestForHub (the "digest" job, src/jobs/registry.ts)
+//     Runs hourly, once per active hub, inside that hub's scope. A hub is
+//     mailed only in its own send hour (plugin.digest.send_hour, read in
+//     identity.timezone; 13:00 UTC when neither is set, the hour the one
+//     deployment-wide digest always went out). Iterates that hub's
+//     subscribed users, assembles a per-user digest over their "since"
+//     window, sends via utils/email (whose guard suppresses non-admins on a
+//     hub that is not live). Updates last_digest_sent_at only on a successful
+//     send. Empty digests are skipped silently — no email, no cursor update.
 //
 //   GET /unsubscribe/digest?token=…
 //     No auth. Verifies the HMAC-signed token, flips
@@ -15,11 +18,7 @@
 //     Authed (requireAuth). Flips the subscription flag for the
 //     currently authenticated user (the settings-page toggle).
 //
-// Slice 5.
-
-// TODO(phase2): this runs from a cron with no hub in scope, so the reads
-// below resolve from env rather than per hub. Phase 2 makes crons iterate
-// hubs and run once per hub.
+// Slice 5; per hub since Phase 2c.
 
 import { Request, Response } from "express";
 import { currentHubId } from "../config/hubContext.js";
@@ -50,6 +49,8 @@ import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { getSettingSync, hubDisplayNameSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
+import { hourInZone, resolveTimeZone } from "../utils/hubTime.js";
+import type { JobOutcome } from "../jobs/types.js";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 // Slack subtracted from the next-due calculation so a daily cron firing at a
@@ -62,22 +63,18 @@ function postalAddress(): string {
   return getSettingSync(KEYS.EMAIL_POSTAL_ADDRESS)?.trim() || "";
 }
 
-function digestEnabled(): boolean {
-  // Default to true. Only "false" (case-insensitive) disables.
-  const v = process.env.DIGEST_ENABLED?.trim().toLowerCase();
-  return v !== "false";
-}
+/** The hour the digest always went out before a hub could choose one. */
+export const DEFAULT_DIGEST_SEND_HOUR = 13;
 
-function requireCronSecret(req: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const header = req.headers.authorization ?? "";
-  if (!header.startsWith("Bearer ")) return false;
-  const token = header.slice(7).trim();
-  // Constant-time compare is overkill for this shared secret; standard
-  // compare is acceptable for a cron-gate credential that isn't
-  // user-chosen and can't be probed for partial matches in this code path.
-  return token.length > 0 && token === secret;
+/**
+ * The hub in scope's send hour and time zone. An unset or malformed hour is
+ * the default; an unset or unknown zone is UTC.
+ */
+export function digestSchedule(): { hour: number; timeZone: string } {
+  const raw = getSettingSync(KEYS.PLUGIN_DIGEST_SEND_HOUR)?.trim() ?? "";
+  const n = raw === "" ? NaN : Number(raw);
+  const hour = Number.isInteger(n) && n >= 0 && n <= 23 ? n : DEFAULT_DIGEST_SEND_HOUR;
+  return { hour, timeZone: resolveTimeZone(getSettingSync(KEYS.IDENTITY_TIMEZONE)) };
 }
 
 function clampSince(user: {
@@ -130,37 +127,47 @@ function rewriteLocalhostOrigin(rawUrl: string, targetBase: string): string {
   }
 }
 
-// --- POST /internal/digest/run ---------------------------------------------
+// --- the digest job, one hub -------------------------------------------------
 
 /**
- * Cron endpoint. Protected by CRON_SECRET bearer auth (Vercel Cron auto-
- * injects this header). Idempotent only in the sense that re-running
- * before last_digest_sent_at has been updated will re-send the same
- * events — but under normal operation a day passes between runs, so the
- * window shifts.
+ * One hub's digest run, inside that hub's scope. The job runner has already
+ * checked the cron credential and `plugin.digest.enabled`; this decides
+ * whether the hub is due (its send hour, unless `force`) and sends.
+ *
+ * Idempotent only in the sense that re-running before last_digest_sent_at
+ * has been updated will re-send the same events — but the per-user cadence
+ * check below stops a second run inside the same day from mailing anyone
+ * twice.
  */
-export async function handleRunDigest(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  if (!requireCronSecret(req)) {
-    res.status(401).json({ error: "Invalid or missing cron credential" });
-    return;
-  }
-
-  if (!digestEnabled()) {
-    res.status(200).json({ skipped: true, reason: "digest disabled" });
-    return;
+export async function runDigestForHub(input: {
+  now: Date;
+  force: boolean;
+}): Promise<JobOutcome> {
+  const schedule = digestSchedule();
+  const localHour = hourInZone(input.now, schedule.timeZone);
+  if (!input.force && localHour !== schedule.hour) {
+    return {
+      status: 200,
+      body: {
+        skipped: true,
+        reason: "not the send hour",
+        send_hour: schedule.hour,
+        time_zone: schedule.timeZone,
+        local_hour: localHour,
+      },
+    };
   }
 
   const started = Date.now();
   const secret = process.env.DIGEST_UNSUBSCRIBE_SECRET;
   if (!secret || secret.length < 16) {
-    res.status(500).json({
-      error:
-        "DIGEST_UNSUBSCRIBE_SECRET must be set and >= 16 characters for the digest cron to emit valid unsubscribe links.",
-    });
-    return;
+    return {
+      status: 500,
+      body: {
+        error:
+          "DIGEST_UNSUBSCRIBE_SECRET must be set and >= 16 characters for the digest cron to emit valid unsubscribe links.",
+      },
+    };
   }
 
   const apiBase = baseUrl();
@@ -382,24 +389,30 @@ export async function handleRunDigest(
       }
     }
 
-    res.status(200).json({
-      processed_users: processed,
-      sent_count: sent,
-      skipped_count: skipped,
-      failed_count: failed,
-      duration_ms: Date.now() - started,
-    });
+    return {
+      status: 200,
+      body: {
+        processed_users: processed,
+        sent_count: sent,
+        skipped_count: skipped,
+        failed_count: failed,
+        duration_ms: Date.now() - started,
+      },
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    console.error(`[digest] batch error: ${message}`);
-    res.status(500).json({
-      error: message,
-      processed_users: processed,
-      sent_count: sent,
-      skipped_count: skipped,
-      failed_count: failed,
-      duration_ms: Date.now() - started,
-    });
+    console.error(`[digest] hub=${currentHubId()} batch error: ${message}`);
+    return {
+      status: 500,
+      body: {
+        error: message,
+        processed_users: processed,
+        sent_count: sent,
+        skipped_count: skipped,
+        failed_count: failed,
+        duration_ms: Date.now() - started,
+      },
+    };
   }
 }
 

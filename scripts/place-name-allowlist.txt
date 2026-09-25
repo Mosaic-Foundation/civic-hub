@@ -16,7 +16,7 @@ src/models/hubSettings.ts | "FLOYD_NEWS_SYNC_MAX_PER_RUN" | env fallback for plu
 src/models/hubSettings.ts | "FLOYD_NEWS_SYNC_ENABLED" | env fallback for plugin.news_sync.enabled until the cutover
 
 # Deprecated aliases for names that shipped. Delete after the cutover.
-src/routes/newsSyncRoutes.ts | "/floyd-news-sync/run" | deprecated cron path; production's vercel.json on main schedules it until the cutover
+src/jobs/registry.ts | "/floyd-news-sync/run" | deprecated cron path; production's vercel.json on main schedules it until the cutover
 src/modules/civic.meeting_summary/connectors/index.ts | "floyd-minutes-page" | pre-rename connector id; a stored row or env var may still select it until the cutover rewrites them
 
 # The database's own default. Goes when Phase 2 drops the column defaults.

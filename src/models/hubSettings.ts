@@ -28,6 +28,11 @@ export const KEYS = {
   // the header beside the hub's name. Public, because the header renders it
   // for every visitor — the one key that session added to the public list.
   IDENTITY_LOGO_URL: "identity.logo_url",
+  // The hub's IANA time zone ("America/New_York"). Added 2026-09-24 (Phase
+  // 2c, Adam's brief: "add identity.timezone if no setting exists"). Read by
+  // the digest job to find the hub's send hour; empty or invalid means UTC,
+  // which is what plugin.digest.send_hour meant before it existed.
+  IDENTITY_TIMEZONE: "identity.timezone",
 
   COPY_INTRO_BODY: "copy.intro_body",
   COPY_RESIDENCY_INTRO: "copy.residency_intro",
@@ -91,11 +96,10 @@ export const KEYS = {
 
   PLUGIN_DIGEST_ENABLED: "plugin.digest.enabled",
   PLUGIN_ADMIN_DIGEST_ENABLED: "plugin.admin_digest.enabled",
-  // The hour of the day, 0–23 in UTC, the resident digest goes out. Added
-  // 2026-09-24 (Adam). STORED ONLY until Phase 2: the digest cron runs once
-  // a day with no hub in scope, and `users` has no hub_id, so running it per
-  // hub would mail every user on the shared table once per hub. Phase 2 makes
-  // the cron hourly and per hub, and this is what it reads.
+  // The hour of the day, 0–23, the resident digest goes out, in the hub's
+  // identity.timezone (UTC when unset). Added 2026-09-24 (Adam); read since
+  // Phase 2c, when the digest job became hourly and per hub. Unset means 13,
+  // the hour the one deployment-wide digest always went out.
   PLUGIN_DIGEST_SEND_HOUR: "plugin.digest.send_hour",
 
   PLUGIN_MEETING_SOURCE_URL: "plugin.meeting_summary.source_url",
@@ -138,6 +142,12 @@ export const PLUGIN_IDS = [
   "feedback",
   "news_sync",
 ] as const;
+
+export type PluginId = (typeof PLUGIN_IDS)[number];
+
+export function isPluginId(value: unknown): value is PluginId {
+  return typeof value === "string" && (PLUGIN_IDS as readonly string[]).includes(value);
+}
 
 /**
  * Legacy key names that still resolve. A read tries the canonical key first,

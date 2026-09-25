@@ -252,9 +252,15 @@ export function BooleanField({ f, k, label, hint }: Common) {
 }
 
 /** An hour stored in UTC, shown alongside the admin's own clock. */
+/**
+ * An hour of the day in the hub's own time zone (identity.timezone, set in
+ * Identity; UTC when unset). Beside each hour: what that is on the admin's
+ * own clock, since the admin is not always where the hub is.
+ */
 export function HourField({ f, k, label, hint }: Common) {
   const id = useId();
   const hours = Array.from({ length: 24 }, (_, h) => h);
+  const zone = validZone(f.data.values["identity.timezone"]) ?? "UTC";
   return (
     <div className="settings-field">
       <Label id={id} label={label} hint={hint} />
@@ -268,7 +274,7 @@ export function HourField({ f, k, label, hint }: Common) {
       >
         {hours.map((h) => (
           <option key={h} value={String(h)}>
-            {`${String(h).padStart(2, "0")}:00 UTC — ${localTimeOf(h)} your time`}
+            {`${String(h).padStart(2, "0")}:00 ${zone}${zone === browserZone() ? "" : ` — ${yourTimeOf(h, zone)} your time`}`}
           </option>
         ))}
       </select>
@@ -276,10 +282,65 @@ export function HourField({ f, k, label, hint }: Common) {
   );
 }
 
-function localTimeOf(utcHour: number): string {
-  const d = new Date();
-  d.setUTCHours(utcHour, 0, 0, 0);
-  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+function validZone(zone: string | undefined): string | undefined {
+  if (!zone) return undefined;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+    return zone;
+  } catch {
+    return undefined;
+  }
+}
+
+function browserZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+/** Today's `hour`:00 in `zone`, shown on the admin's own clock. */
+function yourTimeOf(hour: number, zone: string): string {
+  const now = new Date();
+  // Find the UTC instant whose wall-clock hour in `zone` is `hour`, today.
+  for (let offset = 0; offset < 48; offset++) {
+    const t = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0) + (offset - 12) * 3600_000);
+    const h = Number(
+      new Intl.DateTimeFormat("en-US", { timeZone: zone, hour: "numeric", hourCycle: "h23" }).format(t),
+    ) % 24;
+    if (h === hour) return t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  return "";
+}
+
+/** Every time zone the browser knows, the hub's current one first if unusual. */
+function zoneList(current: string): string[] {
+  const all = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
+  const list = all.includes("UTC") ? all : ["UTC", ...all];
+  return current && !list.includes(current) ? [current, ...list] : list;
+}
+
+/** An IANA time zone; empty means UTC. */
+export function TimeZoneField({ f, k, label, hint }: Common) {
+  const id = useId();
+  const value = f.value(k);
+  return (
+    <div className="settings-field">
+      <Label id={id} label={label} hint={hint} />
+      <select
+        id={id}
+        className="form-input"
+        value={value}
+        onChange={(e) => f.set(k, e.target.value)}
+        disabled={f.disabled}
+        style={{ maxWidth: "320px" }}
+      >
+        <option value="">Not set (UTC)</option>
+        {zoneList(value).map((z) => (
+          <option key={z} value={z}>
+            {z.replace(/_/g, " ")}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 }
 
 /** A value the platform sets: shown, never editable here. */

@@ -117,7 +117,7 @@ Key naming is dotted, lowercase, and namespaced. The canonical keys:
 
 | Namespace | Keys |
 |---|---|
-| `identity.` | `identity.name`, `identity.label`, `identity.tagline`, `identity.page_title`, `identity.description`, `identity.banner_url`, `identity.banner_alt`, `identity.theme`, `identity.logo_url` (added 2026-09-24, Adam) |
+| `identity.` | `identity.name`, `identity.label`, `identity.tagline`, `identity.page_title`, `identity.description`, `identity.banner_url`, `identity.banner_alt`, `identity.theme`, `identity.logo_url` (added 2026-09-24, Adam), `identity.timezone` (added 2026-09-24, Phase 2c) |
 | `copy.` | `copy.intro_body`, `copy.residency_intro`, `copy.welcome`, `copy.about`, `copy.resident_noun`, `copy.governing_body_name`, `copy.governing_body_short` |
 | `legal.` | `legal.terms`, `legal.privacy`, `legal.code_of_conduct`, `legal.proposal_best_practices` |
 | `people.` | `people.admin_emails`, `people.board_emails`, `people.brief_recipients`, `people.announcement_authors` |
@@ -381,6 +381,22 @@ subscriber their entire history in one message. The same is true of
 column survives the Phase 6 rehearsal rather than assuming it; it is a
 one-line check against the restored dump.
 
+#### Phase 2c (2026-09-24): everything per hub at runtime
+
+**`identity.timezone`** (new key, Adam's 2c brief: "add identity.timezone if
+no setting exists"): an IANA zone, edited in Identity, validated as one;
+empty or unknown reads as UTC. The digest job reads `plugin.digest.send_hour`
+in it. Admin-only by the public list (identity.* is public by namespace in
+the text above, but the code's list is by key, and nothing public needs it).
+
+**Jobs** (`src/jobs/`): `registry.ts` lists every scheduled job (id, plugin,
+path, UTC schedule, deprecated paths) as pure data; `runners.ts` maps each id
+to its per-hub runner; `runJob.ts` iterates active hubs (or `?hub=`), skips a
+hub whose `plugin.<id>.enabled` is off, isolates each hub's throw, and
+reports per hub. `?force=true` skips only a job's own schedule check (the
+digest's send hour). The digest runs hourly (`0 * * * *`); the other three
+keep their times. The 2a `withMigrationDefaultHub` bridge is gone.
+
 #### Phase 2a (2026-09-24): the tables, and three identifiers
 
 **Three identifiers, three jobs, never derived from each other at runtime**
@@ -503,6 +519,10 @@ cleanup and outside the repo. Done in Phase 2a:
 3. **A cron registry in code**, one list that the Vercel schedule, the
    `/internal` mounts and the route docs are generated from or checked
    against (today: `vercel.json` "crons", `src/app.ts` mounts and docs).
+   **Done in 2c:** `src/jobs/registry.ts`. Routes and docs are generated
+   from it; `vercel.json` is checked against it by
+   `tests/unit/jobRegistry.test.ts`; `npm run jobs:crontab` prints a crontab
+   (`-- --vercel` prints the section to paste).
 4. **The `post-images` bucket created by a migration** (today it exists
    only as a comment in `20260427100000`).
 5. **GRANTs to Supabase role names guarded** so they no-op on plain
@@ -626,7 +646,7 @@ code's copy is `src/shared/hubSettingsSections.ts`, and the settings endpoint
 
 | Section | Keys | Notes |
 |---|---|---|
-| Identity | `identity.name`, `.label`, `.tagline`, `.page_title`, `.description`, `.banner_url`, `.banner_alt`, `.logo_url` | `identity.name` is the display name; the registry name (`hubs.name`) is unchanged by it. Banner and logo upload under `<hub id>/identity/` in the image bucket (`hubs/<hub id>/` until Phase 2b; those objects keep their keys). |
+| Identity | `identity.name`, `.label`, `.tagline`, `.page_title`, `.description`, `.banner_url`, `.banner_alt`, `.logo_url`, `.timezone` | `identity.name` is the display name; the registry name (`hubs.name`) is unchanged by it. Banner and logo upload under `<hub id>/identity/` in the image bucket (`hubs/<hub id>/` until Phase 2b; those objects keep their keys). |
 | Copy & pages | `copy.intro_body`, `.residency_intro`, `.welcome`, `.about`, `.resident_noun`, `.governing_body_name`, `.governing_body_short` | `copy.welcome` and `copy.about` are documents. |
 | Legal | `legal.terms`, `.privacy`, `.code_of_conduct`, `.proposal_best_practices`, `.operator_name`, `.contact_email`, `.who_runs_this` | A document saved identical to its shared template is stored as `""`, so the hub keeps following the template ("restore default"). |
 | Email | `email.from_name`, `email.postal_address`, `plugin.digest.enabled`, `plugin.digest.send_hour`, `plugin.admin_digest.enabled` | `email.from_address` is shown read-only: the sending domain is the platform's. |
@@ -644,7 +664,10 @@ code's copy is `src/shared/hubSettingsSections.ts`, and the settings endpoint
   five, because every visitor's page renders it.
 - `identity.theme` is now read: a `#rrggbb` accent the UI applies over
   `--color-primary` (and a derived hover shade) at boot. Empty = default palette.
-- `plugin.digest.send_hour` — 0–23, UTC. **Stored only until Phase 2.** The
+- `plugin.digest.send_hour` — 0–23. **Superseded in Phase 2c:** read in the
+  hub's `identity.timezone` (UTC when unset, so a value stored before 2c
+  keeps its meaning), and the digest job runs hourly and per hub. Unset = 13.
+  The original note, kept for the record: 0–23, UTC. **Stored only until Phase 2.** The
   digest cron runs once a day (13:00 UTC) with no hub in scope, and `users`
   has no `hub_id`, so running it per hub now would mail every user on the
   shared table once per hub. `plugin.digest.enabled` and

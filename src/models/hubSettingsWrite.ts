@@ -7,6 +7,7 @@
 // ALL OR NOTHING. A write with one bad value writes no value at all: a section
 // is saved as one form, and half a form saved is a state the admin never saw.
 
+import { isValidTimeZone } from "../utils/hubTime.js";
 import {
   DEFAULT_TEXT_MAX_LENGTH,
   DOCUMENT_MAX_LENGTH,
@@ -122,6 +123,15 @@ export function normalizeValue(
         return { error: `${key} must be a whole hour from 0 to 23.` };
       }
       return String(n);
+    }
+
+    case "timezone": {
+      if (typeof raw !== "string") return { error: `${key} must be a string.` };
+      const v = raw.trim();
+      if (v !== "" && !isValidTimeZone(v)) {
+        return { error: `${key} must be a time zone name such as America/New_York.` };
+      }
+      return v;
     }
 
     case "theme": {

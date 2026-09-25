@@ -34,12 +34,6 @@ export default function EmailSection() {
             rows={2}
             hint="Printed in the footer of digests (anti-spam law asks for one). Leave it empty to leave it out."
           />
-          <p className="form-hint settings-note">
-            The three digest settings below are saved for this hub now, but
-            take effect once digests start running separately for each hub, a
-            later phase of the multi-hub work. Until then digests follow the
-            deployment's settings and go out at 13:00 UTC.
-          </p>
           <BooleanField
             f={f}
             k="plugin.digest.enabled"
@@ -50,6 +44,7 @@ export default function EmailSection() {
             f={f}
             k="plugin.digest.send_hour"
             label="Digest send time"
+            hint="In the hub's time zone, set under Identity."
           />
           <BooleanField
             f={f}

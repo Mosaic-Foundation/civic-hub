@@ -1,13 +1,12 @@
 // Meeting-summary controllers — five HTTP surfaces in one file:
 //
-//   GET /internal/meeting-summary/run
-//     Cron-triggered. For each hub, loads its configured MeetingSourceConnector,
-//     discovers meeting entries, summarizes new ones via Claude, creates
-//     a civic.meeting_summary draft process per entry. Protected by
-//     CRON_SECRET bearer auth (shared with the digest cron). Respects
-//     the plugin.meeting_summary.enabled hub setting (off via
-//     isPluginEnabledSync("meeting_summary")). Per-meeting failures are
-//     isolated; one bad meeting does not abort the batch.
+//   runMeetingSummaryForHub — the "meeting_summary" job (src/jobs/registry.ts)
+//     Run once per active hub by the job runner, which has already checked
+//     the cron credential and plugin.meeting_summary.enabled. Loads the hub's
+//     configured MeetingSourceConnector, discovers meeting entries,
+//     summarizes new ones via Claude, creates a civic.meeting_summary draft
+//     process per entry. Per-meeting failures are isolated; one bad meeting
+//     does not abort the batch.
 //
 //   GET /admin/meeting-summaries            (mounted in adminRoutes.ts)
 //   GET /admin/meeting-summaries/:id        (mounted in adminRoutes.ts)
@@ -18,10 +17,9 @@
 //   GET /meeting-summary/:id
 //     Public read of published summaries only.
 
-// The cron runs once per active hub, inside that hub's scope
-// (src/services/cronHubs.ts), so every setting it reads is that hub's
-// `plugin.meeting_summary.*` — see src/modules/civic.meeting_summary/config.ts.
-// Manual runs may pass `?hub=<slug>` to run one hub only.
+// The job runs inside the hub's scope (src/jobs/runJob.ts), so every setting
+// it reads is that hub's `plugin.meeting_summary.*` — see
+// src/modules/civic.meeting_summary/config.ts.
 
 import { Request, Response } from "express";
 import { emitEvent } from "../events/eventEmitter.js";
@@ -75,7 +73,6 @@ import {
 import { getSettingSync, getAdminEmailsSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 import { processJurisdiction } from "../config/hub.js";
-import { forEachActiveHub, requestedHub } from "../services/cronHubs.js";
 
 const CRON_ACTOR = "system:meeting-summary-cron";
 const DEFAULT_MAX_PER_RUN = 3;
@@ -179,14 +176,6 @@ function isApprovalStatus(s: string): s is MeetingSummaryApprovalStatus {
   return s === "pending" || s === "approved" || s === "published";
 }
 
-function requireCronSecret(req: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const header = req.headers.authorization ?? "";
-  if (!header.startsWith("Bearer ")) return false;
-  const token = header.slice(7).trim();
-  return token.length > 0 && token === secret;
-}
 
 function modelName(): string {
   return process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL;
@@ -468,50 +457,6 @@ export class RunSink {
       },
     };
   }
-}
-
-export async function handleRunMeetingSummary(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  if (!requireCronSecret(req)) {
-    res.status(401).json({ error: "Invalid or missing cron credential" });
-    return;
-  }
-
-  const only = requestedHub(req.query);
-  if (only === undefined) {
-    res.status(400).json({ error: "hub must be a hub slug" });
-    return;
-  }
-
-  const runs = await forEachActiveHub(
-    async () => {
-      const sink = new RunSink();
-      await runMeetingSummaryForHub(sink);
-      return sink.result ?? { status: 500, body: { error: "run wrote no outcome" } };
-    },
-    { onlyHub: only },
-  );
-  if (only && runs.length === 0) {
-    res.status(404).json({ error: `no active hub "${only}"` });
-    return;
-  }
-
-  // One failing hub fails the cron, so Vercel still alerts on it — the
-  // behaviour a single-hub deployment always had.
-  const hubs: Record<string, unknown> = {};
-  let status = 200;
-  for (const run of runs) {
-    if (run.error !== undefined) {
-      hubs[run.hub_id] = { error: run.error };
-      status = 500;
-    } else if (run.result) {
-      hubs[run.hub_id] = run.result.body;
-      status = Math.max(status, run.result.status);
-    }
-  }
-  res.status(status).json({ hubs });
 }
 
 /**

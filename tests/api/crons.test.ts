@@ -99,3 +99,46 @@ describe("Cron endpoints", () => {
     });
   }
 });
+
+// Phase 2c: an authorized run iterates every active hub and reports each.
+// Only the two digests are run here: news sync and meeting summaries would
+// fetch the seeded hubs' real sources. The secret is CI's (ci.yml); a local
+// server started with another one sets CIVIC_TEST_CRON_SECRET.
+const CRON_SECRET = process.env.CIVIC_TEST_CRON_SECRET ?? "ci-only-cron-secret";
+const authed = { Authorization: `Bearer ${CRON_SECRET}` };
+
+describe("Cron runs per hub", () => {
+  it("the admin digest reports every active hub by id", async (ctx) => {
+    if (!cronsEnabled) return ctx.skip();
+    const res = await api("/internal/admin-digest/run", { method: "GET", headers: authed });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.job).toBe("admin_digest");
+    expect(Object.keys(body.hubs)).toEqual(expect.arrayContaining(["floyd", "athens"]));
+  });
+
+  it("?hub= runs one hub; an unknown hub is 404; a malformed one 400", async (ctx) => {
+    if (!cronsEnabled) return ctx.skip();
+    const one = await api("/internal/digest/run?hub=athens", { method: "GET", headers: authed });
+    expect(one.status).toBe(200);
+    expect(Object.keys((await one.json()).hubs)).toEqual(["athens"]);
+    expect((await api("/internal/digest/run?hub=nowhere", { method: "GET", headers: authed })).status).toBe(404);
+    expect((await api("/internal/digest/run?hub=Not_A_Slug", { method: "GET", headers: authed })).status).toBe(400);
+  });
+
+  it("a hub the digest does not run for says why", async (ctx) => {
+    if (!cronsEnabled) return ctx.skip();
+    const res = await api("/internal/digest/run?hub=athens", { method: "GET", headers: authed });
+    const athens = (await res.json()).hubs.athens;
+    // hubAdminSettings.test.ts may have switched Athens's digest off; if not,
+    // either it is Athens's hour right now (and it ran) or it names the hour.
+    if (athens.skipped && athens.reason === "not the send hour") {
+      expect(typeof athens.send_hour).toBe("number");
+      expect(typeof athens.time_zone).toBe("string");
+    } else if (athens.skipped) {
+      expect(athens.reason).toBe("plugin.digest.enabled is off");
+    } else {
+      expect(typeof athens.processed_users).toBe("number");
+    }
+  });
+});

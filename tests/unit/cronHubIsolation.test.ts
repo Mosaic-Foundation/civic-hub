@@ -112,25 +112,19 @@ vi.mock("../../src/services/feedHealth.js", () => ({
   findBrokenPublications: async () => [],
 }));
 
-const { handleRunNewsSync } = await import("../../src/controllers/newsSyncController.js");
-const { handleRunMeetingSummary } = await import("../../src/controllers/meetingSummaryController.js");
+const { jobById } = await import("../../src/jobs/registry.js");
+const { JOB_RUNNERS } = await import("../../src/jobs/runners.js");
+const { runJobAcrossHubs } = await import("../../src/jobs/runJob.js");
 
-function cronRequest(query: Record<string, string> = {}) {
-  return {
-    headers: { authorization: "Bearer test-cron-secret" },
-    query,
-  } as unknown as import("express").Request;
-}
-
-function capture() {
-  const out: { status: number; body: unknown } = { status: 0, body: null };
-  const res = {
-    status(code: number) {
-      out.status = code;
-      return { json: (body: unknown) => (out.body = body) };
-    },
-  } as unknown as import("express").Response;
-  return { res, out };
+/** One pass of a registry job, as its route would run it. */
+async function runJob(id: string, onlyHub: string | null = null) {
+  const report = await runJobAcrossHubs(jobById(id)!, JOB_RUNNERS[id], {
+    now: new Date(),
+    force: false,
+    onlyHub,
+  });
+  if ("error" in report) throw new Error(report.error);
+  return { status: report.status, body: { hubs: report.hubs } };
 }
 
 beforeEach(() => {
@@ -144,8 +138,7 @@ beforeEach(() => {
 
 describe("news sync — one pass, each hub its own feed", () => {
   it("fetches each hub's feed once, and files each post under its own hub", async () => {
-    const { res, out } = capture();
-    await handleRunNewsSync(cronRequest(), res);
+    const out = await runJob("news_sync");
 
     expect(out.status).toBe(200);
     expect(fetched).toEqual([FLOYD_NEWS_FEED_URL, ATHENS_NEWS_FEED_URL]);
@@ -171,8 +164,7 @@ describe("news sync — one pass, each hub its own feed", () => {
   });
 
   it("runs only the named hub with ?hub=", async () => {
-    const { res, out } = capture();
-    await handleRunNewsSync(cronRequest({ hub: "athens" }), res);
+    const out = await runJob("news_sync", "athens");
     expect(out.status).toBe(200);
     expect(fetched).toEqual([ATHENS_NEWS_FEED_URL]);
     expect(Object.keys((out.body as { hubs: object }).hubs)).toEqual(["athens"]);
@@ -181,8 +173,7 @@ describe("news sync — one pass, each hub its own feed", () => {
 
 describe("meeting summaries — one pass, each hub its own source and admins", () => {
   it("reads only Athens's page for Athens, and alerts Athens's admins alone", async () => {
-    const { res } = capture();
-    await handleRunMeetingSummary(cronRequest({ hub: "athens" }), res);
+    await runJob("meeting_summary", "athens");
     await new Promise((r) => setTimeout(r, 0)); // the alert is sent after the response
 
     expect(fetched.length).toBeGreaterThan(0);
@@ -196,8 +187,7 @@ describe("meeting summaries — one pass, each hub its own source and admins", (
   });
 
   it("gives each hub its own run in a full pass", async () => {
-    const { res, out } = capture();
-    await handleRunMeetingSummary(cronRequest(), res);
+    const out = await runJob("meeting_summary");
     await new Promise((r) => setTimeout(r, 0));
 
     const floydFetches = fetched.filter((u) => u.startsWith(new URL(FLOYD_MEETINGS_URL).origin));

@@ -17,7 +17,7 @@ import { useHubSettings, useUnsavedChangesGuard } from "./HubSettingsContext";
 const FORM_DEFAULTS: Readonly<Record<string, string>> = {
   "plugin.digest.enabled": "true",
   "plugin.admin_digest.enabled": "true",
-  // The digest cron's schedule in vercel.json, 13:00 UTC.
+  // DEFAULT_DIGEST_SEND_HOUR in src/controllers/digestController.ts.
   "plugin.digest.send_hour": "13",
 };
 

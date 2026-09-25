@@ -1,5 +1,5 @@
 import SectionForm from "./SectionForm";
-import { ImageField, TextAreaField, TextField } from "./fields";
+import { ImageField, TextAreaField, TextField, TimeZoneField } from "./fields";
 
 export default function IdentitySection() {
   return (
@@ -77,6 +77,12 @@ export default function IdentitySection() {
             addLabel="Upload a logo"
             hint="The icon in the browser tab and on a phone's home screen, and a mark beside the place name on the home page. Leave it empty for none."
             formatHint="A square PNG, at least 256 × 256 pixels. A transparent background works best."
+          />
+          <TimeZoneField
+            f={f}
+            k="identity.timezone"
+            label="Time zone"
+            hint="The hub's own clock. Times this hub chooses, such as the hour the digest goes out, are in this zone. Not set means UTC."
           />
         </>
       )}

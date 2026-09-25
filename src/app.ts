@@ -29,11 +29,9 @@ import announcementRoutes from "./routes/announcementRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import linkPreviewRoutes from "./routes/linkPreviewRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
-import meetingSummaryRoutes, {
-  meetingSummaryCronRouter,
-} from "./routes/meetingSummaryRoutes.js";
-import { newsSyncCronRouter } from "./routes/newsSyncRoutes.js";
-import { adminDigestCronRouter } from "./routes/adminDigestRoutes.js";
+import meetingSummaryRoutes from "./routes/meetingSummaryRoutes.js";
+import { jobRouter } from "./routes/jobRoutes.js";
+import { JOBS, internalPath } from "./jobs/registry.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import projectDraftRoutes from "./routes/projectDraftRoutes.js";
 import deliberationRoutes from "./routes/deliberationRoutes.js";
@@ -43,7 +41,6 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import waitlistRoutes from "./routes/waitlistRoutes.js";
 import {
-  digestCronRouter,
   digestUnsubscribeRouter,
   userSettingsRouter,
 } from "./routes/digestRoutes.js";
@@ -224,22 +221,16 @@ app.use("/waitlist", waitlistRoutes);
 //   /meeting-summary/:id    — public read of published summaries
 app.use("/meeting-summary", meetingSummaryRoutes);
 
-// Digest (Slice 5) + Meeting summary (Slice 6) + News sync (Slice 13, first
-// written as Floyd's news sync) + Admin-digest (Slice 16) crons all mount
-// here. Vercel Cron GETs with the CRON_SECRET bearer, auto-injected.
-//   /internal/digest/run
-//   /internal/meeting-summary/run
-//   /internal/news-sync/run          (old path kept as a deprecated alias)
-//   /internal/admin-digest/run
+// Scheduled jobs: every /internal/*/run route comes from one list,
+// src/jobs/registry.ts, which vercel.json's "crons" is checked against. Each
+// run iterates active hubs (?hub=<slug> for one). Vercel Cron GETs with the
+// CRON_SECRET bearer, auto-injected.
 // Scheduled work is switched off as a whole on deployments that must not do
-// a hub's real work — see src/config/cron.ts. Mounted AHEAD of the four
-// routers so it covers the manual-trigger path too, and so a cron added later
+// a hub's real work — see src/config/cron.ts. Mounted AHEAD of the job
+// router so it covers the manual-trigger path too, and so a job added later
 // is covered without anyone remembering to cover it.
 app.use("/internal", cronKillSwitch);
-app.use("/internal", digestCronRouter);
-app.use("/internal", meetingSummaryCronRouter);
-app.use("/internal", newsSyncCronRouter);
-app.use("/internal", adminDigestCronRouter);
+app.use("/internal", jobRouter);
 app.use("/unsubscribe", digestUnsubscribeRouter);
 app.use("/user/settings", userSettingsRouter);
 
@@ -310,12 +301,15 @@ app.get("/", (_req, res) => {
       "GET /search?q=X": "Full-text search across all process types (public)",
       "POST /feedback": "Submit product feedback (anonymous or authed; honeypot-gated)",
       "POST /waitlist": "Join the beta waitlist (public; honeypot-gated)",
-      "POST /internal/digest/run": "Cron-triggered daily email digest (CRON_SECRET bearer)",
       "GET /unsubscribe/digest?token=X": "Unsubscribe from the daily digest",
       "PATCH /user/settings/digest": "Toggle digest subscription (authed)",
-      "POST /internal/meeting-summary/run": "Cron-triggered meeting discovery + summarization (CRON_SECRET bearer)",
-      "GET /internal/news-sync/run": "Cron-triggered news/announcement sync, once per hub that configured it (CRON_SECRET bearer; ?hub=<slug> for one)",
-      "POST /internal/admin-digest/run": "Cron-triggered admin queue digest (CRON_SECRET bearer)",
+      // Generated from the job registry, so the docs cannot drift from the mounts.
+      ...Object.fromEntries(
+        JOBS.map((job) => [
+          `GET ${internalPath(job)}`,
+          `${job.description} (${job.schedule} UTC; CRON_SECRET bearer; ?hub=<slug> for one hub)`,
+        ]),
+      ),
       "GET /admin/meeting-summaries": "List meeting summaries for admin review (optional ?status=)",
       "GET /admin/meeting-summaries/:id": "Get full meeting summary detail for admin",
       "PATCH /admin/meeting-summaries/:id": "Edit meeting summary blocks/notes (pending only)",

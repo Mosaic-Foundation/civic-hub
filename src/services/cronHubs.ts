@@ -14,15 +14,11 @@
 // long, call a paid model, and one hub's failure must not be interleaved with
 // another's in the logs.
 //
-// SCOPE NOTE (Phase 4, 2026-09-24). Adopted by the two content-sync crons —
-// news sync and meeting summaries — because their configuration is the
-// per-hub data this phase moved out of the code. The digest crons still run
-// unscoped until Phase 2 converts crons as a whole. And until Phase 2 puts
-// hub_id on `processes`, what a job CREATES lands in the one shared table;
-// only a hub that configures a plugin produces anything, which today is Floyd
-// alone.
+// Every scheduled job runs through here since Phase 2c (src/jobs/runJob.ts):
+// news sync, meeting summaries, and both digests, each hub in its own scope
+// and with what it creates stamped with that hub's id by forHub().
 
-import { MIGRATION_DEFAULT_HUB_ID, type Hub } from "../models/hub.js";
+import type { Hub } from "../models/hub.js";
 import { getHubBySlug, listActiveHubs } from "../db/hubs.js";
 import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { withHubScope } from "../config/hubContext.js";
@@ -76,22 +72,4 @@ export function requestedHub(query: unknown): string | null | undefined {
   if (raw === undefined) return null;
   if (typeof raw !== "string" || !/^[a-z0-9-]{2,32}$/.test(raw)) return undefined;
   return raw;
-}
-
-/**
- * PHASE 2a BRIDGE — removed in Phase 2b, when the digest crons iterate hubs
- * with forEachActiveHub().
- *
- * Runs `job` inside the migration-default hub's scope. The two digest crons
- * are not per hub yet, but what they read now is: users, sessions, processes
- * and events go through forHub(), which needs a hub. Running them as the
- * migration-default hub reproduces exactly what they did before Phase 2a —
- * every row they read was that hub's, the only hub with data — rather than
- * guessing a wider scope, and a hub created since is not mailed until 2b.
- */
-export async function withMigrationDefaultHub<T>(job: () => Promise<T>): Promise<T> {
-  const hub = await getHubBySlug(MIGRATION_DEFAULT_HUB_ID);
-  if (!hub) throw new Error(`cron: the migration-default hub "${MIGRATION_DEFAULT_HUB_ID}" is missing`);
-  const settings = await fetchHubSettings(hub.id);
-  return withHubScope(hub, settings, job);
 }
