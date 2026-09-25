@@ -718,6 +718,16 @@ there** (`POST /rest/v1/rpc/tenancy_catalog` with the service key) — this
 is the "check `pg_policies`" step from the 2c notes, made mechanical.
 `hubs` is the one table without `hub_id` (deny-all, no policy).
 
+**Dev (2026-09-25).** Both migrations applied; catalog clean. Key: **HS256
+with the dev project's legacy JWT secret** (Adam's choice for dev; the
+project already runs JWT signing keys, and the legacy secret is its
+"Previous key", still verifying — do not revoke it before the ES256 switch).
+ES256 remains the production path. Phase 3's "done when": FORCE + policy on
+every table (catalog test), end-to-end as `authenticated` (CI's second pass,
+and this branch against dev with the flag on), wrong `hub_id` → zero rows
+and service role sees all (`leakHarnessDb.test.ts`), `config.toml`
+committed (Phase 1).
+
 ### Phase 4 — settings as data, place-names out of `src/`
 
 Done when: the alias map above is live, every `VITE_HUB_*` / place-name

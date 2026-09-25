@@ -4,6 +4,109 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Multi-tenant Phase 3: forced RLS, minted hub token, leak harness — 2026-09-25
+
+**Branch:** `multi-tenant`, five commits plus this entry, **not pushed by the
+session** (Adam pushes). **The dev database IS migrated** (both Phase 3
+migrations, `./scripts/db-push.sh`); the deployed dev code still runs as the
+service role, for which the policies are inert. Production untouched.
+**`CIVIC_HUB_MINTED_TOKEN` is NOT yet set on `civic-hub-dev`** — the
+session's `vercel env add` was refused by its permission settings; Adam adds
+it (below). The two keys it needs are already there.
+
+| Step | Commit | What |
+|---|---|---|
+| 1 | `b6986f0` | `_civic_apply_hub_policy()`, one template: FORCE + `hub_isolation` FOR ALL TO authenticated on `current_hub_id()`, all 30 hub tables; `sessions_hub_id_idx` |
+| 2 | `9e42ebd` | `src/db/hubToken.ts`, `CIVIC_HUB_MINTED_TOKEN` (default off, read per call), `/health` → `hub_db` |
+| 3 | `8cee092` | `tests/api/leakHarness.test.ts` (every route, as Athens, Floyd's ids, digest) + `leakHarnessDb.test.ts` (tokens at PostgREST, atomic forced failures) |
+| 4 | `affe395` | `tenancy_catalog()` + `tests/api/rlsCatalog.test.ts` |
+| 5 | `6304573` | CI runs all of `tests/api` twice: flag off (:3000) and on (:3001) |
+
+**Tests:** API layer **22 files / 214 tests pass in both modes** against the
+local stack (servers :3500 off, :3501 on; launch configs `hub-api-3`,
+`hub-api-3-token`); unit 89 files / 1074; lint, `tsc`, place-name check
+clean. No UI change, so no UI build or Playwright.
+
+**Mutation check:** with `forHub()`'s hub filter removed from `processes`
+reads, the flag-off harness run fails (Floyd's marker and ids come back
+through `/process/:id/links`; cross-hub writes change Floyd's rows) and the
+flag-on run passes 8/8 — the database alone held. Reverted.
+
+### Decisions and details
+- **Policy form:** one `FOR ALL` policy per table (not four per-command
+  ones): same key for every operation, and it is what gives
+  `transition_process` / `cast_vote` (SECURITY INVOKER) their insert, update
+  and `FOR UPDATE` lock. It reads `hub_id` only — no ballot, receipt or
+  participation row decides anything; ballot secrecy unchanged. A new table
+  calls `SELECT _civic_apply_hub_policy('<t>')`; the catalog test fails
+  until it does.
+- **Env names** (not in the plan before; recorded there now):
+  `CIVIC_HUB_MINTED_TOKEN`, `CIVIC_HUB_SIGNING_KEY` (EC P-256 private JWK →
+  ES256; `oct` JWK or plain secret ≥ 32 chars → HS256),
+  `SUPABASE_PUBLISHABLE_KEY` (the plan's snippet named it).
+- **Tokens:** 60 s, `role: authenticated`, `hub_id`, `iss: civic-hub`;
+  one per hub, re-minted at half-life, via supabase-js `accessToken` — so
+  crons walking many hubs get a token per hub. Scripts are pinned to the
+  service role (`pinServiceRole()` in `scripts/lib/hubScope.ts`).
+- **Cross-hub calls to the atomic functions under a token get P0002, not
+  42501:** the other hub's process is invisible, so the lock finds nothing
+  (and existence is not confirmed). 42501 is what a foreign insert or a
+  cross-hub move gets, and the harness asserts both. (2c note 8 expected
+  42501 in the first case.)
+- **Fixed on the way:** `atomicFunctions.test.ts` replaced a vote's whole
+  state, leaving votes with no config that crashed Floyd's `/process` list
+  for every later test file; it now merges its marker in.
+
+### Dev (step 6)
+- `db-push.sh --dry-run` showed exactly the two migrations; pushed.
+- `tenancy_catalog()` on dev, through the rules the catalog test uses: **no
+  problems** — 31 tables, all 30 hub tables forced with the template policy
+  and a hub-leading index, `HUB_TABLES` matches, **all four
+  `post_images_hub_*` storage policies present** (2c note 2, done).
+- **Key: HS256 with dev's legacy JWT secret** (Adam's choice). Dev has
+  already moved to JWT signing keys; the legacy secret is its "Previous key"
+  and still verifies. **Do not revoke it** until the ES256 switch at the
+  cutover rehearsal. Adam put it and the publishable key in `civic-hub/.env`
+  and on `civic-hub-dev` (Production).
+- **Token vs service role, straight at dev's PostgREST:** for each of
+  floyd / athens / utopia, a hub token sees exactly the service role's count
+  for that hub in `processes` (90/0/0), `hub_settings` (26/23/10), `users`
+  (61/0/1) and `events` (439/0/0), and zero rows of any other hub.
+- **This branch, locally, flag on, against dev** (:3600, launch config
+  `hub-dev-3-token`; Resend and model keys blanked, crons and seeding off,
+  GETs only): `/health` is `hub_db: { mode: hub_token, ok: true }` on all
+  three hosts; 94 public reads (lists, events, feeds, search, proposals,
+  projects, outcomes, announcements, conversations, discovery, 8 Floyd
+  process details with state, comments, links and vote logs): **no 5xx**;
+  the only 4xx were a vote log asked of non-vote processes and a signed-in
+  route called signed out. Floyd's `/process` lists 30. **Not done:** the
+  same reads against a flag-off server for a side-by-side diff — starting a
+  second local server against dev was refused by the session's permission
+  settings.
+
+### For Adam
+1. **Push**, then in Vercel → `civic-hub-dev` → Environment Variables add
+   `CIVIC_HUB_MINTED_TOKEN` = `true` (Production) and redeploy. Check
+   `https://civic-hub-dev.vercel.app/health` (and the athens/utopia hosts)
+   shows `"hub_db":{"mode":"hub_token","ok":true}`. To turn it off: set it to
+   `false` and redeploy.
+2. The session could not confirm the value on Vercel (secrets read back
+   hidden); `/health` after the deploy is the check.
+3. Leave dev's **Previous key** (the legacy secret) unrevoked.
+4. Renaming the Supabase projects to drop "Floyd" is safe (everything keys on
+   the ref); leave `civic-hub-dev`'s Vercel name until Phase 5 (the dev hubs'
+   hostnames are `*.vercel.app` names stored in `hubs`).
+
+### For the next phase
+- ES256: generate with `supabase gen signing-key --algorithm ES256`, import
+  as a standby key, set `CIVIC_HUB_SIGNING_KEY` to the private JWK; then the
+  legacy secret can be revoked. `parseSigningKey` already takes the JWK.
+- The plan's done-when "service role still sees all" and "wrong hub_id
+  returns zero rows" are covered by `leakHarnessDb.test.ts`; "runs
+  end-to-end as authenticated" by the second CI pass.
+- `src/db/storage.ts` uploads as the service role; the storage policies bind
+  only `authenticated`. Moving uploads onto the hub token is open.
+
 ## Multi-tenant Phase 2c: everything per hub at runtime — 2026-09-25
 
 **Branch:** `multi-tenant`, seven commits plus this entry. `1f47c0c` is pushed

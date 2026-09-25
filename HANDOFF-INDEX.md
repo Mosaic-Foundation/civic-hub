@@ -31,6 +31,8 @@ numbers below, or just grep the heading.
 | Plugin switches at runtime | `src/services/pluginGate.ts`, `src/middleware/pluginGate.ts`, `PROCESS_TYPE_PLUGINS` in `src/processes/registry.ts`, UI `ui/src/config/plugins.tsx`; admin page `ui/src/pages/settings/PluginsSection.tsx` |
 | A hub's public URLs | `src/utils/baseUrl.ts` (from `hubs.hostname`) |
 | Operator scripts' hub | `scripts/lib/hubScope.ts` (`--hub <slug>`, required) |
+| Hub tokens, the RLS switch | `src/db/hubToken.ts`, `hubTokensEnabled()` / `getHubTokenDb()` in `src/db/client.ts`; policies `20260925000000`, catalog `tenancy_catalog()` `20260925010000` |
+| Leak harness, RLS catalog test | `tests/api/leakHarness.test.ts`, `leakHarnessDb.test.ts`, `rlsCatalog.test.ts`, rules in `tests/fixtures/tenancyCatalog.ts` |
 | Atomic DB functions | `transition_process`, `cast_vote` (`20260924080000`), called via `src/db/atomic.ts` |
 | Place-name CI check + allow-list | `scripts/check-place-names.ts`, `scripts/place-name-allowlist.txt` |
 | A hub's seed values (read only by the seed script) | `config/hubs/<hub>/settings.json` |
@@ -59,6 +61,10 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- Phase 3: forced RLS from one template, minted hub token behind
+  `CIVIC_HUB_MINTED_TOKEN`, leak harness (both modes), catalog test, CI twice,
+  dev migrated + checked with the flag on locally — 7–~150 (every range
+  below shifts down by its length)
 - Phase 2c: jobs per hub from one registry, digest in the hub's time zone,
   plugin toggles at runtime + Settings → Plugins, base URL per hub, `--hub`
   scripts, bucket migration + guarded grants, `transition_process` /
