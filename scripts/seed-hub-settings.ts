@@ -97,9 +97,24 @@ function hubSeedFile(hubId: string): Record<string, string> {
   return out;
 }
 
+/**
+ * Variables whose value is Vercel's "[SENSITIVE]" placeholder. `vercel env
+ * pull` writes that literal for every variable marked Sensitive, because the
+ * real value cannot be read back — and this script, seeding production from a
+ * pulled file at the cutover, would otherwise store it: the 2026-09-25
+ * rehearsal named Floyd "[SENSITIVE]". Collected here; main() refuses to write
+ * anything while the list is non-empty.
+ */
+const placeholders = new Set<string>();
+const VERCEL_SENSITIVE = /^\[SENSITIVE\]$/i;
+
 /** Trimmed env var, or undefined when unset or blank. */
 function env(name: string): string | undefined {
   const v = process.env[name]?.trim();
+  if (v && VERCEL_SENSITIVE.test(v)) {
+    placeholders.add(name);
+    return undefined;
+  }
   return v ? v : undefined;
 }
 
@@ -367,6 +382,16 @@ async function main(): Promise<void> {
   const entries = (HUB_ID === "athens" ? athensEntries() : floydEntries()).filter(
     (e) => ONLY === null || e.key.startsWith(ONLY),
   );
+  if (placeholders.size > 0) {
+    const names = [...placeholders].sort();
+    throw new Error(
+      `${names.join(", ")} ${names.length === 1 ? "holds" : "hold"} Vercel's "[SENSITIVE]" placeholder, ` +
+        `not a value (\`vercel env pull\` cannot read Sensitive variables back). Nothing was written. ` +
+        `Give each its real value on the command line, which wins over --env-file — e.g.\n` +
+        `  ${names.map((n) => `${n}="…"`).join(" ")} node --env-file=<pulled file> --import tsx scripts/seed-hub-settings.ts --hub ${HUB_ID}\n` +
+        `— or set it to an empty string to leave that key unset.`,
+    );
+  }
   const mode = modeIsNotThisScriptsBusiness();
 
   console.log(`\nHub: ${HUB_ID} (${(hub as { name: string }).name})`);

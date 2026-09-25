@@ -56,8 +56,10 @@ const snapshotPath = (() => {
 })();
 
 function run(script: string, scriptArgs: string[]): void {
-  const full = ["tsx", `scripts/${script}`, ...scriptArgs, ...(DRY_RUN ? ["--dry-run"] : [])];
+  const full = ["tsx", `scripts/${script}`, ...scriptArgs];
   console.log(`\n$ npx ${full.join(" ")}`);
+  // A dry run inserts no row, so the child would find no hub; name it only.
+  if (DRY_RUN) return;
   const r = spawnSync("npx", full, { stdio: "inherit", env: process.env });
   if (r.status !== 0) throw new Error(`${script} exited ${r.status}`);
 }
