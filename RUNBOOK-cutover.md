@@ -239,3 +239,98 @@ records can stay; they only answer certificate challenges.
 
 **After it works**, a new hub's hostname is just its `hubs` row
 (`<slug>.civic.social`): no DNS or Vercel change per hub.
+
+---
+
+## Rollback (back to `main`)
+
+**When.** Any time in the watching week, if Floyd misbehaves in a way a
+quick fix can't cover. Deciding is yours; the steps are two clicks, one
+line of SQL and a check.
+
+**What it does and does not do.** It points `floyd.civic.social` back at the
+`main` build. Nothing is dropped: the `hubs` table, the `hub_id` columns, the
+policies and Floyd's settings rows all stay. `main` ignores them: every
+`hub_id` defaults to `'floyd'`, the service role bypasses the policies, and
+`main` never reads `hubs`. Rows written during the week stay and remain
+visible to `main`.
+
+**The rollback target** is the `main` deployment made in "Signing key", Part
+A step 10: the day before, on the new `sb_secret_` key. Not an older one:
+an older `main` deployment still carries the legacy `eyJ…` key, which stops
+working once Part B disables the legacy keys.
+
+**Keep production's old env vars until the cleanup week.** `main` refuses
+to start without `CIVIC_SPACE_DID` and `CIVIC_ALLOWED_ORIGINS`, and reads
+Floyd's identity from `HUB_NAME`, `CIVIC_JURISDICTION` and the rest. The
+rehearsal's first `main` deploy on dev crashed at boot for exactly this
+reason (dev had no `CIVIC_SPACE_DID`). Do not delete any variable from the
+`civic-hub` project until "Cleanup, a week later".
+
+### Steps (Adam)
+
+1. **Promote the `main` build.** Vercel → `civic-hub` → Deployments → find the
+   deployment from the day before (commit `3283f48`, "Brief: prominent response
+   button…", created in Part A step 10) → ⋯ → **Promote** (or **Instant
+   Rollback**). It reuses the build, so it takes seconds.
+2. **Re-add the one constraint `main` needs.** Supabase → Civic-Hub-Floyd →
+   **SQL Editor** → New query → paste → Run:
+   ```sql
+   CREATE UNIQUE INDEX IF NOT EXISTS hub_settings_key_rollback ON hub_settings (key);
+   ```
+   Worked if: "Success. No rows returned". Why: the migration made
+   `hub_settings`' key `(hub_id, key)`, and `main` saves settings with "upsert
+   on `key`", which Postgres refuses without a unique index on `key` alone
+   (error `42P10`). Without this line everything works except saving
+   settings in the admin panel. It is only valid while Floyd is the only
+   hub, which is true throughout the watching week. If it fails with "could
+   not create unique index … duplicate key", a second hub has been added;
+   stop and bring it to a session.
+3. **Turn the token switch off**, so a later roll-forward starts on the
+   service role:
+   ```bash
+   cd ~/civic-prod-link && vercel env add CIVIC_HUB_MINTED_TOKEN production --no-sensitive --force --value false
+   ```
+   (No effect on `main`, which does not read it.)
+4. **Check.** https://floyd.civic.social/api/health →
+   `"status":"ok"`, `"db":{"ok":true}`, `"commit":"3283f48…"`, and no
+   `hub_db` line (that is `main`). Open the home page, one vote, one
+   proposal. Sign in as an admin, open Settings, and save the support
+   threshold unchanged. Worked if: it saves.
+5. **Tell the beta testers** only if they noticed anything (use the
+   beta-tester message's "back to normal" line).
+
+### Rolling forward again
+
+1. Supabase SQL Editor:
+   ```sql
+   DROP INDEX IF EXISTS hub_settings_key_rollback;
+   ```
+   This must happen before a second hub is created (it would block that
+   hub's settings).
+2. Vercel → `civic-hub` → Deployments → the last `multi-tenant` deployment
+   → ⋯ → **Redeploy** (not Promote: its build has the token switch baked in,
+   and step 3 above set it to `false`; a redeploy picks up `false`).
+3. Check `/api/health`: `hub_db: { mode: "service_role", ok: true }`. Then
+   go through "Pre-switch check" and turn tokens on as in the quiet window.
+
+### Rehearsal on dev (2026-09-25)
+
+- `main` (`3283f48`, production's exact commit) deployed to `civic-hub-dev`
+  against the migrated dev database holding production's data: build 40 s.
+  First boot crashed on a missing `CIVIC_SPACE_DID` (dev-only; production has
+  it); with it set, redeploy 40 s.
+- On `main`: `/api/health` ok (schema check 27 tables, no gaps); Floyd
+  `/process` 106 processes (production: 106); process detail and state,
+  feed, proposals, events (505 items), home page all 200. Main's waitlist
+  write (upsert on `email`, no `hub_id`) succeeded and landed as `floyd`.
+  `main`'s settings upsert failed with `42P10` — the reason for step 2.
+- Step 2 could not run on dev (three hubs share setting keys there), so it
+  was rehearsed on a local copy: production's schema and data, the 17
+  migrations, then the index. The upsert failed before, succeeded after;
+  `DROP INDEX` cleanly undid it.
+- Back to `multi-tenant` by Promote: seconds, no build. All three hosts
+  `ok` with `hub_token, ok`; Floyd 106 processes.
+- `main`'s mail and crons during the test: its crons run 11:30–13:30 UTC
+  and the test ran at 22:40 UTC; nobody signed in. On production the same
+  applies: the rollback does not trigger mail by itself.
