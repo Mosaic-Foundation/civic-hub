@@ -27,6 +27,11 @@ let voteId = "";
 let wordcloudId = "";
 let reviewId = "";
 const briefId = `proc_brief_iso_${run}`;
+// Written straight into the local stack like the brief: creating one through
+// the API starts a Polis conversation, which CI cannot reach. Before
+// 2026-09-24 this test borrowed whatever conversation Floyd already had, which
+// a developer's stack always did and CI's fresh one never does.
+const conversationId = `proc_conv_iso_${run}`;
 
 function ok(res: { status: number; body: unknown }, expected = 200) {
   expect(res.status, JSON.stringify(res.body)).toBe(expected);
@@ -99,10 +104,38 @@ beforeAll(async () => {
       },
     }),
   });
+
+  await localRest("processes", {
+    method: "POST",
+    body: JSON.stringify({
+      id: conversationId,
+      hub_id: "floyd",
+      type: "civic.polis_deliberation",
+      title: `Floyd conversation ${run}`,
+      status: "active",
+      state: {
+        polis_conversation_id: "",
+        polis_base_url: "",
+        topic: `Floyd conversation ${run}`,
+        framing: "Floyd only.",
+        deadline: null,
+        duration_ms: null,
+        participation_threshold: null,
+        assistant_helped: false,
+        seed_statements: null,
+        sources: null,
+        last_math_tick: 0,
+        summary: null,
+        summary_status: "pending",
+        continued_from_response_id: null,
+      },
+    }),
+  });
 });
 
 afterAll(async () => {
   await localRest(`processes?id=eq.${briefId}`, { method: "DELETE" });
+  await localRest(`processes?id=eq.${conversationId}`, { method: "DELETE" });
 });
 
 describe("reviews", () => {
@@ -165,10 +198,10 @@ describe("conversations (deliberations)", () => {
         (d) => d.id,
       );
     const floydIds = ids(floyd.body);
-    expect(floydIds.length).toBeGreaterThan(0);
+    expect(floydIds).toContain(conversationId);
     for (const id of floydIds) expect(ids(athens.body)).not.toContain(id);
-    expect((await call("GET", `/deliberations/${floydIds[0]}`, ATHENS)).status).toBe(404);
-    ok(await call("GET", `/deliberations/${floydIds[0]}`, FLOYD));
+    expect((await call("GET", `/deliberations/${conversationId}`, ATHENS)).status).toBe(404);
+    ok(await call("GET", `/deliberations/${conversationId}`, FLOYD));
   });
 });
 
