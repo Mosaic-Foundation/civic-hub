@@ -69,11 +69,57 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   carries its own hub's origin), `atomicFunctions.test.ts` (`cast_vote` and
   `transition_process` leave nothing behind on a forced mid-function failure
   and refuse another hub's rows), and the per-hub runs in `crons.test.ts`.
+- **Phase 3 leak harness (2026-09-25).** Two files, and they are meant to run
+  **twice: once against a server with `CIVIC_HUB_MINTED_TOKEN` off and once
+  with it on** (CI does both, below).
+  - `leakHarness.test.ts` gives Floyd one of everything (vote + ballot +
+    comment, word cloud + response, proposal + support, project + sentiment,
+    review, four drafts, outcome, conversation, meeting summary, announcement
+    with an image, process link, feedback, waitlist entry, cached link
+    preview, a subscribed resident, three settings), each carrying a marker.
+    Then, as Athens, it calls **every GET route the Express app mounts** —
+    the list is read from `app._router`, so a new route fails
+    "every GET route has a plan" until it is added to `GET_PLAN` or skipped
+    with a reason — signed out, as a resident and as an admin, with each of
+    Floyd's ids in every `:id`; tries **every mutating route that names an
+    id** (`WRITE_PLAN`, same rule) and the routes that take ids in the body;
+    and runs **Athens's digest in-process** (mail captured by mocking
+    `src/utils/email.ts`). Each response must contain no marker, no Floyd id
+    but the one the caller sent, and no `post-images/` URL outside
+    `athens/`; Floyd's rows are snapshotted and must be unchanged afterwards.
+    It reads the server's mode from `/health` (`hub_db.mode`);
+    `CIVIC_EXPECT_HUB_DB_MODE=hub_token|service_role` fails the run if the
+    server is not in the mode it was meant to be. The digest-unsubscribe walk
+    needs the server's `DIGEST_UNSUBSCRIBE_SECRET` to equal
+    `CIVIC_TEST_DIGEST_SECRET` (both default to
+    `ci-only-digest-unsubscribe-secret` in CI).
+    *Checked by mutation 2026-09-25:* with `forHub()`'s filter removed from
+    `processes` reads, the flag-off run fails (Floyd's marker and ids leak,
+    cross-hub writes land) and the flag-on run passes — the database alone
+    held.
+  - `leakHarnessDb.test.ts` — hub tokens straight at PostgREST, no app:
+    every hub table shows a token no other hub's row; inserts naming another
+    hub are refused with 42501; updates/deletes of another hub's rows touch
+    nothing; a row cannot be moved across hubs; a claim-less token sees
+    nothing, anon nothing, a forged token 401; `transition_process` /
+    `cast_vote` on another hub's process get P0002 (it is invisible to the
+    token), their event helper 42501; and **for each atomic function a
+    forced failure under the minted token (a duplicate event id, the last
+    write) leaves no ballot, participation, bridge, status, state or event**.
+    Signs with `CIVIC_HUB_SIGNING_KEY` if set, else the local stack's fixed
+    HS256 secret; independent of the server's flag.
 - **Cron secret in tests:** the per-hub cron tests send `ci-only-cron-secret`
   (CI's value); a local server started with another sets
   `CIVIC_TEST_CRON_SECRET`.
 - **Server port:** `tests/fixtures/helpers.ts` reads `CIVIC_API_BASE`, e.g.
   `CIVIC_API_BASE=http://localhost:3400 npm test` against a server on :3400.
+- **Running the API layer with minted tokens locally:** start a second server
+  with `CIVIC_HUB_MINTED_TOKEN=true`,
+  `CIVIC_HUB_SIGNING_KEY=super-secret-jwt-token-with-at-least-32-characters-long`
+  (the CLI's fixed local secret) and
+  `SUPABASE_PUBLISHABLE_KEY=<PUBLISHABLE_KEY from supabase status>`, then
+  `CIVIC_EXPECT_HUB_DB_MODE=hub_token CIVIC_API_BASE=http://localhost:<port> npx vitest run tests/api`.
+  As of 2026-09-25 the whole layer passes in both modes (22 files, 214 tests).
 
 > **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
 > `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs
@@ -105,6 +151,12 @@ runs on every push**, alongside `tsc` and a real UI build.
   recipients, one hub's failure isolated), `pluginGate.test.ts`,
   `hubBaseUrl.test.ts`, `portability.test.ts` (every GRANT to a Supabase role
   is guarded; the bucket migration; generic deployment variables)
+- **Phase 3:** `hubToken.test.ts` (every hub token has `role:
+  authenticated` and its `hub_id`, 60 s; ES256 verifies with the public key,
+  HS256 from a secret or `oct` JWK; bad keys refused without echoing them;
+  per-hub caching at half-life; the `CIVIC_HUB_MINTED_TOKEN` switch is read
+  per call, defaults off, fails loudly without a key; scripts pinned to the
+  service role)
 
 - **KNOW WHAT THIS LAYER CANNOT SEE.** It is blind to everything at the seam
   between a pure module and the world. During the 2026-08-25 process-linking
@@ -585,7 +637,8 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
+*Last updated: 2026-09-25 — Phase 3: the leak harness (both modes), the
+RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,
 and added the hub-config API tests. Previously: 2026-08-26 — added the

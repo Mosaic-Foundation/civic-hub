@@ -228,13 +228,17 @@ describe("transition_process", () => {
 
   it("writes the status, the state and the event together", async () => {
     const eventId = `evt_atomic_${run}_t`;
+    // The vote's own state, with the marker added: p_state replaces the whole
+    // state, and a vote left without its config breaks Floyd's process list
+    // for every test that runs after this one (the Phase 3 leak harness).
+    const { state } = await statusOf(otherId);
     const res = await rpc("transition_process", {
       p_hub_id: "floyd",
       p_process_id: otherId,
       p_to_status: "closed",
       p_actor: "admin-test",
       p_event: eventRow(eventId, otherId, "admin-test", "civic.process.updated"),
-      p_state: { status: "closed", marker: "persisted" },
+      p_state: { ...(state as Record<string, unknown>), status: "closed", marker: "persisted" },
     });
     expect(res.ok, JSON.stringify(res)).toBe(true);
     expect((res as { body: { previous_status: string } }).body.previous_status).toBe("active");
