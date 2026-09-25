@@ -84,6 +84,16 @@ flag-on run passes 8/8 — the database alone held. Reverted.
   second local server against dev was refused by the session's permission
   settings.
 
+### Update, same day: live on dev with the flag on
+Adam pushed `6c219b5`, set `CIVIC_HUB_MINTED_TOKEN=true` on `civic-hub-dev`
+(Production), and promoted the `6c219b5` deployment (a redeploy of the old
+commit had finished 23 s later and taken the production alias — **use
+Promote, not Redeploy**, to put a new commit live). `/api/health` on all three
+dev hosts: `hub_db: { mode: hub_token, ok: true }`, commit `6c219b5`. Through
+the token, Floyd serves Floyd Civic Hub, 30 processes, 28 proposals, 9
+projects, 4 outcomes, its feed, events and search; Athens and Utopia serve
+their (empty) data with 200s. Items 1–2 below are done.
+
 ### For Adam
 1. **Push**, then in Vercel → `civic-hub-dev` → Environment Variables add
    `CIVIC_HUB_MINTED_TOKEN` = `true` (Production) and redeploy. Check
