@@ -22,7 +22,8 @@
 // same rule, so the author byline and the comment bylines on one page
 // always agree — no migration, no stored index.
 
-import { getDb } from "../db/client.js";
+import { forHub, type HubDb } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { getProcess } from "./processService.js";
 import { getInputsByProcess } from "../modules/civic.input/index.js";
 import { resolveCreators } from "./creatorDisplay.js";
@@ -61,27 +62,28 @@ export function assignResidentNumbers(
   return numbers;
 }
 
+/** The hub in scope. Numbering is only ever built inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
+
 async function getSourceProposalId(processId: string): Promise<string | null> {
-  const { data } = await getDb()
+  const row = await db()
     .from("processes")
-    .select("source_proposal_id")
+    .select<{ source_proposal_id: string | null }>("source_proposal_id")
     .eq("id", processId)
     .maybeSingle();
-  return (
-    (data as { source_proposal_id: string | null } | null)
-      ?.source_proposal_id ?? null
-  );
+  return row?.source_proposal_id ?? null;
 }
 
 async function getProposalAuthor(
   id: string,
 ): Promise<Contribution | null> {
-  const { data } = await getDb()
+  const row = await db()
     .from("proposals")
-    .select("submitted_by, created_at")
+    .select<{ submitted_by: string; created_at: string }>("submitted_by, created_at")
     .eq("id", id)
     .maybeSingle();
-  const row = data as { submitted_by: string; created_at: string } | null;
   return row?.submitted_by ? { id: row.submitted_by, at: row.created_at } : null;
 }
 

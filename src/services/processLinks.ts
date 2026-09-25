@@ -8,7 +8,8 @@
 // processes table and routed through the registry's detailPath resolver, so a
 // process type registered tomorrow is linkable and renders correctly today.
 
-import { getDb } from "../db/client.js";
+import { forHub, HubDbError, type HubDb } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { generateId } from "../utils/id.js";
 import { findExistingBriefId } from "../processes/spawnBrief.js";
 import { processDetailPath } from "../processes/registry.js";
@@ -31,18 +32,21 @@ interface ProcessLinkRow {
   created_at: string;
 }
 
+/** The hub in scope. Links are only ever read or written inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
+
 /** Every edge touching this process, in either direction. Two indexed lookups
  *  rather than an OR, so both use their index. */
 export async function getEdgesFor(processId: string): Promise<ProcessLinkEdge[]> {
-  const db = getDb();
+  const hubDb = db();
   const [out, inc] = await Promise.all([
-    db.from("process_links").select("*").eq("from_id", processId),
-    db.from("process_links").select("*").eq("to_id", processId),
+    hubDb.from("process_links").select<ProcessLinkRow>("*").eq("from_id", processId),
+    hubDb.from("process_links").select<ProcessLinkRow>("*").eq("to_id", processId),
   ]);
-  if (out.error) throw new Error(`process_links read failed: ${out.error.message}`);
-  if (inc.error) throw new Error(`process_links read failed: ${inc.error.message}`);
 
-  const rows = [...(out.data ?? []), ...(inc.data ?? [])] as ProcessLinkRow[];
+  const rows = [...out, ...inc];
   // The two queries can't overlap (the schema forbids self-links), but dedupe
   // on id anyway so a stray row can't render twice.
   const byId = new Map<string, ProcessLinkEdge>();
@@ -75,21 +79,20 @@ export async function hydratePeers(
   const ids = [...new Set(peerIds)];
   if (ids.length === 0) return new Map();
 
-  const { data, error } = await getDb()
+  const rows = await db()
     .from("processes")
-    .select("id, type, title, status, created_by, state")
+    .select<{
+      id: string;
+      type: string;
+      title: string | null;
+      status: string;
+      created_by: string | null;
+      state: Record<string, unknown> | null;
+    }>("id, type, title, status, created_by, state")
     .in("id", ids);
-  if (error) throw new Error(`peer hydration failed: ${error.message}`);
 
   const map = new Map<string, LinkPeer>();
-  for (const row of (data ?? []) as Array<{
-    id: string;
-    type: string;
-    title: string | null;
-    status: string;
-    created_by: string | null;
-    state: Record<string, unknown> | null;
-  }>) {
+  for (const row of rows) {
     const moderation = (row.state as { moderation?: { removed?: unknown } } | null)?.moderation;
     if (moderation?.removed === true || moderation?.removed === "true") continue;
 
@@ -153,13 +156,13 @@ export async function getRenderedLinks(
 export async function getProcessOwner(
   processId: string,
 ): Promise<{ id: string; created_by: string | null; status: string; title: string; type: string } | null> {
-  const { data, error } = await getDb()
+  return db()
     .from("processes")
-    .select("id, created_by, status, title, type")
+    .select<{ id: string; created_by: string | null; status: string; title: string; type: string }>(
+      "id, created_by, status, title, type",
+    )
     .eq("id", processId)
     .maybeSingle();
-  if (error) throw new Error(`process lookup failed: ${error.message}`);
-  return (data as never) ?? null;
 }
 
 /**
@@ -180,27 +183,21 @@ export async function createEdge(
     created_by: createdBy,
   };
 
-  const { data, error } = await getDb()
-    .from("process_links")
-    .insert(row)
-    .select()
-    .single();
-
-  if (error) {
+  try {
+    return await db().from("process_links").insert(row).select<ProcessLinkEdge>().single();
+  } catch (err) {
     // 23505 = unique_violation on idx_process_links_edge.
-    if ((error as { code?: string }).code === "23505") {
-      const existing = await getDb()
+    if (err instanceof HubDbError && err.code === "23505") {
+      return db()
         .from("process_links")
-        .select("*")
+        .select<ProcessLinkEdge>("*")
         .eq("from_id", fromId)
         .eq("to_id", link.to_id)
         .eq("relation", link.relation)
         .single();
-      if (existing.data) return existing.data as ProcessLinkEdge;
     }
-    throw new Error(`Failed to create link: ${error.message}`);
+    throw err;
   }
-  return data as ProcessLinkEdge;
 }
 
 /** Store a set of edges (the submission path). Best-effort per edge so one
@@ -229,18 +226,11 @@ export async function createEdges(
 }
 
 export async function getEdgeById(linkId: string): Promise<ProcessLinkEdge | null> {
-  const { data, error } = await getDb()
-    .from("process_links")
-    .select("*")
-    .eq("id", linkId)
-    .maybeSingle();
-  if (error) throw new Error(`link lookup failed: ${error.message}`);
-  return (data as ProcessLinkEdge) ?? null;
+  return db().from("process_links").select<ProcessLinkEdge>("*").eq("id", linkId).maybeSingle();
 }
 
 export async function deleteEdge(linkId: string): Promise<void> {
-  const { error } = await getDb().from("process_links").delete().eq("id", linkId);
-  if (error) throw new Error(`Failed to remove link: ${error.message}`);
+  await db().from("process_links").delete().eq("id", linkId);
 }
 
 /**
@@ -266,15 +256,20 @@ export async function getBriefLinks(
   processId: string,
   opts: { viewerId?: string | null; isAdmin?: boolean } = {},
 ): Promise<RenderedLinks> {
-  const self = await getDb()
-    .from("processes")
-    .select("id, type, state")
-    .eq("id", processId)
-    .maybeSingle();
-  if (self.error || !self.data) return { outgoing: [], incoming: [] };
-
-  const row = self.data as { id: string; type: string; state: Record<string, unknown> | null };
   const empty: RenderedLinks = { outgoing: [], incoming: [] };
+  let row: { id: string; type: string; state: Record<string, unknown> | null } | null;
+  try {
+    row = await db()
+      .from("processes")
+      .select<{ id: string; type: string; state: Record<string, unknown> | null }>("id, type, state")
+      .eq("id", processId)
+      .maybeSingle();
+  } catch {
+    // Preserves the pre-forHub behaviour: a lookup failure here degraded to
+    // "no brief link" rather than failing the whole links panel.
+    return empty;
+  }
+  if (!row) return empty;
 
   // This process IS a brief -> point at what it summarizes.
   if (row.type === "civic.brief") {

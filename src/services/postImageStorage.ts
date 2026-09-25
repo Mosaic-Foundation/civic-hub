@@ -3,13 +3,19 @@
 // callers (cron jobs, federation imports) don't have to re-implement
 // the bucket / key naming.
 //
-// The service-role Supabase client (db/client.ts) bypasses RLS, so we
-// rely on the auth middleware (`requireAnnouncementPoster`) at the
-// route layer to gate uploads. The bucket itself also has an RLS
-// policy as defense-in-depth — see HANDOFF Slice 9 for the operator
-// walkthrough that creates it.
+// The upload itself is src/db/storage.ts, over the service-role client,
+// which bypasses RLS, so we rely on the auth middleware
+// (`requireAnnouncementPoster`) at the route layer to gate uploads. The
+// bucket itself also has an RLS policy as defense-in-depth — see HANDOFF
+// Slice 9 for the operator walkthrough that creates it.
+//
+// Every new object lives under its hub (Phase 2b): `<hub_id>/YYYY/MM/…` for
+// post images and `<hub_id>/identity/YYYY/MM/…` for a hub's banner and logo,
+// so everything a hub owns in the bucket is one prefix to list, export or
+// remove. Objects uploaded before (`YYYY/MM/…`, `hubs/<hub_id>/…`) keep their
+// keys; their URLs are stored whole and stay valid.
 
-import { getDb } from "../db/client.js";
+import { uploadPublicObject } from "../db/storage.js";
 
 const BUCKET_ENV = "SUPABASE_STORAGE_BUCKET";
 const DEFAULT_BUCKET = "post-images";
@@ -74,12 +80,16 @@ export function makeImageKey(
   return prefix ? `${prefix}/${key}` : key;
 }
 
-/** Where a hub's own images live in the bucket. */
-export function hubImagePrefix(hubId: string): string {
+/**
+ * Where a hub's objects live in the bucket: `<hub_id>`, or
+ * `<hub_id>/<folder>` for a kind kept apart (`identity` for the banner and
+ * logo).
+ */
+export function hubImagePrefix(hubId: string, folder?: "identity"): string {
   if (!/^[a-z0-9-]{2,32}$/.test(hubId)) {
     throw new Error(`Not a hub id: "${hubId}"`);
   }
-  return `hubs/${hubId}`;
+  return folder ? `${hubId}/${folder}` : hubId;
 }
 
 /**
@@ -89,26 +99,12 @@ export function hubImagePrefix(hubId: string): string {
 export async function uploadPostImage(
   bytes: Buffer,
   mime: string,
-  prefix?: string,
+  prefix: string,
 ): Promise<{ key: string; url: string }> {
-  const bucket = postImageBucket();
   const key = makeImageKey(mime, new Date(), prefix);
-  const db = getDb();
-
-  const upload = await db.storage.from(bucket).upload(key, bytes, {
+  const url = await uploadPublicObject(postImageBucket(), key, bytes, {
     contentType: mime,
-    upsert: false,
     cacheControl: "31536000, immutable",
   });
-  if (upload.error) {
-    throw new Error(
-      `Storage upload failed (bucket=${bucket}): ${upload.error.message}`,
-    );
-  }
-
-  const { data } = db.storage.from(bucket).getPublicUrl(key);
-  if (!data?.publicUrl) {
-    throw new Error("Storage returned an empty public URL");
-  }
-  return { key, url: data.publicUrl };
+  return { key, url };
 }

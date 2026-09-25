@@ -11,7 +11,8 @@
 //   - readers may serve stale-while-revalidate; for MVP we re-fetch
 //     synchronously on cache miss / staleness and write through.
 
-import { getDb } from "../db/client.js";
+import { forHub, type HubDb } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import {
   fetchLinkPreview,
   PREVIEW_TTL_ERROR_MS,
@@ -19,6 +20,11 @@ import {
   type LinkPreview,
 } from "../modules/civic.link_preview/index.js";
 import { fetchHtmlForPreview } from "./linkPreviewFetcher.js";
+
+/** The hub in scope. The preview cache is only ever read or written inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 interface CacheRow {
   url: string;
@@ -53,19 +59,19 @@ function isStale(row: CacheRow, now: number): boolean {
 }
 
 export async function readCachedPreview(url: string): Promise<LinkPreview | null> {
-  const { data, error } = await getDb()
-    .from("link_previews")
-    .select("*")
-    .eq("url", url)
-    .maybeSingle();
-  if (error) {
+  try {
+    const data = await db()
+      .from("link_previews")
+      .select<CacheRow>("*")
+      .eq("url", url)
+      .maybeSingle();
+    return data ? rowToPreview(data) : null;
+  } catch {
     // Table missing or transient — treat as cache miss; the caller
     // will re-fetch and try to write through (which will also no-op
     // if the table really is missing).
     return null;
   }
-  if (!data) return null;
-  return rowToPreview(data as CacheRow);
 }
 
 export async function writeCachedPreview(preview: LinkPreview): Promise<void> {
@@ -79,13 +85,12 @@ export async function writeCachedPreview(preview: LinkPreview): Promise<void> {
     fetched_at: preview.fetched_at,
     error: preview.error,
   };
-  const { error } = await getDb()
-    .from("link_previews")
-    .upsert(row, { onConflict: "url" });
-  if (error) {
+  try {
+    await db().from("link_previews").upsert(row, { onConflict: "hub_id,url" });
+  } catch (err) {
     // Don't throw — preview rendering must never block on cache write.
     console.warn(
-      `[link_preview] cache write failed for ${preview.url}: ${error.message}`,
+      `[link_preview] cache write failed for ${preview.url}: ${(err as Error).message}`,
     );
   }
 }

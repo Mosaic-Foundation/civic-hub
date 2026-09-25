@@ -10,9 +10,15 @@
 // response section. WRITES fail loudly — silently dropping an official's
 // public statement is worse than a 500.
 
-import { getDb } from "../db/client.js";
+import { forHub, type HubDb } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { generateId } from "../utils/id.js";
 import type { BriefResponseRecord } from "../modules/civic.brief/index.js";
+
+/** The hub in scope. Brief responses are only ever read or written inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 interface ResponseRow {
   id: string;
@@ -29,17 +35,17 @@ interface ResponseRow {
 export async function listResponsesForBrief(
   briefId: string,
 ): Promise<BriefResponseRecord[]> {
-  const { data, error } = await getDb()
-    .from("brief_responses")
-    .select("*")
-    .eq("brief_id", briefId);
-  if (error) {
+  try {
+    return await db()
+      .from("brief_responses")
+      .select<ResponseRow>("*")
+      .eq("brief_id", briefId);
+  } catch (err) {
     console.error(
-      `[briefResponses] list failed, returning none: ${error.message}`,
+      `[briefResponses] list failed, returning none: ${(err as Error).message}`,
     );
     return [];
   }
-  return (data ?? []) as ResponseRow[];
 }
 
 /**
@@ -48,21 +54,22 @@ export async function listResponsesForBrief(
  * window keys on the last anchor rather than the last response.
  */
 export async function latestAnchorAt(briefId: string): Promise<string | null> {
-  const { data, error } = await getDb()
-    .from("brief_responses")
-    .select("created_at")
-    .eq("brief_id", briefId)
-    .eq("feed_anchor", true)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) {
+  try {
+    const row = await db()
+      .from("brief_responses")
+      .select<{ created_at: string }>("created_at")
+      .eq("brief_id", briefId)
+      .eq("feed_anchor", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return row?.created_at ?? null;
+  } catch (err) {
     console.error(
-      `[briefResponses] anchor lookup failed, treating as none: ${error.message}`,
+      `[briefResponses] anchor lookup failed, treating as none: ${(err as Error).message}`,
     );
     return null;
   }
-  return (data as { created_at: string } | null)?.created_at ?? null;
 }
 
 /** Persist one response. Returns the stored record. */
@@ -75,13 +82,11 @@ export async function insertResponse(input: {
   feed_anchor: boolean;
 }): Promise<BriefResponseRecord> {
   const row = { id: generateId("bresp"), ...input };
-  const { data, error } = await getDb()
+  return await db()
     .from("brief_responses")
     .insert(row)
-    .select("*")
+    .select<ResponseRow>("*")
     .single();
-  if (error) throw new Error(`briefResponses.insert: ${error.message}`);
-  return data as ResponseRow;
 }
 
 /**
@@ -96,19 +101,21 @@ export async function responderNames(
   const names = new Map<string, string>();
   const unique = [...new Set(responderIds)];
   if (unique.length === 0) return names;
-  const { data, error } = await getDb()
-    .from("users")
-    .select("*")
-    .in("id", unique);
-  if (error) {
-    console.error(`[briefResponses] name lookup failed: ${error.message}`);
-    return names;
-  }
-  for (const row of (data ?? []) as Array<{
+  let rows: Array<{
     id: string;
     full_name?: string | null;
     display_name?: string | null;
-  }>) {
+  }>;
+  try {
+    rows = await db()
+      .from("users")
+      .select<{ id: string; full_name?: string | null; display_name?: string | null }>("*")
+      .in("id", unique);
+  } catch (err) {
+    console.error(`[briefResponses] name lookup failed: ${(err as Error).message}`);
+    return names;
+  }
+  for (const row of rows) {
     const name = row.full_name?.trim() || row.display_name?.trim() || "";
     if (name) names.set(row.id, name);
   }

@@ -142,8 +142,8 @@ export interface ImageUploadLimits {
   mimeTypes?: ReadonlySet<string>;
   /** Width and height within 2% of each other. */
   square?: boolean;
-  /** Bucket prefix for the stored key, or undefined for the shared layout. */
-  prefix?: (req: Request, res: Response) => string | undefined;
+  /** Bucket prefix for the stored key: always under the request's hub. */
+  prefix: (req: Request, res: Response) => string;
 }
 
 const POST_IMAGE_LIMITS: ImageUploadLimits = {
@@ -151,6 +151,7 @@ const POST_IMAGE_LIMITS: ImageUploadLimits = {
   minHeight: MIN_DIMENSION,
   maxDimension: MAX_DIMENSION,
   maxBytes: imageUploadMaxBytes,
+  prefix: () => hubImagePrefix(currentHubId()),
 };
 
 /**
@@ -169,7 +170,7 @@ export const HUB_IMAGE_LIMITS: Readonly<Record<"banner" | "logo", ImageUploadLim
     minHeight: 100,
     maxDimension: MAX_DIMENSION,
     maxBytes: imageUploadMaxBytes,
-    prefix: () => hubImagePrefix(currentHubId()),
+    prefix: () => hubImagePrefix(currentHubId(), "identity"),
   },
   logo: {
     minWidth: 256,
@@ -178,7 +179,7 @@ export const HUB_IMAGE_LIMITS: Readonly<Record<"banner" | "logo", ImageUploadLim
     mimeTypes: new Set(["image/png"]),
     square: true,
     maxBytes: () => Math.min(imageUploadMaxBytes(), 1024 * 1024),
-    prefix: () => hubImagePrefix(currentHubId()),
+    prefix: () => hubImagePrefix(currentHubId(), "identity"),
   },
 };
 
@@ -264,7 +265,7 @@ async function uploadImage(
       return;
     }
 
-    const prefix = limits.prefix?.(req, res);
+    const prefix = limits.prefix(req, res);
     const { url } = await uploadPostImage(parsed.buffer, parsed.mime, prefix);
     res.status(201).json({ url, width: w, height: h, mime: parsed.mime });
   } catch (err) {

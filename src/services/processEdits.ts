@@ -16,7 +16,8 @@
 // drafting form with ?draft=&edit=; the draft's submit controller passes
 // edit_process_id and this service applies the diff in place.
 
-import { getDb } from "../db/client.js";
+import { forHub, type HubDb } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { getEventsByProcessId } from "../events/eventStore.js";
 import type { Process } from "../models/process.js";
@@ -32,6 +33,11 @@ import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { createEdges, getEdgesFor } from "./processLinks.js";
 import { getProcess } from "./processService.js";
 import { stripMarkdown } from "../shared/markdown.js";
+
+/** The hub in scope. Edits are only ever applied inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 export interface Editor {
   id: string;
@@ -234,11 +240,10 @@ export async function applyEdit(
     for (const key of contentChanged) content[key] = changes.current[key];
     updates.content = content;
   }
-  const { error } = await getDb().from("processes").update(updates).eq("id", processId);
-  if (error) throw new EditError(`Failed to save edit: ${error.message}`, 500);
+  await db().from("processes").update(updates).eq("id", processId);
 
   if (changes.changed_fields.includes("links")) {
-    await getDb().from("process_links").delete().eq("from_id", processId).eq("created_by", process.createdBy);
+    await db().from("process_links").delete().eq("from_id", processId).eq("created_by", process.createdBy);
     const links = input.links ?? [];
     if (links.length) {
       try {

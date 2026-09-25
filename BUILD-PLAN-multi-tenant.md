@@ -626,7 +626,7 @@ code's copy is `src/shared/hubSettingsSections.ts`, and the settings endpoint
 
 | Section | Keys | Notes |
 |---|---|---|
-| Identity | `identity.name`, `.label`, `.tagline`, `.page_title`, `.description`, `.banner_url`, `.banner_alt`, `.logo_url` | `identity.name` is the display name; the registry name (`hubs.name`) is unchanged by it. Banner and logo upload under `hubs/<hub id>/` in the image bucket. |
+| Identity | `identity.name`, `.label`, `.tagline`, `.page_title`, `.description`, `.banner_url`, `.banner_alt`, `.logo_url` | `identity.name` is the display name; the registry name (`hubs.name`) is unchanged by it. Banner and logo upload under `<hub id>/identity/` in the image bucket (`hubs/<hub id>/` until Phase 2b; those objects keep their keys). |
 | Copy & pages | `copy.intro_body`, `.residency_intro`, `.welcome`, `.about`, `.resident_noun`, `.governing_body_name`, `.governing_body_short` | `copy.welcome` and `copy.about` are documents. |
 | Legal | `legal.terms`, `.privacy`, `.code_of_conduct`, `.proposal_best_practices`, `.operator_name`, `.contact_email`, `.who_runs_this` | A document saved identical to its shared template is stored as `""`, so the hub keeps following the template ("restore default"). |
 | Email | `email.from_name`, `email.postal_address`, `plugin.digest.enabled`, `plugin.digest.send_hour`, `plugin.admin_digest.enabled` | `email.from_address` is shown read-only: the sending domain is the platform's. |

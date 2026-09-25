@@ -25,8 +25,14 @@ import {
   type ClassifierEvent,
 } from "../shared/feedActivity.js";
 import { getProcessState } from "./processService.js";
-import { getDb } from "../db/client.js";
+import { forHub, type HubDb } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import type { CivicEvent } from "../models/event.js";
+
+/** The hub in scope. Feed metadata is only ever built inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 export interface FeedProcessMeta {
   title?: string;
@@ -101,11 +107,15 @@ export async function buildFeedProcessMeta(
   // and there is rarely more than one on a feed.
   await Promise.all(
     wordcloudIds.map(async (id) => {
-      const { count, error } = await getDb()
-        .from("wordcloud_submissions")
-        .select("id", { count: "exact", head: true })
-        .eq("process_id", id);
-      if (!error) out[id]!.totalVotes = count ?? 0;
+      // Best-effort, same posture as the rest of this module: a failed
+      // head-count just leaves totalVotes unset rather than failing the
+      // whole feed's metadata.
+      try {
+        const count = await db().from("wordcloud_submissions").count().eq("process_id", id);
+        out[id]!.totalVotes = count;
+      } catch {
+        // swallowed — see above.
+      }
     }),
   );
 

@@ -11,9 +11,15 @@
 //
 // Moderation is a read-only log and has no count.
 
-import { getDb } from "../db/client.js";
+import { forHub, type HubDb } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { getAllProcesses } from "./processService.js";
 import { listAllEdits } from "./editNotifications.js";
+
+/** The hub in scope. Queue counts are only ever read or stamped inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 const EPOCH = "1970-01-01T00:00:00.000Z";
 
@@ -36,24 +42,19 @@ export function isAdminQueue(value: unknown): value is AdminQueue {
 export type AdminQueueCounts = Record<AdminQueue, number> & { total: number };
 
 export async function getAdminQueueCounts(userId: string): Promise<AdminQueueCounts> {
-  const db = getDb();
-
-  const { data: userRow, error: uErr } = await db
+  const userRow = await db()
     .from("users")
-    .select(Object.values(SEEN_COLUMN).join(", "))
+    .select<Record<string, string | null>>(Object.values(SEEN_COLUMN).join(", "))
     .eq("id", userId)
     .maybeSingle();
-  if (uErr) throw new Error(`Queue counts (cursors): ${uErr.message}`);
-  const seen = (queue: AdminQueue): string =>
-    ((userRow as Record<string, string | null> | null)?.[SEEN_COLUMN[queue]]) ?? EPOCH;
+  const seen = (queue: AdminQueue): string => userRow?.[SEEN_COLUMN[queue]] ?? EPOCH;
 
   // Reviews: pending ones that arrived or changed since the tab was opened.
-  const { count: reviews, error: rErr } = await db
+  const reviews = await db()
     .from("process_reviews")
-    .select("id", { count: "exact", head: true })
+    .count()
     .eq("status", "pending_review")
     .gt("updated_at", seen("reviews"));
-  if (rErr) throw new Error(`Queue counts (reviews): ${rErr.message}`);
 
   // Briefs and meeting summaries: pending ones generated since the tab was
   // opened. One pass over processes; volume is small.
@@ -82,19 +83,18 @@ export async function getAdminQueueCounts(userId: string): Promise<AdminQueueCou
     }
   }
 
-  const { count: feedback, error: fErr } = await db
+  const feedback = await db()
     .from("feedback_submissions")
-    .select("id", { count: "exact", head: true })
+    .count()
     .gt("created_at", seen("feedback"));
-  if (fErr) throw new Error(`Queue counts (feedback): ${fErr.message}`);
 
   const edits = (await listAllEdits(userId)).unseen;
 
   const counts: Record<AdminQueue, number> = {
-    reviews: reviews ?? 0,
+    reviews,
     briefs,
     meeting_summaries: meetingSummaries,
-    feedback: feedback ?? 0,
+    feedback,
     edits,
   };
   return { ...counts, total: Object.values(counts).reduce((a, b) => a + b, 0) };
@@ -102,9 +102,8 @@ export async function getAdminQueueCounts(userId: string): Promise<AdminQueueCou
 
 /** Opening a tab: everything in that queue up to now has been seen. */
 export async function markAdminQueueSeen(userId: string, queue: AdminQueue): Promise<void> {
-  const { error } = await getDb()
+  await db()
     .from("users")
     .update({ [SEEN_COLUMN[queue]]: new Date().toISOString() })
     .eq("id", userId);
-  if (error) throw new Error(`Queue counts (${queue} seen): ${error.message}`);
 }

@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: stubs the storage client the upload handler uses.
 import { describe, expect, it, vi } from "vitest";
 import { Readable } from "node:stream";
 import { deflateSync, crc32 } from "node:zlib";
@@ -106,16 +107,24 @@ async function upload(
   const req = multipartRequest(file, { kind }, mime);
   const res = fakeResponse(userId);
   await runWithHub(hub, {}, () =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     handleHubImageUpload(req as any, res as any),
   );
   return res;
 }
 
 describe("hub image keys", () => {
-  it("prefix a hub's images with hubs/<id>/", () => {
-    const key = makeImageKey("image/webp", new Date("2026-09-24T00:00:00Z"), hubImagePrefix("athens"));
-    expect(key).toMatch(/^hubs\/athens\/2026\/09\/[0-9a-f-]{36}\.webp$/);
+  it("put a hub's banner and logo under <id>/identity/", () => {
+    const key = makeImageKey(
+      "image/webp",
+      new Date("2026-09-24T00:00:00Z"),
+      hubImagePrefix("athens", "identity"),
+    );
+    expect(key).toMatch(/^athens\/identity\/2026\/09\/[0-9a-f-]{36}\.webp$/);
+  });
+
+  it("put a hub's post images under <id>/", () => {
+    const key = makeImageKey("image/png", new Date("2026-09-24T00:00:00Z"), hubImagePrefix("athens"));
+    expect(key).toMatch(/^athens\/2026\/09\/[0-9a-f-]{36}\.png$/);
   });
 
   it("leave the shared layout alone when there is no prefix", () => {
@@ -137,7 +146,7 @@ describe("POST /upload/hub-image", () => {
     const res = await upload(ATHENS_HUB, png(800, 200), "banner");
     expect(res.statusCode).toBe(201);
     expect(uploads).toHaveLength(1);
-    expect(uploads[0]).toMatch(/^hubs\/athens\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.png$/);
+    expect(uploads[0]).toMatch(/^athens\/identity\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.png$/);
     expect((res.body as { url: string }).url).toBe(`https://storage.test/${uploads[0]}`);
   });
 
@@ -145,7 +154,7 @@ describe("POST /upload/hub-image", () => {
     uploads.length = 0;
     const res = await upload(FLOYD_HUB, png(256, 256), "logo");
     expect(res.statusCode).toBe(201);
-    expect(uploads[0]).toMatch(/^hubs\/floyd\//);
+    expect(uploads[0]).toMatch(/^floyd\/identity\//);
   });
 
   it("takes a logo only as a square PNG of at least 256 px", async () => {
@@ -195,13 +204,12 @@ describe("POST /upload/hub-image", () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it("leaves post images in the shared layout", async () => {
+  it("puts post images under the request's hub", async () => {
     uploads.length = 0;
     const req = multipartRequest(png(400, 400), {});
     const res = fakeResponse("user_post_image");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await runWithHub(ATHENS_HUB, {}, () => handlePostImageUpload(req as any, res as any));
     expect(res.statusCode).toBe(201);
-    expect(uploads[0]).toMatch(/^\d{4}\/\d{2}\//);
+    expect(uploads[0]).toMatch(/^athens\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.png$/);
   });
 });

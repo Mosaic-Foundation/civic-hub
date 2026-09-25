@@ -5,11 +5,17 @@
 // contributes the processes this user supports; the event log supplies the
 // edits (data.edit), never a per-edit row of its own.
 
-import { getDb } from "../db/client.js";
+import { forHub, type HubDb } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { getAllHandlers, processDetailPath } from "../processes/registry.js";
 import { isSubstantiveEdit } from "./processEdits.js";
 
 const EPOCH = "1970-01-01T00:00:00.000Z";
+
+/** The hub in scope. Edit notifications are only ever built inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 export interface EditNotification {
   process_id: string;
@@ -25,9 +31,13 @@ export interface EditNotification {
  * process (Adam, 2026-09-03: no admin review of edits, but be notified).
  */
 export async function listEditNotifications(userId: string, isAdmin = false): Promise<EditNotification[]> {
-  const db = getDb();
-  const { data: userRow } = await db.from("users").select("edits_seen_at").eq("id", userId).maybeSingle();
-  const seenAt = ((userRow as { edits_seen_at?: string | null } | null)?.edits_seen_at) ?? EPOCH;
+  const hubDb = db();
+  const userRow = await hubDb
+    .from("users")
+    .select<{ edits_seen_at: string | null }>("edits_seen_at")
+    .eq("id", userId)
+    .maybeSingle();
+  const seenAt = userRow?.edits_seen_at ?? EPOCH;
 
   const supported = new Set<string>();
   if (!isAdmin) {
@@ -38,18 +48,19 @@ export async function listEditNotifications(userId: string, isAdmin = false): Pr
     if (supported.size === 0) return [];
   }
 
-  let query = db
+  let query = hubDb
     .from("events")
-    .select("process_id, actor, created_at, data")
+    .select<{ process_id: string; actor: string | null; created_at: string; data: Record<string, unknown> | null }>(
+      "process_id, actor, created_at, data",
+    )
     .eq("event_type", "civic.process.updated")
     .gt("created_at", seenAt)
     .order("created_at", { ascending: false });
   if (!isAdmin) query = query.in("process_id", [...supported]);
-  const { data: events, error } = await query;
-  if (error) throw new Error(`Edit notifications: ${error.message}`);
+  const events = await query;
 
   const byProcess = new Map<string, { edits: number; latest_at: string }>();
-  for (const row of (events ?? []) as Array<{ process_id: string; actor: string | null; created_at: string; data: Record<string, unknown> | null }>) {
+  for (const row of events) {
     const edit = (row.data as { edit?: { changed_fields?: unknown; previous?: Record<string, unknown>; current?: Record<string, unknown> } } | null)?.edit;
     if (!edit || !isSubstantiveEdit(edit)) continue;
     if (row.actor === userId) continue;
@@ -60,12 +71,12 @@ export async function listEditNotifications(userId: string, isAdmin = false): Pr
   }
   if (byProcess.size === 0) return [];
 
-  const { data: procs } = await db
+  const procs = await hubDb
     .from("processes")
-    .select("id, type, title, status")
+    .select<{ id: string; type: string; title: string; status: string }>("id, type, title, status")
     .in("id", [...byProcess.keys()]);
   const out: EditNotification[] = [];
-  for (const p of (procs ?? []) as Array<{ id: string; type: string; title: string; status: string }>) {
+  for (const p of procs) {
     if (p.status === "archived") continue;
     const agg = byProcess.get(p.id)!;
     out.push({
@@ -100,21 +111,26 @@ export interface AdminEditRow {
  * not the account dropdown.
  */
 export async function listAllEdits(adminId: string, sinceDays = 90): Promise<{ items: AdminEditRow[]; unseen: number }> {
-  const db = getDb();
-  const { data: userRow } = await db.from("users").select("edits_seen_at").eq("id", adminId).maybeSingle();
-  const seenAt = ((userRow as { edits_seen_at?: string | null } | null)?.edits_seen_at) ?? EPOCH;
+  const hubDb = db();
+  const userRow = await hubDb
+    .from("users")
+    .select<{ edits_seen_at: string | null }>("edits_seen_at")
+    .eq("id", adminId)
+    .maybeSingle();
+  const seenAt = userRow?.edits_seen_at ?? EPOCH;
   const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: events, error } = await db
+  const events = await hubDb
     .from("events")
-    .select("process_id, created_at, data")
+    .select<{ process_id: string; created_at: string; data: Record<string, unknown> | null }>(
+      "process_id, created_at, data",
+    )
     .eq("event_type", "civic.process.updated")
     .gt("created_at", since)
     .order("created_at", { ascending: false });
-  if (error) throw new Error(`Admin edits: ${error.message}`);
 
   const byProcess = new Map<string, { edits: number; latest_at: string; fields: Set<string>; unseen: boolean }>();
-  for (const row of (events ?? []) as Array<{ process_id: string; created_at: string; data: Record<string, unknown> | null }>) {
+  for (const row of events) {
     const edit = (row.data as { edit?: { changed_fields?: unknown; previous?: Record<string, unknown>; current?: Record<string, unknown> } } | null)?.edit;
     if (!edit || !isSubstantiveEdit(edit)) continue;
     const cur = byProcess.get(row.process_id) ?? { edits: 0, latest_at: row.created_at, fields: new Set<string>(), unseen: false };
@@ -126,9 +142,12 @@ export async function listAllEdits(adminId: string, sinceDays = 90): Promise<{ i
   }
   if (byProcess.size === 0) return { items: [], unseen: 0 };
 
-  const { data: procs } = await db.from("processes").select("id, type, title, status").in("id", [...byProcess.keys()]);
+  const procs = await hubDb
+    .from("processes")
+    .select<{ id: string; type: string; title: string; status: string }>("id, type, title, status")
+    .in("id", [...byProcess.keys()]);
   const items: AdminEditRow[] = [];
-  for (const p of (procs ?? []) as Array<{ id: string; type: string; title: string; status: string }>) {
+  for (const p of procs) {
     const agg = byProcess.get(p.id)!;
     items.push({
       process_id: p.id,
@@ -160,9 +179,8 @@ function friendlyTypeLabel(type: string): string {
 
 /** Stamp edits_seen_at = now(), clearing the badge. */
 export async function markEditsSeen(userId: string): Promise<void> {
-  const { error } = await getDb()
+  await db()
     .from("users")
     .update({ edits_seen_at: new Date().toISOString() })
     .eq("id", userId);
-  if (error) throw new Error(`Failed to mark edits seen: ${error.message}`);
 }

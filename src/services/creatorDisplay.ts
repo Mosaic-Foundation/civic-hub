@@ -43,12 +43,18 @@
 // RESIDENTS. Numbering is per-process only (see processAnonymity.ts) —
 // never global, never per-account, never a stable color or avatar.
 
-import { getDb } from "../db/client.js";
+import { forHub, type HubDb } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { isAdminEmail } from "../middleware/auth.js";
 import {
   type OfficialIdentity,
   toOfficialIdentity,
 } from "../shared/officialTypes.js";
+
+/** The hub in scope. Creator attribution is only ever resolved inside one. */
+function db(): HubDb {
+  return forHub(currentHubId());
+}
 
 export interface CreatorDisplay {
   name: string;
@@ -166,20 +172,19 @@ export async function resolveCreators(
   // schema drift (e.g. a DB that hasn't applied the display_name migration).
   // Naming a missing column hard-errors; "*" returns whatever exists and
   // rowToDisplay reads name fields defensively.
-  const { data, error } = await getDb()
-    .from("users")
-    .select("*")
-    .in("id", unique);
-  if (error) {
+  let rows: UserRow[];
+  try {
+    rows = await db().from("users").select<UserRow>("*").in("id", unique);
+  } catch (err) {
     // Attribution is a display nicety; a resolver failure must never crash the
     // content it annotates. Degrade every id to the "Resident" fallback.
     console.error(
-      `[creatorDisplay] resolve failed, using Resident fallback: ${error.message}`,
+      `[creatorDisplay] resolve failed, using Resident fallback: ${(err as Error).message}`,
     );
     return map;
   }
 
-  for (const row of (data ?? []) as UserRow[]) {
+  for (const row of rows) {
     map.set(row.id, rowToDisplay(row));
   }
   return map;
