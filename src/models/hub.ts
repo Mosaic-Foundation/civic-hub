@@ -173,3 +173,14 @@ export function hubSlugRejectionReason(slug: string): string | null {
   }
   return null;
 }
+
+/** Hostnames that mean "this developer's machine". */
+export function isLocalHostname(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "[::1]" ||
+    hostname === "::1" ||
+    hostname.endsWith(".localhost")
+  );
+}

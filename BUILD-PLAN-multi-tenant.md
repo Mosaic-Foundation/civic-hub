@@ -540,6 +540,14 @@ cleanup and outside the repo. Done in Phase 2a:
 2. **A per-hub base URL from `hubs.hostname`.** `baseUrl()` / `uiBaseUrl()`
    read `BASE_URL` / `CIVIC_UI_BASE_URL`, so every hub on the shared
    deployment stamps the same `source.hub_url` and `action_url` on its events.
+   **Done in 2c:** both read the hub in scope's `hostname` —
+   `https://<hostname>`, or outside production for a local hostname
+   (`athens.localhost`) `http://` with the port of the env origin — and fall
+   back to the env vars only with no hub in scope. Every caller already went
+   through the two functions, so events, email links and admin links follow.
+   Events stored before keep the origin they were written with (the log is
+   append-only); Athens's and Utopia's dev events from before name Floyd's
+   dev host.
 3. **A cron registry in code**, one list that the Vercel schedule, the
    `/internal` mounts and the route docs are generated from or checked
    against (today: `vercel.json` "crons", `src/app.ts` mounts and docs).

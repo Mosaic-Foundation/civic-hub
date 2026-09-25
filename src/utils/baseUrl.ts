@@ -1,38 +1,75 @@
-// Shared helpers for the hub's public URLs.
+// The hub's public URLs.
 //
-// The hub distinguishes between two origins:
+// Two origins:
 //
-// - BASE_URL — the API origin. Used for `source.hub_url` (federation
-//   partners federate against this) and for `/.well-known/civic.json`
-//   discovery.
-// - CIVIC_UI_BASE_URL — the UI origin. Used for user-facing `action_url`
-//   values in events. Per Civic Event Spec §3, `action_url` is a "link to
-//   take action" — a human-reachable page, not a REST endpoint.
+// - baseUrl() — the API origin: `source.hub_url` on events (federation
+//   partners federate against it), `/.well-known/civic.json`, the AS2
+//   collection ids.
+// - uiBaseUrl() — the UI origin: `action_url` on events (Civic Event Spec §3:
+//   a human-reachable page, not a REST endpoint), every link in an email.
 //
-// In single-origin deployments (Vercel, where the UI is served from the
-// same host as the API), CIVIC_UI_BASE_URL can be unset and will fall
-// back to BASE_URL. In split-origin dev (API on :3000, UI on :5173), set
-// CIVIC_UI_BASE_URL=http://localhost:5173 so emitted events link to the
-// UI, not the JSON API.
+// PER HUB SINCE PHASE 2c. One deployment serves many hubs, so the origin is
+// the hub in scope's own `hubs.hostname`, never one env var for everybody —
+// before this, Athens's events carried Floyd's host. With a hub in scope:
 //
-// Both helpers strip trailing slashes so callers can do
-// `${baseUrl()}/events` without producing double slashes.
+//   - https://<hostname>, the production case, where the UI and the API are
+//     one origin (Vercel rewrites /api to the function);
+//   - outside production, for a local hostname (athens.localhost), the dev
+//     scheme the resolver serves it on: http, with the port taken from
+//     BASE_URL (API) or CIVIC_UI_BASE_URL (UI) when those name a local host —
+//     the split-origin dev setup, API on :3000 and UI on :5173.
+//
+// BASE_URL and CIVIC_UI_BASE_URL are otherwise only the fallback for code
+// with no hub in scope (boot, a script outside withHubScope).
+//
+// Both strip trailing slashes so callers can write `${baseUrl()}/events`.
+
+import { currentHub } from "../config/hubContext.js";
+import { isLocalHostname } from "../models/hub.js";
 
 function stripTrailingSlash(s: string): string {
   return s.replace(/\/+$/, "");
 }
 
-export function baseUrl(): string {
-  const raw = process.env.BASE_URL ?? "http://localhost:3000";
-  return stripTrailingSlash(raw);
+function envApiBase(): string {
+  return stripTrailingSlash(process.env.BASE_URL ?? "http://localhost:3000");
+}
+
+function envUiBase(): string {
+  return stripTrailingSlash(
+    process.env.CIVIC_UI_BASE_URL ?? process.env.BASE_URL ?? "http://localhost:3000",
+  );
 }
 
 /**
- * The origin from which UI pages are served. Used to construct `action_url`
- * on events so citizens clicking through a feed post land on the UI, not
- * on a JSON API response. Falls back to the API base when unset.
+ * A hub's origin from its hostname. `devTemplate` is the env origin whose
+ * port a local hostname borrows outside production.
+ */
+export function hubOrigin(hostname: string, devTemplate: string): string {
+  const host = hostname.trim().toLowerCase();
+  if (process.env.NODE_ENV !== "production" && isLocalHostname(host)) {
+    let port = "";
+    try {
+      const t = new URL(devTemplate);
+      if (isLocalHostname(t.hostname) && t.port) port = `:${t.port}`;
+    } catch {
+      // A malformed env value: no port rather than a wrong one.
+    }
+    return `http://${host}${port}`;
+  }
+  return `https://${host}`;
+}
+
+export function baseUrl(): string {
+  const hub = currentHub();
+  return hub ? hubOrigin(hub.hostname, envApiBase()) : envApiBase();
+}
+
+/**
+ * The origin UI pages are served from, for `action_url` on events and links
+ * in email, so a resident clicking through lands on a page, not JSON.
  */
 export function uiBaseUrl(): string {
-  const raw = process.env.CIVIC_UI_BASE_URL ?? process.env.BASE_URL ?? "http://localhost:3000";
-  return stripTrailingSlash(raw);
+  const hub = currentHub();
+  return hub ? hubOrigin(hub.hostname, envUiBase()) : envUiBase();
 }

@@ -22,6 +22,7 @@ import type { NextFunction, Request, Response } from "express";
 import { getHubByHostname, getHubBySlug } from "../db/hubs.js";
 import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { runWithHub } from "../config/hubContext.js";
+import { isLocalHostname } from "../models/hub.js";
 import {
   isWellFormedHubSlug,
   MIGRATION_DEFAULT_HUB_ID,
@@ -79,16 +80,9 @@ export function normalizeHostname(raw: string | undefined | null): string {
   return withoutPort.replace(/\.$/, "");
 }
 
-/** Hostnames that mean "this developer's machine". */
-export function isLocalHostname(hostname: string): boolean {
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "[::1]" ||
-    hostname === "::1" ||
-    hostname.endsWith(".localhost")
-  );
-}
+// isLocalHostname lives in src/models/hub.ts (pure, so src/utils/baseUrl.ts
+// can use it without importing the database); re-exported for callers here.
+export { isLocalHostname };
 
 /**
  * The hub slug a local hostname implies, or null when it implies none.
