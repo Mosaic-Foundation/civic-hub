@@ -23,7 +23,7 @@ numbers below, or just grep the heading.
 | Guards: production db push, deploy env safety | `scripts/db-push.sh`, `scripts/check-deploy-env.ts` |
 | Auth, sessions, admin/board resolution | `src/middleware/auth.ts`, `src/modules/civic.auth/` |
 | Process registry and per-type handlers | `src/processes/registry.ts`, `src/processes/*Process.ts` |
-| DB client (service role, the thing tenancy replaces) | `src/db/client.ts` |
+| DB client (service role, the thing tenancy replaces) | `src/db/client.ts`; only `src/db/`, `scripts/`, `tests/` may import it (`eslint.config.js`, `civic/raw-client`) |
 | Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |
 | Local Supabase stack (ports, auth, seed) | `supabase/config.toml`, `supabase/seed.sql` |
 | Migrations (51 files, 31 tables) | `supabase/migrations/` |
@@ -55,6 +55,10 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- Phase 2b: composite (hub_id, x_id) foreign keys (rehearsed), the last 31
+  files onto forHub(), storage keys under <hub_id>/, the civic/raw-client
+  lint rule, isolation suites for every converted endpoint, notes for 2c —
+  7–~190 (every range below shifts down by its length)
 - Phase 2a: hub_id on every table, protocol_hub_id, forHub() (rows and
   throw), sign-in/feed/receipts converted, exit-rights items, dev backfill
   repair — 7–~131 (every range below shifts down by its length)

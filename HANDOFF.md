@@ -4,6 +4,172 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Multi-tenant Phase 2b: composite keys, the last conversions, the lint rule — 2026-09-24
+
+**Branch:** `multi-tenant`, six commits plus this entry. **Not pushed by the
+session** (`git push` is refused by its permission settings, as in 2a):
+Adam pushes. The dev database IS migrated (one migration, below). Production
+untouched. Modules, processes, services and controllers after the first of
+each were converted by Sonnet subagents in batches; every diff was reviewed.
+
+| Step | Commit | What |
+|---|---|---|
+| 1 | `38dda87` | composite `(hub_id, x_id)` foreign keys, rehearsed, applied to dev |
+| 2 | `597e2e7` | modules (civic.input by hand as the pattern) |
+| 2 | `f75adbf` | processes |
+| 2 | `4ac9cad` | services; storage keys carry the hub |
+| 2 | `b6d9208` | controllers (briefController by hand), `app.ts` |
+| 3 | `eea6640` | ESLint + `civic/raw-client`, in `npm test` and CI |
+
+**`npm test` is green: lint + 100 files / 1184 tests** (unit 83 / 1017; API
+17 / 167, 5 skipped as before) against a local stack (server on :3300,
+launch config `hub-api-2b` in the monorepo's untracked `.claude/launch.json`).
+`tsc`, the place-name check and `npm ci --dry-run` (npm 12) clean. No UI
+change, so the UI build and Playwright were not run.
+
+**Done-when, checked:** outside `src/db/`, `src/control/`, `scripts/` and
+`tests/`, nothing imports the raw client, and `npm run lint` proves it (it
+listed exactly the unconverted files before each group, and nothing now);
+the 14 composite keys are on dev beside the old ones; `npm test` is green.
+
+### Step 1 — a row can only reference its own hub's rows
+
+`20260924060000_composite_hub_foreign_keys.sql`: `UNIQUE (hub_id, id)` on
+users, proposals, projects, processes, process_reviews, then the 14
+references as `(hub_id, x_id) → parent (hub_id, id)` with each old key's
+ON DELETE (SET NULL names only `user_id`, so `hub_id` stays). Added NOT
+VALID, then validated. The old single-column keys stay until the cleanup
+migration.
+
+**Rehearsal:** dev dumped (`supabase db dump --linked`, schema + public
+data) into a throwaway `rehearsal` database in the local stack's Postgres —
+62 users, 90 processes, 439 events. **0.15 s.** The first run failed, which
+was the point: one session on `athens` for `adam@civic.social`'s Floyd
+account (kept on Floyd by the 2a repair; it authenticated nobody since 2a).
+The migration now deletes sessions whose hub differs from their user's —
+the only data it touches; any other cross-hub row fails the VALIDATE. Then
+`./scripts/db-push.sh` to dev (3.5 s round trip). The `rehearsal` database
+is still in the local container; `supabase stop` removes it.
+
+Test: an Athens session for a Floyd user is refused (23503) through
+`forHub()` and through the raw client, with own-hub controls, plus SET NULL
+behaviour. The two 2a tests that forged such a session now assert it cannot
+be written.
+
+### Step 2 — the conversions
+
+Pattern everywhere: `function db() { return forHub(currentHubId()); }`,
+rows-and-throw per contract 3. Dev "clear" helpers now clear one hub, so
+`/debug/seed` no longer touches other hubs at all (2a's note is closed).
+
+**Controllers** that were rewritten take parsed inputs and return data
+(`parseOutcomesQuery` → `listOutcomes` → thin `handleListBriefs` is the
+pattern; deliberation, review and wordcloud followed it). Two things could
+not be `forHub()`: the **hub mode write** (the registry has no `hub_id`) is
+`setHubMode()` in `src/db/hubs.ts`, and the **health ping** is
+`src/db/health.ts`.
+
+**Storage.** The brief said `postImageStorage` keeps the raw client; the
+done-when said nothing outside `src/db/` imports it. Both hold: the one
+raw storage call is `src/db/storage.ts`, `postImageStorage` names keys.
+**New objects live under their hub**: `<hub_id>/YYYY/MM/…` for post
+images, `<hub_id>/identity/YYYY/MM/…` for banner and logo (was
+`hubs/<hub_id>/…`; build plan line updated). The prefix is required, so an
+upload cannot skip it. Existing keys and their stored URLs are unchanged.
+
+**Accidental error-ignores that now fail closed:**
+- `civic.input` — the comment phase was a second update whose failure was
+  ignored; it is part of the insert now.
+- `civic.projects` — sentiment delete/upsert. `civic.proposals` —
+  `clearProposals`' supports delete.
+- `civic.review` — three reads of a review's own process row;
+  `reviewController` — four more. The row always exists (its key cascades).
+- `spawnBrief` — **the one that mattered**: a failed existing-brief lookup
+  read as "no brief yet" and could spawn a duplicate brief.
+- `editNotifications` — users and processes lookups fell back to epoch or
+  an empty list; `processEdits` — link cleanup on edit.
+- `briefController` related-link counts (a failed read showed "0 related");
+  `inputController` proposal lookups; deliberation's existing-submission
+  and vote lookups.
+
+**Kept deliberately (documented best-effort):** briefResponses reads,
+creatorDisplay, feedMeta, link-preview cache read/write, anonymity
+numbering, `getBriefLinks`, review/link notification blocks, deliberation's
+local vote tracking, the word-cloud "has submitted" flag on a page read.
+
+### Step 3 — the lint rule
+
+`eslint.config.js`, one local rule `civic/raw-client` (no plugin package;
+deps are `eslint` and `@typescript-eslint/parser`). A module is raw if it is
+`@supabase/supabase-js` or carries `@civic-raw-client` in its opening
+comment. An importer must carry `// @civic-raw-client-importer: <reason>`
+**and** live under `src/db/`, `src/control/`, `scripts/` or `tests/`; a tag
+anywhere else is itself an error. **`tests/` is an addition to the brief's
+list**: three tests drive the raw client on purpose (the database-refusal
+tests). `npm test` is `eslint && vitest run`; CI runs `npm run lint`.
+
+### Tests (step 4)
+
+`tests/api/hubIsolationModules.test.ts` and
+`hubIsolationControllers.test.ts`: an Athens session gets 404, a refusal
+(never a 500) or a list without it, each with a Floyd control that
+succeeds, for proposals (read, list, support), projects (read, list,
+sentiment), comments (read, post, admin hide), four kinds of draft,
+feedback, reviews (creator, admin read, approve, queue), word clouds (read,
+cloud, submit), conversations, outcomes, process links (read, create,
+delete), edits and admin queue counts. **The links test caught a real
+leak** before `processLinks` was converted: Athens could read Floyd's links.
+The Host-header helper is `tests/fixtures/hostCall.ts`.
+
+### Dev check
+
+**Before the push** (dev on `096087c` = 2a code, dev database on 2b's
+migration), signed out: Floyd `/api/process` 30 (5 news-sync
+announcements), `/api/events` 171, schema ok; Athens 0 / 0; Utopia 0 / 0 —
+identical to 2a's numbers, so the composite keys broke nothing on the old
+code. **After Adam's push**, the same three hosts should give the same
+numbers; also sign in on Utopia (`adam+utopia@`) and on Floyd and open a
+process, a proposal and the Outcomes page on each.
+
+### For Phase 2c
+
+1. **Operator scripts and hub scope.** `scripts/verifyProposalBriefFlow.ts`,
+   `verifyVoteBriefFlow.ts` and `seedBetaSlate.ts` (its `createEdge` calls)
+   call converted code with no hub in scope and now throw "No hub in scope".
+   Scripts need a standard `withHubScope(hub, …)` entry (the crons have
+   `forEachActiveHub`); `scripts/testFlow.ts` and the seed-wordcloud scripts
+   are the same shape.
+2. **Crons per hub.** The two digest crons still run in
+   `withMigrationDefaultHub` (2a bridge); everything they call is per hub
+   now, so iterating hubs is only a change in `digestRoutes`/`adminDigestRoutes`
+   plus reading `plugin.digest.*` per hub.
+3. **Link-preview cache until cleanup.** `link_previews_pkey (url)` is still
+   global, so the second hub to cache a URL hits it; the write logs a
+   warning and carries on (best-effort). Harmless; gone with the cleanup
+   migration.
+4. **Base URL.** Still one env var; Athens's and Utopia's event collection
+   ids name Floyd's host (seen in 2a). Unchanged here.
+5. **Post-images bucket migration.** Keys are now `<hub_id>/…`, so a
+   per-hub storage policy can key on the first path segment when the bucket
+   is created by a migration. Objects from before (`YYYY/MM/…`,
+   `hubs/<hub_id>/…`) need either a one-off copy or a note in the export.
+6. **Grants guard, VERCEL_* fallbacks.** Untouched. `/health` already reads
+   `VERCEL_GIT_COMMIT_SHA ?? GIT_COMMIT_SHA`; `VERCEL_DEPLOYMENT_ID` has no
+   fallback.
+7. **`transition_process` / `cast_vote`.** The places they replace are
+   unchanged: processService's state write + `emitEvent`, and the
+   receipts module's ballot + receipt + participation writes. The composite
+   keys mean the functions can rely on the database for hub consistency of
+   every reference they write.
+8. **`src/control/` does not exist yet.** The lint rule already honours it.
+9. The composite keys add a second cascade path beside each old key on
+   delete; harmless (same rule), and the cleanup migration drops the old.
+10. The `rehearsal` database left in the local Postgres container, and the
+    scratch dumps, hold dev's data; `supabase stop --no-backup` clears the
+    first.
+
+---
+
 ## Multi-tenant Phase 2a: hub_id on every table, and forHub() — 2026-09-24
 
 **Branch:** `multi-tenant`, 19 commits. **Not pushed by the session**:
