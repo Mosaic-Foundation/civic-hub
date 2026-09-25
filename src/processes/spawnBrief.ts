@@ -10,7 +10,8 @@
 import { Process } from "../models/process.js";
 import { getProcessFactory, getProcessHandler } from "./registry.js";
 import { emitEvent } from "../events/eventEmitter.js";
-import { getDb } from "../db/client.js";
+import { forHub } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { emitBriefAggregationCompleted } from "../modules/civic.brief/events.js";
 import type { BriefProcessState } from "../modules/civic.brief/index.js";
 
@@ -77,11 +78,11 @@ export async function spawnBriefFromClosedProcess(
 export async function findExistingBriefId(
   sourceProcessId: string,
 ): Promise<string | null> {
-  const { data } = await getDb()
+  const row = await forHub(currentHubId())
     .from("processes")
-    .select("id")
+    .select<{ id: string }>("id")
     .eq("type", "civic.brief")
     .eq("state->>source_process_id", sourceProcessId)
     .maybeSingle();
-  return data?.id ?? null;
+  return row?.id ?? null;
 }

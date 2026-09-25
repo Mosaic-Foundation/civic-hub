@@ -19,7 +19,8 @@
 
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
-import { getDb } from "../db/client.js";
+import { forHub } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { closeExpiredProposal, getProposal } from "../modules/civic.proposals/index.js";
 import { getInputsByProcess } from "../modules/civic.input/index.js";
@@ -27,6 +28,10 @@ import { spawnBriefFromClosedProcess, findExistingBriefId } from "./spawnBrief.j
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import { proposalAssistantConfig } from "./proposalAssistantConfig.js";
 import { setDraftStatus as setProposalDraftStatus } from "../modules/civic.proposal_drafts/index.js";
+
+function db() {
+  return forHub(currentHubId());
+}
 
 const proposalAdapter: ProcessHandler = {
   type: "civic.proposal",
@@ -116,29 +121,27 @@ const proposalAdapter: ProcessHandler = {
    * this, and it silently restored a closed proposal as `submitted`.
    */
   async onArchive(process: Process): Promise<void> {
-    const db = getDb();
-    const { data: row } = await db
-      .from("proposals").select("status").eq("id", process.id).maybeSingle();
-    const previous = (row as { status?: string } | null)?.status ?? "submitted";
+    const hubDb = db();
+    const row = await hubDb
+      .from("proposals").select<{ status?: string }>("status").eq("id", process.id).maybeSingle();
+    const previous = row?.status ?? "submitted";
 
     // Re-read: archiveProcess has already written state with its archive meta.
-    const { data: proc } = await db
-      .from("processes").select("state").eq("id", process.id).maybeSingle();
+    const proc = await hubDb
+      .from("processes").select<{ state: Record<string, unknown> }>("state").eq("id", process.id).maybeSingle();
     const state = { ...((proc?.state as Record<string, unknown>) ?? {}) };
     const archive = { ...((state.archive as Record<string, unknown>) ?? {}) };
     archive.child_previous_status = previous;
     state.archive = archive;
 
-    const { error: stateErr } = await db
+    await hubDb
       .from("processes").update({ state }).eq("id", process.id);
-    if (stateErr) throw new Error(`proposals archive meta failed: ${stateErr.message}`);
     process.state = state;
 
-    const { error } = await db
+    await hubDb
       .from("proposals")
       .update({ status: "archived", updated_at: new Date().toISOString() })
       .eq("id", process.id);
-    if (error) throw new Error(`proposals row archive failed: ${error.message}`);
   },
 
   async onRestore(
@@ -154,11 +157,10 @@ const proposalAdapter: ProcessHandler = {
     const next =
       typeof stashed === "string" && known.includes(stashed) ? stashed : "submitted";
 
-    const { error } = await getDb()
+    await db()
       .from("proposals")
       .update({ status: next, updated_at: new Date().toISOString() })
       .eq("id", _process.id);
-    if (error) throw new Error(`proposals row restore failed: ${error.message}`);
   },
 
   async generateBrief(process: Process): Promise<BriefContent | null> {

@@ -6,7 +6,8 @@
 import { Process, ProcessAction } from "../models/process.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { ProcessHandler } from "./types.js";
-import { getDb } from "../db/client.js";
+import { forHub } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import {
   createWordcloudState,
   activateWordcloud,
@@ -32,6 +33,10 @@ function makeContext(process: Process) {
 
 function syncStatus(process: Process, state: WordcloudProcessState): void {
   process.status = state.status;
+}
+
+function db() {
+  return forHub(currentHubId());
 }
 
 export const PROCESS_DESCRIPTOR = {
@@ -87,13 +92,11 @@ const wordcloudProcess: ProcessHandler = {
    * copy this handler was handed.
    */
   async onArchive(process: Process): Promise<void> {
-    const db = getDb();
-    const { data, error: readErr } = await db
-      .from("processes").select("state").eq("id", process.id).maybeSingle();
-    if (readErr) throw new Error(`wordcloud archive read failed: ${readErr.message}`);
+    const hubDb = db();
+    const data = await hubDb
+      .from("processes").select<{ state: Record<string, unknown> }>("state").eq("id", process.id).maybeSingle();
     const state = { ...((data?.state as Record<string, unknown>) ?? {}), status: "archived" };
-    const { error } = await db.from("processes").update({ state }).eq("id", process.id);
-    if (error) throw new Error(`wordcloud archive failed: ${error.message}`);
+    await hubDb.from("processes").update({ state }).eq("id", process.id);
     process.state = state;
   },
 
@@ -103,13 +106,11 @@ const wordcloudProcess: ProcessHandler = {
   ): Promise<void> {
     // The word cloud's status IS a ProcessStatus, so previousStatus is
     // directly usable — no stash needed, unlike proposals/projects.
-    const db = getDb();
-    const { data, error: readErr } = await db
-      .from("processes").select("state").eq("id", process.id).maybeSingle();
-    if (readErr) throw new Error(`wordcloud restore read failed: ${readErr.message}`);
+    const hubDb = db();
+    const data = await hubDb
+      .from("processes").select<{ state: Record<string, unknown> }>("state").eq("id", process.id).maybeSingle();
     const state = { ...((data?.state as Record<string, unknown>) ?? {}), status: previousStatus };
-    const { error } = await db.from("processes").update({ state }).eq("id", process.id);
-    if (error) throw new Error(`wordcloud restore failed: ${error.message}`);
+    await hubDb.from("processes").update({ state }).eq("id", process.id);
     process.state = state;
   },
 

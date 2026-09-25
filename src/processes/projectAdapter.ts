@@ -15,7 +15,8 @@
 
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
-import { getDb } from "../db/client.js";
+import { forHub } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { getProject, listProjectUpdates } from "../modules/civic.projects/index.js";
 import { emitProjectUpdated } from "../modules/civic.projects/events.js";
@@ -28,6 +29,10 @@ import {
   updateProjectDraft,
 } from "../modules/civic.project_drafts/index.js";
 
+function db() {
+  return forHub(currentHubId());
+}
+
 const projectAdapter: ProcessHandler = {
   type: "civic.project",
   detailPath: (id: string) => `/project/${id}`,
@@ -38,26 +43,29 @@ const projectAdapter: ProcessHandler = {
   // while the project is active; the title locks once anyone supports it,
   // because the title is what people endorsed.
   editPolicy: async (process) => {
-    const db = getDb();
-    const { data: row } = await db.from("projects").select("status").eq("id", process.id).maybeSingle();
-    const status = (row as { status?: string } | null)?.status;
+    const row = await db()
+      .from("projects")
+      .select<{ status?: string }>("status")
+      .eq("id", process.id)
+      .maybeSingle();
+    const status = row?.status;
     if (status !== "active") {
       return { editable: false, locked_fields: [], reason: "Only an active project can be edited." };
     }
-    const { count } = await db
+    const count = await db()
       .from("project_sentiments")
-      .select("*", { count: "exact", head: true })
+      .count()
       .eq("project_id", process.id)
       .eq("sentiment", "support");
-    return { editable: true, locked_fields: (count ?? 0) > 0 ? ["title"] : [] };
+    return { editable: true, locked_fields: count > 0 ? ["title"] : [] };
   },
   listSupporters: async (processId) => {
-    const { data } = await getDb()
+    const rows = await db()
       .from("project_sentiments")
-      .select("user_id")
+      .select<{ user_id: string }>("user_id")
       .eq("project_id", processId)
       .eq("sentiment", "support");
-    return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
+    return rows.map((r) => r.user_id);
   },
   draftFromProcess: async (process, editorId, links) => {
     const project = await getProject(process.id);
@@ -87,19 +95,18 @@ const projectAdapter: ProcessHandler = {
       skip_modified_flag: true,
     });
     // Fresh start: no stale check result, and the check must run again.
-    const { error } = await getDb()
+    await db()
       .from("project_drafts")
       .update({ last_review_result: null, draft_modified_since_review: true })
       .eq("id", draftId);
-    if (error) throw new Error(`ProjectDrafts: could not reset review state: ${error.message}`);
   },
   listSupportedBy: async (userId) => {
-    const { data } = await getDb()
+    const rows = await db()
       .from("project_sentiments")
-      .select("project_id")
+      .select<{ project_id: string }>("project_id")
       .eq("user_id", userId)
       .eq("sentiment", "support");
-    return ((data ?? []) as Array<{ project_id: string }>).map((r) => r.project_id);
+    return rows.map((r) => r.project_id);
   },
   onEdited: async (process, changes) => {
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -109,8 +116,7 @@ const projectAdapter: ProcessHandler = {
     if (Array.isArray(c.sources)) patch.sources = c.sources;
     if ("banner_image_url" in c) patch.banner_image_url = c.banner_image_url ?? null;
     if ("banner_image_alt" in c) patch.banner_image_alt = c.banner_image_alt ?? null;
-    const { error } = await getDb().from("projects").update(patch).eq("id", process.id);
-    if (error) throw new Error(`Projects: could not mirror edit: ${error.message}`);
+    await db().from("projects").update(patch).eq("id", process.id);
   },
 
   getAssistantConfig: () => projectAssistantConfig,
@@ -177,29 +183,27 @@ const projectAdapter: ProcessHandler = {
    * restored a closed proposal as `submitted` in the sibling handler.
    */
   async onArchive(process: Process): Promise<void> {
-    const db = getDb();
-    const { data: row } = await db
-      .from("projects").select("status").eq("id", process.id).maybeSingle();
-    const previous = (row as { status?: string } | null)?.status ?? "active";
+    const hubDb = db();
+    const row = await hubDb
+      .from("projects").select<{ status?: string }>("status").eq("id", process.id).maybeSingle();
+    const previous = row?.status ?? "active";
 
     // Re-read: archiveProcess has already written state with its archive meta.
-    const { data: proc } = await db
-      .from("processes").select("state").eq("id", process.id).maybeSingle();
+    const proc = await hubDb
+      .from("processes").select<{ state: Record<string, unknown> }>("state").eq("id", process.id).maybeSingle();
     const state = { ...((proc?.state as Record<string, unknown>) ?? {}) };
     const archive = { ...((state.archive as Record<string, unknown>) ?? {}) };
     archive.child_previous_status = previous;
     state.archive = archive;
 
-    const { error: stateErr } = await db
+    await hubDb
       .from("processes").update({ state }).eq("id", process.id);
-    if (stateErr) throw new Error(`projects archive meta failed: ${stateErr.message}`);
     process.state = state;
 
-    const { error } = await db
+    await hubDb
       .from("projects")
       .update({ status: "archived", updated_at: new Date().toISOString() })
       .eq("id", process.id);
-    if (error) throw new Error(`projects row archive failed: ${error.message}`);
   },
 
   async onRestore(
@@ -215,11 +219,10 @@ const projectAdapter: ProcessHandler = {
     const next =
       typeof stashed === "string" && known.includes(stashed) ? stashed : "active";
 
-    const { error } = await getDb()
+    await db()
       .from("projects")
       .update({ status: next, updated_at: new Date().toISOString() })
       .eq("id", _process.id);
-    if (error) throw new Error(`projects row restore failed: ${error.message}`);
   },
 
   async generateBrief(process: Process): Promise<BriefContent | null> {
