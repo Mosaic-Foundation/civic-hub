@@ -81,7 +81,14 @@ ALTER TABLE hubs FORCE  ROW LEVEL SECURITY;
 -- Explicit, per the convention this phase establishes. See
 -- 20260922000000_grant_table_privileges.sql for why relying on default
 -- privileges is not enough.
-GRANT SELECT, INSERT, UPDATE, DELETE ON hubs TO authenticated, service_role;
+-- Guarded (Phase 2c): these are Supabase's role names; on plain Postgres
+-- they do not exist, and the grant is skipped rather than failing the migration.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON hubs TO authenticated, service_role;
+  END IF;
+END $$;
 
 -- Hub #1. These are the values Floyd's production deployment carries in
 -- HUB_NAME, CIVIC_JURISDICTION, CIVIC_JURISDICTION_NAME and CIVIC_SPACE_DID

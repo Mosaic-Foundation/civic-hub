@@ -32,7 +32,14 @@ ALTER TABLE hubs ALTER COLUMN protocol_hub_id SET NOT NULL;
 ALTER TABLE hubs DROP CONSTRAINT IF EXISTS hubs_protocol_hub_id_key;
 ALTER TABLE hubs ADD CONSTRAINT hubs_protocol_hub_id_key UNIQUE (protocol_hub_id);
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON hubs TO authenticated, service_role;
+-- Guarded (Phase 2c): these are Supabase's role names; on plain Postgres
+-- they do not exist, and the grant is skipped rather than failing the migration.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON hubs TO authenticated, service_role;
+  END IF;
+END $$;
 
 COMMENT ON COLUMN hubs.protocol_hub_id IS
   'source.hub_id on events this hub publishes. Not hubs.id, not space_did.';

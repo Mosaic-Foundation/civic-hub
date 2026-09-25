@@ -17,7 +17,14 @@
 ALTER TABLE hubs ADD COLUMN IF NOT EXISTS db_ref TEXT NOT NULL DEFAULT 'shared';
 ALTER TABLE hubs ADD COLUMN IF NOT EXISTS redirect_to TEXT NULL;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON hubs TO authenticated, service_role;
+-- Guarded (Phase 2c): these are Supabase's role names; on plain Postgres
+-- they do not exist, and the grant is skipped rather than failing the migration.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON hubs TO authenticated, service_role;
+  END IF;
+END $$;
 
 COMMENT ON COLUMN hubs.db_ref IS
   'Database holding this hub''s rows. ''shared'' = the multi-tenant database. Not read yet.';

@@ -31,19 +31,23 @@ begin
   for t in
     select tablename from pg_tables where schemaname = 'public'
   loop
-    execute format(
-      'grant select, insert, update, delete on public.%I to authenticated, service_role',
-      t.tablename
-    );
+    if exists (select 1 from pg_roles where rolname = 'authenticated') and exists (select 1 from pg_roles where rolname = 'service_role') then
+      execute format(
+        'grant select, insert, update, delete on public.%I to authenticated, service_role',
+        t.tablename
+      );
+    end if;
   end loop;
 
   -- Sequences behind any `serial` / identity column: inserting needs USAGE.
   for s in
     select sequencename from pg_sequences where schemaname = 'public'
   loop
-    execute format(
-      'grant usage, select on sequence public.%I to authenticated, service_role',
-      s.sequencename
-    );
+    if exists (select 1 from pg_roles where rolname = 'authenticated') and exists (select 1 from pg_roles where rolname = 'service_role') then
+      execute format(
+        'grant usage, select on sequence public.%I to authenticated, service_role',
+        s.sequencename
+      );
+    end if;
   end loop;
 end $$;

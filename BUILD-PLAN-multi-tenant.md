@@ -421,6 +421,32 @@ reports per hub. `?force=true` skips only a job's own schedule check (the
 digest's send hour). The digest runs hourly (`0 * * * *`); the other three
 keep their times. The 2a `withMigrationDefaultHub` bridge is gone.
 
+**Storage.** `20260924070000_post_images_bucket.sql` creates `post-images`
+(public read, 5 MB, the four image types; `ON CONFLICT DO NOTHING`, so the
+dev and production buckets keep their settings) and four policies on
+`storage.objects` for `authenticated`: the bucket, and the first path
+segment equal to `current_hub_id()` — defined in the same migration, ahead of
+Phase 3, as the one function its policies call. It skips with a NOTICE where
+there is no storage schema (plain Postgres; the local stack, where storage is
+off), and a hosted project that refuses policy creation on
+`storage.objects` gets a WARNING rather than a failed deploy — **Phase 3
+must check `pg_policies` for all four before turning tokens on.** Proven in
+a throwaway database with a stand-in storage schema: an Athens claim sees
+and writes only `athens/…`, a write under `floyd/` is refused, no claim sees
+nothing.
+
+**Objects stored before the prefix** — `YYYY/MM/…` (every post image before
+Phase 2b, all Floyd's) and `hubs/<hub_id>/…` (banners and logos from Phase 1
+part five) — are not matched by the policies. Nothing reads them through a
+policy (the app uses the service role; residents use the public URL), and
+their URLs are stored inside process state and settings rows, so copying them
+would mean rewriting every stored URL. **Recommended in 2c, for Adam to confirm: do not copy
+at cutover; record the rule in the export instead** — an object whose key
+has no hub prefix belongs to the migration-default hub, and
+`hubs/<hub_id>/…` belongs to `<hub_id>`. A hub's export bundles its objects
+by that rule. If a later phase needs them under the prefix, it copies and
+rewrites together, not at cutover.
+
 #### Phase 2a (2026-09-24): the tables, and three identifiers
 
 **Three identifiers, three jobs, never derived from each other at runtime**
@@ -556,11 +582,20 @@ cleanup and outside the repo. Done in Phase 2a:
    `tests/unit/jobRegistry.test.ts`; `npm run jobs:crontab` prints a crontab
    (`-- --vercel` prints the section to paste).
 4. **The `post-images` bucket created by a migration** (today it exists
-   only as a comment in `20260427100000`).
+   only as a comment in `20260427100000`). **Done in 2c:**
+   `20260924070000_post_images_bucket.sql` (see "Storage" under Phase 2c).
 5. **GRANTs to Supabase role names guarded** so they no-op on plain
-   Postgres where `authenticated` / `service_role` do not exist.
+   Postgres where `authenticated` / `service_role` do not exist. **Done in
+   2c:** every one, in the nine migrations that had them, is inside
+   `IF EXISTS (… pg_roles … 'authenticated') AND EXISTS (… 'service_role')`.
+   Those nine files were edited in place (their effect is unchanged where the
+   roles exist, which is everywhere they have run); a new migration could not
+   have guarded them, since a plain-Postgres replay fails before reaching it.
+   `tests/unit/portability.test.ts` fails on any unguarded one.
 6. **Generic fallbacks for `VERCEL_*` env reads** (`src/app.ts`:
-   `VERCEL_GIT_COMMIT_SHA`, `VERCEL_DEPLOYMENT_ID`).
+   `VERCEL_GIT_COMMIT_SHA`, `VERCEL_DEPLOYMENT_ID`). **Done in 2c:**
+   `src/config/deployment.ts`, with `GIT_COMMIT_SHA` and `DEPLOYMENT_ID` as
+   the generic names; nothing else in `src/` reads a `VERCEL_` variable.
 7. **The lint rule**: `no-restricted-imports` banning `@supabase/supabase-js`
    and `src/db/client.ts` outside `src/db/` and `src/control/`, keyed on the
    `@civic-raw-client` tag in `client.ts`.

@@ -11,7 +11,14 @@
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS identity_did TEXT;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON users TO authenticated, service_role;
+-- Guarded (Phase 2c): these are Supabase's role names; on plain Postgres
+-- they do not exist, and the grant is skipped rather than failing the migration.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON users TO authenticated, service_role;
+  END IF;
+END $$;
 
 COMMENT ON COLUMN users.identity_did IS
   'Reserved for portable identity (ADR-004). Nothing reads or writes it yet.';

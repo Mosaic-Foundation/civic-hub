@@ -48,8 +48,10 @@ BEGIN
     EXECUTE format(
       'ALTER TABLE %I ADD CONSTRAINT %I FOREIGN KEY (hub_id) REFERENCES hubs(id) ON DELETE RESTRICT',
       t, t || '_hub_id_fkey');
-    EXECUTE format(
-      'GRANT SELECT, INSERT, UPDATE, DELETE ON %I TO authenticated, service_role', t);
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+      EXECUTE format(
+        'GRANT SELECT, INSERT, UPDATE, DELETE ON %I TO authenticated, service_role', t);
+    END IF;
   END LOOP;
 END $$;
 
@@ -78,7 +80,14 @@ ALTER TABLE processes DROP CONSTRAINT IF EXISTS processes_hub_id_fkey;
 ALTER TABLE processes
   ADD CONSTRAINT processes_hub_id_fkey
   FOREIGN KEY (hub_id) REFERENCES hubs(id) ON DELETE RESTRICT;
-GRANT SELECT, INSERT, UPDATE, DELETE ON processes TO authenticated, service_role;
+-- Guarded (Phase 2c): these are Supabase's role names; on plain Postgres
+-- they do not exist, and the grant is skipped rather than failing the migration.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON processes TO authenticated, service_role;
+  END IF;
+END $$;
 
 COMMENT ON COLUMN processes.hub_id IS
   'The hub (hubs.id) this process belongs to. Was the protocol id until 2026-09-24; that is hubs.protocol_hub_id now.';

@@ -30,7 +30,14 @@ ALTER TABLE sessions
 -- is satisfied from the index rather than by fetching the row and checking.
 CREATE INDEX IF NOT EXISTS sessions_token_hub_idx ON sessions (token, hub_id);
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON sessions TO authenticated, service_role;
+-- Guarded (Phase 2c): these are Supabase's role names; on plain Postgres
+-- they do not exist, and the grant is skipped rather than failing the migration.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON sessions TO authenticated, service_role;
+  END IF;
+END $$;
 
 COMMENT ON COLUMN sessions.hub_id IS
   'The hub this session was created on. A session is valid only on its own hub.';

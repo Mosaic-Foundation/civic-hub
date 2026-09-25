@@ -128,7 +128,21 @@ COMMENT ON FUNCTION public.search_processes(text, text[], timestamptz, timestamp
 COMMENT ON FUNCTION public.search_processes_count(text, text[], timestamptz, timestamptz) IS
   'DEPRECATED: unscoped; counts the migration-default hub. Use search_processes_count(p_hub_id, ...). Dropped after cutover.';
 
-GRANT EXECUTE ON FUNCTION public.search_processes(text, text, text[], timestamptz, timestamptz, text, integer, integer)
-  TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.search_processes_count(text, text, text[], timestamptz, timestamptz)
-  TO authenticated, service_role;
+-- Guarded (Phase 2c): these are Supabase's role names; on plain Postgres
+-- they do not exist, and the grant is skipped rather than failing the migration.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT EXECUTE ON FUNCTION public.search_processes(text, text, text[], timestamptz, timestamptz, text, integer, integer)
+      TO authenticated, service_role;
+  END IF;
+END $$;
+-- Guarded (Phase 2c): these are Supabase's role names; on plain Postgres
+-- they do not exist, and the grant is skipped rather than failing the migration.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT EXECUTE ON FUNCTION public.search_processes_count(text, text, text[], timestamptz, timestamptz)
+      TO authenticated, service_role;
+  END IF;
+END $$;

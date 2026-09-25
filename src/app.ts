@@ -4,6 +4,7 @@
 // This file sets up all middleware, routes, and auto-seeding.
 // It does NOT call app.listen() — that's the caller's job.
 
+import { deploymentCommit, deploymentId } from "./config/deployment.js";
 import { isPluginDisabledError } from "./services/pluginGate.js";
 import { requirePlugin } from "./middleware/pluginGate.js";
 import express from "express";
@@ -351,11 +352,10 @@ app.get("/health", async (_req, res) => {
     inconclusive: [{ table: "*", detail: err instanceof Error ? err.message : String(err) }],
     duration_ms: 0,
   }));
-  // Vercel injects the deployed commit SHA at build time. Exposing it here
-  // makes "is the latest code actually live?" answerable in one request:
-  // compare this to `git rev-parse HEAD` locally.
-  const commit =
-    process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA ?? "unknown";
+  // The deployed commit, so "is the latest code actually live?" is answered
+  // in one request: compare it to `git rev-parse HEAD` locally. Vercel's
+  // variable or a generic one (src/config/deployment.ts).
+  const commit = deploymentCommit();
   const healthy = db.ok && schema.ok;
   res.status(healthy ? 200 : 503).json({
     status: healthy ? "ok" : "degraded",
@@ -368,7 +368,7 @@ app.get("/health", async (_req, res) => {
       gaps: schema.gaps.map((g) => `${g.table}: ${g.detail}`),
     },
     commit,
-    deployed_at: process.env.VERCEL_DEPLOYMENT_ID ?? null,
+    deployed_at: deploymentId(),
     timestamp: new Date().toISOString(),
   });
 });

@@ -39,4 +39,11 @@ ALTER TABLE hub_settings ADD PRIMARY KEY (hub_id, key);
 -- snapshot loads them in one query — so the hub_id prefix of the primary key
 -- already serves it. No second index.
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON hub_settings TO authenticated, service_role;
+-- Guarded (Phase 2c): these are Supabase's role names; on plain Postgres
+-- they do not exist, and the grant is skipped rather than failing the migration.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON hub_settings TO authenticated, service_role;
+  END IF;
+END $$;
