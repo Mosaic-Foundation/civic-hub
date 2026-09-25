@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 /**
  * Seed demo proposals and projects into the production database.
  * Inserts realistic Floyd County civic data for demo purposes.

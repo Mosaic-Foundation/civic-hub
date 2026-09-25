@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 import { getDb } from "../src/db/client.js";
 const db = getDb();
 const { data, error } = await db

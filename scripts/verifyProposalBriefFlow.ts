@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 // Integration check of the PROPOSAL → brief flow against the real DB.
 // Creates a proposal with a past support window, runs the adapter's
 // closeIfExpired (its real lazy-close path), and verifies the brief spawns

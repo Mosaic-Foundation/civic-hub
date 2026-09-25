@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 /**
  * Beta demo content slate — every process type in every state.
  *

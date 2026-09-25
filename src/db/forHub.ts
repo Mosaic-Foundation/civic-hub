@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: the hub-scoped layer is built over the raw client.
 // forHub(hubId) — the hub-scoped data layer.
 //
 // Contract: BUILD-PLAN-multi-tenant.md → "Contracts / 3. Data layer".

@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 /**
  * Seed a hub's settings rows from the values this deployment already carries.
  *

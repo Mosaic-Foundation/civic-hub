@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 /**
  * Seed a PENDING Civic Brief on the dev database, for exercising the
  * admin review flow (recipient picker, approve → email delivery, public

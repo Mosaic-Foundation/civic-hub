@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 /**
  * One-time script to seed a demo conversation into the production database.
  * Inserts a single Flock Camera deliberation process with an "active" status

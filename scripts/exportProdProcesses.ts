@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 // exportProdProcesses.ts — READ-ONLY backup of all civic processes.
 //
 // Dumps every row of `processes` (+ `wordcloud_submissions`) to a timestamped

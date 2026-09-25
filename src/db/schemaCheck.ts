@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: the drift check probes every table, across hubs, at boot.
 // Schema drift check — probes the database against the contract and reports
 // what the running code expects but cannot find.
 //

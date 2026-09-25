@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 /**
  * Phase 2 verification — one lazy, type-agnostic deadline-close + lifecycle
  * gating. Exercises the new paths directly against the configured Supabase

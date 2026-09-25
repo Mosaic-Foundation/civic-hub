@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 // Integration check of the VOTE → brief migration against the real DB.
 // Drives create → activate → vote×3 → close through the service layer and
 // verifies a civic.brief spawns with the tally (no more civic.vote_results).

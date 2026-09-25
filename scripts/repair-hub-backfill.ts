@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 /**
  * Repair accounts the Phase 2a backfill stamped with the wrong hub. DEV ONLY.
  *

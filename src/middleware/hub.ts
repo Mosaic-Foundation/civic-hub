@@ -29,7 +29,6 @@ import {
 } from "../models/hub.js";
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       /**

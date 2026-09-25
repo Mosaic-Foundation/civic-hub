@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: drives forHub() over a supabase-js client with a stubbed fetch; no database.
 // forHub() — the hub-scoped data layer (BUILD-PLAN-multi-tenant.md, contract 3).
 //
 // No database: a real supabase-js client whose fetch is replaced by a

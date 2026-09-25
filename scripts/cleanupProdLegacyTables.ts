@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 // cleanupProdLegacyTables.ts — clear the legacy `proposals` + `projects`
 // tables that the Proposals/Projects tabs read directly (decoupled from the
 // processes/events cleanup). Adam wants a fully fresh slate — recreate demo

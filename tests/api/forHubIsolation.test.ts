@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: proves what the database itself refuses, past forHub(); local stack only.
 // forHub() against a real database: two seeded hubs, every operation, and
 // the cross-hub cases — which return nothing, change nothing, or throw.
 //

@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 /**
  * One-time migration script: copy the legacy announcement-authors list onto
  * the managed official role (users.official_type / official_title).

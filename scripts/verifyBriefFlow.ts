@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 // One-off verification of the universal brief flow against the real DB.
 // Usage: node --env-file=.env --import tsx scripts/verifyBriefFlow.ts <sourceProcessId>
 

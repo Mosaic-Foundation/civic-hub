@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 // cleanupProdProcesses.ts — clean-slate the test/demo civic processes.
 //
 // What it does (per Adam, 2026-06-30):

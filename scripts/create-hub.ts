@@ -1,3 +1,4 @@
+// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 /**
  * Create a hub: the `hubs` row plus a starter set of settings.
  *
