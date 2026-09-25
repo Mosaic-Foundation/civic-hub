@@ -18,6 +18,7 @@
 //   SUPABASE_SERVICE_ROLE_KEY     Service role secret (starts with eyJ…)
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { hubToken } from "./hubToken.js";
 
 let cached: SupabaseClient | null = null;
 
@@ -55,4 +56,55 @@ export function getDb(): SupabaseClient {
   });
 
   return cached;
+}
+
+// --- Minted hub tokens (Phase 3) --------------------------------------------
+//
+// With CIVIC_HUB_MINTED_TOKEN on, forHub(hubId) talks to PostgREST as the
+// `authenticated` role with a short-lived token carrying that hub's id, so the
+// forced RLS policies are a second filter behind forHub()'s own. Off (the
+// default), forHub() uses the service-role client above, as before Phase 3.
+//
+// It is an env flag, read on every forHub() call, so switching it off is an
+// env change and a redeploy — seconds — not a rollback of the code.
+//
+// Env vars, only when the flag is on (see .env.example):
+//   CIVIC_HUB_SIGNING_KEY      the key PostgREST verifies hub tokens with
+//   SUPABASE_PUBLISHABLE_KEY   the project's publishable (or legacy anon)
+//                              key; the gateway wants one on every request.
+//                              A bare PostgREST needs none.
+
+const ON = new Set(["1", "true", "on", "yes"]);
+
+let pinnedToServiceRole = false;
+
+/**
+ * Keep this process on the service role whatever the flag says. Operator
+ * scripts call it (scripts/lib/hubScope.ts): the control plane and scripts keep
+ * the service role by rule, even when they share an env file with the app.
+ */
+export function pinServiceRole(): void {
+  pinnedToServiceRole = true;
+}
+
+/** Whether forHub() should use minted hub tokens right now. */
+export function hubTokensEnabled(): boolean {
+  if (pinnedToServiceRole) return false;
+  return ON.has((process.env.CIVIC_HUB_MINTED_TOKEN ?? "").trim().toLowerCase());
+}
+
+/**
+ * A client that runs as `authenticated` for one hub. supabase-js asks
+ * `accessToken` before every request, so each request carries a current
+ * token for exactly this hub. Never cached here; forHub() caches per hub.
+ */
+export function getHubTokenDb(hubId: string): SupabaseClient {
+  const url = read("SUPABASE_URL");
+  const apiKey = process.env.SUPABASE_PUBLISHABLE_KEY?.trim() || "no-gateway-key";
+  hubToken(hubId); // mint once now, so a missing or bad key fails here, loudly
+  return createClient(url, apiKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    db: { schema: "public" },
+    accessToken: async () => hubToken(hubId),
+  });
 }

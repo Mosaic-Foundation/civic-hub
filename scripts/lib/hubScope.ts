@@ -13,8 +13,14 @@
 // would (withHubScope + its settings), so every reader the script calls —
 // forHub(currentHubId()), getSettingSync, baseUrl — answers for that hub.
 
+// @civic-raw-client-importer: pins operator scripts to the service role.
 import type { Hub } from "../../src/models/hub.js";
 import { isWellFormedHubSlug } from "../../src/models/hub.js";
+import { pinServiceRole } from "../../src/db/client.js";
+
+// Scripts are control plane: they keep the service role even when the env
+// file they share with the app has CIVIC_HUB_MINTED_TOKEN on (Phase 3).
+pinServiceRole();
 
 export const HUB_FLAG = "--hub";
 

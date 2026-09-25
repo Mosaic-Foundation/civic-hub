@@ -34,12 +34,13 @@
 // on the request, it throws instead of sending. Nothing in the builder API
 // removes a filter; the check exists so that stays true under refactoring.
 //
-// Phase 2a runs this over the service-role client. Phase 3 swaps the client
-// for one that authenticates as `authenticated` with a minted, hub-scoped JWT,
-// so forced RLS becomes a second, independent filter. Callers do not change.
+// Phase 2a ran this over the service-role client. Since Phase 3, with
+// CIVIC_HUB_MINTED_TOKEN on, it runs over a client that authenticates as
+// `authenticated` with a minted, hub-scoped JWT (src/db/hubToken.ts), so the
+// forced RLS policies are a second, independent filter. Callers do not change.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getDb } from "./client.js";
+import { getDb, getHubTokenDb, hubTokensEnabled } from "./client.js";
 
 /**
  * Every table that carries hub_id — 30 of the 31. `hubs` is the registry,
@@ -319,12 +320,26 @@ export function hubDbFrom(client: SupabaseClient, hubId: string): HubDb {
 
 const cache = new Map<string, HubDb>();
 
-/** The hub-scoped client for one hub. The way request code reaches the database. */
+/**
+ * The hub-scoped client for one hub. The way request code reaches the database.
+ * Over a minted hub token when CIVIC_HUB_MINTED_TOKEN is on, over the service
+ * role otherwise; the flag is read on every call.
+ */
 export function forHub(hubId: string): HubDb {
-  let db = cache.get(hubId);
+  const minted = hubTokensEnabled();
+  const key = `${minted ? "token" : "service"}:${hubId}`;
+  let db = cache.get(key);
   if (!db) {
-    db = hubDbFrom(getDb(), hubId);
-    cache.set(hubId, db);
+    if (typeof hubId !== "string" || !HUB_ID_SHAPE.test(hubId)) {
+      throw new Error(`forHub: "${String(hubId)}" is not a hub id.`);
+    }
+    db = hubDbFrom(minted ? getHubTokenDb(hubId) : getDb(), hubId);
+    cache.set(key, db);
   }
   return db;
+}
+
+/** How forHub() reaches the database right now, for /health and the logs. */
+export function hubDbMode(): "hub_token" | "service_role" {
+  return hubTokensEnabled() ? "hub_token" : "service_role";
 }

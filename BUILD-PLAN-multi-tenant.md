@@ -674,6 +674,41 @@ See "Phase 3 approach (verified)" below for the verified mechanism.
 
 _checklist to be pasted_
 
+#### Phase 3 as built (2026-09-25)
+
+**Policies (`20260925000000_hub_isolation_policies.sql`).** One template,
+`public._civic_apply_hub_policy(regclass)`: enable + FORCE row-level
+security, and one policy per table, `hub_isolation`, `FOR ALL TO
+authenticated USING (hub_id = (SELECT current_hub_id())) WITH CHECK (same)`.
+Applied to every `public` table carrying `hub_id` (30; `hubs` keeps its
+deny-all and is read by the service-role registry only). `FOR ALL` is what
+`transition_process` / `cast_vote` (SECURITY INVOKER) need: their inserts,
+updates and the `FOR UPDATE` lock on `processes` are checked against the
+caller's hub. The policy reads `hub_id` only — no ballot, receipt or
+participation row decides anything. `sessions` got its hub-leading index
+(`sessions_hub_id_idx`). **A table added later calls
+`SELECT _civic_apply_hub_policy('<table>')` in its own migration** (and gets
+`hub_id` + a hub-leading index); the catalog test fails until it does.
+
+**Minted token (`src/db/hubToken.ts`, `src/db/client.ts`).** Env names:
+
+| Var | Meaning |
+|---|---|
+| `CIVIC_HUB_MINTED_TOKEN` | the switch; default off; read on every `forHub()` call |
+| `CIVIC_HUB_SIGNING_KEY` | an EC P-256 private JWK → ES256 (the production path); an `oct` JWK or any other string ≥ 32 chars → HS256 (PostgREST `jwt-secret`, a project's legacy secret, the local stack) |
+| `SUPABASE_PUBLISHABLE_KEY` | the gateway key sent as `apikey` (the plan's snippet named it) |
+
+Claims: `iss: "civic-hub"`, `role: "authenticated"`, `hub_id`, `iat`, `exp`
+(60 s). One token per hub, re-minted at half-life, supplied through
+supabase-js's `accessToken` callback, so every request carries a current
+token for exactly the hub of its `forHub()` — which makes crons, which walk
+hubs in one invocation, per hub for free. Scripts are pinned to the service
+role (`pinServiceRole()` in `scripts/lib/hubScope.ts`); `src/db/hubs.ts`,
+`storage.ts`, `health.ts`'s ping and `schemaCheck.ts` stay service role.
+**`GET /health` reports `hub_db: { mode, ok }`**; in `hub_token` mode it
+runs one query for the host's hub as that hub's token, so a key PostgREST
+does not hold shows as `degraded` (503), not as broken pages.
+
 ### Phase 4 — settings as data, place-names out of `src/`
 
 Done when: the alias map above is live, every `VITE_HUB_*` / place-name

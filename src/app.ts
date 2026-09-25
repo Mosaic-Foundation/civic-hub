@@ -51,9 +51,9 @@ import { cronKillSwitch } from "./config/cron.js";
 import { handleListAnnouncements } from "./controllers/announcementController.js";
 import { assertSpaceIdentityConfigured } from "./config/hub.js";
 import { ensureSeeded } from "./debug/autoSeed.js";
-import { resolveHub } from "./middleware/hub.js";
+import { normalizeHostname, resolveHub, resolveHubForHostname } from "./middleware/hub.js";
 import hubConfigRoutes from "./routes/hubConfigRoutes.js";
-import { pingDb } from "./db/health.js";
+import { pingDb, pingHubDb } from "./db/health.js";
 import { validateEmailConfig } from "./utils/email.js";
 import { validateSchemaAtStartup, getSchemaReport } from "./db/schemaCheck.js";
 
@@ -340,8 +340,15 @@ app.get("/", (_req, res) => {
 });
 
 // Health check — includes a DB ping so you can verify Supabase connectivity
-app.get("/health", async (_req, res) => {
+app.get("/health", async (req, res) => {
   const db = await pingDb();
+  // Phase 3: which role hub queries run as, and that a minted token for this
+  // host's hub verifies. /health is hub-exempt, so the host is looked up here;
+  // a host with no hub reports the mode only.
+  const healthHub = await resolveHubForHostname(normalizeHostname(req.headers.host ?? req.hostname)).catch(
+    () => null,
+  );
+  const hubDb = await pingHubDb(healthHub?.id ?? null);
   // Connectivity is not correctness: the ping passed throughout the
   // 2026-08-22 waitlist outage while every write to that table failed. The
   // schema report is what makes "deployed code vs applied migrations" visible.
@@ -356,10 +363,11 @@ app.get("/health", async (_req, res) => {
   // in one request: compare it to `git rev-parse HEAD` locally. Vercel's
   // variable or a generic one (src/config/deployment.ts).
   const commit = deploymentCommit();
-  const healthy = db.ok && schema.ok;
+  const healthy = db.ok && schema.ok && hubDb.ok;
   res.status(healthy ? 200 : 503).json({
     status: healthy ? "ok" : "degraded",
     db,
+    hub_db: hubDb,
     schema: {
       ok: schema.ok,
       checked: schema.checked,
