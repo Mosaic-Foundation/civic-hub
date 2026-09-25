@@ -112,19 +112,46 @@ jobs:
           # hardening tests sign in as. Must match the hub step below.
           CIVIC_ADMIN_EMAILS: admin@example.test
 
-      - name: Start the hub
+      # The minted-token server (below) signs hub tokens with the stack's JWT
+      # secret and sends its publishable key. Both are the CLI's fixed, public,
+      # local-only values; read from the stack rather than copied here so a CLI
+      # that changes them does not silently break the second pass.
+      - name: Local stack keys for minted hub tokens
         run: |
-          node --import tsx src/index.ts > /tmp/hub.log 2>&1 &
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:3000/health >/dev/null && exit 0
-            sleep 1
+          supabase status -o json 2>/dev/null > /tmp/supabase-status.json
+          echo "LOCAL_JWT_SECRET=$(jq -r .JWT_SECRET /tmp/supabase-status.json)" >> "$GITHUB_ENV"
+          echo "LOCAL_PUBLISHABLE_KEY=$(jq -r .PUBLISHABLE_KEY /tmp/supabase-status.json)" >> "$GITHUB_ENV"
+
+      # Two servers on one database. :3000 runs hub queries as the service
+      # role (CIVIC_HUB_MINTED_TOKEN off, today's default); :3001 runs them as
+      # `authenticated` with a minted hub token (multi-tenant Phase 3), so the
+      # forced RLS policies are live. The whole API layer runs against each,
+      # the leak harness and the RLS catalog test included.
+      - name: Start the hub (service role, and minted hub tokens)
+        run: |
+          PORT=3000 BASE_URL=http://localhost:3000 \
+            node --import tsx src/index.ts > /tmp/hub.log 2>&1 &
+          PORT=3001 BASE_URL=http://localhost:3001 CIVIC_HUB_MINTED_TOKEN=true \
+            node --import tsx src/index.ts > /tmp/hub-token.log 2>&1 &
+          for port in 3000 3001; do
+            ok=""
+            for i in $(seq 1 30); do
+              curl -sf http://localhost:$port/health >/dev/null && ok=1 && break
+              sleep 1
+            done
+            if [ -z "$ok" ]; then
+              echo "hub on :$port did not become healthy:"; cat /tmp/hub.log /tmp/hub-token.log; exit 1
+            fi
           done
-          echo "hub did not become healthy:"; cat /tmp/hub.log; exit 1
+          # The second server must really be using hub tokens, and PostgREST
+          # must accept them: /health reports both.
+          curl -s -H "Host: floyd.civic.social" http://localhost:3001/health | tee /dev/stderr \
+            | jq -e '.hub_db.mode == "hub_token" and .hub_db.ok == true' >/dev/null
         env:
           SUPABASE_URL: http://127.0.0.1:54321
           SUPABASE_SERVICE_ROLE_KEY: ${{ env.LOCAL_SERVICE_ROLE_KEY }}
-          BASE_URL: http://localhost:3000
-          PORT: "3000"
+          CIVIC_HUB_SIGNING_KEY: ${{ env.LOCAL_JWT_SECRET }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ env.LOCAL_PUBLISHABLE_KEY }}
           NODE_ENV: development
           CIVIC_ALLOW_SEED: "true"
           CIVIC_ADMIN_EMAILS: admin@example.test
@@ -135,13 +162,36 @@ jobs:
           CIVIC_DEV_HUB: athens
           CIVIC_ANON_SECRET: ci-only-anon-secret
           CRON_SECRET: ci-only-cron-secret
+          # The leak harness walks /unsubscribe/digest with a real token for a
+          # Floyd resident; it signs with the same value (CIVIC_TEST_DIGEST_SECRET).
+          DIGEST_UNSUBSCRIBE_SECRET: ci-only-digest-unsubscribe-secret
 
-      - name: API tests
+      - name: API tests (service role)
         run: npx vitest run tests/api
+        env:
+          CIVIC_API_BASE: http://localhost:3000
+          CIVIC_EXPECT_HUB_DB_MODE: service_role
+          CIVIC_TEST_DIGEST_SECRET: ci-only-digest-unsubscribe-secret
 
-      - name: Hub log on failure
+      # The same layer with forced RLS live: every hub query runs as
+      # `authenticated` under a minted token. Includes the leak harness
+      # (tests/api/leakHarness*.test.ts) and the RLS catalog test
+      # (tests/api/rlsCatalog.test.ts), which also ran in the pass above.
+      - name: API tests (minted hub tokens)
+        if: success() || failure()
+        run: npx vitest run tests/api
+        env:
+          CIVIC_API_BASE: http://localhost:3001
+          CIVIC_EXPECT_HUB_DB_MODE: hub_token
+          CIVIC_TEST_DIGEST_SECRET: ci-only-digest-unsubscribe-secret
+          CIVIC_HUB_SIGNING_KEY: ${{ env.LOCAL_JWT_SECRET }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ env.LOCAL_PUBLISHABLE_KEY }}
+
+      - name: Hub logs on failure
         if: failure()
-        run: cat /tmp/hub.log || true
+        run: |
+          echo "=== :3000 (service role)"; cat /tmp/hub.log || true
+          echo "=== :3001 (minted hub tokens)"; cat /tmp/hub-token.log || true
 
 env:
   # The Supabase CLI's fixed local key. Public by design — it is printed by

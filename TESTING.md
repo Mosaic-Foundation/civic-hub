@@ -605,6 +605,19 @@ The goal: before any push to `main`, every row in this table should have at leas
 
 **Read this before writing anything in `tests/api/` or `tests/e2e/`.**
 
+**Update 2026-09-25 (multi-tenant Phase 3): the API layer runs twice.** The
+`api-tests` job starts two servers on the one local stack — `:3000` with
+`CIVIC_HUB_MINTED_TOKEN` off (hub queries as the service role) and `:3001`
+with it on (hub queries as `authenticated` under a minted token, so the
+forced RLS policies are live; its `/health` must report `hub_db.mode:
+"hub_token"`, `ok: true` before any test runs) — and runs all of
+`tests/api` against each, with `CIVIC_EXPECT_HUB_DB_MODE` pinning the mode.
+The leak harness and the RLS catalog test are in that layer, so both run in
+both passes. The token server's signing secret and publishable key are read
+from `supabase status -o json` (the CLI's fixed, public local values). The
+second pass runs even when the first fails, and the logs of both servers are
+printed on failure.
+
 **Update 2026-09-24: option 1 below is done** — `tests/api` runs on every push
 (the `api-tests` job). `tests/e2e` still does not. A test in `tests/api` must
 build its own data: CI's database is fresh each run (the 2c session's first
