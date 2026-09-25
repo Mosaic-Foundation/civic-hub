@@ -27,7 +27,11 @@ numbers below, or just grep the heading.
 | Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |
 | Local Supabase stack (ports, auth, seed) | `supabase/config.toml`, `supabase/seed.sql` |
 | Migrations (51 files, 31 tables) | `supabase/migrations/` |
-| Cron routes | `vercel.json` "crons" + `src/app.ts` `/internal/*`; per-hub runner `src/services/cronHubs.ts` |
+| Scheduled jobs | `src/jobs/registry.ts` (the one list; `vercel.json` checked against it, `npm run jobs:crontab`), runners `src/jobs/runners.ts`, per-hub loop `src/jobs/runJob.ts` + `src/services/cronHubs.ts`, routes `src/routes/jobRoutes.ts` |
+| Plugin switches at runtime | `src/services/pluginGate.ts`, `src/middleware/pluginGate.ts`, `PROCESS_TYPE_PLUGINS` in `src/processes/registry.ts`, UI `ui/src/config/plugins.tsx`; admin page `ui/src/pages/settings/PluginsSection.tsx` |
+| A hub's public URLs | `src/utils/baseUrl.ts` (from `hubs.hostname`) |
+| Operator scripts' hub | `scripts/lib/hubScope.ts` (`--hub <slug>`, required) |
+| Atomic DB functions | `transition_process`, `cast_vote` (`20260924080000`), called via `src/db/atomic.ts` |
 | Place-name CI check + allow-list | `scripts/check-place-names.ts`, `scripts/place-name-allowlist.txt` |
 | A hub's seed values (read only by the seed script) | `config/hubs/<hub>/settings.json` |
 | Ideas backlog incl. multi-tenancy section | `IDEAS.md` (lines ~137–240) |
@@ -55,6 +59,11 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- Phase 2c: jobs per hub from one registry, digest in the hub's time zone,
+  plugin toggles at runtime + Settings → Plugins, base URL per hub, `--hub`
+  scripts, bucket migration + guarded grants, `transition_process` /
+  `cast_vote`, the dev cron check, notes for Phase 3 — 7–~208 (every range
+  below shifts down by its length)
 - Phase 2b: composite (hub_id, x_id) foreign keys (rehearsed), the last 31
   files onto forHub(), storage keys under <hub_id>/, the civic/raw-client
   lint rule, isolation suites for every converted endpoint, notes for 2c —

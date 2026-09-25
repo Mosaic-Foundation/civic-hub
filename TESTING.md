@@ -62,7 +62,23 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
 - **Config:** `civic-hub/vitest.config.ts`
 - **Helpers:** `civic-hub/tests/fixtures/helpers.ts`
 - **Covers:** process CRUD, event feed, auth flow, proposals, search, health/discovery, cron endpoints, deliberation routes
+- **Multi-tenant suites (Phase 2):** hub isolation (`hubIsolation*.test.ts`,
+  `forHubIsolation.test.ts`); and from Phase 2c: `pluginToggles.test.ts` (a
+  plugin switched off on Athens: routes 404, no create/read/list, job skipped,
+  Floyd unaffected, back on restores), `hubBaseUrl.test.ts` (a stored event
+  carries its own hub's origin), `atomicFunctions.test.ts` (`cast_vote` and
+  `transition_process` leave nothing behind on a forced mid-function failure
+  and refuse another hub's rows), and the per-hub runs in `crons.test.ts`.
+- **Cron secret in tests:** the per-hub cron tests send `ci-only-cron-secret`
+  (CI's value); a local server started with another sets
+  `CIVIC_TEST_CRON_SECRET`.
+- **Server port:** `tests/fixtures/helpers.ts` reads `CIVIC_API_BASE`, e.g.
+  `CIVIC_API_BASE=http://localhost:3400 npm test` against a server on :3400.
 
+> **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
+> `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs
+> and runs `tests/api` against a server. The note below is the history.
+>
 > **Why so much linking logic is pure.** CI runs ONLY the unit layer — it has
 > no database and no server, and the app talks exclusively through
 > `supabase-js`/PostgREST, so a bare Postgres container cannot stand in for it.
@@ -83,6 +99,12 @@ runs on every push**, alongside `tsc` and a real UI build.
 - **Covers:** lifecycle transitions, voting methods, the wordlist filter, feed
   classification, the activity serializer's golden documents, schema-contract
   classification, process-link edge storage and both-direction rendering
+- **Phase 2c:** `jobRegistry.test.ts` (vercel.json's crons equal the job
+  registry; every job has a runner and a route), `jobsPerHub.test.ts` (the
+  digest's send hour in each hub's time zone, plugin skips, per-hub admin
+  recipients, one hub's failure isolated), `pluginGate.test.ts`,
+  `hubBaseUrl.test.ts`, `portability.test.ts` (every GRANT to a Supabase role
+  is guarded; the bucket migration; generic deployment variables)
 
 - **KNOW WHAT THIS LAYER CANNOT SEE.** It is blind to everything at the seam
   between a pure module and the world. During the 2026-08-25 process-linking
@@ -103,6 +125,15 @@ Open the real UI in Chromium and simulate resident interactions.
 - **Config:** `civic-hub/playwright.config.ts`
 - **Covers:** critical user journeys — navigation, feed, votes, search, conversations
 - **Note:** Each test dismisses the intro popup via localStorage before running.
+- **Known failures (2026-09-25):** 6 of 23 fail on the pre-Phase-2c code as
+  well as after it — `ux-polish.spec.ts` (tab strip order, three not-found
+  back links, the welcome-banner title pattern) and `votes.spec.ts`
+  (suggest-a-vote card). Their expectations predate later UI changes; they
+  are not multi-tenant regressions. Checked by running both commits against
+  the same local stack.
+- **Run against the local stack, not `.env`:** the config's `webServer` runs
+  `npm run dev`, which reads `.env` (the hosted dev project). Start an API on
+  :3000 with the local stack's URL and key first; Playwright reuses it.
 
 ---
 
@@ -507,6 +538,12 @@ The goal: before any push to `main`, every row in this table should have at leas
 
 **Read this before writing anything in `tests/api/` or `tests/e2e/`.**
 
+**Update 2026-09-24: option 1 below is done** — `tests/api` runs on every push
+(the `api-tests` job). `tests/e2e` still does not. A test in `tests/api` must
+build its own data: CI's database is fresh each run (the 2c session's first
+fix was a test that borrowed a conversation a developer's stack happened to
+have). The rest of this section is the history.
+
 Neither suite runs on push today. CI does four things: install, `tsc`,
 `npx vitest run tests/unit`, and a UI build. It has no database and no server.
 A test added to `tests/api` is a test **nobody will ever run automatically**
@@ -548,7 +585,8 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-09-22 — recorded that the Supabase CLI local stack now
+*Last updated: 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
+and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,
 and added the hub-config API tests. Previously: 2026-08-26 — added the
 archive/restore inventory, the unit-test layer (which CI runs and this file had never documented), the process-linking coverage inventory, and the standing note above on running integration tests in CI.*

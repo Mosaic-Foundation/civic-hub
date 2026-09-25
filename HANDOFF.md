@@ -4,6 +4,208 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Multi-tenant Phase 2c: everything per hub at runtime — 2026-09-25
+
+**Branch:** `multi-tenant`, seven commits plus this entry. `1f47c0c` is pushed
+(Adam pushed it; CI green); the rest are **not pushed by the session**
+(`git push` is refused by its permission settings): Adam pushes. **The dev
+database IS migrated** (both 2c migrations, `./scripts/db-push.sh`), which
+must come first: the code now calls `transition_process` and `cast_vote`.
+Production untouched. Dev crons still off (`HUB_CRON_ENABLED=false` on
+civic-hub-dev, not touched). This closes Phase 2; Phase 3 is next.
+
+| Step | Commit | What |
+|---|---|---|
+| CI | `1f47c0c` | the api-tests failure on `29334a7` (below) |
+| 1 | `cb7c9f9` | one job registry; every cron per hub; digest in the hub's hour |
+| 2 | `2e0ffb4` | plugin toggles at runtime; Settings → Plugins |
+| 3 | `e58c4d1` | base URL from `hubs.hostname` |
+| 4 | `1cbda62` | `--hub` for every operator script |
+| 5 | `1b31833` | bucket migration, guarded GRANTs, generic deployment vars |
+| 6 | `c725a27` | `transition_process` and `cast_vote` |
+
+**`npm test` is green: lint + 108 files / 1248 tests** (unit 88 / 1055; API
+20 / 193, 5 skipped as before) against a freshly reset local stack (server on
+:3400, launch config `hub-api-2c`). `tsc`, the UI build, the place-name check
+clean. **Playwright: 17 pass, 6 fail — the same 6 fail on `1f47c0c`**, run
+against the same local stack from a throwaway worktree, so they predate 2c
+(recorded in TESTING.md).
+
+**Done-when, checked:** every job runs per hub from `src/jobs/registry.ts`,
+and `vercel.json` is checked against it by a test; Conversations switched off
+in Athens's Plugins page disappears from Athens's tabs and its page (browser),
+while Floyd keeps it; an Athens event carries Athens's hostname (unit, and the
+stored row end to end); operator scripts take `--hub` and refuse without it;
+both atomic functions are in use by the app; `npm test` green.
+
+### The CI failure (Adam's first ask)
+
+`api-tests` failed on `29334a7`: `hubIsolationControllers` "each hub lists only
+its own" asserted Floyd already had a conversation. Neither suspected cause —
+the composite-key migration met no cross-hub row and no dependency was
+missing; 166 of 167 passed. A developer's stack always has a leftover
+conversation; CI's fresh database never does. The test now writes its own
+`civic.polis_deliberation` row (creating one through the API starts a Polis
+conversation, which CI cannot reach). Reproduced on a reset stack with CI's
+env, fixed, pushed by Adam, CI green on both jobs.
+
+### Step 1 — jobs
+
+`src/jobs/registry.ts` (pure data: id, plugin, path, UTC schedule, deprecated
+paths) → `src/routes/jobRoutes.ts` mounts every route; `src/jobs/runJob.ts`
+runs a job per active hub (or `?hub=`), skips a hub whose
+`plugin.<id>.enabled` is off, isolates each hub's throw, reports per hub;
+`src/jobs/runners.ts` maps ids to the per-hub functions, which take parsed
+input and return data. The route docs in `app.ts` are generated from the
+registry. `npm run jobs:crontab` prints a crontab (`-- --vercel` the
+`vercel.json` section). The 2a `withMigrationDefaultHub` stopgap is gone.
+**The digest runs hourly** and mails a hub only in its
+`plugin.digest.send_hour`, read in the new **`identity.timezone`** (Identity
+section; empty/unknown = UTC; unset hour = 13, so Floyd is unchanged).
+`?force=true` skips only the hour check.
+
+### Step 2 — plugin toggles and the Plugins section
+
+Off, for that hub only: its route mounts 404 (`requirePlugin`, plus the
+plugin-specific admin and upload routes); its job is skipped; its process
+types cannot be created (`createProcess`, `submitForReview`), read or acted on
+by id, or listed; the feed and digest leave them out; the brief spawn skips
+when briefs are off, news sync when announcements are; the UI drops its nav
+items, tabs, pickers, pages, admin tabs, the assistant panel and the resident
+digest control (`ui/src/config/plugins.tsx`). Nothing is deleted.
+`PROCESS_TYPE_PLUGINS` in the registry names each type's plugin; a test fails
+on a type without one or a UI copy that disagrees.
+
+**Settings → Plugins** (Adam's spec this session): all 14 with on/off, and
+beneath each its settings — meeting summaries (connector, page, YouTube
+channel, title filter, exclusions, cutoff date, auto-publish, instructions),
+news sync (connector, feed), conversations (Polis URL), digest (send hour;
+zone in Identity), votes (**three new keys, with Adam**:
+`plugin.vote.min_duration_days` / `max_` / `default_`, enforced by the vote
+draft validator, read by the drafting form through
+`GET /votes/drafts/duration-limits`; unset = 14 / 90 / 42). Support threshold
+and comment anonymity are shown read-only with "Change in Participation";
+announcement authors and brief recipients link to Officials. The digest keys
+moved here from Email. New field kinds `url`, `choice`, `date`, `number`.
+
+### Step 3 — base URL
+
+`baseUrl()` / `uiBaseUrl()` read the hub in scope's hostname
+(`https://<host>`, or `http://<host>:<env port>` for a local hostname outside
+production); env is the fallback only with no hub in scope. Every caller
+already went through them, so events, collection ids, discovery and every
+email link follow. `isLocalHostname` moved to `src/models/hub.ts` so
+`baseUrl.ts` does not import the database. Share cards (`api/og.ts`) already
+used the request's Host.
+
+### Step 4 — scripts
+
+`scripts/lib/hubScope.ts`: `hubArg()` refuses (exit 2) before any database
+access; `withScriptHub(fn)` enters the hub's scope. Every script touching hub
+data uses it (29 files; list in the commit). Run locally:
+`verifyProposalBriefFlow`, `verifyVoteBriefFlow`, `verifyPhase2Close` pass.
+`seed-hub-settings` now requires `--hub` (CI passes `--hub floyd`); the raw
+production content and cleanup scripts are bounded to one hub
+(`cleanupProdLegacyTables` used to delete every row of two tables).
+
+### Step 5 — portability
+
+The `post-images` bucket and four `authenticated` policies keyed on
+`(storage.foldername(name))[1] = current_hub_id()` — **`current_hub_id()` is
+defined now**, in that migration, ahead of Phase 3. Skips cleanly with no
+storage schema; **on dev all four policies were created** (checked from a
+schema dump). Proven in a throwaway local database with a stand-in storage
+schema. **Nine old migrations were edited in place** to wrap their GRANTs in a
+role-existence check (a new migration cannot guard an earlier one that fails
+first on plain Postgres); a static test guards it. `GIT_COMMIT_SHA` /
+`DEPLOYMENT_ID` back `/health`. Pre-prefix storage objects: recommended
+**not to copy at cutover** but to record the ownership rule in the export —
+**Adam to confirm** (build plan, "Storage").
+
+### Step 6 — the atomic functions
+
+`transition_process(p_hub_id, p_process_id, p_to_status, p_actor, p_event,
+p_state DEFAULT NULL)` — **`p_state` is an addition to the brief's
+signature**, because `executeAction` writes state and status together.
+`cast_vote(p_hub_id, p_process_id, p_user_id, p_choice, p_event)` replaces the
+receipts module's three writes and hand rollbacks. Both lock the process row
+and raise 42501 unless it, every row a re-vote touches and the event are on
+the hub. Ballot secrecy exactly as the July audit left it (read 8450–8582
+before writing): no new link, no message naming a choice, the event
+restricted and ballot-free. `emitEvent` = `buildEvent` + append, so the
+functions store the event emitEvent would have. Forced-failure tests: a
+duplicate event id (the last write) leaves no ballot, participation, bridge,
+status or state, and the voter can vote afterwards.
+
+### Dev check (step 7), local run against the dev database
+
+Local server on :3500 against dev, `HUB_CRON_ENABLED=true`, a local
+`CRON_SECRET`, and **`RESEND_API_KEY` and `ANTHROPIC_API_KEY` blanked** so
+nothing could be mailed or billed (the guard decides before the transport, so
+suppression is still visible; no transport means no digest cursor moved).
+All three hubs iterated on every route:
+
+| Route | floyd | athens | utopia |
+|---|---|---|---|
+| admin-digest | 1 recipient (admin), passed the guard, failed at no transport | skipped: `plugin.admin_digest.enabled` off | queues empty |
+| digest `?force=true` | 57 users: **56 `[email] SUPPRESSED`** (beta, not on roster/allow list), 1 empty | skipped: `plugin.digest.enabled` off | 1 user, empty |
+| digest (hourly, 04:00 UTC) | — | — | skipped: not the send hour (13 UTC) |
+| meeting-summary | 500: model key blanked (by design here) | skipped: plugin off | skipped: not configured |
+| news-sync `?hub=` | **not run** | skipped: plugin off | skipped: not configured |
+
+**Floyd's news sync was deliberately not run**: it would fetch the county's
+feed and create announcements on dev — the real work the dev crons are off to
+prevent. Athens's digest and plugin switches were already off on dev.
+
+### For Adam
+
+1. **Push**, then dev deploys the code whose database is already migrated.
+   Check `/health` on the three dev hosts, open Settings → Plugins on Athens,
+   switch something off, reload.
+2. **`GET /events` is deliberately not filtered by plugin** — the published
+   record keeps what a hub published; the feed hides it client-side. If a
+   switched-off plugin's events should also leave the protocol surface, that
+   is one line (`getHiddenProcessIds` in `eventController`), and a decision.
+3. **Confirm the storage recommendation** (step 5).
+4. `testFlow.ts` has sent no admin credentials since `POST /process` became
+   admin-only (April); it now takes `--hub` but its create step still fails.
+5. **Edited migrations** (step 5): content changed, effect identical where the
+   roles exist. Production has not run them yet; the cutover runs the guarded
+   text.
+6. Six stale Playwright tests (TESTING.md).
+
+### For Phase 3 (forced RLS with `current_hub_id()`, minted tokens, leak-test harness, FORCE on the ten tables)
+
+1. **`current_hub_id()` exists** (`20260924070000`), reading
+   `request.jwt.claims`; the four storage policies already call it. Write the
+   table policies against it; don't redefine it.
+2. **Check `pg_policies` for the four `post_images_hub_*` policies** on every
+   target before turning tokens on; the migration only warns if a host
+   refuses them. Dev has them.
+3. **`cast_vote` and `transition_process` are SECURITY INVOKER** and insert
+   into `processes`, `vote_*`, `active_vote_keys`, `events`: under forced RLS
+   they need insert/update policies on those tables for the caller's hub,
+   and the `FOR UPDATE` lock on `processes` needs a policy that allows it.
+   Their helpers `_civic_insert_event` / `_civic_lock_process` are granted to
+   `authenticated` for that reason; the leak harness should prove a token for
+   hub a cannot use them on hub b (the functions raise 42501 too).
+4. **Service-role paths that remain** after 2c: `src/db/hubs.ts` (registry),
+   `src/db/storage.ts`, `src/db/health.ts`, `src/db/schemaCheck.ts`, scripts.
+   The job runner reads hubs through the registry, then does all hub work via
+   `forHub()` inside `withHubScope`, so minted tokens slot in per hub.
+5. **Crons run as many hubs per invocation**: a minted token must be per hub
+   inside `runJobAcrossHubs`, not per request.
+6. `transition_process` covers the status change and its `process.updated`
+   event; a handler's own lifecycle events (a vote's `started`) are still
+   written by `emitEvent` inside the action, before the transition commits.
+7. The digest's `getEventsSince` still loads the hub's whole recent window;
+   under RLS that is the same query with a policy — watch its plan.
+8. Composite FKs from 2b plus these functions' checks mean a cross-hub write
+   now fails in three places; the leak harness should assert the RLS error
+   (42501) specifically, not just "some error".
+
+---
+
 ## Multi-tenant Phase 2b: composite keys, the last conversions, the lint rule — 2026-09-24
 
 **Branch:** `multi-tenant`, six commits plus this entry. **Not pushed by the
