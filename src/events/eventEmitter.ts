@@ -24,6 +24,20 @@ import { protocolHubId } from "../config/hub.js";
  * surface the error (events are the source of truth; never silently drop).
  */
 export async function emitEvent(input: CreateEventInput): Promise<CivicEvent> {
+  const event = buildEvent(input);
+  await appendEvent(event);
+  console.log(`[event] ${event.event_type} by ${event.actor} (${event.id})`);
+  return event;
+}
+
+/**
+ * The event emitEvent would store, built and validated but NOT stored. For
+ * the two atomic database functions (src/db/atomic.ts), which write an event
+ * in the same transaction as the state change it records: the caller builds
+ * it here, so it is exactly the event emitEvent would have written, and the
+ * function inserts it or nothing at all.
+ */
+export function buildEvent(input: CreateEventInput): CivicEvent {
   const hub = baseUrl();
   const ui = uiBaseUrl();
   // action_url is the user-facing UI URL (per Civic Event Spec §3 — "link to
@@ -90,10 +104,6 @@ export async function emitEvent(input: CreateEventInput): Promise<CivicEvent> {
       { cause: err },
     );
   }
-
-  await appendEvent(event);
-
-  console.log(`[event] ${event.event_type} by ${event.actor} (${event.id})`);
 
   return event;
 }

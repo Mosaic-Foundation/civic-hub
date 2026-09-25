@@ -31,8 +31,9 @@
 // nothing that links a voter to a ballot. The ballot-secrecy layout from the
 // July audit is unchanged; only its scope is.
 
-import crypto from "crypto";
-import { forHub, HubDbError, type HubDb } from "../../db/forHub.js";
+import { forHub, type HubDb } from "../../db/forHub.js";
+import { AlreadyVotedError, castVote } from "../../db/atomic.js";
+import type { CivicEvent } from "../../models/event.js";
 import { currentHubId } from "../../config/hubContext.js";
 import type { VoteRecord, UserParticipation } from "./models.js";
 
@@ -41,112 +42,39 @@ function db(): HubDb {
   return forHub(currentHubId());
 }
 
-// --- Receipt generation ----------------------------------------------------
-
-function generateReceiptId(): string {
-  return crypto.randomUUID();
-}
-
 // --- Public API ------------------------------------------------------------
 
 /**
  * Record a new vote OR update an existing one, returning the user's
- * (stable) receipt for this process.
+ * (stable) receipt for this process — and write the vote_submitted event with
+ * it, when given, in the same transaction.
  *
- * Branches:
- *   First-time vote:
- *     1. Insert participation (PK = user_id+process_id) — atomic dup
- *        guard.
- *     2. Insert vote_record with fresh UUID receipt — no user_id.
- *     3. Insert active_vote_keys row mapping user → receipt for the
- *        active window.
- *     If step 2 or 3 fails, best-effort roll back step 1 (and 2) so the
- *     user can retry without losing their slot.
- *
- *   Re-vote (participation insert hits 23505):
- *     1. Look up the existing receipt via active_vote_keys.
- *     2. UPDATE vote_records.choice — receipt_id stays stable so any
- *        previously-shown receipt still verifies to the user's current
- *        choice.
- *     If active_vote_keys has no row (closed vote, or closed-and-
- *     reopened legacy data), surface the original "already voted"
- *     error rather than silently failing.
+ * One database call since Phase 2c: cast_vote (20260924080000) does, in one
+ * transaction, what this function used to do in three writes held together
+ * by hand-written rollbacks:
+ *   First-time vote: participation (its primary key is the double-vote
+ *     guard), then the ballot under a fresh receipt — no user_id — then the
+ *     active_vote_keys bridge for the open window.
+ *   Re-vote (participation already there): the bridge gives the receipt, and
+ *     the ballot's choice is updated under it — the receipt stays stable, so
+ *     any receipt already shown still verifies to the current choice.
+ *   No bridge (the vote closed, or a ballot from before receipts): refused
+ *     with the original "already voted" error.
+ * Any failure writes nothing — no participation row that would lock a
+ * resident out of a vote they never cast, no event without its ballot.
  */
 export async function recordOrUpdateVote(
   processId: string,
   userId: string,
   choice: string,
+  event: CivicEvent | null = null,
 ): Promise<{ receipt_id: string; updated: boolean }> {
-  const hubDb = db();
-
-  // Try to reserve participation. PK collision = re-vote path.
   try {
-    await hubDb.from("vote_participation").insert({
-      user_id: userId,
-      process_id: processId,
-      has_voted: true,
-    });
+    return await castVote({ hubId: currentHubId(), processId, userId, choice, event });
   } catch (err) {
-    if (!(err instanceof HubDbError && err.code === "23505")) {
-      throw new Error(`Receipts: ${(err as Error).message}`);
-    }
-    // Re-vote: look up the user's existing receipt and update its choice.
-    const keyRow = await hubDb
-      .from("active_vote_keys")
-      .select<{ receipt_id: string }>("receipt_id")
-      .eq("user_id", userId)
-      .eq("process_id", processId)
-      .maybeSingle();
-    if (!keyRow) {
-      // No active key — either the vote closed, or this user voted
-      // before active_vote_keys existed. Either way, refuse the change.
-      throw new Error("You have already voted on this process");
-    }
-
-    await hubDb
-      .from("vote_records")
-      .update({ choice })
-      .eq("receipt_id", keyRow.receipt_id);
-
-    return { receipt_id: keyRow.receipt_id, updated: true };
-  }
-
-  // First-time vote.
-  const receipt_id = generateReceiptId();
-
-  try {
-    await hubDb.from("vote_records").insert({
-      receipt_id,
-      process_id: processId,
-      choice,
-    });
-  } catch (err) {
-    await hubDb
-      .from("vote_participation")
-      .delete()
-      .eq("user_id", userId)
-      .eq("process_id", processId);
+    if (err instanceof AlreadyVotedError) throw new Error(err.message);
     throw new Error(`Receipts: ${(err as Error).message}`);
   }
-
-  try {
-    await hubDb.from("active_vote_keys").insert({
-      user_id: userId,
-      process_id: processId,
-      receipt_id,
-    });
-  } catch (err) {
-    // Roll back both prior writes so the user can retry cleanly.
-    await hubDb.from("vote_records").delete().eq("receipt_id", receipt_id);
-    await hubDb
-      .from("vote_participation")
-      .delete()
-      .eq("user_id", userId)
-      .eq("process_id", processId);
-    throw new Error(`Receipts: ${(err as Error).message}`);
-  }
-
-  return { receipt_id, updated: false };
 }
 
 /**

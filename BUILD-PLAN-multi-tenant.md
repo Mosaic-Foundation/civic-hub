@@ -606,6 +606,20 @@ cleanup and outside the repo. Done in Phase 2a:
    separate calls: a failure between them leaves state without its event,
    or an event without its state, and a ballot's three writes rely on
    hand-written rollbacks.
+   **Done in 2c:** `20260924080000_atomic_transition_and_vote.sql`, called
+   through `src/db/atomic.ts`. `transition_process` gained one trailing
+   optional argument beyond the brief's signature, `p_state jsonb DEFAULT
+   NULL`, because `executeAction` writes state and status in one update and
+   the state must be in the same transaction. In use: `executeAction` (a status
+   change and its `process.updated` event), `archiveProcess`, `restoreProcess`,
+   and every ballot (`recordOrUpdateVote` → `cast_vote`, the `vote_submitted`
+   event built by `buildEvent()` and written by the function). Both lock and
+   check the process row's hub, check every row a re-vote touches, stamp every
+   insert, and refuse an event naming another hub (42501). The ballot-secrecy
+   layout is the July audit's, unchanged. Handler-emitted lifecycle events
+   inside `handleAction` (a vote's `started`, `ended`) are still written before
+   the transition commits — the transaction covers the status change and the
+   event that records it, not every event an action emits.
 
 **The cleanup migration after cutover** drops, with the `DEFAULT 'floyd'`s
 and the deprecated search wrappers: `users_email_key`,

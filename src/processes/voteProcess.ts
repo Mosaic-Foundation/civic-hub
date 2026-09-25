@@ -5,7 +5,8 @@
 // to the hub's ProcessHandler contract.
 
 import { Process, ProcessAction } from "../models/process.js";
-import { emitEvent } from "../events/eventEmitter.js";
+import { buildEvent, emitEvent } from "../events/eventEmitter.js";
+import type { CivicEvent } from "../models/event.js";
 import { ProcessHandler } from "./types.js";
 import { voteAssistantConfig } from "./voteAssistantConfig.js";
 import {
@@ -187,12 +188,24 @@ const voteProcess: ProcessHandler = {
           throw new Error("You have already voted on this process");
         }
 
+        // The vote_submitted event is built here but written by cast_vote,
+        // in the same transaction as the ballot (src/db/atomic.ts): captured
+        // from the module rather than emitted, so there is never an event
+        // without its ballot or a ballot without its event.
+        let submitted: CivicEvent | null = null;
+        const voteCtx = {
+          ...ctx,
+          emit: async (input: Parameters<typeof emitEvent>[0]) => {
+            submitted = buildEvent(input);
+            return submitted;
+          },
+        };
         const outcome = await submitVote(
           state,
           action.actor,
           ballotInput,
           previousSerialized,
-          ctx,
+          voteCtx,
         );
         syncStatus(process, outcome.state);
 
@@ -208,7 +221,7 @@ const voteProcess: ProcessHandler = {
         // to the current choice.
         const method = getVotingMethod(methodKey);
         const serialized = method.serializeForReceipt(outcome.result.ballot as Ballot);
-        const receipt = await recordOrUpdateVote(process.id, action.actor, serialized);
+        const receipt = await recordOrUpdateVote(process.id, action.actor, serialized, submitted);
 
         result = {
           ...outcome.result,

@@ -16,6 +16,7 @@
 //   - optimistic locking via updated_at compare-and-swap, or
 //   - SELECT ... FOR UPDATE inside a Postgres RPC.
 
+import { transitionProcess } from "../db/atomic.js";
 import { assertProcessTypeEnabled, disabledProcessTypes, isProcessTypeEnabled } from "./pluginGate.js";
 import {
   Process,
@@ -25,7 +26,7 @@ import {
   ProcessDefinition,
   ProcessStatus,
 } from "../models/process.js";
-import { emitEvent } from "../events/eventEmitter.js";
+import { buildEvent, emitEvent } from "../events/eventEmitter.js";
 import { generateId } from "../utils/id.js";
 import {
   getProcessHandler,
@@ -256,22 +257,12 @@ export async function executeAction(
   // then returns a result payload. It may also emit action-specific events.
   const result = await handler.handleAction(process, action);
 
-  // Persist the mutated process back.
-  const now = new Date().toISOString();
-  await db()
-    .from("processes")
-    .update({
-      status: process.status,
-      state: process.state,
-      updated_at: now,
-    })
-    .eq("id", process.id);
-
-  process.updatedAt = now;
-
-  // Emit process.updated only when a meaningful state change occurred.
+  // Persist the mutated process back. A status change and its
+  // process.updated event are one transaction (transition_process), so the
+  // log can never show a status the row does not have, or the reverse; a
+  // change to state alone is a plain update, as before.
   if (shouldEmitStatusUpdate(previousStatus, process.status)) {
-    await emitEvent({
+    const event = buildEvent({
       event_type: "civic.process.updated",
       actor: action.actor,
       process_id: process.id,
@@ -284,6 +275,26 @@ export async function executeAction(
         },
       },
     });
+    const out = await transitionProcess({
+      hubId: currentHubId(),
+      processId: process.id,
+      toStatus: process.status,
+      actor: action.actor,
+      event,
+      state: process.state,
+    });
+    process.updatedAt = out.updated_at;
+  } else {
+    const now = new Date().toISOString();
+    await db()
+      .from("processes")
+      .update({
+        status: process.status,
+        state: process.state,
+        updated_at: now,
+      })
+      .eq("id", process.id);
+    process.updatedAt = now;
   }
 
   // Universal brief seam: when a process transitions INTO a terminal state,
@@ -579,34 +590,36 @@ export async function archiveProcess(
   };
   const nextState = { ...(process.state ?? {}), archive };
 
-  await db()
-    .from("processes")
-    .update({ status: "archived", state: nextState, updated_at: now })
-    .eq("id", id);
-
-  // Restricted-visibility lifecycle event so the moderation log picks it up
-  // (mirrors the announcement remove/restore emit shape) and the public feed
-  // never surfaces it.
-  await emitEvent({
-    event_type: "civic.process.updated",
+  // The status change and its restricted-visibility lifecycle event (so the
+  // moderation log picks it up and the public feed never surfaces it) are one
+  // transaction.
+  const archivedAt = await transitionProcess({
+    hubId: currentHubId(),
+    processId: id,
+    toStatus: "archived",
     actor: adminId,
-    process_id: id,
-    jurisdiction: process.jurisdiction || DEFAULT_JURISDICTION,
-    processType: process.definition.type,
-    visibility: "restricted",
-    data: {
-      process: { previous_status: archive.previous_status, status: "archived" },
-      moderation: {
-        action: "process_archived",
-        reason: trimmedReason,
-        archived_by: adminId,
+    state: nextState,
+    event: buildEvent({
+      event_type: "civic.process.updated",
+      actor: adminId,
+      process_id: id,
+      jurisdiction: process.jurisdiction || DEFAULT_JURISDICTION,
+      processType: process.definition.type,
+      visibility: "restricted",
+      data: {
+        process: { previous_status: archive.previous_status, status: "archived" },
+        moderation: {
+          action: "process_archived",
+          reason: trimmedReason,
+          archived_by: adminId,
+        },
       },
-    },
+    }),
   });
 
   process.status = "archived";
   process.state = nextState;
-  process.updatedAt = now;
+  process.updatedAt = archivedAt.updated_at;
 
   // Let the handler sync storage it owns (a child table's status column, a
   // status kept inside state). Best-effort by design — see ProcessHandler
@@ -651,27 +664,29 @@ export async function restoreProcess(
       | undefined;
   delete (nextState as Record<string, unknown>).archive;
 
-  await db()
-    .from("processes")
-    .update({ status: restoreStatus, state: nextState, updated_at: now })
-    .eq("id", id);
-
-  await emitEvent({
-    event_type: "civic.process.updated",
+  const restoredAt = await transitionProcess({
+    hubId: currentHubId(),
+    processId: id,
+    toStatus: restoreStatus,
     actor: adminId,
-    process_id: id,
-    jurisdiction: process.jurisdiction || DEFAULT_JURISDICTION,
-    processType: process.definition.type,
-    visibility: "restricted",
-    data: {
-      process: { previous_status: "archived", status: restoreStatus },
-      moderation: { action: "process_restored", restored_by: adminId },
-    },
+    state: nextState,
+    event: buildEvent({
+      event_type: "civic.process.updated",
+      actor: adminId,
+      process_id: id,
+      jurisdiction: process.jurisdiction || DEFAULT_JURISDICTION,
+      processType: process.definition.type,
+      visibility: "restricted",
+      data: {
+        process: { previous_status: "archived", status: restoreStatus },
+        moderation: { action: "process_restored", restored_by: adminId },
+      },
+    }),
   });
 
   process.status = restoreStatus;
   process.state = nextState;
-  process.updatedAt = now;
+  process.updatedAt = restoredAt.updated_at;
 
   // Mirror of the archive hook. previousStatus is passed so a handler can put
   // its child row back where it was rather than guessing a default.

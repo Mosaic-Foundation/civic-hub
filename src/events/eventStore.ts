@@ -55,7 +55,7 @@ function rowToEvent(row: EventRow): CivicEvent {
   };
 }
 
-function eventToRow(event: CivicEvent): EventRow {
+export function eventToRow(event: CivicEvent): EventRow {
   return {
     id: event.id,
     // The event's own timestamp IS the row's created_at. The emitter stamps
