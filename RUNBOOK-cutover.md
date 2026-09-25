@@ -157,3 +157,85 @@ Rehearsed 2026-09-25: CLEAN on dev after the migrations; against production
 before the cutover it says `tenancy_catalog() failed` (the function is one of
 the 17 migrations), which is correct. Local mutation: with `waitlist` un-FORCEd
 it printed `NOT READY — 1 problem(s)` naming it and exited 1.
+
+---
+
+## Wildcard domain `*.civic.social` (not needed for Floyd's cutover)
+
+**When.** Floyd's cutover does not need this: `floyd.civic.social` already
+points at the `civic-hub` Vercel project and keeps its own record. Do it
+when the second real hub is about to go live (Phase 5), or any time after
+the watching week.
+
+**The method.** Phase 0 chose a wildcard `CNAME` at GoDaddy (the DNS host
+for `civic.social`; nameservers `ns07/ns08.domaincontrol.com`) pointing at
+Vercel, on the Pro plan. Vercel's documentation (checked 2026-09-25) adds one
+requirement Phase 0 did not record: with outside DNS, Vercel can only issue
+the wildcard certificate if `_acme-challenge.civic.social` is delegated to
+Vercel with two `NS` records. The nameservers stay at GoDaddy.
+
+**What it cannot break** (checked 2026-09-25 with `dig`):
+- Every existing name keeps its own record, and a wildcard never overrides
+  a name that has one: the apex and `www` (Firebase), `floyd`,
+  `representative`, `citizendashboard`, `demo-hub` (Vercel).
+- There is no `_acme-challenge.civic.social` record today, so nothing else
+  (Firebase included) renews a certificate through it; delegating it takes
+  nothing away. If a future service ever asks for an `_acme-challenge` TXT
+  record on `civic.social`, it will conflict with this delegation — tell
+  the session setting it up.
+- Later, a name given ANY record of its own (for example `mail` when the
+  platform sending domain is verified) stops matching the wildcard. That is
+  what you want for mail; it is also why a hub's slug must never be a name
+  already in use (the reserved-slug list covers `mail`, `www`, `app` and
+  the others).
+
+### Steps (Adam, about 15 minutes plus DNS propagation)
+
+1. **Add the domain in Vercel.** Vercel → project **`civic-hub`** (the one
+   serving `floyd.civic.social`, not `civic-hub-dev`) → Settings → Domains
+   → **Add Domain** → type `*.civic.social` → Add.
+   Worked if: it appears in the list as "Invalid Configuration" with
+   instructions. Write down the **CNAME value** it shows (the docs give
+   `cname.vercel-dns-0.com`; use exactly what your screen says).
+2. **Turn on Vercel DNS for challenges only.** Vercel → team
+   `creatinglakes-projects` → **Domains** → `civic.social` → DNS Records →
+   **Enable Vercel DNS**. Do NOT change the nameservers at GoDaddy.
+3. **Add the two NS records at GoDaddy.** GoDaddy → My Products →
+   `civic.social` → DNS → **Add New Record**, twice:
+
+   | Type | Name | Value | TTL |
+   |---|---|---|---|
+   | NS | `_acme-challenge` | `ns1.vercel-dns.com` | 1 hour |
+   | NS | `_acme-challenge` | `ns2.vercel-dns.com` | 1 hour |
+
+4. **Add the wildcard CNAME at GoDaddy.**
+
+   | Type | Name | Value | TTL |
+   |---|---|---|---|
+   | CNAME | `*` | the value from step 1 | 1 hour |
+
+   Do not edit or delete any existing record.
+5. **Wait, then check** (10–60 minutes):
+   ```bash
+   dig +short athens-check.civic.social
+   ```
+   Worked if: it prints Vercel addresses (the CNAME value, then IPs). And:
+   ```bash
+   dig +short _acme-challenge.civic.social NS
+   ```
+   prints the two `vercel-dns.com` names.
+6. **Check the certificate.** Vercel → `civic-hub` → Settings → Domains:
+   `*.civic.social` shows **Valid Configuration** with a certificate.
+   Open `https://anything-at-all.civic.social` in a browser.
+   Worked if: no certificate warning, and the page says **No hub here** (the
+   resolver's answer for a hostname with no `hubs` row).
+7. **Check nothing else moved:** https://civic.social (marketing site),
+   https://floyd.civic.social, https://representative.civic.social,
+   https://citizendashboard.civic.social each look exactly as before.
+
+**If it goes wrong.** Delete the `*` CNAME at GoDaddy; every existing site
+is unaffected either way, because none of them uses the wildcard. The NS
+records can stay; they only answer certificate challenges.
+
+**After it works**, a new hub's hostname is just its `hubs` row
+(`<slug>.civic.social`): no DNS or Vercel change per hub.
