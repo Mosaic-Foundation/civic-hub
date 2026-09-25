@@ -108,6 +108,19 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
     write) leaves no ballot, participation, bridge, status, state or event**.
     Signs with `CIVIC_HUB_SIGNING_KEY` if set, else the local stack's fixed
     HS256 secret; independent of the server's flag.
+- **Phase 3 catalog test (2026-09-25):** `rlsCatalog.test.ts` reads
+  `tenancy_catalog()` (a service-role-only SQL function, `20260925010000`)
+  and fails, naming the table and what it lacks, unless every table in
+  `public` has `hub_id`, RLS enabled and FORCEd, exactly the one
+  `hub_isolation` policy the template writes (FOR ALL, `authenticated`,
+  USING and WITH CHECK both the template expression), and an index leading
+  with `hub_id`. `hubs` is the one exemption (`NOT_HUB_SCOPED` in
+  `tests/fixtures/tenancyCatalog.ts`), and must stay deny-all. It also
+  asserts that `HUB_TABLES` in `src/db/forHub.ts` equals the hub-scoped set
+  and that the four `post_images_hub_*` storage policies exist where storage
+  does. The rules are a pure function, so `tests/unit/tenancyCatalog.test.ts`
+  proves they fail on a table added without them (and a real unpoliced
+  table in the local stack was confirmed to fail the API test).
 - **Cron secret in tests:** the per-hub cron tests send `ci-only-cron-secret`
   (CI's value); a local server started with another sets
   `CIVIC_TEST_CRON_SECRET`.
@@ -156,7 +169,9 @@ runs on every push**, alongside `tsc` and a real UI build.
   HS256 from a secret or `oct` JWK; bad keys refused without echoing them;
   per-hub caching at half-life; the `CIVIC_HUB_MINTED_TOKEN` switch is read
   per call, defaults off, fails loudly without a key; scripts pinned to the
-  service role)
+  service role), `tenancyCatalog.test.ts` (the catalog rules above fail on
+  a table with no hub_id, policy, FORCE or hub-leading index, on a policy
+  that differs from the template, and on any extra policy)
 
 - **KNOW WHAT THIS LAYER CANNOT SEE.** It is blind to everything at the seam
   between a pure module and the world. During the 2026-08-25 process-linking

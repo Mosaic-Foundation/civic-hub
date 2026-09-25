@@ -709,6 +709,15 @@ role (`pinServiceRole()` in `scripts/lib/hubScope.ts`); `src/db/hubs.ts`,
 runs one query for the host's hub as that hub's token, so a key PostgREST
 does not hold shows as `degraded` (503), not as broken pages.
 
+**Catalog (`20260925010000_tenancy_catalog.sql`).** `public.tenancy_catalog()`,
+service role only: one row per `public` table (hub_id, RLS enabled/forced,
+hub-leading index, policies with their expressions) plus the post-images
+policies on `storage.objects`. `tests/api/rlsCatalog.test.ts` holds every
+table to the rules; **run it against a database before switching tokens on
+there** (`POST /rest/v1/rpc/tenancy_catalog` with the service key) — this
+is the "check `pg_policies`" step from the 2c notes, made mechanical.
+`hubs` is the one table without `hub_id` (deny-all, no policy).
+
 ### Phase 4 — settings as data, place-names out of `src/`
 
 Done when: the alias map above is live, every `VITE_HUB_*` / place-name
