@@ -226,6 +226,18 @@ Open the real UI in Chromium and simulate resident interactions.
   (suggest-a-vote card). Their expectations predate later UI changes; they
   are not multi-tenant regressions. Checked by running both commits against
   the same local stack.
+  Same six, and no others, on 2026-09-25 with minted hub tokens ON (API on
+  :3000 with `CIVIC_HUB_MINTED_TOKEN=true` against the local stack, Storage
+  on): 17 passed, 6 failed, 92 s.
+- **Signed-out parity against production (2026-09-25, Phase 4 part one):**
+  with dev holding a fresh copy of production's data, the same signed-out
+  API reads were hashed on dev (`multi-tenant`, tokens on) and production
+  (`main`) with hostnames normalised. Six process pages, proposals and the
+  404s: byte-identical. `/api/process` and search: the same items, some
+  ties ordered differently. `/api/feed` (502 events + `process_meta`):
+  identical once `anon-…` pseudonyms are masked — those differ only because
+  each deployment has its own `CIVIC_ANON_SECRET`. The browser snippet is in
+  RUNBOOK-cutover.md → "Verification"; reuse it after any data refresh.
 - **Run against the local stack, not `.env`:** the config's `webServer` runs
   `npm run dev`, which reads `.env` (the hosted dev project). Start an API on
   :3000 with the local stack's URL and key first; Playwright reuses it.

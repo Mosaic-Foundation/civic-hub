@@ -334,3 +334,36 @@ reason (dev had no `CIVIC_SPACE_DID`). Do not delete any variable from the
 - `main`'s mail and crons during the test: its crons run 11:30–13:30 UTC
   and the test ran at 22:40 UTC; nobody signed in. On production the same
   applies: the rollback does not trigger mail by itself.
+
+---
+
+## Rehearsal: smoke test on dev (2026-09-25)
+
+Dev holding production's data, `multi-tenant`, tokens on (ES256), all three
+hosts.
+
+**Signed out, by the session.**
+- Floyd (`civic-hub-dev.vercel.app`): home with welcome dialog, banner and
+  beta card; Projects, Outcomes; the tool-library proposal, the energy vote,
+  the trails vote, the skate-park project, "Where We Agree", the farm-stand
+  brief — all render with production's content.
+- **Parity with production**, API reads hashed on both sides with hostnames
+  normalised: process pages, proposals, 404s byte-identical; process list
+  and search the same items; the feed identical except `anon-…` pseudonyms
+  (per-deployment `CIVIC_ANON_SECRET`; production keeps its own, so its
+  pseudonyms do not change at cutover — **never change `CIVIC_ANON_SECRET`**).
+- Athens: own name, banner, demo welcome, its own code of conduct; terms name
+  Athens and never Floyd. Utopia: own purple theme and logo; terms name only
+  Utopia; `/admin/reviews` signed out → the sign-in prompt, not a blank page.
+- No new console errors on any page load.
+
+**Playwright** (local stack, tokens on): 17 passed, 6 failed — exactly the
+six known failures (`ux-polish.spec.ts` ×5, `votes.spec.ts` ×1), none new.
+
+**Not done by the session: the signed-in items** (checklist items 10–33:
+sign-in, attestation, onboarding, creating each type, assistant, endorsing,
+voting and changing a ballot, project updates, Polis, My Submissions,
+feedback, briefs and brief email, reviews, archive, admin settings,
+announcements, anonymity signed in). The session cannot sign in on a hosted
+site: sign-in codes are credentials. Playwright covers the core of them
+locally. On production they are Adam's "Verification" walk below.
