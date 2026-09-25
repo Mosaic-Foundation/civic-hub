@@ -137,6 +137,13 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   does. The rules are a pure function, so `tests/unit/tenancyCatalog.test.ts`
   proves they fail on a table added without them (and a real unpoliced
   table in the local stack was confirmed to fail the API test).
+- **Pre-switch check (2026-09-25):** `npm run check:tenancy`
+  (`scripts/check-tenancy.ts`) applies the same catalog rules as
+  `rlsCatalog.test.ts` to any database — `SUPABASE_URL` /
+  `SUPABASE_SERVICE_ROLE_KEY`, or `PROD_*` from `.env.prod` with `--prod` —
+  and prints CLEAN (exit 0) or names each offending table (exit 1). It is
+  the step right before tokens are turned on in RUNBOOK-cutover.md.
+  Unlike the test, it also fails when there is no storage schema to check.
 - **Cron secret in tests:** the per-hub cron tests send `ci-only-cron-secret`
   (CI's value); a local server started with another sets
   `CIVIC_TEST_CRON_SECRET`.

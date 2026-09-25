@@ -129,3 +129,31 @@ first redeploy ran before the value was saved; every host was `degraded`
 (`hub_db ok: false`) until the value was set from the file and redeployed
 again. Both lessons are in Part A: file, not paste; variable, then redeploy,
 then check.
+
+---
+
+## Pre-switch check (right before tokens go on)
+
+**What this does.** Reads `tenancy_catalog()` on production as the service
+role and holds every table to the rules the CI catalog test uses. It writes
+nothing. If it names a table, turning tokens on would either leak that
+table across hubs or break it outright, so tokens stay off.
+
+1. **Run it** (Adam):
+   ```bash
+   cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && node --env-file=.env.prod --import tsx scripts/check-tenancy.ts --prod
+   ```
+   `.env.prod` must hold `PROD_SUPABASE_URL` and a working
+   `PROD_SUPABASE_SERVICE_ROLE_KEY` (the `sb_secret_…` one).
+2. **Worked if** the last line starts with `CLEAN — 31 tables, 30
+   hub-scoped`. Only then go on to turn tokens on.
+3. **If it says `NOT READY`**, it lists one line per problem, e.g.
+   `waitlist: row-level security is not FORCEd`. Do not turn tokens on. The
+   site keeps working on the service role; stop here, copy the lines, and
+   bring them to the next session. (If it says `tenancy_catalog() failed`,
+   the migrations have not been applied — go back to the migration step.)
+
+Rehearsed 2026-09-25: CLEAN on dev after the migrations; against production
+before the cutover it says `tenancy_catalog() failed` (the function is one of
+the 17 migrations), which is correct. Local mutation: with `waitlist` un-FORCEd
+it printed `NOT READY — 1 problem(s)` naming it and exited 1.
