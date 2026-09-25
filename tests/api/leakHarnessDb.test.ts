@@ -316,3 +316,73 @@ describe("the atomic functions under a hub token", () => {
     expect(await localRest(`events?id=eq.${eventId}&select=hub_id`)).toEqual([{ hub_id: "athens" }]);
   });
 });
+
+// Storage (Phase 4 part one). Uploads run on the hub token, so the four
+// `post_images_hub_*` policies on storage.objects are the enforcement: the
+// first path segment must be the token's hub. Straight at the Storage API,
+// with the same token forHub() would send.
+describe("storage: a hub token writes only under its own prefix", () => {
+  // A 1×1 PNG. The bucket allows image types only.
+  const PNG = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+    "base64",
+  );
+  const object = (key: string) => `${url}/storage/v1/object/post-images/${key}`;
+  async function put(bearer: string, key: string): Promise<Result> {
+    const res = await fetch(object(key), {
+      method: "POST",
+      headers: { apikey, Authorization: `Bearer ${bearer}`, "Content-Type": "image/png", "x-upsert": "false" },
+      body: PNG,
+    });
+    const text = await res.text();
+    let body: unknown = text;
+    try { body = JSON.parse(text); } catch { /* keep text */ }
+    return { status: res.status, body };
+  }
+  const del = (bearer: string, key: string) =>
+    fetch(object(key), { method: "DELETE", headers: { apikey, Authorization: `Bearer ${bearer}` } });
+
+  const own = `athens/${run}/rlsdb.png`;
+  const floydKey = `floyd/${run}/rlsdb.png`;
+  const bare = `${run}/rlsdb.png`;
+
+  afterAll(async () => {
+    await del(token("athens"), own).catch(() => undefined);
+    const { key } = localStack();
+    for (const k of [floydKey, bare]) {
+      await fetch(object(k), { method: "DELETE", headers: { apikey: key, Authorization: `Bearer ${key}` } }).catch(() => undefined);
+    }
+  });
+
+  it("Athens cannot upload under floyd/ — refused by policy, nothing stored", async () => {
+    const r = await put(token("athens"), floydKey);
+    expect(r.status, JSON.stringify(r.body)).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(r.body)).toMatch(/row-level security|Unauthorized|403/i);
+    const { key } = localStack();
+    const list = await fetch(`${url}/storage/v1/object/list/post-images`, {
+      method: "POST",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ prefix: `floyd/${run}` }),
+    }).then((x) => x.json());
+    expect(list).toEqual([]);
+  });
+
+  it("nor at the bucket root, outside any hub's prefix", async () => {
+    const r = await put(token("athens"), bare);
+    expect(r.status, JSON.stringify(r.body)).toBeGreaterThanOrEqual(400);
+  });
+
+  it("a token with no hub_id claim cannot upload anywhere", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const r = await put(signClaims({ iss: "civic-hub", role: "authenticated", iat: now, exp: now + 60 }), `athens/${run}/nohub.png`);
+    expect(r.status, JSON.stringify(r.body)).toBeGreaterThanOrEqual(400);
+  });
+
+  it("Athens can upload under athens/ (the control), and Floyd's token cannot delete it", async () => {
+    const r = await put(token("athens"), own);
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    await del(token("floyd"), own);
+    const still = await fetch(`${url}/storage/v1/object/public/post-images/${own}`);
+    expect(still.status).toBe(200);
+  });
+});

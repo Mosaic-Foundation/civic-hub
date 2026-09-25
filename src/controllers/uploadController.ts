@@ -266,7 +266,7 @@ async function uploadImage(
     }
 
     const prefix = limits.prefix(req, res);
-    const { url } = await uploadPostImage(parsed.buffer, parsed.mime, prefix);
+    const { url } = await uploadPostImage(currentHubId(), parsed.buffer, parsed.mime, prefix);
     res.status(201).json({ url, width: w, height: h, mime: parsed.mime });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Upload failed";

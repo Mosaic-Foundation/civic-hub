@@ -3,11 +3,11 @@
 // callers (cron jobs, federation imports) don't have to re-implement
 // the bucket / key naming.
 //
-// The upload itself is src/db/storage.ts, over the service-role client,
-// which bypasses RLS, so we rely on the auth middleware
-// (`requireAnnouncementPoster`) at the route layer to gate uploads. The
-// bucket itself also has an RLS policy as defense-in-depth — see HANDOFF
-// Slice 9 for the operator walkthrough that creates it.
+// The upload itself is src/db/storage.ts. Who may upload is the route
+// layer's call (`requireAnnouncementPoster`, `requireAdmin`); WHERE a hub may
+// write is the bucket's: under the hub token the `post_images_hub_*` policies
+// refuse any key outside `<hub_id>/`. With the token off the upload runs as
+// the service role and the prefix below is the only scoping.
 //
 // Every new object lives under its hub (Phase 2b): `<hub_id>/YYYY/MM/…` for
 // post images and `<hub_id>/identity/YYYY/MM/…` for a hub's banner and logo,
@@ -97,12 +97,13 @@ export function hubImagePrefix(hubId: string, folder?: "identity"): string {
  * URL. Throws on Supabase errors; callers translate to HTTP 500.
  */
 export async function uploadPostImage(
+  hubId: string,
   bytes: Buffer,
   mime: string,
   prefix: string,
 ): Promise<{ key: string; url: string }> {
   const key = makeImageKey(mime, new Date(), prefix);
-  const url = await uploadPublicObject(postImageBucket(), key, bytes, {
+  const url = await uploadPublicObject(hubId, postImageBucket(), key, bytes, {
     contentType: mime,
     cacheControl: "31536000, immutable",
   });

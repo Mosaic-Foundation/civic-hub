@@ -94,8 +94,12 @@ enable_confirmations = false
 [realtime]
 enabled = false
 
+# Storage is ON (Phase 4 part one, 2026-09-25): image uploads run on the hub
+# token, and the leak harness proves the `post_images_hub_*` policies refuse a
+# write outside the caller's `<hub_id>/` prefix. That needs a real Storage API.
 [storage]
-enabled = false
+enabled = true
+file_size_limit = "5MiB"
 
 [studio]
 enabled = true

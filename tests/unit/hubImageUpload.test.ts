@@ -7,17 +7,17 @@ import { randomBytes } from "node:crypto";
 /**
  * A hub's banner and logo land under that hub's prefix in the image bucket.
  *
- * Unit rather than API: the local Supabase stack runs with storage disabled
- * (supabase/config.toml), so the bucket write is stubbed here and the real
- * upload is checked on the dev deployment. What this proves is the part that
- * is ours — the key the handler asks storage to write, and the limits it
- * applies before asking.
+ * Unit, with the bucket write stubbed: what this proves is the part that is
+ * ours — the key the handler asks storage to write, and the limits it applies
+ * before asking. The real upload, in both token modes, is
+ * tests/api/uploadHubPrefix.test.ts; what the storage policies refuse is the
+ * storage block in tests/api/leakHarnessDb.test.ts.
  */
 
 const uploads: string[] = [];
 
-vi.mock("../../src/db/client.js", () => ({
-  getDb: () => ({
+vi.mock("../../src/db/client.js", () => {
+  const client = {
     storage: {
       from: () => ({
         upload: async (key: string) => {
@@ -27,8 +27,9 @@ vi.mock("../../src/db/client.js", () => ({
         getPublicUrl: (key: string) => ({ data: { publicUrl: `https://storage.test/${key}` } }),
       }),
     },
-  }),
-}));
+  };
+  return { getDb: () => client, getHubTokenDb: () => client, hubTokensEnabled: () => false };
+});
 
 const { runWithHub } = await import("../../src/config/hubContext.js");
 const { handleHubImageUpload, handlePostImageUpload } = await import(

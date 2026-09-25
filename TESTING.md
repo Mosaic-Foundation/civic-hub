@@ -108,6 +108,22 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
     write) leaves no ballot, participation, bridge, status, state or event**.
     Signs with `CIVIC_HUB_SIGNING_KEY` if set, else the local stack's fixed
     HS256 secret; independent of the server's flag.
+    **Storage (added 2026-09-25, Phase 4 part one):** straight at the
+    Storage API with the same tokens, Athens cannot upload under `floyd/`
+    or at the bucket root (policy refusal, nothing stored), a claim-less
+    token cannot upload anywhere, and Athens can upload under `athens/`
+    (the control) which Floyd's token cannot delete. *Checked by mutation:*
+    with `post_images_hub_insert` loosened to the bucket alone, the three
+    refusal cases fail. Needs Storage on in the local stack — **it is on
+    since 2026-09-25** (`[storage] enabled = true` in `supabase/config.toml`;
+    the first `supabase start` after that pulls the storage image, and a
+    `supabase db reset` makes the bucket migration create the bucket and its
+    four policies).
+  - `uploadHubPrefix.test.ts` (2026-09-25) — an image upload through the app
+    (`POST /upload/hub-image?kind=logo`, as each hub's admin) lands under
+    that hub's `<hub>/identity/` prefix and is publicly readable. Runs in
+    both CI passes: flag off it is the service role and the prefix; flag on
+    it is the hub token, and the storage policies above are the enforcement.
 - **Phase 3 catalog test (2026-09-25):** `rlsCatalog.test.ts` reads
   `tenancy_catalog()` (a service-role-only SQL function, `20260925010000`)
   and fails, naming the table and what it lacks, unless every table in
@@ -132,7 +148,12 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   (the CLI's fixed local secret) and
   `SUPABASE_PUBLISHABLE_KEY=<PUBLISHABLE_KEY from supabase status>`, then
   `CIVIC_EXPECT_HUB_DB_MODE=hub_token CIVIC_API_BASE=http://localhost:<port> npx vitest run tests/api`.
-  As of 2026-09-25 the whole layer passes in both modes (22 files, 214 tests).
+  As of 2026-09-25 (Phase 4 part one) the whole layer passes in both modes
+  (24 files, 223 tests, 5 skipped). The first flag-off run straight after a
+  fresh `supabase db reset` + seed failed three files (hubAdminSettings,
+  pluginToggles, leakHarness) and passed on rerun without changes — a
+  settings cache on a server started before the seed; restart the server
+  after seeding.
 
 > **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
 > `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs
