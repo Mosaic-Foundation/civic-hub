@@ -1,5 +1,6 @@
 // Process controller — handles HTTP request/response for process endpoints
 
+import { isPluginDisabledError, isProcessTypeEnabled } from "../services/pluginGate.js";
 import { Request, Response } from "express";
 import {
   createProcess,
@@ -44,6 +45,10 @@ export async function handleCreateProcess(
 
     res.status(201).json(process);
   } catch (err) {
+    if (isPluginDisabledError(err)) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(400).json({ error: message });
   }
@@ -118,7 +123,7 @@ export async function handleProcessAction(
     // Non-public processes (pending_review, archived) accept no actions
     // from non-admins. 404 (not 403) so the id's existence isn't leaked.
     const target = await getProcess(id);
-    if (!target) {
+    if (!target || !isProcessTypeEnabled(target.definition.type)) {
       res.status(404).json({ error: "Process not found" });
       return;
     }

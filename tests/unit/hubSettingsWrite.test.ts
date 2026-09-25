@@ -6,7 +6,7 @@ import {
   SETTINGS_SECTION_IDS,
   fieldSpec,
 } from "../../src/shared/hubSettingsSections.js";
-import { KEYS, isPublicKey, isDocumentKey } from "../../src/models/hubSettings.js";
+import { KEYS, PLUGIN_IDS, isPublicKey, isDocumentKey } from "../../src/models/hubSettings.js";
 
 /**
  * What a hub admin may write from the Settings page, decided before anything
@@ -16,7 +16,12 @@ import { KEYS, isPublicKey, isDocumentKey } from "../../src/models/hubSettings.j
 
 describe("the editable-key table", () => {
   it("names only canonical keys", () => {
-    const canonical = new Set<string>(Object.values(KEYS));
+    // KEYS lists plugin settings but not each plugin's switch, which is
+    // always plugin.<id>.enabled for an id in PLUGIN_IDS.
+    const canonical = new Set<string>([
+      ...Object.values(KEYS),
+      ...PLUGIN_IDS.map((id) => `plugin.${id}.enabled`),
+    ]);
     for (const key of EDITABLE_SETTING_KEYS) {
       expect(canonical.has(key), `${key} is not in KEYS`).toBe(true);
     }

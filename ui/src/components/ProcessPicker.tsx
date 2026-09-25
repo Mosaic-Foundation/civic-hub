@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { pluginEnabled } from "../config/plugins";
 import "./ProcessPicker.css";
 
 export type PickerContext = "conversation" | "proposal" | "vote" | "project" | null;
@@ -85,11 +86,14 @@ export default function ProcessPicker({ onDismiss, context = null }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const navigate = useNavigate();
 
+  // Hidden when the hub switched the plugin off (config/plugins.tsx) — each
+  // intent's key doubles as its plugin id.
   const orderedIntents = useMemo(() => {
-    if (!context) return INTENTS;
-    const promoted = INTENTS.find((i) => i.key === context);
-    if (!promoted) return INTENTS;
-    return [promoted, ...INTENTS.filter((i) => i.key !== context)];
+    const available = INTENTS.filter((i) => pluginEnabled(i.key));
+    if (!context) return available;
+    const promoted = available.find((i) => i.key === context);
+    if (!promoted) return available;
+    return [promoted, ...available.filter((i) => i.key !== context)];
   }, [context]);
 
   useEffect(() => {

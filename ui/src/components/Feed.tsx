@@ -16,6 +16,7 @@ import {
   classifyActivity,
   type ActivityKind,
 } from "../../../src/shared/feedActivity";
+import { processTypeEnabled } from "../config/plugins";
 import FeedPost, {
   eventToPost,
   relativeTime,
@@ -25,6 +26,21 @@ import FeedPost, {
 import "./Feed.css";
 
 const PAGE_SIZE = 50;
+
+// Mirrors feedActivity.ts's own `processTypeOf` (not exported): the
+// discriminator an emitter stamps via emitEvent, with the legacy flat
+// fallback. This is where a switched-off plugin leaves the feed: the feed
+// reads /events, the hub's published record, which the server deliberately
+// does not filter by plugin (src/services/pluginGate.ts). An event with no
+// discriminator (legacy) is left alone rather than hidden.
+function eventProcessType(event: CivicEvent): string | undefined {
+  const data = (event.data ?? {}) as Record<string, unknown>;
+  const nested = (data.process as { type?: unknown } | undefined)?.type;
+  if (typeof nested === "string") return nested;
+  const flat = (data as { process_type?: unknown }).process_type;
+  if (typeof flat === "string") return flat;
+  return undefined;
+}
 
 interface Props {
   /**
@@ -127,7 +143,11 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
   // against the PAGE_SIZE budget and can starve the visible window.
   const renderableEvents = useMemo(
     () => {
-      const base = events.filter((e) => classifyActivity(e) !== null);
+      const base = events.filter(
+        (e) =>
+          classifyActivity(e) !== null &&
+          (processTypeEnabled(eventProcessType(e) ?? "")),
+      );
       return filter ? base.filter(filter) : base;
     },
     [events, filter],

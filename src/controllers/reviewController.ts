@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { isPluginDisabledError } from "../services/pluginGate.js";
 import { describeSubmission } from "../processes/registry.js";
 import type { SubmissionField } from "../shared/submissionPreview.js";
 import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
@@ -148,6 +149,10 @@ export async function handleSubmitForReview(
 
     res.status(201).json(result);
   } catch (err) {
+    if (isPluginDisabledError(err)) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });
   }

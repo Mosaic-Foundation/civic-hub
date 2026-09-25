@@ -1,4 +1,5 @@
 import { forHub, type HubDb } from "../../db/forHub.js";
+import { assertProcessTypeEnabled } from "../../services/pluginGate.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { createEdges } from "../../services/processLinks.js";
 import {
@@ -69,6 +70,9 @@ export async function submitForReview(
   // (the submission is approved in the same request, so a "needs review" email
   // would be misleading). The approval flow sends its own notification.
   const notify = opts.notify ?? true;
+  // The review funnel is a creation path: a type whose plugin is off cannot
+  // be submitted on this hub.
+  assertProcessTypeEnabled(input.process_type);
   const handler = getProcessHandler(input.process_type);
   const processId = generateId("proc");
   const reviewId = generateId("rev");

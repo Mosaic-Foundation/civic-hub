@@ -4,6 +4,8 @@
 // This file sets up all middleware, routes, and auto-seeding.
 // It does NOT call app.listen() — that's the caller's job.
 
+import { isPluginDisabledError } from "./services/pluginGate.js";
+import { requirePlugin } from "./middleware/pluginGate.js";
 import express from "express";
 import processRoutes from "./routes/processRoutes.js";
 import processLinksRoutes from "./routes/processLinksRoutes.js";
@@ -123,6 +125,13 @@ app.use(hubConfigRoutes);
 // Auth endpoints — email-based authentication
 app.use("/auth", authRoutes);
 
+// Plugins a hub switched off (plugin.<id>.enabled = false) answer 404 on
+// their routes: requirePlugin(<id>) on each mount below, and on the
+// plugin-specific admin and upload routes. The digest's /unsubscribe and
+// /user/settings/digest are deliberately NOT gated: an unsubscribe link in a
+// digest already sent must keep working after the digest is switched off.
+// See src/services/pluginGate.ts.
+
 // --- Internal control surfaces ---
 // Process endpoints are internal. External systems should use /events.
 // Process-linking is universal: mounted once on /process, it serves every
@@ -140,36 +149,36 @@ app.use("/process", inputRoutes);
 
 // Shared drafting-assistant endpoints — one surface for every process type,
 // dispatched through the registry (ProcessHandler.getAssistantConfig).
-app.use("/assistant", assistantRoutes);
+app.use("/assistant", requirePlugin("assistant"), assistantRoutes);
 
 // Proposal draft endpoints — draft storage + submission (mounted before
 // /proposals so /proposals/drafts doesn't get caught by /proposals/:id).
-app.use("/proposals/drafts", proposalDraftRoutes);
+app.use("/proposals/drafts", requirePlugin("proposal"), proposalDraftRoutes);
 
 // Vote draft endpoints — AI-augmented vote drafting (mounted before /votes
 // so /votes/drafts doesn't get caught by /votes/:id).
-app.use("/votes/drafts", voteDraftRoutes);
+app.use("/votes/drafts", requirePlugin("vote"), voteDraftRoutes);
 
 // Project draft endpoints — AI-augmented project drafting (mounted before
 // /projects so /projects/drafts doesn't get caught by /projects/:id).
-app.use("/projects/drafts", projectDraftRoutes);
+app.use("/projects/drafts", requirePlugin("project"), projectDraftRoutes);
 
 // Project endpoints — community project pages with sentiment + comments
-app.use("/projects", projectRoutes);
+app.use("/projects", requirePlugin("project"), projectRoutes);
 
 // Deliberation endpoints — Polis-backed community deliberation
 // Conversation draft endpoints — mounted before /deliberations so
 // /deliberations/drafts doesn't get caught by /deliberations/:processId.
-app.use("/deliberations/drafts", deliberationDraftRoutes);
+app.use("/deliberations/drafts", requirePlugin("conversation"), deliberationDraftRoutes);
 
-app.use("/deliberations", deliberationRoutes);
+app.use("/deliberations", requirePlugin("conversation"), deliberationRoutes);
 
 // Word cloud endpoints — lightweight free-text aggregation process
 import wordcloudRoutes from "./routes/wordcloudRoutes.js";
-app.use("/wordcloud", wordcloudRoutes);
+app.use("/wordcloud", requirePlugin("wordcloud"), wordcloudRoutes);
 
 // Proposal endpoints — user-facing proposal submission and endorsement
-app.use("/proposals", proposalRoutes);
+app.use("/proposals", requirePlugin("proposal"), proposalRoutes);
 
 // Process review — resident submissions go through collaborative admin review
 app.use("/reviews", reviewRoutes);
@@ -181,22 +190,22 @@ app.use("/notifications", notificationRoutes);
 app.use("/admin", adminRoutes);
 
 // Vote log and receipt verification
-app.use("/votes", voteLogRoutes);
+app.use("/votes", requirePlugin("vote"), voteLogRoutes);
 
 // Vote results — public read of published vote-results pages.
 // Renamed from /brief in Slice 8.5.
-app.use("/vote-results", voteResultsRoutes);
+app.use("/vote-results", requirePlugin("vote"), voteResultsRoutes);
 
 // Briefs — public read of published civic.brief pages (the universal
 // results record for any completed process). Reclaims the /brief path from
 // the Slice 8.5 legacy redirect: /brief now serves the NEW generic brief;
 // existing published vote-results stay at /vote-results/:id.
-app.use("/brief", briefRoutes);
+app.use("/brief", requirePlugin("brief"), briefRoutes);
 
 // Board / Admin announcements — post, edit, read one
-app.use("/announcement", announcementRoutes);
+app.use("/announcement", requirePlugin("announcement"), announcementRoutes);
 // Public list — separate path so it doesn't collide with /announcement/:id
-app.get("/announcements", handleListAnnouncements);
+app.get("/announcements", requirePlugin("announcement"), handleListAnnouncements);
 
 // Slice 9 — image upload + link previews. The upload endpoint is
 // authenticated (requireAnnouncementPoster) and accepts multipart bodies;
@@ -207,19 +216,19 @@ app.use("/link-preview", linkPreviewRoutes);
 // Slice 10.5 — public full-text search across all process types.
 // Backed by Postgres FTS via the search_processes RPC (see
 // supabase/migrations/20260427200000_add_search_doc.sql).
-app.use("/search", searchRoutes);
+app.use("/search", requirePlugin("search"), searchRoutes);
 
 // Slice 14 — operator-facing product feedback. Anonymous or authed.
 // Persists to feedback_submissions (NOT events) and best-effort emails
 // the operator. See civic-hub/src/modules/civic.feedback.
-app.use("/feedback", feedbackRoutes);
+app.use("/feedback", requirePlugin("feedback"), feedbackRoutes);
 
 // Beta waitlist — public endpoint for people to request access.
 app.use("/waitlist", waitlistRoutes);
 
 // Meeting summaries (Slice 6):
 //   /meeting-summary/:id    — public read of published summaries
-app.use("/meeting-summary", meetingSummaryRoutes);
+app.use("/meeting-summary", requirePlugin("meeting_summary"), meetingSummaryRoutes);
 
 // Scheduled jobs: every /internal/*/run route comes from one list,
 // src/jobs/registry.ts, which vercel.json's "crons" is checked against. Each
@@ -385,6 +394,10 @@ app.use(
       err instanceof Error ? err.stack : "",
     );
     if (res.headersSent) return;
+    if (isPluginDisabledError(err)) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.status(500).json({ error: "Internal server error" });
   },
 );

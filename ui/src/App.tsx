@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import hub from "./config/hub";
+import { pluginEnabled, whenPlugin } from "./config/plugins";
 import { BETA_PUBLIC_PATHS } from "./config/betaPublicPaths";
 import Nav from "./components/Nav";
 import HubBanner from "./components/HubBanner";
@@ -133,62 +134,75 @@ function AppContent() {
       {showWelcomeDialog && <BetaWelcomeDialog />}
 
       <Nav />
-      <WordcloudTeaser />
+      {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
+      {pluginEnabled("wordcloud") && <WordcloudTeaser />}
       <BannerSlot />
       <FeedVotesTabs />
 
       <main className="page-shell">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/votes" element={<Votes />} />
-          <Route path="/process/:id" element={<Process />} />
-          <Route path="/propose" element={<Propose />} />
-          <Route path="/propose/new" element={<ProposeDraft />} />
-          <Route path="/votes/new" element={<ProposeDraftVote />} />
-          <Route path="/proposal/:id" element={<ProposalDetail />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/projects/new" element={<ProjectDraft />} />
-          <Route path="/project/:id" element={<ProjectDetail />} />
-          <Route path="/deliberations" element={<Deliberations />} />
-          <Route path="/deliberations/new" element={<ConversationDraft />} />
-          <Route path="/deliberation/:id" element={<DeliberationDetail />} />
-          <Route path="/wordcloud/new" element={<CreateWordCloud />} />
-          <Route path="/wordcloud/:id" element={<WordCloud />} />
-          <Route path="/votes/:id/log" element={<VoteLog />} />
+          <Route path="/votes" element={whenPlugin("vote", <Votes />)} />
+          <Route path="/process/:id" element={whenPlugin("vote", <Process />)} />
+          <Route path="/propose" element={whenPlugin("proposal", <Propose />)} />
+          <Route path="/propose/new" element={whenPlugin("proposal", <ProposeDraft />)} />
+          <Route path="/votes/new" element={whenPlugin("vote", <ProposeDraftVote />)} />
+          <Route path="/proposal/:id" element={whenPlugin("proposal", <ProposalDetail />)} />
+          <Route path="/projects" element={whenPlugin("project", <Projects />)} />
+          <Route path="/projects/new" element={whenPlugin("project", <ProjectDraft />)} />
+          <Route path="/project/:id" element={whenPlugin("project", <ProjectDetail />)} />
+          <Route path="/deliberations" element={whenPlugin("conversation", <Deliberations />)} />
+          <Route path="/deliberations/new" element={whenPlugin("conversation", <ConversationDraft />)} />
+          <Route path="/deliberation/:id" element={whenPlugin("conversation", <DeliberationDetail />)} />
+          <Route path="/wordcloud/new" element={whenPlugin("wordcloud", <CreateWordCloud />)} />
+          <Route path="/wordcloud/:id" element={whenPlugin("wordcloud", <WordCloud />)} />
+          <Route path="/votes/:id/log" element={whenPlugin("vote", <VoteLog />)} />
           <Route path="/my-submissions" element={<MySubmissions />} />
           <Route path="/my-submissions/:reviewId" element={<MySubmissions />} />
           <Route path="/admin/reviews" element={<AdminGuard><AdminReviews /></AdminGuard>} />
           <Route path="/admin/reviews/:reviewId" element={<AdminGuard><AdminReviews /></AdminGuard>} />
           {/* Legacy vote-results admin (existing published vote briefs keep
               their review screen); the Briefs tab now points at /admin/briefs. */}
-          <Route path="/admin/vote-results" element={<AdminGuard><AdminVoteResults /></AdminGuard>} />
-          <Route path="/admin/vote-results/:id" element={<AdminGuard><AdminVoteResults /></AdminGuard>} />
+          <Route
+            path="/admin/vote-results"
+            element={whenPlugin("vote", <AdminGuard><AdminVoteResults /></AdminGuard>)}
+          />
+          <Route
+            path="/admin/vote-results/:id"
+            element={whenPlugin("vote", <AdminGuard><AdminVoteResults /></AdminGuard>)}
+          />
           {/* Unified Briefs queue — the universal admin results surface. */}
-          <Route path="/admin/briefs" element={<AdminGuard><AdminBriefs /></AdminGuard>} />
-          <Route path="/admin/briefs/:id" element={<AdminGuard><AdminBriefs /></AdminGuard>} />
+          <Route
+            path="/admin/briefs"
+            element={whenPlugin("brief", <AdminGuard><AdminBriefs /></AdminGuard>)}
+          />
+          <Route
+            path="/admin/briefs/:id"
+            element={whenPlugin("brief", <AdminGuard><AdminBriefs /></AdminGuard>)}
+          />
           <Route
             path="/admin/meeting-summaries"
-            element={<AdminGuard><AdminMeetingSummaries /></AdminGuard>}
+            element={whenPlugin("meeting_summary", <AdminGuard><AdminMeetingSummaries /></AdminGuard>)}
           />
           <Route
             path="/admin/meeting-summaries/:id"
-            element={<AdminGuard><AdminMeetingSummaries /></AdminGuard>}
+            element={whenPlugin("meeting_summary", <AdminGuard><AdminMeetingSummaries /></AdminGuard>)}
           />
           <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
           <Route path="/admin/settings/:section" element={<AdminGuard><AdminSettings /></AdminGuard>} />
-          <Route path="/vote-results/:id" element={<VoteResults />} />
+          <Route path="/vote-results/:id" element={whenPlugin("vote", <VoteResults />)} />
           {/* Public brief page — the permanent record of a completed process
               (the /brief path is reclaimed from the old Slice 8.5 redirect;
               existing published vote-results stay at /vote-results/:id). */}
-          <Route path="/outcomes" element={<Outcomes />} />
-          <Route path="/brief/:id" element={<BriefPage />} />
-          <Route path="/meeting-summary/:id" element={<MeetingSummary />} />
-          <Route path="/announcement/new" element={<PostAnnouncement />} />
-          <Route path="/announcement/:id/edit" element={<PostAnnouncement />} />
-          <Route path="/announcement/:id" element={<AnnouncementPage />} />
+          <Route path="/outcomes" element={whenPlugin("brief", <Outcomes />)} />
+          <Route path="/brief/:id" element={whenPlugin("brief", <BriefPage />)} />
+          <Route path="/meeting-summary/:id" element={whenPlugin("meeting_summary", <MeetingSummary />)} />
+          <Route path="/announcement/new" element={whenPlugin("announcement", <PostAnnouncement />)} />
+          <Route path="/announcement/:id/edit" element={whenPlugin("announcement", <PostAnnouncement />)} />
+          <Route path="/announcement/:id" element={whenPlugin("announcement", <AnnouncementPage />)} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/about" element={<About />} />
-          <Route path="/search" element={<SearchPage />} />
+          <Route path="/search" element={whenPlugin("search", <SearchPage />)} />
           {/* Slice 11 — legal pages. Routes resolve via React Router so
               cross-document links (Terms → Privacy etc.) don't trigger
               full-page reloads. */}
@@ -199,7 +213,7 @@ function AppContent() {
               and signed-in users; submissions persist to the
               feedback_submissions table and best-effort email the operator. */}
           <Route path="/welcome" element={<Welcome />} />
-          <Route path="/feedback" element={<Feedback />} />
+          <Route path="/feedback" element={whenPlugin("feedback", <Feedback />)} />
           {/* Slice 11 — admin moderation log. Read-only list of every
               moderation action, gated server-side via requireAdmin
               and client-side via the AuthContext.isAdmin flag inside

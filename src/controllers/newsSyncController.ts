@@ -39,7 +39,7 @@ import {
   type AnnouncementProcessState,
   type AnnouncementSource,
 } from "../modules/civic.announcement/index.js";
-import { getSettingSync } from "../services/hubSettings.js";
+import { getSettingSync, isPluginEnabledSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 import { civicPlaceShortName, processJurisdiction } from "../config/hub.js";
 
@@ -103,6 +103,11 @@ export interface NewsSyncHubOutcome {
  * could stand in for a hub that set nothing.
  */
 export async function runNewsSyncForHub(): Promise<NewsSyncHubOutcome> {
+  // What news sync makes is announcements; with those off there is nothing
+  // it may create, so it does not fetch at all.
+  if (!isPluginEnabledSync("announcement")) {
+    return { status: 200, body: { skipped: true, reason: "plugin.announcement.enabled is off" } };
+  }
   const resolved = resolveNewsSyncConfig();
   if (resolved.status === "skipped") {
     return { status: 200, body: { skipped: true, reason: resolved.reason } };

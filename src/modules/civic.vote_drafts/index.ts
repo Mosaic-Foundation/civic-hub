@@ -1,4 +1,5 @@
 import { forHub, type HubDb } from "../../db/forHub.js";
+import { voteDurationLimitsSync } from "../../services/hubSettings.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
 import type { Suggestion } from "../civic.assistant/models.js";
@@ -16,8 +17,9 @@ function db(): HubDb {
   return forHub(currentHubId());
 }
 
-const MIN_DURATION_MS = 14 * 24 * 60 * 60 * 1000;   // 2 weeks
-const MAX_DURATION_MS = 90 * 24 * 60 * 60 * 1000;    // 3 months
+// The allowed range and the starting value are per hub since Phase 2c:
+// plugin.vote.{min,max,default}_duration_days (voteDurationLimitsSync).
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface DraftRow {
   id: string;
@@ -68,7 +70,11 @@ export async function createVoteDraft(input: CreateVoteDraftInput): Promise<Vote
 
   const data = await db()
     .from("vote_drafts")
-    .insert({ id, user_id: input.user_id })
+    .insert({
+      id,
+      user_id: input.user_id,
+      voting_duration_ms: voteDurationLimitsSync().defaultDays * DAY_MS,
+    })
     .select<DraftRow>()
     .single();
 
@@ -115,9 +121,10 @@ export async function updateVoteDraft(
 
   if (patch.voting_duration_ms !== undefined) {
     const ms = patch.voting_duration_ms;
-    if (ms < MIN_DURATION_MS || ms > MAX_DURATION_MS) {
+    const { minDays, maxDays } = voteDurationLimitsSync();
+    if (!(ms >= minDays * DAY_MS && ms <= maxDays * DAY_MS)) {
       throw new Error(
-        `voting_duration_ms must be between ${MIN_DURATION_MS} (2 weeks) and ${MAX_DURATION_MS} (3 months)`,
+        `voting_duration_ms must be between ${minDays * DAY_MS} (${minDays} days) and ${maxDays * DAY_MS} (${maxDays} days)`,
       );
     }
     updates.voting_duration_ms = ms;

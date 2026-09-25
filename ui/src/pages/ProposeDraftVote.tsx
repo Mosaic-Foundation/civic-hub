@@ -12,7 +12,9 @@ import {
   updateVoteDraft,
   submitVoteDraft as apiSubmitVoteDraft,
   getVoteDraft,
+  getVoteDurationLimits,
   type VoteDraft,
+  type VoteDurationLimits,
 } from "../services/api";
 import "./ProposeDraftVote.css";
 import type { ProposedLink } from "../services/api";
@@ -105,9 +107,17 @@ export default function ProposeDraftVote() {
     Record<string, { title: string; type: string }>
   >({});
 
+  // The hub's allowed voting windows. Until they load (or if they cannot),
+  // the standard choices and the standard default apply.
+  const [durationLimits, setDurationLimits] = useState<VoteDurationLimits | null>(null);
+  useEffect(() => {
+    getVoteDurationLimits().then(setDurationLimits).catch(() => setDurationLimits(null));
+  }, []);
+
   const draft = flow.draft;
   const displayDraft: VoteDraft = draft ?? {
     ...EMPTY_DRAFT,
+    ...(durationLimits ? { voting_duration_ms: durationLimits.default_days * 24 * 60 * 60 * 1000 } : {}),
     ...(flow.pendingFields as Partial<VoteDraft>),
   };
 
@@ -198,6 +208,7 @@ export default function ProposeDraftVote() {
         ) : (
         <VoteDraftingForm
           draft={displayDraft}
+          durationLimits={durationLimits}
           links={draft?.links ?? localLinks}
           onLinksChange={handleLinksChange}
           linkTitles={linkTitles}

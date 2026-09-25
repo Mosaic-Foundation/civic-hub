@@ -685,3 +685,49 @@
     display: none;
   }
 }
+
+/* Plugins — one card per plugin, its settings beneath the switch. */
+.plugins-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.plugin-card {
+  border: 1px solid var(--color-border, #e2e2e2);
+  border-radius: 8px;
+  padding: 12px 16px 4px;
+  background: var(--color-surface, #fff);
+}
+
+.plugin-card-off {
+  background: var(--color-surface-muted, #f7f7f7);
+}
+
+.plugin-settings {
+  margin: 4px 0 8px 28px;
+  padding-left: 12px;
+  border-left: 2px solid var(--color-border, #e2e2e2);
+}
+
+.plugin-off-note {
+  margin: 0 0 8px 28px;
+}
+
+.plugin-change-link {
+  margin-left: 8px;
+  font-size: 0.9em;
+}
+
+.settings-number-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 600px) {
+  .plugin-settings,
+  .plugin-off-note {
+    margin-left: 0;
+  }
+}

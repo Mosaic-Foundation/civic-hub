@@ -16,6 +16,7 @@
 //   - optimistic locking via updated_at compare-and-swap, or
 //   - SELECT ... FOR UPDATE inside a Postgres RPC.
 
+import { assertProcessTypeEnabled, disabledProcessTypes, isProcessTypeEnabled } from "./pluginGate.js";
 import {
   Process,
   CreateProcessInput,
@@ -114,6 +115,8 @@ export async function createProcess(
   if (!handler) {
     throw new Error(`Unsupported process type: ${input.definition.type}`);
   }
+  // A hub that switched this type's plugin off cannot create one, by any path.
+  assertProcessTypeEnabled(input.definition.type);
 
   const id = input.id ?? generateId("proc");
   const initialState = handler.initializeState(input.state ?? {});
@@ -349,7 +352,9 @@ export async function listProcessSummaries(
   types: string[] | undefined,
   audience: Audience,
 ): Promise<Record<string, unknown>[]> {
-  const all = await getAllProcesses(types);
+  const all = (await getAllProcesses(types)).filter((p) =>
+    isProcessTypeEnabled(p.definition.type),
+  );
   // Lazily close any process whose deadline has elapsed before summarizing.
   const resolved = await Promise.all(all.map(autoCloseIfExpired));
   const summaries = resolved.map((p) => {
@@ -420,6 +425,11 @@ export async function getProcessState(
   // surface through their own queues. This also avoids leaking the
   // pending_review/internal-status mismatch via this read path.
   if (!isPubliclyFetchable(process.status)) {
+    return undefined;
+  }
+  // A type whose plugin this hub switched off is not addressable either. The
+  // row is untouched; turning the plugin back on makes it reachable again.
+  if (!isProcessTypeEnabled(process.definition.type)) {
     return undefined;
   }
 
@@ -694,6 +704,23 @@ export async function getNonPublicProcessIds(): Promise<Set<string>> {
     .select<{ id: string }>("id")
     .in("status", [...NON_PUBLIC_STATUSES]);
   return new Set(data.map((r) => r.id));
+}
+
+/**
+ * What the hub's own UI surfaces (the feed, the digest) leave out: every
+ * non-public process, plus every process of a type whose plugin this hub has
+ * switched off. The protocol surface (GET /events) reads
+ * getNonPublicProcessIds() instead, so what a hub published stays in its
+ * published record when a plugin is switched off.
+ */
+export async function getHiddenProcessIds(): Promise<Set<string>> {
+  const ids = await getNonPublicProcessIds();
+  const disabled = disabledProcessTypes();
+  if (disabled.length > 0) {
+    const off = await db().from("processes").select<{ id: string }>("id").in("type", disabled);
+    for (const r of off) ids.add(r.id);
+  }
+  return ids;
 }
 
 

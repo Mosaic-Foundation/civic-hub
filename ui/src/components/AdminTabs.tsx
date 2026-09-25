@@ -5,6 +5,7 @@ import {
   ADMIN_QUEUES_CHANGED,
   type AdminQueueCounts,
 } from "../services/api";
+import { pluginEnabled } from "../config/plugins";
 import "./AdminTabs.css";
 
 /**
@@ -65,21 +66,28 @@ export default function AdminTabs() {
         Process reviews
         {badge(counts.reviews, "new since you last looked")}
       </NavLink>
-      <NavLink to="/admin/briefs" className={tabClass}>
-        Briefs
-        {badge(counts.briefs, "new since you last looked")}
-      </NavLink>
-      <NavLink to="/admin/meeting-summaries" className={tabClass}>
-        Meeting summaries
-        {badge(counts.meeting_summaries, "new since you last looked")}
-      </NavLink>
+      {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
+      {pluginEnabled("brief") && (
+        <NavLink to="/admin/briefs" className={tabClass}>
+          Briefs
+          {badge(counts.briefs, "new since you last looked")}
+        </NavLink>
+      )}
+      {pluginEnabled("meeting_summary") && (
+        <NavLink to="/admin/meeting-summaries" className={tabClass}>
+          Meeting summaries
+          {badge(counts.meeting_summaries, "new since you last looked")}
+        </NavLink>
+      )}
       <NavLink to="/admin/moderation" className={tabClass}>
         Moderation
       </NavLink>
-      <NavLink to="/admin/feedback" className={tabClass}>
-        Feedback
-        {badge(counts.feedback, "new since you last looked")}
-      </NavLink>
+      {pluginEnabled("feedback") && (
+        <NavLink to="/admin/feedback" className={tabClass}>
+          Feedback
+          {badge(counts.feedback, "new since you last looked")}
+        </NavLink>
+      )}
       <NavLink to="/admin/edits" className={tabClass}>
         Edits
         {badge(counts.edits, "new since you last looked")}

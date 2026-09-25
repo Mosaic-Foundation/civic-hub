@@ -7,6 +7,7 @@
 // generateBrief (or returns null) simply closes without a brief — the
 // call is a no-op, so wiring it into a close path is always safe.
 
+import { isPluginEnabledSync } from "../services/hubSettings.js";
 import { Process } from "../models/process.js";
 import { getProcessFactory, getProcessHandler } from "./registry.js";
 import { emitEvent } from "../events/eventEmitter.js";
@@ -33,6 +34,9 @@ export async function spawnBriefFromClosedProcess(
   const sourceType = source.definition.type;
   const handler = getProcessHandler(sourceType);
   if (!handler?.generateBrief) return null;
+  // A hub with briefs switched off closes the source without one — the
+  // source's own close must not fail because a plugin is off.
+  if (!isPluginEnabledSync("brief")) return null;
 
   const content = await handler.generateBrief(source);
   if (!content) return null;

@@ -389,6 +389,30 @@ empty or unknown reads as UTC. The digest job reads `plugin.digest.send_hour`
 in it. Admin-only by the public list (identity.* is public by namespace in
 the text above, but the code's list is by key, and nothing public needs it).
 
+**Three keys added with Adam** (2026-09-24, Phase 2c): `plugin.vote.min_duration_days`,
+`plugin.vote.max_duration_days`, `plugin.vote.default_duration_days` — the
+range of voting windows a resident drafting a vote may pick, and where a new
+draft starts. Unset = 14 / 90 / 42, the numbers that were in code and in the
+`vote_drafts` column default. A backwards range is read the right way round
+and the default clamped into it. The drafting form reads them from
+`GET /votes/drafts/duration-limits` (resident-only), not from the public
+config, so the public subset is unchanged.
+
+**Plugin toggles at runtime** (`src/services/pluginGate.ts`). Each process
+type names its plugin (`PROCESS_TYPE_PLUGINS` in `src/processes/registry.ts`;
+`civic.polis_deliberation` → `conversation`, `civic.vote_results` → `vote`).
+`plugin.<id>.enabled` off on a hub means, for that hub only: its route mounts
+answer 404 (`requirePlugin`, plus the plugin-specific admin and upload
+routes); its job is skipped; its process types cannot be created
+(`createProcess`, `submitForReview`), read or acted on by id, or listed; the
+feed and the digest leave them out (`getHiddenProcessIds`); the brief spawn
+is skipped when briefs are off, news sync when announcements are; and the UI
+drops the nav items, tabs, pickers and pages (`ui/src/config/plugins.tsx`).
+Nothing is deleted. **Not filtered, deliberately:** `GET /events`, the
+published record (it still hides non-public statuses as before), and the
+digest's `/unsubscribe` and `/user/settings/digest`, so a link in a digest
+already sent keeps working.
+
 **Jobs** (`src/jobs/`): `registry.ts` lists every scheduled job (id, plugin,
 path, UTC schedule, deprecated paths) as pure data; `runners.ts` maps each id
 to its per-hub runner; `runJob.ts` iterates active hubs (or `?hub=`), skips a
@@ -649,8 +673,9 @@ code's copy is `src/shared/hubSettingsSections.ts`, and the settings endpoint
 | Identity | `identity.name`, `.label`, `.tagline`, `.page_title`, `.description`, `.banner_url`, `.banner_alt`, `.logo_url`, `.timezone` | `identity.name` is the display name; the registry name (`hubs.name`) is unchanged by it. Banner and logo upload under `<hub id>/identity/` in the image bucket (`hubs/<hub id>/` until Phase 2b; those objects keep their keys). |
 | Copy & pages | `copy.intro_body`, `.residency_intro`, `.welcome`, `.about`, `.resident_noun`, `.governing_body_name`, `.governing_body_short` | `copy.welcome` and `copy.about` are documents. |
 | Legal | `legal.terms`, `.privacy`, `.code_of_conduct`, `.proposal_best_practices`, `.operator_name`, `.contact_email`, `.who_runs_this` | A document saved identical to its shared template is stored as `""`, so the hub keeps following the template ("restore default"). |
-| Email | `email.from_name`, `email.postal_address`, `plugin.digest.enabled`, `plugin.digest.send_hour`, `plugin.admin_digest.enabled` | `email.from_address` is shown read-only: the sending domain is the platform's. |
+| Email | `email.from_name`, `email.postal_address` | `email.from_address` is shown read-only: the sending domain is the platform's. The three digest keys it held moved to Plugins in Phase 2c. |
 | Theme | `identity.theme` | Its own section since 2026-09-24: a theme object (preset, primary, accent, background, one hue per process type), stored as canonical JSON; a bare `#rrggbb` still reads as the primary. Model: `src/shared/theme.ts`. |
+| Plugins | `plugin.<id>.enabled` for all 14 ids; `plugin.vote.min_duration_days`, `.max_duration_days`, `.default_duration_days`; `plugin.conversation.polis_url`; `plugin.meeting_summary.connector_id`, `.source_url`, `.youtube_channel_id`, `.title_filter`, `.type_exclude`, `.cutoff_date`, `.auto_publish`, `.extraction_instructions`; `plugin.news_sync.connector`, `.source_url`; `plugin.digest.send_hour` | Added in Phase 2c (Adam, 2026-09-24; per-plugin settings decided 2026-09-22). One card per plugin: the switch, and beneath it that plugin's settings. Keys another section owns are shown read-only with a link, never repeated (one writer per key): announcement authors and brief recipients → Officials; `plugin.vote.support_threshold` and `moderation.comment_identity_mode` → Participation. `youtube_channel_id` is beyond Adam's list: the YouTube connector is one of the choices and needs it. |
 | Mode | `hubs.mode` (beta / live) | Its own endpoint with the emailed-code step-up; a demo hub shows "set by the platform". |
 | Admins & board | `people.admin_emails`, `people.board_emails` | Existing `POST /admin/hub/people`, step-up. |
 | Officials | officials roster + `people.brief_recipients` | Existing `PATCH /admin/settings`. |

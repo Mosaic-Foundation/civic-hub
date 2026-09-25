@@ -2,6 +2,7 @@
 // Every route requires the authenticated user's email to be listed in
 // the CIVIC_ADMIN_EMAILS env var.
 
+import { requirePlugin } from "../middleware/pluginGate.js";
 import { Router } from "express";
 import { handleAdminQueueCounts, handleMarkAdminQueueSeen } from "../controllers/adminQueueController.js";
 import { handleAdminListEdits } from "../controllers/editNotificationController.js";
@@ -75,6 +76,16 @@ import {
 const router = Router();
 
 router.use(requireAdmin);
+
+// Plugin-specific admin surfaces answer 404 on a hub with the plugin off
+// (src/middleware/pluginGate.ts). The shared queues — reviews, archived,
+// edits, moderation of comments — belong to no one plugin and stay.
+router.use("/proposals", requirePlugin("proposal"));
+router.use("/vote-results", requirePlugin("vote"));
+router.use("/briefs", requirePlugin("brief"));
+router.use("/meeting-summaries", requirePlugin("meeting_summary"));
+router.use("/feedback", requirePlugin("feedback"));
+router.use("/moderation/announcements", requirePlugin("announcement"));
 
 // Maintenance
 router.post("/cleanup-orphaned-events", async (_req, res) => {

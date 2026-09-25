@@ -10,6 +10,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { setDigestFrequency } from "../services/api";
 import hub from "../config/hub";
+import { pluginEnabled } from "../config/plugins";
 import {
   deleteAccount as deleteAccountApi,
   getMe,
@@ -202,6 +203,8 @@ export default function Settings() {
 
         {error && <p className="form-error">{error}</p>}
 
+        {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
+        {pluginEnabled("digest") && (
         <section className="settings-panel">
           <h3>Email digest</h3>
           <p className="form-hint">
@@ -260,6 +263,7 @@ export default function Settings() {
 
           {message && <p className="settings-message">{message}</p>}
         </section>
+        )}
 
         <section className="settings-panel">
           <h3>AI drafting help</h3>

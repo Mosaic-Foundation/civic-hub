@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import hub from "../config/hub";
+import { pluginEnabled } from "../config/plugins";
 import {
   classifyActivity,
   type ClassifierEvent,
@@ -95,11 +96,20 @@ interface Props {
   onChange: (next: FeedFilterKey) => void;
 }
 
+// Hidden when the hub switched the plugin off (config/plugins.tsx).
+function visibleChoices(): FeedFilterChoice[] {
+  return CHOICES.filter((choice) => {
+    if (choice.key === "announcement") return pluginEnabled("announcement");
+    if (choice.key === "meeting_summary") return pluginEnabled("meeting_summary");
+    return true;
+  });
+}
+
 export default function FeedFilter({ active, onChange }: Props) {
   return (
     <nav className="feed-filter" aria-label="Filter feed by post type">
       <ul className="feed-filter-list">
-        {CHOICES.map((choice) => {
+        {visibleChoices().map((choice) => {
           const isActive = choice.key === active;
           const cls = [
             "feed-filter-pill",

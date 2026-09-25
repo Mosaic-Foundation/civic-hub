@@ -28,7 +28,7 @@ import { getProcessHandler, processDetailPath } from "../processes/registry.js";
 import type { CivicEvent } from "../models/event.js";
 import {
   getAllProcesses,
-  getNonPublicProcessIds,
+  getHiddenProcessIds,
 } from "../services/processService.js";
 import {
   buildEditItems,
@@ -222,7 +222,7 @@ export async function runDigestForHub(input: {
     let hiddenProcessIds = new Set<string>();
     if (users.length > 0) {
       try {
-        hiddenProcessIds = await getNonPublicProcessIds();
+        hiddenProcessIds = await getHiddenProcessIds();
       } catch (err) {
         const message = err instanceof Error ? err.message : "unknown error";
         console.warn(`[digest] non-public process lookup failed: ${message}`);

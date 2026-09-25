@@ -5,6 +5,7 @@
 // only on application/json requests, so multipart bypasses it naturally;
 // no router-level disabling is required.
 
+import { requirePlugin } from "../middleware/pluginGate.js";
 import { Router } from "express";
 import { requireAdmin, requireAnnouncementPoster, requireResident } from "../middleware/auth.js";
 import {
@@ -16,12 +17,14 @@ const router = Router();
 
 router.post(
   "/post-image",
+  requirePlugin("announcement"),
   requireAnnouncementPoster,
   handlePostImageUpload,
 );
 
 router.post(
   "/project-image",
+  requirePlugin("project"),
   requireResident,
   handlePostImageUpload,
 );
@@ -32,6 +35,7 @@ router.post(
 // an anonymous submission.
 router.post(
   "/feedback-screenshot",
+  requirePlugin("feedback"),
   requireResident,
   handlePostImageUpload,
 );

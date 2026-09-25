@@ -297,14 +297,26 @@ describe("every section round-trips: save, reload, values match", () => {
       {
         "email.from_name": `Mailer ${stamp}`,
         "email.postal_address": "1 Test Street",
+      },
+      {},
+    ],
+    // Since Phase 2c the digest switches and send hour live in Plugins.
+    [
+      "plugins",
+      {
         "plugin.digest.enabled": false,
         "plugin.digest.send_hour": 6,
         "plugin.admin_digest.enabled": true,
+        "plugin.vote.default_duration_days": 21,
+        "plugin.conversation.polis_url": "https://polis.example.test",
+        "plugin.meeting_summary.connector_id": "minutes-page",
+        "plugin.meeting_summary.cutoff_date": "2026-01-01",
       },
       {
         "plugin.digest.enabled": "false",
         "plugin.digest.send_hour": "6",
         "plugin.admin_digest.enabled": "true",
+        "plugin.vote.default_duration_days": "21",
       },
     ],
   ];

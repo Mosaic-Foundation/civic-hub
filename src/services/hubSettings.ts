@@ -643,6 +643,29 @@ export async function isPluginEnabled(
 }
 
 /**
+ * The range of voting windows a resident may choose on this hub, in days, and
+ * where a new draft starts. Unset keys keep the numbers that were in code
+ * before they were settings (14, 90, 42). A range an admin set backwards is
+ * put the right way round, and the default is kept inside it, so a
+ * half-edited range can never make every duration invalid.
+ */
+export const VOTE_DURATION_DEFAULTS = { minDays: 14, maxDays: 90, defaultDays: 42 } as const;
+const DURATION_DAYS_CEILING = 365;
+
+export function voteDurationLimitsSync(): { minDays: number; maxDays: number; defaultDays: number } {
+  const days = (key: string, fallback: number) => {
+    const n = asNumber(getSettingSync(key), fallback);
+    return Number.isInteger(n) && n >= 1 && n <= DURATION_DAYS_CEILING ? n : fallback;
+  };
+  let minDays = days(KEYS.PLUGIN_VOTE_MIN_DURATION_DAYS, VOTE_DURATION_DEFAULTS.minDays);
+  let maxDays = days(KEYS.PLUGIN_VOTE_MAX_DURATION_DAYS, VOTE_DURATION_DEFAULTS.maxDays);
+  if (minDays > maxDays) [minDays, maxDays] = [maxDays, minDays];
+  const wanted = days(KEYS.PLUGIN_VOTE_DEFAULT_DURATION_DAYS, VOTE_DURATION_DEFAULTS.defaultDays);
+  const defaultDays = Math.min(maxDays, Math.max(minDays, wanted));
+  return { minDays, maxDays, defaultDays };
+}
+
+/**
  * Endorsements a resident-submitted vote needs before it opens for ballots.
  * Read once at submission and snapshotted onto the vote, so changing it never
  * moves a vote that is already gathering support. 0 means no support phase:

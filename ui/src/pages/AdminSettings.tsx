@@ -22,6 +22,7 @@ import ModeSection from "./settings/ModeSection";
 import PeopleSection from "./settings/PeopleSection";
 import OfficialsSection from "./settings/OfficialsSection";
 import ParticipationSection from "./settings/ParticipationSection";
+import PluginsSection from "./settings/PluginsSection";
 import "./AdminSettings.css";
 
 interface SectionEntry {
@@ -42,7 +43,7 @@ const SECTIONS: readonly SectionEntry[] = [
   { id: "people", label: "Admins & board", render: () => <PeopleSection /> },
   { id: "officials", label: "Officials", render: () => <OfficialsSection /> },
   { id: "participation", label: "Participation", render: () => <ParticipationSection /> },
-  { id: "plugins", label: "Plugins", comingNote: "Coming next" },
+  { id: "plugins", label: "Plugins", render: () => <PluginsSection /> },
 ];
 
 const FIRST = SECTIONS[0]!.id;

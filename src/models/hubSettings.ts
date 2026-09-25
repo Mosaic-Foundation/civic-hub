@@ -90,6 +90,13 @@ export const KEYS = {
   MODERATION_COMMENT_IDENTITY_MODE: "moderation.comment_identity_mode",
 
   PLUGIN_VOTE_SUPPORT_THRESHOLD: "plugin.vote.support_threshold",
+  // How long a new vote may stay open, in whole days, chosen by the resident
+  // drafting it within the hub's range. Added 2026-09-24 (Phase 2c, Adam):
+  // before, the range was 14–90 days in code and the default 42 in the
+  // vote_drafts column default. Unset keeps exactly those numbers.
+  PLUGIN_VOTE_MIN_DURATION_DAYS: "plugin.vote.min_duration_days",
+  PLUGIN_VOTE_MAX_DURATION_DAYS: "plugin.vote.max_duration_days",
+  PLUGIN_VOTE_DEFAULT_DURATION_DAYS: "plugin.vote.default_duration_days",
   PLUGIN_CONVERSATION_POLIS_URL: "plugin.conversation.polis_url",
   PLUGIN_WORDCLOUD_ONBOARDING_ID: "plugin.wordcloud.onboarding_id",
   PLUGIN_FEEDBACK_RECIPIENTS: "plugin.feedback.recipients",

@@ -7,7 +7,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  PLUGIN_SECTION_ORDER,
   SETTINGS_SECTIONS,
+  fieldSpec,
   type SettingsSectionId,
 } from "../../../../src/shared/hubSettingsSections";
 import { adminGetSettingTemplate, type HubSettings } from "../../services/api";
@@ -15,8 +17,9 @@ import { useHubSettings, useUnsavedChangesGuard } from "./HubSettingsContext";
 
 /** Values in the form for keys the hub has not set: what the site uses today. */
 const FORM_DEFAULTS: Readonly<Record<string, string>> = {
-  "plugin.digest.enabled": "true",
-  "plugin.admin_digest.enabled": "true",
+  // Every plugin is on until a hub switches it off.
+  ...Object.fromEntries(PLUGIN_SECTION_ORDER.map((id) => [`plugin.${id}.enabled`, "true"])),
+  "plugin.meeting_summary.auto_publish": "false",
   // DEFAULT_DIGEST_SEND_HOUR in src/controllers/digestController.ts.
   "plugin.digest.send_hour": "13",
 };
@@ -98,7 +101,13 @@ export default function SectionForm({
     const out: Record<string, string> = {};
     for (const k of keys) {
       const stored = d.values[k] ?? "";
-      out[k] = stored !== "" ? stored : (templates[k] ?? FORM_DEFAULTS[k] ?? "");
+      // A boolean has no "unset" in the form, so an unset one shows what
+      // applies today: the deployment's env value where it sets one.
+      const envBool =
+        fieldSpec(k)?.kind === "boolean" && /^(true|false)$/.test(d.fallbacks[k] ?? "")
+          ? d.fallbacks[k]
+          : undefined;
+      out[k] = stored !== "" ? stored : (templates[k] ?? envBool ?? FORM_DEFAULTS[k] ?? "");
     }
     return out;
   }

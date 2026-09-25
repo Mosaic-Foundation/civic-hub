@@ -7,7 +7,7 @@ import SuggestFooterButton from "./SuggestFooterButton";
 import TitleField from "./TitleField";
 import GrowingLineInput from "./GrowingLineInput";
 import ProcessLinkField from "./ProcessLinkField";
-import type { ProposedLink } from "../services/api";
+import type { ProposedLink, VoteDurationLimits } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
 
 interface Props {
@@ -20,6 +20,8 @@ interface Props {
   linkTitles: Record<string, { title: string; type: string }>;
   onLinkTitlesChange: (t: Record<string, { title: string; type: string }>) => void;
   draft: VoteDraft;
+  /** The hub's allowed voting windows; the standard choices until loaded. */
+  durationLimits?: VoteDurationLimits | null;
   onFieldChange: (field: string, value: string) => void;
   onDurationChange: (ms: number) => void;
   onMethodChange: (method: string, options: string[] | null) => void;
@@ -45,6 +47,27 @@ const DURATION_OPTIONS = [
   { label: "2 months", ms: 60 * 24 * 60 * 60 * 1000 },
   { label: "3 months", ms: 90 * 24 * 60 * 60 * 1000 },
 ];
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The standard choices that fall inside the hub's range, plus the range's
+ * ends, its default and the draft's current value when those are not already
+ * a standard choice — so every value the server accepts can be picked and the
+ * current one is always shown.
+ */
+function durationOptions(limits: VoteDurationLimits | null | undefined, currentMs: number) {
+  if (!limits) return DURATION_OPTIONS;
+  const inRange = (ms: number) => ms >= limits.min_days * DAY_MS && ms <= limits.max_days * DAY_MS;
+  const byMs = new Map(DURATION_OPTIONS.filter((o) => inRange(o.ms)).map((o) => [o.ms, o.label]));
+  for (const days of [limits.min_days, limits.default_days, limits.max_days]) {
+    if (!byMs.has(days * DAY_MS)) byMs.set(days * DAY_MS, `${days} days`);
+  }
+  if (inRange(currentMs) && !byMs.has(currentMs)) {
+    byMs.set(currentMs, `${Math.round(currentMs / DAY_MS)} days`);
+  }
+  return [...byMs.entries()].sort((a, b) => a[0] - b[0]).map(([ms, label]) => ({ ms, label }));
+}
 
 const METHOD_OPTIONS = [
   { key: "yes_no_unsure", label: "Yes / No / Unsure" },
@@ -113,6 +136,7 @@ function getStatusClass(draft: VoteDraft, reviewFailed?: boolean): string {
 
 export default function VoteDraftingForm({
   draft,
+  durationLimits,
   links,
   onLinksChange,
   linkSelfId,
@@ -339,7 +363,7 @@ export default function VoteDraftingForm({
             onChange={(e) => onDurationChange(Number(e.target.value))}
             disabled={disabled}
           >
-            {DURATION_OPTIONS.map((opt) => (
+            {durationOptions(durationLimits, draft.voting_duration_ms).map((opt) => (
               <option key={opt.ms} value={opt.ms}>
                 {opt.label}
               </option>

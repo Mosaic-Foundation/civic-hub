@@ -11,6 +11,7 @@ import {
 import AuthModal from "./AuthModal";
 import SearchBar from "./SearchBar";
 import hub from "../config/hub";
+import { pluginEnabled, type PluginId } from "../config/plugins";
 import { BETA_PUBLIC_PATHS } from "../config/betaPublicPaths";
 import "./Nav.css";
 
@@ -20,13 +21,20 @@ const TOP_LINKS: ReadonlyArray<{ to: string; label: string; end?: boolean }> = [
 
 // Primary drawer links. Legal docs are grouped after a divider so the
 // civic surfaces stay visually distinct from the policy footer pages.
-const DRAWER_LINKS: ReadonlyArray<{ to: string; label: string; end?: boolean }> = [
+// Some entries carry the plugin id that gates them (config/plugins.tsx);
+// entries with none are always shown.
+const DRAWER_LINKS: ReadonlyArray<{
+  to: string;
+  label: string;
+  end?: boolean;
+  plugin?: PluginId;
+}> = [
   { to: "/", label: "Feed", end: true },
-  { to: "/deliberations", label: "Conversations" },
-  { to: "/propose", label: "Propose" },
-  { to: "/votes", label: "Votes" },
-  { to: "/projects", label: "Projects" },
-  { to: "/outcomes", label: "Outcomes" },
+  { to: "/deliberations", label: "Conversations", plugin: "conversation" },
+  { to: "/propose", label: "Propose", plugin: "proposal" },
+  { to: "/votes", label: "Votes", plugin: "vote" },
+  { to: "/projects", label: "Projects", plugin: "project" },
+  { to: "/outcomes", label: "Outcomes", plugin: "brief" },
   { to: "/welcome", label: "Welcome" },
   { to: "/about", label: "About" },
 ];
@@ -160,6 +168,11 @@ export default function Nav() {
   const location = useLocation();
   const onFeedbackPage = location.pathname === "/feedback";
 
+  // Hidden when the hub switched the plugin off (config/plugins.tsx).
+  const drawerLinks = DRAWER_LINKS.filter((l) => !l.plugin || pluginEnabled(l.plugin));
+  const searchEnabled = pluginEnabled("search");
+  const feedbackEnabled = pluginEnabled("feedback");
+
   // Review attention badge. Poll on mount, on navigation (so it clears right
   // after the user views My submissions, which stamps reviews_seen_at), and
   // every 60s while the tab is open.
@@ -248,25 +261,29 @@ export default function Nav() {
              * links and the avatar / sign-in cluster. Collapsed to an
              * icon by default; expands on click. Hidden on the mobile
              * drawer breakpoint via CSS (.civic-nav-search). */}
-            <div className="civic-nav-search">
-              <SearchBar />
-            </div>
+            {searchEnabled && (
+              <div className="civic-nav-search">
+                <SearchBar />
+              </div>
+            )}
 
-            <Link
-              to="/feedback"
-              className={`civic-nav-feedback${onFeedbackPage ? " is-active" : ""}`}
-              aria-label="Give feedback"
-            >
-              {/* The label hides below the header's icon-only breakpoint
-                  (Nav.css); the aria-label keeps the name for readers. */}
-              <span className="civic-nav-feedback-label">Feedback</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M2 8.5L2 15.5L7 15.5L14 20L14 4L7 8.5Z" fill="currentColor"/>
-                <ellipse cx="14" cy="12" rx="1.2" ry="4.5" fill="currentColor" opacity="0.3"/>
-                <path d="M17 8.5C18.3 9.5 19 10.7 19 12C19 13.3 18.3 14.5 17 15.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-                <path d="M19.5 6.5C21.5 8 22.5 9.9 22.5 12C22.5 14.1 21.5 16 19.5 17.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-              </svg>
-            </Link>
+            {feedbackEnabled && (
+              <Link
+                to="/feedback"
+                className={`civic-nav-feedback${onFeedbackPage ? " is-active" : ""}`}
+                aria-label="Give feedback"
+              >
+                {/* The label hides below the header's icon-only breakpoint
+                    (Nav.css); the aria-label keeps the name for readers. */}
+                <span className="civic-nav-feedback-label">Feedback</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M2 8.5L2 15.5L7 15.5L14 20L14 4L7 8.5Z" fill="currentColor"/>
+                  <ellipse cx="14" cy="12" rx="1.2" ry="4.5" fill="currentColor" opacity="0.3"/>
+                  <path d="M17 8.5C18.3 9.5 19 10.7 19 12C19 13.3 18.3 14.5 17 15.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
+                  <path d="M19.5 6.5C21.5 8 22.5 9.9 22.5 12C22.5 14.1 21.5 16 19.5 17.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
+                </svg>
+              </Link>
+            )}
 
             {user ? (
               <>
@@ -356,7 +373,7 @@ export default function Nav() {
                     >
                       Settings
                     </button>
-                    {canPostAnnouncements && (
+                    {canPostAnnouncements && pluginEnabled("announcement") && (
                       <button
                         type="button"
                         role="menuitem"
@@ -418,14 +435,16 @@ export default function Nav() {
             {/* Slice 10.5 — search lives at the top of the mobile drawer
              * so a tap on the hamburger surfaces both navigation and
              * search. Submitting closes the drawer (onSubmitted). */}
-            <div className="civic-nav-drawer-search">
-              <SearchBar
-                inDrawer
-                onSubmitted={() => setDrawerOpen(false)}
-              />
-            </div>
+            {searchEnabled && (
+              <div className="civic-nav-drawer-search">
+                <SearchBar
+                  inDrawer
+                  onSubmitted={() => setDrawerOpen(false)}
+                />
+              </div>
+            )}
             <ul className="civic-nav-drawer-links" role="list">
-              {DRAWER_LINKS.map((l) => {
+              {drawerLinks.map((l) => {
                 const gated = hub.beta_mode && !user && !BETA_PUBLIC_PATHS.has(l.to);
                 if (gated) {
                   return (
@@ -452,7 +471,7 @@ export default function Nav() {
                 );
               })}
               <li className="civic-nav-drawer-divider" role="separator" aria-hidden="true" />
-              {DRAWER_SECONDARY_LINKS.map((l) => (
+              {feedbackEnabled && DRAWER_SECONDARY_LINKS.map((l) => (
                 <li key={l.to}>
                   <NavLink
                     to={l.to}

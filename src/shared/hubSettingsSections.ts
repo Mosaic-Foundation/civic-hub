@@ -38,6 +38,14 @@ export type SettingFieldKind =
   | "hour"
   /** An IANA time zone name, e.g. "America/New_York"; empty means UTC. */
   | "timezone"
+  /** An http(s) URL, or empty. */
+  | "url"
+  /** One of the spec's `options`, or empty when the spec allows it. */
+  | "choice"
+  /** A calendar date, YYYY-MM-DD, or empty. */
+  | "date"
+  /** A whole number within the spec's `min`–`max`, or empty. */
+  | "number"
   /** #rrggbb. */
   | "color"
   /** A theme object (src/shared/theme.ts), stored as canonical JSON. */
@@ -48,9 +56,42 @@ export interface SettingFieldSpec {
   kind: SettingFieldKind;
   /** Characters, after trimming. Unset means the kind's default. */
   maxLength?: number;
+  /** "choice": the values allowed. Ids, not copy. */
+  options?: readonly string[];
+  /** "number": inclusive bounds. */
+  min?: number;
+  max?: number;
 }
 
-export const SETTINGS_SECTION_IDS = ["identity", "copy", "legal", "email", "theme"] as const;
+export const SETTINGS_SECTION_IDS = ["identity", "copy", "legal", "email", "theme", "plugins"] as const;
+
+/**
+ * Every plugin id, in the order the Plugins section lists them. The same ids
+ * as PLUGIN_IDS in src/models/hubSettings.ts (tests/unit/pluginGate.test.ts
+ * holds them equal); repeated here because this file is shared with the UI
+ * and imports nothing from the server.
+ */
+export const PLUGIN_SECTION_ORDER = [
+  "vote",
+  "proposal",
+  "project",
+  "conversation",
+  "wordcloud",
+  "brief",
+  "announcement",
+  "meeting_summary",
+  "news_sync",
+  "assistant",
+  "search",
+  "feedback",
+  "digest",
+  "admin_digest",
+] as const;
+
+/** Meeting-summary connector ids (src/modules/civic.meeting_summary/connectors). */
+export const MEETING_CONNECTOR_OPTIONS = ["auto", "wix-cms", "minutes-page", "youtube-channel"] as const;
+/** News-sync connector ids (src/modules/civic.news_sync/connectors). */
+export const NEWS_CONNECTOR_OPTIONS = ["wix-cms"] as const;
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
 
 export const SETTINGS_SECTIONS: Readonly<
@@ -89,12 +130,31 @@ export const SETTINGS_SECTIONS: Readonly<
   email: [
     { key: "email.from_name", kind: "text", maxLength: 80 },
     { key: "email.postal_address", kind: "textarea", maxLength: 300 },
-    { key: "plugin.digest.enabled", kind: "boolean" },
-    { key: "plugin.digest.send_hour", kind: "hour" },
-    { key: "plugin.admin_digest.enabled", kind: "boolean" },
   ],
   // Its own section since 2026-09-24: a theme is a palette, not one colour.
   theme: [{ key: "identity.theme", kind: "theme" }],
+  // Since Phase 2c (Adam, 2026-09-24): every plugin's on/off, and beneath it
+  // the settings that plugin has. Settings another section already owns
+  // (announcement authors, brief recipients, the support threshold, comment
+  // anonymity) are linked from here, never repeated: one writer per key.
+  plugins: [
+    ...PLUGIN_SECTION_ORDER.map((id) => ({ key: `plugin.${id}.enabled`, kind: "boolean" as const })),
+    { key: "plugin.vote.min_duration_days", kind: "number", min: 1, max: 365 },
+    { key: "plugin.vote.max_duration_days", kind: "number", min: 1, max: 365 },
+    { key: "plugin.vote.default_duration_days", kind: "number", min: 1, max: 365 },
+    { key: "plugin.conversation.polis_url", kind: "url" },
+    { key: "plugin.meeting_summary.connector_id", kind: "choice", options: MEETING_CONNECTOR_OPTIONS },
+    { key: "plugin.meeting_summary.source_url", kind: "url" },
+    { key: "plugin.meeting_summary.youtube_channel_id", kind: "text", maxLength: 64 },
+    { key: "plugin.meeting_summary.title_filter", kind: "text", maxLength: 300 },
+    { key: "plugin.meeting_summary.type_exclude", kind: "text", maxLength: 300 },
+    { key: "plugin.meeting_summary.cutoff_date", kind: "date" },
+    { key: "plugin.meeting_summary.auto_publish", kind: "boolean" },
+    { key: "plugin.meeting_summary.extraction_instructions", kind: "textarea", maxLength: 4000 },
+    { key: "plugin.news_sync.connector", kind: "choice", options: NEWS_CONNECTOR_OPTIONS },
+    { key: "plugin.news_sync.source_url", kind: "url" },
+    { key: "plugin.digest.send_hour", kind: "hour" },
+  ],
 };
 
 /** A document is a page; 100 KB is several times the longest one today. */

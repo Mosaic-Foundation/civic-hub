@@ -343,6 +343,106 @@ export function TimeZoneField({ f, k, label, hint }: Common) {
   );
 }
 
+/** A web address. */
+export function UrlField({ f, k, label, hint, placeholder }: Common) {
+  const id = useId();
+  return (
+    <div className="settings-field">
+      <Label id={id} label={label} hint={hint} />
+      <input
+        id={id}
+        type="url"
+        className="form-input"
+        value={f.value(k)}
+        onChange={(e) => f.set(k, e.target.value)}
+        placeholder={placeholderFor(f, k, placeholder ?? "https://")}
+        disabled={f.disabled}
+        style={{ maxWidth: "520px" }}
+      />
+    </div>
+  );
+}
+
+/** One of a fixed set of ids, each shown with a label the page supplies. */
+export function ChoiceField({
+  f,
+  k,
+  label,
+  hint,
+  labels,
+  emptyLabel,
+}: Common & { labels: Record<string, string>; emptyLabel?: string }) {
+  const id = useId();
+  const options = fieldSpec(k)?.options ?? [];
+  return (
+    <div className="settings-field">
+      <Label id={id} label={label} hint={hint} />
+      <select
+        id={id}
+        className="form-input"
+        value={f.value(k)}
+        onChange={(e) => f.set(k, e.target.value)}
+        disabled={f.disabled}
+        style={{ maxWidth: "320px" }}
+      >
+        {emptyLabel !== undefined && <option value="">{emptyLabel}</option>}
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {labels[o] ?? o}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/** A calendar date, or empty. */
+export function DateField({ f, k, label, hint }: Common) {
+  const id = useId();
+  return (
+    <div className="settings-field">
+      <Label id={id} label={label} hint={hint} />
+      <input
+        id={id}
+        type="date"
+        className="form-input"
+        value={f.value(k)}
+        onChange={(e) => f.set(k, e.target.value)}
+        disabled={f.disabled}
+        style={{ maxWidth: "200px" }}
+      />
+    </div>
+  );
+}
+
+/** A whole number within the spec's bounds, or empty for the default. */
+export function NumberField({ f, k, label, hint, placeholder, unit }: Common & { unit?: string }) {
+  const id = useId();
+  const spec = fieldSpec(k);
+  return (
+    <div className="settings-field">
+      <Label id={id} label={label} hint={hint} />
+      <span className="settings-number-row">
+        <input
+          id={id}
+          type="number"
+          inputMode="numeric"
+          className="form-input"
+          value={f.value(k)}
+          min={spec?.min}
+          max={spec?.max}
+          step={1}
+          onChange={(e) => f.set(k, e.target.value)}
+          placeholder={placeholder}
+          disabled={f.disabled}
+          style={{ maxWidth: "120px" }}
+        />
+        {unit && <span className="form-hint"> {unit}</span>}
+      </span>
+    </div>
+  );
+}
+
 /** A value the platform sets: shown, never editable here. */
 export function ReadOnlyField({ label, value, hint }: { label: string; value: string; hint?: React.ReactNode }) {
   return (

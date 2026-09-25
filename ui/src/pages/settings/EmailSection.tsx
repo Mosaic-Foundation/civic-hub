@@ -1,5 +1,6 @@
 import SectionForm from "./SectionForm";
-import { BooleanField, HourField, ReadOnlyField, TextAreaField, TextField } from "./fields";
+import { Link } from "react-router-dom";
+import { ReadOnlyField, TextAreaField, TextField } from "./fields";
 
 export default function EmailSection() {
   return (
@@ -8,8 +9,7 @@ export default function EmailSection() {
       title="Email"
       intro={
         <p className="form-hint">
-          The name and postal address on every email this hub sends, and
-          whether it sends digests.
+          The name and postal address on every email this hub sends.
         </p>
       }
     >
@@ -34,24 +34,10 @@ export default function EmailSection() {
             rows={2}
             hint="Printed in the footer of digests (anti-spam law asks for one). Leave it empty to leave it out."
           />
-          <BooleanField
-            f={f}
-            k="plugin.digest.enabled"
-            label="Send the resident digest"
-            hint="A summary email of new activity to each resident who has not unsubscribed."
-          />
-          <HourField
-            f={f}
-            k="plugin.digest.send_hour"
-            label="Digest send time"
-            hint="In the hub's time zone, set under Identity."
-          />
-          <BooleanField
-            f={f}
-            k="plugin.admin_digest.enabled"
-            label="Send the admin digest"
-            hint="A daily summary for admins of what is waiting for review."
-          />
+          <p className="form-hint settings-note">
+            Whether this hub sends the resident and admin digests, and when,
+            is under <Link to="/admin/settings/plugins">Plugins</Link>.
+          </p>
         </>
       )}
     </SectionForm>

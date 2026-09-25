@@ -14,7 +14,7 @@
 
 import { Request, Response } from "express";
 import { getAllEvents, getEventsByProcessId } from "../events/eventStore.js";
-import { getNonPublicProcessIds } from "../services/processService.js";
+import { getHiddenProcessIds } from "../services/processService.js";
 import { buildFeedProcessMeta } from "../services/feedMeta.js";
 import { isAdminEmail, resolveCallerUser } from "../middleware/auth.js";
 import {
@@ -47,7 +47,7 @@ export async function handleGetFeed(
     // Skipped when the caller asked for a specific process_id (that read is an
     // explicit lookup, not the feed).
     if (!processId) {
-      const hidden = await getNonPublicProcessIds();
+      const hidden = await getHiddenProcessIds();
       if (hidden.size > 0) {
         events = events.filter(
           (e) => !e.process_id || !hidden.has(e.process_id),

@@ -12,6 +12,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { pluginEnabled } from "../config/plugins";
 import { friendlyType } from "./ProcessLinkPicker";
 import AssistantPanel, { type ChatMessage } from "./AssistantPanel";
 import SuggestionCard, { suggestionKey } from "./SuggestionCard";
@@ -119,7 +120,8 @@ export default function DraftShell({
 
   // The persistent opt-out: respected everywhere the affordance renders.
   const optedOut = user?.hide_ai_drafting_help === true;
-  const showAssistant = assistant !== null && !optedOut;
+  // Hidden when the hub switched the plugin off (config/plugins.tsx).
+  const showAssistant = assistant !== null && !optedOut && pluginEnabled("assistant");
   const open = showAssistant && assistant.open;
 
   // "Updated" marker on the form tab: the draft changed while the assistant

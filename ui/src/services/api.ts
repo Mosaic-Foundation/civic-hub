@@ -656,6 +656,17 @@ export interface VoteDraft {
   links: ProposedLink[];
 }
 
+/** The voting windows this hub allows, in days (plugin.vote.*_duration_days). */
+export interface VoteDurationLimits {
+  min_days: number;
+  max_days: number;
+  default_days: number;
+}
+
+export function getVoteDurationLimits(): Promise<VoteDurationLimits> {
+  return request("GET", "/votes/drafts/duration-limits");
+}
+
 export function createVoteDraft(): Promise<VoteDraft> {
   return request("POST", "/votes/drafts");
 }

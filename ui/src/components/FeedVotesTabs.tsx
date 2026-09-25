@@ -14,16 +14,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { pluginEnabled, type PluginId } from "../config/plugins";
 import "./FeedVotesTabs.css";
 
-const SCROLLABLE_TABS: ReadonlyArray<{ to: string; label: string }> = [
-  { to: "/deliberations", label: "Conversations" },
-  { to: "/propose", label: "Proposals" },
-  { to: "/votes", label: "Votes" },
-  { to: "/projects", label: "Projects" },
+// Hidden when the hub switched the plugin off (config/plugins.tsx).
+const SCROLLABLE_TABS: ReadonlyArray<{ to: string; label: string; plugin: PluginId }> = [
+  { to: "/deliberations", label: "Conversations", plugin: "conversation" },
+  { to: "/propose", label: "Proposals", plugin: "proposal" },
+  { to: "/votes", label: "Votes", plugin: "vote" },
+  { to: "/projects", label: "Projects", plugin: "project" },
   // Last: the archive of what has finished, after the surfaces where things
   // are still happening.
-  { to: "/outcomes", label: "Outcomes" },
+  { to: "/outcomes", label: "Outcomes", plugin: "brief" },
 ];
 
 /**
@@ -91,6 +93,7 @@ function easeInOut(t: number): number {
 export default function FeedVotesTabs() {
   const { pathname } = useLocation();
   const detailSection = sectionFor(pathname);
+  const visibleTabs = SCROLLABLE_TABS.filter((t) => pluginEnabled(t.plugin));
 
   const listRef = useRef<HTMLUListElement>(null);
   // Which directions still have tabs hidden off the edge. Drives both the
@@ -300,7 +303,7 @@ export default function FeedVotesTabs() {
       </div>
       <div className="feed-votes-tabs-scroller">
         <ul className="feed-votes-tabs-list" ref={listRef}>
-          {SCROLLABLE_TABS.map((t) => (
+          {visibleTabs.map((t) => (
             <li key={t.to}>
               <NavLink
                 to={t.to}

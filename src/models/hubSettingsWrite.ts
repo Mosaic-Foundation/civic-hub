@@ -125,6 +125,19 @@ export function normalizeValue(
       return String(n);
     }
 
+    case "number": {
+      const s = typeof raw === "number" ? String(raw) : typeof raw === "string" ? raw.trim() : null;
+      if (s === null) return { error: `${key} must be a whole number.` };
+      if (s === "") return "";
+      const n = Number(s);
+      const lo = spec.min ?? Number.MIN_SAFE_INTEGER;
+      const hi = spec.max ?? Number.MAX_SAFE_INTEGER;
+      if (!Number.isInteger(n) || n < lo || n > hi) {
+        return { error: `${key} must be a whole number from ${lo} to ${hi}.` };
+      }
+      return String(n);
+    }
+
     case "timezone": {
       if (typeof raw !== "string") return { error: `${key} must be a string.` };
       const v = raw.trim();
@@ -164,6 +177,36 @@ export function normalizeValue(
       // whitespace around them: the golden copies are compared byte for byte.
       const v = raw.replace(/\r\n/g, "\n").trim();
       return withinLength(key, v === "" ? "" : `${v}\n`, spec.maxLength ?? DOCUMENT_MAX_LENGTH);
+    }
+
+    case "url": {
+      const v = raw.trim();
+      if (v === "") return "";
+      let u: URL;
+      try {
+        u = new URL(v);
+      } catch {
+        return { error: `${key} must be a full web address starting with https://.` };
+      }
+      if (u.protocol !== "https:" && u.protocol !== "http:") {
+        return { error: `${key} must be a full web address starting with https://.` };
+      }
+      return withinLength(key, v, spec.maxLength ?? 500);
+    }
+
+    case "choice": {
+      const v = raw.trim();
+      if (v === "" || (spec.options ?? []).includes(v)) return v;
+      return { error: `${key} must be one of: ${(spec.options ?? []).join(", ")}.` };
+    }
+
+    case "date": {
+      const v = raw.trim();
+      if (v === "") return "";
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(`${v}T00:00:00Z`))) {
+        return { error: `${key} must be a date, YYYY-MM-DD.` };
+      }
+      return v;
     }
 
     case "email": {
