@@ -10,7 +10,30 @@
       "includeFiles": "ui/dist/index.html"
     }
   },
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "^(console\\.civic\\.social|console-civic-hub-dev\\.vercel\\.app)$"
+        }
+      ],
+      "destination": "/console.html",
+      "permanent": false
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/((?!api/|api$|assets/).*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "^(console\\.civic\\.social|console-civic-hub-dev\\.vercel\\.app)$"
+        }
+      ],
+      "destination": "/console.html"
+    },
     {
       "source": "/api/:path*",
       "destination": "/api"

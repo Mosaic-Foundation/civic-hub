@@ -20,4 +20,25 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  // The super admin's page (src/console/, console.html) and the hub app are
+  // separate: the hub app may not import the console, and the console
+  // imports nothing of the hub app's (Adam, 2026-09-26; the server-side
+  // twin is civic/control-boundary in ../eslint.config.js).
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/console/**'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{ group: ['**/console', '**/console/**'], message: 'The hub app may not import the super admin console (src/console/).' }],
+      }],
+    },
+  },
+  {
+    files: ['src/console/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{ group: ['../*', '../../*'], message: 'The console stands alone: it imports nothing from the hub app.' }],
+      }],
+    },
+  },
 ])
