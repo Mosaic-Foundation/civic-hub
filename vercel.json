@@ -113,6 +113,10 @@
       "schedule": "30 13 * * *"
     },
     {
+      "path": "/api/internal/vote-close/run",
+      "schedule": "5 * * * *"
+    },
+    {
       "path": "/api/internal/hub-exports-sweep/run",
       "schedule": "15 * * * *"
     }

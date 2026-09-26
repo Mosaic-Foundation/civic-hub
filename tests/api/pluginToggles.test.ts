@@ -145,11 +145,13 @@ describe("switched back on", () => {
 // paths), and those paths drop a disabled type BEFORE the close runs. So a
 // vote whose deadline passes while its plugin is off does not close: no
 // tally, no results record, no civic.process.ended. It closes on the first
-// read after the plugin is back on, stamped with that moment, not with the
-// deadline.
+// read after the plugin is back on. Since Phase 5 part two (fix 6) that close
+// is STAMPED WITH THE DEADLINE (every event it emits), and RECORDED when it
+// ran (events.recorded_at), which is what the digest selects by.
 describe("a vote in progress when its plugin goes off", () => {
   let voteId = "";
   let reEnabledAt = 0;
+  const deadline = new Date(Date.now() - 60_000).toISOString();
 
   async function storedVote(): Promise<{ status: string; state: Record<string, unknown> }> {
     const rows = (await localRest(`processes?id=eq.${voteId}&select=status,state`)) as Array<{
@@ -159,10 +161,10 @@ describe("a vote in progress when its plugin goes off", () => {
     return rows[0];
   }
 
-  async function endedEvents(): Promise<Array<{ created_at: string }>> {
+  async function endedEvents(): Promise<Array<{ created_at: string; recorded_at: string }>> {
     return (await localRest(
-      `events?process_id=eq.${voteId}&event_type=eq.civic.process.ended&select=created_at`,
-    )) as Array<{ created_at: string }>;
+      `events?process_id=eq.${voteId}&event_type=eq.civic.process.ended&select=created_at,recorded_at`,
+    )) as Array<{ created_at: string; recorded_at: string }>;
   }
 
   afterAll(async () => {
@@ -201,7 +203,7 @@ describe("a vote in progress when its plugin goes off", () => {
     const { state } = await storedVote();
     await localRest(`processes?id=eq.${voteId}`, {
       method: "PATCH",
-      body: JSON.stringify({ state: { ...state, voting_closes_at: new Date(Date.now() - 60_000).toISOString() } }),
+      body: JSON.stringify({ state: { ...state, voting_closes_at: deadline } }),
     });
   });
 
@@ -215,7 +217,7 @@ describe("a vote in progress when its plugin goes off", () => {
     expect(await endedEvents()).toHaveLength(0);
   });
 
-  it("switched back on, the first read closes it, stamped then", async () => {
+  it("switched back on, the first read closes it, stamped with the deadline and recorded now", async () => {
     await setAthens({ "plugin.vote.enabled": "true" });
     reEnabledAt = Date.now();
     const state = await call("GET", `/process/${voteId}/state`, ATHENS);
@@ -224,7 +226,82 @@ describe("a vote in progress when its plugin goes off", () => {
     expect(stored.status).toBe("closed");
     const ended = await endedEvents();
     expect(ended).toHaveLength(1);
-    // Stamped when the read ran, not at voting_closes_at (a minute earlier).
-    expect(Date.parse(ended[0].created_at)).toBeGreaterThanOrEqual(reEnabledAt - 2_000);
+    // Stamped at voting_closes_at (a minute earlier), recorded when the read ran.
+    expect(Date.parse(ended[0].created_at)).toBe(Date.parse(deadline));
+    expect(Date.parse(ended[0].recorded_at)).toBeGreaterThanOrEqual(reEnabledAt - 2_000);
+    // So is every event the close emitted.
+    const all = (await localRest(
+      `events?process_id=eq.${voteId}&event_type=in.(civic.process.updated,civic.process.ended,civic.process.aggregation_completed)&select=event_type,created_at,data`,
+    )) as Array<{ event_type: string; created_at: string; data: { process?: { status?: string } } }>;
+    const closeEvents = all.filter((e) => e.event_type !== "civic.process.updated" || e.data.process?.status === "closed");
+    expect(closeEvents.map((e) => e.event_type).sort()).toEqual(
+      ["civic.process.aggregation_completed", "civic.process.ended", "civic.process.updated"],
+    );
+    for (const e of closeEvents) expect(Date.parse(e.created_at), e.event_type).toBe(Date.parse(deadline));
+  });
+});
+
+// Phase 5 part two, fix 6: the hourly close. A vote past its deadline that
+// nobody reads is closed by the `vote_close` job within the hour, stamped with
+// the deadline; the job skips a hub whose Votes plugin is off (the vote then
+// stays open, as above, until the plugin is back on).
+describe("the hourly vote close (job vote_close)", () => {
+  const CRON = process.env.CIVIC_TEST_CRON_SECRET?.trim() || "ci-only-cron-secret";
+  const deadline = new Date(Date.now() - 5 * 60_000).toISOString();
+  let voteId = "";
+
+  async function runJob(): Promise<{ status: number; body: any }> {
+    return call("GET", "/internal/vote-close/run?hub=athens", ATHENS, undefined, CRON);
+  }
+
+  afterAll(async () => {
+    await localRest("hub_settings?hub_id=eq.athens&key=eq.plugin.vote.enabled", { method: "DELETE" });
+  });
+
+  it("skips the hub while Votes is off, and closes the vote once it is on", async () => {
+    const created = await call(
+      "POST",
+      "/process",
+      ATHENS,
+      {
+        definition: { type: "civic.vote", version: "0.1" },
+        title: `Hourly close ${run}`,
+        description: "Nobody reads this vote after its deadline.",
+        state: { options: ["Yes", "No"], voting_duration_ms: 86_400_000, activation_mode: "direct" },
+      },
+      athensAdmin,
+    );
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    voteId = created.body.id ?? created.body.process?.id;
+    expect((await call("POST", `/process/${voteId}/action`, ATHENS, { type: "process.activate", payload: {} }, athensAdmin)).status).toBe(200);
+    const [row] = (await localRest(`processes?id=eq.${voteId}&select=state`)) as Array<{ state: Record<string, unknown> }>;
+    await localRest(`processes?id=eq.${voteId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ state: { ...row.state, voting_closes_at: deadline } }),
+    });
+
+    await setAthens({ "plugin.vote.enabled": "false" });
+    const off = await runJob();
+    expect(off.status, JSON.stringify(off.body)).toBe(200);
+    expect(off.body.hubs.athens.skipped).toBe(true);
+    const [still] = (await localRest(`processes?id=eq.${voteId}&select=status`)) as Array<{ status: string }>;
+    expect(still.status).toBe("active");
+
+    await setAthens({ "plugin.vote.enabled": "true" });
+    const before = Date.now();
+    const on = await runJob();
+    expect(on.status, JSON.stringify(on.body)).toBe(200);
+    expect(on.body.hubs.athens.closed).toContain(voteId);
+    const [closed] = (await localRest(`processes?id=eq.${voteId}&select=status`)) as Array<{ status: string }>;
+    expect(closed.status).toBe("closed");
+    const [ended] = (await localRest(
+      `events?process_id=eq.${voteId}&event_type=eq.civic.process.ended&select=created_at,recorded_at,actor`,
+    )) as Array<{ created_at: string; recorded_at: string; actor: string }>;
+    expect(Date.parse(ended.created_at)).toBe(Date.parse(deadline));
+    expect(Date.parse(ended.recorded_at)).toBeGreaterThanOrEqual(before - 2_000);
+    expect(ended.actor).toBe("system:auto-close");
+
+    // Run again: nothing left to close.
+    expect((await runJob()).body.hubs.athens.closed).not.toContain(voteId);
   });
 });

@@ -97,4 +97,12 @@ export interface ProcessAction {
   type: string; // e.g., "process.vote", "process.close"
   actor: string; // userId or DID
   payload: Record<string, unknown>;
+  /**
+   * When the action took effect, if not now — the deadline, for a close run
+   * after a vote's voting_closes_at has passed (hourly or on read). Stamps
+   * the events the action emits. Set only by system dispatchers
+   * (closeIfExpired); request handlers build actions field by field and
+   * never copy it from a body.
+   */
+  at?: string;
 }

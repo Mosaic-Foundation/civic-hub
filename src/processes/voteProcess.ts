@@ -46,6 +46,9 @@ function getState(process: Process): VoteProcessState {
   return process.state as unknown as VoteProcessState;
 }
 
+/** The actor a deadline close runs as, hourly or on read. */
+export const AUTO_CLOSE_ACTOR = "system:auto-close";
+
 function makeContext(process: Process) {
   return {
     process_id: process.id,
@@ -249,7 +252,13 @@ const voteProcess: ProcessHandler = {
         const ballots = (await getBallotChoicesForProcess(process.id)).map(
           (c) => method.parseReceipt(c),
         );
-        const outcome = await closeVote(state, action.actor, ballots, ctx);
+        // A deadline close (hourly or on read) happened at the deadline, not
+        // when it was noticed: its events carry that time (Phase 5 part two,
+        // fix 6). A manual close has no `at` and is stamped now.
+        const closeCtx = action.at
+          ? { ...ctx, emit: (input: Parameters<typeof emitEvent>[0]) => ctx.emit({ ...input, timestamp: action.at }) }
+          : ctx;
+        const outcome = await closeVote(state, action.actor, ballots, closeCtx);
         syncStatus(process, outcome.state);
         result = outcome.result;
 
@@ -353,8 +362,9 @@ const voteProcess: ProcessHandler = {
     );
     const { process: updated } = await getActionDispatcher()(process.id, {
       type: "process.close",
-      actor: "system:auto-close",
+      actor: AUTO_CLOSE_ACTOR,
       payload: {},
+      at: new Date(state.voting_closes_at!).toISOString(),
     });
     return updated;
   },

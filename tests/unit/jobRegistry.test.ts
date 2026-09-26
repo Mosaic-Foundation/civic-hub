@@ -22,10 +22,16 @@ describe("job registry", () => {
     expect(vercel.crons).toEqual(vercelCrons());
   });
 
-  it("covers every job the brief names: both digests, meeting summaries, news sync, the export sweep", () => {
+  it("covers every job the brief names: both digests, meeting summaries, news sync, the vote close, the export sweep", () => {
     expect(JOBS.map((j) => j.id).sort()).toEqual(
-      ["admin_digest", "digest", "hub_exports_sweep", "meeting_summary", "news_sync"].sort(),
+      ["admin_digest", "digest", "hub_exports_sweep", "meeting_summary", "news_sync", "vote_close"].sort(),
     );
+  });
+
+  it("the vote close is a Votes job that runs hourly", () => {
+    const job = JOBS.find((j) => j.id === "vote_close")!;
+    expect(!isPlatformJob(job) && job.plugin).toBe("vote");
+    expect(job.schedule.split(" ").slice(1).join(" ")).toBe("* * * *");
   });
 
   it("gives every job a runner of its scope, and every runner a job", () => {

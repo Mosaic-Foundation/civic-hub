@@ -70,6 +70,8 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "control_audit_log", columns: ["actor_email", "action", "target_hub_id", "before", "after"], owner: "control" },
   { table: "processes", columns: ["id", "hub_id", "type", "status", "state", "review_id"], owner: "core/processService" },
   { table: "events", columns: ["id", "event_type", "process_id", "data"], owner: "core/eventStore" },
+  // The digest selects by it (20260926030000).
+  { table: "events", columns: ["recorded_at"], owner: "digest" },
   { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at", "edits_seen_at", "feedback_seen_at", "briefs_seen_at", "meeting_summaries_seen_at"], owner: "civic.auth" },
   { table: "sessions", owner: "civic.auth" },
   { table: "pending_verifications", columns: ["attempts", "locked_until"], owner: "civic.auth" },

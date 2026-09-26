@@ -277,6 +277,7 @@ export async function executeAction(
           status: process.status,
         },
       },
+      timestamp: action.at,
     });
     const out = await transitionProcess({
       hubId: currentHubId(),
@@ -358,6 +359,32 @@ async function autoCloseIfExpired(process: Process): Promise<Process> {
     );
     return process;
   }
+}
+
+/**
+ * The hourly deadline close (job `vote_close`): every active process of
+ * `type` in the hub in scope whose deadline has passed is closed now, through
+ * its handler's closeIfExpired — the same close a read would run, stamped
+ * with the deadline. Unlike the read path, a failure is reported, not
+ * swallowed, so the job's run says which ones did not close.
+ */
+export async function closeExpiredProcesses(
+  type: string,
+): Promise<{ checked: number; closed: string[]; failed: Array<{ id: string; error: string }> }> {
+  const handler = getProcessHandler(type);
+  const closed: string[] = [];
+  const failed: Array<{ id: string; error: string }> = [];
+  if (!handler?.closeIfExpired) return { checked: 0, closed, failed };
+  const active = (await getAllProcesses([type])).filter((p) => p.status === "active");
+  for (const p of active) {
+    try {
+      const after = await handler.closeIfExpired(p);
+      if (after.status !== p.status) closed.push(p.id);
+    } catch (err) {
+      failed.push({ id: p.id, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  return { checked: active.length, closed, failed };
 }
 
 // --- UI read layer ---------------------------------------------------------

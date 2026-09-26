@@ -87,6 +87,17 @@ function clampSince(user: {
   return anchor < floor ? floor : anchor;
 }
 
+/**
+ * The events in a user's digest window: those RECORDED after `since`, by
+ * `recorded_at` rather than the event's own timestamp, which may be
+ * backdated. A vote closed after its deadline is stamped with the deadline
+ * (Phase 5 part two, fix 6); judged by that stamp, a close noticed a day late
+ * would fall before the cursor and never be mailed.
+ */
+export function recordedAfter<T extends { recorded_at: string }>(events: readonly T[], since: string): T[] {
+  return events.filter((e) => e.recorded_at > since);
+}
+
 function toDigestEvent(e: CivicEvent, targetBase: string): DigestEvent {
   return {
     id: e.id,
@@ -307,8 +318,7 @@ export async function runDigestForHub(input: {
 
         const since = clampSince(user);
         const windowEvents: DigestEvent[] = [];
-        for (const e of allRecent) {
-          if (e.timestamp <= since) continue;
+        for (const e of recordedAfter(allRecent, since)) {
           // Drop events for announcements an admin has removed since
           // they were published. The user shouldn't see the removed
           // announcement reappear in their email even if the publish
@@ -343,8 +353,7 @@ export async function runDigestForHub(input: {
           since,
           personal_items: buildEditItems({
             user_id: user.id,
-            events: allRecent
-              .filter((e) => e.timestamp > since)
+            events: recordedAfter(allRecent, since)
               .map((e) => ({ ...toDigestEvent(e, uiBase), actor: e.actor })),
             supporters: editSupporters,
             processes: editProcesses,

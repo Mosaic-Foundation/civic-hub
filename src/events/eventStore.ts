@@ -104,20 +104,25 @@ export async function getEventsByProcessId(
   return data.map(rowToEvent);
 }
 
+/** An event with the time its row was written (not part of the event itself). */
+export type RecordedEvent = CivicEvent & { recorded_at: string };
+
 /**
- * Return all events strictly newer than `sinceIso`. Ordered ascending by
- * timestamp so callers iterating per-user digest windows can stop early
- * once they've walked past a user's cursor.
+ * Every event RECORDED strictly after `sinceIso`, oldest first — by the
+ * database's `recorded_at`, not the event's own timestamp, which may be
+ * backdated (news sync; a vote closed after its deadline is stamped with the
+ * deadline). Selecting by the stamp let a backdated event fall outside every
+ * digest window; selecting by arrival cannot (Phase 5 part two, fix 6).
  *
- * Used by the Slice 5 digest cron endpoint.
+ * Used by the digest cron.
  */
-export async function getEventsSince(sinceIso: string): Promise<CivicEvent[]> {
+export async function getEventsSince(sinceIso: string): Promise<RecordedEvent[]> {
   const data = await db()
     .from("events")
-    .select<EventRow>("*")
-    .gt("created_at", sinceIso)
-    .order("created_at", { ascending: true });
-  return data.map(rowToEvent);
+    .select<EventRow & { recorded_at: string }>("*")
+    .gt("recorded_at", sinceIso)
+    .order("recorded_at", { ascending: true });
+  return data.map((row) => ({ ...rowToEvent(row), recorded_at: row.recorded_at }));
 }
 
 // --- Paged reads (the AS2 collection endpoint) -----------------------------

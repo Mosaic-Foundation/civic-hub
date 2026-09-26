@@ -67,7 +67,13 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   plugin switched off on Athens: routes 404, no create/read/list, job skipped,
   Floyd unaffected, back on restores; since 2026-09-26 also a vote in
   progress when its plugin goes off: its deadline passes, reads while off do
-  NOT close it, the first read after it is back on does, stamped then; and
+  NOT close it, the first read after it is back on does — **since Phase 5
+  part two stamped with the deadline** (`civic.process.updated`, `.ended`,
+  `.aggregation_completed` all carry `voting_closes_at`) and recorded then
+  (`events.recorded_at`); **the hourly `vote_close` job**: skips Athens while
+  Votes is off (the vote stays active), closes it once on, stamped with the
+  deadline, actor `system:auto-close`, a second run closes nothing (needs
+  `CIVIC_TEST_CRON_SECRET`, default CI's value); and
   `GET /admin/hub/plugins/live`, the Plugins page warning's count, admin
   only), `hubBaseUrl.test.ts` (a stored event
   carries its own hub's origin), `atomicFunctions.test.ts` (`cast_vote` and
@@ -128,6 +134,10 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   self-check, a tampered row or image fails it; insert order breaks the
   processes ↔ process_reviews cycle at `review_id`; a URL on argv refused).
   Local run 2026-09-26, service-role server: 120 files, 1361 passed, 5 skipped.
+  **Digest window (fix 6):** `tests/unit/digestRecordedAt.test.ts` — the
+  digest keeps events RECORDED after the resident's cursor (`recordedAfter`),
+  so a close stamped with a deadline before the cursor but recorded after it
+  is mailed, and a future-stamped event recorded before it is not.
   **Console export and the sweep (step 4):** `hubExportConsole.test.ts` —
   `POST /control/hubs/athens/export` refused without a fresh code (nothing
   stored), not reachable on a hub hostname; with a code: the object lands in
@@ -794,7 +804,7 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,

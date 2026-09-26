@@ -107,6 +107,16 @@ export const JOBS: readonly JobSpec[] = [
     description: "Admin review-queue digest, per hub",
   },
   {
+    id: "vote_close",
+    plugin: "vote",
+    path: "/vote-close/run",
+    // Hourly, so a vote closes within the hour of its deadline on every hub,
+    // read or not, and its close — stamped with the deadline — is recorded in
+    // time for the digest. The close on read stays as the fallback.
+    schedule: "5 * * * *",
+    description: "Close votes past their deadline, per hub with Votes on (stamped with the deadline)",
+  },
+  {
     id: "hub_exports_sweep",
     scope: "platform",
     path: "/hub-exports-sweep/run",

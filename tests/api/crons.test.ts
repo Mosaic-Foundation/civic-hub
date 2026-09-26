@@ -45,6 +45,7 @@ const CRON_PATHS = [
   "/internal/digest/run",
   "/internal/meeting-summary/run",
   "/internal/admin-digest/run",
+  "/internal/vote-close/run",
   // Platform job (Phase 5 part two): runs once, not per hub.
   "/internal/hub-exports-sweep/run",
 ];
