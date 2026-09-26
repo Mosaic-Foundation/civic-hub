@@ -80,9 +80,13 @@ build, place-name check clean. Console Export clicked through in the browser
 Local, path B end to end (dump → scratch DB → export `--from-postgres` →
 restore): Athens back to its exact fingerprint, **Floyd's fingerprint
 unchanged**, ~1 s per step; table in the runbook. **Dev, path A on
-`p5-test`: pending Adam** (needs a dev DB env file; the export is taken:
-`exports/p5-test-drill/civic-hub-export-p5-test-20260926T220309Z`, 6 rows,
-fingerprint `97e39ef9…`).
+`p5-test`: done** — Adam deleted its 6 settings rows in the SQL editor and
+ran the restore; fingerprint `97e39ef9…` back, floyd/athens/utopia
+fingerprints identical before and after, `hub.restore` audit row. Dev's DB
+URL lives in `~/civic-keys/dev-db.env` (Session pooler, `aws-1-us-east-1`;
+Direct connection is IPv6-only and does not resolve here; dev's database
+password was reset 2026-09-26 and is in Adam's password manager). The
+classifier refuses the session's own writes to dev, so Adam runs them.
 
 ### For production (the next sitting), in this order after `20260926010000`
 1. `20260926020000_hub_exports_bucket.sql`

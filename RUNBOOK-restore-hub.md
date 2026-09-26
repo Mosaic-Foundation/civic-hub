@@ -202,7 +202,21 @@ processes, 16 events, 11 users, 36 settings).
 | Dry run, then restore with it | fingerprint matches; `hub.restore` audit row with before counts | < 1 s |
 | After | Athens `596f3594…` (comments back, no `OOPS` titles); **Floyd `71c58890…`, unchanged** | — |
 
-**Dev, path A on `p5-test`:** see the HANDOFF entry for Phase 5 part two.
+**2026-09-26, dev (`civic_hub_floyd_Dev`), path A on `p5-test`.** Adam ran
+the two writes; the session ran the checks read-only.
+
+| Step | Result |
+|---|---|
+| Export `p5-test` from dev | 6 rows (settings), fingerprint `97e39ef9…` |
+| Env file | `~/civic-keys/dev-db.env`: the **Session pooler** URI (`postgres.<ref>@aws-1-us-east-1.pooler.supabase.com:5432`). The Direct connection host did not resolve (IPv6 only); the database password had to be reset in the dashboard first. |
+| Fingerprints of every dev hub, before | floyd 1621 rows `485991b4…`, athens 23 `103062a6…`, utopia 10 `e7cd35e6…`, p5-test 6 `97e39ef9…` |
+| Dry run | `will clear hub_settings 6`, load 6, every check passed |
+| The mistake (SQL editor) | `delete from hub_settings where hub_id = 'p5-test'` → 0 rows left |
+| Restore | `will clear nothing`, load 6; `fingerprint 97e39ef9… (matches the bundle), audit row written` |
+| After | p5-test 6 rows `97e39ef9…`; **floyd, athens, utopia identical to before**; `hub.restore` audit row, actor adam@civic.social, `before.rows.hub_settings = 0`, bundle named |
+
+The SQL editor answers a DELETE with "Success. No rows returned"; that is
+not a row count. Confirm with a `select count(*)`.
 
 ---
 
