@@ -4,11 +4,47 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Phase 5 part one, closing: step 9 on dev, and the production trigger — 2026-09-26
+
+**Done and verified**, run step by step with Adam (he ran every command and
+click; the session checked each result, reading link files directly rather
+than parsing CLI output). Step 7's guard confirmed as built: "production
+hub" means the production database.
+
+| UTC | Step | Result |
+|---|---|---|
+| ~19:35 | Dev migrations | dry run exactly 2 (`20260926000000`, `20260926010000`); both applied; `check-tenancy` on dev **CLEAN**, 34 tables / 30 hub-scoped |
+| ~19:40 | Dev env (Production scope) | `CIVIC_CONSOLE_HOSTNAME=console-civic-hub-dev.vercel.app`, `CIVIC_CONSOLE_ADMIN_EMAIL=adam@civic.social` |
+| ~19:43 | Dev domains | `console-civic-hub-dev.vercel.app`, `p5-test-civic-hub-dev.vercel.app` — Valid Configuration |
+| ~19:48 | `git push origin multi-tenant` | `0b23e9a..ca8f9c6` (8 commits); `main` untouched |
+| 19:49 | Dev health | `ok`, `hub_token ok`, schema **31 checked, 0 gaps**, commit `ca8f9c6`. Console host → `/console.html`; `/api/control/session` on a hub host → not found |
+| 19:52 | Console on dev | signed in with an emailed code; created `p5-test` (demo, admin `adam+p5-test@civic.social`); served at its hostname with its own identity and DID, no beta dialog (step 0.2 working on a real second hub) |
+| 19:53 | Archive | step-up code by email; `p5-test` archived → "This hub is paused" (503); audit: `hub.create`, `hub.archive` with before/after, actor `adam@civic.social`. **`p5-test` stays archived: its slug and hostname are taken for good.** |
+| 19:55 | Production trigger | worktree at `fac4700` linked to production (link file read: `Civic-Hub-Floyd`); main checkout stayed on dev. Dry run **exactly 1**; applied; `floyd.civic.social/api/health` ok, `hub_token ok`, 28/28, still build `0b23e9a`; SQL editor: `set_vote_drafts_updated_at` present. Worktree removed. |
+
+Production's build is unchanged (`main` = `0b23e9a`). Production does **not**
+have `20260926010000_control_plane.sql`; that is the next session's step,
+and it must land before any code from `eff7dfb` on (the schema check
+expects its tables).
+
+### For the planning session
+- Production next: push `20260926010000` (dry run exactly 1 on production,
+  whose history now ends at `20260926000000`), then decide how `main` moves
+  to this branch; `console.civic.social` needs its GoDaddy CNAME (or the
+  wildcard), the Vercel domain on `civic-hub`, and the two env vars there.
+- Before a second production hub: remove `MEETING_*` / `FLOYD_NEWS_*` from
+  `civic-hub` (the guard refuses until then), and verify a platform sending
+  domain (console and new hubs send as `RESEND_FROM`).
+- Deferred, in the plan: hub app off the service-role key; the super admin
+  in its own Vercel project.
+- Ops left over: `~/civic-cutover/dump/` and `~/civic-keys/prod-*.env` still
+  hold production data (runbook §7); legacy keys day-3 step (runbook §5).
+
 ## Phase 5 part one, steps 5–9: the super admin — 2026-09-26
 
 **Branch:** `multi-tenant`, `eff7dfb` (server) + `fce006a` (screens), **not
-pushed**. Nothing written to production or dev. **Step 9 (dev) is waiting
-on Adam** — see "Step 9" below.
+pushed** at the time; step 9 has since been done — see the closing entry
+above.
 
 ### Decisions (Adam, in chat; recorded in BUILD-PLAN → Phase 5)
 Same Vercel project, own hostname (`console.civic.social`; dev

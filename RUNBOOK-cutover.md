@@ -443,7 +443,10 @@ Once a day, about 10 minutes (Adam):
       The news job has a new path (`/api/internal/news-sync/run`, was
       `floyd-news-sync`); Vercel → Settings → Cron Jobs should list it.
 - [ ] Feedback inbox: anything from testers that sounds like "broken" or "different".
-- [ ] Any day this week: **restore the missing `vote_drafts` trigger**. It
+- [x] Any day this week: **restore the missing `vote_drafts` trigger**.
+      **Done 2026-09-26 19:55 UTC** from a worktree at `fac4700` (dry run
+      exactly 1; health ok 28/28; `pg_trigger` shows
+      `set_vote_drafts_updated_at`). See HANDOFF, Phase 5 part one. It
       isn't in the cutover set on purpose; the window pushes exactly the 17
       rehearsed migrations. The fix is
       `supabase/migrations/20260926000000_vote_drafts_updated_at_trigger.sql`

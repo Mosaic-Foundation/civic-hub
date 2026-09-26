@@ -851,7 +851,7 @@ runs as hub #2 on the same deployment.
   those env fallbacks apply to every hub on the deployment, so a second hub
   would inherit Floyd's meeting and news sources. ("Production" = the
   production Supabase ref in `SUPABASE_URL`, the test `create-hub.ts`
-  already used. The session's reading of the brief; Adam to confirm.)
+  already used. Confirmed by Adam, 2026-09-26.)
 
 **Deferred, not done:** Hub app off the service-role key; super admin in its
 own Vercel project. Required before the first paying hub or any self-serve
