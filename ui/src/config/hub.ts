@@ -226,9 +226,17 @@ const hub = {
    * client is readable by anyone who views source.
    */
 
+  /**
+   * The hub's own `hubs.mode`, served in /api/hub-config. Until 2026-09-26
+   * this read a `beta.enabled` setting the server never serves (the mode
+   * column replaced it) and so fell through to the build-time
+   * VITE_BETA_MODE — one value for every hub on the deployment, which is
+   * wrong the moment a second hub is not in beta. The env var now answers
+   * only when no config loaded at all.
+   */
   get beta_mode(): boolean {
-    const served = setting("beta.enabled");
-    if (served !== undefined) return served === "true";
+    const mode = getLoadedHubConfig()?.hub.mode;
+    if (mode !== undefined) return mode === "beta";
     return import.meta.env.VITE_BETA_MODE === "true";
   },
 

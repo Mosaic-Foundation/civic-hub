@@ -25,6 +25,12 @@ export interface HubIdentity {
   jurisdiction_code: string | null;
   jurisdiction_name: string | null;
   space_did: string;
+  /**
+   * demo | beta | live — `hubs.mode`, the hub's lifecycle. Served since
+   * Phase 1 part two; read by `hub.beta_mode` since 2026-09-26. Optional
+   * only so a config from an older server still parses.
+   */
+  mode?: "demo" | "beta" | "live";
 }
 
 export interface HubConfig {

@@ -10,6 +10,9 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => {
     localStorage.setItem("seen_intro_popup", "true");
+    // A beta hub shows signed-out visitors a welcome dialog until they choose
+    // to browse (usePreviewMode); these tests browse.
+    sessionStorage.setItem("civic_preview", "1");
   });
   await page.reload();
   await page.waitForLoadState("networkidle");

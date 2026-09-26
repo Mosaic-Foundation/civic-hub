@@ -12,6 +12,9 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => {
     localStorage.setItem("seen_intro_popup", "true");
+    // A beta hub shows signed-out visitors a welcome dialog until they choose
+    // to browse (usePreviewMode); these tests browse.
+    sessionStorage.setItem("civic_preview", "1");
   });
   await page.reload();
   await page.waitForLoadState("networkidle");
@@ -51,6 +54,42 @@ test.describe("Navigation", () => {
       await expect(drawer.locator('a[href="/"]')).toBeVisible();
       await expect(drawer.locator('a[href="/votes"]')).toBeVisible();
     }
+  });
+
+  // The UI's beta state is the hub's own `hubs.mode` from /hub-config,
+  // not a build-time env var (2026-09-26): the welcome dialog shows to a
+  // signed-out first visit exactly when the served mode is beta.
+  test("welcome dialog follows the served hub mode", async ({ page, request }) => {
+    const config = await (await request.get("http://localhost:3000/hub-config")).json();
+    await page.evaluate(() => sessionStorage.removeItem("civic_preview"));
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    const dialog = page.locator("dialog.beta-welcome");
+    if (config.hub.mode === "beta") {
+      await expect(dialog).toBeVisible();
+    } else {
+      await expect(dialog).toHaveCount(0);
+    }
+  });
+
+  // Reading is public in beta: a signed-out visitor gets the same process
+  // links from the drawer as from the tab strip. Before 2026-09-26 the
+  // drawer greyed them out in beta while the tab strip worked. The local
+  // stack's Floyd runs in beta, so this runs signed out in beta there.
+  test("drawer process links work signed out, as the tab strip does", async ({
+    page,
+  }) => {
+    const hamburger = page.locator(".civic-nav-hamburger");
+    await expect(hamburger).toBeVisible({ timeout: 15_000 });
+    await hamburger.click();
+
+    const drawer = page.locator(".civic-nav-drawer");
+    await expect(drawer).toBeVisible();
+    await expect(drawer.locator(".civic-nav-drawer-link-gated")).toHaveCount(0);
+
+    await drawer.locator('a[href="/votes"]').click();
+    await expect(page).toHaveURL("/votes");
+    await expect(drawer).toBeHidden();
   });
 
   test("legal pages are accessible", async ({ page }) => {

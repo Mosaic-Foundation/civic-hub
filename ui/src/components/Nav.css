@@ -433,23 +433,6 @@
   outline-offset: -2px;
 }
 
-/* Beta mode: gated links are non-interactive and grayed out */
-.civic-nav-drawer-link-gated {
-  opacity: 0.35;
-  cursor: default;
-  pointer-events: none;
-}
-
-/* Beta mode: public links get the primary color to stand out */
-.civic-nav-drawer-link-public {
-  color: var(--color-primary, #2563eb);
-  font-weight: 600;
-}
-
-.civic-nav-drawer-link-public:hover {
-  color: var(--color-primary-hover, #1d4ed8);
-}
-
 .civic-nav-drawer-divider {
   height: 1px;
   background: var(--color-border);

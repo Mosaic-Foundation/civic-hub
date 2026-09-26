@@ -12,7 +12,6 @@ import AuthModal from "./AuthModal";
 import SearchBar from "./SearchBar";
 import hub from "../config/hub";
 import { pluginEnabled, type PluginId } from "../config/plugins";
-import { BETA_PUBLIC_PATHS } from "../config/betaPublicPaths";
 import "./Nav.css";
 
 // Top nav stays minimal: wordmark + search + sign-in. All primary
@@ -444,32 +443,23 @@ export default function Nav() {
               </div>
             )}
             <ul className="civic-nav-drawer-links" role="list">
-              {drawerLinks.map((l) => {
-                const gated = hub.beta_mode && !user && !BETA_PUBLIC_PATHS.has(l.to);
-                if (gated) {
-                  return (
-                    <li key={l.to}>
-                      <span className="civic-nav-drawer-link civic-nav-drawer-link-gated">
-                        {l.label}
-                      </span>
-                    </li>
-                  );
-                }
-                return (
-                  <li key={l.to}>
-                    <NavLink
-                      to={l.to}
-                      end={l.end}
-                      className={({ isActive }) =>
-                        `civic-nav-drawer-link${hub.beta_mode && !user ? " civic-nav-drawer-link-public" : ""}${isActive ? " is-active" : ""}`
-                      }
-                      onClick={() => setDrawerOpen(false)}
-                    >
-                      {l.label}
-                    </NavLink>
-                  </li>
-                );
-              })}
+              {/* The same links for everyone. Reading is public in beta
+               * (the tab strip in FeedVotesTabs never gated them); what
+               * beta restricts is participation, enforced on the server. */}
+              {drawerLinks.map((l) => (
+                <li key={l.to}>
+                  <NavLink
+                    to={l.to}
+                    end={l.end}
+                    className={({ isActive }) =>
+                      `civic-nav-drawer-link${isActive ? " is-active" : ""}`
+                    }
+                    onClick={() => setDrawerOpen(false)}
+                  >
+                    {l.label}
+                  </NavLink>
+                </li>
+              ))}
               <li className="civic-nav-drawer-divider" role="separator" aria-hidden="true" />
               {feedbackEnabled && DRAWER_SECONDARY_LINKS.map((l) => (
                 <li key={l.to}>
