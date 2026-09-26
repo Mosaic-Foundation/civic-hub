@@ -7,13 +7,12 @@
 -- (RUNBOOK-cutover.md → rehearsal record). Effect: `vote_drafts.updated_at`
 -- never changes on production. Nothing else depends on it.
 --
--- WHY IT IS NOT IN THE CUTOVER SET. The cutover pushes exactly the 17
--- rehearsed migrations and checks for 17. This file waits in
--- supabase/after-cutover/ and is moved into supabase/migrations/ during the
--- watching week (RUNBOOK-cutover.md §5), then pushed with the guarded push.
--- Note the cutover marks 20260524000000 "applied" on production although this
--- trigger is missing; until this lands, the history claims more than the
--- schema has.
+-- WHY IT CAME AFTER THE CUTOVER. The cutover pushed exactly the 17 rehearsed
+-- migrations and checked for 17, so this file waited in
+-- supabase/after-cutover/ and moved into supabase/migrations/ in the watching
+-- week (RUNBOOK-cutover.md §5), for the guarded push. Until it is pushed,
+-- production's history marks 20260524000000 "applied" although this trigger is
+-- missing: the history claims more than the schema has.
 --
 -- IDEMPOTENT and additive: creates the trigger only where it is missing, so it
 -- is a no-op on every database built from the migrations (dev, CI, local).

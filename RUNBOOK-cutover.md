@@ -445,16 +445,16 @@ Once a day, about 10 minutes (Adam):
 - [ ] Feedback inbox: anything from testers that sounds like "broken" or "different".
 - [ ] Any day this week: **restore the missing `vote_drafts` trigger**. It
       isn't in the cutover set on purpose; the window pushes exactly the 17
-      rehearsed migrations. The fix waits in
-      `supabase/after-cutover/20260926000000_vote_drafts_updated_at_trigger.sql`
+      rehearsed migrations. The fix is
+      `supabase/migrations/20260926000000_vote_drafts_updated_at_trigger.sql`
       (idempotent; a no-op wherever the trigger already exists).
-  1. **A session** moves it into `supabase/migrations/`, commits, and Adam
-     pushes. Until then, production's history says `20260524000000` is applied
-     although its trigger is missing (it was one of the 47 marked applied).
+  1. **Done** (Phase 5 part one, step 0.1): moved from `supabase/after-cutover/`
+     into `supabase/migrations/` and committed. Dev's dry run lists exactly it.
   2. **Adam.** As 2b–2d: link `civic-hub/` to production,
      `CONFIRM_PRODUCTION_PUSH=nfhyypwoporfggqcerli ./scripts/db-push.sh --dry-run`
-     (worked if: exactly **1** migration, this one), then without `--dry-run`,
-     then relink to dev.
+     (worked if: exactly **1** migration, this one; if a later migration has
+     been committed since, it lists that too: stop and push from this file's
+     commit instead), then without `--dry-run`, then relink to dev.
   3. **Adam.** SQL editor: `select tgname from pg_trigger where tgrelid = 'public.vote_drafts'::regclass and not tgisinternal;`
      Worked if: `set_vote_drafts_updated_at`. (Rehearsed on a local copy of
      production: created once, no-op on a second run, and `updated_at` then updates.)
