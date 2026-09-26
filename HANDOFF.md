@@ -6,10 +6,14 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Phase 5 part two: per-hub export, import and restore — 2026-09-26
 
-**Branch:** `multi-tenant`, four commits, **not pushed**. Local and dev
-only; production untouched. ADR-005 written in the monorepo root but **not
-committed** there (a stale `.git/index.lock` from 2026-09-23 blocks it; see
-Open).
+**Branch:** `multi-tenant`, pushed (civic-hub `bbb3862`; ADR-005 in the
+monorepo root, `c63632c`, after Adam cleared a stale `.git/index.lock`).
+CI green on `bbb3862`: both new API suites ran in both passes. **Dev:**
+`20260926020000` and `20260926030000` applied (dry run listed exactly
+those two); bucket private, 695 events backfilled (`recorded_at =
+created_at`), trigger re-enabled, `check-tenancy` CLEAN. Dev's deployment
+still runs the Phase 5 part one build until Adam redeploys it. Production
+untouched.
 
 ### Decisions (Adam + planning session; recorded in BUILD-PLAN → Phase 5 → "Part two")
 `pg` for import/restore/direct export (ADR-005), DB URLs from env files only;
@@ -96,11 +100,10 @@ classifier refuses the session's own writes to dev, so Adam runs them.
 Dry run must list exactly the three.
 
 ### Open
-- Monorepo root: `.git/index.lock` (0 bytes, 2026-09-23 11:05, no git
-  running) blocks committing `decisions/005-pg-for-hub-import.md`.
-- Dev has neither new migration; the console export on dev needs
-  `20260926020000` before it works there, and `66c41d7` needs `…030000`
-  before it is deployed to dev.
+- Redeploy dev (`./scripts/vercel-deploy.sh --prod`) to put this build on
+  it; its migrations are already there. Then the console's Export works on
+  `console-civic-hub-dev.vercel.app` and `vote_close` / `hub-exports-sweep`
+  crons run there.
 - Test hubs `rt-*` accumulate (archived) in the local stack, like `ctl-*`.
 
 ## Phase 5 part one, closing: step 9 on dev, and the production trigger — 2026-09-26
