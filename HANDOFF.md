@@ -4,6 +4,101 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Phase 5 part two: per-hub export, import and restore — 2026-09-26
+
+**Branch:** `multi-tenant`, four commits, **not pushed**. Local and dev
+only; production untouched. ADR-005 written in the monorepo root but **not
+committed** there (a stale `.git/index.lock` from 2026-09-23 blocks it; see
+Open).
+
+### Decisions (Adam + planning session; recorded in BUILD-PLAN → Phase 5 → "Part two")
+`pg` for import/restore/direct export (ADR-005), DB URLs from env files only;
+clearing `events`/`review_turns` only in `restore-hub.ts` behind
+`--clear-append-only`; every import and restore audited; **all** owned images
+copied into the bundle, legacy pre-prefix ones included, landing under the
+hub's prefix with URLs rewritten; console export via a private bucket + 10-min
+signed URL, objects swept after 24 h; every deadline close stamped with
+`voting_closes_at`, an hourly `vote_close` job, the digest selecting by
+`events.recorded_at`.
+
+| Step | Commit | What |
+|---|---|---|
+| 1–3 | `c0d2393` | `scripts/export-hub.ts`, `import-hub.ts`, `restore-hub.ts`; `src/control/hubBundle/` (format, tar, exporter, Supabase readers); `scripts/lib/hubImport.ts` (pg engine); round-trip + unit tests |
+| 4 | `088112e` | Console "Export this hub" (step-up, audited, signed link); `hub-exports` bucket `20260926020000`; platform-scoped jobs in the registry; `hub_exports_sweep` |
+| 6 | `66c41d7` | `ProcessAction.at`; deadline-stamped closes; `vote_close` job; `events.recorded_at` `20260926030000`; digest by `recorded_at` |
+| 5 | (this commit) | `RUNBOOK-restore-hub.md`, rehearsed |
+
+### How it works (read the code comments for the rest)
+- **Bundle v1:** `README.md` (every file, what was left out and why),
+  `manifest.json` (format_version, source, per-table rows/columns/sha256,
+  omissions, image summary, fingerprint), `hub.json`, `tables/<t>.jsonl`,
+  `images.json` + `images/<key>`. Left out: `sessions`,
+  `pending_verifications`, `link_previews` (manifest), `processes.search_doc`
+  (rebuilt by trigger), secret-shaped settings (none today). Sample-content
+  hook: `isSampleContentRow()` in `format.ts`, returns false until the marker
+  exists.
+- **Fingerprint:** sha256 over canonical rows (keys + rows sorted), image URLs
+  normalised to `civic-bundle-image:<key>`. Equal across readers: dev read
+  through PostgREST and local read through `to_jsonb` gave the same value.
+- **Import:** checks the bundle's own checksums; target schema; every PK and
+  unique index against rows outside the hub (a restore excludes the hub's
+  own); hostname free (and never used by another hub); object keys free.
+  Then one transaction in FK order (the `processes.review_id ↔
+  process_reviews` cycle is broken at the nullable column and set after),
+  counts + fingerprint re-read before commit, audit row. Two narrow uses of
+  `session_replication_role = replica` inside import: putting back values a
+  BEFORE INSERT trigger rewrote (`hub_settings.updated_at`) and setting the
+  held-back cycle column, each followed by an explicit FK check.
+- **Restore keeps the `hubs` row** (the console owns it): it cannot be
+  deleted anyway once audit rows reference it.
+- **Console:** Export card on the hub detail page. Vercel's 4.5 MB response
+  cap is why it's a signed link.
+- **Registry:** `JobSpec` is now `HubJobSpec | PlatformJobSpec`; platform jobs
+  run once via `PLATFORM_JOB_RUNNERS`. `vercel.json` gains `vote-close`
+  (:05 hourly) and `hub-exports-sweep` (:15 hourly).
+- **Fix 6 detail:** `at` is set only by `closeIfExpired`; HTTP builds actions
+  field by field, so a request cannot backdate. `tally.computed_at` (seen only
+  on `result_published`, at finalize) is left as the real computation time.
+
+### Round trip (step 3)
+Dev's Athens (only 23 settings rows on dev; no processes, no images) exported
+and imported into a reset local stack at `athens.localhost`: fingerprint
+`103062a6…` equal, `hub.import` audit row, `/hub-config` serving it, unknown
+host still 404. The local stack was reset and re-seeded as CI does afterwards.
+The rich case is the CI test (`hubExportRoundTrip.test.ts`): a seeded hub with
+a vote under review, events, ballots, two images (one legacy), export →
+refused re-import → wipe → import (URLs rewritten, images 200, hostname
+serving) → mistake → restore → and a plain-Postgres import.
+
+### Tests
+Unit 96 files; API 27 files, both modes (service role :3200, tokens :3201):
+122 files, 1378 passed, 7 skipped each. Playwright 25/25. Lint, `tsc`, UI
+build, place-name check clean. Console Export clicked through in the browser
+(step-up dialog → download link, size, rows, expiry).
+
+### Restore rehearsal
+Local, path B end to end (dump → scratch DB → export `--from-postgres` →
+restore): Athens back to its exact fingerprint, **Floyd's fingerprint
+unchanged**, ~1 s per step; table in the runbook. **Dev, path A on
+`p5-test`: pending Adam** (needs a dev DB env file; the export is taken:
+`exports/p5-test-drill/civic-hub-export-p5-test-20260926T220309Z`, 6 rows,
+fingerprint `97e39ef9…`).
+
+### For production (the next sitting), in this order after `20260926010000`
+1. `20260926020000_hub_exports_bucket.sql`
+2. `20260926030000_events_recorded_at.sql` — **before** deploying `66c41d7`
+   or later: the schema check expects `events.recorded_at`, and the digest
+   queries it.
+Dry run must list exactly the three.
+
+### Open
+- Monorepo root: `.git/index.lock` (0 bytes, 2026-09-23 11:05, no git
+  running) blocks committing `decisions/005-pg-for-hub-import.md`.
+- Dev has neither new migration; the console export on dev needs
+  `20260926020000` before it works there, and `66c41d7` needs `…030000`
+  before it is deployed to dev.
+- Test hubs `rt-*` accumulate (archived) in the local stack, like `ctl-*`.
+
 ## Phase 5 part one, closing: step 9 on dev, and the production trigger — 2026-09-26
 
 **Done and verified**, run step by step with Adam (he ran every command and
