@@ -39,13 +39,14 @@ test.describe("Votes Page", () => {
     }
   });
 
-  test("suggest-a-vote CTA card is on the votes page", async ({ page }) => {
+  // Fixed 2026-09-26: the large .suggest-vote-cta card became a compact
+  // header button in 7606a04 (2026-06-20).
+  test("suggest-a-vote button is on the votes page", async ({ page }) => {
     await page.goto("/votes");
     await page.waitForLoadState("networkidle");
 
-    // Target the specific CTA card — use .suggest-vote-cta (the top-level wrapper)
-    const cta = page.locator(".suggest-vote-cta").first();
-    await expect(cta).toBeVisible({ timeout: 10_000 });
+    const button = page.locator(".section-header-row").getByRole("button", { name: "Suggest a vote" });
+    await expect(button).toBeVisible({ timeout: 10_000 });
   });
 
   test("clicking a vote card navigates to process detail", async ({

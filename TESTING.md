@@ -228,15 +228,23 @@ Open the real UI in Chromium and simulate resident interactions.
 - **Config:** `civic-hub/playwright.config.ts`
 - **Covers:** critical user journeys — navigation, feed, votes, search, conversations
 - **Note:** Each test dismisses the intro popup via localStorage before running.
-- **Known failures (2026-09-25):** 6 of 23 fail on the pre-Phase-2c code as
-  well as after it — `ux-polish.spec.ts` (tab strip order, three not-found
-  back links, the welcome-banner title pattern) and `votes.spec.ts`
-  (suggest-a-vote card). Their expectations predate later UI changes; they
-  are not multi-tenant regressions. Checked by running both commits against
-  the same local stack.
-  Same six, and no others, on 2026-09-25 with minted hub tokens ON (API on
-  :3000 with `CIVIC_HUB_MINTED_TOKEN=true` against the local stack, Storage
-  on): 17 passed, 6 failed, 92 s.
+- **Green: 25 of 25 (2026-09-26, Phase 5 part one, step 0.3)**, local stack,
+  hub tokens on. The six known failures that predated this build are gone:
+  - **Fixed** (the UI changed on purpose; the check now holds the current
+    intent): tab strip order (`Proposals`, and `Outcomes` last; order of
+    whichever tabs a hub's plugins show), welcome-banner title (the
+    community-pilot copy, carrying the served hub name), suggest-a-vote (the
+    compact header button that replaced `.suggest-vote-cta` in 7606a04).
+  - **Retired**: the three "not-found shows back link" checks. The per-page
+    back links were removed in 339b9ea when the tab strip moved into the App
+    layout. Replaced by one parametrised check that each not-found page
+    renders and keeps the tab strip's link home.
+- **Beta is real in E2E (2026-09-26).** The UI's beta state now comes from
+  the served `hubs.mode` (local Floyd: `beta`), so a signed-out visit meets
+  the welcome dialog. Every spec's `beforeEach` enters preview
+  (`sessionStorage.civic_preview = "1"`), as a visitor who chooses to browse.
+  `navigation.spec.ts` checks the dialog follows the served mode, and that
+  the drawer's process links work signed out (step 0.2).
 - **Signed-out parity against production (2026-09-25, Phase 4 part one):**
   with dev holding a fresh copy of production's data, the same signed-out
   API reads were hashed on dev (`multi-tenant`, tokens on) and production

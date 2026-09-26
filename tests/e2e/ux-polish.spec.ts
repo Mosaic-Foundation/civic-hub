@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
     // A beta hub shows signed-out visitors a welcome dialog until they choose
     // to browse (usePreviewMode); these tests browse.
     sessionStorage.setItem("civic_preview", "1");
-    localStorage.setItem("welcome-banner-dismissed-v1", "true");
+    localStorage.setItem("welcome-banner-dismissed-v2", "true");
   });
   await page.reload();
   await page.waitForLoadState("networkidle");
@@ -42,64 +42,63 @@ test.describe("Nav order", () => {
     ]);
   });
 
+  // Fixed 2026-09-26: the strip now reads "Proposals" (not "Propose") and
+  // ends with "Outcomes". Tabs whose plugin a hub switched off are hidden,
+  // so the check is the canonical order of whichever tabs are present.
   test("tab strip links are in the correct order", async ({ page }) => {
     const tabStrip = page.locator(".feed-votes-tabs");
-    if (!(await tabStrip.isVisible())) return;
+    await expect(tabStrip).toBeVisible();
 
-    const labels = await tabStrip.locator("a").allTextContents();
-    expect(labels).toEqual([
-      "Feed",
-      "Conversations",
-      "Propose",
-      "Votes",
-      "Projects",
-    ]);
+    const labels = (await tabStrip.locator("a").allTextContents()).map((l) => l.trim());
+    const canonical = ["Feed", "Conversations", "Proposals", "Votes", "Projects", "Outcomes"];
+    expect(labels[0]).toBe("Feed");
+    expect(labels).toEqual(canonical.filter((l) => labels.includes(l)));
+    expect(labels.every((l) => canonical.includes(l))).toBe(true);
   });
 });
 
-test.describe("Not-found back links", () => {
-  test("process not-found shows back link to home", async ({ page }) => {
-    await page.goto("/process/nonexistent-id-12345");
-    await page.waitForLoadState("networkidle");
+// RETIRED 2026-09-26: "not-found shows back link" x3 (process, vote-results,
+// wordcloud). The per-page back links were removed on purpose in 339b9ea
+// (2026-06-22), when the tab strip moved into the App layout so every page,
+// not-found ones included, carries the way back. What replaces them is the
+// check of that intent: a not-found page renders, with the tab strip's Feed
+// link.
+test.describe("Not-found pages", () => {
+  for (const path of [
+    "/process/nonexistent-id-12345",
+    "/vote-results/nonexistent-id-12345",
+    "/wordcloud/nonexistent-id-12345",
+  ]) {
+    test(`${path.split("/")[1]} not-found keeps the tab strip's way home`, async ({ page }) => {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
 
-    const backLink = page.locator("a.back-link");
-    await expect(backLink).toBeVisible({ timeout: 10_000 });
-    await expect(backLink).toHaveAttribute("href", "/");
-  });
-
-  test("vote-results not-found shows back link", async ({ page }) => {
-    await page.goto("/vote-results/nonexistent-id-12345");
-    await page.waitForLoadState("networkidle");
-
-    const backLink = page.locator("a.back-link");
-    await expect(backLink).toBeVisible({ timeout: 10_000 });
-  });
-
-  test("wordcloud not-found shows back link to home", async ({ page }) => {
-    await page.goto("/wordcloud/nonexistent-id-12345");
-    await page.waitForLoadState("networkidle");
-
-    const backLink = page.locator("a.back-link");
-    await expect(backLink).toBeVisible({ timeout: 10_000 });
-    await expect(backLink).toHaveAttribute("href", "/");
-  });
+      await expect(page.getByText(/not found/i).first()).toBeVisible({ timeout: 10_000 });
+      const home = page.locator(".feed-votes-tabs a[href='/']");
+      await expect(home).toBeVisible();
+      await home.click();
+      await expect(page).toHaveURL("/");
+    });
+  }
 });
 
 test.describe("Hub config strings", () => {
-  test("welcome banner title follows 'New to the {hub.name}?' pattern", async ({
-    page,
-  }) => {
+  // Fixed 2026-09-26: the banner was reframed on purpose in 08ba02d
+  // (2026-07-02) as "Welcome — the {hub.name} is a community pilot program".
+  // The point of the check stays: the title carries the served hub name.
+  test("welcome banner title carries the hub name", async ({ page, request }) => {
+    const config = await (await request.get("http://localhost:3000/hub-config")).json();
+    const hubName: string = config.settings["identity.name"] ?? config.hub.name;
+
     await page.evaluate(() => {
-      localStorage.removeItem("welcome-banner-dismissed-v1");
+      localStorage.removeItem("welcome-banner-dismissed-v2");
     });
     await page.reload();
     await page.waitForLoadState("networkidle");
 
-    const banner = page.locator(".welcome-banner");
-    if (!(await banner.isVisible())) return;
-
-    const title = await banner.locator(".welcome-banner-title").textContent();
-    expect(title).toMatch(/^New to the .+\?$/);
+    const title = page.locator(".welcome-banner .welcome-banner-title");
+    await expect(title).toBeVisible();
+    await expect(title).toHaveText(`Welcome — the ${hubName} is a community pilot program`);
   });
 
   test("legal page title follows '{title} · {hub.name}' pattern", async ({ page }) => {
