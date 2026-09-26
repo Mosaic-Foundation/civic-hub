@@ -85,6 +85,18 @@ export interface AuditEntry {
   after: unknown;
 }
 
+export interface HubExport {
+  object_key: string;
+  file_name: string;
+  size: number;
+  url: string;
+  expires_at: string;
+  fingerprint: string;
+  rows: number;
+  images: number;
+  format_version: number;
+}
+
 export const api = {
   session: () =>
     request<{ email: string | null; operator_configured: boolean; console_hostname: string | null }>("GET", "/session"),
@@ -106,6 +118,8 @@ export const api = {
   archive: (id: string, extra: Record<string, unknown> = {}) =>
     request<HubDetail>("POST", `/hubs/${encodeURIComponent(id)}/archive`, extra),
   unarchive: (id: string) => request<HubDetail>("POST", `/hubs/${encodeURIComponent(id)}/unarchive`, {}),
+  exportHub: (id: string, extra: Record<string, unknown> = {}) =>
+    request<HubExport>("POST", `/hubs/${encodeURIComponent(id)}/export`, extra),
   audit: (hubId?: string) =>
     request<{ entries: AuditEntry[] }>("GET", `/audit${hubId ? `?hub=${encodeURIComponent(hubId)}` : ""}`),
 };

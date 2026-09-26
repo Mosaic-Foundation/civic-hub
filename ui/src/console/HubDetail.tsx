@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type AuditEntry, type HubDetail } from "./api";
+import { api, type AuditEntry, type HubDetail, type HubExport } from "./api";
 import { href } from "./route";
 import { useStepUp } from "./StepUp";
 import { ModeBadge, StatusBadge } from "./ui";
@@ -90,6 +90,7 @@ export default function HubDetailPage({ id }: { id: string }) {
         <ConfigSection key={JSON.stringify(detail.config)} detail={detail} onSaved={reload} withStepUp={withStepUp} />
         <PluginsSection key={JSON.stringify(detail.plugins)} detail={detail} onSaved={reload} />
         <AdminsSection detail={detail} onSaved={reload} withStepUp={withStepUp} />
+        <ExportSection detail={detail} onExported={load} withStepUp={withStepUp} />
         <LifecycleSection detail={detail} onSaved={reload} withStepUp={withStepUp} />
       </div>
 
@@ -302,6 +303,55 @@ function AdminsSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
           Add
         </button>
       </form>
+      {note}
+    </section>
+  );
+}
+
+function sizeLabel(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function ExportSection({ detail, onExported, withStepUp }: { detail: HubDetail; onExported: () => void; withStepUp: WithStepUp }) {
+  const { busy, save, note } = useSave(onExported);
+  const [done, setDone] = useState<HubExport | null>(null);
+  const { hub } = detail;
+
+  return (
+    <section className="cx-card cx-form">
+      <h2 className="cx-h2">Export</h2>
+      <p className="cx-muted cx-small">
+        Everything this hub holds — its settings, residents, processes, comments, ballots and images — as one
+        archive with a README that explains every file. Sign-in sessions, codes and secrets are left out. It
+        contains personal data: keep it the way the hub's privacy policy promises.
+      </p>
+      <div className="cx-actions">
+        <button
+          type="button"
+          className="cx-btn"
+          disabled={busy}
+          onClick={() =>
+            save(async () => {
+              const result = await withStepUp(`Exporting ${hub.id}`, (extra) => api.exportHub(hub.id, extra));
+              if (result) setDone(result);
+              return result;
+            })
+          }
+        >
+          {busy ? "Exporting…" : "Export this hub"}
+        </button>
+      </div>
+      {done && (
+        <p className="cx-alert cx-alert-ok" role="status">
+          <a href={done.url} download={done.file_name}>
+            Download {done.file_name}
+          </a>{" "}
+          ({sizeLabel(done.size)}, {done.rows} rows, {done.images} images). The link works until{" "}
+          {when(done.expires_at)}; the file is deleted after 24 hours. Recorded in the audit trail.
+        </p>
+      )}
       {note}
     </section>
   );

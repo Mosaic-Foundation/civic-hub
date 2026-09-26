@@ -5,7 +5,7 @@
 // error and the next hub still runs. The result names every hub it looked at,
 // so a log line says which hubs ran, which skipped and why.
 
-import type { JobSpec } from "./registry.js";
+import type { HubJobSpec } from "./registry.js";
 import type { JobOutcome, JobRunInput, JobRunner } from "./types.js";
 import { forEachActiveHub } from "../services/cronHubs.js";
 import { isPluginEnabledSync } from "../services/hubSettings.js";
@@ -17,7 +17,7 @@ export interface JobRunReport {
 }
 
 export async function runJobAcrossHubs(
-  job: JobSpec,
+  job: HubJobSpec,
   runner: JobRunner,
   input: JobRunInput & { onlyHub: string | null },
 ): Promise<JobRunReport | { status: 404; error: string }> {

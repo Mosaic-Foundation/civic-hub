@@ -128,6 +128,20 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   self-check, a tampered row or image fails it; insert order breaks the
   processes ↔ process_reviews cycle at `review_id`; a URL on argv refused).
   Local run 2026-09-26, service-role server: 120 files, 1361 passed, 5 skipped.
+  **Console export and the sweep (step 4):** `hubExportConsole.test.ts` —
+  `POST /control/hubs/athens/export` refused without a fresh code (nothing
+  stored), not reachable on a hub hostname; with a code: the object lands in
+  the private `hub-exports` bucket (its public URL does not serve it), the
+  signed link downloads a `.tar.gz` whose manifest matches the response, and
+  a `hub.export` audit row records key, size and fingerprint. Then the
+  `hub_exports_sweep` platform job: an object aged 25 h (its
+  `storage.objects.created_at` moved back in Postgres) is deleted, a new one
+  kept, 401 without the cron bearer. The test reads the server's cron secret
+  from **`CIVIC_TEST_CRON_SECRET`** (default `ci-only-cron-secret`, CI's
+  value). `crons.test.ts` covers the sweep route's auth gate;
+  `leakHarness.test.ts` skips it with its reason; `jobRegistry.test.ts` now
+  checks hub jobs against `JOB_RUNNERS` and platform jobs against
+  `PLATFORM_JOB_RUNNERS`.
 - **Phase 3 leak harness (2026-09-25).** Two files, and they are meant to run
   **twice: once against a server with `CIVIC_HUB_MINTED_TOKEN` off and once
   with it on** (CI does both, below).

@@ -178,6 +178,11 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
+  // Archived, as control.test.ts leaves its hubs: the audit log references
+  // this one so it cannot be deleted, and the per-hub job runs in
+  // crons.test.ts (CI's second pass, same database) must see only Floyd and
+  // Athens.
+  await db?.query("update hubs set status = 'suspended', archived_at = now() where id = $1", [HUB]).catch(() => undefined);
   await db?.query(`drop database if exists ${PLAIN_DB}`).catch(() => undefined);
   await db?.end();
 });

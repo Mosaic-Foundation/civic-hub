@@ -317,7 +317,7 @@ app.get("/", (_req, res) => {
       ...Object.fromEntries(
         JOBS.map((job) => [
           `GET ${internalPath(job)}`,
-          `${job.description} (${job.schedule} UTC; CRON_SECRET bearer; ?hub=<slug> for one hub)`,
+          `${job.description} (${job.schedule} UTC; CRON_SECRET bearer${job.scope === "platform" ? "" : "; ?hub=<slug> for one hub"})`,
         ]),
       ),
       "GET /admin/meeting-summaries": "List meeting summaries for admin review (optional ?status=)",

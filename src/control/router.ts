@@ -12,6 +12,7 @@ import express, { type NextFunction, type Request, type Response, type Router } 
 import { RESERVED_HUB_SLUG_PURPOSES, type HubMode } from "../models/hub.js";
 import { PLUGIN_IDS } from "../models/hubSettings.js";
 import { listAudit, recordAudit } from "./audit.js";
+import { exportHubArchive } from "./hubExport.js";
 import {
   CODE_SENT,
   ControlAuthError,
@@ -354,6 +355,31 @@ export function controlRouter(): Router {
       after: { status: after.status, archived_at: after.archived_at },
     });
     res.json(await hubDetail(after));
+  }));
+
+  // An export carries the hub's personal data off the platform: step-up,
+  // and recorded before the link is handed over. The link lives ten
+  // minutes; the object is swept after 24 hours (the audit row stays).
+  r.post("/control/hubs/:id/export", route(async (req, res) => {
+    const hub = await loadHub(req, res);
+    if (!hub) return;
+    if (!(await stepUp(req, res))) return;
+    const result = await exportHubArchive(hub.id, actor(res));
+    await audited(res, {
+      actor: actor(res),
+      action: "hub.export",
+      hubId: hub.id,
+      before: null,
+      after: {
+        object_key: result.object_key,
+        size: result.size,
+        rows: result.rows,
+        images: result.images,
+        fingerprint: result.fingerprint,
+        format_version: result.format_version,
+      },
+    });
+    res.json(result);
   }));
 
   // --- Audit log ---

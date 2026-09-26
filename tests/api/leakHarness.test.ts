@@ -439,6 +439,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /internal/floyd-news-sync/run": { skip: "cron (deprecated path of news-sync); as above" },
   "GET /internal/digest/run": { skip: "cron: returns counts only; the digest's content is walked in-process below" },
   "GET /internal/admin-digest/run": { skip: "cron: returns counts only; admin digest per hub is tests/api/crons" },
+  "GET /internal/hub-exports-sweep/run": { skip: "platform cron: deletes aged objects in the private hub-exports bucket, returns their keys (hub id + file name); tests/api/hubExportConsole" },
 };
 
 async function appRoutes(): Promise<string[]> {

@@ -3,11 +3,12 @@
 // runner has no job. Each runner is called inside the hub's scope, so every
 // settings read, forHub() call and mail guard answers for that hub.
 
-import type { JobRunner } from "./types.js";
+import type { JobOutcome, JobRunInput, JobRunner } from "./types.js";
 import { runDigestForHub } from "../controllers/digestController.js";
 import { runAdminDigestForHub } from "../controllers/adminDigestController.js";
 import { runNewsSyncForHub } from "../controllers/newsSyncController.js";
 import { RunSink, runMeetingSummaryForHub } from "../controllers/meetingSummaryController.js";
+import { sweepHubExports } from "../db/hubExportsBucket.js";
 
 export const JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
   meeting_summary: async () => {
@@ -18,4 +19,15 @@ export const JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
   news_sync: () => runNewsSyncForHub(),
   digest: (input) => runDigestForHub(input),
   admin_digest: () => runAdminDigestForHub(),
+};
+
+/**
+ * Platform jobs (`scope: "platform"` in the registry): run once per call,
+ * outside any hub's scope.
+ */
+export const PLATFORM_JOB_RUNNERS: Readonly<Record<string, (input: JobRunInput) => Promise<JobOutcome>>> = {
+  hub_exports_sweep: async ({ now }) => {
+    const { deleted, kept } = await sweepHubExports(now);
+    return { status: 200, body: { deleted: deleted.length, kept, keys: deleted } };
+  },
 };
