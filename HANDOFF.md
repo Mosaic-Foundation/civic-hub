@@ -4,6 +4,132 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Phase 5 part one, steps 5–9: the super admin — 2026-09-26
+
+**Branch:** `multi-tenant`, `eff7dfb` (server) + `fce006a` (screens), **not
+pushed**. Nothing written to production or dev. **Step 9 (dev) is waiting
+on Adam** — see "Step 9" below.
+
+### Decisions (Adam, in chat; recorded in BUILD-PLAN → Phase 5)
+Same Vercel project, own hostname (`console.civic.social`; dev
+`console-civic-hub-dev.vercel.app`; `CIVIC_CONSOLE_HOSTNAME`), one operator
+(`CIVIC_CONSOLE_ADMIN_EMAIL`), `hubs.archived_at` + suspended (no hard
+delete; slug and hostname taken forever), 26 reserved slugs in one list
+with purposes. **Deferred, written into the plan:** hub app off the
+service-role key; super admin in its own Vercel project — required before
+the first paying hub or any self-serve sign-up.
+
+### What was built
+- **Dispatch:** `src/control/index.ts` `withConsole(hubApp)`, used by
+  `api/index.ts` and `src/index.ts`: console host → `src/control/router.ts`
+  only; any other host → the hub app. Each control route re-checks the host.
+  The hub app can't import `src/control/` (`civic/control-boundary`); the UI
+  twin in `ui/eslint.config.js` fences `ui/src/console/` both ways.
+- **Sign-in:** `src/control/auth.ts`. Code rules shared with hub sign-in via
+  `src/modules/civic.auth/otp.ts` (extracted unchanged). Codes and tokens
+  stored as SHA-256. Cookie `civic_console`, HttpOnly, SameSite=Strict,
+  Secure on https, 8 h. Writes need `X-Civic-Console: 1`. A stranger's
+  request gets the operator's answer and nothing is stored or sent.
+- **Step-up** (`step_up_code` in the body, spent on use): hostname change,
+  suspending, mode change, removing an admin, archiving. Validation runs
+  first, so a refused change does not spend the code.
+- **Hubs:** `src/control/hubs.ts`. `createHub()` is the one create path; the
+  console allows demo/beta/live (demo default), `scripts/create-hub.ts` keeps
+  beta/live and refuses production. Create writes the row + the same starter
+  settings as before, plus `copy.governing_body_name`; a settings failure
+  deletes the row again. Edit: name, hostname, jurisdiction name/code,
+  governing body, status, mode (never into demo). Plugins: stored value, env
+  fallback or default shown. Admins: never empty. Archive / unarchive
+  (unarchive leaves it suspended; set active separately).
+- **Taken forever:** an archived hub's slug and hostname; and any hostname a
+  hub moved away from (found in the audit log's `before.hostname`).
+- **Guard (step 7):** on the production database (`SUPABASE_URL` host =
+  production ref), with ≥1 hub, create is refused while any non-empty
+  `MEETING_*` / `FLOYD_NEWS_*` is set, naming them. **My reading of
+  "production hub"; confirm.** The console shows the refusal up front.
+- **Audit (step 8):** `control_audit_log` — actor, action, `target_hub_id`
+  (deliberately not `hub_id`), before, after. Actions: `console.sign_in`,
+  `console.sign_out`, `hub.create`, `hub.update`, `hub.plugins`,
+  `hub.admins`, `hub.archive`, `hub.unarchive`. Append-only twice over
+  (grant is SELECT/INSERT only; a trigger refuses UPDATE/DELETE). Exempt
+  from the tenancy catalog with reasons (`NOT_HUB_SCOPED`), as are
+  `control_codes` / `control_sessions`.
+- **Migration** `20260926010000_control_plane.sql` (additive). Schema
+  contract now checks the three tables and `hubs.archived_at`, so **push
+  the migration before deploying this code anywhere**, or `/health` reports
+  drift.
+- **Screens:** `ui/console.html` + `ui/src/console/`. Locally:
+  `http://console.localhost:5173/console.html` with the API on :3000 having
+  `CIVIC_CONSOLE_HOSTNAME=console.localhost`; codes print in the API log
+  (no mailer). On Vercel, `vercel.json` sends `/` and non-file paths on the
+  two console hostnames to `/console.html` (the hostnames are listed there
+  too: change both places together).
+- Reserved slugs: `RESERVED_HUB_SLUG_PURPOSES` in `src/models/hub.ts`;
+  `floyd` is now refused for a new hub (the old unit test asserting it was
+  accepted is gone).
+
+### Tests
+API 25 files / 249 passed / 5 skipped, **both** modes (service role :3101,
+tokens :3100); `control.test.ts` 23. Unit 1090. Playwright 25/25. Lint,
+`tsc`, UI build, place-name check clean; UI lint unchanged (64
+pre-existing). Browser: signed in with a logged code, created `riverbend`
+(demo, served at `riverbend.localhost`), archived it through the step-up
+dialog; audit trail showed both.
+
+### Step 9 on dev — Adam, in this order
+1. Dev database (a no-op trigger + the control plane; dry run must list
+   exactly **2**: `20260926000000…` and `20260926010000…`):
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && ./scripts/db-push.sh --dry-run
+```
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && ./scripts/db-push.sh
+```
+2. Vercel → `civic-hub-dev` → Settings → Environment Variables (Production):
+   `CIVIC_CONSOLE_HOSTNAME` = `console-civic-hub-dev.vercel.app`,
+   `CIVIC_CONSOLE_ADMIN_EMAIL` = your address.
+3. Vercel → `civic-hub-dev` → Settings → Domains: add
+   `console-civic-hub-dev.vercel.app` **and** the test hub's
+   `p5-test-civic-hub-dev.vercel.app`.
+4. Deploy dev (the guard refuses the production project):
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && ./scripts/vercel-deploy.sh --prod
+```
+5. Then a session (or you) signs in at
+   https://console-civic-hub-dev.vercel.app (the code comes to your inbox),
+   creates hub `p5-test` at `p5-test-civic-hub-dev.vercel.app` in demo,
+   checks it serves, and archives it.
+
+### Production trigger push, one-file variant (the dry run on this branch now lists 2)
+From a worktree at the trigger's commit, so production gets exactly one
+migration and your main checkout's dev link is untouched:
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && git worktree add ~/civic-cutover/trigger fac4700
+```
+```bash
+cd ~/civic-cutover/trigger && supabase link --project-ref nfhyypwoporfggqcerli
+```
+```bash
+cd ~/civic-cutover/trigger && CONFIRM_PRODUCTION_PUSH=nfhyypwoporfggqcerli ./scripts/db-push.sh --dry-run
+```
+Worked if: exactly one, `20260926000000_vote_drafts_updated_at_trigger.sql`.
+```bash
+cd ~/civic-cutover/trigger && CONFIRM_PRODUCTION_PUSH=nfhyypwoporfggqcerli ./scripts/db-push.sh
+```
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && git worktree remove --force ~/civic-cutover/trigger
+```
+Then the health and `pg_trigger` checks from the step-0 entry below.
+
+### Open
+- Confirm the guard's meaning of "production" (above).
+- The console's sender is the deployment's `RESEND_FROM` (on production,
+  `noreply@floyd.civic.social`), until the platform sending domain lands.
+- Hub-app caches (registry, settings) are per instance, 60 s; the console
+  says so after each save.
+- Local test hubs from `control.test.ts` accumulate (archived) in the local
+  stack; `supabase db reset` clears them.
+
 ## Phase 5 part one, step 0: watching-week fixes — 2026-09-26
 
 **Branch:** `multi-tenant`, four commits, **not pushed**. Nothing here wrote

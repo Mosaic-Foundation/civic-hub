@@ -62,6 +62,12 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Phase 5 part one (2026-09-26): the super admin** (`src/control/`,
+  `ui/src/console/`, console hostname, one operator, step-up, audit log,
+  archive, reserved slugs, create guard; step 9 on dev pending Adam) and
+  **step 0** (vote_drafts trigger, beta drawer + `hubs.mode` in the UI,
+  Playwright green, plugin-off behaviour) — 7–~230 (every range below
+  shifts down by its length)
 - **Floyd cutover (2026-09-25/26): production on `multi-tenant`, hub tokens
   on**, timings, rollback target, walk, findings — 7–~75 (every range below
   shifts down by its length)
