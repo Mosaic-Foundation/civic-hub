@@ -62,6 +62,9 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Floyd cutover (2026-09-25/26): production on `multi-tenant`, hub tokens
+  on**, timings, rollback target, walk, findings — 7–~75 (every range below
+  shifts down by its length)
 - Phase 4 part one: cutover runbook (`RUNBOOK-cutover.md`) rehearsed on dev
   against production's data — empty prod migration history, `[SENSITIVE]`
   seed guard, ES256 + `sb_secret_`, uploads on the hub token,

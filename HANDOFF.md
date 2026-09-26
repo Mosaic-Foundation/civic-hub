@@ -4,6 +4,63 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Floyd cutover: production on `multi-tenant`, hub tokens on — 2026-09-25/26
+
+**Done, and verified.** Adam ran every production step by hand from
+`RUNBOOK-cutover.md` §1–§3 in one sitting (1f, the notice, skipped); the
+session ran read-only checks. Production (`floyd.civic.social`, Vercel
+`civic-hub`, Supabase `nfhyypwoporfggqcerli`) now runs `main` = `0be5c9e`
+(`multi-tenant` fast-forwarded onto `main`) with `CIVIC_HUB_MINTED_TOKEN=true`:
+`/api/health` → `status ok`, `hub_db: hub_token, ok`, schema 28/28.
+**Rollback target:** `civic-7mdd0tp6t…` (`dpl_E5Np…`, `main` `3283f48` on the
+`sb_secret_` key; settings save + image upload tested on it).
+
+| UTC | Step | Result |
+|---|---|---|
+| 00:55 | 1a values | name `Floyd Civic Hub`, Polis `https://polis.civic.social`, digest `true`, meeting source from seed file, **postal address blank** (env fallback `HUB_POSTAL_ADDRESS` still answers until cleanup) |
+| 01:06–01:10 | 1a½ digest | 28 subscribers, **3 on neither list** → Adam added them to the allow list on `main` → 28/28 |
+| 01:12–01:17 | 1b keys | ES256 key generated (287 B, kid `397e7fbc…`), imported as **standby**, visible in production's JWKS; `civic-hub-server` secret key created |
+| 01:19–01:24 | 1c env | `CIVIC_HUB_SIGNING_KEY` (from file), `SUPABASE_SERVICE_ROLE_KEY` (sb_secret_), `SUPABASE_PUBLISHABLE_KEY`, `CIVIC_HUB_MINTED_TOKEN=false` — all "Overrode" (values existed) |
+| 01:25–01:28 | 1d | `main` redeployed (34 s); health ok; settings save ok; upload ok |
+| 01:23 | 1e | BEFORE parity snapshot |
+| 01:34 | 2a | backup 21 s (`data.sql` 2,586,018 B) → `~/civic-cutover/dump/`; unlinked |
+| 01:36–01:38 | 2b–2c.3 | `civic-hub/` → production; `main` = `origin/main` = `3283f48`; history **0 rows**; **47 repaired**; dry run **exactly 17** |
+| 01:38 | 2c.4 | **17 applied, 14.2 s, no warnings**; health ok on `main`; `hubs` = floyd/beta; history 64; 195 processes `hub_id = floyd`; 4 storage policies |
+| 01:41 | 2d–2e | relinked to **dev**; Floyd settings **30 rows**, no `[SENSITIVE]`; digest with the real guard **28/28, 0 withheld** |
+| 01:43 | 2f | `git push origin multi-tenant:main` (fast-forward `3283f48..0be5c9e`; no checkout — an uncommitted local file); build 34 s; `hub_db: service_role, ok`; hub-config correct |
+| 01:44 | 2g | `check-tenancy --prod` **CLEAN** |
+| 01:46 | 2h | tokens on + redeploy 39 s → **`hub_token, ok`** |
+| 01:47 | §3 parity | **8 of 8 identical to BEFORE** (feed included, so pseudonyms unchanged) |
+| next day | §3 walk | **all 10 passed** (sign-in with a real code; endorse/unendorse; comment; Settings save; upload; feedback; Reviews/Feedback/Waitlist; "Resident N" signed out; health). Items 1–4 first ran on a cached UI bundle — the API they exercised was already the new one. |
+
+### Found during the night
+- The chained history check in group 1 failed twice in Adam's terminal: the
+  CLI prints a table (and a differently wrapped JSON with `--output-format
+  json`) instead of what the session sees; both times the chain stopped before
+  writing. The session read history (0) directly and Adam ran the repair.
+  **Fix for next time:** don't chain on parsed `supabase db query` output.
+- Topic suggestions send no instant email by design ("saved for the admin
+  panel; no immediate email by policy").
+- In beta, signed-out visitors see the **hamburger menu's** process links greyed
+  (`Nav.tsx`, `BETA_PUBLIC_PATHS`) while the tab strip works. Pre-existing on
+  `main` too (`3283f48`), not a cutover change. Open: make the two agree.
+
+### Built after the walk (Adam's request)
+`1812bd0`: Settings → Mode — allowlist one address per line; allowlist and
+waitlist collapsible (closed by default, counts in the summary) and scrolling
+inside capped heights. Tested locally; **not yet on production** (push to
+`main` when wanted: `git push origin multi-tenant:main`).
+
+### For Adam
+1. Send the beta testers the "after" message (runbook §4).
+2. Watching week (runbook §5): daily health + logs; digest 13:00 UTC; the
+   `vote_drafts` trigger from `supabase/after-cutover/`; legacy keys on day 3+.
+3. Before cleanup: set **Email → Postal address** in Admin → Settings.
+4. Decide where new work lands now that production builds `main` (= `multi-tenant`).
+5. `~/civic-cutover/dump/`, `~/civic-keys/prod-pull.env`, `prod-db.env` hold
+   production data/secrets: delete at cleanup (runbook §7). Save
+   `~/civic-keys/prod-es256.json` in the password manager.
+
 ## Multi-tenant Phase 4 part one: cutover runbook, rehearsed on dev against production's data — 2026-09-25
 
 **Branch:** `multi-tenant`, nine step commits plus this entry, **not pushed**

@@ -29,7 +29,9 @@ Rules for this session:
 - Never import the raw Supabase client outside `src/db/` and the control plane.
 - No string in `src/` or `ui/src/` may name a place; Floyd's values are data.
 - Every slice ends with: tests green (`npm test`, and Playwright if UI changed),
-  a short entry prepended to HANDOFF.md, and a commit on `multi-tenant`.
+  a short entry prepended to HANDOFF.md, TESTING.md updated for any test
+  layer, suite, or check the slice added or changed, and a commit on
+  `multi-tenant`.
 - If a decision is not covered by BUILD-PLAN-multi-tenant.md, stop and ask
   Adam before choosing. Do not guess at names of settings keys or columns.
 - Delegate mechanical repeats (string sweeps, converting further modules to an
