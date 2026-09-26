@@ -379,6 +379,58 @@
   }
 }
 
+/* --- Collapsible lists (beta allowlist, waitlist) ---
+   Closed by default; the summary line carries the title and a count, so the
+   page stays short and the size of each list is visible without opening it.
+   Opened, each list scrolls inside a capped height. */
+
+.settings-collapsible > .settings-collapsible-summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  cursor: pointer;
+  list-style: none;
+}
+.settings-collapsible > .settings-collapsible-summary::-webkit-details-marker {
+  display: none;
+}
+.settings-collapsible > .settings-collapsible-summary::before {
+  content: "▸";
+  color: var(--color-text-muted);
+  transition: transform 0.15s ease;
+}
+.settings-collapsible[open] > .settings-collapsible-summary::before {
+  transform: rotate(90deg);
+}
+.settings-collapsible-summary .settings-subsection-title {
+  margin: 0;
+}
+.settings-collapsible-count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.settings-collapsible[open] > .settings-collapsible-summary {
+  margin-bottom: var(--space-xs);
+}
+
+.settings-list-textarea {
+  max-height: 18rem;
+  overflow-y: auto;
+  resize: vertical;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  line-height: 1.5;
+}
+
+.settings-list-scroll {
+  max-height: 20rem;
+  overflow-y: auto;
+}
+.settings-list-scroll .admin-waitlist-table th {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface, #fff);
+}
+
 /* --- Mode --- */
 
 .settings-section--follow {

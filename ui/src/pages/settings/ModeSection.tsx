@@ -216,7 +216,13 @@ export default function ModeSection() {
   );
 }
 
-/** The beta allowlist (its own save) and the waitlist (read-only). */
+/**
+ * The beta allowlist (its own save) and the waitlist (read-only). Both are
+ * collapsed by default — on a live beta they run to dozens of rows and push
+ * everything below them off the screen — and each scrolls inside a capped
+ * height when opened. The allowlist is edited one address per line (commas
+ * are still accepted on save).
+ */
 function AllowlistAndWaitlist() {
   const { setDirty } = useHubSettings();
   const [loaded, setLoaded] = useState(false);
@@ -226,11 +232,12 @@ function AllowlistAndWaitlist() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
+  const allowCount = saved ? saved.split("\n").length : 0;
 
   useEffect(() => {
     adminGetSettings()
       .then((s) => {
-        const joined = s.beta_allowlist.join(", ");
+        const joined = s.beta_allowlist.join("\n");
         setSaved(joined);
         setText(joined);
         setWaitlist(s.waitlist);
@@ -253,7 +260,7 @@ function AllowlistAndWaitlist() {
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
       const result = await adminPatchSettings({ beta_allowlist: input });
-      const joined = result.beta_allowlist.join(", ");
+      const joined = result.beta_allowlist.join("\n");
       setSaved(joined);
       setText(joined);
       setMessage({
@@ -279,23 +286,30 @@ function AllowlistAndWaitlist() {
 
   return (
     <>
-      <section className="settings-section settings-section--follow">
-        <h3 className="settings-subsection-title">Beta allowlist</h3>
+      <details className="settings-section settings-section--follow settings-collapsible">
+        <summary className="settings-collapsible-summary">
+          <h3 className="settings-subsection-title">Beta allowlist</h3>
+          <span className="settings-collapsible-count">
+            {loaded ? `${allowCount} ${allowCount === 1 ? "address" : "addresses"}` : "…"}
+            {dirty && " · unsaved"}
+          </span>
+        </summary>
         <p className="form-hint">
-          Who may sign in while this hub is in beta, comma- or line-separated.
+          Who may sign in while this hub is in beta, one address per line.
           Admins can always sign in.
         </p>
         <textarea
-          className="form-textarea"
-          rows={3}
+          className="form-textarea settings-list-textarea"
+          rows={10}
           value={text}
           onChange={(e) => {
             setText(e.target.value);
             setMessage(null);
           }}
           disabled={!loaded || saving}
-          placeholder="friend@example.com, tester@example.com"
+          placeholder={"friend@example.com\ntester@example.com"}
           aria-label="Beta allowlist"
+          spellCheck={false}
         />
         <div className="settings-form-footer">
           <div className="admin-settings-actions">
@@ -313,16 +327,21 @@ function AllowlistAndWaitlist() {
             )}
           </div>
         </div>
-      </section>
+      </details>
 
-      <section className="settings-section settings-section--follow">
-        <h3 className="settings-subsection-title">Waitlist</h3>
+      <details className="settings-section settings-section--follow settings-collapsible">
+        <summary className="settings-collapsible-summary">
+          <h3 className="settings-subsection-title">Waitlist</h3>
+          <span className="settings-collapsible-count">
+            {loaded ? `${waitlist.length} ${waitlist.length === 1 ? "person" : "people"}` : "…"}
+          </span>
+        </summary>
         <p className="form-hint">People who asked for access from the beta landing page.</p>
         {waitlist.length === 0 ? (
           <p className="empty-state-inline">No one on the waitlist yet.</p>
         ) : (
           <>
-            <div className="admin-waitlist-table-wrap">
+            <div className="admin-waitlist-table-wrap settings-list-scroll">
               <table className="admin-waitlist-table">
                 <thead>
                   <tr>
@@ -356,7 +375,7 @@ function AllowlistAndWaitlist() {
             </div>
           </>
         )}
-      </section>
+      </details>
     </>
   );
 }
