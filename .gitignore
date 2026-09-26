@@ -28,6 +28,8 @@ ui/src/assets/
 
 # Local DB backups — may contain prod data/PII, never commit
 backups/
+# Hub export bundles (scripts/export-hub.ts) — a hub's personal data, never commit
+exports/
 supabase/.temp/
 # Supabase JWT signing keys — private keys, generated per developer with
 # `supabase gen signing-key`. The committed config.toml points at this path;

@@ -98,6 +98,36 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   each with a purpose), `controlBoundary.test.ts` (the hub app cannot import
   `src/control/`). Local run 2026-09-26: 25 files, 249 passed, 5 skipped, in
   both modes; unit 1090.
+- **Hub export, import and restore (2026-09-26, Phase 5 part two):**
+  `hubExportRoundTrip.test.ts` seeds a throwaway hub `rt-<hex>` straight into
+  the local stack's Postgres (users, a vote under review with two turns,
+  events, a comment, a link, ballots, a waitlist entry, a session, a live
+  sign-in code, a secret-shaped setting, and two stored images — one under
+  `<hub>/`, one in the legacy `hubs/<hub>/` folder), then drives the **real
+  scripts** (`node --env-file=<tmp env> --import tsx scripts/…`): export (counts,
+  README, `sessions` / `pending_verifications` / the secret setting left out);
+  import refused while the hub exists, nothing changed; a database URL on the
+  command line refused; the hub wiped (replica role) and imported back —
+  counts, the importer's fingerprint check, `processes.review_id` across the
+  cycle, image URLs rewritten onto the hub's prefix and resolving (200), the
+  search index rebuilt, a `hub.import` audit row, and `/hub-config` answering
+  at `<hub>.localhost`; a "mistake" then restore — refused without
+  `--clear-append-only`, restored with it, `hub.restore` audit row with the
+  before counts; finally `--no-images` into a **plain Postgres database**
+  created in the same cluster from `supabase/migrations/` (no PostgREST, no
+  Storage; roles are cluster-wide), dropped afterwards. It needs the stack's
+  **Postgres port** (`CIVIC_TEST_DATABASE_URL`, default
+  `postgresql://postgres:postgres@127.0.0.1:54322/postgres`, local only) and
+  Storage on. Test hubs stay behind (the audit log references them).
+  Unit: `hubBundle.test.ts` (key order for every exported table; omitted
+  tables and the secret-setting net, which no real key trips; image owner by
+  the plan's rule and the landing key under the hub's prefix; legacy folders
+  listed only for the migration-default hub; fingerprint ignores order and
+  the search index, equates old-host and rewritten URLs; tar.gz round trip
+  with a >100-byte path; a bundle the exporter writes passes the importer's
+  self-check, a tampered row or image fails it; insert order breaks the
+  processes ↔ process_reviews cycle at `review_id`; a URL on argv refused).
+  Local run 2026-09-26, service-role server: 120 files, 1361 passed, 5 skipped.
 - **Phase 3 leak harness (2026-09-25).** Two files, and they are meant to run
   **twice: once against a server with `CIVIC_HUB_MINTED_TOKEN` off and once
   with it on** (CI does both, below).

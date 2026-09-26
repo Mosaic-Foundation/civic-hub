@@ -882,6 +882,49 @@ not the default.
 Until then `email.from_name` carries the per-hub identity, which is why that
 setting exists separately from the address at all.
 
+#### Part two: export, import, restore — as decided (Adam + planning session, 2026-09-26)
+
+Exit rights made real: one hub's data leaves as a documented bundle, comes
+back into a fresh install, and is restored after a mistake.
+
+- **Database access for import and restore: `pg` (node-postgres)**, a
+  devDependency used by `scripts/` and tests only (ADR-005). One code path
+  for Supabase (its Postgres port) and a plain Postgres single-hub install.
+  **The database URL comes from an env file, never the command line**
+  (`node --env-file=<file>`; `CIVIC_TARGET_DATABASE_URL` for import/restore,
+  `CIVIC_SOURCE_DATABASE_URL` for an export read straight from Postgres, e.g.
+  a restored full dump). A script given a URL as an argument refuses.
+- **Clearing `events` and `review_turns`** (append-only triggers) exists
+  only in the restore script, behind `--clear-append-only`. **Every import
+  and every restore writes a `control_audit_log` row** on the target.
+- **Images: every object the hub owns is copied into the bundle and
+  imported under the hub's prefix on the target** — including the objects
+  stored before the prefix existed (`YYYY/MM/…`, the migration-default hub's;
+  `hubs/<id>/…`, `<id>`'s). Their URLs are rewritten to the target's storage
+  like every other copied object; an exported hub never depends on the old
+  host. The bundle records each object's owner and the rule that assigned it.
+  The Phase 2c "do not copy" decision was about moving objects inside one
+  bucket at cutover and does not apply to exports.
+- **Console export: private `hub-exports` bucket + signed URL.** Vercel caps a
+  response at 4.5 MB, so the archive is written to a service-role-only bucket
+  and the operator gets a ~10-minute signed URL. Takes step-up; audited
+  (`hub.export`, object key and size). **Export objects are deleted after 24
+  hours by a sweep job in the registry; the audit row stays.** The bucket
+  migration joins the production sitting's list after `20260926010000`.
+- **Deadline stamp (fix 6): every close of a past-deadline vote — hourly or
+  on read — is stamped with `voting_closes_at`.** Manual closes stay "now".
+  **An hourly registry job closes past-deadline votes on hubs where the Votes
+  plugin is on**, so the lag is at most an hour everywhere; the lazy close
+  stays as the fallback. **The digest selects events by when they were
+  recorded (`events.recorded_at`, additive, default `now()`), not by their
+  stamped time**, so a backdated close is still in the next digest.
+- **Settled in the session:** bundle = a directory (`README.md`,
+  `manifest.json` with `format_version`, `hub.json`, `tables/<t>.jsonl`,
+  `images/…`); the `.tar.gz` form packs the same layout. Round trip on a
+  reset local stack with the seeded `athens` row removed. CI: a seeded test
+  hub exported, cleared, restored, and imported into a plain-Postgres
+  database in the same cluster.
+
 _checklist to be pasted_
 
 ### Phase 6 — cutover runbook (Adam runs by hand)
