@@ -4,6 +4,58 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Phase 5 part one, step 0: watching-week fixes — 2026-09-26
+
+**Branch:** `multi-tenant`, four commits, **not pushed**. Nothing here wrote
+to production or to dev.
+
+| Step | Commit | What |
+|---|---|---|
+| 0.1 | `fac4700` | `vote_drafts` trigger moved from `supabase/after-cutover/` into `supabase/migrations/` (unchanged but its header). Idempotent, proven on the local stack in a rolled-back transaction: present → no-op; dropped → created once; second run no-op. Dev's guarded dry run lists exactly this one. RUNBOOK §5 updated. |
+| 0.2 | `a32455e` | Drawer links public in beta, like the tab strip. **Also found:** the UI's `hub.beta_mode` read a `beta.enabled` setting the server never serves and fell through to build-time `VITE_BETA_MODE`, one value for every hub on the deployment. It now reads the served `hubs.mode` (production unchanged: Floyd is beta either way). |
+| 0.3 | `c310b74` | Playwright 25/25. Fixed: tab strip order, welcome-banner title, suggest-a-vote button (the UI changed on purpose; tests now hold the current intent). Retired: 3 "not-found back link" checks (links removed on purpose in `339b9ea`), replaced by one check that not-found pages keep the tab strip's link home. |
+| 0.4 | `aff6b29` | Plugin off mid-flight: see below. Plugins page warning with a live count. |
+
+### 0.4, the behaviour
+The only timed transition is the lazy deadline-close, run by the read
+paths, which skip a disabled type **before** the close. So while a plugin is
+off nothing of it closes: a vote past its deadline stays `active` (no tally,
+no results record, no `civic.process.ended`). The first read after the
+plugin is back on closes it, **stamped then, not at the deadline**. There
+are no scheduled starts. Tested in `tests/api/pluginToggles.test.ts`. The
+Plugins page now says, under a switch that is off with live items: "N live
+items. While Votes is off, they are hidden from residents, and nothing
+closes at its deadline…" (`GET /admin/hub/plugins/live`, admin only).
+
+### For Adam: the production trigger push
+Run this **before** the super admin's audit-log migration is committed
+(later in this session), or the dry run lists two. If it already has been,
+say so and a session will give you the one-file variant.
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && supabase link --project-ref nfhyypwoporfggqcerli
+```
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && CONFIRM_PRODUCTION_PUSH=nfhyypwoporfggqcerli ./scripts/db-push.sh --dry-run
+```
+Worked if: exactly one, `20260926000000_vote_drafts_updated_at_trigger.sql`.
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && CONFIRM_PRODUCTION_PUSH=nfhyypwoporfggqcerli ./scripts/db-push.sh
+```
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && supabase link --project-ref urfmvqhzmamigssqwsya
+```
+Then https://floyd.civic.social/api/health → `status ok`, `hub_token ok`, and
+in the SQL editor `select tgname from pg_trigger where tgrelid =
+'public.vote_drafts'::regclass and not tgisinternal;` → `set_vote_drafts_updated_at`.
+Dev needs the same file (a no-op there): `./scripts/db-push.sh` while linked
+to dev. The session's own dev push was refused by the permission classifier.
+
+### Testing notes
+- The API layer needs a server with **`CIVIC_DEV_HUB=athens`** (as CI): bare
+  localhost must be the demo hub. A server without it (Playwright's) makes
+  `auth`/`events`/`proposals` fail on Floyd's beta gate — not a regression.
+- With CI's env, tokens on: 24 files, 225 passed, 5 skipped. Unit 1074.
+
 ## Floyd cutover: production on `multi-tenant`, hub tokens on — 2026-09-25/26
 
 **Done, and verified.** Adam ran every production step by hand from
