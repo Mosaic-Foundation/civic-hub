@@ -98,6 +98,32 @@ Runbook budget for the quiet window: 90 min (~25 min of steps).
 3. Open question: fix production's missing `vote_drafts` trigger with an
    additive migration in the cutover set, or leave it?
 
+### Update, same day: the management review's four items
+- **Digest recipients (the one that mattered).** Since 2c the beta mail
+  guard covers scheduled jobs (the guard's comment still said crons send
+  unguarded; corrected). On production's data **3 of Floyd's 28 digest
+  subscribers are on neither the admin roster nor the allow list** and would
+  have stopped getting the digest after cutover. Confirmed two ways that
+  agree: the real guard on dev's migrated copy (after the 2e seed), and a new
+  `--pre-cutover` mode read-only against production today. **Adam: add them
+  to the allow list the day before** (runbook 1a½, `--show` prints them;
+  `main` can't save settings after the migrations). Rehearsed on dev: 28 of 28.
+  New `scripts/check-digest-recipients.ts`; gate again at 2e.5.
+- **Write test on `main` with the new key**: 1d now saves the support
+  threshold and uploads an image. Pre-checked: `main`'s `supabase-js` with an
+  `sb_secret_` key uploads to Storage fine (dev).
+- **`git fetch` before the repair**: 2c.0 requires local `main` = `origin/main`
+  (and stops if `main` has moved past `3283f48`).
+- **Instant Rollback**: Vercel turns off automatic promotion after a rollback,
+  so a Redeploy alone does *not* go live (the review assumed it did). §6's
+  roll-forward is now Redeploy, then **Undo Rollback** choosing that build.
+- **`vote_drafts` trigger** (management's answer: add it, not in the cutover
+  set): `supabase/after-cutover/20260926000000_vote_drafts_updated_at_trigger.sql`,
+  idempotent; tested on a local copy of production (creates once, no-op
+  twice, `updated_at` then updates) and on a database that has it (no-op).
+  Watching-week step in §5: a session moves it into `supabase/migrations/`.
+- Dev: Floyd's `beta_allowlist` now includes the three (rehearsal).
+
 ### For the next session
 - The cleanup migration (runbook §7) is described, not written; it drops
   things, so it needs Adam's approval of the list.

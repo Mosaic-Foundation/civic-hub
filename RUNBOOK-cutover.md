@@ -30,7 +30,7 @@ session writes to production.
 
 | When | What | Time (from rehearsal) |
 |---|---|---|
-| A day before | Preparation: values, keys, env vars, redeploy `main` on the new key, backup, beta-tester notice | ~40 min, nothing visible to residents |
+| A day before | Preparation: values, digest recipients, keys, env vars, redeploy `main` on the new key (with a write test), snapshot, beta-tester notice | ~45 min, nothing visible to residents |
 | The quiet window | Backup, migrations, Floyd's settings, deploy `multi-tenant`, pre-switch check, tokens on | ~25 min of steps, **budget 90 min** |
 | Straight after | Verification walk | ~30 min |
 | The watching week | Daily checks; day 3+ retire the legacy keys | 10 min a day |
@@ -62,6 +62,37 @@ your password manager, not in a file in the repo:
 
 "Leave empty" means passing `""` in step 2f; that key is then left unset.
 
+### 1a½. Digest recipients: nobody loses the digest (Adam + script, 5 min)
+
+**Why.** Under `main` the resident digest has no mail guard: every subscriber
+gets it. Under `multi-tenant` the beta mail guard also covers scheduled jobs:
+while Floyd is `beta`, mail goes only to the admin roster and the beta allow
+list. On 2026-09-25, **3 of Floyd's 28 subscribers were on neither**, and
+would have stopped getting the digest the morning after cutover. Adam's fix:
+add them to the allow list. That also lets them sign in during the beta. It
+has to happen **today**, while `main` can still save the list; after the
+migrations, `main`'s settings saves fail.
+
+1. **Adam.** Pull production's env (it holds secrets; it's deleted in §7):
+   ```bash
+   mkdir -p ~/civic-prod-link && cd ~/civic-prod-link && vercel link --project civic-hub --yes && vercel env pull ~/civic-keys/prod-pull.env --environment=production
+   ```
+2. **Adam.** Create `~/civic-keys/prod-db.env` (`chmod 600` it) with two lines:
+   ```
+   SUPABASE_URL=https://nfhyypwoporfggqcerli.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=<production's secret key: the current one now; the civic-hub-server one after 1b>
+   ```
+3. **script.** Who would be withheld (read-only; `--show` prints the addresses in full):
+   ```bash
+   cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && node --env-file=$HOME/civic-keys/prod-pull.env --env-file=$HOME/civic-keys/prod-db.env --import tsx scripts/check-digest-recipients.ts --hub floyd --pre-cutover --show
+   ```
+   Worked if: `would be WITHHELD by the beta mail guard: 0`.
+   If it lists addresses (expected: 3): Floyd → Admin → Settings → Beta allow
+   list → add each → save. Run step 3 again until it says 0.
+   If it stops on `CIVIC_ADMIN_EMAILS holds "[SENSITIVE]"`: put
+   `CIVIC_ADMIN_EMAILS="you@…"` (Floyd's admin addresses, comma-separated) in
+   front of `node`.
+
 ### 1b. Keys (Adam, ~10 min)
 
 1. **Adam.** Make a private folder for the keys:
@@ -89,11 +120,9 @@ your password manager, not in a file in the repo:
 
 ### 1c. Production env vars (Adam, ~10 min)
 
-1. **Adam.** Link a separate folder to the production Vercel project. This keeps `civic-hub/` linked to dev.
-   ```bash
-   mkdir -p ~/civic-prod-link && cd ~/civic-prod-link && vercel link --project civic-hub --yes
-   ```
-   Worked if: `Linked to creatinglakes-projects/civic-hub`.
+1. **Adam.** The separate folder linked to the production Vercel project was
+   made in 1a½.1 (it keeps `civic-hub/` linked to dev). Check:
+   `cat ~/civic-prod-link/.vercel/project.json` names `civic-hub`.
 2. **script.** Signing key, from the file:
    ```bash
    cd ~/civic-prod-link && vercel env add CIVIC_HUB_SIGNING_KEY production --sensitive --force < ~/civic-keys/prod-es256.json
@@ -113,13 +142,8 @@ your password manager, not in a file in the repo:
    ```
 6. **Adam.** Put the same secret key in `civic-hub/.env.prod` as
    `PROD_SUPABASE_SERVICE_ROLE_KEY` (it may already hold an `sb_secret_` key;
-   the check scripts use this file). Also create `~/civic-keys/prod-db.env`
-   with two lines, for the settings seed:
-   ```
-   SUPABASE_URL=https://nfhyypwoporfggqcerli.supabase.co
-   SUPABASE_SERVICE_ROLE_KEY=<the civic-hub-server secret key>
-   ```
-   Then `chmod 600 ~/civic-keys/prod-db.env`.
+   the check scripts use this file). Put the same key in
+   `~/civic-keys/prod-db.env` (made in 1a½.2) in place of the old one.
 7. **Adam. Change no other variable.** Production's old variables
    (`HUB_NAME`, `CIVIC_SPACE_DID`, `MEETING_*`, `FLOYD_NEWS_*`,
    `CIVIC_BETA_MODE`, `CIVIC_ANON_SECRET` …) stay until the cleanup week.
@@ -139,7 +163,16 @@ your password manager, not in a file in the repo:
    If `db` is not ok: the secret key was mis-copied. Redo 1c.3 and redeploy.
    Still failing: re-run 1c.3 with the old `eyJ…` service_role key (API Keys →
    "Legacy anon, service_role API keys") and redeploy. The site is back as it was; stop.
-3. **Adam.** Write down this deployment's URL (`civic-hub-….vercel.app`) in
+3. **Adam. A write, on the new key.** `/api/health` only reads, and this
+   deployment stays the rollback target all week. Sign in as an admin on
+   https://floyd.civic.social → Admin → Settings → save the support threshold
+   unchanged. Worked if: "Saved".
+4. **Adam. An upload, on the new key.** Start an announcement, attach any
+   photo, and check the preview shows it; discard the draft.
+   Worked if: the image appears. (Rehearsed from the session with `main`'s
+   `supabase-js` and an `sb_secret_` key on dev: upload OK.)
+   If either fails: same recovery as step 2 (old key back, redeploy), then stop.
+5. **Adam.** Write down this deployment's URL (`civic-hub-….vercel.app`) in
    your notes as **ROLLBACK TARGET**.
 
 ### 1e. Take a snapshot to compare against (Adam, 2 min)
@@ -195,6 +228,15 @@ state.
 
 ### 2c. Migrations (script, ~1 min; rehearsal: repair 3 s, push 7.7 s)
 
+0. **script.** Make sure your local `main` is exactly GitHub's `main`: step 2
+   builds the list of 47 migrations from it.
+   ```bash
+   cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && git fetch origin && git rev-parse main origin/main && git status -sb | head -1
+   ```
+   Worked if: the two long ids are **identical**. If not:
+   `git checkout main && git pull --ff-only && git checkout multi-tenant`, then
+   run it again. If `main` has moved past `3283f48`, stop and bring it to a
+   session: the rehearsal compared production against `3283f48`'s 47 migrations.
 1. **script.** See the migration history (read-only):
    ```bash
    cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && supabase migration list
@@ -241,7 +283,7 @@ state.
 
 ### 2e. Floyd's settings (script, ~2 min; rehearsal: 1 s)
 
-1. **Adam.** Pull production's env into the scratch folder (it holds secrets; it's deleted in step 4):
+1. **Adam.** Pull production's env again, so it has yesterday's changes (it holds secrets; it's deleted in §7):
    ```bash
    cd ~/civic-prod-link && vercel env pull ~/civic-keys/prod-pull.env --environment=production
    ```
@@ -258,6 +300,17 @@ state.
    Worked if: `Wrote 28 settings for "floyd".` (about 28–31).
 4. **Adam.** Go/no-go: https://floyd.civic.social still looks the same. `main`
    does not read these rows; they are for the next step.
+5. **script. Digest recipients, with the real guard.** Now that production has
+   `hubs` and Floyd's settings, run the check in its normal mode (read-only):
+   ```bash
+   cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && node --env-file=$HOME/civic-keys/prod-pull.env --env-file=$HOME/civic-keys/prod-db.env --import tsx scripts/check-digest-recipients.ts --hub floyd
+   ```
+   Worked if: `mode: beta` and `would be WITHHELD by the beta mail guard: 0`.
+   If anyone is withheld: someone subscribed since yesterday. Don't deploy yet.
+   `main` can't save the allow list any more, so add them in the SQL editor:
+   `update hub_settings set value = value || ',new@address' where hub_id = 'floyd' and key = 'beta_allowlist';`
+   then run this again until it says 0. (Rehearsed on dev: 28 of 28 after the
+   three were added.)
 
 ### 2f. Deploy `multi-tenant`, tokens still off (Adam, ~3 min; rehearsal build 40–45 s)
 
@@ -390,6 +443,21 @@ Once a day, about 10 minutes (Adam):
       The news job has a new path (`/api/internal/news-sync/run`, was
       `floyd-news-sync`); Vercel → Settings → Cron Jobs should list it.
 - [ ] Feedback inbox: anything from testers that sounds like "broken" or "different".
+- [ ] Any day this week: **restore the missing `vote_drafts` trigger**. It
+      isn't in the cutover set on purpose; the window pushes exactly the 17
+      rehearsed migrations. The fix waits in
+      `supabase/after-cutover/20260926000000_vote_drafts_updated_at_trigger.sql`
+      (idempotent; a no-op wherever the trigger already exists).
+  1. **A session** moves it into `supabase/migrations/`, commits, and Adam
+     pushes. Until then, production's history says `20260524000000` is applied
+     although its trigger is missing (it was one of the 47 marked applied).
+  2. **Adam.** As 2b–2d: link `civic-hub/` to production,
+     `CONFIRM_PRODUCTION_PUSH=nfhyypwoporfggqcerli ./scripts/db-push.sh --dry-run`
+     (worked if: exactly **1** migration, this one), then without `--dry-run`,
+     then relink to dev.
+  3. **Adam.** SQL editor: `select tgname from pg_trigger where tgrelid = 'public.vote_drafts'::regclass and not tgisinternal;`
+     Worked if: `set_vote_drafts_updated_at`. (Rehearsed on a local copy of
+     production: created once, no-op on a second run, and `updated_at` then updates.)
 - [ ] Day 3 or later, if every check so far is clean: **retire the legacy keys**:
   1. **Adam.** Supabase → Civic-Hub-Floyd → Settings → API Keys → "Legacy
      anon, service_role API keys" → **Disable JWT-based API keys**.
@@ -415,7 +483,11 @@ bypasses the policies, and `main` never reads `hubs`. Rows written during
 the week stay and remain visible to `main`.
 
 1. **Adam.** Vercel → `civic-hub` → Deployments → the **ROLLBACK TARGET**
-   from 1d.3 → ⋯ → **Promote** (or **Instant Rollback**). Seconds; no build.
+   from 1d.5 → ⋯ → **Instant Rollback** → Continue → **Confirm Rollback**.
+   Seconds; no build. **From now on Vercel does not put new production builds
+   live automatically:** a push or a Redeploy builds but does not take
+   `floyd.civic.social` until you **Undo Rollback** (below). The overview page
+   shows an "Undo Rollback" button while this is in force.
    Use that one, not an older `main` deployment: older ones carry the legacy
    `eyJ…` key, which stops working once the legacy keys are disabled.
 2. **Adam.** Supabase → Civic-Hub-Floyd → **SQL Editor** → New query → Run:
@@ -439,10 +511,14 @@ the week stay and remain visible to `main`.
 **Rolling forward again:**
 1. **Adam.** SQL Editor: `DROP INDEX IF EXISTS hub_settings_key_rollback;`
    It must go before any second hub is created.
-2. **Adam.** Vercel → the last `multi-tenant` deployment → ⋯ → **Redeploy**,
-   not Promote: a redeploy picks up the switch as `false`.
-3. **Adam.** `/api/health` → `hub_db: { mode: "service_role", ok: true }`.
-   Then 2g and 2h again.
+2. **Adam.** Vercel → the last `multi-tenant` deployment → ⋯ → **Redeploy**
+   (not Promote: a redeploy picks up the switch as `false`). Wait for Ready.
+   **It is not live yet**: automatic promotion is still off from the rollback.
+3. **Adam.** Project overview → **Undo Rollback** → choose the deployment from
+   step 2 → Confirm. This puts it live and turns automatic promotion back on.
+4. **Adam.** `/api/health` → `hub_db: { mode: "service_role", ok: true }` and
+   the `multi-tenant` commit. If it still shows `main`'s commit, step 3 picked
+   the wrong deployment. Then 2g and 2h again.
 
 ---
 
@@ -613,9 +689,15 @@ compared order-free.
 | Roll forward | Promote `multi-tenant` back | seconds |
 | Smoke | Signed-out parity with production; Athens and Utopia identity; Playwright 17 passed / 6 known | 92 s (Playwright) |
 
+**Digest recipients** (added after the management review): production today,
+`--pre-cutover`: 28 subscribers, 3 on neither list. Dev's migrated copy with
+the real guard gave the same 28/25/3. After adding the three to dev's allow
+list: 28 of 28.
+
 **Production drift found** (main's 47 migrations vs production's schema; none
 affects the 17): production lacks the `set_vote_drafts_updated_at` trigger
-(so `vote_drafts.updated_at` never updates), and one column comment; it has
+(so `vote_drafts.updated_at` never updates; fixed in the watching week from
+`supabase/after-cutover/`), and one column comment; it has
 two functions no migration made (`set_comment_phase`, unused by the code,
 and Supabase's `rls_auto_enable`); one column is in a different order.
 

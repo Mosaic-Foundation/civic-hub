@@ -144,6 +144,14 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   and prints CLEAN (exit 0) or names each offending table (exit 1). It is
   the step right before tokens are turned on in RUNBOOK-cutover.md.
   Unlike the test, it also fails when there is no storage schema to check.
+- **Digest recipients before cutover (2026-09-25):**
+  `scripts/check-digest-recipients.ts --hub <slug>` runs a hub's digest
+  subscribers through the real beta mail guard, in the hub's scope, and exits
+  1 naming anyone it would withhold; `--pre-cutover` does the same on a
+  database that has no `hubs` table yet (production before the migrations),
+  from `CIVIC_ADMIN_EMAILS` and the `beta_allowlist` row. Both modes agreed
+  on production's data: 28 subscribers, 3 withheld. It is two steps of
+  RUNBOOK-cutover.md (1a½ and 2e.5). Read-only.
 - **Cron secret in tests:** the per-hub cron tests send `ci-only-cron-secret`
   (CI's value); a local server started with another sets
   `CIVIC_TEST_CRON_SECRET`.

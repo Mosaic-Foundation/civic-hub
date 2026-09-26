@@ -13,13 +13,17 @@
 // people who can sign in to a non-live hub, so the rule reads as: a hub that
 // is not open to the public does not write to the public.
 //
-// WHAT IT DOES NOT COVER, deliberately. Outside a request there is no hub in
-// scope, so a cron sends unguarded — which is correct, because production's
-// Floyd is in beta and its digest must keep reaching its beta readers. The
-// control for that path is HUB_CRON_ENABLED (src/config/cron.ts), which is
-// off on dev. The two together are what make the dev deployment quiet: no
-// scheduled work at all, and no request-triggered mail to anyone but the
-// people running the hub.
+// SCHEDULED JOBS ARE COVERED TOO. Since Phase 2c every job runs inside its
+// hub's scope (src/jobs/runJob.ts), so the digest of a beta hub reaches only
+// its admin roster and allow list. Under `main` the digest had no guard, so a
+// subscriber on neither list (someone who joined before the allow list
+// existed) was mailed anyway; after cutover they are not. Check a hub before
+// cutover with `scripts/check-digest-recipients.ts --hub <slug>`: on
+// production's copy it found 3 of Floyd's 28 subscribers on neither list
+// (2026-09-25), fixed by adding them to the allow list. Only a path with no
+// hub in scope at all (a script) sends unguarded. HUB_CRON_ENABLED
+// (src/config/cron.ts), off on dev, is what keeps the dev deployment's
+// scheduled work from running at all.
 //
 // BRIEFS ARE NOT DELIVERED FROM A BETA HUB, AND THAT IS INTENDED (Adam,
 // 2026-09-23). Production's Floyd is `beta`, so its brief and vote-results
