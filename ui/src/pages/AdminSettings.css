@@ -766,6 +766,15 @@
   margin: 0 0 8px 28px;
 }
 
+.plugin-live-warning {
+  margin: 0 0 8px 28px;
+  padding: var(--space-xs) var(--space-sm);
+  border-left: 3px solid var(--color-warning);
+  background: var(--color-warning-bg);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
 .plugin-change-link {
   margin-left: 8px;
   font-size: 0.9em;
@@ -779,7 +788,8 @@
 
 @media (max-width: 600px) {
   .plugin-settings,
-  .plugin-off-note {
+  .plugin-off-note,
+  .plugin-live-warning {
     margin-left: 0;
   }
 }

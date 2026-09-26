@@ -1683,6 +1683,15 @@ export function adminPatchSettings(
 }
 
 /**
+ * Live items per plugin on this hub (status proposed / threshold_met /
+ * active), for the Plugins page's switch-off warning. Plugins with none are
+ * absent. Shape: src/controllers/hubSettingsController.ts.
+ */
+export function adminGetPluginLiveCounts(): Promise<{ counts: Record<string, number> }> {
+  return request("GET", "/admin/hub/plugins/live");
+}
+
+/**
  * The Settings page's Identity, Copy & pages, Legal and Email sections.
  * Shape: src/controllers/hubSettingsController.ts → HubSettingsResponse.
  */

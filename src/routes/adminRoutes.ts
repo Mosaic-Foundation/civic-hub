@@ -40,6 +40,7 @@ import {
   handleGetHubSettings,
   handlePutHubSettings,
   handleGetSettingTemplate,
+  handleGetPluginLiveCounts,
 } from "../controllers/hubSettingsController.js";
 import {
   handleAdminListReviews,
@@ -184,6 +185,8 @@ router.post("/hub/people", handleSetHubPeople);
 router.get("/hub/settings", handleGetHubSettings);
 router.put("/hub/settings", handlePutHubSettings);
 router.get("/hub/settings/template/:key", handleGetSettingTemplate);
+// Live items per plugin, for the Plugins page's switch-off warning.
+router.get("/hub/plugins/live", handleGetPluginLiveCounts);
 
 router.get("/settings", handleGetSettings);
 router.patch("/settings", handlePatchSettings);

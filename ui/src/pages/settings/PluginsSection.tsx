@@ -26,7 +26,7 @@ import {
   UrlField,
 } from "./fields";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
-import { adminGetSettings, type CommentIdentityMode } from "../../services/api";
+import { adminGetPluginLiveCounts, adminGetSettings, type CommentIdentityMode } from "../../services/api";
 
 type PluginId = (typeof PLUGIN_SECTION_ORDER)[number];
 
@@ -64,7 +64,21 @@ const IDENTITY_MODE_LABELS: Record<CommentIdentityMode, string> = {
   anonymous_only: "Every comment is anonymous",
 };
 
+// Plugins whose items close at a deadline. The close runs when the item is
+// read, and reads skip a switched-off plugin, so while one of these is off
+// nothing of it closes (Phase 5 part one, step 0.4).
+const HAS_DEADLINES: ReadonlySet<PluginId> = new Set(["vote", "proposal", "conversation"]);
+
 export default function PluginsSection() {
+  // Live items per plugin, loaded once. A failed load shows no warning
+  // rather than a wrong number; the switch still works.
+  const [live, setLive] = useState<Record<string, number>>({});
+  useEffect(() => {
+    adminGetPluginLiveCounts()
+      .then((r) => setLive(r.counts))
+      .catch(() => setLive({}));
+  }, []);
+
   return (
     <SectionForm
       section="plugins"
@@ -81,7 +95,7 @@ export default function PluginsSection() {
       {(f) => (
         <div className="plugins-list">
           {PLUGIN_SECTION_ORDER.map((id) => (
-            <PluginCard key={id} f={f} id={id} />
+            <PluginCard key={id} f={f} id={id} live={live[id] ?? 0} />
           ))}
         </div>
       )}
@@ -89,12 +103,13 @@ export default function PluginsSection() {
   );
 }
 
-function PluginCard({ f, id }: { f: FormApi; id: PluginId }) {
+function PluginCard({ f, id, live }: { f: FormApi; id: PluginId; live: number }) {
   const on = f.value(`plugin.${id}.enabled`) === "true";
   const panel = settingsPanel(f, id);
   return (
     <section className={`plugin-card${on ? "" : " plugin-card-off"}`} aria-label={PLUGINS[id].name}>
       <BooleanField f={f} k={`plugin.${id}.enabled`} label={PLUGINS[id].name} hint={PLUGINS[id].what} />
+      {!on && live > 0 && <LiveItemsWarning id={id} live={live} />}
       {panel && on && <div className="plugin-settings">{panel}</div>}
       {panel && !on && (
         <p className="form-hint plugin-off-note">
@@ -102,6 +117,27 @@ function PluginCard({ f, id }: { f: FormApi; id: PluginId }) {
         </p>
       )}
     </section>
+  );
+}
+
+function LiveItemsWarning({ id, live }: { id: PluginId; live: number }) {
+  const name = PLUGINS[id].name;
+  const one = live === 1;
+  return (
+    <p className="plugin-live-warning" role="status">
+      <strong>
+        {live} live {one ? "item" : "items"}.
+      </strong>{" "}
+      While {name} is off, {one ? "it is" : "they are"} hidden from residents
+      {HAS_DEADLINES.has(id) ? (
+        <>
+          , and nothing closes at its deadline: anything past its closing time
+          stays open until {name} is switched back on, then closes.
+        </>
+      ) : (
+        <>; switching {name} back on shows {one ? "it" : "them"} again.</>
+      )}
+    </p>
   );
 }
 

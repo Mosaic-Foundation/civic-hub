@@ -32,6 +32,7 @@ import {
   getProcessHandler,
   setProcessFactory,
   setActionDispatcher,
+  PROCESS_TYPE_PLUGINS,
 } from "../processes/registry.js";
 import {
   spawnBriefFromClosedProcess,
@@ -46,6 +47,7 @@ import {
   shouldEmitStatusUpdate,
   nonPublicStatusFilter,
   NON_PUBLIC_STATUSES,
+  LIVE_STATUSES,
 } from "./processLifecycle.js";
 import {
   resolveCreators,
@@ -55,6 +57,7 @@ import {
   type Audience,
 } from "./creatorDisplay.js";
 import { DEFAULT_JURISDICTION } from "../config/hub.js";
+import type { PluginId } from "../models/hubSettings.js";
 
 /** The hub in scope. Processes are only ever read or written inside one. */
 function db(): HubDb {
@@ -703,6 +706,28 @@ export async function restoreProcess(
   }
 
   return process;
+}
+
+/**
+ * Live processes on the hub in scope, counted per plugin (plugins with none
+ * are absent). Switching a plugin off hides its live items from residents
+ * and suspends their deadline-close: the close is lazy, run by the read
+ * paths, which skip a disabled type before it runs, so a vote past its
+ * closing time stays open until the plugin is back on and then closes on
+ * the first read (tests/api/pluginToggles.test.ts). The Plugins page warns
+ * with these numbers.
+ */
+export async function countLiveProcessesByPlugin(): Promise<Partial<Record<PluginId, number>>> {
+  const rows = await db()
+    .from("processes")
+    .select<{ type: string }>("type")
+    .in("status", [...LIVE_STATUSES]);
+  const counts: Partial<Record<PluginId, number>> = {};
+  for (const { type } of rows) {
+    const plugin = PROCESS_TYPE_PLUGINS[type];
+    if (plugin) counts[plugin] = (counts[plugin] ?? 0) + 1;
+  }
+  return counts;
 }
 
 /**

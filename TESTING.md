@@ -65,7 +65,11 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
 - **Multi-tenant suites (Phase 2):** hub isolation (`hubIsolation*.test.ts`,
   `forHubIsolation.test.ts`); and from Phase 2c: `pluginToggles.test.ts` (a
   plugin switched off on Athens: routes 404, no create/read/list, job skipped,
-  Floyd unaffected, back on restores), `hubBaseUrl.test.ts` (a stored event
+  Floyd unaffected, back on restores; since 2026-09-26 also a vote in
+  progress when its plugin goes off: its deadline passes, reads while off do
+  NOT close it, the first read after it is back on does, stamped then; and
+  `GET /admin/hub/plugins/live`, the Plugins page warning's count, admin
+  only), `hubBaseUrl.test.ts` (a stored event
   carries its own hub's origin), `atomicFunctions.test.ts` (`cast_vote` and
   `transition_process` leave nothing behind on a forced mid-function failure
   and refuse another hub's rows), and the per-hub runs in `crons.test.ts`.

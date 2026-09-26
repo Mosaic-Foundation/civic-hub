@@ -22,6 +22,19 @@ export const NON_PUBLIC_STATUSES: readonly ProcessStatus[] = [
 ];
 
 /**
+ * Statuses in which residents are taking part right now: a vote gathering
+ * support or open for ballots, a live proposal, conversation, project,
+ * announcement. These are what a plugin switch hides mid-flight, and the
+ * only statuses a scheduled (deadline) transition acts on. Read by the
+ * Plugins page's warning (Phase 5 part one, step 0.4).
+ */
+export const LIVE_STATUSES: readonly ProcessStatus[] = [
+  "proposed",
+  "threshold_met",
+  "active",
+];
+
+/**
  * The resting status a freshly-created process takes. A handler may declare one
  * in its initial state (e.g. civic.vote → "draft"); handlers that don't
  * (announcements, vote-results, deliberations) are created live → "active".

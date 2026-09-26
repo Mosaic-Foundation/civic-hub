@@ -28,6 +28,7 @@ import {
   setSettings,
 } from "../services/hubSettings.js";
 import { KEYS, KEY_ALIASES } from "../models/hubSettings.js";
+import { countLiveProcessesByPlugin } from "../services/processService.js";
 import { validateSettingsWrite } from "../models/hubSettingsWrite.js";
 import {
   EDITABLE_SETTING_KEYS,
@@ -122,6 +123,20 @@ async function loadHubSettings(): Promise<HubSettingsResponse> {
 export async function handleGetHubSettings(_req: Request, res: Response): Promise<void> {
   try {
     res.json(await loadHubSettings());
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: message });
+  }
+}
+
+/**
+ * GET /admin/hub/plugins/live — live items per plugin on this hub, for the
+ * Plugins page's warning that switching one off hides them and suspends
+ * their deadlines. Shape: { counts: { vote: 3, project: 1, ... } }.
+ */
+export async function handleGetPluginLiveCounts(_req: Request, res: Response): Promise<void> {
+  try {
+    res.json({ counts: await countLiveProcessesByPlugin() });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });

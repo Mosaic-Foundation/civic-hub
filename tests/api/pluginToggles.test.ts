@@ -138,3 +138,93 @@ describe("switched back on", () => {
     expect(JSON.stringify((await call("GET", "/process", ATHENS)).body)).toContain(athensCloud);
   });
 });
+
+// Phase 5 part one, step 0.4 (2026-09-26): what happens to a process that is
+// in progress when its plugin goes off. The only timed transition is the
+// lazy deadline-close (processService.autoCloseIfExpired, run by the read
+// paths), and those paths drop a disabled type BEFORE the close runs. So a
+// vote whose deadline passes while its plugin is off does not close: no
+// tally, no results record, no civic.process.ended. It closes on the first
+// read after the plugin is back on, stamped with that moment, not with the
+// deadline.
+describe("a vote in progress when its plugin goes off", () => {
+  let voteId = "";
+  let reEnabledAt = 0;
+
+  async function storedVote(): Promise<{ status: string; state: Record<string, unknown> }> {
+    const rows = (await localRest(`processes?id=eq.${voteId}&select=status,state`)) as Array<{
+      status: string;
+      state: Record<string, unknown>;
+    }>;
+    return rows[0];
+  }
+
+  async function endedEvents(): Promise<Array<{ created_at: string }>> {
+    return (await localRest(
+      `events?process_id=eq.${voteId}&event_type=eq.civic.process.ended&select=created_at`,
+    )) as Array<{ created_at: string }>;
+  }
+
+  afterAll(async () => {
+    await localRest("hub_settings?hub_id=eq.athens&key=eq.plugin.vote.enabled", { method: "DELETE" });
+    await setAthens({ "plugin.vote.enabled": "true" });
+    await localRest("hub_settings?hub_id=eq.athens&key=eq.plugin.vote.enabled", { method: "DELETE" });
+  });
+
+  it("a vote is open on Athens, and its deadline passes while the plugin is off", async () => {
+    const created = await call(
+      "POST",
+      "/process",
+      ATHENS,
+      {
+        definition: { type: "civic.vote", version: "0.1" },
+        title: `Toggle vote ${run}`,
+        description: "A vote whose plugin is switched off mid-flight.",
+        state: { options: ["Yes", "No"], voting_duration_ms: 86_400_000, activation_mode: "direct" },
+      },
+      athensAdmin,
+    );
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    voteId = created.body.id ?? created.body.process?.id;
+    const activated = await call("POST", `/process/${voteId}/action`, ATHENS, { type: "process.activate", payload: {} }, athensAdmin);
+    expect(activated.status, JSON.stringify(activated.body)).toBe(200);
+
+    // The Plugins page's warning counts it, for admins only.
+    const live = await call("GET", "/admin/hub/plugins/live", ATHENS, undefined, athensAdmin);
+    expect(live.status).toBe(200);
+    expect(live.body.counts.vote).toBeGreaterThanOrEqual(1);
+    expect((await call("GET", "/admin/hub/plugins/live", ATHENS)).status).toBe(401);
+
+    await setAthens({ "plugin.vote.enabled": "false" });
+
+    // The deadline passes while the plugin is off.
+    const { state } = await storedVote();
+    await localRest(`processes?id=eq.${voteId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ state: { ...state, voting_closes_at: new Date(Date.now() - 60_000).toISOString() } }),
+    });
+  });
+
+  it("reads while it is off do not close it: no transition runs", async () => {
+    expect((await call("GET", `/process/${voteId}/state`, ATHENS)).status).toBe(404);
+    expect((await call("GET", "/process", ATHENS)).status).toBe(200);
+    expect((await call("GET", "/feed", ATHENS)).status).toBe(200);
+    const stored = await storedVote();
+    expect(stored.status).toBe("active");
+    expect(stored.state.status).toBe("active");
+    expect(await endedEvents()).toHaveLength(0);
+  });
+
+  it("switched back on, the first read closes it, stamped then", async () => {
+    await setAthens({ "plugin.vote.enabled": "true" });
+    reEnabledAt = Date.now();
+    const state = await call("GET", `/process/${voteId}/state`, ATHENS);
+    expect(state.status).toBe(200);
+    const stored = await storedVote();
+    expect(stored.status).toBe("closed");
+    const ended = await endedEvents();
+    expect(ended).toHaveLength(1);
+    // Stamped when the read ran, not at voting_closes_at (a minute earlier).
+    expect(Date.parse(ended[0].created_at)).toBeGreaterThanOrEqual(reEnabledAt - 2_000);
+  });
+});
