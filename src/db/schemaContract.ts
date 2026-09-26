@@ -63,6 +63,11 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   // one table where drift is worth catching in the deploy log rather than in
   // the first 404.
   { table: "hubs", columns: ["id", "protocol_hub_id", "hostname", "name", "space_did", "status"], owner: "core/hubRegistry" },
+  // The super admin (src/control/, 20260926010000).
+  { table: "hubs", columns: ["archived_at"], owner: "control" },
+  { table: "control_codes", columns: ["email", "purpose", "code_hash", "attempts", "locked_until"], owner: "control" },
+  { table: "control_sessions", columns: ["token_hash", "email", "expires_at", "revoked_at"], owner: "control" },
+  { table: "control_audit_log", columns: ["actor_email", "action", "target_hub_id", "before", "after"], owner: "control" },
   { table: "processes", columns: ["id", "hub_id", "type", "status", "state", "review_id"], owner: "core/processService" },
   { table: "events", columns: ["id", "event_type", "process_id", "data"], owner: "core/eventStore" },
   { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at", "edits_seen_at", "feedback_seen_at", "briefs_seen_at", "meeting_summaries_seen_at"], owner: "civic.auth" },

@@ -29,6 +29,14 @@ export interface CatalogRow {
  */
 export const NOT_HUB_SCOPED: Readonly<Record<string, string>> = {
   hubs: "the registry itself (contract 1); read by the service-role resolver only, deny-all RLS, no policy",
+  // The super admin's own records (20260926010000, Phase 5 part one, Adam
+  // 2026-09-26). Platform data, not any hub's: read and written only by
+  // src/control/ as the service role; deny-all RLS, no policy, and no grants
+  // to anon or authenticated.
+  control_codes: "the super admin's emailed sign-in / step-up codes; platform, not hub, data; service role (src/control/) only",
+  control_sessions: "the super admin's sessions; platform, not hub, data; service role (src/control/) only",
+  control_audit_log:
+    "every super admin action, across hubs; a hub must not read another's rows or its own audit trail's platform view; append-only, service role (src/control/) only",
 };
 
 /** The one expression the template writes, as Postgres prints it back. */

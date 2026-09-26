@@ -73,6 +73,31 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   carries its own hub's origin), `atomicFunctions.test.ts` (`cast_vote` and
   `transition_process` leave nothing behind on a forced mid-function failure
   and refuse another hub's rows), and the per-hub runs in `crons.test.ts`.
+- **The super admin (2026-09-26, Phase 5 part one):** `control.test.ts`
+  talks to the console with `Host: console.localhost`, so the API server
+  needs **`CIVIC_CONSOLE_HOSTNAME=console.localhost`** and
+  **`CIVIC_CONSOLE_ADMIN_EMAIL=operator@example.test`** (CI sets both, with
+  `CIVIC_DEV_HUB=athens`). It covers: console routes unreachable on a hub
+  host and hub routes unreachable on the console host; sign-in (stranger gets
+  the same answer and nothing stored; HttpOnly SameSite=Strict cookie; code
+  single-use; wrong code refused); the X-Civic-Console header and session
+  gates; create (reserved slug with its purpose, first admin required, demo
+  by default, serves at its hostname, audit row with the settings written);
+  duplicate slug/hostname; edit (rename audited before/after; hostname move
+  needs step-up, old hostname stays taken; no move into demo; a refused change
+  does not spend the step-up code); plugins; admins (add freely, remove only
+  with step-up, never empty); archive (step-up, suspended, slug and hostname
+  stay taken, unarchive leaves it suspended); the audit log refuses UPDATE and
+  DELETE even for the service role (42501); the audit view. Codes and
+  sessions are planted as the service role (`tests/fixtures/consoleCall.ts`).
+  Hubs it creates are archived in `afterAll` (they cannot be deleted: the
+  append-only audit log references them), so `crons.test.ts` still sees only
+  Floyd and Athens. Unit: `controlPlane.test.ts` (the MEETING_*/FLOYD_NEWS_*
+  guard, reserved hostnames, one operator, which changes need step-up),
+  `reservedSlugs.test.ts` (the database constraint's names ⊂ the one list,
+  each with a purpose), `controlBoundary.test.ts` (the hub app cannot import
+  `src/control/`). Local run 2026-09-26: 25 files, 249 passed, 5 skipped, in
+  both modes; unit 1090.
 - **Phase 3 leak harness (2026-09-25).** Two files, and they are meant to run
   **twice: once against a server with `CIVIC_HUB_MINTED_TOKEN` off and once
   with it on** (CI does both, below).

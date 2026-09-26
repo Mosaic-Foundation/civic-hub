@@ -820,6 +820,46 @@ CNAME, Vercel Pro), a new hub can be created from `/control/hubs` by a
 platform admin with the reserved-slug check enforced, and the Athens demo
 runs as hub #2 on the same deployment.
 
+#### The super admin, as decided (Adam, 2026-09-26)
+
+- **Where it runs: the same Vercel project, on its own hostname.** Express
+  routes the console hostname to `src/control/` only; the hub app cannot
+  import `src/control/` (lint rule `civic/control-boundary`); every control
+  route also checks, on the server, that the request arrived on the console
+  hostname and refuses it otherwise.
+- **Hostname:** `console.civic.social`; on dev
+  `console-civic-hub-dev.vercel.app`. A config value
+  (`CIVIC_CONSOLE_HOSTNAME`), never a literal in code. Unset = no console.
+- **Sign-in:** the emailed code (same rules as a hub's: `civic.auth/otp.ts`),
+  a one-person allow-list (`CIVIC_CONSOLE_ADMIN_EMAIL`, exactly one address),
+  and step-up (a fresh code) for anything destructive.
+- **Retiring a hub:** `hubs.archived_at` (additive). Archiving sets it and
+  `status = 'suspended'`, and takes step-up; unarchiving clears it. **No hard
+  delete** — that belongs to the later lifecycle work, with export offered
+  first and a retention window. An archived hub's slug and hostname stay
+  taken forever (old links, published events and DID documents point at
+  them); a hub that moves out uses `redirect_to` instead.
+- **Reserved slugs:** one list in code, `RESERVED_HUB_SLUGS` in
+  `src/models/hub.ts`, each with what it is for. The original ten stay in the
+  `hubs_id_not_reserved_check` constraint; names added since (some are live
+  today, e.g. `floyd`, so a constraint could not hold them) are enforced by
+  the validator every create path calls.
+- **Audit log:** `control_audit_log`, append-only, exempt from the tenancy
+  catalog with its reason (not hub data).
+- **Guard:** creating a hub on the production database is refused while any
+  `MEETING_*` or `FLOYD_NEWS_*` env var is set and a hub already exists:
+  those env fallbacks apply to every hub on the deployment, so a second hub
+  would inherit Floyd's meeting and news sources. ("Production" = the
+  production Supabase ref in `SUPABASE_URL`, the test `create-hub.ts`
+  already used. The session's reading of the brief; Adam to confirm.)
+
+**Deferred, not done:** Hub app off the service-role key; super admin in its
+own Vercel project. Required before the first paying hub or any self-serve
+sign-up. In one project every piece of code can read the key, so the goal
+"the super admin is the only surface holding the key" is not met yet: the
+hub app still reads it for the registry (`src/db/hubs.ts`), the health ping
+and the schema check.
+
 #### The sending domain belongs to the platform, not to a hub (2026-09-23)
 
 **Only `floyd.civic.social` is verified in Resend.** The apex `civic.social`

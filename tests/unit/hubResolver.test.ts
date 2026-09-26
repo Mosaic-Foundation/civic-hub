@@ -321,7 +321,6 @@ describe("hub slugs", () => {
   });
 
   it("accepts an ordinary slug", () => {
-    expect(hubSlugRejectionReason("floyd")).toBeNull();
     expect(hubSlugRejectionReason("new-river-valley")).toBeNull();
   });
 

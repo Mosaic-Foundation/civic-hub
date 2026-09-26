@@ -24,3 +24,7 @@ src/models/hub.ts | MIGRATION_DEFAULT_HUB_ID = "floyd" | the hub the migrations 
 
 # Not a place: a kind of governing body, alongside Town Council and School Board.
 src/shared/officialTypes.ts | board_of_supervisors: "Board of Supervisors" | admin-panel label for a generic body type in the officials catalogue; the stored enum value it labels is data in production rows
+
+# The super admin (Phase 5 part one, 2026-09-26, Adam).
+src/control/hubs.ts | /^(MEETING_|FLOYD_NEWS_)/ | the create guard (step 7) names the legacy env var prefixes it refuses on; delete with those env vars at cleanup
+src/models/hub.ts | floyd: "Floyd's hub; | reserved slug in the one reserved list (Adam, 2026-09-26): a live hub under civic.social

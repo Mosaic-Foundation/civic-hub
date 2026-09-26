@@ -1,4 +1,3 @@
-// @civic-raw-client-importer: operator script, run by hand outside any request; it names its hub itself.
 /**
  * Create a hub: the `hubs` row plus a starter set of settings.
  *
@@ -7,17 +6,18 @@
  *     --name "Utopia Civic Hub" --jurisdiction "Utopia, Virginia" \
  *     --mode live [--dry-run]
  *
- * WHAT THIS IS. The manual stand-in for the Phase 5 control plane, which will
- * do the same thing behind a platform admin's form. It exists because adding
- * a hub by hand is four inserts that must all agree, and getting one wrong
- * produces a hub that resolves but cannot be administered.
+ * WHAT THIS IS. The command-line twin of the super admin's Create hub screen
+ * (Phase 5 part one, 2026-09-26). Both call createHub() in
+ * src/control/hubs.ts — the same validation (slug, reserved names, hostname,
+ * archived hubs' slugs and hostnames, the MEETING_* / FLOYD_NEWS_* guard) and
+ * the same writes. This script only adds its own, stricter policy below.
  *
  * WHAT IT WILL NOT DO:
  *   - create a `demo` hub. Demo is the one mode that turns off email
  *     verification; a trigger on `hubs` refuses any move INTO it, and a
  *     script that could create one is the same hole with a different shape.
- *     Demo hubs come from supabase/seed.sql, which never reaches a hosted
- *     project. See BUILD-PLAN-multi-tenant.md → Contract 1.
+ *     Demo hubs come from the super admin (a platform decision) or
+ *     supabase/seed.sql. See BUILD-PLAN-multi-tenant.md → Contract 1.
  *   - touch production. It refuses the production project ref outright.
  *   - overwrite an existing hub. A slug that is taken is an error, not an
  *     upsert: "create" must never silently mean "replace".
@@ -28,9 +28,11 @@
  * deployment's own admin the way the Athens fixture does.
  */
 
-import { getDb } from "../src/db/client.js";
-import { KEYS, encodeList } from "../src/models/hubSettings.js";
-import { hubSlugRejectionReason, isHubMode } from "../src/models/hub.js";
+import { createHub, planCreateHub, ControlInputError } from "../src/control/hubs.js";
+import { isHubMode, type HubMode } from "../src/models/hub.js";
+
+/** This script's policy: never demo (the console may), never production. */
+const SCRIPT_MODES: readonly HubMode[] = ["beta", "live"];
 
 const PRODUCTION_REF = "nfhyypwoporfggqcerli";
 
@@ -64,18 +66,10 @@ async function main(): Promise<void> {
   if (!id || !hostname || !name) {
     throw new Error("--id, --hostname and --name are all required.");
   }
-
-  const slugProblem = hubSlugRejectionReason(id);
-  if (slugProblem) throw new Error(slugProblem);
-
-  if (!isHubMode(mode)) {
-    throw new Error(`--mode must be beta or live (got "${mode}").`);
-  }
-  if (mode === "demo") {
+  if (!isHubMode(mode) || mode === "demo") {
     throw new Error(
-      "This script will not create a demo hub. Demo turns off email " +
-        "verification and belongs in supabase/seed.sql, which never reaches a " +
-        "hosted project. See BUILD-PLAN-multi-tenant.md → Contract 1.",
+      `--mode must be beta or live (got "${mode}"). This script will not create a demo ` +
+        "hub: demo turns off email verification. The super admin's Create hub can.",
     );
   }
 
@@ -83,43 +77,9 @@ async function main(): Promise<void> {
   const ref = url.replace(/^https:\/\/([^.]+).*/, "$1");
   if (ref === PRODUCTION_REF) {
     throw new Error(
-      "Refusing: SUPABASE_URL points at production. Hubs are created on " +
-        "production only in the cutover session, by hand, from the runbook.",
+      "Refusing: SUPABASE_URL points at production. Create production hubs from the super admin.",
     );
   }
-
-  const db = getDb();
-
-  const { data: existing } = await db
-    .from("hubs")
-    .select("id")
-    .or(`id.eq.${id},hostname.eq.${hostname}`);
-  if ((existing ?? []).length > 0) {
-    throw new Error(
-      `A hub already claims "${id}" or "${hostname}". Create does not replace.`,
-    );
-  }
-
-  // `space_did` is the protocol identity on everything this hub publishes, so
-  // it is derived from the hostname and is stable for the hub's lifetime — it
-  // does not follow a later hostname change.
-  //
-  // `protocol_hub_id` is `source.hub_id` on its events. Derived from the slug
-  // HERE, once, at creation; nothing recomputes it from `id` afterwards, so a
-  // later rename cannot silently change who a hub's past events say they are
-  // from.
-  const row = {
-    id,
-    protocol_hub_id: `civic-hub-${id}`,
-    hostname,
-    name,
-    jurisdiction_code: null,
-    jurisdiction_name: jurisdiction,
-    space_did: `did:web:${hostname}`,
-    space_type: "civic-hub",
-    status: "active",
-    mode,
-  };
 
   const admins = plusAddressed(process.env.CIVIC_ADMIN_EMAILS, id);
   if (admins.length === 0) {
@@ -129,38 +89,29 @@ async function main(): Promise<void> {
     );
   }
 
-  const settings: Array<{ key: string; value: string }> = [
-    { key: KEYS.IDENTITY_NAME, value: name },
-    { key: KEYS.IDENTITY_LABEL, value: "Civic Hub" },
-    { key: KEYS.PEOPLE_ADMIN_EMAILS, value: encodeList(admins) },
-    { key: KEYS.LEGAL_OPERATOR_NAME, value: name },
-    { key: KEYS.EMAIL_FROM_NAME, value: name },
-  ];
-  if (jurisdiction) {
-    settings.push({
-      key: KEYS.IDENTITY_PAGE_TITLE,
-      value: `${jurisdiction} — Civic Hub`,
-    });
-  }
+  const input = {
+    slug: id,
+    name,
+    hostname,
+    jurisdictionName: jurisdiction,
+    jurisdictionCode: null,
+    governingBody: null,
+    admins,
+    mode,
+  };
 
+  const plan = await planCreateHub(input, SCRIPT_MODES);
   console.log(`\nproject: ${ref}`);
-  console.log(`hub:     ${JSON.stringify(row, null, 2)}`);
+  console.log(`hub:     ${JSON.stringify(plan.row, null, 2)}`);
   console.log(`settings:`);
-  for (const s of settings) console.log(`  ${s.key.padEnd(28)} ${s.value}`);
+  for (const [k, v] of Object.entries(plan.settings)) console.log(`  ${k.padEnd(28)} ${v}`);
 
   if (DRY_RUN) {
     console.log("\n--dry-run: nothing written.\n");
     return;
   }
 
-  const { error: hubErr } = await db.from("hubs").insert(row);
-  if (hubErr) throw new Error(`hubs insert: ${hubErr.message}`);
-
-  const { error: setErr } = await db.from("hub_settings").upsert(
-    settings.map((s) => ({ ...s, hub_id: id, updated_by: "create-hub" })),
-    { onConflict: "hub_id,key" },
-  );
-  if (setErr) throw new Error(`hub_settings upsert: ${setErr.message}`);
+  await createHub(input, { allowedModes: SCRIPT_MODES, updatedBy: "create-hub" });
 
   console.log(`\nCreated "${id}" in ${mode} mode at ${hostname}.`);
   console.log(`Admin: ${admins.join(", ")}`);
@@ -171,6 +122,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((e) => {
-  console.error(`\ncreate-hub failed: ${e instanceof Error ? e.message : String(e)}\n`);
+  const message = e instanceof ControlInputError || e instanceof Error ? e.message : String(e);
+  console.error(`\ncreate-hub failed: ${message}\n`);
   process.exit(1);
 });

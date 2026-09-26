@@ -110,6 +110,48 @@ const rawClientRule = {
   },
 };
 
+// The super admin (src/control/) is reachable only through the entry points
+// that choose it by hostname (src/control/index.ts). The hub app — src/app.ts
+// and everything under src/ it can reach — must not import it, so no hub
+// request can end up running control-plane code (Adam, 2026-09-26).
+const CONTROL_DIR = "src/control/";
+const CONTROL_IMPORTERS = ["src/control/", "api/", "scripts/", "tests/"];
+const CONTROL_ENTRY_FILES = ["src/index.ts"];
+
+function resolvesIntoControl(fromFile, spec) {
+  if (!spec.startsWith(".")) return false;
+  const target = relative(ROOT, resolve(dirname(fromFile), spec)).split("\\").join("/");
+  return target === "src/control" || target.startsWith(CONTROL_DIR);
+}
+
+const controlBoundaryRule = {
+  meta: {
+    type: "problem",
+    docs: { description: "Only the entry points may import the super admin (src/control/)." },
+    schema: [],
+  },
+  create(context) {
+    const file = context.filename;
+    const rel = relative(ROOT, file).split("\\").join("/");
+    const allowed = CONTROL_IMPORTERS.some((r) => rel.startsWith(r)) || CONTROL_ENTRY_FILES.includes(rel);
+    function check(node, spec) {
+      if (allowed || typeof spec !== "string" || !resolvesIntoControl(file, spec)) return;
+      context.report({
+        node,
+        message:
+          `"${spec}" is the super admin (src/control/). The hub app may not import it; ` +
+          "only the entry points (api/index.ts, src/index.ts) mount it, by hostname. See src/control/index.ts.",
+      });
+    }
+    return {
+      ImportDeclaration: (n) => check(n, n.source.value),
+      ExportNamedDeclaration: (n) => n.source && check(n, n.source.value),
+      ExportAllDeclaration: (n) => check(n, n.source.value),
+      ImportExpression: (n) => n.source.type === "Literal" && check(n, n.source.value),
+    };
+  },
+};
+
 export default [
   {
     ignores: ["node_modules/**", "dist/**", "ui/**", "test-results/**", "backups/**", "supabase/**"],
@@ -119,7 +161,7 @@ export default [
     languageOptions: { parser: tsParser, sourceType: "module", ecmaVersion: "latest" },
     // Other plugins' disable comments may exist in the tree; they are not errors here.
     linterOptions: { reportUnusedDisableDirectives: "off" },
-    plugins: { civic: { rules: { "raw-client": rawClientRule } } },
-    rules: { "civic/raw-client": "error" },
+    plugins: { civic: { rules: { "raw-client": rawClientRule, "control-boundary": controlBoundaryRule } } },
+    rules: { "civic/raw-client": "error", "civic/control-boundary": "error" },
   },
 ];

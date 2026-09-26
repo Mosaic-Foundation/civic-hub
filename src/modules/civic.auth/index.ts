@@ -21,9 +21,17 @@
 //
 // GUARDRAIL: This module MUST NOT import from civic.vote or civic.proposals.
 
-import { randomInt } from "node:crypto";
 import { forHub, HubDbError, type HubDb, type Row } from "../../db/forHub.js";
 import { generateId } from "../../utils/id.js";
+import {
+  OTP_TTL_MS,
+  MAX_VERIFY_ATTEMPTS,
+  REQUEST_THROTTLE_MS,
+  LOCKOUT_MS,
+  generateOTP,
+  lockoutMessage,
+  renderCodeEmail,
+} from "./otp.js";
 import { sendEmail } from "../../utils/email.js";
 import {
   getAdminEmailsSync,
@@ -41,17 +49,8 @@ export type { User, PendingVerification, Session } from "./models.js";
 // --- Constants ---
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
-// Brute-force defenses (audit P1 — account takeover). Cap wrong guesses per
-// code, and throttle how often a fresh code can be requested so an attacker
-// can't reset the cap by re-requesting.
-const MAX_VERIFY_ATTEMPTS = 5;
-const REQUEST_THROTTLE_MS = 30 * 1000; // 30s between code requests per email
-// After MAX_VERIFY_ATTEMPTS wrong guesses the email is locked for this long —
-// both verifying and requesting a new code are refused until it passes. Caps a
-// patient brute-force attacker at 5 guesses per lockout window (negligible),
-// while staying forgiving for a legit user who mistyped a few times.
-const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+// The code's rules (TTL, attempts, throttle, lockout) live in ./otp.ts,
+// shared with the super admin's sign-in.
 
 /** The hub in scope. Everything here runs inside a request for one hub. */
 function db(): HubDb {
@@ -66,21 +65,6 @@ const ADDRESS_IN_USE_ELSEWHERE =
   "This address can't be used to sign in to this hub yet. Please use a different address.";
 
 // --- OTP / token generation ---
-
-function generateOTP(): string {
-  // Cryptographically secure — Math.random() is predictable and unfit for a
-  // security credential.
-  return randomInt(100000, 1000000).toString();
-}
-
-/** Human-friendly "try again in ~N minutes" message for a lockout. */
-function lockoutMessage(lockedUntilIso: string): string {
-  const mins = Math.max(
-    1,
-    Math.ceil((new Date(lockedUntilIso).getTime() - Date.now()) / 60000),
-  );
-  return `Too many incorrect attempts. Please try again in about ${mins} minute${mins === 1 ? "" : "s"}.`;
-}
 
 function generateToken(): string {
   return generateId("sess");
@@ -292,30 +276,7 @@ export async function requestVerification(
 }
 
 function renderOtpEmail(code: string, rawHubName: string): string {
-  // The hub's display name is admin-authored text, so it is escaped before it
-  // goes into HTML like anything else a person typed.
-  const hubDisplayName = rawHubName
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-  return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #1f2937;">
-      <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 16px;">Your sign-in code</h1>
-      <p style="font-size: 15px; line-height: 1.5; margin: 0 0 24px;">
-        Enter this code in the ${hubDisplayName} to finish signing in:
-      </p>
-      <div style="font-size: 32px; font-weight: 600; letter-spacing: 8px; background: #f3f4f6; padding: 16px 24px; border-radius: 8px; text-align: center; margin: 0 0 24px;">
-        ${code}
-      </div>
-      <p style="font-size: 13px; color: #6b7280; line-height: 1.5; margin: 0 0 8px;">
-        This code expires in 10 minutes. If you didn't request it, you can ignore this email.
-      </p>
-      <p style="font-size: 13px; color: #6b7280; line-height: 1.5; margin: 0;">
-        — The ${hubDisplayName}
-      </p>
-    </div>
-  `;
+  return renderCodeEmail(code, rawHubName);
 }
 
 /**

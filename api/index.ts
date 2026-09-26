@@ -5,7 +5,12 @@
 // The Express app auto-seeds on first import (cold start).
 
 import type { IncomingMessage, ServerResponse } from "http";
-import app from "../src/app.js";
+import hubApp from "../src/app.js";
+import { withConsole } from "../src/control/index.js";
+
+// The super admin answers on its own hostname; everything else is the hub
+// app. See src/control/index.ts.
+const app = withConsole(hubApp);
 
 /**
  * Raise the function timeout to 300s (5 min) so the meeting-summary

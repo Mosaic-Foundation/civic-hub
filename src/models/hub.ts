@@ -121,25 +121,53 @@ export function hubModeChangeRejectionReason(
 }
 
 /**
- * Slugs no hub may ever be assigned: hostnames the platform itself needs, or
- * ones that would read as the platform rather than as a hub.
+ * Slugs no NEW hub may be assigned, and what each one is for. THE ONE LIST
+ * (Adam, 2026-09-26): every create path — the super admin's Create hub
+ * (src/control/hubs.ts), scripts/create-hub.ts — refuses these through
+ * hubSlugRejectionReason(), and the super admin also refuses `<name>.<the
+ * platform domain>` as a hostname.
  *
- * Enforced twice on purpose — here, so a caller gets a readable error, and as
- * a CHECK constraint on `hubs`, so no code path can get around it. Keep the
- * two lists identical; the constraint is in the migration above.
+ * The first ten are ALSO the database's `hubs_id_not_reserved_check`
+ * (20260922010000), so no code path can insert them. Names added since are
+ * enforced here only, on purpose: some are live today (`floyd` is a hub's
+ * own id), so a constraint could not hold them without refusing that row.
+ * tests/unit/reservedSlugs.test.ts holds the constraint's names to a subset
+ * of this list.
  */
-export const RESERVED_HUB_SLUGS: readonly string[] = [
-  "www",
-  "admin",
-  "api",
-  "polis",
-  "representative",
-  "demo",
-  "staging",
-  "dev",
-  "mail",
-  "app",
-];
+export const RESERVED_HUB_SLUG_PURPOSES: Readonly<Record<string, string>> = {
+  // The original ten (Phase 0 contract; also the database constraint).
+  www: "the marketing site",
+  admin: "reads as the platform's administration",
+  api: "reads as the platform's API",
+  polis: "the Polis conversation server (polis.civic.social)",
+  representative: "the Representative Space service",
+  demo: "reads as the platform's own demo",
+  staging: "an environment name",
+  dev: "an environment name",
+  mail: "the platform's sending domain (mail.civic.social)",
+  app: "reads as the platform's app",
+  // Live today under civic.social (Adam, 2026-09-26).
+  "demo-hub": "the multi-deployment demo (demo-hub.civic.social)",
+  citizendashboard: "the Citizen Dashboard (citizendashboard.civic.social)",
+  floyd: "Floyd's hub; kept even if its row ever moves or is renamed",
+  // The console, and names that would read as official.
+  console: "the super admin (console.civic.social)",
+  control: "reads as the control plane",
+  superadmin: "reads as the super admin",
+  platform: "reads as the platform itself",
+  // Services the platform may run later.
+  status: "a future status page",
+  docs: "future documentation",
+  help: "future help pages",
+  support: "future support",
+  blog: "a future blog",
+  billing: "future billing",
+  auth: "future platform sign-in",
+  login: "future platform sign-in",
+  id: "future platform identity",
+};
+
+export const RESERVED_HUB_SLUGS: readonly string[] = Object.keys(RESERVED_HUB_SLUG_PURPOSES);
 
 /** Mirrors the hubs_id_format_check constraint. */
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$/;
@@ -169,7 +197,8 @@ export function hubSlugRejectionReason(slug: string): string | null {
     );
   }
   if (isReservedHubSlug(trimmed)) {
-    return `"${trimmed}" is reserved and cannot be assigned to a hub.`;
+    const purpose = RESERVED_HUB_SLUG_PURPOSES[trimmed.toLowerCase()];
+    return `"${trimmed}" is reserved (${purpose}) and cannot be assigned to a hub.`;
   }
   return null;
 }
