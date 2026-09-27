@@ -21,7 +21,7 @@ runs by hand from the Phase 6 runbook.
 | Fact | Value | Why it matters |
 |---|---|---|
 | Vercel plan (Floyd project) | **Pro** | Wildcard custom domains and per-minute crons are available; no upgrade needed for Phase 5. |
-| DNS for `civic.social` | **GoDaddy** | Phase 5 adds `*.civic.social` as a CNAME to `cname.vercel-dns.com` in the GoDaddy DNS panel; the apex and `www` stay on the marketing site (Firebase). |
+| DNS for `civic.social` | **GoDaddy** | Phase 5 adds `*.civic.social` as a CNAME to Vercel in the GoDaddy DNS panel; the apex and `www` stay on the marketing site (Firebase). **Corrected 2026-09-27:** a CNAME alone routes traffic but Vercel cannot issue the wildcard certificate; it also needs "Enable Vercel DNS" on `civic.social` in the Vercel team (nameservers stay at GoDaddy) and two `NS` records `_acme-challenge` → `ns1`/`ns2.vercel-dns.com`. The production steps are `RUNBOOK-cutover.md` §8; dev's are under Phase 5 → "The dev wildcard". |
 | Supabase project (Floyd) | ref `nfhyypwoporfggqcerli`, "Civic-Hub-Floyd", Postgres 17.6, PostgREST v14.5, GoTrue v2.190 | Becomes the shared database. See "Phase 3 approach (verified)". |
 | Marketing-site Supabase | ref `ehcyahlmqbqmewdbxdls`, "Website-Civic-Social" (linked from the monorepo root `supabase/`) | Separate project; not part of this work. |
 
@@ -816,9 +816,35 @@ _checklist to be pasted_
 ### Phase 5 — control plane + wildcard hostname
 
 Done when: `*.civic.social` resolves to the one Vercel project (GoDaddy
-CNAME, Vercel Pro), a new hub can be created from `/control/hubs` by a
+CNAME plus the `_acme-challenge` delegation, Vercel Pro — steps in
+`RUNBOOK-cutover.md` §8), a new hub can be created from `/control/hubs` by a
 platform admin with the reserved-slug check enforced, and the Athens demo
 runs as hub #2 on the same deployment.
+
+#### The dev wildcard (Adam + management session, 2026-09-27)
+
+Dev takes production's shape so a new dev hub is live the moment it is
+created, with no `vercel alias set`: console `console.dev.civic.social`,
+hubs `<slug>.dev.civic.social` (production: `console.civic.social`,
+`<slug>.civic.social`). Same method as §8, one level down: `*.dev.civic.social`
+added to **`civic-hub-dev`**; "Enable Vercel DNS" on `civic.social` (shared
+with production, so it is already done for that sitting); at GoDaddy `NS`
+`_acme-challenge.dev` → `ns1`/`ns2.vercel-dns.com` and `CNAME` `*.dev` → the
+value on Vercel's domain card; then `CIVIC_CONSOLE_HOSTNAME=console.dev.civic.social`
+on `civic-hub-dev` and a redeploy. The console's suggested hub address follows
+from that variable (`platformDomain()`); `vercel.json` must also name the
+console hostname (it does since 2026-09-27; `tests/unit/consoleRouting.test.ts`).
+Athens, Utopia and `sample-walk` move to `<slug>.dev.civic.social` through the
+console; their old `vercel.app` addresses stay taken.
+
+Checked before starting (2026-09-27): sessions are host-only (hub sign-in is
+a bearer token in each origin's `localStorage`; the console cookie has no
+`Domain`), so nothing set on a dev host reaches a production host;
+`CIVIC_ALLOWED_ORIGINS` is an exact-match list that governs cross-origin
+callers only (every hub UI calls its own `/api` on the same origin, so new
+hub hostnames need no entry); nothing exists at or under `dev.civic.social`
+and there is no `_acme-challenge` record; `dev` is a reserved slug; the
+production wildcard matches one label, so it never catches `x.dev.civic.social`.
 
 #### The super admin, as decided (Adam, 2026-09-26)
 

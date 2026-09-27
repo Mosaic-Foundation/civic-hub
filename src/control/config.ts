@@ -1,7 +1,9 @@
 // The super admin's configuration: which hostname it answers on, and the one
 // person allowed to sign in. Both are environment values, never literals in
 // code (Adam, 2026-09-26): production is console.civic.social, dev
-// console-civic-hub-dev.vercel.app, local console.localhost.
+// console.dev.civic.social (since 2026-09-27; console-civic-hub-dev.vercel.app
+// before, still routed), local console.localhost. vercel.json's console
+// rules must name each one; tests/unit/consoleRouting.test.ts checks.
 //
 //   CIVIC_CONSOLE_HOSTNAME     the console's hostname. Unset = no console on
 //                              this deployment: every request goes to the hub
