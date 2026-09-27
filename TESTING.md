@@ -137,6 +137,15 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   `console-civic-hub-dev.vercel.app`) matches both of `vercel.json`'s console
   rules and no hub hostname does — the page is routed there, not by
   `CIVIC_CONSOLE_HOSTNAME`. Unit total 97 files, 1128.
+  `hubDeadEnd.test.ts` (2026-09-27, release-1 prep): which `/hub-config`
+  answers make the static shell render the dead-end page instead of the app
+  (404 `no_hub` → "No hub here", 503 `hub_suspended` → paused; any other
+  failure renders the app on fallbacks), and the title the runbooks check.
+  Unit total 98 files, 1132. The no-hub page itself cannot be reached from
+  the Vite dev server (its API fallback always lands on a hub); check it with
+  a production-shaped build: `npm run build` in `ui/`, then `vite preview`
+  with `/api` proxied to the server with the Host kept (`changeOrigin:
+  false`, strip `/api`), and open `http://anything.localhost:<port>/`.
   **Running both modes locally** when :3000 is taken: `.claude/launch.json`
   (monorepo root) has `hub-local-3200` (service role) and `hub-local-3201`
   (hub tokens) on the local stack with CI's env; run with
@@ -353,8 +362,8 @@ Open the real UI in Chromium and simulate resident interactions.
 - **Config:** `civic-hub/playwright.config.ts`
 - **Covers:** critical user journeys — navigation, feed, votes, search, conversations
 - **Note:** Each test dismisses the intro popup via localStorage before running.
-- **Green: 25 of 25 (2026-09-26, Phase 5 part one, step 0.3)**, local stack,
-  hub tokens on. The six known failures that predated this build are gone:
+- **Green: 25 of 25 (2026-09-26, Phase 5 part one, step 0.3; again
+  2026-09-27 before release 1)**, local stack, hub tokens on. The six known failures that predated this build are gone:
   - **Fixed** (the UI changed on purpose; the check now holds the current
     intent): tab strip order (`Proposals`, and `Outcomes` last; order of
     whichever tabs a hub's plugins show), welcome-banner title (the
@@ -846,7 +855,7 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,

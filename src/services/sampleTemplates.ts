@@ -1,7 +1,8 @@
 // The sample content a new hub starts with (Phase 7) — templates, not data.
 //
 // Contract: BUILD-PLAN-multi-tenant.md → "Phase 7 — Sample content for new
-// hubs". Adapted from the Floyd use cases (scripts/seedBetaSlate.ts,
+// hubs". Adapted from the Floyd use cases (scripts/seedBetaSlate.ts, retired
+// 2026-09-27 and in git history up to 39ac22d;
 // src/debug/seedData.ts) with the place taken out. Approved by Adam
 // 2026-09-26 (list and copy).
 //

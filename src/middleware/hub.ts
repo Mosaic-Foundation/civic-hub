@@ -23,6 +23,7 @@ import { getHubByHostname, getHubBySlug } from "../db/hubs.js";
 import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { runWithHub } from "../config/hubContext.js";
 import { isLocalHostname } from "../models/hub.js";
+import { DEAD_ENDS, DEAD_END_STYLE } from "../shared/deadEnd.js";
 import {
   isWellFormedHubSlug,
   MIGRATION_DEFAULT_HUB_ID,
@@ -120,10 +121,6 @@ export function prefersJson(req: Request): boolean {
   return req.accepts(["json", "html"]) !== "html";
 }
 
-const PAGE_STYLE =
-  "font: 16px/1.6 system-ui, -apple-system, Segoe UI, sans-serif;" +
-  "max-width: 34rem; margin: 18vh auto; padding: 0 1.5rem; color: #1a1a1a;";
-
 /**
  * The two dead-end pages. Deliberately plain: no hub name, no branding, no
  * data, nothing read from the database. A request that resolved to no hub has
@@ -136,7 +133,7 @@ function deadEndPage(title: string, body: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>${title}</title></head>
-<body style="${PAGE_STYLE}">
+<body style="${DEAD_END_STYLE}">
 <h1 style="font-size:1.35rem;margin:0 0 .5rem">${title}</h1>
 <p style="margin:0;color:#555">${body}</p>
 </body></html>`;
@@ -150,12 +147,7 @@ function sendNoHub(req: Request, res: Response): void {
   res
     .status(404)
     .type("html")
-    .send(
-      deadEndPage(
-        "No hub here",
-        "No civic hub is configured at this address. Check the link you followed.",
-      ),
-    );
+    .send(deadEndPage(DEAD_ENDS.no_hub.title, DEAD_ENDS.no_hub.body));
 }
 
 function sendHubPaused(req: Request, res: Response): void {
@@ -167,10 +159,7 @@ function sendHubPaused(req: Request, res: Response): void {
     .status(503)
     .type("html")
     .send(
-      deadEndPage(
-        "This hub is paused",
-        "This civic hub is temporarily unavailable. Please check back later.",
-      ),
+      deadEndPage(DEAD_ENDS.hub_suspended.title, DEAD_ENDS.hub_suspended.body),
     );
 }
 

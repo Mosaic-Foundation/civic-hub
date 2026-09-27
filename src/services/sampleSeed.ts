@@ -1,6 +1,7 @@
 // Seeding a hub's sample content (Phase 7): the templates in
 // sampleTemplates.ts, filled with the hub's names and written through the
-// real code paths, the way scripts/seedBetaSlate.ts writes Floyd's slate.
+// real code paths, the way scripts/seedBetaSlate.ts wrote Floyd's slate
+// (retired 2026-09-27; in git history up to 39ac22d).
 //
 // Contract: BUILD-PLAN-multi-tenant.md → "Phase 7 — Sample content for new
 // hubs". Run inside the hub's scope by scripts/seed-sample-content.ts and by

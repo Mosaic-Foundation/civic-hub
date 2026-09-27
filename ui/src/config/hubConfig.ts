@@ -17,6 +17,7 @@
  */
 
 import { parseTheme, resolveTheme } from "../../../src/shared/theme";
+import type { DeadEndCode } from "../../../src/shared/deadEnd";
 
 export interface HubIdentity {
   id: string;
@@ -49,6 +50,7 @@ const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
 const LOAD_TIMEOUT_MS = 2000;
 
 let loaded: HubConfig | null = null;
+let deadEnd: DeadEndCode | null = null;
 
 /**
  * In local development the UI runs on :5173 and calls the API on :3000
@@ -83,6 +85,29 @@ export function getLoadedHubConfig(): HubConfig | null {
   return loaded;
 }
 
+/**
+ * Set when the server said, definitively, that this address serves no hub
+ * (404 `no_hub`) or a paused one (503 `hub_suspended`). main.tsx then renders
+ * the dead-end page instead of the app. On Vercel the shell is a static file
+ * served without the server, so this is the only place that answer can show.
+ */
+export function getHubDeadEnd(): DeadEndCode | null {
+  return deadEnd;
+}
+
+/**
+ * The dead end a /hub-config response announces, if any. Only the two
+ * definitive answers count; any other failure (a 500, a proxy's error page, a
+ * body that is not JSON) is transient, and renders the app on fallbacks.
+ * Exported for tests.
+ */
+export function deadEndFromResponse(status: number, body: unknown): DeadEndCode | null {
+  const code = (body as { error?: unknown } | null)?.error;
+  if (status === 404 && code === "no_hub") return code;
+  if (status === 503 && code === "hub_suspended") return code;
+  return null;
+}
+
 /** A single settings value, or undefined when the hub has not configured it. */
 export function setting(key: string): string | undefined {
   const v = loaded?.settings[key];
@@ -104,7 +129,10 @@ export async function loadHubConfig(): Promise<HubConfig | null> {
       signal: controller.signal,
       headers: { Accept: "application/json" },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      deadEnd = deadEndFromResponse(res.status, await res.json().catch(() => null));
+      return null;
+    }
     const body = (await res.json()) as HubConfig;
     if (!body?.hub?.id) return null;
     loaded = body;
