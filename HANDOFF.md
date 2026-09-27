@@ -4,6 +4,51 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Dev on `*.dev.civic.social` — 2026-09-27
+
+Dev now has production's shape: console **`console.dev.civic.social`**, hubs
+**`<slug>.dev.civic.social`**. A hub created in the console is live at once;
+no more `vercel alias set`. Setup, checks and undo: `DEPLOY-dev.md` §9; plan:
+BUILD-PLAN Phase 5 → "The dev wildcard" (and the production wildcard line
+corrected: it needs the `_acme-challenge` delegation, `RUNBOOK-cutover.md` §8).
+
+- **Done by Adam (dashboards):** `*.dev.civic.social` on `civic-hub-dev`
+  (Valid Configuration, certificate issued); Vercel DNS enabled on
+  `civic.social` with GoDaddy's nameservers kept; GoDaddy `NS
+  _acme-challenge.dev` → `ns1/ns2.vercel-dns.com`, `CNAME *.dev` →
+  `cname.vercel-dns-0.com`; `CIVIC_CONSOLE_HOSTNAME=console.dev.civic.social`.
+  The "Enable Vercel DNS" step is shared with production, so it is already
+  done for that sitting.
+- **Code:** `vercel.json` console rules name `console.dev.civic.social`
+  (`88252c9`, with `tests/unit/consoleRouting.test.ts`); console "Save
+  configuration" disabled until a field changes (this commit).
+- **Moved through the console (three fresh codes):** Athens →
+  `athens.dev.civic.social`, Utopia → `utopia.dev.civic.social`,
+  `sample-walk` → `sample-walk.dev.civic.social`; each serves there, DIDs
+  unchanged, old `vercel.app` names stay taken. Floyd's dev copy stays at
+  `civic-hub-dev.vercel.app`. Adam also set Athens = town, Utopia = city
+  (governing body "Town Council"): audited.
+- **Checked first:** sessions host-only; `CIVIC_ALLOWED_ORIGINS` needs no
+  entry (same-origin); no DNS collisions; `dev` reserved. Production
+  untouched (`floyd.civic.social` still `0b23e9a`, same deployment).
+- **Deploys:** `./scripts/vercel-deploy.sh --prod` answered "Not authorized"
+  again with `repo.json` already moved aside, so that was not (only) the
+  cause last night; dev was updated by pushing `multi-tenant` (Git
+  integration). `--debug` command for diagnosis is in the chat; open.
+
+### Open
+- An address with no hub shows the app shell with "Could not load the feed:
+  no_hub", not "No hub here" (Vercel serves the static page without the
+  server). Small UI follow-up; `RUNBOOK-cutover.md` §8 step 6 expects "No hub
+  here".
+- The Vercel CLI "Not authorized" on deploy.
+- Playwright for Phase 7 (needs :3000/:5173 free).
+- The platform's own hostname (make `console.civic.social` the production
+  project's primary domain rather than `floyd.civic.social`) with the
+  post-cutover cleanup (Adam's note, 2026-09-27).
+
+---
+
 ## Phase 7 part one: sample content for new hubs — 2026-09-26
 
 **Branch:** `multi-tenant`, local commits (not pushed). **Dev:** migration

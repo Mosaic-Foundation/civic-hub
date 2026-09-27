@@ -144,7 +144,7 @@ function useSave(onSaved: () => void) {
 
 function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onSaved: () => void; withStepUp: WithStepUp }) {
   const c = detail.config;
-  const [form, setForm] = useState({
+  const saved = {
     name: c.name,
     hostname: c.hostname,
     jurisdiction_name: c.jurisdiction_name ?? "",
@@ -153,7 +153,11 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
     governing_body: c.governing_body,
     status: c.status,
     mode: c.mode ?? "",
-  });
+  };
+  const [form, setForm] = useState(saved);
+  // Like Save plugins: nothing to save until a field differs from what the
+  // server holds (the section remounts with fresh values after a save).
+  const changed = (Object.keys(saved) as Array<keyof typeof saved>).some((k) => form[k] !== saved[k]);
   const { busy, save, note } = useSave(onSaved);
   const archived = Boolean(detail.hub.archived_at);
   const needsStepUp = form.hostname !== c.hostname || (form.status === "suspended" && c.status !== "suspended") || form.mode !== (c.mode ?? "");
@@ -223,7 +227,7 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
       {note}
       <div className="cx-actions">
         {needsStepUp && <span className="cx-muted cx-small">Needs a fresh code</span>}
-        <button className="cx-btn cx-btn-primary" disabled={busy}>
+        <button className="cx-btn cx-btn-primary" disabled={busy || !changed}>
           {busy ? "Saving…" : "Save configuration"}
         </button>
       </div>
