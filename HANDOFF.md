@@ -22,8 +22,9 @@ done:
    that make others uncomfortable", "if participants ask", "information about
    one participant with another" (Code of Conduct); "first sign-up" (both
    draft notes). **Also applied, same rule, to three lines Adam did not list**
-   — say if not wanted: Privacy's example "89 participants voted", About's
-   "what people actually think", the proposal guide's "other participants".
+   — Privacy's example "89 participants voted", About's "what people actually
+   think", the proposal guide's "other participants". **Kept** (Adam, via the
+   management session, 2026-09-27).
 3. Privacy's non-place complaint line: "or to your state's Attorney General."
 
 Place hubs render exactly as before (the Floyd fixture test, unchanged).
