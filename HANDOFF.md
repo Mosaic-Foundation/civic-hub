@@ -97,6 +97,18 @@ hub with local-government demo processes, whatever its kind.
   `hub.update`. Organization: Related place with None; sample checkbox
   disabled with the message.
 
+### Dev (Adam, 2026-09-27, evening)
+Pushed `multi-tenant` (`2328a80..491bdf5`); `./scripts/db-push.sh
+--include-all` applied exactly the three (cleanup, jurisdictions, FK drop);
+`load-jurisdictions.ts` via `~/civic-keys/dev-db.env`: 38,858 rows, checksum
+`d9e1d109…`. Checked from the session (read-only): `athens.dev.civic.social/api/health`
+→ `ok`, commit `491bdf5`, `hub_token` ok, schema ok (33 checked, no gaps);
+an unknown `*.dev.civic.social` host → `/api/hub-config` 404 (the shell's
+no-hub signal). Still Adam's: §0.2 visually, §0.4b (link Floyd's dev copy),
+§0.4c (create the Town of Floyd hub through the form), §0.5. CI on `491bdf5`
+succeeded (build-and-test, api-tests: the first run that loads the list and
+runs `hubKinds.test.ts` / `jurisdictions.test.ts`).
+
 ### Runbook
 §2.8's "don't delete" flag replaced: `CIVIC_JURISDICTION` goes as planned;
 new §4.7 checks a non-admin's pending (non-public) vote suggestion on Floyd
