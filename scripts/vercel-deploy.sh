@@ -51,6 +51,30 @@ MSG
   exit 1
 fi
 
+# The repo-level link (.vercel/repo.json, written by `vercel link --repo`)
+# is read by newer CLIs BEFORE project.json. Found on 2026-09-26 naming the
+# production project while project.json named dev: this script printed
+# "civic-hub-dev" and the CLI aimed at production (it answered "Not
+# authorized"). Refuse while it names production, too.
+REPO_LINK=".vercel/repo.json"
+if [[ -f "$REPO_LINK" ]]; then
+  REPO_NAMES="$(node -e "process.stdout.write((require('./$REPO_LINK').projects || []).map((p) => p.name).join(' '))")"
+  for n in $REPO_NAMES; do
+    if [[ "$n" == "$PRODUCTION_PROJECT" ]]; then
+      cat >&2 <<MSG
+
+REFUSED: $REPO_LINK links this repository to the PRODUCTION project ($n).
+Newer Vercel CLIs use that file before $LINK_FILE, so this deploy could land
+on production. Move it aside, then deploy again:
+
+  mv $REPO_LINK $REPO_LINK.production-link
+
+MSG
+      exit 1
+    fi
+  done
+fi
+
 if [[ "$NAME" != "$DEV_PROJECT" ]]; then
   echo "WARNING: linked project is \"$NAME\", not \"$DEV_PROJECT\". Continuing." >&2
 fi
