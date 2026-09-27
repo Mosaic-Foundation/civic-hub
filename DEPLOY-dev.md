@@ -229,3 +229,47 @@ Nothing here is destructive, but if the dev database needs to go back:
   sessions cascade.
 - The branch is not merged and production is untouched, so reverting means
   redeploying `main`.
+
+---
+
+## 9. Dev's domain: `*.dev.civic.social` (2026-09-27)
+
+Dev has production's shape: the console at **`console.dev.civic.social`**,
+hubs at **`<slug>.dev.civic.social`** (production: `console.civic.social`,
+`<slug>.civic.social`, `RUNBOOK-cutover.md` §8). A hub created in the console
+is live at its address immediately: no `vercel alias set`. The console's
+suggested address comes from `CIVIC_CONSOLE_HOSTNAME` (`platformDomain()`).
+
+**How it is set up** (done 2026-09-27, Adam; DNS stays at GoDaddy):
+
+| Where | What |
+|---|---|
+| Vercel `civic-hub-dev` → Domains | `*.dev.civic.social` (Valid Configuration) |
+| Vercel team → Domains → `civic.social` | Vercel DNS enabled; **nameservers NOT moved** (ignore the banner asking) |
+| GoDaddy `civic.social` DNS | `NS _acme-challenge.dev` → `ns1.vercel-dns.com`, `ns2.vercel-dns.com` (certificate only) |
+| GoDaddy `civic.social` DNS | `CNAME *.dev` → `cname.vercel-dns-0.com` (traffic) |
+| Vercel `civic-hub-dev` env | `CIVIC_CONSOLE_HOSTNAME=console.dev.civic.social` |
+| `vercel.json` | both console rules name `console.dev.civic.social` (`tests/unit/consoleRouting.test.ts`) |
+
+Nothing else under `civic.social` is affected: a wildcard never overrides a
+name with its own record (apex, `www`, `floyd`, …), `*.dev` covers only the
+`dev` level, and production's future `*.civic.social` covers one level, so
+it never catches `x.dev.civic.social`. `dev` is a reserved slug.
+
+**Checked before** (see BUILD-PLAN Phase 5 → "The dev wildcard"): sessions
+are host-only, `CIVIC_ALLOWED_ORIGINS` needs no entry for same-origin hubs,
+no DNS collisions.
+
+**Good to know:**
+- A brand-new name can take up to 10 minutes to resolve on a machine that
+  looked it up before it existed (GoDaddy's negative-cache time). Public
+  resolvers had it within a minute.
+- An address with no hub shows the app's shell with "Could not load the
+  feed: no_hub", not the server's "No hub here" page: on Vercel the static
+  page is served without reaching the server. Harmless; a follow-up is to
+  have the UI show "No hub here" when `/hub-config` says so.
+- The old `*.vercel.app` hub addresses keep working until each hub's
+  hostname is changed, and stay reserved after.
+- **Undo:** delete the `*.dev` CNAME at GoDaddy and set
+  `CIVIC_CONSOLE_HOSTNAME` back to `console-civic-hub-dev.vercel.app`
+  (still routed by `vercel.json`), then redeploy.
