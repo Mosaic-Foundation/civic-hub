@@ -334,6 +334,10 @@ describe("every section round-trips: save, reload, values match", () => {
         expect(await storedSetting("athens", key), `${key} stored`).toBe(expected);
         expect(reloaded.body.changed[key]?.by, `${key} changed by`).toBe("Settings Test Admin");
       }
+      // The Email section says which address a digest footer prints, and why.
+      if (section === "email") {
+        expect(reloaded.body.platform.postal_address).toEqual({ value: "1 Test Street", source: "hub" });
+      }
     });
   }
 

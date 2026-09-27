@@ -68,6 +68,9 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "control_codes", columns: ["email", "purpose", "code_hash", "attempts", "locked_until"], owner: "control" },
   { table: "control_sessions", columns: ["token_hash", "email", "expires_at", "revoked_at"], owner: "control" },
   { table: "control_audit_log", columns: ["actor_email", "action", "target_hub_id", "before", "after"], owner: "control" },
+  // Jurisdictions (20260927000000): the reference list and the hub's link to it.
+  { table: "jurisdictions", columns: ["ocd_id", "census_geoid", "state", "type", "official_name", "display_name"], owner: "control" },
+  { table: "hubs", columns: ["jurisdiction_ocd_id", "jurisdiction_custom"], owner: "control" },
   { table: "processes", columns: ["id", "hub_id", "type", "status", "state", "review_id"], owner: "core/processService" },
   { table: "events", columns: ["id", "event_type", "process_id", "data"], owner: "core/eventStore" },
   // The digest selects by it (20260926030000).

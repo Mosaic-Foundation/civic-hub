@@ -2,6 +2,20 @@ import SectionForm from "./SectionForm";
 import { Link } from "react-router-dom";
 import { ReadOnlyField, TextAreaField, TextField } from "./fields";
 
+/** Where the footer's address comes from, as the page says it. Reflects the last save. */
+function postalSourceHint(source: "hub" | "environment" | "platform" | null): string {
+  switch (source) {
+    case "hub":
+      return "This hub's own address, above.";
+    case "environment":
+      return "The deployment's HUB_POSTAL_ADDRESS, used until this hub sets its own. It is being retired: set the address above to keep it.";
+    case "platform":
+      return "The platform's address, because this hub has not set its own. Set one above to use yours instead.";
+    default:
+      return "Neither this hub nor the platform has an address, so digests go out without one.";
+  }
+}
+
 export default function EmailSection() {
   return (
     <SectionForm
@@ -32,7 +46,12 @@ export default function EmailSection() {
             k="email.postal_address"
             label="Postal address"
             rows={2}
-            hint="Printed in the footer of digests (anti-spam law asks for one). Leave it empty to leave it out."
+            hint="Printed in the footer of digests (anti-spam law asks for one). Leave it empty to use the platform's address."
+          />
+          <ReadOnlyField
+            label="Address in use"
+            value={f.data.platform.postal_address.value || "None"}
+            hint={postalSourceHint(f.data.platform.postal_address.source)}
           />
           <p className="form-hint settings-note">
             Whether this hub sends the resident and admin digests, and when,

@@ -1724,7 +1724,11 @@ export interface HubSettings {
   /** What applies when it has none, where the deployment sets one. */
   fallbacks: Record<string, string>;
   changed: Record<string, { at: string; by: string | null }>;
-  platform: { from_address: string };
+  platform: {
+    from_address: string;
+    /** What a digest footer prints and where it comes from; source null = none. */
+    postal_address: { value: string; source: "hub" | "environment" | "platform" | null };
+  };
   /** Document keys with a shared default to restore. */
   restorable: string[];
 }

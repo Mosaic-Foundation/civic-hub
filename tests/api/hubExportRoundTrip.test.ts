@@ -48,6 +48,12 @@ const pub = (key: string) => `${SUPA_URL}/storage/v1/object/public/${BUCKET}/${k
 const HUB = `rt-${randomBytes(4).toString("hex")}`;
 const HOST = `${HUB}.localhost`;
 const PLAIN_DB = `civic_rt_${randomBytes(4).toString("hex")}`;
+// A fictional reference row (state "zz"): the hub's jurisdiction_ocd_id must
+// travel in hub.json and find its row on the target.
+const OCD = `ocd-division/country:us/state:zz/place:rt_${randomBytes(4).toString("hex")}`;
+const JURISDICTION_ROW = [OCD, "9900001", "zz", "town", "Roundtrip town", "Town of Roundtrip, Nowhere"];
+const insertJurisdiction = (c: pg.Client) =>
+  c.query("insert into jurisdictions (ocd_id, census_geoid, state, type, official_name, display_name) values ($1, $2, $3, $4, $5, $6)", JURISDICTION_ROW);
 const ids = {
   u1: `user_${randomBytes(6).toString("hex")}`,
   u2: `user_${randomBytes(6).toString("hex")}`,
@@ -152,9 +158,10 @@ beforeAll(async () => {
   expect((await storage("POST", IMG_LEGACY, PNG)).ok).toBe(true);
 
   const q = (sql: string, params: unknown[]) => db.query(sql, params);
+  await insertJurisdiction(db);
   await q(
-    `insert into hubs (id, protocol_hub_id, hostname, name, space_did, mode) values ($1, $2, $3, $4, $5, 'demo')`,
-    [HUB, `civic-hub-${HUB}`, HOST, "Round Trip Hub", `did:web:${HOST}`],
+    `insert into hubs (id, protocol_hub_id, hostname, name, space_did, mode, jurisdiction_ocd_id) values ($1, $2, $3, $4, $5, 'demo', $6)`,
+    [HUB, `civic-hub-${HUB}`, HOST, "Round Trip Hub", `did:web:${HOST}`, OCD],
   );
   await q(`insert into hub_settings (hub_id, key, value) values ($1, 'identity.name', 'Round Trip Hub'), ($1, 'identity.banner_url', $2), ($1, 'demo_bypass_code', '424242')`, [HUB, pub(IMG_LEGACY)]);
   await q(`insert into users (id, hub_id, email, full_name, email_verified) values ($1, $3, $4, 'Ada Resident', true), ($2, $3, $5, 'Bo Resident', true)`, [ids.u1, ids.u2, HUB, `ada+${HUB}@example.test`, `bo+${HUB}@example.test`]);
@@ -182,7 +189,8 @@ afterAll(async () => {
   // this one so it cannot be deleted, and the per-hub job runs in
   // crons.test.ts (CI's second pass, same database) must see only Floyd and
   // Athens.
-  await db?.query("update hubs set status = 'suspended', archived_at = now() where id = $1", [HUB]).catch(() => undefined);
+  await db?.query("update hubs set status = 'suspended', archived_at = now(), jurisdiction_ocd_id = null where id = $1", [HUB]).catch(() => undefined);
+  await db?.query("delete from jurisdictions where ocd_id = $1", [OCD]).catch(() => undefined);
   await db?.query(`drop database if exists ${PLAIN_DB}`).catch(() => undefined);
   await db?.end();
 });
@@ -208,6 +216,7 @@ describe("hub export → import → restore, on the local stack", () => {
     expect(m.tables.map((t: { table: string }) => t.table)).not.toContain("sessions");
     expect(m.omitted_tables.map((t: { table: string }) => t.table).sort()).toEqual(["link_previews", "pending_verifications", "sessions"]);
     expect(m.images.count).toBe(2);
+    expect(JSON.parse(await readFile(join(bundle, "hub.json"), "utf8")).jurisdiction_ocd_id).toBe(OCD);
 
     const images = JSON.parse(await readFile(join(bundle, "images.json"), "utf8"));
     const legacy = images.find((i: { source_key: string }) => i.source_key === IMG_LEGACY);
@@ -258,6 +267,7 @@ describe("hub export → import → restore, on the local stack", () => {
     const s = await db.query("select search_doc is not null as ok from processes where id = $1", [ids.vote]);
     expect(s.rows[0].ok).toBe(true);
 
+    expect((await db.query("select jurisdiction_ocd_id from hubs where id = $1", [HUB])).rows[0].jurisdiction_ocd_id).toBe(OCD);
     const audit = await db.query("select actor_email from control_audit_log where action = 'hub.import' and target_hub_id = $1", [HUB]);
     expect(audit.rows.map((x) => x.actor_email)).toEqual(["ci@example.test"]);
 
@@ -304,8 +314,15 @@ describe("hub export → import → restore, on the local stack", () => {
       expect(noFlag.code).not.toBe(0);
       expect(noFlag.out).toMatch(/no storage/);
 
+      // The target's reference list lacks the hub's jurisdiction: refused, by name.
+      const noRow = await script("import-hub.ts", [bundle, "--no-images", "--hostname", `${HUB}.example.test`], env);
+      expect(noRow.code).not.toBe(0);
+      expect(noRow.out).toContain(`serves jurisdiction ${OCD}`);
+      await insertJurisdiction(plain);
+
       const r = await script("import-hub.ts", [bundle, "--no-images", "--hostname", `${HUB}.example.test`], env);
       expect(r.code, r.out).toBe(0);
+      expect((await plain.query("select jurisdiction_ocd_id from hubs where id = $1", [HUB])).rows[0].jurisdiction_ocd_id).toBe(OCD);
       expect(await counts(plain, HUB)).toEqual({ ...before, hub_settings: before.hub_settings - 1, sessions: 0, pending_verifications: 0 });
     } finally {
       await plain.end();

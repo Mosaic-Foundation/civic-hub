@@ -129,6 +129,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--c
 .cx-alert-error { background: var(--cx-danger-bg); color: var(--cx-danger); }
 .cx-alert-warn { background: var(--cx-warn-bg); color: var(--cx-warn); }
 .cx-alert-ok { background: var(--cx-ok-bg); color: var(--cx-ok); }
+.cx-alert-info { background: var(--cx-surface-2); color: var(--cx-text); }
 .cx-danger-zone { border-color: color-mix(in srgb, var(--cx-danger) 40%, var(--cx-border)); }
 
 /* Tables */
@@ -153,6 +154,34 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--c
 }
 .cx-toggles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); column-gap: 16px; }
 .cx-toggles .cx-check { margin-top: 0; }
+
+/* Jurisdiction picker */
+.cx-combo { position: relative; }
+.cx-combo > label > span { font-weight: 500; font-size: 0.9rem; }
+.cx-listbox {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 5; margin: 4px 0 0; padding: 4px;
+  list-style: none; max-height: 280px; overflow-y: auto;
+  background: var(--cx-surface); border: 1px solid var(--cx-border); border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+}
+.cx-listbox li {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 6px; cursor: pointer;
+}
+.cx-listbox li[aria-selected="true"] { background: var(--cx-surface-2); }
+.cx-chosen {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; margin-bottom: 14px;
+  border: 1px solid var(--cx-border); border-left: 3px solid var(--cx-accent); border-radius: 8px;
+}
+
+.cx-life { margin: 16px 0 6px; font-size: 0.9rem; color: var(--cx-muted); font-weight: 600; }
+
+/* Collapsible sections */
+.cx-details { border-top: 1px solid var(--cx-border); padding-top: 12px; margin-bottom: 20px; }
+.cx-details > summary { cursor: pointer; font-weight: 600; list-style-position: inside; }
+.cx-details > summary .cx-muted { font-weight: 400; margin-left: 6px; }
+.cx-details[open] > summary { margin-bottom: 10px; }
+.cx-slug-note { display: block; margin: -6px 0 14px; font-size: 0.8rem; }
 
 /* Badges */
 .cx-badge {

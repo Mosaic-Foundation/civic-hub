@@ -208,7 +208,7 @@ function sourceNormalizer(m: BundleManifest, images: BundleImage[]) {
 
 // --- The target: catalog -----------------------------------------------------
 
-interface Catalog {
+export interface Catalog {
   columns: Map<string, Map<string, { nullable: boolean }>>;
   uniques: Array<{ table: string; columns: string[] }>;
   fks: Array<{ table: string; columns: string[]; parent: string; parentColumns: string[] }>;
@@ -216,7 +216,7 @@ interface Catalog {
   keys: Map<string, string[]>;
 }
 
-async function readCatalog(client: pg.Client): Promise<Catalog> {
+export async function readCatalog(client: pg.Client): Promise<Catalog> {
   const cols = await client.query<{ table_name: string; column_name: string; is_nullable: string }>(
     "select table_name, column_name, is_nullable from information_schema.columns where table_schema = 'public'",
   );
@@ -380,7 +380,8 @@ export interface ImportPlan {
   targetNormalize: ((t: string) => string) | undefined;
 }
 
-const APPEND_ONLY = ["events", "review_turns", "hub_admin_audit_log"];
+/** Tables whose triggers refuse deletes; cleared only with the triggers suspended (restore, purge). */
+export const APPEND_ONLY = ["events", "review_turns", "hub_admin_audit_log"];
 
 /**
  * Everything checked before anything is written: the target's schema can
@@ -439,6 +440,20 @@ export async function planImport(client: pg.Client, b: LoadedBundle, opts: Impor
       [hubRow.hostname, hubId],
     );
     if (moved.rowCount) problems.push(`hubs: hostname ${String(hubRow.hostname)} was used by hub "${moved.rows[0].target_hub_id}" and stays taken.`);
+    // The jurisdiction the hub serves (20260927000000) must be on the
+    // target's reference list, or the hubs row's foreign key refuses it.
+    const ocd = hubRow.jurisdiction_ocd_id;
+    if (typeof ocd === "string" && ocd) {
+      const j = catalog.columns.has("jurisdictions")
+        ? await client.query("select 1 from jurisdictions where ocd_id = $1", [ocd])
+        : null;
+      if (!j?.rowCount) {
+        problems.push(
+          `hubs: the hub serves jurisdiction ${ocd}, which is not on the target's reference list. ` +
+            "Load it first (scripts/load-jurisdictions.ts).",
+        );
+      }
+    }
   } else if (!existingHub.rowCount) {
     problems.push(`Restore needs the hub "${hubId}" to exist on the target; import it instead.`);
   } else {

@@ -2,8 +2,10 @@
 
 Takes production (`floyd.civic.social`, Vercel project `civic-hub`, Supabase
 **Civic-Hub-Floyd** `nfhyypwoporfggqcerli`) from the cutover build to release
-1: the post-cutover cleanup, the four Phase 5–7 migrations, the current
-`multi-tenant` code, the console at `console.civic.social`, and hubs at
+1: the post-cutover cleanup, six migrations (the four Phase 5–7 ones and the
+two from 2026-09-27: the jurisdiction list, and the audit log's hub foreign
+key), the jurisdiction list's rows, the current `multi-tenant` code, the
+console at `console.civic.social`, Floyd's jurisdiction id, and hubs at
 `<slug>.civic.social`.
 
 Written 2026-09-27. The cleanup migration was tested on a local copy of
@@ -33,9 +35,9 @@ hand.** No session writes to production.
 | 0 | The day before, on dev: the same release | dev only |
 | 1 | Pre-checks: health, logs, keys, postal address, Resend, stale votes, snapshot | nothing changes |
 | 2 | **Cleanup: migration and env tidy. The point of no return.** | none |
-| 3 | Migrations: exactly four | none |
+| 3 | Migrations: exactly six; then the jurisdiction list | none |
 | 4 | Code to production, health, parity | none |
-| 5 | Console: `console.civic.social`, env vars, the platform sender | none |
+| 5 | Console: `console.civic.social`, env vars, the platform sender, Floyd's jurisdiction id | none |
 | 6 | Wildcard: `*.civic.social` | none |
 | 7 | Final check: a throwaway hub, created and archived | none |
 | 8 | Afterwards: files to delete | — |
@@ -50,6 +52,8 @@ problem is fixed forward in a session. §1 changes nothing, so stopping during
 |---|---|
 | The platform sending domain you verified in Resend (e.g. `mail.civic.social`) and the address on it, e.g. `noreply@mail.civic.social`: **PLATFORM_SENDER** | §1.6, §5 |
 | The one address that may sign in to the console: **CONSOLE_ADMIN** | §5 |
+| The platform's postal address for digest footers (e.g. the foundation's mailing address): **PLATFORM_POSTAL_ADDRESS** | §1.5 |
+| Production's database password (Supabase → Civic-Hub-Floyd → Database), for the jurisdiction load | §3.7 |
 
 **Choose the time outside 11:30–13:30 UTC** (7:30–9:30 am Eastern), when the
 meeting-summary, news, digest and admin-digest jobs run. Budget two hours;
@@ -60,7 +64,8 @@ DNS waits are most of it.
 ## 0. The day before, on dev (Adam, ~30 min)
 
 Dev (`civic-hub-dev`, `*.dev.civic.social`) gets the same release first. It
-has the four migrations already, so the cleanup arrives there out of order.
+has the four migrations already, so the cleanup arrives there out of order,
+together with the two from 2026-09-27.
 
 1. **Adam.** Push `multi-tenant` so dev builds it:
    ```bash
@@ -75,15 +80,34 @@ has the four migrations already, so the cleanup arrives there out of order.
    ```bash
    cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && cat supabase/.temp/project-ref && ./scripts/db-push.sh --dry-run --include-all
    ```
-   Worked if: it prints `urfmvqhzmamigssqwsya`, then lists exactly **one**
-   migration, `20260926005000_post_cutover_cleanup.sql`.
+   Worked if: it prints `urfmvqhzmamigssqwsya`, then lists exactly **three**
+   migrations: `20260926005000_post_cutover_cleanup.sql`,
+   `20260927000000_jurisdictions.sql`, `20260927010000_audit_log_drop_hub_fk.sql`.
    If the ref is `nfhyypwoporfggqcerli` (production): stop.
-4. **script.** Apply it to dev:
+4. **script.** Apply them to dev:
    ```bash
    cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && ./scripts/db-push.sh --include-all
    ```
-   Answer `y`. Worked if: `Applying migration 20260926005000_post_cutover_cleanup.sql...`
-   then `Finished supabase db push.`
+   Answer `y`. Worked if: three `Applying migration …` lines, then
+   `Finished supabase db push.`
+4a. **script.** The jurisdiction list on dev (`~/civic-keys/dev-db.env` holds
+   dev's `CIVIC_TARGET_DATABASE_URL`):
+   ```bash
+   cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && node --env-file=$HOME/civic-keys/dev-db.env --import tsx scripts/load-jurisdictions.ts
+   ```
+   Worked if: `jurisdictions now holds …` with the row count in
+   `config/jurisdictions/SOURCES.md`. Run it again: `already loaded … Nothing to do.`
+4b. **Adam.** https://console.dev.civic.social → Floyd's dev copy →
+   Configuration → Jurisdiction → From the list → Virginia → County → type
+   "Floyd" → choose **Floyd County, Virginia** → Save configuration. Worked
+   if: the audit trail shows `hub.update` with `jurisdiction_ocd_id`. Athens
+   and Utopia are fictional places: leave them unlinked.
+4c. **Adam.** Console → Create hub: Virginia → Town → "Floyd" → **Town of
+   Floyd, Virginia**. Worked if: the display name, code, OCD id and "Town
+   Council" fill in; the slug suggests `floyd-town` (the plain `floyd` is
+   reserved); the Plugins section opens to 14 boxes, all ticked. Untick one,
+   create (demo, sample content on), and archive it afterwards if you don't
+   want it.
 5. **Adam.** https://console.dev.civic.social/ → sign in; open any hub; and
    https://athens.dev.civic.social loads. `…/api/health` on
    `civic-hub-dev.vercel.app` → `status ok`.
@@ -120,12 +144,24 @@ If any of 1–5 fails, don't hold the sitting: bring it to a session.
     where hub_id = 'floyd' and key in ('email.postal_address', 'email.from_name', 'email.from_address')
     order by key;
    ```
-   Worked if: `email.postal_address` is Floyd's real postal address,
-   `email.from_name` is `Floyd Civic Hub`, `email.from_address` is
-   `noreply@floyd.civic.social` (§5 removes that row).
-   If the postal address is missing or blank: Floyd → Admin → Settings →
-   Email → Postal address → save, then run the query again. It must be set
-   before §2 removes `HUB_POSTAL_ADDRESS`, or Floyd's email footers go blank.
+   Worked if: `email.from_name` is `Floyd Civic Hub` and `email.from_address`
+   is `noreply@floyd.civic.social` (§5 removes that row). Note whether
+   `email.postal_address` is there.
+5a. **Adam.** The platform's postal address, which every hub without its own
+   prints in its digest footer. §2 removes `HUB_POSTAL_ADDRESS`, so set this
+   first (the release code reads it from §4 on):
+   ```bash
+   cd ~/civic-prod-link && vercel env add CIVIC_PLATFORM_POSTAL_ADDRESS production --no-sensitive --force --value "PLATFORM_POSTAL_ADDRESS"
+   ```
+   (Replace `PLATFORM_POSTAL_ADDRESS`, keeping the quotes.) Worked if:
+   `Added` or `Overrode`. §2.9's redeploy picks it up.
+   **The alternative** (or both): give Floyd its own address — Floyd → Admin
+   → Settings → Email → Postal address → save, then step 5's query shows it.
+   Floyd's own address wins over the platform's.
+   Between §2.9 and §4 the running code is still `0b23e9a`, which reads only
+   Floyd's own row: if Floyd has none, a digest sent in that window has no
+   address line. The sitting's time (outside 11:30–13:30 UTC) keeps digests
+   out of that window.
 6. **Adam.** Resend → **Domains**: the platform sending domain (the one in
    **PLATFORM_SENDER**) shows **Verified**. If not: stop; the console's
    sign-in codes would not arrive.
@@ -157,7 +193,7 @@ If any of 1–5 fails, don't hold the sitting: bring it to a session.
 
    Press Enter, and copy the table into your notes as **BEFORE**.
 
-**Go/no-go.** All nine passed: go on. Otherwise stop here; nothing has
+**Go/no-go.** All of them passed: go on. Otherwise stop here; nothing has
 changed.
 
 ---
@@ -290,6 +326,17 @@ throughout; production is linked only from a separate folder.
      `CIVIC_JURISDICTION_NAME`, `CIVIC_SPACE_DID`, `VITE_HUB_JURISDICTION`,
      `CIVIC_BETA_MODE`, `VITE_BETA_MODE`.
 
+   > **OPEN (found 2026-09-27; settle before the sitting).** New processes
+   > are stamped with `CIVIC_JURISDICTION`, not with the hub's own
+   > `jurisdiction_code` (`DEFAULT_JURISDICTION` in `src/config/hub.ts`, used
+   > by `processService.createProcess` and a few event paths). Deleting it
+   > turns the `jurisdiction` on Floyd's new processes and events from
+   > `us-va-floyd` into `local`, so their published activities lose their
+   > place; keeping it stamps Floyd's code on every other hub's new
+   > processes. HANDOFF (2026-09-27, "The jurisdiction code") has the
+   > inventory and the recommended fix; until it is decided, don't delete
+   > `CIVIC_JURISDICTION`.
+
    **Keep everything else**, in particular: `CIVIC_ANON_SECRET` (never
    change it: residents' public pseudonyms), `CIVIC_ALLOWED_ORIGINS`,
    `CRON_SECRET`, `DIGEST_UNSUBSCRIBE_SECRET`, `RESEND_*`, the Supabase keys,
@@ -310,7 +357,7 @@ throughout; production is linked only from a separate folder.
 
 ---
 
-## 3. Migrations — exactly four (~5 min)
+## 3. Migrations — exactly six, then the jurisdiction list (~10 min)
 
 1. **Adam.** Move the production-linked folder to the release commit
    (`multi-tenant`; the link stays):
@@ -322,16 +369,20 @@ throughout; production is linked only from a separate folder.
    ```bash
    cd ~/civic-release-1 && CONFIRM_PRODUCTION_PUSH=nfhyypwoporfggqcerli ./scripts/db-push.sh --dry-run
    ```
-   Worked if: it lists exactly these **four**, in this order:
+   Worked if: it lists exactly these **six**, in this order:
    `20260926010000_control_plane.sql`, `20260926020000_hub_exports_bucket.sql`,
-   `20260926030000_events_recorded_at.sql`, `20260926040000_sample_content.sql`.
+   `20260926030000_events_recorded_at.sql`, `20260926040000_sample_content.sql`,
+   `20260927000000_jurisdictions.sql`, `20260927010000_audit_log_drop_hub_fk.sql`.
+   The last one is the only non-additive one: it drops one constraint, the
+   audit log's foreign key to `hubs`, so a never-used hub can be purged
+   (`scripts/purge-hub.ts`); no row changes.
    If it lists anything else: stop. (Production runs its current code on the
    cleaned schema, which was tested; nothing is waiting on this.)
 3. **script.** Push:
    ```bash
    cd ~/civic-release-1 && time CONFIRM_PRODUCTION_PUSH=nfhyypwoporfggqcerli ./scripts/db-push.sh
    ```
-   Answer `y`. Worked if: four `Applying migration …` lines, then
+   Answer `y`. Worked if: six `Applying migration …` lines, then
    `Finished supabase db push.`
    If one fails: the CLI stops there. Run `cd ~/civic-release-1 && supabase
    migration list` and copy both outputs; stop. The migrations are additive
@@ -350,8 +401,29 @@ throughout; production is linked only from a separate folder.
    ```bash
    cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && node --env-file=.env.prod --import tsx scripts/check-tenancy.ts --prod
    ```
-   Worked if: `CLEAN — 35 tables, 31 hub-scoped`.
+   Worked if: `CLEAN — 36 tables, 31 hub-scoped` (the 36th is
+   `jurisdictions`, platform reference data).
 6. **Adam.** https://floyd.civic.social/api/health → `status ok`.
+7. **Adam.** An env file for production's database, used only by the next
+   step (`chmod 600`; deleted in §8): create `~/civic-keys/prod-pg.env` with
+   one line,
+   ```
+   CIVIC_TARGET_DATABASE_URL=postgresql://postgres.nfhyypwoporfggqcerli:<db password>@<the Session pooler host>:5432/postgres
+   ```
+   from Supabase → Civic-Hub-Floyd → Connect → **Session pooler** (not the
+   transaction pooler).
+8. **script.** Load the jurisdiction list (a dry run first; it writes only
+   the `jurisdictions` table):
+   ```bash
+   cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && node --env-file=$HOME/civic-keys/prod-pg.env --import tsx scripts/load-jurisdictions.ts --dry-run
+   ```
+   ```bash
+   cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && node --env-file=$HOME/civic-keys/prod-pg.env --import tsx scripts/load-jurisdictions.ts
+   ```
+   Worked if: the checksum line matches `config/jurisdictions/us-jurisdictions.sha256`,
+   then `jurisdictions now holds …` with the count in
+   `config/jurisdictions/SOURCES.md`. If it says `Checksum mismatch`: stop;
+   the file in the folder is not the committed one.
 
 ---
 
@@ -444,6 +516,14 @@ throughout; production is linked only from a separate folder.
    signed in: the hub list shows `floyd`.
 10. **Adam.** https://floyd.civic.social still opens Floyd (not the console),
     and `/api/health` is `status ok`.
+11. **Adam.** Floyd's jurisdiction id: console → `floyd` → Configuration →
+    Jurisdiction → From the list → Virginia → County → type "Floyd" →
+    choose **Floyd County, Virginia**. Check the line under it reads
+    `ocd-division/country:us/state:va/county:floyd`, the display name
+    `Floyd County, Virginia` and the code `us-va-floyd` (both as today), and
+    the hub type County. Leave the governing body as it is → Save
+    configuration. Worked if: the audit trail's newest row is `hub.update`
+    with `jurisdiction_ocd_id` in its after, and Floyd's pages look as before.
 
 ---
 
@@ -491,11 +571,14 @@ delete the `*` CNAME at GoDaddy.
 
 ## 7. Final check: one throwaway hub (~10 min)
 
-`r1-check` is burned by this step: an archived hub's hostname stays taken.
+`r1-check` stays taken after this step (an archived hub's hostname does),
+unless you free it with §8.5.
 
-1. **Adam.** https://console.civic.social → **Create hub**: slug `r1-check`,
-   name `Release Check`, "Example County, Virginia", code `us-va-example`,
-   County (governing body pre-fills **Board of Supervisors**), mode **demo**,
+1. **Adam.** https://console.civic.social → **Create hub**: Jurisdiction →
+   **Other / not listed**, name "Example County, Virginia"; code
+   `us-va-example`; hub type County (governing body pre-fills **Board of
+   Supervisors**); slug `r1-check` (type it over the suggestion); name
+   `Release Check`; leave Plugins as they are; mode **demo**,
    **sample content on**, your address as its admin → create, with the fresh
    code. Worked if: created; the audit shows `hub.create` and
    `hub.sample_seed`. If it's refused naming `MEETING_…` or `FLOYD_NEWS_…`: a
@@ -531,6 +614,18 @@ delete the `*` CNAME at GoDaddy.
    another hub" guards (unreachable since the cleanup).
 4. **Adam.** Tell the beta testers if their sign-in mail now comes from a
    different address (§5).
+5. **script, optional.** Free `r1-check`'s slug and hostname: it was never
+   used, so it can be purged. Needs `~/civic-keys/prod-db.env` (storage) and
+   `prod-pg.env` (§3.7). Without `--confirm` it only prints what it would
+   delete; read it, then run the second block:
+   ```bash
+   cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && node --env-file=$HOME/civic-keys/prod-db.env --env-file=$HOME/civic-keys/prod-pg.env --import tsx scripts/purge-hub.ts --hub r1-check
+   ```
+   ```bash
+   cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && node --env-file=$HOME/civic-keys/prod-db.env --env-file=$HOME/civic-keys/prod-pg.env --import tsx scripts/purge-hub.ts --hub r1-check --confirm r1-check
+   ```
+   Worked if: `r1-check is purged`; the export it took first is in
+   `exports/`. Then delete `~/civic-keys/prod-pg.env`.
 
 ---
 
@@ -578,3 +673,4 @@ Paste into the browser console on https://floyd.civic.social.
 | The CLI sequence, on the local stack from production's history | from `release-1-cleanup`: exactly `20260926005000` pending; then from `multi-tenant`: exactly the four |
 | The release build, both modes (service role, hub tokens), cleaned schema | API 29 files / 292 tests; unit 98 / 1132; Playwright 25 / 25 |
 | Parity outputs, `0b23e9a` vs the release build, same local data | process list, proposals, feed, search identical |
+| The two 2026-09-27 migrations (jurisdictions; the audit log's FK) | applied on the local stack after the four with `supabase migration up`; the whole API layer in both modes and the unit layer pass on it. The six-count dry run was **not** re-rehearsed from production's history; the count follows from the file names |

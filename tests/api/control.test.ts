@@ -126,6 +126,7 @@ describe("create hub", () => {
         name: "Console Test Hub",
         hostname: HOST,
         jurisdiction_name: "Testing, Nowhere",
+        jurisdiction_custom: true,
         jurisdiction_code: "us-xx-testing",
         governing_body: "Testing Council",
         admin_email: `first-admin-${run}@example.test`,

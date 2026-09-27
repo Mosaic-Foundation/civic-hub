@@ -4,6 +4,131 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Jurisdictions, plugins at creation, purge, platform postal address — 2026-09-27
+
+**Branch:** `multi-tenant`, local commit (not pushed). Local only; dev and
+production untouched. Plan: BUILD-PLAN → "Jurisdictions, plugins at creation,
+purge, platform postal address". **Not finished: the jurisdiction data**
+(below, "Waiting on Adam").
+
+### Built
+- **Migrations** `20260927000000_jurisdictions.sql` (the `jurisdictions`
+  reference table: OCD id key, GEOID, state, type, official and display name;
+  forced RLS, no policy, service role SELECT only; `hubs.jurisdiction_ocd_id`
+  FK, no uniqueness; `hubs.jurisdiction_custom` with a check) and
+  `20260927010000_audit_log_drop_hub_fk.sql` (**non-additive, by Adam's
+  decision**: drops `control_audit_log_target_hub_id_fkey` so a hub can be
+  purged; its audit rows stay, as text). Catalog: `jurisdictions` in
+  `NOT_HUB_SCOPED`; schema contract; export manifest count 36.
+- **Loader/build:** `scripts/fetch-jurisdiction-sources.sh` (by hand; pinned
+  Census 2026 gazetteer + OCD commit `b591153`), `scripts/build-jurisdictions.ts`
+  (GEOID join, left-out rows counted, never invented ids; display-name rules),
+  `scripts/load-jurisdictions.ts` (checksum, one transaction, upsert, deletes
+  unlisted unreferenced rows, checksum in the table comment → second run is a
+  no-op; any install), `scripts/lib/csv.ts`, `config/jurisdictions/SOURCES.md`.
+  Both licenses verified (Census: US government work; OCD: CC0 1.0).
+- **Console:** `src/control/jurisdictions.ts` (states, type-ahead, hubs
+  serving, slug suggestion) and routes `GET /control/jurisdictions/states`,
+  `GET /control/jurisdictions`, `GET /control/slug-suggestion`. Create form:
+  `ui/src/console/JurisdictionPicker.tsx` (state → type → type-ahead, or
+  Other / not listed), fills display name, code, OCD id, hub type, governing
+  body; slug = shortest free (plain → +type → +state → +n); "Already served
+  by …" as information; collapsible Plugins section (every plugin gets its
+  own `plugin.<id>.enabled` row). The hub page edits the jurisdiction the
+  same way (a `hub.update` audit row) and splits a purged-and-reused slug's
+  audit trail into its lives. `planCreateHub` refuses a jurisdiction name with
+  neither an OCD id nor the custom mark (`scripts/create-hub.ts`: `--ocd-id`,
+  and `--jurisdiction` alone is custom); fills the list's display name when
+  only the id is sent.
+- **Hub type `borough`** (Borough Council; local-government samples) —
+  Adam's answer covered CDP/state (→ other); borough followed the
+  recommended option. **Say if you'd rather map it to something else.**
+- **Sample seed ignores plugin switches** (`src/services/sampleSeed.ts`:
+  re-enters the hub's scope with every plugin on for the run; stored settings
+  untouched).
+- **`scripts/purge-hub.ts`** + `scripts/lib/hubPurge.ts`: refusals (archived;
+  only admins + sample users; no non-sample process/event; no `redirect_to`
+  pointing at it), plan printout (says the admin audit rows are preserved in
+  the bundle, then deleted with the restore's bypass), `--confirm <slug>`,
+  local `.tar.gz` export first (checked to hold the admin audit rows), then one
+  transaction: `hub.purge` audit row (`before` = full `hubs` row), every
+  `hub_id` row child-first, the `hubs` row; then images.
+- **`CIVIC_PLATFORM_POSTAL_ADDRESS`**: digest footer = hub's
+  `email.postal_address` → legacy `HUB_POSTAL_ADDRESS` → platform → none
+  (`postalAddressFrom()` in `src/services/hubSettings.ts`); Settings → Email
+  shows "Address in use" and its source. `.env.example` documented.
+- **Export/import:** the OCD id travels in `hub.json`; import refuses when
+  the target's list lacks it (README text in `format.ts` updated).
+- **UI lint:** the console's "stands alone" rule now exempts
+  `../../../src/shared/` (it was already failing on Phase 7's import; CI
+  does not lint `ui/`).
+
+### Tested
+- API 31 files, 309 passed, 7 skipped, **both modes** (local stack; needs
+  `CIVIC_TEST_CRON_SECRET` / `CIVIC_TEST_DIGEST_SECRET`, TESTING.md). New:
+  `jurisdictions.test.ts`, `hubPurge.test.ts`; extended: `sampleSeed`,
+  `hubExportRoundTrip`, `hubAdminSettings`, `control`. Unit 99 / 1143
+  (`tests/unit/jurisdictions.test.ts`). Playwright 25/25. UI build, root
+  lint, place names 0.
+- **By hand, locally** (console on `console.localhost:5191`, fictional
+  "Zedland" rows): state → type → "map" → Town of Maple; display name, code
+  `us-zz-maple`, Town Council, OCD id, slug `maple`; Word clouds unticked →
+  created with `plugin.wordcloud.enabled=false` and 9 sample processes; a
+  second pick of the same town showed "Already served by Maple Civic Hub
+  (maple)" and slug `maple-town`. Then purge-hub.ts on it for real (dry run,
+  confirm; 170 rows), re-created `maple`, and the hub page's audit trail
+  showed both lives. Cleaned up afterwards (purged again, Zedland rows gone).
+
+### Waiting on Adam
+1. **The data.** Sessions cannot download (`curl https` is denied). Run
+   `./scripts/fetch-jurisdiction-sources.sh` in `civic-hub/`; then a session
+   runs `build-jurisdictions.ts`, checks the OCD formats (Floyd County, the
+   Town of Floyd), fills SOURCES.md checksums, commits the CSV, adds the
+   load to CI, and repeats the create-form walk with real rows.
+2. **The jurisdiction code** (item 6): the recommendation below.
+3. **Dev:** after the push, `RUNBOOK-release-1.md` §0 steps 3–4c (the three
+   migrations, the load, Floyd's dev copy linked, one hub through the form).
+
+### The jurisdiction code (item 6) — inventory and recommendation
+**Read or written:** (1) protocol: `processes.jurisdiction` → every event's
+`jurisdiction` → the activity's `location["civic:code"]`
+(`src/events/activitySerializer.ts`), the discovery manifest's
+`jurisdictions` (`discoveryController.ts`), via `civicPlaceCode()` /
+`processJurisdiction()` in `src/config/hub.ts`; (2) registry/console:
+`hubs.jurisdiction_code`, `src/control/hubs.ts` (create, edit, validation,
+`defaultGoverningBody`'s `us-va-` test), `/api/hub-config`; (3) UI: the
+console forms; the hub UI shows the name, not the code, except a raw badge on
+`Process.tsx` (`voteState.jurisdiction`); (4) data: `20260922010000`
+(Floyd `us-va-floyd`), `supabase/seed.sql` and `dev-refresh-reseed.ts`
+(Athens `us-va-athens`), `seedProd*.ts` literals, `src/debug/seedData*.ts`;
+(5) tests; (6) specs: only examples (`us-va-floyd`); the Civic Activity spec
+§2.2.2 defines `civic:code` as a lowercase, hyphenated place code, broadest
+to narrowest, with containment semantics.
+
+**Found while doing it (affects the sitting):** new processes take
+`DEFAULT_JURISDICTION` = the deployment's `CIVIC_JURISDICTION` env var, not
+the hub's code (`processService.createProcess`; also review events, links,
+project briefs; proposals, projects and proposal comments always emit
+`"local"`). Runbook §2.8 deletes that var, so Floyd's new processes would
+publish without a place; and while it is set, every other hub's new
+processes carry Floyd's code. Flagged in the runbook at §2.8 ("don't delete
+`CIVIC_JURISDICTION` until decided").
+
+**Recommendation: derive it from the OCD id, once, at creation, and store
+it** (option 2, in the `protocol_hub_id` pattern): the rule
+`us-<state>-<name>`, with a type word for anything that is not a county
+(`us-va-floyd` for the county, keeping Floyd's published code;
+`us-va-floyd-town` for the town), written once and never recomputed, so a
+published code never changes. Custom hubs: no code (no civic geography). Not
+option 3 (retire): the code is on the wire and in Floyd's published record,
+and an OCD id is not the spec's `civic:code` format. Not option 1 (keep it
+homemade): today's form fill already gives the county and the town the same
+code. **Together with it, before the sitting:** new processes and events
+take the hub's code (`processJurisdiction()`), not the env var. Nothing
+about the code has been changed; waiting for your answer.
+
+---
+
 ## Release-1 prep: no-hub page, cleanup migration, the sitting runbook — 2026-09-27
 
 **Branch:** `multi-tenant`, local commits (not pushed). Production untouched.

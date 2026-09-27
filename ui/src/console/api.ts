@@ -1,3 +1,5 @@
+import type { ReferenceJurisdictionType } from "../../../src/shared/jurisdictionType";
+
 // The console's client for /api/control/*. Same origin as the page, so the
 // session cookie (HttpOnly; the page never sees it) rides along. Every
 // request carries X-Civic-Console, which the server requires on writes.
@@ -35,6 +37,8 @@ export interface Hub {
   hostname: string;
   jurisdiction_code: string | null;
   jurisdiction_name: string | null;
+  jurisdiction_ocd_id: string | null;
+  jurisdiction_custom: boolean;
   status: "active" | "suspended";
   mode: HubMode | null;
   created_at: string;
@@ -47,6 +51,8 @@ export interface HubConfig {
   hostname: string;
   jurisdiction_code: string | null;
   jurisdiction_name: string | null;
+  jurisdiction_ocd_id: string | null;
+  jurisdiction_custom: boolean;
   jurisdiction_type: string | null;
   governing_body: string;
   status: string;
@@ -86,6 +92,27 @@ export interface AuditEntry {
   after: unknown;
 }
 
+/** A row of the jurisdiction reference list (20260927000000). */
+export interface Jurisdiction {
+  ocd_id: string;
+  census_geoid: string;
+  state: string;
+  type: ReferenceJurisdictionType;
+  official_name: string;
+  display_name: string;
+}
+
+/** A type-ahead match, with the hubs already serving it. */
+export interface JurisdictionMatch extends Jurisdiction {
+  hubs: Array<{ id: string; name: string; archived: boolean }>;
+}
+
+export interface SlugSuggestion {
+  slug: string | null;
+  hostname: string | null;
+  passed_over: Array<{ slug: string; reason: string }>;
+}
+
 export interface HubExport {
   object_key: string;
   file_name: string;
@@ -109,7 +136,18 @@ export const api = {
   config: () => request<ConsoleConfig>("GET", "/config"),
   hubs: () => request<{ hubs: Hub[] }>("GET", "/hubs"),
   hub: (id: string) => request<HubDetail>("GET", `/hubs/${encodeURIComponent(id)}`),
-  createHub: (body: Record<string, string | boolean>) =>
+  states: () => request<{ states: Jurisdiction[] }>("GET", "/jurisdictions/states"),
+  searchJurisdictions: (state: string, type: string, q: string) =>
+    request<{ matches: JurisdictionMatch[] }>(
+      "GET",
+      `/jurisdictions?${new URLSearchParams({ state, type, q }).toString()}`,
+    ),
+  suggestSlug: (name: string, type?: string | null, state?: string | null) =>
+    request<SlugSuggestion>(
+      "GET",
+      `/slug-suggestion?${new URLSearchParams({ name, ...(type ? { type } : {}), ...(state ? { state } : {}) }).toString()}`,
+    ),
+  createHub: (body: Record<string, unknown>) =>
     request<HubDetail & { sample_content: { created: string[] } | { error: string } | null }>("POST", "/hubs", body),
   updateHub: (id: string, body: Record<string, unknown>) =>
     request<HubDetail>("PATCH", `/hubs/${encodeURIComponent(id)}`, body),

@@ -22,13 +22,16 @@
 //   matching created_at, so the open vote is open and the feed looks current.
 // - Idempotent: fixed ids (proc_sample_<hub>_<key>, user_sample_<hub>_00n);
 //   a template whose process exists is skipped, authors are upserted.
-// - Templates that do not fit the hub's jurisdiction type are skipped, and so
-//   are those whose plugin the hub has switched off.
+// - Templates that do not fit the hub's jurisdiction type are skipped. The
+//   hub's plugin switches are NOT consulted (Adam, 2026-09-27): every template
+//   the type allows is seeded, with every plugin treated as on for the run.
+//   Content whose plugin is off stays hidden, like any process of that type,
+//   until the plugin is turned on; removal takes all of it either way.
 
 import { randomUUID } from "node:crypto";
 import { forHub, type HubDb, type TableName } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
-import { KEYS } from "../models/hubSettings.js";
+import { currentHub, currentHubId, currentHubSettings, withHubScope } from "../config/hubContext.js";
+import { KEYS, PLUGIN_IDS } from "../models/hubSettings.js";
 import type { CreateEventInput } from "../models/event.js";
 import type { Process, ProcessContent, ProcessStatus } from "../models/process.js";
 import { sampleProcessId, sampleUserId } from "../models/sampleContent.js";
@@ -36,7 +39,6 @@ import { isJurisdictionType } from "../shared/jurisdictionType.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { createProcess, getProcess, saveProcessState } from "./processService.js";
 import { getSettingSync, getSupportThreshold } from "./hubSettings.js";
-import { isProcessTypeEnabled } from "./pluginGate.js";
 import { sampleDeliverySuppressed } from "./sampleContent.js";
 import { sampleNames } from "./sampleNames.js";
 import {
@@ -88,8 +90,21 @@ export interface SampleSeedReport {
 
 const DAY = 24 * 60 * 60 * 1000;
 
-/** Seed this hub's sample content. Runs in the hub's scope. */
+/**
+ * Seed this hub's sample content. Runs in the hub's scope — re-entered with
+ * every plugin switched on, so the real create paths (which refuse a process
+ * type whose plugin is off) accept every template. Only this run sees the
+ * switches that way; the stored settings are not touched.
+ */
 export async function seedSampleContent(opts: { dryRun?: boolean; now?: Date } = {}): Promise<SampleSeedReport> {
+  const hub = currentHub();
+  if (!hub) currentHubId(); // throws the usual "no hub in scope"
+  const settings = { ...(currentHubSettings() ?? {}) };
+  for (const id of PLUGIN_IDS) settings[`plugin.${id}.enabled`] = "true";
+  return withHubScope(hub!, settings, () => seedInScope(opts));
+}
+
+async function seedInScope(opts: { dryRun?: boolean; now?: Date }): Promise<SampleSeedReport> {
   const hubId = currentHubId();
   const run = new SeedRun(hubId, sampleNames(), opts.now ?? new Date());
   const typeRaw = getSettingSync(KEYS.IDENTITY_JURISDICTION_TYPE);
@@ -105,11 +120,6 @@ export async function seedSampleContent(opts: { dryRun?: boolean; now?: Date } =
 
   const plan: SampleTemplate[] = [];
   for (const t of fitting) {
-    const type = PROCESS_TYPE[t.kind];
-    if (!isProcessTypeEnabled(type)) {
-      report.skipped.push({ key: t.key, reason: `plugin for ${type} is off` });
-      continue;
-    }
     if (t.kind === "outcome" && !plan.some((p) => p.key === t.source)) {
       report.skipped.push({ key: t.key, reason: `its vote (${t.source}) is not seeded` });
       continue;

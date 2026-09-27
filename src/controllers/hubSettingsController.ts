@@ -22,10 +22,12 @@ import type { Request, Response } from "express";
 import { getAuthUser } from "../middleware/auth.js";
 import { currentHub, currentHubId } from "../config/hubContext.js";
 import {
+  effectivePostalAddress,
   getAllSettings,
   getSetting,
   hubModeFor,
   setSettings,
+  type EffectivePostalAddress,
 } from "../services/hubSettings.js";
 import { KEYS, KEY_ALIASES } from "../models/hubSettings.js";
 import { countLiveProcessesByPlugin } from "../services/processService.js";
@@ -56,8 +58,13 @@ export interface HubSettingsResponse {
   fallbacks: Record<string, string>;
   /** Per key, when the hub's own row last changed and who changed it. */
   changed: Record<string, { at: string; by: string | null }>;
-  /** Values the platform sets, shown read-only. */
-  platform: { from_address: string };
+  /**
+   * Values the platform sets, shown read-only. `postal_address` is the one a
+   * digest footer prints and where it comes from: the hub's own
+   * `email.postal_address`, the legacy HUB_POSTAL_ADDRESS, or the platform's
+   * CIVIC_PLATFORM_POSTAL_ADDRESS (source null: none, the footer leaves it out).
+   */
+  platform: { from_address: string; postal_address: EffectivePostalAddress };
   /** Document keys that have a shared default to restore. */
   restorable: string[];
 }
@@ -115,6 +122,7 @@ async function loadHubSettings(): Promise<HubSettingsResponse> {
     changed,
     platform: {
       from_address: (await getSetting(hubId, KEYS.EMAIL_FROM_ADDRESS)) ?? "",
+      postal_address: await effectivePostalAddress(hubId),
     },
     restorable,
   };

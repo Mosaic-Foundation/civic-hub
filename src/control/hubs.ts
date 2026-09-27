@@ -30,6 +30,7 @@ import {
 } from "../models/hubSettings.js";
 import { consoleHostname, isProductionDatabase, platformDomain } from "./config.js";
 import { defaultGoverningBody, isJurisdictionType, type JurisdictionType } from "../shared/jurisdictionType.js";
+import { getJurisdiction } from "./jurisdictions.js";
 
 export class ControlInputError extends Error {
   constructor(message: string, readonly status = 400) {
@@ -39,9 +40,18 @@ export class ControlInputError extends Error {
 }
 
 const HUB_COLUMNS =
-  "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, space_did, space_type, status, mode, created_at, updated_at, archived_at, redirect_to";
+  "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, jurisdiction_ocd_id, jurisdiction_custom, space_did, space_type, status, mode, created_at, updated_at, archived_at, redirect_to";
 
-export type ControlHub = Hub & { archived_at: string | null; redirect_to: string | null };
+export type ControlHub = Hub & {
+  archived_at: string | null;
+  redirect_to: string | null;
+  /** The jurisdictions row this hub serves (20260927000000), or null. */
+  jurisdiction_ocd_id: string | null;
+  /** "Other / not listed": a name with no OCD id, on purpose. */
+  jurisdiction_custom: boolean;
+};
+
+const OCD_ID_RE = /^ocd-division\/country:us(\/[a-z_]+:[a-z0-9_~.-]+)*$/;
 
 const HOSTNAME_RE = /^(?=.{3,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,62}$/;
 const EMAIL_RE = /^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$/;
@@ -143,7 +153,7 @@ export async function hubJurisdictionType(hubId: string): Promise<JurisdictionTy
  * current hostname is caught by the unique constraint; a hostname a hub had
  * before an edit lives only in the audit log's `before`, so that is checked.
  */
-async function hostnameTakenBy(hostname: string, exceptHubId?: string): Promise<string | null> {
+export async function hostnameTakenBy(hostname: string, exceptHubId?: string): Promise<string | null> {
   const db = getDb();
   const { data: current } = await db.from("hubs").select("id, archived_at").eq("hostname", hostname).maybeSingle();
   const row = current as { id: string; archived_at: string | null } | null;
@@ -218,6 +228,10 @@ export interface CreateHubInput {
   hostname: string;
   jurisdictionName?: string | null;
   jurisdictionCode?: string | null;
+  /** A row of the jurisdictions reference list; null for custom or unset. */
+  jurisdictionOcdId?: string | null;
+  /** "Other / not listed" (Adam, 2026-09-27): a typed name, no OCD id. */
+  jurisdictionCustom?: boolean;
   /** identity.jurisdiction_type (Phase 7). */
   jurisdictionType?: JurisdictionType | null;
   governingBody?: string | null;
@@ -225,6 +239,12 @@ export interface CreateHubInput {
   mode: HubMode;
   /** Seed the sample content after creating (Phase 7). The form's default is on. */
   sampleContent?: boolean;
+  /**
+   * The Plugins section of the create form: every plugin, on by default.
+   * Written as the hub's own plugin.<id>.enabled rows, so no deployment env
+   * fallback decides for a new hub. Omitted = every plugin on.
+   */
+  plugins?: Partial<Record<PluginId, boolean>>;
 }
 
 export interface CreateHubPlan {
@@ -241,18 +261,39 @@ export function parseCreateInput(body: Record<string, unknown>): CreateHubInput 
   if (jurisdictionType && !isJurisdictionType(jurisdictionType)) {
     throw new ControlInputError(`"${jurisdictionType}" is not a jurisdiction type.`);
   }
+  const custom = body.jurisdiction_custom === true;
+  const ocdId = orNull(text(body.jurisdiction_ocd_id, 300));
+  if (custom && ocdId) throw new ControlInputError("A custom jurisdiction has no OCD id. Choose one or the other.");
   return {
     slug: text(body.slug, 64).toLowerCase(),
     name: text(body.name),
     hostname: text(body.hostname, 253).toLowerCase(),
     jurisdictionName: orNull(text(body.jurisdiction_name)),
     jurisdictionCode: orNull(text(body.jurisdiction_code, 64).toLowerCase()),
+    jurisdictionOcdId: ocdId,
+    jurisdictionCustom: custom,
     jurisdictionType: jurisdictionType as JurisdictionType | null,
     governingBody: orNull(text(body.governing_body)),
     admins: admin ? [admin] : [],
     mode,
     sampleContent: body.sample_content === true,
+    plugins: body.plugins === undefined ? undefined : parsePluginValues({ plugins: body.plugins }),
   };
+}
+
+/**
+ * The reference row an OCD id names, or a refusal. The form only offers ids
+ * from the list; this is the server's own check.
+ */
+async function requireJurisdiction(ocdId: string): Promise<{ display_name: string }> {
+  if (!OCD_ID_RE.test(ocdId)) throw new ControlInputError(`"${ocdId}" is not an OCD division id.`);
+  const row = await getJurisdiction(ocdId);
+  if (!row) {
+    throw new ControlInputError(
+      `"${ocdId}" is not in the jurisdiction list. Load the list (scripts/load-jurisdictions.ts), or choose "Other / not listed".`,
+    );
+  }
+  return row;
 }
 
 /** Everything that can be checked before writing. Returns the plan. */
@@ -267,6 +308,19 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
   }
   if (input.jurisdictionCode && !JURISDICTION_CODE_RE.test(input.jurisdictionCode)) {
     throw new ControlInputError(`Jurisdiction code "${input.jurisdictionCode}" should look like us-va-<place>: lowercase, hyphens.`);
+  }
+  const listed = input.jurisdictionOcdId ? await requireJurisdiction(input.jurisdictionOcdId) : null;
+  // A listed jurisdiction's display name, unless the form sent its own.
+  const jurisdictionName = input.jurisdictionName ?? listed?.display_name ?? null;
+  if (input.jurisdictionCustom && !input.jurisdictionName) {
+    throw new ControlInputError("Name the custom jurisdiction.");
+  }
+  // A new hub's place comes from the list or is deliberately custom, never
+  // loose free text (Adam, 2026-09-27). No name and no id = no civic geography.
+  if (input.jurisdictionName && !input.jurisdictionOcdId && !input.jurisdictionCustom) {
+    throw new ControlInputError(
+      "Choose the jurisdiction from the list, or mark it Other / not listed (jurisdiction_custom) to type its name.",
+    );
   }
   if (input.admins.length === 0) {
     throw new ControlInputError(
@@ -304,7 +358,9 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
     hostname: input.hostname,
     name: input.name,
     jurisdiction_code: input.jurisdictionCode ?? null,
-    jurisdiction_name: input.jurisdictionName ?? null,
+    jurisdiction_name: jurisdictionName,
+    jurisdiction_ocd_id: input.jurisdictionOcdId ?? null,
+    jurisdiction_custom: input.jurisdictionCustom === true,
     space_did: `did:web:${input.hostname}`,
     space_type: "civic-hub",
     status: "active",
@@ -318,13 +374,18 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
     [KEYS.LEGAL_OPERATOR_NAME]: input.name,
     [KEYS.EMAIL_FROM_NAME]: input.name,
   };
-  if (input.jurisdictionName) settings[KEYS.IDENTITY_PAGE_TITLE] = `${input.jurisdictionName} — Civic Hub`;
+  if (jurisdictionName) settings[KEYS.IDENTITY_PAGE_TITLE] = `${jurisdictionName} — Civic Hub`;
   if (input.jurisdictionType) settings[KEYS.IDENTITY_JURISDICTION_TYPE] = input.jurisdictionType;
   // The form pre-fills the usual body for the type and the operator may
   // correct it; a caller that sent a type but no body gets the usual one.
   const governingBody =
-    input.governingBody ?? (defaultGoverningBody(input.jurisdictionType, input.jurisdictionCode) || null);
+    input.governingBody ??
+    (defaultGoverningBody(input.jurisdictionType, input.jurisdictionCode, input.jurisdictionOcdId) || null);
   if (governingBody) settings[KEYS.COPY_GOVERNING_BODY_NAME] = governingBody;
+  // Every plugin gets its own row: what the operator ticked, on by default.
+  for (const id of PLUGIN_IDS) {
+    settings[`plugin.${id}.enabled`] = input.plugins?.[id] === false ? "false" : "true";
+  }
 
   return { row, settings };
 }
@@ -362,6 +423,8 @@ export interface HubConfigPatch {
   hostname?: string;
   jurisdiction_code?: string | null;
   jurisdiction_name?: string | null;
+  jurisdiction_ocd_id?: string | null;
+  jurisdiction_custom?: boolean;
   jurisdiction_type?: JurisdictionType | null;
   governing_body?: string;
   status?: "active" | "suspended";
@@ -373,6 +436,8 @@ export interface HubConfigView {
   hostname: string;
   jurisdiction_code: string | null;
   jurisdiction_name: string | null;
+  jurisdiction_ocd_id: string | null;
+  jurisdiction_custom: boolean;
   jurisdiction_type: JurisdictionType | null;
   governing_body: string;
   status: string;
@@ -385,6 +450,8 @@ export async function hubConfigView(hub: ControlHub): Promise<HubConfigView> {
     hostname: hub.hostname,
     jurisdiction_code: hub.jurisdiction_code,
     jurisdiction_name: hub.jurisdiction_name,
+    jurisdiction_ocd_id: hub.jurisdiction_ocd_id ?? null,
+    jurisdiction_custom: hub.jurisdiction_custom === true,
     jurisdiction_type: await hubJurisdictionType(hub.id),
     governing_body: await hubGoverningBody(hub.id),
     status: hub.status,
@@ -398,6 +465,11 @@ export function parseConfigPatch(body: Record<string, unknown>): HubConfigPatch 
   if ("hostname" in body) patch.hostname = text(body.hostname, 253).toLowerCase();
   if ("jurisdiction_code" in body) patch.jurisdiction_code = orNull(text(body.jurisdiction_code, 64).toLowerCase());
   if ("jurisdiction_name" in body) patch.jurisdiction_name = orNull(text(body.jurisdiction_name));
+  if ("jurisdiction_ocd_id" in body) patch.jurisdiction_ocd_id = orNull(text(body.jurisdiction_ocd_id, 300));
+  if ("jurisdiction_custom" in body) {
+    if (typeof body.jurisdiction_custom !== "boolean") throw new ControlInputError("jurisdiction_custom is true or false.");
+    patch.jurisdiction_custom = body.jurisdiction_custom;
+  }
   if ("jurisdiction_type" in body) {
     const t = orNull(text(body.jurisdiction_type, 32));
     if (t && !isJurisdictionType(t)) throw new ControlInputError(`"${t}" is not a jurisdiction type.`);
@@ -447,6 +519,13 @@ export async function validateHubConfig(hub: ControlHub, changes: Partial<HubCon
   if (changes.jurisdiction_code && !JURISDICTION_CODE_RE.test(changes.jurisdiction_code)) {
     throw new ControlInputError(`Jurisdiction code "${changes.jurisdiction_code}" should look like us-va-<place>: lowercase, hyphens.`);
   }
+  if (changes.jurisdiction_ocd_id) await requireJurisdiction(changes.jurisdiction_ocd_id);
+  // The result, not the patch, must be consistent: custom means no OCD id.
+  const ocdAfter = changes.jurisdiction_ocd_id !== undefined ? changes.jurisdiction_ocd_id : hub.jurisdiction_ocd_id;
+  const customAfter = changes.jurisdiction_custom !== undefined ? changes.jurisdiction_custom : hub.jurisdiction_custom;
+  if (customAfter && ocdAfter) {
+    throw new ControlInputError("A custom jurisdiction has no OCD id. Clear the id, or untick Other / not listed.");
+  }
   if (changes.mode !== undefined && !ADMIN_SETTABLE_HUB_MODES.includes(changes.mode as HubMode)) {
     // The database refuses any move INTO demo too (hubs_forbid_entering_demo).
     throw new ControlInputError("A hub becomes a demo only when it is created. Choose beta or live.");
@@ -461,7 +540,16 @@ export async function updateHubConfig(
   await validateHubConfig(hub, changes);
 
   const row: Record<string, unknown> = {};
-  for (const k of ["name", "hostname", "jurisdiction_code", "jurisdiction_name", "status", "mode"] as const) {
+  for (const k of [
+    "name",
+    "hostname",
+    "jurisdiction_code",
+    "jurisdiction_name",
+    "jurisdiction_ocd_id",
+    "jurisdiction_custom",
+    "status",
+    "mode",
+  ] as const) {
     if (changes[k] !== undefined) row[k] = changes[k];
   }
   if (Object.keys(row).length > 0) {

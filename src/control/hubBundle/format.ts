@@ -342,7 +342,7 @@ hub's privacy policy promises.
 |---|---|
 | \`README.md\` | this file |
 | \`manifest.json\` | format and version, where it came from, every table's row count, columns and sha256, what was left out, the image summary, and the content fingerprint |
-| \`hub.json\` | the hub's row in the \`hubs\` registry: id, hostname, name, jurisdiction, DID, mode, status |
+| \`hub.json\` | the hub's row in the \`hubs\` registry: id, hostname, name, jurisdiction (name, code, and \`jurisdiction_ocd_id\`: its Open Civic Data division id, or null), DID, mode, status. An import needs that OCD id on the target's jurisdiction list (\`scripts/load-jurisdictions.ts\`) |
 | \`tables/<table>.jsonl\` | one table's rows for this hub: one JSON object per line, keys = column names, values as Postgres renders them in JSON (timestamps ISO 8601 with offset) |
 | \`images.json\` | every stored object the hub owns: its key at the source, the key it takes on import, its owner and the rule that says so, type, size, sha256 |
 | \`images/<key>\` | the objects' bytes, at their source key |

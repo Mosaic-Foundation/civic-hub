@@ -22,7 +22,7 @@
 import { JURISDICTION_TYPES, type JurisdictionType } from "../shared/jurisdictionType.js";
 
 /** Every type a general-purpose local government can be. */
-const LOCAL_GOVERNMENT: readonly JurisdictionType[] = ["county", "city", "town", "village", "other"];
+const LOCAL_GOVERNMENT: readonly JurisdictionType[] = ["county", "city", "town", "village", "borough", "other"];
 const EVERY_TYPE: readonly JurisdictionType[] = JURISDICTION_TYPES.map((t) => t.id);
 
 // --- Synthetic authors --------------------------------------------------------

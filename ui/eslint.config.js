@@ -37,7 +37,9 @@ export default defineConfig([
     files: ['src/console/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': ['error', {
-        patterns: [{ group: ['../*', '../../*'], message: 'The console stands alone: it imports nothing from the hub app.' }],
+        // src/shared/ is the one exception: pure code written to be shared by
+        // the server and the console (jurisdiction types and names).
+        patterns: [{ regex: '^\\.\\./(?!\\.\\./\\.\\./src/shared/)', message: 'The console stands alone: it imports nothing from the hub app (src/shared/ excepted).' }],
       }],
     },
   },

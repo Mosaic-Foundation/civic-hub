@@ -47,7 +47,7 @@ import {
 import { sendEmail } from "../utils/email.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 import { getAuthUser } from "../middleware/auth.js";
-import { getSettingSync, hubDisplayNameSync } from "../services/hubSettings.js";
+import { effectivePostalAddressSync, getSettingSync, hubDisplayNameSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 import { hourInZone, resolveTimeZone } from "../utils/hubTime.js";
 import type { JobOutcome } from "../jobs/types.js";
@@ -59,8 +59,9 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 // smaller than a day, so it can't cause a double-send within one cron cadence.
 const CADENCE_SLACK_MS = 6 * 60 * 60 * 1000; // 6 hours
 
+/** The hub's own address, else the platform's (CIVIC_PLATFORM_POSTAL_ADDRESS); "" leaves it out. */
 function postalAddress(): string {
-  return getSettingSync(KEYS.EMAIL_POSTAL_ADDRESS)?.trim() || "";
+  return effectivePostalAddressSync().value;
 }
 
 /** The hour the digest always went out before a hub could choose one. */

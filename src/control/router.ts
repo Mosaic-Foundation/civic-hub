@@ -13,6 +13,7 @@ import { RESERVED_HUB_SLUG_PURPOSES, type HubMode } from "../models/hub.js";
 import { PLUGIN_IDS } from "../models/hubSettings.js";
 import { listAudit, listHubAdminAudit, recordAudit } from "./audit.js";
 import { exportHubArchive } from "./hubExport.js";
+import { listStates, searchJurisdictions, suggestSlug } from "./jurisdictions.js";
 import { getHubBySlug } from "../db/hubs.js";
 import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { withHubScope } from "../config/hubContext.js";
@@ -260,6 +261,34 @@ export function controlRouter(): Router {
       hub_specific_env_vars: hubSpecificEnvVars(),
       create_refusal: productionCreateGuard(hubs.length),
     });
+  }));
+
+  // --- The jurisdiction reference list (read-only) ---
+
+  // The state dropdown. Empty when the list has not been loaded; the form
+  // then offers only "Other / not listed".
+  r.get("/control/jurisdictions/states", route(async (_req, res) => {
+    res.json({ states: await listStates() });
+  }));
+
+  // The type-ahead: ?state=va&type=town&q=flo. Each match names the hubs
+  // already serving it (information, not a refusal).
+  r.get("/control/jurisdictions", route(async (req, res) => {
+    const str = (v: unknown) => (typeof v === "string" ? v : "");
+    res.json({
+      matches: await searchJurisdictions({
+        state: str(req.query.state),
+        type: str(req.query.type),
+        q: str(req.query.q),
+        limit: Number(req.query.limit) || undefined,
+      }),
+    });
+  }));
+
+  // The shortest free address: ?name=Floyd town&type=town&state=va.
+  r.get("/control/slug-suggestion", route(async (req, res) => {
+    const str = (v: unknown) => (typeof v === "string" ? v : "");
+    res.json(await suggestSlug({ name: str(req.query.name), type: str(req.query.type) || null, state: str(req.query.state) || null }));
   }));
 
   // --- Hubs ---

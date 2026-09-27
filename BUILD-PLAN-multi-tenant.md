@@ -216,6 +216,7 @@ Supabase keys, `ANTHROPIC_*`, `RESEND_API_KEY`, `SMTP_*`, `CRON_SECRET`,
 (becomes a computed list: every active hub's hostname plus the marketing
 site), `BASE_URL` / `CIVIC_UI_BASE_URL` (computed from `req.hub.hostname`),
 `CIVIC_ALLOW_SEED`, `CIVIC_SEED_FIXTURE`, `NODE_ENV`, `PORT`,
+`CIVIC_PLATFORM_POSTAL_ADDRESS` (added 2026-09-27; see "Jurisdictions, …"),
 `IMAGE_UPLOAD_MAX_MB`, `LINK_PREVIEW_USER_AGENT`, `CIVIC_HUB_ID` (the
 protocol identity, see Contract 1).
 
@@ -1054,6 +1055,120 @@ hub is empty and still works.
 - **Deliberation:** the sample conversation is served by the `seed-` mock
   layer; nothing is sent to Polis. After graduation, real deliberations use
   Polis as usual.
+
+### Jurisdictions, plugins at creation, purge, platform postal address (2026-09-27)
+
+Decided by Adam (build prompt + answers in the session, 2026-09-27). Goal:
+every hub's jurisdiction comes from a reference list with a standard id,
+never loose free text — now, and for self-created hubs under the SaaS plan.
+
+**Reference table `jurisdictions`** (`20260927000000`): `ocd_id` (primary
+key, the Open Civic Data division id), `census_geoid`, `state` (two lowercase
+letters, as in the OCD id), `type` (`state`, `county`, `city`, `town`,
+`village`, `borough`, `cdp`, `school_district`), `official_name` (the
+Census's), `display_name` (ours, below). Platform-wide, not hub data: no
+`hub_id`, forced RLS with no policy, the service role may only SELECT, the
+loader writes as the owner; `NOT_HUB_SCOPED` in the catalog test. Not in a
+hub's export (the hub's own id travels in `hub.json`).
+
+**Sources, license, versions** (verified 2026-09-27; recorded with sha256 in
+`config/jurisdictions/SOURCES.md` once downloaded):
+
+| Source | Where | Version | License |
+|---|---|---|---|
+| Census Bureau Gazetteer files: `2026_Gaz_{state,counties,place,cousubs,unsd,elsd,scsd}_national.zip` | `https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2026_Gazetteer/` (index: census.gov → Gazetteer Files → 2026) | 2026 | US government work, not subject to copyright in the US (17 U.S.C. § 105) |
+| OCD division ids, `identifiers/country-us.csv` | `github.com/opencivicdata/ocd-division-ids` | commit `b5911539ae7f79b5edf6b301c8002bb3db3e3e87` (2025-12-08) | CC0 1.0 (`LICENSE.md`) |
+
+`scripts/fetch-jurisdiction-sources.sh` downloads exactly these (by hand:
+sessions have no network). `scripts/build-jurisdictions.ts` joins them on
+the Census GEOID and writes the committed `config/jurisdictions/us-jurisdictions.csv`
+and its `.sha256`. A row with no current OCD id for its GEOID is left out and
+counted, never given an invented id. `scripts/load-jurisdictions.ts` loads the
+committed file on any install (plain Postgres included): checksum first, one
+transaction, upsert by id, unlisted rows deleted unless a hub points at them,
+the checksum recorded in the table comment so a second run is a no-op.
+
+**OCD id formats** — Adam's working examples, to be confirmed from the file
+(see HANDOFF for the result): Floyd County `ocd-division/country:us/state:va/county:floyd`;
+the Town of Floyd a `place:` under Virginia. The OCD README: a place's name
+drops "city", "township", "borough" unless "city" is in the Census name;
+Louisiana has parishes, Alaska boroughs and census areas, and Virginia's
+independent cities are places with no county.
+
+**What is in** (by the gazetteer's own words): the 50 states and DC; counties
+and parishes; Alaska's boroughs (type `borough`); places named "… city /
+town / village / borough" with an active government; census-designated
+places; county subdivisions named "… town" with an active government (New
+England, New York, Wisconsin); unified, elementary and secondary school
+districts. Left out: census areas, independent cities' county-file rows (their
+place row covers them), "(balance)" rows, townships, territories, inactive or
+fictitious entries.
+
+**Display names** (Adam): "Floyd town" → "Town of Floyd, Virginia"; "… city"
+→ "City of …, State"; "… village" → "Village of …, State"; a "… borough"
+place → "Borough of …, State"; a CDP drops "CDP": "Merrifield, Virginia";
+counties, Alaska boroughs and school districts keep the Census name plus
+", State": "Floyd County, Virginia"; a state is its name.
+
+**Hubs point at it:** `hubs.jurisdiction_ocd_id` (nullable, FK, no
+uniqueness: several hubs may serve one jurisdiction) and
+`hubs.jurisdiction_custom` (`boolean not null default false`; a check: custom
+⇒ no OCD id). Custom = the operator chose "Other / not listed" and typed a
+name; false with a null id = a hub from before the list, not linked yet.
+`jurisdiction_code` and `jurisdiction_name` stay as they are. **A new hub's
+place comes from the list or is marked custom**; a name with neither is
+refused by `planCreateHub()` (every create path). Export: the id is in
+`hub.json`; import refuses a bundle whose id is not on the target's list.
+
+**Hub type** (`identity.jurisdiction_type`) gains **`borough`** (governing
+body "Borough Council"; the local-government sample templates). The
+reference row keeps its precise type; the hub's collapses `cdp` and `state`
+to `other` (Adam). A CDP has no government of its own; the console says so.
+
+**Console create form:** state → type → type-ahead (the state's
+jurisdictions of that type; name prefix first, then a later word). Choosing
+one fills the display name, the code (`us-<state>-<name>`, the existing
+homemade form, until the code question below is settled), the OCD id, the
+hub type and the usual governing body. "Other / not listed" takes a typed
+name. **Slug suggestion:** the shortest free, unreserved address, in this
+order: plain name (`floyd`), name + type (`floyd-town`, `floyd-county`,
+`…-schools`), name + state (`floyd-va`), name + a number (`floyd-2`, …); free
+means no hub has the slug, it is not reserved, and its hostname under the
+platform domain was never used. The operator can edit it. Hubs already
+serving the jurisdiction are shown as information. **Plugins** section: a
+checkbox per plugin, all on, collapsed; every plugin gets its own
+`plugin.<id>.enabled` row at creation, so no env fallback decides for a new
+hub. The hub page edits the jurisdiction the same way; the change is a
+`hub.update` audit row.
+
+**Sample content ignores plugin switches:** the seed writes every template
+the jurisdiction type allows, with every plugin treated as on for the run
+(the stored settings are untouched). Content whose plugin is off stays hidden
+like any process of that type until it is turned on; removal takes all of it.
+
+**The jurisdiction code:** open — see HANDOFF (2026-09-27) for the inventory
+and the recommendation. Nothing about it changes until Adam answers.
+
+**Freeing a never-used hub's slug: `scripts/purge-hub.ts --hub <slug>`**,
+operator-only, no console button. Refuses unless the hub is archived, has no
+users but its admins and the sample authors, no non-sample process or event,
+and no other hub's `redirect_to` points at it. Prints the plan; needs
+`--confirm <slug>`; exports the hub to a local `.tar.gz` first (which holds
+its `hub_admin_audit_log` rows: they are append-only and are deleted with
+triggers suspended, the path restore uses, only after the bundle has them);
+then, in one transaction, the `hub.purge` audit row (its `before` is the full
+`hubs` row, `created_at` included), every row with the hub's `hub_id`, and
+the `hubs` row; then its stored images. **`control_audit_log.target_hub_id`
+is no longer a foreign key** (`20260927010000`, the one non-additive change,
+Adam): the purged hub's audit rows stay, as text; the console's per-hub trail
+splits a reused slug's lives at the `hub.purge` row. A hostname a hub had
+before a hostname change stays taken.
+
+**Platform postal address: `CIVIC_PLATFORM_POSTAL_ADDRESS`**, a Vercel env
+var, platform-wide, kept after the cleanup. A digest footer prints the hub's
+`email.postal_address`, else the legacy `HUB_POSTAL_ADDRESS` (until the
+cleanup removes it), else the platform's; with none, no address line. The hub
+admin's Settings → Email shows the address in use and where it comes from.
 
 ---
 

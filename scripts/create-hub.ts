@@ -6,6 +6,10 @@
  *     --name "Utopia Civic Hub" --jurisdiction "Utopia, Virginia" \
  *     --mode live [--dry-run]
  *
+ * The place: --ocd-id <id> links a row of the jurisdiction list (the name
+ * comes from the list unless --jurisdiction gives one); --jurisdiction alone
+ * is a custom jurisdiction ("Other / not listed"), as on the console.
+ *
  * WHAT THIS IS. The command-line twin of the super admin's Create hub screen
  * (Phase 5 part one, 2026-09-26). Both call createHub() in
  * src/control/hubs.ts — the same validation (slug, reserved names, hostname,
@@ -48,6 +52,7 @@ const id = flag("id");
 const hostname = flag("hostname")?.toLowerCase();
 const name = flag("name");
 const jurisdiction = flag("jurisdiction") ?? null;
+const ocdId = flag("ocd-id") ?? null;
 const mode = flag("mode") ?? "beta";
 
 /** `you@example.com` -> `you+<slug>@example.com`, so the code still reaches you. */
@@ -89,11 +94,18 @@ async function main(): Promise<void> {
     );
   }
 
+  let jurisdictionName = jurisdiction;
+  if (ocdId && !jurisdictionName) {
+    const { getJurisdiction } = await import("../src/control/jurisdictions.js");
+    jurisdictionName = (await getJurisdiction(ocdId))?.display_name ?? null;
+  }
   const input = {
     slug: id,
     name,
     hostname,
-    jurisdictionName: jurisdiction,
+    jurisdictionName,
+    jurisdictionOcdId: ocdId,
+    jurisdictionCustom: !ocdId && !!jurisdiction,
     jurisdictionCode: null,
     governingBody: null,
     admins,

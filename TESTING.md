@@ -317,6 +317,41 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   settings cache on a server started before the seed; restart the server
   after seeding.
 
+- **Jurisdictions, plugins at creation, purge, platform postal address
+  (2026-09-27):** `jurisdictions.test.ts` plants fictional reference rows
+  (state `zz`) as the owner and checks the console: the state list, the
+  type-ahead (name prefix first, then a later word; a bad type 400), the table
+  read-only even to the service role; the slug suggestion's order (plain →
+  `-county`/`-town` → `-zz` → `-2`, with what it passed over and why; a
+  reserved name skipped); create from the list (OCD id stored, not custom; the
+  list's display name when none is sent; several hubs on one jurisdiction,
+  listed as information), custom (typed name, no id), and the refusals (a
+  loose name with neither, an unknown id, custom with an id); editing a hub's
+  jurisdiction (audited `hub.update` before/after; custom refused while an id
+  stays). `hubPurge.test.ts` drives `scripts/purge-hub.ts` with an env file:
+  a hub with one real resident is refused (exit 2, the resident named,
+  nothing changed); an unarchived hub is refused; a console-made, archived,
+  sample-only hub with one planted `hub_admin_audit_log` row: no `--confirm` =
+  the plan only, a wrong `--confirm` refused, then the purge — every `hub_id`
+  row and the `hubs` row gone, the `.tar.gz` holds the admin audit row, the
+  `hub.purge` row's `before` equals the full `hubs` row, the earlier audit
+  rows survive, and the console creates the slug again. `sampleSeed.test.ts`
+  gains a hub created with Conversations off: all nine templates seeded, the
+  conversation 404 and out of the feed while off, listed once on, and gone
+  with the rest on removal even when switched off again.
+  `hubExportRoundTrip.test.ts`: the hub's `jurisdiction_ocd_id` is in
+  `hub.json` and survives import; the plain-Postgres import is refused while
+  the target's list lacks the id, and succeeds once it has it.
+  `hubAdminSettings.test.ts`: the Email section reports the address in use
+  (`platform.postal_address`, source `hub`). The tenancy catalog exempts
+  `jurisdictions` (`NOT_HUB_SCOPED`); `exportManifest.test.ts` counts 36
+  tables. Unit `jurisdictions.test.ts`: slug candidates and their limits,
+  names and codes from a row, reference → hub types, the state from an OCD id
+  and the county default, the postal-address order (hub → legacy env →
+  platform → none), what "redirects to this hub" means, the CSV reader. Local
+  run 2026-09-27: API 31 files, 309 passed, 7 skipped, in both modes; unit 99
+  files, 1143; Playwright 25/25.
+
 > **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
 > `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs
 > and runs `tests/api` against a server. The note below is the history.

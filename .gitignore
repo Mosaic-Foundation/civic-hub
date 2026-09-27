@@ -43,3 +43,6 @@ playwright-report/
 
 # Claude Code per-machine permissions
 .claude/settings.local.json
+
+# Raw jurisdiction sources (scripts/fetch-jurisdiction-sources.sh) — large, re-downloadable; the built list is committed
+config/jurisdictions/sources/

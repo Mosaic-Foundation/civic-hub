@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { api, type ConsoleConfig, type HubMode } from "./api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { api, type ConsoleConfig, type HubMode, type SlugSuggestion } from "./api";
 import { go, href } from "./route";
-import { JURISDICTION_TYPES, defaultGoverningBody, isJurisdictionType } from "../../../src/shared/jurisdictionType";
+import { JURISDICTION_TYPES, defaultGoverningBody, hubTypeFor, isJurisdictionType } from "../../../src/shared/jurisdictionType";
+import { jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
+import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
+import { PLUGIN_NAMES } from "./pluginNames";
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$/;
 
@@ -10,16 +13,6 @@ const MODES: Array<{ id: HubMode; label: string; hint: string }> = [
   { id: "beta", label: "Beta", hint: "Real codes by email; only the allow list may join, everyone else is offered the waitlist." },
   { id: "live", label: "Live", hint: "Real codes by email; open to anyone." },
 ];
-
-function slugFrom(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/civic hub/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 32)
-    .replace(/-+$/g, "");
-}
 
 export default function CreateHub() {
   const [config, setConfig] = useState<ConsoleConfig | null>(null);
@@ -35,12 +28,22 @@ export default function CreateHub() {
     mode: "demo" as HubMode,
     sample_content: true,
   });
+  const [choice, setChoice] = useState<JurisdictionChoice>({ kind: "unlinked" });
+  const [plugins, setPlugins] = useState<Record<string, boolean>>({});
   const [touched, setTouched] = useState({ slug: false, hostname: false, governing_body: false });
+  const [suggestion, setSuggestion] = useState<SlugSuggestion | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const seq = useRef(0);
 
   useEffect(() => {
-    api.config().then(setConfig).catch((e: Error) => setError(e.message));
+    api
+      .config()
+      .then((c) => {
+        setConfig(c);
+        setPlugins(Object.fromEntries(c.plugin_ids.map((id) => [id, true])));
+      })
+      .catch((e: Error) => setError(e.message));
   }, []);
 
   const suggestedHost = (slug: string) => (config?.platform_domain && slug ? `${slug}.${config.platform_domain}` : "");
@@ -48,17 +51,66 @@ export default function CreateHub() {
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => {
       const next = { ...f, [key]: value };
-      if (key === "name" && !touched.slug) next.slug = slugFrom(String(value));
-      if ((key === "name" || key === "slug") && !touched.hostname) next.hostname = suggestedHost(next.slug);
-      // The usual governing body for the type (and, for a county, the state
-      // in the code) until the operator types their own.
+      if (key === "slug" && !touched.hostname) next.hostname = suggestedHost(String(value));
       if ((key === "jurisdiction_type" || key === "jurisdiction_code") && !touched.governing_body) {
         const t = next.jurisdiction_type;
-        next.governing_body = isJurisdictionType(t) ? defaultGoverningBody(t, next.jurisdiction_code) : "";
+        next.governing_body = isJurisdictionType(t)
+          ? defaultGoverningBody(t, next.jurisdiction_code, choice.kind === "listed" ? choice.row.ocd_id : null)
+          : "";
       }
       return next;
     });
   }
+
+  // Choosing from the list fills the display name, the code, the type and
+  // the usual governing body; the operator can still correct each one.
+  function pick(next: JurisdictionChoice) {
+    const wasListed = choice.kind === "listed";
+    setChoice(next);
+    if (next.kind === "custom" && wasListed) {
+      setForm((f) => ({ ...f, jurisdiction_name: "", jurisdiction_code: "" }));
+    }
+    if (next.kind !== "listed") return;
+    const { row } = next;
+    const hubType = hubTypeFor(row.type);
+    const code = jurisdictionCodeFor(row);
+    setForm((f) => ({
+      ...f,
+      jurisdiction_name: row.display_name,
+      jurisdiction_code: code,
+      jurisdiction_type: hubType,
+      governing_body: touched.governing_body ? f.governing_body : defaultGoverningBody(hubType, code, row.ocd_id),
+    }));
+  }
+
+  // The slug: the shortest free address, from the chosen jurisdiction (or the
+  // custom name, or the hub's name), until the operator types their own.
+  const slugSource = useMemo(() => {
+    if (choice.kind === "listed") return { name: choice.row.official_name, type: choice.row.type, state: choice.row.state };
+    if (choice.kind === "custom" && form.jurisdiction_name) return { name: form.jurisdiction_name, type: null, state: null };
+    const bare = form.name.replace(/civic hub/gi, "").trim();
+    return bare ? { name: bare, type: null, state: null } : null;
+  }, [choice, form.jurisdiction_name, form.name]);
+
+  useEffect(() => {
+    if (touched.slug || !slugSource) {
+      if (!slugSource && !touched.slug) setSuggestion(null);
+      return;
+    }
+    const n = ++seq.current;
+    const t = window.setTimeout(() => {
+      api
+        .suggestSlug(slugSource.name, slugSource.type, slugSource.state)
+        .then((s) => {
+          if (n !== seq.current) return;
+          setSuggestion(s);
+          if (s.slug) set("slug", s.slug);
+        })
+        .catch(() => undefined);
+    }, 250);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slugSource, touched.slug]);
 
   const slugProblem = useMemo(() => {
     if (!form.slug) return null;
@@ -67,8 +119,23 @@ export default function CreateHub() {
     return purpose ? `Reserved: ${purpose}.` : null;
   }, [form.slug, config]);
 
+  const pluginIds = config?.plugin_ids ?? [];
+  const pluginsOn = pluginIds.filter((id) => plugins[id] !== false).length;
   const refusal = config?.create_refusal ?? null;
-  const ready = form.name && form.slug && form.hostname && form.admin_email && !slugProblem && !refusal;
+  // Every new hub's place is a row of the list, or deliberately custom.
+  const placeReady = choice.kind === "listed" || (choice.kind === "custom" && form.jurisdiction_name.trim() !== "");
+  const ready = form.name && form.slug && form.hostname && form.admin_email && !slugProblem && !refusal && placeReady;
+
+  const slugHint = (() => {
+    if (slugProblem) return slugProblem;
+    if (!touched.slug && suggestion?.slug && suggestion.passed_over.length > 0) {
+      return `Suggested: the shortest free address. Passed over ${suggestion.passed_over
+        .map((p) => `${p.slug} (${p.reason})`)
+        .join(", ")}.`;
+    }
+    if (!touched.slug && suggestion?.slug) return "Suggested: the shortest free address. The hub's permanent id; you can edit it.";
+    return "The hub's permanent id. Stamped on every row it owns; never changes.";
+  })();
 
   return (
     <section className="cx-narrow-page">
@@ -94,7 +161,12 @@ export default function CreateHub() {
           setBusy(true);
           setError(null);
           try {
-            const created = await api.createHub({ ...form });
+            const created = await api.createHub({
+              ...form,
+              jurisdiction_ocd_id: choice.kind === "listed" ? choice.row.ocd_id : null,
+              jurisdiction_custom: choice.kind === "custom",
+              plugins,
+            });
             const seeded = created.sample_content;
             if (seeded && "error" in seeded) {
               window.alert(
@@ -110,6 +182,53 @@ export default function CreateHub() {
           }
         }}
       >
+        <fieldset>
+          <legend>Place</legend>
+          <JurisdictionPicker value={choice} onChange={pick} />
+          <label className="cx-field">
+            <span>{choice.kind === "custom" ? "Name of the jurisdiction" : "Display name"}</span>
+            <input
+              required={choice.kind === "custom"}
+              value={form.jurisdiction_name}
+              onChange={(e) => set("jurisdiction_name", e.target.value)}
+              placeholder={choice.kind === "custom" ? "The Northside neighbourhood" : "Filled in from the list"}
+            />
+          </label>
+          <div className="cx-two">
+            <label className="cx-field">
+              <span>Jurisdiction code <em>optional</em></span>
+              <input className="cx-mono" value={form.jurisdiction_code} onChange={(e) => set("jurisdiction_code", e.target.value.toLowerCase())} placeholder="us-xx-place" />
+            </label>
+            <label className="cx-field">
+              <span>Hub type</span>
+              <select value={form.jurisdiction_type} onChange={(e) => set("jurisdiction_type", e.target.value)}>
+                <option value="">Choose…</option>
+                {JURISDICTION_TYPES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <small className="cx-muted cx-slug-note">
+            The hub type fills in the usual governing body and decides which sample content fits. Census-designated
+            places and states count as Other.
+          </small>
+          <label className="cx-field">
+            <span>Governing body <em>optional</em></span>
+            <input
+              value={form.governing_body}
+              onChange={(e) => {
+                setTouched((t) => ({ ...t, governing_body: true }));
+                set("governing_body", e.target.value);
+              }}
+              placeholder="Town Council"
+            />
+            <small className="cx-muted">The usual name for the type is only usual. Correct it if this place says it differently.</small>
+          </label>
+        </fieldset>
+
         <fieldset>
           <legend>Identity</legend>
           <label className="cx-field">
@@ -128,9 +247,7 @@ export default function CreateHub() {
                 set("slug", e.target.value.toLowerCase());
               }}
             />
-            <small className={slugProblem ? "cx-error-text" : "cx-muted"}>
-              {slugProblem ?? "The hub's permanent id. Stamped on every row it owns; never changes."}
-            </small>
+            <small className={slugProblem ? "cx-error-text" : "cx-muted"}>{slugHint}</small>
           </label>
           <label className="cx-field">
             <span>Hostname</span>
@@ -149,41 +266,28 @@ export default function CreateHub() {
           </label>
         </fieldset>
 
-        <fieldset>
-          <legend>Place</legend>
-          <label className="cx-field">
-            <span>Jurisdiction</span>
-            <input value={form.jurisdiction_name} onChange={(e) => set("jurisdiction_name", e.target.value)} placeholder="Utopia County, Virginia" />
-          </label>
-          <label className="cx-field">
-            <span>Jurisdiction code <em>optional</em></span>
-            <input className="cx-mono" value={form.jurisdiction_code} onChange={(e) => set("jurisdiction_code", e.target.value.toLowerCase())} placeholder="us-va-utopia" />
-          </label>
-          <label className="cx-field">
-            <span>Jurisdiction type</span>
-            <select value={form.jurisdiction_type} onChange={(e) => set("jurisdiction_type", e.target.value)}>
-              <option value="">Choose…</option>
-              {JURISDICTION_TYPES.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            <small className="cx-muted">Fills in the usual governing body, and decides which sample content fits.</small>
-          </label>
-          <label className="cx-field">
-            <span>Governing body <em>optional</em></span>
-            <input
-              value={form.governing_body}
-              onChange={(e) => {
-                setTouched((t) => ({ ...t, governing_body: true }));
-                set("governing_body", e.target.value);
-              }}
-              placeholder="Town Council"
-            />
-            <small className="cx-muted">The usual name for the type is only usual. Correct it if this place says it differently.</small>
-          </label>
-        </fieldset>
+        <details className="cx-details">
+          <summary>
+            Plugins
+            <span className="cx-muted">
+              {pluginsOn === pluginIds.length ? `all ${pluginIds.length} on` : `${pluginsOn} of ${pluginIds.length} on`}
+            </span>
+          </summary>
+          <p className="cx-muted cx-small">
+            Every plugin is on unless you untick it; the hub's admin can switch them later. Sample content is added for
+            every plugin, and stays hidden until its plugin is on.
+          </p>
+          <ul className="cx-toggles">
+            {pluginIds.map((id) => (
+              <li key={id}>
+                <label className="cx-check">
+                  <input type="checkbox" checked={plugins[id] !== false} onChange={(e) => setPlugins({ ...plugins, [id]: e.target.checked })} />
+                  {PLUGIN_NAMES[id] ?? id}
+                </label>
+              </li>
+            ))}
+          </ul>
+        </details>
 
         <fieldset>
           <legend>People and access</legend>

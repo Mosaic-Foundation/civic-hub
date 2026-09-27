@@ -37,6 +37,11 @@ export const NOT_HUB_SCOPED: Readonly<Record<string, string>> = {
   control_sessions: "the super admin's sessions; platform, not hub, data; service role (src/control/) only",
   control_audit_log:
     "every super admin action, across hubs; a hub must not read another's rows or its own audit trail's platform view; append-only, service role (src/control/) only",
+  // Reference data (20260927000000, Adam 2026-09-27): the same list of US
+  // jurisdictions for every hub. Deny-all RLS, no policy; the service role
+  // (the console) may only SELECT; the loader writes as the owner.
+  jurisdictions:
+    "platform reference data (OCD division ids), the same for every hub; read-only: service role SELECT only, written by scripts/load-jurisdictions.ts as the owner",
 };
 
 /** The one expression the template writes, as Postgres prints it back. */

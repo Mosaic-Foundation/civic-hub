@@ -8,6 +8,10 @@
 // still serves, empty. (Idempotence is the script's, and is checked by hand
 // in the HANDOFF: the console seeds a hub once, at creation.)
 //
+// Plugin switches do not decide what is seeded (Adam, 2026-09-27): a hub
+// created with Conversations off still gets the sample conversation, hidden
+// until Conversations is turned on.
+//
 // Needs the console on console.localhost (CI's env) and the local stack.
 // Every hub this file creates is archived in afterAll, like control.test.ts.
 
@@ -19,6 +23,7 @@ import { auditFor, consoleCall, mintConsoleSession, plantCode } from "../fixture
 const run = Date.now().toString(36);
 const COUNTY = `smpc-${run}`;
 const SCHOOLS = `smps-${run}`;
+const NOCONV = `smpn-${run}`;
 const host = (slug: string) => `${slug}.localhost`;
 const ADMIN = `sample-admin-${run}@example.test`;
 const created: string[] = [];
@@ -56,6 +61,7 @@ describe("a county hub created with sample content", () => {
         name: "Sample Test Civic Hub",
         hostname: host(COUNTY),
         jurisdiction_name: "Example County, Virginia",
+        jurisdiction_custom: true,
         jurisdiction_code: "us-va-example",
         jurisdiction_type: "county",
         admin_email: ADMIN,
@@ -160,6 +166,7 @@ describe("a school district hub", () => {
         name: "Sample Schools Civic Hub",
         hostname: host(SCHOOLS),
         jurisdiction_name: "Example Schools, Ohio",
+        jurisdiction_custom: true,
         jurisdiction_code: "us-oh-example-schools",
         jurisdiction_type: "school_district",
         admin_email: ADMIN,
@@ -172,5 +179,72 @@ describe("a school district hub", () => {
     expect([...res.body.sample_content.created].sort()).toEqual(
       ["announcement_budget_hearing", "outcome_library_hours", "vote_library_hours"].sort(),
     );
+  });
+});
+
+describe("a hub created with Conversations off", () => {
+  const convId = `proc_sample_${NOCONV}_deliberation_rentals`;
+
+  beforeAll(async () => {
+    const res = await consoleCall("POST", "/control/hubs", {
+      cookie,
+      body: {
+        slug: NOCONV,
+        name: "Sample No-Conversation Civic Hub",
+        hostname: host(NOCONV),
+        jurisdiction_name: "Example County, Virginia",
+        jurisdiction_custom: true,
+        jurisdiction_type: "county",
+        admin_email: ADMIN,
+        sample_content: true,
+        plugins: { conversation: false },
+      },
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    created.push(NOCONV);
+    expect(res.body.plugins.find((p: Row) => p.id === "conversation")).toMatchObject({ enabled: false, source: "hub" });
+    expect(res.body.plugins.filter((p: Row) => p.enabled)).toHaveLength(res.body.plugins.length - 1);
+    expect(res.body.sample_content.created).toContain("deliberation_rentals");
+  });
+
+  it("seeds every template the type allows, the conversation included", async () => {
+    const procs = (await localRest(`processes?select=id,is_sample&hub_id=eq.${NOCONV}`)) as Row[];
+    expect(procs).toHaveLength(9);
+    expect(procs.map((p) => p.id)).toContain(convId);
+  });
+
+  it("hides the sample conversation while Conversations is off", async () => {
+    expect((await call("GET", `/process/${convId}`, host(NOCONV))).status).toBe(404);
+    expect((await call("GET", "/deliberations", host(NOCONV))).status).toBe(404);
+    const feed = await call("GET", "/api/feed", host(NOCONV));
+    expect(feed.status).toBe(200);
+    expect(feed.body.events.some((e: Row) => e.process_id === convId)).toBe(false);
+    expect(feed.body.events.length).toBeGreaterThan(0); // the rest is there
+  });
+
+  it("shows it once Conversations is turned on", async () => {
+    const res = await consoleCall("PUT", `/control/hubs/${NOCONV}/plugins`, { cookie, body: { plugins: { conversation: true } } });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect((await call("GET", `/process/${convId}`, host(NOCONV))).status).toBe(200);
+    const list = await call("GET", "/deliberations", host(NOCONV));
+    expect(list.status).toBe(200);
+    expect(JSON.stringify(list.body)).toContain(convId);
+    const feed = await call("GET", "/api/feed", host(NOCONV));
+    expect(feed.body.events.some((e: Row) => e.process_id === convId)).toBe(true);
+  });
+
+  it("comes out with the rest when sample content is removed, even with Conversations off again", async () => {
+    await consoleCall("PUT", `/control/hubs/${NOCONV}/plugins`, { cookie, body: { plugins: { conversation: false } } });
+    const admin = await mintSession(NOCONV, ADMIN);
+    const code = String(100000 + Math.floor(Math.random() * 899999));
+    await localRest("pending_verifications", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify({ hub_id: NOCONV, email: ADMIN, code, expires_at: new Date(Date.now() + 600_000).toISOString(), attempts: 0 }),
+    });
+    const res = await call("POST", "/admin/hub/sample-content/remove", host(NOCONV), { code }, admin);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect((await localRest(`processes?select=id&hub_id=eq.${NOCONV}`)) as Row[]).toHaveLength(0);
+    expect((await localRest(`events?select=id&hub_id=eq.${NOCONV}`)) as Row[]).toHaveLength(0);
   });
 });

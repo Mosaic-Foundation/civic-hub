@@ -488,6 +488,49 @@ export function getPostalAddressSync(): string | undefined {
   return getSettingSync(KEYS.EMAIL_POSTAL_ADDRESS);
 }
 
+/**
+ * The platform's own postal address (2026-09-27, Adam): a deployment-wide
+ * env var, not a hub setting, and it stays after the cleanup removes
+ * HUB_POSTAL_ADDRESS. The fallback for every hub that has not set its own.
+ */
+export const PLATFORM_POSTAL_ADDRESS_ENV = "CIVIC_PLATFORM_POSTAL_ADDRESS";
+
+export type PostalAddressSource = "hub" | "environment" | "platform";
+
+export interface EffectivePostalAddress {
+  /** "" when there is none, and the footer leaves the address out. */
+  value: string;
+  /**
+   * Where it comes from: the hub's `email.postal_address` row, the legacy
+   * per-deployment HUB_POSTAL_ADDRESS (until the cleanup removes it), or the
+   * platform's CIVIC_PLATFORM_POSTAL_ADDRESS. Null when there is none.
+   */
+  source: PostalAddressSource | null;
+}
+
+/** The address a digest footer prints, and where it comes from. Hub first, then the platform. */
+export function postalAddressFrom(map: SettingsMap | null, env: NodeJS.ProcessEnv = process.env): EffectivePostalAddress {
+  const own = map?.[KEYS.EMAIL_POSTAL_ADDRESS]?.trim();
+  if (own) return { value: own, source: "hub" };
+  for (const name of ENV_FALLBACKS[KEYS.EMAIL_POSTAL_ADDRESS] ?? []) {
+    const v = env[name]?.trim();
+    if (v) return { value: v, source: "environment" };
+  }
+  const platform = env[PLATFORM_POSTAL_ADDRESS_ENV]?.trim();
+  if (platform) return { value: platform, source: "platform" };
+  return { value: "", source: null };
+}
+
+/** A named hub's effective postal address (the admin settings page). */
+export async function effectivePostalAddress(hubId: string): Promise<EffectivePostalAddress> {
+  return postalAddressFrom(await fetchHubSettings(hubId));
+}
+
+/** The hub in scope's effective postal address. */
+export function effectivePostalAddressSync(): EffectivePostalAddress {
+  return postalAddressFrom(currentHubSettings());
+}
+
 // --- beta -----------------------------------------------------------------
 
 export async function getBetaAllowlist(hubId: string | null): Promise<string[]> {

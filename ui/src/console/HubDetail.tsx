@@ -1,28 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type AuditEntry, type HubAdminAuditEntry, type HubDetail, type HubExport } from "./api";
-import { JURISDICTION_TYPES } from "../../../src/shared/jurisdictionType";
+import { JURISDICTION_TYPES, hubTypeFor } from "../../../src/shared/jurisdictionType";
+import { jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
+import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
 import { href } from "./route";
 import { useStepUp } from "./StepUp";
 import { ModeBadge, StatusBadge } from "./ui";
 import { when } from "./format";
 import { AuditTable } from "./AuditLog";
+import { PLUGIN_NAMES } from "./pluginNames";
 
-const PLUGIN_NAMES: Record<string, string> = {
-  vote: "Votes",
-  proposal: "Proposals",
-  project: "Projects",
-  announcement: "Announcements",
-  brief: "Briefs",
-  meeting_summary: "Meeting summaries",
-  news_sync: "News sync",
-  conversation: "Conversations",
-  wordcloud: "Word clouds",
-  assistant: "Writing assistant",
-  search: "Search",
-  feedback: "Feedback",
-  digest: "Resident digest",
-  admin_digest: "Admin digest",
-};
 
 const PROPAGATION = "Saved. Other server instances pick it up within a minute.";
 
@@ -83,7 +70,8 @@ export default function HubDetailPage({ id }: { id: string }) {
       )}
       {hub.archived_at && (
         <p className="cx-alert cx-alert-warn">
-          Archived {when(hub.archived_at)}. It serves the "paused" page; its slug and hostname stay taken.
+          Archived {when(hub.archived_at)}. It serves the "paused" page; its slug and hostname stay taken. A hub that was
+          never used can be purged to free them (<code>scripts/purge-hub.ts</code>).
         </p>
       )}
 
@@ -99,7 +87,12 @@ export default function HubDetailPage({ id }: { id: string }) {
 
       <section className="cx-card">
         <h2 className="cx-h2">Audit trail</h2>
-        <AuditTable entries={audit} showHub={false} />
+        {auditLives(audit, hub.created_at).map((life, i) => (
+          <div key={i}>
+            {life.label && <h3 className="cx-life">{life.label}</h3>}
+            <AuditTable entries={life.entries} showHub={false} />
+          </div>
+        ))}
       </section>
 
       <section className="cx-card">
@@ -118,6 +111,31 @@ export default function HubDetailPage({ id }: { id: string }) {
 }
 
 type WithStepUp = ReturnType<typeof useStepUp>["withStepUp"];
+
+/**
+ * A slug freed by scripts/purge-hub.ts can be given to a new hub, and the
+ * audit log keeps the old hub's rows under the same id. Each hub.purge row's
+ * `before` is the purged hub's whole row, so the trail splits there: this
+ * hub's own life first (newest first), then each earlier one, labelled.
+ */
+function auditLives(entries: AuditEntry[], createdAt: string): Array<{ label: string | null; entries: AuditEntry[] }> {
+  const purges = entries.filter((e) => e.action === "hub.purge");
+  if (purges.length === 0) return [{ label: null, entries }];
+  const lives: Array<{ label: string | null; entries: AuditEntry[] }> = [
+    { label: `This hub — created ${when(createdAt)}`, entries: [] },
+  ];
+  for (const e of entries) {
+    if (e.action === "hub.purge") {
+      const before = (e.before ?? {}) as { created_at?: string; name?: string };
+      lives.push({
+        label: `An earlier hub with this slug${before.name ? `, "${before.name}"` : ""} — created ${before.created_at ? when(before.created_at) : "?"}, purged ${when(e.at)}`,
+        entries: [],
+      });
+    }
+    lives[lives.length - 1].entries.push(e);
+  }
+  return lives.filter((l, i) => i === 0 || l.entries.length > 0);
+}
 
 function useSave(onSaved: () => void) {
   const [busy, setBusy] = useState(false);
@@ -150,11 +168,34 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
     jurisdiction_name: c.jurisdiction_name ?? "",
     jurisdiction_code: c.jurisdiction_code ?? "",
     jurisdiction_type: c.jurisdiction_type ?? "",
+    jurisdiction_ocd_id: c.jurisdiction_ocd_id ?? "",
+    jurisdiction_custom: c.jurisdiction_custom,
     governing_body: c.governing_body,
     status: c.status,
     mode: c.mode ?? "",
   };
   const [form, setForm] = useState(saved);
+  const [choice, setChoice] = useState<JurisdictionChoice>(c.jurisdiction_custom ? { kind: "custom" } : { kind: "unlinked" });
+
+  // Choosing from the list fills the name, the code and the type; the
+  // governing body is left as it is (it is this hub's copy).
+  function pick(next: JurisdictionChoice) {
+    setChoice(next);
+    if (next.kind === "custom") {
+      setForm((f) => ({ ...f, jurisdiction_custom: true, jurisdiction_ocd_id: "" }));
+    } else if (next.kind === "listed") {
+      setForm((f) => ({
+        ...f,
+        jurisdiction_custom: false,
+        jurisdiction_ocd_id: next.row.ocd_id,
+        jurisdiction_name: next.row.display_name,
+        jurisdiction_code: jurisdictionCodeFor(next.row),
+        jurisdiction_type: hubTypeFor(next.row.type),
+      }));
+    } else {
+      setForm((f) => ({ ...f, jurisdiction_custom: false, jurisdiction_ocd_id: saved.jurisdiction_ocd_id }));
+    }
+  }
   // Like Save plugins: nothing to save until a field differs from what the
   // server holds (the section remounts with fresh values after a save).
   const changed = (Object.keys(saved) as Array<keyof typeof saved>).some((k) => form[k] !== saved[k]);
@@ -167,7 +208,7 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
       className="cx-card cx-form"
       onSubmit={(e) => {
         e.preventDefault();
-        const patch: Record<string, unknown> = { ...form };
+        const patch: Record<string, unknown> = { ...form, jurisdiction_ocd_id: form.jurisdiction_ocd_id || null };
         if (patch.mode === "") delete patch.mode;
         save(() => withStepUp("This change", (extra) => api.updateHub(detail.hub.id, { ...patch, ...extra })));
       }}
@@ -183,9 +224,17 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
         <input className="cx-mono" value={form.hostname} onChange={(e) => setForm({ ...form, hostname: e.target.value.toLowerCase().trim() })} />
         <small className="cx-muted">Changing it breaks old links; the old hostname stays taken. Its DID does not change.</small>
       </label>
+      <JurisdictionPicker
+        value={choice}
+        onChange={pick}
+        currentOcdId={c.jurisdiction_ocd_id}
+        currentName={c.jurisdiction_name}
+        hubId={detail.hub.id}
+      />
       <label className="cx-field">
-        <span>Jurisdiction</span>
+        <span>{form.jurisdiction_custom ? "Name of the jurisdiction" : "Display name"}</span>
         <input value={form.jurisdiction_name} onChange={(e) => setForm({ ...form, jurisdiction_name: e.target.value })} />
+        <small className="cx-muted">Changes to the jurisdiction are recorded in the audit trail.</small>
       </label>
       <label className="cx-field">
         <span>Jurisdiction code</span>
@@ -411,7 +460,8 @@ function LifecycleSection({ detail, onSaved, withStepUp }: { detail: HubDetail; 
         <>
           <p className="cx-muted cx-small">
             Archiving suspends the hub (visitors see a paused page) and marks it retired. Nothing is deleted, and its
-            slug and hostname can never be given to another hub. Type the slug to confirm.
+            slug and hostname stay taken; only a hub nobody ever used can be purged to free them. Type the slug to
+            confirm.
           </p>
           <input
             className="cx-mono"
