@@ -26,12 +26,14 @@ numbers below, or just grep the heading.
 | DB client (service role, the thing tenancy replaces) | `src/db/client.ts`; only `src/db/`, `scripts/`, `tests/` may import it (`eslint.config.js`, `civic/raw-client`) |
 | Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |
 | Local Supabase stack (ports, auth, seed) | `supabase/config.toml`, `supabase/seed.sql` |
-| Migrations (51 files, 31 tables) | `supabase/migrations/` |
+| Migrations (70 files, 35 tables; the one non-additive one is `20260926005000`) | `supabase/migrations/` |
 | Scheduled jobs | `src/jobs/registry.ts` (the one list; `vercel.json` checked against it, `npm run jobs:crontab`), runners `src/jobs/runners.ts`, per-hub loop `src/jobs/runJob.ts` + `src/services/cronHubs.ts`, routes `src/routes/jobRoutes.ts` |
 | Plugin switches at runtime | `src/services/pluginGate.ts`, `src/middleware/pluginGate.ts`, `PROCESS_TYPE_PLUGINS` in `src/processes/registry.ts`, UI `ui/src/config/plugins.tsx`; admin page `ui/src/pages/settings/PluginsSection.tsx` |
 | A hub's public URLs | `src/utils/baseUrl.ts` (from `hubs.hostname`) |
 | Operator scripts' hub | `scripts/lib/hubScope.ts` (`--hub <slug>`, required) |
 | Hub tokens, the RLS switch | `src/db/hubToken.ts`, `hubTokensEnabled()` / `getHubTokenDb()` in `src/db/client.ts`; policies `20260925000000`, catalog `tenancy_catalog()` `20260925010000` |
+| Release-1 sitting runbook (cleanup, four migrations, code, console, wildcard, final check) | `RUNBOOK-release-1.md`; cleanup `supabase/migrations/20260926005000_post_cutover_cleanup.sql`; local branch `release-1-cleanup` |
+| No-hub / paused pages (server and static shell) | `src/shared/deadEnd.ts`, `src/middleware/hub.ts`, `ui/src/main.tsx` |
 | Cutover runbook, dev refresh from a prod dump, pre-switch check | `RUNBOOK-cutover.md`, `scripts/dev-refresh-from-dump.sh`, `scripts/dev-refresh-reseed.ts`, `scripts/check-tenancy.ts` |
 | Leak harness, RLS catalog test | `tests/api/leakHarness.test.ts`, `leakHarnessDb.test.ts`, `rlsCatalog.test.ts`, rules in `tests/fixtures/tenancyCatalog.ts` |
 | Atomic DB functions | `transition_process`, `cast_vote` (`20260924080000`), called via `src/db/atomic.ts` |
@@ -65,6 +67,10 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Release-1 prep (2026-09-27)**: no-hub page from the static shell,
+  `seedBetaSlate.ts` retired, the cleanup migration tested on production's
+  data, `RUNBOOK-release-1.md`, the two decisions (stale votes, sender) —
+  7–~111 (every range below shifts down by its length)
 - **Dev on `*.dev.civic.social` (2026-09-27)**: console
   `console.dev.civic.social`, hubs `<slug>.dev.civic.social`, how it was set
   up (`DEPLOY-dev.md` §9), the corrected wildcard method — 7–~55

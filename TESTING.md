@@ -141,7 +141,20 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   answers make the static shell render the dead-end page instead of the app
   (404 `no_hub` → "No hub here", 503 `hub_suspended` → paused; any other
   failure renders the app on fallbacks), and the title the runbooks check.
-  Unit total 98 files, 1132. The no-hub page itself cannot be reached from
+  Unit total 98 files, 1132.
+  **The post-cutover cleanup (`20260926005000`, 2026-09-27)** changed what
+  `forHubIsolation.test.ts` pins: the test that the old global key refused a
+  second hub's copy became three — each hub keeps its own copy of the same
+  address in `pending_verifications` (upserts touch only their own), one
+  address holds an account on two hubs (still one per hub), and a raw insert
+  naming no hub fails `23502` instead of landing in Floyd; the deprecated
+  unscoped `search_processes` is gone (`PGRST202`). API 29 files, 292 passed,
+  7 skipped, in both modes, on a stack reset from scratch (where the cleanup
+  runs before the four later migrations) and on one where it arrived out of
+  order (`supabase migration up --include-all`). The migration was also run
+  on a local copy of production's data, outside the suites (HANDOFF,
+  "Release-1 prep").
+  The no-hub page itself cannot be reached from
   the Vite dev server (its API fallback always lands on a hub); check it with
   a production-shaped build: `npm run build` in `ui/`, then `vite preview`
   with `/api` proxied to the server with the Host kept (`changeOrigin:

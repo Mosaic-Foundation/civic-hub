@@ -4,6 +4,111 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Release-1 prep: no-hub page, cleanup migration, the sitting runbook — 2026-09-27
+
+**Branch:** `multi-tenant`, local commits (not pushed). Production untouched.
+**The sitting's runbook:** `RUNBOOK-release-1.md`.
+
+### Built
+- **No-hub page on Vercel** (`42119c5`). The static shell now reads
+  `/hub-config`'s definitive answers and renders the server's own dead-end
+  page: 404 `no_hub` → "No hub here", 503 `hub_suspended` → "This hub is
+  paused"; any other failure still renders the app on fallbacks. Copy shared
+  in `src/shared/deadEnd.ts` (server and UI). Unit test
+  `hubDeadEnd.test.ts`. Verified locally in production shape (built shell +
+  `/api` proxied with the Host kept): random `*.localhost` addresses at `/`,
+  `/votes`, `/process/…` show it, desktop and phone width; Athens renders
+  normally. **Not yet verified on `*.dev.civic.social`**: dev deploys by
+  pushing `multi-tenant` (sessions don't push); `RUNBOOK-release-1.md` §0.1–2.
+- **`scripts/seedBetaSlate.ts` retired** (`42119c5`), not fixed: new hubs get
+  sample content (`scripts/seed-sample-content.ts`), and its `--remove` can
+  no longer run (the events delete guard in `20260926040000` allows sample
+  events only). Besides `addProjectUpdate` it also passed `hub_id` fields the
+  types no longer take. In git history up to `39ac22d`. The launch clean
+  slate stays an archive pass, planned with Adam.
+- **The cleanup migration** `20260926005000_post_cutover_cleanup.sql`
+  (`d4df51e`), per cutover runbook §7: drops `DEFAULT 'floyd'` on all 30
+  `hub_id` columns; `users_email_key`; the email/url primary keys of
+  `pending_verifications`, `waitlist`, `link_previews` (the per-hub unique
+  becomes the primary key, old name); the 14 single-column FKs beside
+  composite twins; the two hub-less search wrappers; the rollback index. Ends
+  with a check that raises if any survives. Versioned **before** the four so
+  it can be applied first and alone, with the dry run for the four then
+  listing exactly them. Kept, on purpose: the (process/project, user) primary
+  keys (ids already pin a hub). Tests: `forHubIsolation.test.ts` rewritten for
+  per-hub keys (three new checks); comments on the now-unreachable 23505
+  "address in use elsewhere" guards (kept as guards).
+- **Local branch `release-1-cleanup`** (`d108e24`): production's `main`
+  (`0b23e9a`) + the cleanup file + `20260926000000` (the trigger production
+  already has; without it `db push` refuses a remote version it can't find),
+  both byte-identical to `multi-tenant`. 66 migrations. **Never push it.**
+
+### Tested
+- **On a local copy of production's data**: the cutover dump (2026-09-25,
+  195 processes / 695 events / 33 users) restored into a throwaway
+  `supabase/postgres:17.6.1.111` container, brought to production's
+  65-migration schema (the 17 + the trigger). Cleanup: applied in 0.1 s;
+  row counts identical in all 31 tables; the result has 0 `'floyd'`
+  defaults, the three `(hub_id, …)` primary keys, 0 redundant FKs, only the
+  hub-scoped searches; a second run is a no-op; with a rollback index present
+  it drops it; with a planted `'floyd'` default and hub-less function it
+  raises and changes nothing. The four then applied cleanly. Container and
+  the dump copy deleted afterwards.
+- **The sitting's CLI sequence**, on the local stack reset to production's
+  history (65): from `release-1-cleanup`, exactly `20260926005000` pending;
+  then from `multi-tenant`, exactly the four; history 70. (`supabase db push`
+  is blocked for sessions even with `--local`; this used `migration list` /
+  `migration up`, which compute the same pending set.)
+- **Production's code (`0b23e9a`) on the cleaned schema without the four**
+  (`db reset --version 20260926005000`): API suite 221 passed, 2 failed —
+  exactly the two tests that assert pre-cleanup behaviour.
+- **The release build**: API 29 files, 292 passed, 7 skipped, in both modes,
+  on a from-scratch reset and on an out-of-order apply; unit 98 / 1132;
+  Playwright **25 / 25** (twice: before and after the cleanup). Place names 0.
+- **Parity shape**: on the same local data, `0b23e9a` and the release build
+  give identical `/process`, `/proposals`, `/feed`, `/search` hashes (detail
+  pages not compared).
+
+### Decided in chat (Adam, 2026-09-27)
+- **Stale open votes** (past deadline, still `active`): left for the new
+  code, so they close stamped with their deadlines. Production's code closes
+  them on any read of the vote list, stamped with the read time; so when N >
+  0 the BEFORE snapshot uses a short snippet (proposals + feed only). Each
+  close also spawns a pending results brief for Admin → Reviews.
+- **Sender**: `RESEND_FROM` moves to the platform sending domain, and Floyd
+  moves too. Floyd's `email.from_address` row (`noreply@floyd.civic.social`,
+  written by the cutover seed) beats the environment, so §5 deletes it.
+
+### Runbook notes (things found while writing it)
+- The console refuses to create a hub on production while any `MEETING_*` /
+  `FLOYD_NEWS_*` var is set; §2's env tidy + redeploy come first.
+- Env tidy list = the 35 settings-fallback vars (generated from
+  `ENV_FALLBACKS`) + the six the `hubs` row replaced; a read-only SQL check
+  shows which have Floyd rows; `NO ROW` for a var present on Vercel = stop
+  (except `HUB_NAME`/`VITE_HUB_NAME`, which fall back to `hubs.name`). Kept:
+  `CIVIC_ADMIN_EMAILS`, `CIVIC_BOARD_EMAILS` (bootstrap lists), `RESEND_*`,
+  secrets.
+- `console.civic.social` gets its own GoDaddy CNAME (the console step comes
+  before the wildcard). Archived hub → suspended → "This hub is paused";
+  the throwaway hub `r1-check` burns its hostname.
+- Rollback: §1 changes nothing; from the cleanup push on, fix forward. For
+  the record (not in the runbook, by Adam's instruction): the previous
+  deployment's code was tested on the cleaned schema, so a Vercel Instant
+  Rollback of the §4 code push would serve.
+
+### For Adam
+1. Push `multi-tenant` (dev deploys), then `RUNBOOK-release-1.md` §0 on dev:
+   the no-hub page on a random `*.dev.civic.social`, and the cleanup on dev
+   (`./scripts/db-push.sh --dry-run --include-all` must list exactly it).
+2. The sitting: `RUNBOOK-release-1.md`, after the legacy keys are retired
+   (29th), with the postal address set and the platform domain verified.
+
+### Open
+- The Vercel CLI "Not authorized" on deploy (unchanged).
+- Code tidy after the sitting (runbook §8.3).
+
+---
+
 ## Dev on `*.dev.civic.social` — 2026-09-27
 
 Dev now has production's shape: console **`console.dev.civic.social`**, hubs

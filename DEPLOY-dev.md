@@ -264,10 +264,11 @@ no DNS collisions.
 - A brand-new name can take up to 10 minutes to resolve on a machine that
   looked it up before it existed (GoDaddy's negative-cache time). Public
   resolvers had it within a minute.
-- An address with no hub shows the app's shell with "Could not load the
-  feed: no_hub", not the server's "No hub here" page: on Vercel the static
-  page is served without reaching the server. Harmless; a follow-up is to
-  have the UI show "No hub here" when `/hub-config` says so.
+- **Fixed 2026-09-27 (`42119c5`):** the static shell now renders the same
+  "No hub here" page when `/hub-config` answers `no_hub` (and "This hub is
+  paused" for `hub_suspended`). Before that, an address with no hub showed
+  the app's shell with "Could not load the feed: no_hub": on Vercel the
+  static page is served without reaching the server.
 - The old `*.vercel.app` hub addresses keep working until each hub's
   hostname is changed, and stay reserved after.
 - **Undo:** delete the `*.dev` CNAME at GoDaddy and set

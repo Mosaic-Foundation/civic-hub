@@ -530,6 +530,10 @@ the week stay and remain visible to `main`.
 **This is the point of no return.** After it, `main` no longer works against
 the database, so rollback is gone. Do it only after a clean week.
 
+**Written and scheduled (2026-09-27):** `supabase/migrations/20260926005000_post_cutover_cleanup.sql`,
+run with the env tidy below from `RUNBOOK-release-1.md` §2. That runbook
+supersedes the "Run it" and "Env tidy" paragraphs here.
+
 **The cleanup migration** (a new file, written in a later session, because
 it drops things and the build rules allow additive changes only; Adam
 approves the drops). From the migrations' own notes and the build plan:
