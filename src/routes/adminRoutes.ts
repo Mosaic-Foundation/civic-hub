@@ -62,7 +62,6 @@ import {
   handleListArchivedProcesses,
 } from "../controllers/adminArchiveController.js";
 import { handleAdminListFeedback } from "../controllers/adminFeedbackController.js";
-import { cleanOrphanedEvents } from "../services/processService.js";
 import { requireAdmin } from "../middleware/auth.js";
 import {
   handleRequestModeChangeCode,
@@ -93,16 +92,6 @@ router.use("/meeting-summaries", requirePlugin("meeting_summary"));
 router.use("/feedback", requirePlugin("feedback"));
 router.use("/moderation/announcements", requirePlugin("announcement"));
 
-// Maintenance
-router.post("/cleanup-orphaned-events", async (_req, res) => {
-  try {
-    const removed = await cleanOrphanedEvents();
-    res.json({ message: `Removed ${removed} orphaned event(s).`, removed });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "unknown";
-    res.status(500).json({ error: msg });
-  }
-});
 
 // Proposals
 router.get("/proposals", handleAdminListProposals);

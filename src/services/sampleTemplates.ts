@@ -29,6 +29,7 @@ const EVERY_TYPE: readonly JurisdictionType[] = JURISDICTION_TYPES.map((t) => t.
 export interface SampleAuthor {
   /** n in user_sample_<hub>_00n. */
   n: number;
+  /** Filled like the copy: may use the three placeholders. */
   full_name: string;
 }
 
@@ -37,7 +38,9 @@ export const SAMPLE_AUTHORS = {
   ALEX: { n: 2, full_name: "Alex R." },
   CASEY: { n: 3, full_name: "Casey M." },
   SAM: { n: 4, full_name: "Sam T." },
-  CLERK: { n: 5, full_name: "Office of the Clerk" },
+  // Not a real office: a sample announcement must not appear to speak for
+  // the local government, even out of context (Adam, 2026-09-26).
+  TEAM: { n: 5, full_name: "{HUB_NAME} team" },
 } as const satisfies Record<string, SampleAuthor>;
 
 type Author = keyof typeof SAMPLE_AUTHORS;
@@ -64,6 +67,11 @@ export interface SampleVote extends Base {
   kind: "vote";
   title: string;
   description: string;
+  /**
+   * The voting method. `yes_no_unsure` is the single-choice method (one
+   * option per voter, any option list); `approval` lets a voter pick several.
+   */
+  method: "yes_no_unsure" | "approval";
   /** Option labels, in order. */
   options: readonly string[];
   /** open: ballots cast so far; closed: final; proposed: none yet. */
@@ -106,6 +114,17 @@ export interface SampleDeliberation extends Base {
   closes_at: number;
   /** Shown through the seed- mock layer; nothing is sent to Polis. */
   statements: readonly string[];
+  /**
+   * The participation picture the mock layer serves (Adam, 2026-09-26:
+   * about twenty participants, two groups, broad agreement on registration
+   * and on counting first). Statement references are indexes into
+   * `statements`.
+   */
+  picture: {
+    participants: number;
+    groups: ReadonlyArray<{ size: number; agree: readonly number[]; disagree: readonly number[] }>;
+    consensus: ReadonlyArray<{ statement: number; agree_rate: number; votes: number }>;
+  };
 }
 
 export interface SampleProject extends Base {
@@ -144,6 +163,7 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
     description:
       "Some households here have fast, affordable internet. Others have slow service, no wired option, or a monthly bill they struggle with. A local government can help in several ways, and each costs a different amount and helps different people.\n\n" +
       "This advisory vote asks which step {JURISDICTION} should take first. Pick one. The result goes to the {GOVERNING_BODY} as a statement of where residents stand; it does not decide anything by itself.",
+    method: "yes_no_unsure", // single choice: "Pick one", 30 ballots = 30 voters
     options: [
       "Map where service is missing or unaffordable before choosing a fix",
       "Partner with a provider to extend service to areas that lack it",
@@ -168,6 +188,7 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
     description:
       "Fire and rescue services face rising costs for equipment, training and staffing. More funding could shorten response times or replace aging equipment. It would also mean less money for other services, or a higher tax rate, or both.\n\n" +
       "This vote opens once enough residents endorse it. Endorse it if you think residents should be asked; endorsing does not mean you would vote yes.",
+    method: "yes_no_unsure",
     options: ["Yes", "No", "Unsure"],
     phase: "proposed",
     endorsed_by: ["SAM", "ALEX", "CASEY"],
@@ -185,6 +206,7 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
     description:
       "The library cannot add hours without adding cost, so if it extends its hours it has to choose where. Weekday evenings would help people who work during the day. Saturday afternoons would help families and people who cannot come on weekdays. Keeping the current hours avoids the new cost.\n\n" +
       "This advisory vote asks which residents would prefer. The result goes to the {GOVERNING_BODY}.",
+    method: "yes_no_unsure",
     options: [
       "Weekday evenings (open until 8 p.m. Monday to Thursday)",
       "Saturday afternoons (open 1 to 5 p.m.)",
@@ -201,7 +223,7 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
     key: "outcome_library_hours",
     kind: "outcome",
     fits: EVERY_TYPE,
-    by: "CLERK",
+    by: "TEAM",
     at: -6,
     source: "vote_library_hours",
     published_at: -4,
@@ -260,7 +282,7 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
       {
         by: "CASEY",
         at: -5,
-        body: "Who maintains it matters. A list that is six months out of date would be worse than no list. I'd want to know that before I endorse it.",
+        body: "Who maintains it matters. A list that is six months out of date would be worse than no list. I endorsed it, but I'd want that settled before it's adopted.",
       },
       {
         by: "JORDAN",
@@ -293,6 +315,19 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
       "Limits on the number of rentals would be unfair to owners who bought a property planning to rent it.",
       "Before writing any rules, we should know how many short-term rentals there are and where they are.",
     ],
+    picture: {
+      participants: 21,
+      groups: [
+        // Leans toward owners' freedom to rent, with light-touch rules.
+        { size: 11, agree: [0, 3, 5], disagree: [1] },
+        // Leans toward protecting housing and neighborhoods.
+        { size: 10, agree: [1, 4], disagree: [3, 6] },
+      ],
+      consensus: [
+        { statement: 7, agree_rate: 0.9, votes: 20 },
+        { statement: 2, agree_rate: 0.81, votes: 21 },
+      ],
+    },
   },
 
   // 7 — adapted from seedBetaSlate KEEP.SKATE_PARK (an active project with
@@ -311,7 +346,7 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
     updates: [
       {
         at: -7,
-        body: "Twelve people have walked thirty segments so far. The most common gap is a short missing link between a neighborhood and the nearest park or school. Next step: a draft map posted here for comments.",
+        body: "Several volunteers have walked a dozen segments so far. The most common gap is a short missing link between a neighborhood and the nearest park or school. Next step: a draft map posted here for comments.",
       },
     ],
     comments: [
@@ -333,7 +368,7 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
     key: "announcement_budget_hearing",
     kind: "announcement",
     fits: EVERY_TYPE,
-    by: "CLERK",
+    by: "TEAM",
     at: -2,
     title: "Public hearing on the proposed budget",
     body:
@@ -347,7 +382,7 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
     key: "announcement_comprehensive_plan",
     kind: "announcement",
     fits: LOCAL_GOVERNMENT,
-    by: "CLERK",
+    by: "TEAM",
     at: -8,
     title: "Comprehensive plan update: open house and survey",
     body:

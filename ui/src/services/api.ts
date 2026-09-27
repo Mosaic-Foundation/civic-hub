@@ -1592,10 +1592,6 @@ export function adminDiscardMeetingSummaryRevision(
   return request("POST", `/admin/meeting-summaries/${id}/revision/discard`);
 }
 
-export function adminCleanupOrphanedEvents(): Promise<{ message: string; removed: number }> {
-  return request("POST", `/admin/cleanup-orphaned-events`);
-}
-
 export function adminBatchDeleteMeetingSummaries(
   ids: string[],
 ): Promise<{ message: string; deleted: number; archived?: number; skipped: number }> {

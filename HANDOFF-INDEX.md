@@ -36,6 +36,8 @@ numbers below, or just grep the heading.
 | Leak harness, RLS catalog test | `tests/api/leakHarness.test.ts`, `leakHarnessDb.test.ts`, `rlsCatalog.test.ts`, rules in `tests/fixtures/tenancyCatalog.ts` |
 | Atomic DB functions | `transition_process`, `cast_vote` (`20260924080000`), called via `src/db/atomic.ts` |
 | Hub export / import / restore (bundle format, runbook) | `src/control/hubBundle/format.ts`, `scripts/export-hub.ts`, `scripts/import-hub.ts`, `scripts/restore-hub.ts`, `scripts/lib/hubImport.ts`, `RUNBOOK-restore-hub.md` |
+| Sample content: templates, seed, removal, the row classification | `src/services/sampleTemplates.ts`, `src/services/sampleSeed.ts`, `src/services/sampleContent.ts`, `src/models/sampleContent.ts`, `scripts/seed-sample-content.ts` |
+| Hub admin audit log (fresh-code actions) | `src/services/hubAdminAudit.ts`; console reader `listHubAdminAudit` in `src/control/audit.ts` |
 | Place-name CI check + allow-list | `scripts/check-place-names.ts`, `scripts/place-name-allowlist.txt` |
 | A hub's seed values (read only by the seed script) | `config/hubs/<hub>/settings.json` |
 | Ideas backlog incl. multi-tenancy section | `IDEAS.md` (lines ~137–240) |
@@ -63,6 +65,11 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Phase 7 part one (2026-09-26): sample content for new hubs**
+  (`src/services/sampleSeed.ts`, `sampleTemplates.ts`, `sampleContent.ts`,
+  `src/models/sampleContent.ts`, `scripts/seed-sample-content.ts`,
+  `hub_admin_audit_log`, `is_sample`, the events delete guard) — 7–~150
+  (every range below shifts down by its length)
 - **Phase 5 part two (2026-09-26): per-hub export, import, restore**
   (`scripts/export-hub.ts`, `import-hub.ts`, `restore-hub.ts`,
   `src/control/hubBundle/`, `RUNBOOK-restore-hub.md`), console export +

@@ -13,6 +13,10 @@ import { RESERVED_HUB_SLUG_PURPOSES, type HubMode } from "../models/hub.js";
 import { PLUGIN_IDS } from "../models/hubSettings.js";
 import { listAudit, listHubAdminAudit, recordAudit } from "./audit.js";
 import { exportHubArchive } from "./hubExport.js";
+import { getHubBySlug } from "../db/hubs.js";
+import { fetchHubSettings } from "../db/hubSettingsStore.js";
+import { withHubScope } from "../config/hubContext.js";
+import { seedSampleContent, type SampleSeedReport } from "../services/sampleSeed.js";
 import {
   CODE_SENT,
   ControlAuthError,
@@ -162,6 +166,14 @@ async function loadHub(req: Request, res: Response): Promise<ControlHub | null> 
   return hub;
 }
 
+/** Seed the sample content inside the hub's own scope, as a request for it would run. */
+async function seedSampleInHub(hubId: string): Promise<SampleSeedReport> {
+  const row = await getHubBySlug(hubId);
+  if (!row) throw new Error(`hub ${hubId} not found after create`);
+  const settings = await fetchHubSettings(hubId);
+  return withHubScope(row, settings, () => seedSampleContent());
+}
+
 async function hubDetail(hub: ControlHub) {
   return {
     hub,
@@ -263,7 +275,21 @@ export function controlRouter(): Router {
       updatedBy: `console:${actor(res)}`,
     });
     await audited(res, { actor: actor(res), action: "hub.create", hubId: hub.id, before: null, after: { hub, settings } });
-    res.status(201).json(await hubDetail(hub));
+    // "Start with sample content" (Phase 7). The hub exists either way: a
+    // seed that fails is reported, and can be rerun with
+    // scripts/seed-sample-content.ts (it is idempotent).
+    let sample: unknown = null;
+    if (input.sampleContent) {
+      try {
+        const report = await seedSampleInHub(hub.id);
+        await audited(res, { actor: actor(res), action: "hub.sample_seed", hubId: hub.id, before: null, after: report });
+        sample = report;
+      } catch (err) {
+        console.error(`[control] sample seed failed for ${hub.id}`, err);
+        sample = { error: err instanceof Error ? err.message : String(err) };
+      }
+    }
+    res.status(201).json({ ...(await hubDetail(hub)), sample_content: sample });
   }));
 
   r.get("/control/hubs/:id", route(async (req, res) => {

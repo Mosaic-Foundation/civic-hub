@@ -3,6 +3,10 @@
 // returns this data instead of calling the real Polis API. This lets us
 // demo the full UI without a running Polis instance.
 
+import { currentHubIdOrNull } from "../config/hubContext.js";
+import { SAMPLE_TEMPLATES, fillSample, type SampleDeliberation } from "../services/sampleTemplates.js";
+import { sampleNames } from "../services/sampleNames.js";
+
 interface MockStatement {
   id: number;
   text: string;
@@ -643,6 +647,62 @@ const MOCK_CONVERSATIONS: Record<string, MockConversation> = {
   },
 };
 
+// ---------- Sample content conversations (Phase 7) ----------
+//
+// A hub's sample conversation (src/services/sampleSeed.ts) is served from its
+// template: `seed-sample-<template key>`, the statements filled with the
+// hub's own names, the participation picture the template records. Built once
+// per hub and kept, like the fixed ones above, so statements added during a
+// visit stay for the life of the server.
+
+const SAMPLE_PREFIX = "seed-sample-";
+const sampleConversations = new Map<string, MockConversation>();
+
+function sampleConversation(conversationId: string): MockConversation | null {
+  const t = SAMPLE_TEMPLATES.find(
+    (x): x is SampleDeliberation => x.kind === "deliberation" && `${SAMPLE_PREFIX}${x.key}` === conversationId,
+  );
+  if (!t) return null;
+  const cacheKey = `${currentHubIdOrNull() ?? ""}:${conversationId}`;
+  const cached = sampleConversations.get(cacheKey);
+  if (cached) return cached;
+
+  const names = sampleNames();
+  const texts = t.statements.map((s) => fillSample(s, names));
+  const created = new Date().toISOString();
+  const conv: MockConversation = {
+    statements: texts.map((text, i) => ({ id: i + 1, text, is_seed: true, created })),
+    clusters: {
+      participant_count: t.picture.participants,
+      statement_count: texts.length,
+      math_tick: 12,
+      groups: t.picture.groups.map((g, gi) => ({
+        id: gi,
+        size: g.size,
+        representative_statements: [
+          ...g.agree.map((i) => ({ text: texts[i], direction: "agree" as const, repness: 0.8 })),
+          ...g.disagree.map((i) => ({ text: texts[i], direction: "disagree" as const, repness: 0.6 })),
+        ],
+      })),
+      consensus: {
+        agree: t.picture.consensus.map((c) => ({
+          statement_id: c.statement + 1,
+          text: texts[c.statement],
+          agree_rate: c.agree_rate,
+          vote_count: c.votes,
+        })),
+        disagree: [],
+      },
+    },
+  };
+  sampleConversations.set(cacheKey, conv);
+  return conv;
+}
+
+function mockConversation(conversationId: string): MockConversation | null {
+  return MOCK_CONVERSATIONS[conversationId] ?? sampleConversation(conversationId);
+}
+
 /**
  * Returns true if the conversation ID belongs to a seed/demo conversation.
  */
@@ -656,7 +716,7 @@ export function isSeedConversation(conversationId: string): boolean {
 export function getMockClusters(
   conversationId: string,
 ): MockClusterState | null {
-  return MOCK_CONVERSATIONS[conversationId]?.clusters ?? null;
+  return mockConversation(conversationId)?.clusters ?? null;
 }
 
 /**
@@ -669,7 +729,7 @@ export function getMockNextStatement(
   conversationId: string,
   userId: string,
 ): MockStatement | null {
-  const conv = MOCK_CONVERSATIONS[conversationId];
+  const conv = mockConversation(conversationId);
   if (!conv || conv.statements.length === 0) return null;
 
   const key = `${conversationId}:${userId}`;
@@ -700,7 +760,7 @@ export function addMockStatement(
   conversationId: string,
   text: string,
 ): MockStatement | null {
-  const conv = MOCK_CONVERSATIONS[conversationId];
+  const conv = mockConversation(conversationId);
   if (!conv) return null;
 
   const stmt: MockStatement = {

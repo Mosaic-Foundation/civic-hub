@@ -107,6 +107,13 @@ describe("the sample templates", () => {
     }
   });
 
+  it("names its authors with the placeholders only, and never as an office", () => {
+    for (const a of Object.values(SAMPLE_AUTHORS)) {
+      for (const m of a.full_name.matchAll(/\{([A-Z_]+)\}/g)) expect(["HUB_NAME", "JURISDICTION", "GOVERNING_BODY"]).toContain(m[1]);
+      expect(a.full_name).not.toMatch(/clerk|office|council|board|commission/i);
+    }
+  });
+
   it("has unique keys, known authors, and 8 to 10 processes for a general-purpose government", () => {
     const keys = SAMPLE_TEMPLATES.map((t) => t.key);
     expect(new Set(keys).size).toBe(keys.length);

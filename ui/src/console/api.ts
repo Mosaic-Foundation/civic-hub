@@ -109,7 +109,8 @@ export const api = {
   config: () => request<ConsoleConfig>("GET", "/config"),
   hubs: () => request<{ hubs: Hub[] }>("GET", "/hubs"),
   hub: (id: string) => request<HubDetail>("GET", `/hubs/${encodeURIComponent(id)}`),
-  createHub: (body: Record<string, string | boolean>) => request<HubDetail>("POST", "/hubs", body),
+  createHub: (body: Record<string, string | boolean>) =>
+    request<HubDetail & { sample_content: { created: string[] } | { error: string } | null }>("POST", "/hubs", body),
   updateHub: (id: string, body: Record<string, unknown>) =>
     request<HubDetail>("PATCH", `/hubs/${encodeURIComponent(id)}`, body),
   setPlugins: (id: string, plugins: Record<string, boolean>, extra: Record<string, unknown> = {}) =>

@@ -1,0 +1,176 @@
+// The sample-content seed (Phase 7), through the console's Create hub with
+// "Start with sample content" on — the path an operator uses.
+//
+// A county hub in Virginia gets all nine templates, the governing body the
+// form infers ("Board of Supervisors"), its names filled in, every event
+// marked sample and none of it on GET /events; a school district gets only
+// the three that fit. Then the county hub's admin removes it all and the hub
+// still serves, empty. (Idempotence is the script's, and is checked by hand
+// in the HANDOFF: the console seeds a hub once, at creation.)
+//
+// Needs the console on console.localhost (CI's env) and the local stack.
+// Every hub this file creates is archived in afterAll, like control.test.ts.
+
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { call } from "../fixtures/hostCall.js";
+import { localRest, mintSession } from "../fixtures/adminSession.js";
+import { auditFor, consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
+
+const run = Date.now().toString(36);
+const COUNTY = `smpc-${run}`;
+const SCHOOLS = `smps-${run}`;
+const host = (slug: string) => `${slug}.localhost`;
+const ADMIN = `sample-admin-${run}@example.test`;
+const created: string[] = [];
+let cookie = "";
+
+async function stepCode(): Promise<string> {
+  const code = String(100000 + Math.floor(Math.random() * 899999));
+  await plantCode("step_up", code);
+  return code;
+}
+
+beforeAll(async () => {
+  cookie = await mintConsoleSession();
+});
+
+afterAll(async () => {
+  for (const id of created) {
+    const res = await consoleCall("POST", `/control/hubs/${id}/archive`, { cookie, body: { step_up_code: await stepCode() } });
+    if (res.status !== 200 && !/already archived/.test(res.body.error ?? "")) {
+      throw new Error(`could not archive ${id}: ${JSON.stringify(res.body)}`);
+    }
+  }
+});
+
+type Row = Record<string, any>;
+
+describe("a county hub created with sample content", () => {
+  let body: Row = {};
+
+  beforeAll(async () => {
+    const res = await consoleCall("POST", "/control/hubs", {
+      cookie,
+      body: {
+        slug: COUNTY,
+        name: "Sample Test Civic Hub",
+        hostname: host(COUNTY),
+        jurisdiction_name: "Example County, Virginia",
+        jurisdiction_code: "us-va-example",
+        jurisdiction_type: "county",
+        admin_email: ADMIN,
+        sample_content: true,
+      },
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    created.push(COUNTY);
+    body = res.body;
+  });
+
+  it("infers the governing body from the type and the state, and stores the type", async () => {
+    expect(body.config.governing_body).toBe("Board of Supervisors");
+    expect(body.config.jurisdiction_type).toBe("county");
+  });
+
+  it("seeds all nine templates, marked sample, by five sample authors", async () => {
+    expect(body.sample_content.created).toHaveLength(9);
+    const procs = (await localRest(`processes?select=id,is_sample,title,description&hub_id=eq.${COUNTY}`)) as Row[];
+    expect(procs).toHaveLength(9);
+    expect(procs.every((p) => p.is_sample === true)).toBe(true);
+    const users = (await localRest(`users?select=id,full_name&hub_id=eq.${COUNTY}&is_sample=is.true`)) as Row[];
+    expect(users).toHaveLength(5);
+    expect(users.map((u) => u.full_name)).toContain("Sample Test Civic Hub team");
+  });
+
+  it("fills the hub's own names in, and no placeholder is left", async () => {
+    const procs = (await localRest(`processes?select=title,description&hub_id=eq.${COUNTY}`)) as Row[];
+    const text = procs.map((p) => `${p.title} ${p.description}`).join("\n");
+    expect(text).not.toMatch(/\{[A-Z_]+\}/);
+    expect(text).toContain("Example County"); // the place, without its state
+    expect(text).not.toContain("Example County, Virginia");
+    expect(text).toContain("Board of Supervisors");
+  });
+
+  it("puts the open vote's deadline ahead and the closed vote's behind", async () => {
+    const [open] = (await localRest(`processes?select=state&id=eq.proc_sample_${COUNTY}_vote_internet`)) as Row[];
+    expect(new Date(open.state.voting_closes_at).getTime()).toBeGreaterThan(Date.now());
+    expect(open.state.status).toBe("active");
+    expect(open.state.method).toBe("yes_no_unsure"); // single choice: "Pick one"
+    const [closed] = (await localRest(`processes?select=status&id=eq.proc_sample_${COUNTY}_vote_library_hours`)) as Row[];
+    expect(closed.status).toBe("finalized");
+  });
+
+  it("marks every event sample, and serves none on GET /events", async () => {
+    const events = (await localRest(`events?select=is_sample&hub_id=eq.${COUNTY}`)) as Row[];
+    expect(events.length).toBeGreaterThan(20);
+    expect(events.every((e) => e.is_sample === true)).toBe(true);
+    const wire = await call("GET", "/events?page=true", host(COUNTY));
+    expect(wire.status).toBe(200);
+    expect(wire.body.totalItems ?? wire.body.orderedItems?.length ?? 0).toBe(0);
+  });
+
+  it("shows them in the hub's own feed, marked sample", async () => {
+    const feed = await call("GET", "/api/feed", host(COUNTY));
+    expect(feed.status).toBe(200);
+    expect(feed.body.events.length).toBeGreaterThan(0);
+    expect(feed.body.events.every((e: Row) => e.sample === true)).toBe(true);
+  });
+
+  it("records the seed in the console's audit trail", async () => {
+    const audit = await auditFor(COUNTY);
+    expect(audit.map((a) => a.action)).toContain("hub.sample_seed");
+  });
+
+  it("comes out in one audited action, leaving a hub that still serves", async () => {
+    const admin = await mintSession(COUNTY, ADMIN);
+    const code = String(100000 + Math.floor(Math.random() * 899999));
+    await localRest("pending_verifications", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify({ hub_id: COUNTY, email: ADMIN, code, expires_at: new Date(Date.now() + 600_000).toISOString(), attempts: 0 }),
+    });
+    const before = await call("GET", "/admin/hub/sample-content", host(COUNTY), undefined, admin);
+    expect(before.body).toMatchObject({ processes: 9, other_processes: 0, real_input_total: 0 });
+
+    const res = await call("POST", "/admin/hub/sample-content/remove", host(COUNTY), { code }, admin);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect((await localRest(`processes?select=id&hub_id=eq.${COUNTY}`)) as Row[]).toHaveLength(0);
+    expect((await localRest(`events?select=id&hub_id=eq.${COUNTY}`)) as Row[]).toHaveLength(0);
+    expect((await localRest(`vote_records?select=receipt_id&hub_id=eq.${COUNTY}`)) as Row[]).toHaveLength(0);
+    expect((await localRest(`community_inputs?select=id&hub_id=eq.${COUNTY}`)) as Row[]).toHaveLength(0);
+    expect((await localRest(`users?select=id&hub_id=eq.${COUNTY}&is_sample=is.true`)) as Row[]).toHaveLength(0);
+
+    const feed = await call("GET", "/api/feed", host(COUNTY));
+    expect(feed.status).toBe(200);
+    expect(feed.body.events).toHaveLength(0);
+    expect((await call("GET", "/process", host(COUNTY))).status).toBe(200);
+
+    const log = await consoleCall("GET", `/control/hubs/${COUNTY}/admin-audit`, { cookie });
+    expect(log.status).toBe(200);
+    expect(log.body.entries[0]).toMatchObject({ action: "sample_content.remove", actor_email: ADMIN });
+  });
+});
+
+describe("a school district hub", () => {
+  it("gets only the templates that fit, and a School Board", async () => {
+    const res = await consoleCall("POST", "/control/hubs", {
+      cookie,
+      body: {
+        slug: SCHOOLS,
+        name: "Sample Schools Civic Hub",
+        hostname: host(SCHOOLS),
+        jurisdiction_name: "Example Schools, Ohio",
+        jurisdiction_code: "us-oh-example-schools",
+        jurisdiction_type: "school_district",
+        admin_email: ADMIN,
+        sample_content: true,
+      },
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    created.push(SCHOOLS);
+    expect(res.body.config.governing_body).toBe("School Board");
+    expect([...res.body.sample_content.created].sort()).toEqual(
+      ["announcement_budget_hearing", "outcome_library_hours", "vote_library_hours"].sort(),
+    );
+  });
+});

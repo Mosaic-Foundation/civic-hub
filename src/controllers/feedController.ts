@@ -14,7 +14,7 @@
 
 import { Request, Response } from "express";
 import { getAllEvents, getEventsByProcessId } from "../events/eventStore.js";
-import { getHiddenProcessIds, getSampleProcessIds } from "../services/processService.js";
+import { getHiddenProcessIds, getProcessIdIndex } from "../services/processService.js";
 import { buildFeedProcessMeta } from "../services/feedMeta.js";
 import { isAdminEmail, resolveCallerUser } from "../middleware/auth.js";
 import {
@@ -46,7 +46,12 @@ export async function handleGetFeed(
     // never the feed. Events with no process_id (rare) always pass through.
     // Skipped when the caller asked for a specific process_id (that read is an
     // explicit lookup, not the feed).
+    // Every process id and the sample ones, in one query: an event whose
+    // process no longer exists renders no ghost card, and a sample
+    // process's events are marked below.
+    const index = await getProcessIdIndex();
     if (!processId) {
+      events = events.filter((e) => !e.process_id || index.all.has(e.process_id));
       const hidden = await getHiddenProcessIds();
       if (hidden.size > 0) {
         events = events.filter(
@@ -121,12 +126,11 @@ export async function handleGetFeed(
     // Sample content (Phase 7) is in the hub's own feed, badged. `sample` is
     // a field of this internal read model only: sample events never reach
     // the public wire (GET /events), which reads the log without them.
-    const sampleIds = await getSampleProcessIds();
     const out =
-      sampleIds.size === 0
+      index.sample.size === 0
         ? events
         : events.map((e) =>
-            e.process_id && sampleIds.has(e.process_id) ? { ...e, sample: true } : e,
+            e.process_id && index.sample.has(e.process_id) ? { ...e, sample: true } : e,
           );
 
     const body = { events: out, count: out.length, process_meta };

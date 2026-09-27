@@ -563,6 +563,23 @@ export async function getSampleProcessIds(): Promise<Set<string>> {
   return new Set(rows.map((r) => r.id));
 }
 
+/**
+ * Every process id on this hub, and which are sample content, in one query
+ * of ids only. The feed uses both: an event whose process no longer exists
+ * (a meeting summary deleted in a batch) is skipped rather than rendered as
+ * a ghost card, and a sample process's events are marked. Skipping on read
+ * replaced deleting "orphaned" events (Phase 7): the log is append-only for
+ * the hub app, and an operator script on the service role is the path if
+ * one ever has to go.
+ */
+export async function getProcessIdIndex(): Promise<{ all: Set<string>; sample: Set<string> }> {
+  const rows = await db().from("processes").select<{ id: string; is_sample: boolean }>("id, is_sample");
+  return {
+    all: new Set(rows.map((r) => r.id)),
+    sample: new Set(rows.filter((r) => r.is_sample).map((r) => r.id)),
+  };
+}
+
 /** Clear all processes — dev/seed only. */
 /**
  * Persist the current in-memory Process back to storage. Used by flows
@@ -844,34 +861,6 @@ export async function getArchivedProcesses(): Promise<Process[]> {
  * foreign keys first so the database enforces the cleanup, rather than trusting
  * a helper to remember every table.
  */
-
-/**
- * Delete this hub's events whose process_id doesn't match any of this hub's
- * processes. Returns the count of orphaned events removed. Scoped on both
- * sides: unscoped, another hub's events would all look orphaned.
- */
-export async function cleanOrphanedEvents(): Promise<number> {
-  const processes = await db()
-    .from("processes")
-    .select<{ id: string }>("id");
-  const validIds = new Set(processes.map((p) => p.id));
-
-  const events = await db()
-    .from("events")
-    .select<{ id: string; process_id: string }>("id, process_id");
-  if (!events || events.length === 0) return 0;
-
-  const orphanIds = events
-    .filter((e) => !validIds.has(e.process_id))
-    .map((e) => e.id);
-  if (orphanIds.length === 0) return 0;
-
-  await db()
-    .from("events")
-    .delete()
-    .in("id", orphanIds);
-  return orphanIds.length;
-}
 
 export async function clearProcesses(): Promise<void> {
   await db().from("processes").delete().neq("id", "");

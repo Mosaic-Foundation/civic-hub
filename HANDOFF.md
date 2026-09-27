@@ -4,6 +4,109 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Phase 7 part one: sample content for new hubs — 2026-09-26
+
+**Branch:** `multi-tenant`, local commits (not pushed). **Dev:** migration
+`20260926040000` and a redeploy pending (Adam, commands in chat); the dev
+walk (step 7) follows. Production untouched.
+
+The design is the build prompt plus Adam's answers, recorded as **Phase 7**
+in `BUILD-PLAN-multi-tenant.md` (not Phase 6, which is the cutover).
+
+### Decisions (Adam, 2026-09-26)
+- **Marker:** `is_sample boolean not null default false` on `processes`,
+  `events`, `users` (a column: every reader filters it in SQL; events have no
+  state). Child rows belong through their sample `process_id` — one list,
+  `src/models/sampleContent.ts`, shared by the export and removal; a unit
+  test fails on an unclassified hub table.
+- **The database stamps it:** an event of a sample process is sample (a real
+  resident's vote or comment on one too); a process spawned from one
+  (`state.source_process_id`, `source_proposal_id`) inherits it.
+- **Events stay append-only for the hub app:** the hub-token role
+  (`authenticated`) may DELETE only sample events; the service role and owner
+  are unaffected. `review_turns` unchanged (the seed writes no reviews).
+- **`hub_admin_audit_log`** (hub-scoped, forced RLS, append-only, exported;
+  id is a uuid so import can write it): sample removal, every mode change,
+  admin and board roster changes. The console reads it
+  (`GET /control/hubs/:id/admin-audit`, "Hub admin actions" card); nothing
+  mirrored into `control_audit_log`.
+- **Governing body: one key, `copy.governing_body_name`** (no
+  `people.governing_body`). New **`identity.jurisdiction_type`** (admin-only)
+  on the console's create/edit forms; the form pre-fills the body (county:
+  Board of Supervisors for `us-va-…`, else County Commission; city/town/
+  village/school district; operator corrects).
+- **Templates** (`src/services/sampleTemplates.ts`, copy approved by Adam):
+  nine processes, tagged by jurisdiction type; a school district gets three
+  (library-hours vote + outcome, budget hearing). Authors are five synthetic
+  per-hub users (`user_sample_<hub>_00n`), the announcements'/outcome's
+  "{HUB_NAME} team" — never an office. Votes are single choice
+  (`yes_no_unsure` with custom options). The conversation is served by the
+  `seed-` mock layer (`seed-sample-<key>`, statements and ~21-participant
+  picture from the template); nothing is sent to Polis.
+- **Demo banner** (new, demo hubs only; admin link to remove); beta keeps its
+  banner. **Orphan-event cleanup retired** (route + the meeting-summaries
+  button): the feed now skips events whose process is gone, on read.
+
+### What was built
+| Step | Commit | What |
+|---|---|---|
+| 1 | `1fe4da1` | migration; wire/digest/export filters; removal + warning; audit log; console fields; badge, banner, settings section; templates file |
+| 2 | (this commit) | seed engine `src/services/sampleSeed.ts`, `scripts/seed-sample-content.ts`, console hook (`sample_content` on create, `hub.sample_seed` audit), mock conversation, copy edits, orphan route retired, tests, docs |
+
+### How it works
+- **Filters in the query** (`src/events/eventStore.ts`): `getEventPage`,
+  `countEvents`, `getEventById` (GET `/events`, `/activities/:id`, so any
+  federation) and `getEventsSince` (resident digest) read `is_sample = false`.
+  The hub's feed (`/api/feed`) keeps them with `sample: true`; list/detail
+  read models add `is_sample` (universal in `processService`, plus the
+  module endpoints for proposals, projects, deliberations, word clouds,
+  briefs, announcements, outcomes). Admin digest skips sample.
+- **Delivery:** approving a sample brief or results page uses
+  `sampleDeliverySuppressed` (logs, sends nothing) — a sample vote closes on
+  schedule (hourly `vote_close`, events stamped sample) and spawns a sample
+  brief; on a live hub its recipients would be real officials.
+- **Removal** (`src/services/sampleContent.ts`): children by the shared
+  list, then proposals/projects, sample events, processes, sample users
+  (sessions cascade); idempotent, not one transaction (PostgREST), resumable
+  by rerunning. `GET /admin/hub/sample-content` (counts incl. real people's
+  input by kind), `POST …/remove` with a fresh code; `POST /admin/hub/mode`
+  takes `remove_sample_content` when leaving demo (removal first).
+- **Seed** (`seedSampleContent()`, in hub scope): real paths
+  (createProcess `isSample`, civic.vote lifecycle + anonymous ballots,
+  proposals/projects/input modules, the brief's approve path with a
+  suppressed mailer, announcements without the publication receipt), every
+  event stamped at its planned time, rows' `created_at` matched. Skips
+  templates that do not fit the type or whose plugin is off. Fixed ids →
+  idempotent (second local run: created 0, already there 9).
+- **Dev reset** (`clearEvents`, `/debug/seed`) goes through
+  `forHubDevReset()` (service role, refuses without `CIVIC_ALLOW_SEED`),
+  because the hub token may no longer delete real events.
+
+### Tests
+Unit 96 files, 1125 passed. API 29 files, 290 passed / 7 skipped in **both**
+modes (local servers on :3200 service role and :3201 hub tokens — see
+TESTING.md; one service-role run had two unrelated failures,
+`forHubIsolation` feedback update and a search status, that passed alone and
+on a full rerun). Lint, `tsc`, UI build, place-name check clean.
+**Playwright NOT run:** :3000 and :5173 belong to another chat's servers
+(backend on hosted dev), and Playwright reuses whatever is on those ports.
+
+### Open
+- Dev: apply `20260926040000` (`./scripts/db-push.sh --dry-run` should list
+  exactly it), redeploy, then the walk (create a hub on the console with
+  sample content, signed out and as admin, remove, check empty).
+- Production sitting: `20260926040000` after `20260926030000`.
+- Playwright on a free :3000/:5173.
+- A sample conversation that reaches its deadline (32 days) closes through
+  the real close action, whose Polis summary call fails for a `seed-` id and
+  is guarded (`summary_status: failed`); harmless, but the samples are meant
+  to be removed long before.
+- `scripts/seedBetaSlate.ts` imports `addProjectUpdate`, which no longer
+  exists (project updates moved to `community_inputs`); it would fail at
+  load. Not touched here.
+
+---
+
 ## Phase 5 part two: per-hub export, import and restore — 2026-09-26
 
 **Branch:** `multi-tenant`, pushed (civic-hub `bbb3862`; ADR-005 in the

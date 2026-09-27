@@ -104,6 +104,43 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   each with a purpose), `controlBoundary.test.ts` (the hub app cannot import
   `src/control/`). Local run 2026-09-26: 25 files, 249 passed, 5 skipped, in
   both modes; unit 1090.
+- **Sample content (2026-09-26, Phase 7):** `sampleContent.test.ts` writes
+  a sample process, its spawn, a real process, a sample author and a real
+  resident straight into the local stack (service role), then checks the
+  database on its own terms — every event of a sample process is stamped
+  sample (a real resident's too), a process spawned from one inherits it,
+  **a minted Athens hub token cannot delete a real event but can delete a
+  sample one**, `hub_admin_audit_log` refuses UPDATE and DELETE even for the
+  service role — and the app: sample events are off `GET /events` and
+  `/activities/:id`, in `/api/feed` with `sample: true`, `is_sample` on the
+  process read model; `/admin/hub/sample-content` is admin-only, counts real
+  people's input, refuses removal without a fresh code (planted in
+  `pending_verifications`), then removes exactly the sample rows and writes a
+  `sample_content.remove` audit row. **It removes ALL of Athens's sample
+  content**, so a locally seeded Athens is empty of samples afterwards.
+  `sampleSeed.test.ts` creates two hubs through the console with
+  `sample_content: true` — a Virginia county (all nine templates, "Board of
+  Supervisors" inferred, names filled, no placeholder left, every event
+  sample, `GET /events` empty, the feed all `sample: true`, a
+  `hub.sample_seed` console audit row, then removal by its admin leaving an
+  empty hub that serves, read back through `/control/hubs/:id/admin-audit`)
+  and a school district (exactly the three templates that fit, "School
+  Board") — and archives both in afterAll, like `control.test.ts`. Unit:
+  `sampleContent.test.ts` (every hub table classified for removal/export; the
+  row rule; per-hub sample ids; the templates use only the three
+  placeholders, 8–10 for a general-purpose government, every vote has 2+
+  options and ballots, the outcome matches its vote's ballots, the school
+  district set; the governing-body inference). Local run 2026-09-26: API 29
+  files, 290 passed, 7 skipped, in both modes; unit 96 files, 1124.
+  **Running both modes locally** when :3000 is taken: `.claude/launch.json`
+  (monorepo root) has `hub-local-3200` (service role) and `hub-local-3201`
+  (hub tokens) on the local stack with CI's env; run with
+  `CIVIC_API_BASE=http://localhost:320x CIVIC_EXPECT_HUB_DB_MODE=…
+  CIVIC_TEST_CRON_SECRET=local-only-cron-secret
+  CIVIC_TEST_DIGEST_SECRET=local-only-digest-unsubscribe-secret` (and
+  `CIVIC_HUB_SIGNING_KEY` = the local JWT secret for the token pass). Without
+  the two secrets the cron and digest tests fail 401, which is the env, not
+  the code.
 - **Hub export, import and restore (2026-09-26, Phase 5 part two):**
   `hubExportRoundTrip.test.ts` seeds a throwaway hub `rt-<hex>` straight into
   the local stack's Postgres (users, a vote under review with two turns,
@@ -804,7 +841,7 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,

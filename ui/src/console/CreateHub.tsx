@@ -95,6 +95,13 @@ export default function CreateHub() {
           setError(null);
           try {
             const created = await api.createHub({ ...form });
+            const seeded = created.sample_content;
+            if (seeded && "error" in seeded) {
+              window.alert(
+                `The hub was created, but its sample content could not be added: ${seeded.error}\n\n` +
+                  `Run scripts/seed-sample-content.ts --hub ${created.hub.id} to try again.`,
+              );
+            }
             go({ name: "hub", id: created.hub.id });
           } catch (err) {
             setError((err as Error).message);
