@@ -352,6 +352,14 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   run 2026-09-27: API 31 files, 309 passed, 7 skipped, in both modes; unit 99
   files, 1143; Playwright 25/25.
 
+- **Non-place legal text (2026-09-27, third part):** unit
+  `jurisdictions.test.ts` renders every shared document for a non-place hub
+  (the governing state from `{GOVERNING_STATE}`, no "resident"/"residents",
+  "One person, one voice", the complaint line) and reads the default from
+  `config/legal/defaults.json`; `hubDocuments.test.ts` knows
+  `{GOVERNING_STATE}`; `hubKinds.test.ts` checks an organization's Terms name
+  Virginia, then the state its admin saves in `legal.governing_state`. API
+  32 files, 318 passed, 7 skipped, both modes; unit 99 / 1151.
 - **Jurisdiction codes and hub kinds (2026-09-27, second part):**
   `hubKinds.test.ts` — a place hub still needs a jurisdiction (kind omitted
   or `place`); an `organization` hub with none works end to end (no OCD id,

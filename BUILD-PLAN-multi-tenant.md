@@ -119,7 +119,7 @@ Key naming is dotted, lowercase, and namespaced. The canonical keys:
 |---|---|
 | `identity.` | `identity.name`, `identity.label`, `identity.tagline`, `identity.page_title`, `identity.description`, `identity.banner_url`, `identity.banner_alt`, `identity.theme`, `identity.logo_url` (added 2026-09-24, Adam), `identity.timezone` (added 2026-09-24, Phase 2c), `identity.jurisdiction_type` (added 2026-09-26, Phase 7; admin-only; place hubs only), `identity.hub_kind` (added 2026-09-27: `place` / `issue` / `organization` / `other`, unset = place; public) |
 | `copy.` | `copy.intro_body`, `copy.residency_intro`, `copy.welcome`, `copy.about`, `copy.resident_noun`, `copy.governing_body_name`, `copy.governing_body_short` |
-| `legal.` | `legal.terms`, `legal.privacy`, `legal.code_of_conduct`, `legal.proposal_best_practices` |
+| `legal.` | `legal.terms`, `legal.privacy`, `legal.code_of_conduct`, `legal.proposal_best_practices`, `legal.governing_state` (added 2026-09-27: the state whose law governs a non-place hub's documents; admin-editable; unset = `config/legal/defaults.json`, "Virginia"; public, as it is printed in them) |
 | `people.` | `people.admin_emails`, `people.board_emails`, `people.brief_recipients`, `people.announcement_authors` |
 | `email.` | `email.from_name`, `email.from_address`, `email.postal_address` |
 | `beta.` | `beta.allowlist`, `beta.waitlist_enabled` (there is no `beta.enabled`: see `hubs.mode`) |
@@ -1186,6 +1186,20 @@ government's services, budget or governing body), so a hub of another kind
 gets none and the create form says so. **Writing templates for issue
 campaigns and organizations is later presets work**, with the county / town
 / school district presets.
+
+**Legal review before production sign-ups** (Adam, 2026-09-27): the shared
+documents are draft starter content, and the lawyer's review before any hub
+accepts production sign-ups must now also cover **hubs without a place**
+(their `{{^place}}` sentences, governed by `legal.governing_state`), whose
+operator may not be Civic.Social — a campaign or an organization running its
+own hub is the operator its documents name.
+
+**Census-designated places** (Adam, 2026-09-27): the OCD list has ids for 74
+of 12,557; the rest are **not** given ids in the `ocd-division/` namespace. A
+hub for one is "Other / not listed" for now, and a group there can link its
+county as the related place. A possible later fix: key those rows by Census
+GEOID in a namespace that is clearly ours (not `ocd-division/`), or
+contribute them upstream to Open Civic Data.
 
 **Later, not built (Adam, 2026-09-27):** an issue campaign may want several
 related places — a statewide campaign with local chapters. Today a hub has one

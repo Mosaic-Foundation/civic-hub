@@ -68,6 +68,12 @@ export const KEYS = {
   // person — "Athens Moderator Group", "the Town of X", a named individual.
   LEGAL_OPERATOR_NAME: "legal.operator_name",
   LEGAL_CONTACT_EMAIL: "legal.contact_email",
+  // The state whose law governs the documents of a hub that is not a place
+  // (identity.hub_kind), and whose law the draft note says a lawyer should
+  // know. Added 2026-09-27 (Adam). A place hub's documents use its own
+  // {STATE}. Unset = config/legal/defaults.json ("Virginia"). Public: it is
+  // printed in the Terms and the Privacy Policy.
+  LEGAL_GOVERNING_STATE: "legal.governing_state",
 
   // The whole "who runs this site" paragraph, not just the name in it.
   //
@@ -282,6 +288,7 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   // footer, the "who do I complain to" line.
   KEYS.LEGAL_OPERATOR_NAME,
   KEYS.LEGAL_CONTACT_EMAIL,
+  KEYS.LEGAL_GOVERNING_STATE,
   KEYS.LEGAL_WHO_RUNS_THIS,
 
   KEYS.BETA_WAITLIST_ENABLED,

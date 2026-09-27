@@ -4,7 +4,7 @@
 
 The {HUB_NAME} is a pilot program aimed at improving how our community understands and expresses public sentiment on local issues.
 
-Between elections, there is often no clear way to understand what residents actually think about specific topics. This platform is designed to provide a simple, structured way to make that visible.
+Between elections, there is often no clear way to understand what {{#place}}residents{{/place}}{{^place}}people{{/place}} actually think about specific topics. This platform is designed to provide a simple, structured way to make that visible.
 
 ## What does this platform do?
 

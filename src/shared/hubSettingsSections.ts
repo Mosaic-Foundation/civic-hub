@@ -125,6 +125,7 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "legal.proposal_best_practices", kind: "document" },
     { key: "legal.operator_name", kind: "text", maxLength: 120 },
     { key: "legal.contact_email", kind: "email" },
+    { key: "legal.governing_state", kind: "text", maxLength: 60 },
     { key: "legal.who_runs_this", kind: "markdown", maxLength: 3000 },
   ],
   email: [
@@ -197,4 +198,5 @@ export const DOCUMENT_PLACEHOLDERS: readonly string[] = [
   "{PLACE}",
   "{STATE}",
   "{GOVERNING_BODY}",
+  "{GOVERNING_STATE}",
 ];

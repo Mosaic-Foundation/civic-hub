@@ -126,6 +126,21 @@ describe("an organization hub with no jurisdiction", () => {
       expect(text, key).not.toMatch(/resident of|residents of|local government/);
     }
     expect(docs.body.documents["legal.terms"]).toContain("You may create an account if you agree to these Terms");
+    expect(docs.body.documents["legal.terms"]).toContain("One person, one voice.");
+    // The governing state: the platform default until the hub sets its own.
+    expect(docs.body.documents["legal.terms"]).toContain("governed by the laws of Virginia");
+  });
+
+  it("names the governing state its admin sets (legal.governing_state)", async () => {
+    const token = await mintSession(ORG, ADMIN);
+    const put = await call("PUT", "/admin/hub/settings", host(ORG), { section: "legal", values: { "legal.governing_state": "Maryland" } }, token);
+    expect(put.status, JSON.stringify(put.body)).toBe(200);
+    const settings = await call("GET", "/admin/hub/settings", host(ORG), undefined, token);
+    expect(settings.body.fallbacks["legal.governing_state"]).toBe("Virginia");
+    const docs = await call("GET", "/hub-config/documents", host(ORG));
+    expect(docs.body.documents["legal.terms"]).toContain("governed by the laws of Maryland");
+    expect(docs.body.documents["legal.terms"]).toContain("state or federal courts located in Maryland");
+    expect(docs.body.documents["legal.privacy"]).toContain("familiar with Maryland and US privacy law");
   });
 
   it("publishes a process with no place, and a manifest with no jurisdiction", async () => {

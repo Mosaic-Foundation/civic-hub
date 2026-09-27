@@ -34,6 +34,9 @@ const FLOYD_NAMES = {
   JURISDICTION: "Floyd County, Virginia",
   STATE: "Virginia",
   GOVERNING_BODY: "Board of Supervisors",
+  // Used only by the sentences of a hub that is not a place (2026-09-27);
+  // Floyd, a place, never renders them.
+  GOVERNING_STATE: "Virginia",
   OPERATOR: "Adam Lake",
   CONTACT_EMAIL: "contact@civic.social",
 };

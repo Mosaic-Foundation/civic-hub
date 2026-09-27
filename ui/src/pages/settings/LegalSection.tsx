@@ -31,6 +31,12 @@ export default function LegalSection() {
             placeholder="contact@example.com"
             hint="Where the documents tell residents to write with a question, an appeal, or a data request. A shared inbox is fine."
           />
+          <TextField
+            f={f}
+            k="legal.governing_state"
+            label="Governing law (state)"
+            hint="For a hub that is not a place — a campaign, an organization: the state whose law governs its Terms. A place hub's documents use its own state. Leave it empty to use the platform's default, shown here."
+          />
           <DocumentField
             f={f}
             k="legal.who_runs_this"

@@ -61,7 +61,7 @@ This does not mean writing a both-sides essay. It means naming the strongest arg
 
 Example: a proposal opposing surveillance cameras gains credibility by acknowledging that some neighbors value cameras for security, then explaining why privacy concerns outweigh that for the author. A proposal supporting cameras gains credibility by acknowledging the privacy tradeoff.
 
-Preference proposals (most Ideas, some Projects) typically don't need this. *"We should have a skate park"* is a preference, not a claim about contested facts. But if any proposal makes claims that other residents would actively contest, invite a counterargument.
+Preference proposals (most Ideas, some Projects) typically don't need this. *"We should have a skate park"* is a preference, not a claim about contested facts. But if any proposal makes claims that other {{#place}}residents{{/place}}{{^place}}participants{{/place}} would actively contest, invite a counterargument.
 
 Flag missing counterarguments only when:
 - The proposal touches a topic with active disagreement in the community

@@ -17,7 +17,7 @@ import { redirectPointsAt } from "../../scripts/lib/hubPurge.js";
 import { parseCsv, parseCsvObjects, toCsv } from "../../scripts/lib/csv.js";
 import { hubKindOf, isHubKind, participantNoun } from "../../src/shared/hubKind.js";
 import { kindsWithSamples, templatesFor } from "../../src/services/sampleTemplates.js";
-import { applySubstitutions, resolveKindSections } from "../../src/services/hubDocuments.js";
+import { applySubstitutions, documentSettingDefault, resolveKindSections } from "../../src/services/hubDocuments.js";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -184,6 +184,30 @@ describe("the shared documents, by hub kind", () => {
       expect(out, f).not.toMatch(/\{\{[#^/]?place\}\}/);
       expect(out, f).not.toMatch(/resident of|residents of|local government/);
     }
+  });
+
+  it("name the governing state, and people, not residents, for a hub that is not a place", () => {
+    const render = (f: string) =>
+      applySubstitutions(readFileSync(join(dir, f), "utf8"), { HUB_KIND: "issue", HUB_NAME: "Example Campaign", GOVERNING_STATE: "Zedland" });
+    const terms = render("terms.md");
+    expect(terms).toContain("governed by the laws of Zedland");
+    expect(terms).toContain("state or federal courts located in Zedland");
+    expect(terms).toContain("familiar with Zedland and US consumer law");
+    expect(terms).toContain("One person, one voice.");
+    expect(terms).toContain("what participants said");
+    expect(render("privacy.md")).toContain("familiar with Zedland and US privacy law");
+    expect(render("privacy.md")).toContain("or to your state's Attorney General.");
+    const coc = render("code-of-conduct.md");
+    expect(coc).toContain("when people speak up, even about things that make others uncomfortable");
+    expect(coc).toContain("information about one participant with another");
+    for (const f of ["terms.md", "privacy.md", "code-of-conduct.md", "about.md", "proposal-best-practices.md", "who-runs-this.md"]) {
+      expect(render(f), f).not.toMatch(/\bresidents?\b|operator is based/);
+    }
+  });
+
+  it("default the governing state from config/legal/defaults.json", () => {
+    expect(documentSettingDefault("legal.governing_state")).toBe("Virginia");
+    expect(documentSettingDefault("legal.nothing")).toBeUndefined();
   });
 
   it("read exactly as before for a place hub", () => {

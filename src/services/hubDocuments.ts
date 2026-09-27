@@ -90,6 +90,23 @@ function readTemplate(fileName: string): string | null {
 }
 
 /**
+ * The shared default for a document setting, from config/legal/defaults.json
+ * (read like the templates, beside them). Today only `legal.governing_state`
+ * ("Virginia", Adam 2026-09-27): a place name, so it is data, not code.
+ * Undefined when the file or the key is missing.
+ */
+export function documentSettingDefault(key: string): string | undefined {
+  const raw = readTemplate("defaults.json");
+  if (!raw) return undefined;
+  try {
+    const v = (JSON.parse(raw) as Record<string, unknown>)[key];
+    return typeof v === "string" && v.trim() ? v.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * The substitutions a hub makes in a shared document.
  *
  * `{PLACE}` and `{STATE}` are derived from `jurisdiction_name` rather than
@@ -160,6 +177,12 @@ function withOperator(out: Record<string, string>): Record<string, string> {
 
   const contactEmail = getSettingSync(KEYS.LEGAL_CONTACT_EMAIL);
   if (contactEmail) out.CONTACT_EMAIL = contactEmail;
+
+  // Used by the sentences of a hub that is not a place (its governing law,
+  // the draft note); a place hub's use its own {STATE}.
+  const governingState =
+    getSettingSync(KEYS.LEGAL_GOVERNING_STATE)?.trim() || documentSettingDefault(KEYS.LEGAL_GOVERNING_STATE);
+  if (governingState) out.GOVERNING_STATE = governingState;
 
   return out;
 }

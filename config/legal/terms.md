@@ -3,7 +3,7 @@
 *Last updated: 2026-08-10*
 *Version: 1.2*
 
-> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US consumer law{{/place}}{{^place}}familiar with US consumer law and the law of the state where the Hub's operator is based{{/place}} before the {HUB_NAME} accepts its first resident sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.
+> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US consumer law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US consumer law{{/place}} before the {HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.
 
 ## Agreement
 
@@ -33,7 +33,7 @@ You agree to:
 - Follow our [Code of Conduct](/code-of-conduct) when posting, commenting, or otherwise interacting on the Hub.
 - Only create an account for yourself, not on behalf of someone else.
 {{#place}}- Only affirm {PLACE} residency if you honestly live in {JURISDICTION}.
-{{/place}}{{^place}}{{/place}}- Not attempt to sign up more than once or vote more than once per issue. One resident, one voice.
+{{/place}}{{^place}}{{/place}}- Not attempt to sign up more than once or vote more than once per issue. {{#place}}One resident, one voice.{{/place}}{{^place}}One person, one voice.{{/place}}
 - Not use the Hub to break the law, harass others, or disrupt the service.
 - Keep discussion self-contained: do not import or repost private content about specific people from other platforms (for example, screenshots or copied social-media posts). Linking to authoritative or official sources as references is permitted.
 - Not scrape, crawl, or programmatically access the Hub except through our public APIs (once we publish them).
@@ -41,7 +41,7 @@ You agree to:
 
 ## Content you submit
 
-When you post a comment, submit a vote, or otherwise contribute content to the Hub, you keep ownership of that content. You grant us a non-exclusive, worldwide, royalty-free license to display, distribute, and archive it as part of the civic record. This license is necessary for the Hub to work — we can't publish vote results showing what residents said if we don't have permission to publish what you said.
+When you post a comment, submit a vote, or otherwise contribute content to the Hub, you keep ownership of that content. You grant us a non-exclusive, worldwide, royalty-free license to display, distribute, and archive it as part of the civic record. This license is necessary for the Hub to work — we can't publish vote results showing what {{#place}}residents{{/place}}{{^place}}participants{{/place}} said if we don't have permission to publish what you said.
 
 The license continues even if you close your account. Your civic contributions remain part of the record unless we remove them under the Code of Conduct or by your specific deletion request (which we'll evaluate on a case-by-case basis).
 
@@ -92,7 +92,7 @@ We may update these Terms as the Hub evolves. Material changes will be announced
 
 ## Governing law
 
-{{#place}}These Terms are governed by the laws of {STATE}, without regard to conflict-of-laws principles. Any legal action arising from these Terms or your use of the Hub must be brought in the state or federal courts serving {JURISDICTION}.{{/place}}{{^place}}These Terms are governed by the laws of the state where the Hub's operator is based, without regard to conflict-of-laws principles. Any legal action arising from these Terms or your use of the Hub must be brought in the state or federal courts serving that place.{{/place}}
+{{#place}}These Terms are governed by the laws of {STATE}, without regard to conflict-of-laws principles. Any legal action arising from these Terms or your use of the Hub must be brought in the state or federal courts serving {JURISDICTION}.{{/place}}{{^place}}These Terms are governed by the laws of {GOVERNING_STATE}, without regard to conflict-of-laws principles. Any legal action arising from these Terms or your use of the Hub must be brought in the state or federal courts located in {GOVERNING_STATE}.{{/place}}
 
 ## Contact
 

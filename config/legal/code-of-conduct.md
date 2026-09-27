@@ -9,7 +9,7 @@
 
 We moderate how you say things. We do not moderate *what you think*.
 
-You can disagree sharply with your neighbor. {{#place}}You can criticize the {GOVERNING_BODY}. {{/place}}{{^place}}You can criticize the Hub's organizers. {{/place}}You can argue that a policy is wrong, short-sighted, or unfair. You can be frustrated, passionate, and direct. We believe civic life gets *better* when residents speak up, even about things that make other residents uncomfortable — so we will not remove your contribution just because someone finds your view unpopular.
+You can disagree sharply with your neighbor. {{#place}}You can criticize the {GOVERNING_BODY}. {{/place}}{{^place}}You can criticize the Hub's organizers. {{/place}}You can argue that a policy is wrong, short-sighted, or unfair. You can be frustrated, passionate, and direct. We believe civic life gets *better* when {{#place}}residents speak up, even about things that make other residents uncomfortable{{/place}}{{^place}}people speak up, even about things that make others uncomfortable{{/place}} — so we will not remove your contribution just because someone finds your view unpopular.
 
 What we will not tolerate is a handful of behaviors that make it impossible for others to participate. Those are listed below.
 
@@ -66,14 +66,14 @@ We commit to being honest about our moderation:
 
 - This Code is public and doesn't change quietly. Any substantive revision will be announced.
 - The admin who runs the Hub and makes moderation decisions is named on our About page.
-- We are willing to publish aggregate moderation statistics (e.g., "12 items removed this quarter, primarily for personal attacks") if residents ask. We will not publish the specific content removed or identify individual users.
+- We are willing to publish aggregate moderation statistics (e.g., "12 items removed this quarter, primarily for personal attacks") if {{#place}}residents{{/place}}{{^place}}participants{{/place}} ask. We will not publish the specific content removed or identify individual users.
 
 ## Things admins won't do
 
 - Admins won't use their moderation privileges to {{#place}}silence critics of themselves or the {GOVERNING_BODY}.{{/place}}{{^place}}silence critics of themselves.{{/place}}
 - Admins won't remove content based on its political viewpoint.
 - Admins won't moderate in secret — every removal is logged.
-- Admins won't share information about one resident with another except as required by law or safety.
+- Admins won't share information about one {{#place}}resident{{/place}}{{^place}}participant{{/place}} with another except as required by law or safety.
 
 If you believe an admin has violated any of these, tell us at {CONTACT_EMAIL}. If the admin is the subject of the complaint, we'll escalate to an independent reviewer.
 

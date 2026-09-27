@@ -4,6 +4,42 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Legal text for hubs without a place: Adam's three changes — 2026-09-27 (third part)
+
+Adam read and approved the non-place legal sentences with three changes, all
+done:
+1. **`legal.governing_state`** — new setting (Legal section, "Governing law
+   (state)", admin-editable, public), default "Virginia" from
+   `config/legal/defaults.json` (a place name is data, not code; the admin form
+   shows it as the placeholder through the existing fallbacks). The non-place
+   draft notes (Terms, Privacy) and governing-law sentence use
+   `{GOVERNING_STATE}`: "familiar with {GOVERNING_STATE} and US consumer law",
+   "governed by the laws of {GOVERNING_STATE} … state or federal courts
+   located in {GOVERNING_STATE}". `{GOVERNING_STATE}` added to the editor's
+   placeholder list.
+2. **People, not residents**, in non-place text: "One person, one voice";
+   "what participants said" (Terms); "when people speak up, even about things
+   that make others uncomfortable", "if participants ask", "information about
+   one participant with another" (Code of Conduct); "first sign-up" (both
+   draft notes). **Also applied, same rule, to three lines Adam did not list**
+   — say if not wanted: Privacy's example "89 participants voted", About's
+   "what people actually think", the proposal guide's "other participants".
+3. Privacy's non-place complaint line: "or to your state's Attorney General."
+
+Place hubs render exactly as before (the Floyd fixture test, unchanged).
+Build plan: the lawyer's review before production sign-ups must now cover
+hubs without a place, whose operator may not be Civic.Social; CDPs stay
+"Other / not listed" (no ids minted in `ocd-division/`; a group can link its
+county), with a clearly-ours GEOID namespace or an upstream contribution as
+possible later fixes.
+Tests: unit `jurisdictions.test.ts` (non-place renders name the governing
+state and no "resident"/"residents" in any shared document; the default);
+`hubKinds.test.ts` (an organization's Terms say Virginia, then its admin's
+state after `legal.governing_state` is saved). API 32 files, 318 passed, 7
+skipped, both modes; unit 99 / 1151.
+
+---
+
 ## Jurisdiction data, the jurisdiction code, hub kinds — 2026-09-27 (second part)
 
 **Branch:** `multi-tenant`, local commit (not pushed). Local and a read-only

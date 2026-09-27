@@ -36,7 +36,7 @@ import {
   EDITABLE_SETTING_KEYS,
   fieldSpec,
 } from "../shared/hubSettingsSections.js";
-import { documentTemplate } from "../services/hubDocuments.js";
+import { documentSettingDefault, documentTemplate } from "../services/hubDocuments.js";
 import { getUser } from "../modules/civic.auth/index.js";
 
 export interface HubSettingsResponse {
@@ -87,8 +87,9 @@ async function loadHubSettings(): Promise<HubSettingsResponse> {
       changed[key] = { at: row.updated_at, by: row.updated_by };
       if (row.updated_by) actorIds.add(row.updated_by);
     }
-    // getSetting with no hub answers from the environment only.
-    const fallback = await getSetting(null, key);
+    // getSetting with no hub answers from the environment only; a document
+    // setting may have a shared default instead (config/legal/defaults.json).
+    const fallback = (await getSetting(null, key)) ?? documentSettingDefault(key);
     if (fallback) fallbacks[key] = fallback;
   }
 
