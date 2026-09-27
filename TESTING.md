@@ -132,6 +132,11 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   options and ballots, the outcome matches its vote's ballots, the school
   district set; the governing-body inference). Local run 2026-09-26: API 29
   files, 290 passed, 7 skipped, in both modes; unit 96 files, 1124.
+  `consoleRouting.test.ts` (2026-09-27, dev wildcard): every console
+  hostname in use (`console.civic.social`, `console.dev.civic.social`,
+  `console-civic-hub-dev.vercel.app`) matches both of `vercel.json`'s console
+  rules and no hub hostname does — the page is routed there, not by
+  `CIVIC_CONSOLE_HOSTNAME`. Unit total 97 files, 1128.
   **Running both modes locally** when :3000 is taken: `.claude/launch.json`
   (monorepo root) has `hub-local-3200` (service role) and `hub-local-3201`
   (hub tokens) on the local stack with CI's env; run with
@@ -841,7 +846,7 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,

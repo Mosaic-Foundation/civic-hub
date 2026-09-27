@@ -19,7 +19,7 @@ numbers below, or just grep the heading.
 | Settings key names, aliases, env fallbacks, public list | `src/models/hubSettings.ts` |
 | Shared legal documents + per-hub substitution | `config/legal/`, `src/services/hubDocuments.ts` |
 | Seeding a hub's settings from env | `scripts/seed-hub-settings.ts` |
-| Dev deployment runbook + Preview env checklist | `DEPLOY-dev.md` |
+| Dev deployment runbook + Preview env checklist; dev domain `*.dev.civic.social` (§9) | `DEPLOY-dev.md` |
 | Guards: production db push, deploy env safety | `scripts/db-push.sh`, `scripts/check-deploy-env.ts` |
 | Auth, sessions, admin/board resolution | `src/middleware/auth.ts`, `src/modules/civic.auth/` |
 | Process registry and per-type handlers | `src/processes/registry.ts`, `src/processes/*Process.ts` |
@@ -65,6 +65,9 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Dev on `*.dev.civic.social` (2026-09-27)**: console
+  `console.dev.civic.social`, hubs `<slug>.dev.civic.social`, how it was set
+  up (`DEPLOY-dev.md` §9), the corrected wildcard method — 7–~55
 - **Phase 7 part one (2026-09-26): sample content for new hubs**
   (`src/services/sampleSeed.ts`, `sampleTemplates.ts`, `sampleContent.ts`,
   `src/models/sampleContent.ts`, `scripts/seed-sample-content.ts`,
