@@ -29,6 +29,7 @@
  */
 
 import { getLoadedHubConfig, setting } from "./hubConfig";
+import { hubKindOf, type HubKind } from "../../../src/shared/hubKind";
 
 /** Env var, trimmed, or undefined when unset or blank. */
 function env(value: string | undefined): string | undefined {
@@ -85,8 +86,23 @@ const hub = {
     return (
       getLoadedHubConfig()?.hub.jurisdiction_name ??
       env(import.meta.env.VITE_HUB_JURISDICTION) ??
-      ""
+      // A hub with no place (an issue campaign, an organization): the
+      // headings that name the place name the hub instead, never "".
+      this.name
     );
+  },
+
+  /**
+   * What the hub is (`identity.hub_kind`, 2026-09-27): place, issue,
+   * organization or other. Unset = place. Only a place hub asks people to
+   * affirm they live somewhere.
+   */
+  get kind(): HubKind {
+    return hubKindOf(setting("identity.hub_kind"));
+  },
+
+  get isPlace(): boolean {
+    return this.kind === "place";
   },
 
   /**
@@ -98,6 +114,7 @@ const hub = {
    * that survives having no place at all.
    */
   get place(): string {
+    if (!this.isPlace) return getLoadedHubConfig()?.hub.jurisdiction_name?.split(",")[0]?.trim() || this.name;
     const [first] = (this.jurisdiction ?? "").split(",");
     return first?.trim() || "where you live";
   },

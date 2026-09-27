@@ -77,7 +77,7 @@ async function hubIdRows(hub: string): Promise<number> {
 async function createHub(slug: string, extra: Record<string, unknown> = {}): Promise<Record<string, any>> {
   const res = await consoleCall("POST", "/control/hubs", {
     cookie,
-    body: { slug, name: `Purge Test ${slug}`, hostname: `${slug}.localhost`, admin_email: ADMIN, ...extra },
+    body: { slug, name: `Purge Test ${slug}`, hostname: `${slug}.localhost`, admin_email: ADMIN, hub_kind: "other", ...extra },
   });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   return res.body;
@@ -136,7 +136,7 @@ describe("purge-hub.ts", () => {
   }, 60_000);
 
   it("refuses a hub that is not archived", async () => {
-    await createHub(SAMPLE, { sample_content: true, jurisdiction_type: "town", jurisdiction_name: "Example, Nowhere", jurisdiction_custom: true });
+    await createHub(SAMPLE, { hub_kind: "place", sample_content: true, jurisdiction_type: "town", jurisdiction_name: "Example, Nowhere", jurisdiction_custom: true });
     toArchive.push(SAMPLE);
     const r = await script(["--hub", SAMPLE, "--confirm", SAMPLE]);
     expect(r.code, r.out).toBe(2);

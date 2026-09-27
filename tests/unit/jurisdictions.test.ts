@@ -15,6 +15,11 @@ import {
 import { postalAddressFrom } from "../../src/services/hubSettings.js";
 import { redirectPointsAt } from "../../scripts/lib/hubPurge.js";
 import { parseCsv, parseCsvObjects, toCsv } from "../../scripts/lib/csv.js";
+import { hubKindOf, isHubKind, participantNoun } from "../../src/shared/hubKind.js";
+import { kindsWithSamples, templatesFor } from "../../src/services/sampleTemplates.js";
+import { applySubstitutions, resolveKindSections } from "../../src/services/hubDocuments.js";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
 describe("slug candidates", () => {
   it("plain name, then name + type, then name + state, then a number", () => {
@@ -59,10 +64,20 @@ describe("names from a reference row", () => {
     expect(baseName("Town", "town")).toBe("Town");
   });
 
-  it("fills the jurisdiction code in the existing us-<state>-<name> form", () => {
-    expect(jurisdictionCodeFor({ state: "zz", type: "county", official_name: "Example County" })).toBe("us-zz-example");
-    expect(jurisdictionCodeFor({ state: "zz", type: "town", official_name: "Example town" })).toBe("us-zz-example");
-    expect(jurisdictionCodeFor({ state: "zz", type: "state", official_name: "Zedland" })).toBe("us-zz");
+  it("derives the jurisdiction code from the OCD id: a county keeps us-<state>-<name>, anything smaller adds its type", () => {
+    const code = (ocd_id: string, type: Parameters<typeof jurisdictionCodeFor>[0]["type"]) => jurisdictionCodeFor({ ocd_id, type });
+    // The two Adam named: the county keeps the code Floyd has always published.
+    expect(code("ocd-division/country:us/state:va/county:floyd", "county")).toBe("us-va-floyd");
+    expect(code("ocd-division/country:us/state:va/place:floyd", "town")).toBe("us-va-floyd-town");
+    expect(code("ocd-division/country:us/state:la/parish:orleans", "county")).toBe("us-la-orleans");
+    expect(code("ocd-division/country:us/state:ak/borough:juneau", "borough")).toBe("us-ak-juneau-borough");
+    // A school district carries the county it sits under (names recur across counties).
+    expect(code("ocd-division/country:us/state:va/county:floyd/school_district:floyd_co_pblc_schs", "school_district")).toBe(
+      "us-va-floyd-floyd-co-pblc-schs-schools",
+    );
+    expect(code("ocd-division/country:us/state:va", "state")).toBe("us-va");
+    expect(code("ocd-division/country:us/district:dc", "state")).toBe("us-dc");
+    expect(code("ocd-division/country:us", "state")).toBeNull();
   });
 });
 
@@ -125,5 +140,60 @@ describe("the CSV reader", () => {
 
   it("reads a pipe-delimited file", () => {
     expect(parseCsv("a|b\n1|2\n", "|")).toEqual([["a", "b"], ["1", "2"]]);
+  });
+});
+
+describe("hub kinds", () => {
+  it("reads unset or unknown as a place hub", () => {
+    expect(hubKindOf(undefined)).toBe("place");
+    expect(hubKindOf("club")).toBe("place");
+    expect(hubKindOf("issue")).toBe("issue");
+    expect(isHubKind("organization")).toBe(true);
+  });
+
+  it("calls people residents only in a place hub", () => {
+    expect(participantNoun("place", 1)).toBe("resident");
+    expect(participantNoun("place", 2)).toBe("residents");
+    expect(participantNoun("issue", 3)).toBe("participants");
+    expect(participantNoun("organization", 1)).toBe("participant");
+  });
+
+  it("has sample templates for place hubs only, today", () => {
+    expect(kindsWithSamples()).toEqual(["place"]);
+    expect(templatesFor("county", "place").length).toBeGreaterThan(0);
+    for (const k of ["issue", "organization", "other"] as const) expect(templatesFor(null, k)).toEqual([]);
+  });
+});
+
+describe("the shared documents, by hub kind", () => {
+  const dir = join(__dirname, "../../config/legal");
+  const files = readdirSync(dir).filter((f) => f.endsWith(".md"));
+
+  it("keep {{#place}} sections for a place hub and {{^place}} ones for any other", () => {
+    const t = "A{{#place}} in {PLACE}{{/place}}{{^place}} anywhere{{/place}}.";
+    expect(resolveKindSections(t, "place")).toBe("A in {PLACE}.");
+    expect(resolveKindSections(t, undefined)).toBe("A in {PLACE}.");
+    expect(resolveKindSections(t, "issue")).toBe("A anywhere.");
+    expect(resolveKindSections("x\n{{#place}}- a line\n{{/place}}y", "organization")).toBe("x\ny");
+  });
+
+  it("name no place, state or government body for a hub that is not a place", () => {
+    for (const f of files) {
+      const out = applySubstitutions(readFileSync(join(dir, f), "utf8"), { HUB_KIND: "organization", HUB_NAME: "Example Club" });
+      expect(out, f).not.toMatch(/\{(PLACE|STATE|JURISDICTION|GOVERNING_BODY)\}/);
+      expect(out, f).not.toMatch(/\{\{[#^/]?place\}\}/);
+      expect(out, f).not.toMatch(/resident of|residents of|local government/);
+    }
+  });
+
+  it("read exactly as before for a place hub", () => {
+    for (const f of files) {
+      const raw = readFileSync(join(dir, f), "utf8");
+      const out = resolveKindSections(raw, "place");
+      expect(out, f).not.toMatch(/\{\{[#^/]?place\}\}/);
+      // Every place sentence survives: the section markers are the only change.
+      const markersOnly = raw.replace(/\{\{\^place\}\}[\s\S]*?\{\{\/place\}\}/g, "").replace(/\{\{#place\}\}|\{\{\/place\}\}/g, "");
+      expect(out, f).toBe(markersOnly);
+    }
   });
 });

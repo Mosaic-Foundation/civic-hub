@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import type { Process } from "../models/process.js";
 import { emitEvent } from "../events/eventEmitter.js";
-import { DEFAULT_JURISDICTION } from "../config/hub.js";
+import { defaultJurisdiction } from "../config/hub.js";
 import { currentHubId } from "../config/hubContext.js";
 import {
   getAuthUser,
@@ -64,7 +64,7 @@ export async function handleCompleteProject(
           description: project.description ?? "",
           status: "closed",
           hubId: currentHubId(),
-          jurisdiction: DEFAULT_JURISDICTION,
+          jurisdiction: defaultJurisdiction(),
           createdBy: project.user_id,
           createdAt: project.created_at,
           updatedAt: new Date().toISOString(),

@@ -47,6 +47,7 @@ export interface Hub {
 }
 
 export interface HubConfig {
+  hub_kind: "place" | "issue" | "organization" | "other";
   name: string;
   hostname: string;
   jurisdiction_code: string | null;
@@ -77,6 +78,8 @@ export interface ConsoleConfig {
   platform_domain: string | null;
   reserved_slugs: Record<string, string>;
   plugin_ids: string[];
+  /** Hub kinds that have sample templates; the create form disables the checkbox for the rest. */
+  sample_kinds: string[];
   production_database: boolean;
   hub_specific_env_vars: string[];
   create_refusal: string | null;

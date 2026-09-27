@@ -7,7 +7,8 @@ import {
 import { buildSystemPrompt, buildCocCheckPrompt } from "./systemPrompt.js";
 import { currentHub } from "../../config/hubContext.js";
 import { civicPlaceName } from "../../config/hub.js";
-import { hubDisplayNameSync } from "../../services/hubSettings.js";
+import { hubKindOf } from "../../shared/hubKind.js";
+import { getSettingSync, hubDisplayNameSync } from "../../services/hubSettings.js";
 import { hubDocument } from "../../services/hubDocuments.js";
 import { KEYS } from "../../models/hubSettings.js";
 import type {
@@ -38,9 +39,14 @@ export async function getHubConfig(): Promise<HubConfig> {
   const place = civicPlaceName();
   return {
     hub_name: hubDisplayNameSync(),
-    community_description: place
-      ? `residents of ${place}`
-      : "the residents of the community it serves",
+    // A hub that is not a place (identity.hub_kind) has participants, not
+    // residents, even when it names a related place.
+    community_description:
+      hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)) !== "place"
+        ? "the people who take part in it"
+        : place
+          ? `residents of ${place}`
+          : "the residents of the community it serves",
     code_of_conduct: hub ? (await hubDocument(hub, KEYS.LEGAL_CODE_OF_CONDUCT)) ?? "" : "",
   };
 }

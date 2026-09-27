@@ -1,5 +1,6 @@
 // Input controller — handles HTTP request/response for community input endpoints
 
+import { defaultJurisdiction } from "../config/hub.js";
 import { Request, Response } from "express";
 import {
   submitInput,
@@ -95,7 +96,7 @@ export async function handleSubmitInput(
       // every other type's comment is just a comment.
       phase = process.definition.type === "civic.vote" ? "vote" : "comment";
     } else if (await proposalExists(processId)) {
-      jurisdiction = "local";
+      jurisdiction = defaultJurisdiction();
       phase = "proposal";
     } else {
       res.status(404).json({ error: "Process not found" });

@@ -102,10 +102,13 @@ together with the two from 2026-09-27.
    "Floyd" → choose **Floyd County, Virginia** → Save configuration. Worked
    if: the audit trail shows `hub.update` with `jurisdiction_ocd_id`. Athens
    and Utopia are fictional places: leave them unlinked.
-4c. **Adam.** Console → Create hub: Virginia → Town → "Floyd" → **Town of
-   Floyd, Virginia**. Worked if: the display name, code, OCD id and "Town
-   Council" fill in; the slug suggests `floyd-town` (the plain `floyd` is
-   reserved); the Plugins section opens to 14 boxes, all ticked. Untick one,
+4c. **Adam.** Console → Create hub: Kind Place (the default) → Virginia →
+   Town → "Floyd" → **Town of Floyd, Virginia**. Worked if: the display
+   name, OCD id `…/state:va/place:floyd`, code `us-va-floyd-town` (shown, not
+   editable) and "Town Council" fill in; the slug suggests `floyd-town` (the
+   plain `floyd` is reserved); the Plugins section opens to 14 boxes, all
+   ticked. Optional: Kind → Organization shows "Related place (optional)"
+   with None, and "No sample content is available for this kind of hub yet." Untick one,
    create (demo, sample content on), and archive it afterwards if you don't
    want it.
 5. **Adam.** https://console.dev.civic.social/ → sign in; open any hub; and
@@ -326,16 +329,11 @@ throughout; production is linked only from a separate folder.
      `CIVIC_JURISDICTION_NAME`, `CIVIC_SPACE_DID`, `VITE_HUB_JURISDICTION`,
      `CIVIC_BETA_MODE`, `VITE_BETA_MODE`.
 
-   > **OPEN (found 2026-09-27; settle before the sitting).** New processes
-   > are stamped with `CIVIC_JURISDICTION`, not with the hub's own
-   > `jurisdiction_code` (`DEFAULT_JURISDICTION` in `src/config/hub.ts`, used
-   > by `processService.createProcess` and a few event paths). Deleting it
-   > turns the `jurisdiction` on Floyd's new processes and events from
-   > `us-va-floyd` into `local`, so their published activities lose their
-   > place; keeping it stamps Floyd's code on every other hub's new
-   > processes. HANDOFF (2026-09-27, "The jurisdiction code") has the
-   > inventory and the recommended fix; until it is decided, don't delete
-   > `CIVIC_JURISDICTION`.
+   `CIVIC_JURISDICTION` can go: since 2026-09-27 new processes and events
+   take their own hub's `jurisdiction_code` (`defaultJurisdiction()`), not
+   this variable, and Floyd's row holds exactly what it has published
+   (`us-va-floyd`: its env value, its row, and its published activities
+   agree). §4.7 checks it on production.
 
    **Keep everything else**, in particular: `CIVIC_ANON_SECRET` (never
    change it: residents' public pseudonyms), `CIVIC_ALLOWED_ORIGINS`,
@@ -459,6 +457,22 @@ throughout; production is linked only from a separate folder.
 6. **Adam.** https://floyd.civic.social/votes loads, and a made-up path
    such as https://floyd.civic.social/process/nope shows the app's
    not-found page, as before.
+7. **Adam.** New processes carry Floyd's own code now that
+   `CIVIC_JURISDICTION` is gone (§2.8). In a private window, sign in to
+   Floyd as someone who is **not** an admin (an admin's submission is
+   approved at once, and would be public) — e.g. a plus-address of yours on
+   the beta allow list — then Votes → Suggest a vote → title `Release check
+   — please ignore`, two options → submit for review. A submission waiting
+   for review is not public (not in the feed, not on `/api/events`). SQL
+   editor:
+   ```sql
+   select id, title, status, jurisdiction from processes
+    where hub_id = 'floyd' order by created_at desc limit 1;
+   ```
+   Worked if: the release-check row, `pending_review`, jurisdiction
+   **`us-va-floyd`**. If it says `local`: stop, bring it to a session (Floyd's
+   new processes would publish with no place). Then Floyd → Admin → Reviews →
+   **Reject** it.
 
 ---
 
@@ -519,11 +533,14 @@ throughout; production is linked only from a separate folder.
 11. **Adam.** Floyd's jurisdiction id: console → `floyd` → Configuration →
     Jurisdiction → From the list → Virginia → County → type "Floyd" →
     choose **Floyd County, Virginia**. Check the line under it reads
-    `ocd-division/country:us/state:va/county:floyd`, the display name
-    `Floyd County, Virginia` and the code `us-va-floyd` (both as today), and
-    the hub type County. Leave the governing body as it is → Save
+    `ocd-division/country:us/state:va/county:floyd` (confirmed in the OCD
+    list), the display name `Floyd County, Virginia` (as today), and the hub
+    type County. The jurisdiction code shows `us-va-floyd` and is not
+    editable: a hub's code is set once and never recomputed, and it is what
+    Floyd has always published. Leave the governing body as it is → Save
     configuration. Worked if: the audit trail's newest row is `hub.update`
-    with `jurisdiction_ocd_id` in its after, and Floyd's pages look as before.
+    with `jurisdiction_ocd_id` in its after (and no `jurisdiction_code`),
+    and Floyd's pages look as before. (Rehearsed on the local stack, 2026-09-27.)
 
 ---
 
@@ -574,11 +591,11 @@ delete the `*` CNAME at GoDaddy.
 `r1-check` stays taken after this step (an archived hub's hostname does),
 unless you free it with §8.5.
 
-1. **Adam.** https://console.civic.social → **Create hub**: Jurisdiction →
-   **Other / not listed**, name "Example County, Virginia"; code
-   `us-va-example`; hub type County (governing body pre-fills **Board of
-   Supervisors**); slug `r1-check` (type it over the suggestion); name
-   `Release Check`; leave Plugins as they are; mode **demo**,
+1. **Adam.** https://console.civic.social → **Create hub**: Kind **Place**;
+   Jurisdiction → **Other / not listed**, name "Example County, Virginia"
+   (a custom jurisdiction has no code); hub type County; governing body:
+   type **Board of Supervisors**; slug `r1-check` (type it over the
+   suggestion); name `Release Check`; leave Plugins as they are; mode **demo**,
    **sample content on**, your address as its admin → create, with the fresh
    code. Worked if: created; the audit shows `hub.create` and
    `hub.sample_seed`. If it's refused naming `MEETING_…` or `FLOYD_NEWS_…`: a
@@ -673,4 +690,4 @@ Paste into the browser console on https://floyd.civic.social.
 | The CLI sequence, on the local stack from production's history | from `release-1-cleanup`: exactly `20260926005000` pending; then from `multi-tenant`: exactly the four |
 | The release build, both modes (service role, hub tokens), cleaned schema | API 29 files / 292 tests; unit 98 / 1132; Playwright 25 / 25 |
 | Parity outputs, `0b23e9a` vs the release build, same local data | process list, proposals, feed, search identical |
-| The two 2026-09-27 migrations (jurisdictions; the audit log's FK) | applied on the local stack after the four with `supabase migration up`; the whole API layer in both modes and the unit layer pass on it. The six-count dry run was **not** re-rehearsed from production's history; the count follows from the file names |
+| The six-migration sequence, on the local stack from production's history (2026-09-27, `db reset --version 20260926000000` = production's 65) | from `release-1-cleanup` (a scratch worktree): exactly `20260926005000` pending, applied; then from `multi-tenant`: exactly the **six** pending (`20260926010000`…`040000`, `20260927000000`, `20260927010000`), all applied; then the jurisdiction load (38,858 rows; a second run a no-op) and `check-tenancy`: `CLEAN — 36 tables, 31 hub-scoped`. API 32 files / 317 passed in both modes on that stack, unit 99 / 1149, Playwright 25 / 25 |

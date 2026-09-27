@@ -112,6 +112,14 @@ jobs:
           # hardening tests sign in as. Must match the hub step below.
           CIVIC_ADMIN_EMAILS: admin@example.test
 
+      # The jurisdiction reference list (config/jurisdictions/us-jurisdictions.csv,
+      # checksum-checked), loaded as the database owner the way every install
+      # loads it. tests/api/hubKinds.test.ts and sampleSeed.test.ts use real rows.
+      - name: Load the jurisdiction list
+        run: node --import tsx scripts/load-jurisdictions.ts
+        env:
+          CIVIC_TARGET_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+
       # The minted-token server (below) signs hub tokens with the stack's JWT
       # secret and sends its publishable key. Both are the CLI's fixed, public,
       # local-only values; read from the stack rather than copied here so a CLI
@@ -160,6 +168,10 @@ jobs:
           # on the allowlist. Athens is the demo, which is where a test signs
           # in; the tests that care about Floyd set the Host header.
           CIVIC_DEV_HUB: athens
+          # Production's value until the release-1 cleanup. Set here so
+          # tests/api/hubKinds.test.ts proves a second hub's new process carries
+          # its OWN code, not this deployment-wide one.
+          CIVIC_JURISDICTION: us-va-floyd
           # The super admin (src/control/), on its own hostname, with its one
           # operator. tests/api/control.test.ts talks to it with Host set.
           CIVIC_CONSOLE_HOSTNAME: console.localhost

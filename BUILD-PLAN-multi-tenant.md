@@ -117,7 +117,7 @@ Key naming is dotted, lowercase, and namespaced. The canonical keys:
 
 | Namespace | Keys |
 |---|---|
-| `identity.` | `identity.name`, `identity.label`, `identity.tagline`, `identity.page_title`, `identity.description`, `identity.banner_url`, `identity.banner_alt`, `identity.theme`, `identity.logo_url` (added 2026-09-24, Adam), `identity.timezone` (added 2026-09-24, Phase 2c), `identity.jurisdiction_type` (added 2026-09-26, Phase 7; admin-only) |
+| `identity.` | `identity.name`, `identity.label`, `identity.tagline`, `identity.page_title`, `identity.description`, `identity.banner_url`, `identity.banner_alt`, `identity.theme`, `identity.logo_url` (added 2026-09-24, Adam), `identity.timezone` (added 2026-09-24, Phase 2c), `identity.jurisdiction_type` (added 2026-09-26, Phase 7; admin-only; place hubs only), `identity.hub_kind` (added 2026-09-27: `place` / `issue` / `organization` / `other`, unset = place; public) |
 | `copy.` | `copy.intro_body`, `copy.residency_intro`, `copy.welcome`, `copy.about`, `copy.resident_noun`, `copy.governing_body_name`, `copy.governing_body_short` |
 | `legal.` | `legal.terms`, `legal.privacy`, `legal.code_of_conduct`, `legal.proposal_best_practices` |
 | `people.` | `people.admin_emails`, `people.board_emails`, `people.brief_recipients`, `people.announcement_authors` |
@@ -146,7 +146,9 @@ reader (`src/services/hubSettings.ts`) owns parsing; callers never parse
 `beta.waitlist_enabled`, `moderation.comment_identity_mode`,
 `plugin.<id>.enabled`, `plugin.conversation.polis_url` and
 `plugin.wordcloud.onboarding_id` are served by `/api/hub-config`
-(`identity.*` includes `identity.logo_url`, added 2026-09-24). `people.*`,
+(`identity.*` includes `identity.logo_url`, added 2026-09-24, and
+`identity.hub_kind`, added 2026-09-27: the hub UI words the sign-up
+affirmation by it). `people.*`,
 `email.*`, `beta.allowlist`, `beta.demo_mode`, `beta.demo_bypass_code` and
 every other `plugin.<id>.<setting>` are admin-only.
 
@@ -1115,9 +1117,10 @@ uniqueness: several hubs may serve one jurisdiction) and
 `hubs.jurisdiction_custom` (`boolean not null default false`; a check: custom
 ⇒ no OCD id). Custom = the operator chose "Other / not listed" and typed a
 name; false with a null id = a hub from before the list, not linked yet.
-`jurisdiction_code` and `jurisdiction_name` stay as they are. **A new hub's
-place comes from the list or is marked custom**; a name with neither is
-refused by `planCreateHub()` (every create path). Export: the id is in
+`jurisdiction_code` and `jurisdiction_name` stay as they are. **A place hub's
+jurisdiction comes from the list or is marked custom**; a name with neither is
+refused by `planCreateHub()` (every create path); hubs of other kinds may
+have none (below). Export: the id is in
 `hub.json`; import refuses a bundle whose id is not on the target's list.
 
 **Hub type** (`identity.jurisdiction_type`) gains **`borough`** (governing
@@ -1127,9 +1130,8 @@ to `other` (Adam). A CDP has no government of its own; the console says so.
 
 **Console create form:** state → type → type-ahead (the state's
 jurisdictions of that type; name prefix first, then a later word). Choosing
-one fills the display name, the code (`us-<state>-<name>`, the existing
-homemade form, until the code question below is settled), the OCD id, the
-hub type and the usual governing body. "Other / not listed" takes a typed
+one fills the display name, the OCD id, the hub type and the usual governing
+body, and shows the code the server will derive (below). "Other / not listed" takes a typed
 name. **Slug suggestion:** the shortest free, unreserved address, in this
 order: plain name (`floyd`), name + type (`floyd-town`, `floyd-county`,
 `…-schools`), name + state (`floyd-va`), name + a number (`floyd-2`, …); free
@@ -1146,8 +1148,50 @@ the jurisdiction type allows, with every plugin treated as on for the run
 (the stored settings are untouched). Content whose plugin is off stays hidden
 like any process of that type until it is turned on; removal takes all of it.
 
-**The jurisdiction code:** open — see HANDOFF (2026-09-27) for the inventory
-and the recommendation. Nothing about it changes until Adam answers.
+**The jurisdiction code** (Adam, 2026-09-27): **derived from the OCD id once,
+at creation (or when a code-less hub is first linked), stored, and never
+recomputed**; the console shows it and nobody types it (a sent code is
+refused). Rule (`jurisdictionCodeFor`, `src/shared/jurisdictionNames.ts`):
+`us-<state>` for a state; `us-<state>-<name>` for a county, parish or Alaska
+borough; `us-<state>-<segments>-<type>` for anything smaller, where
+`<segments>` is every OCD segment below the state, broadest first (a school
+district sits under its county: `us-va-floyd-floyd-co-pblc-schs-schools`).
+Unique across all 38,858 rows; Floyd County `us-va-floyd` (what Floyd has
+always published — env, row and published activities agree), the Town of
+Floyd `us-va-floyd-town`. Custom hubs, and hubs with no place, have no code.
+**New processes and events take their own hub's code**
+(`defaultJurisdiction()` in `src/config/hub.ts`), never the deployment's
+`CIVIC_JURISDICTION`, which stamped one hub's place on every hub; a hub with
+no code stamps `local`, which publishes no `location`.
+
+**Hub kinds** (`identity.hub_kind`, Adam 2026-09-27). Not every hub has a
+jurisdiction: `place` (a local government or community; jurisdiction
+required, as above), `issue` (a campaign, e.g. ranked-choice voting),
+`organization` (a group or club), `other`. The create form asks it first;
+default `place`; unset (every existing hub) = place. For the other kinds the
+jurisdiction is an optional **related place** (a listed row or custom);
+leaving it empty = no OCD id, not custom, no name, no code, no governing body.
+Server rule: a jurisdiction name needs an OCD id or the custom mark; a hub
+with no jurisdiction is valid whenever its kind is not `place`; a jurisdiction
+type and a governing body are for place hubs only. Fallbacks for a hub that is
+not a place: the shared documents have `{{#place}}…{{/place}}` /
+`{{^place}}…{{/place}}` sections (the non-place sentences name no place,
+state or government; `resolveKindSections` in `src/services/hubDocuments.ts`),
+and `{PLACE}` / `{JURISDICTION}` left in a hub's own text read as the related
+place or the hub's name; sample names; the hub UI's headings and sign-up
+affirmation; "N participants voted" in the feed and digest; the writing
+assistant's community line. **Sample content:** every template is tagged
+with the hub kinds it fits; all nine fit `place` only (each is about a local
+government's services, budget or governing body), so a hub of another kind
+gets none and the create form says so. **Writing templates for issue
+campaigns and organizations is later presets work**, with the county / town
+/ school district presets.
+
+**Later, not built (Adam, 2026-09-27):** an issue campaign may want several
+related places — a statewide campaign with local chapters. Today a hub has one
+optional link (`hubs.jurisdiction_ocd_id`); several would be a
+`hub_jurisdictions (hub_id, ocd_id, role)` table, with the code question
+answered for it then.
 
 **Freeing a never-used hub's slug: `scripts/purge-hub.ts --hub <slug>`**,
 operator-only, no console button. Refuses unless the hub is archived, has no

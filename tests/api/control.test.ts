@@ -103,7 +103,7 @@ describe("create hub", () => {
   it("refuses a reserved slug, naming what it is for", async () => {
     const res = await consoleCall("POST", "/control/hubs", {
       cookie,
-      body: { slug: "console", name: "X", hostname: `x-${run}.localhost`, admin_email: "a@example.test" },
+      body: { slug: "console", name: "X", hostname: `x-${run}.localhost`, admin_email: "a@example.test", hub_kind: "other" },
     });
     expect(res.status).toBe(400);
     expect(res.body.error).toContain("reserved");
@@ -112,7 +112,7 @@ describe("create hub", () => {
   it("refuses a hub without a first admin", async () => {
     const res = await consoleCall("POST", "/control/hubs", {
       cookie,
-      body: { slug: `noadmin-${run}`, name: "X", hostname: `noadmin-${run}.localhost` },
+      body: { slug: `noadmin-${run}`, name: "X", hostname: `noadmin-${run}.localhost`, hub_kind: "other" },
     });
     expect(res.status).toBe(400);
     expect(res.body.error).toContain("admin");
@@ -127,7 +127,6 @@ describe("create hub", () => {
         hostname: HOST,
         jurisdiction_name: "Testing, Nowhere",
         jurisdiction_custom: true,
-        jurisdiction_code: "us-xx-testing",
         governing_body: "Testing Council",
         admin_email: `first-admin-${run}@example.test`,
       },
@@ -151,12 +150,12 @@ describe("create hub", () => {
   it("refuses a slug or hostname that is taken", async () => {
     const dup = await consoleCall("POST", "/control/hubs", {
       cookie,
-      body: { slug: SLUG, name: "Again", hostname: `other-${run}.localhost`, admin_email: "a@example.test" },
+      body: { slug: SLUG, name: "Again", hostname: `other-${run}.localhost`, admin_email: "a@example.test", hub_kind: "other" },
     });
     expect(dup.status).toBe(409);
     const host = await consoleCall("POST", "/control/hubs", {
       cookie,
-      body: { slug: `other-${run}`, name: "Again", hostname: HOST, admin_email: "a@example.test" },
+      body: { slug: `other-${run}`, name: "Again", hostname: HOST, admin_email: "a@example.test", hub_kind: "other" },
     });
     expect(host.status).toBe(409);
   });
@@ -195,7 +194,7 @@ describe("edit a hub", () => {
 
     const reuse = await consoleCall("POST", "/control/hubs", {
       cookie,
-      body: { slug: `reuse-${run}`, name: "Reuse", hostname: HOST, admin_email: "a@example.test" },
+      body: { slug: `reuse-${run}`, name: "Reuse", hostname: HOST, admin_email: "a@example.test", hub_kind: "other" },
     });
     expect(reuse.status).toBe(409);
     expect(reuse.body.error).toContain("stays taken");
@@ -275,7 +274,7 @@ describe("archive", () => {
   beforeAll(async () => {
     const res = await consoleCall("POST", "/control/hubs", {
       cookie,
-      body: { slug, name: "Archive Me", hostname: host, admin_email: "a@example.test" },
+      body: { slug, name: "Archive Me", hostname: host, admin_email: "a@example.test", hub_kind: "other" },
     });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     created.push(slug);
@@ -292,13 +291,13 @@ describe("archive", () => {
 
     const again = await consoleCall("POST", "/control/hubs", {
       cookie,
-      body: { slug, name: "Again", hostname: `fresh-${run}.localhost`, admin_email: "a@example.test" },
+      body: { slug, name: "Again", hostname: `fresh-${run}.localhost`, admin_email: "a@example.test", hub_kind: "other" },
     });
     expect(again.status).toBe(409);
     expect(again.body.error).toContain("archived");
     const sameHost = await consoleCall("POST", "/control/hubs", {
       cookie,
-      body: { slug: `fresh-${run}`, name: "Again", hostname: host, admin_email: "a@example.test" },
+      body: { slug: `fresh-${run}`, name: "Again", hostname: host, admin_email: "a@example.test", hub_kind: "other" },
     });
     expect(sameHost.status).toBe(409);
     expect(sameHost.body.error).toContain("archived");

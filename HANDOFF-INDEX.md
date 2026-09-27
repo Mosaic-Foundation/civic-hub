@@ -68,11 +68,15 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Jurisdiction data, the jurisdiction code, hub kinds (2026-09-27, second
+  part)**: the committed list and confirmed OCD formats, the code rule and
+  `defaultJurisdiction()`, `identity.hub_kind` and every fallback changed, the
+  six-migration rehearsal — 7–115
 - **Jurisdictions, plugins at creation, purge, platform postal address
   (2026-09-27)**: the `jurisdictions` table and loader, the console picker
   and slug suggestion, `scripts/purge-hub.ts`, `CIVIC_PLATFORM_POSTAL_ADDRESS`,
   the jurisdiction-code inventory and recommendation, the
-  `CIVIC_JURISDICTION` finding — 7–~180
+  `CIVIC_JURISDICTION` finding — 116–240
 - **Release-1 prep (2026-09-27)**: no-hub page from the static shell,
   `seedBetaSlate.ts` retired, the cleanup migration tested on production's
   data, `RUNBOOK-release-1.md`, the two decisions (stale votes, sender) —

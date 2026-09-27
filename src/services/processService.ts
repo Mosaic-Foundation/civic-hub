@@ -56,7 +56,7 @@ import {
   redactForAudience,
   type Audience,
 } from "./creatorDisplay.js";
-import { DEFAULT_JURISDICTION } from "../config/hub.js";
+import { defaultJurisdiction } from "../config/hub.js";
 import type { PluginId } from "../models/hubSettings.js";
 
 /** The hub in scope. Processes are only ever read or written inside one. */
@@ -100,7 +100,7 @@ export function rowToProcess(row: ProcessRow): Process {
     description: row.description ?? "",
     status: row.status,
     hubId: row.hub_id,
-    jurisdiction: row.jurisdiction ?? DEFAULT_JURISDICTION,
+    jurisdiction: row.jurisdiction ?? defaultJurisdiction(),
     createdBy: row.created_by ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -135,7 +135,7 @@ export async function createProcess(
     | undefined;
   const status: ProcessStatus = resolveInitialStatus(stateStatus);
 
-  const jurisdiction = input.jurisdiction ?? DEFAULT_JURISDICTION;
+  const jurisdiction = input.jurisdiction ?? defaultJurisdiction();
 
   const row: Partial<ProcessRow> & { id: string } = {
     id,
@@ -674,7 +674,7 @@ export async function archiveProcess(
       event_type: "civic.process.updated",
       actor: adminId,
       process_id: id,
-      jurisdiction: process.jurisdiction || DEFAULT_JURISDICTION,
+      jurisdiction: process.jurisdiction || defaultJurisdiction(),
       processType: process.definition.type,
       visibility: "restricted",
       data: {
@@ -745,7 +745,7 @@ export async function restoreProcess(
       event_type: "civic.process.updated",
       actor: adminId,
       process_id: id,
-      jurisdiction: process.jurisdiction || DEFAULT_JURISDICTION,
+      jurisdiction: process.jurisdiction || defaultJurisdiction(),
       processType: process.definition.type,
       visibility: "restricted",
       data: {

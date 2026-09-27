@@ -504,8 +504,8 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
                   disabled={loading}
                 />
                 <span>
-                  I confirm that I am a resident of {hub.jurisdiction}, and
-                  I have read and agree to the{" "}
+                  {hub.isPlace ? <>I confirm that I am a resident of {hub.jurisdiction}, and I</> : "I"}{" "}
+                  have read and agree to the{" "}
                   <a href="/terms" target="_blank" rel="noopener noreferrer">
                     Terms of Service
                   </a>

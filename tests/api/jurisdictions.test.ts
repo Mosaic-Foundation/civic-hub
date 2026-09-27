@@ -138,8 +138,14 @@ describe("the slug suggestion", () => {
 
 describe("creating a hub", () => {
   it("from the list: the OCD id, not custom; several hubs may serve one jurisdiction", async () => {
-    const row = await db.query("select jurisdiction_ocd_id, jurisdiction_custom, jurisdiction_name from hubs where id = $1", [BASE]);
-    expect(row.rows[0]).toEqual({ jurisdiction_ocd_id: OCD.town, jurisdiction_custom: false, jurisdiction_name: `Town of ${Name}, Zedland` });
+    const row = await db.query("select jurisdiction_ocd_id, jurisdiction_custom, jurisdiction_name, jurisdiction_code from hubs where id = $1", [BASE]);
+    expect(row.rows[0]).toEqual({
+      jurisdiction_ocd_id: OCD.town,
+      jurisdiction_custom: false,
+      jurisdiction_name: `Town of ${Name}, Zedland`,
+      // Derived from the OCD id at creation: a town adds its type.
+      jurisdiction_code: `us-zz-${BASE}-town`,
+    });
     const m = await consoleCall("GET", `/control/jurisdictions?state=zz&type=town&q=${Name}`, { cookie });
     const served = m.body.matches.find((x: { ocd_id: string }) => x.ocd_id === OCD.town).hubs.map((h: { id: string }) => h.id).sort();
     expect(served).toEqual([BASE, `${BASE}-town`, `${BASE}-zz`].sort());
@@ -148,13 +154,24 @@ describe("creating a hub", () => {
   it("with the name of the list's jurisdiction when none is sent", async () => {
     const res = await create({ slug: `${BASE}-n`, jurisdiction_ocd_id: OCD.county, jurisdiction_type: "county" });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
-    expect(res.body.config).toMatchObject({ jurisdiction_ocd_id: OCD.county, jurisdiction_custom: false, governing_body: "County Commission" });
+    expect(res.body.config).toMatchObject({
+      jurisdiction_ocd_id: OCD.county,
+      jurisdiction_custom: false,
+      jurisdiction_code: `us-zz-${BASE}`,
+      jurisdiction_name: `${Name} County, Zedland`,
+      governing_body: "County Commission",
+    });
   });
 
   it("custom: a typed name and no OCD id", async () => {
     const res = await create({ slug: `${BASE}-c`, jurisdiction_custom: true, jurisdiction_name: "The Northside neighbourhood", jurisdiction_type: "other" });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
-    expect(res.body.config).toMatchObject({ jurisdiction_ocd_id: null, jurisdiction_custom: true, jurisdiction_name: "The Northside neighbourhood" });
+    expect(res.body.config).toMatchObject({
+      jurisdiction_ocd_id: null,
+      jurisdiction_custom: true,
+      jurisdiction_name: "The Northside neighbourhood",
+      jurisdiction_code: null,
+    });
   });
 
   it("refuses loose free text, an unknown id, and custom with an id", async () => {
@@ -166,6 +183,9 @@ describe("creating a hub", () => {
     expect(unknown.body.error).toMatch(/not in the jurisdiction list/);
     const both = await create({ slug: `${BASE}-x3`, jurisdiction_ocd_id: OCD.town, jurisdiction_custom: true, jurisdiction_name: "x" });
     expect(both.status).toBe(400);
+    const code = await create({ slug: `${BASE}-x4`, jurisdiction_ocd_id: OCD.town, jurisdiction_code: "us-zz-mine" });
+    expect(code.status).toBe(400);
+    expect(code.body.error).toMatch(/derived from the jurisdiction's OCD id/);
   });
 });
 
@@ -177,6 +197,10 @@ describe("editing a hub's jurisdiction", () => {
     });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body.hub.jurisdiction_ocd_id).toBe(OCD.county);
+    // Never recomputed: the code the hub has published stays.
+    expect(res.body.hub.jurisdiction_code).toBe(`us-zz-${BASE}-town`);
+    const typed = await consoleCall("PATCH", `/control/hubs/${BASE}`, { cookie, body: { jurisdiction_code: "us-zz-other" } });
+    expect(typed.status).toBe(400);
     const audit = (await auditFor(BASE)).find((a) => a.action === "hub.update");
     expect(audit?.before).toMatchObject({ jurisdiction_ocd_id: OCD.town });
     expect(audit?.after).toMatchObject({ jurisdiction_ocd_id: OCD.county, jurisdiction_name: `${Name} County, Zedland` });

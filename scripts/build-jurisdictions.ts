@@ -9,7 +9,7 @@
  * IN (config/jurisdictions/sources/, gitignored; versions and checksums in
  * config/jurisdictions/SOURCES.md):
  *   2026_Gaz_{state,counties,place,cousubs,unsd,elsd,scsd}_national.txt
- *       Census Bureau Gazetteer, tab-delimited: names, GEOIDs, LSAD and
+ *       Census Bureau Gazetteer, pipe-delimited (since 2025; earlier years were tabs): names, GEOIDs, LSAD and
  *       functional status. A US government work: public domain in the US.
  *   country-us.csv
  *       opencivicdata/ocd-division-ids at a pinned commit: every OCD division
@@ -19,7 +19,9 @@
  *   config/jurisdictions/us-jurisdictions.csv     ocd_id,census_geoid,state,type,official_name,display_name
  *   config/jurisdictions/us-jurisdictions.sha256  its checksum, which the loader checks
  *
- * THE JOIN. A gazetteer row is kept only when the OCD list has a current
+ * Alias rows (a `sameAs` value) are skipped: the id they point to is the one used.
+ * THE JOIN. States by their postal code (the OCD state rows carry no GEOID:
+ * `…/state:va`, and DC is `…/district:dc`). Everything else: a gazetteer row is kept only when the OCD list has a current
  * (no validThrough) division with the same Census GEOID and a matching kind
  * of segment (county/parish/borough for a county, place for a place,
  * school_district for a school district). Nothing gets an invented OCD id: an
@@ -75,7 +77,9 @@ function gazetteer(file: string): Array<Record<string, string>> {
   const path = resolve(SRC, `${YEAR}_Gaz_${file}_national.txt`);
   if (!existsSync(path)) throw new Error(`missing ${path}; run scripts/fetch-jurisdiction-sources.sh`);
   // Latin-1 in older years; decode as UTF-8 and check for replacement chars below.
-  return parseCsvObjects(readFileSync(path, "utf8"), "\t").map((r) =>
+  const text = readFileSync(path, "utf8");
+  const delimiter = text.slice(0, text.indexOf("\n")).includes("|") ? "|" : "\t";
+  return parseCsvObjects(text, delimiter).map((r) =>
     Object.fromEntries(Object.entries(r).map(([k, v]) => [k.trim().toUpperCase(), v.trim()])),
   );
 }
@@ -93,20 +97,25 @@ function ocdKind(id: string): Kind | null {
   return null;
 }
 
-function buildOcdIndex(): { index: Map<string, string>; header: string[]; rows: number } {
+function buildOcdIndex(): { index: Map<string, string>; header: string[]; rows: number; stateIds: Map<string, string> } {
   const path = resolve(SRC, "country-us.csv");
   if (!existsSync(path)) throw new Error(`missing ${path}; run scripts/fetch-jurisdiction-sources.sh`);
   const [header, ...rows] = parseCsv(readFileSync(path, "utf8"));
   const col = (n: string) => header.indexOf(n);
   const iId = col("id");
   const iThrough = col("validThrough");
+  const iSameAs = col("sameAs");
   const geoCols = header.map((h, i) => [h, i] as const).filter(([h]) => /^census_geoid/.test(h));
   if (iId < 0 || geoCols.length === 0) throw new Error(`country-us.csv header has no id / census_geoid: ${header.join(",")}`);
   const index = new Map<string, string>();
+  const stateIds = new Map<string, string>();
   for (const r of rows) {
     const id = r[iId];
     if (!id?.startsWith("ocd-division/country:us")) continue;
     if (iThrough >= 0 && r[iThrough]) continue; // historical
+    if (iSameAs >= 0 && r[iSameAs]) continue; // an alias of another id (e.g. state:dc → district:dc)
+    const st = /^ocd-division\/country:us\/(?:state|district):([a-z]{2})$/.exec(id);
+    if (st) stateIds.set(st[1], id);
     const kind = ocdKind(id);
     if (!kind) continue;
     for (const [, i] of geoCols) {
@@ -117,7 +126,7 @@ function buildOcdIndex(): { index: Map<string, string>; header: string[]; rows: 
       if (!index.has(key)) index.set(key, id);
     }
   }
-  return { index, header, rows: rows.length };
+  return { index, header, rows: rows.length, stateIds };
 }
 
 // --- Names ----------------------------------------------------------------------
@@ -155,19 +164,21 @@ function displayName(type: RefType, official: string, base: string, stateName: s
 // --- Build ------------------------------------------------------------------------
 
 function main(): void {
-  const { index, header, rows: ocdRows } = buildOcdIndex();
+  const { index, header, rows: ocdRows, stateIds } = buildOcdIndex();
   console.log(`OCD: ${ocdRows} rows, ${index.size} current ids with a census GEOID (columns: ${header.filter((h) => /census/.test(h)).join(", ")})`);
 
   const out: Out[] = [];
   const unmatched: Record<string, string[]> = {};
   const skipped: Record<string, number> = {};
-  const skip = (why: string) => (skipped[why] = (skipped[why] ?? 0) + 1);
+  const skip = (why: string): void => {
+    skipped[why] = (skipped[why] ?? 0) + 1;
+  };
 
   function add(kind: Kind, geoid: string, usps: string, type: RefType, official: string, base: string): void {
     const state = usps.toLowerCase();
     const stateName = STATE_NAMES.get(state);
     if (!stateName) return skip(`not a state or DC (${usps})`);
-    const ocd = index.get(`${kind}:${geoid.replace(/\D/g, "")}`);
+    const ocd = kind === "state" ? stateIds.get(state) : index.get(`${kind}:${geoid.replace(/\D/g, "")}`);
     if (!ocd) {
       (unmatched[type] ??= []).push(`${usps} ${geoid} ${official}`);
       return;
@@ -192,7 +203,7 @@ function main(): void {
     if (/ (County|Parish)$/.test(n)) type = "county";
     else if (/ (Borough|City and Borough|Municipality)$/.test(n) && r.USPS === "AK") type = "borough";
     if (!type) {
-      skip(/ city$/.test(n) ? "independent city in the counties file (its place row covers it)" : `county equivalent "${n.split(" ").slice(-2).join(" ")}"`);
+      skip(/ city$/.test(n) ? "independent city in the counties file (its place row covers it)" : `county equivalent that is not a county, parish or Alaska borough (${n.split(" ").pop()})`);
       continue;
     }
     add("county", r.GEOID, r.USPS, type, n, n);

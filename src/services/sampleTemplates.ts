@@ -20,10 +20,12 @@
 //   covered properly yet — that is the later presets work.
 
 import { JURISDICTION_TYPES, type JurisdictionType } from "../shared/jurisdictionType.js";
+import { HUB_KINDS, type HubKind } from "../shared/hubKind.js";
 
 /** Every type a general-purpose local government can be. */
 const LOCAL_GOVERNMENT: readonly JurisdictionType[] = ["county", "city", "town", "village", "borough", "other"];
 const EVERY_TYPE: readonly JurisdictionType[] = JURISDICTION_TYPES.map((t) => t.id);
+const PLACE_ONLY: readonly HubKind[] = ["place"];
 
 // --- Synthetic authors --------------------------------------------------------
 
@@ -58,6 +60,15 @@ export interface SampleComment {
 interface Base {
   /** Stable key; the process id is proc_sample_<hub>_<key>. */
   key: string;
+  /**
+   * The hub kinds (identity.hub_kind) the template reads right in
+   * (2026-09-27). All nine are about a local government — its services, its
+   * budget, its governing body, its residents — so all are PLACE_ONLY; an
+   * issue campaign, an organization or another kind of hub gets none yet.
+   * Templates for those kinds are the later presets work.
+   */
+  kinds: readonly HubKind[];
+  /** Place hubs: the jurisdiction types it reads right in. */
   fits: readonly JurisdictionType[];
   by: Author;
   /** Created, days relative to seeding. */
@@ -157,6 +168,8 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
   {
     key: "vote_internet",
     kind: "vote",
+    kinds: PLACE_ONLY,
+
     fits: LOCAL_GOVERNMENT,
     by: "JORDAN",
     at: -6,
@@ -182,6 +195,8 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
   {
     key: "vote_fire_rescue",
     kind: "vote",
+    kinds: PLACE_ONLY,
+
     fits: LOCAL_GOVERNMENT,
     by: "SAM",
     at: -5,
@@ -200,6 +215,8 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
   {
     key: "vote_library_hours",
     kind: "vote",
+    kinds: PLACE_ONLY,
+
     fits: EVERY_TYPE,
     by: "ALEX",
     at: -21,
@@ -223,6 +240,8 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
   {
     key: "outcome_library_hours",
     kind: "outcome",
+    kinds: PLACE_ONLY,
+
     fits: EVERY_TYPE,
     by: "TEAM",
     at: -6,
@@ -260,6 +279,8 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
   {
     key: "proposal_repair_list",
     kind: "proposal",
+    kinds: PLACE_ONLY,
+
     fits: LOCAL_GOVERNMENT,
     by: "JORDAN",
     at: -9,
@@ -298,6 +319,8 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
   {
     key: "deliberation_rentals",
     kind: "deliberation",
+    kinds: PLACE_ONLY,
+
     fits: LOCAL_GOVERNMENT,
     by: "CASEY",
     at: -10,
@@ -336,6 +359,8 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
   {
     key: "project_trail_map",
     kind: "project",
+    kinds: PLACE_ONLY,
+
     fits: LOCAL_GOVERNMENT,
     by: "CASEY",
     at: -18,
@@ -368,6 +393,8 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
   {
     key: "announcement_budget_hearing",
     kind: "announcement",
+    kinds: PLACE_ONLY,
+
     fits: EVERY_TYPE,
     by: "TEAM",
     at: -2,
@@ -382,6 +409,8 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
   {
     key: "announcement_comprehensive_plan",
     kind: "announcement",
+    kinds: PLACE_ONLY,
+
     fits: LOCAL_GOVERNMENT,
     by: "TEAM",
     at: -8,
@@ -393,13 +422,14 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
 ];
 
 /**
- * The templates that fit a jurisdiction type. A hub with no type set is
- * treated as "other" (a general-purpose local government). An outcome comes
- * only with its vote.
+ * The templates that fit a hub: its kind first (unset = place), then, for a
+ * place hub, its jurisdiction type (unset = "other", a general-purpose local
+ * government). An outcome comes only with its vote. May be empty: no
+ * template fits an issue campaign or an organization yet.
  */
-export function templatesFor(type: JurisdictionType | null | undefined): SampleTemplate[] {
+export function templatesFor(type: JurisdictionType | null | undefined, kind: HubKind = "place"): SampleTemplate[] {
   const t: JurisdictionType = type ?? "other";
-  const fitting = SAMPLE_TEMPLATES.filter((x) => x.fits.includes(t));
+  const fitting = SAMPLE_TEMPLATES.filter((x) => x.kinds.includes(kind) && (kind !== "place" || x.fits.includes(t)));
   const keys = new Set(fitting.map((x) => x.key));
   return fitting.filter((x) => x.kind !== "outcome" || keys.has(x.source));
 }
@@ -413,4 +443,9 @@ export interface SampleNames {
 /** Fill the three placeholders. Nothing else is ever substituted. */
 export function fillSample(text: string, names: SampleNames): string {
   return text.replace(/\{(HUB_NAME|JURISDICTION|GOVERNING_BODY)\}/g, (_m, k: keyof SampleNames) => names[k]);
+}
+
+/** The hub kinds that have at least one sample template (the create form's checkbox). */
+export function kindsWithSamples(): HubKind[] {
+  return HUB_KINDS.map((k) => k.id).filter((k) => SAMPLE_TEMPLATES.some((t) => t.kinds.includes(k)));
 }

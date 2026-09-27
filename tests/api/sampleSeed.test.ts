@@ -60,9 +60,10 @@ describe("a county hub created with sample content", () => {
         slug: COUNTY,
         name: "Sample Test Civic Hub",
         hostname: host(COUNTY),
+        // A real Virginia county from the loaded list (its OCD id gives the
+        // state, hence "Board of Supervisors"), shown under a test name.
+        jurisdiction_ocd_id: "ocd-division/country:us/state:va/county:floyd",
         jurisdiction_name: "Example County, Virginia",
-        jurisdiction_custom: true,
-        jurisdiction_code: "us-va-example",
         jurisdiction_type: "county",
         admin_email: ADMIN,
         sample_content: true,
@@ -167,7 +168,6 @@ describe("a school district hub", () => {
         hostname: host(SCHOOLS),
         jurisdiction_name: "Example Schools, Ohio",
         jurisdiction_custom: true,
-        jurisdiction_code: "us-oh-example-schools",
         jurisdiction_type: "school_district",
         admin_email: ADMIN,
         sample_content: true,

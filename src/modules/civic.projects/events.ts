@@ -1,3 +1,4 @@
+import { defaultJurisdiction } from "../../config/hub.js";
 import type { CreateEventInput } from "../../models/event.js";
 
 export type EmitEventFn = (input: CreateEventInput) => Promise<unknown>;
@@ -18,7 +19,7 @@ export async function emitProjectCreated(
     event_type: "civic.project.created",
     actor,
     process_id: ctx.project_id,
-    jurisdiction: ctx.jurisdiction ?? "local",
+    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
     processType: "civic.project",
     action_url_path: `/project/${ctx.project_id}`,
     data: { project: data },
@@ -34,7 +35,7 @@ export async function emitProjectUpdated(
     event_type: "civic.project.updated",
     actor,
     process_id: ctx.project_id,
-    jurisdiction: ctx.jurisdiction ?? "local",
+    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
     processType: "civic.project",
     action_url_path: `/project/${ctx.project_id}`,
     data: { project: data },
@@ -50,7 +51,7 @@ export async function emitProjectCommented(
     event_type: "civic.project.comment_added",
     actor,
     process_id: ctx.project_id,
-    jurisdiction: ctx.jurisdiction ?? "local",
+    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
     processType: "civic.project",
     action_url_path: `/project/${ctx.project_id}`,
     data: { project: data },
@@ -65,7 +66,7 @@ export async function emitProjectArchived(
     event_type: "civic.project.archived",
     actor,
     process_id: ctx.project_id,
-    jurisdiction: ctx.jurisdiction ?? "local",
+    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
     processType: "civic.project",
     action_url_path: `/project/${ctx.project_id}`,
     data: { project: {} },
@@ -80,7 +81,7 @@ export async function emitProjectCompleted(
     event_type: "civic.project.updated",
     actor,
     process_id: ctx.project_id,
-    jurisdiction: ctx.jurisdiction ?? "local",
+    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
     processType: "civic.project",
     action_url_path: `/project/${ctx.project_id}`,
     data: { project: { completed: true } },
@@ -96,7 +97,7 @@ export async function emitProjectSentimentChanged(
     event_type: "civic.project.sentiment_changed",
     actor,
     process_id: ctx.project_id,
-    jurisdiction: ctx.jurisdiction ?? "local",
+    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
     processType: "civic.project",
     action_url_path: `/project/${ctx.project_id}`,
     data: { project: data },

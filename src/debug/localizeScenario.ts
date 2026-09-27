@@ -9,7 +9,7 @@
 // Outside a hub scope (the boot-time auto-seed) the readers fall back to the
 // environment, like every other hub-identity read.
 
-import { civicPlaceShortName, DEFAULT_JURISDICTION, civicPlaceCode } from "../config/hub.js";
+import { civicPlaceShortName, defaultJurisdiction } from "../config/hub.js";
 import { getSettingSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 
@@ -27,7 +27,9 @@ export function scenarioNames(): ScenarioNames {
   return {
     place: civicPlaceShortName() ?? "the county",
     governing_body: getSettingSync(KEYS.COPY_GOVERNING_BODY_NAME)?.trim() || "Board",
-    jurisdiction: civicPlaceCode() ?? DEFAULT_JURISDICTION,
+    // The hub's own code, or "local" (no place) — never the deployment's
+    // CIVIC_JURISDICTION inside a hub (2026-09-27).
+    jurisdiction: defaultJurisdiction(),
   };
 }
 

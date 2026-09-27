@@ -18,6 +18,7 @@ import { getHubBySlug } from "../db/hubs.js";
 import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { withHubScope } from "../config/hubContext.js";
 import { seedSampleContent, type SampleSeedReport } from "../services/sampleSeed.js";
+import { kindsWithSamples } from "../services/sampleTemplates.js";
 import {
   CODE_SENT,
   ControlAuthError,
@@ -58,6 +59,7 @@ import {
   unarchiveHub,
   updateHubConfig,
   validateHubConfig,
+  withDerivedCode,
   type ControlHub,
 } from "./hubs.js";
 
@@ -257,6 +259,8 @@ export function controlRouter(): Router {
       platform_domain: platformDomain(),
       reserved_slugs: RESERVED_HUB_SLUG_PURPOSES,
       plugin_ids: PLUGIN_IDS,
+      // The create form disables "Start with sample content" for the rest.
+      sample_kinds: kindsWithSamples(),
       production_database: isProductionDatabase(),
       hub_specific_env_vars: hubSpecificEnvVars(),
       create_refusal: productionCreateGuard(hubs.length),
@@ -330,13 +334,14 @@ export function controlRouter(): Router {
     const hub = await loadHub(req, res);
     if (!hub) return;
     const before = await hubConfigView(hub);
-    const changes = changedFields(before, parseConfigPatch((req.body ?? {}) as Record<string, unknown>));
+    let changes = changedFields(before, parseConfigPatch((req.body ?? {}) as Record<string, unknown>));
     if (Object.keys(changes).length === 0) {
       res.json(await hubDetail(hub));
       return;
     }
     await validateHubConfig(hub, changes);
     if (configChangeNeedsStepUp(changes) && !(await stepUp(req, res))) return;
+    changes = await withDerivedCode(hub, changes);
     await updateHubConfig(hub, changes, actor(res));
     const priorValues = Object.fromEntries(
       Object.keys(changes).map((k) => [k, (before as unknown as Record<string, unknown>)[k]]),

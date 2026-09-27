@@ -33,7 +33,7 @@ import { emitEvent } from "../../events/eventEmitter.js";
 import { executeAction, rowToProcess, type ProcessRow } from "../../services/processService.js";
 import { createProject } from "../civic.projects/index.js";
 import { createProposal } from "../civic.proposals/index.js";
-import { DEFAULT_JURISDICTION } from "../../config/hub.js";
+import { defaultJurisdiction } from "../../config/hub.js";
 import { getAdminEmailsSync } from "../../services/hubSettings.js";
 
 
@@ -87,7 +87,7 @@ export async function submitForReview(
     process_version: "1.0",
     title: input.title,
     description: input.description,
-    jurisdiction: DEFAULT_JURISDICTION,
+    jurisdiction: defaultJurisdiction(),
     status: "pending_review",
     content: input.content ?? null,
     config: input.config ?? null,
@@ -386,7 +386,7 @@ export async function approveReview(
       event_type: "civic.process.created",
       actor: review.creator_id,
       process_id: review.process_id,
-      jurisdiction: DEFAULT_JURISDICTION,
+      jurisdiction: defaultJurisdiction(),
       data: {
         process: {
           type: proc.type,

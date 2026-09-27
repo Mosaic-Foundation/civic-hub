@@ -20,6 +20,9 @@ import {
   type ClassifierEvent,
 } from "../../shared/feedActivity.js";
 import { sortDigestItems } from "./filter.js";
+import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
+import { getSettingSync } from "../../services/hubSettings.js";
+import { KEYS } from "../../models/hubSettings.js";
 import { isSubstantiveEdit } from "../../services/processEdits.js";
 import type {
   DigestAssemblyInput,
@@ -201,7 +204,7 @@ function digestTitleSummary(
     case "vote-results": {
       const count =
         typeof d?.participation_count === "number" ? d.participation_count : 0;
-      const noun = count === 1 ? "resident" : "residents";
+      const noun = participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), count);
       const headline =
         typeof d?.headline_result === "string" ? d.headline_result : "";
       return {

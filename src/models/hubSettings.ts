@@ -39,6 +39,12 @@ export const KEYS = {
   // form infers the governing body from it, and the sample seed skips
   // templates that do not fit it. Admin-only: not on the public list.
   IDENTITY_JURISDICTION_TYPE: "identity.jurisdiction_type",
+  // What the hub is: place, issue, organization or other
+  // (src/shared/hubKind.ts). Added 2026-09-27 (Adam). Unset = place. PUBLIC:
+  // the hub UI words the sign-up affirmation and its headings by it (a
+  // campaign's members are not "residents of" anywhere). jurisdiction_type
+  // applies to place hubs only.
+  IDENTITY_HUB_KIND: "identity.hub_kind",
 
   COPY_INTRO_BODY: "copy.intro_body",
   COPY_RESIDENCY_INTRO: "copy.residency_intro",
@@ -257,6 +263,7 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   KEYS.IDENTITY_BANNER_ALT,
   KEYS.IDENTITY_THEME,
   KEYS.IDENTITY_LOGO_URL,
+  KEYS.IDENTITY_HUB_KIND,
 
   KEYS.COPY_INTRO_BODY,
   KEYS.COPY_RESIDENCY_INTRO,

@@ -23,6 +23,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fetchHubDocuments } from "../db/hubSettingsStore.js";
 import { getSettingSync } from "./hubSettings.js";
+import { hubKindOf } from "../shared/hubKind.js";
 import { KEYS } from "../models/hubSettings.js";
 import type { Hub } from "../models/hub.js";
 
@@ -122,13 +123,33 @@ export function substitutions(hub: Hub): Record<string, string> {
   const displayName = getSettingSync(KEYS.IDENTITY_NAME)?.trim() || hub.name;
   if (displayName) out.HUB_NAME = displayName;
   if (hub.hostname) out.HOSTNAME = hub.hostname;
+
+  // A hub that is not a place (identity.hub_kind, 2026-09-27) is rendered
+  // from the templates' {{^place}} sections, which name no place, state or
+  // government. Should a hub's own text still use {PLACE} or {JURISDICTION},
+  // it reads as the hub's name — never an empty phrase. {STATE} and
+  // {GOVERNING_BODY} stay unset for it (left visible, per the rule above).
+  const kind = hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND));
+  out.HUB_KIND = kind;
+  if (kind !== "place") {
+    const fallback = place?.trim() || displayName;
+    if (fallback) {
+      out.PLACE = fallback;
+      out.JURISDICTION = jurisdiction || fallback;
+    }
+    return withOperator(out);
+  }
+
   if (jurisdiction) out.JURISDICTION = jurisdiction;
   if (place?.trim()) out.PLACE = place.trim();
   if (state) out.STATE = state;
 
   const governingBody = getSettingSync(KEYS.COPY_GOVERNING_BODY_NAME);
   if (governingBody) out.GOVERNING_BODY = governingBody;
+  return withOperator(out);
+}
 
+function withOperator(out: Record<string, string>): Record<string, string> {
   const operator = getSettingSync(KEYS.LEGAL_OPERATOR_NAME);
   if (operator) {
     out.OPERATOR = operator;
@@ -178,12 +199,27 @@ export function whoRunsThisDefault(hub: Hub | null): string {
     : template.trim();
 }
 
-/** Replace `{NAME}` with its value, leaving unknown placeholders untouched. */
+/**
+ * Keep the sections that apply to this kind of hub and drop the rest:
+ * `{{#place}}…{{/place}}` is for place hubs, `{{^place}}…{{/place}}` for every
+ * other kind (2026-09-27). A section may span lines. `kind` unset = place.
+ */
+export function resolveKindSections(template: string, kind: string | undefined): string {
+  const isPlace = !kind || kind === "place";
+  return template.replace(/\{\{([#^])place\}\}([\s\S]*?)\{\{\/place\}\}/g, (_m, flag: string, body: string) =>
+    (flag === "#") === isPlace ? body : "",
+  );
+}
+
+/**
+ * Replace `{NAME}` with its value, leaving unknown placeholders untouched,
+ * after keeping only the kind sections that apply (values.HUB_KIND).
+ */
 export function applySubstitutions(
   template: string,
   values: Readonly<Record<string, string>>,
 ): string {
-  return template.replace(/\{([A-Z_]+)\}/g, (match, name: string) =>
+  return resolveKindSections(template, values.HUB_KIND).replace(/\{([A-Z_]+)\}/g, (match, name: string) =>
     Object.prototype.hasOwnProperty.call(values, name) ? values[name] : match,
   );
 }

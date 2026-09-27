@@ -5,6 +5,7 @@ import { JURISDICTION_TYPES, defaultGoverningBody, hubTypeFor, isJurisdictionTyp
 import { jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
 import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
 import { PLUGIN_NAMES } from "./pluginNames";
+import { HUB_KINDS, type HubKind } from "../../../src/shared/hubKind";
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$/;
 
@@ -29,6 +30,8 @@ export default function CreateHub() {
     sample_content: true,
   });
   const [choice, setChoice] = useState<JurisdictionChoice>({ kind: "unlinked" });
+  const [hubKind, setHubKind] = useState<HubKind>("place");
+  const isPlace = hubKind === "place";
   const [plugins, setPlugins] = useState<Record<string, boolean>>({});
   const [touched, setTouched] = useState({ slug: false, hostname: false, governing_body: false });
   const [suggestion, setSuggestion] = useState<SlugSuggestion | null>(null);
@@ -48,11 +51,17 @@ export default function CreateHub() {
 
   const suggestedHost = (slug: string) => (config?.platform_domain && slug ? `${slug}.${config.platform_domain}` : "");
 
+  // Read through a ref: set() also runs from the slug suggestion's async
+  // callback, whose closure would otherwise hold an old `touched` and
+  // overwrite a hostname the operator has since typed.
+  const touchedRef = useRef(touched);
+  touchedRef.current = touched;
+
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => {
       const next = { ...f, [key]: value };
-      if (key === "slug" && !touched.hostname) next.hostname = suggestedHost(String(value));
-      if ((key === "jurisdiction_type" || key === "jurisdiction_code") && !touched.governing_body) {
+      if (key === "slug" && !touchedRef.current.hostname) next.hostname = suggestedHost(String(value));
+      if ((key === "jurisdiction_type" || key === "jurisdiction_code") && !touchedRef.current.governing_body) {
         const t = next.jurisdiction_type;
         next.governing_body = isJurisdictionType(t)
           ? defaultGoverningBody(t, next.jurisdiction_code, choice.kind === "listed" ? choice.row.ocd_id : null)
@@ -67,19 +76,19 @@ export default function CreateHub() {
   function pick(next: JurisdictionChoice) {
     const wasListed = choice.kind === "listed";
     setChoice(next);
-    if (next.kind === "custom" && wasListed) {
+    if ((next.kind === "custom" && wasListed) || next.kind === "none") {
       setForm((f) => ({ ...f, jurisdiction_name: "", jurisdiction_code: "" }));
     }
     if (next.kind !== "listed") return;
     const { row } = next;
     const hubType = hubTypeFor(row.type);
-    const code = jurisdictionCodeFor(row);
+    const code = jurisdictionCodeFor(row) ?? "";
     setForm((f) => ({
       ...f,
       jurisdiction_name: row.display_name,
       jurisdiction_code: code,
-      jurisdiction_type: hubType,
-      governing_body: touched.governing_body ? f.governing_body : defaultGoverningBody(hubType, code, row.ocd_id),
+      jurisdiction_type: isPlace ? hubType : "",
+      governing_body: !isPlace ? "" : touched.governing_body ? f.governing_body : defaultGoverningBody(hubType, code, row.ocd_id),
     }));
   }
 
@@ -123,7 +132,12 @@ export default function CreateHub() {
   const pluginsOn = pluginIds.filter((id) => plugins[id] !== false).length;
   const refusal = config?.create_refusal ?? null;
   // Every new hub's place is a row of the list, or deliberately custom.
-  const placeReady = choice.kind === "listed" || (choice.kind === "custom" && form.jurisdiction_name.trim() !== "");
+  // A place hub needs one; any other kind may have none.
+  const placeReady =
+    choice.kind === "listed" ||
+    (choice.kind === "custom" && form.jurisdiction_name.trim() !== "") ||
+    (!isPlace && (choice.kind === "none" || choice.kind === "unlinked"));
+  const samplesAvailable = config ? config.sample_kinds.includes(hubKind) : true;
   const ready = form.name && form.slug && form.hostname && form.admin_email && !slugProblem && !refusal && placeReady;
 
   const slugHint = (() => {
@@ -161,10 +175,19 @@ export default function CreateHub() {
           setBusy(true);
           setError(null);
           try {
+            const hasPlace = choice.kind === "listed" || choice.kind === "custom";
+            // The code is derived by the server from the OCD id; never sent.
+            const { jurisdiction_code: _code, ...rest } = form;
+            void _code;
             const created = await api.createHub({
-              ...form,
+              ...rest,
+              hub_kind: hubKind,
+              jurisdiction_name: hasPlace ? form.jurisdiction_name : "",
+              jurisdiction_type: isPlace ? form.jurisdiction_type : "",
+              governing_body: isPlace ? form.governing_body : "",
               jurisdiction_ocd_id: choice.kind === "listed" ? choice.row.ocd_id : null,
               jurisdiction_custom: choice.kind === "custom",
+              sample_content: form.sample_content && samplesAvailable,
               plugins,
             });
             const seeded = created.sample_content;
@@ -183,8 +206,35 @@ export default function CreateHub() {
         }}
       >
         <fieldset>
-          <legend>Place</legend>
-          <JurisdictionPicker value={choice} onChange={pick} />
+          <legend>Kind of hub</legend>
+          <div className="cx-field" role="radiogroup" aria-label="Kind of hub">
+            {HUB_KINDS.map((k) => (
+              <label key={k.id} className="cx-radio">
+                <input
+                  type="radio"
+                  name="hub_kind"
+                  checked={hubKind === k.id}
+                  onChange={() => {
+                    setHubKind(k.id);
+                    // Leaving "place": no place until one is chosen; back to it: choose one.
+                    if (k.id !== "place" && choice.kind === "unlinked") setChoice({ kind: "none" });
+                    if (k.id === "place" && choice.kind === "none") setChoice({ kind: "unlinked" });
+                  }}
+                />
+                <span>
+                  <strong>{k.label}</strong>
+                  {k.id === "place" && <span className="cx-muted"> (default)</span>}
+                  <small className="cx-muted">{k.hint}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>{isPlace ? "Place" : "Related place"}</legend>
+          <JurisdictionPicker value={choice} onChange={pick} optional={!isPlace} />
+          {choice.kind !== "none" && (
           <label className="cx-field">
             <span>{choice.kind === "custom" ? "Name of the jurisdiction" : "Display name"}</span>
             <input
@@ -194,11 +244,15 @@ export default function CreateHub() {
               placeholder={choice.kind === "custom" ? "The Northside neighbourhood" : "Filled in from the list"}
             />
           </label>
+          )}
+          {choice.kind === "listed" && (
+            <p className="cx-muted cx-small">
+              Code <span className="cx-mono">{form.jurisdiction_code || "—"}</span>: derived from the OCD id once, when the
+              hub is created, and never changed.
+            </p>
+          )}
+          {isPlace && (<>
           <div className="cx-two">
-            <label className="cx-field">
-              <span>Jurisdiction code <em>optional</em></span>
-              <input className="cx-mono" value={form.jurisdiction_code} onChange={(e) => set("jurisdiction_code", e.target.value.toLowerCase())} placeholder="us-xx-place" />
-            </label>
             <label className="cx-field">
               <span>Hub type</span>
               <select value={form.jurisdiction_type} onChange={(e) => set("jurisdiction_type", e.target.value)}>
@@ -227,6 +281,7 @@ export default function CreateHub() {
             />
             <small className="cx-muted">The usual name for the type is only usual. Correct it if this place says it differently.</small>
           </label>
+          </>)}
         </fieldset>
 
         <fieldset>
@@ -312,14 +367,16 @@ export default function CreateHub() {
           <label className="cx-radio">
             <input
               type="checkbox"
-              checked={form.sample_content}
+              checked={form.sample_content && samplesAvailable}
+              disabled={!samplesAvailable}
               onChange={(e) => set("sample_content", e.target.checked)}
             />
             <span>
               <strong>Start with sample content</strong>
               <small className="cx-muted">
-                Up to nine illustrative processes, marked Sample, so the hub never opens empty. Its admin can remove them
-                in one step from Settings.
+                {samplesAvailable
+                  ? "Up to nine illustrative processes, marked Sample, so the hub never opens empty. Its admin can remove them in one step from Settings."
+                  : "No sample content is available for this kind of hub yet."}
               </small>
             </span>
           </label>

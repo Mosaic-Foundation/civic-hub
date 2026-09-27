@@ -4,6 +4,115 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Jurisdiction data, the jurisdiction code, hub kinds — 2026-09-27 (second part)
+
+**Branch:** `multi-tenant`, local commit (not pushed). Local and a read-only
+dry run on dev; production untouched. Plan: BUILD-PLAN → "Jurisdictions, …"
+(the code rule, "Hub kinds", the two later notes).
+
+### Built
+- **The data.** Adam downloaded the sources; `build-jurisdictions.ts` fixed
+  for what the files really are (the 2026 gazetteer is pipe-delimited; OCD
+  state rows have no GEOID, so states match by postal code; alias rows with
+  `sameAs` are skipped, so DC is `…/district:dc`). Committed
+  `config/jurisdictions/us-jurisdictions.csv`: **38,858 rows**, sha256
+  `d9e1d109…a9ff`; SOURCES.md has every source checksum, the counts and what
+  was left out. **OCD formats confirmed:** Floyd County
+  `ocd-division/country:us/state:va/county:floyd`, the Town of Floyd
+  `ocd-division/country:us/state:va/place:floyd`, the school district under
+  its county. CI loads the list (`load-jurisdictions.ts`, ~1.5 s).
+- **The jurisdiction code (Adam's decision):** derived from the OCD id once,
+  at creation or first link, never recomputed, never typed (refused if sent);
+  shown read-only in the console. Rule in BUILD-PLAN; unique over all rows
+  (a first version collided 214 times on school districts, which recur
+  across counties, so the rule includes every segment below the state).
+  **Continuity:** production's `CIVIC_JURISDICTION` (`.env.prod-pull`,
+  Sep 25), Floyd's `hubs` row (manifest) and 39/40 of its latest published
+  activities are all `us-va-floyd` = the derived county code. No data change
+  needed. (The 40th, a proposal support, had no place: proposal and project
+  events always emitted `"local"` — fixed below.)
+- **New processes and events use their own hub's code:**
+  `defaultJurisdiction()` replaces `DEFAULT_JURISDICTION` in processService
+  (create, read, archive/update events), review, links, project briefs,
+  deliberation boot, proposal and project events, proposal comments, and the
+  dev auto-seed. `CIVIC_JURISDICTION` is read only outside a hub.
+- **Hub kinds** (`identity.hub_kind`: place / issue / organization / other;
+  public; unset = place). Create form asks it first; for non-place kinds the
+  picker is "Related place (optional)" with None; type and governing body only
+  for places; sample checkbox disabled with "No sample content is available
+  for this kind of hub yet." Hub page edits the kind. Server rules as in the
+  prompt; `scripts/create-hub.ts --kind`.
+- **Fallbacks, each place changed** (item 3):
+  1. `config/legal/*.md` — every sentence with `{PLACE}`, `{STATE}`,
+     `{JURISDICTION}` or `{GOVERNING_BODY}` now has a `{{^place}}` alternate
+     (21 sentences in terms, privacy, code of conduct, about, proposal best
+     practices, who-runs-this). **They are new draft copy: please read them**
+     (`git diff config/legal`). Place hubs read exactly as before (unit test).
+  2. `src/services/hubDocuments.ts` — kind sections resolved before
+     substitution; `{PLACE}`/`{JURISDICTION}` → related place or hub name for
+     non-place hubs; `{STATE}`, `{GOVERNING_BODY}` stay unset for them.
+  3. `src/services/sampleNames.ts` — non-place: `{JURISDICTION}` → hub name,
+     `{GOVERNING_BODY}` → "<hub> organizers" (not reachable today: no
+     template fits them).
+  4. `ui/src/config/hub.ts` — `hub.jurisdiction` falls back to the hub's
+     name, not ""; `hub.place` likewise for non-place hubs; `hub.kind`.
+  5. `ui/src/components/AuthModal.tsx` — non-place hubs: "I have read and
+     agree to…", no residency affirmation.
+  6. `src/modules/civic.assistant/service.ts` — community line "the people
+     who take part in it".
+  7. "N residents voted" → "N participants voted" for non-place hubs in the
+     feed (`ui/src/components/Feed.tsx`) and the digest
+     (`src/modules/civic.digest/service.ts`), via `participantNoun()`.
+- **Sample templates:** all nine tagged `kinds: PLACE_ONLY` — each is about a
+  local government (internet access, fire funding, library hours, road
+  repairs, rentals, a trail map shared with the governing body, the budget
+  hearing, the comprehensive plan). None reads naturally for any group.
+- **Console bug fixed:** a late slug suggestion could overwrite a hostname
+  the operator had already typed (stale closure); now read through a ref.
+
+### Published records checked (item 5)
+`/events` and AS2: a hub with no code stamps `local` → no `location` (test).
+Manifest: no `jurisdictions` (test). Export: `hub.json` nulls,
+`identity.hub_kind` in settings; nothing assumes a place. Digest: the noun
+(fixed). **Reported, not changed:** the news-sync paraphrase prompt
+(`civic.news_sync/paraphrase.ts`) assumes a government ("The local
+government") for a hub with no place — it runs only for a hub that configures
+a news source; the dev-only auto-seed (`CIVIC_ALLOW_SEED`) fills any empty
+hub with local-government demo processes, whatever its kind.
+
+### Rehearsed
+- **Production's migration sequence, locally:** `db reset --version
+  20260926000000` (= production's 65); from `release-1-cleanup` exactly the
+  cleanup pending, applied; from `multi-tenant` exactly **six**, applied;
+  the load; `check-tenancy`: `CLEAN — 36 tables, 31 hub-scoped`. All suites
+  green on that stack. RUNBOOK Appendix B updated.
+- **Dev, read-only:** `./scripts/db-push.sh --dry-run --include-all` lists
+  exactly three (cleanup, jurisdictions, FK drop) — §0.3's count, observed.
+  **Applying them to dev was refused by the session's permission guard**;
+  §0.4 onward is Adam's.
+- **Console, real rows (local):** Place → Virginia → Town → "Floy" → Town of
+  Floyd, Virginia; code `us-va-floyd-town`, Town Council, slug `floyd-town`
+  (passed over `floyd`, reserved); Meeting summaries unticked; created with 9
+  samples. Floyd linked to Floyd County: code stays `us-va-floyd`, audited
+  `hub.update`. Organization: Related place with None; sample checkbox
+  disabled with the message.
+
+### Runbook
+§2.8's "don't delete" flag replaced: `CIVIC_JURISDICTION` goes as planned;
+new §4.7 checks a non-admin's pending (non-public) vote suggestion on Floyd
+carries `us-va-floyd`, then rejects it. §5.11 and §0.4c show the code as
+read-only; §7's `r1-check` types its governing body (a custom place has no
+code); Appendix B records the rehearsal.
+
+### For Adam
+1. Read the non-place legal sentences (`git diff HEAD~1 -- config/legal`).
+2. CDPs: the OCD list has ids for only 74 of 12,557 census-designated places,
+   so a CDP hub is "Other / not listed" today. Say if you want CDP ids built
+   by the OCD convention (`…/state:va/place:merrifield`) and marked as ours.
+3. Dev: push, then §0 (commands in the session summary).
+
+---
+
 ## Jurisdictions, plugins at creation, purge, platform postal address — 2026-09-27
 
 **Branch:** `multi-tenant`, local commit (not pushed). Local only; dev and

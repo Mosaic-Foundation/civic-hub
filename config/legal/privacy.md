@@ -3,7 +3,7 @@
 *Last updated: 2026-04-24*
 *Version: 1.2*
 
-> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer familiar with {STATE} and US privacy law before the {HUB_NAME} accepts its first resident sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.
+> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US privacy law{{/place}}{{^place}}familiar with US privacy law and the law of the state where the Hub's operator is based{{/place}} before the {HUB_NAME} accepts its first resident sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.
 
 ## Who runs this site
 
@@ -19,8 +19,8 @@ We try to collect only what's needed to run the Hub. Specifically:
 
 **When you create an account:**
 - Your email address, used to verify you and to send the daily digest if you're subscribed.
-- Your self-affirmed claim of {PLACE} residency. We do not verify this against external records.
-
+{{#place}}- Your self-affirmed claim of {PLACE} residency. We do not verify this against external records.
+{{/place}}{{^place}}{{/place}}
 **When you participate:**
 - Your votes on open civic issues, linked to your account.
 - Any comments you submit, linked to your account.
@@ -97,7 +97,7 @@ You have the right to:
 - **Correct** — tell us to fix inaccurate information.
 - **Delete** — close your account and have your personal account data deleted, subject to the civic-record retention note above.
 - **Opt out of the digest** — at any time, either through the Settings page or via the one-click unsubscribe link in every digest email.
-- **Complain** — to us directly (we'll take it seriously) or to the {STATE} Attorney General's office if you believe we've violated {STATE}'s Consumer Data Protection Act.
+- **Complain** — to us directly (we'll take it seriously) {{#place}}or to the {STATE} Attorney General's office if you believe we've violated {STATE}'s Consumer Data Protection Act.{{/place}}{{^place}}or to your state's Attorney General's office if you believe we've violated its consumer data protection law.{{/place}}
 
 To exercise any of these rights, email {CONTACT_EMAIL}. We'll respond within 30 days.
 
@@ -124,4 +124,4 @@ For privacy questions, data requests, or concerns about this policy:
 
 ---
 
-*This policy applies to the {HUB_NAME} at {HOSTNAME}. It does not apply to the {PLACE} government website or to any other site we link to.*
+*This policy applies to the {HUB_NAME} at {HOSTNAME}. {{#place}}It does not apply to the {PLACE} government website or to any other site we link to.{{/place}}{{^place}}It does not apply to any other site we link to.{{/place}}*

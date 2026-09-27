@@ -22,7 +22,8 @@
 //   matching created_at, so the open vote is open and the feed looks current.
 // - Idempotent: fixed ids (proc_sample_<hub>_<key>, user_sample_<hub>_00n);
 //   a template whose process exists is skipped, authors are upserted.
-// - Templates that do not fit the hub's jurisdiction type are skipped. The
+// - Templates that do not fit the hub's kind (identity.hub_kind; today every
+//   template is for place hubs) or its jurisdiction type are skipped. The
 //   hub's plugin switches are NOT consulted (Adam, 2026-09-27): every template
 //   the type allows is seeded, with every plugin treated as on for the run.
 //   Content whose plugin is off stays hidden, like any process of that type,
@@ -36,6 +37,7 @@ import type { CreateEventInput } from "../models/event.js";
 import type { Process, ProcessContent, ProcessStatus } from "../models/process.js";
 import { sampleProcessId, sampleUserId } from "../models/sampleContent.js";
 import { isJurisdictionType } from "../shared/jurisdictionType.js";
+import { hubKindOf } from "../shared/hubKind.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { createProcess, getProcess, saveProcessState } from "./processService.js";
 import { getSettingSync, getSupportThreshold } from "./hubSettings.js";
@@ -108,7 +110,8 @@ async function seedInScope(opts: { dryRun?: boolean; now?: Date }): Promise<Samp
   const hubId = currentHubId();
   const run = new SeedRun(hubId, sampleNames(), opts.now ?? new Date());
   const typeRaw = getSettingSync(KEYS.IDENTITY_JURISDICTION_TYPE);
-  const fitting = templatesFor(isJurisdictionType(typeRaw) ? typeRaw : null);
+  const kind = hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND));
+  const fitting = templatesFor(isJurisdictionType(typeRaw) ? typeRaw : null, kind);
   const report: SampleSeedReport = {
     hub: hubId,
     dry_run: !!opts.dryRun,

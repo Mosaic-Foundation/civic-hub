@@ -3,6 +3,7 @@ import { api, type AuditEntry, type HubAdminAuditEntry, type HubDetail, type Hub
 import { JURISDICTION_TYPES, hubTypeFor } from "../../../src/shared/jurisdictionType";
 import { jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
 import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
+import { HUB_KINDS } from "../../../src/shared/hubKind";
 import { href } from "./route";
 import { useStepUp } from "./StepUp";
 import { ModeBadge, StatusBadge } from "./ui";
@@ -163,6 +164,7 @@ function useSave(onSaved: () => void) {
 function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onSaved: () => void; withStepUp: WithStepUp }) {
   const c = detail.config;
   const saved = {
+    hub_kind: c.hub_kind as string,
     name: c.name,
     hostname: c.hostname,
     jurisdiction_name: c.jurisdiction_name ?? "",
@@ -175,7 +177,14 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
     mode: c.mode ?? "",
   };
   const [form, setForm] = useState(saved);
-  const [choice, setChoice] = useState<JurisdictionChoice>(c.jurisdiction_custom ? { kind: "custom" } : { kind: "unlinked" });
+  const [choice, setChoice] = useState<JurisdictionChoice>(
+    c.jurisdiction_custom
+      ? { kind: "custom" }
+      : c.hub_kind !== "place" && !c.jurisdiction_ocd_id && !c.jurisdiction_name
+        ? { kind: "none" }
+        : { kind: "unlinked" },
+  );
+  const isPlace = form.hub_kind === "place";
 
   // Choosing from the list fills the name, the code and the type; the
   // governing body is left as it is (it is this hub's copy).
@@ -183,14 +192,18 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
     setChoice(next);
     if (next.kind === "custom") {
       setForm((f) => ({ ...f, jurisdiction_custom: true, jurisdiction_ocd_id: "" }));
+    } else if (next.kind === "none") {
+      setForm((f) => ({ ...f, jurisdiction_custom: false, jurisdiction_ocd_id: "", jurisdiction_name: "" }));
     } else if (next.kind === "listed") {
       setForm((f) => ({
         ...f,
         jurisdiction_custom: false,
         jurisdiction_ocd_id: next.row.ocd_id,
         jurisdiction_name: next.row.display_name,
-        jurisdiction_code: jurisdictionCodeFor(next.row),
-        jurisdiction_type: hubTypeFor(next.row.type),
+        // Shown only: the server sets the code the first time a hub without
+        // one is linked, and never changes an existing one.
+        jurisdiction_code: saved.jurisdiction_code || (jurisdictionCodeFor(next.row) ?? ""),
+        jurisdiction_type: f.hub_kind === "place" ? hubTypeFor(next.row.type) : f.jurisdiction_type,
       }));
     } else {
       setForm((f) => ({ ...f, jurisdiction_custom: false, jurisdiction_ocd_id: saved.jurisdiction_ocd_id }));
@@ -209,6 +222,7 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
       onSubmit={(e) => {
         e.preventDefault();
         const patch: Record<string, unknown> = { ...form, jurisdiction_ocd_id: form.jurisdiction_ocd_id || null };
+        delete patch.jurisdiction_code; // derived by the server, never sent
         if (patch.mode === "") delete patch.mode;
         save(() => withStepUp("This change", (extra) => api.updateHub(detail.hub.id, { ...patch, ...extra })));
       }}
@@ -224,22 +238,48 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
         <input className="cx-mono" value={form.hostname} onChange={(e) => setForm({ ...form, hostname: e.target.value.toLowerCase().trim() })} />
         <small className="cx-muted">Changing it breaks old links; the old hostname stays taken. Its DID does not change.</small>
       </label>
+      <label className="cx-field">
+        <span>Kind of hub</span>
+        <select
+          value={form.hub_kind}
+          onChange={(e) => {
+            const k = e.target.value;
+            setForm({ ...form, hub_kind: k });
+            if (k === "place" && choice.kind === "none") setChoice({ kind: "unlinked" });
+          }}
+        >
+          {HUB_KINDS.map((k) => (
+            <option key={k.id} value={k.id}>
+              {k.label}
+            </option>
+          ))}
+        </select>
+        <small className="cx-muted">A place hub needs a jurisdiction; any other kind may have a related place, or none.</small>
+      </label>
       <JurisdictionPicker
+        optional={!isPlace}
         value={choice}
         onChange={pick}
         currentOcdId={c.jurisdiction_ocd_id}
         currentName={c.jurisdiction_name}
         hubId={detail.hub.id}
       />
-      <label className="cx-field">
-        <span>{form.jurisdiction_custom ? "Name of the jurisdiction" : "Display name"}</span>
-        <input value={form.jurisdiction_name} onChange={(e) => setForm({ ...form, jurisdiction_name: e.target.value })} />
-        <small className="cx-muted">Changes to the jurisdiction are recorded in the audit trail.</small>
-      </label>
-      <label className="cx-field">
+      {choice.kind !== "none" && (
+        <label className="cx-field">
+          <span>{form.jurisdiction_custom ? "Name of the jurisdiction" : "Display name"}</span>
+          <input value={form.jurisdiction_name} onChange={(e) => setForm({ ...form, jurisdiction_name: e.target.value })} />
+          <small className="cx-muted">Changes to the jurisdiction are recorded in the audit trail.</small>
+        </label>
+      )}
+      <div className="cx-field">
         <span>Jurisdiction code</span>
-        <input className="cx-mono" value={form.jurisdiction_code} onChange={(e) => setForm({ ...form, jurisdiction_code: e.target.value.toLowerCase() })} />
-      </label>
+        <span className="cx-mono">{form.jurisdiction_code || "—"}</span>
+        <small className="cx-muted">
+          Derived from the OCD id when the hub is created (or first linked) and never changed: it is on everything the hub
+          has published.
+        </small>
+      </div>
+      {isPlace && (<>
       <label className="cx-field">
         <span>Jurisdiction type</span>
         <select value={form.jurisdiction_type} onChange={(e) => setForm({ ...form, jurisdiction_type: e.target.value })}>
@@ -255,6 +295,7 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
         <span>Governing body</span>
         <input value={form.governing_body} onChange={(e) => setForm({ ...form, governing_body: e.target.value })} />
       </label>
+      </>)}
       <div className="cx-two">
         <label className="cx-field">
           <span>Status</span>

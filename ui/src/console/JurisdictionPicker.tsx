@@ -14,6 +14,8 @@ import { REFERENCE_JURISDICTION_TYPES, stateOfOcdId } from "../../../src/shared/
 export type JurisdictionChoice =
   | { kind: "listed"; row: JurisdictionMatch }
   | { kind: "custom" }
+  /** No place at all: allowed for a hub that is not a place (optional mode). */
+  | { kind: "none" }
   /** A hub made before the list existed, not linked yet. Only the hub page shows it. */
   | { kind: "unlinked" };
 
@@ -23,6 +25,7 @@ export function JurisdictionPicker({
   currentOcdId,
   currentName,
   hubId,
+  optional = false,
 }: {
   value: JurisdictionChoice;
   onChange: (choice: JurisdictionChoice) => void;
@@ -31,6 +34,8 @@ export function JurisdictionPicker({
   currentName?: string | null;
   /** The hub being edited, left out of "already served by". */
   hubId?: string;
+  /** A hub that is not a place: "Related place (optional)", with a None choice. */
+  optional?: boolean;
 }) {
   const [states, setStates] = useState<Jurisdiction[] | null>(null);
   const [state, setState] = useState(value.kind === "listed" ? value.row.state : (stateOfOcdId(currentOcdId) ?? ""));
@@ -54,7 +59,7 @@ export function JurisdictionPicker({
   }, []);
 
   // The type-ahead, debounced; answers that arrive out of order are dropped.
-  const searching = Boolean(state && type) && value.kind !== "custom";
+  const searching = Boolean(state && type) && value.kind !== "custom" && value.kind !== "none";
   useEffect(() => {
     if (!searching) return;
     const n = ++seq.current;
@@ -75,6 +80,7 @@ export function JurisdictionPicker({
   const listLoaded = states !== null && states.length > 0;
   const shown = searching ? matches : [];
   const custom = value.kind === "custom";
+  const none = value.kind === "none";
 
   function choose(row: JurisdictionMatch) {
     onChange({ kind: "listed", row });
@@ -87,14 +93,23 @@ export function JurisdictionPicker({
   return (
     <div className="cx-jpick">
       <div className="cx-field" role="radiogroup" aria-label="Where the jurisdiction comes from">
-        <span>Jurisdiction</span>
+        <span>{optional ? "Related place (optional)" : "Jurisdiction"}</span>
+        {optional && (
+          <label className="cx-radio">
+            <input type="radio" name={`${listId}-source`} checked={none} onChange={() => onChange({ kind: "none" })} />
+            <span>
+              None
+              <small className="cx-muted">No place: no jurisdiction, code or governing body.</small>
+            </span>
+          </label>
+        )}
         <label className="cx-radio">
           <input
             type="radio"
             name={`${listId}-source`}
-            checked={!custom}
+            checked={!custom && !none}
             disabled={!listLoaded}
-            onChange={() => onChange(value.kind === "custom" ? { kind: "unlinked" } : value)}
+            onChange={() => onChange(value.kind === "custom" || value.kind === "none" ? { kind: "unlinked" } : value)}
           />
           <span>From the list</span>
         </label>
@@ -107,7 +122,7 @@ export function JurisdictionPicker({
         </label>
       </div>
 
-      {states !== null && !listLoaded && (
+      {states !== null && !listLoaded && !none && (
         <p className="cx-alert cx-alert-warn">
           {loadError
             ? `The jurisdiction list could not be read: ${loadError}`
@@ -116,7 +131,7 @@ export function JurisdictionPicker({
         </p>
       )}
 
-      {!custom && listLoaded && (
+      {!custom && !none && listLoaded && (
         <>
           <div className="cx-two">
             <label className="cx-field">

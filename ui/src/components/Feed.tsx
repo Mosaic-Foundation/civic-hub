@@ -1,3 +1,4 @@
+import { participantNoun } from "../../../src/shared/hubKind";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import hub from "../config/hub";
@@ -462,7 +463,7 @@ function buildEngagement(
     case "vote-open": {
       const n = meta.totalVotes ?? 0;
       if (n === 0) return "Open for input — be the first to vote";
-      const noun = n === 1 ? "resident has" : "residents have";
+      const noun = `${participantNoun(hub.kind, n)} ${n === 1 ? "has" : "have"}`;
       return `${formatCount(n)} ${noun} voted so far`;
     }
     case "vote-results": {
@@ -471,8 +472,7 @@ function buildEngagement(
       if (n === 0 && m === 0) return null;
       const parts: string[] = [];
       if (n > 0) {
-        const noun = n === 1 ? "resident" : "residents";
-        parts.push(`${formatCount(n)} ${noun} voted`);
+        parts.push(`${formatCount(n)} ${participantNoun(hub.kind, n)} voted`);
       }
       if (m > 0) {
         const noun = m === 1 ? "comment" : "comments";

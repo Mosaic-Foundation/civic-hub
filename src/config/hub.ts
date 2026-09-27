@@ -13,10 +13,11 @@
 //                        hub's own `protocol_hub_id` — see protocolHubId().
 //                        Neither is hubs.id, and neither is derived from it
 //                        (BUILD-PLAN contract 1).
-//   DEFAULT_JURISDICTION the event `jurisdiction` field. It becomes per-hub
-//                        in Phase 2, together with the rest of event
-//                        emission; converting it here alone would leave
-//                        events half hub-scoped.
+//   DEFAULT_JURISDICTION the env value only, for code with no hub in scope.
+//                        Inside a hub, new processes and events take the
+//                        hub's own code through defaultJurisdiction()
+//                        (2026-09-27): before that they took this env value,
+//                        so every hub stamped the deployment's one code.
 //
 // Original note follows.
 //
@@ -74,6 +75,17 @@ export function civicPlaceCode(): string | null {
   const hub = currentHub();
   if (hub) return normalizePlaceCode(hub.jurisdiction_code);
   return normalizePlaceCode(process.env.CIVIC_JURISDICTION ?? DEFAULT_JURISDICTION);
+}
+
+/**
+ * The `jurisdiction` a new process or event is stamped with when its caller
+ * gives none: the hub's own code, or "local" (no place, so no `location` on
+ * the wire) for a hub without one. Never the deployment's CIVIC_JURISDICTION
+ * inside a hub: that stamped one hub's place on every hub (fixed 2026-09-27).
+ * Outside a hub (a script, a test with no hub) the env value, as before.
+ */
+export function defaultJurisdiction(): string {
+  return civicPlaceCode() ?? "local";
 }
 
 /**

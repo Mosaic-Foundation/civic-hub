@@ -9,6 +9,8 @@
  * The place: --ocd-id <id> links a row of the jurisdiction list (the name
  * comes from the list unless --jurisdiction gives one); --jurisdiction alone
  * is a custom jurisdiction ("Other / not listed"), as on the console.
+ * --kind place|issue|organization|other (default place): a place hub needs
+ * one of the two; any other kind may have neither.
  *
  * WHAT THIS IS. The command-line twin of the super admin's Create hub screen
  * (Phase 5 part one, 2026-09-26). Both call createHub() in
@@ -53,6 +55,7 @@ const hostname = flag("hostname")?.toLowerCase();
 const name = flag("name");
 const jurisdiction = flag("jurisdiction") ?? null;
 const ocdId = flag("ocd-id") ?? null;
+const kind = flag("kind") ?? "place";
 const mode = flag("mode") ?? "beta";
 
 /** `you@example.com` -> `you+<slug>@example.com`, so the code still reaches you. */
@@ -106,7 +109,7 @@ async function main(): Promise<void> {
     jurisdictionName,
     jurisdictionOcdId: ocdId,
     jurisdictionCustom: !ocdId && !!jurisdiction,
-    jurisdictionCode: null,
+    hubKind: kind as "place" | "issue" | "organization" | "other",
     governingBody: null,
     admins,
     mode,

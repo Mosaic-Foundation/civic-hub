@@ -352,6 +352,34 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   run 2026-09-27: API 31 files, 309 passed, 7 skipped, in both modes; unit 99
   files, 1143; Playwright 25/25.
 
+- **Jurisdiction codes and hub kinds (2026-09-27, second part):**
+  `hubKinds.test.ts` — a place hub still needs a jurisdiction (kind omitted
+  or `place`); an `organization` hub with none works end to end (no OCD id,
+  name, code, type or governing body; no sample template fits it; a
+  jurisdiction type or governing body refused; `/hub-config` says
+  `organization`; its documents name no place, state or government; a vote it
+  creates is stamped `local`, its activities carry no `location`, its manifest
+  no `jurisdictions`); an `issue` hub linked to Virginia gets `us-va`, reads as
+  a campaign, may drop the place, may not become `place` without one; a second
+  hub's (Athens's) new vote and its events carry Athens's own code, not the
+  server's `CIVIC_JURISDICTION=us-va-floyd`. **Needs the jurisdiction list
+  loaded** (CI's "Load the jurisdiction list" step; locally
+  `node --env-file=<env with CIVIC_TARGET_DATABASE_URL> --import tsx
+  scripts/load-jurisdictions.ts`) and the servers started with
+  `CIVIC_JURISDICTION=us-va-floyd` (CI; `hub-local-3200/3201` in
+  `.claude/launch.json`). `jurisdictions.test.ts` now also checks the derived
+  code (`us-zz-<name>-town` at creation, unchanged on relink, a sent code
+  refused, none for custom). Tests that create hubs with no place pass
+  `hub_kind: "other"`; `sampleSeed.test.ts`'s county uses Floyd County's real
+  OCD id under a test name. Unit `jurisdictions.test.ts`: the code rule
+  (Floyd County `us-va-floyd`, the town `us-va-floyd-town`, a school district
+  under its county, DC), hub kinds, the participant noun, templates by kind,
+  and every shared document rendered for a non-place hub (no place
+  placeholder, no "resident of", no "local government") and for a place hub
+  (identical to the text before the sections). Local run 2026-09-27, on a
+  stack migrated from production's history: API 32 files, 317 passed, 7
+  skipped, both modes; unit 99 / 1149; Playwright 25/25.
+
 > **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
 > `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs
 > and runs `tests/api` against a server. The note below is the history.

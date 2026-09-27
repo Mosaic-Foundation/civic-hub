@@ -10,9 +10,9 @@
 
 Strong titles are specific enough that a reader scrolling the proposals page can understand the subject without opening the proposal. Weak titles are vague or generic — they ask the community to consider something without revealing what.
 
-Examples of weak titles: *"We need change"*, *"{PLACE} should do better"*, *"An important issue."*
+Examples of weak titles: *"We need change"*, {{#place}}*"{PLACE} should do better"*{{/place}}{{^place}}*"Things should be better"*{{/place}}, *"An important issue."*
 
-Examples of strong titles: *"Should {PLACE} add sidewalks on Main Street between First and Third?"*, *"Create a community composting program at the farmers market"*, *"Concerns about Flock camera data collection at the Highway 8 intersection."*
+Examples of strong titles: {{#place}}*"Should {PLACE} add sidewalks on Main Street between First and Third?"*{{/place}}{{^place}}*"Should we publish a yearly report of what we spent and why?"*{{/place}}, *"Create a community composting program at the farmers market"*, *"Concerns about Flock camera data collection at the Highway 8 intersection."*
 
 Flag titles when they fail to identify the subject. Do not flag titles for length alone — a longer title that earns the space is preferable to a short title that obscures the subject.
 
@@ -55,7 +55,7 @@ When the user can't source a specific claim, suggest rephrasing to acknowledge u
 
 ## Balance and framing on contested topics
 
-For proposals touching contested topics — where reasonable people in {PLACE} are likely to disagree — credibility comes from acknowledging the disagreement rather than pretending it isn't there.
+For proposals touching contested topics — {{#place}}where reasonable people in {PLACE} are likely to disagree{{/place}}{{^place}}where reasonable people are likely to disagree{{/place}} — credibility comes from acknowledging the disagreement rather than pretending it isn't there.
 
 This does not mean writing a both-sides essay. It means naming the strongest argument a reasonable opponent would make and responding to it briefly, or marking where the author and a reasonable opponent would diverge.
 

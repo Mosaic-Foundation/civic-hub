@@ -50,7 +50,7 @@ Issues are presented with an effort toward neutral framing, including:
 To maintain basic integrity while keeping participation accessible:
 
 - Voting is limited to one vote per verified account
-- Participants must confirm whether they are residents of {PLACE} before participating
+{{#place}}- Participants must confirm whether they are residents of {PLACE} before participating{{/place}}{{^place}}- Participants must agree to the Terms, the Privacy Policy and the Code of Conduct before participating{{/place}}
 - Individual votes are not publicly associated with identities. Only aggregated results are displayed.
 
 ## What comes next

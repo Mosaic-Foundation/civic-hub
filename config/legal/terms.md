@@ -3,7 +3,7 @@
 *Last updated: 2026-08-10*
 *Version: 1.2*
 
-> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer familiar with {STATE} and US consumer law before the {HUB_NAME} accepts its first resident sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.
+> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US consumer law{{/place}}{{^place}}familiar with US consumer law and the law of the state where the Hub's operator is based{{/place}} before the {HUB_NAME} accepts its first resident sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.
 
 ## Agreement
 
@@ -15,7 +15,7 @@ By using the {HUB_NAME} ("the Hub") at {HOSTNAME}, you agree to these Terms of S
 
 - You must be at least 13 years old.
 - Some civic activities on the Hub — notably advisory votes — may be further restricted by the process itself. Each activity will state its eligibility rules clearly.
-- You may create an account if you affirm, honestly, that you are a resident of {PLACE}. We do not verify this claim against external records; we rely on your honesty. Misrepresenting residency to participate in civic processes is a violation of these Terms.
+{{#place}}- You may create an account if you affirm, honestly, that you are a resident of {PLACE}. We do not verify this claim against external records; we rely on your honesty. Misrepresenting residency to participate in civic processes is a violation of these Terms.{{/place}}{{^place}}- You may create an account if you agree to these Terms, the Privacy Policy and the Code of Conduct.{{/place}}
 - One account per person. If you lose access to your account, contact us.
 
 ## What you can expect from us
@@ -32,8 +32,8 @@ We'll:
 You agree to:
 - Follow our [Code of Conduct](/code-of-conduct) when posting, commenting, or otherwise interacting on the Hub.
 - Only create an account for yourself, not on behalf of someone else.
-- Only affirm {PLACE} residency if you honestly live in {JURISDICTION}.
-- Not attempt to sign up more than once or vote more than once per issue. One resident, one voice.
+{{#place}}- Only affirm {PLACE} residency if you honestly live in {JURISDICTION}.
+{{/place}}{{^place}}{{/place}}- Not attempt to sign up more than once or vote more than once per issue. One resident, one voice.
 - Not use the Hub to break the law, harass others, or disrupt the service.
 - Keep discussion self-contained: do not import or repost private content about specific people from other platforms (for example, screenshots or copied social-media posts). Linking to authoritative or official sources as references is permitted.
 - Not scrape, crawl, or programmatically access the Hub except through our public APIs (once we publish them).
@@ -51,9 +51,9 @@ You represent that content you submit is yours to submit — that you wrote it, 
 
 The Hub generates some content automatically, notably:
 - **Vote results** summarizing vote participation, comments, and admin context.
-- **Meeting summaries** of public {GOVERNING_BODY} meetings, produced by AI from public minutes and video recordings and reviewed by an admin before publication.
+- **Meeting summaries** {{#place}}of public {GOVERNING_BODY} meetings,{{/place}}{{^place}}of public meetings,{{/place}} produced by AI from public minutes and video recordings and reviewed by an admin before publication.
 
-These are clearly labeled as AI-assisted and admin-reviewed. They are our best effort at accuracy but are **not authoritative transcripts** and should not be relied on for legal or official purposes. For authoritative records, consult the {PLACE} government directly.
+These are clearly labeled as AI-assisted and admin-reviewed. They are our best effort at accuracy but are **not authoritative transcripts** and should not be relied on for legal or official purposes. For authoritative records, {{#place}}consult the {PLACE} government directly.{{/place}}{{^place}}consult the body that held the meeting directly.{{/place}}
 
 ## Moderation
 
@@ -63,7 +63,7 @@ If your content is removed, we'll tell you why when we can identify how to reach
 
 ## Disclaimers
 
-**The Hub is not an official government channel.** The {GOVERNING_BODY} is not obligated to consider, respond to, or act on any civic process conducted on the Hub. Votes here are *advisory*. We provide the {GOVERNING_BODY} with vote results when votes close, but they make their own decisions through their own processes.
+{{#place}}**The Hub is not an official government channel.** The {GOVERNING_BODY} is not obligated to consider, respond to, or act on any civic process conducted on the Hub. Votes here are *advisory*. We provide the {GOVERNING_BODY} with vote results when votes close, but they make their own decisions through their own processes.{{/place}}{{^place}}**The Hub is not an official channel of any government.** Votes here are *advisory*: they record what participants think, and they bind no one.{{/place}}
 
 **AI-generated content is summarization, not verbatim record.** Meeting summaries and related content are produced by an AI system and reviewed by an admin. They may contain errors, omissions, or misinterpretations. Always check the underlying minutes PDF or YouTube video for authoritative detail.
 
@@ -92,7 +92,7 @@ We may update these Terms as the Hub evolves. Material changes will be announced
 
 ## Governing law
 
-These Terms are governed by the laws of {STATE}, without regard to conflict-of-laws principles. Any legal action arising from these Terms or your use of the Hub must be brought in the state or federal courts serving {JURISDICTION}.
+{{#place}}These Terms are governed by the laws of {STATE}, without regard to conflict-of-laws principles. Any legal action arising from these Terms or your use of the Hub must be brought in the state or federal courts serving {JURISDICTION}.{{/place}}{{^place}}These Terms are governed by the laws of the state where the Hub's operator is based, without regard to conflict-of-laws principles. Any legal action arising from these Terms or your use of the Hub must be brought in the state or federal courts serving that place.{{/place}}
 
 ## Contact
 
@@ -103,4 +103,4 @@ For questions about these Terms or to report a concern:
 
 ---
 
-*These Terms apply to the {HUB_NAME} at {HOSTNAME}. They do not apply to the {PLACE} government website or any other site we link to.*
+*These Terms apply to the {HUB_NAME} at {HOSTNAME}. {{#place}}They do not apply to the {PLACE} government website or any other site we link to.{{/place}}{{^place}}They do not apply to any other site we link to.{{/place}}*

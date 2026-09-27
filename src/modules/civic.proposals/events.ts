@@ -6,6 +6,7 @@
 //
 // GUARDRAIL: This module MUST NOT import from civic.vote.
 
+import { defaultJurisdiction } from "../../config/hub.js";
 import type { CreateEventInput } from "../../models/event.js";
 
 export type EmitEventFn = (input: CreateEventInput) => Promise<unknown>;
@@ -26,7 +27,7 @@ export async function emitProposalSubmitted(
     event_type: "civic.proposal.submitted",
     actor,
     process_id: ctx.proposal_id,
-    jurisdiction: ctx.jurisdiction ?? "local",
+    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
     processType: "civic.proposal",
     data: { proposal: data },
   });
@@ -41,7 +42,7 @@ export async function emitProposalSupported(
     event_type: "civic.proposal.supported",
     actor,
     process_id: ctx.proposal_id,
-    jurisdiction: ctx.jurisdiction ?? "local",
+    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
     processType: "civic.proposal",
     data: { proposal: data },
   });
@@ -56,7 +57,7 @@ export async function emitProposalSupportWithdrawn(
     event_type: "civic.proposal.support_withdrawn",
     actor,
     process_id: ctx.proposal_id,
-    jurisdiction: ctx.jurisdiction ?? "local",
+    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
     processType: "civic.proposal",
     data: { proposal: data },
   });
@@ -71,7 +72,7 @@ export async function emitProposalClosed(
     event_type: "civic.proposal.closed",
     actor,
     process_id: ctx.proposal_id,
-    jurisdiction: ctx.jurisdiction ?? "local",
+    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
     processType: "civic.proposal",
     data: { proposal: data },
   });
@@ -86,7 +87,7 @@ export async function emitProposalEndorsed(
     event_type: "civic.proposal.endorsed",
     actor,
     process_id: ctx.proposal_id,
-    jurisdiction: ctx.jurisdiction ?? "local",
+    jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
     processType: "civic.proposal",
     data: { proposal: data },
   });
