@@ -7,8 +7,48 @@ Updated after every Claude Code session. Records what was built, what's incomple
 ## Phase 7 part one: sample content for new hubs — 2026-09-26
 
 **Branch:** `multi-tenant`, local commits (not pushed). **Dev:** migration
-`20260926040000` and a redeploy pending (Adam, commands in chat); the dev
-walk (step 7) follows. Production untouched.
+`20260926040000` applied (dry run listed exactly it), redeployed at
+`39ab672` (`/health`: hub_token, schema ok, 32 checked), walked (below).
+Production untouched: `floyd.civic.social/api/health` still `0b23e9a`.
+
+### Dev walk (2026-09-26)
+- Console → Create hub `sample-walk` (`sample-walk-civic-hub-dev.vercel.app`,
+  aliased by Adam), "Example County, Virginia", `us-va-example`, County:
+  governing body pre-filled **Board of Supervisors**; demo; sample content
+  on → `hub.create` + `hub.sample_seed` (all nine, none skipped).
+- Signed out: demo bar; every feed card badged Sample; "Example County" and
+  "Board of Supervisors" filled, no placeholder; `/api/events?page=true`
+  empty; Votes page (30 votes, closes Oct 4); vote page single-choice,
+  author "Resident 1"; conversation's Opinion Groups from the mock (21
+  participants, 90% / 81% broad agreement), no Polis. Terms page carries
+  `{GOVERNING_BODY}` too.
+- As admin: the bar's "Remove sample content"; names shown (Jordan P.,
+  Casey's corrected comment); Settings → Sample content warned "9 sample
+  processes … the hub will have no processes"; removed with a fresh code.
+  Afterwards feed, process list and `/events` all 0, Votes 200, the feed's
+  empty state; one `sample_content.remove` row in `hub_admin_audit_log`
+  (read through the console) listing what went: 9 processes, 40 events, 80
+  ballots, 7 inputs, 3 supports, 2 sentiments, 1 proposal, 1 project, 5
+  sample users.
+- `sample-walk` stays on dev, empty, demo. Its alias points at deployment
+  `civic-hub-cpweppbm3…`; re-alias after a redeploy if it is used again.
+
+### Found on the way
+- **`.vercel/repo.json` linked `civic-hub/` to PRODUCTION** (`civic-hub`)
+  while `project.json` named dev; CLI 59 reads repo.json first, so the
+  script printed dev and the CLI aimed at production ("Not authorized";
+  nothing deployed). Moved to `.vercel/repo.json.production-link`;
+  `vercel-deploy.sh` now refuses while repo.json names production (`39ab672`).
+- **One address cannot sign in to two hubs yet.** `adam@civic.social` has an
+  account on another dev hub, so signing in to `sample-walk` was refused
+  ("This address can't be used to sign in to this hub yet") by the
+  still-global `users_email_key` (post-cutover cleanup list). Walked with
+  `adam+samplewalk@civic.social`, added from the console. On production this
+  means Floyd's admins cannot also admin a second hub under the same address
+  until that cleanup migration runs.
+- The demo bar's "Remove sample content" link stays after the samples are
+  gone (it leads to "This hub has no sample content"). Harmless; could be
+  shown only while samples exist.
 
 The design is the build prompt plus Adam's answers, recorded as **Phase 7**
 in `BUILD-PLAN-multi-tenant.md` (not Phase 6, which is the cutover).
@@ -92,9 +132,8 @@ on a full rerun). Lint, `tsc`, UI build, place-name check clean.
 (backend on hosted dev), and Playwright reuses whatever is on those ports.
 
 ### Open
-- Dev: apply `20260926040000` (`./scripts/db-push.sh --dry-run` should list
-  exactly it), redeploy, then the walk (create a hub on the console with
-  sample content, signed out and as admin, remove, check empty).
+- Push `multi-tenant` (Adam) and watch CI: the new API suites run in both
+  passes.
 - Production sitting: `20260926040000` after `20260926030000`.
 - Playwright on a free :3000/:5173.
 - A sample conversation that reaches its deadline (32 days) closes through
