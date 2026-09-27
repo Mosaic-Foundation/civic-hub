@@ -255,10 +255,10 @@ async function findOrCreateUserByEmail(email: string): Promise<string> {
         .eq("email", normalized)
         .maybeSingle();
       if (refetch) return refetch.id;
-      // Not on this hub, so the violation was the GLOBAL users_email_key:
-      // the address has an account on another hub. One email is one hub
-      // until the cleanup migration drops that constraint. The admin is
-      // not told which hub, only that it cannot be designated yet.
+      // Not on this hub, so the violation was a GLOBAL users_email_key,
+      // which only a database without the post-cutover cleanup
+      // (20260926005000) has. Kept as a guard. The admin is not told which
+      // hub, only that it cannot be designated yet.
       console.error(`[officials] ${normalized} is in use on another hub (global unique email)`);
       throw new Error(
         `${normalized} cannot be designated on this hub yet: the address is in use elsewhere on this platform.`,

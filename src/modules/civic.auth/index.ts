@@ -14,10 +14,11 @@
 // resolved only on the hub the request is for, so a session minted on one hub
 // is not a session on another, and neither is its user.
 //
-// Until the cleanup migration drops the global `users_email_key` and
-// `pending_verifications_pkey (email)`, one address can hold an account (or a
-// pending code) on one hub only; a collision with another hub is refused
-// with a message that does not say which hub.
+// Since the post-cutover cleanup (20260926005000) the keys are per hub, so one
+// address can hold an account and a pending code on each hub. Before it, the
+// global `users_email_key` and `pending_verifications_pkey (email)` refused a
+// second hub's copy; the 23505 branches below that answered for them stay as
+// guards for a database that has not had the cleanup, and do not name the hub.
 //
 // GUARDRAIL: This module MUST NOT import from civic.vote or civic.proposals.
 
@@ -58,8 +59,8 @@ function db(): HubDb {
 }
 
 /**
- * Shown when an address collides with the still-global unique email on
- * another hub. Deliberately does not name the hub, or say that there is one.
+ * Shown when an address collides with a global unique email on another hub
+ * (only on a database without the post-cutover cleanup). Deliberately does not name the hub, or say that there is one.
  */
 const ADDRESS_IN_USE_ELSEWHERE =
   "This address can't be used to sign in to this hub yet. Please use a different address.";
@@ -220,8 +221,8 @@ export async function requestVerification(
     );
   } catch (err) {
     // 23505 on (hub_id, email) cannot happen — that is the conflict target —
-    // so it is the global primary key: this address has a pending code on
-    // another hub.
+    // so it is a global primary key (email), which only a database without
+    // the post-cutover cleanup has: a pending code on another hub.
     if (err instanceof HubDbError && err.code === "23505") {
       console.warn(`[auth] ${normalizedEmail} has a pending code on another hub (global key)`);
       throw new Error(ADDRESS_IN_USE_ELSEWHERE);
@@ -464,8 +465,9 @@ export async function verifyCode(
         .eq("email", normalizedEmail)
         .maybeSingle();
       if (!refetch) {
-        // Not on this hub: the violation was the global users_email_key,
-        // so the address has an account on another hub.
+        // Not on this hub: the violation was a global users_email_key (only
+        // on a database without the post-cutover cleanup), so the address
+        // has an account on another hub.
         console.warn(`[auth] ${normalizedEmail} has an account on another hub (global key)`);
         throw new Error(ADDRESS_IN_USE_ELSEWHERE);
       }

@@ -156,25 +156,48 @@ describe("forHub against the database — another hub's rows", () => {
     ).toThrow(/onConflict/);
   });
 
-  it("until cleanup, the old global unique still refuses a second hub's copy — it never overwrites", async () => {
-    // Floyd writes a code for EMAIL; Athens tries the same email on its own
-    // hub-leading target. The global primary key (email) still stands, so the
-    // database refuses — and Floyd's row is left exactly as it was.
+  it("each hub keeps its own copy of the same address — neither overwrites the other", async () => {
+    // Since the post-cutover cleanup (20260926005000) the key is (hub_id,
+    // email). Before it, the global primary key (email) refused Athens's
+    // copy; now both hubs hold one, and each upsert touches only its own.
     const expires = new Date(Date.now() + 600_000).toISOString();
     await floyd
       .from("pending_verifications")
       .upsert({ email: EMAIL, code: "111111", expires_at: expires }, { onConflict: "hub_id,email" });
-    const refused = await athens
+    await athens
       .from("pending_verifications")
-      .upsert({ email: EMAIL, code: "222222", expires_at: expires }, { onConflict: "hub_id,email" })
-      .then(
-        () => null,
-        (e: unknown) => e,
-      );
-    expect(refused).toBeInstanceOf(HubDbError);
-    expect((refused as HubDbError).code).toBe("23505");
-    const row = await raw.from("pending_verifications").select("hub_id, code").eq("email", EMAIL).single();
-    expect(row.data).toEqual({ hub_id: "floyd", code: "111111" });
+      .upsert({ email: EMAIL, code: "222222", expires_at: expires }, { onConflict: "hub_id,email" });
+    await athens
+      .from("pending_verifications")
+      .upsert({ email: EMAIL, code: "333333", expires_at: expires }, { onConflict: "hub_id,email" });
+    const rows = await raw.from("pending_verifications").select("hub_id, code").eq("email", EMAIL).order("hub_id");
+    expect(rows.data).toEqual([
+      { hub_id: "athens", code: "333333" },
+      { hub_id: "floyd", code: "111111" },
+    ]);
+  });
+
+  it("one address can hold an account on two hubs", async () => {
+    const both = `two-hubs-${run}@example.test`;
+    await floyd.from("users").insert({ id: `user_twofloyd_${run}`, email: both });
+    await athens.from("users").insert({ id: `user_twoathens_${run}`, email: both });
+    const rows = await raw.from("users").select("hub_id").eq("email", both).order("hub_id");
+    expect(rows.data).toEqual([{ hub_id: "athens" }, { hub_id: "floyd" }]);
+    // Still one account per address on each hub.
+    const again = await floyd
+      .from("users")
+      .insert({ id: `user_twofloyd2_${run}`, email: both })
+      .then(() => null, (e: unknown) => e);
+    expect((again as HubDbError).code).toBe("23505");
+  });
+
+  it("a write that names no hub fails instead of landing in Floyd", async () => {
+    // The DEFAULT 'floyd' on every hub_id was a migration device; the
+    // cleanup dropped it. Only the raw client can omit hub_id.
+    const res = await raw
+      .from("waitlist")
+      .insert({ email: `nohub-${run}@example.test` });
+    expect(res.error?.code).toBe("23502");
   });
 });
 
@@ -211,12 +234,11 @@ describe("search is scoped to the hub (search_processes with p_hub_id)", () => {
     expect(Number(a)).toBe(1);
   });
 
-  it("the deprecated unscoped signature answers for the migration-default hub only", async () => {
+  it("there is no unscoped signature any more", async () => {
+    // The deprecated wrappers without p_hub_id (they answered for Floyd)
+    // went with the post-cutover cleanup. PostgREST finds no function.
     const old = await raw.rpc("search_processes", { p_q: WORD });
-    expect(old.error).toBeNull();
-    expect((old.data as Array<{ id: string }>).map((r) => r.id)).toEqual([ids.floyd]);
-    const oldCount = await raw.rpc("search_processes_count", { p_q: WORD });
-    expect(Number(oldCount.data)).toBe(1);
+    expect(old.error?.code).toBe("PGRST202");
   });
 });
 

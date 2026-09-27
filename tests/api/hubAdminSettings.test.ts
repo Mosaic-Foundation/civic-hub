@@ -141,11 +141,11 @@ describe("one hub's admin cannot reach another hub's settings", () => {
   });
 
   it("the Athens admin's account cannot be carried onto a Floyd session", async () => {
-    // Accounts belong to a hub since Phase 2a, and until the cleanup migration
-    // one email is one account on one hub, so the Athens admin cannot also
-    // hold a Floyd account. The nearest case, a Floyd session row pointing at
-    // the Athens admin's own account, is refused by the database since 2b's
-    // composite foreign keys, so Floyd's settings cannot be reached with it.
+    // Accounts belong to a hub since Phase 2a. A Floyd session row pointing
+    // at the Athens admin's own account is refused by the database since
+    // 2b's composite foreign keys, so Floyd's settings cannot be reached
+    // with it. (Since the post-cutover cleanup the same address may hold a
+    // separate Floyd account; that account is not an admin there.)
     const [athensUser] = (await localRest(
       `users?select=id&hub_id=eq.athens&email=eq.${encodeURIComponent(ATHENS_ADMIN)}`,
     )) as Array<{ id: string }>;

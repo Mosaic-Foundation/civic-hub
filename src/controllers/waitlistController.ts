@@ -61,10 +61,10 @@ export async function handleJoinWaitlist(
         { onConflict: "hub_id,email" },
       );
   } catch (err) {
-    // 23505 here is the still-global waitlist primary key (email): the
-    // address is waiting for another hub on this deployment. Until the
-    // cleanup migration makes (hub_id, email) the key, one address can wait
-    // for one hub. Say so without naming the other hub.
+    // 23505 here is a global waitlist primary key (email), which only a
+    // database without the post-cutover cleanup (20260926005000) has; since
+    // it the key is (hub_id, email) and one address can wait for each hub.
+    // Kept as a guard. Says so without naming the other hub.
     if (err instanceof HubDbError && err.code === "23505") {
       console.warn(`[waitlist] ${email} is already waiting for another hub (global key)`);
       res.status(409).json({
