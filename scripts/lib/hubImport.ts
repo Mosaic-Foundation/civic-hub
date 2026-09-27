@@ -380,7 +380,7 @@ export interface ImportPlan {
   targetNormalize: ((t: string) => string) | undefined;
 }
 
-const APPEND_ONLY = ["events", "review_turns"];
+const APPEND_ONLY = ["events", "review_turns", "hub_admin_audit_log"];
 
 /**
  * Everything checked before anything is written: the target's schema can

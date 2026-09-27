@@ -584,6 +584,7 @@ export default function WordCloud() {
           type="civic.wordcloud"
           title={wc.title}
           status={statusDisplay(wc.status)}
+          sample={Boolean(wc.is_sample)}
         />
         {wc.description && (
           <p className="wordcloud-description">{wc.description}</p>

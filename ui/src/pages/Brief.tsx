@@ -132,6 +132,7 @@ export default function BriefPage() {
       <ProcessHeader
         type="civic.brief"
         title={brief.title}
+        sample={Boolean(brief.is_sample)}
         aside={
           <ShareButton
             title={`Civic Brief: ${brief.title}`}

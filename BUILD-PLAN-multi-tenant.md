@@ -117,7 +117,7 @@ Key naming is dotted, lowercase, and namespaced. The canonical keys:
 
 | Namespace | Keys |
 |---|---|
-| `identity.` | `identity.name`, `identity.label`, `identity.tagline`, `identity.page_title`, `identity.description`, `identity.banner_url`, `identity.banner_alt`, `identity.theme`, `identity.logo_url` (added 2026-09-24, Adam), `identity.timezone` (added 2026-09-24, Phase 2c) |
+| `identity.` | `identity.name`, `identity.label`, `identity.tagline`, `identity.page_title`, `identity.description`, `identity.banner_url`, `identity.banner_alt`, `identity.theme`, `identity.logo_url` (added 2026-09-24, Adam), `identity.timezone` (added 2026-09-24, Phase 2c), `identity.jurisdiction_type` (added 2026-09-26, Phase 7; admin-only) |
 | `copy.` | `copy.intro_body`, `copy.residency_intro`, `copy.welcome`, `copy.about`, `copy.resident_noun`, `copy.governing_body_name`, `copy.governing_body_short` |
 | `legal.` | `legal.terms`, `legal.privacy`, `legal.code_of_conduct`, `legal.proposal_best_practices` |
 | `people.` | `people.admin_emails`, `people.board_emails`, `people.brief_recipients`, `people.announcement_authors` |
@@ -943,6 +943,91 @@ the window; rollback needs them for the week); a rollback re-adds a unique
 index on `hub_settings (key)` for `main`'s settings writer.
 
 _checklist to be pasted_
+
+### Phase 7 — Sample content for new hubs
+
+Decided by Adam (build prompt + two rounds of answers, 2026-09-26). The build
+prompt is the design; these are its settled points.
+
+Done when: a hub created from the console with "Start with sample content"
+on opens with 8–10 sample processes that read as local, carry a "Sample"
+badge under a demo banner, stay out of `/events`, federation, the export and
+residents' digests, and come out in one audited action — after which the
+hub is empty and still works.
+
+- **The seed set** is a data file of place-neutral templates adapted from the
+  Floyd use cases (`seedBetaSlate.ts`, `src/debug/seedData.ts`): a proposal,
+  an open vote, a vote gathering endorsements, a closed vote with its
+  published outcome, a deliberation with statements, a project with an
+  update, two announcements. Substitution only: `{HUB_NAME}`,
+  `{JURISDICTION}`, `{GOVERNING_BODY}`. No generated local facts; nothing
+  attributed to a real person. Deadlines are relative to the seeding time.
+  The list is approved by Adam before the templates are written.
+  **Later**, this set becomes the basis for presets (town, county, school
+  district): the same content with a different governing body.
+- **Fit by jurisdiction type** (Adam, 2026-09-26): each template is tagged
+  with the `identity.jurisdiction_type` values it reads right in, and the
+  seed skips the rest (no type set = "other"). School districts are not
+  covered properly now — only the library-hours vote and its outcome and the
+  budget-hearing announcement fit — so a school district hub gets those and
+  the operator adds the rest; covering them is the presets work.
+- **Tone** (Adam, 2026-09-26): neutral and nonpartisan, and it must read
+  right in a city as well as a rural county. Every vote has real options on
+  more than one side; statements and comments cover several viewpoints (for,
+  against, practical questions), none a strawman. No real people,
+  businesses, organizations or places. The copy is in
+  `src/services/sampleTemplates.ts`, approved by Adam as written.
+- **Authors** are synthetic per-hub users (`user_sample_<hub>_00N`, a
+  `.invalid` address, no digest), marked `is_sample`. Ids are per hub because
+  `users.id` alone is the primary key.
+- **Governing body: one key, `copy.governing_body_name`** (no
+  `people.governing_body`; it stays in the Copy section). The console's
+  create form infers a default from a new **`identity.jurisdiction_type`**
+  setting (county / city / town / village / school district / other;
+  admin-only): county → "Board of Supervisors" when `jurisdiction_code` is
+  `us-va-…`, "County Commission" elsewhere; city → City Council; town →
+  Town Council; village → Village Board; school district → School Board;
+  other → blank. The operator can always correct it. Available to the legal
+  and About templates as `{GOVERNING_BODY}`.
+- **Marker: `is_sample boolean not null default false` on `processes`,
+  `events` and `users`.** A column, not a state field: `/events`, the digest,
+  the export, federation and removal filter it in SQL; events have no
+  process state. Child rows (ballots, comments, supports, updates, links,
+  submissions) are found through their sample `process_id`. The database
+  stamps `events.is_sample` from the event's process on insert, and a
+  process spawned from a sample process (brief, results, converted vote)
+  inherits it, so a real resident's action on a sample process can never
+  reach public record.
+- **Events stay append-only for the hub app.** A DELETE on `events` by the
+  hub-token role (`authenticated`) is refused unless `OLD.is_sample`; the
+  service role and the owner (BYPASSRLS; scripts, restore, tests) are
+  unaffected. A test proves both halves. `review_turns` is unchanged (the
+  seed writes no reviews).
+- **Sample stays out of** `GET /events`, `/activities/:id`, any federation
+  output, the hub export (`isSampleContentRow()`) and every resident digest.
+  It stays IN the hub's own feed and lists, with a "Sample" badge. Sample
+  votes close on schedule through the hourly `vote_close` job.
+- **Demo banner** (new): a strip on every page of a `demo` hub — "This is a
+  demo hub. Content marked Sample is illustrative, not public record." — with
+  a "Remove sample content" link for the hub's admin. Beta keeps its banner.
+- **Removal:** a control in the hub admin's settings, in every mode, deletes
+  all sample content for the hub. It warns first that the hub will have no
+  processes until the admin creates some, and that real people's input on
+  sample processes (comments, endorsements, ballots) goes with them, with a
+  count when there is any. Takes a fresh code. Graduating out of demo asks
+  the same question.
+- **`hub_admin_audit_log`** (new, hub-scoped: `hub_id`, forced RLS,
+  append-only, exported with the hub) records every hub-admin action that
+  takes a fresh code: sample-content removal, every mode change, admin and
+  board roster changes. Nothing is mirrored into `control_audit_log`; the
+  console's hub page reads this table through the control plane.
+- **Seeding:** `scripts/seed-sample-content.ts --hub <id>` (the
+  `seedBetaSlate` pattern: real code paths, fixed ids, `--dry-run`), and a
+  "Start with sample content" checkbox, on by default, on the console's
+  create form. Running it twice duplicates nothing.
+- **Deliberation:** the sample conversation is served by the `seed-` mock
+  layer; nothing is sent to Polis. After graduation, real deliberations use
+  Polis as usual.
 
 ---
 

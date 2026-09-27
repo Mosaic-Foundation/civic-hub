@@ -1,0 +1,16 @@
+/* The Sample badge — a quiet outlined pill beside the type pill. Dashed, so it
+   reads as "not real" without competing with the status colours. */
+.sample-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border: 1px dashed var(--color-warning);
+  border-radius: 999px;
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+  white-space: nowrap;
+}

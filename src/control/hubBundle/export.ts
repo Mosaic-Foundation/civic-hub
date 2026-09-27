@@ -6,6 +6,7 @@
 // scratch database restored from a full dump (scripts/lib/pgHub.ts).
 
 import { MIGRATION_DEFAULT_HUB_ID } from "../../models/hub.js";
+import type { SampleIds } from "../../models/sampleContent.js";
 import {
   BUNDLE_FORMAT,
   BUNDLE_FORMAT_VERSION,
@@ -98,14 +99,24 @@ export async function exportHub(opts: ExportOptions): Promise<BundleManifest> {
   const tables: BundleTable[] = [];
   const kept: Array<{ table: string; rows: Row[] }> = [];
   const excludedSettings: Array<{ key: string; reason: string }> = [];
+  // Sample content stays behind. Child rows are known only by their process,
+  // so the marked tables are read first and kept for their own turn.
+  const prefetched = new Map<string, Row[]>();
+  for (const table of ["processes", "users"]) {
+    prefetched.set(table, await reader.tableRows(table, hubId, TABLE_KEYS[table]));
+  }
+  const sampleIds: SampleIds = {
+    processIds: new Set(prefetched.get("processes")!.filter((r) => r.is_sample === true).map((r) => String(r.id))),
+    userIds: new Set(prefetched.get("users")!.filter((r) => r.is_sample === true).map((r) => String(r.id))),
+  };
   for (const table of exportedTables()) {
     const key = TABLE_KEYS[table];
     if (!key) throw new ExportError(`No key order for exported table "${table}" (format.ts → TABLE_KEYS).`);
-    const all = await reader.tableRows(table, hubId, key);
+    const all = prefetched.get(table) ?? (await reader.tableRows(table, hubId, key));
     let skippedSample = 0;
     const out: Row[] = [];
     for (const raw of all) {
-      if (isSampleContentRow(table, raw)) {
+      if (isSampleContentRow(table, raw, sampleIds)) {
         skippedSample++;
         continue;
       }

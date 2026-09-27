@@ -234,6 +234,14 @@ const hub = {
    * wrong the moment a second hub is not in beta. The env var now answers
    * only when no config loaded at all.
    */
+  /**
+   * True when the hub is in `demo` mode (Phase 7): the demo banner shows,
+   * and sample content is expected. From /api/hub-config's `hub.mode`.
+   */
+  get demo_mode(): boolean {
+    return getLoadedHubConfig()?.hub.mode === "demo";
+  },
+
   get beta_mode(): boolean {
     const mode = getLoadedHubConfig()?.hub.mode;
     if (mode !== undefined) return mode === "beta";

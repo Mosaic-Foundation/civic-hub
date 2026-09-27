@@ -176,6 +176,9 @@ interface ProcessSummaryBase {
    */
   creator_official_type: string | null;
   creator_official_title: string | null;
+  /** Seeded sample content (Phase 7): present and true when this process was
+   *  planted by the sample-content seeder; absent otherwise. */
+  is_sample?: boolean;
 }
 
 /** Vote summary (from GET /process list) */
@@ -251,6 +254,8 @@ export interface VoteState {
   creator_official_title: string | null;
   jurisdiction?: string;
   content?: ProcessContent;
+  /** Seeded sample content (Phase 7): present and true for planted rows. */
+  is_sample?: boolean;
 }
 
 /** Proposal detail state */
@@ -277,6 +282,8 @@ export interface ProposalState {
    */
   creator_official_type: string | null;
   creator_official_title: string | null;
+  /** Seeded sample content (Phase 7): present and true for planted rows. */
+  is_sample?: boolean;
 }
 
 export type ProcessState = VoteState | ProposalState;
@@ -380,6 +387,8 @@ export interface CivicProposalSummary {
   assistant_helped: boolean;
   closes_at: string | null;
   created_at: string;
+  /** Seeded sample content (Phase 7): present and true for planted rows. */
+  is_sample?: boolean;
 }
 
 /** Proposal detail (from GET /proposals/:id) */
@@ -408,6 +417,8 @@ export interface CivicProposalDetail {
   closes_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Seeded sample content (Phase 7): present and true for planted rows. */
+  is_sample?: boolean;
 }
 
 /** Submit a new proposal */
@@ -719,6 +730,8 @@ export interface ProjectSummary {
   banner_image_alt: string | null;
   created_at: string;
   updated_at: string;
+  /** Seeded sample content (Phase 7): present and true for planted rows. */
+  is_sample?: boolean;
 }
 
 export interface ProjectUpdateEntry {
@@ -956,6 +969,9 @@ export interface CivicEvent {
   dedupe_key?: string;
   data: Record<string, unknown>;
   meta: CivicEventMeta;
+  /** Seeded sample content (Phase 7): set true by /api/feed when the
+   *  event's process is a planted sample row. */
+  sample?: boolean;
 }
 
 /** Server-batched card metadata, keyed by process_id — camelCase on
@@ -1224,6 +1240,8 @@ export interface PublicBrief {
   response_status: "awaiting" | "responded";
   responded_at: string | null;
   responses: PublicBriefResponse[];
+  /** Seeded sample content (Phase 7): present and true for planted rows. */
+  is_sample?: boolean;
 }
 
 /** One official response on a brief, oldest first. The office fields are
@@ -1311,6 +1329,8 @@ export interface AnnouncementLink {
 
 /** Full read of one announcement (GET /announcement/:id). */
 export interface Announcement {
+  /** Sample content (Phase 7): shows the Sample badge. */
+  is_sample?: boolean;
   id: string;
   type: "civic.announcement";
   title: string;
@@ -1799,8 +1819,42 @@ export function adminRequestModeCode(): Promise<{ message: string }> {
 export function adminSetHubMode(
   mode: string,
   code: string,
+  opts: { removeSampleContent?: boolean } = {},
 ): Promise<{ hub_id: string; mode: string }> {
-  return request("POST", "/admin/hub/mode", { mode, code });
+  return request("POST", "/admin/hub/mode", {
+    mode,
+    code,
+    ...(opts.removeSampleContent ? { remove_sample_content: true } : {}),
+  });
+}
+
+// --- Sample content (Phase 7) --------------------------------------------------
+//
+// What removing the hub's sample content would take, and the removal itself,
+// which takes a fresh code like the roster and the mode. Available in every
+// mode; graduating out of demo offers it too (adminSetHubMode above).
+
+export interface SampleContentSummary {
+  processes: number;
+  by_type: Record<string, number>;
+  users: number;
+  /** Real people's input on sample processes, by kind; deleted with them. */
+  real_input: Record<string, number>;
+  real_input_total: number;
+  /** Processes that are not sample: what the hub keeps. */
+  other_processes: number;
+}
+
+export function adminGetSampleContent(): Promise<SampleContentSummary> {
+  return request("GET", "/admin/hub/sample-content");
+}
+
+export function adminRequestSampleRemovalCode(): Promise<{ message: string }> {
+  return request("POST", "/admin/hub/sample-content/request-code", {});
+}
+
+export function adminRemoveSampleContent(code: string): Promise<{ summary: SampleContentSummary }> {
+  return request("POST", "/admin/hub/sample-content/remove", { code });
 }
 
 // --- User settings (Slice 5) ---
@@ -2069,6 +2123,8 @@ export interface DeliberationSummary {
   deadline?: string | null;
   participant_count?: number;
   summary_status: string;
+  /** Seeded sample content (Phase 7): present and true for planted rows. */
+  is_sample?: boolean;
 }
 
 export interface DeliberationReadModel {
@@ -2089,6 +2145,8 @@ export interface DeliberationReadModel {
   summary_status: string;
   continued_from_response_id: string | null;
   has_submitted?: boolean;
+  /** Seeded sample content (Phase 7): present and true for planted rows. */
+  is_sample?: boolean;
 }
 
 export interface DeliberationSummaryData {
@@ -2330,6 +2388,8 @@ export interface WordcloudState {
   created_at: string;
   created_by: string;
   has_submitted: boolean;
+  /** Seeded sample content (Phase 7): present and true for planted rows. */
+  is_sample?: boolean;
 }
 
 /**
@@ -2717,6 +2777,8 @@ export function getLinkCandidates(params: {
 
 export interface OutcomeEntry {
   id: string;
+  /** Sample content (Phase 7): shows the Sample badge. */
+  is_sample?: boolean;
   title: string;
   source_process_id: string;
   source_process_type: string;

@@ -112,6 +112,7 @@ export default function Propose() {
                         processType="civic.proposal"
                         status="open"
                         title={p.title}
+                        sample={Boolean(p.is_sample)}
                         meta={[
                           cardDate(p.created_at),
                           `${p.support_count} endorsement${p.support_count !== 1 ? "s" : ""}`,
@@ -136,6 +137,7 @@ export default function Propose() {
                         processType="civic.proposal"
                         status={p.status}
                         title={p.title}
+                        sample={Boolean(p.is_sample)}
                         meta={[
                           cardDate(p.created_at),
                           `${p.support_count} endorsement${p.support_count !== 1 ? "s" : ""}`,

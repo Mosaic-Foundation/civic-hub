@@ -411,6 +411,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /admin/feedback": {},
   "GET /admin/queue-counts": {},
   "GET /admin/hub/people": {},
+  "GET /admin/hub/sample-content": {},
   "GET /admin/hub/settings": {},
   "GET /admin/hub/settings/template/:key": {},
   "GET /admin/hub/plugins/live": {},

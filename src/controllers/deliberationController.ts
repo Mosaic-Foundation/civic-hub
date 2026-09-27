@@ -395,7 +395,10 @@ export async function listDeliberations(_req: Request, res: Response): Promise<v
       res.json([]);
       return;
     }
-    const summaries = deliberations.map((p) => handler.getSummary(p));
+    const summaries = deliberations.map((p) => {
+      const summary = handler.getSummary(p);
+      return p.isSample ? { ...summary, is_sample: true } : summary;
+    });
     res.json(summaries);
   } catch (err: any) {
     handleError(res, err);
@@ -425,7 +428,11 @@ export async function getDeliberation(req: Request, res: Response): Promise<void
 
     const has_submitted = actor ? await hasSubmittedStatement(processId, actor) : false;
 
-    res.json({ ...readModel, has_submitted });
+    res.json({
+      ...readModel,
+      has_submitted,
+      ...(process.isSample ? { is_sample: true } : {}),
+    });
   } catch (err: any) {
     handleError(res, err);
   }

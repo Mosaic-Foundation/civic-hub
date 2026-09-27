@@ -372,6 +372,7 @@ export async function handleGetAnnouncement(
     });
     enriched.is_owner =
       !!callerId && (model as { author_id?: string }).author_id === callerId;
+    if (record.isSample) (enriched as Record<string, unknown>).is_sample = true;
     res.json(enriched);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

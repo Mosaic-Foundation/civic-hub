@@ -84,8 +84,8 @@ describe("forHub — construction", () => {
     expect(() => floyd.from("nope" as never)).toThrow(/not a hub-scoped table/);
   });
 
-  it("covers every tenant table: 30, and never hubs", () => {
-    expect(HUB_TABLES).toHaveLength(30);
+  it("covers every tenant table: 31, and never hubs", () => {
+    expect(HUB_TABLES).toHaveLength(31);
     expect(HUB_TABLES).not.toContain("hubs");
   });
 });

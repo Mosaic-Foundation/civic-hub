@@ -8,6 +8,7 @@ import "./Outcomes.css";
 // The filter bar reuses the feed's pill classes so the two surfaces can
 // never drift in style — see .feed-filter-pill--type-* in FeedFilter.css.
 import "../components/FeedFilter.css";
+import SampleBadge from "../components/SampleBadge";
 
 /**
  * Outcomes — the public archive of every completed civic process.
@@ -220,6 +221,7 @@ function OutcomeRow({ outcome }: { outcome: OutcomeEntry }) {
             <span className={`feed-pill feed-pill--type-${slug}`}>
               {friendlyType(outcome.source_process_type)}
             </span>
+            {outcome.is_sample && <SampleBadge />}
             <h3>{outcome.title}</h3>
           </div>
           <p className="outcomes-item-headline">{outcome.headline}</p>

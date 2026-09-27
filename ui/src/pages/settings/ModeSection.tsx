@@ -12,13 +12,16 @@
 
 import { useEffect, useState } from "react";
 import {
+  adminGetSampleContent,
   adminGetSettings,
   adminPatchSettings,
   adminRequestModeCode,
   adminSetHubMode,
+  type SampleContentSummary,
   type WaitlistEntry,
 } from "../../services/api";
 import { useHubSettings, useUnsavedChangesGuard } from "./HubSettingsContext";
+import { SampleRemovalWarning } from "./sampleWarning";
 
 const MODES: ReadonlyArray<{ id: "beta" | "live"; title: string; body: string }> = [
   {
@@ -42,10 +45,20 @@ export default function ModeSection() {
   const [codeSent, setCodeSent] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+  // Graduating out of demo asks the same question as Settings → Sample
+  // content (Phase 7): keep the samples, or take them out with the move.
+  const [sample, setSample] = useState<SampleContentSummary | null>(null);
+  const [removeSample, setRemoveSample] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (mode) setPending(mode);
   }, [mode]);
+
+  useEffect(() => {
+    if (mode === "demo") adminGetSampleContent().then(setSample).catch(() => setSample(null));
+  }, [mode]);
+
+  const asksAboutSample = mode === "demo" && !!sample && sample.processes > 0;
 
   const changing = !!mode && pending !== mode;
   useEffect(() => setDirty("mode", changing), [changing, setDirty]);
@@ -67,7 +80,9 @@ export default function ModeSection() {
     setSaving(true);
     setMessage(null);
     try {
-      const saved = await adminSetHubMode(pending, code.trim());
+      const saved = await adminSetHubMode(pending, code.trim(), {
+        removeSampleContent: asksAboutSample && removeSample === true,
+      });
       await reload();
       setCode("");
       setCodeSent(false);
@@ -86,6 +101,7 @@ export default function ModeSection() {
   }
 
   function cancel() {
+    setRemoveSample(null);
     setPending(mode);
     setCode("");
     setCodeSent(false);
@@ -152,6 +168,41 @@ export default function ModeSection() {
               ))}
             </fieldset>
 
+            {changing && asksAboutSample && sample && (
+              <fieldset className="settings-mode-choices" disabled={saving || codeSent}>
+                <legend className="settings-subsection-title">
+                  What about the {sample.processes} sample {sample.processes === 1 ? "process" : "processes"}?
+                </legend>
+                <label className={`settings-mode-choice${removeSample === false ? " is-selected" : ""}`}>
+                  <input
+                    type="radio"
+                    name="graduate-sample"
+                    checked={removeSample === false}
+                    onChange={() => setRemoveSample(false)}
+                  />
+                  <span>
+                    <span className="settings-mode-title">Keep them for now</span>
+                    <span className="settings-mode-body">
+                      They stay marked Sample. You can remove them any time from Settings → Sample content.
+                    </span>
+                  </span>
+                </label>
+                <label className={`settings-mode-choice${removeSample === true ? " is-selected" : ""}`}>
+                  <input
+                    type="radio"
+                    name="graduate-sample"
+                    checked={removeSample === true}
+                    onChange={() => setRemoveSample(true)}
+                  />
+                  <span>
+                    <span className="settings-mode-title">Remove them with this change</span>
+                    <span className="settings-mode-body">Deleted before the new mode takes effect.</span>
+                  </span>
+                </label>
+                {removeSample === true && <SampleRemovalWarning summary={sample} />}
+              </fieldset>
+            )}
+
             {(changing || codeSent || message) && (
             <div className="settings-form-footer">
               {changing && (
@@ -163,7 +214,12 @@ export default function ModeSection() {
               )}
               <div className="admin-settings-actions">
                 {changing && !codeSent && (
-                  <button type="button" className="admin-convert-button" onClick={requestCode} disabled={saving}>
+                  <button
+                    type="button"
+                    className="admin-convert-button"
+                    onClick={requestCode}
+                    disabled={saving || (asksAboutSample && removeSample === null)}
+                  >
                     Email me a code
                   </button>
                 )}

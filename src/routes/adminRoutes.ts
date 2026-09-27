@@ -73,6 +73,11 @@ import {
   handleGetHubPeople,
   handleSetHubPeople,
 } from "../controllers/hubPeopleController.js";
+import {
+  handleGetSampleContent,
+  handleRemoveSampleContent,
+  handleRequestSampleRemovalCode,
+} from "../controllers/hubSampleContentController.js";
 
 const router = Router();
 
@@ -178,6 +183,13 @@ router.post("/hub/mode", handleSetHubMode);
 router.get("/hub/people", handleGetHubPeople);
 router.post("/hub/people/request-code", handleRequestStepUpCode);
 router.post("/hub/people", handleSetHubPeople);
+
+// Sample content (Phase 7): what removal would take, and the removal itself,
+// in every mode. Same step-up: it cannot be undone, and it takes real
+// people's input on sample processes with it.
+router.get("/hub/sample-content", handleGetSampleContent);
+router.post("/hub/sample-content/request-code", handleRequestSampleRemovalCode);
+router.post("/hub/sample-content/remove", handleRemoveSampleContent);
 
 // What the hub is called, what its pages say, its legal documents and its
 // mail — every key checked against the build plan's list. See

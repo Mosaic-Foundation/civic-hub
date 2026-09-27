@@ -19,6 +19,8 @@ import { setHubMode } from "../db/hubs.js";
 import { hubModeChangeRejectionReason } from "../models/hub.js";
 import { hubModeFor } from "../services/hubSettings.js";
 import { caller, requireStepUpCode } from "./adminStepUp.js";
+import { recordHubAdminAudit } from "../services/hubAdminAudit.js";
+import { removeSampleContent } from "../services/sampleContent.js";
 
 // Kept as an export under its old name: the route and its tests have used it
 // since the hardening pass, and it is now the shared step-up handler.
@@ -39,7 +41,7 @@ export async function handleSetHubMode(
     return;
   }
 
-  const body = req.body as { mode?: unknown; code?: unknown };
+  const body = req.body as { mode?: unknown; code?: unknown; remove_sample_content?: unknown };
 
   // The requested mode is checked BEFORE the code is spent. A code is
   // single-use, so an admin who asks for something the rules forbid should
@@ -54,9 +56,23 @@ export async function handleSetHubMode(
   if (!(await requireStepUpCode(res, body.code))) return;
 
   const mode = body.mode as string;
+  const from = hubModeFor(hub);
 
   try {
+    // Graduating out of demo asks whether to take the sample content out
+    // (Phase 7); the admin's answer rides along with the same code. Removal
+    // first, so a hub that asked for both never goes live with it.
+    let removedSample: unknown = null;
+    if (body.remove_sample_content === true && from === "demo" && mode !== "demo") {
+      removedSample = (await removeSampleContent(user.email)).summary;
+    }
     await setHubMode(hub.id, mode);
+    await recordHubAdminAudit({
+      actor: user.email,
+      action: "hub.mode",
+      before: { mode: from },
+      after: { mode, ...(removedSample ? { removed_sample_content: true } : {}) },
+    });
   } catch (err) {
     const raw = err instanceof Error ? err.message : String(err);
     // The trigger refuses any move into demo. Surface it as the rule it is
@@ -68,8 +84,6 @@ export async function handleSetHubMode(
     return;
   }
 
-  console.log(
-    `[hub] mode changed: ${hub.id} ${hubModeFor(hub)} -> ${mode} by ${user.email}`,
-  );
+  console.log(`[hub] mode changed: ${hub.id} ${from} -> ${mode} by ${user.email}`);
   res.json({ hub_id: hub.id, mode });
 }

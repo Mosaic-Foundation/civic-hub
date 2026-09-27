@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type ConsoleConfig, type HubMode } from "./api";
 import { go, href } from "./route";
+import { JURISDICTION_TYPES, defaultGoverningBody, isJurisdictionType } from "../../../src/shared/jurisdictionType";
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$/;
 
@@ -28,11 +29,13 @@ export default function CreateHub() {
     hostname: "",
     jurisdiction_name: "",
     jurisdiction_code: "",
+    jurisdiction_type: "",
     governing_body: "",
     admin_email: "",
     mode: "demo" as HubMode,
+    sample_content: true,
   });
-  const [touched, setTouched] = useState({ slug: false, hostname: false });
+  const [touched, setTouched] = useState({ slug: false, hostname: false, governing_body: false });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +50,12 @@ export default function CreateHub() {
       const next = { ...f, [key]: value };
       if (key === "name" && !touched.slug) next.slug = slugFrom(String(value));
       if ((key === "name" || key === "slug") && !touched.hostname) next.hostname = suggestedHost(next.slug);
+      // The usual governing body for the type (and, for a county, the state
+      // in the code) until the operator types their own.
+      if ((key === "jurisdiction_type" || key === "jurisdiction_code") && !touched.governing_body) {
+        const t = next.jurisdiction_type;
+        next.governing_body = isJurisdictionType(t) ? defaultGoverningBody(t, next.jurisdiction_code) : "";
+      }
       return next;
     });
   }
@@ -144,8 +153,28 @@ export default function CreateHub() {
             <input className="cx-mono" value={form.jurisdiction_code} onChange={(e) => set("jurisdiction_code", e.target.value.toLowerCase())} placeholder="us-va-utopia" />
           </label>
           <label className="cx-field">
+            <span>Jurisdiction type</span>
+            <select value={form.jurisdiction_type} onChange={(e) => set("jurisdiction_type", e.target.value)}>
+              <option value="">Choose…</option>
+              {JURISDICTION_TYPES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <small className="cx-muted">Fills in the usual governing body, and decides which sample content fits.</small>
+          </label>
+          <label className="cx-field">
             <span>Governing body <em>optional</em></span>
-            <input value={form.governing_body} onChange={(e) => set("governing_body", e.target.value)} placeholder="Town Council" />
+            <input
+              value={form.governing_body}
+              onChange={(e) => {
+                setTouched((t) => ({ ...t, governing_body: true }));
+                set("governing_body", e.target.value);
+              }}
+              placeholder="Town Council"
+            />
+            <small className="cx-muted">The usual name for the type is only usual. Correct it if this place says it differently.</small>
           </label>
         </fieldset>
 
@@ -169,6 +198,20 @@ export default function CreateHub() {
               </label>
             ))}
           </div>
+          <label className="cx-radio">
+            <input
+              type="checkbox"
+              checked={form.sample_content}
+              onChange={(e) => set("sample_content", e.target.checked)}
+            />
+            <span>
+              <strong>Start with sample content</strong>
+              <small className="cx-muted">
+                Up to nine illustrative processes, marked Sample, so the hub never opens empty. Its admin can remove them
+                in one step from Settings.
+              </small>
+            </span>
+          </label>
         </fieldset>
 
         {error && (

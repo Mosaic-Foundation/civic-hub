@@ -28,3 +28,8 @@ src/shared/officialTypes.ts | board_of_supervisors: "Board of Supervisors" | adm
 # The super admin (Phase 5 part one, 2026-09-26, Adam).
 src/control/hubs.ts | /^(MEETING_|FLOYD_NEWS_)/ | the create guard (step 7) names the legacy env var prefixes it refuses on; delete with those env vars at cleanup
 src/models/hub.ts | floyd: "Floyd's hub; | reserved slug in the one reserved list (Adam, 2026-09-26): a live hub under civic.social
+
+# Sample content (Phase 7, Adam 2026-09-26): a county's usual governing body
+# depends on its state; Virginia's are Boards of Supervisors. Not a place: a
+# default the operator corrects, keyed on the jurisdiction code's state.
+src/shared/jurisdictionType.ts | "Board of Supervisors" : "County Commission" | the county default by state (us-va-… → Board of Supervisors), a suggestion on the console's create form

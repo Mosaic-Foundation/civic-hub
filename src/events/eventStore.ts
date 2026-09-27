@@ -11,8 +11,14 @@
 // Per hub since Phase 2a: every read and the append go through forHub(), so
 // GET /events, the feed and the digest see only the hub in scope, and an
 // event is stored under the hub that emitted it.
+//
+// Sample events (Phase 7) — `is_sample`, stamped by the database from the
+// event's process — are illustrative, not public record. The reads that feed
+// the public wire (GET /events, /activities/:id, and so any federation) and
+// the resident digest leave them out HERE, in the query, so no caller can
+// forget. The hub's own feed and admin views read them, with a Sample badge.
 
-import { forHub, type HubDb } from "../db/forHub.js";
+import { forHub, forHubDevReset, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { CivicEvent } from "../models/event.js";
 
@@ -114,12 +120,14 @@ export type RecordedEvent = CivicEvent & { recorded_at: string };
  * deadline). Selecting by the stamp let a backdated event fall outside every
  * digest window; selecting by arrival cannot (Phase 5 part two, fix 6).
  *
- * Used by the digest cron.
+ * Used by the digest cron. Never returns sample events: sample content does
+ * not go out in a resident's digest.
  */
 export async function getEventsSince(sinceIso: string): Promise<RecordedEvent[]> {
   const data = await db()
     .from("events")
     .select<EventRow & { recorded_at: string }>("*")
+    .eq("is_sample", false)
     .gt("recorded_at", sinceIso)
     .order("recorded_at", { ascending: true });
   return data.map((row) => ({ ...rowToEvent(row), recorded_at: row.recorded_at }));
@@ -164,7 +172,7 @@ export interface EventPage {
  * second query or a count.
  */
 export async function getEventPage(query: EventPageQuery): Promise<EventPage> {
-  let q = db().from("events").select<EventRow>("*");
+  let q = db().from("events").select<EventRow>("*").eq("is_sample", false);
 
   if (query.processId) q = q.eq("process_id", query.processId);
   if (query.eventTypes?.length) q = q.in("event_type", query.eventTypes);
@@ -210,7 +218,7 @@ export interface EventCountQuery {
  * (Civic Activity Spec v0.2 §5.2) exists to prevent.
  */
 export async function countEvents(query: EventCountQuery = {}): Promise<number> {
-  let q = db().from("events").count();
+  let q = db().from("events").count().eq("is_sample", false);
   if (query.processId) q = q.eq("process_id", query.processId);
   if (query.eventTypes?.length) q = q.in("event_type", query.eventTypes);
   if (query.since) q = q.gt("created_at", query.since);
@@ -231,11 +239,13 @@ export async function countEvents(query: EventCountQuery = {}): Promise<number> 
   return await q;
 }
 
+/** Public wire only: a sample event is not public record, so it is not found. */
 export async function getEventById(id: string): Promise<CivicEvent | null> {
   const data = await db()
     .from("events")
     .select<EventRow>("*")
     .eq("id", id)
+    .eq("is_sample", false)
     .maybeSingle();
   return data ? rowToEvent(data) : null;
 }
@@ -252,7 +262,7 @@ export async function getEventCount(): Promise<number> {
  * the Supabase client API, we use a filter that matches every row.
  */
 export async function clearEvents(): Promise<void> {
-  // If the append-only trigger is firing (shouldn't — it's BEFORE UPDATE/DELETE
-  // on individual rows, not bulk), forHub() throws and surfaces it clearly.
-  await db().from("events").delete().neq("id", "");
+  // The hub-token role may delete only sample events (20260926040000), so the
+  // dev reset goes through the service role, and only with CIVIC_ALLOW_SEED.
+  await forHubDevReset(currentHubId()).from("events").delete().neq("id", "");
 }

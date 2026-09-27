@@ -33,6 +33,12 @@ export const KEYS = {
   // the digest job to find the hub's send hour; empty or invalid means UTC,
   // which is what plugin.digest.send_hour meant before it existed.
   IDENTITY_TIMEZONE: "identity.timezone",
+  // What kind of place the hub serves: county, city, town, village,
+  // school_district or other (src/shared/jurisdictionType.ts). Added
+  // 2026-09-26 (Phase 7, Adam). Set by the console at create; the create
+  // form infers the governing body from it, and the sample seed skips
+  // templates that do not fit it. Admin-only: not on the public list.
+  IDENTITY_JURISDICTION_TYPE: "identity.jurisdiction_type",
 
   COPY_INTRO_BODY: "copy.intro_body",
   COPY_RESIDENCY_INTRO: "copy.residency_intro",

@@ -47,6 +47,7 @@ export interface HubConfig {
   hostname: string;
   jurisdiction_code: string | null;
   jurisdiction_name: string | null;
+  jurisdiction_type: string | null;
   governing_body: string;
   status: string;
   mode: string | null;
@@ -76,7 +77,7 @@ export interface ConsoleConfig {
 }
 
 export interface AuditEntry {
-  id: number;
+  id: number | string;
   at: string;
   actor_email: string;
   action: string;
@@ -108,7 +109,7 @@ export const api = {
   config: () => request<ConsoleConfig>("GET", "/config"),
   hubs: () => request<{ hubs: Hub[] }>("GET", "/hubs"),
   hub: (id: string) => request<HubDetail>("GET", `/hubs/${encodeURIComponent(id)}`),
-  createHub: (body: Record<string, string>) => request<HubDetail>("POST", "/hubs", body),
+  createHub: (body: Record<string, string | boolean>) => request<HubDetail>("POST", "/hubs", body),
   updateHub: (id: string, body: Record<string, unknown>) =>
     request<HubDetail>("PATCH", `/hubs/${encodeURIComponent(id)}`, body),
   setPlugins: (id: string, plugins: Record<string, boolean>, extra: Record<string, unknown> = {}) =>
@@ -120,6 +121,18 @@ export const api = {
   unarchive: (id: string) => request<HubDetail>("POST", `/hubs/${encodeURIComponent(id)}/unarchive`, {}),
   exportHub: (id: string, extra: Record<string, unknown> = {}) =>
     request<HubExport>("POST", `/hubs/${encodeURIComponent(id)}/export`, extra),
+  hubAdminAudit: (id: string) =>
+    request<{ entries: HubAdminAuditEntry[] }>("GET", `/hubs/${encodeURIComponent(id)}/admin-audit`),
   audit: (hubId?: string) =>
     request<{ entries: AuditEntry[] }>("GET", `/audit${hubId ? `?hub=${encodeURIComponent(hubId)}` : ""}`),
 };
+
+/** One row of a hub's own hub_admin_audit_log (Phase 7). */
+export interface HubAdminAuditEntry {
+  id: string;
+  at: string;
+  actor_email: string;
+  action: string;
+  before: unknown;
+  after: unknown;
+}

@@ -29,6 +29,7 @@ import {
   type PluginId,
 } from "../models/hubSettings.js";
 import { consoleHostname, isProductionDatabase, platformDomain } from "./config.js";
+import { defaultGoverningBody, isJurisdictionType, type JurisdictionType } from "../shared/jurisdictionType.js";
 
 export class ControlInputError extends Error {
   constructor(message: string, readonly status = 400) {
@@ -128,6 +129,12 @@ export async function hubGoverningBody(hubId: string): Promise<string> {
   return stored[KEYS.COPY_GOVERNING_BODY_NAME] ?? "";
 }
 
+export async function hubJurisdictionType(hubId: string): Promise<JurisdictionType | null> {
+  const stored = await settingRows(hubId, [KEYS.IDENTITY_JURISDICTION_TYPE]);
+  const v = stored[KEYS.IDENTITY_JURISDICTION_TYPE];
+  return isJurisdictionType(v) ? v : null;
+}
+
 // --- Validation shared by create and edit -------------------------------------
 
 /**
@@ -211,9 +218,13 @@ export interface CreateHubInput {
   hostname: string;
   jurisdictionName?: string | null;
   jurisdictionCode?: string | null;
+  /** identity.jurisdiction_type (Phase 7). */
+  jurisdictionType?: JurisdictionType | null;
   governingBody?: string | null;
   admins: readonly string[];
   mode: HubMode;
+  /** Seed the sample content after creating (Phase 7). The form's default is on. */
+  sampleContent?: boolean;
 }
 
 export interface CreateHubPlan {
@@ -226,15 +237,21 @@ export function parseCreateInput(body: Record<string, unknown>): CreateHubInput 
   const mode = text(body.mode) || "demo";
   if (!isHubMode(mode)) throw new ControlInputError(`"${mode}" is not a mode. Choose demo, beta or live.`);
   const admin = text(body.admin_email).toLowerCase();
+  const jurisdictionType = orNull(text(body.jurisdiction_type, 32));
+  if (jurisdictionType && !isJurisdictionType(jurisdictionType)) {
+    throw new ControlInputError(`"${jurisdictionType}" is not a jurisdiction type.`);
+  }
   return {
     slug: text(body.slug, 64).toLowerCase(),
     name: text(body.name),
     hostname: text(body.hostname, 253).toLowerCase(),
     jurisdictionName: orNull(text(body.jurisdiction_name)),
     jurisdictionCode: orNull(text(body.jurisdiction_code, 64).toLowerCase()),
+    jurisdictionType: jurisdictionType as JurisdictionType | null,
     governingBody: orNull(text(body.governing_body)),
     admins: admin ? [admin] : [],
     mode,
+    sampleContent: body.sample_content === true,
   };
 }
 
@@ -302,7 +319,12 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
     [KEYS.EMAIL_FROM_NAME]: input.name,
   };
   if (input.jurisdictionName) settings[KEYS.IDENTITY_PAGE_TITLE] = `${input.jurisdictionName} — Civic Hub`;
-  if (input.governingBody) settings[KEYS.COPY_GOVERNING_BODY_NAME] = input.governingBody;
+  if (input.jurisdictionType) settings[KEYS.IDENTITY_JURISDICTION_TYPE] = input.jurisdictionType;
+  // The form pre-fills the usual body for the type and the operator may
+  // correct it; a caller that sent a type but no body gets the usual one.
+  const governingBody =
+    input.governingBody ?? (defaultGoverningBody(input.jurisdictionType, input.jurisdictionCode) || null);
+  if (governingBody) settings[KEYS.COPY_GOVERNING_BODY_NAME] = governingBody;
 
   return { row, settings };
 }
@@ -340,6 +362,7 @@ export interface HubConfigPatch {
   hostname?: string;
   jurisdiction_code?: string | null;
   jurisdiction_name?: string | null;
+  jurisdiction_type?: JurisdictionType | null;
   governing_body?: string;
   status?: "active" | "suspended";
   mode?: HubMode;
@@ -350,6 +373,7 @@ export interface HubConfigView {
   hostname: string;
   jurisdiction_code: string | null;
   jurisdiction_name: string | null;
+  jurisdiction_type: JurisdictionType | null;
   governing_body: string;
   status: string;
   mode: string | null;
@@ -361,6 +385,7 @@ export async function hubConfigView(hub: ControlHub): Promise<HubConfigView> {
     hostname: hub.hostname,
     jurisdiction_code: hub.jurisdiction_code,
     jurisdiction_name: hub.jurisdiction_name,
+    jurisdiction_type: await hubJurisdictionType(hub.id),
     governing_body: await hubGoverningBody(hub.id),
     status: hub.status,
     mode: hub.mode,
@@ -373,6 +398,11 @@ export function parseConfigPatch(body: Record<string, unknown>): HubConfigPatch 
   if ("hostname" in body) patch.hostname = text(body.hostname, 253).toLowerCase();
   if ("jurisdiction_code" in body) patch.jurisdiction_code = orNull(text(body.jurisdiction_code, 64).toLowerCase());
   if ("jurisdiction_name" in body) patch.jurisdiction_name = orNull(text(body.jurisdiction_name));
+  if ("jurisdiction_type" in body) {
+    const t = orNull(text(body.jurisdiction_type, 32));
+    if (t && !isJurisdictionType(t)) throw new ControlInputError(`"${t}" is not a jurisdiction type.`);
+    patch.jurisdiction_type = t as JurisdictionType | null;
+  }
   if ("governing_body" in body) patch.governing_body = text(body.governing_body);
   if ("status" in body) {
     const s = text(body.status);
@@ -440,6 +470,9 @@ export async function updateHubConfig(
   }
   if (changes.governing_body !== undefined) {
     await writeSettings(hub.id, { [KEYS.COPY_GOVERNING_BODY_NAME]: changes.governing_body }, actor);
+  }
+  if (changes.jurisdiction_type !== undefined) {
+    await writeSettings(hub.id, { [KEYS.IDENTITY_JURISDICTION_TYPE]: changes.jurisdiction_type ?? "" }, actor);
   }
   refreshCaches(hub.id);
 }

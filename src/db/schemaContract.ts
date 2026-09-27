@@ -72,6 +72,11 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "events", columns: ["id", "event_type", "process_id", "data"], owner: "core/eventStore" },
   // The digest selects by it (20260926030000).
   { table: "events", columns: ["recorded_at"], owner: "digest" },
+  // Sample content (Phase 7, 20260926040000): every public read filters it.
+  { table: "processes", columns: ["is_sample"], owner: "core/sampleContent" },
+  { table: "events", columns: ["is_sample"], owner: "core/sampleContent" },
+  { table: "users", columns: ["is_sample"], owner: "core/sampleContent" },
+  { table: "hub_admin_audit_log", columns: ["hub_id", "actor_email", "action", "before", "after"], owner: "core/hubAdminAudit" },
   { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at", "edits_seen_at", "feedback_seen_at", "briefs_seen_at", "meeting_summaries_seen_at"], owner: "civic.auth" },
   { table: "sessions", owner: "civic.auth" },
   { table: "pending_verifications", columns: ["attempts", "locked_until"], owner: "civic.auth" },
@@ -131,6 +136,7 @@ export const EXPORT_MANIFEST: readonly ExportManifestEntry[] = [
   { table: "deliberation_votes", rows: "export" },
   { table: "events", rows: "export" },
   { table: "feedback_submissions", rows: "export" },
+  { table: "hub_admin_audit_log", rows: "export" },
   { table: "hub_settings", rows: "export" },
   { table: "link_previews", rows: "omit", reason: "a cache of other sites' metadata; the next host refetches it" },
   { table: "pending_verifications", rows: "omit", reason: "live sign-in codes" },

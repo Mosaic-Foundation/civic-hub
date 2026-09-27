@@ -21,6 +21,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { statusDisplay } from "./statusDisplay";
 import { typeColorSlug } from "./typeColor";
 import { friendlyType } from "./ProcessLinkPicker";
+import SampleBadge from "./SampleBadge";
 
 interface Props {
   /** Canonical process type, e.g. "civic.vote" — drives pill, colour, accent. */
@@ -33,9 +34,11 @@ interface Props {
    * pass conditionals inline without assembling the array first.
    */
   meta?: ReactNode[];
+  /** Seeded sample content (Phase 7): adds the Sample badge. */
+  sample?: boolean;
 }
 
-export default function ProcessListCard({ processType, status, title, meta = [] }: Props) {
+export default function ProcessListCard({ processType, status, title, meta = [], sample = false }: Props) {
   const slug = typeColorSlug(processType);
   const items = meta.filter(Boolean);
 
@@ -48,6 +51,7 @@ export default function ProcessListCard({ processType, status, title, meta = [] 
         <span className={`feed-pill feed-pill--type-${slug}`}>
           {friendlyType(processType)}
         </span>
+        {sample && <SampleBadge />}
         <span className={statusDisplay(status).className}>
           {statusDisplay(status).label}
         </span>

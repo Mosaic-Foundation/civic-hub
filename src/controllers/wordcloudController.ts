@@ -161,6 +161,7 @@ export async function handleGetWordcloud(
       created_at: process.createdAt,
       created_by: process.createdBy,
       has_submitted: hasSubmitted,
+      ...(process.isSample ? { is_sample: true } : {}),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

@@ -98,6 +98,7 @@ export default function Projects() {
                         processType="civic.project"
                         status="active"
                         title={p.title}
+                        sample={Boolean(p.is_sample)}
                         meta={[
                           cardDate(p.created_at),
                           `${p.support_count} supporter${p.support_count !== 1 ? "s" : ""}`,
@@ -131,6 +132,7 @@ export default function Projects() {
                         processType="civic.project"
                         status="archived"
                         title={p.title}
+                        sample={Boolean(p.is_sample)}
                         meta={[
                           cardDate(p.created_at),
                           `${p.support_count} supporter${p.support_count !== 1 ? "s" : ""}`,

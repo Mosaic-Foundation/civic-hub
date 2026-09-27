@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type AuditEntry, type HubDetail, type HubExport } from "./api";
+import { api, type AuditEntry, type HubAdminAuditEntry, type HubDetail, type HubExport } from "./api";
+import { JURISDICTION_TYPES } from "../../../src/shared/jurisdictionType";
 import { href } from "./route";
 import { useStepUp } from "./StepUp";
 import { ModeBadge, StatusBadge } from "./ui";
@@ -28,6 +29,7 @@ const PROPAGATION = "Saved. Other server instances pick it up within a minute.";
 export default function HubDetailPage({ id }: { id: string }) {
   const [detail, setDetail] = useState<HubDetail | null>(null);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
+  const [adminAudit, setAdminAudit] = useState<HubAdminAuditEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const { withStepUp, dialog } = useStepUp();
@@ -35,6 +37,7 @@ export default function HubDetailPage({ id }: { id: string }) {
   const load = useCallback(() => {
     api.hub(id).then(setDetail).catch((e: Error) => setError(e.message));
     api.audit(id).then((r) => setAudit(r.entries)).catch(() => setAudit([]));
+    api.hubAdminAudit(id).then((r) => setAdminAudit(r.entries)).catch(() => setAdminAudit([]));
   }, [id]);
 
   useEffect(load, [load]);
@@ -98,6 +101,18 @@ export default function HubDetailPage({ id }: { id: string }) {
         <h2 className="cx-h2">Audit trail</h2>
         <AuditTable entries={audit} showHub={false} />
       </section>
+
+      <section className="cx-card">
+        <h2 className="cx-h2">Hub admin actions</h2>
+        <p className="cx-muted cx-small">
+          What this hub's own admins did with a fresh code: sample content removed, mode changes, roster changes. Kept
+          in the hub's own log, which leaves with its export.
+        </p>
+        <AuditTable
+          entries={adminAudit.map((e) => ({ ...e, target_hub_id: null }))}
+          showHub={false}
+        />
+      </section>
     </section>
   );
 }
@@ -134,6 +149,7 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
     hostname: c.hostname,
     jurisdiction_name: c.jurisdiction_name ?? "",
     jurisdiction_code: c.jurisdiction_code ?? "",
+    jurisdiction_type: c.jurisdiction_type ?? "",
     governing_body: c.governing_body,
     status: c.status,
     mode: c.mode ?? "",
@@ -170,6 +186,17 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
       <label className="cx-field">
         <span>Jurisdiction code</span>
         <input className="cx-mono" value={form.jurisdiction_code} onChange={(e) => setForm({ ...form, jurisdiction_code: e.target.value.toLowerCase() })} />
+      </label>
+      <label className="cx-field">
+        <span>Jurisdiction type</span>
+        <select value={form.jurisdiction_type} onChange={(e) => setForm({ ...form, jurisdiction_type: e.target.value })}>
+          <option value="">Not set</option>
+          {JURISDICTION_TYPES.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="cx-field">
         <span>Governing body</span>

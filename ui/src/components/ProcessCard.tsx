@@ -20,6 +20,7 @@ export default function ProcessCard({ process }: Props) {
       processType="civic.vote"
       status={process.status}
       title={process.title}
+      sample={Boolean(process.is_sample)}
       meta={[
         cardDate(process.created_at),
         isProposal

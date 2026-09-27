@@ -9,7 +9,7 @@ import {
   listProposals,
   type Proposal,
 } from "../civic.proposals/index.js";
-import { getAllProcesses } from "../../services/processService.js";
+import { getAllProcesses, getSampleProcessIds } from "../../services/processService.js";
 import { listFeedback } from "../civic.feedback/index.js";
 import { sendEmail } from "../../utils/email.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
@@ -63,15 +63,20 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
   //    — which was already wrong when written. `endorsed` and `converted` are
   //    legacy values on the proposals table from before that mechanism moved
   //    to civic.vote. Corrected 2026-08-26.
+  // Sample content (Phase 7) is illustrative: it never asks an admin for
+  // anything, so it is left out of every list below.
+  const sampleIds = await getSampleProcessIds();
   const submitted = await listProposals("submitted");
   const endorsed = await listProposals("endorsed");
-  const proposalItems = [...endorsed, ...submitted].map(toPendingItem);
+  const proposalItems = [...endorsed, ...submitted]
+    .filter((p) => !sampleIds.has(p.id))
+    .map(toPendingItem);
 
   // 2. Vote results — civic.vote_results processes whose state has
   //    publication_status === "pending". One DB pass via
   //    getAllProcesses, filter in memory; volume is small.
   // 3. Meeting summaries — same pattern, approval_status === "pending".
-  const allProcesses = await getAllProcesses();
+  const allProcesses = (await getAllProcesses()).filter((p) => !p.isSample);
   const voteResultsItems: PendingItemSummary[] = [];
   const meetingSummaryItems: PendingItemSummary[] = [];
 

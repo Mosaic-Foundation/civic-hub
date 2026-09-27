@@ -43,7 +43,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDb, getHubTokenDb, hubTokensEnabled } from "./client.js";
 
 /**
- * Every table that carries hub_id — 30 of the 31. `hubs` is the registry,
+ * Every table that carries hub_id — 31 of the 32. `hubs` is the registry,
  * read by src/db/hubs.ts, and is deliberately unreachable from here.
  */
 export const HUB_TABLES = [
@@ -55,6 +55,7 @@ export const HUB_TABLES = [
   "deliberation_votes",
   "events",
   "feedback_submissions",
+  "hub_admin_audit_log",
   "hub_settings",
   "link_previews",
   "pending_verifications",
@@ -319,6 +320,21 @@ export function hubDbFrom(client: SupabaseClient, hubId: string): HubDb {
 }
 
 const cache = new Map<string, HubDb>();
+
+/**
+ * The dev reset's hub client (GET /debug/seed, which refuses to run unless
+ * CIVIC_ALLOW_SEED=true): always the service role, whatever the token switch
+ * says. Since 20260926040000 the hub-token role may delete only sample
+ * events, so wiping a dev hub's whole log is the one hub-app write that
+ * needs more. Refuses outright without CIVIC_ALLOW_SEED, so it cannot become
+ * a production path by being imported somewhere else.
+ */
+export function forHubDevReset(hubId: string): HubDb {
+  if (process.env.CIVIC_ALLOW_SEED !== "true") {
+    throw new Error("forHubDevReset: dev reset only (CIVIC_ALLOW_SEED is not true).");
+  }
+  return hubDbFrom(getDb(), hubId);
+}
 
 /**
  * The hub-scoped client for one hub. The way request code reaches the database.

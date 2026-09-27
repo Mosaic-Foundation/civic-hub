@@ -29,6 +29,7 @@ import {
 import { finalizeBriefSource } from "../services/briefFinalize.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { sendEmail } from "../services/mailer.js";
+import { sampleDeliverySuppressed } from "../services/sampleContent.js";
 import { getVoteResultsRecipients, hubDisplayNameSync } from "../services/hubSettings.js";
 import { currentHubId } from "../config/hubContext.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
@@ -225,7 +226,8 @@ export async function handleApproveBrief(
       fallbackRecipients,
       hubLabel: hubDisplayNameSync(),
       publicBriefUrl: publicBriefUrl(record.id),
-      sendEmail,
+      // A sample brief is never delivered (Phase 7).
+      sendEmail: record.isSample ? sampleDeliverySuppressed : sendEmail,
       finalizeSource: finalizeBriefSource,
     });
 

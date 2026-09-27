@@ -22,6 +22,7 @@
 
 import { createHash } from "node:crypto";
 import { EXPORT_MANIFEST } from "../../db/schemaContract.js";
+import { isSampleRow, type SampleIds } from "../../models/sampleContent.js";
 
 export const BUNDLE_FORMAT = "civic-hub-export";
 export const BUNDLE_FORMAT_VERSION = 1;
@@ -44,6 +45,7 @@ export const TABLE_KEYS: Readonly<Record<string, readonly string[]>> = {
   deliberation_votes: ["process_id", "user_id", "statement_id"],
   events: ["id"],
   feedback_submissions: ["id"],
+  hub_admin_audit_log: ["id"],
   hub_settings: ["hub_id", "key"],
   process_links: ["id"],
   process_reviews: ["id"],
@@ -109,13 +111,14 @@ export function isSecretSettingKey(key: string): boolean {
 
 /**
  * Sample content — rows seeded to show a hub off (a demo's starter votes),
- * not written by its people — stays behind. THE HOOK: there is no marker
- * yet, so nothing is sample. When the marker lands (a column, or a key in
- * `state`), test for it here and nowhere else; the exporter counts what this
- * skips into the manifest per table.
+ * not written by its people — stays behind (Phase 7). The marker is
+ * `is_sample` on processes, events and users; every other sample row belongs
+ * to a sample process (src/models/sampleContent.ts, the one list removal uses
+ * too), so the exporter reads the hub's sample process and user ids first
+ * and passes them in. It counts what this skips into the manifest per table.
  */
-export function isSampleContentRow(_table: string, _row: Row): boolean {
-  return false;
+export function isSampleContentRow(table: string, row: Row, ids: SampleIds): boolean {
+  return isSampleRow(table, row, ids);
 }
 
 // --- Stored images: who owns what -----------------------------------------

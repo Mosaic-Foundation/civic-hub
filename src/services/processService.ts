@@ -84,6 +84,7 @@ export interface ProcessRow {
   ends_at: string | null;
   created_at: string;
   updated_at: string;
+  is_sample?: boolean;
 }
 
 export function rowToProcess(row: ProcessRow): Process {
@@ -107,6 +108,7 @@ export function rowToProcess(row: ProcessRow): Process {
   };
 
   if (row.content) proc.content = row.content;
+  if (row.is_sample) proc.isSample = true;
   return proc;
 }
 
@@ -150,6 +152,9 @@ export async function createProcess(
       ((input.state ?? {}) as Record<string, unknown>).source_proposal_id as
         | string
         | undefined ?? null,
+    // Only the sample seed sets it; a spawn from a sample process inherits
+    // it in the database (processes_inherit_sample).
+    ...(input.isSample ? { is_sample: true } : {}),
   };
 
   const data = await db()
@@ -400,15 +405,18 @@ export async function listProcessSummaries(
   const resolved = await Promise.all(all.map(autoCloseIfExpired));
   const summaries = resolved.map((p) => {
     const handler = getProcessHandler(p.definition.type);
-    if (handler) return handler.getSummary(p);
-    return {
-      id: p.id,
-      type: p.definition.type,
-      title: p.title,
-      status: p.status,
-      created_at: p.createdAt,
-      created_by: p.createdBy,
-    };
+    const summary = handler
+      ? handler.getSummary(p)
+      : {
+          id: p.id,
+          type: p.definition.type,
+          title: p.title,
+          status: p.status,
+          created_at: p.createdAt,
+          created_by: p.createdBy,
+        };
+    // Universal, not per handler: every type's card shows the Sample badge.
+    return p.isSample ? { ...summary, is_sample: true } : summary;
   });
 
   // Resolve every creator id in ONE query, then attach the human-facing
@@ -493,7 +501,10 @@ export async function getProcessState(
   // public read model. Read models expose the creator id under `created_by`
   // (vote, project, proposal, generic) — types that use a different field
   // (announcement → author_id) enrich inside their own read model instead.
-  return enrichProcessCreator(model, opts);
+  const enriched = await enrichProcessCreator(model, opts);
+  // Universal: every type's page shows the Sample badge (Phase 7).
+  if (process.isSample) enriched.is_sample = true;
+  return enriched;
 }
 
 /**
@@ -538,6 +549,19 @@ async function enrichProcessCreator(
 }
 
 // --- Dev/test utilities ----------------------------------------------------
+
+/**
+ * The ids of this hub's sample processes (Phase 7), any status. For readers
+ * that mark or leave out sample content by process: the feed's badge, the
+ * admin digest.
+ */
+export async function getSampleProcessIds(): Promise<Set<string>> {
+  const rows = await db()
+    .from("processes")
+    .select<{ id: string }>("id")
+    .eq("is_sample", true);
+  return new Set(rows.map((r) => r.id));
+}
 
 /** Clear all processes — dev/seed only. */
 /**

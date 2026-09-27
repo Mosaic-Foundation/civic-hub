@@ -49,3 +49,31 @@ export async function listAudit(opts: { hubId?: string; limit?: number } = {}): 
   if (error) throw new Error(`audit log read failed: ${error.message}`);
   return (data ?? []) as AuditRow[];
 }
+
+// --- The hub admins' own log (Phase 7) ---------------------------------------
+
+export interface HubAdminAuditRow {
+  id: string;
+  at: string;
+  actor_email: string;
+  action: string;
+  before: unknown;
+  after: unknown;
+}
+
+/**
+ * One hub's hub_admin_audit_log: what its own admins did with a fresh code
+ * (sample-content removal, mode changes, roster changes). Hub data, written
+ * by the hub app; the console reads it here, as the service role, so the
+ * operator sees it without anything being copied into control_audit_log.
+ */
+export async function listHubAdminAudit(hubId: string, limit = 100): Promise<HubAdminAuditRow[]> {
+  const { data, error } = await getDb()
+    .from("hub_admin_audit_log")
+    .select("id, at, actor_email, action, before, after")
+    .eq("hub_id", hubId)
+    .order("at", { ascending: false })
+    .limit(Math.min(Math.max(limit, 1), 500));
+  if (error) throw new Error(`hub admin audit read failed: ${error.message}`);
+  return (data ?? []) as HubAdminAuditRow[];
+}

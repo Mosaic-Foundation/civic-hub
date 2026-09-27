@@ -16,6 +16,7 @@ import {
 import { getAuthUser, resolveCallerUser } from "../middleware/auth.js";
 import { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
+import { getSampleProcessIds } from "../services/processService.js";
 
 /**
  * POST /proposals — submit a new proposal
@@ -72,7 +73,16 @@ export async function handleListProposals(
       rawIdField: "submitted_by",
       audience: (await resolveCallerUser(req)) ? "member" : "public",
     });
-    res.json(enriched);
+    // Sample content (Phase 7): proposal id === its canonical processes row
+    // id, so one lookup marks every seeded row for the badge.
+    const sampleIds = await getSampleProcessIds();
+    const withSample =
+      sampleIds.size === 0
+        ? enriched
+        : enriched.map((p) =>
+            sampleIds.has((p as { id: string }).id) ? { ...p, is_sample: true } : p,
+          );
+    res.json(withSample);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });
@@ -101,13 +111,16 @@ export async function handleGetProposal(
       return;
     }
     // Attach creator name + admin flag; redact the raw submitted_by id.
-    res.json(
-      await enrichCreator(readModel, {
-        rawIdField: "submitted_by",
-        audience: caller ? "member" : "public",
-        anonNumbers: caller ? undefined : await buildProcessAnonNumbers(id),
-      }),
-    );
+    const enriched = await enrichCreator(readModel, {
+      rawIdField: "submitted_by",
+      audience: caller ? "member" : "public",
+      anonNumbers: caller ? undefined : await buildProcessAnonNumbers(id),
+    });
+    // Sample content (Phase 7): proposal id === its canonical processes row id.
+    if ((await getSampleProcessIds()).has(id)) {
+      (enriched as Record<string, unknown>).is_sample = true;
+    }
+    res.json(enriched);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });

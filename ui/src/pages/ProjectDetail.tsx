@@ -199,6 +199,7 @@ export default function ProjectDetail() {
           type="civic.project"
           title={project.title}
           status={statusDisplay(project.status)}
+          sample={Boolean(project.is_sample)}
           aside={
             editPolicy?.editable ? (
               <button

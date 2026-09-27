@@ -87,6 +87,7 @@ export default function DeliberationDetail() {
       <ProcessHeader
         type="civic.polis_deliberation"
         title={process.topic}
+        sample={Boolean(process.is_sample)}
         status={
           isActive
             ? statusDisplay("active")

@@ -111,6 +111,7 @@ export default function Deliberations() {
                       processType="civic.polis_deliberation"
                       status="draft"
                       title={p.topic}
+                      sample={Boolean(p.is_sample)}
                       meta={[
                         cardDate(p.created_at),
                         (p.participant_count ?? 0) > 0
@@ -137,6 +138,7 @@ export default function Deliberations() {
                       processType="civic.polis_deliberation"
                       status="active"
                       title={p.topic}
+                      sample={Boolean(p.is_sample)}
                       meta={[
                         cardDate(p.created_at),
                         (p.participant_count ?? 0) > 0
@@ -163,6 +165,7 @@ export default function Deliberations() {
                       processType="civic.polis_deliberation"
                       status="completed"
                       title={p.topic}
+                      sample={Boolean(p.is_sample)}
                       meta={[
                         cardDate(p.created_at),
                         (p.participant_count ?? 0) > 0

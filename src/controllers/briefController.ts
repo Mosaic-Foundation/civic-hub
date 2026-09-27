@@ -69,6 +69,7 @@ export async function handleGetBrief(
         records,
         (rid) => names.get(rid) ?? "Official",
       ),
+      ...(process.isSample ? { is_sample: true } : {}),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -207,8 +208,8 @@ export async function listOutcomes(q: OutcomesQuery) {
   // public read uses.
   const rows = await forHub(currentHubId())
     .from("processes")
-    .select<{ id: string; title: string | null; state: Record<string, unknown> }>(
-      "id, title, state",
+    .select<{ id: string; title: string | null; state: Record<string, unknown>; is_sample: boolean }>(
+      "id, title, state, is_sample",
     )
     .eq("type", "civic.brief")
     .eq("state->>publication_status", "published")
@@ -229,11 +230,13 @@ export async function listOutcomes(q: OutcomesQuery) {
   const entries = rows
     .map((r) => {
       const sourceId = (r.state as { source_process_id?: unknown }).source_process_id;
-      return toIndexEntry(
+      const entry = toIndexEntry(
         r.state as unknown as BriefProcessState,
         { id: r.id, title: r.title ?? "(untitled)" },
         typeof sourceId === "string" ? (relatedCounts.get(sourceId) ?? 0) : 0,
       );
+      // Sample content (Phase 7): listed, with the Sample badge.
+      return entry && r.is_sample ? { ...entry, is_sample: true } : entry;
     })
     .filter((e): e is NonNullable<typeof e> => e !== null);
 

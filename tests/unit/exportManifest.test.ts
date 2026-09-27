@@ -70,13 +70,14 @@ const schema = schemaFromMigrations();
 const manifest = EXPORT_MANIFEST.map((e) => e.table);
 
 describe("export manifest", () => {
-  it("reads the schema it is checked against (34 tables, 30 with hub_id)", () => {
+  it("reads the schema it is checked against (35 tables, 31 with hub_id)", () => {
     // If this moves, a table was added or dropped: expected, but look at the
-    // manifest in the same change. 34 since 2026-09-26: the super admin's
-    // control_codes, control_sessions and control_audit_log, which are
-    // platform data and so not in a hub's export.
-    expect(schema.tables.size).toBe(34);
-    expect(schema.withHubId.size).toBe(30);
+    // manifest in the same change. 35 since 2026-09-26: Phase 7's
+    // hub_admin_audit_log (hub data, exported), after the super admin's
+    // control_codes, control_sessions and control_audit_log (platform data,
+    // not in a hub's export).
+    expect(schema.tables.size).toBe(35);
+    expect(schema.withHubId.size).toBe(31);
     expect(schema.tables.has("hubs")).toBe(true);
     expect(schema.withHubId.has("hubs")).toBe(false);
   });

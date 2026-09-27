@@ -20,7 +20,7 @@ import {
 } from "../modules/civic.projects/index.js";
 import type { SentimentValue } from "../modules/civic.projects/models.js";
 import { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
-import { getProcess } from "../services/processService.js";
+import { getProcess, getSampleProcessIds } from "../services/processService.js";
 import {
   spawnBriefFromClosedProcess,
   findExistingBriefId,
@@ -136,7 +136,16 @@ export async function handleListProjects(
       rawIdField: "user_id",
       audience: (await resolveCallerUser(req)) ? "member" : "public",
     });
-    res.json(enriched);
+    // Sample content (Phase 7): project id === its canonical processes row
+    // id, so one lookup marks every seeded row for the badge.
+    const sampleIds = await getSampleProcessIds();
+    const withSample =
+      sampleIds.size === 0
+        ? enriched
+        : enriched.map((p) =>
+            sampleIds.has((p as { id: string }).id) ? { ...p, is_sample: true } : p,
+          );
+    res.json(withSample);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });
@@ -170,6 +179,10 @@ export async function handleGetProject(
       anonNumbers: caller ? undefined : await buildProcessAnonNumbers(id),
     });
     enriched.is_owner = isOwner;
+    // Sample content (Phase 7): project id === its canonical processes row id.
+    if ((await getSampleProcessIds()).has(id)) {
+      (enriched as Record<string, unknown>).is_sample = true;
+    }
     res.json(enriched);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

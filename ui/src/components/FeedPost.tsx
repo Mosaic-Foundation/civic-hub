@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { CivicEvent } from "../services/api";
 import { useIsWideViewport } from "../hooks/useIsWideViewport";
 import hub from "../config/hub";
+import SampleBadge from "./SampleBadge";
 import {
   briefResponseContext,
   classifyActivity,
@@ -45,6 +46,9 @@ export interface FeedPostView {
   authorName?: string | null;
   imageUrl?: string | null;
   imageAlt?: string | null;
+  /** Seeded sample content (Phase 7): the event's process is a planted
+   *  sample row — renders the Sample badge beside the type pill. */
+  sample?: boolean;
   /**
    * Slice 10 — compact engagement / metadata line rendered between the
    * summary and the timestamp. Empty / missing → suppressed entirely
@@ -102,6 +106,7 @@ export function eventToPost(
     timestamp: event.timestamp,
     href: activity.href,
     authorName: authorName ?? null,
+    sample: event.sample,
   };
 }
 
@@ -371,6 +376,7 @@ export default function FeedPost({ post }: Props) {
         <div className="feed-post-head">
           <h2 className="feed-post-title">{post.title}</h2>
           <span className={pillClass}>{post.pillLabel}</span>
+          {post.sample && <SampleBadge />}
         </div>
         {post.authorName && (
           <p className="feed-post-author">{post.authorName}</p>

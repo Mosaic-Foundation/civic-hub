@@ -52,3 +52,11 @@
     font-size: 1.35rem;
   }
 }
+
+/* The type pill, and the Sample badge beside it on sample content (Phase 7). */
+.process-header-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs, 0.4rem);
+}

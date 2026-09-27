@@ -101,6 +101,7 @@ export default function Process() {
           isProposal && process.status !== "closed" ? "gathering" :
           process.status,
         )}
+        sample={Boolean(process.is_sample)}
         aside={
           isVote && voteState?.jurisdiction && voteState.jurisdiction !== "local" ? (
             <span className="jurisdiction-badge">{voteState.jurisdiction}</span>

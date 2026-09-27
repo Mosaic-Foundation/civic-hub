@@ -11,7 +11,7 @@
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { RESERVED_HUB_SLUG_PURPOSES, type HubMode } from "../models/hub.js";
 import { PLUGIN_IDS } from "../models/hubSettings.js";
-import { listAudit, recordAudit } from "./audit.js";
+import { listAudit, listHubAdminAudit, recordAudit } from "./audit.js";
 import { exportHubArchive } from "./hubExport.js";
 import {
   CODE_SENT,
@@ -387,6 +387,13 @@ export function controlRouter(): Router {
   r.get("/control/audit", route(async (req, res) => {
     const hubId = typeof req.query.hub === "string" && req.query.hub ? req.query.hub : undefined;
     res.json({ entries: await listAudit({ hubId, limit: Number(req.query.limit) || 100 }) });
+  }));
+
+  // What the hub's own admins did with a fresh code (Phase 7): read from the
+  // hub's hub_admin_audit_log, nothing copied into control_audit_log.
+  r.get("/control/hubs/:id/admin-audit", route(async (req, res) => {
+    const hub = await loadHub(req, res);
+    if (hub) res.json({ entries: await listHubAdminAudit(hub.id, Number(req.query.limit) || 100) });
   }));
 
   // Anything else on the console host is not a hub page.

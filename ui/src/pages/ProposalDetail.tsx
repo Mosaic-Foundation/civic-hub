@@ -114,6 +114,7 @@ export default function ProposalDetail() {
         type="civic.proposal"
         title={proposal.title}
         status={statusDisplay(proposal.status)}
+        sample={Boolean(proposal.is_sample)}
       />
 
       <BriefPointer processId={proposal.id} />

@@ -71,6 +71,13 @@ export interface Process {
   updatedAt: string;
   state: Record<string, unknown>; // process-specific state
   content?: ProcessContent; // structured issue content (optional)
+  /**
+   * Seeded sample content (Phase 7, `processes.is_sample`): shown with a
+   * Sample badge, never on the public wire, removable in one action. Set by
+   * the sample seed, or inherited in the database by a process spawned from
+   * a sample one.
+   */
+  isSample?: boolean;
 }
 
 export interface CreateProcessInput {
@@ -91,6 +98,8 @@ export interface CreateProcessInput {
    * `created_at` column is still set by the database default.
    */
   eventTimestamp?: string;
+  /** Sample content (Phase 7). Only the sample seed sets it. */
+  isSample?: boolean;
 }
 
 export interface ProcessAction {

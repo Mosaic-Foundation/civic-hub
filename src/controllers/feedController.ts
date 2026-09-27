@@ -14,7 +14,7 @@
 
 import { Request, Response } from "express";
 import { getAllEvents, getEventsByProcessId } from "../events/eventStore.js";
-import { getHiddenProcessIds } from "../services/processService.js";
+import { getHiddenProcessIds, getSampleProcessIds } from "../services/processService.js";
 import { buildFeedProcessMeta } from "../services/feedMeta.js";
 import { isAdminEmail, resolveCallerUser } from "../middleware/auth.js";
 import {
@@ -118,7 +118,18 @@ export async function handleGetFeed(
       ? undefined
       : await buildFeedProcessMeta(events);
 
-    const body = { events, count: events.length, process_meta };
+    // Sample content (Phase 7) is in the hub's own feed, badged. `sample` is
+    // a field of this internal read model only: sample events never reach
+    // the public wire (GET /events), which reads the log without them.
+    const sampleIds = await getSampleProcessIds();
+    const out =
+      sampleIds.size === 0
+        ? events
+        : events.map((e) =>
+            e.process_id && sampleIds.has(e.process_id) ? { ...e, sample: true } : e,
+          );
+
+    const body = { events: out, count: out.length, process_meta };
 
     if (pretty) {
       res.setHeader("Content-Type", "application/json");

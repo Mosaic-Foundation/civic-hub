@@ -15,6 +15,7 @@ import Creator from "../components/Creator";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import "./Announcement.css";
 import RelatedProcesses from "../components/RelatedProcesses";
+import SampleBadge from "../components/SampleBadge";
 
 const URL_RE = /\bhttps?:\/\/\S+/gi;
 
@@ -140,6 +141,12 @@ export default function AnnouncementPage() {
       <header className="announcement-header">
         <p className="announcement-eyebrow">
           {isAdminLabel ? "Announcement" : `${roleLabel} announcement`}
+          {announcement.is_sample && (
+            <>
+              {" "}
+              <SampleBadge />
+            </>
+          )}
         </p>
         <h1>{announcement.title}</h1>
         <p className="announcement-meta">

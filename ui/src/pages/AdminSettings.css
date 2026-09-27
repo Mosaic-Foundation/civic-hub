@@ -793,3 +793,19 @@
     margin-left: 0;
   }
 }
+
+/* Sample content removal warning (Phase 7) — the same block in Settings →
+   Sample content and in the Mode section's graduation question. */
+.settings-sample-warning {
+  margin: var(--space-md) 0 0;
+  padding: var(--space-sm) var(--space-md);
+  border-left: 3px solid var(--color-warning);
+  background: var(--color-warning-bg);
+  border-radius: var(--radius-sm);
+}
+.settings-sample-warning p {
+  margin: 0 0 var(--space-xs);
+}
+.settings-sample-warning p:last-child {
+  margin-bottom: 0;
+}

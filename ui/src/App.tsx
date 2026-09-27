@@ -51,6 +51,7 @@ import CreateWordCloud from "./pages/CreateWordCloud";
 import IntroPopup, { hasSeenIntro } from "./components/IntroPopup";
 import ReAcceptModal from "./components/ReAcceptModal";
 import BetaBanner from "./components/BetaBanner";
+import DemoBanner from "./components/DemoBanner";
 import BetaWelcomeDialog from "./components/BetaWelcomeDialog";
 import { usePreviewMode } from "./hooks/usePreviewMode";
 import AuthModal from "./components/AuthModal";
@@ -130,6 +131,9 @@ function AppContent() {
           (the waitlist CTA inside it is signed-out-only). Gone entirely
           (zero code change) when beta_mode flips off. */}
       {hub.beta_mode && <BetaBanner />}
+      {/* Demo hubs (Phase 7): explains the Sample badge; admins get the
+          link to remove the sample content. */}
+      {hub.demo_mode && <DemoBanner />}
 
       {showWelcomeDialog && <BetaWelcomeDialog />}
 

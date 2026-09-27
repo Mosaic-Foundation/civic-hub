@@ -17,6 +17,7 @@ import type { ReactNode } from "react";
 import { friendlyType } from "./ProcessLinkPicker";
 import { typeColorSlug } from "./typeColor";
 import type { StatusDisplay } from "./statusDisplay";
+import SampleBadge from "./SampleBadge";
 import "./ProcessHeader.css";
 
 interface Props {
@@ -30,13 +31,18 @@ interface Props {
   aside?: ReactNode;
   /** Optional meta row under the status line (creator, dates). */
   children?: ReactNode;
+  /** Seeded sample content (Phase 7): adds the Sample badge. */
+  sample?: boolean;
 }
 
-export default function ProcessHeader({ type, title, status, aside, children }: Props) {
+export default function ProcessHeader({ type, title, status, aside, children, sample = false }: Props) {
   return (
     <header className="process-header-block">
-      <span className={`process-type-pill process-type-pill--${typeColorSlug(type)}`}>
-        {friendlyType(type)}
+      <span className="process-header-pills">
+        <span className={`process-type-pill process-type-pill--${typeColorSlug(type)}`}>
+          {friendlyType(type)}
+        </span>
+        {sample && <SampleBadge />}
       </span>
       <h1 className="process-header-title">{title}</h1>
       {(status || aside) && (

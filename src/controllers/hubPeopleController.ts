@@ -34,6 +34,7 @@ import {
   setBoardEmails,
 } from "../services/hubSettings.js";
 import { caller, requireStepUpCode } from "./adminStepUp.js";
+import { recordHubAdminAudit } from "../services/hubAdminAudit.js";
 
 export interface HubPeopleResponse {
   admin_emails: string[];
@@ -139,11 +140,17 @@ export async function handleSetHubPeople(
       const before = await getAdminEmails(hubId);
       await setAdminEmails(hubId, admins, user.id);
       logRosterChange("admin", hubId, user.email, before, admins);
+      if (rosterChanged(before, admins)) {
+        await recordHubAdminAudit({ actor: user.email, action: "people.admins", before, after: admins });
+      }
     }
     if (board !== null) {
       const before = await getBoardEmails(hubId);
       await setBoardEmails(hubId, board, user.id);
       logRosterChange("board", hubId, user.email, before, board);
+      if (rosterChanged(before, board)) {
+        await recordHubAdminAudit({ actor: user.email, action: "people.board", before, after: board });
+      }
     }
     res.json(await loadPeople());
   } catch (err) {
@@ -157,9 +164,13 @@ export async function handleSetHubPeople(
  * Say who changed whose access, and how.
  *
  * There is no event for this — `emitEvent` publishes civic activity and an
- * admin roster is not one — so the deployment log is the only record, and a
- * line that names the actor and the delta is what makes it a usable one.
+ * admin roster is not one. The durable record is hub_admin_audit_log (Phase
+ * 7); this line keeps the delta readable in the deployment log too.
  */
+function rosterChanged(before: readonly string[], after: readonly string[]): boolean {
+  return after.some((e) => !before.includes(e)) || before.some((e) => !after.includes(e));
+}
+
 function logRosterChange(
   which: "admin" | "board",
   hubId: string,

@@ -48,6 +48,7 @@ import {
 } from "../services/processService.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { sendEmail } from "../services/mailer.js";
+import { sampleDeliverySuppressed } from "../services/sampleContent.js";
 import { getVoteResultsRecipients, hubDisplayNameSync } from "../services/hubSettings.js";
 import { currentHubId } from "../config/hubContext.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
@@ -308,7 +309,8 @@ export async function handleApproveVoteResults(
       recipients,
       hubLabel: hubDisplayNameSync(),
       publicVoteResultsUrl: publicVoteResultsUrl(record.id),
-      sendEmail,
+      // Sample results are never delivered (Phase 7).
+      sendEmail: record.isSample ? sampleDeliverySuppressed : sendEmail,
       finalizeLinkedVote,
     });
 

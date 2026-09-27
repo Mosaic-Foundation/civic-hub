@@ -251,6 +251,7 @@ export default function AdminReviews() {
                   label: STATUS_LABELS[detail.review.status] ?? detail.review.status,
                   className: `status-chip review-status-${detail.review.status}`,
                 }}
+                sample={Boolean(proc?.is_sample)}
               >
                 <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)" }}>
                   Submitted by <strong>{detail.review.creator_name}</strong> (
