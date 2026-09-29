@@ -145,7 +145,7 @@ async function pool<T>(items: T[], size: number, fn: (t: T) => Promise<void>) {
 const HUB_TABLES_FOR_SNAPSHOT = [
   "active_vote_keys", "brief_responses", "community_inputs", "deliberation_drafts",
   "deliberation_submissions", "deliberation_votes", "events", "feedback_submissions",
-  "hub_settings", "link_previews", "pending_verifications", "process_links",
+  "hub_settings", "job_runs", "link_previews", "pending_verifications", "process_links",
   "process_reviews", "processes", "project_comments", "project_drafts",
   "project_sentiments", "project_updates", "projects", "proposal_drafts",
   "proposal_supports", "proposals", "review_turns", "sessions", "users",
@@ -312,6 +312,20 @@ beforeAll(async () => {
     body: JSON.stringify({ hub_id: "floyd", url: B.previewUrl, title: `Preview ${MARKER_B}`, description: `Preview ${MARKER_B}`, image_url: imageUrl("floyd"), fetched_at: new Date().toISOString() }),
   });
 
+  // A failed scheduled run on Floyd, reason and all: the Plugins page's
+  // last-run route must never hand it to Athens's admin.
+  await localRest("job_runs", {
+    method: "POST",
+    body: JSON.stringify({
+      hub_id: "floyd",
+      job_id: "meeting_summary",
+      started_at: new Date().toISOString(),
+      status: "failed",
+      summary: `Run ${MARKER_B}`,
+      problems: [`Problem ${MARKER_B}`],
+    }),
+  });
+
   floydSettingsBefore = (await localRest("hub_settings?hub_id=eq.floyd&key=in.(identity.tagline,identity.banner_url,copy.about)")) as Rows;
   await localRest("hub_settings?on_conflict=hub_id,key", {
     method: "POST",
@@ -338,6 +352,7 @@ beforeAll(async () => {
 afterAll(async () => {
   for (const id of directProcessIds) await localRest(`processes?id=eq.${id}`, { method: "DELETE" }).catch(() => undefined);
   await localRest(`link_previews?hub_id=eq.floyd&url=eq.${encodeURIComponent(B.previewUrl ?? "")}`, { method: "DELETE" }).catch(() => undefined);
+  await localRest(`job_runs?hub_id=eq.floyd&summary=eq.${encodeURIComponent(`Run ${MARKER_B}`)}`, { method: "DELETE" }).catch(() => undefined);
   // Put back exactly what was there — only if it was captured, so a run that
   // failed before touching the settings leaves them alone.
   if (floydSettingsBefore) {
@@ -415,6 +430,8 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /admin/hub/settings": {},
   "GET /admin/hub/settings/template/:key": {},
   "GET /admin/hub/plugins/live": {},
+  // Each job's last run (job_runs). Floyd has a failed run carrying MARKER_B.
+  "GET /admin/hub/jobs/runs": {},
   "GET /admin/settings": {},
   "GET /admin/moderation/log": {},
   "GET /votes/:id/log": {},

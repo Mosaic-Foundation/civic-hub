@@ -15,9 +15,10 @@
 //    from residential IPs (local dev) but typically fails on cloud
 //    hosts. Kept around so dev / non-Vercel hosts still work.
 //
-// Either way the pipeline catches transcript failures and falls back to
-// PDF-only summarization (with a warning log) — a transcript outage
-// degrades quality, never breaks the run.
+// A transcript failure never breaks the run, and never degrades a summary
+// silently either: since 2026-09-29 a meeting whose video has no usable timed
+// transcript WAITS (src/modules/civic.meeting_summary/readiness.ts) and is
+// retried on the next run.
 
 // The `youtube-transcript` package declares "type": "module" but its
 // "main" entry is a CJS-style bundle with `exports.X = ...` assignments,
@@ -119,15 +120,34 @@ async function fetchViaSupadata(
   }
 
   const data = (await res.json()) as {
-    content?: Array<{ text?: unknown; offset?: unknown }>;
+    content?: unknown;
     error?: string;
+    jobId?: unknown;
   };
 
   if (data.error) {
     throw new Error(`Supadata error: ${data.error}`);
   }
 
-  const raw = Array.isArray(data.content) ? data.content : [];
+  // Two answers that used to read as "no captions" and pass silently:
+  //   - an asynchronous job (HTTP 202 with a jobId) — Supadata does this when
+  //     it has to generate the transcript itself, e.g. a long recording or a
+  //     video with no captions yet;
+  //   - plain text instead of segments, which has no timings to link into.
+  // Both are "not ready", so the run waits and tries again tomorrow.
+  if (res.status === 202 || typeof data.jobId === "string") {
+    throw new Error(
+      `Supadata is still preparing this transcript (asynchronous job ${String(data.jobId ?? "")}) — try again later`,
+    );
+  }
+  if (typeof data.content === "string") {
+    throw new Error("Supadata returned the transcript as plain text, without timings");
+  }
+
+  const raw = (Array.isArray(data.content) ? data.content : []) as Array<{
+    text?: unknown;
+    offset?: unknown;
+  }>;
   const out: TranscriptSegment[] = [];
   for (const seg of raw) {
     const text = typeof seg.text === "string" ? seg.text : "";

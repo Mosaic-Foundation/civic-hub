@@ -211,6 +211,17 @@
   font-weight: 600;
 }
 
+/* A summary that must be checked before publishing (quality_flag). */
+.badge-agenda.badge-needs-check {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.meeting-flag-detail {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
 .batch-backdate-label {
   display: flex;
   align-items: center;

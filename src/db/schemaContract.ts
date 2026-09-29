@@ -80,6 +80,8 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "events", columns: ["is_sample"], owner: "core/sampleContent" },
   { table: "users", columns: ["is_sample"], owner: "core/sampleContent" },
   { table: "hub_admin_audit_log", columns: ["hub_id", "actor_email", "action", "before", "after"], owner: "core/hubAdminAudit" },
+  // Scheduled-job outcomes (20260929000000): the admin's last-run lines and the admin digest.
+  { table: "job_runs", columns: ["hub_id", "job_id", "started_at", "finished_at", "status", "summary", "problems", "details"], owner: "core/jobRuns" },
   { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at", "edits_seen_at", "feedback_seen_at", "briefs_seen_at", "meeting_summaries_seen_at"], owner: "civic.auth" },
   { table: "sessions", owner: "civic.auth" },
   { table: "pending_verifications", columns: ["attempts", "locked_until"], owner: "civic.auth" },
@@ -141,6 +143,7 @@ export const EXPORT_MANIFEST: readonly ExportManifestEntry[] = [
   { table: "feedback_submissions", rows: "export" },
   { table: "hub_admin_audit_log", rows: "export" },
   { table: "hub_settings", rows: "export" },
+  { table: "job_runs", rows: "omit", reason: "an operational log of this host's scheduled runs; the next host writes its own" },
   { table: "link_previews", rows: "omit", reason: "a cache of other sites' metadata; the next host refetches it" },
   { table: "pending_verifications", rows: "omit", reason: "live sign-in codes" },
   { table: "process_links", rows: "export" },

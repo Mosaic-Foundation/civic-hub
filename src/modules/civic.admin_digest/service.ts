@@ -11,11 +11,15 @@ import {
 } from "../civic.proposals/index.js";
 import { getAllProcesses, getSampleProcessIds } from "../../services/processService.js";
 import { listFeedback } from "../civic.feedback/index.js";
+import { effectiveQualityFlag } from "../civic.meeting_summary/index.js";
 import { sendEmail } from "../../utils/email.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
 import { hubDisplayNameSync } from "../../services/hubSettings.js";
+import { jobProblemsSince, type JobRunRecord } from "../../services/jobRuns.js";
 import type {
   AdminDigestPayload,
+  JobProblemItem,
+  JobProblemsSnapshot,
   PendingItemSummary,
   QueueSnapshot,
 } from "./models.js";
@@ -95,9 +99,13 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
       }
     } else if (proc.definition.type === "civic.meeting_summary") {
       if (state?.approval_status === "pending") {
+        // A flagged summary says why in the list, so the admin opens it first.
+        const flag = effectiveQualityFlag(
+          state as unknown as Parameters<typeof effectiveQualityFlag>[0],
+        );
         meetingSummaryItems.push({
           id: proc.id,
-          title: proc.title,
+          title: flag?.message ? `${proc.title} — ${flag.message}` : proc.title,
           created_at: proc.createdAt,
         });
       }
@@ -129,6 +137,28 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
     );
   }
 
+  // 5. Scheduled jobs that failed or were flagged in the same window. A
+  //    failure to read the log must not cost the admin the rest of the
+  //    digest either, but it is itself worth saying.
+  let jobRuns: JobRunRecord[] = [];
+  try {
+    jobRuns = await jobProblemsSince(since);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[admin-digest] Job run log unavailable: ${message}`);
+    jobRuns = [
+      {
+        job_id: "job_runs",
+        started_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
+        status: "failed",
+        summary: "",
+        problems: [`The scheduled jobs' run log could not be read, so failures may be missing here: ${message}`],
+      },
+    ];
+  }
+  const jobProblems = jobProblemsSnapshot(jobRuns, `${ui}/admin/settings/plugins`);
+
   const proposals = snapshotFromList(proposalItems, `${ui}/propose`);
   const voteResults = snapshotFromList(
     voteResultsItems,
@@ -147,12 +177,42 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
     vote_results: voteResults,
     meeting_summaries: meetingSummaries,
     feedback,
+    job_problems: jobProblems,
     empty:
       proposals.count === 0 &&
       voteResults.count === 0 &&
       meetingSummaries.count === 0 &&
-      feedback.count === 0,
+      feedback.count === 0 &&
+      jobProblems.count === 0,
   };
+}
+
+/** Human names for the jobs an admin sees; ids in src/jobs/registry.ts. */
+export const JOB_NAMES: Readonly<Record<string, string>> = {
+  meeting_summary: "Meeting summaries",
+  news_sync: "News sync",
+  digest: "Resident digest",
+  admin_digest: "Admin digest",
+  vote_close: "Closing votes",
+  job_runs: "Job run log",
+};
+
+/** The digest's job section from the run log. Pure; tested directly. */
+export function jobProblemsSnapshot(
+  runs: readonly JobRunRecord[],
+  panelUrl: string,
+): JobProblemsSnapshot {
+  const items: JobProblemItem[] = runs
+    .filter((r) => r.status === "failed" || r.status === "flagged")
+    .map((r) => ({
+      job_id: r.job_id,
+      job_name: JOB_NAMES[r.job_id] ?? r.job_id,
+      status: r.status as "failed" | "flagged",
+      finished_at: r.finished_at,
+      problems: r.problems.length > 0 ? r.problems : [r.summary || "No reason recorded"],
+    }))
+    .sort((a, b) => (a.finished_at < b.finished_at ? 1 : -1));
+  return { count: items.length, items, panel_url: panelUrl };
 }
 
 // --- Email rendering ---------------------------------------------------------
@@ -220,6 +280,34 @@ function renderQueueSection(
   `;
 }
 
+function renderJobProblemsSection(q: AdminDigestPayload["job_problems"]): string {
+  if (q.count === 0) return "";
+  const items = q.items
+    .map((it) => {
+      const when = `${it.finished_at.slice(0, 16).replace("T", " ")} UTC`;
+      const label = it.status === "failed" ? "failed" : "needs a check";
+      const reasons = it.problems
+        .map((pr) => `<li style="margin:2px 0;">${escapeHtml(pr)}</li>`)
+        .join("");
+      return `<li style="margin:0 0 10px;line-height:1.4;">
+        <strong>${escapeHtml(it.job_name)}</strong> ${label} <span style="color:#6b7280;">(${escapeHtml(when)})</span>
+        <ul style="list-style:circle;padding-left:18px;margin:4px 0 0;color:#374151;">${reasons}</ul>
+      </li>`;
+    })
+    .join("");
+  return `
+    <section style="margin:0 0 24px;">
+      <h3 style="font-size:15px;font-weight:600;margin:0 0 8px;color:#991b1b;">
+        Scheduled jobs needing attention — ${q.count}
+      </h3>
+      <ul style="list-style:disc;padding-left:20px;margin:0;font-size:14px;">${items}</ul>
+      <p style="margin:10px 0 0;font-size:13px;">
+        <a href="${escapeHtml(q.panel_url)}" style="color:#1e3a5f;font-weight:600;">See each job's last run →</a>
+      </p>
+    </section>
+  `;
+}
+
 export function renderAdminDigestEmail(p: AdminDigestPayload): {
   subject: string;
   html: string;
@@ -246,10 +334,18 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
       `${p.feedback.count} feedback ${pluralize(p.feedback.count, "submission", "submissions")}`,
     );
   }
+  const jobs = p.job_problems ?? { count: 0, items: [], panel_url: "" };
+  if (jobs.count > 0) {
+    // First in the subject: a broken job is the item most likely to be urgent.
+    totalParts.unshift(
+      `${jobs.count} scheduled ${pluralize(jobs.count, "job needs", "jobs need")} attention`,
+    );
+  }
   const subject = `[${p.hub_name}] Admin queue: ${totalParts.join(", ")}`;
 
   const ui = uiBaseUrl();
   const sections = [
+    renderJobProblemsSection(jobs),
     renderQueueSection(
       // "awaiting review" was a misnomer: these are live idea-board proposals
       // an admin may want to look at, not submissions in the review queue.
@@ -286,8 +382,8 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937;">
       <h1 style="font-size:18px;font-weight:600;margin:0 0 8px;color:#1e3a5f;">${escapeHtml(p.hub_name)} — admin queue</h1>
       <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">
-        Daily summary of items waiting for your review, and feedback
-        residents sent in the last 24 hours.
+        Daily summary of items waiting for your review, scheduled jobs that
+        need a look, and feedback residents sent in the last 24 hours.
       </p>
       ${sections}
       <p style="margin:32px 0 0;color:#9ca3af;font-size:12px;">
@@ -308,6 +404,15 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
       textParts.push(`  + ${q.count - q.items.length} more`);
     }
     textParts.push(`  ${q.panel_url}`);
+    textParts.push("");
+  }
+  if (jobs.count > 0) {
+    textParts.push(`Scheduled jobs needing attention: ${jobs.count}`);
+    for (const it of jobs.items) {
+      textParts.push(`  - ${it.job_name} (${it.status}, ${it.finished_at.slice(0, 16).replace("T", " ")} UTC)`);
+      for (const pr of it.problems) textParts.push(`      ${pr}`);
+    }
+    textParts.push(`  ${jobs.panel_url}`);
     textParts.push("");
   }
   appendQueueText("Proposals awaiting review", p.proposals);

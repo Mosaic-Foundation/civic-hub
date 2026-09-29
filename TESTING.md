@@ -692,7 +692,12 @@ runs them; the network-facing halves are exercised through injected `fetchHtml`
 |------|-----------|----------|-------|
 | Transcript-only meeting (no PDF at all) | :white_check_mark: unit | | meetingSummaryPipeline.test.ts (8) |
 | No document block sent when there is no PDF | :white_check_mark: unit | | |
-| Empty transcript + no PDF fails loudly | :white_check_mark: unit | | inventing blocks is worse than failing |
+| Empty transcript + no PDF waits (not ready) | :white_check_mark: unit | | inventing blocks is worse than failing; since 2026-09-29 retried next run, not a failure |
+| Listed video without a timed transcript waits — no agenda fallback | :white_check_mark: unit | live | the 2026-09-22 bug; meetingSummaryTimestamps.test.ts (18), meetingSummaryPipeline.test.ts |
+| Agenda alone is never summarized | :white_check_mark: unit | | waits for minutes or a recording |
+| Timed transcript ⇒ summary has timestamps | :white_check_mark: unit | | meetingSummaryTimestamps.test.ts |
+| Model drops timestamps ⇒ one retry, then flagged | :white_check_mark: unit | | "No video timestamps; the transcript had timings, check before publishing" |
+| Minutes past 14 days without a transcript go ahead, flagged | :white_check_mark: unit | | `allowMissingTranscript` |
 | Block count scales to meeting length | :white_check_mark: unit | | meetingSummaryPrompt.test.ts (11) |
 | Prompt demands coverage through adjournment | :white_check_mark: unit | | a 4h24m run had dropped the last hour |
 | Prompt forbids omitting a closed session | :white_check_mark: unit | | a run had dropped one with its vote |
@@ -702,7 +707,8 @@ runs them; the network-facing halves are exercised through injected `fetchHtml`
 
 | Flow | Automated | Verified | Notes |
 |------|-----------|----------|-------|
-| A meeting that has not happened is not summarized | :white_check_mark: unit | | meetingSummaryStaleness.test.ts (17) |
+| A meeting that has not happened is not summarized | :white_check_mark: unit | | meetingSummaryStaleness.test.ts (17); **since 2026-09-29 the meeting day itself waits too** |
+| A same-day summary counts as predating its meeting | :white_check_mark: unit | live | 2026-09-22 written 11:30 UTC that morning |
 | Summary predating its own meeting is detected | :white_check_mark: unit | live | 2026-08-25 written 2026-08-22 |
 | Upgrade fires when a recording appears | :white_check_mark: unit | live | not only when minutes appear |
 | A fresh summary is not re-summarized each run | :white_check_mark: unit | | would burn the per-run budget |
@@ -723,6 +729,14 @@ runs them; the network-facing halves are exercised through injected `fetchHtml`
 | A run that aborts alerts | :white_check_mark: unit | | previously returned 500 to nobody |
 | A healthy run stays quiet | :white_check_mark: unit | | steady state must not nag |
 | Published card ⇒ page resolves | :white_check_mark: unit | live | feedHealth.test.ts (8) |
+| Flagged summary is never auto-published | :white_check_mark: unit | | jobRunVisibility.test.ts — the real run with auto-publish on |
+| Approving a flagged summary needs confirmation (409 without) | :white_check_mark: unit | local | meetingSummaryTimestamps.test.ts; UI confirm checked in the browser on the local stack |
+| Batch approve skips flagged summaries | | | `flagged_skipped` in the response; not automated |
+| Older summaries with a video and no timestamps count as flagged | :white_check_mark: unit | | `effectiveQualityFlag` |
+| Failed or flagged run is recorded in job_runs | :white_check_mark: unit | | jobRunVisibility.test.ts, jobRunDescribe.test.ts (8) |
+| Failed run appears in the admin digest with its reason | :white_check_mark: unit | | jobRunVisibility.test.ts: the real admin digest, sent for a job failure alone |
+| Plugins page shows each job's last run and last problem | | local | browser check on the local stack, 2026-09-29; no component tests |
+| job_runs is hub-scoped and never leaks | :white_check_mark: API | | rlsCatalog.test.ts; leakHarness.test.ts walks `GET /admin/hub/jobs/runs` with a Floyd run carrying the marker |
 | One feed card per published process | :white_check_mark: unit | live | feedPublicationDedupe.test.ts (7) |
 | Stale summaries reported | :white_check_mark: unit | | |
 | Overdue revisions reported after 14 days | | | **Needs test** — threshold logic uncovered |
@@ -872,6 +886,8 @@ The goal: before any push to `main`, every row in this table should have at leas
 - **Intro popup in E2E:** Each test sets `localStorage.setItem("seen_intro_popup", "true")` before interacting with the page to prevent the intro dialog from blocking clicks.
 - **File parallelism disabled:** Vitest runs test files sequentially (`fileParallelism: false`) because they share a dev server and database.
 - **Playwright auto-starts servers:** The Playwright config includes `webServer` entries for both the backend (:3000) and frontend (:5173). If they're already running, it reuses them.
+- **Job run log in unit tests (2026-09-29):** every hub job run now writes a `job_runs` row through `forHub()` (`src/services/jobRuns.ts`, best-effort). Unit tests that drive `runJobAcrossHubs` (`cronHubIsolation`, `jobsPerHub`, `jobRunVisibility`) mock that module, so the unit layer never reaches a database whatever the shell's environment. A new unit test that runs a job should do the same.
+- **Both API passes on one local stack (2026-09-29):** run back to back, the token pass's `sampleContent.test.ts` can fail "Too many incorrect attempts … 15 minutes": the service-role pass's deliberate wrong codes locked the same `pending_verifications` row. It is the shared stack, not the code: wait out the lock, or delete the locked row on the LOCAL stack (`pending_verifications?locked_until=gt.now()`) and rerun. CI runs each pass on its own stack.
 
 ---
 

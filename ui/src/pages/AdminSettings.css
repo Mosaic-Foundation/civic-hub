@@ -786,10 +786,78 @@
   gap: 6px;
 }
 
+/* A scheduled job's last run, under its plugin's switch (job_runs). */
+.job-runs {
+  margin: 0 0 8px 28px;
+}
+
+.job-run-line {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+}
+
+.job-run-line.job-run-flagged,
+.job-run-line.job-run-failed {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+}
+
+.job-run-line.job-run-flagged {
+  border-left: 3px solid var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.job-run-line.job-run-failed {
+  border-left: 3px solid var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.job-run-summary {
+  margin: 0;
+}
+
+.job-run-label {
+  font-weight: 600;
+}
+
+.job-run-chip {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.job-run-chip-ok {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.job-run-chip-flagged {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.job-run-chip-failed {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.job-run-problems {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  overflow-wrap: anywhere;
+}
+
+.job-run-earlier {
+  margin: 2px 0 0;
+}
+
 @media (max-width: 600px) {
   .plugin-settings,
   .plugin-off-note,
-  .plugin-live-warning {
+  .plugin-live-warning,
+  .job-runs {
     margin-left: 0;
   }
 }

@@ -7,6 +7,11 @@
 // of process cannot be created. Nothing is deleted, so switching it back on
 // restores everything as it was.
 //
+// Each plugin with a scheduled job shows the job's last run beneath its switch
+// (2026-09-29): when it ran, what it produced, and any error — plus the most
+// recent problem when a clean run has since replaced it as "last". The same
+// failures reach the admin digest. Source: job_runs, via GET /admin/hub/jobs/runs.
+//
 // A setting another section already owns is shown here read-only with a link
 // to where it is changed — one writer per key, so the two can never drift:
 // announcement authors and brief recipients (Officials), the support
@@ -26,7 +31,14 @@ import {
   UrlField,
 } from "./fields";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
-import { adminGetPluginLiveCounts, adminGetSettings, type CommentIdentityMode } from "../../services/api";
+import {
+  adminGetJobRuns,
+  adminGetPluginLiveCounts,
+  adminGetSettings,
+  type CommentIdentityMode,
+  type JobRunRecord,
+  type JobRunsEntry,
+} from "../../services/api";
 
 type PluginId = (typeof PLUGIN_SECTION_ORDER)[number];
 
@@ -78,6 +90,14 @@ export default function PluginsSection() {
       .then((r) => setLive(r.counts))
       .catch(() => setLive({}));
   }, []);
+  // Each job's last run. A failed load says so on the cards rather than
+  // showing nothing, which would read as "never ran".
+  const [jobs, setJobs] = useState<JobRunsEntry[] | "error" | null>(null);
+  useEffect(() => {
+    adminGetJobRuns()
+      .then((r) => setJobs(r.jobs))
+      .catch(() => setJobs("error"));
+  }, []);
 
   return (
     <SectionForm
@@ -95,7 +115,13 @@ export default function PluginsSection() {
       {(f) => (
         <div className="plugins-list">
           {PLUGIN_SECTION_ORDER.map((id) => (
-            <PluginCard key={id} f={f} id={id} live={live[id] ?? 0} />
+            <PluginCard
+              key={id}
+              f={f}
+              id={id}
+              live={live[id] ?? 0}
+              jobs={jobs === "error" || jobs === null ? jobs : jobs.filter((j) => j.plugin === id)}
+            />
           ))}
         </div>
       )}
@@ -103,12 +129,23 @@ export default function PluginsSection() {
   );
 }
 
-function PluginCard({ f, id, live }: { f: FormApi; id: PluginId; live: number }) {
+function PluginCard({
+  f,
+  id,
+  live,
+  jobs,
+}: {
+  f: FormApi;
+  id: PluginId;
+  live: number;
+  jobs: JobRunsEntry[] | "error" | null;
+}) {
   const on = f.value(`plugin.${id}.enabled`) === "true";
   const panel = settingsPanel(f, id);
   return (
     <section className={`plugin-card${on ? "" : " plugin-card-off"}`} aria-label={PLUGINS[id].name}>
       <BooleanField f={f} k={`plugin.${id}.enabled`} label={PLUGINS[id].name} hint={PLUGINS[id].what} />
+      {on && <JobRunLines jobs={jobs} plugin={id} />}
       {!on && live > 0 && <LiveItemsWarning id={id} live={live} />}
       {panel && on && <div className="plugin-settings">{panel}</div>}
       {panel && !on && (
@@ -117,6 +154,82 @@ function PluginCard({ f, id, live }: { f: FormApi; id: PluginId; live: number })
         </p>
       )}
     </section>
+  );
+}
+
+// Jobs whose last run is always shown, even before the first one. Closing
+// votes records only when it closed something, so it appears once it has.
+const ALWAYS_SHOWN_JOBS: ReadonlySet<string> = new Set([
+  "meeting_summary",
+  "news_sync",
+  "digest",
+  "admin_digest",
+]);
+
+function JobRunLines({ jobs, plugin }: { jobs: JobRunsEntry[] | "error" | null; plugin: PluginId }) {
+  if (jobs === null) return null;
+  if (jobs === "error") {
+    // Only on plugins that have a job; the rest have nothing to say.
+    return ALWAYS_SHOWN_JOBS.has(plugin) ? (
+      <p className="form-hint job-run-line">Last run: could not be loaded.</p>
+    ) : null;
+  }
+  const shown = jobs.filter((j) => j.last || ALWAYS_SHOWN_JOBS.has(j.job_id));
+  if (shown.length === 0) return null;
+  return (
+    <div className="job-runs">
+      {shown.map((j) => (
+        <JobRunLine key={j.job_id} entry={j} labelled={shown.length > 1 || j.job_id !== plugin} />
+      ))}
+    </div>
+  );
+}
+
+function formatRunTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+const RUN_STATUS_LABEL: Record<JobRunRecord["status"], string> = {
+  ok: "OK",
+  flagged: "Needs a check",
+  failed: "Failed",
+};
+
+function JobRunLine({ entry, labelled }: { entry: JobRunsEntry; labelled: boolean }) {
+  const { last, last_problem } = entry;
+  const prefix = labelled ? `${entry.job_name}, last run` : "Last run";
+  if (!last) {
+    return <p className="form-hint job-run-line">{prefix}: none recorded yet.</p>;
+  }
+  return (
+    <div className={`job-run-line job-run-${last.status}`} role={last.status === "ok" ? undefined : "status"}>
+      <p className="job-run-summary">
+        <span className="job-run-label">{prefix}:</span> {formatRunTime(last.finished_at)} —{" "}
+        {last.summary || "completed"}{" "}
+        <span className={`job-run-chip job-run-chip-${last.status}`}>{RUN_STATUS_LABEL[last.status]}</span>
+      </p>
+      {last.problems.length > 0 && (
+        <ul className="job-run-problems">
+          {last.problems.map((p, i) => (
+            <li key={i}>{p}</li>
+          ))}
+        </ul>
+      )}
+      {/* When the last run had a problem, it is shown above; an earlier one
+          is worth a line only once a clean run has replaced it as "last". */}
+      {last_problem && last.status === "ok" && (
+        <p className="form-hint job-run-earlier">
+          Last problem, {formatRunTime(last_problem.finished_at)}: {last_problem.problems.join(" ")}
+        </p>
+      )}
+    </div>
   );
 }
 

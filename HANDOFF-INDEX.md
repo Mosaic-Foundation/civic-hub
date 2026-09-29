@@ -28,6 +28,8 @@ numbers below, or just grep the heading.
 | Local Supabase stack (ports, auth, seed) | `supabase/config.toml`, `supabase/seed.sql` |
 | Migrations (72 files, 36 tables; non-additive: `20260926005000`, and `20260927010000` which drops the audit log's hub FK) | `supabase/migrations/` |
 | Scheduled jobs | `src/jobs/registry.ts` (the one list; `vercel.json` checked against it, `npm run jobs:crontab`), runners `src/jobs/runners.ts`, per-hub loop `src/jobs/runJob.ts` + `src/services/cronHubs.ts`, routes `src/routes/jobRoutes.ts` |
+| Scheduled-job run log: what each outcome means, recording, last-run route, admin digest section | `src/jobs/describe.ts`, `src/services/jobRuns.ts` (table `job_runs`, `20260929000000`), `GET /admin/hub/jobs/runs`, `src/modules/civic.admin_digest/service.ts` |
+| Meeting-summary readiness (when a meeting may be summarized) and quality flags | `src/modules/civic.meeting_summary/readiness.ts`, `effectiveQualityFlag` in `service.ts` |
 | Plugin switches at runtime | `src/services/pluginGate.ts`, `src/middleware/pluginGate.ts`, `PROCESS_TYPE_PLUGINS` in `src/processes/registry.ts`, UI `ui/src/config/plugins.tsx`; admin page `ui/src/pages/settings/PluginsSection.tsx` |
 | A hub's public URLs | `src/utils/baseUrl.ts` (from `hubs.hostname`) |
 | Operator scripts' hub | `scripts/lib/hubScope.ts` (`--hub <slug>`, required) |
@@ -154,6 +156,7 @@ numbers below, or just grep the heading.
 - Onboarding copy — 7093–7125; Welcome page — 8208–8253
 
 ### Plugins / process types (each has Floyd-specific config to move)
+- Meeting summaries: missing timestamps (09-22 cause), readiness rule, flagged summaries, job run log + admin digest — top of HANDOFF, 2026-09-29 (~lines 7–133)
 - Meeting summaries: silent discovery failure + connector ladder — 6065–6593; original slice — 9658–9846
 - Floyd news auto-sync — 8725–8897
 - Daily email digest — 9847–10014; admin digest / feedback in digest — 4750–4898

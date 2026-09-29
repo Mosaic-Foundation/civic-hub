@@ -10,21 +10,16 @@
 // Two rules come out of that, and these pin both.
 
 import { describe, it, expect } from "vitest";
+// The real rules, not copies (they moved into the module on 2026-09-29 so
+// this file could stop mirroring them and drifting).
+import {
+  meetingHasHappened,
+  summaryPredatesMeeting,
+} from "../../src/modules/civic.meeting_summary/readiness.js";
 
-/** Mirrors summaryPredatesMeeting() in meetingSummaryController.ts. */
-function summaryPredatesMeeting(state: {
-  generated_at?: string;
-  meeting_date?: string;
-}): boolean {
-  const generated = (state.generated_at ?? "").slice(0, 10);
-  const meeting = state.meeting_date ?? "";
-  if (!generated || !meeting) return false;
-  return generated < meeting;
-}
-
-/** Mirrors the creation-loop guard. */
+/** The creation-loop guard. */
 function shouldDefer(meeting_date: string, today: string): boolean {
-  return meeting_date > today;
+  return !meetingHasHappened(meeting_date, today);
 }
 
 /** Mirrors the upgrade trigger. */
@@ -56,13 +51,15 @@ describe("summaryPredatesMeeting", () => {
     ).toBe(false);
   });
 
-  it("does not flag a same-day summary", () => {
+  it("DOES flag a same-day summary — the 2026-09-22 case", () => {
+    // The cron runs at 11:30 UTC, the morning US time: a summary written on
+    // the meeting day was written before the meeting (changed 2026-09-29).
     expect(
       summaryPredatesMeeting({
-        generated_at: "2026-08-25T23:00:00Z",
-        meeting_date: "2026-08-25",
+        generated_at: "2026-09-22T11:30:51Z",
+        meeting_date: "2026-09-22",
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("does not flag when either field is missing", () => {
@@ -81,8 +78,8 @@ describe("creation defers meetings that have not happened", () => {
     expect(shouldDefer("2026-08-25", "2026-08-26")).toBe(false);
   });
 
-  it("summarizes on the day itself", () => {
-    expect(shouldDefer("2026-08-25", "2026-08-25")).toBe(false);
+  it("defers on the day itself — the meeting may not have been held yet", () => {
+    expect(shouldDefer("2026-08-25", "2026-08-25")).toBe(true);
   });
 
   it("never defers a past meeting", () => {

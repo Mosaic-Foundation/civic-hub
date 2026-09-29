@@ -31,6 +31,7 @@ function payload(over: Partial<AdminDigestPayload> = {}): AdminDigestPayload {
     vote_results: emptyQueue("https://hub.example/admin/vote-results"),
     meeting_summaries: emptyQueue("https://hub.example/admin/meeting-summaries"),
     feedback: emptyQueue("https://hub.example/admin/feedback"),
+    job_problems: { count: 0, items: [], panel_url: "https://hub.example/admin/settings/plugins" },
     empty: true,
     ...over,
   };

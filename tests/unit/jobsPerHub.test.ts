@@ -47,6 +47,14 @@ vi.mock("../../src/modules/civic.admin_digest/index.js", async () => {
   };
 });
 
+// The job run log (job_runs) is written after every run; keep it in memory so
+// this file never reaches a database, whatever the shell's environment.
+vi.mock("../../src/services/jobRuns.js", () => ({
+  recordJobRun: async () => undefined,
+  jobProblemsSince: async () => [],
+  latestJobRuns: async () => ({}),
+}));
+
 const { jobById } = await import("../../src/jobs/registry.js");
 const { JOB_RUNNERS } = await import("../../src/jobs/runners.js");
 const { runJobAcrossHubs } = await import("../../src/jobs/runJob.js");

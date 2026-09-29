@@ -25,6 +25,13 @@ import {
   resolveEffectiveInstructions,
 } from "./prompts.js";
 import { buildProcessDescription } from "./service.js";
+import {
+  blocksHaveTimestamps,
+  isTimedTranscript,
+  MeetingNotReadyError,
+  qualityFlag,
+  type SummaryQualityFlag,
+} from "./readiness.js";
 
 // --- Discovery -------------------------------------------------------------
 
@@ -52,8 +59,22 @@ const MAX_PDF_BYTES = 20 * 1024 * 1024;
  * asks Claude for a list of topic blocks. Returns the blocks plus the
  * snapshot of instructions used and the model name the API reported.
  *
- * Error handling is the caller's job — any thrown error aborts this one
- * meeting; the cron controller catches and continues.
+ * READINESS (2026-09-29, see readiness.ts). A summary is written only from a
+ * record of the meeting: official minutes, or a transcript with timings. When
+ * the entry lists a video, its timed transcript is required — a missing or
+ * untimed transcript means the meeting is not ready, not that the transcript
+ * is optional. Both throw MeetingNotReadyError, which the run counts as
+ * waiting and retries. `allowMissingTranscript` (set by the run once a meeting
+ * has waited RECORD_GRACE_DAYS) lets official minutes go ahead without the
+ * video, with the summary flagged for review.
+ *
+ * TIMESTAMPS. A summary built from a timed transcript must come out with
+ * timestamps. If the model drops them, it is asked once more; if they are
+ * still missing the summary is kept but flagged, and a flagged summary is
+ * never published without an admin confirming it.
+ *
+ * Any other thrown error aborts this one meeting; the cron controller catches
+ * and continues.
  */
 export async function summarizeMeeting(
   entry: MeetingEntry,
@@ -63,6 +84,7 @@ export async function summarizeMeeting(
     fetchYouTubeTranscript: FetchYouTubeTranscriptFn;
     callClaude: CallClaudeFn;
   },
+  opts: { allowMissingTranscript?: boolean } = {},
 ): Promise<SummarizeMeetingResult> {
   const instructions = resolveEffectiveInstructions(cfg.extraction_instructions);
 
@@ -86,6 +108,54 @@ export async function summarizeMeeting(
     );
   }
 
+  // An agenda says what was PLANNED. Without a recording to show what
+  // happened, it is not a record of the meeting; wait for minutes.
+  if (sourceType === "agenda" && !entry.source_video_url) {
+    throw new MeetingNotReadyError(
+      "Only the agenda is available; waiting for the minutes or a recording",
+    );
+  }
+
+  // --- Transcript first: it decides whether there is anything to do ---
+  //
+  // Fetched before the PDF and before any model call, so a meeting that is
+  // not ready costs one transcript request and nothing else.
+  let transcript: TranscriptSegment[] = [];
+  let transcriptProblem: string | null = null;
+  if (entry.source_video_url) {
+    try {
+      transcript = await deps.fetchYouTubeTranscript(entry.source_video_url);
+      console.log(
+        `[meeting-summary] transcript fetched source_id=${entry.source_id} segments=${transcript.length}`,
+      );
+      if (transcript.length === 0) {
+        transcriptProblem = "the transcript came back empty (no captions yet)";
+      } else if (!isTimedTranscript(transcript)) {
+        transcriptProblem = "the transcript came back without timings";
+      }
+    } catch (err) {
+      transcriptProblem = err instanceof Error ? err.message : "unknown error";
+    }
+  }
+
+  let flag: SummaryQualityFlag | null = null;
+  if (transcriptProblem) {
+    console.warn(
+      `[meeting-summary] no usable transcript for ${entry.source_video_url}: ${transcriptProblem}`,
+    );
+    // Only official minutes may go ahead without the video, and only once the
+    // run has waited long enough. Everything else waits.
+    if (sourceType === "minutes" && opts.allowMissingTranscript) {
+      flag = qualityFlag("transcript_unavailable", transcriptProblem);
+      transcript = [];
+    } else {
+      throw new MeetingNotReadyError(
+        `Waiting for the video's transcript: ${transcriptProblem}`,
+      );
+    }
+  }
+  const timed = transcript.length > 0;
+
   let pdfBase64: string | null = null;
   let pdfMime = "application/pdf";
   if (pdfUrl) {
@@ -100,101 +170,84 @@ export async function summarizeMeeting(
     pdfMime = pdf.mime || "application/pdf";
   }
 
-  // --- Fetch transcript (optional — some meetings have no video) ---
-  let transcript: TranscriptSegment[] = [];
-  let hasVideo = entry.source_video_url !== null;
-  if (entry.source_video_url) {
-    try {
-      transcript = await deps.fetchYouTubeTranscript(entry.source_video_url);
-      console.log(
-        `[meeting-summary] transcript fetched source_id=${entry.source_id} segments=${transcript.length}`,
-      );
-      // Empty transcript = the video exists but has no captions available
-      // (or the provider returned a structurally-valid empty response).
-      // Without segments to ground against, Claude cannot produce real
-      // start_time_seconds and tends to default every block to 0. Flip
-      // hasVideo=false so the prompt explicitly tells Claude to leave
-      // start_time_seconds null on every block — same behavior as a
-      // meeting with no recording at all.
-      if (transcript.length === 0) {
-        console.warn(
-          `[meeting-summary] empty transcript for ${entry.source_video_url} — falling back to PDF-only summary (no captions available)`,
-        );
-        hasVideo = false;
-      }
-    } catch (err) {
-      // Non-fatal: if the transcript endpoint fails, fall back to PDF-only
-      // summarization rather than dropping the meeting entirely. Log the
-      // reason via rethrow-and-catch at the controller level.
-      const msg = err instanceof Error ? err.message : "unknown error";
-      console.warn(
-        `[meeting-summary] transcript fetch failed for ${entry.source_video_url}: ${msg} — falling back to PDF-only summary`,
-      );
-      hasVideo = false;
-      transcript = [];
-    }
-  }
-
-  // A recording-sourced meeting has nothing BUT the transcript. If it came
-  // back empty there is no source left, so fail this meeting loudly instead
-  // of asking Claude to summarize thin air (which yields invented blocks).
-  if (sourceType === "recording" && transcript.length === 0) {
-    throw new Error(
-      `No transcript available for ${entry.source_video_url} and no minutes or ` +
-        `agenda PDF to fall back on — nothing to summarize. Check that the video ` +
-        `has captions and that the transcript provider (SUPADATA_API_KEY) is working.`,
-    );
-  }
-
   const transcriptText = formatTranscript(transcript);
 
   // Meeting length, taken from the last transcript timestamp. Drives how many
   // topic blocks the prompt asks for — a fixed range squeezed long meetings
   // and silently lost their later hours. Null when there is no transcript.
-  const durationSeconds =
-    transcript.length > 0
-      ? Math.max(...transcript.map((t) => t.start))
-      : null;
+  const durationSeconds = timed
+    ? Math.max(...transcript.map((t) => t.start))
+    : null;
 
   const prompt = buildSummarizationPrompt({
     extraction_instructions: instructions,
     meeting_title: entry.meeting_title,
     meeting_date: entry.meeting_date,
     transcript_text: transcriptText,
-    has_video: hasVideo,
+    has_video: timed,
     source_type: sourceType,
     transcript_duration_seconds: durationSeconds,
   });
 
-  const { text, model } = await deps.callClaude({
-    model: cfg.model,
-    userText: prompt,
-    // Omitted entirely for recording-sourced meetings — there is no document.
-    ...(pdfBase64 && pdfUrl
-      ? {
-          documentBase64: {
-            data: pdfBase64,
-            mediaType: pdfMime,
-            filename:
-              filenameFromUrl(pdfUrl) ??
-              (sourceType === "minutes" ? "minutes.pdf" : "agenda.pdf"),
-          },
-        }
-      : {}),
-    // 16k gives headroom for verbose minutes with 15+ topic blocks
-    // without ever flirting with the model's per-response ceiling.
-    maxTokens: 16_000,
-  });
+  const ask = (userText: string) =>
+    deps.callClaude({
+      model: cfg.model,
+      userText,
+      // Omitted entirely for recording-sourced meetings — there is no document.
+      ...(pdfBase64 && pdfUrl
+        ? {
+            documentBase64: {
+              data: pdfBase64,
+              mediaType: pdfMime,
+              filename:
+                filenameFromUrl(pdfUrl) ??
+                (sourceType === "minutes" ? "minutes.pdf" : "agenda.pdf"),
+            },
+          }
+        : {}),
+      // 16k gives headroom for verbose minutes with 15+ topic blocks
+      // without ever flirting with the model's per-response ceiling.
+      maxTokens: 16_000,
+    });
 
-  const blocks = parseSummarizationResponse(text, hasVideo);
+  let { text, model } = await ask(prompt);
+  let blocks = parseSummarizationResponse(text, timed);
+
+  // A timed transcript went in; timestamps must come out. One more try with
+  // the requirement restated, then keep the result and flag it.
+  if (timed && !blocksHaveTimestamps(blocks)) {
+    console.warn(
+      `[meeting-summary] source_id=${entry.source_id}: the transcript had timings but no block ` +
+        `came back with start_time_seconds — asking once more`,
+    );
+    ({ text, model } = await ask(prompt + TIMESTAMP_RETRY_NOTE));
+    const retried = parseSummarizationResponse(text, timed);
+    blocks = retried;
+    if (!blocksHaveTimestamps(retried)) {
+      console.warn(
+        `[meeting-summary] source_id=${entry.source_id}: still no timestamps after a retry — flagging for review`,
+      );
+      flag = qualityFlag("timestamps_missing");
+    }
+  }
 
   return {
     blocks,
     ai_instructions_used: instructions,
     model,
     sourceType,
+    quality_flag: flag,
   };
 }
+
+/** Appended to the prompt on the one retry. */
+const TIMESTAMP_RETRY_NOTE = `
+
+IMPORTANT — RETRY: your previous answer left start_time_seconds null on every
+block, but the transcript above is timestamped. Every block that the recording
+covers MUST carry the start_time_seconds (an integer number of seconds) of the
+transcript line where that topic begins. Read the [HH:MM:SS] / [MM:SS] prefixes
+and convert them to seconds.`;
 
 // --- Convert pipeline output → module-createState input --------------------
 
@@ -214,6 +267,7 @@ export function buildCreateInput(
     blocks: summary.blocks,
     ai_instructions_used: summary.ai_instructions_used,
     ai_model: summary.model,
+    quality_flag: summary.quality_flag,
   };
 }
 

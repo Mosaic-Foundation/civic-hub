@@ -31,6 +31,9 @@ import {
 } from "../services/hubSettings.js";
 import { KEYS, KEY_ALIASES } from "../models/hubSettings.js";
 import { countLiveProcessesByPlugin } from "../services/processService.js";
+import { latestJobRuns } from "../services/jobRuns.js";
+import { JOBS, isPlatformJob, type HubJobSpec } from "../jobs/registry.js";
+import { JOB_NAMES } from "../modules/civic.admin_digest/index.js";
 import { validateSettingsWrite } from "../models/hubSettingsWrite.js";
 import {
   EDITABLE_SETTING_KEYS,
@@ -146,6 +149,30 @@ export async function handleGetHubSettings(_req: Request, res: Response): Promis
 export async function handleGetPluginLiveCounts(_req: Request, res: Response): Promise<void> {
   try {
     res.json({ counts: await countLiveProcessesByPlugin() });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: message });
+  }
+}
+
+/**
+ * GET /admin/hub/jobs/runs — each scheduled job's last run on this hub, for
+ * the Plugins page's "last run" lines, grouped under the plugin that owns the
+ * job. `last_problem` is the newest failed or flagged run when it is not the
+ * last one, so a failure stays visible after a later clean run.
+ * Shape: { jobs: [{ job_id, job_name, plugin, last, last_problem }] }.
+ */
+export async function handleGetJobRuns(_req: Request, res: Response): Promise<void> {
+  try {
+    const runs = await latestJobRuns();
+    const jobs = JOBS.filter((j): j is HubJobSpec => !isPlatformJob(j)).map((j) => ({
+      job_id: j.id,
+      job_name: JOB_NAMES[j.id] ?? j.id,
+      plugin: j.plugin,
+      last: runs[j.id]?.last ?? null,
+      last_problem: runs[j.id]?.last_problem ?? null,
+    }));
+    res.json({ jobs });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });

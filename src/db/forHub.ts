@@ -43,7 +43,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDb, getHubTokenDb, hubTokensEnabled } from "./client.js";
 
 /**
- * Every table that carries hub_id — 31 of the 32. `hubs` is the registry,
+ * Every table that carries hub_id — 32 of the 33. `hubs` is the registry,
  * read by src/db/hubs.ts, and is deliberately unreachable from here.
  */
 export const HUB_TABLES = [
@@ -57,6 +57,7 @@ export const HUB_TABLES = [
   "feedback_submissions",
   "hub_admin_audit_log",
   "hub_settings",
+  "job_runs",
   "link_previews",
   "pending_verifications",
   "process_links",

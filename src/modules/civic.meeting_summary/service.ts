@@ -14,6 +14,11 @@ import type {
 } from "./models.js";
 import { assertApprovalTransition, canApprove, canEdit } from "./lifecycle.js";
 import {
+  blocksHaveTimestamps,
+  qualityFlag,
+  type SummaryQualityFlag,
+} from "./readiness.js";
+import {
   emitMeetingSummaryAggregationCompleted,
   emitMeetingSummaryOutcomeRecorded,
   emitMeetingSummaryResultPublished,
@@ -62,6 +67,7 @@ export function createMeetingSummaryState(
     ai_instructions_used: input.ai_instructions_used,
     ai_model: input.ai_model,
     ai_attribution_label: AI_ATTRIBUTION_LABEL,
+    quality_flag: input.quality_flag ?? null,
   };
 }
 
@@ -108,6 +114,10 @@ export async function editMeetingSummary(
   if (Array.isArray(patch.blocks)) {
     state.blocks = sanitizeBlocks(patch.blocks);
     editedFields.push("blocks");
+    // An admin who puts timestamps in has done the check the flag asked for.
+    if (state.quality_flag && blocksHaveTimestamps(state.blocks)) {
+      state.quality_flag = null;
+    }
   }
   if (typeof patch.admin_notes === "string") {
     state.admin_notes = patch.admin_notes;
@@ -126,7 +136,45 @@ export async function editMeetingSummary(
   return state;
 }
 
+// --- Quality ----------------------------------------------------------------
+
+/**
+ * The flag that applies to this summary: the stored one, or — for a summary
+ * written before flags existed (2026-09-29) — the one it would have been
+ * given. A summary with a video and not one timestamp is exactly the
+ * 2026-09-22 failure, whenever it was written.
+ */
+export function effectiveQualityFlag(
+  state: Pick<MeetingSummaryProcessState, "quality_flag" | "source_video_url" | "blocks" | "generated_at">,
+): SummaryQualityFlag | null {
+  if (state.quality_flag) return state.quality_flag;
+  if (
+    state.source_video_url &&
+    Array.isArray(state.blocks) &&
+    state.blocks.length > 0 &&
+    !blocksHaveTimestamps(state.blocks)
+  ) {
+    return qualityFlag(
+      "transcript_unavailable",
+      "Written before timestamp checks existed; the video's transcript was not used.",
+      state.generated_at,
+    );
+  }
+  return null;
+}
+
 // --- Approval orchestration ------------------------------------------------
+
+/**
+ * Refused approval of a flagged summary (or revision) without confirmation.
+ * The admin route answers 409 with the message; the UI asks and resends.
+ */
+export class FlaggedSummaryError extends Error {
+  constructor(flagMessage: string) {
+    super(`Needs confirmation: ${flagMessage}`);
+    this.name = "FlaggedSummaryError";
+  }
+}
 
 /**
  * Run the approval sequence. Mutations happen on the passed-in state
@@ -144,11 +192,18 @@ export async function approveMeetingSummary(
   state: MeetingSummaryProcessState,
   actor: string,
   ctx: MeetingSummaryProcessContext,
+  opts: { confirmFlagged?: boolean } = {},
 ): Promise<MeetingSummaryProcessState> {
   if (!canApprove(state)) {
     throw new Error(
       `Meeting summary cannot be approved: approval_status is "${state.approval_status}"`,
     );
+  }
+  // A flagged summary is published only by someone who has seen the flag.
+  // The cron's auto-publish never confirms, so it can never publish one.
+  const flag = effectiveQualityFlag(state);
+  if (flag && !opts.confirmFlagged) {
+    throw new FlaggedSummaryError(flag.message);
   }
 
   // Step 1: transition to approved
@@ -203,6 +258,7 @@ export function getAdminReadModel(
     edit_count: state.edit_count,
     pending_revision: state.pending_revision ?? null,
     revised_at: state.revised_at ?? null,
+    quality_flag: effectiveQualityFlag(state),
     ai_instructions_used: state.ai_instructions_used,
     ai_model: state.ai_model,
     ai_attribution_label: AI_ATTRIBUTION_LABEL,
@@ -269,9 +325,13 @@ export function stageRevision(
 export function acceptRevision(
   state: MeetingSummaryProcessState,
   now: string = new Date().toISOString(),
+  opts: { confirmFlagged?: boolean } = {},
 ): MeetingSummaryProcessState {
   const rev = state.pending_revision;
   if (!rev) throw new Error("No revision is waiting for review");
+  if (rev.quality_flag && !opts.confirmFlagged) {
+    throw new FlaggedSummaryError(rev.quality_flag.message);
+  }
 
   state.blocks = rev.blocks;
   state.source_minutes_url = rev.source_minutes_url;
@@ -282,6 +342,7 @@ export function acceptRevision(
   state.ai_instructions_used = rev.ai_instructions_used;
   state.ai_model = rev.ai_model;
   state.generated_at = rev.generated_at;
+  state.quality_flag = rev.quality_flag ?? null;
   state.revised_at = now;
   state.pending_revision = null;
   return state;
@@ -318,6 +379,7 @@ export function getAdminSummary(
     edit_count: state.edit_count,
     pending_revision: state.pending_revision ?? null,
     revised_at: state.revised_at ?? null,
+    quality_flag: effectiveQualityFlag(state),
     created_at: processMeta.createdAt,
   };
 }

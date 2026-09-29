@@ -22,6 +22,8 @@
 // dependency. A hub that doesn't want meeting summaries simply doesn't
 // register the module and doesn't mount its routes.
 
+import type { SummaryQualityFlag } from "./readiness.js";
+
 // --- Core data model --------------------------------------------------------
 
 export type MeetingSummaryApprovalStatus = "pending" | "approved" | "published";
@@ -85,6 +87,12 @@ export interface MeetingSummaryRevision {
   ai_model: string;
   /** ISO 8601 — when the revision was generated. */
   generated_at: string;
+  /**
+   * Set when the revision came out without the timestamps it should have.
+   * Accepting it then needs the admin's confirmation. Absent on revisions
+   * staged before 2026-09-29.
+   */
+  quality_flag?: SummaryQualityFlag | null;
 }
 
 /**
@@ -176,6 +184,15 @@ export interface MeetingSummaryProcessState {
    * chrome.
    */
   ai_attribution_label: string;
+
+  // --- Quality ---
+  /**
+   * Why this summary must not be published without an admin looking first —
+   * today, missing video timestamps (readiness.ts). Null or absent when the
+   * summary is clean. A flagged summary never auto-publishes, and approving
+   * it takes an explicit confirmation.
+   */
+  quality_flag?: SummaryQualityFlag | null;
 }
 
 // --- Module inputs ----------------------------------------------------------
@@ -193,6 +210,7 @@ export interface CreateMeetingSummaryInput {
   blocks: SummaryBlock[];
   ai_instructions_used: string;
   ai_model: string;
+  quality_flag?: SummaryQualityFlag | null;
 }
 
 /** Partial update body used by PATCH /admin/meeting-summaries/:id. */
@@ -371,4 +389,6 @@ export interface SummarizeMeetingResult {
   ai_instructions_used: string;
   model: string;
   sourceType: MeetingSourceType;
+  /** Null when the summary is fit to publish; see readiness.ts. */
+  quality_flag: SummaryQualityFlag | null;
 }

@@ -214,7 +214,7 @@ describe("hub export → import → restore, on the local stack", () => {
     expect(rows.hub_settings).toBe(before.hub_settings - 1);
     expect(m.excluded_settings.map((s: { key: string }) => s.key)).toEqual(["demo_bypass_code"]);
     expect(m.tables.map((t: { table: string }) => t.table)).not.toContain("sessions");
-    expect(m.omitted_tables.map((t: { table: string }) => t.table).sort()).toEqual(["link_previews", "pending_verifications", "sessions"]);
+    expect(m.omitted_tables.map((t: { table: string }) => t.table).sort()).toEqual(["job_runs", "link_previews", "pending_verifications", "sessions"]);
     expect(m.images.count).toBe(2);
     expect(JSON.parse(await readFile(join(bundle, "hub.json"), "utf8")).jurisdiction_ocd_id).toBe(OCD);
 

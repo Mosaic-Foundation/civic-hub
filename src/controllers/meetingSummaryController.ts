@@ -25,6 +25,8 @@ import { Request, Response } from "express";
 import { emitEvent } from "../events/eventEmitter.js";
 import {
   approveMeetingSummary,
+  effectiveQualityFlag,
+  FlaggedSummaryError,
   buildCreateInput,
   buildDescription,
   createMeetingSummaryState,
@@ -44,6 +46,12 @@ import {
   CONNECTORS,
   isConfigured,
   resolveMeetingSummaryConfig,
+  daysSinceMeeting,
+  isMeetingNotReady,
+  meetingHasHappened,
+  RECORD_GRACE_DAYS,
+  summaryPredatesMeeting,
+  todayIso,
   type MeetingEntry,
   type MeetingSourceConnector,
   type MeetingSourceType,
@@ -109,37 +117,9 @@ function meetingKey(date: string, title: string): string {
   return `${date}::${normalized}`;
 }
 
-/**
- * Today's date in ISO form, for comparing against a meeting date.
- *
- * Deliberately UTC-simple: meeting dates are calendar dates with no timezone,
- * and being a few hours conservative about "has this happened" is the safe
- * direction — a summary written a day late is fine, one written before the
- * meeting is not.
- */
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/**
- * A summary is stale when it was generated before the meeting it describes
- * had happened.
- *
- * Floyd posts agendas ~4 days ahead and recordings ~1 day after, so the cron
- * would reliably catch the agenda first and write a summary of PLANNED topics
- * — then never revisit it, because the upgrade pass only fired on minutes.
- * The 2026-08-25 meeting sat that way: summarized 2026-08-22 from the agenda,
- * recording posted 2026-08-26, nothing re-read it.
- */
-function summaryPredatesMeeting(state: {
-  generated_at?: string;
-  meeting_date?: string;
-}): boolean {
-  const generated = (state.generated_at ?? "").slice(0, 10);
-  const meeting = state.meeting_date ?? "";
-  if (!generated || !meeting) return false;
-  return generated < meeting;
-}
+// todayIso, meetingHasHappened and summaryPredatesMeeting live in the module
+// (src/modules/civic.meeting_summary/readiness.ts) since 2026-09-29, so the
+// tests exercise the real rules rather than copies of them.
 
 /**
  * Does the freshly discovered entry carry a source the stored summary lacks?
@@ -212,8 +192,37 @@ interface CronOutcome {
   staleSummaries?: Array<{ meeting_date: string; meeting_title: string; generated_at: string }>;
   /** Revisions sitting unreviewed past the nag threshold. */
   staleRevisions?: Array<{ meeting_date: string; meeting_title: string; waiting_days: number }>;
+  /**
+   * Summaries this run wrote (or revisions it staged) that carry a quality
+   * flag — kept, never auto-published, and named here so an admin looks.
+   */
+  flagged?: FlaggedSummary[];
+  /**
+   * Meetings with no usable record yet (readiness.ts). Every run retries them;
+   * only those past RECORD_GRACE_DAYS count as a problem.
+   */
+  waiting?: WaitingMeeting[];
   /** Set when the run aborted before finishing (discovery threw, config invalid). */
   fatal?: string;
+}
+
+export interface FlaggedSummary {
+  process_id: string;
+  meeting_date: string;
+  meeting_title: string;
+  message: string;
+}
+
+export interface WaitingMeeting {
+  meeting_date: string;
+  meeting_title: string;
+  reason: string;
+  days_since_meeting: number;
+}
+
+/** Waiting meetings that have waited longer than anyone should expect. */
+export function overdueMeetings(waiting: readonly WaitingMeeting[] = []): WaitingMeeting[] {
+  return waiting.filter((w) => w.days_since_meeting > RECORD_GRACE_DAYS);
 }
 
 /**
@@ -248,6 +257,21 @@ export function cronAlertReason(outcome: CronOutcome): string | null {
   }
   if (outcome.failed > 0) {
     return `${outcome.failed} meeting(s) failed to summarize.`;
+  }
+  if (outcome.flagged && outcome.flagged.length > 0) {
+    // The 2026-09-22 case, caught: the summary exists but is missing what it
+    // should have. It is held for review; say so rather than let it sit.
+    return (
+      `${outcome.flagged.length} summary/summaries came out without video timestamps ` +
+      `and are held for review: ${outcome.flagged.map((f) => `${f.meeting_date} ${f.meeting_title}`).join("; ")}.`
+    );
+  }
+  const overdue = overdueMeetings(outcome.waiting);
+  if (overdue.length > 0) {
+    return (
+      `${overdue.length} meeting(s) have waited more than ${RECORD_GRACE_DAYS} days for a ` +
+      `usable record: ${overdue.map((w) => `${w.meeting_date} ${w.meeting_title} (${w.reason})`).join("; ")}.`
+    );
   }
   if (outcome.staleRevisions && outcome.staleRevisions.length > 0) {
     // Nothing is broken — the published version is still serving — but an
@@ -301,7 +325,9 @@ async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
     ? "failed"
     : outcome.discovered === 0
       ? "found no meetings"
-      : `completed with ${outcome.failed} failure(s)`;
+      : outcome.failed > 0
+        ? `completed with ${outcome.failed} failure(s)`
+        : "needs your attention";
 
   const subject = `[Civic Hub] Meeting summary cron ${headline}`;
   const failureLines = outcome.failures
@@ -641,6 +667,9 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
 
     const perRunCap = maxPerRun();
     const willAutoPublish = autoPublish();
+    const today = todayIso();
+    const flagged: FlaggedSummary[] = [];
+    const waiting: WaitingMeeting[] = [];
     console.log(
       `[meeting-summary] processing with per_run_cap=${perRunCap} auto_publish=${willAutoPublish}`,
     );
@@ -656,7 +685,10 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
       // describes what is PLANNED. Summarizing it produces a document that
       // reads like a record of the meeting while predating it — and until the
       // upgrade fix below, nothing ever corrected it. Wait for the meeting.
-      if (entry.meeting_date > todayIso()) {
+      // Strictly before today: on the meeting day itself the 11:30 UTC run is
+      // the morning, US time, and the meeting may not have been held yet (the
+      // 2026-09-22 summary was written that way).
+      if (!meetingHasHappened(entry.meeting_date, today)) {
         console.log(
           `[meeting-summary] ${entry.meeting_date} "${entry.meeting_title}" has not ` +
             `happened yet — deferring until there is a record to summarize`,
@@ -694,12 +726,16 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
       }
 
       const meetingStart = Date.now();
+      const waitedDays = daysSinceMeeting(entry.meeting_date, today);
       try {
-        const summary = await summarizeMeeting(entry, cfg, {
-          fetchPdf,
-          fetchYouTubeTranscript,
-          callClaude,
-        });
+        const summary = await summarizeMeeting(
+          entry,
+          cfg,
+          { fetchPdf, fetchYouTubeTranscript, callClaude },
+          // Past the grace period, official minutes may go ahead without the
+          // video's transcript — flagged, so an admin still decides.
+          { allowMissingTranscript: waitedDays > RECORD_GRACE_DAYS },
+        );
 
         const createInput = buildCreateInput(entry, summary);
         const description = buildDescription(summary.blocks);
@@ -721,17 +757,41 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
         };
         await emitCreationEvents(ctx, CRON_ACTOR, state);
 
-        if (willAutoPublish) {
+        // A flagged summary is held for review even when auto-publish is on.
+        const publishNow = willAutoPublish && !state.quality_flag;
+        if (publishNow) {
           await approveMeetingSummary(state, CRON_ACTOR, ctx);
           newProcess.status = "finalized";
           await saveProcessState(newProcess);
         }
+        if (state.quality_flag) {
+          flagged.push({
+            process_id: newProcess.id,
+            meeting_date: entry.meeting_date,
+            meeting_title: entry.meeting_title,
+            message: state.quality_flag.message,
+          });
+        }
 
         console.log(
-          `[meeting-summary] created process=${newProcess.id} source_id=${entry.source_id} blocks=${summary.blocks.length} published=${willAutoPublish} duration_ms=${Date.now() - meetingStart}`,
+          `[meeting-summary] created process=${newProcess.id} source_id=${entry.source_id} blocks=${summary.blocks.length} published=${publishNow} flagged=${state.quality_flag?.kind ?? "no"} duration_ms=${Date.now() - meetingStart}`,
         );
         created += 1;
       } catch (err) {
+        if (isMeetingNotReady(err)) {
+          // Not a failure: there is no record to summarize yet. Retried on
+          // every run; reported once it has waited past the grace period.
+          waiting.push({
+            meeting_date: entry.meeting_date,
+            meeting_title: entry.meeting_title,
+            reason: err.message,
+            days_since_meeting: waitedDays,
+          });
+          console.log(
+            `[meeting-summary] waiting source_id=${entry.source_id} (${waitedDays}d since meeting): ${err.message}`,
+          );
+          continue;
+        }
         const msg = err instanceof Error ? err.message : "unknown error";
         console.warn(
           `[meeting-summary] failed source_id=${entry.source_id} error=${msg} duration_ms=${Date.now() - meetingStart}`,
@@ -784,10 +844,18 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
         if (existingState.pending_revision) continue;
 
         // Skip only when there is genuinely nothing new: no source the record
-        // is missing, and the summary was already written after the meeting.
+        // is missing, the summary was already written after the meeting, and
+        // it is not flagged. A flagged summary (no video timestamps) is tried
+        // again while it is still within the grace period — the transcript
+        // that was missing may exist now.
+        const retryFlagged =
+          !!effectiveQualityFlag(existingState) &&
+          !!entry.source_video_url &&
+          daysSinceMeeting(entry.meeting_date, today) <= RECORD_GRACE_DAYS;
         if (
           !offersNewSources(entry, existingState) &&
-          !summaryPredatesMeeting(existingState)
+          !summaryPredatesMeeting(existingState) &&
+          !retryFlagged
         ) {
           continue;
         }
@@ -828,13 +896,25 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
             `[meeting-summary] upgrading source_id=${entry.source_id} ` +
               `(${entry.source_minutes_url ? "minutes now available" : "recording now available"})`,
           );
-          const summary = await summarizeMeeting(entry, cfg, {
-            fetchPdf,
-            fetchYouTubeTranscript,
-            callClaude,
-          });
+          const summary = await summarizeMeeting(
+            entry,
+            cfg,
+            { fetchPdf, fetchYouTubeTranscript, callClaude },
+            {
+              allowMissingTranscript:
+                daysSinceMeeting(entry.meeting_date, today) > RECORD_GRACE_DAYS,
+            },
+          );
           const state = summaryState(existing);
           const nowIso = new Date().toISOString();
+          if (summary.quality_flag) {
+            flagged.push({
+              process_id: existing.id,
+              meeting_date: entry.meeting_date,
+              meeting_title: entry.meeting_title,
+              message: summary.quality_flag.message,
+            });
+          }
           const reason = entry.source_minutes_url
             ? "Official minutes have been published for this meeting."
             : "A recording of this meeting is now available; the previous summary was written before it took place.";
@@ -855,6 +935,7 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
               ai_instructions_used: summary.ai_instructions_used,
               ai_model: summary.model,
               generated_at: nowIso,
+              quality_flag: summary.quality_flag,
             });
             existing.state = state as unknown as Record<string, unknown>;
             await saveProcessState(existing);
@@ -878,6 +959,7 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
           state.ai_instructions_used = summary.ai_instructions_used;
           state.ai_model = summary.model;
           state.generated_at = nowIso;
+          state.quality_flag = summary.quality_flag;
 
           // An already-published summary keeps its published state.
           //
@@ -906,6 +988,14 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
           );
           upgraded += 1;
         } catch (err) {
+          if (isMeetingNotReady(err)) {
+            // The existing summary keeps serving; the stale-summary check
+            // below still reports it if it predates its meeting.
+            console.log(
+              `[meeting-summary] upgrade waiting source_id=${entry.source_id}: ${err.message}`,
+            );
+            continue;
+          }
           const msg = err instanceof Error ? err.message : "unknown error";
           console.warn(
             `[meeting-summary] upgrade failed source_id=${entry.source_id} error=${msg}`,
@@ -993,6 +1083,9 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
       broken_links: brokenLinks.length,
       stale_summaries: staleSummaries.length,
       pending_revisions_overdue: staleRevisions.length,
+      flagged,
+      waiting,
+      failures,
       duration_ms,
     });
 
@@ -1007,6 +1100,8 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
       brokenLinks,
       staleSummaries,
       staleRevisions,
+      flagged,
+      waiting,
     }).catch((err) => {
       console.warn(
         `[meeting-summary] notification send error: ${err instanceof Error ? err.message : "unknown"}`,
@@ -1194,7 +1289,22 @@ export async function handleApproveMeetingSummary(
       emit: emitEvent,
     };
 
-    await approveMeetingSummary(state, actor, ctx);
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    try {
+      await approveMeetingSummary(state, actor, ctx, {
+        confirmFlagged: body.confirm_flagged === true,
+      });
+    } catch (err) {
+      if (err instanceof FlaggedSummaryError) {
+        res.status(409).json({
+          error: err.message,
+          needs_confirmation: true,
+          quality_flag: effectiveQualityFlag(state),
+        });
+        return;
+      }
+      throw err;
+    }
 
     // Match the civic.brief convention: published summaries are terminal,
     // i.e. "finalized" in the spec's state machine. Skips "closed"
@@ -1247,7 +1357,19 @@ async function withRevision(
       res.status(409).json({ error: "No revision is waiting for review." });
       return;
     }
-    apply(state);
+    try {
+      apply(state);
+    } catch (err) {
+      if (err instanceof FlaggedSummaryError) {
+        res.status(409).json({
+          error: err.message,
+          needs_confirmation: true,
+          quality_flag: state.pending_revision?.quality_flag ?? null,
+        });
+        return;
+      }
+      throw err;
+    }
     record.state = state as unknown as Record<string, unknown>;
     await saveProcessState(record);
     res.json({
@@ -1279,7 +1401,10 @@ export async function handleAcceptMeetingSummaryRevision(
   await withRevision(
     req,
     res,
-    (state) => acceptRevision(state),
+    (state) =>
+      acceptRevision(state, undefined, {
+        confirmFlagged: (req.body as Record<string, unknown> | undefined)?.confirm_flagged === true,
+      }),
     "Revision accepted. The published summary now reflects it.",
   );
 }
@@ -1315,6 +1440,7 @@ export async function handleBatchApproveMeetingSummaries(
     let published = 0;
     let bulkFailed = 0;
     let skipped = 0;
+    let flaggedSkipped = 0;
 
     for (const id of ids) {
       const record = await getProcess(id);
@@ -1325,6 +1451,12 @@ export async function handleBatchApproveMeetingSummaries(
       const state = summaryState(record);
       if (state.approval_status !== "pending") {
         skipped += 1;
+        continue;
+      }
+      // Batch approval never confirms a flag: each flagged summary is opened
+      // and approved on its own, with the reason in front of the admin.
+      if (effectiveQualityFlag(state)) {
+        flaggedSkipped += 1;
         continue;
       }
       try {
@@ -1357,6 +1489,8 @@ export async function handleBatchApproveMeetingSummaries(
       message: "Batch approve complete.",
       published,
       skipped,
+      // Held back because they need a one-by-one confirmation.
+      flagged_skipped: flaggedSkipped,
       failed: bulkFailed,
     });
   } catch (err) {

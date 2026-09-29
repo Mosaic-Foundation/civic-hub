@@ -4,6 +4,133 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Meeting summaries: missing timestamps fixed, and job failures reach the admin — 2026-09-29
+
+### Cause (evidence, not guesswork)
+
+Production's latest Board of Supervisors summary (2026-09-22 Regular Meeting,
+and the Public Hearing the same day) links its video but has no timestamps.
+Dev holds the same two rows (read-only query): created **2026-09-22 11:30 UTC**
+(7:30am Eastern, the cron's time) ON the meeting day, `source_type: agenda`,
+video `Dw566TkDKfk`, 0 of 7 and 0 of 3 blocks timed. Every summary written
+before that has timestamps (the 2026-09-08 one: 20 of 20, written 09-10), so
+timestamps worked until the run that summarized a meeting before it happened.
+
+1. `todayIso()` let a meeting dated TODAY through (`meeting_date > today`
+   deferred only future dates). The county's listing already carried the agenda
+   and the livestream's YouTube link, so the run had "a video" with nothing
+   behind it.
+2. The transcript was optional: empty or failed → `hasVideo = false` → the
+   parser forced every `start_time_seconds` to null and the summary was built
+   from the agenda, silently. **The model never saw a transcript; it did not
+   drop timings.**
+3. Nothing revisited it: `summaryPredatesMeeting` was `generated < meeting`
+   (strict), so a same-day summary counted as written after the meeting.
+
+Checked today: the video now has timed captions (YouTube, via the
+`youtube-transcript` path from a residential IP: 2,142 segments, last at
+1:34:59). Supadata itself could not be replayed: no key locally (the pulled
+env has `[SENSITIVE]`). Two Supadata answers that would also have read as
+"no captions" are now errors: an asynchronous job (HTTP 202 / `jobId`) and
+plain-text content without timings.
+
+### The rule now (Adam: accuracy and stability over timeliness)
+
+`src/modules/civic.meeting_summary/readiness.ts`:
+- never on or before the meeting date (`meetingHasHappened`: strictly before
+  today, UTC); a same-day summary counts as stale (`generated <= meeting`);
+- a summary is written only from a record: official minutes, or a transcript
+  with timings. **An agenda alone is never summarized** (it waits for minutes
+  or a recording);
+- a listed video without a usable timed transcript is `MeetingNotReadyError`:
+  the run counts it as **waiting**, spends nothing (no PDF fetch, no model
+  call), retries next run. After `RECORD_GRACE_DAYS` (14) official minutes may
+  go ahead without the video, flagged `transcript_unavailable`; everything else
+  keeps waiting and is reported as overdue;
+- a timed transcript must produce timestamps: none → one retry with the
+  requirement restated → still none → kept, flagged `timestamps_missing`
+  ("No video timestamps; the transcript had timings, check before publishing").
+
+### Flagged summaries are never published silently
+
+`state.quality_flag` (and on a staged revision). A flagged summary never
+auto-publishes; `approveMeetingSummary` / `acceptRevision` throw
+`FlaggedSummaryError` without `confirmFlagged` (routes answer **409**
+`needs_confirmation`); batch approve skips them (`flagged_skipped`). The admin
+edit that puts a timestamp into any block clears the flag.
+`effectiveQualityFlag` treats an OLDER summary with a video and zero
+timestamps as flagged too, so the two 09-22 rows show the banner and need
+confirmation once this code runs. The upgrade pass retries a flagged summary
+while it is within 14 days of its meeting. Admin UI: red banner at the top of
+the review screen, "Needs a check: no video timestamps" badge in the list,
+approve step reads "Confirm: publish without video timestamps", accepting a
+flagged revision asks first. Confirm-dialog rather than hard block: Adam.
+
+### Every job's last run, and failures in the admin digest
+
+- **`job_runs`** (migration `20260929000000_job_runs.sql`, Adam chose a table
+  over settings keys): hub-scoped, forced RLS via the template, hub-leading
+  index, `status` ok/flagged/failed, one-line `summary`, `problems` (jsonb
+  lines). Not exported (`EXPORT_MANIFEST` omit: an operational log). Pruned
+  to the newest 60 per job on write. Registered in `HUB_TABLES`,
+  `CORE_REQUIREMENTS`, `NOT_PROCESS_CONTENT`; purge picks it up from the catalog.
+- `runJobAcrossHubs` records each hub's run (`src/services/jobRuns.ts`,
+  best-effort: a log write never fails a run). What an outcome means is one
+  file, `src/jobs/describe.ts`: skipped / not-the-send-hour / nothing-closed
+  runs are not recorded; any `error` is a failure; meeting summaries: zero
+  discovered, per-meeting failures and broken links fail, flagged summaries,
+  overdue waits, stale summaries and overdue revisions flag.
+- Admin digest: new first section "Scheduled jobs needing attention" (failed
+  or flagged runs in the last 24h, each reason listed, link to the plugins
+  page); the subject leads with it; **a job problem alone sends the digest**;
+  a flagged summary's title in the review list carries the flag's message; an
+  unreadable run log is itself reported.
+- Plugins page: under each switched-on plugin with a job, "Last run: <time> —
+  <summary> <OK / Needs a check / Failed>", the problems, and the newest
+  earlier problem when a clean run has replaced it. `GET /admin/hub/jobs/runs`.
+- The meeting-summary alert email also fires for flagged summaries and overdue
+  waits (`cronAlertReason`).
+
+### Tests
+
+Unit 102 files / 1,180 passed. New: `meetingSummaryTimestamps.test.ts` (18:
+timed → timestamps; retry once; flagged after two misses; the 09-22 case
+waits; provider error waits; untimed waits; agenda alone waits; grace period;
+approval refused without confirmation, allowed with; admin edit clears; older
+rows flagged; flagged revision), `jobRunVisibility.test.ts` (the real run
+through the job runner with auto-publish ON: flagged summary created, no
+`result_published`, run recorded flagged; a failed run → the real admin digest
+sent for it alone, reason in the body; clean runs stay silent),
+`jobRunDescribe.test.ts` (8). Changed on purpose: the pipeline test that pinned
+"falls back to PDF-only when the transcript fails" (the bug) now pins waiting;
+`meetingSummaryStaleness` imports the real rules instead of copies and pins
+same-day as stale / deferred. API 32 files, 318 passed, 7 skipped, **both
+modes** (local stack): `rlsCatalog` accepts `job_runs`; `leakHarness` walks
+the new route with a Floyd run carrying the marker; export manifest omits it.
+Browser check on the local stack (Athens, seeded, cleaned up): plugins page
+last-run lines, review banner, list badge, confirm wording, 409 unconfirmed.
+
+### For Adam
+
+- **Dev database:** `./scripts/db-push.sh` (dry run lists exactly
+  `20260929000000_job_runs.sql`), then push `multi-tenant` to deploy dev. On
+  dev's next run the two 09-22 summaries are stale by the new rule and get
+  re-summarized from the transcript (they are pending, so replaced in place).
+- **Release-1 runbook needs a look:** it counts "six migrations" and expects
+  exact `Applying migration` lines; this adds a seventh. Not edited.
+- **Production now (runs `main`, which has none of this):** the step is in the
+  session summary and below. Archiving is soft (restorable from Archived);
+  `main`'s dedupe ignores archived rows, so the next 11:30 UTC run writes the
+  meeting fresh, and today the transcript exists.
+  Admin → Meeting summaries → tick "Regular Meeting — Sep 22, 2026" and
+  "Public Hearing — Sep 22, 2026" → Archive. Next morning, open each new
+  summary and check its blocks show times before approving. If a new one
+  again has none, Supadata is failing on production: tell the next session.
+- Open: batch-approve's `flagged_skipped` has no automated test; the UI parts
+  have no component tests (browser-checked only); a `main` backport of the
+  readiness rule was discussed, not done (only worth it if release-1 is weeks
+  away).
+
 ## Legal text for hubs without a place: Adam's three changes — 2026-09-27 (third part)
 
 Adam read and approved the non-place legal sentences with three changes, all

@@ -41,6 +41,7 @@ import {
   handlePutHubSettings,
   handleGetSettingTemplate,
   handleGetPluginLiveCounts,
+  handleGetJobRuns,
 } from "../controllers/hubSettingsController.js";
 import {
   handleAdminListReviews,
@@ -188,6 +189,8 @@ router.put("/hub/settings", handlePutHubSettings);
 router.get("/hub/settings/template/:key", handleGetSettingTemplate);
 // Live items per plugin, for the Plugins page's switch-off warning.
 router.get("/hub/plugins/live", handleGetPluginLiveCounts);
+// Each scheduled job's last run, for the Plugins page (job_runs, 20260929000000).
+router.get("/hub/jobs/runs", handleGetJobRuns);
 
 router.get("/settings", handleGetSettings);
 router.patch("/settings", handlePatchSettings);

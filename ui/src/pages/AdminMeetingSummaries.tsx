@@ -71,12 +71,23 @@ export default function AdminMeetingSummaries() {
 
   async function resolveRevision(action: "accept" | "discard") {
     if (!selected) return;
+    // A flagged revision is accepted only by an admin who has read why.
+    const revisionFlag = selected.pending_revision?.quality_flag ?? null;
+    if (
+      action === "accept" &&
+      revisionFlag &&
+      !window.confirm(`${revisionFlag.message}.\n\nAccept this revision anyway?`)
+    ) {
+      return;
+    }
     setRevisionBusy(true);
     setError(null);
     try {
       const { message, meeting_summary } =
         action === "accept"
-          ? await adminAcceptMeetingSummaryRevision(selected.id)
+          ? await adminAcceptMeetingSummaryRevision(selected.id, {
+              confirmFlagged: revisionFlag !== null,
+            })
           : await adminDiscardMeetingSummaryRevision(selected.id);
       setSelected(meeting_summary);
       setBlocks(meeting_summary.blocks);
@@ -142,9 +153,13 @@ export default function AdminMeetingSummaries() {
         const result = await adminBatchApproveMeetingSummaries(ids, {
           backdate: backdateBatch,
         });
+        const held = result.flagged_skipped ?? 0;
         setActionMessage(
           `Approved ${result.published} summary${result.published !== 1 ? "ies" : ""}.` +
-            (result.failed > 0 ? ` ${result.failed} failed.` : ""),
+            (result.failed > 0 ? ` ${result.failed} failed.` : "") +
+            (held > 0
+              ? ` ${held} held back: ${held === 1 ? "it needs" : "they need"} a check before publishing (marked "Needs a check"); open each to review.`
+              : ""),
         );
       } else {
         const result = await adminBatchDeleteMeetingSummaries(ids);
@@ -261,7 +276,10 @@ export default function AdminMeetingSummaries() {
         blocks,
         admin_notes: adminNotes,
       });
-      const { meeting_summary } = await adminApproveMeetingSummary(selected.id);
+      // Passed only when the confirm step showed the flag (see reviewFlag).
+      const { meeting_summary } = await adminApproveMeetingSummary(selected.id, {
+        confirmFlagged: reviewFlag !== null,
+      });
       setSelected(meeting_summary);
       setMeetingTitle(meeting_summary.meeting_title);
       setBlocks(meeting_summary.blocks);
@@ -274,6 +292,13 @@ export default function AdminMeetingSummaries() {
       setApproving(false);
     }
   }
+
+  // The flag that applies to what is on screen. Adding a timestamp to any
+  // block clears it on save (the server's rule), so it stops applying here too.
+  const reviewFlag =
+    selected?.quality_flag && !blocks.some((b) => b.start_time_seconds !== null)
+      ? selected.quality_flag
+      : null;
 
   if (view === "review" && selected) {
     const isPending = selected.approval_status === "pending";
@@ -308,6 +333,25 @@ export default function AdminMeetingSummaries() {
             <p className="admin-action-message">{actionMessage}</p>
           )}
           {error && <p className="form-error">{error}</p>}
+
+          {reviewFlag && (
+            <div
+              className="meeting-ai-banner meeting-flag-banner"
+              role="alert"
+              style={{ borderLeftColor: "#b91c1c" }}
+            >
+              <strong style={{ color: "#b91c1c" }}>{reviewFlag.message}.</strong>{" "}
+              {reviewFlag.kind === "timestamps_missing"
+                ? "The video's transcript had timings, but the summary came back without them, twice."
+                : "The video's transcript could not be used, so the blocks do not link into the recording."}
+              {reviewFlag.detail && (
+                <span className="meeting-flag-detail"> Detail: {reviewFlag.detail}</span>
+              )}{" "}
+              It will not be published automatically. The daily run tries again
+              for two weeks after the meeting; you can also add timestamps to the
+              blocks below, or publish it as it is after checking.
+            </div>
+          )}
 
           {selected.pending_revision && (
             <div
@@ -347,7 +391,9 @@ export default function AdminMeetingSummaries() {
 
           {selected.source_type === "agenda" && (
             <div className="meeting-ai-banner" style={{ borderLeftColor: "#d97706" }}>
-              {selected.source_video_url ? (
+              {/* A linked video whose transcript was never used (the 2026-09-22
+                  case) is not a recording-based summary, whatever the link says. */}
+              {selected.source_video_url && selected.quality_flag?.kind !== "transcript_unavailable" ? (
                 <>
                   <strong style={{ color: "#d97706" }}>
                     Recording-based summary.
@@ -632,7 +678,11 @@ export default function AdminMeetingSummaries() {
                     onClick={approve}
                     disabled={approving}
                   >
-                    {approving ? "Approving…" : "Confirm: approve and publish"}
+                    {approving
+                      ? "Approving…"
+                      : reviewFlag
+                        ? "Confirm: publish without video timestamps"
+                        : "Confirm: approve and publish"}
                   </button>
                   <button
                     type="button"
@@ -660,6 +710,11 @@ export default function AdminMeetingSummaries() {
               className="form-hint"
               style={{ marginTop: "var(--space-sm)" }}
             >
+              {reviewFlag && (
+                <>
+                  <strong>This summary has no video timestamps.</strong>{" "}
+                </>
+              )}
               This will publish a "Meeting summary" post to the public feed
               and make the summary visible at{" "}
               <code>/meeting-summary/{selected.id}</code>. This cannot be
@@ -841,6 +896,14 @@ export default function AdminMeetingSummaries() {
                 )}
                 {s.pending_revision && (
                   <span className="badge-agenda">Revision waiting</span>
+                )}
+                {(s.quality_flag || s.pending_revision?.quality_flag) && (
+                  <span
+                    className="badge-agenda badge-needs-check"
+                    title={(s.quality_flag ?? s.pending_revision?.quality_flag)?.message}
+                  >
+                    Needs a check: no video timestamps
+                  </span>
                 )}
                 {!s.has_video && s.source_type !== "recording" && (
                   <span>PDF-only</span>

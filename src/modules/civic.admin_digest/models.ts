@@ -31,6 +31,29 @@ export interface QueueSnapshot {
   panel_url: string;
 }
 
+/**
+ * One scheduled-job run that failed or was flagged since the last digest
+ * (job_runs, src/services/jobRuns.ts).
+ */
+export interface JobProblemItem {
+  /** The job's id in src/jobs/registry.ts. */
+  job_id: string;
+  /** Human name of the job, e.g. "Meeting summaries". */
+  job_name: string;
+  status: "failed" | "flagged";
+  /** ISO 8601. */
+  finished_at: string;
+  /** One admin-facing line per problem. */
+  problems: string[];
+}
+
+export interface JobProblemsSnapshot {
+  count: number;
+  items: JobProblemItem[];
+  /** Where the admin sees each job's last run. */
+  panel_url: string;
+}
+
 export interface AdminDigestPayload {
   hub_name: string;
   generated_at: string;
@@ -45,6 +68,12 @@ export interface AdminDigestPayload {
    * forever, and needs no seen/handled column to do it.
    */
   feedback: QueueSnapshot;
+  /**
+   * Scheduled jobs that failed, or finished with something an admin must
+   * check, in the digest window. Like feedback, a window rather than a
+   * backlog. Enough on its own to send the digest.
+   */
+  job_problems: JobProblemsSnapshot;
   /** True when every queue is empty — caller should skip the send. */
   empty: boolean;
 }

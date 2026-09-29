@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { summarizeMeeting } from "../../src/modules/civic.meeting_summary/pipeline.js";
+import { MeetingNotReadyError } from "../../src/modules/civic.meeting_summary/readiness.js";
 import type {
   MeetingEntry,
   MeetingSummaryConfig,
@@ -74,21 +75,26 @@ describe("summarizeMeeting — transcript-only meetings", () => {
     expect(result.blocks[0].start_time_seconds).toBe(420);
   });
 
-  it("fails loudly when the transcript is empty and there is no PDF to fall back on", async () => {
+  it("waits when the transcript is empty and there is no PDF to fall back on", async () => {
     // Summarizing nothing produces invented blocks, which is worse than a
     // failed meeting — the whole point of the record is that it's accurate.
+    // Since 2026-09-29 this is "not ready" (retried next run), not a failure.
     const d = deps({ fetchYouTubeTranscript: vi.fn(async () => []) });
-    await expect(summarizeMeeting(recordingOnly, cfg, d)).rejects.toThrow(/No transcript available/);
+    const err = await summarizeMeeting(recordingOnly, cfg, d).catch((e) => e);
+    expect(err).toBeInstanceOf(MeetingNotReadyError);
+    expect(String(err.message)).toMatch(/transcript/);
     expect(d.callClaude).not.toHaveBeenCalled();
   });
 
-  it("fails loudly when the transcript provider errors and there is no PDF", async () => {
+  it("waits when the transcript provider errors and there is no PDF", async () => {
     const d = deps({
       fetchYouTubeTranscript: vi.fn(async () => {
         throw new Error("Supadata 429: rate limited");
       }),
     });
-    await expect(summarizeMeeting(recordingOnly, cfg, d)).rejects.toThrow(/nothing to summarize/i);
+    const err = await summarizeMeeting(recordingOnly, cfg, d).catch((e) => e);
+    expect(err).toBeInstanceOf(MeetingNotReadyError);
+    expect(String(err.message)).toMatch(/Supadata 429/);
   });
 
   it("rejects an entry with no document and no recording", async () => {
@@ -111,7 +117,9 @@ describe("summarizeMeeting — document-backed meetings still work", () => {
     expect(call.documentBase64).toBeDefined();
   });
 
-  it("falls back to PDF-only when the transcript fails but an agenda exists", async () => {
+  it("waits — does NOT fall back to the agenda — when the transcript fails", async () => {
+    // The old fallback is what produced the 2026-09-22 summary: a summary of
+    // planned topics, with a video link and no timestamps, passed off as done.
     const withAgenda: MeetingEntry = {
       ...recordingOnly,
       source_agenda_url: "https://www.floydcova.gov/_files/ugd/db2c48_def.pdf",
@@ -121,8 +129,8 @@ describe("summarizeMeeting — document-backed meetings still work", () => {
         throw new Error("Supadata 429");
       }),
     });
-    const result = await summarizeMeeting(withAgenda, cfg, d);
-    expect(result.sourceType).toBe("agenda");
-    expect(result.blocks).toHaveLength(1);
+    const err = await summarizeMeeting(withAgenda, cfg, d).catch((e) => e);
+    expect(err).toBeInstanceOf(MeetingNotReadyError);
+    expect(d.callClaude).not.toHaveBeenCalled();
   });
 });

@@ -4,11 +4,18 @@
 // `plugin.<id>.enabled` is off, and is isolated: a throw becomes that hub's
 // error and the next hub still runs. The result names every hub it looked at,
 // so a log line says which hubs ran, which skipped and why.
+//
+// Each hub's run is also recorded in job_runs (src/services/jobRuns.ts) when
+// it did something: the admin's plugin page shows it as the job's "last run",
+// and the admin digest lists every failed or flagged one. What an outcome
+// means is decided per job in src/jobs/describe.ts.
 
 import type { HubJobSpec } from "./registry.js";
 import type { JobOutcome, JobRunInput, JobRunner } from "./types.js";
 import { forEachActiveHub } from "../services/cronHubs.js";
 import { isPluginEnabledSync } from "../services/hubSettings.js";
+import { recordJobRun } from "../services/jobRuns.js";
+import { describeJobRun } from "./describe.js";
 
 export interface JobRunReport {
   /** The worst hub's status: 500 if any hub failed, else the highest. */
@@ -29,7 +36,19 @@ export async function runJobAcrossHubs(
           body: { skipped: true, reason: `plugin.${job.plugin}.enabled is off` },
         };
       }
-      return runner({ now: input.now, force: input.force });
+      const started = new Date();
+      let outcome: JobOutcome;
+      try {
+        outcome = await runner({ now: input.now, force: input.force });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const run = describeJobRun(job.id, null, message);
+        if (run) await recordJobRun(job.id, started, run, { error: message });
+        throw err;
+      }
+      const run = describeJobRun(job.id, outcome);
+      if (run) await recordJobRun(job.id, started, run, outcome.body);
+      return outcome;
     },
     { onlyHub: input.onlyHub },
   );

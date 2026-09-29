@@ -53,6 +53,7 @@ export const NOT_PROCESS_CONTENT: Readonly<Record<string, string>> = {
   feedback_submissions: "product feedback to the hub, not about a process",
   hub_admin_audit_log: "the record of admin actions, including the removal itself",
   hub_settings: "configuration",
+  job_runs: "the scheduled jobs' run log",
   link_previews: "a cache of other sites' metadata",
   pending_verifications: "sign-in codes",
   project_drafts: "a resident's unsubmitted draft; the seed writes none",

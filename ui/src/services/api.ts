@@ -1465,6 +1465,18 @@ export interface SummaryBlock {
   action_taken: string | null;
 }
 
+/**
+ * Why a summary must not be published without an admin looking first —
+ * today, missing video timestamps. Shape: src/modules/civic.meeting_summary/
+ * readiness.ts.
+ */
+export interface SummaryQualityFlag {
+  kind: "timestamps_missing" | "transcript_unavailable";
+  message: string;
+  detail: string | null;
+  flagged_at: string;
+}
+
 /** Admin list row. */
 export interface MeetingSummarySummary {
   id: string;
@@ -1482,7 +1494,9 @@ export interface MeetingSummarySummary {
   edit_count: number;
   created_at: string;
   /** Set when a regenerated summary is waiting for review. */
-  pending_revision?: { generated_at: string } | null;
+  pending_revision?: { generated_at: string; quality_flag?: SummaryQualityFlag | null } | null;
+  /** Set when the summary needs a check before publishing. */
+  quality_flag?: SummaryQualityFlag | null;
 }
 
 /** Admin detail (full read). */
@@ -1508,6 +1522,7 @@ export interface MeetingSummaryDetail extends MeetingSummarySummary {
     source_type: MeetingSourceType;
     reason: string;
     generated_at: string;
+    quality_flag?: SummaryQualityFlag | null;
   } | null;
   revised_at?: string | null;
 }
@@ -1562,16 +1577,30 @@ export function adminPatchMeetingSummary(
   return request("PATCH", `/admin/meeting-summaries/${id}`, patch);
 }
 
+/**
+ * A flagged summary (quality_flag set) is refused with 409 unless
+ * `confirmFlagged` says the admin has seen the flag and chose to publish.
+ */
 export function adminApproveMeetingSummary(
   id: string,
+  opts?: { confirmFlagged?: boolean },
 ): Promise<{ message: string; meeting_summary: MeetingSummaryDetail }> {
-  return request("POST", `/admin/meeting-summaries/${id}/approve`);
+  return request("POST", `/admin/meeting-summaries/${id}/approve`, {
+    confirm_flagged: opts?.confirmFlagged === true,
+  });
 }
 
 export function adminBatchApproveMeetingSummaries(
   ids: string[],
   opts?: { backdate?: boolean },
-): Promise<{ message: string; published: number; skipped: number; failed: number }> {
+): Promise<{
+  message: string;
+  published: number;
+  skipped: number;
+  /** Flagged summaries are never batch-approved; each needs its own confirmation. */
+  flagged_skipped?: number;
+  failed: number;
+}> {
   return request("POST", `/admin/meeting-summaries/batch-approve`, {
     ids,
     backdate: opts?.backdate ?? false,
@@ -1581,8 +1610,11 @@ export function adminBatchApproveMeetingSummaries(
 /** Accept the waiting revision — its content becomes the live summary. */
 export function adminAcceptMeetingSummaryRevision(
   id: string,
+  opts?: { confirmFlagged?: boolean },
 ): Promise<{ message: string; meeting_summary: MeetingSummaryDetail }> {
-  return request("POST", `/admin/meeting-summaries/${id}/revision/accept`);
+  return request("POST", `/admin/meeting-summaries/${id}/revision/accept`, {
+    confirm_flagged: opts?.confirmFlagged === true,
+  });
 }
 
 /** Drop the waiting revision. The published summary continues unchanged. */
@@ -1705,6 +1737,31 @@ export function adminPatchSettings(
  */
 export function adminGetPluginLiveCounts(): Promise<{ counts: Record<string, number> }> {
   return request("GET", "/admin/hub/plugins/live");
+}
+
+/** One recorded run of a scheduled job. Shape: src/services/jobRuns.ts. */
+export interface JobRunRecord {
+  job_id: string;
+  started_at: string;
+  finished_at: string;
+  status: "ok" | "flagged" | "failed";
+  summary: string;
+  problems: string[];
+}
+
+export interface JobRunsEntry {
+  job_id: string;
+  job_name: string;
+  /** The plugin that owns the job. */
+  plugin: string;
+  last: JobRunRecord | null;
+  /** The newest failed or flagged run, when it is not the last run. */
+  last_problem: JobRunRecord | null;
+}
+
+/** Each scheduled job's last run on this hub, for the Plugins page. */
+export function adminGetJobRuns(): Promise<{ jobs: JobRunsEntry[] }> {
+  return request("GET", "/admin/hub/jobs/runs");
 }
 
 /**

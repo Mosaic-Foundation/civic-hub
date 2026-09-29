@@ -70,16 +70,17 @@ const schema = schemaFromMigrations();
 const manifest = EXPORT_MANIFEST.map((e) => e.table);
 
 describe("export manifest", () => {
-  it("reads the schema it is checked against (36 tables, 31 with hub_id)", () => {
+  it("reads the schema it is checked against (37 tables, 32 with hub_id)", () => {
     // If this moves, a table was added or dropped: expected, but look at the
     // manifest in the same change. 35 since 2026-09-26: Phase 7's
     // hub_admin_audit_log (hub data, exported), after the super admin's
     // control_codes, control_sessions and control_audit_log (platform data,
     // not in a hub's export). 36 since 2026-09-27: `jurisdictions`,
     // platform reference data, not in a hub's export (hubs.jurisdiction_ocd_id
-    // travels in hub.json).
-    expect(schema.tables.size).toBe(36);
-    expect(schema.withHubId.size).toBe(31);
+    // travels in hub.json). 37 since 2026-09-29: `job_runs`, the scheduled
+    // jobs' run log (hub data, omitted from the export).
+    expect(schema.tables.size).toBe(37);
+    expect(schema.withHubId.size).toBe(32);
     expect(schema.tables.has("hubs")).toBe(true);
     expect(schema.withHubId.has("hubs")).toBe(false);
   });

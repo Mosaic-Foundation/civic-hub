@@ -26,9 +26,14 @@ describe("what leaves", () => {
     expect(Object.keys(TABLE_KEYS).sort()).toEqual(exportedTables().sort());
   });
 
-  it("leaves the credentials and the cache behind, each with a reason", () => {
+  it("leaves the credentials, the cache and the job run log behind, each with a reason", () => {
     const omitted = omittedTables();
-    expect(omitted.map((o) => o.table).sort()).toEqual(["link_previews", "pending_verifications", "sessions"]);
+    expect(omitted.map((o) => o.table).sort()).toEqual([
+      "job_runs",
+      "link_previews",
+      "pending_verifications",
+      "sessions",
+    ]);
     for (const o of omitted) expect(o.reason.length).toBeGreaterThan(10);
   });
 
