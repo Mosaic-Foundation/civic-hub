@@ -28,6 +28,10 @@ production step from `RUNBOOK-release-1.md`; the session ran read-only checks. F
 - **§5:** console live; Floyd's `email.from_address` row deleted, `RESEND_FROM=noreply@mail.civic.social`.
 - **§6:** `*.civic.social` live with its own Let's Encrypt wildcard certificate (to 2026-12-31).
 - **§7:** `r1-check` created (sample content, isolated from Floyd), then archived → "This hub is paused".
+- **§8.5 (21:40Z):** `r1-check` purged (`scripts/purge-hub.ts --confirm`): export
+  `exports/civic-hub-export-r1-check-20261002T213957Z.tar.gz` (fingerprint `3a0dc168…`), then 9 processes, 40 events,
+  80 sample ballots, 5 sample authors, 23 settings and the `hubs` row; r1-check.civic.social → "No hub here", the slug
+  is free. Floyd health ok after.
 
 ### Deviations from the runbook, and why (fix the runbook before it is reused)
 1. **Env tidy split.** §2.8 deleted 13 variables; the five the `hubs` row replaced (`CIVIC_JURISDICTION`,
@@ -59,8 +63,7 @@ production step from `RUNBOOK-release-1.md`; the session ran read-only checks. F
 ### For Adam
 1. **Later, not yet (Adam, 10-02):** delete `~/civic-cutover/`, `~/civic-keys/prod-pull.env`, `prod-db.env`,
    `prod-pg.env`; save `prod-es256.json` in the password manager; delete `civic-hub/.env.prod-pull` and the local
-   branch `release-1-cleanup` (never push it). Optionally purge `r1-check` first (`scripts/purge-hub.ts`, needs
-   `prod-db.env` + `prod-pg.env`).
+   branch `release-1-cleanup` (never push it). (`r1-check` is already purged.)
 2. Set the PO box number in `CIVIC_PLATFORM_POSTAL_ADDRESS`.
 3. Beta testers: sign-in mail now comes from `noreply@mail.civic.social`.
 
