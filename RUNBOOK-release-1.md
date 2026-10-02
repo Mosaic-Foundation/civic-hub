@@ -1,5 +1,11 @@
 # RUNBOOK-release-1.md — the release-1 sitting
 
+> **Done 2026-10-02.** Release 1 shipped `c3751ec` (seven migrations, not six). Before reusing this runbook, read
+> HANDOFF "Release 1 is live on production" → *Deviations*: the five `hubs`-row variables go just before §4.1, not
+> in §2.8; §1.6 must see the Resend domain **Verified**; §5.8 has no "primary domain"; §6 ignores Vercel's
+> nameserver prompt and uses `_acme-challenge` NS + a `*` CNAME; §2.5's count assumes the checking code matches
+> production.
+
 Takes production (`floyd.civic.social`, Vercel project `civic-hub`, Supabase
 **Civic-Hub-Floyd** `nfhyypwoporfggqcerli`) from the cutover build to release
 1: the post-cutover cleanup, six migrations (the four Phase 5–7 ones and the

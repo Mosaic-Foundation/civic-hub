@@ -4,6 +4,82 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Release 1 is live on production — the sitting, 2026-09-29 → 2026-10-02
+
+Production (`civic-hub`, Supabase Civic-Hub-Floyd) now runs **`c3751ec`** on the cleaned multi-tenant schema,
+with the console at `console.civic.social`, hubs at `<slug>.civic.social`, the platform sender
+`noreply@mail.civic.social`, and Floyd linked to `ocd-division/country:us/state:va/county:floyd`. Adam ran every
+production step from `RUNBOOK-release-1.md`; the session ran read-only checks. Full timestamped notes:
+`~/Documents/Civic Social/Mosaic Foundation Management/release-1-sitting-notes.md`.
+
+### What happened, in order
+- **§0 dev:** complete (Floyd's dev copy linked; test hubs agora, asheville created through the new form).
+- **§1 (09-29):** all passed. Legacy Supabase API keys disabled and the legacy HS256 secret **revoked** (finishes
+  cutover runbook §5; the hub-token key is the standby ES256 `397E7FBC…`). N = 0 stale votes. BEFORE snapshot taken.
+- **§2.3 cleanup applied 2026-09-29 ~19:30Z** — the point of no return. Paused at §2.6 until 10-02; production ran
+  `0b23e9a` on the cleaned schema meanwhile, healthy throughout.
+- **Release commit changed to `c3751ec`** (Adam): the meeting-summary timing fix + `job_runs` landed during the
+  sitting, so §3 pushed **seven** migrations (the six + `20260929000000_job_runs.sql`). §3.1/§4.1 used the commit id,
+  not the branch name.
+- **§3 (10-02 ~16:03Z):** seven applied; jurisdictions loaded (38,858 rows); `CLEAN — 37 tables, 32 hub-scoped`.
+- **§4 (~19:05Z):** `git push origin c3751ec:main` (`0b23e9a..c3751ec`). Health ok on c3751ec; parity with BEFORE
+  (proposals, search, four process pages identical; the extra processes/feed items were new scheduled-job
+  activity). A non-admin's pending suggestion carried `us-va-floyd`. Six crons.
+- **§5:** console live; Floyd's `email.from_address` row deleted, `RESEND_FROM=noreply@mail.civic.social`.
+- **§6:** `*.civic.social` live with its own Let's Encrypt wildcard certificate (to 2026-12-31).
+- **§7:** `r1-check` created (sample content, isolated from Floyd), then archived → "This hub is paused".
+
+### Deviations from the runbook, and why (fix the runbook before it is reused)
+1. **Env tidy split.** §2.8 deleted 13 variables; the five the `hubs` row replaced (`CIVIC_JURISDICTION`,
+   `CIVIC_JURISDICTION_NAME`, `CIVIC_SPACE_DID`, `CIVIC_BETA_MODE`, `VITE_BETA_MODE`) were deleted just before
+   §4.1. Reason: the old build `0b23e9a`, which runs from §2.9 to §4, reads `CIVIC_JURISDICTION` as the default
+   jurisdiction (`"local"` without it) and `VITE_BETA_MODE` for the beta banner/gate.
+2. **`MEETING_WIX_COLLECTION` said `NO ROW`** but production's value was empty (`.env.prod-pull`, unchanged on
+   Vercel since ~08-21), so deleting it changed nothing.
+3. **`HUB_POSTAL_ADDRESS` is checked before the platform address**, so it had to go for the platform address
+   to apply. `CIVIC_PLATFORM_POSTAL_ADDRESS` = `"P.O. Box ____, Floyd, VA 24091"` — a placeholder until Adam's PO
+   box number exists; not a complete CAN-SPAM postal address.
+4. **§2.5 printed NOT READY** (`hub_admin_audit_log`, `job_runs` "not migrated?"): expected, because the check ran
+   with c3751ec's `HUB_TABLES` against a database §3 had not migrated yet. The §2.5 count assumes the checking code
+   matches production.
+5. **Resend:** `mail.civic.social` was *added* in production's Resend account (09-29) but never *verified*. Codes
+   failed for ~14 minutes (15:32–15:46 EDT, Resend 403) until Adam clicked Verify; the DNS records were already
+   right. §1.6 must check the status reads **Verified**.
+6. **Vercel's domain screens:** there is no "primary domain" control (§5.8 skipped; nothing depends on it). For
+   `*.civic.social` Vercel only offers moving civic.social's nameservers — **don't**; production mirrors dev:
+   `_acme-challenge` NS → `ns1/ns2.vercel-dns.com`, CNAME `*` → `24709819510f604b.vercel-dns-017.com`. Adding a
+   bare `civic.social` attaches the apex + www (the marketing site) — it happened, was removed before DNS changed.
+7. **Production's database password was stale** in the password manager; Adam reset it (nothing in Vercel or CI
+   uses it). Writing `prod-pg.env`: nano and `pbpaste` both failed; a `read -rs` prompt that URL-encodes with node
+   worked.
+
+### Closed by the sitting
+- Floyd's two 09-22 meeting summaries (recreated 09-30 by the old code) are fully timed: 14/14 and 12/12 blocks.
+
+### For Adam
+1. **Later, not yet (Adam, 10-02):** delete `~/civic-cutover/`, `~/civic-keys/prod-pull.env`, `prod-db.env`,
+   `prod-pg.env`; save `prod-es256.json` in the password manager; delete `civic-hub/.env.prod-pull` and the local
+   branch `release-1-cleanup` (never push it). Optionally purge `r1-check` first (`scripts/purge-hub.ts`, needs
+   `prod-db.env` + `prod-pg.env`).
+2. Set the PO box number in `CIVIC_PLATFORM_POSTAL_ADDRESS`.
+3. Beta testers: sign-in mail now comes from `noreply@mail.civic.social`.
+
+### Follow-ups → one "console and sample-content polish" session (management session, 10-02)
+1. "Board meeting summaries" pill ignores `copy.governing_body_short`: `ui/src/components/FeedFilter.tsx` builds
+   labels at module load, before settings arrive; and the console never writes the short form.
+2. Create-hub form: Type vs Hub type duplicate; label Name (search) / Display name (the place) / Identity name (the
+   hub); default the hub name to "<place> Civic Hub" with help text; lock or warn on Display name once a row is
+   chosen (dev `asheville` became "resident of We The People Asheville").
+3. Affiliation wording by hub kind (`ui/src/components/AuthModal.tsx`: place → "resident of …", others → nothing).
+4. Sample content: a meeting summary (generic, timestamped sections, "sample, no video" note) and a word cloud.
+5. `plugin.wordcloud.onboarding_id` has no admin control (SQL only).
+6. A new hub's sample conversation gets no Polis link (`src/services/sampleSeed.ts` skips the
+   `https://polis.civic.social` default the rest of the code uses).
+7. Dev `job_runs` had 0 rows after three morning runs — confirm jobs record (meeting-summary follow-up).
+8. Brief "Sent to …" wording: Adam to test.
+
+---
+
 ## Meeting summaries: missing timestamps fixed, and job failures reach the admin — 2026-09-29
 
 ### Cause (evidence, not guesswork)
