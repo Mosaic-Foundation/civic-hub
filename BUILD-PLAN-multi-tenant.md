@@ -1228,6 +1228,46 @@ var, platform-wide, kept after the cleanup. A digest footer prints the hub's
 cleanup removes it), else the platform's; with none, no address line. The hub
 admin's Settings → Email shows the address in use and where it comes from.
 
+### Backups (2026-10-04)
+
+Encrypted scheduled dumps outside Supabase, in a Google Cloud Storage bucket
+under the mosaic.social Workspace; restore steps in
+`RUNBOOK-restore-database.md`. Nightly per-hub exports run
+`scripts/export-hub.ts --from-postgres --no-images` (Adam, 2026-10-04): the
+backup job holds no service-role key.
+
+#### Known gap: uploaded images are not backed up
+
+A database dump holds no Storage objects, and the nightly hub exports skip
+images. If the `post-images` bucket is lost, every uploaded image (post
+images, hub banners and logos) is lost with it; the rows survive and point at
+missing files.
+
+**Follow-up (Adam, 2026-10-04), must be on before any large deployment:** an
+in-app daily job, registered in `src/jobs/registry.ts` like every other
+scheduled job, copies Storage objects created since its last run into the same
+GCS bucket. Vercel authenticates to Google through OIDC federation (Vercel's
+OIDC token exchanged via Workload Identity Federation; no stored key), as a
+service account with `roles/storage.objectCreator` on that bucket only.
+
+#### Upload size limits today (recorded 2026-10-04, unchanged)
+
+| Where | Limit | Source |
+|---|---|---|
+| App: post images and hub banners | 5 MB (`IMAGE_UPLOAD_MAX_MB`, default 5), JPEG/PNG/WebP/GIF | `src/services/postImageStorage.ts` `imageUploadMaxBytes()`, busboy `fileSize` in `src/controllers/uploadController.ts` |
+| App: hub logo | min(that, 1 MB), square PNG | `HUB_IMAGE_LIMITS.logo`, same file |
+| App: meeting-summary PDFs (fetched, not uploaded) | 20 MB | `MAX_PDF_BYTES`, `src/modules/civic.meeting_summary/pipeline.ts` |
+| App: JSON request bodies | 100 KB (Express default; `express.json()` has no `limit`) | `src/app.ts` |
+| Bucket `post-images` | 5 MB, the four image types | `20260924070000_post_images_bucket.sql`, **as written**: the insert is `ON CONFLICT DO NOTHING`, so a bucket that already existed kept its own settings. Production's real value is unverified. |
+| Bucket `hub-exports` | none set, so the project's global limit applies; `application/gzip` only | `20260926020000_hub_exports_bucket.sql` |
+| Local stack global | 5 MiB | `supabase/config.toml` `[storage]` |
+| Supabase project global (dev, prod) | not in the repo; Supabase dashboard → Storage → Settings | — |
+| Vercel function request body | 4.5 MB (platform limit) | Vercel docs |
+
+The Vercel body limit is below the app's 5 MB, so an image between ~4.5 and
+5 MB is refused by Vercel with a 413 before the app's own "exceeds the 5 MB
+upload limit" message can run. Not changed; noted for whoever touches uploads.
+
 ---
 
 ## Phase 3 approach (verified)
