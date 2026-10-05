@@ -4,6 +4,84 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Encrypted backups outside Supabase, and a tested restore — 2026-10-04 → 10-05
+
+Scheduled, encrypted backups now run from a new **private** repo,
+`Mosaic-Foundation/civic-hub-backups` (local `~/Developer/Civic-Social-Mono/civic-hub-backups`,
+its own git history like this repo; Adam pushes). **On dev only so far**; production is the next step
+(below). Restore procedure: `RUNBOOK-restore-database.md` (new). Plan record: `BUILD-PLAN-multi-tenant.md`
+→ "Backups" (`3d0595b`).
+
+### What runs (GitHub Actions in civic-hub-backups)
+- `dump.yml`, every 6 h at :17: `pg_dump -Fc` of `public` + `supabase_migrations` (schema, data, migration
+  history), checked with `pg_restore --list`, encrypted with **age**, uploaded create-only
+  (`ifGenerationMatch=0`) to `gs://civic-social-backups` → `hourly/<target>/`, plus `daily/` (00:17 run) and
+  `monthly/` (00:17 on the 1st).
+- `hub-exports.yml`, 07:37 UTC: this repo's `scripts/export-hub.ts --from-postgres --no-images` for every
+  `active` hub (civic-hub checked out at `main` for prod, `multi-tenant` for dev) → `hubs/<target>/<slug>/`.
+- `watchdog.yml`, every 6 h at +3 h: fails when the newest dump is ≥ 8 h old, or the newest daily dump or hub
+  export ≥ 30 h. Failure = GitHub's failure email.
+- Retention is the bucket's delete-only lifecycle: 7 days (`hourly/`, `hubs/`), 90 (`daily/`), 400 (`monthly/`).
+  Standard storage, us-east1 (always-free tier). ~1 min billed per run: ~270 Actions minutes a month.
+
+### Identities (no stored keys anywhere)
+- Postgres **`backup_reader`** (`sql/backup_reader.sql` in civic-hub-backups): LOGIN, BYPASSRLS, connection
+  limit 3, `default_transaction_read_only`, USAGE + SELECT on `public` and `supabase_migrations` tables and
+  sequences, default privileges for future `postgres`-owned tables. Password set by Adam with `\password` in
+  psql only. Session pooler (GitHub runners have no IPv6), `sslmode=verify-full` against Supabase's root CA
+  (`supabase-ca.crt`, verified against dev's pooler).
+- Google Cloud project **`mosaic-backups`** (number 720450441583, organization mosaic.social, billing upgraded
+  from the trial). Workload Identity Federation pool `github`, provider `civic-hub-backups`: only repository id
+  1405981649 on `refs/heads/main`. `civic-backup-writer` = `roles/storage.objectCreator` on the bucket (create
+  only; no read, list, overwrite, delete), for `dump.yml` and `hub-exports.yml`; `civic-backup-watchdog` = a
+  custom role with only `storage.objects.list`, for `watchdog.yml`. Restores use Adam's own account.
+- **age keys:** two recipients in `age-recipients.txt` — **primary** and **recovery**, each in its own
+  password-manager item; either opens every backup. Recovery is held by Adam for now, to be handed to a second
+  key holder (management session: "a second person must be able to decrypt"). Private keys never in a repo,
+  secret, log or chat.
+- GitHub: secret `DB_PASSWORD_DEV` only; variables `BACKUP_TARGET=dev`, `BACKUP_BUCKET`, `WIF_PROVIDER`,
+  `BACKUP_SA`, `WATCHDOG_SA`, `DATABASE_URL_DEV` (no password; the scripts refuse one).
+
+### The drill (both halves done, 10-05) — details in `RUNBOOK-restore-database.md` → Rehearsals
+- First dev runs: dump 1.75 MB / 38 tables; 7 hub exports; watchdog ok. Watchdog pointed at `prod` failed
+  (`MISSING` ×3) — the alert path.
+- Dump from the bucket, decrypted with the **primary** key, restored into a local scratch database:
+  **38/38 tables, 41,188 rows, identical to live dev**; one expected error.
+- utopia's nightly bundle from the bucket, decrypted with the **recovery** key, restored on dev by Adam with
+  `restore-hub.ts`: fingerprint `b04e7da5…` matches the bundle and the nightly job's log; `hub.restore` audit
+  row by adam@mosaic.social. (utopia is a near-empty test hub: 12 settings rows. The path is proven; the
+  volume is not.)
+- Not rehearsed: §4, the whole-database restore into a **new** Supabase project. It is written out, marked so.
+
+### Recorded, not changed (Adam, 10-04)
+- **Image backup is a known gap:** dumps hold no Storage objects and hub exports run `--no-images`. Follow-up
+  in BUILD-PLAN: an in-app daily job copying new Storage objects to the same bucket, Vercel → Google via OIDC
+  federation, objectCreator only; **must be on before any large deployment**.
+- Upload limits table in BUILD-PLAN "Backups". **Vercel's 4.5 MB request limit is below the app's 5 MB image
+  cap** (a 4.5–5 MB image gets Vercel's bare 413) → the console/sample-content polish session: resize in the
+  browser before upload. Production's actual `post-images` limit and project-wide limit: Adam to read
+  (`select id, file_size_limit, allowed_mime_types from storage.buckets;`, dashboard → Storage → Settings).
+
+### For Adam
+1. **Production** (next): `backup_reader` on production, `DB_PASSWORD_PROD`, then `BACKUP_TARGET=prod` and a
+   first run of each job. Steps are in this session's chat; afterwards record the result here.
+2. Delete the drill files in `~/Downloads`: the two `.age` downloads, `dev.dump`, `utopia.tar.gz` (dev
+   personal data). `prod-ca-2021.crt` there is public and can go too.
+3. Confirm GitHub's failure email for the deliberate watchdog failure arrived (run 37352350752).
+4. Optional: a $5 budget alert in Google Cloud billing.
+5. When the recovery key goes to its holder: give them `RUNBOOK-restore-database.md` §5 and read access to
+   the bucket.
+
+### What the email alert covers, and misses
+Covers: a dump, export or watchdog run that fails; backups that stop appearing while the watchdog still runs.
+Misses: GitHub Actions not running schedules at all (an outage, or Actions disabled) — the watchdog runs there
+too; email that's filtered or goes to the wrong person (scheduled-run failures go to whoever last changed the
+workflow's cron); a dump that's valid but quietly incomplete (the job checks ≥ 10 tables with data and the
+migrations table, not counts). A second, independent check (e.g. a Google Cloud alert on bucket object age)
+would close the first.
+
+---
+
 ## Release 1 is live on production — the sitting, 2026-09-29 → 2026-10-02
 
 Production (`civic-hub`, Supabase Civic-Hub-Floyd) now runs **`c3751ec`** on the cleaned multi-tenant schema,

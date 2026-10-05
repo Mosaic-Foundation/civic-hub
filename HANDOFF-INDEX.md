@@ -35,6 +35,7 @@ numbers below, or just grep the heading.
 | Operator scripts' hub | `scripts/lib/hubScope.ts` (`--hub <slug>`, required) |
 | Hub tokens, the RLS switch | `src/db/hubToken.ts`, `hubTokensEnabled()` / `getHubTokenDb()` in `src/db/client.ts`; policies `20260925000000`, catalog `tenancy_catalog()` `20260925010000` |
 | Jurisdiction reference list: sources, build, load; console picker; purge | `config/jurisdictions/SOURCES.md`, `scripts/{fetch-jurisdiction-sources.sh,build-jurisdictions.ts,load-jurisdictions.ts}`, `src/control/jurisdictions.ts`, `ui/src/console/JurisdictionPicker.tsx`, `scripts/purge-hub.ts`, `scripts/lib/hubPurge.ts` |
+| Backups: schedule, identities, bucket, watchdog (private repo `Mosaic-Foundation/civic-hub-backups`, local `../civic-hub-backups`); restore from them; image-backup gap | `../civic-hub-backups/README.md`, `RUNBOOK-restore-database.md`, BUILD-PLAN "Backups"; HANDOFF "Encrypted backups outside Supabase" (2026-10-05) |
 | Release-1 sitting runbook (cleanup, seven migrations, code, console, wildcard, final check) — **done 2026-10-02**, see HANDOFF "Release 1 is live" | `RUNBOOK-release-1.md`; cleanup `supabase/migrations/20260926005000_post_cutover_cleanup.sql`; local branch `release-1-cleanup` |
 | No-hub / paused pages (server and static shell) | `src/shared/deadEnd.ts`, `src/middleware/hub.ts`, `ui/src/main.tsx` |
 | Cutover runbook, dev refresh from a prod dump, pre-switch check | `RUNBOOK-cutover.md`, `scripts/dev-refresh-from-dump.sh`, `scripts/dev-refresh-reseed.ts`, `scripts/check-tenancy.ts` |

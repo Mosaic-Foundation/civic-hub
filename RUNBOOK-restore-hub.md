@@ -2,7 +2,8 @@
 
 For: a mistake inside one hub (rows deleted, content overwritten, a bad
 import) on the shared database. Not for: a whole-database disaster (restore
-the database from Supabase's backups instead), or moving a hub to another
+the database from the encrypted backups: `RUNBOOK-restore-database.md`; the
+nightly bundles there are also path A's bundles), or moving a hub to another
 install (`scripts/import-hub.ts`; see "Moving a hub out" at the end).
 
 Tools: `scripts/export-hub.ts`, `scripts/restore-hub.ts` (and
