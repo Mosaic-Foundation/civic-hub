@@ -8,8 +8,8 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 Scheduled, encrypted backups now run from a new **private** repo,
 `Mosaic-Foundation/civic-hub-backups` (local `~/Developer/Civic-Social-Mono/civic-hub-backups`,
-its own git history like this repo; Adam pushes). **On dev only so far**; production is the next step
-(below). Restore procedure: `RUNBOOK-restore-database.md` (new). Plan record: `BUILD-PLAN-multi-tenant.md`
+its own git history like this repo; Adam pushes). **Production is backed up since 2026-10-05 23:26Z**
+(`BACKUP_TARGET=prod`); dev was the test target and is no longer scheduled. Restore procedure: `RUNBOOK-restore-database.md` (new). Plan record: `BUILD-PLAN-multi-tenant.md`
 → "Backups" (`3d0595b`).
 
 ### What runs (GitHub Actions in civic-hub-backups)
@@ -63,8 +63,11 @@ its own git history like this repo; Adam pushes). **On dev only so far**; produc
   (`select id, file_size_limit, allowed_mime_types from storage.buckets;`, dashboard → Storage → Settings).
 
 ### For Adam
-1. **Production** (next): `backup_reader` on production, `DB_PASSWORD_PROD`, then `BACKUP_TARGET=prod` and a
-   first run of each job. Steps are in this session's chat; afterwards record the result here.
+1. **Production — done 10-05:** Adam created `backup_reader` on production (`\i sql/backup_reader.sql`,
+   `\password`) and added `DB_PASSWORD_PROD`; `DATABASE_URL_PROD` set (`aws-1-us-east-1` pooler). First runs:
+   dump `civic-db-prod-20261005T232640Z` (1,741,495 bytes, 38 tables with data); hub export for the one active
+   hub, floyd (civic-hub `main`). Then `BACKUP_TARGET=prod` at 23:27Z. The first `daily/prod/` file comes from
+   the 00:17Z run; check the 03:47Z watchdog run is green. A production restore has not been drilled (dev was).
 2. Delete the drill files in `~/Downloads`: the two `.age` downloads, `dev.dump`, `utopia.tar.gz` (dev
    personal data). `prod-ca-2021.crt` there is public and can go too.
 3. Confirm GitHub's failure email for the deliberate watchdog failure arrived (run 37352350752).
