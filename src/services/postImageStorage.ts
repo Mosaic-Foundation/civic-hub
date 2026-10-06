@@ -27,12 +27,19 @@ export const POST_IMAGE_MIME_WHITELIST: ReadonlySet<string> = new Set([
   "image/gif",
 ]);
 
-/** 5 MB default; configurable via IMAGE_UPLOAD_MAX_MB. */
+/**
+ * Vercel refuses a function request body over 4.5 MB with a bare 413 before
+ * the app runs. Keeping the app's limit under it, with room for the multipart
+ * wrapper, means an oversized image always gets the app's own message.
+ */
+export const UPLOAD_CEILING_MB = 4;
+
+/** 4 MB default; IMAGE_UPLOAD_MAX_MB can lower it, never raise it past UPLOAD_CEILING_MB. */
 export function imageUploadMaxBytes(): number {
   const raw = process.env.IMAGE_UPLOAD_MAX_MB;
-  const mb = raw ? Number(raw) : 5;
-  if (!Number.isFinite(mb) || mb <= 0) return 5 * 1024 * 1024;
-  return Math.floor(mb * 1024 * 1024);
+  const mb = raw ? Number(raw) : UPLOAD_CEILING_MB;
+  const valid = Number.isFinite(mb) && mb > 0 ? mb : UPLOAD_CEILING_MB;
+  return Math.floor(Math.min(valid, UPLOAD_CEILING_MB) * 1024 * 1024);
 }
 
 export function postImageBucket(): string {

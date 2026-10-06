@@ -25,6 +25,22 @@ const MAX_LONG_EDGE_PX = 2000;
 const WEBP_QUALITY = 0.85;
 const ALT_MAX = 200;
 
+/**
+ * What a re-encoded image may weigh before it is sent. The server's limit is
+ * 4 MB (UPLOAD_CEILING_MB, kept under Vercel's 4.5 MB request limit); this
+ * leaves room for the multipart wrapper. An image over it after the first
+ * encode is re-encoded smaller (ENCODE_STEPS) rather than refused.
+ */
+const UPLOAD_BUDGET_BYTES = 3.5 * 1024 * 1024;
+
+/** Tried in order until one fits the budget: scale of the resized size, quality. */
+const ENCODE_STEPS: ReadonlyArray<{ scale: number; quality: number }> = [
+  { scale: 1, quality: WEBP_QUALITY },
+  { scale: 1, quality: 0.7 },
+  { scale: 0.75, quality: 0.7 },
+  { scale: 0.5, quality: 0.7 },
+];
+
 interface Props {
   imageUrl: string | null;
   imageAlt: string | null;
@@ -198,7 +214,8 @@ export default function PostImagePicker({
 /**
  * Resize an input File to at most MAX_LONG_EDGE_PX on its long edge,
  * re-encode to WebP at WEBP_QUALITY. The canvas re-encode strips EXIF
- * metadata (camera, GPS, etc.) as a side effect — that is desired.
+ * metadata (camera, GPS, etc.) as a side effect — that is desired. If the
+ * result is over UPLOAD_BUDGET_BYTES, it steps down through ENCODE_STEPS.
  */
 async function resizeAndEncode(
   file: File,
@@ -218,41 +235,56 @@ async function resizeAndEncode(
     const sourceWidth = "width" in bitmap ? bitmap.width : 0;
     const sourceHeight = "height" in bitmap ? bitmap.height : 0;
     const longEdge = Math.max(sourceWidth, sourceHeight);
-    const scale = longEdge > maxLongEdge ? maxLongEdge / longEdge : 1;
-    const targetWidth = Math.max(1, Math.round(sourceWidth * scale));
-    const targetHeight = Math.max(1, Math.round(sourceHeight * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = targetWidth;
-    canvas.height = targetHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Canvas context unavailable.");
-    ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(bitmap as CanvasImageSource, 0, 0, targetWidth, targetHeight);
+    const fit = longEdge > maxLongEdge ? maxLongEdge / longEdge : 1;
 
     if (format === "png") {
       // PNG is lossless and keeps the alpha channel, which is the point.
-      const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-      if (!png) throw new Error("Browser could not encode the image.");
+      const png = await encode(bitmap, sourceWidth * fit, sourceHeight * fit, "image/png");
+      if (png.size > UPLOAD_BUDGET_BYTES) throw new Error(tooLarge());
       return png;
     }
 
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/webp", WEBP_QUALITY),
-    );
-    if (blob) return blob;
-    // WebP unsupported — fall back to JPEG. Quality slightly lower
-    // since JPEG handles photos better than 0.85 WebP at the same byte cost.
-    const fallback = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.9),
-    );
-    if (!fallback) throw new Error("Browser could not encode the image.");
-    return fallback;
+    for (const step of ENCODE_STEPS) {
+      const w = sourceWidth * fit * step.scale;
+      const h = sourceHeight * fit * step.scale;
+      let blob = await encode(bitmap, w, h, "image/webp", step.quality).catch(() => null);
+      // WebP unsupported — fall back to JPEG. Quality slightly higher
+      // since JPEG handles photos better than WebP at the same byte cost.
+      if (!blob || blob.type !== "image/webp") {
+        blob = await encode(bitmap, w, h, "image/jpeg", Math.min(0.9, step.quality + 0.05));
+      }
+      if (blob.size <= UPLOAD_BUDGET_BYTES) return blob;
+    }
+    throw new Error(tooLarge());
   } finally {
     if ("close" in bitmap && typeof bitmap.close === "function") {
       bitmap.close();
     }
   }
+}
+
+function tooLarge(): string {
+  return `This image is still over ${Math.round((UPLOAD_BUDGET_BYTES / (1024 * 1024)) * 10) / 10} MB after resizing. Try a smaller image.`;
+}
+
+/** Draw the image at width × height and encode it. */
+async function encode(
+  bitmap: ImageBitmap | HTMLImageElement,
+  width: number,
+  height: number,
+  type: "image/webp" | "image/jpeg" | "image/png",
+  quality?: number,
+): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(width));
+  canvas.height = Math.max(1, Math.round(height));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas context unavailable.");
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap as CanvasImageSource, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+  if (!blob) throw new Error("Browser could not encode the image.");
+  return blob;
 }
 
 function loadViaImg(file: File): Promise<HTMLImageElement> {

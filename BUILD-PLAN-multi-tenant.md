@@ -1254,7 +1254,7 @@ service account with `roles/storage.objectCreator` on that bucket only.
 
 | Where | Limit | Source |
 |---|---|---|
-| App: post images and hub banners | 5 MB (`IMAGE_UPLOAD_MAX_MB`, default 5), JPEG/PNG/WebP/GIF | `src/services/postImageStorage.ts` `imageUploadMaxBytes()`, busboy `fileSize` in `src/controllers/uploadController.ts` |
+| App: post images and hub banners | 5 MB (`IMAGE_UPLOAD_MAX_MB`, default 5), JPEG/PNG/WebP/GIF — **now 4 MB, see below** | `src/services/postImageStorage.ts` `imageUploadMaxBytes()`, busboy `fileSize` in `src/controllers/uploadController.ts` |
 | App: hub logo | min(that, 1 MB), square PNG | `HUB_IMAGE_LIMITS.logo`, same file |
 | App: meeting-summary PDFs (fetched, not uploaded) | 20 MB | `MAX_PDF_BYTES`, `src/modules/civic.meeting_summary/pipeline.ts` |
 | App: JSON request bodies | 100 KB (Express default; `express.json()` has no `limit`) | `src/app.ts` |
@@ -1266,7 +1266,15 @@ service account with `roles/storage.objectCreator` on that bucket only.
 
 The Vercel body limit is below the app's 5 MB, so an image between ~4.5 and
 5 MB is refused by Vercel with a 413 before the app's own "exceeds the 5 MB
-upload limit" message can run. Not changed; noted for whoever touches uploads.
+upload limit" message can run.
+
+**Fixed 2026-10-05 (Adam: "if it's easy, fix it"):** the server's limit is
+4 MB (`UPLOAD_CEILING_MB` in `src/services/postImageStorage.ts`;
+`IMAGE_UPLOAD_MAX_MB` can lower it, never raise it), and the browser resize
+(`ui/src/components/PostImagePicker.tsx`, every image upload goes through it)
+re-encodes smaller in steps when a result is over 3.5 MB. Measured: pure noise
+at 4000×3000 comes out at 1.6 MB, so the steps are a safety net. Buckets
+unchanged (5 MB).
 
 ---
 

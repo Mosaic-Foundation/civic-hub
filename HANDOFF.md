@@ -57,9 +57,11 @@ its own git history like this repo; Adam pushes). **Production is backed up sinc
 - **Image backup is a known gap:** dumps hold no Storage objects and hub exports run `--no-images`. Follow-up
   in BUILD-PLAN: an in-app daily job copying new Storage objects to the same bucket, Vercel → Google via OIDC
   federation, objectCreator only; **must be on before any large deployment**.
-- Upload limits table in BUILD-PLAN "Backups". **Vercel's 4.5 MB request limit is below the app's 5 MB image
-  cap** (a 4.5–5 MB image gets Vercel's bare 413) → the console/sample-content polish session: resize in the
-  browser before upload. Production's actual `post-images` limit and project-wide limit: Adam to read
+- Upload limits table in BUILD-PLAN "Backups". **Vercel's 4.5 MB request limit was below the app's 5 MB image
+  cap** (a 4.5–5 MB image got Vercel's bare 413). **Fixed in this session after all** (Adam, 10-05): server cap
+  4 MB (`UPLOAD_CEILING_MB`, env can only lower it; `tests/unit/uploadCeiling.test.ts`), and the browser
+  resize steps quality/size down when a result is over 3.5 MB (checked in the browser: 39 MB of noise →
+  1.6 MB WebP). Ships with the next deploy of `multi-tenant` to `main`. Production's actual `post-images` limit and project-wide limit: Adam to read
   (`select id, file_size_limit, allowed_mime_types from storage.buckets;`, dashboard → Storage → Settings).
 
 ### For Adam
