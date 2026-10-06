@@ -199,7 +199,7 @@ export default function PostImagePicker({
           </button>
           <p className="form-hint">
             {formatHint ??
-              `Optional. JPEG, PNG, WebP, or GIF. Resized to ${MAX_LONG_EDGE_PX} px on the long edge before upload.`}
+              `Optional. JPEG, PNG, WebP, or GIF. Resized to ${maxLongEdge} px on the long edge before upload.`}
           </p>
         </div>
       )}

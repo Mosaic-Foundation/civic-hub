@@ -12,6 +12,9 @@ import { fieldSpec, DOCUMENT_PLACEHOLDERS } from "../../../../src/shared/hubSett
 import { uploadHubImage } from "../../services/api";
 import type { FormApi } from "./SectionForm";
 
+/** A hub banner's longest edge after the browser resize; see ImageField. */
+const BANNER_LONG_EDGE_PX = 3200;
+
 interface Common {
   f: FormApi;
   k: string;
@@ -222,9 +225,11 @@ export function ImageField({
           addLabel={addLabel}
           disabled={f.disabled}
           // A logo stays a PNG, so its transparent background survives; it is
-          // shown at most at icon size, so 512 px is plenty.
+          // shown at most at icon size, so 512 px is plenty. The banner runs
+          // the full width of the screen, so it keeps more pixels than a post
+          // image: 3200 px stays sharp on a 1600 px-wide window at 2x.
           format={kind === "logo" ? "png" : "webp"}
-          maxLongEdge={kind === "logo" ? 512 : undefined}
+          maxLongEdge={kind === "logo" ? 512 : BANNER_LONG_EDGE_PX}
           formatHint={formatHint}
         />
       </div>

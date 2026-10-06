@@ -61,7 +61,9 @@ its own git history like this repo; Adam pushes). **Production is backed up sinc
   cap** (a 4.5–5 MB image got Vercel's bare 413). **Fixed in this session after all** (Adam, 10-05): server cap
   4 MB (`UPLOAD_CEILING_MB`, env can only lower it; `tests/unit/uploadCeiling.test.ts`), and the browser
   resize steps quality/size down when a result is over 3.5 MB (checked in the browser: 39 MB of noise →
-  1.6 MB WebP). Ships with the next deploy of `multi-tenant` to `main`. Production's actual `post-images` limit and project-wide limit: Adam to read
+  1.6 MB WebP). Hub banners now keep 3200 px on the long edge (was 2000; full-width strip, sharp at 2x on a
+  1600 px window); post and project images stay 2000 px (shown inside the 1100 px column). Ships with the next
+  deploy of `multi-tenant` to `main`. Production's actual `post-images` limit and project-wide limit: Adam to read
   (`select id, file_size_limit, allowed_mime_types from storage.buckets;`, dashboard → Storage → Settings).
 
 ### For Adam
