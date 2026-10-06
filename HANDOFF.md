@@ -74,7 +74,7 @@ its own git history like this repo; Adam pushes). **Production is backed up sinc
    the 00:17Z run; check the 03:47Z watchdog run is green. A production restore has not been drilled (dev was).
 2. Delete the drill files in `~/Downloads`: the two `.age` downloads, `dev.dump`, `utopia.tar.gz` (dev
    personal data). `prod-ca-2021.crt` there is public and can go too.
-3. Confirm GitHub's failure email for the deliberate watchdog failure arrived (run 37352350752).
+3. ~~Confirm GitHub's failure email arrived~~ — it did (Adam, 10-05: "Run failed: Backup watchdog - main", sender shown as Adam Lake). A Resend-based alert was built and dropped unpushed as unnecessary.
 4. Optional: a $5 budget alert in Google Cloud billing.
 5. When the recovery key goes to its holder: give them `RUNBOOK-restore-database.md` §5 and read access to
    the bucket.
