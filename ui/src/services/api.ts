@@ -4,6 +4,8 @@
  * Actions go through the internal process action endpoint.
  */
 
+import { apiErrorMessage } from "../utils/httpError";
+
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
 
 /**
@@ -93,8 +95,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       // while every action fails with an opaque error.
       window.dispatchEvent(new CustomEvent("civic:auth-expired"));
     }
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? `Request failed: ${res.status}`);
+    const err = await res.json().catch(() => null);
+    throw new Error(apiErrorMessage(err, res.status, res.statusText));
   }
 
   const data = await res.json();
@@ -1827,8 +1829,8 @@ export async function uploadHubImage(
     body: form,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? `Upload failed: ${res.status}`);
+    const err = await res.json().catch(() => null);
+    throw new Error(apiErrorMessage(err, res.status, res.statusText));
   }
   return res.json();
 }
@@ -1958,8 +1960,8 @@ export async function uploadPostImage(file: Blob): Promise<UploadedImage> {
     body: form,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? `Upload failed: ${res.status}`);
+    const err = await res.json().catch(() => null);
+    throw new Error(apiErrorMessage(err, res.status, res.statusText));
   }
   return res.json();
 }
@@ -1976,8 +1978,8 @@ export async function uploadProjectImage(file: Blob): Promise<UploadedImage> {
     body: form,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? `Upload failed: ${res.status}`);
+    const err = await res.json().catch(() => null);
+    throw new Error(apiErrorMessage(err, res.status, res.statusText));
   }
   return res.json();
 }
@@ -2381,8 +2383,8 @@ export async function uploadFeedbackScreenshot(file: Blob): Promise<UploadedImag
     body: form,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? `Upload failed: ${res.status}`);
+    const err = await res.json().catch(() => null);
+    throw new Error(apiErrorMessage(err, res.status, res.statusText));
   }
   return res.json();
 }

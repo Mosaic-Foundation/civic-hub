@@ -1,3 +1,5 @@
+import { apiErrorMessage } from "../utils/httpError";
+
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
 
 export interface JoinWaitlistOptions {
@@ -24,8 +26,8 @@ export async function joinWaitlist(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? `Request failed: ${res.status}`);
+    const err = await res.json().catch(() => null);
+    throw new Error(apiErrorMessage(err, res.status, res.statusText));
   }
 
   return res.json();

@@ -3,6 +3,8 @@
  * Manages session token in localStorage.
  */
 
+import { apiErrorMessage } from "../utils/httpError";
+
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
 
 class AuthError extends Error {
@@ -26,8 +28,8 @@ async function request<T>(method: string, path: string, body?: unknown, token?: 
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new AuthError(err.error ?? `Request failed: ${res.status}`, res.status);
+    const err = await res.json().catch(() => null);
+    throw new AuthError(apiErrorMessage(err, res.status, res.statusText), res.status);
   }
 
   return res.json();

@@ -4,6 +4,22 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## "[object Object]" on sign-in, and Vercel's 403 — 2026-10-06 (night)
+
+Adam got Vercel's "This request was blocked / 403 FORBIDDEN" page on agora.civic.social in new tabs
+(`iad1::w94n4-1791320873478-…`, 21:07:53Z), and in an open tab the code step showed "[object Object]". The same pages
+loaded normally from the session's browser at the time. No firewall rule exists in the repo or `vercel.json`, so the
+block comes from the production project's Vercel Firewall (a managed or custom rule, bot protection, or attack mode).
+**For Adam:** Vercel → production project → Firewall → traffic, search the request id, to see which rule fired.
+
+**Fixed here:** the UI printed the firewall's JSON error object. `ui/src/utils/httpError.ts` (`apiErrorMessage`) is
+now used by the API, auth, upload and waitlist calls: the hub's own error strings pass through; an error object gives
+its message; a 403 that never reached the hub says "The request was blocked before it reached the hub … Try again in a
+few minutes." Unit `apiErrorMessage.test.ts`; unit 105 / 1200, Playwright 26/26. Ships to production with the next
+`multi-tenant` → `main` deploy.
+
+---
+
 ## Create hub, second pass: picker, suggestions, preview, time zone — 2026-10-06 (evening)
 
 Adam's follow-up to item 2 (and agora.civic.social checked). Decisions in BUILD-PLAN → "Console and sample-content
