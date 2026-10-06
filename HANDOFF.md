@@ -10,7 +10,12 @@ Adam got Vercel's "This request was blocked / 403 FORBIDDEN" page on agora.civic
 (`iad1::w94n4-1791320873478-…`, 21:07:53Z), and in an open tab the code step showed "[object Object]". The same pages
 loaded normally from the session's browser at the time. No firewall rule exists in the repo or `vercel.json`, so the
 block comes from the production project's Vercel Firewall (a managed or custom rule, bot protection, or attack mode).
-**For Adam:** Vercel → production project → Firewall → traffic, search the request id, to see which rule fired.
+**Resolved (Adam, same night):** the dashboard has no request-id search. Firewall showed Custom Rules 0 and Bot
+Protection off, so the block was Vercel's automatic **System Mitigations**. Denied traffic came mostly from
+`34.22.205.135` (Google Cloud, Belgium: two bursts of ~300 requests) and also from Adam's home IP `172.83.130.137`
+(Citizens Telephone Cooperative). The session's own scripted checks of production ran from that same IP and may have
+added to it. Adam added a custom rule, **Bypass** for `172.83.130.137`, and can sign in again. If his ISP changes his
+address, the rule needs the new IP. Not done: a Deny rule for `34.22.205.135` (optional).
 
 **Fixed here:** the UI printed the firewall's JSON error object. `ui/src/utils/httpError.ts` (`apiErrorMessage`) is
 now used by the API, auth, upload and waitlist calls: the hub's own error strings pass through; an error object gives
