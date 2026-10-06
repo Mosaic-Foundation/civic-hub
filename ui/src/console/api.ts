@@ -84,6 +84,8 @@ export interface ConsoleConfig {
   production_database: boolean;
   hub_specific_env_vars: string[];
   create_refusal: string | null;
+  /** The create form's preview: one sample card's first line, placeholders left in. */
+  sample_preview?: { pill: string; title: string };
 }
 
 export interface AuditEntry {

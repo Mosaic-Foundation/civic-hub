@@ -53,6 +53,10 @@ export function JurisdictionPicker({
   const [loadError, setLoadError] = useState<string | null>(null);
   const listId = useId();
   const seq = useRef(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  /** Typing over a chosen place: the search is open again until something is picked. */
+  const [editing, setEditing] = useState(false);
+  const chosen = value.kind === "listed" ? value.row : null;
 
   useEffect(() => {
     api
@@ -65,7 +69,8 @@ export function JurisdictionPicker({
   }, []);
 
   // The type-ahead, debounced; answers that arrive out of order are dropped.
-  const searching = Boolean(state && type) && value.kind !== "custom" && value.kind !== "none";
+  const searching =
+    Boolean(state && type) && value.kind !== "custom" && value.kind !== "none" && (value.kind !== "listed" || editing);
   useEffect(() => {
     if (!searching) return;
     const n = ++seq.current;
@@ -91,6 +96,7 @@ export function JurisdictionPicker({
   function choose(row: JurisdictionMatch) {
     onChange({ kind: "listed", row });
     setQ("");
+    setEditing(false);
     setOpen(false);
   }
 
@@ -170,43 +176,79 @@ export function JurisdictionPicker({
               </select>
             </label>
           </div>
+          <small className="cx-muted cx-slug-note">
+            State and type narrow the search. The type also sets the usual governing body and which sample content fits.
+          </small>
           <div className="cx-field cx-combo">
             <label htmlFor={`${listId}-q`}>
-              <span>Search the list</span>
+              <span>Name</span>
             </label>
-            <input
-              id={`${listId}-q`}
-              role="combobox"
-              aria-expanded={open && shown.length > 0}
-              aria-controls={`${listId}-list`}
-              aria-autocomplete="list"
-              aria-activedescendant={open && shown[active] ? `${listId}-opt-${active}` : undefined}
-              autoComplete="off"
-              disabled={!state || !type}
-              placeholder={state && type ? "Start typing…" : "Choose a state and a type first"}
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setOpen(true);
-              }}
-              onFocus={() => setOpen(true)}
-              onBlur={() => window.setTimeout(() => setOpen(false), 120)}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
+            <div className="cx-combo-input">
+              <input
+                id={`${listId}-q`}
+                ref={inputRef}
+                role="combobox"
+                aria-expanded={open && shown.length > 0}
+                aria-controls={`${listId}-list`}
+                aria-autocomplete="list"
+                aria-activedescendant={open && shown[active] ? `${listId}-opt-${active}` : undefined}
+                autoComplete="off"
+                disabled={!state || !type}
+                placeholder={state && type ? "Start typing…" : "Choose a state and a type first"}
+                // The chosen place sits in the field itself; typing reopens the search.
+                value={chosen && !editing ? chosen.display_name : q}
+                className={chosen && !editing ? "cx-combo-chosen" : undefined}
+                onChange={(e) => {
+                  setEditing(true);
+                  setQ(e.target.value);
                   setOpen(true);
-                  setActive((a) => Math.min(a + 1, shown.length - 1));
-                } else if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  setActive((a) => Math.max(a - 1, 0));
-                } else if (e.key === "Enter" && open && shown[active]) {
-                  e.preventDefault();
-                  choose(shown[active]);
-                } else if (e.key === "Escape") {
-                  setOpen(false);
+                }}
+                onFocus={() => {
+                  if (!chosen || editing) setOpen(true);
+                }}
+                onBlur={() =>
+                  window.setTimeout(() => {
+                    setOpen(false);
+                    // Left mid-edit with a place still chosen: show the place again.
+                    setEditing(false);
+                    setQ("");
+                  }, 120)
                 }
-              }}
-            />
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setOpen(true);
+                    setActive((a) => Math.min(a + 1, shown.length - 1));
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setActive((a) => Math.max(a - 1, 0));
+                  } else if (e.key === "Enter" && (shown[active] || shown.length === 1)) {
+                    // The highlighted match, or the only one left.
+                    e.preventDefault();
+                    choose(shown[active] ?? shown[0]);
+                  } else if (e.key === "Escape") {
+                    setOpen(false);
+                  }
+                }}
+              />
+              {chosen && (
+                <button
+                  type="button"
+                  className="cx-combo-clear"
+                  aria-label={`Clear ${chosen.display_name}`}
+                  title="Clear"
+                  onClick={() => {
+                    onChange({ kind: "unlinked" });
+                    setQ("");
+                    setEditing(true);
+                    setOpen(true);
+                    inputRef.current?.focus();
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
             {open && shown.length > 0 && (
               <ul className="cx-listbox" role="listbox" id={`${listId}-list`}>
                 {shown.map((m, i) => (
@@ -232,25 +274,20 @@ export function JurisdictionPicker({
             {open && state && type && q && shown.length === 0 && (
               <small className="cx-muted">Nothing matches. Check the type, or choose Other / not listed.</small>
             )}
+            {chosen ? (
+              <small className="cx-muted">
+                <span className="cx-mono cx-break">{chosen.ocd_id}</span> · Census: {chosen.official_name} · GEOID{" "}
+                {chosen.census_geoid}
+                {chosen.type === "cdp" &&
+                  ". A census-designated place has no local government of its own; its residents are governed by the county around it."}
+              </small>
+            ) : (
+              <small className="cx-muted">The place this hub serves, from the official list. Enter picks the highlighted match.</small>
+            )}
           </div>
         </>
       )}
 
-      {value.kind === "listed" && (
-        <div className="cx-chosen">
-          <strong>{value.row.display_name}</strong>
-          <span className="cx-mono cx-small cx-break">{value.row.ocd_id}</span>
-          <span className="cx-muted cx-small">
-            Census: {value.row.official_name} · GEOID {value.row.census_geoid}
-          </span>
-          {value.row.type === "cdp" && (
-            <span className="cx-muted cx-small">
-              A census-designated place has no local government of its own; its residents are governed by the county
-              around it.
-            </span>
-          )}
-        </div>
-      )}
       {value.kind === "unlinked" && !custom && (currentOcdId !== undefined || currentName !== undefined) && (
         <p className="cx-muted cx-small">
           {currentOcdId ? (

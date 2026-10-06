@@ -33,6 +33,7 @@ import { defaultGoverningBody, defaultGoverningBodyShort, isJurisdictionType, ty
 import { getJurisdiction, type Jurisdiction } from "./jurisdictions.js";
 import { DEFAULT_HUB_KIND, hubKindOf, isHubKind, type HubKind } from "../shared/hubKind.js";
 import { jurisdictionCodeFor } from "../shared/jurisdictionNames.js";
+import { isValidTimeZone } from "../utils/hubTime.js";
 
 export class ControlInputError extends Error {
   constructor(message: string, readonly status = 400) {
@@ -259,6 +260,8 @@ export interface CreateHubInput {
   governingBody?: string | null;
   /** copy.governing_body_short (2026-10-06). Omitted = derived from the body's name. */
   governingBodyShort?: string | null;
+  /** identity.timezone (2026-10-06), an IANA name. Omitted = unset (UTC). */
+  timezone?: string | null;
   admins: readonly string[];
   mode: HubMode;
   /** Seed the sample content after creating (Phase 7). The form's default is on. */
@@ -302,6 +305,7 @@ export function parseCreateInput(body: Record<string, unknown>): CreateHubInput 
     jurisdictionType: jurisdictionType as JurisdictionType | null,
     governingBody: orNull(text(body.governing_body)),
     governingBodyShort: orNull(text(body.governing_body_short, 40)),
+    timezone: orNull(text(body.timezone, 64)),
     admins: admin ? [admin] : [],
     mode,
     sampleContent: body.sample_content === true,
@@ -364,6 +368,9 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
   }
   if (kind !== "place" && (input.governingBody || input.governingBodyShort)) {
     throw new ControlInputError("A governing body is for place hubs only.");
+  }
+  if (input.timezone && !isValidTimeZone(input.timezone)) {
+    throw new ControlInputError(`"${input.timezone}" is not a time zone. Use a name such as America/New_York.`);
   }
   if (input.admins.length === 0) {
     throw new ControlInputError(
@@ -434,6 +441,7 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
   // summaries"): what the operator typed, else derived from the name.
   const governingBodyShort = governingBody ? (input.governingBodyShort ?? defaultGoverningBodyShort(governingBody)) : "";
   if (governingBodyShort) settings[KEYS.COPY_GOVERNING_BODY_SHORT] = governingBodyShort;
+  if (input.timezone) settings[KEYS.IDENTITY_TIMEZONE] = input.timezone;
   // Every plugin gets its own row: what the operator ticked, on by default.
   for (const id of PLUGIN_IDS) {
     settings[`plugin.${id}.enabled`] = input.plugins?.[id] === false ? "false" : "true";

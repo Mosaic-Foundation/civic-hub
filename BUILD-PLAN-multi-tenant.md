@@ -1260,6 +1260,38 @@ sample-content polish".
   following the place name until the operator edits it. The place name's
   hint shows the sign-up sentence it lands in, and notes when it differs from
   the list's name.
+- **Create hub, second pass (Adam, same day):**
+  - *Picker:* the chosen place shows inside the Name field (× clears it,
+    typing reopens the search); Enter picks the highlighted match or the only
+    one left; "Already served by …" stays under the field. The OCD id and
+    Census name are one small line under it (the separate card is gone).
+  - *Suggestions, not fills:* once a place is chosen the empty fields show
+    grey suggestions — place name, governing body, board label (its short
+    form), hub name, web address, time zone. **An untouched suggestion is
+    submitted as the value** (Adam); Tab or Enter makes it real text to edit;
+    the form never changes a field the operator typed in. This replaces the
+    morning's "follows until edited" filling.
+  - *Web address:* one field, `[slug].<platform domain>`, with "Use a
+    different domain" for the full hostname (Hub id + Domain). Adam's concern
+    (two Huntsvilles) holds: names are free, only the address is unique, and
+    the suggestion passes over taken ones (`huntsville`, `huntsville-al`,
+    `huntsville-2`). A console with no platform domain (local) shows the
+    domain fields.
+  - *Time zone* on the form (Adam): grey suggestion from the place's state
+    (`src/shared/stateTimeZones.ts`: 50 states + DC; the 13 states split
+    across zones suggest the larger and the hint says to check). Stored as
+    `identity.timezone` (validated at create); the admin changes it later in
+    Settings → Identity.
+  - *Labels and hints* say where each value appears: Place name ("shown at
+    sign-up"), Governing body ("sample content and delivered results"), Board
+    label, Hub name ("site header, browser tab, email sender name"), Web
+    address, Time zone, First admin, Who can join (was Mode).
+  - *Preview:* plain styled text beside the form (Adam: no hub components,
+    no crossing the control boundary): web address, a header line (initial,
+    hub name), the meeting pill with the board label, the first line of a
+    sample card (`sample_preview` on `GET /control/config`, placeholders
+    filled in the console), the sign-up sentence, the time zone.
+  - Nothing moved off the form (Adam: keep everything).
 - **Affiliation by hub kind** (`affiliationClause`, `personLabel`,
   `participantNoun` in `src/shared/hubKind.ts`): place — "I confirm that I
   am a resident of {place}", unnamed people "Resident"; organization — "I

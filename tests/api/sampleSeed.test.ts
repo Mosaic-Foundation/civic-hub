@@ -215,15 +215,32 @@ describe("a school district hub", () => {
         jurisdiction_type: "school_district",
         admin_email: ADMIN,
         sample_content: true,
+        timezone: "America/New_York",
       },
     });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     created.push(SCHOOLS);
+    // The create form's time zone (2026-10-06) is the hub's identity.timezone.
+    const [tz] = (await localRest(`hub_settings?select=value&hub_id=eq.${SCHOOLS}&key=eq.identity.timezone`)) as Row[];
+    expect(tz?.value).toBe("America/New_York");
     expect(res.body.config.governing_body).toBe("School Board");
     expect(res.body.config.governing_body_short).toBe("School Board");
     expect([...res.body.sample_content.created].sort()).toEqual(
       ["announcement_budget_hearing", "outcome_library_hours", "vote_library_hours", "wordcloud_value"].sort(),
     );
+  });
+});
+
+describe("a time zone that is not one", () => {
+  it("is refused at create, and no hub is made", async () => {
+    const slug = `smpt-${run}`;
+    const res = await consoleCall("POST", "/control/hubs", {
+      cookie,
+      body: { slug, name: "Bad Zone Hub", hostname: host(slug), hub_kind: "other", admin_email: ADMIN, timezone: "Mars/Olympus" },
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/not a time zone/);
+    expect((await localRest(`hubs?select=id&id=eq.${slug}`)) as Row[]).toHaveLength(0);
   });
 });
 

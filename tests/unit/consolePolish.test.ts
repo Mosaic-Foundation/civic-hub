@@ -7,6 +7,8 @@ import { defaultHubName } from "../../src/shared/jurisdictionNames.js";
 import { affiliationClause, personLabel } from "../../src/shared/hubKind.js";
 import { fieldSpec } from "../../src/shared/hubSettingsSections.js";
 import { validateSettingsWrite } from "../../src/models/hubSettingsWrite.js";
+import { STATE_TIME_ZONES, SPLIT_STATES, suggestedTimeZone } from "../../src/shared/stateTimeZones.js";
+import { isValidTimeZone } from "../../src/utils/hubTime.js";
 
 describe("the governing body's short form", () => {
   it("is the distinctive word of each usual name", () => {
@@ -85,5 +87,19 @@ describe("a process setting", () => {
     expect(ok.ok && ok.entries).toEqual([{ key: "plugin.wordcloud.onboarding_id", value: "proc_abc-1" }]);
     expect(validateSettingsWrite("plugins", { "plugin.wordcloud.onboarding_id": "" }).ok).toBe(true);
     expect(validateSettingsWrite("plugins", { "plugin.wordcloud.onboarding_id": "not an id!" }).ok).toBe(false);
+  });
+});
+
+describe("a state's suggested time zone", () => {
+  it("covers the 50 states and DC with real zone names", () => {
+    expect(Object.keys(STATE_TIME_ZONES)).toHaveLength(51);
+    for (const [state, zone] of Object.entries(STATE_TIME_ZONES)) expect(isValidTimeZone(zone), state).toBe(true);
+    for (const state of SPLIT_STATES) expect(STATE_TIME_ZONES[state], state).toBeTruthy();
+  });
+  it("suggests by state, and nothing without one", () => {
+    expect(suggestedTimeZone("va")).toBe("America/New_York");
+    expect(suggestedTimeZone("AL")).toBe("America/Chicago");
+    expect(suggestedTimeZone(null)).toBe("");
+    expect(suggestedTimeZone("zz")).toBe("");
   });
 });

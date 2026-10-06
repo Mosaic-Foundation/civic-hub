@@ -18,7 +18,7 @@ import { getHubBySlug } from "../db/hubs.js";
 import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { withHubScope } from "../config/hubContext.js";
 import { seedSampleContent, type SampleSeedReport } from "../services/sampleSeed.js";
-import { kindsWithSamples } from "../services/sampleTemplates.js";
+import { kindsWithSamples, samplePreview } from "../services/sampleTemplates.js";
 import {
   CODE_SENT,
   ControlAuthError,
@@ -264,6 +264,9 @@ export function controlRouter(): Router {
       production_database: isProductionDatabase(),
       hub_specific_env_vars: hubSpecificEnvVars(),
       create_refusal: productionCreateGuard(hubs.length),
+      // The create form's preview: a sample card's first line, placeholders
+      // and all; the form fills them from what is typed.
+      sample_preview: samplePreview(),
     });
   }));
 

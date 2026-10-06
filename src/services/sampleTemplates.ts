@@ -553,3 +553,13 @@ export function fillSample(text: string, names: SampleNames): string {
 export function kindsWithSamples(): HubKind[] {
   return HUB_KINDS.map((k) => k.id).filter((k) => SAMPLE_TEMPLATES.some((t) => t.kinds.includes(k)));
 }
+
+/**
+ * The console's create-form preview (2026-10-06): the first line of one
+ * sample card, with its placeholders left in for the form to fill from what
+ * is typed. The open vote: it names the place.
+ */
+export function samplePreview(): { pill: string; title: string } {
+  const t = SAMPLE_TEMPLATES.find((x) => x.key === "vote_internet");
+  return { pill: "Vote open", title: t && t.kind === "vote" ? t.title : "" };
+}

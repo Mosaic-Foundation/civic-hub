@@ -4,6 +4,41 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Create hub, second pass: picker, suggestions, preview, time zone — 2026-10-06 (evening)
+
+Adam's follow-up to item 2 (and agora.civic.social checked). Decisions in BUILD-PLAN → "Console and sample-content
+polish" → "Create hub, second pass".
+
+**agora.civic.social (production, read-only):** production still runs `c3751ec`, so it shows release-1 behaviour. Its
+nine samples name "Board of Supervisors" where the templates use it, with no stray placeholders, and the outcome reads
+"Sent to Board of Supervisors". The pill says "Board meeting summaries" (today's bug). Agora has no short form stored,
+so once `multi-tenant` ships it reads "Supervisors meeting summaries" by itself. It won't get the two new samples:
+the seed script refuses production.
+
+**Built:** in-field picker with × and Enter-on-only-match; grey suggestions for place name, governing body, board label,
+hub name, web address and time zone (an untouched suggestion is what gets saved); one Web address field with a "Use a
+different domain" escape; time zone on the form (state's main zone suggested); a one-line hint on every field; a
+plain-text preview beside the form. Server: `timezone` on `POST /control/hubs` (refused when not a zone),
+`sample_preview` on `GET /control/config`.
+
+**Walked locally** (API with the console at `console.civic.localhost`, so the platform domain is `civic.localhost`):
+Virginia → County → "floy" + Enter → Floyd County, Virginia in the field; suggestions Board of Supervisors /
+Supervisors / Floyd County Civic Hub / `floyd-county` (`floyd` taken locally) / America/New_York; Tab accepted the hub
+name and kept the cursor; a typed hub name survived a place-name edit; "Town Board of Trustees" → board label
+"Trustees" and the preview pill followed; × cleared and re-picking worked. Created Town of Floyd with only the place
+and the admin email filled: saved name, address, Town Council / Council, America/New_York, code `us-va-floyd-town`.
+Alabama → City → "huntsv" → City of Huntsville: Council, America/Chicago, `huntsville`.
+
+**Tests:** API 32 files, 327 passed, 7 skipped, both modes; unit 104 / 1197; Playwright 26/26; builds, lint,
+place-name check clean (UI lint unchanged at 65, none in touched files).
+
+**Check on dev after you push:** console.dev.civic.social → New hub. Pick a place by typing and Enter; check the grey
+suggestions, Tab on one, the × in the Name field, the preview updating, and "Use a different domain". Create one with
+only the place and an admin email, and check the hub page shows the suggested values (Governing body, Short form,
+and the hub's Settings → Identity time zone).
+
+---
+
 ## Console and sample-content polish — 2026-10-06
 
 Part A of the 10-06 session prompt (seven items from the 10-02 follow-ups list below). Decisions:

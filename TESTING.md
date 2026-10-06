@@ -407,6 +407,14 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   2026-10-06: API 32 files, 326 passed, 7 skipped, both modes; unit 104 /
   1195; Playwright 26/26. E2E ran against an API on :3000 started from
   `hub-e2e-1006` in `.claude/launch.json` (hub tokens on, localhost → Floyd).
+  Same day, second pass: `sampleSeed.test.ts` stores the create form's
+  `timezone` and refuses one that is not a zone (no hub made); unit
+  `consolePolish.test.ts` checks the state → time-zone map (51 entries, every
+  zone valid). API 327 passed, 7 skipped, both modes; unit 1197; Playwright
+  26/26. To walk the console's web-address field locally the console needs a
+  parent domain: `hub-local-3210` in `.claude/launch.json` runs with
+  `CIVIC_CONSOLE_HOSTNAME=console.civic.localhost` (platform domain
+  `civic.localhost`).
 
 > **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
 > `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs
