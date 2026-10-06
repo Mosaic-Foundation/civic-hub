@@ -16,6 +16,7 @@ import {
 import { submitAsCreator } from "../modules/civic.review/index.js";
 import { checkTextAgainstCoC, getHubConfig } from "../modules/civic.assistant/index.js";
 import { assertPassesWordlist } from "../shared/wordlist/index.js";
+import { personFallbackName } from "../services/creatorDisplay.js";
 
 function db() {
   return forHub(currentHubId());
@@ -317,7 +318,7 @@ export async function handleCreateDeliberation(req: Request, res: Response): Pro
         title: title || topic,
         description: description || framing,
         creator_id: user.id,
-        creator_name: user.full_name || user.display_name || "Resident",
+        creator_name: user.full_name || user.display_name || personFallbackName(),
         creator_email: user.email,
         state: statePayload,
       },

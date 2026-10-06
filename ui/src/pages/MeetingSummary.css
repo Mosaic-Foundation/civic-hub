@@ -361,3 +361,14 @@
     justify-content: flex-end;
   }
 }
+
+/* A sample summary's times (Phase 7 sample content): shown as a real one
+   would show them, but there is no recording to open, so not a button. */
+.meeting-block-timestamp--plain,
+.meeting-block-timestamp--plain:hover {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  transform: none;
+  cursor: default;
+}

@@ -46,6 +46,9 @@
 import { forHub, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { isAdminEmail } from "../middleware/auth.js";
+import { getSettingSync } from "./hubSettings.js";
+import { KEYS } from "../models/hubSettings.js";
+import { hubKindOf, personLabel } from "../shared/hubKind.js";
 import {
   type OfficialIdentity,
   toOfficialIdentity,
@@ -110,19 +113,27 @@ export function redactForAudience(
     return { name: PUBLIC_ADMIN_NAME, is_admin: false, official: null };
   }
   const n = id ? opts.anonNumbers?.get(id) : undefined;
+  const label = personFallbackName();
   return {
-    name: n ? `Resident ${n}` : "Resident",
+    name: n ? `${label} ${n}` : label,
     is_admin: false,
     official: null,
   };
 }
 
+/**
+ * The name shown for a person whose name is not: "Resident" on a place hub,
+ * "Member" on an organization's, "Participant" elsewhere (identity.hub_kind,
+ * 2026-10-06). Read per hub, so it is a function.
+ */
+export function personFallbackName(): string {
+  return personLabel(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)));
+}
+
 /** The value used for any id we can't resolve to a real person. */
-const FALLBACK: CreatorDisplay = {
-  name: "Resident",
-  is_admin: false,
-  official: null,
-};
+function fallback(): CreatorDisplay {
+  return { name: personFallbackName(), is_admin: false, official: null };
+}
 
 interface UserRow {
   id: string;
@@ -143,7 +154,7 @@ interface UserRow {
  * erroring out the content the byline annotates.
  */
 export function rowToDisplay(row: UserRow): CreatorDisplay {
-  const name = row.full_name?.trim() || row.display_name?.trim() || "Resident";
+  const name = row.full_name?.trim() || row.display_name?.trim() || personFallbackName();
   return {
     name,
     is_admin: isAdminEmail(row.email),
@@ -192,9 +203,9 @@ export async function resolveCreators(
 
 /** Single-id convenience wrapper. Falls back to "Resident" on any miss. */
 export async function resolveCreator(id: string): Promise<CreatorDisplay> {
-  if (!id) return { ...FALLBACK };
+  if (!id) return fallback();
   const map = await resolveCreators([id]);
-  return map.get(id) ?? { ...FALLBACK };
+  return map.get(id) ?? fallback();
 }
 
 /**
@@ -205,8 +216,8 @@ export function getCreator(
   map: Map<string, CreatorDisplay>,
   id: string | null | undefined,
 ): CreatorDisplay {
-  if (!id) return { ...FALLBACK };
-  return map.get(id) ?? { ...FALLBACK };
+  if (!id) return fallback();
+  return map.get(id) ?? fallback();
 }
 
 export interface EnrichOptions extends AudienceOptions {

@@ -6,6 +6,7 @@ import {
   type PublicBrief,
 } from "../services/api";
 import { absoluteTime } from "../components/FeedPost";
+import { absoluteDate } from "../utils/dates";
 import PostFeaturedImage from "../components/PostFeaturedImage";
 import ProcessHeader from "../components/ProcessHeader";
 import DetailActions from "../components/DetailActions";
@@ -158,8 +159,8 @@ export default function BriefPage() {
       {brief.sent_to.length > 0 && brief.delivered_at ? (
         <p className="vote-results-delivery">
           Sent to {joinNames(brief.sent_to)} on{" "}
-          <time dateTime={brief.delivered_at}>
-            {absoluteTime(brief.delivered_at)}
+          <time dateTime={brief.delivered_at} title={absoluteTime(brief.delivered_at)}>
+            {absoluteDate(brief.delivered_at)}
           </time>
           .
         </p>

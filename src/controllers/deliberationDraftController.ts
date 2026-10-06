@@ -14,6 +14,7 @@ import {
   setDeliberationDraftStatus,
 } from "../modules/civic.deliberation_drafts/index.js";
 import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
+import { personFallbackName } from "../services/creatorDisplay.js";
 
 export async function handleCreateDeliberationDraft(
   req: Request,
@@ -229,7 +230,7 @@ export async function handleSubmitDeliberationDraft(
         title: draft.title.trim(),
         description: draft.description.trim(),
         creator_id: user.id,
-        creator_name: user.full_name || user.display_name || "Resident",
+        creator_name: user.full_name || user.display_name || personFallbackName(),
         creator_email: user.email,
         state: statePayload,
       },

@@ -4,6 +4,99 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Console and sample-content polish — 2026-10-06
+
+Part A of the 10-06 session prompt (seven items from the 10-02 follow-ups list below). Decisions:
+BUILD-PLAN → "Console and sample-content polish (2026-10-06)". Adam chose the recommended option on all four
+questions (short form, default hub name, affiliation by kind, "Sent to" wording) and the stated defaults for the rest.
+Part B (token guard, plugin manifest) was left for its own session.
+
+### What changed
+1. **Short form of the governing body.** The feed's "Board meeting summaries" pill was built at module load, before
+   the hub's settings arrived, so it said "Board" on every hub (agora has "Council" stored and still showed "Board").
+   It now reads `copy.governing_body_short` when it renders, and so does the card pill. Unset, the short form is derived
+   from the full name (`defaultGoverningBodyShort`: Supervisors / Council / Commission / Board / School Board /
+   Trustees). A hub with no governing body shows "Meeting summaries". The console writes it now: Create hub has a
+   Short form field that follows the governing body, and the hub page edits it. The hard-coded "the Board" in the vote
+   comment box, the Votes empty state, two admin vote-results hints and the digest's "delivered to the Board" now use
+   it ("the governing body" when there is none). "Board member(s)" role labels are unchanged.
+2. **Create hub form.** One Type field (the list's search filter also sets the hub type; a custom place gets its own
+   Type select). Labels "Search the list", "Place name (as shown)", "Hub name". The hub name defaults to "<place
+   without state> Civic Hub" and follows the place name until edited (place hubs only; switching kind clears an
+   auto-filled name). The place name's hint quotes the sign-up sentence it appears in, and says when it differs from
+   the list's name (the asheville "resident of We The People Asheville" case).
+3. **Affiliation by hub kind.** Sign-up checkbox: place "I confirm that I am a resident of …" (unchanged);
+   organization "I confirm that I am a member of <hub>"; issue/other no affirmation. The intro line above it follows
+   ("confirm your membership" / "review the policies below") when the hub has written none. Unnamed people:
+   Resident / Member / Participant, in the UI and in the server's byline fallback (`personFallbackName()`), and
+   "N members voted".
+4. **Sample content: eleven templates.** New `meeting_summary_regular` (published; four sections with times, no
+   recording or minutes; the page says "Sample: written by hand…", shows times as plain text and drops the AI line)
+   and `wordcloud_value` (32 anonymous answers as rows, no events; becomes the hub's word cloud when none is set;
+   removal clears that setting). The sample conversation now gets the default Polis address
+   (`DEFAULT_POLIS_URL`, `src/shared/polisUrl.ts`) like every other conversation. Its statements were already served
+   to signed-in visitors; a signed-out visitor sees "No more statements", as on any conversation.
+5. **Word-cloud picker.** Settings → Plugins → Word clouds → "The hub's word cloud": the hub's word clouds or None.
+   New settings field kind `process` (`processType`), checked server-side against this hub's processes.
+6. **`job_runs` on dev: not a bug.** Dev has `HUB_CRON_ENABLED=false` (since 09-23), and its kill switch also refuses
+   manual runs, so no job ever runs there. Locally a forced admin digest records a row in both modes (now an API
+   test). A run that did nothing (a vote close that closed nothing) records nothing, by design.
+7. **"Sent to"**: "Sent to City Council on September 25, 2026." (date only; full time on hover), on the brief and on
+   the process page's pointer.
+
+### Tests (local stack)
+API 32 files, 326 passed, 7 skipped, **both modes** (:3200 service role, :3201 hub tokens); unit 104 files / 1195;
+Playwright 26/26 (new: the meeting pill shows the served short form). One token-mode run failed 18 hub-creating tests with the
+local gateway's "invalid response was received from the upstream server" (a hub created by hand at once succeeded on
+both servers); the rerun was clean. `npm run build` (server and UI), the place-name
+check and server lint clean; UI lint unchanged at 65 problems, none in files this session touched. Details in
+TESTING.md.
+
+### Walked locally (production build + `vite preview` against :3200; dev needs the push first)
+A Floyd County hub made through the console API: pills "Supervisors meeting summaries"; sample meeting summary;
+sign-up → lands on the sample word cloud; conversation statements; "Sent to Board of Supervisors on October 2,
+2026."; Settings → Plugins picker shows the sample cloud selected. Console: Virginia → Town → Floyd fills "Town of
+Floyd, Virginia", Town Council / Council, "Town of Floyd Civic Hub", `floyd-town`; edits stop the following.
+Organization and issue hubs: checkbox and intro as in 3; pills "Meeting summaries".
+
+### For Adam — after you push `multi-tenant` (dev deploys), check on dev
+1. **agora.dev.civic.social** home: the pill reads **"Council meeting summaries"** (was "Board"). Floyd's dev copy
+   reads "BOS meeting summaries" until its short form is changed (console → floyd → Short form → "Supervisors").
+2. **console.dev.civic.social → New hub**: pick Virginia → County → Floyd. Check one Type field, "Floyd County Civic
+   Hub", Board of Supervisors / Supervisors. Type in Hub name, then change the place name: the hub name must stay.
+   Create it with sample content (or use an existing test hub) and open the new hub:
+   - eleven sample items, including **"Board of Supervisors regular meeting"** (open it: Sample badge, plain times,
+     the sample note) and the **word cloud** (strip at the top of every page);
+   - the Outcomes brief: "Sent to Board of Supervisors on <date>." with no time;
+   - sign up with a test address (demo: any six digits): the checkbox says resident of the place; you land on the
+     sample word cloud.
+3. **console → a hub's page**: Governing body + Short form side by side; change Short form, save, reload the hub.
+4. **Hub Settings → Plugins → Word clouds**: the picker; choose None, save: the strip disappears (within the
+   60-second config cache).
+5. **An organization hub** (create one, kind Organization, no place): sign-up says "member of <hub>"; pills say
+   "Meeting summaries".
+6. To give agora/asheville the two new samples (dev write, so yours):
+   `cd ~/Developer/Civic-Social-Mono/civic-hub && node --env-file=.env --import tsx scripts/seed-sample-content.ts --hub agora`
+   (adds only `meeting_summary_regular` and `wordcloud_value`; `--dry-run` first if you like).
+7. **Production, when this ships:** Floyd's `copy.governing_body_short` is "BOS". Change it to "Supervisors" from the
+   console's hub page (or Floyd's Settings → Copy), or the pill will read "BOS meeting summaries".
+8. **`job_runs` on dev**: confirming a row there needs `HUB_CRON_ENABLED` turned on for dev, which also restarts news
+   sync and digests on dev (non-live hubs only email their admins and allow list). I'd leave it off: the local proof
+   and the new test cover it, and **production records** (read-only check, 10-06: three runs each of admin_digest,
+   digest, news_sync `ok`, and meeting_summary).
+9. **Production's meeting-summary job is marked failed every day** (10-03, 10-04, 10-05: "0 summaries written";
+   problems "4 published summary links no longer open." and "1 revision has waited more than two weeks for review.").
+   The admin digest should be listing these to Floyd's admins. Worth a look in Floyd's admin → Meeting summaries:
+   review or discard the revision, and see which four summaries' source links broke.
+
+### Noticed, not changed
+- A non-place hub's default tagline ("Stay informed on local government…") and welcome banner ("follow county
+  government") are place-worded fallbacks. They belong with the kind-aware copy/presets work.
+- The local API servers seed debug content into a new hub on first request (`CIVIC_ALLOW_SEED=true`), so local
+  organization hubs show a "Green Box Sites" vote. Dev and production don't set it.
+
+---
+
 ## Encrypted backups outside Supabase, and a tested restore — 2026-10-04 → 10-05
 
 Scheduled, encrypted backups now run from a new **private** repo,

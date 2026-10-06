@@ -21,6 +21,8 @@
 
 import { authorBadges } from "../../../src/shared/officialTypes";
 import "./Creator.css";
+import { personLabel } from "../../../src/shared/hubKind";
+import hub from "../config/hub";
 
 interface CreatorProps {
   /** Resolved display name (already falls back to "Resident" server-side). */
@@ -45,7 +47,7 @@ export default function Creator({
   officialTitle,
   prefix,
 }: CreatorProps) {
-  const display = name && name.trim().length > 0 ? name : "Resident";
+  const display = name && name.trim().length > 0 ? name : personLabel(hub.kind);
   const badges = authorBadges({ isAdmin, officialType, officialTitle });
   return (
     <span className="creator">

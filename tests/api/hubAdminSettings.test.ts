@@ -409,3 +409,40 @@ describe("restore default", () => {
     expect(unknown.status).toBe(400);
   });
 });
+
+describe("the hub's word cloud (a process setting, 2026-10-06)", () => {
+  async function create(type: string, state: Record<string, unknown>): Promise<string> {
+    const res = await call(
+      "POST",
+      "/process",
+      ATHENS,
+      { definition: { type, version: "0.1" }, title: `Setting test ${type} ${Date.now()}`, description: "Settings test.", state },
+      admin,
+    );
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    return (res.body.id ?? res.body.process?.id) as string;
+  }
+
+  it("takes one of this hub's word clouds, and the public config serves it", async () => {
+    const cloud = await create("civic.wordcloud", { prompts: [{ id: "p1", text: "One word?" }] });
+    const saved = await put("plugins", { "plugin.wordcloud.onboarding_id": cloud });
+    expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+    expect(await storedSetting("athens", "plugin.wordcloud.onboarding_id")).toBe(cloud);
+    const config = await call("GET", "/hub-config", ATHENS);
+    expect(config.body.settings["plugin.wordcloud.onboarding_id"]).toBe(cloud);
+  });
+
+  it("refuses a process of another type, and an id that is not a process here", async () => {
+    const vote = await create("civic.vote", { options: ["Yes", "No"], voting_duration_ms: 86_400_000, activation_mode: "direct" });
+    const wrongType = await put("plugins", { "plugin.wordcloud.onboarding_id": vote });
+    expect(wrongType.status).toBe(400);
+    expect(wrongType.body.error).toMatch(/no civic\.wordcloud process/);
+    const missing = await put("plugins", { "plugin.wordcloud.onboarding_id": "proc_does_not_exist" });
+    expect(missing.status).toBe(400);
+  });
+
+  it("takes empty, for none", async () => {
+    const saved = await put("plugins", { "plugin.wordcloud.onboarding_id": "" });
+    expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+  });
+});

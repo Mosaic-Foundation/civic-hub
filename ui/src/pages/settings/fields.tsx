@@ -5,11 +5,11 @@
 // Kinds mirror src/shared/hubSettingsSections.ts; the server validates the
 // same limits, so these are a courtesy, not the rule.
 
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 import MarkdownTextarea from "../../components/MarkdownTextarea";
 import PostImagePicker from "../../components/PostImagePicker";
 import { fieldSpec, DOCUMENT_PLACEHOLDERS } from "../../../../src/shared/hubSettingsSections";
-import { uploadHubImage } from "../../services/api";
+import { listProcesses, uploadHubImage, type ProcessSummary } from "../../services/api";
 import type { FormApi } from "./SectionForm";
 
 /** A hub banner's longest edge after the browser resize; see ImageField. */
@@ -394,6 +394,47 @@ export function ChoiceField({
         {options.map((o) => (
           <option key={o} value={o}>
             {labels[o] ?? o}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/**
+ * One of this hub's processes of the spec's type, chosen by title, or none.
+ * A value that no longer names a listed process (removed, or another hub's)
+ * shows as such rather than silently as "None".
+ */
+export function ProcessField({ f, k, label, hint, emptyLabel = "None" }: Common & { emptyLabel?: string }) {
+  const id = useId();
+  const type = fieldSpec(k)?.processType;
+  const [items, setItems] = useState<ProcessSummary[] | null>(null);
+  useEffect(() => {
+    if (!type) return;
+    listProcesses([type])
+      .then((rows) => setItems(rows))
+      .catch(() => setItems([]));
+  }, [type]);
+  const value = f.value(k);
+  const missing = value !== "" && items !== null && !items.some((p) => p.id === value);
+  return (
+    <div className="settings-field">
+      <Label id={id} label={label} hint={hint} />
+      <select
+        id={id}
+        className="form-input"
+        value={value}
+        onChange={(e) => f.set(k, e.target.value)}
+        disabled={f.disabled || items === null}
+        style={{ maxWidth: "420px" }}
+      >
+        <option value="">{items === null ? "Loading…" : emptyLabel}</option>
+        {missing && <option value={value}>Not found ({value})</option>}
+        {(items ?? []).map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.title}
+            {"status" in p && p.status && p.status !== "active" ? ` (${p.status})` : ""}
           </option>
         ))}
       </select>

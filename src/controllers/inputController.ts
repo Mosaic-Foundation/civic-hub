@@ -20,8 +20,7 @@ import { emitEvent } from "../events/eventEmitter.js";
 import { getCommentIdentityMode } from "../services/hubSettings.js";
 import {
   resolveCreators,
-  redactForAudience,
-} from "../services/creatorDisplay.js";
+  redactForAudience, personFallbackName } from "../services/creatorDisplay.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import { currentHubId } from "../config/hubContext.js";
 
@@ -237,7 +236,7 @@ export async function handleGetInputs(
         // office; any other resident's post-time name snapshot is
         // overridden — a snapshot is still a real name.
         const shown = redactForAudience(
-          resolved ?? { name: "Resident", is_admin: false, official: null },
+          resolved ?? { name: personFallbackName(), is_admin: false, official: null },
           c.author_id,
           { audience: "public", anonNumbers },
         );

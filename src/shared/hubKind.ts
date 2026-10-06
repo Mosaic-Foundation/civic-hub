@@ -33,10 +33,32 @@ export function hubKindOf(value: string | null | undefined): HubKind {
 }
 
 /**
- * What the people taking part are called: residents of a place hub,
- * participants anywhere else — a campaign or a club has no residents.
+ * What the people taking part are called: residents of a place hub, members
+ * of an organization, participants anywhere else — a campaign has no
+ * residents and no members (Adam, 2026-10-06).
  */
 export function participantNoun(kind: HubKind, count: number): string {
-  const one = kind === "place" ? "resident" : "participant";
+  const one = kind === "place" ? "resident" : kind === "organization" ? "member" : "participant";
   return count === 1 ? one : `${one}s`;
+}
+
+/**
+ * The byline of someone whose name is not shown — a signed-out viewer's
+ * view, or an account with no name: "Resident", "Member", "Participant".
+ */
+export function personLabel(kind: HubKind): string {
+  const noun = participantNoun(kind, 1);
+  return noun.charAt(0).toUpperCase() + noun.slice(1);
+}
+
+/**
+ * What a new account confirms on joining, before "I have read and agree to
+ * the Terms…" (Adam, 2026-10-06): residence for a place hub, membership for
+ * an organization. An issue campaign or another kind of hub asks neither —
+ * anyone may take part — so the line is null and the sentence starts at "I".
+ */
+export function affiliationClause(kind: HubKind, names: { place: string; hub: string }): string | null {
+  if (kind === "place") return `I confirm that I am a resident of ${names.place}`;
+  if (kind === "organization") return `I confirm that I am a member of ${names.hub}`;
+  return null;
 }

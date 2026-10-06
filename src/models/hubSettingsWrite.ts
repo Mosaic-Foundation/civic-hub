@@ -227,6 +227,14 @@ export function normalizeValue(
       return v;
     }
 
+    case "process": {
+      // The shape here; that it names one of this hub's processes of the
+      // right type is checked by the controller, which can read the database.
+      const v = raw.trim();
+      if (v === "" || /^[A-Za-z0-9_-]{1,120}$/.test(v)) return v;
+      return { error: `${key} must be a process id.` };
+    }
+
     case "image": {
       const v = raw.trim();
       if (v === "") return "";

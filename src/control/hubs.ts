@@ -29,7 +29,7 @@ import {
   type PluginId,
 } from "../models/hubSettings.js";
 import { consoleHostname, isProductionDatabase, platformDomain } from "./config.js";
-import { defaultGoverningBody, isJurisdictionType, type JurisdictionType } from "../shared/jurisdictionType.js";
+import { defaultGoverningBody, defaultGoverningBodyShort, isJurisdictionType, type JurisdictionType } from "../shared/jurisdictionType.js";
 import { getJurisdiction, type Jurisdiction } from "./jurisdictions.js";
 import { DEFAULT_HUB_KIND, hubKindOf, isHubKind, type HubKind } from "../shared/hubKind.js";
 import { jurisdictionCodeFor } from "../shared/jurisdictionNames.js";
@@ -138,6 +138,11 @@ export async function hubAdmins(hubId: string): Promise<string[]> {
 export async function hubGoverningBody(hubId: string): Promise<string> {
   const stored = await settingRows(hubId, [KEYS.COPY_GOVERNING_BODY_NAME]);
   return stored[KEYS.COPY_GOVERNING_BODY_NAME] ?? "";
+}
+
+export async function hubGoverningBodyShort(hubId: string): Promise<string> {
+  const stored = await settingRows(hubId, [KEYS.COPY_GOVERNING_BODY_SHORT]);
+  return stored[KEYS.COPY_GOVERNING_BODY_SHORT] ?? "";
 }
 
 export async function hubKind(hubId: string): Promise<HubKind> {
@@ -252,6 +257,8 @@ export interface CreateHubInput {
   /** identity.jurisdiction_type (Phase 7). Place hubs only. */
   jurisdictionType?: JurisdictionType | null;
   governingBody?: string | null;
+  /** copy.governing_body_short (2026-10-06). Omitted = derived from the body's name. */
+  governingBodyShort?: string | null;
   admins: readonly string[];
   mode: HubMode;
   /** Seed the sample content after creating (Phase 7). The form's default is on. */
@@ -294,6 +301,7 @@ export function parseCreateInput(body: Record<string, unknown>): CreateHubInput 
     hubKind: kind,
     jurisdictionType: jurisdictionType as JurisdictionType | null,
     governingBody: orNull(text(body.governing_body)),
+    governingBodyShort: orNull(text(body.governing_body_short, 40)),
     admins: admin ? [admin] : [],
     mode,
     sampleContent: body.sample_content === true,
@@ -354,7 +362,7 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
   if (kind !== "place" && input.jurisdictionType) {
     throw new ControlInputError("A jurisdiction type is for place hubs only.");
   }
-  if (kind !== "place" && input.governingBody) {
+  if (kind !== "place" && (input.governingBody || input.governingBodyShort)) {
     throw new ControlInputError("A governing body is for place hubs only.");
   }
   if (input.admins.length === 0) {
@@ -422,6 +430,10 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
       : (input.governingBody ??
         (defaultGoverningBody(input.jurisdictionType, jurisdictionCode, input.jurisdictionOcdId) || null));
   if (governingBody) settings[KEYS.COPY_GOVERNING_BODY_NAME] = governingBody;
+  // Its short form, for pills and running text ("Supervisors meeting
+  // summaries"): what the operator typed, else derived from the name.
+  const governingBodyShort = governingBody ? (input.governingBodyShort ?? defaultGoverningBodyShort(governingBody)) : "";
+  if (governingBodyShort) settings[KEYS.COPY_GOVERNING_BODY_SHORT] = governingBodyShort;
   // Every plugin gets its own row: what the operator ticked, on by default.
   for (const id of PLUGIN_IDS) {
     settings[`plugin.${id}.enabled`] = input.plugins?.[id] === false ? "false" : "true";
@@ -468,6 +480,7 @@ export interface HubConfigPatch {
   jurisdiction_custom?: boolean;
   jurisdiction_type?: JurisdictionType | null;
   governing_body?: string;
+  governing_body_short?: string;
   status?: "active" | "suspended";
   mode?: HubMode;
 }
@@ -482,6 +495,7 @@ export interface HubConfigView {
   jurisdiction_custom: boolean;
   jurisdiction_type: JurisdictionType | null;
   governing_body: string;
+  governing_body_short: string;
   status: string;
   mode: string | null;
 }
@@ -497,6 +511,7 @@ export async function hubConfigView(hub: ControlHub): Promise<HubConfigView> {
     jurisdiction_custom: hub.jurisdiction_custom === true,
     jurisdiction_type: await hubJurisdictionType(hub.id),
     governing_body: await hubGoverningBody(hub.id),
+    governing_body_short: await hubGoverningBodyShort(hub.id),
     status: hub.status,
     mode: hub.mode,
   };
@@ -524,6 +539,7 @@ export function parseConfigPatch(body: Record<string, unknown>): HubConfigPatch 
     patch.jurisdiction_type = t as JurisdictionType | null;
   }
   if ("governing_body" in body) patch.governing_body = text(body.governing_body);
+  if ("governing_body_short" in body) patch.governing_body_short = text(body.governing_body_short, 40);
   if ("status" in body) {
     const s = text(body.status);
     if (s !== "active" && s !== "suspended") throw new ControlInputError("Status is active or suspended.");
@@ -631,6 +647,9 @@ export async function updateHubConfig(
   }
   if (changes.governing_body !== undefined) {
     await writeSettings(hub.id, { [KEYS.COPY_GOVERNING_BODY_NAME]: changes.governing_body }, actor);
+  }
+  if (changes.governing_body_short !== undefined) {
+    await writeSettings(hub.id, { [KEYS.COPY_GOVERNING_BODY_SHORT]: changes.governing_body_short }, actor);
   }
   if (changes.hub_kind !== undefined) {
     await writeSettings(hub.id, { [KEYS.IDENTITY_HUB_KIND]: changes.hub_kind }, actor);

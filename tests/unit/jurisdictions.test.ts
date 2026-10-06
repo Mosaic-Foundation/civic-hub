@@ -155,7 +155,8 @@ describe("hub kinds", () => {
     expect(participantNoun("place", 1)).toBe("resident");
     expect(participantNoun("place", 2)).toBe("residents");
     expect(participantNoun("issue", 3)).toBe("participants");
-    expect(participantNoun("organization", 1)).toBe("participant");
+    expect(participantNoun("organization", 1)).toBe("member");
+    expect(participantNoun("other", 2)).toBe("participants");
   });
 
   it("has sample templates for place hubs only, today", () => {

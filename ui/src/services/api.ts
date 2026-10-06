@@ -1549,6 +1549,8 @@ export interface PublicMeetingSummary {
   published_at: string;
   ai_model: string;
   ai_attribution_label: string;
+  /** Sample content (Phase 7): written by hand, no recording or minutes behind it. */
+  is_sample?: boolean;
 }
 
 export interface MeetingSummaryPatch {

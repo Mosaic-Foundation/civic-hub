@@ -5,11 +5,13 @@
  *   node --env-file=<env file> --import tsx scripts/seed-sample-content.ts --hub <slug> [--dry-run]
  *
  * The same seed as the console's "Start with sample content" checkbox
- * (src/services/sampleSeed.ts): up to nine place-neutral processes from
+ * (src/services/sampleSeed.ts): up to eleven place-neutral processes from
  * src/services/sampleTemplates.ts, filled with the hub's name, jurisdiction
  * and governing body, marked `is_sample`, written through the real code
- * paths. Templates that do not fit the hub's jurisdiction type, or whose
- * plugin is off, are skipped and listed.
+ * paths. Templates that do not fit the hub's kind or jurisdiction type are
+ * skipped and listed; plugin switches are not consulted (2026-09-27). On a
+ * hub seeded before 2026-10-06 a second run adds only the two newer
+ * templates (the meeting summary and the word cloud).
  *
  * IDEMPOTENT. Fixed ids per hub; a second run creates nothing and says so.
  * To take the content out, use the hub's Settings → Sample content (it takes

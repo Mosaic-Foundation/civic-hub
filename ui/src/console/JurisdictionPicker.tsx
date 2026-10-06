@@ -9,7 +9,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { api, type Jurisdiction, type JurisdictionMatch } from "./api";
-import { REFERENCE_JURISDICTION_TYPES, stateOfOcdId } from "../../../src/shared/jurisdictionType";
+import { REFERENCE_JURISDICTION_TYPES, stateOfOcdId, type ReferenceJurisdictionType } from "../../../src/shared/jurisdictionType";
 
 export type JurisdictionChoice =
   | { kind: "listed"; row: JurisdictionMatch }
@@ -26,6 +26,7 @@ export function JurisdictionPicker({
   currentName,
   hubId,
   optional = false,
+  onTypeChange,
 }: {
   value: JurisdictionChoice;
   onChange: (choice: JurisdictionChoice) => void;
@@ -36,6 +37,11 @@ export function JurisdictionPicker({
   hubId?: string;
   /** A hub that is not a place: "Related place (optional)", with a None choice. */
   optional?: boolean;
+  /**
+   * The Type select changed. Create hub uses it as the hub's type too, so the
+   * form asks for a type once (2026-10-06).
+   */
+  onTypeChange?: (type: ReferenceJurisdictionType | "") => void;
 }) {
   const [states, setStates] = useState<Jurisdiction[] | null>(null);
   const [state, setState] = useState(value.kind === "listed" ? value.row.state : (stateOfOcdId(currentOcdId) ?? ""));
@@ -147,7 +153,14 @@ export function JurisdictionPicker({
             </label>
             <label className="cx-field">
               <span>Type</span>
-              <select value={type} onChange={(e) => setType(e.target.value)} disabled={!state}>
+              <select
+                value={type}
+                onChange={(e) => {
+                  setType(e.target.value);
+                  onTypeChange?.(e.target.value as ReferenceJurisdictionType | "");
+                }}
+                disabled={!state}
+              >
                 <option value="">Choose…</option>
                 {REFERENCE_JURISDICTION_TYPES.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -159,7 +172,7 @@ export function JurisdictionPicker({
           </div>
           <div className="cx-field cx-combo">
             <label htmlFor={`${listId}-q`}>
-              <span>Name</span>
+              <span>Search the list</span>
             </label>
             <input
               id={`${listId}-q`}

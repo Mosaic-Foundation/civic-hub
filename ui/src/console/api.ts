@@ -56,6 +56,7 @@ export interface HubConfig {
   jurisdiction_custom: boolean;
   jurisdiction_type: string | null;
   governing_body: string;
+  governing_body_short: string;
   status: string;
   mode: string | null;
 }

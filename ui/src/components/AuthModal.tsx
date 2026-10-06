@@ -12,6 +12,7 @@ import {
 import { CURRENT_LEGAL_VERSION } from "../config/legal";
 import hub from "../config/hub";
 import WaitlistForm from "./WaitlistForm";
+import { affiliationClause, personLabel } from "../../../src/shared/hubKind";
 
 /**
  * Slice 13.10: deferred login() until the residency + legal gate
@@ -207,6 +208,8 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
   // missing: the residency+legal checkbox, the real-name field, or both.
   const gateUser = pendingAuth?.user ?? user;
   const needsResidency = !gateUser?.is_resident;
+  // Residence, membership or nothing, by the hub's kind (identity.hub_kind).
+  const affirmation = affiliationClause(hub.kind, { place: hub.jurisdiction, hub: hub.name });
   const needsName = !gateUser?.full_name;
 
   async function handleResidency(e: React.FormEvent) {
@@ -468,7 +471,7 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
             <p className="auth-description">
               {needsResidency
                 ? hub.residency_intro
-                : "Residents now participate under their real name. Your name appears on comments you post (unless you choose to comment anonymously) — votes are always anonymous."}
+                : `${personLabel(hub.kind)}s now take part under their real name. Your name appears on comments you post (unless you choose to comment anonymously) — votes are always anonymous.`}
             </p>
 
             {needsName && (
@@ -504,7 +507,7 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
                   disabled={loading}
                 />
                 <span>
-                  {hub.isPlace ? <>I confirm that I am a resident of {hub.jurisdiction}, and I</> : "I"}{" "}
+                  {affirmation ? <>{affirmation}, and I</> : "I"}{" "}
                   have read and agree to the{" "}
                   <a href="/terms" target="_blank" rel="noopener noreferrer">
                     Terms of Service

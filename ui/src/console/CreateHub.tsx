@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type ConsoleConfig, type HubMode, type SlugSuggestion } from "./api";
 import { go, href } from "./route";
-import { JURISDICTION_TYPES, defaultGoverningBody, hubTypeFor, isJurisdictionType } from "../../../src/shared/jurisdictionType";
-import { jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
+import {
+  JURISDICTION_TYPES,
+  defaultGoverningBody,
+  defaultGoverningBodyShort,
+  hubTypeFor,
+  isJurisdictionType,
+} from "../../../src/shared/jurisdictionType";
+import { defaultHubName, jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
 import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
 import { PLUGIN_NAMES } from "./pluginNames";
 import { HUB_KINDS, type HubKind } from "../../../src/shared/hubKind";
@@ -25,6 +31,7 @@ export default function CreateHub() {
     jurisdiction_code: "",
     jurisdiction_type: "",
     governing_body: "",
+    governing_body_short: "",
     admin_email: "",
     mode: "demo" as HubMode,
     sample_content: true,
@@ -32,8 +39,10 @@ export default function CreateHub() {
   const [choice, setChoice] = useState<JurisdictionChoice>({ kind: "unlinked" });
   const [hubKind, setHubKind] = useState<HubKind>("place");
   const isPlace = hubKind === "place";
+  const isPlaceRef = useRef(isPlace);
+  isPlaceRef.current = isPlace;
   const [plugins, setPlugins] = useState<Record<string, boolean>>({});
-  const [touched, setTouched] = useState({ slug: false, hostname: false, governing_body: false });
+  const [touched, setTouched] = useState({ slug: false, hostname: false, governing_body: false, governing_body_short: false, name: false });
   const [suggestion, setSuggestion] = useState<SlugSuggestion | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,8 +76,22 @@ export default function CreateHub() {
           ? defaultGoverningBody(t, next.jurisdiction_code, choice.kind === "listed" ? choice.row.ocd_id : null)
           : "";
       }
-      return next;
+      return inStep(next, key);
     });
+  }
+
+  // Fields that follow another until the operator types their own: the hub's
+  // name follows the place ("Floyd County Civic Hub"), the governing body's
+  // short form follows its name ("Supervisors").
+  function inStep(f: typeof form, editing?: keyof typeof form): typeof form {
+    // The field being typed in counts as touched already: the touched flag
+    // set in the same handler is not in the ref until the next render.
+    const t = { ...touchedRef.current, ...(editing ? { [editing]: true } : {}) };
+    const next = { ...f };
+    // Only a place hub is named after its place; a campaign's related place is not its name.
+    if (!t.name && isPlaceRef.current && f.jurisdiction_name.trim()) next.name = defaultHubName(f.jurisdiction_name);
+    if (!t.governing_body_short) next.governing_body_short = defaultGoverningBodyShort(f.governing_body);
+    return next;
   }
 
   // Choosing from the list fills the display name, the code, the type and
@@ -77,19 +100,21 @@ export default function CreateHub() {
     const wasListed = choice.kind === "listed";
     setChoice(next);
     if ((next.kind === "custom" && wasListed) || next.kind === "none") {
-      setForm((f) => ({ ...f, jurisdiction_name: "", jurisdiction_code: "" }));
+      setForm((f) => ({ ...f, jurisdiction_name: "", jurisdiction_code: "", name: touched.name ? f.name : "" }));
     }
     if (next.kind !== "listed") return;
     const { row } = next;
     const hubType = hubTypeFor(row.type);
     const code = jurisdictionCodeFor(row) ?? "";
-    setForm((f) => ({
-      ...f,
-      jurisdiction_name: row.display_name,
-      jurisdiction_code: code,
-      jurisdiction_type: isPlace ? hubType : "",
-      governing_body: !isPlace ? "" : touched.governing_body ? f.governing_body : defaultGoverningBody(hubType, code, row.ocd_id),
-    }));
+    setForm((f) =>
+      inStep({
+        ...f,
+        jurisdiction_name: row.display_name,
+        jurisdiction_code: code,
+        jurisdiction_type: isPlace ? hubType : "",
+        governing_body: !isPlace ? "" : touched.governing_body ? f.governing_body : defaultGoverningBody(hubType, code, row.ocd_id),
+      }),
+    );
   }
 
   // The slug: the shortest free address, from the chosen jurisdiction (or the
@@ -185,6 +210,7 @@ export default function CreateHub() {
               jurisdiction_name: hasPlace ? form.jurisdiction_name : "",
               jurisdiction_type: isPlace ? form.jurisdiction_type : "",
               governing_body: isPlace ? form.governing_body : "",
+              governing_body_short: isPlace && form.governing_body ? form.governing_body_short : "",
               jurisdiction_ocd_id: choice.kind === "listed" ? choice.row.ocd_id : null,
               jurisdiction_custom: choice.kind === "custom",
               sample_content: form.sample_content && samplesAvailable,
@@ -216,6 +242,10 @@ export default function CreateHub() {
                   checked={hubKind === k.id}
                   onChange={() => {
                     setHubKind(k.id);
+                    // A name that only followed the place goes with it, or comes back.
+                    if (!touched.name) {
+                      setForm((f) => ({ ...f, name: k.id === "place" && f.jurisdiction_name.trim() ? defaultHubName(f.jurisdiction_name) : "" }));
+                    }
                     // Leaving "place": no place until one is chosen; back to it: choose one.
                     if (k.id !== "place" && choice.kind === "unlinked") setChoice({ kind: "none" });
                     if (k.id === "place" && choice.kind === "none") setChoice({ kind: "unlinked" });
@@ -233,16 +263,29 @@ export default function CreateHub() {
 
         <fieldset>
           <legend>{isPlace ? "Place" : "Related place"}</legend>
-          <JurisdictionPicker value={choice} onChange={pick} optional={!isPlace} />
+          <JurisdictionPicker
+            value={choice}
+            onChange={pick}
+            optional={!isPlace}
+            onTypeChange={(t) => set("jurisdiction_type", isPlace && t ? hubTypeFor(t) : "")}
+          />
           {choice.kind !== "none" && (
           <label className="cx-field">
-            <span>{choice.kind === "custom" ? "Name of the jurisdiction" : "Display name"}</span>
+            <span>{choice.kind === "custom" ? "Place name" : "Place name (as shown)"}</span>
             <input
               required={choice.kind === "custom"}
               value={form.jurisdiction_name}
               onChange={(e) => set("jurisdiction_name", e.target.value)}
               placeholder={choice.kind === "custom" ? "The Northside neighbourhood" : "Filled in from the list"}
             />
+            <small className="cx-muted">
+              {isPlace
+                ? `How the hub names its place: "I confirm that I am a resident of ${form.jurisdiction_name.trim() || "…"}".`
+                : "How the hub names its related place."}
+              {choice.kind === "listed" && form.jurisdiction_name.trim() !== choice.row.display_name && (
+                <> The list calls it "{choice.row.display_name}".</>
+              )}
+            </small>
           </label>
           )}
           {choice.kind === "listed" && (
@@ -252,9 +295,9 @@ export default function CreateHub() {
             </p>
           )}
           {isPlace && (<>
-          <div className="cx-two">
+          {choice.kind === "custom" && (
             <label className="cx-field">
-              <span>Hub type</span>
+              <span>Type</span>
               <select value={form.jurisdiction_type} onChange={(e) => set("jurisdiction_type", e.target.value)}>
                 <option value="">Choose…</option>
                 {JURISDICTION_TYPES.map((t) => (
@@ -264,31 +307,61 @@ export default function CreateHub() {
                 ))}
               </select>
             </label>
+          )}
+          <small className="cx-muted cx-slug-note">
+            The type fills in the usual governing body and decides which sample content fits. Census-designated places
+            and states count as Other.
+          </small>
+          <div className="cx-two">
+            <label className="cx-field">
+              <span>Governing body <em>optional</em></span>
+              <input
+                value={form.governing_body}
+                onChange={(e) => {
+                  setTouched((t) => ({ ...t, governing_body: true }));
+                  set("governing_body", e.target.value);
+                }}
+                placeholder="Town Council"
+              />
+            </label>
+            <label className="cx-field">
+              <span>Short form</span>
+              <input
+                maxLength={40}
+                value={form.governing_body_short}
+                onChange={(e) => {
+                  setTouched((t) => ({ ...t, governing_body_short: true }));
+                  set("governing_body_short", e.target.value);
+                }}
+                placeholder="Council"
+              />
+            </label>
           </div>
           <small className="cx-muted cx-slug-note">
-            The hub type fills in the usual governing body and decides which sample content fits. Census-designated
-            places and states count as Other.
+            The usual name for the type is only usual: correct it if this place says it differently. The short form is
+            used in pills and running text: "{form.governing_body_short || "Council"} meeting summaries".
           </small>
-          <label className="cx-field">
-            <span>Governing body <em>optional</em></span>
-            <input
-              value={form.governing_body}
-              onChange={(e) => {
-                setTouched((t) => ({ ...t, governing_body: true }));
-                set("governing_body", e.target.value);
-              }}
-              placeholder="Town Council"
-            />
-            <small className="cx-muted">The usual name for the type is only usual. Correct it if this place says it differently.</small>
-          </label>
           </>)}
         </fieldset>
 
         <fieldset>
           <legend>Identity</legend>
           <label className="cx-field">
-            <span>Name</span>
-            <input required value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Utopia Civic Hub" />
+            <span>Hub name</span>
+            <input
+              required
+              value={form.name}
+              onChange={(e) => {
+                setTouched((t) => ({ ...t, name: true }));
+                set("name", e.target.value);
+              }}
+              placeholder="Utopia Civic Hub"
+            />
+            <small className="cx-muted">
+              {isPlace
+                ? "In the header, page titles and emails. Follows the place name until you edit it."
+                : "In the header, page titles and emails."}
+            </small>
           </label>
           <label className="cx-field">
             <span>Slug</span>
@@ -375,7 +448,7 @@ export default function CreateHub() {
               <strong>Start with sample content</strong>
               <small className="cx-muted">
                 {samplesAvailable
-                  ? "Up to nine illustrative processes, marked Sample, so the hub never opens empty. Its admin can remove them in one step from Settings."
+                  ? "Up to eleven illustrative processes, marked Sample, so the hub never opens empty. Its admin can remove them in one step from Settings."
                   : "No sample content is available for this kind of hub yet."}
               </small>
             </span>

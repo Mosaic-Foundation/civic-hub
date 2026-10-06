@@ -7,7 +7,7 @@ import {
   type RenderedLink,
 } from "../services/api";
 import { friendlyType } from "./ProcessLinkPicker";
-import { absoluteTime } from "./FeedPost";
+import { absoluteDate } from "../utils/dates";
 import "./BriefPointer.css";
 
 /**
@@ -75,12 +75,12 @@ function joinNames(names: string[]): string {
 
 function deliveryLine(brief: PublicBrief): string {
   if (brief.sent_to.length > 0 && brief.delivered_at) {
-    return `Sent to ${joinNames(brief.sent_to)} on ${absoluteTime(brief.delivered_at)}.`;
+    return `Sent to ${joinNames(brief.sent_to)} on ${absoluteDate(brief.delivered_at)}.`;
   }
   if (brief.delivered_recipient_count > 0) {
     return "Sent to the governing body.";
   }
-  return `Published ${absoluteTime(brief.published_at)}.`;
+  return `Published ${absoluteDate(brief.published_at)}.`;
 }
 
 /**

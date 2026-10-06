@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import type { CivicEvent } from "../services/api";
 import { useIsWideViewport } from "../hooks/useIsWideViewport";
-import hub from "../config/hub";
+import hub, { meetingSummaryLabel } from "../config/hub";
 import SampleBadge from "./SampleBadge";
 import {
   briefResponseContext,
@@ -95,10 +95,10 @@ export function eventToPost(
     // The classifier's pill label is canonical/hub-agnostic ("Meeting
     // summary"), which the email digest uses. On the feed card we prefix the
     // governing body so the card pill matches the feed's filter pill
-    // (`${governing_body_short} meeting summaries`).
+    // (meetingSummaryLabel in config/hub.ts).
     pillLabel:
       activity.kind === "meeting"
-        ? `${hub.governing_body_short} meeting summary`
+        ? meetingSummaryLabel(false)
         : activity.pill,
     pillKind: activity.kind,
     pillColor: activity.color,

@@ -24,6 +24,7 @@ import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
 import { getSettingSync } from "../../services/hubSettings.js";
 import { KEYS } from "../../models/hubSettings.js";
 import { isSubstantiveEdit } from "../../services/processEdits.js";
+import { defaultGoverningBodyShort } from "../../shared/jurisdictionType.js";
 import type {
   DigestAssemblyInput,
   DigestEmail,
@@ -211,7 +212,7 @@ function digestTitleSummary(
         title: rawTitle ?? "Vote results",
         summary: headline
           ? `${count} ${noun} voted — ${headline}`
-          : `${count} ${noun} voted — delivered to the Board.`,
+          : `${count} ${noun} voted — delivered to ${governingBodyRef()}.`,
       };
     }
 
@@ -224,7 +225,7 @@ function digestTitleSummary(
         (typeof d?.meeting_summary?.meeting_title === "string" && d.meeting_summary.meeting_title) ||
         (typeof d?.meeting_title === "string" && d.meeting_title) ||
         rawTitle ||
-        "Board meeting";
+        "Meeting";
       const blockCount =
         typeof d?.meeting_summary?.block_count === "number"
           ? d.meeting_summary.block_count
@@ -576,4 +577,11 @@ function formatMeetingDate(iso: string): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+/** "the Supervisors" (the hub's short form, or derived from its name), else "the governing body". */
+function governingBodyRef(): string {
+  const short =
+    getSettingSync(KEYS.COPY_GOVERNING_BODY_SHORT) || defaultGoverningBodyShort(getSettingSync(KEYS.COPY_GOVERNING_BODY_NAME));
+  return short ? `the ${short}` : "the governing body";
 }

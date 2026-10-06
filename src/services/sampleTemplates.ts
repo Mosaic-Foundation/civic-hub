@@ -62,7 +62,7 @@ interface Base {
   key: string;
   /**
    * The hub kinds (identity.hub_kind) the template reads right in
-   * (2026-09-27). All nine are about a local government — its services, its
+   * (2026-09-27). All eleven are about a local government — its services, its
    * budget, its governing body, its residents — so all are PLACE_ONLY; an
    * issue campaign, an organization or another kind of hub gets none yet.
    * Templates for those kinds are the later presets work.
@@ -154,13 +154,45 @@ export interface SampleAnnouncement extends Base {
   body: string;
 }
 
+/**
+ * A published meeting summary (added 2026-10-06, Adam). Written by hand, not
+ * by the summarizer: no recording, no minutes, no AI call. Each section has a
+ * time into the (absent) meeting so the page shows how a real summary reads;
+ * the page says it is a sample with no recording behind it.
+ */
+export interface SampleMeetingSummary extends Base {
+  kind: "meeting_summary";
+  /** The meeting's title; may use the three placeholders. */
+  meeting_title: string;
+  /** Days relative to seeding. */
+  meeting_at: number;
+  published_at: number;
+  blocks: ReadonlyArray<{ title: string; summary: string; at_minute: number; action: string | null }>;
+}
+
+/**
+ * A word cloud with anonymous sample answers (added 2026-10-06, Adam). The
+ * answers are rows, not events, like the sample ballots. When the hub has no
+ * word cloud chosen (plugin.wordcloud.onboarding_id), this one is chosen.
+ */
+export interface SampleWordcloud extends Base {
+  kind: "wordcloud";
+  title: string;
+  description: string;
+  prompt: string;
+  /** Each word and how many sample answers give it. */
+  answers: ReadonlyArray<readonly [word: string, count: number]>;
+}
+
 export type SampleTemplate =
   | SampleVote
   | SampleOutcome
   | SampleProposal
   | SampleDeliberation
   | SampleProject
-  | SampleAnnouncement;
+  | SampleAnnouncement
+  | SampleMeetingSummary
+  | SampleWordcloud;
 
 export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
   // 1 — adapted from seedBetaSlate VOTE_ENERGY; topic from seedData
@@ -418,6 +450,78 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
     body:
       "{JURISDICTION} is updating its comprehensive plan, the long-range guide for land use, housing, transportation, parks and public services.\n\n" +
       "An open house will present draft goals, and a short survey will ask residents what they want to keep, change or add. The results will be shared with the {GOVERNING_BODY} before a draft plan is written.",
+  },
+
+  // 10 — new (2026-10-06). A meeting of the governing body: so not for
+  //      school districts, whose board does not let road contracts.
+  {
+    key: "meeting_summary_regular",
+    kind: "meeting_summary",
+    kinds: PLACE_ONLY,
+
+    fits: LOCAL_GOVERNMENT,
+    by: "TEAM",
+    at: -8,
+    meeting_title: "{GOVERNING_BODY} regular meeting",
+    meeting_at: -9,
+    published_at: -8,
+    blocks: [
+      {
+        title: "Public comment",
+        summary:
+          "Four residents spoke. Two asked for a crosswalk near an elementary school, one raised flooding on a residential street after heavy rain, and one thanked staff for the library's trial of evening hours.",
+        at_minute: 4,
+        action: null,
+      },
+      {
+        title: "Library hours trial: first month",
+        summary:
+          "Staff reported on the first month of weekday evening hours. Members asked for visits by hour and by day before deciding whether to continue the trial, and one asked what Saturday hours would cost by comparison.",
+        at_minute: 21,
+        action: "Staff to return next month with usage figures and the cost of each option.",
+      },
+      {
+        title: "Road resurfacing contract",
+        summary:
+          "Members reviewed three bids for this year's resurfacing work. Discussion weighed the lowest price against one bidder's shorter schedule, and whether to add a stretch of road that residents had asked about.",
+        at_minute: 43,
+        action: "Approved the lowest qualified bid by majority vote.",
+      },
+      {
+        title: "Budget calendar",
+        summary:
+          "Staff presented the timeline for next year's budget: department requests, a work session, the proposed budget, and a public hearing before adoption.",
+        at_minute: 68,
+        action: "Set the public hearing for next month's regular meeting.",
+      },
+    ],
+  },
+
+  // 11 — new (2026-10-06). Fits every type: every place has things people
+  //      value about it. Written to read right in a city and a rural county.
+  {
+    key: "wordcloud_value",
+    kind: "wordcloud",
+    kinds: PLACE_ONLY,
+
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -12,
+    title: "What do you value most about {JURISDICTION}?",
+    description: "One word is enough. Answers appear in the cloud as they come in.",
+    prompt: "In one word, what do you value most about {JURISDICTION}?",
+    answers: [
+      ["neighbors", 6],
+      ["community", 5],
+      ["parks", 4],
+      ["library", 3],
+      ["schools", 3],
+      ["friendly", 3],
+      ["history", 2],
+      ["safety", 2],
+      ["nature", 2],
+      ["events", 2],
+    ],
   },
 ];
 

@@ -30,7 +30,7 @@ import {
   type EffectivePostalAddress,
 } from "../services/hubSettings.js";
 import { KEYS, KEY_ALIASES } from "../models/hubSettings.js";
-import { countLiveProcessesByPlugin } from "../services/processService.js";
+import { countLiveProcessesByPlugin, getProcess } from "../services/processService.js";
 import { latestJobRuns } from "../services/jobRuns.js";
 import { JOBS, isPlatformJob, type HubJobSpec } from "../jobs/registry.js";
 import { JOB_NAMES } from "../modules/civic.admin_digest/index.js";
@@ -201,6 +201,17 @@ export async function handlePutHubSettings(req: Request, res: Response): Promise
         ? { key: e.key, value: "" }
         : e;
     });
+
+    // A "process" field names one of this hub's processes of its type.
+    for (const e of entries) {
+      const spec = fieldSpec(e.key);
+      if (spec?.kind !== "process" || e.value === "") continue;
+      const p = await getProcess(e.value);
+      if (!p || p.definition.type !== spec.processType) {
+        res.status(400).json({ error: `${e.key}: no ${spec.processType} process "${e.value}" on this hub.` });
+        return;
+      }
+    }
 
     const actor = getAuthUser(res);
     const hubId = currentHubId();

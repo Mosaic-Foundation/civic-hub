@@ -1580,7 +1580,9 @@ export async function handleGetPublicMeetingSummary(
       res.status(404).json({ error: "Meeting summary not found" });
       return;
     }
-    res.json(model);
+    // Sample content (Phase 7): the page says so, and that no recording or
+    // minutes stand behind it.
+    res.json({ ...model, is_sample: record.isSample === true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });

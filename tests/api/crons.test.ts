@@ -23,6 +23,7 @@
 
 import { beforeAll, describe, expect, it } from "vitest";
 import { api } from "../fixtures/helpers";
+import { localRest } from "../fixtures/adminSession.js";
 
 /** Does the server under test run scheduled work? */
 let cronsEnabled = true;
@@ -118,6 +119,24 @@ describe("Cron runs per hub", () => {
     const body = await res.json();
     expect(body.job).toBe("admin_digest");
     expect(Object.keys(body.hubs)).toEqual(expect.arrayContaining(["floyd", "athens"]));
+  });
+
+  it("records a run that did something in job_runs, on the hub it ran for", async (ctx) => {
+    // Confirmed 2026-10-06 (dev showed no rows: dev runs with
+    // HUB_CRON_ENABLED=false, so no job ever runs there). A forced admin
+    // digest always does something: it sends, or reports nothing to send.
+    if (!cronsEnabled) return ctx.skip();
+    const count = async () =>
+      ((await localRest("job_runs?select=id&hub_id=eq.athens&job_id=eq.admin_digest")) as unknown[]).length;
+    const before = await count();
+    const res = await api("/internal/admin-digest/run?hub=athens&force=true", { method: "GET", headers: authed });
+    expect(res.status).toBe(200);
+    expect(await count()).toBe(before + 1);
+    const [latest] = (await localRest(
+      "job_runs?select=status,summary&hub_id=eq.athens&job_id=eq.admin_digest&order=started_at.desc&limit=1",
+    )) as Array<{ status: string; summary: string }>;
+    expect(["ok", "flagged", "failed"]).toContain(latest.status);
+    expect(latest.summary.length).toBeGreaterThan(0);
   });
 
   it("?hub= runs one hub; an unknown hub is 404; a malformed one 400", async (ctx) => {

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import hub from "../config/hub";
+import { meetingSummaryLabel } from "../config/hub";
 import { pluginEnabled } from "../config/plugins";
 import {
   classifyActivity,
@@ -34,24 +34,29 @@ export interface FeedFilterChoice {
   pillClass: string;
 }
 
-const CHOICES: FeedFilterChoice[] = [
-  { key: "all", label: "All", pillClass: "feed-filter-pill--all" },
-  {
-    key: "announcement",
-    label: "Announcements",
-    pillClass: "feed-filter-pill--announcement",
-  },
-  {
-    key: "meeting_summary",
-    label: `${hub.governing_body_short} meeting summaries`,
-    pillClass: "feed-filter-pill--meeting",
-  },
-  {
-    key: "activity",
-    label: "Activity",
-    pillClass: "feed-filter-pill--activity",
-  },
-];
+// A function, not a constant: the labels read the hub's settings, which
+// arrive after this module loads. A constant built here said "Board" on
+// every hub (2026-10-06).
+function choices(): FeedFilterChoice[] {
+  return [
+    { key: "all", label: "All", pillClass: "feed-filter-pill--all" },
+    {
+      key: "announcement",
+      label: "Announcements",
+      pillClass: "feed-filter-pill--announcement",
+    },
+    {
+      key: "meeting_summary",
+      label: meetingSummaryLabel(true),
+      pillClass: "feed-filter-pill--meeting",
+    },
+    {
+      key: "activity",
+      label: "Activity",
+      pillClass: "feed-filter-pill--activity",
+    },
+  ];
+}
 
 const PARAM = "type";
 
@@ -98,7 +103,7 @@ interface Props {
 
 // Hidden when the hub switched the plugin off (config/plugins.tsx).
 function visibleChoices(): FeedFilterChoice[] {
-  return CHOICES.filter((choice) => {
+  return choices().filter((choice) => {
     if (choice.key === "announcement") return pluginEnabled("announcement");
     if (choice.key === "meeting_summary") return pluginEnabled("meeting_summary");
     return true;

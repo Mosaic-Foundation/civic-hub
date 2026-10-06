@@ -18,6 +18,7 @@ import { defaultJurisdiction } from "../config/hub.js";
 import { deliberationAssistantConfig } from "./deliberationAssistantConfig.js";
 import { getSettingSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
+import { DEFAULT_POLIS_URL } from "../shared/polisUrl.js";
 
 
 let _adapter: PolisAdapter | null = null;
@@ -28,7 +29,7 @@ export function getPolisAdapter(): PolisAdapter {
 }
 
 export function bootDeliberation(): ProcessHandler {
-  const polisBaseUrl = getSettingSync(KEYS.PLUGIN_CONVERSATION_POLIS_URL) || "https://polis.civic.social";
+  const polisBaseUrl = getSettingSync(KEYS.PLUGIN_CONVERSATION_POLIS_URL) || DEFAULT_POLIS_URL;
   const polisAuthToken = process.env.POLIS_AUTH_TOKEN || "";
 
   if (!polisAuthToken) {

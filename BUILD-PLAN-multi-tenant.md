@@ -789,7 +789,7 @@ code's copy is `src/shared/hubSettingsSections.ts`, and the settings endpoint
 | Legal | `legal.terms`, `.privacy`, `.code_of_conduct`, `.proposal_best_practices`, `.operator_name`, `.contact_email`, `.who_runs_this` | A document saved identical to its shared template is stored as `""`, so the hub keeps following the template ("restore default"). |
 | Email | `email.from_name`, `email.postal_address` | `email.from_address` is shown read-only: the sending domain is the platform's. The three digest keys it held moved to Plugins in Phase 2c. |
 | Theme | `identity.theme` | Its own section since 2026-09-24: a theme object (preset, primary, accent, background, one hue per process type), stored as canonical JSON; a bare `#rrggbb` still reads as the primary. Model: `src/shared/theme.ts`. |
-| Plugins | `plugin.<id>.enabled` for all 14 ids; `plugin.vote.min_duration_days`, `.max_duration_days`, `.default_duration_days`; `plugin.conversation.polis_url`; `plugin.meeting_summary.connector_id`, `.source_url`, `.youtube_channel_id`, `.title_filter`, `.type_exclude`, `.cutoff_date`, `.auto_publish`, `.extraction_instructions`; `plugin.news_sync.connector`, `.source_url`; `plugin.digest.send_hour` | Added in Phase 2c (Adam, 2026-09-24; per-plugin settings decided 2026-09-22). One card per plugin: the switch, and beneath it that plugin's settings. Keys another section owns are shown read-only with a link, never repeated (one writer per key): announcement authors and brief recipients → Officials; `plugin.vote.support_threshold` and `moderation.comment_identity_mode` → Participation. `youtube_channel_id` is beyond Adam's list: the YouTube connector is one of the choices and needs it. |
+| Plugins | `plugin.<id>.enabled` for all 14 ids; `plugin.vote.min_duration_days`, `.max_duration_days`, `.default_duration_days`; `plugin.conversation.polis_url`; `plugin.wordcloud.onboarding_id` (kind `process`, added 2026-10-06); `plugin.meeting_summary.connector_id`, `.source_url`, `.youtube_channel_id`, `.title_filter`, `.type_exclude`, `.cutoff_date`, `.auto_publish`, `.extraction_instructions`; `plugin.news_sync.connector`, `.source_url`; `plugin.digest.send_hour` | Added in Phase 2c (Adam, 2026-09-24; per-plugin settings decided 2026-09-22). One card per plugin: the switch, and beneath it that plugin's settings. Keys another section owns are shown read-only with a link, never repeated (one writer per key): announcement authors and brief recipients → Officials; `plugin.vote.support_threshold` and `moderation.comment_identity_mode` → Participation. `youtube_channel_id` is beyond Adam's list: the YouTube connector is one of the choices and needs it. |
 | Mode | `hubs.mode` (beta / live) | Its own endpoint with the emailed-code step-up; a demo hub shows "set by the platform". |
 | Admins & board | `people.admin_emails`, `people.board_emails` | Existing `POST /admin/hub/people`, step-up. |
 | Officials | officials roster + `people.brief_recipients` | Existing `PATCH /admin/settings`. |
@@ -1227,6 +1227,78 @@ var, platform-wide, kept after the cleanup. A digest footer prints the hub's
 `email.postal_address`, else the legacy `HUB_POSTAL_ADDRESS` (until the
 cleanup removes it), else the platform's; with none, no address line. The hub
 admin's Settings → Email shows the address in use and where it comes from.
+
+### Console and sample-content polish (2026-10-06)
+
+Decided by Adam (session prompt + four answers in the session, 2026-10-06).
+Built on `multi-tenant`; dev walk and checks in HANDOFF, "Console and
+sample-content polish".
+
+- **Governing body short form** (`copy.governing_body_short`, existing key):
+  the distinctive word of the full name — Board of Supervisors →
+  "Supervisors"; City / Town / Borough Council → "Council"; County Commission
+  → "Commission"; Village Board → "Board"; School Board stays "School Board";
+  "… of <members>" gives the members ("Town Board of Trustees" → "Trustees");
+  any other "of" is read before it. Rule: `defaultGoverningBodyShort()` in
+  `src/shared/jurisdictionType.ts`. **The console writes it**: Create hub has
+  a Short form field that follows the governing body until edited, and the
+  hub page edits it (`governing_body_short` on `PATCH /control/hubs/:id`). A
+  hub with the key unset reads it derived from `copy.governing_body_name`; a
+  hub with no governing body (any non-place hub) has none, and the UI drops
+  the word: "Meeting summaries", "the governing body". Used for the feed's
+  meeting pills and in running text ("passing on to the Supervisors", the
+  digest's "delivered to the Supervisors"). The role names "Board member" /
+  "Board members" are unchanged: they name the role in the software, not the
+  body. Floyd's stored value is still "BOS" (seed data) until its admin or the
+  console changes it.
+- **Create hub form:** one Type field (the list's search filter, which also
+  sets `identity.jurisdiction_type`; for a custom place, the hub type
+  itself). Labels "Search the list", "Place name (as shown)", "Hub name".
+  **Default hub name = the place without its state + " Civic Hub"**
+  ("Floyd County Civic Hub", "Town of Floyd Civic Hub";
+  `defaultHubName()` in `src/shared/jurisdictionNames.ts`), place hubs only,
+  following the place name until the operator edits it. The place name's
+  hint shows the sign-up sentence it lands in, and notes when it differs from
+  the list's name.
+- **Affiliation by hub kind** (`affiliationClause`, `personLabel`,
+  `participantNoun` in `src/shared/hubKind.ts`): place — "I confirm that I
+  am a resident of {place}", unnamed people "Resident"; organization — "I
+  confirm that I am a member of {hub}", "Member"; issue campaign and other —
+  no affirmation (anyone may take part), "Participant". The same nouns for
+  "N members voted", the sign-up intro's fallback ("confirm your membership"
+  / "review the policies below") and the server's byline fallback
+  (`personFallbackName()` in `src/services/creatorDisplay.ts`).
+- **Sample content, eleven templates** (the list grew by two, Adam's copy
+  defaults accepted): `meeting_summary_regular` — "{GOVERNING_BODY} regular
+  meeting", four sections with times (public comment, library-hours trial,
+  road resurfacing bid, budget calendar), no recording or minutes, written by
+  hand (`ai_model: "sample"`), `source_type: "minutes"` so the cron's upgrade
+  pass never touches it; general-purpose governments only. The public page
+  says it is a sample and shows its times as plain text, without the AI
+  attribution (`is_sample` on `GET /meeting-summary/:id`).
+  `wordcloud_value` — "In one word, what do you value most about
+  {JURISDICTION}?", 32 anonymous answers inserted as rows (no events, like the
+  sample ballots); every place type. **It becomes the hub's word cloud when
+  `plugin.wordcloud.onboarding_id` is unset; removal clears that setting when
+  it names a sample process** (recorded in the removal's audit row as
+  `cleared`).
+- **Polis default in one place:** `DEFAULT_POLIS_URL`
+  (`src/shared/polisUrl.ts`); the sample seed now uses it, so a hub with no
+  `plugin.conversation.polis_url` gets the same conversation address as the
+  start action.
+- **Word-cloud picker:** `plugin.wordcloud.onboarding_id` joins Settings →
+  Plugins → Word clouds, a new field kind **`process`** (`processType`
+  in the spec): one of this hub's processes of that type, or empty. The
+  validator checks the id's shape; the settings controller checks the process
+  exists on this hub and is of the type. One key for both the top strip and
+  where a new account lands, as before.
+- **Brief "Sent to":** date only — "Sent to City Council on September 25,
+  2026." (full time on hover). The process page's pointer the same.
+- **`job_runs` on dev:** empty because dev runs with `HUB_CRON_ENABLED=false`
+  (DEPLOY-dev.md), whose kill switch also refuses manual runs. Recording
+  works locally in both modes (`tests/api/crons.test.ts`). Not changed: a
+  run that does nothing (a vote close that closed nothing) still records
+  nothing, by design (`src/jobs/describe.ts`).
 
 ### Backups (2026-10-04)
 

@@ -95,6 +95,10 @@ describe("the sample templates", () => {
         return [t.title, t.description, ...t.updates.map((u) => u.body), ...t.comments.map((c) => c.body)];
       case "announcement":
         return [t.title, t.body];
+      case "meeting_summary":
+        return [t.meeting_title, ...t.blocks.flatMap((b) => [b.title, b.summary, b.action ?? ""])];
+      case "wordcloud":
+        return [t.title, t.description, t.prompt, ...t.answers.map(([w]) => w)];
     }
   };
 
@@ -114,13 +118,14 @@ describe("the sample templates", () => {
     }
   });
 
-  it("has unique keys, known authors, and 8 to 10 processes for a general-purpose government", () => {
+  it("has unique keys, known authors, and 10 to 12 processes for a general-purpose government", () => {
     const keys = SAMPLE_TEMPLATES.map((t) => t.key);
     expect(new Set(keys).size).toBe(keys.length);
     for (const t of SAMPLE_TEMPLATES) expect(Object.keys(SAMPLE_AUTHORS)).toContain(t.by);
     const n = templatesFor("county").length;
-    expect(n).toBeGreaterThanOrEqual(8);
-    expect(n).toBeLessThanOrEqual(10);
+    // Eleven since 2026-10-06: the meeting summary and the word cloud.
+    expect(n).toBeGreaterThanOrEqual(10);
+    expect(n).toBeLessThanOrEqual(12);
   });
 
   it("gives every vote options on more than one side, and ballots for each", () => {
@@ -149,10 +154,26 @@ describe("the sample templates", () => {
 
   it("fits a school district with only what reads right there", () => {
     expect(templatesFor("school_district").map((t) => t.key).sort()).toEqual(
-      ["announcement_budget_hearing", "outcome_library_hours", "vote_library_hours"].sort(),
+      ["announcement_budget_hearing", "outcome_library_hours", "vote_library_hours", "wordcloud_value"].sort(),
     );
     // No type set reads as a general-purpose local government.
     expect(templatesFor(null).length).toBe(templatesFor("other").length);
+  });
+
+  it("gives the sample meeting summary times in order, and the word cloud single words", () => {
+    for (const t of SAMPLE_TEMPLATES) {
+      if (t.kind === "meeting_summary") {
+        const mins = t.blocks.map((b) => b.at_minute);
+        expect(mins, t.key).toEqual([...mins].sort((a, b) => a - b));
+        expect(t.published_at, t.key).toBeGreaterThanOrEqual(t.meeting_at);
+      }
+      if (t.kind === "wordcloud") {
+        for (const [w, n] of t.answers) {
+          expect(w, t.key).toMatch(/^[a-z]+$/);
+          expect(n, t.key).toBeGreaterThan(0);
+        }
+      }
+    }
   });
 
   it("fills the placeholders and nothing else", () => {

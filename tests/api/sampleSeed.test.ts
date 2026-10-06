@@ -1,10 +1,11 @@
 // The sample-content seed (Phase 7), through the console's Create hub with
 // "Start with sample content" on — the path an operator uses.
 //
-// A county hub in Virginia gets all nine templates, the governing body the
-// form infers ("Board of Supervisors"), its names filled in, every event
+// A county hub in Virginia gets all eleven templates, the governing body the
+// form infers ("Board of Supervisors") and its short form ("Supervisors"),
+// its names filled in, every event
 // marked sample and none of it on GET /events; a school district gets only
-// the three that fit. Then the county hub's admin removes it all and the hub
+// the four that fit. Then the county hub's admin removes it all and the hub
 // still serves, empty. (Idempotence is the script's, and is checked by hand
 // in the HANDOFF: the console seeds a hub once, at creation.)
 //
@@ -76,13 +77,14 @@ describe("a county hub created with sample content", () => {
 
   it("infers the governing body from the type and the state, and stores the type", async () => {
     expect(body.config.governing_body).toBe("Board of Supervisors");
+    expect(body.config.governing_body_short).toBe("Supervisors");
     expect(body.config.jurisdiction_type).toBe("county");
   });
 
-  it("seeds all nine templates, marked sample, by five sample authors", async () => {
-    expect(body.sample_content.created).toHaveLength(9);
+  it("seeds all eleven templates, marked sample, by five sample authors", async () => {
+    expect(body.sample_content.created).toHaveLength(11);
     const procs = (await localRest(`processes?select=id,is_sample,title,description&hub_id=eq.${COUNTY}`)) as Row[];
-    expect(procs).toHaveLength(9);
+    expect(procs).toHaveLength(11);
     expect(procs.every((p) => p.is_sample === true)).toBe(true);
     const users = (await localRest(`users?select=id,full_name&hub_id=eq.${COUNTY}&is_sample=is.true`)) as Row[];
     expect(users).toHaveLength(5);
@@ -105,6 +107,44 @@ describe("a county hub created with sample content", () => {
     expect(open.state.method).toBe("yes_no_unsure"); // single choice: "Pick one"
     const [closed] = (await localRest(`processes?select=status&id=eq.proc_sample_${COUNTY}_vote_library_hours`)) as Row[];
     expect(closed.status).toBe("finalized");
+  });
+
+  it("edits the short form from the hub page, and the hub serves it", async () => {
+    const res = await consoleCall("PATCH", `/control/hubs/${COUNTY}`, { cookie, body: { governing_body_short: "Board" } });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.config.governing_body_short).toBe("Board");
+    const config = await call("GET", "/hub-config", host(COUNTY));
+    expect(config.body.settings["copy.governing_body_short"]).toBe("Board");
+    await consoleCall("PATCH", `/control/hubs/${COUNTY}`, { cookie, body: { governing_body_short: "Supervisors" } });
+  });
+
+  it("publishes the sample meeting summary, saying it is a sample, with times and no recording", async () => {
+    const id = `proc_sample_${COUNTY}_meeting_summary_regular`;
+    const res = await call("GET", `/meeting-summary/${id}`, host(COUNTY));
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.is_sample).toBe(true);
+    expect(res.body.meeting_title).toBe("Board of Supervisors regular meeting");
+    expect(res.body.source_video_url).toBeNull();
+    expect(res.body.blocks).toHaveLength(4);
+    expect(res.body.blocks.every((b: Row) => typeof b.start_time_seconds === "number")).toBe(true);
+    const [row] = (await localRest(`processes?select=status&id=eq.${id}`)) as Row[];
+    expect(row.status).toBe("finalized");
+  });
+
+  it("opens the sample word cloud with its answers, and makes it the hub's word cloud", async () => {
+    const id = `proc_sample_${COUNTY}_wordcloud_value`;
+    const subs = (await localRest(`wordcloud_submissions?select=body,author_id&process_id=eq.${id}`)) as Row[];
+    expect(subs).toHaveLength(32);
+    expect(subs.every((r) => r.author_id === null)).toBe(true);
+    const [setting] = (await localRest(`hub_settings?select=value&hub_id=eq.${COUNTY}&key=eq.plugin.wordcloud.onboarding_id`)) as Row[];
+    expect(setting?.value).toBe(id);
+    const config = await call("GET", "/hub-config", host(COUNTY));
+    expect(config.body.settings["plugin.wordcloud.onboarding_id"]).toBe(id);
+  });
+
+  it("gives the sample conversation the default Polis address when the hub names none", async () => {
+    const [row] = (await localRest(`processes?select=state&id=eq.proc_sample_${COUNTY}_deliberation_rentals`)) as Row[];
+    expect(row.state.polis_base_url).toBe("https://polis.civic.social/seed-sample-deliberation_rentals");
   });
 
   it("marks every event sample, and serves none on GET /events", async () => {
@@ -137,7 +177,7 @@ describe("a county hub created with sample content", () => {
       body: JSON.stringify({ hub_id: COUNTY, email: ADMIN, code, expires_at: new Date(Date.now() + 600_000).toISOString(), attempts: 0 }),
     });
     const before = await call("GET", "/admin/hub/sample-content", host(COUNTY), undefined, admin);
-    expect(before.body).toMatchObject({ processes: 9, other_processes: 0, real_input_total: 0 });
+    expect(before.body).toMatchObject({ processes: 11, other_processes: 0, real_input_total: 0 });
 
     const res = await call("POST", "/admin/hub/sample-content/remove", host(COUNTY), { code }, admin);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
@@ -146,6 +186,10 @@ describe("a county hub created with sample content", () => {
     expect((await localRest(`vote_records?select=receipt_id&hub_id=eq.${COUNTY}`)) as Row[]).toHaveLength(0);
     expect((await localRest(`community_inputs?select=id&hub_id=eq.${COUNTY}`)) as Row[]).toHaveLength(0);
     expect((await localRest(`users?select=id&hub_id=eq.${COUNTY}&is_sample=is.true`)) as Row[]).toHaveLength(0);
+    expect((await localRest(`wordcloud_submissions?select=id&hub_id=eq.${COUNTY}`)) as Row[]).toHaveLength(0);
+    // The hub's word cloud pointed at the sample; it points at nothing now.
+    const [cleared] = (await localRest(`hub_settings?select=value&hub_id=eq.${COUNTY}&key=eq.plugin.wordcloud.onboarding_id`)) as Row[];
+    expect(cleared?.value ?? "").toBe("");
 
     const feed = await call("GET", "/api/feed", host(COUNTY));
     expect(feed.status).toBe(200);
@@ -176,8 +220,9 @@ describe("a school district hub", () => {
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     created.push(SCHOOLS);
     expect(res.body.config.governing_body).toBe("School Board");
+    expect(res.body.config.governing_body_short).toBe("School Board");
     expect([...res.body.sample_content.created].sort()).toEqual(
-      ["announcement_budget_hearing", "outcome_library_hours", "vote_library_hours"].sort(),
+      ["announcement_budget_hearing", "outcome_library_hours", "vote_library_hours", "wordcloud_value"].sort(),
     );
   });
 });
@@ -209,7 +254,7 @@ describe("a hub created with Conversations off", () => {
 
   it("seeds every template the type allows, the conversation included", async () => {
     const procs = (await localRest(`processes?select=id,is_sample&hub_id=eq.${NOCONV}`)) as Row[];
-    expect(procs).toHaveLength(9);
+    expect(procs).toHaveLength(11);
     expect(procs.map((p) => p.id)).toContain(convId);
   });
 

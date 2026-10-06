@@ -33,6 +33,16 @@ test.describe("Civic Feed", () => {
     }
   });
 
+  test("the meeting-summaries pill names the hub's own governing body", async ({ page, request }) => {
+    // Built when the module loaded, before the hub's settings arrived, the
+    // pill said "Board" on every hub (fixed 2026-10-06). It must say what the
+    // served config says.
+    const config = await (await request.get("http://localhost:3000/hub-config")).json();
+    const short: string | undefined = config.settings["copy.governing_body_short"];
+    test.skip(!short, "this hub has no short form set");
+    await expect(page.locator(".feed-filter").getByRole("button", { name: `${short} meeting summaries` })).toBeVisible();
+  });
+
   test("clicking a feed item navigates to detail", async ({ page }) => {
     // Find any clickable feed item link
     const feedLink = page.locator("a[href*='/process/'], a[href*='/announcement/'], a[href*='/vote-results/']").first();

@@ -21,6 +21,8 @@ import {
   getInputs,
 } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { personLabel } from "../../../src/shared/hubKind";
+import hub from "../config/hub";
 
 interface Props {
   processId: string;
@@ -202,7 +204,7 @@ export default function CommunityInputPanel({ processId, config }: Props) {
                   "Anonymous"
                 ) : (
                   <Creator
-                    name={input.author_name || "Resident"}
+                    name={input.author_name || personLabel(hub.kind)}
                     isAdmin={input.author_is_admin}
                     officialType={input.author_official_type}
                     officialTitle={input.author_official_title}

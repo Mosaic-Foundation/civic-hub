@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type AuditEntry, type HubAdminAuditEntry, type HubDetail, type HubExport } from "./api";
-import { JURISDICTION_TYPES, hubTypeFor } from "../../../src/shared/jurisdictionType";
+import { JURISDICTION_TYPES, defaultGoverningBodyShort, hubTypeFor } from "../../../src/shared/jurisdictionType";
 import { jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
 import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
 import { HUB_KINDS } from "../../../src/shared/hubKind";
@@ -173,6 +173,7 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
     jurisdiction_ocd_id: c.jurisdiction_ocd_id ?? "",
     jurisdiction_custom: c.jurisdiction_custom,
     governing_body: c.governing_body,
+    governing_body_short: c.governing_body_short,
     status: c.status,
     mode: c.mode ?? "",
   };
@@ -291,10 +292,30 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
           ))}
         </select>
       </label>
-      <label className="cx-field">
-        <span>Governing body</span>
-        <input value={form.governing_body} onChange={(e) => setForm({ ...form, governing_body: e.target.value })} />
-      </label>
+      <div className="cx-two">
+        <label className="cx-field">
+          <span>Governing body</span>
+          <input
+            value={form.governing_body}
+            onChange={(e) => {
+              const next = e.target.value;
+              // The short form follows the name while it is still the usual one.
+              const inStep = form.governing_body_short === defaultGoverningBodyShort(form.governing_body);
+              setForm({ ...form, governing_body: next, governing_body_short: inStep ? defaultGoverningBodyShort(next) : form.governing_body_short });
+            }}
+          />
+        </label>
+        <label className="cx-field">
+          <span>Short form</span>
+          <input
+            maxLength={40}
+            value={form.governing_body_short}
+            placeholder={defaultGoverningBodyShort(form.governing_body)}
+            onChange={(e) => setForm({ ...form, governing_body_short: e.target.value })}
+          />
+          <small className="cx-muted">In pills and running text: "Supervisors meeting summaries".</small>
+        </label>
+      </div>
       </>)}
       <div className="cx-two">
         <label className="cx-field">

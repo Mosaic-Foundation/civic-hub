@@ -100,3 +100,14 @@ export function jurisdictionCodeFor(row: { ocd_id: string; type: ReferenceJurisd
   const word = CODE_WORD[row.type];
   return word ? `us-${state}-${name}-${word}` : `us-${state}-${name}`;
 }
+
+/**
+ * A new place hub's default name (Adam, 2026-10-06): the place as shown,
+ * without its state, then "Civic Hub". "Floyd County, Virginia" → "Floyd
+ * County Civic Hub"; "Town of Floyd, Virginia" → "Town of Floyd Civic Hub".
+ * Only the last ", …" goes, so a typed name with no state is kept whole.
+ */
+export function defaultHubName(placeName: string): string {
+  const place = placeName.trim().replace(/,\s*[^,]+$/, "").trim();
+  return place ? `${place} Civic Hub` : "";
+}

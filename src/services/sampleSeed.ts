@@ -49,6 +49,8 @@ import {
   templatesFor,
   type SampleAnnouncement,
   type SampleDeliberation,
+  type SampleMeetingSummary,
+  type SampleWordcloud,
   type SampleNames,
   type SampleOutcome,
   type SampleProject,
@@ -68,6 +70,16 @@ import { approveBrief, setRecipients, type BriefProcessState } from "../modules/
 import { emitBriefAggregationCompleted } from "../modules/civic.brief/events.js";
 import { emitAnnouncementResultPublished } from "../modules/civic.announcement/events.js";
 import type { AnnouncementProcessState } from "../modules/civic.announcement/models.js";
+import {
+  approveMeetingSummary,
+  buildProcessDescription,
+  emitCreationEvents as emitMeetingSummaryCreationEvents,
+  type MeetingSummaryProcessState,
+} from "../modules/civic.meeting_summary/index.js";
+import { activateWordcloud, type WordcloudProcessState } from "../modules/civic.wordcloud/index.js";
+import { generateId } from "../utils/id.js";
+import { DEFAULT_POLIS_URL } from "../shared/polisUrl.js";
+import { setSetting } from "./hubSettings.js";
 
 /** The prefix the deliberation controller serves from the mock layer. */
 export const SAMPLE_CONVERSATION_PREFIX = "seed-sample-";
@@ -79,6 +91,8 @@ const PROCESS_TYPE: Record<SampleTemplate["kind"], string> = {
   deliberation: "civic.polis_deliberation",
   project: "civic.project",
   announcement: "civic.announcement",
+  meeting_summary: "civic.meeting_summary",
+  wordcloud: "civic.wordcloud",
 };
 
 export interface SampleSeedReport {
@@ -459,10 +473,11 @@ class SeedRun {
     // What the start action does, minus Polis: the conversation is served by
     // the seed- mock layer under this id.
     const conversationId = `${SAMPLE_CONVERSATION_PREFIX}${t.key}`;
-    const polisUrl = (getSettingSync(KEYS.PLUGIN_CONVERSATION_POLIS_URL) ?? "").replace(/\/+$/, "");
+    // The same fallback as the start action (deliberationBoot.ts).
+    const polisUrl = (getSettingSync(KEYS.PLUGIN_CONVERSATION_POLIS_URL) || DEFAULT_POLIS_URL).replace(/\/+$/, "");
     const st = p.state as Record<string, unknown>;
     st.polis_conversation_id = conversationId;
-    st.polis_base_url = polisUrl ? `${polisUrl}/${conversationId}` : "";
+    st.polis_base_url = `${polisUrl}/${conversationId}`;
     st.deadline = this.at(t.closes_at);
     p.status = "active";
     await saveProcessState(p);
@@ -536,6 +551,90 @@ class SeedRun {
     await saveProcessState(record);
   }
 
+  // --- meeting summary ------------------------------------------------------
+
+  private async seedMeetingSummary(t: SampleMeetingSummary): Promise<void> {
+    const team = this.user(t.by);
+    const title = this.fill(t.meeting_title);
+    const meetingDate = this.at(t.meeting_at).slice(0, 10);
+    const blocks = t.blocks.map((b) => ({
+      topic_title: this.fill(b.title),
+      topic_summary: this.fill(b.summary),
+      start_time_seconds: b.at_minute * 60,
+      action_taken: b.action ? this.fill(b.action) : null,
+    }));
+    // The pipeline's shape (meetingSummaryController's cron), with no source:
+    // no minutes, no agenda, no recording, no AI. source_type "minutes" keeps
+    // the cron's upgrade pass from ever picking it up.
+    const p = await this.create(t, {
+      title: `Meeting summary: ${meetingDate}`,
+      description: buildProcessDescription(blocks),
+      state: {
+        source_id: `sample:${this.id(t.key)}`,
+        source_minutes_url: null,
+        source_agenda_url: null,
+        source_type: "minutes",
+        source_video_url: null,
+        additional_video_urls: [],
+        meeting_title: title.charAt(0).toUpperCase() + title.slice(1),
+        meeting_date: meetingDate,
+        blocks,
+        ai_instructions_used: "",
+        ai_model: "sample",
+      },
+    });
+    const state = p.state as unknown as MeetingSummaryProcessState;
+    const ctxAt = (iso: string) => ({ process_id: p.id, jurisdiction: p.jurisdiction, emit: this.emitAt(iso) });
+    await emitMeetingSummaryCreationEvents(ctxAt(this.at(t.at, 1)), team.id, state);
+    await approveMeetingSummary(state, team.id, ctxAt(this.at(t.published_at, 2)));
+    state.generated_at = this.at(t.at, 1);
+    state.approved_at = this.at(t.published_at, 2);
+    state.published_at = this.at(t.published_at, 2);
+    p.status = "finalized";
+    p.state = state as unknown as Record<string, unknown>;
+    await saveProcessState(p);
+  }
+
+  // --- word cloud -----------------------------------------------------------
+
+  private async seedWordcloud(t: SampleWordcloud): Promise<void> {
+    const team = this.user(t.by);
+    const p = await this.create(t, {
+      title: this.fill(t.title),
+      description: this.fill(t.description),
+      state: { prompts: [{ id: "p1", text: this.fill(t.prompt) }], lifecycle_mode: "evergreen" },
+    });
+    let st = p.state as unknown as WordcloudProcessState;
+    const opens = this.at(t.at, 1);
+    ({ state: st } = await activateWordcloud(st, team.id, { process_id: p.id, jurisdiction: p.jurisdiction, emit: this.emitAt(opens) }));
+    p.status = st.status;
+    p.state = st as unknown as Record<string, unknown>;
+    await saveProcessState(p);
+
+    // Anonymous answers, spread over the days since it opened: rows, not
+    // events, like the sample ballots.
+    const words = t.answers.flatMap(([word, n]) => Array.from({ length: n }, () => word));
+    const from = new Date(opens).getTime();
+    const to = this.now.getTime() - 60_000;
+    const rows = words.map((body, i) => ({
+      id: generateId("wcsub"),
+      process_id: p.id,
+      prompt_id: "p1",
+      author_id: null,
+      body,
+      device_token: null,
+      // Interleaved, so the words do not arrive one kind at a time.
+      submitted_at: new Date(from + ((to - from) * (((i * 7) % words.length) + 1)) / (words.length + 1)).toISOString(),
+    }));
+    if (rows.length) await this.db.from("wordcloud_submissions").insert(rows);
+
+    // The hub's word cloud (the banner, and where a new account lands), when
+    // it has none. Removal clears it again (sampleContent.ts).
+    if (!getSettingSync(KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID)) {
+      await setSetting(this.hubId, KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID, p.id, "sample-seed");
+    }
+  }
+
   async seed(t: SampleTemplate): Promise<void> {
     switch (t.kind) {
       case "vote":
@@ -550,6 +649,10 @@ class SeedRun {
         return this.seedProject(t);
       case "announcement":
         return this.seedAnnouncement(t);
+      case "meeting_summary":
+        return this.seedMeetingSummary(t);
+      case "wordcloud":
+        return this.seedWordcloud(t);
     }
   }
 }

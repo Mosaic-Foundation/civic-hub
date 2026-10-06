@@ -49,7 +49,13 @@ export type SettingFieldKind =
   /** #rrggbb. */
   | "color"
   /** A theme object (src/shared/theme.ts), stored as canonical JSON. */
-  | "theme";
+  | "theme"
+  /**
+   * One of this hub's processes of the spec's `processType`, by id, or empty
+   * (2026-10-06: the word cloud the banner shows). The server checks that the
+   * process exists on this hub and is of that type.
+   */
+  | "process";
 
 export interface SettingFieldSpec {
   key: string;
@@ -61,6 +67,8 @@ export interface SettingFieldSpec {
   /** "number": inclusive bounds. */
   min?: number;
   max?: number;
+  /** "process": the process type the value must name, e.g. "civic.wordcloud". */
+  processType?: string;
 }
 
 export const SETTINGS_SECTION_IDS = ["identity", "copy", "legal", "email", "theme", "plugins"] as const;
@@ -144,6 +152,7 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "plugin.vote.max_duration_days", kind: "number", min: 1, max: 365 },
     { key: "plugin.vote.default_duration_days", kind: "number", min: 1, max: 365 },
     { key: "plugin.conversation.polis_url", kind: "url" },
+    { key: "plugin.wordcloud.onboarding_id", kind: "process", processType: "civic.wordcloud" },
     { key: "plugin.meeting_summary.connector_id", kind: "choice", options: MEETING_CONNECTOR_OPTIONS },
     { key: "plugin.meeting_summary.source_url", kind: "url" },
     { key: "plugin.meeting_summary.youtube_channel_id", kind: "text", maxLength: 64 },

@@ -9,6 +9,7 @@ import ShareButton from "../components/ShareButton";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import "./MeetingSummary.css";
 import RelatedProcesses from "../components/RelatedProcesses";
+import SampleBadge from "../components/SampleBadge";
 
 export default function MeetingSummaryPage() {
   const { id } = useParams<{ id: string }>();
@@ -55,13 +56,16 @@ export default function MeetingSummaryPage() {
   }
 
   const hasVideo = summary.source_video_url !== null;
+  const sample = summary.is_sample === true;
   // The bold line is the server's attribution label ("AI-generated. Not an
   // authoritative transcript."). This is only what to add under it — never
   // a repeat of it (Adam, 2026-09-06: "it says not an authoritative
   // transcript twice").
-  const disclaimerDetail = hasVideo
-    ? "Click a timestamp to jump to that moment on YouTube."
-    : "Generated from the minutes document — no recording of this meeting is available.";
+  const disclaimerDetail = sample
+    ? "Sample: written by hand to show what a summary looks like. No meeting, recording or minutes stand behind it; on a real summary each time opens the recording at that moment."
+    : hasVideo
+      ? "Click a timestamp to jump to that moment on YouTube."
+      : "Generated from the minutes document — no recording of this meeting is available.";
 
   return (
     <article className="page meeting-summary-page">
@@ -73,7 +77,10 @@ export default function MeetingSummaryPage() {
       </div>
 
       <header className="meeting-header">
-        <p className="meeting-eyebrow">Meeting summary</p>
+        <p className="meeting-eyebrow">
+          Meeting summary
+          {sample && <> <SampleBadge /></>}
+        </p>
         <h1>
           {summary.meeting_title}
           {" — "}
@@ -107,7 +114,7 @@ export default function MeetingSummaryPage() {
         </p>
       </header>
 
-      {summary.awaiting_minutes && (
+      {summary.awaiting_minutes && !sample && (
         // Readers otherwise wonder why a meeting record has no minutes link.
         // Jurisdictions approve minutes at the FOLLOWING meeting, so a gap of
         // several weeks is normal rather than an omission.
@@ -119,7 +126,7 @@ export default function MeetingSummaryPage() {
       )}
 
       <div className="meeting-disclaimer">
-        <strong>{summary.ai_attribution_label}</strong>
+        {!sample && <strong>{summary.ai_attribution_label}</strong>}
         <span>{disclaimerDetail}</span>
       </div>
 
@@ -200,6 +207,11 @@ export default function MeetingSummaryPage() {
                   >
                     {formatSeconds(block.start_time_seconds)}
                   </a>
+                ) : sample && block.start_time_seconds !== null ? (
+                  // A sample has the times a real summary would, and nothing to open.
+                  <span className="meeting-block-timestamp meeting-block-timestamp--plain">
+                    {formatSeconds(block.start_time_seconds)}
+                  </span>
                 ) : null}
                 <h2 className="meeting-block-title">{block.topic_title}</h2>
               </span>

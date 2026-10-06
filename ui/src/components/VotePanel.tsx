@@ -6,6 +6,7 @@ import { submitVote, submitApprovalVote, supportVote, unsupportVote, submitInput
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
 import AuthModal from "./AuthModal";
+import hub from "../config/hub";
 
 const COMMENT_MAX = 500;
 
@@ -243,7 +244,7 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
                 className="vote-comment-textarea"
                 value={comment}
                 onChange={(e) => setComment(e.target.value.slice(0, COMMENT_MAX))}
-                placeholder="Share concerns, suggestions, context, or any thoughts worth passing on to the Board. Submitted when you cast your vote."
+                placeholder={`Share concerns, suggestions, context, or any thoughts worth passing on to ${hub.governing_body_ref}. Submitted when you cast your vote.`}
                 rows={3}
                 maxLength={COMMENT_MAX}
                 disabled={loading}

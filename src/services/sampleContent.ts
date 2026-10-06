@@ -27,6 +27,8 @@ import {
   PROCESS_CHILD_COLUMNS,
 } from "../models/sampleContent.js";
 import { recordHubAdminAudit } from "./hubAdminAudit.js";
+import { getSetting, setSetting } from "./hubSettings.js";
+import { KEYS } from "../models/hubSettings.js";
 
 function db(): HubDb {
   return forHub(currentHubId());
@@ -131,12 +133,20 @@ export async function removeSampleContent(actorEmail: string): Promise<SampleRem
   await del("processes", "id", ids);
   // 5. The synthetic authors (their sessions cascade).
   await del("users", "id", users);
+  // 6. A setting that names a sample process would point at nothing: the
+  //    hub's word cloud, which the seed chooses when there is none.
+  const cleared: string[] = [];
+  const chosen = await getSetting(currentHubId(), KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID);
+  if (chosen && ids.includes(chosen)) {
+    await setSetting(currentHubId(), KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID, "", actorEmail);
+    cleared.push(KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID);
+  }
 
   await recordHubAdminAudit({
     actor: actorEmail,
     action: "sample_content.remove",
     before: summary,
-    after: { deleted },
+    after: cleared.length ? { deleted, cleared } : { deleted },
   });
   console.log(
     `[hub] sample content removed on ${currentHubId()} by ${actorEmail}: ` +

@@ -42,9 +42,9 @@ export default function CopySection() {
             f={f}
             k="copy.governing_body_short"
             label="Governing body, short"
-            placeholder="Board, Council…"
+            placeholder="Supervisors, Council…"
             width={260}
-            hint={'The short form, where the full name would be long: "sent to the Board".'}
+            hint={'In pills and running text: "Supervisors meeting summaries", "passing on to the Supervisors". Left empty, it comes from the full name.'}
           />
           <TextField
             f={f}

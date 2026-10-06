@@ -26,6 +26,7 @@ import {
   DateField,
   HourField,
   NumberField,
+  ProcessField,
   TextAreaField,
   TextField,
   UrlField,
@@ -280,6 +281,15 @@ function settingsPanel(f: FormApi, id: PluginId): React.ReactNode | null {
           k="plugin.conversation.polis_url"
           label="Conversation server"
           hint="The address of the Polis server this hub's conversations run on."
+        />
+      );
+    case "wordcloud":
+      return (
+        <ProcessField
+          f={f}
+          k="plugin.wordcloud.onboarding_id"
+          label="The hub's word cloud"
+          hint="Shown in the strip at the top of every page, and where a new account lands after signing up. None hides the strip."
         />
       );
     case "brief":

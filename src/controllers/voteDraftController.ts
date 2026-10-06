@@ -13,6 +13,7 @@ import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { supportPhaseConfig } from "../modules/civic.vote/index.js";
 import { getSupportThreshold } from "../services/hubSettings.js";
 import { currentHubId } from "../config/hubContext.js";
+import { personFallbackName } from "../services/creatorDisplay.js";
 
 // Assistant conversation + Code of Conduct review live on the shared
 // /assistant routes (assistantController), dispatched through the registry.
@@ -208,7 +209,7 @@ export async function handleSubmitVoteDraft(
         title: draft.title.trim(),
         description: draft.description.trim() || "",
         creator_id: user.id,
-        creator_name: user.full_name || user.display_name || "Resident",
+        creator_name: user.full_name || user.display_name || personFallbackName(),
         creator_email: user.email,
         content: contentPayload as Record<string, unknown> | undefined,
         state: stateInput,

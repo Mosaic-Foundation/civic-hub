@@ -11,6 +11,7 @@ import {
 import { type Category } from "../modules/civic.assistant/index.js";
 import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
+import { personFallbackName } from "../services/creatorDisplay.js";
 
 // Assistant conversation + Code of Conduct review live on the shared
 // /assistant routes (assistantController), dispatched through the registry.
@@ -253,7 +254,7 @@ export async function handleSubmitDraft(
           title: draft.title.trim(),
           description: fullDescription || "",
           creator_id: user.id,
-          creator_name: user.full_name || user.display_name || "Resident",
+          creator_name: user.full_name || user.display_name || personFallbackName(),
           creator_email: user.email,
           content,
         },

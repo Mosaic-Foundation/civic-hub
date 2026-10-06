@@ -102,3 +102,36 @@ export function defaultGoverningBody(
       return "";
   }
 }
+
+/**
+ * The short form of a governing body's name (`copy.governing_body_short`),
+ * for pills and running text where the full name is long: "Supervisors
+ * meeting summaries", "passing on to the Council" (Adam, 2026-10-06). The
+ * distinctive word: "Board of Supervisors" → "Supervisors", "City Council" →
+ * "Council", "County Commission" → "Commission", "Village Board" → "Board".
+ * "School Board" stays whole, since "Board" alone loses what it is. A name
+ * of one or two words that matches none of these is its own short form; a
+ * longer one keeps its last word. "" for "".
+ */
+export function defaultGoverningBodyShort(name: string | null | undefined): string {
+  const full = (name ?? "").trim().replace(/\s+/g, " ");
+  if (!full) return "";
+  // "… of <members>": the members are the short form ("Board of
+  // Supervisors", "Town Board of Trustees", "Board of County
+  // Commissioners"). Any other "of" names a place or a subject ("Tribal
+  // Council of the Example Nation", "Board of Education"): read before it.
+  const of = /^(.+?) of (.+)$/i.exec(full);
+  if (of) {
+    if (/\b(supervisors|trustees|commissioners|aldermen|selectmen|freeholders|directors|governors|regents|chosen freeholders)$/i.test(of[2])) {
+      return of[2].replace(/^the /i, "");
+    }
+    return defaultGoverningBodyShort(of[1]);
+  }
+  if (/^school board$/i.test(full)) return full;
+  const words = full.split(" ");
+  const last = words[words.length - 1];
+  if (/^(council|commission|board|court|assembly|legislature|trustees|selectboard|aldermen|supervisors|commissioners)$/i.test(last)) {
+    return last;
+  }
+  return words.length <= 2 ? full : last;
+}

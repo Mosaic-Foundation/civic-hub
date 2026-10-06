@@ -30,6 +30,7 @@
 
 import { getLoadedHubConfig, setting } from "./hubConfig";
 import { hubKindOf, type HubKind } from "../../../src/shared/hubKind";
+import { defaultGoverningBodyShort } from "../../../src/shared/jurisdictionType";
 
 /** Env var, trimmed, or undefined when unset or blank. */
 function env(value: string | undefined): string | undefined {
@@ -49,6 +50,41 @@ function hubDisplayName(): string {
     env(import.meta.env.VITE_HUB_NAME) ??
     "this hub"
   );
+}
+
+/**
+ * The sign-up gate's line when the hub has written none: what the checkbox
+ * below it asks, by kind (2026-10-06) — residence, membership, or only the
+ * policies.
+ */
+function residencyIntroFallback(): string {
+  const kind = hubKindOf(setting("identity.hub_kind"));
+  const ask =
+    kind === "place"
+      ? "please confirm your residency and review the policies below"
+      : kind === "organization"
+        ? "please confirm your membership and review the policies below"
+        : "please review the policies below";
+  return `To participate in ${hubDisplayName()}, ${ask}.`;
+}
+
+/** `hub.governing_body_short`, as a function (see hubDisplayName on `this`). */
+function governingBodyShort(): string {
+  return (
+    setting("copy.governing_body_short") ??
+    env(import.meta.env.VITE_HUB_GOVERNING_BODY_SHORT) ??
+    defaultGoverningBodyShort(setting("copy.governing_body_name") ?? env(import.meta.env.VITE_HUB_GOVERNING_BODY_NAME))
+  );
+}
+
+/**
+ * "Supervisors meeting summaries" / "Meeting summaries" when the hub has no
+ * governing body. The feed's filter pill and its card pill must match.
+ */
+export function meetingSummaryLabel(plural: boolean): string {
+  const short = governingBodyShort();
+  const noun = plural ? "meeting summaries" : "meeting summary";
+  return short ? `${short} ${noun}` : noun.charAt(0).toUpperCase() + noun.slice(1);
 }
 
 const hub = {
@@ -191,12 +227,22 @@ const hub = {
     );
   },
 
+  /**
+   * The short form. Unset, it is derived from the hub's own governing body
+   * ("Board of Supervisors" → "Supervisors"); a hub with none (any hub that is
+   * not a place) gets "", and callers drop the word: "Meeting summaries".
+   */
   get governing_body_short(): string {
-    return (
-      setting("copy.governing_body_short") ??
-      env(import.meta.env.VITE_HUB_GOVERNING_BODY_SHORT) ??
-      "Board"
-    );
+    return governingBodyShort();
+  },
+
+  /**
+   * "the Supervisors", or "the governing body" when the hub has none, for
+   * running text: "passing on to the Supervisors".
+   */
+  get governing_body_ref(): string {
+    const short = governingBodyShort();
+    return short ? `the ${short}` : "the governing body";
   },
 
   /** Welcome-popup body and the residency-intro copy in the auth modal. */
@@ -212,7 +258,7 @@ const hub = {
     return (
       setting("copy.residency_intro") ??
       env(import.meta.env.VITE_HUB_RESIDENCY_INTRO) ??
-      `To participate in ${hubDisplayName()}, please confirm your residency and review the policies below.`
+      residencyIntroFallback()
     );
   },
 

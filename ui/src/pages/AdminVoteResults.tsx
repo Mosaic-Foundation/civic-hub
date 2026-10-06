@@ -231,7 +231,7 @@ export default function AdminVoteResults() {
             <p className="form-hint">
               One comment per line. Empty lines are ignored; duplicates are
               removed. Pre-populated from civic.input — edit anything worth
-              surfacing to the Board.
+              surfacing to {hub.governing_body_ref}.
             </p>
             <textarea
               className="form-textarea"
@@ -329,7 +329,7 @@ export default function AdminVoteResults() {
           )}
           {confirmingApprove && (
             <p className="form-hint" style={{ marginTop: "var(--space-sm)" }}>
-              This will deliver the vote results to the Board and publish a
+              This will deliver the vote results to {hub.governing_body_ref} and publish a
               "Vote results: …" post to the public feed. This cannot be undone.
             </p>
           )}

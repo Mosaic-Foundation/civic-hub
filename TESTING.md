@@ -387,6 +387,26 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   (identical to the text before the sections). Local run 2026-09-27, on a
   stack migrated from production's history: API 32 files, 317 passed, 7
   skipped, both modes; unit 99 / 1149; Playwright 25/25.
+- **Console and sample-content polish (2026-10-06):** `sampleSeed.test.ts`
+  now expects eleven templates (a county; four for a school district, the
+  word cloud added), the short form "Supervisors" / "School Board" on create,
+  the hub page's `governing_body_short` edit reaching `/hub-config`, the
+  sample meeting summary published with `is_sample`, times and no recording,
+  the sample word cloud's 32 anonymous answers and its being chosen as the
+  hub's word cloud (and the setting cleared again by removal), and the sample
+  conversation's default Polis address. `hubAdminSettings.test.ts`: the
+  `process` field kind (`plugin.wordcloud.onboarding_id` takes one of the
+  hub's word clouds, refuses a vote's id or an unknown id, takes empty).
+  `crons.test.ts`: a forced admin digest leaves one `job_runs` row on the hub
+  it ran for (needs `CIVIC_TEST_CRON_SECRET`). E2E `feed.spec.ts`: the
+  meeting-summaries pill carries the served `copy.governing_body_short` (local
+  Floyd "BOS"; the old pill said "Board" everywhere). Unit
+  `consolePolish.test.ts`: the short-form rule, the default hub name, the
+  affiliation line and nouns by kind, the `process` field's validation;
+  `sampleContent.test.ts` covers the two new template kinds. Local run
+  2026-10-06: API 32 files, 326 passed, 7 skipped, both modes; unit 104 /
+  1195; Playwright 26/26. E2E ran against an API on :3000 started from
+  `hub-e2e-1006` in `.claude/launch.json` (hub tokens on, localhost → Floyd).
 
 > **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
 > `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs
@@ -956,7 +976,7 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,
