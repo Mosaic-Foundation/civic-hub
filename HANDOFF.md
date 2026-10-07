@@ -6,6 +6,14 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Plugin switches, end to end — 2026-10-07
 
+**Shipped (2026-10-07):** dev ran `21e7070` and the admin walk passed there (Settings → nav without reload, the "Needs
+setup" badge, assistant off with the real CoC review reaching "Ready to submit"; Athens's switches put back). Adam
+fast-forwarded `main` to `21e7070` (13 commits since `c3751ec`; no migrations, dependencies or new env vars).
+Production served it from 16:12:31Z, about 30 s after Vercel reported the build complete. Health ok, hub tokens on,
+schema 34/34. Agora (demo, no sources) now reports Meeting summaries and News sync as needing setup, so its
+meeting-summaries pill is gone until a source or a summary exists. Floyd is configured; its pill stays.
+`CIVIC_PLATFORM_POSTAL_ADDRESS` (set 2026-10-06) takes effect with this deploy.
+
 The 2026-10-06 review's items #1–#9 (at `4785c1a`). Switching a plugin off or on, in hub Settings or the console, is
 now respected everywhere, and the admin who saved sees it at once. Decisions are recorded in BUILD-PLAN under "Plugin
 toggles at runtime" → "Plugin switches, end to end", and in request flow item 5.
