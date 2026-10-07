@@ -52,8 +52,10 @@ published with no "Sent to" line.
 - **Empty discovery is now silent.** This is what M7 asked for, but it was the signal for the 2026-08 Floyd outage
   (page went client-side and parsed to nothing). A source that breaks that way now reads "Nothing new" every day.
   "Test this source" (M11) or a "no meetings in N weeks" flag would cover it.
-- **Beta hubs:** an official who is not on the allow list still cannot sign in to a beta hub. The beta gate
-  refuses before a code is made. Only the mail guard was in scope.
+- **Beta hubs, decided (Adam, follow-up):** anyone in the admin's officials list may sign in to a beta hub as
+  if on the allow list (`requestVerification`, `lookupOfficialByEmail`). For signing in only: the mail guard
+  still holds notifications, briefs and digests to officials on demo and beta hubs. Unit:
+  `demoPrivilegedSignIn.test.ts` (3 more cases).
 - Local flake, not new: `hubSettings.test.ts` banner vs the 60 s settings cache after `leakHarness`.
 
 ---

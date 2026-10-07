@@ -42,6 +42,7 @@ import {
   hubDisplayNameSync,
 } from "../../services/hubSettings.js";
 import { isPrivilegedEmail } from "../../services/privilegedAccounts.js";
+import { lookupOfficialByEmail } from "../../services/officials.js";
 import { currentHubId, currentHubIdOrNull } from "../../config/hubContext.js";
 import type { User, PendingVerification, Session } from "./models.js";
 
@@ -167,10 +168,17 @@ export async function requestVerification(
     };
   }
 
+  // A beta hub admits its admin roster, its allow list, and its officials
+  // (Adam, 2026-10-07): anyone an admin entered in the officials list is
+  // treated as if on the allow list for signing in. Only for signing in: the
+  // mail guard still holds notifications to officials on a demo or beta hub
+  // (mailGuard.ts), and their sign-in code passes it as every code does.
   if (isBetaEnabledSync()) {
     const adminEmails = getAdminEmailsSync();
     if (!adminEmails.includes(normalizedEmail)) {
-      const allowed = await isEmailOnBetaAllowlist(currentHubId(), normalizedEmail);
+      const allowed =
+        (await isEmailOnBetaAllowlist(currentHubId(), normalizedEmail)) ||
+        (await lookupOfficialByEmail(normalizedEmail)) !== null;
       if (!allowed) {
         throw new Error("This hub is currently in private beta.");
       }

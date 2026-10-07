@@ -15,13 +15,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * for everything that is not a sign-in code.
  */
 
-import { ATHENS_HUB } from "../fixtures/hubs/index.js";
+import { ATHENS_HUB, FLOYD_HUB } from "../fixtures/hubs/index.js";
 
 const OFFICIAL = "official@county.example";
 const ADMIN = "admin@athens.example";
 
 vi.mock("../../src/services/privilegedAccounts.js", () => ({
   isPrivilegedEmail: async (email: string) => email.trim().toLowerCase() === OFFICIAL,
+}));
+
+// The officials list: only OFFICIAL is on it.
+vi.mock("../../src/services/officials.js", () => ({
+  lookupOfficialByEmail: async (email: string) =>
+    email === OFFICIAL ? { official_type: "board_of_supervisors", official_title: "Chair" } : null,
 }));
 
 // pending_verifications: nothing recent, the upsert succeeds.
@@ -80,5 +86,27 @@ describe("a privileged account on a demo hub", () => {
     expect(result).toMatchObject({ sent: false, held_back: true, held_back_reason: "this hub is in demo mode" });
     expect(result.error).toBeUndefined();
     expect(sentTo).toEqual([]);
+  });
+});
+
+describe("an official on a beta hub (Adam, 2026-10-07)", () => {
+  it("is let in as if on the allow list, and sent their code", async () => {
+    expect(FLOYD_HUB.mode).toBe("beta");
+    await runWithHub(FLOYD_HUB, SETTINGS, () => requestVerification(OFFICIAL));
+    expect(sentTo).toEqual([OFFICIAL]);
+  });
+
+  it("someone on no list is still refused", async () => {
+    await expect(
+      runWithHub(FLOYD_HUB, SETTINGS, () => requestVerification("stranger@example.com")),
+    ).rejects.toThrow("private beta");
+    expect(sentTo).toEqual([]);
+  });
+
+  it("other mail to the official is still held back", async () => {
+    const result = await runWithHub(FLOYD_HUB, SETTINGS, () =>
+      sendEmail({ to: OFFICIAL, subject: "A brief", html: "<p>hi</p>" }),
+    );
+    expect(result).toMatchObject({ sent: false, held_back: true, held_back_reason: "this hub is in beta mode" });
   });
 });
