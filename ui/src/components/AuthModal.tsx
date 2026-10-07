@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
+import { pluginEnabled } from "../config/plugins";
+import { onboardingTarget } from "../config/pluginRules";
 import {
   requestCode,
   verifyCode,
@@ -284,11 +286,12 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
           pendingAuth.author_label,
           pendingAuth.official,
         );
-        // First-time signup — route to the onboarding word cloud if configured.
+        // First-time signup — route to the onboarding word cloud if configured
+        // and Word clouds is on; otherwise they stay (the home page).
         if (needsResidency) {
-          const wcId = hub.onboarding_wordcloud_id;
-          if (wcId) {
-            window.location.href = `/wordcloud/${wcId}?onboarding=1`;
+          const target = onboardingTarget(hub.onboarding_wordcloud_id, pluginEnabled("wordcloud"));
+          if (target) {
+            window.location.href = target;
             return;
           }
         }

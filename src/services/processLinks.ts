@@ -14,6 +14,7 @@ import { generateId } from "../utils/id.js";
 import { findExistingBriefId } from "../processes/spawnBrief.js";
 import { processDetailPath } from "../processes/registry.js";
 import { isPubliclyFetchable } from "./processLifecycle.js";
+import { isProcessTypeEnabled } from "./pluginGate.js";
 import {
   renderLinks,
   type RenderedLink,
@@ -107,6 +108,12 @@ export async function hydratePeers(
     // queue, which an admin or its own creator may legitimately see — and
     // should never have extended to something deliberately removed.
     if (row.status === "archived") continue;
+
+    // A peer whose plugin the hub switched off is gone for everyone, like an
+    // archived one: its page answers 404. This covers rendered links, the
+    // derived brief pair and the "Read the brief" pointer, which all come
+    // through here. The edge row stays; the link returns with the plugin.
+    if (!isProcessTypeEnabled(row.type)) continue;
 
     // A brief is public only once PUBLISHED: /brief/:id 404s for pending and
     // approved-but-unpublished records, so a "Summarized by" pointer to one

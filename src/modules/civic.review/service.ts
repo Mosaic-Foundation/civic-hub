@@ -30,7 +30,7 @@ import {
   notifyAdminActivationFailed,
 } from "./email.js";
 import { emitEvent } from "../../events/eventEmitter.js";
-import { executeAction, rowToProcess, type ProcessRow } from "../../services/processService.js";
+import { executeAction, getDisabledTypeProcessIds, rowToProcess, type ProcessRow } from "../../services/processService.js";
 import { createProject } from "../civic.projects/index.js";
 import { createProposal } from "../civic.proposals/index.js";
 import { defaultJurisdiction } from "../../config/hub.js";
@@ -247,6 +247,11 @@ export async function approveReview(
     .select<ProcessRow>("*")
     .eq("id", review.process_id)
     .single();
+
+  // A submission whose plugin the hub switched off cannot go live: approving
+  // it would publish a process nobody can open. It waits, hidden from the
+  // queue (listReviews), until the plugin is back on.
+  assertProcessTypeEnabled(proc.type, "Approving");
 
   // What approval does to this process — the status it lands on, and any
   // lifecycle action that has to run for it to be real. The handler declares
@@ -883,6 +888,16 @@ export async function getReviewTurns(
   return data;
 }
 
+/**
+ * Reviews of a process whose plugin the hub switched off are left out of
+ * every list and count: the submission cannot be approved (approveReview)
+ * and its page is gone. Nothing is deleted; they return with the plugin.
+ */
+async function withoutDisabledTypes<T extends { process_id: string }>(rows: T[]): Promise<T[]> {
+  const off = await getDisabledTypeProcessIds();
+  return off.size === 0 ? rows : rows.filter((r) => !off.has(r.process_id));
+}
+
 export async function listReviews(
   statusFilter?: string,
 ): Promise<ProcessReview[]> {
@@ -895,8 +910,7 @@ export async function listReviews(
     query = query.eq("status", statusFilter);
   }
 
-  const data = await query;
-  return data;
+  return withoutDisabledTypes(await query);
 }
 
 export async function listCreatorReviews(
@@ -907,7 +921,7 @@ export async function listCreatorReviews(
     .select<ProcessReview>("*")
     .eq("creator_id", creatorId)
     .order("updated_at", { ascending: false });
-  return data;
+  return withoutDisabledTypes(data);
 }
 
 // --- Notification indicator ---
@@ -934,7 +948,7 @@ export async function countReviewNotifications(
 
   let query = db()
     .from("process_reviews")
-    .count()
+    .select<{ process_id: string }>("process_id")
     .gt("updated_at", seenAt);
 
   if (isAdmin) {
@@ -943,7 +957,7 @@ export async function countReviewNotifications(
     query = query.eq("creator_id", userId).eq("status", "changes_requested");
   }
 
-  return await query;
+  return (await withoutDisabledTypes(await query)).length;
 }
 
 /**

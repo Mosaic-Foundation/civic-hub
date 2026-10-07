@@ -40,7 +40,7 @@ import { isJurisdictionType } from "../shared/jurisdictionType.js";
 import { hubKindOf } from "../shared/hubKind.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { createProcess, getProcess, saveProcessState } from "./processService.js";
-import { getSettingSync, getSupportThreshold } from "./hubSettings.js";
+import { getSettingSync, getSupportThreshold, isPluginEnabled } from "./hubSettings.js";
 import { sampleDeliverySuppressed } from "./sampleContent.js";
 import { sampleNames } from "./sampleNames.js";
 import {
@@ -629,8 +629,13 @@ class SeedRun {
     if (rows.length) await this.db.from("wordcloud_submissions").insert(rows);
 
     // The hub's word cloud (the banner, and where a new account lands), when
-    // it has none. Removal clears it again (sampleContent.ts).
-    if (!getSettingSync(KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID)) {
+    // it has none. Removal clears it again (sampleContent.ts). Not while the
+    // hub's STORED Word clouds switch is off (this run sees every plugin on):
+    // a new account would be sent to a page that answers "not found".
+    if (
+      !getSettingSync(KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID) &&
+      (await isPluginEnabled(this.hubId, "wordcloud"))
+    ) {
       await setSetting(this.hubId, KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID, p.id, "sample-seed");
     }
   }

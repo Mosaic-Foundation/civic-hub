@@ -6,6 +6,7 @@
  */
 
 import { test, expect } from "@playwright/test";
+import { E2E_API_BASE } from "./hubApi";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -87,7 +88,7 @@ test.describe("Hub config strings", () => {
   // (2026-07-02) as "Welcome — the {hub.name} is a community pilot program".
   // The point of the check stays: the title carries the served hub name.
   test("welcome banner title carries the hub name", async ({ page, request }) => {
-    const config = await (await request.get("http://localhost:3000/hub-config")).json();
+    const config = await (await request.get(`${E2E_API_BASE}/hub-config`)).json();
     const hubName: string = config.settings["identity.name"] ?? config.hub.name;
 
     await page.evaluate(() => {

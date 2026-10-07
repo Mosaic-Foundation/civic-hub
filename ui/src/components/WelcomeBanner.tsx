@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { pluginEnabled } from "../config/plugins";
 import hub from "../config/hub";
 import "./WelcomeBanner.css";
 
@@ -40,9 +41,17 @@ export default function WelcomeBanner() {
           </h2>
           <p className="welcome-banner-body">
             A new space to follow county government, raise the issues that
-            matter, and decide together. It's early and still evolving — use the
-            feedback button at the top anytime to report a bug, suggest a
-            feature, or share anything else. We're building this with you.
+            matter, and decide together. It's early and still evolving
+            {/* The button is the Feedback plugin's; without it, no pointer. */}
+            {pluginEnabled("feedback") ? (
+              <>
+                {" "}— use the feedback button at the top anytime to report a
+                bug, suggest a feature, or share anything else.
+              </>
+            ) : (
+              "."
+            )}{" "}
+            We're building this with you.
           </p>
           <div className="welcome-banner-actions">
             <Link to="/welcome" className="welcome-banner-button">

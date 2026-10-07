@@ -16,7 +16,7 @@
 // published stays published.
 
 import { isPluginEnabledSync } from "./hubSettings.js";
-import { PROCESS_TYPE_PLUGINS } from "../processes/registry.js";
+import { PROCESS_TYPE_PLUGINS, registeredProcessTypes } from "../processes/registry.js";
 import type { PluginId } from "../models/hubSettings.js";
 
 /** Thrown when code asks to create a process whose plugin is off. */
@@ -49,10 +49,25 @@ export function disabledProcessTypes(): string[] {
   return Object.keys(PROCESS_TYPE_PLUGINS).filter((t) => !isProcessTypeEnabled(t));
 }
 
-/** Refuse to create a process of a type whose plugin is off. */
-export function assertProcessTypeEnabled(type: string): void {
+/**
+ * A type filter with the switched-off types taken out, for queries that take
+ * one (search, link candidates). `null` asks for every type; it stays `null`
+ * while nothing is off, and becomes the list of registered types that are on
+ * otherwise. An empty result means nothing asked for is available.
+ */
+export function enabledProcessTypesAmong(requested: readonly string[] | null): string[] | null {
+  const off = new Set(disabledProcessTypes());
+  if (off.size === 0) return requested ? [...requested] : null;
+  return (requested ?? registeredProcessTypes()).filter((t) => !off.has(t));
+}
+
+/**
+ * Refuse to create (or, with `verb`, otherwise bring live) a process of a
+ * type whose plugin is off.
+ */
+export function assertProcessTypeEnabled(type: string, verb = "Creating"): void {
   const plugin = processTypePlugin(type);
   if (plugin && !isPluginEnabledSync(plugin)) {
-    throw new PluginDisabledError(plugin, `Creating ${type}`);
+    throw new PluginDisabledError(plugin, `${verb} ${type}`);
   }
 }

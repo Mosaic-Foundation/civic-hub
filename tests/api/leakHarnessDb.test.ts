@@ -90,8 +90,13 @@ function eventRow(id: string, processId: string, actor: string, eventType: strin
   };
 }
 
+// A well-formed vote: the rows outlive this file (afterAll leaves the process
+// rows in place), and the vote handler reads `state.options`. Without it the
+// row answered 500 on GET /process/:id, which failed processes.test.ts
+// whenever this file happened to run just before it (2026-10-07).
 const VOTE_STATE = {
   config: { options: ["Yes", "No"], support_threshold: 5, voting_duration_ms: 86_400_000 },
+  options: ["Yes", "No"],
   status: "active",
   support_count: 0,
   supporters: [],

@@ -51,7 +51,7 @@ export default function SectionForm({
   section,
   title,
   intro,
-  savedMessage = "Saved. Visitors see it on their next page load.",
+  savedMessage = "Saved. It shows on this page now; visitors see it on their next page load.",
   onSaved,
   children,
 }: Props) {

@@ -35,6 +35,7 @@ import {
   getRenderedLinks,
 } from "../services/processLinks.js";
 import { getProcess } from "../services/processService.js";
+import { isProcessTypeEnabled } from "../services/pluginGate.js";
 import { executeSearchRpc } from "../services/searchExecutor.js";
 
 
@@ -98,6 +99,14 @@ export async function handleGetLinks(req: Request, res: Response): Promise<void>
     const viewerId = viewer?.id;
     const isAdmin = isAdminEmail(viewer?.email);
 
+    // A process whose plugin the hub switched off has no links to show: its
+    // page is gone (src/services/pluginGate.ts).
+    const source = await getProcessOwner(processId);
+    if (source && !isProcessTypeEnabled(source.type)) {
+      res.status(404).json({ error: "Process not found" });
+      return;
+    }
+
     const own = await getRenderedLinks(processId, { viewerId, isAdmin });
 
     // The brief pair, derived from state.source_process_id rather than stored.
@@ -120,7 +129,6 @@ export async function handleGetLinks(req: Request, res: Response): Promise<void>
     // — it never has to fetch created_by just to know which affordance to
     // show. Keeps the mount one line for every process type, present and
     // future.
-    const source = await getProcessOwner(processId);
     const canEdit = canEditLinks({
       viewerId,
       isAdmin,
@@ -145,7 +153,7 @@ export async function handleCreateLink(req: Request, res: Response): Promise<voi
     const isAdmin = isAdminEmail(user.email);
 
     const source = await getProcessOwner(fromId);
-    if (!source) {
+    if (!source || !isProcessTypeEnabled(source.type)) {
       res.status(404).json({ error: "Process not found" });
       return;
     }
@@ -160,7 +168,7 @@ export async function handleCreateLink(req: Request, res: Response): Promise<voi
     const link = validateLink(fromId, req.body ?? {});
 
     const target = await getProcessOwner(link.to_id);
-    if (!target) {
+    if (!target || !isProcessTypeEnabled(target.type)) {
       res.status(404).json({ error: "The process you tried to link to was not found." });
       return;
     }
@@ -226,6 +234,11 @@ export async function handleDeleteLink(req: Request, res: Response): Promise<voi
     // relationship and does not get to silently drop it — only its author or
     // an admin can.
     const source = await getProcessOwner(edge.from_id);
+    const here = edge.from_id === processId ? source : await getProcessOwner(processId);
+    if (here && !isProcessTypeEnabled(here.type)) {
+      res.status(404).json({ error: "Process not found" });
+      return;
+    }
     if (!canRemoveLink({ viewerId: user.id, isAdmin, sourceCreatedBy: source?.created_by })) {
       res.status(403).json({
         error: "Only the person who added this link, or an admin, can remove it.",

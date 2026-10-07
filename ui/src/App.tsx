@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from "react
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import hub from "./config/hub";
 import { pluginEnabled, whenPlugin } from "./config/plugins";
+import { useHubConfig } from "./config/HubConfigContext";
 import { BETA_PUBLIC_PATHS } from "./config/betaPublicPaths";
 import Nav from "./components/Nav";
 import HubBanner from "./components/HubBanner";
@@ -96,6 +97,10 @@ function BannerSlot() {
 
 
 function AppContent() {
+  // Subscribes the whole tree to the hub config: when the admin saves
+  // Settings, refreshHubConfig() replaces it and everything below re-renders
+  // with the new plugin switches, name and copy, without a reload.
+  useHubConfig();
   const [showIntro, setShowIntro] = useState(() => !hasSeenIntro());
   const { user, loading } = useAuth();
   const preview = usePreviewMode();
@@ -226,7 +231,7 @@ function AppContent() {
           <Route path="/admin/archived" element={<AdminGuard><AdminArchived /></AdminGuard>} />
           <Route path="/admin/edits" element={<AdminGuard><AdminEdits /></AdminGuard>} />
           {/* Read-only archive of resident feedback, incl. topic suggestions. */}
-          <Route path="/admin/feedback" element={<AdminGuard><AdminFeedback /></AdminGuard>} />
+          <Route path="/admin/feedback" element={whenPlugin("feedback", <AdminGuard><AdminFeedback /></AdminGuard>)} />
         </Routes>
       </main>
 
@@ -263,8 +268,13 @@ function SiteFooter() {
           </span>
         </div>
         <nav className="app-footer-links" aria-label="Legal and feedback">
-          <Link to="/feedback">Send feedback</Link>
-          <span aria-hidden="true">·</span>
+          {/* Gone with the Feedback plugin (config/plugins.tsx). */}
+          {pluginEnabled("feedback") && (
+            <>
+              <Link to="/feedback">Send feedback</Link>
+              <span aria-hidden="true">·</span>
+            </>
+          )}
           <Link to="/privacy">Privacy</Link>
           <span aria-hidden="true">·</span>
           <Link to="/terms">Terms</Link>

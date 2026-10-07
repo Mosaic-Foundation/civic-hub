@@ -8,9 +8,14 @@
 // Hub-scoped since Phase 2a: both calls go through forHub().rpc(), which
 // passes the hub in scope as p_hub_id, and the functions filter on it
 // (20260924050000). One hub's search never returns another hub's processes.
+//
+// Types whose plugin the hub switched off are taken out of the type filter
+// here, for both calls, so hits and totals agree and the link-candidate
+// typeahead (which shares this executor) leaves them out too.
 
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
+import { enabledProcessTypesAmong } from "./pluginGate.js";
 import type {
   SearchCountFn,
   SearchExecuteFn,
@@ -29,9 +34,11 @@ interface SearchProcessesRow {
 }
 
 export const executeSearchRpc: SearchExecuteFn = async (filters) => {
+  const types = enabledProcessTypesAmong(filters.internalTypes);
+  if (types?.length === 0) return [];
   const rows = await forHub(currentHubId()).rpc<SearchProcessesRow[]>("search_processes", {
     p_q: filters.q,
-    p_types: filters.internalTypes,
+    p_types: types,
     p_from: filters.from,
     p_to: filters.to,
     p_sort: filters.sort,
@@ -51,9 +58,11 @@ export const executeSearchRpc: SearchExecuteFn = async (filters) => {
 };
 
 export const countSearchRpc: SearchCountFn = async (filters) => {
+  const types = enabledProcessTypesAmong(filters.internalTypes);
+  if (types?.length === 0) return 0;
   const data = await forHub(currentHubId()).rpc<number | string>("search_processes_count", {
     p_q: filters.q,
-    p_types: filters.internalTypes,
+    p_types: types,
     p_from: filters.from,
     p_to: filters.to,
   });

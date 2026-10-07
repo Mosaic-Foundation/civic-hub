@@ -223,6 +223,16 @@ export async function getProcess(id: string): Promise<Process | undefined> {
  * (the Conversations tab was pulling all 144 rows to show 5 — perf
  * pass, 2026-08-28).
  */
+/**
+ * getProcess, or null when the process's plugin is switched off on the hub in
+ * scope: for the routes under a process's id that answer as if it were not
+ * there (input, edit, links, share). See src/services/pluginGate.ts.
+ */
+export async function getEnabledProcess(id: string): Promise<Process | null> {
+  const process = await getProcess(id);
+  return process && isProcessTypeEnabled(process.definition.type) ? process : null;
+}
+
 export async function getAllProcesses(types?: string[]): Promise<Process[]> {
   let q = db()
     .from("processes")
@@ -823,12 +833,20 @@ export async function getNonPublicProcessIds(): Promise<Set<string>> {
  */
 export async function getHiddenProcessIds(): Promise<Set<string>> {
   const ids = await getNonPublicProcessIds();
-  const disabled = disabledProcessTypes();
-  if (disabled.length > 0) {
-    const off = await db().from("processes").select<{ id: string }>("id").in("type", disabled);
-    for (const r of off) ids.add(r.id);
-  }
+  for (const id of await getDisabledTypeProcessIds()) ids.add(id);
   return ids;
+}
+
+/**
+ * Every process, in any status, whose type's plugin is switched off on the
+ * hub in scope. Empty (and no query) while every plugin is on. For lists of
+ * things that point at processes without carrying their type: reviews.
+ */
+export async function getDisabledTypeProcessIds(): Promise<Set<string>> {
+  const disabled = disabledProcessTypes();
+  if (disabled.length === 0) return new Set();
+  const off = await db().from("processes").select<{ id: string }>("id").in("type", disabled);
+  return new Set(off.map((r) => r.id));
 }
 
 

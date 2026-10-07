@@ -14,7 +14,7 @@ import { listFeedback } from "../civic.feedback/index.js";
 import { effectiveQualityFlag } from "../civic.meeting_summary/index.js";
 import { sendEmail } from "../../utils/email.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
-import { hubDisplayNameSync } from "../../services/hubSettings.js";
+import { hubDisplayNameSync, isPluginEnabledSync } from "../../services/hubSettings.js";
 import { jobProblemsSince, type JobRunRecord } from "../../services/jobRuns.js";
 import type {
   AdminDigestPayload,
@@ -54,6 +54,17 @@ function snapshotFromList(
 export async function buildAdminDigest(): Promise<AdminDigestPayload> {
   const ui = uiBaseUrl();
 
+  // A section whose plugin the hub switched off is left out (empty, which
+  // renders nothing): its panel is gone, so it would link to a dead page.
+  // Proposals → proposal, vote results → vote, meeting summaries →
+  // meeting_summary, feedback → feedback. Not read at all when off.
+  const on = {
+    proposals: isPluginEnabledSync("proposal"),
+    voteResults: isPluginEnabledSync("vote"),
+    meetingSummaries: isPluginEnabledSync("meeting_summary"),
+    feedback: isPluginEnabledSync("feedback"),
+  };
+
   // 1. Proposals — the IDEA BOARD (civic.proposal), not proposed votes.
   //
   //    DO NOT CONFLATE THE TWO. A *proposal* is an idea floated for interest
@@ -70,17 +81,22 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
   // Sample content (Phase 7) is illustrative: it never asks an admin for
   // anything, so it is left out of every list below.
   const sampleIds = await getSampleProcessIds();
-  const submitted = await listProposals("submitted");
-  const endorsed = await listProposals("endorsed");
-  const proposalItems = [...endorsed, ...submitted]
-    .filter((p) => !sampleIds.has(p.id))
-    .map(toPendingItem);
+  const proposalItems = on.proposals
+    ? [...(await listProposals("endorsed")), ...(await listProposals("submitted"))]
+        .filter((p) => !sampleIds.has(p.id))
+        .map(toPendingItem)
+    : [];
 
   // 2. Vote results — civic.vote_results processes whose state has
   //    publication_status === "pending". One DB pass via
   //    getAllProcesses, filter in memory; volume is small.
   // 3. Meeting summaries — same pattern, approval_status === "pending".
-  const allProcesses = (await getAllProcesses()).filter((p) => !p.isSample);
+  const queuedTypes = [
+    ...(on.voteResults ? ["civic.vote_results"] : []),
+    ...(on.meetingSummaries ? ["civic.meeting_summary"] : []),
+  ];
+  const allProcesses =
+    queuedTypes.length > 0 ? (await getAllProcesses(queuedTypes)).filter((p) => !p.isSample) : [];
   const voteResultsItems: PendingItemSummary[] = [];
   const meetingSummaryItems: PendingItemSummary[] = [];
 
@@ -123,18 +139,20 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
   //    the admin the rest of their digest, so it degrades to empty.
   const since = new Date(Date.now() - FEEDBACK_WINDOW_MS).toISOString();
   let feedbackItems: PendingItemSummary[] = [];
-  try {
-    feedbackItems = (await listFeedback({ since })).map((f) => ({
-      id: f.id,
-      title: `${f.category} — ${excerpt(f.message)}${f.screenshot_url ? " [screenshot attached]" : ""}`,
-      created_at: f.created_at,
-    }));
-  } catch (err) {
-    console.warn(
-      `[admin-digest] Feedback section unavailable: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-    );
+  if (on.feedback) {
+    try {
+      feedbackItems = (await listFeedback({ since })).map((f) => ({
+        id: f.id,
+        title: `${f.category} — ${excerpt(f.message)}${f.screenshot_url ? " [screenshot attached]" : ""}`,
+        created_at: f.created_at,
+      }));
+    } catch (err) {
+      console.warn(
+        `[admin-digest] Feedback section unavailable: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 
   // 5. Scheduled jobs that failed or were flagged in the same window. A
@@ -436,6 +454,14 @@ export interface AdminDigestRunResult {
   failed: number;
   empty: boolean;
   generated_at: string;
+  /** Items per section; a section whose plugin is off is always 0. */
+  counts: {
+    proposals: number;
+    vote_results: number;
+    meeting_summaries: number;
+    feedback: number;
+    job_problems: number;
+  };
 }
 
 /**
@@ -446,6 +472,13 @@ export async function runAdminDigest(
   recipients: string[],
 ): Promise<AdminDigestRunResult> {
   const payload = await buildAdminDigest();
+  const counts = {
+    proposals: payload.proposals.count,
+    vote_results: payload.vote_results.count,
+    meeting_summaries: payload.meeting_summaries.count,
+    feedback: payload.feedback.count,
+    job_problems: payload.job_problems.count,
+  };
 
   if (payload.empty) {
     console.log(
@@ -458,6 +491,7 @@ export async function runAdminDigest(
       failed: 0,
       empty: true,
       generated_at: payload.generated_at,
+      counts,
     };
   }
 
@@ -472,6 +506,7 @@ export async function runAdminDigest(
       failed: 0,
       empty: false,
       generated_at: payload.generated_at,
+      counts,
     };
   }
 
@@ -501,5 +536,6 @@ export async function runAdminDigest(
     failed,
     empty: false,
     generated_at: payload.generated_at,
+    counts,
   };
 }

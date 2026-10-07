@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useHubConfig } from "../config/HubConfigContext";
 import { pluginEnabled } from "../config/plugins";
 import "./ProcessPicker.css";
 
@@ -88,13 +89,17 @@ export default function ProcessPicker({ onDismiss, context = null }: Props) {
 
   // Hidden when the hub switched the plugin off (config/plugins.tsx) — each
   // intent's key doubles as its plugin id.
+  // Re-read when the config is refreshed (an admin's Settings save).
+  const hubConfig = useHubConfig();
   const orderedIntents = useMemo(() => {
     const available = INTENTS.filter((i) => pluginEnabled(i.key));
     if (!context) return available;
     const promoted = available.find((i) => i.key === context);
     if (!promoted) return available;
     return [promoted, ...available.filter((i) => i.key !== context)];
-  }, [context]);
+    // pluginEnabled() reads the config from the module; see hubConfig above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [context, hubConfig]);
 
   useEffect(() => {
     const d = dialogRef.current;

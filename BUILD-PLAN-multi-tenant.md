@@ -332,6 +332,11 @@ not. A database function's hub argument is named `p_hub_id`.
    subset> }` for the resolved hub, cacheable for 60 s. The UI fetches it
    once at boot and `ui/src/config/hub.ts` becomes a thin reader over the
    response (env-var defaults remain only as the loading placeholder).
+   **Since 2026-10-07** the response also carries `plugin_setup`: for each
+   switched-on plugin that still needs setup, `{ missing, shown }` (see
+   "Plugin switches, end to end" below). It is computed, not a settings
+   key. The UI re-fetches the config after an admin's Settings save
+   (`refreshHubConfig()`), so the admin's own page changes without a reload.
 6. Local dev: `localhost` maps to the hub named by `CIVIC_DEV_HUB`
    (default `floyd`); `<slug>.localhost` maps to `<slug>` so two hubs can
    be exercised on one dev server.
@@ -415,6 +420,32 @@ Nothing is deleted. **Not filtered, deliberately:** `GET /events`, the
 published record (it still hides non-public statuses as before), and the
 digest's `/unsubscribe` and `/user/settings/digest`, so a link in a digest
 already sent keeps working.
+
+**Plugin switches, end to end (2026-10-07).** The gaps from the 2026-10-06
+review, closed: a switched-off type is also left out of search (hits and
+counts, `enabledProcessTypesAmong`), link candidates, rendered links, brief
+links and the "Read the brief" pointer (`hydratePeers`), the discovery
+manifest's `processes`, the input / edit / links / share routes under its id,
+the admin digest's sections and the admin queue counts; a pending review of
+its type is hidden from the queue and the creator's list and cannot be
+approved. Feedback off also drops the footer link and the "feedback button"
+copy; Word clouds off stops a new account being sent to the onboarding cloud,
+and the sample seed no longer names one while the stored switch is off.
+**The Writing assistant gates only the AI chat and suggestions** (`/message`,
+`/suggest`, and in the UI every affordance hanging off `shellAssistant` in
+`useDraftFlow`: the panel, both "Get suggestions" buttons, per-field help);
+the Code of Conduct check (`/review`) is moderation and runs with it off
+(Adam, 2026-10-07). **Needs setup** (Adam, 2026-10-07): every
+plugin stays on at creation as the creator chose. A plugin that needs setup
+(today Meeting summaries and News sync: a source) appears on the public site
+only when it has something to show — Meeting summaries when the hub has at
+least one public summary (sample included) or a configured source; News sync
+when a source is configured — and in Settings → Plugins stays on with a
+"Needs setup" badge and one line on what is missing. The rule lives in one
+place, `src/shared/pluginSetup.ts` (`PLUGIN_SETUP`); another plugin adopts it
+by adding an entry. Not in this slice: the cross-instance settings cache, so
+on Vercel a save is seen at once by the instance that took it and by others
+within the settings cache's 60 s.
 
 **Jobs** (`src/jobs/`): `registry.ts` lists every scheduled job (id, plugin,
 path, UTC schedule, deprecated paths) as pure data; `runners.ts` maps each id

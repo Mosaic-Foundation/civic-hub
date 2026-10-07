@@ -3,9 +3,12 @@
  *
  * The config is loaded once in main.tsx before the first render, so this
  * context never holds a loading state and consumers never render a spinner
- * for it. The value is fixed for the life of the page: which hub you are
- * looking at is decided by the hostname, and a hostname does not change
- * under a running app.
+ * for it. Which hub you are looking at never changes under a running app (it
+ * is the hostname); what the hub says about itself can, when its admin saves
+ * Settings. refreshHubConfig() re-fetches it, and this provider passes the
+ * new value down, so everything reading the context re-renders. AppContent
+ * reads it, which re-renders the whole tree, so plain `pluginEnabled()` and
+ * `hub.name` reads pick the change up too.
  *
  * Most code does not need this. `import hub from "../config/hub"` reads the
  * same data with the same property names it always had, and is the right
@@ -14,8 +17,8 @@
  * settings key that has no entry in the branding object.
  */
 
-import { createContext, useContext, type ReactNode } from "react";
-import { getLoadedHubConfig, type HubConfig } from "./hubConfig";
+import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
+import { getLoadedHubConfig, subscribeHubConfig, type HubConfig } from "./hubConfig";
 
 const HubConfigContext = createContext<HubConfig | null>(null);
 
@@ -27,7 +30,10 @@ export function HubConfigProvider({
   value?: HubConfig | null;
   children: ReactNode;
 }) {
-  const resolved = value !== undefined ? value : getLoadedHubConfig();
+  // getLoadedHubConfig() returns the same object until a refresh replaces
+  // it, which is the snapshot identity useSyncExternalStore needs.
+  const live = useSyncExternalStore(subscribeHubConfig, getLoadedHubConfig);
+  const resolved = value !== undefined ? value : live;
   return (
     <HubConfigContext.Provider value={resolved}>
       {children}

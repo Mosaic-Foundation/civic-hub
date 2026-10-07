@@ -30,7 +30,7 @@ numbers below, or just grep the heading.
 | Scheduled jobs | `src/jobs/registry.ts` (the one list; `vercel.json` checked against it, `npm run jobs:crontab`), runners `src/jobs/runners.ts`, per-hub loop `src/jobs/runJob.ts` + `src/services/cronHubs.ts`, routes `src/routes/jobRoutes.ts` |
 | Scheduled-job run log: what each outcome means, recording, last-run route, admin digest section | `src/jobs/describe.ts`, `src/services/jobRuns.ts` (table `job_runs`, `20260929000000`), `GET /admin/hub/jobs/runs`, `src/modules/civic.admin_digest/service.ts` |
 | Meeting-summary readiness (when a meeting may be summarized) and quality flags | `src/modules/civic.meeting_summary/readiness.ts`, `effectiveQualityFlag` in `service.ts` |
-| Plugin switches at runtime | `src/services/pluginGate.ts`, `src/middleware/pluginGate.ts`, `PROCESS_TYPE_PLUGINS` in `src/processes/registry.ts`, UI `ui/src/config/plugins.tsx`; admin page `ui/src/pages/settings/PluginsSection.tsx` |
+| Plugin switches at runtime | `src/services/pluginGate.ts`, `src/middleware/pluginGate.ts`, `PROCESS_TYPE_PLUGINS` in `src/processes/registry.ts`, UI `ui/src/config/plugins.tsx` + `pluginRules.ts`; admin page `ui/src/pages/settings/PluginsSection.tsx`; "needs setup" rule `src/shared/pluginSetup.ts` (served by `src/services/pluginSetup.ts`) |
 | A hub's public URLs | `src/utils/baseUrl.ts` (from `hubs.hostname`) |
 | Operator scripts' hub | `scripts/lib/hubScope.ts` (`--hub <slug>`, required) |
 | Hub tokens, the RLS switch | `src/db/hubToken.ts`, `hubTokensEnabled()` / `getHubTokenDb()` in `src/db/client.ts`; policies `20260925000000`, catalog `tenancy_catalog()` `20260925010000` |
@@ -71,6 +71,11 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Plugin switches, end to end (2026-10-07)**: Settings save re-renders the
+  admin's page (`refreshHubConfig`), CoC check outside the assistant gate,
+  search / links / digest / discovery / reviews respect a switched-off type,
+  "needs setup" (`src/shared/pluginSetup.ts`, `plugin_setup` in
+  `/hub-config`) — top of HANDOFF (grep the heading)
 - **Non-place legal text, Adam's three changes (2026-09-27, third part)**:
   `legal.governing_state`, people not residents, the complaint line — 7–42
 - **Jurisdiction data, the jurisdiction code, hub kinds (2026-09-27, second

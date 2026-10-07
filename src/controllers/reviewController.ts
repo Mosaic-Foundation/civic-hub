@@ -352,6 +352,10 @@ export async function handleAdminApprove(
     const result = await approveReview(reviewId, user.id);
     res.json(result);
   } catch (err) {
+    if (isPluginDisabledError(err)) {
+      res.status(404).json({ error: err.message, code: err.code });
+      return;
+    }
     const message = err instanceof Error ? err.message : "Unknown error";
     const status = message.includes("not found")
       ? 404

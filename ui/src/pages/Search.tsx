@@ -10,6 +10,8 @@ import {
 import SearchBar from "../components/SearchBar";
 import { relativeTime, absoluteTime } from "../components/FeedPost";
 import hub from "../config/hub";
+import { processTypeShown } from "../config/plugins";
+import { searchChipsShown } from "../config/pluginRules";
 // FeedFilter.css carries the .feed-filter-pill--<kind> rules we
 // reuse for the post-type filter row on this page. Imported here
 // since Search doesn't render <FeedFilter> directly.
@@ -247,7 +249,9 @@ export default function SearchPage() {
           >
             All types
           </button>
-          {TYPE_CHOICES.map((choice) => {
+          {/* Only types this hub shows: a switched-off plugin's chip is gone
+              (the server leaves its type out of every search anyway). */}
+          {searchChipsShown(TYPE_CHOICES, processTypeShown).map((choice) => {
             const active = types.includes(choice.key);
             const cls = [
               "feed-filter-pill",

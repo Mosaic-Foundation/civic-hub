@@ -20,6 +20,8 @@
 // by GET /hub-config/documents rather than loaded on every boot.
 
 import type { Request, Response } from "express";
+import { pluginSetupFor } from "../services/pluginSetup.js";
+import type { PluginSetupStatus } from "../shared/pluginSetup.js";
 import { getPublicSettings } from "../services/hubSettings.js";
 import { hubDocuments } from "../services/hubDocuments.js";
 import type { Hub, HubMode } from "../models/hub.js";
@@ -44,6 +46,12 @@ interface PublicHub {
 export interface HubConfigResponse {
   hub: PublicHub;
   settings: Record<string, string>;
+  /**
+   * Plugins switched on that still need setup, by id (added 2026-10-07):
+   * what is missing, and whether the public site shows them anyway. Absent
+   * means ready. The rule: src/shared/pluginSetup.ts.
+   */
+  plugin_setup: Record<string, PluginSetupStatus>;
 }
 
 function publicHub(hub: Hub): PublicHub {
@@ -72,6 +80,7 @@ export async function handleGetHubConfig(
   }
 
   const settings = await getPublicSettings(hub.id);
+  const pluginSetup = await pluginSetupFor(hub.id);
 
   // `private`, not `public`: this response differs per hostname, and a shared
   // cache that keyed it wrongly would serve one hub's identity on another's
@@ -79,7 +88,7 @@ export async function handleGetHubConfig(
   // edits these values from the Settings page and expects the next reload to
   // show them. Express's ETag makes the revalidation a 304 with no body.
   res.set("Cache-Control", "private, no-cache");
-  const body: HubConfigResponse = { hub: publicHub(hub), settings };
+  const body: HubConfigResponse = { hub: publicHub(hub), settings, plugin_setup: pluginSetup };
   res.json(body);
 }
 

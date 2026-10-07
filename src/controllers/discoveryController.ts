@@ -7,6 +7,7 @@
 // who this space is, where its stream is, and what it can do.
 
 import { Request, Response } from "express";
+import { isProcessTypeEnabled } from "../services/pluginGate.js";
 import { baseUrl } from "../utils/baseUrl.js";
 import { getRegisteredTypes } from "../processes/registry.js";
 import { civicPlaceCode, hubName, spaceDid } from "../config/hub.js";
@@ -29,7 +30,9 @@ export function handleDiscoveryManifest(_req: Request, res: Response): void {
   if (placeCode) manifest.jurisdictions = [placeCode];
 
   manifest.feeds = [`${hub}/events`];
-  manifest.processes = getRegisteredTypes();
+  // Only the types this hub offers: one whose plugin is switched off cannot
+  // be created, read or acted on here (src/services/pluginGate.ts).
+  manifest.processes = getRegisteredTypes().filter(isProcessTypeEnabled);
   // Civic Activity Spec v0.2 §6.3: "A conformance claim names its level."
   // Level 1 (Publisher) is what this hub implements — a single validated
   // emission path serving the §6.1 collection under the §5.2 serving rule.

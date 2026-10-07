@@ -3,7 +3,12 @@
 // on, its job is skipped — while another hub on the same server is
 // unaffected, and switching it back on brings back exactly what was there.
 //
-// Word clouds are the plugin under test: nothing else in tests/api uses them
+// The last block (2026-10-07) walks EVERY plugin id the same way: its routes,
+// creation, search, links, the admin digest, its job; plus the Code of
+// Conduct check with the Writing assistant off, and a pending review of a
+// switched-off type.
+//
+// Word clouds are the plugin under test here: nothing else in tests/api uses them
 // on Athens, and they are cheap to create. Files run one at a time
 // (vitest.config.ts), so switching a plugin off here cannot leak into another
 // file; afterAll removes the row, returning Athens to its seeded state.
@@ -12,7 +17,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
-import { localRest, mintSession } from "../fixtures/adminSession.js";
+import { localRest, mintSession, storedSetting } from "../fixtures/adminSession.js";
 
 const ATHENS = "athens.localhost";
 const FLOYD = "floyd.civic.social";
@@ -303,5 +308,354 @@ describe("the hourly vote close (job vote_close)", () => {
 
     // Run again: nothing left to close.
     expect((await runJob()).body.hubs.athens.closed).not.toContain(voteId);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Every plugin id (2026-10-07, "plugin switches, end to end"). For each one:
+// switch it on, look; switch it off, look again; put it back as it was.
+//
+// Fixtures are inserted straight into the local stack, one public process per
+// type with a word nobody else uses in its title, so search and links have
+// something to find or not. search_doc is kept by a trigger, so they are
+// searchable at once. Everything inserted is deleted in afterAll.
+// ---------------------------------------------------------------------------
+
+interface PluginCase {
+  id: string;
+  /** A route of the plugin's that answers something other than 404 while it is on. */
+  route?: { method: string; path: () => string; admin?: boolean };
+  /** The scheduled job it owns (src/jobs/registry.ts). */
+  job?: string;
+  /** Its process types: creation, search and links are checked for each. */
+  types?: string[];
+  /** The admin digest section it owns (AdminDigestRunResult.counts). */
+  digest?: "proposals" | "vote_results" | "meeting_summaries" | "feedback";
+}
+
+const PLUGIN_CASES: PluginCase[] = [
+  { id: "vote", route: { method: "GET", path: () => "/votes/drafts/duration-limits", admin: true }, types: ["civic.vote", "civic.vote_results"], digest: "vote_results" },
+  { id: "proposal", route: { method: "GET", path: () => "/proposals" }, types: ["civic.proposal"], digest: "proposals" },
+  { id: "project", route: { method: "GET", path: () => "/projects" }, types: ["civic.project"] },
+  { id: "announcement", route: { method: "GET", path: () => "/announcements" }, types: ["civic.announcement"] },
+  { id: "brief", route: { method: "GET", path: () => "/brief" }, types: ["civic.brief"] },
+  { id: "meeting_summary", route: { method: "GET", path: () => "/admin/meeting-summaries", admin: true }, job: "meeting-summary", types: ["civic.meeting_summary"], digest: "meeting_summaries" },
+  { id: "wordcloud", route: { method: "GET", path: () => `/wordcloud/${athensCloud}` }, types: ["civic.wordcloud"] },
+  { id: "conversation", route: { method: "GET", path: () => "/deliberations" }, types: ["civic.polis_deliberation"] },
+  // Unauthenticated: 401 while on (the resident gate), 404 while off (the
+  // plugin gate runs first). Only chat and suggestions are the assistant's.
+  { id: "assistant", route: { method: "POST", path: () => "/assistant/civic.vote/drafts/none/message" } },
+  { id: "digest", job: "digest" },
+  { id: "admin_digest", job: "admin-digest" },
+  { id: "search", route: { method: "GET", path: () => "/search?q=anything" } },
+  { id: "feedback", route: { method: "GET", path: () => "/admin/feedback", admin: true }, digest: "feedback" },
+  { id: "news_sync", job: "news-sync" },
+];
+
+const fixtureIds: string[] = [];
+const fixtureLinks: string[] = [];
+/** Per process type: the fixture's id, and the one word in its title. */
+const fixtures = new Map<string, { id: string; word: string }>();
+let anchorVote = "";
+let anchorCloud = "";
+let athensResident = "";
+
+/** A fixture's state: what makes it count where the test looks. */
+function fixtureState(type: string): Record<string, unknown> {
+  if (type === "civic.brief") return { publication_status: "published" };
+  if (type === "civic.vote_results") return { publication_status: "pending" };
+  if (type === "civic.meeting_summary") return { approval_status: "pending" };
+  return {};
+}
+
+async function insertFixture(type: string, word: string): Promise<string> {
+  const id = `proc_plugtest_${word}`;
+  await localRest("processes", {
+    method: "POST",
+    body: JSON.stringify({
+      id,
+      hub_id: "athens",
+      type,
+      title: `Plugin switch fixture ${word}`,
+      description: "Inserted by tests/api/pluginToggles.test.ts.",
+      jurisdiction: "us-test-athens",
+      status: "active",
+      content: {},
+      state: fixtureState(type),
+      created_by: "user:civic-admin",
+    }),
+  });
+  fixtureIds.push(id);
+  return id;
+}
+
+async function linkFixture(from: string, to: string): Promise<void> {
+  const id = `plink_plugtest_${fixtureLinks.length}_${run}`;
+  await localRest("process_links", {
+    method: "POST",
+    body: JSON.stringify({ id, hub_id: "athens", from_id: from, to_id: to, relation: "references", created_by: "user:civic-admin" }),
+  });
+  fixtureLinks.push(id);
+}
+
+/** The anchor a type's fixture is linked from: one whose plugin stays on. */
+function anchorFor(c: PluginCase): string {
+  return c.id === "vote" ? anchorCloud : anchorVote;
+}
+
+async function searchFinds(word: string, id: string): Promise<{ found: boolean; total: number }> {
+  const res = await call("GET", `/search?q=${word}`, ATHENS);
+  expect(res.status, JSON.stringify(res.body)).toBe(200);
+  const hits = res.body.hits as Array<{ process_id: string }>;
+  return { found: hits.some((h) => h.process_id === id), total: res.body.total };
+}
+
+async function linksOf(processId: string): Promise<{ status: number; ids: string[] }> {
+  const res = await call("GET", `/process/${processId}/links`, ATHENS);
+  const all = [...(res.body.outgoing ?? []), ...(res.body.incoming ?? [])] as Array<{ peer: { id: string } }>;
+  return { status: res.status, ids: all.map((l) => l.peer.id) };
+}
+
+async function candidatesFor(word: string): Promise<string[]> {
+  const res = await call("GET", `/process/link-candidates?q=${word}`, ATHENS, undefined, athensAdmin);
+  expect(res.status, JSON.stringify(res.body)).toBe(200);
+  return (res.body.candidates as Array<{ id: string }>).map((c) => c.id);
+}
+
+async function digestCounts(): Promise<Record<string, number>> {
+  const res = await call("GET", "/internal/admin-digest/run?hub=athens&force=true", ATHENS, undefined, CRON_SECRET);
+  expect(res.status, JSON.stringify(res.body)).toBe(200);
+  return res.body.hubs.athens.counts;
+}
+
+async function routeStatus(c: PluginCase): Promise<number> {
+  const r = c.route!;
+  return (await call(r.method, r.path(), ATHENS, r.method === "POST" ? {} : undefined, r.admin ? athensAdmin : undefined)).status;
+}
+
+describe("every plugin, switched off on Athens", () => {
+  beforeAll(async () => {
+    athensResident = await mintSession("athens", `resident+plugtest${run}@example.test`);
+    // The first block leaves the admin digest off on Athens until the file
+    // ends; this block reads it, so it is on here and off again after.
+    await setAthens({ "plugin.admin_digest.enabled": "true" });
+    anchorVote = await insertFixture("civic.vote", `anchorvote${run}`);
+    anchorCloud = await insertFixture("civic.wordcloud", `anchorcloud${run}`);
+    for (const c of PLUGIN_CASES) {
+      for (const type of c.types ?? []) {
+        const word = `plugtest${run}${type.replace(/\W/g, "")}`;
+        const id = await insertFixture(type, word);
+        fixtures.set(type, { id, word });
+        await linkFixture(anchorFor(c), id);
+      }
+    }
+    // The digest's proposals and feedback sections read their own tables.
+    const proposal = await call("POST", "/proposals", ATHENS, { title: `Plugin switch proposal ${run}`, description: "Fixture." }, athensResident);
+    expect(proposal.status, JSON.stringify(proposal.body)).toBe(201);
+    const feedback = await call("POST", "/feedback", ATHENS, { category: "idea", message: `Plugin switch fixture ${run}` });
+    expect(feedback.status, JSON.stringify(feedback.body)).toBeLessThan(300);
+  });
+
+  afterAll(async () => {
+    await setAthens({ "plugin.admin_digest.enabled": "false" });
+    if (fixtureLinks.length) await localRest(`process_links?id=in.(${fixtureLinks.join(",")})`, { method: "DELETE" });
+    if (fixtureIds.length) await localRest(`processes?id=in.(${fixtureIds.join(",")})`, { method: "DELETE" });
+  });
+
+  it("the table covers every plugin id", () => {
+    // PLUGIN_IDS, src/models/hubSettings.ts; the contract's list.
+    expect(PLUGIN_CASES.map((c) => c.id).sort()).toEqual(
+      ["admin_digest", "announcement", "assistant", "brief", "conversation", "digest", "feedback",
+        "meeting_summary", "news_sync", "project", "proposal", "search", "vote", "wordcloud"],
+    );
+  });
+
+  for (const c of PLUGIN_CASES) {
+    describe(c.id, () => {
+      const key = `plugin.${c.id}.enabled`;
+      let storedBefore: string | undefined;
+      let effectiveBefore = "true";
+      const on: { route?: number; search: Record<string, boolean>; candidates: Record<string, boolean>; digest?: number } = {
+        search: {},
+        candidates: {},
+      };
+
+      beforeAll(async () => {
+        storedBefore = await storedSetting("athens", key);
+        effectiveBefore = (await athensConfig())[key] ?? "true";
+        await setAthens({ [key]: "true" });
+        // What it looks like while on, to compare against.
+        if (c.route) on.route = await routeStatus(c);
+        for (const type of c.types ?? []) {
+          const f = fixtures.get(type)!;
+          on.search[type] = (await searchFinds(f.word, f.id)).found;
+          on.candidates[type] = (await candidatesFor(f.word)).includes(f.id);
+        }
+        if (c.digest) on.digest = (await digestCounts())[c.digest];
+        await setAthens({ [key]: "false" });
+      });
+
+      afterAll(async () => {
+        // Back as it was: the stored row if there was one, else no row.
+        await setAthens({ [key]: storedBefore ?? effectiveBefore });
+        if (storedBefore === undefined) {
+          await localRest(`hub_settings?hub_id=eq.athens&key=eq.${key}`, { method: "DELETE" });
+        }
+      });
+
+      it("the public config says it is off", async () => {
+        expect((await athensConfig())[key]).toBe("false");
+      });
+
+      if (c.route) {
+        it("its route answers 404 (and did not while on)", async () => {
+          expect(on.route).not.toBe(404);
+          expect(await routeStatus(c)).toBe(404);
+        });
+      }
+
+      if (c.job) {
+        it("its job is skipped for Athens", async (ctx) => {
+          const res = await call("GET", `/internal/${c.job}/run?hub=athens`, ATHENS, undefined, CRON_SECRET);
+          if (res.status === 200 && res.body === "disabled") return ctx.skip();
+          expect(res.status, JSON.stringify(res.body)).toBe(200);
+          expect(res.body.hubs.athens).toEqual({ skipped: true, reason: `${key} is off` });
+        });
+      }
+
+      for (const type of c.types ?? []) {
+        it(`${type}: creation is refused`, async () => {
+          const res = await call(
+            "POST",
+            "/process",
+            ATHENS,
+            { definition: { type, version: "0.1" }, title: `Refused ${run}`, description: "x", state: {} },
+            athensAdmin,
+          );
+          expect(res.status, JSON.stringify(res.body)).toBe(404);
+          expect(res.body.error).toMatch(/not available on this hub/);
+        });
+
+        it(`${type}: search leaves it out, hits and total alike`, async () => {
+          const f = fixtures.get(type)!;
+          expect(on.search[type]).toBe(true);
+          expect(await searchFinds(f.word, f.id)).toEqual({ found: false, total: 0 });
+        });
+
+        it(`${type}: links leave it out, its own links 404, and it is no link candidate`, async () => {
+          const f = fixtures.get(type)!;
+          expect((await linksOf(anchorFor(c))).ids).not.toContain(f.id);
+          expect((await linksOf(f.id)).status).toBe(404);
+          expect(on.candidates[type]).toBe(true);
+          expect(await candidatesFor(f.word)).not.toContain(f.id);
+        });
+      }
+
+      if (c.types?.length) {
+        it("discovery lists none of its types", async () => {
+          const types = (await call("GET", "/.well-known/civic.json", ATHENS)).body.processes as string[];
+          for (const type of c.types!) expect(types).not.toContain(type);
+        });
+      }
+
+      if (c.digest) {
+        it(`the admin digest leaves out its section (${c.digest})`, async () => {
+          expect(on.digest).toBeGreaterThan(0);
+          expect((await digestCounts())[c.digest!]).toBe(0);
+        });
+      }
+    });
+  }
+
+  describe("links come back with the plugin", () => {
+    it("a link to a type switched back on is rendered again", async () => {
+      const f = fixtures.get("civic.project")!;
+      expect((await linksOf(anchorVote)).ids).toContain(f.id);
+    });
+  });
+});
+
+// The Code of Conduct check is moderation, not writing help (Adam,
+// 2026-10-07): with the Writing assistant off it still runs, so a draft can
+// still be checked and submitted. Only the chat and the suggestions go.
+describe("the Code of Conduct check with the Writing assistant off", () => {
+  let draftId = "";
+
+  beforeAll(async () => {
+    const draft = await call("POST", "/votes/drafts", ATHENS, {}, athensAdmin);
+    expect(draft.status, JSON.stringify(draft.body)).toBe(201);
+    draftId = draft.body.id;
+    await setAthens({ "plugin.assistant.enabled": "false" });
+  });
+
+  afterAll(async () => {
+    await setAthens({ "plugin.assistant.enabled": "true" });
+    await localRest("hub_settings?hub_id=eq.athens&key=eq.plugin.assistant.enabled", { method: "DELETE" });
+  });
+
+  it("the review route answers (not 404)", async () => {
+    const res = await call("POST", `/assistant/civic.vote/drafts/${draftId}/review`, ATHENS, {}, athensAdmin);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.draft?.id).toBe(draftId);
+  });
+
+  it("the chat and the suggestions answer 404", async () => {
+    for (const path of ["message", "suggest"]) {
+      const res = await call("POST", `/assistant/civic.vote/drafts/${draftId}/${path}`, ATHENS, { message: "hi" }, athensAdmin);
+      expect(res.status, path).toBe(404);
+    }
+  });
+});
+
+// A submission waiting for review when its plugin goes off: hidden from the
+// queue and from its creator's list, and cannot be approved; back with the
+// plugin, nothing lost.
+describe("a pending review of a switched-off type", () => {
+  let reviewId = "";
+  let processId = "";
+
+  beforeAll(async () => {
+    athensResident ||= await mintSession("athens", `resident+plugtest${run}@example.test`);
+    const res = await call(
+      "POST",
+      "/reviews/submit",
+      ATHENS,
+      { process_type: "civic.wordcloud", title: `Pending cloud ${run}`, description: "x", state: { prompts: [{ id: "p1", text: "One word?" }] } },
+      athensResident,
+    );
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    reviewId = res.body.review.id;
+    processId = res.body.process_id;
+    expect(res.body.review.status).toBe("pending_review");
+    await setAthens({ "plugin.wordcloud.enabled": "false" });
+  });
+
+  afterAll(async () => {
+    await setAthens({ "plugin.wordcloud.enabled": "true" });
+    await localRest("hub_settings?hub_id=eq.athens&key=eq.plugin.wordcloud.enabled", { method: "DELETE" });
+  });
+
+  it("is gone from the admin queue and the creator's list", async () => {
+    const queue = await call("GET", "/admin/reviews?status=pending_review", ATHENS, undefined, athensAdmin);
+    expect(queue.status).toBe(200);
+    expect(JSON.stringify(queue.body)).not.toContain(reviewId);
+    const mine = await call("GET", "/reviews/mine", ATHENS, undefined, athensResident);
+    expect(JSON.stringify(mine.body)).not.toContain(reviewId);
+  });
+
+  it("cannot be approved", async () => {
+    const res = await call("POST", `/admin/reviews/${reviewId}/approve`, ATHENS, {}, athensAdmin);
+    expect(res.status, JSON.stringify(res.body)).toBe(404);
+    const [row] = (await localRest(`process_reviews?id=eq.${reviewId}&select=status`)) as Array<{ status: string }>;
+    expect(row.status).toBe("pending_review");
+  });
+
+  it("comes back with the plugin, and can be approved", async () => {
+    await setAthens({ "plugin.wordcloud.enabled": "true" });
+    const queue = await call("GET", "/admin/reviews?status=pending_review", ATHENS, undefined, athensAdmin);
+    expect(JSON.stringify(queue.body)).toContain(reviewId);
+    const res = await call("POST", `/admin/reviews/${reviewId}/approve`, ATHENS, {}, athensAdmin);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.process_id).toBe(processId);
   });
 });

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { meetingSummaryLabel } from "../config/hub";
-import { pluginEnabled } from "../config/plugins";
+import { pluginShown } from "../config/plugins";
 import {
   classifyActivity,
   type ClassifierEvent,
@@ -101,11 +101,12 @@ interface Props {
   onChange: (next: FeedFilterKey) => void;
 }
 
-// Hidden when the hub switched the plugin off (config/plugins.tsx).
+// Hidden when the hub switched the plugin off, or while it needs setup and
+// has nothing to show (config/plugins.tsx).
 function visibleChoices(): FeedFilterChoice[] {
   return choices().filter((choice) => {
-    if (choice.key === "announcement") return pluginEnabled("announcement");
-    if (choice.key === "meeting_summary") return pluginEnabled("meeting_summary");
+    if (choice.key === "announcement") return pluginShown("announcement");
+    if (choice.key === "meeting_summary") return pluginShown("meeting_summary");
     return true;
   });
 }

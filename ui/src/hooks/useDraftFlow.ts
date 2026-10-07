@@ -10,6 +10,7 @@
 // proposal / vote / project — and any future plugin type.
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { pluginEnabled } from "../config/plugins";
 import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "./useRequireAuth";
 import {
@@ -608,7 +609,11 @@ export function useDraftFlow<D extends BaseDraft>({
       }));
   }, [applyFields, pendingFields, draft, config]);
 
-  const shellAssistant: DraftShellAssistant | null = config?.available
+  // Every AI affordance hangs off this: the panel, Get suggestions (top and
+  // the footer echo), per-field help. Null when the type has no assistant or
+  // the hub switched the Writing assistant off. The Code of Conduct check is
+  // not part of it and runs either way (handleReview; Adam, 2026-10-07).
+  const shellAssistant: DraftShellAssistant | null = config?.available && pluginEnabled("assistant")
     ? {
         open: assistantOpen,
         opening: assistantOpening,

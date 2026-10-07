@@ -18,6 +18,7 @@
 
 import { parseTheme, resolveTheme } from "../../../src/shared/theme";
 import type { DeadEndCode } from "../../../src/shared/deadEnd";
+import type { PluginSetupStatus } from "../../../src/shared/pluginSetup";
 
 export interface HubIdentity {
   id: string;
@@ -38,6 +39,11 @@ export interface HubConfig {
   hub: HubIdentity;
   /** Dotted keys — see the build plan's public subset. */
   settings: Record<string, string>;
+  /**
+   * Switched-on plugins that still need setup (src/shared/pluginSetup.ts).
+   * Optional so a config from an older server still parses.
+   */
+  plugin_setup?: Record<string, PluginSetupStatus>;
 }
 
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
@@ -51,6 +57,20 @@ const LOAD_TIMEOUT_MS = 2000;
 
 let loaded: HubConfig | null = null;
 let deadEnd: DeadEndCode | null = null;
+
+/**
+ * Who to tell when the config changes under a running page. The config is
+ * fetched once at boot, and that is all a visitor ever needs; the exception
+ * is the hub's own admin, whose Settings save changes it (a plugin switched
+ * off, a new name). HubConfigProvider subscribes, so a refresh re-renders
+ * the app with the new values: no reload.
+ */
+const listeners = new Set<() => void>();
+
+export function subscribeHubConfig(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
 
 /**
  * In local development the UI runs on :5173 and calls the API on :3000
@@ -121,13 +141,15 @@ export function setting(key: string): string | undefined {
  * render with fallbacks, not a reason to show nothing: the alternative is a
  * white screen for a transient network failure.
  */
-export async function loadHubConfig(): Promise<HubConfig | null> {
+export async function loadHubConfig(opts: { fresh?: boolean } = {}): Promise<HubConfig | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LOAD_TIMEOUT_MS);
   try {
     const res = await fetch(`${API_BASE}/hub-config${devHubQuery()}`, {
       signal: controller.signal,
       headers: { Accept: "application/json" },
+      // A refresh after a save must not be answered from the HTTP cache.
+      ...(opts.fresh ? { cache: "no-store" as const } : {}),
     });
     if (!res.ok) {
       deadEnd = deadEndFromResponse(res.status, await res.json().catch(() => null));
@@ -143,6 +165,29 @@ export async function loadHubConfig(): Promise<HubConfig | null> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Fetch the config again and re-render with it: after the admin saves a
+ * Settings section that changes what the public config says (plugins,
+ * identity, copy, participation, mode, theme). Keeps the old config when the
+ * fetch fails, so a blip never blanks the hub's identity. Resolves to whether
+ * the config was replaced.
+ */
+export async function refreshHubConfig(): Promise<boolean> {
+  const before = loaded;
+  const deadEndBefore = deadEnd;
+  const fresh = await loadHubConfig({ fresh: true });
+  // A transient failure (or a dead end, which a running page cannot act on)
+  // leaves what the page has.
+  deadEnd = deadEndBefore;
+  if (!fresh) {
+    loaded = before;
+    return false;
+  }
+  applyHubHead();
+  for (const listener of listeners) listener();
+  return true;
 }
 
 /**

@@ -150,7 +150,9 @@ app.use("/process", inputRoutes);
 
 // Shared drafting-assistant endpoints — one surface for every process type,
 // dispatched through the registry (ProcessHandler.getAssistantConfig).
-app.use("/assistant", requirePlugin("assistant"), assistantRoutes);
+// Gated route by route, not here: the Code of Conduct check under /assistant
+// runs with the Writing assistant off (src/routes/assistantRoutes.ts).
+app.use("/assistant", assistantRoutes);
 
 // Proposal draft endpoints — draft storage + submission (mounted before
 // /proposals so /proposals/drafts doesn't get caught by /proposals/:id).

@@ -6,11 +6,18 @@
 // the server answers its routes 404 as well (src/services/pluginGate.ts), so
 // hiding here is presentation, never the only guard.
 //
-// Read once at boot like the rest of the hub config: switching a plugin off
-// takes effect on a visitor's next page load.
+// Read at boot like the rest of the hub config: switching a plugin off takes
+// effect on a visitor's next page load, and at once for the admin who
+// switched it (Settings refreshes the config: refreshHubConfig()).
+//
+// A plugin can also be on but not set up yet (src/shared/pluginSetup.ts):
+// the public site shows it only once it has something to show. Surfaces that
+// advertise a plugin's content (a filter chip, a search chip) ask
+// pluginShown(); its pages and admin tabs stay behind pluginEnabled().
 
 import type { ReactElement } from "react";
-import { setting } from "./hubConfig";
+import { getLoadedHubConfig, setting } from "./hubConfig";
+import { pluginShownGiven, type PluginSetupStatus } from "../../../src/shared/pluginSetup";
 
 export type PluginId =
   | "vote"
@@ -33,6 +40,16 @@ export function pluginEnabled(id: PluginId): boolean {
   return setting(`plugin.${id}.enabled`) !== "false";
 }
 
+/** What is missing for a switched-on plugin that needs setup; null when ready. */
+export function pluginSetup(id: PluginId): PluginSetupStatus | null {
+  return getLoadedHubConfig()?.plugin_setup?.[id] ?? null;
+}
+
+/** On, and either set up or with something to show anyway. */
+export function pluginShown(id: PluginId): boolean {
+  return pluginShownGiven(id, pluginEnabled(id), getLoadedHubConfig()?.plugin_setup);
+}
+
 /** The plugin a process type belongs to (mirrors PROCESS_TYPE_PLUGINS). */
 const PROCESS_TYPE_PLUGINS: Readonly<Record<string, PluginId>> = {
   "civic.vote": "vote",
@@ -49,6 +66,12 @@ const PROCESS_TYPE_PLUGINS: Readonly<Record<string, PluginId>> = {
 export function processTypeEnabled(type: string): boolean {
   const plugin = PROCESS_TYPE_PLUGINS[type];
   return !plugin || pluginEnabled(plugin);
+}
+
+/** processTypeEnabled, and its plugin is shown (see pluginShown). */
+export function processTypeShown(type: string): boolean {
+  const plugin = PROCESS_TYPE_PLUGINS[type];
+  return !plugin || pluginShown(plugin);
 }
 
 /** What a route of a switched-off plugin renders instead of its page. */

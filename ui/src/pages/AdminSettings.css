@@ -820,6 +820,25 @@
   font-weight: 600;
 }
 
+.plugin-needs-setup {
+  margin: 0 0 8px 28px;
+  padding: var(--space-xs) var(--space-sm);
+  border-left: 3px solid var(--color-warning);
+  background: var(--color-warning-bg);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+.plugin-needs-setup-chip {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-warning);
+  border: 1px solid currentColor;
+}
+
 .job-run-chip {
   display: inline-block;
   padding: 0 6px;
@@ -857,6 +876,7 @@
   .plugin-settings,
   .plugin-off-note,
   .plugin-live-warning,
+  .plugin-needs-setup,
   .job-runs {
     margin-left: 0;
   }

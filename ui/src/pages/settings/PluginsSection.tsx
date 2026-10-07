@@ -16,6 +16,10 @@
 // to where it is changed — one writer per key, so the two can never drift:
 // announcement authors and brief recipients (Officials), the support
 // threshold and comment anonymity (Participation).
+//
+// A plugin that is on but cannot do anything yet (today Meeting summaries
+// and News sync, without a source) stays on and shows a "Needs setup" badge
+// saying what is missing (Adam, 2026-10-07; src/shared/pluginSetup.ts).
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -32,6 +36,7 @@ import {
   UrlField,
 } from "./fields";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
+import { pluginSetup } from "../../config/plugins";
 import {
   adminGetJobRuns,
   adminGetPluginLiveCounts,
@@ -143,9 +148,13 @@ function PluginCard({
 }) {
   const on = f.value(`plugin.${id}.enabled`) === "true";
   const panel = settingsPanel(f, id);
+  // From the served config, so it describes what is saved; refreshed after
+  // every save (src/shared/pluginSetup.ts holds the rule).
+  const setup = pluginSetup(id);
   return (
     <section className={`plugin-card${on ? "" : " plugin-card-off"}`} aria-label={PLUGINS[id].name}>
       <BooleanField f={f} k={`plugin.${id}.enabled`} label={PLUGINS[id].name} hint={PLUGINS[id].what} />
+      {on && setup && <NeedsSetup missing={setup.missing} shown={setup.shown} />}
       {on && <JobRunLines jobs={jobs} plugin={id} />}
       {!on && live > 0 && <LiveItemsWarning id={id} live={live} />}
       {panel && on && <div className="plugin-settings">{panel}</div>}
@@ -155,6 +164,19 @@ function PluginCard({
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * Switched on, but nothing to do until the admin sets it up. It stays on;
+ * the public site shows it only once it has something to show.
+ */
+function NeedsSetup({ missing, shown }: { missing: string; shown: boolean }) {
+  return (
+    <p className="plugin-needs-setup" role="status">
+      <span className="plugin-needs-setup-chip">Needs setup</span> {missing}
+      {!shown && " Until then it is hidden from residents."}
+    </p>
   );
 }
 

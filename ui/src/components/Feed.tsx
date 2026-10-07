@@ -1,5 +1,6 @@
 import { participantNoun } from "../../../src/shared/hubKind";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useHubConfig } from "../config/HubConfigContext";
 import { Link } from "react-router-dom";
 import hub from "../config/hub";
 import {
@@ -142,6 +143,7 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
   // renderable iff classifyActivity returns non-null. Without this pre-filter,
   // non-renderable events (created/updated/aggregation_completed, etc.) count
   // against the PAGE_SIZE budget and can starve the visible window.
+  const hubConfig = useHubConfig();
   const renderableEvents = useMemo(
     () => {
       const base = events.filter(
@@ -151,7 +153,10 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
       );
       return filter ? base.filter(filter) : base;
     },
-    [events, filter],
+    // hubConfig: processTypeEnabled() reads it from the module, so the lint
+    // rule cannot see it; it changes when an admin's Settings save refreshes it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [events, filter, hubConfig],
   );
 
   const visibleEvents = useMemo(

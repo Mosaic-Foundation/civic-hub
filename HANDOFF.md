@@ -4,6 +4,72 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Plugin switches, end to end — 2026-10-07
+
+The 2026-10-06 review's items #1–#9 (at `4785c1a`). Switching a plugin off or on, in hub Settings or the console, is
+now respected everywhere, and the admin who saved sees it at once. Decisions are recorded in BUILD-PLAN under "Plugin
+toggles at runtime" → "Plugin switches, end to end", and in request flow item 5.
+
+**Built:**
+1. **Settings save refreshes the page.** `refreshHubConfig()` (`ui/src/config/hubConfig.ts`) re-fetches `/hub-config`
+   with `no-store` after every Settings save or reload, and after the comment-mode save. `HubConfigProvider`
+   subscribes through `useSyncExternalStore`, and `AppContent` reads the context, so the whole tree re-renders. There
+   is no `location.reload()`. The two memos that read switches (Feed, ProcessPicker) depend on the config. The save
+   message is now "Saved. It shows on this page now; visitors see it on their next page load."
+2. **Code of Conduct check outside the assistant gate.** `requirePlugin("assistant")` moved from the `/assistant` mount
+   onto `/message` and `/suggest`; `/review` and `/config` are ungated. In the UI, `useDraftFlow`'s `shellAssistant`
+   is null with the assistant off, which removes the panel, both "Get suggestions" buttons and per-field help. The walk
+   found the footer echo had been showing with the assistant off.
+3. **Onboarding:** `onboardingTarget()` (`ui/src/config/pluginRules.ts`) sends a new account to the word cloud only
+   while Word clouds is on. The sample seed no longer names an onboarding cloud while the stored switch is off.
+4. **Search:** `enabledProcessTypesAmong()` (`pluginGate.ts`) intersects the type filter in `searchExecutor.ts`, so
+   hits, totals and link candidates all agree. The Search page's chips use `processTypeShown`.
+5. **Links and briefs:** `hydratePeers` drops a peer whose type is off, which covers rendered links, the brief pair and
+   "Read the brief". The link routes return 404 for a switched-off process, and refuse it as a link target.
+6. **Feedback:** the footer link, the welcome banner's sentence and the beta dialog's note go when it is off.
+7. **Admin digest and badge:** the proposals, vote-results, meeting-summary and feedback sections are neither read nor
+   sent when their plugin is off, and the queue counts are zero. The digest run now reports `counts` per section.
+8. **Remaining gates:** `/.well-known/civic.json` lists only enabled types; `/admin/feedback` is behind
+   `whenPlugin`. Pending reviews of a switched-off type are hidden from the queue, the creator's list and the badge,
+   and approval is refused with a 404 (`assertProcessTypeEnabled(type, "Approving")`). Input, edit and edits,
+   links and share all return 404 for a switched-off process (`getEnabledProcess`).
+9. **Needs setup** (Adam's decision; the rule lives in `src/shared/pluginSetup.ts`): every plugin stays on as the
+   creator chose. `/hub-config` serves a computed `plugin_setup`: `{ meeting_summary: { missing, shown } }` while
+   there is no source. `shown` is true once the hub has a public summary (samples count). News sync shows only once
+   it has a connector and a feed address. Public surfaces that advertise a plugin's content ask `pluginShown()` (the
+   feed pill, the search chip). Settings → Plugins shows a "Needs setup" badge with the missing line, plus "Until then
+   it is hidden from residents" when that applies.
+
+**Tests:** `tests/api/pluginToggles.test.ts` walks all 14 ids (routes, jobs, creation, search, links, discovery, digest
+sections), plus the CoC check with the assistant off and a pending review of a switched-off type. Unit:
+`pluginSwitches.test.ts`. Playwright: `pluginSwitches.spec.ts` (three tests); all specs now read the API from
+`tests/e2e/hubApi.ts`. **Fixed on the way:** `leakHarnessDb.test.ts`'s Athens vote fixture had no
+`state.options`, so the vote handler answered 500 ("options is not iterable") on `GET /process/:id`. The row is never
+deleted, and Vitest orders files by cached duration and size, not by name. With the larger `pluginToggles` file now
+running earlier, that row was sometimes the newest vote just before `processes.test.ts`, which then failed. The
+fixture now carries `options`. Results: API 32 files, 402 passed, 7 skipped, in both modes (service role and hub
+tokens); unit 106 / 1210; Playwright 28 passed, 1 skipped (the pill check, as Meeting summaries is off on Athens).
+Production build behind `vite preview`, and `localhost` → Athens.
+
+**Local walk** (production build behind `vite preview` on :4194, API :3230, Athens as admin):
+- Meeting summaries switched on with no source: "Needs setup" appeared on Save with no reload, and the feed shows no
+  meeting-summaries pill.
+- Assistant off: no assistant and no "Get suggestions" (after the fix); the CoC check reached "Ready to submit".
+- Votes and Feedback off: search chips down to Announcements, no Votes tab, no footer link, `/admin/feedback` "Page
+  not found", and the banner sentence gone.
+- Links and the digest are proven by the API test.
+
+**Not done / open:**
+- The cross-instance settings cache (#1a, #14). On Vercel, another instance sees a save within 60 s.
+- Briefs show as "POST" in search results. A brief's title repeats its vote's ("Toggle vote …"), so with Votes off,
+  search still lists briefs that look like votes. Correct per the plugin rules (Briefs is on), but confusing. The label
+  is outside this slice.
+- In local Athens demo copy, the sign-up says "Athens is not a real town" above "I confirm that I am a resident of
+  Athens, Virginia". Not touched.
+- Out of scope as stated: "suppressed is not failed" (#34, #36) and the feed-health false failures (M1).
+
+---
+
 ## "[object Object]" on sign-in, and Vercel's 403 — 2026-10-06 (night)
 
 Adam got Vercel's "This request was blocked / 403 FORBIDDEN" page on agora.civic.social in new tabs

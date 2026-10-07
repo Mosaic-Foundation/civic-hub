@@ -10,10 +10,16 @@
 // on 2026-09-06 (migration 20260906180000).
 //
 // Moderation is a read-only log and has no count.
+//
+// A queue whose plugin the hub switched off counts zero: its tab is gone, so
+// a number would light the badge for something the admin cannot open. Pending
+// reviews of a switched-off type are left out the same way.
 
 import { forHub, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
-import { getAllProcesses } from "./processService.js";
+import { getAllProcesses, getDisabledTypeProcessIds } from "./processService.js";
+import { isProcessTypeEnabled } from "./pluginGate.js";
+import { isPluginEnabledSync } from "./hubSettings.js";
 import { listAllEdits } from "./editNotifications.js";
 
 /** The hub in scope. Queue counts are only ever read or stamped inside one. */
@@ -50,11 +56,14 @@ export async function getAdminQueueCounts(userId: string): Promise<AdminQueueCou
   const seen = (queue: AdminQueue): string => userRow?.[SEEN_COLUMN[queue]] ?? EPOCH;
 
   // Reviews: pending ones that arrived or changed since the tab was opened.
-  const reviews = await db()
-    .from("process_reviews")
-    .count()
-    .eq("status", "pending_review")
-    .gt("updated_at", seen("reviews"));
+  const off = await getDisabledTypeProcessIds();
+  const reviews = (
+    await db()
+      .from("process_reviews")
+      .select<{ process_id: string }>("process_id")
+      .eq("status", "pending_review")
+      .gt("updated_at", seen("reviews"))
+  ).filter((r) => !off.has(r.process_id)).length;
 
   // Briefs and meeting summaries: pending ones generated since the tab was
   // opened. One pass over processes; volume is small.
@@ -68,6 +77,7 @@ export async function getAdminQueueCounts(userId: string): Promise<AdminQueueCou
       | null
       | undefined;
     const type = proc.definition.type;
+    if (!isProcessTypeEnabled(type)) continue;
     if (
       (type === "civic.brief" || type === "civic.vote_results") &&
       state?.publication_status === "pending" &&
@@ -83,10 +93,9 @@ export async function getAdminQueueCounts(userId: string): Promise<AdminQueueCou
     }
   }
 
-  const feedback = await db()
-    .from("feedback_submissions")
-    .count()
-    .gt("created_at", seen("feedback"));
+  const feedback = isPluginEnabledSync("feedback")
+    ? await db().from("feedback_submissions").count().gt("created_at", seen("feedback"))
+    : 0;
 
   const edits = (await listAllEdits(userId)).unseen;
 

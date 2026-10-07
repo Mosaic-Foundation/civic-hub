@@ -415,6 +415,56 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   parent domain: `hub-local-3210` in `.claude/launch.json` runs with
   `CIVIC_CONSOLE_HOSTNAME=console.civic.localhost` (platform domain
   `civic.localhost`).
+- **Plugin switches, end to end (2026-10-07):** `pluginToggles.test.ts`
+  gained a block that walks **every plugin id** (a table, `PLUGIN_CASES`,
+  checked against the 14 ids) on Athens: switched on, then off, then put back
+  as it was (the stored row if there was one, else no row). Per plugin, as
+  applies: one of its routes answers 404 off and not 404 on; its job is
+  skipped for Athens; for each of its process types creation is refused,
+  search leaves it out (hits and `total`), links leave it out (the anchor's
+  links, its own links 404, link candidates), discovery leaves it out; the
+  admin digest's section count is 0 off and above 0 on (the digest run now
+  returns `counts` per section). Fixtures are inserted straight into the local
+  stack (one public process per type, a unique word in the title, plus a
+  link), and deleted after. Two more blocks: the Code of Conduct check
+  (`/assistant/:type/drafts/:id/review`) still answers with the Writing
+  assistant off while `/message` and `/suggest` 404; a pending review of a
+  switched-off type is gone from the admin queue and the creator's list,
+  cannot be approved, and comes back (and approves) with the plugin. Unit
+  `pluginSwitches.test.ts`: `enabledProcessTypesAmong`, the needs-setup rule
+  (`src/shared/pluginSetup.ts`), and the UI's pure gating
+  (`ui/src/config/pluginRules.ts`: onboarding target, search chips). E2E
+  `pluginSwitches.spec.ts`: Projects switched off in Settings leaves the tab
+  strip on in-app navigation with no reload (a marker on `window` survives),
+  and back; with the Writing assistant off a vote draft shows no "Get
+  suggestions" but "Run Code of Conduct check" still runs and the draft
+  reaches "Ready to submit"; a new sign-up on a demo hub with Word clouds
+  off (and an onboarding cloud named) stays on `/` with no "Page not
+  found". It acts on whichever hub `localhost` resolves to, as its admin
+  (session written into the local stack, terms accepted), skips the sign-up
+  on a hub not in demo, and puts every setting back in `afterEach` (so a
+  timed-out test cleans up too). **Every spec now reads the API from
+  `tests/e2e/hubApi.ts`** (`CIVIC_E2E_API_BASE`, default `:3000`); three
+  specs had `http://localhost:3000` written in, which failed
+  `ECONNREFUSED` against any other server. `feed.spec.ts`'s pill check also
+  skips where the pill is rightly gone (Meeting summaries off, or needing
+  setup with nothing to show).
+  **Order matters less than it looks:** Vitest runs files by cached
+  duration and size, not by name. `leakHarnessDb.test.ts`'s vote fixture
+  (never deleted) lacked `state.options` and answered 500, failing
+  `processes.test.ts` whenever it was the newest vote; fixed. Running the
+  API layer more than twice in 15 minutes trips the step-up lockout
+  (`sampleContent.test.ts`: "Too many incorrect attempts"), and many runs on
+  one stack fill Athens's admin-digest `job_runs` to its cap of 60
+  (`crons.test.ts` then counts no new row). Both are local residue; CI runs
+  two passes on a fresh stack.
+  Local run: API on :3230 from `plugins-api-3230` in the monorepo's
+  `.claude/launch.json` (CI's env, service role); the UI as a production
+  build behind `vite preview` on :4194 (`/api` proxied to :3230, Host kept),
+  Playwright with `baseURL` :4194 and
+  `CIVIC_E2E_API_BASE=http://localhost:4194/api`. Result 2026-10-07: API 32 files,
+  402 passed, 7 skipped, both modes; unit 106 / 1210; Playwright 28 passed,
+  1 skipped.
 
 > **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
 > `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs
@@ -446,6 +496,9 @@ runs on every push**, alongside `tsc` and a real UI build.
   recipients, one hub's failure isolated), `pluginGate.test.ts`,
   `hubBaseUrl.test.ts`, `portability.test.ts` (every GRANT to a Supabase role
   is guarded; the bucket migration; generic deployment variables)
+- **Plugin switches (2026-10-07):** `pluginSwitches.test.ts` (the type
+  filter for search and link candidates, the needs-setup rule, the UI's
+  onboarding target and search chips)
 - **Phase 3:** `hubToken.test.ts` (every hub token has `role:
   authenticated` and its `hub_id`, 60 s; ES256 verifies with the public key,
   HS256 from a secret or `oct` JWK; bad keys refused without echoing them;
@@ -472,7 +525,10 @@ Open the real UI in Chromium and simulate resident interactions.
 - **Location:** `civic-hub/tests/e2e/`
 - **Run:** `npm run test:e2e`
 - **Config:** `civic-hub/playwright.config.ts`
-- **Covers:** critical user journeys — navigation, feed, votes, search, conversations
+- **Covers:** critical user journeys — navigation, feed, votes, search, conversations;
+  plugin switches (`pluginSwitches.spec.ts`, 2026-10-07: Settings → Plugins
+  changes the nav without a reload; a new sign-up with Word clouds off stays
+  home)
 - **Note:** Each test dismisses the intro popup via localStorage before running.
 - **Green: 25 of 25 (2026-09-26, Phase 5 part one, step 0.3; again
   2026-09-27 before release 1)**, local stack, hub tokens on. The six known failures that predated this build are gone:

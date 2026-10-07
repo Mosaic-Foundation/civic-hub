@@ -2,6 +2,7 @@
 // appear on comments. Two sub-blocks, each with its own Save button.
 
 import { useEffect, useState } from "react";
+import { refreshHubConfig } from "../../config/hubConfig";
 import {
   adminGetSettings,
   adminPatchSettings,
@@ -79,6 +80,8 @@ export default function ParticipationSection() {
       setIdentityMode(saved.comment_identity_mode);
       setSavedIdentityMode(saved.comment_identity_mode);
       setIdentityModeMessage("Saved. Applies to new comments immediately.");
+      // The comment form reads the mode from the public config.
+      void refreshHubConfig();
     } catch (err) {
       setIdentityModeMessage(
         err instanceof Error ? err.message : "Failed to save comment identity mode",

@@ -6,6 +6,7 @@
  */
 
 import { test, expect } from "@playwright/test";
+import { E2E_API_BASE } from "./hubApi";
 
 // Dismiss the intro popup before each test by setting localStorage
 test.beforeEach(async ({ page }) => {
@@ -60,7 +61,7 @@ test.describe("Navigation", () => {
   // not a build-time env var (2026-09-26): the welcome dialog shows to a
   // signed-out first visit exactly when the served mode is beta.
   test("welcome dialog follows the served hub mode", async ({ page, request }) => {
-    const config = await (await request.get("http://localhost:3000/hub-config")).json();
+    const config = await (await request.get(`${E2E_API_BASE}/hub-config`)).json();
     await page.evaluate(() => sessionStorage.removeItem("civic_preview"));
     await page.reload();
     await page.waitForLoadState("networkidle");

@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { getProcess } from "../services/processService.js";
+import { getEnabledProcess } from "../services/processService.js";
 import { buildShareMeta, parseDetailPath } from "../services/shareMeta.js";
 
 /**
@@ -30,7 +30,7 @@ export async function handleGetShareMeta(req: Request, res: Response): Promise<v
     return;
   }
   try {
-    const process = await getProcess(parsed.id);
+    const process = await getEnabledProcess(parsed.id);
     const meta = process ? buildShareMeta(path, process) : null;
     if (!meta) {
       res.status(404).json({ error: "Not shareable" });

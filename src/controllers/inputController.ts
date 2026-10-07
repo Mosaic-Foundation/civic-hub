@@ -9,6 +9,7 @@ import {
   type CommentPhase,
 } from "../modules/civic.input/index.js";
 import { getProcess } from "../services/processService.js";
+import { isProcessTypeEnabled } from "../services/pluginGate.js";
 import { getProcessHandler } from "../processes/registry.js";
 import { forHub } from "../db/forHub.js";
 import {
@@ -85,6 +86,10 @@ export async function handleSubmitInput(
 
   try {
     const process = await getProcess(processId);
+    if (process && !isProcessTypeEnabled(process.definition.type)) {
+      res.status(404).json({ error: "Process not found" });
+      return;
+    }
     let jurisdiction: string;
     let phase: CommentPhase;
 
@@ -190,6 +195,10 @@ export async function handleGetInputs(
   const processId = req.params.id as string;
   try {
     const process = await getProcess(processId);
+    if (process && !isProcessTypeEnabled(process.definition.type)) {
+      res.status(404).json({ error: "Process not found" });
+      return;
+    }
     if (!process && !(await proposalExists(processId))) {
       res.status(404).json({ error: "Process not found" });
       return;
