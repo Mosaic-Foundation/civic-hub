@@ -8,9 +8,13 @@
 // because it only fired when `failed > 0`. Meeting summaries stopped being
 // generated and nothing anywhere said so.
 //
-// The rule these tests pin down: a run that discovers nothing, or that dies
-// outright, is a FAILURE and must reach a human. Only a run that discovered
-// meetings and processed them without error is allowed to stay quiet.
+// The rule these tests pin down: a run that dies outright, or whose meetings
+// fail, must reach a human.
+//
+// Changed 2026-10-07 (review M7, Adam): a run that discovers nothing is
+// "nothing new", not an alarm. It alarmed on every quiet week and every title
+// filter with nothing recent, so the alert was ignored. A source that cannot
+// be read throws in discovery, and that run aborts and alerts (`fatal`).
 
 import { describe, it, expect } from "vitest";
 import { cronAlertReason } from "../../src/controllers/meetingSummaryController.js";
@@ -38,27 +42,10 @@ describe("cronAlertReason — when the cron must speak up", () => {
     ).toBeNull();
   });
 
-  it("ALERTS when discovery returns zero meetings", () => {
-    // The exact shape of the Floyd outage. Previously indistinguishable
-    // from success.
-    const reason = cronAlertReason({
-      ...healthy,
-      discovered: 0,
-      created: 0,
-      skippedExisting: 0,
-    });
-    expect(reason).not.toBeNull();
-    expect(reason).toContain("0 meetings");
-    expect(reason).toContain("youtube-channel");
-  });
-
-  it("names the connector in the empty-discovery alert so the operator knows where to look", () => {
-    const reason = cronAlertReason({
-      ...healthy,
-      discovered: 0,
-      connector_id: "minutes-page",
-    });
-    expect(reason).toContain("minutes-page");
+  it("stays quiet when discovery returns zero meetings and nothing threw", () => {
+    expect(
+      cronAlertReason({ ...healthy, discovered: 0, created: 0, skippedExisting: 0 }),
+    ).toBeNull();
   });
 
   it("ALERTS when individual meetings failed to summarize", () => {
@@ -85,7 +72,7 @@ describe("cronAlertReason — when the cron must speak up", () => {
     expect(reason).toContain("ANTHROPIC_API_KEY");
   });
 
-  it("reports the abort reason ahead of the empty-discovery reason", () => {
+  it("reports the abort reason when discovery itself threw", () => {
     // A run that died during discovery also has discovered=0; the cause is
     // more useful to the reader than the symptom.
     const reason = cronAlertReason({

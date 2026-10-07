@@ -8,7 +8,7 @@
 // notification must not turn a successful signup into a 500 for the person
 // who just filled in the form.
 
-import { sendEmail } from "../utils/email.js";
+import { sendEmail, unsentReason } from "../utils/email.js";
 import { getAdminEmailsSync } from "./hubSettings.js";
 
 export interface WaitlistSignup {
@@ -126,7 +126,7 @@ export async function notifyAdminsOfWaitlistSignup(
         );
       } else {
         console.warn(
-          `[waitlist] notification NOT sent to ${to} for ${signup.email}: ${result.error ?? "unknown"}`,
+          `[waitlist] notification NOT sent to ${to} for ${signup.email}: ${unsentReason(result)}`,
         );
       }
     } catch (err) {

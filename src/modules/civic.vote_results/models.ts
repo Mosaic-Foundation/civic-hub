@@ -18,6 +18,8 @@
 // the linked vote. The module itself has no knowledge of Express, the
 // process registry, Supabase, or nodemailer.
 
+import type { DeliveryReport, HeldBackRecipient } from "../../shared/delivery.js";
+
 export type VoteResultsPublicationStatus = "pending" | "approved" | "published";
 
 export interface VoteResultsPositionBreakdown {
@@ -110,6 +112,9 @@ export interface VoteResultsProcessState {
   published_at: string | null;
   content: VoteResultsContent;
   delivered_to: string[];                // email recipients recorded on approval
+  /** Recipients held back on purpose (hub mode, sample), with why. Not a
+   *  failure: the results published. Absent before 2026-10-07. */
+  held_back?: HeldBackRecipient[];
 }
 
 /**
@@ -132,8 +137,8 @@ export interface EmitEventFn {
 
 /**
  * Email delivery callback — injected by the host hub. Returns normally on
- * success; throws on delivery failure. The module halts the approval flow
- * if this throws.
+ * success, with who was held back on purpose; throws on a real delivery
+ * failure. The module halts the approval flow if this throws.
  */
 export interface SendEmailFn {
   (message: {
@@ -141,7 +146,7 @@ export interface SendEmailFn {
     subject: string;
     html: string;
     text: string;
-  }): Promise<void>;
+  }): Promise<DeliveryReport | void>;
 }
 
 /**

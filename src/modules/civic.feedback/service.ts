@@ -11,7 +11,7 @@
 
 import { forHub, type HubDb } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
-import { sendEmail } from "../../utils/email.js";
+import { sendEmail, unsentReason } from "../../utils/email.js";
 import { generateId } from "../../utils/id.js";
 import { getAdminEmailsSync, getSettingSync } from "../../services/hubSettings.js";
 import { KEYS, asEmailList } from "../../models/hubSettings.js";
@@ -263,7 +263,7 @@ async function notifyOperator(s: FeedbackSubmission): Promise<void> {
       );
     } else {
       console.warn(
-        `[feedback] Operator email NOT sent for ${s.id}: ${result.error ?? "unknown"}`,
+        `[feedback] Operator email NOT sent for ${s.id}: ${unsentReason(result)}`,
       );
     }
   }

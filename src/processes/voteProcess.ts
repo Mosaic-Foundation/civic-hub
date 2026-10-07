@@ -17,6 +17,7 @@ import {
   activate,
   submitVote,
   closeVote,
+  finalizeVote,
   getReadModel,
   getSummary,
   getVotingMethod,
@@ -34,6 +35,7 @@ import {
 import { getInputsByProcess } from "../modules/civic.input/index.js";
 import { getActionDispatcher } from "./registry.js";
 import { findExistingBriefId } from "./spawnBrief.js";
+import { isPluginEnabledSync } from "../services/hubSettings.js";
 import { describeSubmissionFields } from "../shared/submissionPreview.js";
 import { setVoteDraftStatus } from "../modules/civic.vote_drafts/index.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
@@ -267,20 +269,30 @@ const voteProcess: ProcessHandler = {
         // vote_participation and vote_records.
         await clearActiveVoteKeysForProcess(process.id);
 
-        // The vote is now `closed`. The universal brief seam in
-        // executeAction spawns a PENDING civic.brief from this vote (via
+        // The vote is now `closed`. With Briefs on, the universal brief seam
+        // in executeAction spawns a PENDING civic.brief from this vote (via
         // generateBrief below) for admin review; publishing that brief
         // finalizes the vote (finalizeVote with the anonymized ballots).
         // No civic.vote_results is created anymore — briefs are the single
         // unified results artifact for every process type.
+        //
+        // With Briefs OFF there is no brief to approve, so nothing would ever
+        // finalize the vote and its results would never publish. A brief is
+        // an optional extra, as it is for proposals, projects and
+        // conversations (Adam, 2026-10-07): the vote publishes its results
+        // here, at close, with the same ballots and the same close time.
+        if (!isPluginEnabledSync("brief")) {
+          await finalizeVote(outcome.state, action.actor, ballots, closeCtx);
+          syncStatus(process, outcome.state);
+        }
         break;
       }
       // Note: there is intentionally no `process.finalize` action here.
-      // Finalization publishes the vote result, which must be gated on
-      // admin approval of the accompanying brief. The brief module's
+      // Finalization publishes the vote result. With Briefs on it is gated
+      // on admin approval of the accompanying brief: the brief module's
       // approval flow calls `finalizeVote` (via finalizeBriefSource) as a
-      // library import; there is no HTTP path that publishes a vote result
-      // without approved-brief orchestration.
+      // library import. With Briefs off, close finalizes (above). There is
+      // no HTTP path that publishes a vote result on its own.
       default:
         throw new Error(`Unknown action type for civic.vote: ${action.type}`);
     }

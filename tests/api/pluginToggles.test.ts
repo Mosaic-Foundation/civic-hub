@@ -330,11 +330,13 @@ interface PluginCase {
   /** Its process types: creation, search and links are checked for each. */
   types?: string[];
   /** The admin digest section it owns (AdminDigestRunResult.counts). */
-  digest?: "proposals" | "vote_results" | "meeting_summaries" | "feedback";
+  // Briefs' section ("briefs") is walked in adminDigestQueues.test.ts: its
+  // fixture here is a published brief, which search needs.
+  digest?: "proposals" | "meeting_summaries" | "feedback";
 }
 
 const PLUGIN_CASES: PluginCase[] = [
-  { id: "vote", route: { method: "GET", path: () => "/votes/drafts/duration-limits", admin: true }, types: ["civic.vote", "civic.vote_results"], digest: "vote_results" },
+  { id: "vote", route: { method: "GET", path: () => "/votes/drafts/duration-limits", admin: true }, types: ["civic.vote", "civic.vote_results"] },
   { id: "proposal", route: { method: "GET", path: () => "/proposals" }, types: ["civic.proposal"], digest: "proposals" },
   { id: "project", route: { method: "GET", path: () => "/projects" }, types: ["civic.project"] },
   { id: "announcement", route: { method: "GET", path: () => "/announcements" }, types: ["civic.announcement"] },

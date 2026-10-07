@@ -234,15 +234,17 @@ export async function approveVoteResults(
     hubLabel: deps.hubLabel,
     publicUrl: deps.publicVoteResultsUrl,
   });
-  await deps.sendEmail({
+  const report = await deps.sendEmail({
     to: deps.recipients,
     subject: email.subject,
     html: email.html,
     text: email.text,
   });
 
-  // Step 3: record recipients
-  state.delivered_to = [...deps.recipients];
+  // Step 3: record recipients — only those really sent; anyone the hub's
+  // mode held back is recorded apart (src/shared/delivery.ts).
+  state.delivered_to = report ? [...report.sent] : [...deps.recipients];
+  if (report && report.held_back.length > 0) state.held_back = report.held_back;
 
   // Step 4: outcome recorded (Phase 5)
   await emitVoteResultsOutcomeRecorded(ctx, actor, state);
@@ -265,6 +267,7 @@ export async function approveVoteResults(
       approved_at: state.approved_at,
       published_at: state.published_at,
       delivered_to: state.delivered_to,
+      held_back: state.held_back ?? [],
     },
   };
 }
@@ -292,6 +295,7 @@ export function getAdminReadModel(
     published_at: state.published_at,
     content: state.content,
     delivered_to: state.delivered_to,
+    held_back: state.held_back ?? [],
     created_at: processMeta.createdAt,
     created_by: processMeta.createdBy,
   };

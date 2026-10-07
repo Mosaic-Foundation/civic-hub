@@ -51,11 +51,6 @@ function describeMeetingSummary(b: Body): JobRunDescription {
   const failed: string[] = [];
   const flagged: string[] = [];
 
-  if (num(b.discovered) === 0) {
-    failed.push(
-      "The meeting source listed no meetings. It has probably changed shape and can no longer be read.",
-    );
-  }
   for (const f of arr<{ source_id?: string; error?: string }>(b.failures)) {
     failed.push(`Could not summarize ${f.source_id ?? "a meeting"}: ${f.error ?? "unknown error"}`);
   }
@@ -77,8 +72,16 @@ function describeMeetingSummary(b: Body): JobRunDescription {
       `${plural(num(b.stale_summaries), "summary was", "summaries were")} written before the meeting took place and not yet replaced.`,
     );
   }
-  if (num(b.broken_links) > 0) {
-    failed.push(`${plural(num(b.broken_links), "published summary link", "published summary links")} no longer open.`);
+  // Any process type, not only summaries (review M4): each one named, with
+  // what is wrong, so the admin can open it. Rows written before 2026-10-07
+  // stored only a count.
+  const broken = arr<{ title?: string; process_type?: string; reason?: string }>(b.broken_links);
+  if (broken.length > 0) {
+    for (const item of broken) failed.push(brokenLinkProblem(item));
+  } else if (num(b.broken_links) > 0) {
+    failed.push(
+      `${plural(num(b.broken_links), "item is", "items are")} announced on the feed as published, but ${num(b.broken_links) === 1 ? "its page is" : "their pages are"} not public.`,
+    );
   }
   if (num(b.pending_revisions_overdue) > 0) {
     flagged.push(
@@ -86,13 +89,27 @@ function describeMeetingSummary(b: Body): JobRunDescription {
     );
   }
 
-  const parts = [
-    plural(num(b.created), "summary written", "summaries written"),
-  ];
+  // An empty listing is "nothing new", not a failure (review M7). A source
+  // that cannot be read throws in discovery, and that run fails on its error.
+  const parts =
+    num(b.discovered) === 0 && num(b.created) === 0
+      ? ["Nothing new: the meeting source listed no meetings"]
+      : [plural(num(b.created), "summary written", "summaries written")];
   if (num(b.upgraded) > 0) parts.push(`${num(b.upgraded)} updated`);
   if (waiting.length > 0) parts.push(`${waiting.length} waiting for a recording or minutes`);
   if (arr(b.failures).length > 0) parts.push(`${arr(b.failures).length} failed`);
   return { status: status(failed, flagged), summary: parts.join(", "), problems: [...failed, ...flagged] };
+}
+
+/** "civic.meeting_summary" → "meeting summary". */
+function typeLabel(type: string | undefined): string {
+  return (type ?? "item").replace(/^civic\./, "").replace(/_/g, " ");
+}
+
+/** One broken feed item, in words an admin can act on. */
+export function brokenLinkProblem(item: { title?: string; process_type?: string; reason?: string }): string {
+  const what = item.title ? `"${item.title}" (${typeLabel(item.process_type)})` : `A ${typeLabel(item.process_type)}`;
+  return `${what} is announced on the feed as published, but ${item.reason ?? "its page is not public"}.`;
 }
 
 function describeNewsSync(b: Body): JobRunDescription {
@@ -107,11 +124,13 @@ function describeNewsSync(b: Body): JobRunDescription {
 
 function describeDigest(b: Body): JobRunDescription {
   const failed = num(b.failed_count) > 0 ? [`The digest could not be sent to ${plural(num(b.failed_count), "resident", "residents")}.`] : [];
-  return {
-    status: status(failed, []),
-    summary: `Sent to ${plural(num(b.sent_count), "resident", "residents")}`,
-    problems: failed,
-  };
+  // Held back by the hub's mode is a decision, not a failure (review #36):
+  // it goes in the summary, never in the problems.
+  const held = num(b.held_back_count);
+  const reason = typeof b.held_back_reason === "string" ? b.held_back_reason : "of this hub's mode";
+  let summary = `Sent to ${plural(num(b.sent_count), "resident", "residents")}`;
+  if (held > 0) summary += `; held back from ${held} because ${reason}`;
+  return { status: status(failed, []), summary, problems: failed };
 }
 
 function describeAdminDigest(b: Body): JobRunDescription {

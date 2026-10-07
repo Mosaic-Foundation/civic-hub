@@ -1,4 +1,4 @@
-import { sendEmail } from "../../utils/email.js";
+import { sendEmail, unsentReason } from "../../utils/email.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
 
 /**
@@ -29,7 +29,9 @@ async function send(input: {
   text: string;
 }): Promise<void> {
   const result = await sendEmail(input);
-  if (!result.sent) {
+  if (result.held_back) {
+    console.log(`[review/email] "${input.subject}" to ${input.to}: ${unsentReason(result)}`);
+  } else if (!result.sent) {
     console.error(
       `[review/email] Failed to send "${input.subject}" to ${input.to}: ${result.error}`,
     );

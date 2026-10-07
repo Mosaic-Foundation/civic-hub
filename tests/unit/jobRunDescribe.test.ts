@@ -43,8 +43,55 @@ describe("describeJobRun", () => {
     expect(r?.problems[0]).toMatch(/wix:2026-09-22:regular: PDF too large/);
   });
 
-  it("meeting summaries: zero discovered is a failure, not a quiet day", () => {
-    expect(describeJobRun("meeting_summary", { status: 200, body: { discovered: 0 } })?.status).toBe("failed");
+  it("meeting summaries: zero discovered is nothing new, not a failure (M7)", () => {
+    expect(describeJobRun("meeting_summary", { status: 200, body: { discovered: 0, created: 0 } })).toEqual({
+      status: "ok",
+      summary: "Nothing new: the meeting source listed no meetings",
+      problems: [],
+    });
+  });
+
+  it("meeting summaries: a discovery that threw fails on its error", () => {
+    // The controller's failRun answers 500 with the error.
+    const r = describeJobRun("meeting_summary", {
+      status: 500,
+      body: { error: "fetch failed: ENOTFOUND", discovered: 0 },
+    });
+    expect(r).toEqual({ status: "failed", summary: "The run did not complete", problems: ["fetch failed: ENOTFOUND"] });
+  });
+
+  it("meeting summaries: each broken feed item is named with what is wrong (M4)", () => {
+    const r = describeJobRun("meeting_summary", {
+      status: 200,
+      body: {
+        discovered: 4,
+        created: 0,
+        broken_links: [
+          {
+            process_id: "proc_1",
+            process_type: "civic.meeting_summary",
+            title: "Meeting summary: 2026-06-09",
+            reason: 'its approval is "pending", so its page shows "not found"',
+          },
+          {
+            process_id: "proc_2",
+            process_type: "civic.announcement",
+            title: "Road closure",
+            reason: 'it is back in review ("pending_review"), so its page is hidden from the public',
+          },
+        ],
+      },
+    });
+    expect(r?.status).toBe("failed");
+    expect(r?.problems).toEqual([
+      '"Meeting summary: 2026-06-09" (meeting summary) is announced on the feed as published, but its approval is "pending", so its page shows "not found".',
+      '"Road closure" (announcement) is announced on the feed as published, but it is back in review ("pending_review"), so its page is hidden from the public.',
+    ]);
+  });
+
+  it("meeting summaries: an older row's bare count still reads for any type, not as 'summary links'", () => {
+    const r = describeJobRun("meeting_summary", { status: 200, body: { discovered: 4, broken_links: 2 } });
+    expect(r?.problems).toEqual(["2 items are announced on the feed as published, but their pages are not public."]);
   });
 
   it("meeting summaries: a meeting waiting past the grace period is flagged", () => {
@@ -71,5 +118,25 @@ describe("describeJobRun", () => {
     expect(describeJobRun("admin_digest", { status: 200, body: { empty: true, sent: 0, failed: 0 } })?.summary).toBe(
       "Nothing to report; no email sent",
     );
+  });
+
+  it("digest: residents the hub's mode held back are not a failure (#36)", () => {
+    expect(
+      describeJobRun("digest", {
+        status: 200,
+        body: { sent_count: 2, failed_count: 0, held_back_count: 26, held_back_reason: "this hub is in beta mode" },
+      }),
+    ).toEqual({
+      status: "ok",
+      summary: "Sent to 2 residents; held back from 26 because this hub is in beta mode",
+      problems: [],
+    });
+    // A real failure alongside still fails, and counts only the real ones.
+    const mixed = describeJobRun("digest", {
+      status: 200,
+      body: { sent_count: 0, failed_count: 1, held_back_count: 5, held_back_reason: "this hub is in demo mode" },
+    });
+    expect(mixed?.status).toBe("failed");
+    expect(mixed?.problems).toEqual(["The digest could not be sent to 1 resident."]);
   });
 });

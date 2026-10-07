@@ -465,6 +465,44 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   `CIVIC_E2E_API_BASE=http://localhost:4194/api`. Result 2026-10-07: API 32 files,
   402 passed, 7 skipped, both modes; unit 106 / 1210; Playwright 28 passed,
   1 skipped.
+- **Email and job reporting (2026-10-07, second session):**
+  `tests/api/heldBackAndQueues.test.ts` runs on Athens (seeded `demo`) with
+  an official added to the officials list and the hub-wide brief recipients
+  (both put back in `afterAll`): brief approval and vote-results publishing
+  to that official answer 200, publish, record the official under
+  `held_back` with "this hub is in demo mode", and the public brief has no
+  "Sent to" receipt; a vote closes **finalized** with Briefs off (one
+  `result_published`, no brief) and **closed** with a pending brief with it
+  on; the admin digest's `counts.reviews` / `counts.briefs` (and `briefs`
+  is 0 while Briefs is off; there is no `vote_results` count any more). Two
+  blocks run in-process in the server's mode (as `leakHarness`'s digest
+  does): the resident digest with a key set and Resend intercepted (every
+  other `fetch` goes through), so held-back residents come back as
+  `held_back_count` with `failed_count` 0 and `describeJobRun` "ok"; and
+  `findBrokenPublications` over archived, deleted, published and genuinely
+  pending summaries, which reports only the pending one.
+  Unit: `heldBackDelivery.test.ts` (approveBrief records, the admin's
+  sentence), `demoPrivilegedSignIn.test.ts` (the real `requestVerification`
+  through the real guard with `fetch` stubbed: an official on a demo hub is
+  sent their code; anything else to them is still held back; fails without
+  the change), `mailer.test.ts` (the report), `jobRunDescribe.test.ts` (every
+  new wording), `jobRunVisibility.test.ts` (an archived summary stops the
+  real run from re-summarizing the meeting; fails without the change),
+  `feedHealth.test.ts` (archived and missing are no longer broken),
+  `meetingSummaryAlarm.test.ts` (an empty discovery no longer alerts),
+  `adminFeedbackDigest.test.ts` (the two new sections render).
+  **Changed on purpose:** `crons.test.ts` now checks for a newer
+  `job_runs` row instead of counting rows (the count stops at the 60-row
+  cap on a stack that has run the suite a few times; this file's two
+  forced admin digests reach the cap sooner). `pluginToggles.test.ts` no
+  longer checks the dead vote-results digest section.
+  **Known local flake, not new:** `hubSettings.test.ts`'s banner check
+  can fail when it runs within 60 s of `leakHarness.test.ts`, which writes
+  Floyd's banner straight to the database; the database is right, the
+  server is serving its cached copy (the settings cache, review #1a/#14).
+  Result 2026-10-07: API 33 files, 408 passed, 7 skipped, both modes; unit
+  108 files, 1232 passed; Playwright 28 passed, 1 skipped (production build
+  behind `vite preview` on :4195, `/api` → :3230).
 
 > **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
 > `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs

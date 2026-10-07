@@ -4,6 +4,7 @@
  * Actions go through the internal process action endpoint.
  */
 
+import type { HeldBackRecipient } from "../components/HeldBackNote";
 import { apiErrorMessage } from "../utils/httpError";
 
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
@@ -1089,6 +1090,8 @@ export interface VoteResultsSummary {
 export interface VoteResultsDetail extends VoteResultsSummary {
   content: VoteResultsContent;
   delivered_to: string[];
+  /** Recipients held back on purpose (hub mode, sample content), with why. */
+  held_back?: HeldBackRecipient[];
   created_by: string;
 }
 
@@ -1206,6 +1209,9 @@ export interface BriefDetail extends BriefSummary {
   recipients: BriefRecipient[] | null;
   delivered_at: string | null;
   delivered_to_labels: string[];
+  /** Recipients held back on purpose (hub mode, sample content), with why. */
+  held_back?: HeldBackRecipient[];
+  held_back_labels?: string[];
   created_by: string;
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { HeldBackNote } from "../components/HeldBackNote";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   adminMarkQueueSeen,
@@ -200,14 +201,12 @@ export default function AdminBriefs() {
     setError(null);
     try {
       await adminPatchBrief(selected.id, buildPatch());
-      const { brief } = await adminApproveBrief(selected.id);
+      const { brief, message } = await adminApproveBrief(selected.id);
       setSelected(brief);
-      const n = brief.delivered_to.length;
-      setActionMessage(
-        n > 0
-          ? `Approved. Brief delivered to ${n} recipient(s) and published to the feed.`
-          : "Approved and published to the feed.",
-      );
+      // The server's words: who it was emailed to, and who the hub's mode
+      // held it back from ("Published. Not emailed to … because this hub is
+      // in demo mode.").
+      setActionMessage(message);
       setConfirmingApprove(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to approve");
@@ -496,6 +495,8 @@ export default function AdminBriefs() {
               </ul>
             </section>
           )}
+
+          <HeldBackNote heldBack={selected.held_back} />
 
           {isPending && (
             <div className="admin-actions">

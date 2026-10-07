@@ -4,6 +4,60 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Held back is not failed; jobs report real problems — 2026-10-07 (second session)
+
+Review items #34, #36, M1, M4, M5, M7 (Review-Findings-2026-10-06) and docs-session items #1, #4, #5. Not pushed;
+no migrations, dependencies or env vars.
+
+**Built:**
+1. **Held back is not failed (#34).** `src/shared/delivery.ts` (`DeliveryReport`, `publishedMessage`). The mailer
+   (`services/mailer.ts`) asks the mode guard first, keyless or not, and resolves with `{ sent, held_back }`. It
+   throws only on a real failure. `utils/email.sendEmail` returns `held_back: true` + `held_back_reason` ("this hub
+   is in demo mode") instead of an error. Briefs and vote results record `delivered_to` = only who was sent it,
+   plus `held_back` (and `held_back_labels` on briefs). The public receipt names only who was really sent it.
+   Sample content reports "this is sample content". The approve routes answer with the admin's sentence, e.g.
+   "Published. Not emailed to Board of Supervisors because this hub is in demo mode." The admin pages show it and
+   a "Not emailed" section (`ui/src/components/HeldBackNote.tsx`). The guard's rule itself is unchanged.
+2. **Digest (#36).** `held_back_count` / `held_back_reason` apart from `failed_count`. The job reads "Sent to 2
+   residents; held back from 26 because this hub is in beta mode", status ok. Other senders' logs say "held back",
+   not "Failed to send" (`unsentReason`). Held-back residents are not marked as sent, as before.
+3. **Feed health (M1).** `publicationFailure` returns null for a missing or archived process. It still reports a
+   process back in review, and an `approval_status` that is not published.
+4. **Say what's wrong (M4).** The run body's `broken_links` is now the list (process id, type, title, reason).
+   `describe.ts` writes one problem line per item ("\"Meeting summary: …\" (meeting summary) is announced on the
+   feed as published, but its approval is \"pending\", so its page shows \"not found\"."), which the Plugins page
+   and the admin digest already show. Older rows with a bare count read "N items are announced …".
+5. **Deleted summaries stay deleted (M5).** The run reads archived summaries (`getArchivedProcesses(types)`), and
+   they count for every dedupe match but are never upgraded.
+6. **Nothing found (M7).** `discovered === 0` reads "Nothing new: the meeting source listed no meetings", status
+   ok. The alert email no longer fires for it either (`cronAlertReason`). A discovery that throws still fails.
+7. **Officials sign in to a demo hub (docs #1).** `MailPurpose "sign_in_code"` passes the guard on every mode, and
+   `requestVerification` sends with it. Confirmed by `demoPrivilegedSignIn.test.ts`, which fails without it.
+8. **Votes finish without Briefs (docs #4, Adam's direction).** In `voteProcess.ts` `process.close`, with Briefs
+   off the vote is finalized at close (`finalizeVote`, same ballots, same close time), so `result_published` is
+   emitted. With Briefs on, nothing changed.
+9. **Admin digest (docs #5).** New sections "Submissions waiting in Process reviews" (`listReviews`, already
+   without switched-off types) and "Briefs awaiting approval" (left out while Briefs is off). The dead "Vote
+   results awaiting approval" section and `counts.vote_results` are gone; `counts` has `reviews` and `briefs`.
+
+**Tests:** see TESTING.md, "Email and job reporting". API 33 files, 408 passed, 7 skipped, both modes; unit 108 /
+1232; Playwright 28 passed, 1 skipped. Browser walk (production build, Athens as admin): approving a brief
+addressed to "Board of Supervisors" showed the sentence and the "Not emailed" section. The public page was
+published with no "Sent to" line.
+
+**Not done / open (for Adam):**
+- **Votes already stuck.** A vote that closed while Briefs was off before this change stays `closed`. Nothing
+  finalizes it now. Fix options: switch Briefs on and approve its brief (none exists), or a one-off script. Not
+  written; say if you want one.
+- **Empty discovery is now silent.** This is what M7 asked for, but it was the signal for the 2026-08 Floyd outage
+  (page went client-side and parsed to nothing). A source that breaks that way now reads "Nothing new" every day.
+  "Test this source" (M11) or a "no meetings in N weeks" flag would cover it.
+- **Beta hubs:** an official who is not on the allow list still cannot sign in to a beta hub. The beta gate
+  refuses before a code is made. Only the mail guard was in scope.
+- Local flake, not new: `hubSettings.test.ts` banner vs the 60 s settings cache after `leakHarness`.
+
+---
+
 ## Plugin switches, end to end — 2026-10-07
 
 **Shipped (2026-10-07):** dev ran `21e7070` and the admin walk passed there (Settings → nav without reload, the "Needs

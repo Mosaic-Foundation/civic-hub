@@ -24,6 +24,8 @@
 // the source process. The module knows nothing of Express, the registry,
 // Supabase, or nodemailer.
 
+import type { DeliveryReport, HeldBackRecipient } from "../../shared/delivery.js";
+
 export type BriefPublicationStatus = "pending" | "approved" | "published";
 
 /** Cap on image alt-text / url — kept in sync with civic.announcement. */
@@ -125,6 +127,15 @@ export interface BriefProcessState {
    *  page's "Sent to …" receipt renders. Empty for legacy/fallback
    *  deliveries, which keep the governing-body receipt line. */
   delivered_to_labels?: string[];
+  /**
+   * Recipients the email was held back from on purpose, with why ("this hub
+   * is in demo mode", "this is sample content"). Not a failure: the brief
+   * published; it simply was not emailed to them. Absent on briefs approved
+   * before 2026-10-07. Admin-only, like `delivered_to`.
+   */
+  held_back?: HeldBackRecipient[];
+  /** Display labels of the held-back recipients, for the admin's message. */
+  held_back_labels?: string[];
 }
 
 /**
@@ -143,14 +154,18 @@ export interface EmitEventFn {
   }): Promise<unknown>;
 }
 
-/** Email delivery callback — injected by the host hub. Throws on failure. */
+/**
+ * Email delivery callback — injected by the host hub. Throws on a real
+ * failure; reports recipients the hub held back on purpose. A void result
+ * (an older or test mailer) means every recipient was sent.
+ */
 export interface SendEmailFn {
   (message: {
     to: string[];
     subject: string;
     html: string;
     text: string;
-  }): Promise<void>;
+  }): Promise<DeliveryReport | void>;
 }
 
 /**

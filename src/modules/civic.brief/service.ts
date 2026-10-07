@@ -258,8 +258,9 @@ function sanitizeList(items: string[]): string[] {
  * on failure and leaves the state at the last good step.
  *
  *   1. publication_status = approved, approved_at = now
- *   2. deliver email (HALT on failure)
- *   3. record delivered_to / delivered_at / delivered_to_labels
+ *   2. deliver email (HALT on a real failure; recipients the hub's mode
+ *      holds back are recorded, not fatal: see src/shared/delivery.ts)
+ *   3. record delivered_to / delivered_at / delivered_to_labels / held_back
  *   4. emit outcome_recorded
  *   5. publication_status = published, published_at = now
  *   6. emit result_published (the feed-worthy event)
@@ -300,11 +301,6 @@ export async function approveBrief(
   const selected = state.recipients;
   const toEmails =
     selected !== undefined ? selected.map((r) => r.email) : deps.fallbackRecipients;
-  // Public receipt labels — grouped offices collapse to one name (see
-  // collapseRecipientLabels). The email list above stays one-per-person.
-  const toLabels =
-    selected !== undefined ? collapseRecipientLabels(selected) : [];
-
   // Step 1: approved
   assertPublicationTransition(state.publication_status, "approved");
   state.publication_status = "approved";
@@ -316,17 +312,34 @@ export async function approveBrief(
       hubLabel: deps.hubLabel,
       publicUrl: deps.publicBriefUrl,
     });
-    await deps.sendEmail({
+    const report = await deps.sendEmail({
       to: toEmails,
       subject: email.subject,
       html: email.html,
       text: email.text,
     });
+    const sent = report ? report.sent : toEmails;
+    const heldBack = report ? report.held_back : [];
     // Step 3: record the delivery — emails server-side, labels for the
-    // public receipt, and the actual send time.
-    state.delivered_to = [...toEmails];
-    state.delivered_at = new Date().toISOString();
-    state.delivered_to_labels = [...toLabels];
+    // public receipt (grouped offices collapse to one name, see
+    // collapseRecipientLabels; the email list stays one-per-person), and the
+    // actual send time. The receipt names only who was really sent it: a
+    // held-back official was not "Sent to" anything.
+    const sentSet = new Set(sent);
+    const heldSet = new Set(heldBack.map((h) => h.email));
+    state.delivered_to = [...sent];
+    state.delivered_at = sent.length > 0 ? new Date().toISOString() : null;
+    state.delivered_to_labels =
+      selected !== undefined
+        ? collapseRecipientLabels(selected.filter((r) => sentSet.has(r.email)))
+        : [];
+    if (heldBack.length > 0) {
+      state.held_back = heldBack;
+      state.held_back_labels =
+        selected !== undefined
+          ? collapseRecipientLabels(selected.filter((r) => heldSet.has(r.email)))
+          : [];
+    }
   }
 
   // Step 4: outcome recorded
@@ -354,6 +367,7 @@ export async function approveBrief(
       approved_at: state.approved_at,
       published_at: state.published_at,
       delivered_to: state.delivered_to,
+      held_back: state.held_back ?? [],
     },
   };
 }
@@ -378,6 +392,8 @@ export function getAdminReadModel(
     recipients: state.recipients ?? null,
     delivered_at: state.delivered_at ?? null,
     delivered_to_labels: state.delivered_to_labels ?? [],
+    held_back: state.held_back ?? [],
+    held_back_labels: state.held_back_labels ?? [],
     created_at: processMeta.createdAt,
     created_by: processMeta.createdBy,
   };

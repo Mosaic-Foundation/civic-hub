@@ -158,6 +158,25 @@ describe("a hub that is not live writes only to its own people", () => {
     ).toBe(true);
   });
 
+  it("lets a sign-in code through on a demo or beta hub", () => {
+    // A code goes only to the address that asked for it. On a demo hub an
+    // official must use a real code (privilegedAccounts.ts) and is on neither
+    // list, so without this they could never sign in.
+    for (const mode of ["demo", "beta"] as const) {
+      const d = runWithHub(hub("athens", mode), SETTINGS, () =>
+        mailDecision("official@county.example", "sign_in_code"),
+      );
+      expect(d.send).toBe(true);
+    }
+  });
+
+  it("reports the mode when it holds a message back", () => {
+    const d = runWithHub(hub("athens", "beta"), SETTINGS, () =>
+      mailDecision("official@county.example"),
+    );
+    expect(d).toMatchObject({ send: false, mode: "beta" });
+  });
+
   it("does not guard a caller with no hub in scope", () => {
     // Crons and scripts. Stated as a test because it is a deliberate hole,
     // not an oversight: production's Floyd is in beta and its digest must

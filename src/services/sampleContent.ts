@@ -20,6 +20,7 @@
 // is still there", so a removal that stops part-way is finished by running
 // it again. No step touches a non-sample row.
 
+import { SAMPLE_HOLD_REASON, type DeliveryReport } from "../shared/delivery.js";
 import { forHub, type HubDb, type TableName } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import {
@@ -161,8 +162,9 @@ export async function removeSampleContent(actorEmail: string): Promise<SampleRem
  * other; an admin may approve it to see the flow, and on a live hub the
  * recipients are real officials. Illustrative content is never delivered.
  */
-export async function sampleDeliverySuppressed(message: { to: string[]; subject: string }): Promise<void> {
+export async function sampleDeliverySuppressed(message: { to: string[]; subject: string }): Promise<DeliveryReport> {
   console.log(
     `[email] SUPPRESSED (sample content) hub=${currentHubId()} to=${message.to.length} recipient(s) subject="${message.subject}"`,
   );
+  return { sent: [], held_back: message.to.map((email) => ({ email, reason: SAMPLE_HOLD_REASON })) };
 }

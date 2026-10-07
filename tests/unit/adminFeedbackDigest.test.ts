@@ -28,7 +28,8 @@ function payload(over: Partial<AdminDigestPayload> = {}): AdminDigestPayload {
     hub_name: "Floyd Civic Hub",
     generated_at: "2026-08-27T12:00:00.000Z",
     proposals: emptyQueue("https://hub.example/propose"),
-    vote_results: emptyQueue("https://hub.example/admin/vote-results"),
+    reviews: emptyQueue("https://hub.example/admin/reviews"),
+    briefs: emptyQueue("https://hub.example/admin/briefs"),
     meeting_summaries: emptyQueue("https://hub.example/admin/meeting-summaries"),
     feedback: emptyQueue("https://hub.example/admin/feedback"),
     job_problems: { count: 0, items: [], panel_url: "https://hub.example/admin/settings/plugins" },
@@ -131,5 +132,41 @@ describe("admin digest — feedback section", () => {
     expect(subject).toBe(
       "[Floyd Civic Hub] Admin queue: 2 meeting summaries, 3 feedback submissions",
     );
+  });
+});
+
+// 2026-10-07 (docs session #5): the queues an admin acts on. The dead
+// "Vote results awaiting approval" section (civic.vote_results, which votes
+// no longer create) is gone.
+describe("admin digest — Process reviews and briefs", () => {
+  const reviews: QueueSnapshot = {
+    count: 1,
+    items: [{ id: "rev_1", title: "Should the library open on Sundays?", created_at: "2026-10-07T09:00:00.000Z" }],
+    panel_url: "https://hub.example/admin/reviews",
+  };
+  const briefs: QueueSnapshot = {
+    count: 2,
+    items: [
+      { id: "proc_b1", title: "Speed cameras", created_at: "2026-10-07T08:00:00.000Z" },
+      { id: "proc_b2", title: "Park hours", created_at: "2026-10-06T08:00:00.000Z" },
+    ],
+    panel_url: "https://hub.example/admin/briefs",
+  };
+
+  it("names both queues in the subject and links each item to its page", () => {
+    const { subject, html, text } = renderAdminDigestEmail(payload({ reviews, briefs, empty: false }));
+    expect(subject).toBe("[Floyd Civic Hub] Admin queue: 1 submission to review, 2 briefs to approve");
+    expect(html).toContain("Submissions waiting in Process reviews — 1 submission");
+    expect(html).toContain("/admin/reviews/rev_1");
+    expect(html).toContain("Open Process reviews panel");
+    expect(html).toContain("Briefs awaiting approval — 2 briefs");
+    expect(html).toContain("/admin/briefs/proc_b1");
+    expect(text).toContain("Briefs awaiting approval: 2");
+  });
+
+  it("has no vote-results section any more", () => {
+    const { html, text } = renderAdminDigestEmail(payload({ reviews, briefs, empty: false }));
+    expect(html).not.toMatch(/Vote results/i);
+    expect(text).not.toMatch(/Vote results/i);
   });
 });

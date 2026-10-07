@@ -189,6 +189,11 @@ export async function runDigestForHub(input: {
   let sent = 0;
   let skipped = 0;
   let failed = 0;
+  // Held back by the hub's mode (mailGuard.ts): not sent, on purpose. Counted
+  // apart from `failed` so a demo or beta hub's digest job does not read
+  // "could not be sent to N residents" every day (review #36).
+  let heldBack = 0;
+  let heldBackReason: string | undefined;
 
   try {
     const users = await listSubscribedUsers(currentHubId());
@@ -378,6 +383,15 @@ export async function runDigestForHub(input: {
           text: digest.text,
         });
 
+        if (result.held_back) {
+          console.log(
+            `[digest] user=${user.id} events=${digest.item_count} sent=false held_back=${result.held_back_reason ?? "hub mode"}`,
+          );
+          heldBack += 1;
+          heldBackReason ??= result.held_back_reason;
+          continue;
+        }
+
         if (!result.sent) {
           console.warn(
             `[digest] user=${user.id} events=${digest.item_count} sent=false error=${result.error ?? "unknown"}`,
@@ -406,6 +420,8 @@ export async function runDigestForHub(input: {
         sent_count: sent,
         skipped_count: skipped,
         failed_count: failed,
+        held_back_count: heldBack,
+        ...(heldBackReason ? { held_back_reason: heldBackReason } : {}),
         duration_ms: Date.now() - started,
       },
     };
@@ -420,6 +436,8 @@ export async function runDigestForHub(input: {
         sent_count: sent,
         skipped_count: skipped,
         failed_count: failed,
+        held_back_count: heldBack,
+        ...(heldBackReason ? { held_back_reason: heldBackReason } : {}),
         duration_ms: Date.now() - started,
       },
     };

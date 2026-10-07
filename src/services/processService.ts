@@ -853,14 +853,17 @@ export async function getDisabledTypeProcessIds(): Promise<Set<string>> {
 /**
  * All archived processes, newest first — for the admin Archived view where an
  * admin can review and restore. Bypasses the public NON_PUBLIC_STATUSES filter
- * by design (admin-only surface).
+ * by design (admin-only surface). `types` narrows it in SQL: the
+ * meeting-summary dedupe reads archived summaries so an admin's delete sticks
+ * (review M5).
  */
-export async function getArchivedProcesses(): Promise<Process[]> {
-  const data = await db()
+export async function getArchivedProcesses(types?: string[]): Promise<Process[]> {
+  let q = db()
     .from("processes")
     .select<ProcessRow>("*")
-    .eq("status", "archived")
-    .order("updated_at", { ascending: false });
+    .eq("status", "archived");
+  if (types && types.length > 0) q = q.in("type", types);
+  const data = await q.order("updated_at", { ascending: false });
   return data.map((r) => rowToProcess(r));
 }
 

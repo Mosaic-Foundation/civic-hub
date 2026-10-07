@@ -35,6 +35,8 @@ const created: Array<Record<string, unknown>> = [];
 const events: string[] = [];
 const saved: Array<{ status?: string }> = [];
 const mail: Array<{ to: string | string[]; subject: string; html: string }> = [];
+/** Archived meeting summaries the run's dedupe reads (review M5). */
+const archived: Array<Record<string, unknown>> = [];
 
 vi.mock("../../src/db/hubs.js", () => ({
   listActiveHubs: async () => [FLOYD_HUB],
@@ -123,6 +125,7 @@ vi.mock("../../src/utils/email.js", () => ({
 
 vi.mock("../../src/services/processService.js", () => ({
   getAllProcesses: async () => [],
+  getArchivedProcesses: async () => archived,
   getSampleProcessIds: async () => new Set<string>(),
   getProcess: async () => null,
   archiveProcess: async () => undefined,
@@ -133,6 +136,11 @@ vi.mock("../../src/services/processService.js", () => ({
     created.push(input);
     return { ...input, id: `proc_${created.length}`, jurisdiction: "us-va-floyd", status: "active" };
   },
+}));
+
+vi.mock("../../src/modules/civic.review/index.js", async (orig) => ({
+  ...(await orig<typeof import("../../src/modules/civic.review/index.js")>()),
+  listReviews: async () => [],
 }));
 
 vi.mock("../../src/events/eventEmitter.js", () => ({
@@ -185,6 +193,7 @@ beforeEach(() => {
   events.length = 0;
   saved.length = 0;
   mail.length = 0;
+  archived.length = 0;
 });
 
 describe("a missing-timestamps summary is flagged, not published", () => {
@@ -204,6 +213,33 @@ describe("a missing-timestamps summary is flagged, not published", () => {
     expect(run?.problems.join(" ")).toMatch(
       /2026-09-22 Regular Meeting: No video timestamps; the transcript had timings, check before publishing/,
     );
+  });
+});
+
+describe("a summary an admin deleted stays deleted (M5)", () => {
+  it("does not summarize a meeting again when its summary was archived", async () => {
+    // Deleting a summary archives it. getAllProcesses leaves archived rows
+    // out, so before 2026-10-07 the next run found "no summary" and wrote it
+    // again from the same source.
+    archived.push({
+      id: "proc_archived",
+      definition: { type: "civic.meeting_summary", version: "0.1" },
+      status: "archived",
+      state: {
+        source_id: ENTRY.source_id,
+        source_type: "agenda",
+        meeting_date: ENTRY.meeting_date,
+        meeting_title: ENTRY.meeting_title,
+        source_agenda_url: ENTRY.source_agenda_url,
+        source_video_url: ENTRY.source_video_url,
+      },
+    });
+    await runJob("meeting_summary");
+
+    expect(created).toHaveLength(0);
+    const run = runLog.find((r) => r.job_id === "meeting_summary");
+    expect(run?.status).toBe("ok");
+    expect(run?.summary).toBe("0 summaries written");
   });
 });
 

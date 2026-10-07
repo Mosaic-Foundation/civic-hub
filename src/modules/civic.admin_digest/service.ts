@@ -4,12 +4,19 @@
 // one email per admin, send via the existing Resend client. Empty
 // digests are skipped silently (matches the user-digest pattern —
 // quiet days produce no email, no log noise).
+//
+// The queues (2026-10-07): submissions waiting in Process reviews, briefs
+// awaiting approval, open proposals, meeting summaries awaiting review, and
+// new feedback. The old "Vote results awaiting approval" section is gone: it
+// read civic.vote_results, which votes stopped creating when briefs became the
+// one results artifact, so it was always empty.
 
 import {
   listProposals,
   type Proposal,
 } from "../civic.proposals/index.js";
-import { getAllProcesses, getSampleProcessIds } from "../../services/processService.js";
+import { getAllProcesses, getProcess, getSampleProcessIds } from "../../services/processService.js";
+import { listReviews } from "../civic.review/index.js";
 import { listFeedback } from "../civic.feedback/index.js";
 import { effectiveQualityFlag } from "../civic.meeting_summary/index.js";
 import { sendEmail } from "../../utils/email.js";
@@ -58,9 +65,11 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
   // renders nothing): its panel is gone, so it would link to a dead page.
   // Proposals → proposal, vote results → vote, meeting summaries →
   // meeting_summary, feedback → feedback. Not read at all when off.
+  // Briefs → brief. Process reviews belong to no plugin; a submission of a
+  // switched-off type is already left out by listReviews.
   const on = {
     proposals: isPluginEnabledSync("proposal"),
-    voteResults: isPluginEnabledSync("vote"),
+    briefs: isPluginEnabledSync("brief"),
     meetingSummaries: isPluginEnabledSync("meeting_summary"),
     feedback: isPluginEnabledSync("feedback"),
   };
@@ -87,17 +96,31 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
         .map(toPendingItem)
     : [];
 
-  // 2. Vote results — civic.vote_results processes whose state has
-  //    publication_status === "pending". One DB pass via
-  //    getAllProcesses, filter in memory; volume is small.
-  // 3. Meeting summaries — same pattern, approval_status === "pending".
+  // 2. Process reviews — submissions waiting for an admin's decision. Items
+  //    are keyed by review id (the review page's address). Titles come from
+  //    the process, which is in pending_review and so not in getAllProcesses.
+  const reviewItems: PendingItemSummary[] = [];
+  for (const review of await listReviews("pending_review")) {
+    if (sampleIds.has(review.process_id)) continue;
+    const proc = await getProcess(review.process_id);
+    reviewItems.push({
+      id: review.id,
+      title: proc?.title ?? "Untitled submission",
+      created_at: review.updated_at,
+    });
+  }
+
+  // 3. Briefs — civic.brief processes whose state has publication_status ===
+  //    "pending". One DB pass via getAllProcesses, filter in memory; volume
+  //    is small.
+  // 4. Meeting summaries — same pattern, approval_status === "pending".
   const queuedTypes = [
-    ...(on.voteResults ? ["civic.vote_results"] : []),
+    ...(on.briefs ? ["civic.brief"] : []),
     ...(on.meetingSummaries ? ["civic.meeting_summary"] : []),
   ];
   const allProcesses =
     queuedTypes.length > 0 ? (await getAllProcesses(queuedTypes)).filter((p) => !p.isSample) : [];
-  const voteResultsItems: PendingItemSummary[] = [];
+  const briefItems: PendingItemSummary[] = [];
   const meetingSummaryItems: PendingItemSummary[] = [];
 
   for (const proc of allProcesses) {
@@ -105,9 +128,9 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
       | { publication_status?: unknown; approval_status?: unknown }
       | null
       | undefined;
-    if (proc.definition.type === "civic.vote_results") {
+    if (proc.definition.type === "civic.brief") {
       if (state?.publication_status === "pending") {
-        voteResultsItems.push({
+        briefItems.push({
           id: proc.id,
           title: proc.title,
           created_at: proc.createdAt,
@@ -178,10 +201,8 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
   const jobProblems = jobProblemsSnapshot(jobRuns, `${ui}/admin/settings/plugins`);
 
   const proposals = snapshotFromList(proposalItems, `${ui}/propose`);
-  const voteResults = snapshotFromList(
-    voteResultsItems,
-    `${ui}/admin/vote-results`,
-  );
+  const reviews = snapshotFromList(reviewItems, `${ui}/admin/reviews`);
+  const briefs = snapshotFromList(briefItems, `${ui}/admin/briefs`);
   const meetingSummaries = snapshotFromList(
     meetingSummaryItems,
     `${ui}/admin/meeting-summaries`,
@@ -192,13 +213,15 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
     hub_name: hubDisplayNameSync(),
     generated_at: new Date().toISOString(),
     proposals,
-    vote_results: voteResults,
+    reviews,
+    briefs,
     meeting_summaries: meetingSummaries,
     feedback,
     job_problems: jobProblems,
     empty:
       proposals.count === 0 &&
-      voteResults.count === 0 &&
+      reviews.count === 0 &&
+      briefs.count === 0 &&
       meetingSummaries.count === 0 &&
       feedback.count === 0 &&
       jobProblems.count === 0,
@@ -332,14 +355,19 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
   text: string;
 } {
   const totalParts: string[] = [];
+  if (p.reviews.count > 0) {
+    totalParts.push(
+      `${p.reviews.count} ${pluralize(p.reviews.count, "submission", "submissions")} to review`,
+    );
+  }
+  if (p.briefs.count > 0) {
+    totalParts.push(
+      `${p.briefs.count} ${pluralize(p.briefs.count, "brief", "briefs")} to approve`,
+    );
+  }
   if (p.proposals.count > 0) {
     totalParts.push(
       `${p.proposals.count} ${pluralize(p.proposals.count, "proposal", "proposals")}`,
-    );
-  }
-  if (p.vote_results.count > 0) {
-    totalParts.push(
-      `${p.vote_results.count} vote ${pluralize(p.vote_results.count, "result", "results")}`,
     );
   }
   if (p.meeting_summaries.count > 0) {
@@ -365,18 +393,25 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
   const sections = [
     renderJobProblemsSection(jobs),
     renderQueueSection(
+      "Submissions waiting in Process reviews",
+      { singular: "submission", plural: "submissions" },
+      `${ui}/admin/reviews`,
+      p.reviews,
+      { panelLabel: "Process reviews" },
+    ),
+    renderQueueSection(
+      "Briefs awaiting approval",
+      { singular: "brief", plural: "briefs" },
+      `${ui}/admin/briefs`,
+      p.briefs,
+    ),
+    renderQueueSection(
       // "awaiting review" was a misnomer: these are live idea-board proposals
       // an admin may want to look at, not submissions in the review queue.
       "Open proposals",
       { singular: "proposal", plural: "proposals" },
       `${ui}/propose`,
       p.proposals,
-    ),
-    renderQueueSection(
-      "Vote results awaiting approval",
-      { singular: "vote result", plural: "vote results" },
-      `${ui}/admin/vote-results`,
-      p.vote_results,
     ),
     renderQueueSection(
       "Meeting summaries awaiting review",
@@ -433,8 +468,9 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
     textParts.push(`  ${jobs.panel_url}`);
     textParts.push("");
   }
-  appendQueueText("Proposals awaiting review", p.proposals);
-  appendQueueText("Vote results awaiting approval", p.vote_results);
+  appendQueueText("Submissions waiting in Process reviews", p.reviews);
+  appendQueueText("Briefs awaiting approval", p.briefs);
+  appendQueueText("Open proposals", p.proposals);
   appendQueueText("Meeting summaries awaiting review", p.meeting_summaries);
   appendQueueText("New feedback (last 24h)", p.feedback);
   textParts.push(
@@ -457,7 +493,8 @@ export interface AdminDigestRunResult {
   /** Items per section; a section whose plugin is off is always 0. */
   counts: {
     proposals: number;
-    vote_results: number;
+    reviews: number;
+    briefs: number;
     meeting_summaries: number;
     feedback: number;
     job_problems: number;
@@ -474,7 +511,8 @@ export async function runAdminDigest(
   const payload = await buildAdminDigest();
   const counts = {
     proposals: payload.proposals.count,
-    vote_results: payload.vote_results.count,
+    reviews: payload.reviews.count,
+    briefs: payload.briefs.count,
     meeting_summaries: payload.meeting_summaries.count,
     feedback: payload.feedback.count,
     job_problems: payload.job_problems.count,

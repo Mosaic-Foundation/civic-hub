@@ -65,6 +65,7 @@ import {
   archiveProcess,
   createProcess,
   getAllProcesses,
+  getArchivedProcesses,
   getProcess,
   saveProcessState,
 } from "../services/processService.js";
@@ -78,6 +79,7 @@ import {
   findBrokenPublications,
   type BrokenPublication,
 } from "../services/feedHealth.js";
+import { brokenLinkProblem } from "../jobs/describe.js";
 import { getSettingSync, getAdminEmailsSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 import { processJurisdiction } from "../config/hub.js";
@@ -240,20 +242,16 @@ export function overdueMeetings(waiting: readonly WaitingMeeting[] = []): Waitin
  *   2. The batch threw outright (bad config, discovery error). The catch
  *      block returned 500 to a cron caller that reads nobody's response.
  *
- * A source that has ever worked and now yields nothing is the single most
- * likely symptom of an upstream change, so it is reported as a failure, not
- * as an empty success.
+ * An empty listing USED to be reported as a failure here too, on the theory
+ * that a source which stops parsing looks like one with no meetings. Changed
+ * 2026-10-07 (review M7, Adam): it alarmed every quiet week and every title
+ * filter that matched nothing recent, so admins learned to ignore the job. A
+ * run that discovers nothing is "nothing new"; a source that cannot be read
+ * throws in discovery, and that run aborts and alerts on its error (`fatal`).
  */
 export function cronAlertReason(outcome: CronOutcome): string | null {
   if (outcome.fatal) {
     return `the run aborted: ${outcome.fatal}`;
-  }
-  if (outcome.discovered === 0) {
-    return (
-      `discovery returned 0 meetings from connector "${outcome.connector_id}". ` +
-      `Either the source genuinely lists no meetings, or — far more likely — ` +
-      `it changed shape and can no longer be read.`
-    );
   }
   if (outcome.failed > 0) {
     return `${outcome.failed} meeting(s) failed to summarize.`;
@@ -297,8 +295,8 @@ export function cronAlertReason(outcome: CronOutcome): string | null {
     // The counters can all read zero while readers get 404s: this run's
     // predecessor unpublished two live pages and reported complete success.
     return (
-      `${outcome.brokenLinks.length} published feed card(s) point at a page ` +
-      `that no longer resolves. Readers clicking them get nothing.`
+      `${outcome.brokenLinks.length} item(s) on the feed are announced as ` +
+      `published but their page is not public. Readers clicking them get nothing.`
     );
   }
   return null;
@@ -323,11 +321,9 @@ async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
 
   const headline = outcome.fatal
     ? "failed"
-    : outcome.discovered === 0
-      ? "found no meetings"
-      : outcome.failed > 0
-        ? `completed with ${outcome.failed} failure(s)`
-        : "needs your attention";
+    : outcome.failed > 0
+      ? `completed with ${outcome.failed} failure(s)`
+      : "needs your attention";
 
   const subject = `[Civic Hub] Meeting summary cron ${headline}`;
   const failureLines = outcome.failures
@@ -349,10 +345,10 @@ async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
     }
     ${
       outcome.brokenLinks && outcome.brokenLinks.length > 0
-        ? `<p><strong>Broken feed links</strong> — published cards whose page 404s:</p><ul>${outcome.brokenLinks
+        ? `<p><strong>Broken feed links</strong> — published cards whose page does not open:</p><ul>${outcome.brokenLinks
             .map(
               (b) =>
-                `<li><code>${b.process_id}</code> (${b.process_type}, published ${b.published_at.slice(0, 10)}): ${b.reason}</li>`,
+                `<li>${brokenLinkProblem(b)} <code>${b.process_id}</code>, published ${b.published_at.slice(0, 10)}.</li>`,
             )
             .join("\n")}</ul>`
         : ""
@@ -541,18 +537,17 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
         `entries=${discovered} duration_ms=${Date.now() - discoveryStart}`,
     );
 
-    // Zero discovered entries is the signature of a source that changed
-    // shape underneath us, not a quiet month. Say so loudly here; the
-    // alert itself is raised by notifyCronOutcome below.
+    // Zero discovered entries is "nothing new" (review M7): a quiet source,
+    // or a filter that matches nothing recent. Logged with the ladder so a
+    // source that really stopped parsing can still be traced from here.
     if (discovered === 0) {
       const ladder = discovery.attempts.length > 0
         ? ` Tried: ${discovery.attempts.map((a) => `${a.id} → ${a.outcome}`).join("; ")}.`
         : "";
-      console.error(
-        `[meeting-summary] DISCOVERY EMPTY — no connector returned meetings.` +
+      console.warn(
+        `[meeting-summary] discovery empty — no connector returned meetings.` +
           ladder +
-          ` This is reported as a failure, not an empty success: a source that ` +
-          `stops parsing looks exactly like a source with no meetings. Run ` +
+          ` If the source does list meetings, run ` +
           `"npx tsx scripts/diagnoseMeetingSummary.ts" to see the raw source.`,
       );
     }
@@ -606,7 +601,13 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
     // reintroducing the same-day collision bug: if a date+type genuinely has
     // two meetings, two summaries are expected and only the surplus is created.
     const existingSlots = new Map<string, number>();
-    for (const p of allProcesses) {
+    // An archived summary is one an admin deleted, and the delete must stick
+    // (review M5): it counts as "already covered" for every match below, so
+    // the meeting is not summarized again, but it is never upgraded.
+    // getAllProcesses() leaves archived rows out, so they are read here.
+    const archivedSummaries = await getArchivedProcesses(["civic.meeting_summary"]);
+    const archivedIds = new Set(archivedSummaries.map((p) => p.id));
+    for (const p of [...allProcesses, ...archivedSummaries]) {
       if (p.definition.type !== "civic.meeting_summary") continue;
       const s = summaryState(p);
       if (typeof s?.source_id === "string") {
@@ -614,10 +615,11 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
         for (const fp of sourceFingerprints(s)) {
           if (!bySourceFingerprint.has(fp)) bySourceFingerprint.set(fp, p);
         }
-        // Agenda- and recording-sourced summaries are provisional: both get
-        // re-summarized when the official minutes for that date appear.
         const slotKey = meetingKey(s.meeting_date, s.meeting_title);
         existingSlots.set(slotKey, (existingSlots.get(slotKey) ?? 0) + 1);
+        if (archivedIds.has(p.id)) continue;
+        // Agenda- and recording-sourced summaries are provisional: both get
+        // re-summarized when the official minutes for that date appear.
         const sourceType = (s.source_type ?? "minutes") as MeetingSourceType;
         if (UPGRADEABLE_SOURCE_TYPES.includes(sourceType)) {
           provisionalBySourceId.set(s.source_id, p);
@@ -1080,7 +1082,14 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
       upgraded,
       skipped_existing: skippedExisting,
       failed,
-      broken_links: brokenLinks.length,
+      // The list, not a count (review M4): process id, type, title and the
+      // reason, which describe.ts turns into one problem line each.
+      broken_links: brokenLinks.map(({ process_id, process_type, title, reason }) => ({
+        process_id,
+        process_type,
+        title,
+        reason,
+      })),
       stale_summaries: staleSummaries.length,
       pending_revisions_overdue: staleRevisions.length,
       flagged,

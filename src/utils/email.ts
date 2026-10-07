@@ -14,7 +14,8 @@
 // Both are no-ops for a live hub on a properly configured deployment.
 
 import { currentSender, isSandboxSender } from "../services/emailSender.js";
-import { allowDelivery } from "../services/mailGuard.js";
+import { allowDelivery, type MailPurpose } from "../services/mailGuard.js";
+import { hubModeHoldReason } from "../shared/delivery.js";
 
 /**
  * Validate email configuration at startup. Logs warnings for missing
@@ -65,6 +66,8 @@ export interface SendEmailInput {
   subject: string;
   html: string;
   text?: string;
+  /** What the message is, where that changes who may receive it (mailGuard). */
+  purpose?: MailPurpose;
 }
 
 export interface SendEmailResult {
@@ -72,6 +75,13 @@ export interface SendEmailResult {
   provider?: "resend";
   id?: string;
   error?: string;
+  /**
+   * The hub's mode held this message back on purpose (mailGuard.ts). Not a
+   * failure: callers count it apart and say so, never as "could not be sent".
+   * `error` is unset; `held_back_reason` says why in an admin's words.
+   */
+  held_back?: true;
+  held_back_reason?: string;
 }
 
 /**
@@ -86,8 +96,13 @@ export async function sendEmail(
   // configured — and putting it first means the suppression is visible in
   // local development too, where there is no API key and the fallback path
   // would otherwise swallow it.
-  if (!allowDelivery(input.to, input.subject)) {
-    return { sent: false, error: "suppressed by hub mode" };
+  const decision = allowDelivery(input.to, input.subject, input.purpose);
+  if (!decision.send) {
+    return {
+      sent: false,
+      held_back: true,
+      held_back_reason: hubModeHoldReason(decision.mode ?? "a restricted"),
+    };
   }
 
   const apiKey = process.env.RESEND_API_KEY;
@@ -135,6 +150,16 @@ export async function sendEmail(
       error: err instanceof Error ? err.message : "Unknown error",
     };
   }
+}
+
+/**
+ * Why a message was not sent, for a log line: "held back (this hub is in demo
+ * mode)" for the mode guard, the error otherwise. Keeps a held-back message
+ * from reading as "Failed to send" in the logs (review #36).
+ */
+export function unsentReason(result: SendEmailResult): string {
+  if (result.held_back) return `held back (${result.held_back_reason ?? "hub mode"})`;
+  return result.error ?? "unknown error";
 }
 
 /** Minimal HTML-to-text for the plaintext fallback. */

@@ -126,15 +126,19 @@ describe("Cron runs per hub", () => {
     // HUB_CRON_ENABLED=false, so no job ever runs there). A forced admin
     // digest always does something: it sends, or reports nothing to send.
     if (!cronsEnabled) return ctx.skip();
-    const count = async () =>
-      ((await localRest("job_runs?select=id&hub_id=eq.athens&job_id=eq.admin_digest")) as unknown[]).length;
-    const before = await count();
+    // The newest row, not a count: the log is pruned to the newest 60 per
+    // job (JOB_RUNS_KEPT), so on a stack that has run the suite a few times
+    // the count stays at 60 while the run is still recorded.
+    const newest = async () =>
+      ((await localRest(
+        "job_runs?select=id,status,summary&hub_id=eq.athens&job_id=eq.admin_digest&order=started_at.desc&limit=1",
+      )) as Array<{ id: string; status: string; summary: string }>)[0];
+    const before = await newest();
     const res = await api("/internal/admin-digest/run?hub=athens&force=true", { method: "GET", headers: authed });
     expect(res.status).toBe(200);
-    expect(await count()).toBe(before + 1);
-    const [latest] = (await localRest(
-      "job_runs?select=status,summary&hub_id=eq.athens&job_id=eq.admin_digest&order=started_at.desc&limit=1",
-    )) as Array<{ status: string; summary: string }>;
+    const latest = await newest();
+    expect(latest?.id).toBeTruthy();
+    expect(latest.id).not.toBe(before?.id);
     expect(["ok", "flagged", "failed"]).toContain(latest.status);
     expect(latest.summary.length).toBeGreaterThan(0);
   });

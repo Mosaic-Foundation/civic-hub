@@ -48,6 +48,7 @@ import {
 } from "../services/processService.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { sendEmail } from "../services/mailer.js";
+import { publishedMessage } from "../shared/delivery.js";
 import { sampleDeliverySuppressed } from "../services/sampleContent.js";
 import { getVoteResultsRecipients, hubDisplayNameSync } from "../services/hubSettings.js";
 import { currentHubId } from "../config/hubContext.js";
@@ -329,8 +330,14 @@ export async function handleApproveVoteResults(
       }),
       { keepRawId: true, audience: "member" },
     );
+    // Held back is not failed (review #34): the results published; say who
+    // was not emailed and why.
+    const heldBack = state.held_back ?? [];
     res.json({
-      message: "Vote results approved and published.",
+      message: publishedMessage(state.delivered_to, {
+        names: heldBack.map((h) => h.email),
+        reasons: heldBack.map((h) => h.reason),
+      }),
       vote_results: model,
     });
   } catch (err) {

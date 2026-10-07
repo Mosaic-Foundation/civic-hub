@@ -6,6 +6,10 @@
 // published summaries, so their pages 404'd while their feed cards stayed up.
 //
 // These pin the rule that decides whether a published card still resolves.
+//
+// Changed 2026-10-07 (review M1): an archived or deleted process is NOT a
+// broken link. Both feeds hide its card, so no reader can click it; counting
+// it made every archive a daily "failed" run.
 
 import { describe, it, expect } from "vitest";
 import { publicationFailure } from "../../src/services/feedHealth.js";
@@ -36,25 +40,27 @@ describe("publicationFailure", () => {
   it("catches the unpublish bug — announced published, state says pending", () => {
     // Exactly what the upgrade pass did to Floyd's 2026-06-09 summary.
     const reason = publicationFailure(proc({ state: { approval_status: "pending" } }));
-    expect(reason).toContain("pending");
-    expect(reason).toContain("404");
+    expect(reason).toBe('its approval is "pending", so its page shows "not found"');
   });
 
   it("catches the transient approved state too", () => {
     expect(publicationFailure(proc({ state: { approval_status: "approved" } }))).not.toBeNull();
   });
 
-  it("catches an archived process whose card is still out there", () => {
-    const reason = publicationFailure(proc({ status: "archived" }));
-    expect(reason).toContain("archived");
+  it("does not count an archived process: the feeds hide its card", () => {
+    expect(publicationFailure(proc({ status: "archived" }))).toBeNull();
+    // Even one whose state still says pending: archived wins.
+    expect(publicationFailure(proc({ status: "archived", state: { approval_status: "pending" } }))).toBeNull();
   });
 
   it("catches a process pulled back into review", () => {
-    expect(publicationFailure(proc({ status: "pending_review" }))).not.toBeNull();
+    expect(publicationFailure(proc({ status: "pending_review" }))).toBe(
+      'it is back in review ("pending_review"), so its page is hidden from the public',
+    );
   });
 
-  it("catches a process that no longer exists", () => {
-    expect(publicationFailure(null)).toContain("no longer exists");
+  it("does not count a process that no longer exists: the feeds skip it", () => {
+    expect(publicationFailure(null)).toBeNull();
   });
 
   it("passes a type with no approval gate of its own", () => {

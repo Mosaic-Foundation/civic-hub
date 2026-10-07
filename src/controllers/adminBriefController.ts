@@ -29,6 +29,7 @@ import {
 import { finalizeBriefSource } from "../services/briefFinalize.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { sendEmail } from "../services/mailer.js";
+import { publishedMessage } from "../shared/delivery.js";
 import { sampleDeliverySuppressed } from "../services/sampleContent.js";
 import { getVoteResultsRecipients, hubDisplayNameSync } from "../services/hubSettings.js";
 import { currentHubId } from "../config/hubContext.js";
@@ -244,7 +245,20 @@ export async function handleApproveBrief(
       }),
       { keepRawId: true, audience: "member" },
     );
-    res.json({ message: "Brief approved and published.", brief: model });
+    // Held back is not failed (review #34): say who was not emailed and why,
+    // e.g. "Published. Not emailed to Board of Supervisors because this hub
+    // is in demo mode." Labels when the admin chose recipients, else addresses.
+    const heldBack = state.held_back ?? [];
+    const message = publishedMessage(
+      state.delivered_to_labels?.length ? state.delivered_to_labels : state.delivered_to,
+      {
+        names: state.held_back_labels?.length
+          ? state.held_back_labels
+          : heldBack.map((h) => h.email),
+        reasons: heldBack.map((h) => h.reason),
+      },
+    );
+    res.json({ message, brief: model });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
   }

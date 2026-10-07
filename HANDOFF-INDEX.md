@@ -71,6 +71,12 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Held back is not failed; jobs report real problems (2026-10-07, second
+  session)**: `src/shared/delivery.ts`, mailer report, `held_back` on briefs and
+  vote results, digest `held_back_count`, feed health ignores archived and
+  missing, `broken_links` list, archived summaries in dedupe, empty discovery
+  "Nothing new", sign-in codes pass the guard, votes finalize at close with
+  Briefs off, admin digest reviews + briefs — top of HANDOFF (grep the heading)
 - **Plugin switches, end to end (2026-10-07)**: Settings save re-renders the
   admin's page (`refreshHubConfig`), CoC check outside the assistant gate,
   search / links / digest / discovery / reviews respect a switched-off type,

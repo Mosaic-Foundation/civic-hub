@@ -421,6 +421,13 @@ published record (it still hides non-public statuses as before), and the
 digest's `/unsubscribe` and `/user/settings/digest`, so a link in a digest
 already sent keeps working.
 
+**Votes without Briefs (Adam, 2026-10-07).** A brief is an optional extra
+for every type. With Briefs off, a vote is finalized when it closes and
+publishes its results then. With Briefs on, publishing its brief finalizes it,
+as before. **Held back is not failed (2026-10-07):** mail the mode guard holds
+back is reported as `held_back` with the reason, and the item still publishes.
+Sign-in codes pass the guard on every mode.
+
 **Plugin switches, end to end (2026-10-07).** The gaps from the 2026-10-06
 review, closed: a switched-off type is also left out of search (hits and
 counts, `enabledProcessTypesAmong`), link candidates, rendered links, brief

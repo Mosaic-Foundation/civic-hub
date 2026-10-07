@@ -237,6 +237,9 @@ export async function requestVerification(
     to: normalizedEmail,
     subject: `Your ${hubDisplayName} sign-in code`,
     html: renderOtpEmail(code, hubDisplayName),
+    // Through the mode guard on every mode: it goes only to the address that
+    // asked (mailGuard.ts). This is what lets an official sign in on a demo.
+    purpose: "sign_in_code",
   });
 
   if (result.sent) {

@@ -13,6 +13,12 @@
 // every card in the public feed resolves to content the public can fetch. It
 // is deliberately independent of whichever job created the card, so it catches
 // the next cause as well as the one we know about.
+//
+// WHAT IS NOT BROKEN (2026-10-07, review M1). An archived or deleted process
+// is not a broken link: both feeds already hide its card (eventController,
+// feedController), so no reader can click it. Counting them made every archive
+// of something with a result a daily "failed" run, forever. Only a process
+// that is still on the feed and whose page does not open is reported.
 
 import { getAllEvents } from "../events/eventStore.js";
 import { getProcess } from "./processService.js";
@@ -22,9 +28,12 @@ import type { Process } from "../models/process.js";
 export interface BrokenPublication {
   process_id: string;
   process_type: string;
+  /** The process's title, so an admin can find it. */
+  title: string;
   /** When the card the reader sees was published. */
   published_at: string;
-  /** Why the page does not resolve, in words an operator can act on. */
+  /** Why the page does not open, as the end of a sentence an admin reads:
+   *  "its approval is \"pending\", so its page shows \"not found\"". */
   reason: string;
 }
 
@@ -33,22 +42,25 @@ export interface BrokenPublication {
  * reachable by the public right now.
  *
  * Two gates, because a process can fail either:
- *   - the process-level status gate (archived / still in review), and
+ *   - the process-level status gate (pulled back into review), and
  *   - a module's own approval gate, where "published" lives in state rather
- *     than in the row's status. Meeting summaries and briefs both work that
- *     way, and it is precisely the gate the upgrade pass tripped.
+ *     than in the row's status. Meeting summaries work that way, and it is
+ *     precisely the gate the upgrade pass tripped.
+ *
+ * A missing or archived process is NOT a failure: the feeds hide its card.
  */
 export function publicationFailure(process: Process | null): string | null {
-  if (!process) return "the process no longer exists";
+  if (!process) return null;
+  if (process.status === "archived") return null;
 
   if (!isPubliclyFetchable(process.status)) {
-    return `the process is "${process.status}", which is not publicly fetchable`;
+    return `it is back in review ("${process.status}"), so its page is hidden from the public`;
   }
 
   const state = (process.state ?? {}) as Record<string, unknown>;
   const approval = state.approval_status;
   if (typeof approval === "string" && approval !== "published") {
-    return `it announced a published result but its approval_status is "${approval}" — the public page will 404`;
+    return `its approval is "${approval}", so its page shows "not found"`;
   }
 
   return null;
@@ -85,12 +97,15 @@ export async function findBrokenPublications(): Promise<BrokenPublication[]> {
 
   const broken: BrokenPublication[] = [];
   for (const [process_id, { timestamp, type }] of newest) {
-    const process = (await getProcess(process_id).catch(() => null)) ?? null;
+    // A failed lookup throws: the caller reports the check as errored rather
+    // than this reading a database wobble as "deleted, so fine".
+    const process = (await getProcess(process_id)) ?? null;
     const reason = publicationFailure(process);
-    if (reason) {
+    if (reason && process) {
       broken.push({
         process_id,
-        process_type: process?.definition.type ?? type,
+        process_type: process.definition.type ?? type,
+        title: process.title,
         published_at: timestamp,
         reason,
       });

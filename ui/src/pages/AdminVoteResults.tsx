@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { HeldBackNote } from "../components/HeldBackNote";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   adminListVoteResults,
@@ -135,11 +136,9 @@ export default function AdminVoteResults() {
       // Save any unsaved edits first so the published record matches
       // what the admin is looking at.
       await adminPatchVoteResults(selected.id, buildPatch());
-      const { vote_results } = await adminApproveVoteResults(selected.id);
+      const { vote_results, message } = await adminApproveVoteResults(selected.id);
       setSelected(vote_results);
-      setActionMessage(
-        `Approved. Vote results delivered to ${vote_results.delivered_to.length} recipient(s) and published to the feed.`,
-      );
+      setActionMessage(message);
       setConfirmingApprove(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to approve");
@@ -285,6 +284,8 @@ export default function AdminVoteResults() {
               </ul>
             </section>
           )}
+
+          <HeldBackNote heldBack={selected.held_back} />
 
           {isPending && (
             <div className="admin-actions">

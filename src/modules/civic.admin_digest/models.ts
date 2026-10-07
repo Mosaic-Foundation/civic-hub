@@ -1,7 +1,7 @@
 // civic.admin_digest — models for the admin-facing daily digest.
 //
 // Operator-side notification: counts of pending items in each
-// admin-review queue (proposals, vote results, meeting summaries),
+// admin-review queue (process reviews, briefs, proposals, meeting summaries),
 // plus resident feedback received since the last digest, sent once a
 // day to every admin in CIVIC_ADMIN_EMAILS. NOT a civic event — does
 // not flow through emitEvent() / /events.
@@ -58,7 +58,10 @@ export interface AdminDigestPayload {
   hub_name: string;
   generated_at: string;
   proposals: QueueSnapshot;
-  vote_results: QueueSnapshot;
+  /** Submissions waiting in Process reviews (pending_review); ids are review ids. */
+  reviews: QueueSnapshot;
+  /** Briefs awaiting approval (publication_status "pending"). */
+  briefs: QueueSnapshot;
   meeting_summaries: QueueSnapshot;
   /**
    * Feedback received in the digest window (the last 24h), not a backlog
