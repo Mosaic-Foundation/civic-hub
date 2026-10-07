@@ -1,15 +1,16 @@
 // @civic-raw-client-importer: drives forHub() over a supabase-js client with a stubbed fetch; no database.
 // The 1,000-row cap (2026-10-07): PostgREST answers a read with at most 1,000
 // rows and says nothing about the rest. forHub() refuses a read with no limit
-// that comes back full, and readAll() pages past the cap.
+// that comes back full (in production it logs and returns the rows), and
+// readAll() pages past the cap.
 //
 // The stub plays PostgREST over a table of N rows: it honours `offset` and
 // `limit`, and never returns more than 1,000. The same guard against a real
 // database with 1,200 events is tests/api/eventReads.test.ts.
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createClient } from "@supabase/supabase-js";
-import { hubDbFrom, HubDbError, POSTGREST_MAX_ROWS, ROW_CAP_CODE } from "../../src/db/forHub.js";
+import { hubDbFrom, HubDbError, POSTGREST_MAX_ROWS, ROW_CAP_CODE, ROW_CAP_LOG_TAG } from "../../src/db/forHub.js";
 import { readAll } from "../../src/db/readAll.js";
 import { inChunks } from "../../src/db/inChunks.js";
 
@@ -87,6 +88,36 @@ describe("forHub — a read cut off at the cap", () => {
   it("does not touch single-row reads or counts", async () => {
     tableSize = 5000;
     await expect(db.from("events").select("id").eq("id", 1).limit(1).maybeSingle()).resolves.toBeTruthy();
+  });
+});
+
+describe("forHub — the cap in production", () => {
+  const env = process.env.NODE_ENV;
+  afterEach(() => {
+    process.env.NODE_ENV = env;
+    vi.restoreAllMocks();
+  });
+
+  it("logs an error and returns the rows, so a resident's page still loads", async () => {
+    process.env.NODE_ENV = "production";
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    tableSize = 1200;
+    const rows = await db.from("users").select("id").eq("email", "someone@example.test");
+    expect(rows).toHaveLength(POSTGREST_MAX_ROWS);
+    expect(logged).toHaveBeenCalledTimes(1);
+    const line = String(logged.mock.calls[0]![0]);
+    expect(line.startsWith(ROW_CAP_LOG_TAG)).toBe(true);
+    expect(line).toMatch(/hub=floyd query=select,hub_id,email users: a read with no limit returned 1000 rows/);
+    // Column names only: a filter's value (here an email) never reaches the logs.
+    expect(line).not.toContain("someone@example.test");
+  });
+
+  it("still throws everywhere else, and logs there too", async () => {
+    process.env.NODE_ENV = "development";
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    tableSize = 1200;
+    await expect(db.from("users").select("id")).rejects.toMatchObject({ code: ROW_CAP_CODE });
+    expect(logged).toHaveBeenCalledTimes(1);
   });
 });
 

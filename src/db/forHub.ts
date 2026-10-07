@@ -32,7 +32,8 @@
 //   a read cut off at 1,000    a select with no limit that comes back with
 //                              PostgREST's full 1,000 rows throws (code
 //                              CIVIC_ROW_CAP) instead of returning a short
-//                              list; long reads page with readAll()
+//                              list; in production it logs an error and
+//                              returns the rows; long reads page with readAll()
 //
 // An update or delete is also checked when it runs: if its hub filter is not
 // on the request, it throws instead of sending. Nothing in the builder API
@@ -223,9 +224,22 @@ export const ROW_CAP_CODE = "CIVIC_ROW_CAP";
  * may be long go through readAll() (src/db/readAll.ts), which pages; reads
  * that want a window say so with `.limit()` or `.range()`.
  *
+ * In production it logs and returns the rows instead (Adam, 2026-10-07): a
+ * read the sweep missed should not turn into an error page for residents. The
+ * error line (tag ROW_CAP_LOG_TAG) is what the deployment's logs surface. Tests
+ * and local dev, where NODE_ENV is not "production", still throw.
+ *
  * Only plain reads (GET) are checked: a write's `.select()` returns the rows
  * it wrote, which the caller already knows the number of.
  */
+/** Starts the error line a cut-off read logs, so the logs can be searched. */
+export const ROW_CAP_LOG_TAG = "[civic-row-cap]";
+
+/** Throw (tests, local dev) or log and carry on (production). */
+function rowCapThrows(): boolean {
+  return process.env.NODE_ENV !== "production";
+}
+
 function cutOffAtCap(b: Thenable, data: unknown): boolean {
   return (
     b.method === "GET" &&
@@ -272,13 +286,16 @@ function settle<B>(
         );
       }
       if (mode === "data" && cutOffAtCap(b, r.data)) {
-        // Logged as well as thrown: a caller that catches broadly still
-        // leaves a line naming the table.
+        // Always logged: in production that line is the only signal, and
+        // elsewhere a caller that catches broadly still leaves it.
         const message =
           `${table}: a read with no limit returned ${POSTGREST_MAX_ROWS} rows, the server's ` +
           "cap, so rows were left out. Page it with readAll() or give it a limit.";
-        console.error(`[forHub ${hubId}] ${message}`);
-        throw new HubDbError(message, ROW_CAP_CODE);
+        // The query's column names, never its values (a filter may hold an
+        // email): enough to find the read in the code.
+        const columns = [...new Set([...b.url.searchParams.keys()])].join(",");
+        console.error(`${ROW_CAP_LOG_TAG} hub=${hubId} query=${columns} ${message}`);
+        if (rowCapThrows()) throw new HubDbError(message, ROW_CAP_CODE);
       }
       return mode === "count" ? (r.count ?? 0) : (r.data ?? null);
     }).then(ok, bad);

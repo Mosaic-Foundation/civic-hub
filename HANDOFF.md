@@ -47,8 +47,12 @@ the button without the observer). Changed on purpose:
 `sampleContent.test.ts` reads its non-card events by `?process_id=`.
 
 **Open:**
-- **The guard throws in production.** A read missed by the sweep that reaches 1,000 rows now fails its request
-  instead of returning a short list. Every table on dev is far below that today; see the report's table.
+- **The guard logs in production (Adam, follow-up).** With `NODE_ENV=production` a cut-off read logs one error
+  line and returns its 1,000 rows, so a missed read never becomes an error page for residents. The line starts
+  `[civic-row-cap]` and names the hub, the table and the query's column names (never values). Search the
+  deployment logs for that tag. Tests and local dev still throw `CIVIC_ROW_CAP`. Both Vercel projects (dev and
+  production) build with `NODE_ENV=production`, so the dev deployment logs too; tests and local runs are where
+  it throws.
 - `scripts/testFlow.ts` and `scripts/testBriefFlow.ts` call `/feed?process_id=` / `?event_type=` and now get
   the first 25 events unless they pass `limit`. Dev scripts, not updated.
 - Scripts that read whole tables through supabase-js without paging (`exportProdProcesses.ts`,
