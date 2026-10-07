@@ -10,7 +10,7 @@
 // vote-close that closed nothing.
 
 import type { JobOutcome } from "./types.js";
-import { RECORD_GRACE_DAYS } from "../modules/civic.meeting_summary/readiness.js";
+import { RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS } from "../modules/civic.meeting_summary/readiness.js";
 
 export type JobRunStatus = "ok" | "flagged" | "failed";
 
@@ -82,6 +82,19 @@ function describeMeetingSummary(b: Body): JobRunDescription {
     failed.push(
       `${plural(num(b.broken_links), "item is", "items are")} announced on the feed as published, but ${num(b.broken_links) === 1 ? "its page is" : "their pages are"} not public.`,
     );
+  }
+  // A quiet source (Adam, 2026-10-07): nothing new is fine, but no new
+  // meeting in SOURCE_QUIET_DAYS probably means the source stopped working.
+  // Only on rows that carry the field (written since then).
+  if ("days_since_newest_meeting" in b) {
+    const newest = typeof b.newest_meeting_date === "string" ? b.newest_meeting_date : null;
+    if (newest === null) {
+      flagged.push("The meeting source has not listed any meetings yet. Check that it is set up correctly.");
+    } else if (num(b.days_since_newest_meeting) > SOURCE_QUIET_DAYS) {
+      flagged.push(
+        `No new meetings found since ${newest} (${num(b.days_since_newest_meeting)} days). Check that the meeting source still works.`,
+      );
+    }
   }
   if (num(b.pending_revisions_overdue) > 0) {
     flagged.push(

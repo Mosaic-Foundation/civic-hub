@@ -379,15 +379,18 @@ export async function closeVote(
  * Finalize the vote — publish the result.
  * Transition: closed → finalized
  *
- * Library-only entry point: there is no HTTP action wired to this. The
- * civic.vote_results module's approval flow calls this directly once an
- * admin has reviewed and approved the accompanying record.
+ * Library-only entry point: there is no HTTP action wired to this. Since
+ * 2026-10-07 the vote's own close calls it (`atClose`: the vote announces its
+ * results itself, independent of any brief). The older approval paths
+ * (civic.vote_results, and a brief approved for a vote closed before then)
+ * call it without the mark.
  */
 export async function finalizeVote(
   state: VoteProcessState,
   actor: string,
   ballots: Ballot[],
-  ctx: ProcessContext
+  ctx: ProcessContext,
+  opts: { atClose?: boolean } = {},
 ): Promise<ActionOutcome> {
   assertTransition(state.status, "finalized", state.config.activation_mode);
 
@@ -396,7 +399,7 @@ export async function finalizeVote(
   state.status = "finalized";
   state.result = result;
 
-  await emitResultPublished(ctx, actor, result);
+  await emitResultPublished(ctx, actor, result, opts.atClose === true);
 
   return {
     state,

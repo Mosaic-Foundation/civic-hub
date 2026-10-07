@@ -47,6 +47,7 @@ import {
   isConfigured,
   resolveMeetingSummaryConfig,
   daysSinceMeeting,
+  newestMeetingDate,
   isMeetingNotReady,
   meetingHasHappened,
   RECORD_GRACE_DAYS,
@@ -1072,6 +1073,17 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
       );
     }
 
+    // How long since the newest meeting the hub knows of: what discovery
+    // listed, and every summary it already has (archived ones too). describe.ts
+    // flags the run past SOURCE_QUIET_DAYS: the source may have stopped working.
+    const newestMeeting = newestMeetingDate([
+      ...entries.map((e) => e.meeting_date),
+      ...[...allProcesses, ...archivedSummaries]
+        .filter((p) => p.definition.type === "civic.meeting_summary")
+        .map((p) => summaryState(p)?.meeting_date),
+    ]);
+    const daysSinceNewestMeeting = newestMeeting ? daysSinceMeeting(newestMeeting, today) : null;
+
     const duration_ms = Date.now() - started;
     console.log(
       `[meeting-summary] run complete discovered=${discovered} created=${created} upgraded=${upgraded} skipped=${skippedExisting} failed=${failed} duration_ms=${duration_ms}`,
@@ -1095,6 +1107,8 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
       flagged,
       waiting,
       failures,
+      newest_meeting_date: newestMeeting,
+      days_since_newest_meeting: daysSinceNewestMeeting,
       duration_ms,
     });
 

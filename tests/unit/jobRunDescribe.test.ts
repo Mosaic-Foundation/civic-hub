@@ -140,3 +140,61 @@ describe("describeJobRun", () => {
     expect(mixed?.problems).toEqual(["The digest could not be sent to 1 resident."]);
   });
 });
+
+// A quiet source (Adam, 2026-10-07): "nothing new" is fine, but no new
+// meeting in 45 days asks for a check, flagged, never failed.
+describe("describeJobRun — meeting source gone quiet", () => {
+  const base = { discovered: 0, created: 0 };
+
+  it("flags when the newest meeting is more than 45 days old", () => {
+    const r = describeJobRun("meeting_summary", {
+      status: 200,
+      body: { ...base, newest_meeting_date: "2026-08-18", days_since_newest_meeting: 50 },
+    });
+    expect(r?.status).toBe("flagged");
+    expect(r?.problems).toEqual([
+      "No new meetings found since 2026-08-18 (50 days). Check that the meeting source still works.",
+    ]);
+  });
+
+  it("is ok at 45 days or fewer", () => {
+    const r = describeJobRun("meeting_summary", {
+      status: 200,
+      body: { ...base, newest_meeting_date: "2026-08-23", days_since_newest_meeting: 45 },
+    });
+    expect(r?.status).toBe("ok");
+  });
+
+  it("flags a source that has never listed a meeting", () => {
+    const r = describeJobRun("meeting_summary", {
+      status: 200,
+      body: { ...base, newest_meeting_date: null, days_since_newest_meeting: null },
+    });
+    expect(r?.status).toBe("flagged");
+    expect(r?.problems).toEqual([
+      "The meeting source has not listed any meetings yet. Check that it is set up correctly.",
+    ]);
+  });
+
+  it("a per-meeting failure still fails the run alongside it", () => {
+    const r = describeJobRun("meeting_summary", {
+      status: 200,
+      body: {
+        discovered: 3,
+        created: 0,
+        failures: [{ source_id: "m1", error: "PDF too large" }],
+        newest_meeting_date: "2026-10-01",
+        days_since_newest_meeting: 6,
+      },
+    });
+    expect(r?.status).toBe("failed");
+  });
+});
+
+describe("newestMeetingDate", () => {
+  it("takes the newest valid date, ignoring blanks", async () => {
+    const { newestMeetingDate } = await import("../../src/modules/civic.meeting_summary/readiness.js");
+    expect(newestMeetingDate(["2026-08-01", null, "2026-09-22", "", undefined, "2026-09-01"])).toBe("2026-09-22");
+    expect(newestMeetingDate([])).toBeNull();
+  });
+});

@@ -51,7 +51,8 @@ export type ActivitySurface = "announcement" | "meeting_summary" | "activity";
  */
 export type ActivityKind =
   | "vote-open"
-  | "vote-results"
+  | "vote-closed" // a vote's own results, published when it closes (2026-10-07)
+  | "vote-results" // legacy civic.vote_results records
   | "announcement" // admin / synced (Floyd County Gov)
   | "announcement-author" // board member / committee / other authored
   | "meeting"
@@ -390,10 +391,22 @@ function classifyResultPublished(
     };
   }
 
-  // Raw vote-process result_published — INTENTIONALLY excluded. Closing a vote
-  // emits two result_published events (one from civic.vote_results, caught
-  // above, and one from the underlying vote here); residents must see only
-  // one post per close. The vote event stays on the log for audit/federation.
+  // A vote's own results, published when it closes (since 2026-10-07: a vote
+  // finishes on its own; its brief is separate and posts its own card).
+  if (processType === "civic.vote" && data.results_at_close === true) {
+    return {
+      surface: "activity",
+      kind: "vote-closed",
+      color: "vote",
+      pill: "Vote results",
+      href: event.action_url,
+    };
+  }
+
+  // Any other raw vote-process result_published — INTENTIONALLY excluded.
+  // Before 2026-10-07 a vote was finalized by approving its brief (or its
+  // civic.vote_results record), and that card announced the result; the
+  // vote's own event stays on the log for audit/federation.
   if (processType === "civic.vote" || data.result !== undefined) return null;
 
   // Unknown shape — default-closed (was a bland "Activity" card before Phase 3).
@@ -459,7 +472,9 @@ function briefPill(sourceType: string): string {
     case "civic.polis_deliberation":
       return "Conversation results";
     case "civic.vote":
-      return "Vote results";
+      // The vote posts its own "Vote results" card when it closes; its
+      // brief is a separate post (2026-10-07).
+      return "Vote brief";
     case "civic.proposal":
       return "Proposal results";
     case "civic.project":
@@ -512,4 +527,24 @@ function classifyAnnouncement(
  */
 function abbreviateGovernment(label: string): string {
   return label.replace(/\bGovernment\b/gi, "Gov");
+}
+
+/**
+ * One line of a vote's final count for a card or digest row, most votes
+ * first: "Yes 12 · No 5 · Unsure 1". Empty when the event carries no tally
+ * or nobody voted.
+ * Options are stored by their label, so the keys read as written.
+ */
+export function voteResultLine(data: Record<string, unknown> | undefined): string {
+  const result = (data?.result ?? {}) as { tally?: unknown };
+  const tally = result.tally;
+  if (!tally || typeof tally !== "object") return "";
+  const counts = Object.entries(tally as Record<string, unknown>).filter(
+    (e): e is [string, number] => typeof e[1] === "number",
+  );
+  if (counts.every(([, n]) => n === 0)) return "";
+  return counts
+    .sort((a, b) => b[1] - a[1])
+    .map(([option, count]) => `${option} ${count}`)
+    .join(" · ");
 }

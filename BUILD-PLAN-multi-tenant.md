@@ -421,10 +421,12 @@ published record (it still hides non-public statuses as before), and the
 digest's `/unsubscribe` and `/user/settings/digest`, so a link in a digest
 already sent keeps working.
 
-**Votes without Briefs (Adam, 2026-10-07).** A brief is an optional extra
-for every type. With Briefs off, a vote is finalized when it closes and
-publishes its results then. With Briefs on, publishing its brief finalizes it,
-as before. **Held back is not failed (2026-10-07):** mail the mode guard holds
+**Votes and briefs are separate (Adam, 2026-10-07).** A vote finishes when
+it closes: it is finalized and posts its own "Vote results" card
+(`vote-closed`). A brief is an optional extra for every type: with Briefs
+on it is generated pending, and approving it posts a "Vote brief" card and
+emails officials, but it never decides whether the vote is finished. A
+meeting source with no new meeting in 45 days asks for a check (flagged). **Held back is not failed (2026-10-07):** mail the mode guard holds
 back is reported as `held_back` with the reason, and the item still publishes.
 Sign-in codes pass the guard on every mode.
 

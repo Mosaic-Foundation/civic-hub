@@ -53,6 +53,7 @@ export interface FeedProcessMeta {
  *  mirrors the client's per-kind lookup switch in Feed.tsx. */
 const META_KINDS: ReadonlySet<ActivityKind> = new Set([
   "vote-open",
+  "vote-closed",
   "vote-results",
   "meeting",
   "wordcloud",

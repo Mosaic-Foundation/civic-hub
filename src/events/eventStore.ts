@@ -124,14 +124,28 @@ export type RecordedEvent = CivicEvent & { recorded_at: string };
  * not go out in a resident's digest.
  */
 export async function getEventsSince(sinceIso: string): Promise<RecordedEvent[]> {
-  const data = await db()
-    .from("events")
-    .select<EventRow & { recorded_at: string }>("*")
-    .eq("is_sample", false)
-    .gt("recorded_at", sinceIso)
-    .order("recorded_at", { ascending: true });
-  return data.map((row) => ({ ...rowToEvent(row), recorded_at: row.recorded_at }));
+  // Paged: PostgREST answers at most 1,000 rows per request, and in ascending
+  // order that silently dropped the NEWEST events once a window held more
+  // (found 2026-10-07 on a local stack with 1,175 events in a day). Ordered
+  // by recorded_at then id, so pages are stable.
+  const rows: Array<EventRow & { recorded_at: string }> = [];
+  for (let from = 0; ; from += EVENTS_PAGE) {
+    const page = await db()
+      .from("events")
+      .select<EventRow & { recorded_at: string }>("*")
+      .eq("is_sample", false)
+      .gt("recorded_at", sinceIso)
+      .order("recorded_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + EVENTS_PAGE - 1);
+    rows.push(...page);
+    if (page.length < EVENTS_PAGE) break;
+  }
+  return rows.map((row) => ({ ...rowToEvent(row), recorded_at: row.recorded_at }));
 }
+
+/** Rows per request when reading a window of events; PostgREST's default cap. */
+const EVENTS_PAGE = 1000;
 
 // --- Paged reads (the AS2 collection endpoint) -----------------------------
 

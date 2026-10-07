@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * Scheduled jobs tell the admin when they fail or produce something to check
@@ -178,6 +178,10 @@ async function runJob(id: string) {
 }
 
 beforeEach(() => {
+  // A fixed "today": the fixture meeting (2026-09-22) must have happened, and
+  // be inside the 45-day quiet-source window, whenever this runs.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-07T12:00:00Z"));
   process.env.CRON_SECRET = "test-cron-secret";
   process.env.ANTHROPIC_API_KEY = "stub-key";
   for (const name of PLUGIN_ENV_FALLBACKS) delete process.env[name];
@@ -194,6 +198,10 @@ beforeEach(() => {
   saved.length = 0;
   mail.length = 0;
   archived.length = 0;
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("a missing-timestamps summary is flagged, not published", () => {
@@ -240,6 +248,18 @@ describe("a summary an admin deleted stays deleted (M5)", () => {
     const run = runLog.find((r) => r.job_id === "meeting_summary");
     expect(run?.status).toBe("ok");
     expect(run?.summary).toBe("0 summaries written");
+  });
+});
+
+describe("a source gone quiet asks for a check (45 days)", () => {
+  it("the real run reports the newest meeting it knows of, and the run is flagged for it", async () => {
+    vi.setSystemTime(new Date("2026-12-01T12:00:00Z")); // 70 days after the fixture meeting
+    await runJob("meeting_summary");
+    const run = runLog.find((r) => r.job_id === "meeting_summary");
+    expect(run?.status).toBe("flagged");
+    expect(run?.problems).toContain(
+      "No new meetings found since 2026-09-22 (70 days). Check that the meeting source still works.",
+    );
   });
 });
 

@@ -6,6 +6,7 @@ import SampleBadge from "./SampleBadge";
 import {
   briefResponseContext,
   classifyActivity,
+  voteResultLine,
   type Activity,
   type ActivityColor,
   type ActivityKind,
@@ -136,6 +137,16 @@ function buildTitleSummary(
   switch (activity.kind) {
     case "vote-open":
       return { title: getTitle(id) ?? "Untitled vote", summary: descSummary };
+
+    case "vote-closed": {
+      // The vote's own results, posted when it closes. The count of voters
+      // is on the engagement line; the summary is the final count.
+      const line = voteResultLine(data);
+      return {
+        title: getTitle(id) ?? "Vote results",
+        summary: line ? `Voting has closed. Final count: ${line}.` : "Voting has closed. No votes were cast.",
+      };
+    }
 
     case "vote-results": {
       const headline =

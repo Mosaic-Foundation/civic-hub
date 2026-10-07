@@ -4,6 +4,46 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Votes finish on their own; a quiet meeting source asks for a check — 2026-10-07 (third part)
+
+Adam's follow-up to the second session (pushed at `19794d9` + `b251024`). Not pushed.
+
+**Built:**
+1. **Votes decoupled from briefs.** Every vote is finalized when it closes (`voteProcess.ts` `process.close` →
+   `finalizeVote(..., { atClose: true })`, same ballots, deadline-stamped). Its `result_published` carries
+   `data.results_at_close: true`, which the shared classifier turns into a new card kind **`vote-closed`** (pill
+   "Vote results", vote colour, links to the vote page, summary "Voting has closed. Final count: Yes 12 · No 5." or
+   "No votes were cast."). The kind is in the feed (UI lookup, engagement "N residents voted"), feed meta and the
+   resident digest ("New vote results"). With Briefs on, the brief is still spawned pending and approving it
+   posts its own card, now labelled **"Vote brief"** (was "Vote results"), and emails officials. It no longer
+   finishes the vote (`finalizeBriefSource` is a no-op for a finalized vote). A vote's older result events
+   (no mark) stay off the feed, so old votes do not gain a second card.
+2. **Quiet source (45 days).** The meeting-summary run reports `newest_meeting_date` and
+   `days_since_newest_meeting`: the newest of what discovery listed and every summary the hub has, archived
+   included. `describe.ts` flags the run, never fails it, when that is more than `SOURCE_QUIET_DAYS` (45, in
+   `readiness.ts`): "No new meetings found since 2026-08-18 (50 days). Check that the meeting source still works."
+   It also flags "The meeting source has not listed any meetings yet." It shows on the Plugins page and in the
+   admin digest. It is not added to the per-run alert email (the digest already repeats daily). A per-meeting
+   failure still fails the run and sends the alert email, as before.
+3. **Found on the way:** `getEventsSince` (the resident digest's read) hit PostgREST's 1,000-row cap and dropped
+   the NEWEST events once a window held more; it now pages. `getAllEvents` (feed, moderation, feed health) has the
+   same cap; flagged as a separate task, not fixed here.
+
+**Tests:** API 33 files, 408 passed, 7 skipped, both modes; unit 108 / 1243; Playwright 28 passed, 1 skipped.
+Changed on purpose: `atomicFunctions` and `pluginToggles` deadline-close tests now expect `finalized` (and the
+deadline stamp on `result_published`); `feedActivity` expects "Vote brief" and the new card;
+`jobRunVisibility` pins its clock (2026-10-07) so the 45-day flag cannot trip it later, plus a real-run check at
+70 days. `heldBackAndQueues` checks that a vote with Briefs on is finalized at close, appears in the feed before
+any brief, and that approving its brief adds no second result.
+
+**Open:**
+- Votes closed before this deploy that still have a pending brief finish when that brief is approved, and
+  are announced by the brief card (no `vote-closed` card). Votes that closed while Briefs was off and have no
+  brief stay `closed`; a one-off script could finalize them (not written).
+- The "Vote brief" label is my choice; Adam may want other wording.
+
+---
+
 ## Held back is not failed; jobs report real problems — 2026-10-07 (second session)
 
 Review items #34, #36, M1, M4, M5, M7 (Review-Findings-2026-10-06) and docs-session items #1, #4, #5. Not pushed;
@@ -35,7 +75,8 @@ no migrations, dependencies or env vars.
    `requestVerification` sends with it. Confirmed by `demoPrivilegedSignIn.test.ts`, which fails without it.
 8. **Votes finish without Briefs (docs #4, Adam's direction).** In `voteProcess.ts` `process.close`, with Briefs
    off the vote is finalized at close (`finalizeVote`, same ballots, same close time), so `result_published` is
-   emitted. With Briefs on, nothing changed.
+   emitted. With Briefs on, nothing changed. **Superseded the same day** (third part, above): every vote now
+   finishes at close.
 9. **Admin digest (docs #5).** New sections "Submissions waiting in Process reviews" (`listReviews`, already
    without switched-off types) and "Briefs awaiting approval" (left out while Briefs is off). The dead "Vote
    results awaiting approval" section and `counts.vote_results` are gone; `counts` has `reviews` and `briefs`.

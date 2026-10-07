@@ -71,6 +71,10 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Votes finish on their own; quiet meeting source (2026-10-07, third
+  part)**: finalize at close, `results_at_close`, card kind `vote-closed`,
+  "Vote brief" pill, `SOURCE_QUIET_DAYS` 45, `getEventsSince` paged — top of
+  HANDOFF (grep the heading)
 - **Held back is not failed; jobs report real problems (2026-10-07, second
   session)**: `src/shared/delivery.ts`, mailer report, `held_back` on briefs and
   vote results, digest `held_back_count`, feed health ignores archived and

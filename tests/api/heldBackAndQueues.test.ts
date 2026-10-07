@@ -4,8 +4,8 @@
 //   - approving a brief, and publishing vote results, to an official the
 //     mail guard holds back publishes (no 500), records the official as held
 //     back with the reason, and tells the admin in plain words;
-//   - a vote closes and publishes its results with the Briefs plugin off, and
-//     keeps today's behaviour (closed, brief pending) with it on;
+//   - a vote finishes when it closes and publishes its own results, with the
+//     Briefs plugin off (no brief) or on (a brief waits for approval, apart);
 //   - the admin digest lists submissions waiting in Process reviews and briefs
 //     awaiting approval, and leaves the briefs section out while Briefs is off;
 //   - the resident digest, with every resident held back, is "ok", not failed;
@@ -206,7 +206,13 @@ describe("held back is not failed (#34)", () => {
   });
 });
 
-describe("a vote finishes without the Briefs plugin (docs session #4)", () => {
+describe("a vote finishes on its own; its brief is separate (docs session #4)", () => {
+  async function resultEvents(id: string) {
+    return (await localRest(
+      `events?select=data&process_id=eq.${id}&event_type=eq.civic.process.result_published`,
+    )) as Array<{ data: { results_at_close?: boolean; result?: { total_votes: number } } }>;
+  }
+
   it("with Briefs off: close publishes the results and the vote is finalized, no brief", async () => {
     await setPlugin("brief", false);
     try {
@@ -221,10 +227,9 @@ describe("a vote finishes without the Briefs plugin (docs session #4)", () => {
       }>;
       expect(row.status).toBe("finalized");
       expect(row.state.result?.total_votes).toBe(1);
-      const published = (await localRest(
-        `events?select=id&process_id=eq.${id}&event_type=eq.civic.process.result_published`,
-      )) as unknown[];
+      const published = await resultEvents(id);
       expect(published).toHaveLength(1);
+      expect(published[0].data.results_at_close).toBe(true);
       expect(await briefsFor(id)).toEqual([]);
 
       const read = await call("GET", `/process/${id}`, ATHENS);
@@ -235,14 +240,28 @@ describe("a vote finishes without the Briefs plugin (docs session #4)", () => {
     }
   });
 
-  it("with Briefs on: close leaves the vote closed with a pending brief, as before", async () => {
+  it("with Briefs on: close finishes the vote too, and its brief waits for approval apart", async () => {
     const id = await createActiveVote(`Brief vote ${run}`);
     ok(await call("POST", `/process/${id}/action`, ATHENS, { type: "process.close", payload: {} }, admin));
     const [row] = (await localRest(`processes?select=status&id=eq.${id}`)) as Array<{ status: string }>;
-    expect(row.status).toBe("closed");
+    expect(row.status).toBe("finalized");
+    expect((await resultEvents(id)).map((e) => e.data.results_at_close)).toEqual([true]);
     const briefs = await briefsFor(id);
     expect(briefs).toHaveLength(1);
     insertedProcesses.push(briefs[0].id);
+
+    // The vote's results card is on the feed now, before any brief is approved.
+    const feed = await call("GET", "/feed?limit=50", ATHENS);
+    ok(feed);
+    expect(JSON.stringify(feed.body)).toContain(id);
+
+    // Approving the brief publishes the brief and leaves the vote as it was:
+    // no second result for the vote.
+    ok(await call("PATCH", `/admin/briefs/${briefs[0].id}`, ATHENS, { recipients: [] }, admin));
+    const approved = await call("POST", `/admin/briefs/${briefs[0].id}/approve`, ATHENS, {}, admin);
+    ok(approved);
+    expect(approved.body.brief.publication_status).toBe("published");
+    expect(await resultEvents(id)).toHaveLength(1);
   });
 });
 

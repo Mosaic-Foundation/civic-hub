@@ -61,6 +61,7 @@ export { UPGRADEABLE_SOURCE_TYPES } from "./models.js";
 export {
   blocksHaveTimestamps,
   daysSinceMeeting,
+  newestMeetingDate,
   FLAG_MESSAGES,
   isMeetingNotReady,
   isTimedTranscript,
@@ -68,6 +69,7 @@ export {
   MeetingNotReadyError,
   qualityFlag,
   RECORD_GRACE_DAYS,
+  SOURCE_QUIET_DAYS,
   summaryPredatesMeeting,
   todayIso,
 } from "./readiness.js";

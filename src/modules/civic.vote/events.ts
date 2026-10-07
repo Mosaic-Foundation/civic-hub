@@ -153,10 +153,17 @@ export async function emitAggregationCompleted(
   });
 }
 
+/**
+ * `atClose` marks the result a vote publishes itself when it closes (since
+ * 2026-10-07): the feed and digest post it as the vote's "Vote results"
+ * card. A result published by the older approval paths carries no mark and
+ * stays off the feed, where the brief (or vote-results record) announced it.
+ */
 export async function emitResultPublished(
   ctx: EventContext,
   actor: string,
   result: VoteResult,
+  atClose = false,
 ): Promise<void> {
   await ctx.emit({
     event_type: "civic.process.result_published",
@@ -170,6 +177,7 @@ export async function emitResultPublished(
         total_votes: result.total_votes,
         computed_at: result.computed_at,
       },
+      ...(atClose ? { results_at_close: true } : {}),
     },
   });
 }

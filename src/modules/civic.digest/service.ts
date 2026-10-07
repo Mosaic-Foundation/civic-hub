@@ -14,6 +14,7 @@
 import {
   briefResponseContext,
   classifyActivity,
+  voteResultLine,
   type Activity,
   type ActivityColor,
   type ActivityKind,
@@ -202,6 +203,14 @@ function digestTitleSummary(
     case "vote-open":
       return { title: rawTitle ?? "New vote open", summary: "New vote now open — cast your ballot." };
 
+    case "vote-closed": {
+      const line = voteResultLine(event.data as Record<string, unknown> | undefined);
+      return {
+        title: rawTitle ?? "Vote results",
+        summary: line ? `Voting has closed. Final count: ${line}.` : "Voting has closed. No votes were cast.",
+      };
+    }
+
     case "vote-results": {
       const count =
         typeof d?.participation_count === "number" ? d.participation_count : 0;
@@ -336,6 +345,7 @@ type DigestSection =
 /** Which email section each classifier kind renders under. */
 const SECTION_OF: Record<ActivityKind, DigestSection> = {
   "vote-open": "votes_open",
+  "vote-closed": "vote_results",
   "vote-results": "vote_results",
   meeting: "meeting_summaries",
   announcement: "announcements",

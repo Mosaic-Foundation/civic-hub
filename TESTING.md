@@ -500,6 +500,14 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   can fail when it runs within 60 s of `leakHarness.test.ts`, which writes
   Floyd's banner straight to the database; the database is right, the
   server is serving its cached copy (the settings cache, review #1a/#14).
+  **Third part (votes finish at close; 45-day quiet source):** the
+  deadline-close tests in `atomicFunctions` and `pluginToggles` expect
+  `finalized`; `jobRunVisibility.test.ts` pins Date to 2026-10-07 (fake
+  timers, Date only) so its 2026-09-22 fixture never trips the 45-day flag,
+  and one test moves the clock to 70 days to see the flag from the real run.
+  `getEventsSince` now pages: a local stack with more than 1,000 events in a
+  day (a few suite runs) had made `leakHarness`'s digest miss its marker.
+  Result after: API 408 passed, 7 skipped, both modes; unit 1243.
   Result 2026-10-07: API 33 files, 408 passed, 7 skipped, both modes; unit
   108 files, 1232 passed; Playwright 28 passed, 1 skipped (production build
   behind `vite preview` on :4195, `/api` → :3230).

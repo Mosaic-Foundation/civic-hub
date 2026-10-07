@@ -228,7 +228,8 @@ describe("a vote in progress when its plugin goes off", () => {
     const state = await call("GET", `/process/${voteId}/state`, ATHENS);
     expect(state.status).toBe(200);
     const stored = await storedVote();
-    expect(stored.status).toBe("closed");
+    // A vote finishes when it closes (2026-10-07).
+    expect(stored.status).toBe("finalized");
     const ended = await endedEvents();
     expect(ended).toHaveLength(1);
     // Stamped at voting_closes_at (a minute earlier), recorded when the read ran.
@@ -236,11 +237,16 @@ describe("a vote in progress when its plugin goes off", () => {
     expect(Date.parse(ended[0].recorded_at)).toBeGreaterThanOrEqual(reEnabledAt - 2_000);
     // So is every event the close emitted.
     const all = (await localRest(
-      `events?process_id=eq.${voteId}&event_type=in.(civic.process.updated,civic.process.ended,civic.process.aggregation_completed)&select=event_type,created_at,data`,
+      `events?process_id=eq.${voteId}&event_type=in.(civic.process.updated,civic.process.ended,civic.process.aggregation_completed,civic.process.result_published)&select=event_type,created_at,data`,
     )) as Array<{ event_type: string; created_at: string; data: { process?: { status?: string } } }>;
-    const closeEvents = all.filter((e) => e.event_type !== "civic.process.updated" || e.data.process?.status === "closed");
+    const closeEvents = all.filter((e) => e.event_type !== "civic.process.updated" || e.data.process?.status === "finalized");
     expect(closeEvents.map((e) => e.event_type).sort()).toEqual(
-      ["civic.process.aggregation_completed", "civic.process.ended", "civic.process.updated"],
+      [
+        "civic.process.aggregation_completed",
+        "civic.process.ended",
+        "civic.process.result_published",
+        "civic.process.updated",
+      ],
     );
     for (const e of closeEvents) expect(Date.parse(e.created_at), e.event_type).toBe(Date.parse(deadline));
   });
@@ -298,7 +304,7 @@ describe("the hourly vote close (job vote_close)", () => {
     expect(on.status, JSON.stringify(on.body)).toBe(200);
     expect(on.body.hubs.athens.closed).toContain(voteId);
     const [closed] = (await localRest(`processes?id=eq.${voteId}&select=status`)) as Array<{ status: string }>;
-    expect(closed.status).toBe("closed");
+    expect(closed.status).toBe("finalized");
     const [ended] = (await localRest(
       `events?process_id=eq.${voteId}&event_type=eq.civic.process.ended&select=created_at,recorded_at,actor`,
     )) as Array<{ created_at: string; recorded_at: string; actor: string }>;

@@ -281,7 +281,9 @@ describe("through the app", () => {
     const closed = await call("POST", `/process/${id}/action`, FLOYD, { type: "process.close", payload: {} }, admin);
     expect(closed.status, JSON.stringify(closed.body)).toBe(200);
     const updated = await rows(`events?process_id=eq.${id}&event_type=eq.civic.process.updated&order=created_at.desc&limit=1`);
-    expect((updated[0].data as { process: { status: string } }).process.status).toBe("closed");
-    expect((await rows(`processes?id=eq.${id}&select=status`))[0].status).toBe("closed");
+    // A vote finishes when it closes (2026-10-07): one transition, active →
+    // finalized, written with its process.updated event.
+    expect((updated[0].data as { process: { status: string } }).process.status).toBe("finalized");
+    expect((await rows(`processes?id=eq.${id}&select=status`))[0].status).toBe("finalized");
   });
 });

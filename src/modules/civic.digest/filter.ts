@@ -42,6 +42,7 @@ export function classifyItemKind(event: DigestEvent): DigestItemKind | null {
  */
 const KIND_ORDER: Record<DigestItemKind, number> = {
   "vote-open": 0,
+  "vote-closed": 1,
   "vote-results": 1,
   meeting: 2,
   announcement: 3,

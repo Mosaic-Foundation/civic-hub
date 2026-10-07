@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   briefResponseContext,
   classifyActivity,
+  voteResultLine,
   type ClassifierEvent,
 } from "../../src/shared/feedActivity.js";
 
@@ -108,7 +109,8 @@ describe("classifyActivity — result_published discrimination", () => {
   it("universal brief → 'brief' kind with a per-source-type pill, linking to /brief/:id", () => {
     const cases: Array<[string, string]> = [
       ["civic.polis_deliberation", "Conversation results"],
-      ["civic.vote", "Vote results"],
+      // The vote posts its own "Vote results" card at close (2026-10-07).
+      ["civic.vote", "Vote brief"],
       ["civic.proposal", "Proposal results"],
       ["civic.project", "Project completed"],
       ["civic.unknown_future", "Civic Brief"],
@@ -188,7 +190,33 @@ describe("classifyActivity — result_published discrimination", () => {
     ).toBe("wordcloud");
   });
 
+  it("a vote's own results, published at close, are its 'Vote results' card (2026-10-07)", () => {
+    const a = classifyActivity(
+      ev("civic.process.result_published", {
+        ...withType("civic.vote"),
+        result: { tally: { Yes: 3, No: 1 }, total_votes: 4 },
+        results_at_close: true,
+      }),
+    );
+    expect(a).toEqual({
+      surface: "activity",
+      kind: "vote-closed",
+      color: "vote",
+      pill: "Vote results",
+      href: "https://hub.example/process/proc_1",
+    });
+  });
+
+  it("voteResultLine: most votes first, empty without a tally", () => {
+    expect(voteResultLine({ result: { tally: { No: 1, Yes: 3, Unsure: 0 } } })).toBe("Yes 3 · No 1 · Unsure 0");
+    expect(voteResultLine({})).toBe("");
+    expect(voteResultLine({ result: { tally: { Yes: 0, No: 0 } } })).toBe("");
+    expect(voteResultLine(undefined)).toBe("");
+  });
+
   it("excludes the raw vote result_published (process.type) — no double-post", () => {
+    // A result published by approving a brief (votes closed before
+    // 2026-10-07) carries no results_at_close: the brief announced it.
     expect(
       classifyActivity(ev("civic.process.result_published", withType("civic.vote"))),
     ).toBeNull();

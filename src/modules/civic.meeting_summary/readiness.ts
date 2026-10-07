@@ -29,6 +29,27 @@ import type { SummaryBlock, TranscriptSegment } from "./models.js";
  */
 export const RECORD_GRACE_DAYS = 14;
 
+/**
+ * A source quiet this long probably stopped working (Adam, 2026-10-07). A run
+ * that finds nothing is "nothing new", not a failure (review M7); but in
+ * August 2026 the county's page went client-side and parsed to nothing for
+ * weeks. Boards meet at least monthly, so once the newest meeting the hub
+ * knows of is older than this, the job asks for a check (flagged, not failed).
+ */
+export const SOURCE_QUIET_DAYS = 45;
+
+/**
+ * The newest meeting date among what discovery listed and what the hub has
+ * already summarized (archived included), or null when there is none.
+ */
+export function newestMeetingDate(dates: ReadonlyArray<string | null | undefined>): string | null {
+  let newest: string | null = null;
+  for (const d of dates) {
+    if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d) && (newest === null || d > newest)) newest = d;
+  }
+  return newest;
+}
+
 export type SummaryQualityFlagKind = "timestamps_missing" | "transcript_unavailable";
 
 /**

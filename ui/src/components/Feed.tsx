@@ -186,6 +186,7 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
       let lookup: Promise<ProcessMeta | null>;
       switch (kind) {
         case "vote-open":
+        case "vote-closed":
           lookup = getProcessState(id).then((state) => {
             if (state.type !== "civic.vote") return null;
             const vote = state as VoteState;
@@ -445,6 +446,7 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
  */
 const TITLE_NEEDS_META: ReadonlySet<ActivityKind> = new Set([
   "vote-open",
+  "vote-closed",
   "vote-results",
   "wordcloud",
   "conversation-results",
@@ -470,6 +472,11 @@ function buildEngagement(
       if (n === 0) return "Open for input — be the first to vote";
       const noun = `${participantNoun(hub.kind, n)} ${n === 1 ? "has" : "have"}`;
       return `${formatCount(n)} ${noun} voted so far`;
+    }
+    case "vote-closed": {
+      const n = meta.totalVotes ?? 0;
+      if (n === 0) return null;
+      return `${formatCount(n)} ${participantNoun(hub.kind, n)} voted`;
     }
     case "vote-results": {
       const n = meta.totalVotes ?? 0;
