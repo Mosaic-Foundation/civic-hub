@@ -33,12 +33,17 @@ dependencies or env vars.
    The full inventory, and what was left and why, is in the session report.
 4. **The guard.** `forHub()` throws `HubDbError` code `CIVIC_ROW_CAP` (and logs the table) when a plain read
    with no `.limit()`/`.range()` comes back with exactly 1,000 rows. Writes' `.select()` are not checked.
-5. **Found on the way:** CORS did not allow `PUT`, so a cross-origin dev UI could not save Settings (the E2E
+5. **Load as you scroll (Adam, follow-up).** When the "Load more" row comes within 800 px of the viewport, the
+   next page loads (`IntersectionObserver` in `Feed.tsx`). The button stays for keyboard and screen-reader users,
+   browsers without the observer, and as the retry after a failed page (auto-loading stops on an error). Local
+   Floyd, headless: 25 → 50 → 75 → 100 → 125 cards over four scrolls, one cursor request each.
+6. **Found on the way:** CORS did not allow `PUT`, so a cross-origin dev UI could not save Settings (the E2E
    Projects switch test failed on it). Added to `Access-Control-Allow-Methods` in `app.ts`.
 
-**Tests:** API 35 files, 419 passed, 7 skipped, both modes; unit 109 / 1258; Playwright 30 passed, 1 skipped.
+**Tests:** API 35 files, 419 passed, 7 skipped, both modes; unit 109 / 1258; Playwright 31 passed, 1 skipped.
 New: `tests/api/eventReads.test.ts` (a hub with ~1,500 events), `tests/unit/rowCap.test.ts`, the
-`FEED_EVENT_TYPES` check in `feedActivity.test.ts`, two paging checks in `feed.spec.ts`. Changed on purpose:
+`FEED_EVENT_TYPES` check in `feedActivity.test.ts`, three paging checks in `feed.spec.ts` (page size, scroll,
+the button without the observer). Changed on purpose:
 `sampleContent.test.ts` reads its non-card events by `?process_id=`.
 
 **Open:**

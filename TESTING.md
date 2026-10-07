@@ -539,7 +539,8 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   on the local stack between passes (CI's database is fresh each pass).
   Result: API 35 files, 419 passed, 7 skipped, both modes; unit 109 files,
   1258 passed; Playwright 30 passed, 1 skipped (dev UI on :5173, API
-  `hub-e2e-1006` on :3000).
+  `hub-e2e-1006` on :3000). Load as you scroll (same day): Playwright 31
+  passed, 1 skipped.
 
 > **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
 > `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs
@@ -610,8 +611,12 @@ Open the real UI in Chromium and simulate resident interactions.
 - **Config:** `civic-hub/playwright.config.ts`
 - **Covers:** critical user journeys — navigation, feed, votes, search, conversations;
   feed paging (`feed.spec.ts`, 2026-10-07: a page load asks for `limit=25`
-  with no cursor; "Load more" sends the cursor the first page returned,
-  appends, and goes away at the oldest, over two pages served by the test);
+  with no cursor; reaching the end of the feed loads the next page with the
+  cursor the first page returned, and the button goes away at the oldest;
+  with IntersectionObserver removed, the "Load more" button does the same;
+  over two pages served by the test). **The browser pane cannot check this
+  by hand when it is hidden:** a hidden tab never delivers IntersectionObserver
+  callbacks. Headless Playwright is a visible page and does;
   plugin switches (`pluginSwitches.spec.ts`, 2026-10-07: Settings → Plugins
   changes the nav without a reload; a new sign-up with Word clouds off stays
   home)

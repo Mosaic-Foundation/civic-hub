@@ -195,6 +195,30 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
       });
   }
 
+  // Load as you scroll (Adam, 2026-10-07): when the "Load more" row comes
+  // within a screen of the viewport, the next page is fetched. The button
+  // stays: for keyboard and screen-reader users, for a browser without
+  // IntersectionObserver, and as the retry after a failed page (auto-loading
+  // stops on an error so it cannot loop). The observer is rebuilt whenever a
+  // load finishes, and a new observer reports at once whether the row is in
+  // view, so a short page that leaves the row on screen fetches the next one.
+  const sentinel = useRef<HTMLDivElement | null>(null);
+  const loadMoreRef = useRef(loadMore);
+  loadMoreRef.current = loadMore;
+  const canAutoLoad = nextCursor !== null && !loadingMore && !moreError && !loading;
+  useEffect(() => {
+    const row = sentinel.current;
+    if (!canAutoLoad || !row || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) loadMoreRef.current();
+      },
+      { rootMargin: "0px 0px 800px 0px" },
+    );
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [canAutoLoad]);
+
   // The server sends only events that become cards; the classifier and the
   // plugin switch run again here because an admin's Settings save changes
   // the switches without a reload.
@@ -478,7 +502,7 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
         </p>
       )}
       {hasMore && (
-        <div className="feed-load-more-row">
+        <div className="feed-load-more-row" ref={sentinel}>
           <button
             type="button"
             className="feed-load-more"
