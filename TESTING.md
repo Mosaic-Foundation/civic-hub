@@ -508,6 +508,12 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   `getEventsSince` now pages: a local stack with more than 1,000 events in a
   day (a few suite runs) had made `leakHarness`'s digest miss its marker.
   Result after: API 408 passed, 7 skipped, both modes; unit 1243.
+  `finishStuckVotes.test.ts` runs the stuck-vote script's logic in-process
+  (both modes): a dry run writes nothing; `--apply` finishes a closed vote
+  with no brief (tally, `results_at_close` result and `process.updated`
+  both stamped at its close time, a feed card) and leaves a closed vote with
+  a brief alone. The local stack's `proc_rlsdb_athens_*` rows (`closed` row,
+  `active` state, from `leakHarnessDb`) are reported as skipped, not forced.
   Result 2026-10-07: API 33 files, 408 passed, 7 skipped, both modes; unit
   108 files, 1232 passed; Playwright 28 passed, 1 skipped (production build
   behind `vite preview` on :4195, `/api` → :3230).

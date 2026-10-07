@@ -38,8 +38,15 @@ any brief, and that approving its brief adds no second result.
 
 **Open:**
 - Votes closed before this deploy that still have a pending brief finish when that brief is approved, and
-  are announced by the brief card (no `vote-closed` card). Votes that closed while Briefs was off and have no
-  brief stay `closed`; a one-off script could finalize them (not written).
+  are announced by the brief card (no `vote-closed` card).
+- **Stuck votes: `scripts/finish-stuck-votes.ts --hub <slug> [--apply]`** (written after Adam pushed
+  `4c57a2f`). It finishes each `closed` vote that has NO brief the way a close does now: final tally, a
+  `results_at_close` result (its "Vote results" card), and closed → finalized with its `process.updated` in one
+  `transition_process`. Both events are stamped at the vote's close time (its `ended` event, else
+  `voting_closes_at`) and recorded now, so the next digest carries them. It lists and leaves alone a closed vote
+  that has a brief, and one whose state disagrees with its row. A failure on one vote does not stop the rest
+  (exit 1). Dry run by default; may run against production. Logic in `scripts/lib/finishStuckVotes.ts`; test
+  `tests/api/finishStuckVotes.test.ts` (both modes). **Not yet run on dev or production.**
 - The "Vote brief" label is my choice; Adam may want other wording.
 
 ---

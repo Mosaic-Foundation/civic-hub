@@ -73,7 +73,8 @@ numbers below, or just grep the heading.
 ### Multi-tenancy (the `multi-tenant` branch)
 - **Votes finish on their own; quiet meeting source (2026-10-07, third
   part)**: finalize at close, `results_at_close`, card kind `vote-closed`,
-  "Vote brief" pill, `SOURCE_QUIET_DAYS` 45, `getEventsSince` paged — top of
+  "Vote brief" pill, `SOURCE_QUIET_DAYS` 45, `getEventsSince` paged,
+  `scripts/finish-stuck-votes.ts` — top of
   HANDOFF (grep the heading)
 - **Held back is not failed; jobs report real problems (2026-10-07, second
   session)**: `src/shared/delivery.ts`, mailer report, `held_back` on briefs and
