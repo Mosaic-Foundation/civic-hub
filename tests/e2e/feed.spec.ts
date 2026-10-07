@@ -65,3 +65,58 @@ test.describe("Civic Feed", () => {
     }
   });
 });
+
+// Paged on the server since 2026-10-07: a page load fetches one page, and
+// "Load more" fetches the next with the cursor the last page returned.
+test.describe("Feed paging", () => {
+  test("a page load asks the server for one page, not the whole log", async ({ page }) => {
+    const asked = page.waitForRequest((r) => /\/feed\?/.test(r.url()));
+    await page.reload();
+    const url = new URL((await asked).url());
+    expect(url.searchParams.get("limit")).toBe("25");
+    expect(url.searchParams.has("cursor")).toBe(false);
+    const res = await (await asked).response();
+    const body = await res!.json();
+    expect(body.events.length).toBeLessThanOrEqual(25);
+    expect(body).toHaveProperty("next_cursor");
+  });
+
+  test("Load more appends the next page, and goes away at the oldest", async ({ page }) => {
+    // Two pages served here, so the check does not depend on how much a
+    // local hub holds.
+    const card = (n: number) => ({
+      id: `evt_e2e_page_${n}`,
+      version: "0.1",
+      event_type: "civic.proposal.submitted",
+      timestamp: new Date(Date.UTC(2026, 0, 1, 0, 60 - n)).toISOString(),
+      process_id: `prop_e2e_page_${n}`,
+      actor: "user:e2e",
+      jurisdiction: "",
+      action_url: "",
+      source: { hub_id: "", hub_url: "" },
+      data: { process: { type: "civic.proposal" }, proposal: { title: `Paged proposal ${n}` } },
+      meta: { visibility: "public" },
+    });
+    const cursors: Array<string | null> = [];
+    await page.route(/\/feed\?/, async (route) => {
+      const cursor = new URL(route.request().url()).searchParams.get("cursor");
+      cursors.push(cursor);
+      const first = cursor === null;
+      const events = first ? [1, 2, 3].map(card) : [4, 5].map(card);
+      await route.fulfill({
+        json: { events, count: events.length, process_meta: {}, next_cursor: first ? "c2" : null },
+      });
+    });
+    await page.reload();
+    const items = page.locator(".feed-list-item");
+    await expect(items).toHaveCount(3);
+    await page.getByRole("button", { name: "Load more" }).click();
+    await expect(items).toHaveCount(5);
+    await expect(items.last()).toContainText("Paged proposal 5");
+    await expect(page.getByRole("button", { name: "Load more" })).toHaveCount(0);
+    // First pages carry no cursor (dev StrictMode may ask twice); "Load more"
+    // sends the one the first page returned.
+    expect(cursors.filter((c) => c !== null)).toEqual(["c2"]);
+    expect(cursors[0]).toBeNull();
+  });
+});

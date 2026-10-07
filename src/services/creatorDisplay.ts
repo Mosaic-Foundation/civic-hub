@@ -53,6 +53,7 @@ import {
   type OfficialIdentity,
   toOfficialIdentity,
 } from "../shared/officialTypes.js";
+import { inChunks } from "../db/inChunks.js";
 
 /** The hub in scope. Creator attribution is only ever resolved inside one. */
 function db(): HubDb {
@@ -185,7 +186,9 @@ export async function resolveCreators(
   // rowToDisplay reads name fields defensively.
   let rows: UserRow[];
   try {
-    rows = await db().from("users").select<UserRow>("*").in("id", unique);
+    rows = await inChunks(unique, (chunk) =>
+      db().from("users").select<UserRow>("*").in("id", chunk).order("id", { ascending: true }),
+    );
   } catch (err) {
     // Attribution is a display nicety; a resolver failure must never crash the
     // content it annotates. Degrade every id to the "Resident" fallback.

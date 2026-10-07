@@ -1,10 +1,12 @@
 import { participantNoun } from "../../../src/shared/hubKind";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHubConfig } from "../config/HubConfigContext";
 import { Link } from "react-router-dom";
 import hub from "../config/hub";
 import {
   type CivicEvent,
+  type FeedProcessMeta,
+  type FeedSurface,
   type VoteState,
   getAnnouncement,
   getFeed,
@@ -27,7 +29,12 @@ import FeedPost, {
 } from "./FeedPost";
 import "./Feed.css";
 
-const PAGE_SIZE = 50;
+/**
+ * Pages fetched in a row when one comes back empty but says more is older
+ * (the server stops after scanning a stretch of the log). Past this, the
+ * "Load more" button is left for the reader.
+ */
+const EMPTY_PAGE_RETRIES = 5;
 
 // Mirrors feedActivity.ts's own `processTypeOf` (not exported): the
 // discriminator an emitter stamps via emitEvent, with the legacy flat
@@ -46,11 +53,10 @@ function eventProcessType(event: CivicEvent): string | undefined {
 
 interface Props {
   /**
-   * Optional filter predicate applied before pagination. The Slice 10
-   * <FeedFilter> component composes one of these from the URL `?type=`
-   * param. When undefined, all events are shown.
+   * The filter pill in force (the URL's `?type=`), applied by the server
+   * since the feed is paged there (2026-10-07). Undefined shows everything.
    */
-  filter?: (event: CivicEvent) => boolean;
+  surface?: FeedSurface;
   /**
    * Slice 10 — when a filter is active and yields zero matches, render
    * a scoped empty state with this action (typically "Show all
@@ -90,7 +96,7 @@ interface ProcessMeta {
   maxStartSeconds?: number | null;
 }
 
-export default function Feed({ filter, emptyFilteredAction }: Props) {
+export default function Feed({ surface, emptyFilteredAction }: Props) {
   const [events, setEvents] = useState<CivicEvent[]>([]);
   const [processMeta, setProcessMeta] = useState<Record<string, ProcessMeta>>({});
   // Slice 11 — process_ids whose underlying announcement has been
@@ -100,68 +106,110 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
   const [removedProcessIds, setRemovedProcessIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // Where the next (older) page starts; null once the oldest card is shown.
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [moreError, setMoreError] = useState<string | null>(null);
+  // Bumped on every filter change, so a page that arrives for the old
+  // filter is dropped.
+  const generation = useRef(0);
+
+  // One page from the server, skipping over pages that came back empty.
+  // Perf pass phase 2: the server batches every card's metadata into the
+  // response, so cards render COMPLETE on the first frame — the per-id
+  // lazy fetches below become a fallback for any process the server
+  // couldn't enrich. Removed announcements arrive as a flag on their meta
+  // entry.
+  const fetchPage = useCallback(
+    async (cursor: string | null) => {
+      let page = await getFeed({ cursor, surface });
+      for (let i = 0; page.events.length === 0 && page.nextCursor && i < EMPTY_PAGE_RETRIES; i++) {
+        page = await getFeed({ cursor: page.nextCursor, surface });
+      }
+      return page;
+    },
+    [surface],
+  );
+
+  const absorb = useCallback(
+    (page: { events: CivicEvent[]; processMeta: Record<string, FeedProcessMeta>; nextCursor: string | null }, append: boolean) => {
+      const removed: string[] = [];
+      const meta: Record<string, ProcessMeta> = {};
+      for (const [id, m] of Object.entries(page.processMeta)) {
+        if (m.removed) removed.push(id);
+        meta[id] = m;
+      }
+      if (removed.length > 0) {
+        setRemovedProcessIds((prev) => new Set([...prev, ...removed]));
+      }
+      setProcessMeta((prev) => (append ? { ...prev, ...meta } : meta));
+      setEvents((prev) => {
+        if (!append) return page.events;
+        const seen = new Set(prev.map((e) => e.id));
+        return [...prev, ...page.events.filter((e) => !seen.has(e.id))];
+      });
+      setNextCursor(page.nextCursor);
+    },
+    [],
+  );
 
   useEffect(() => {
-    let cancelled = false;
-    getFeed()
-      .then(({ events: all, processMeta: seeded }) => {
-        if (cancelled) return;
-        // Perf pass phase 2: the server batches every card's metadata
-        // into the feed response, so cards render COMPLETE on the first
-        // frame — the per-id lazy fetches below become a fallback for
-        // any process the server couldn't enrich. Removed announcements
-        // arrive as a flag on their meta entry.
-        const removed = new Set<string>();
-        const meta: Record<string, ProcessMeta> = {};
-        for (const [id, m] of Object.entries(seeded)) {
-          if (m.removed) removed.add(id);
-          meta[id] = m;
-        }
-        if (removed.size > 0) setRemovedProcessIds(removed);
-        setProcessMeta(meta);
-        setEvents(all);
+    const mine = ++generation.current;
+    setLoading(true);
+    setError(null);
+    setMoreError(null);
+    fetchPage(null)
+      .then((page) => {
+        if (mine !== generation.current) return;
+        absorb(page, false);
       })
       .catch((err: Error) => {
-        if (cancelled) return;
+        if (mine !== generation.current) return;
         setError(err.message);
       })
       .finally(() => {
-        if (cancelled) return;
+        if (mine !== generation.current) return;
         setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [fetchPage, absorb]);
 
-  // Slice 13 fix — pre-filter to events that produce a feed post before
-  // applying the user-facing type filter or paginating. Phase 3 — the
-  // feed-worthiness gate is now the single shared classifier; an event is
-  // renderable iff classifyActivity returns non-null. Without this pre-filter,
-  // non-renderable events (created/updated/aggregation_completed, etc.) count
-  // against the PAGE_SIZE budget and can starve the visible window.
+  function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    const mine = generation.current;
+    setLoadingMore(true);
+    setMoreError(null);
+    fetchPage(nextCursor)
+      .then((page) => {
+        if (mine !== generation.current) return;
+        absorb(page, true);
+      })
+      .catch((err: Error) => {
+        if (mine !== generation.current) return;
+        setMoreError(err.message);
+      })
+      .finally(() => {
+        if (mine !== generation.current) return;
+        setLoadingMore(false);
+      });
+  }
+
+  // The server sends only events that become cards; the classifier and the
+  // plugin switch run again here because an admin's Settings save changes
+  // the switches without a reload.
   const hubConfig = useHubConfig();
-  const renderableEvents = useMemo(
-    () => {
-      const base = events.filter(
+  const visibleEvents = useMemo(
+    () =>
+      events.filter(
         (e) =>
           classifyActivity(e) !== null &&
           (processTypeEnabled(eventProcessType(e) ?? "")),
-      );
-      return filter ? base.filter(filter) : base;
-    },
+      ),
     // hubConfig: processTypeEnabled() reads it from the module, so the lint
     // rule cannot see it; it changes when an admin's Settings save refreshes it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [events, filter, hubConfig],
-  );
-
-  const visibleEvents = useMemo(
-    () => renderableEvents.slice(0, visibleCount),
-    [renderableEvents, visibleCount],
+    [events, hubConfig],
   );
 
   // Fetch per-process metadata lazily for events visible in the feed. The
@@ -362,7 +410,7 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
     return out;
   }, [visibleEvents, processMeta, removedProcessIds]);
 
-  const hasMore = renderableEvents.length > visibleCount;
+  const hasMore = nextCursor !== null;
 
   if (loading) {
     return (
@@ -387,7 +435,7 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
     // first is the bootstrap state for a fresh hub; the second is a
     // resident's filter selection finding zero posts. The reset action
     // is provided by the parent (Home.tsx) when a filter is active.
-    if (emptyFilteredAction && events.length > 0) {
+    if (emptyFilteredAction) {
       return (
         <section className="feed">
           <p className="feed-status">
@@ -424,14 +472,21 @@ export default function Feed({ filter, emptyFilteredAction }: Props) {
           </li>
         ))}
       </ol>
+      {moreError && (
+        <p className="feed-status feed-status-error">
+          Could not load more: {moreError}
+        </p>
+      )}
       {hasMore && (
         <div className="feed-load-more-row">
           <button
             type="button"
             className="feed-load-more"
-            onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+            onClick={loadMore}
+            disabled={loadingMore}
+            aria-busy={loadingMore}
           >
-            Load more
+            {loadingMore ? "Loading…" : "Load more"}
           </button>
         </div>
       )}

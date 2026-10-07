@@ -4,6 +4,55 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## No read stops at 1,000 rows; the feed pages on the server — 2026-10-07 (fourth part)
+
+PostgREST answers one request with at most 1,000 rows and says nothing about the rest. Not pushed; no migrations,
+dependencies or env vars.
+
+**Built:**
+1. **The feed pages on the server.** `getAllEvents` is gone. `GET /api/feed` returns one page: `limit` (default
+   25, max 100), `next_cursor` (opaque, the same `created_at|id` keyset as `/events`), `surface` for the filter
+   pills. `src/services/feedPage.ts` reads the log newest first in batches of 100, asking the database only for
+   `FEED_EVENT_TYPES` (new in `src/shared/feedActivity.ts`), and applies the old rules per batch against that
+   batch's processes: ghost, archived/pending, plugin off, restricted (now in the query), newest publication
+   only, sample marked. It stops after scanning 2,000 rows and returns what it has with a cursor. Lookups
+   (`?process_id=`, `?event_type=`) return raw events, paged the same way. Removed announcements are dropped on
+   the server. Cursor code moved to `src/events/eventCursor.ts` (it now refuses a cursor that is not a timestamp
+   and a plain id). UI: `Feed.tsx` fetches 25 at a time, "Load more" sends the cursor and appends (a stale reply
+   after a filter change is dropped); `Home.tsx` passes `surface`; `buildFilterPredicate` is gone. A local Floyd
+   (2,980 events) first page: 17.5 KB, where the old response carried the newest 1,000 events.
+2. **Moderation and feed health ask for what they need.** `getModerationEvents()` (restricted `process.updated`
+   with `data.moderation.action`) and `getResultPublications()` (public `result_published`, three fields), both
+   paged. Edit history reads `process.updated` only (`listEdits`).
+3. **The sweep.** Every read that can pass 1,000 on a busy hub now pages through `readAll()` (`src/db/readAll.ts`),
+   and long `.in()` id lists split through `inChunks()` (`src/db/inChunks.ts`). The worst was the vote tally:
+   `getBallotChoicesForProcess` and `getVoteLog` would have counted only 1,000 ballots. Also paged: digest
+   recipients, `getAllProcesses`, `getArchivedProcesses`, the hidden/disabled id sets, live plugin counts,
+   comments per process, proposals, projects, outcomes, reviews (and the review badge), waitlist, word-cloud
+   responses and clouds, project supporters, edit notifications. `getProcessIdIndex` was removed (unused).
+   The full inventory, and what was left and why, is in the session report.
+4. **The guard.** `forHub()` throws `HubDbError` code `CIVIC_ROW_CAP` (and logs the table) when a plain read
+   with no `.limit()`/`.range()` comes back with exactly 1,000 rows. Writes' `.select()` are not checked.
+5. **Found on the way:** CORS did not allow `PUT`, so a cross-origin dev UI could not save Settings (the E2E
+   Projects switch test failed on it). Added to `Access-Control-Allow-Methods` in `app.ts`.
+
+**Tests:** API 35 files, 419 passed, 7 skipped, both modes; unit 109 / 1258; Playwright 30 passed, 1 skipped.
+New: `tests/api/eventReads.test.ts` (a hub with ~1,500 events), `tests/unit/rowCap.test.ts`, the
+`FEED_EVENT_TYPES` check in `feedActivity.test.ts`, two paging checks in `feed.spec.ts`. Changed on purpose:
+`sampleContent.test.ts` reads its non-card events by `?process_id=`.
+
+**Open:**
+- **The guard throws in production.** A read missed by the sweep that reaches 1,000 rows now fails its request
+  instead of returning a short list. Every table on dev is far below that today; see the report's table.
+- `scripts/testFlow.ts` and `scripts/testBriefFlow.ts` call `/feed?process_id=` / `?event_type=` and now get
+  the first 25 events unless they pass `limit`. Dev scripts, not updated.
+- Scripts that read whole tables through supabase-js without paging (`exportProdProcesses.ts`,
+  `cleanupProd*.ts`, `repair-hub-backfill.ts`, `check-digest-recipients.ts`) and the control plane's
+  `listHubs`/`listActiveHubs` (raw client, not guarded) are listed in the report, not changed.
+- Production check: the read-only SQL in the report.
+
+---
+
 ## Votes finish on their own; a quiet meeting source asks for a check — 2026-10-07 (third part)
 
 Adam's follow-up to the second session (pushed at `19794d9` + `b251024`). Not pushed.

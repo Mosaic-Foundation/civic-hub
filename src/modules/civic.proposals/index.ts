@@ -38,6 +38,7 @@ export type {
   CreateProposalInput,
   ProposalConfig,
 } from "./models.js";
+import { readAll } from "../../db/readAll.js";
 export { DEFAULT_PROPOSAL_CONFIG } from "./models.js";
 
 function db(): HubDb {
@@ -165,20 +166,24 @@ export async function getProposal(id: string): Promise<Proposal | undefined> {
 export async function listProposals(
   statusFilter?: ProposalStatus,
 ): Promise<Proposal[]> {
-  let query = db()
-    .from("proposals")
-    .select<ProposalRow>("*")
-    .order("created_at", { ascending: false });
+  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
+  const data = await readAll((from, to) => {
+    let query = db()
+      .from("proposals")
+      .select<ProposalRow>("*")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true });
 
-  if (statusFilter) {
-    query = query.eq("status", statusFilter);
-  } else {
-    // Default-exclude archived. See the note above: an unfiltered list is the
-    // PUBLIC list, and an archived proposal must not appear on it.
-    query = query.neq("status", "archived");
-  }
+    if (statusFilter) {
+      query = query.eq("status", statusFilter);
+    } else {
+      // Default-exclude archived. See the note above: an unfiltered list is the
+      // PUBLIC list, and an archived proposal must not appear on it.
+      query = query.neq("status", "archived");
+    }
 
-  const data = await query;
+    return query.range(from, to);
+  });
   return data.map(rowToProposal);
 }
 
@@ -187,12 +192,16 @@ export async function listProposals(
  * Most supported first, then most recent.
  */
 export async function listEndorsedProposals(): Promise<Proposal[]> {
-  const data = await db()
-    .from("proposals")
-    .select<ProposalRow>("*")
-    .eq("status", "endorsed")
-    .order("support_count", { ascending: false })
-    .order("created_at", { ascending: false });
+  const data = await readAll((from, to) =>
+    db()
+      .from("proposals")
+      .select<ProposalRow>("*")
+      .eq("status", "endorsed")
+      .order("support_count", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   return data.map(rowToProposal);
 }
 

@@ -29,6 +29,10 @@
 //   upsert                     its conflict target must name hub_id, because
 //                              an upsert that conflicts on a global key
 //                              UPDATES whichever hub's row it hits
+//   a read cut off at 1,000    a select with no limit that comes back with
+//                              PostgREST's full 1,000 rows throws (code
+//                              CIVIC_ROW_CAP) instead of returning a short
+//                              list; long reads page with readAll()
 //
 // An update or delete is also checked when it runs: if its hub filter is not
 // on the request, it throws instead of sending. Nothing in the builder API
@@ -196,8 +200,40 @@ interface PostgrestResult {
 
 type Thenable = {
   url: URL;
+  method: string;
   then: (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise<unknown>;
 };
+
+/**
+ * The most rows PostgREST returns for one request: `max_rows` in
+ * supabase/config.toml, and the hosted projects' default. A read that asks for
+ * no limit and gets exactly this many was cut off by the server, silently.
+ */
+export const POSTGREST_MAX_ROWS = 1000;
+
+/** HubDbError code for a read the server cut off at POSTGREST_MAX_ROWS. */
+export const ROW_CAP_CODE = "CIVIC_ROW_CAP";
+
+/**
+ * The guard against the 1,000-row cap (2026-10-07). PostgREST answers a read
+ * with at most POSTGREST_MAX_ROWS rows and says nothing about the rest, so a
+ * read of a whole table quietly lost its oldest (or newest) rows once a hub
+ * grew. A read that set no limit of its own and came back exactly full is
+ * refused here instead: the caller gets an error, not a short list. Reads that
+ * may be long go through readAll() (src/db/readAll.ts), which pages; reads
+ * that want a window say so with `.limit()` or `.range()`.
+ *
+ * Only plain reads (GET) are checked: a write's `.select()` returns the rows
+ * it wrote, which the caller already knows the number of.
+ */
+function cutOffAtCap(b: Thenable, data: unknown): boolean {
+  return (
+    b.method === "GET" &&
+    Array.isArray(data) &&
+    data.length >= POSTGREST_MAX_ROWS &&
+    !b.url.searchParams.has("limit")
+  );
+}
 
 /**
  * Make an awaited builder resolve to rows (or a count) and throw HubDbError on
@@ -234,6 +270,15 @@ function settle<B>(
           r.error.code || undefined,
           r.error.details || undefined,
         );
+      }
+      if (mode === "data" && cutOffAtCap(b, r.data)) {
+        // Logged as well as thrown: a caller that catches broadly still
+        // leaves a line naming the table.
+        const message =
+          `${table}: a read with no limit returned ${POSTGREST_MAX_ROWS} rows, the server's ` +
+          "cap, so rows were left out. Page it with readAll() or give it a limit.";
+        console.error(`[forHub ${hubId}] ${message}`);
+        throw new HubDbError(message, ROW_CAP_CODE);
       }
       return mode === "count" ? (r.count ?? 0) : (r.data ?? null);
     }).then(ok, bad);

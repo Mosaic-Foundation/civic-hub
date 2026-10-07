@@ -1,11 +1,6 @@
-import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { meetingSummaryLabel } from "../config/hub";
 import { pluginShown } from "../config/plugins";
-import {
-  classifyActivity,
-  type ClassifierEvent,
-} from "../../../src/shared/feedActivity";
 import "./FeedFilter.css";
 
 /**
@@ -71,7 +66,7 @@ function isFilterKey(v: string | null): v is FeedFilterKey {
 /**
  * Public hook — read the current filter from the URL. Returns "all"
  * when the param is missing or unknown. Used by the parent (Home.tsx)
- * to compose the filter predicate it passes into <Feed>.
+ * to tell <Feed> which surface to ask the server for.
  */
 export function useFeedFilter(): {
   active: FeedFilterKey;
@@ -141,27 +136,3 @@ export default function FeedFilter({ active, onChange }: Props) {
     </nav>
   );
 }
-
-/**
- * Build the predicate Feed.tsx::Props.filter expects from the active filter
- * key. Phase 3 — the filter category is just the shared classifier's
- * `surface` field (the FeedFilterKeys are aligned to ActivitySurface), so the
- * filter, the inclusion gate, and the rendered pills can no longer disagree.
- * This was previously a fourth hand-maintained copy of the data-shape ladder
- * and the source of the "filter shows fewer items than All" drift.
- */
-export function buildFilterPredicate(
-  key: FeedFilterKey,
-): ((event: ClassifierEvent) => boolean) | undefined {
-  if (key === "all") return undefined;
-  return (event) => classifyActivity(event)?.surface === key;
-}
-
-/**
- * Convenience wrapper: returns a predicate-ready memoized value tied
- * to the active key. Caller passes the result straight to <Feed>.
- */
-export function useFilterPredicate(active: FeedFilterKey) {
-  return useMemo(() => buildFilterPredicate(active), [active]);
-}
-

@@ -20,7 +20,7 @@
 // of something with a result a daily "failed" run, forever. Only a process
 // that is still on the feed and whose page does not open is reported.
 
-import { getAllEvents } from "../events/eventStore.js";
+import { getResultPublications } from "../events/eventStore.js";
 import { getProcess } from "./processService.js";
 import { isPubliclyFetchable } from "./processLifecycle.js";
 import type { Process } from "../models/process.js";
@@ -75,23 +75,16 @@ export function publicationFailure(process: Process | null): string | null {
  * reader can actually click.
  */
 export async function findBrokenPublications(): Promise<BrokenPublication[]> {
-  const events = await getAllEvents();
+  // Every public publication, paged (2026-10-07: it read the whole log,
+  // which the server cut at the newest 1,000 events, so older cards were
+  // never checked).
+  const publications = await getResultPublications();
 
   const newest = new Map<string, { timestamp: string; type: string }>();
-  for (const e of events) {
-    if (e.event_type !== "civic.process.result_published") continue;
-    if (!e.process_id) continue;
-    // Restricted events are never on the public feed, so a broken link behind
-    // one is not reader-visible.
-    if (e.meta?.visibility === "restricted") continue;
-    const seen = newest.get(e.process_id);
-    if (!seen || e.timestamp > seen.timestamp) {
-      const data = (e.data ?? {}) as Record<string, unknown>;
-      const proc = data.process as Record<string, unknown> | undefined;
-      newest.set(e.process_id, {
-        timestamp: e.timestamp,
-        type: typeof proc?.type === "string" ? proc.type : "unknown",
-      });
+  for (const p of publications) {
+    const seen = newest.get(p.process_id);
+    if (!seen || p.timestamp > seen.timestamp) {
+      newest.set(p.process_id, { timestamp: p.timestamp, type: p.process_type ?? "unknown" });
     }
   }
 

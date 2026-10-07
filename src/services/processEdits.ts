@@ -334,7 +334,9 @@ export interface PublicEdit {
 
 /** Every recorded edit of a process, newest first — read from the event log. */
 export async function listEdits(processId: string): Promise<PublicEdit[]> {
-  const events = await getEventsByProcessId(processId);
+  // Edits only: a busy vote has an event per ballot, and reading those too
+  // put its early edits past PostgREST's 1,000-row cap.
+  const events = await getEventsByProcessId(processId, ["civic.process.updated"]);
   const out: PublicEdit[] = [];
   for (const ev of events) {
     if (ev.event_type !== "civic.process.updated") continue;

@@ -28,7 +28,7 @@ import {
   saveProcessState,
 } from "../services/processService.js";
 import { emitEvent } from "../events/eventEmitter.js";
-import { getAllEvents } from "../events/eventStore.js";
+import { getModerationEvents } from "../events/eventStore.js";
 import { getAuthUser } from "../middleware/auth.js";
 
 function readReason(body: unknown): string {
@@ -195,15 +195,10 @@ export async function handleGetModerationLog(
   res: Response,
 ): Promise<void> {
   try {
-    const all = await getAllEvents();
-    const moderationEvents = all.filter((e) => {
-      const data = e.data as { moderation?: { action?: unknown } } | null;
-      return (
-        e.event_type === "civic.process.updated" &&
-        e.meta?.visibility === "restricted" &&
-        !!data?.moderation?.action
-      );
-    });
+    // Asks the database for moderation events only, every one of them
+    // (paged). It read the whole log until 2026-10-07, which the server cut
+    // at the newest 1,000 events, so older actions fell off the log.
+    const moderationEvents = await getModerationEvents();
 
     // Cache process lookups so we don't re-fetch the same one per event.
     const titleCache = new Map<string, string | null>();

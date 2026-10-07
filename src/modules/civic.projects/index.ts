@@ -26,6 +26,7 @@ export type {
   SentimentValue,
   CreateProjectInput,
 } from "./models.js";
+import { readAll } from "../../db/readAll.js";
 
 function db(): HubDb {
   return forHub(currentHubId());
@@ -126,20 +127,24 @@ export async function getProject(id: string): Promise<Project | undefined> {
 export async function listProjects(
   statusFilter?: ProjectStatus,
 ): Promise<Project[]> {
-  let query = db()
-    .from("projects")
-    .select<ProjectRow>("*")
-    .order("created_at", { ascending: false });
+  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
+  const data = await readAll((from, to) => {
+    let query = db()
+      .from("projects")
+      .select<ProjectRow>("*")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true });
 
-  if (statusFilter) {
-    query = query.eq("status", statusFilter);
-  } else {
-    // Default-exclude archived, for the same reason as proposals: an
-    // unfiltered list is the public list.
-    query = query.neq("status", "archived");
-  }
+    if (statusFilter) {
+      query = query.eq("status", statusFilter);
+    } else {
+      // Default-exclude archived, for the same reason as proposals: an
+      // unfiltered list is the public list.
+      query = query.neq("status", "archived");
+    }
 
-  const data = await query;
+    return query.range(from, to);
+  });
   return data.map(rowToProject);
 }
 

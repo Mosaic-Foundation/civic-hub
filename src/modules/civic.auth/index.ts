@@ -45,6 +45,7 @@ import { isPrivilegedEmail } from "../../services/privilegedAccounts.js";
 import { lookupOfficialByEmail } from "../../services/officials.js";
 import { currentHubId, currentHubIdOrNull } from "../../config/hubContext.js";
 import type { User, PendingVerification, Session } from "./models.js";
+import { readAll } from "../../db/readAll.js";
 
 export type { User, PendingVerification, Session } from "./models.js";
 
@@ -774,10 +775,15 @@ export async function markDigestSent(
  * Takes the hub explicitly because the digest cron runs outside a request.
  */
 export async function listSubscribedUsers(hubId: string): Promise<User[]> {
-  const rows = await forHub(hubId)
-    .from("users")
-    .select("*")
-    .not("digest_frequency_days", "is", null);
+  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
+  const rows = await readAll((from, to) =>
+    forHub(hubId)
+      .from("users")
+      .select("*")
+      .not("digest_frequency_days", "is", null)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   return rows.map((row) => rowToUser(row));
 }
 

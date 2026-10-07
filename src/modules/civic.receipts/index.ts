@@ -36,6 +36,7 @@ import { AlreadyVotedError, castVote } from "../../db/atomic.js";
 import type { CivicEvent } from "../../models/event.js";
 import { currentHubId } from "../../config/hubContext.js";
 import type { VoteRecord, UserParticipation } from "./models.js";
+import { readAll } from "../../db/readAll.js";
 
 /** The hub in scope. Votes are only ever cast, read or cleared inside one. */
 function db(): HubDb {
@@ -113,10 +114,15 @@ export async function getActiveChoice(
 export async function getBallotChoicesForProcess(
   processId: string,
 ): Promise<string[]> {
-  const rows = await db()
-    .from("vote_records")
-    .select<{ choice: string }>("choice")
-    .eq("process_id", processId);
+  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
+  const rows = await readAll((from, to) =>
+    db()
+      .from("vote_records")
+      .select<{ choice: string }>("choice")
+      .eq("process_id", processId)
+      .order("receipt_id", { ascending: true })
+      .range(from, to),
+  );
   return rows.map((r) => String(r.choice));
 }
 
@@ -170,10 +176,15 @@ export async function verifyReceipt(
 export async function getVoteLog(
   processId: string,
 ): Promise<{ receipt_id: string; choice: string }[]> {
-  const rows = await db()
-    .from("vote_records")
-    .select<{ receipt_id: string; choice: string }>("receipt_id, choice")
-    .eq("process_id", processId);
+  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
+  const rows = await readAll((from, to) =>
+    db()
+      .from("vote_records")
+      .select<{ receipt_id: string; choice: string }>("receipt_id, choice")
+      .eq("process_id", processId)
+      .order("receipt_id", { ascending: true })
+      .range(from, to),
+  );
 
   const log = rows.map((r) => ({
     receipt_id: r.receipt_id,

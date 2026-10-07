@@ -5,10 +5,7 @@ import ProcessPicker from "../components/ProcessPicker";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import Feed from "../components/Feed";
-import FeedFilter, {
-  useFeedFilter,
-  useFilterPredicate,
-} from "../components/FeedFilter";
+import FeedFilter, { useFeedFilter } from "../components/FeedFilter";
 
 export default function Home() {
   // CTA-gate (design decision 2026-08-28): the create buttons are
@@ -18,7 +15,6 @@ export default function Home() {
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } =
     useRequireAuth();
   const { active, setActive } = useFeedFilter();
-  const filter = useFilterPredicate(active);
   const [showPicker, setShowPicker] = useState(false);
 
   return (
@@ -47,7 +43,7 @@ export default function Home() {
 
       <FeedFilter active={active} onChange={setActive} />
       <Feed
-        filter={filter}
+        surface={active === "all" ? undefined : active}
         emptyFilteredAction={
           active === "all"
             ? null

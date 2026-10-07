@@ -24,6 +24,7 @@ export type {
   EmitEventFn,
   InputContext,
 } from "./models.js";
+import { readAll } from "../../db/readAll.js";
 export { MODERATION_REASON_MAX } from "./models.js";
 
 interface InputRow {
@@ -160,11 +161,16 @@ export async function submitInput(
 export async function getInputsByProcess(
   process_id: string,
 ): Promise<CommunityInput[]> {
-  const rows = await db()
-    .from("community_inputs")
-    .select<InputRow>("*")
-    .eq("process_id", process_id)
-    .order("submitted_at", { ascending: true });
+  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
+  const rows = await readAll((from, to) =>
+    db()
+      .from("community_inputs")
+      .select<InputRow>("*")
+      .eq("process_id", process_id)
+      .order("submitted_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   return rows.map(rowToInput);
 }
 

@@ -997,12 +997,21 @@ interface EventsResponse {
   events: CivicEvent[];
   count: number;
   process_meta?: Record<string, FeedProcessMeta>;
+  next_cursor?: string | null;
 }
 
+/** The feed's filter pills; mirrors ActivitySurface in src/shared/feedActivity.ts. */
+export type FeedSurface = "announcement" | "meeting_summary" | "activity";
+
+/** Cards per page of the feed. */
+export const FEED_PAGE_SIZE = 25;
+
 /**
- * Fetch the hub's event feed. Returns all events in descending timestamp
- * order. Pagination is applied client-side in the feed component until the
- * backend grows server-side pagination.
+ * One page of the feed, newest first: only the events that become cards
+ * (optionally of one surface), with their card metadata batched in, and the
+ * cursor for the next (older) page, or null when there is none. Paged on the
+ * server since 2026-10-07; it used to send the whole log (up to 1,000 events)
+ * on every page load.
  *
  * Reads /api/feed, the hub's INTERNAL read model, not /events. As of the
  * Civic Activity Spec v0.2 wire conversion, /events serves an AS2
@@ -1010,23 +1019,24 @@ interface EventsResponse {
  * internal CivicEvent shape (and the shared feed classifier with it), so the
  * presentation layer is not coupled to the federation format.
  */
-export async function getEvents(): Promise<CivicEvent[]> {
-  const res = await request<EventsResponse>("GET", "/feed");
-  return res.events;
-}
-
-/**
- * The feed with its server-batched card metadata (perf pass phase 2):
- * every card's second line ships in the same response, so the Feed makes
- * no per-process follow-up requests and cards render complete on the
- * first frame.
- */
-export async function getFeed(): Promise<{
+export async function getFeed(options: {
+  cursor?: string | null;
+  surface?: FeedSurface;
+  limit?: number;
+} = {}): Promise<{
   events: CivicEvent[];
   processMeta: Record<string, FeedProcessMeta>;
+  nextCursor: string | null;
 }> {
-  const res = await request<EventsResponse>("GET", "/feed");
-  return { events: res.events, processMeta: res.process_meta ?? {} };
+  const params = new URLSearchParams({ limit: String(options.limit ?? FEED_PAGE_SIZE) });
+  if (options.cursor) params.set("cursor", options.cursor);
+  if (options.surface) params.set("surface", options.surface);
+  const res = await request<EventsResponse>("GET", `/feed?${params}`);
+  return {
+    events: res.events,
+    processMeta: res.process_meta ?? {},
+    nextCursor: res.next_cursor ?? null,
+  };
 }
 
 // --- Vote results (renamed from "Civic Briefs" in Slice 8.5) ---

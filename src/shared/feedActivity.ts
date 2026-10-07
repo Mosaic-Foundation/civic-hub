@@ -149,6 +149,25 @@ function processTypeOf(event: ClassifierEvent): string | undefined {
 }
 
 /**
+ * The only event types `classifyActivity` can return a card for: the cases of
+ * its switch below that are not always null. The feed asks the database for
+ * these types alone (2026-10-07), so a page of cards is not a scan through
+ * every ballot and comment. A unit test (feedActivity.test.ts) fails if the
+ * classifier returns a card for any other type, so the list cannot fall
+ * behind the switch.
+ */
+export const FEED_EVENT_TYPES: readonly string[] = [
+  "civic.process.started",
+  "civic.process.result_published",
+  "civic.process.created",
+  "civic.process.action_taken",
+  "civic.proposal.submitted",
+  "civic.project.created",
+  "civic.project.updated",
+  "civic.outcome_delivered",
+];
+
+/**
  * Classify a civic event into its feed/digest presentation, or null when the
  * event is not feed-worthy. The ONE predicate the gate, renderer, filter, and
  * digest all share.

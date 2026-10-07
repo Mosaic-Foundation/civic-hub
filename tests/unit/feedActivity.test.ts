@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  FEED_EVENT_TYPES,
   briefResponseContext,
   classifyActivity,
   voteResultLine,
@@ -396,5 +397,56 @@ describe("classifyActivity — one color per process type", () => {
         }),
       )?.color,
     ).toBe("official-response");
+  });
+});
+
+// The feed asks the database for FEED_EVENT_TYPES only (2026-10-07), so an
+// event type the classifier turns into a card but the list leaves out would
+// silently never reach the feed. Every type the hub emits, each with every
+// payload shape that makes some case return a card.
+describe("FEED_EVENT_TYPES — the feed's query covers every card", () => {
+  const EMITTED = [
+    "civic.process.action_taken", "civic.process.aggregation_completed", "civic.process.comment_added",
+    "civic.process.created", "civic.process.ended", "civic.process.outcome_recorded", "civic.process.proposed",
+    "civic.process.result_published", "civic.process.started", "civic.process.submission_received",
+    "civic.process.threshold_met", "civic.process.updated", "civic.process.vote_submitted",
+    "civic.project.archived", "civic.project.comment_added", "civic.project.created",
+    "civic.project.sentiment_changed", "civic.project.updated", "civic.proposal.closed",
+    "civic.proposal.endorsed", "civic.proposal.submitted", "civic.proposal.support_withdrawn",
+    "civic.proposal.supported", "civic.outcome_delivered", "civic.review.approved",
+    "civic.review.submitted",
+  ];
+  const TYPES = [
+    undefined, "civic.vote", "civic.announcement", "civic.meeting_summary", "civic.wordcloud",
+    "civic.proposal", "civic.project", "civic.polis_deliberation", "civic.brief", "civic.vote_results",
+  ];
+  const SHAPES = (type: string | undefined): Record<string, unknown>[] => [
+    {},
+    { process: { type } },
+    { process_type: type },
+    { process: { type }, action: "official_response", feed_anchor: true },
+    { process: { type }, results_at_close: true, tally: { Yes: 1 } },
+    { process: { type }, vote_results: { title: "t" }, brief: { title: "t" }, summary: "s" },
+  ];
+
+  it("names no type twice", () => {
+    expect(new Set(FEED_EVENT_TYPES).size).toBe(FEED_EVENT_TYPES.length);
+  });
+
+  it("the classifier returns a card for no event type outside it", () => {
+    for (const eventType of EMITTED.filter((t) => !FEED_EVENT_TYPES.includes(t))) {
+      for (const type of TYPES) {
+        for (const data of SHAPES(type)) {
+          expect(classifyActivity(ev(eventType, data)), `${eventType} ${JSON.stringify(data)}`).toBeNull();
+        }
+      }
+    }
+  });
+
+  it("every type in it can produce a card", () => {
+    for (const eventType of FEED_EVENT_TYPES) {
+      const some = TYPES.some((type) => SHAPES(type).some((data) => classifyActivity(ev(eventType, data)) !== null));
+      expect(some, eventType).toBe(true);
+    }
   });
 });

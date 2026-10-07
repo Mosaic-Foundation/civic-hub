@@ -18,7 +18,8 @@
 // the resident digest leave them out HERE, in the query, so no caller can
 // forget. The hub's own feed and admin views read them, with a Sample badge.
 
-import { forHub, forHubDevReset, type HubDb } from "../db/forHub.js";
+import { forHub, forHubDevReset, type HubDb, type HubSelect } from "../db/forHub.js";
+import { readAll } from "../db/readAll.js";
 import { currentHubId } from "../config/hubContext.js";
 import { CivicEvent } from "../models/event.js";
 
@@ -91,23 +92,81 @@ export async function appendEvent(event: CivicEvent): Promise<void> {
   await db().from("events").insert(eventToRow(event));
 }
 
-export async function getAllEvents(): Promise<CivicEvent[]> {
-  const data = await db()
-    .from("events")
-    .select<EventRow>("*")
-    .order("created_at", { ascending: false });
-  return data.map(rowToEvent);
+// There is no "every event" read (removed 2026-10-07). It asked for the whole
+// log in one request, PostgREST answered with the newest 1,000 rows, and the
+// feed, the moderation log and feed health silently lost everything older.
+// Each caller now asks for what it needs: a page (getEventPage), one process
+// (getEventsByProcessId), or one kind of event (getModerationEvents,
+// getResultPublications), and the long ones page through readAll().
+
+/** Newest first, then by id, so pages of a read are stable. */
+function newestFirst<T>(q: HubSelect<T>): HubSelect<T> {
+  return q.order("created_at", { ascending: false }).order("id", { ascending: false });
 }
 
+/**
+ * Every event of one process, newest first, optionally of some types only. A
+ * vote has an event per ballot, so a busy one passes 1,000: paged.
+ */
 export async function getEventsByProcessId(
   processId: string,
+  eventTypes?: string[],
 ): Promise<CivicEvent[]> {
-  const data = await db()
-    .from("events")
-    .select<EventRow>("*")
-    .eq("process_id", processId)
-    .order("created_at", { ascending: false });
-  return data.map(rowToEvent);
+  const rows = await readAll((from, to) => {
+    let q = db().from("events").select<EventRow>("*").eq("process_id", processId);
+    if (eventTypes?.length) q = q.in("event_type", eventTypes);
+    return newestFirst(q).range(from, to);
+  });
+  return rows.map(rowToEvent);
+}
+
+/**
+ * Every moderation action, newest first: the restricted `process.updated`
+ * events that carry `data.moderation.action`. The moderation log's read; asks
+ * the database for these rows only, all of them.
+ */
+export async function getModerationEvents(): Promise<CivicEvent[]> {
+  const rows = await readAll((from, to) =>
+    newestFirst(
+      db()
+        .from("events")
+        .select<EventRow>("*")
+        .eq("event_type", "civic.process.updated")
+        .eq("meta->>visibility", "restricted")
+        .not("data->moderation->>action", "is", null),
+    ).range(from, to),
+  );
+  return rows.map(rowToEvent);
+}
+
+/** One public announcement of a published result: what feed health checks. */
+export interface ResultPublication {
+  process_id: string;
+  timestamp: string;
+  /** `data.process.type` as emitted, if any. */
+  process_type: string | null;
+}
+
+/**
+ * Every public `civic.process.result_published` event, newest first, as just
+ * the three fields feed health reads. Restricted ones are left out: they are
+ * never on the public feed.
+ */
+export async function getResultPublications(): Promise<ResultPublication[]> {
+  const rows = await readAll((from, to) =>
+    newestFirst(
+      db()
+        .from("events")
+        .select<{ id: string; process_id: string | null; created_at: string; process_type: string | null }>(
+          "id, process_id, created_at, process_type:data->process->>type",
+        )
+        .eq("event_type", "civic.process.result_published")
+        .or("meta->>visibility.is.null,meta->>visibility.neq.restricted"),
+    ).range(from, to),
+  );
+  return rows
+    .filter((r) => r.process_id)
+    .map((r) => ({ process_id: r.process_id!, timestamp: r.created_at, process_type: r.process_type }));
 }
 
 /** An event with the time its row was written (not part of the event itself). */
@@ -128,24 +187,18 @@ export async function getEventsSince(sinceIso: string): Promise<RecordedEvent[]>
   // order that silently dropped the NEWEST events once a window held more
   // (found 2026-10-07 on a local stack with 1,175 events in a day). Ordered
   // by recorded_at then id, so pages are stable.
-  const rows: Array<EventRow & { recorded_at: string }> = [];
-  for (let from = 0; ; from += EVENTS_PAGE) {
-    const page = await db()
+  const rows = await readAll((from, to) =>
+    db()
       .from("events")
       .select<EventRow & { recorded_at: string }>("*")
       .eq("is_sample", false)
       .gt("recorded_at", sinceIso)
       .order("recorded_at", { ascending: true })
       .order("id", { ascending: true })
-      .range(from, from + EVENTS_PAGE - 1);
-    rows.push(...page);
-    if (page.length < EVENTS_PAGE) break;
-  }
+      .range(from, to),
+  );
   return rows.map((row) => ({ ...rowToEvent(row), recorded_at: row.recorded_at }));
 }
-
-/** Rows per request when reading a window of events; PostgREST's default cap. */
-const EVENTS_PAGE = 1000;
 
 // --- Paged reads (the AS2 collection endpoint) -----------------------------
 
@@ -168,6 +221,13 @@ export interface EventPageQuery {
   eventTypes?: string[];
   /** RFC 3339 — only events created strictly later than this. */
   since?: string;
+  /** Leave restricted events out (non-admin callers), in the query. */
+  excludeRestricted?: boolean;
+  /**
+   * Include sample events. Off for the public wire, which never carries
+   * them; on for the hub's own feed, which shows them badged.
+   */
+  includeSample?: boolean;
 }
 
 export interface EventPage {
@@ -186,11 +246,17 @@ export interface EventPage {
  * second query or a count.
  */
 export async function getEventPage(query: EventPageQuery): Promise<EventPage> {
-  let q = db().from("events").select<EventRow>("*").eq("is_sample", false);
+  let q = db().from("events").select<EventRow>("*");
+  if (!query.includeSample) q = q.eq("is_sample", false);
 
   if (query.processId) q = q.eq("process_id", query.processId);
   if (query.eventTypes?.length) q = q.in("event_type", query.eventTypes);
   if (query.since) q = q.gt("created_at", query.since);
+  // Spelled with the NULL branch, as in countEvents below: a null `meta` is
+  // public.
+  if (query.excludeRestricted) {
+    q = q.or("meta->>visibility.is.null,meta->>visibility.neq.restricted");
+  }
   if (query.cursor) {
     const { createdAt, id } = query.cursor;
     q = q.or(

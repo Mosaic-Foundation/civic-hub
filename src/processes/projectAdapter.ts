@@ -28,6 +28,7 @@ import {
   setProjectDraftStatus,
   updateProjectDraft,
 } from "../modules/civic.project_drafts/index.js";
+import { readAll } from "../db/readAll.js";
 
 function db() {
   return forHub(currentHubId());
@@ -60,11 +61,16 @@ const projectAdapter: ProcessHandler = {
     return { editable: true, locked_fields: count > 0 ? ["title"] : [] };
   },
   listSupporters: async (processId) => {
-    const rows = await db()
-      .from("project_sentiments")
-      .select<{ user_id: string }>("user_id")
-      .eq("project_id", processId)
-      .eq("sentiment", "support");
+    // Paged: a project can have more than 1,000 supporters (PostgREST's cap).
+    const rows = await readAll((from, to) =>
+      db()
+        .from("project_sentiments")
+        .select<{ user_id: string }>("user_id")
+        .eq("project_id", processId)
+        .eq("sentiment", "support")
+        .order("user_id", { ascending: true })
+        .range(from, to),
+    );
     return rows.map((r) => r.user_id);
   },
   draftFromProcess: async (process, editorId, links) => {

@@ -35,6 +35,7 @@ import { createProject } from "../civic.projects/index.js";
 import { createProposal } from "../civic.proposals/index.js";
 import { defaultJurisdiction } from "../../config/hub.js";
 import { getAdminEmailsSync } from "../../services/hubSettings.js";
+import { readAll } from "../../db/readAll.js";
 
 
 /** The hub in scope. Reviews are only ever created, read or transitioned inside one. */
@@ -901,26 +902,34 @@ async function withoutDisabledTypes<T extends { process_id: string }>(rows: T[])
 export async function listReviews(
   statusFilter?: string,
 ): Promise<ProcessReview[]> {
-  let query = db()
-    .from("process_reviews")
-    .select<ProcessReview>("*")
-    .order("updated_at", { ascending: false });
+  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
+  const rows = await readAll((from, to) => {
+    let query = db()
+      .from("process_reviews")
+      .select<ProcessReview>("*")
+      .order("updated_at", { ascending: false })
+      .order("id", { ascending: true });
 
-  if (statusFilter) {
-    query = query.eq("status", statusFilter);
-  }
-
-  return withoutDisabledTypes(await query);
+    if (statusFilter) {
+      query = query.eq("status", statusFilter);
+    }
+    return query.range(from, to);
+  });
+  return withoutDisabledTypes(rows);
 }
 
 export async function listCreatorReviews(
   creatorId: string,
 ): Promise<ProcessReview[]> {
-  const data = await db()
-    .from("process_reviews")
-    .select<ProcessReview>("*")
-    .eq("creator_id", creatorId)
-    .order("updated_at", { ascending: false });
+  const data = await readAll((from, to) =>
+    db()
+      .from("process_reviews")
+      .select<ProcessReview>("*")
+      .eq("creator_id", creatorId)
+      .order("updated_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   return withoutDisabledTypes(data);
 }
 
@@ -946,18 +955,22 @@ export async function countReviewNotifications(
     .maybeSingle();
   const seenAt = userRow?.reviews_seen_at ?? EPOCH;
 
-  let query = db()
-    .from("process_reviews")
-    .select<{ process_id: string }>("process_id")
-    .gt("updated_at", seenAt);
+  // Paged, not a count: reviews of a switched-off plugin are left out below.
+  const rows = await readAll((from, to) => {
+    let query = db()
+      .from("process_reviews")
+      .select<{ process_id: string }>("process_id")
+      .gt("updated_at", seenAt);
 
-  if (isAdmin) {
-    query = query.eq("status", "pending_review");
-  } else {
-    query = query.eq("creator_id", userId).eq("status", "changes_requested");
-  }
+    if (isAdmin) {
+      query = query.eq("status", "pending_review");
+    } else {
+      query = query.eq("creator_id", userId).eq("status", "changes_requested");
+    }
+    return query.order("id", { ascending: true }).range(from, to);
+  });
 
-  return (await withoutDisabledTypes(await query)).length;
+  return (await withoutDisabledTypes(rows)).length;
 }
 
 /**

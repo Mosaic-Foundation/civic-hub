@@ -6,6 +6,7 @@
 // had asked to join any hub on the deployment.
 
 import { forHub } from "./forHub.js";
+import { readAll } from "./readAll.js";
 
 export interface WaitlistEntry {
   email: string;
@@ -18,8 +19,13 @@ export interface WaitlistEntry {
 }
 
 export async function getWaitlist(hubId: string): Promise<WaitlistEntry[]> {
-  return forHub(hubId)
-    .from("waitlist")
-    .select<WaitlistEntry>("email, created_at, name, notes, wants_test_user")
-    .order("created_at", { ascending: false });
+  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
+  return readAll((from, to) =>
+    forHub(hubId)
+      .from("waitlist")
+      .select<WaitlistEntry>("email, created_at, name, notes, wants_test_user")
+      .order("created_at", { ascending: false })
+      .order("email", { ascending: true })
+      .range(from, to),
+  );
 }

@@ -97,7 +97,8 @@ app.use((req, res, next) => {
     res.header("Vary", "Origin");
   }
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+  // PUT: the admin Settings save (2026-10-07; a cross-origin dev UI could not save).
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
   if (req.method === "OPTIONS") {
     res.sendStatus(204);
     return;
@@ -333,7 +334,7 @@ app.get("/", (_req, res) => {
       "GET /events?type=X": "Filter by activity type (e.g., Create, Announce, civic:End)",
       "GET /events?since=X&limit=N": "Filter by RFC 3339 timestamp; page size (default 50, max 200)",
       "GET /activities/:id": "Dereference a single civic activity",
-      "GET /api/feed": "Internal UI read model: { events, count } (process_id / event_type / pretty filters)",
+      "GET /api/feed": "Internal UI read model, paged: { events, count, process_meta, next_cursor } (limit / cursor / surface / process_id / event_type / pretty)",
       "GET /.well-known/civic.json": "Discovery manifest",
       "GET /debug/seed": "Seed sample data (dev only)",
       "GET /health": "Health check",

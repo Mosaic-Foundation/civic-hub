@@ -9,6 +9,8 @@ import { forHub, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { getAllHandlers, processDetailPath } from "../processes/registry.js";
 import { isSubstantiveEdit } from "./processEdits.js";
+import { readAll } from "../db/readAll.js";
+import { inChunks } from "../db/inChunks.js";
 
 const EPOCH = "1970-01-01T00:00:00.000Z";
 
@@ -48,16 +50,21 @@ export async function listEditNotifications(userId: string, isAdmin = false): Pr
     if (supported.size === 0) return [];
   }
 
-  let query = hubDb
-    .from("events")
-    .select<{ process_id: string; actor: string | null; created_at: string; data: Record<string, unknown> | null }>(
-      "process_id, actor, created_at, data",
-    )
-    .eq("event_type", "civic.process.updated")
-    .gt("created_at", seenAt)
-    .order("created_at", { ascending: false });
-  if (!isAdmin) query = query.in("process_id", [...supported]);
-  const events = await query;
+  type EditEvent = { process_id: string; actor: string | null; created_at: string; data: Record<string, unknown> | null };
+  const editEvents = (supportedIds?: string[]) =>
+    // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
+    readAll((from, to) => {
+      let query = hubDb
+        .from("events")
+        .select<EditEvent>("process_id, actor, created_at, data")
+        .eq("event_type", "civic.process.updated")
+        .gt("created_at", seenAt)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true });
+      if (supportedIds) query = query.in("process_id", supportedIds);
+      return query.range(from, to);
+    });
+  const events = isAdmin ? await editEvents() : await inChunks([...supported], (chunk) => editEvents(chunk));
 
   const byProcess = new Map<string, { edits: number; latest_at: string }>();
   for (const row of events) {
@@ -71,10 +78,13 @@ export async function listEditNotifications(userId: string, isAdmin = false): Pr
   }
   if (byProcess.size === 0) return [];
 
-  const procs = await hubDb
-    .from("processes")
-    .select<{ id: string; type: string; title: string; status: string }>("id, type, title, status")
-    .in("id", [...byProcess.keys()]);
+  const procs = await inChunks([...byProcess.keys()], (chunk) =>
+    hubDb
+      .from("processes")
+      .select<{ id: string; type: string; title: string; status: string }>("id, type, title, status")
+      .in("id", chunk)
+      .order("id", { ascending: true }),
+  );
   const out: EditNotification[] = [];
   for (const p of procs) {
     if (p.status === "archived") continue;
@@ -120,14 +130,19 @@ export async function listAllEdits(adminId: string, sinceDays = 90): Promise<{ i
   const seenAt = userRow?.edits_seen_at ?? EPOCH;
   const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
 
-  const events = await hubDb
-    .from("events")
-    .select<{ process_id: string; created_at: string; data: Record<string, unknown> | null }>(
-      "process_id, created_at, data",
-    )
-    .eq("event_type", "civic.process.updated")
-    .gt("created_at", since)
-    .order("created_at", { ascending: false });
+  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
+  const events = await readAll((from, to) =>
+    hubDb
+      .from("events")
+      .select<{ process_id: string; created_at: string; data: Record<string, unknown> | null }>(
+        "process_id, created_at, data",
+      )
+      .eq("event_type", "civic.process.updated")
+      .gt("created_at", since)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
 
   const byProcess = new Map<string, { edits: number; latest_at: string; fields: Set<string>; unseen: boolean }>();
   for (const row of events) {
@@ -142,10 +157,13 @@ export async function listAllEdits(adminId: string, sinceDays = 90): Promise<{ i
   }
   if (byProcess.size === 0) return { items: [], unseen: 0 };
 
-  const procs = await hubDb
-    .from("processes")
-    .select<{ id: string; type: string; title: string; status: string }>("id, type, title, status")
-    .in("id", [...byProcess.keys()]);
+  const procs = await inChunks([...byProcess.keys()], (chunk) =>
+    hubDb
+      .from("processes")
+      .select<{ id: string; type: string; title: string; status: string }>("id, type, title, status")
+      .in("id", chunk)
+      .order("id", { ascending: true }),
+  );
   const items: AdminEditRow[] = [];
   for (const p of procs) {
     const agg = byProcess.get(p.id)!;

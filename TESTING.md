@@ -517,6 +517,29 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   Result 2026-10-07: API 33 files, 408 passed, 7 skipped, both modes; unit
   108 files, 1232 passed; Playwright 28 passed, 1 skipped (production build
   behind `vite preview` on :4195, `/api` → :3230).
+  **Event reads past 1,000 rows (2026-10-07, fourth part):**
+  `eventReads.test.ts` makes its own hub (`bulk-<run>`, inserted straight
+  into `hubs` with an admin roster row) and seeds ~1,500 events: 1,100 open
+  votes, 400 ballots on the newest, three moderation actions and a broken
+  publication as the oldest event. It checks a page load is one page of 25
+  cards with a cursor; that the feed's pages, followed to the end, hold all
+  1,100 vote cards once each, newest first, the oldest included; that
+  `?surface=` and `?process_id=` page too, and a bad cursor or surface is a
+  400; that the moderation log has all three actions; that feed health finds
+  the oldest publication; and that an unbounded `select` on the hub's events
+  throws `CIVIC_ROW_CAP` while `readAll()` returns every row (both
+  in-process, in the server's mode). Events are append-only, so the hub
+  stays: it is suspended at the end. Changed on purpose:
+  `sampleContent.test.ts` reads its planted `process.updated` events by
+  `?process_id=`, since the feed's page now holds cards only.
+  **Local note:** running the service-role pass and then the token pass
+  back to back can trip the sign-in lockout (`Too many incorrect attempts`)
+  in `sampleContent`'s fresh-code step: the first pass's wrong-code tests
+  lock the address for 15 minutes. Clear `pending_verifications.locked_until`
+  on the local stack between passes (CI's database is fresh each pass).
+  Result: API 35 files, 419 passed, 7 skipped, both modes; unit 109 files,
+  1258 passed; Playwright 30 passed, 1 skipped (dev UI on :5173, API
+  `hub-e2e-1006` on :3000).
 
 > **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
 > `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs
@@ -548,6 +571,14 @@ runs on every push**, alongside `tsc` and a real UI build.
   recipients, one hub's failure isolated), `pluginGate.test.ts`,
   `hubBaseUrl.test.ts`, `portability.test.ts` (every GRANT to a Supabase role
   is guarded; the bucket migration; generic deployment variables)
+- **The 1,000-row cap (2026-10-07):** `rowCap.test.ts` (over a stub that
+  plays PostgREST's cap: a read with no limit that comes back with 1,000
+  rows throws `CIVIC_ROW_CAP`, filtered or not; a read with `.limit()` or
+  `.range()`, a write's `.select()` and a single-row read are let through;
+  `readAll()` pages past the cap without losing or repeating a row;
+  `inChunks()` splits long id lists); `feedActivity.test.ts` checks
+  `FEED_EVENT_TYPES` against the classifier: no other emitted type ever
+  becomes a card, and every listed type can
 - **Plugin switches (2026-10-07):** `pluginSwitches.test.ts` (the type
   filter for search and link candidates, the needs-setup rule, the UI's
   onboarding target and search chips)
@@ -578,6 +609,9 @@ Open the real UI in Chromium and simulate resident interactions.
 - **Run:** `npm run test:e2e`
 - **Config:** `civic-hub/playwright.config.ts`
 - **Covers:** critical user journeys — navigation, feed, votes, search, conversations;
+  feed paging (`feed.spec.ts`, 2026-10-07: a page load asks for `limit=25`
+  with no cursor; "Load more" sends the cursor the first page returned,
+  appends, and goes away at the oldest, over two pages served by the test);
   plugin switches (`pluginSwitches.spec.ts`, 2026-10-07: Settings → Plugins
   changes the nav without a reload; a new sign-up with Word clouds off stays
   home)
@@ -1092,7 +1126,7 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,

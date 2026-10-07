@@ -23,6 +23,8 @@ numbers below, or just grep the heading.
 | Guards: production db push, deploy env safety | `scripts/db-push.sh`, `scripts/check-deploy-env.ts` |
 | Auth, sessions, admin/board resolution | `src/middleware/auth.ts`, `src/modules/civic.auth/` |
 | Process registry and per-type handlers | `src/processes/registry.ts`, `src/processes/*Process.ts` |
+| Reading more than 1,000 rows: `readAll()` (pages), `inChunks()` (long id lists); the `CIVIC_ROW_CAP` guard | `src/db/readAll.ts`, `src/db/inChunks.ts`, `cutOffAtCap` in `src/db/forHub.ts` |
+| The feed's page (cursor, surface, visibility rules) | `src/services/feedPage.ts`, `src/controllers/feedController.ts`, `src/events/eventCursor.ts` |
 | DB client (service role, the thing tenancy replaces) | `src/db/client.ts`; only `src/db/`, `scripts/`, `tests/` may import it (`eslint.config.js`, `civic/raw-client`) |
 | Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |
 | Local Supabase stack (ports, auth, seed) | `supabase/config.toml`, `supabase/seed.sql` |
@@ -71,6 +73,12 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **No read stops at 1,000 rows (2026-10-07, fourth part)**: feed paged on
+  the server (`src/services/feedPage.ts`, `next_cursor`, `surface`,
+  `FEED_EVENT_TYPES`), `getAllEvents` gone, `getModerationEvents`,
+  `getResultPublications`, `readAll()` / `inChunks()` in `src/db/`, the
+  `CIVIC_ROW_CAP` guard in `forHub()`, ballots paged — top of HANDOFF (grep
+  the heading)
 - **Votes finish on their own; quiet meeting source (2026-10-07, third
   part)**: finalize at close, `results_at_close`, card kind `vote-closed`,
   "Vote brief" pill, `SOURCE_QUIET_DAYS` 45, `getEventsSince` paged,

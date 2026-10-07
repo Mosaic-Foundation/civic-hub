@@ -33,6 +33,7 @@ export type {
   PromptCloud,
   CloudEntry,
 } from "./models.js";
+import { readAll } from "../../db/readAll.js";
 export { DEFAULT_CONFIG } from "./models.js";
 export { aggregateSubmissions, extractWords } from "./aggregation.js";
 
@@ -315,12 +316,17 @@ export async function buildClouds(
   const clouds: PromptCloud[] = [];
 
   for (const prompt of state.prompts) {
-    const data = await db()
-      .from("wordcloud_submissions")
-      .select<{ body: string }>("body")
-      .eq("process_id", processId)
-      .eq("prompt_id", prompt.id)
-      .is("hidden_at", null);
+    // Paged: a cloud can have more than 1,000 responses (PostgREST's cap).
+    const data = await readAll((from, to) =>
+      db()
+        .from("wordcloud_submissions")
+        .select<{ body: string }>("body")
+        .eq("process_id", processId)
+        .eq("prompt_id", prompt.id)
+        .is("hidden_at", null)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     const bodies = data.map((r) => r.body);
     const entries = aggregateSubmissions(bodies, state.config);

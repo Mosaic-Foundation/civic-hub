@@ -16,6 +16,7 @@ import {
   getSubmissionCount,
   type WordcloudProcessState,
 } from "../modules/civic.wordcloud/index.js";
+import { readAll } from "../db/readAll.js";
 
 function db() {
   return forHub(currentHubId());
@@ -37,18 +38,21 @@ async function listWordcloudResponses(
   processId: string,
   promptId: string | undefined,
 ): Promise<WordcloudResponseRow[]> {
-  let query = db()
-    .from("wordcloud_submissions")
-    .select<WordcloudResponseRow>("id, body, submitted_at, prompt_id")
-    .eq("process_id", processId)
-    .is("hidden_at", null)
-    .order("submitted_at", { ascending: false });
+  // Paged: a cloud can have more than 1,000 responses (PostgREST's cap).
+  return readAll((from, to) => {
+    let query = db()
+      .from("wordcloud_submissions")
+      .select<WordcloudResponseRow>("id, body, submitted_at, prompt_id")
+      .eq("process_id", processId)
+      .is("hidden_at", null)
+      .order("submitted_at", { ascending: false })
+      .order("id", { ascending: true });
 
-  if (promptId) {
-    query = query.eq("prompt_id", promptId);
-  }
-
-  return query;
+    if (promptId) {
+      query = query.eq("prompt_id", promptId);
+    }
+    return query.range(from, to);
+  });
 }
 
 /**

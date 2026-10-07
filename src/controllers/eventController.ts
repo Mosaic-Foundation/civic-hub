@@ -33,6 +33,12 @@ import {
   toPublicActivity,
 } from "../events/publicRedaction.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
+import {
+  INVALID_CURSOR,
+  decodeCursor,
+  encodeCursor,
+  firstQueryValue,
+} from "../events/eventCursor.js";
 
 /** Civic Activity Spec §6.1 — the collection's media type. */
 const ACTIVITY_JSON = "application/activity+json; charset=utf-8";
@@ -360,40 +366,6 @@ function processIdFromContext(context: string): string {
   const at = context.lastIndexOf(marker);
   const id = at >= 0 ? context.slice(at + marker.length) : context;
   return id.split(/[?#]/)[0];
-}
-
-const INVALID_CURSOR = Symbol("invalid-cursor");
-
-/** Cursors are opaque to consumers (§6.1): base64url of `created_at|id`. */
-function encodeCursor(cursor: EventCursor): string {
-  return Buffer.from(`${cursor.createdAt}|${cursor.id}`, "utf8").toString(
-    "base64url",
-  );
-}
-
-function decodeCursor(
-  raw: unknown,
-): EventCursor | null | typeof INVALID_CURSOR {
-  const value = firstQueryValue(raw);
-  if (!value) return null;
-  let decoded: string;
-  try {
-    decoded = Buffer.from(value, "base64url").toString("utf8");
-  } catch {
-    return INVALID_CURSOR;
-  }
-  const separator = decoded.lastIndexOf("|");
-  if (separator <= 0) return INVALID_CURSOR;
-  const createdAt = decoded.slice(0, separator);
-  const id = decoded.slice(separator + 1);
-  if (!createdAt || !id) return INVALID_CURSOR;
-  return { createdAt, id };
-}
-
-function firstQueryValue(value: unknown): string | undefined {
-  if (typeof value === "string") return value.trim() || undefined;
-  if (Array.isArray(value)) return firstQueryValue(value[0]);
-  return undefined;
 }
 
 function isKnownEventType(value: string): boolean {

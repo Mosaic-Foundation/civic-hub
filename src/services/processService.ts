@@ -58,6 +58,7 @@ import {
 } from "./creatorDisplay.js";
 import { defaultJurisdiction } from "../config/hub.js";
 import type { PluginId } from "../models/hubSettings.js";
+import { readAll } from "../db/readAll.js";
 
 /** The hub in scope. Processes are only ever read or written inside one. */
 function db(): HubDb {
@@ -234,14 +235,20 @@ export async function getEnabledProcess(id: string): Promise<Process | null> {
 }
 
 export async function getAllProcesses(types?: string[]): Promise<Process[]> {
-  let q = db()
-    .from("processes")
-    .select<ProcessRow>("*")
-    .not("status", "in", nonPublicStatusFilter());
-  if (types && types.length > 0) {
-    q = q.in("type", types);
-  }
-  const data = await q.order("created_at", { ascending: false });
+  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
+  const data = await readAll((from, to) => {
+    let q = db()
+      .from("processes")
+      .select<ProcessRow>("*")
+      .not("status", "in", nonPublicStatusFilter());
+    if (types && types.length > 0) {
+      q = q.in("type", types);
+    }
+    return q
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to);
+  });
   return data.map((r) => rowToProcess(r));
 }
 
@@ -573,23 +580,6 @@ export async function getSampleProcessIds(): Promise<Set<string>> {
   return new Set(rows.map((r) => r.id));
 }
 
-/**
- * Every process id on this hub, and which are sample content, in one query
- * of ids only. The feed uses both: an event whose process no longer exists
- * (a meeting summary deleted in a batch) is skipped rather than rendered as
- * a ghost card, and a sample process's events are marked. Skipping on read
- * replaced deleting "orphaned" events (Phase 7): the log is append-only for
- * the hub app, and an operator script on the service role is the path if
- * one ever has to go.
- */
-export async function getProcessIdIndex(): Promise<{ all: Set<string>; sample: Set<string> }> {
-  const rows = await db().from("processes").select<{ id: string; is_sample: boolean }>("id, is_sample");
-  return {
-    all: new Set(rows.map((r) => r.id)),
-    sample: new Set(rows.filter((r) => r.is_sample).map((r) => r.id)),
-  };
-}
-
 /** Clear all processes — dev/seed only. */
 /**
  * Persist the current in-memory Process back to storage. Used by flows
@@ -796,10 +786,14 @@ export async function restoreProcess(
  * with these numbers.
  */
 export async function countLiveProcessesByPlugin(): Promise<Partial<Record<PluginId, number>>> {
-  const rows = await db()
-    .from("processes")
-    .select<{ type: string }>("type")
-    .in("status", [...LIVE_STATUSES]);
+  const rows = await readAll((from, to) =>
+    db()
+      .from("processes")
+      .select<{ type: string }>("type")
+      .in("status", [...LIVE_STATUSES])
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   const counts: Partial<Record<PluginId, number>> = {};
   for (const { type } of rows) {
     const plugin = PROCESS_TYPE_PLUGINS[type];
@@ -813,14 +807,19 @@ export async function countLiveProcessesByPlugin(): Promise<Partial<Record<Plugi
  * pending review). Used by the events feed + digest to suppress cards for
  * content that has been archived/removed — otherwise an archived process's
  * historical `civic.process.created` / `.started` / proposal-submitted events
- * linger in `/events` forever and render ghost feed posts. Single small query;
- * the feed already fetches all events, so this is one extra round-trip.
+ * linger in `/events` forever and render ghost feed posts. Paged: archived
+ * processes pile up over the years. The hub's own feed checks each page's
+ * processes instead (services/feedPage.ts).
  */
 export async function getNonPublicProcessIds(): Promise<Set<string>> {
-  const data = await db()
-    .from("processes")
-    .select<{ id: string }>("id")
-    .in("status", [...NON_PUBLIC_STATUSES]);
+  const data = await readAll((from, to) =>
+    db()
+      .from("processes")
+      .select<{ id: string }>("id")
+      .in("status", [...NON_PUBLIC_STATUSES])
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   return new Set(data.map((r) => r.id));
 }
 
@@ -845,7 +844,14 @@ export async function getHiddenProcessIds(): Promise<Set<string>> {
 export async function getDisabledTypeProcessIds(): Promise<Set<string>> {
   const disabled = disabledProcessTypes();
   if (disabled.length === 0) return new Set();
-  const off = await db().from("processes").select<{ id: string }>("id").in("type", disabled);
+  const off = await readAll((from, to) =>
+    db()
+      .from("processes")
+      .select<{ id: string }>("id")
+      .in("type", disabled)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   return new Set(off.map((r) => r.id));
 }
 
@@ -858,12 +864,17 @@ export async function getDisabledTypeProcessIds(): Promise<Set<string>> {
  * (review M5).
  */
 export async function getArchivedProcesses(types?: string[]): Promise<Process[]> {
-  let q = db()
-    .from("processes")
-    .select<ProcessRow>("*")
-    .eq("status", "archived");
-  if (types && types.length > 0) q = q.in("type", types);
-  const data = await q.order("updated_at", { ascending: false });
+  const data = await readAll((from, to) => {
+    let q = db()
+      .from("processes")
+      .select<ProcessRow>("*")
+      .eq("status", "archived");
+    if (types && types.length > 0) q = q.in("type", types);
+    return q
+      .order("updated_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to);
+  });
   return data.map((r) => rowToProcess(r));
 }
 

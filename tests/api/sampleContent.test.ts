@@ -248,10 +248,16 @@ describe("sample events are not public record", () => {
   });
 
   it("shows them in the hub's own feed, marked sample", async () => {
-    const { status, body } = await call("GET", "/api/feed");
-    expect(status).toBe(200);
-    const byId = new Map((body.events as Array<{ id: string; sample?: boolean }>).map((e) => [e.id, e]));
+    // Per process: since 2026-10-07 the feed's page holds cards only, and
+    // these planted events (process.updated) are not cards.
+    const byId = new Map<string, { id: string; sample?: boolean }>();
+    for (const pid of [SAMPLE_PROC, REAL_PROC]) {
+      const { status, body } = await call("GET", `/api/feed?process_id=${pid}&limit=100`);
+      expect(status).toBe(200);
+      for (const e of body.events as Array<{ id: string; sample?: boolean }>) byId.set(e.id, e);
+    }
     expect(byId.get(ev("s1"))?.sample).toBe(true);
+    expect(byId.has(ev("r1"))).toBe(true);
     expect(byId.get(ev("r1"))?.sample).toBeUndefined();
   });
 
