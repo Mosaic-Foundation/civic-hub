@@ -46,6 +46,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDb, getHubTokenDb, hubTokensEnabled } from "./client.js";
+import { reportError } from "../utils/reportError.js";
 
 /**
  * Every table that carries hub_id — 32 of the 33. `hubs` is the registry,
@@ -225,16 +226,15 @@ export const ROW_CAP_CODE = "CIVIC_ROW_CAP";
  * that want a window say so with `.limit()` or `.range()`.
  *
  * In production it logs and returns the rows instead (Adam, 2026-10-07): a
- * read the sweep missed should not turn into an error page for residents. The
- * error line (tag ROW_CAP_LOG_TAG) is what the deployment's logs surface. Tests
- * and local dev, where NODE_ENV is not "production", still throw.
+ * read the sweep missed should not turn into an error page for residents. It is
+ * reported through reportError() (code CIVIC_ROW_CAP), which writes the
+ * deployment's logs today and is where error tracking connects later. Tests
+ * and local dev, where NODE_ENV is not "production", still throw. NODE_ENV is
+ * the switch on purpose: the dev deployment builds as production and logs too.
  *
  * Only plain reads (GET) are checked: a write's `.select()` returns the rows
  * it wrote, which the caller already knows the number of.
  */
-/** Starts the error line a cut-off read logs, so the logs can be searched. */
-export const ROW_CAP_LOG_TAG = "[civic-row-cap]";
-
 /** Throw (tests, local dev) or log and carry on (production). */
 function rowCapThrows(): boolean {
   return process.env.NODE_ENV !== "production";
@@ -286,15 +286,18 @@ function settle<B>(
         );
       }
       if (mode === "data" && cutOffAtCap(b, r.data)) {
-        // Always logged: in production that line is the only signal, and
-        // elsewhere a caller that catches broadly still leaves it.
+        // Always reported: in production it is the only signal, and elsewhere
+        // a caller that catches broadly still leaves it. The query's column
+        // names, never its values (a filter may hold an email): enough to
+        // find the read in the code.
         const message =
           `${table}: a read with no limit returned ${POSTGREST_MAX_ROWS} rows, the server's ` +
           "cap, so rows were left out. Page it with readAll() or give it a limit.";
-        // The query's column names, never its values (a filter may hold an
-        // email): enough to find the read in the code.
-        const columns = [...new Set([...b.url.searchParams.keys()])].join(",");
-        console.error(`${ROW_CAP_LOG_TAG} hub=${hubId} query=${columns} ${message}`);
+        reportError(ROW_CAP_CODE, message, {
+          hub: hubId,
+          table,
+          query: [...new Set(b.url.searchParams.keys())].join(","),
+        });
         if (rowCapThrows()) throw new HubDbError(message, ROW_CAP_CODE);
       }
       return mode === "count" ? (r.count ?? 0) : (r.data ?? null);

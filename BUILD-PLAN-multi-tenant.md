@@ -1422,6 +1422,30 @@ unchanged (5 MB).
 
 ---
 
+### Error reporting (2026-10-07, Adam)
+
+Errors the operators must see go through **one helper**,
+`reportError(code, message, details)` in `src/utils/reportError.ts`. Today it
+writes one line to the deployment's logs, starting `[civic-error:<code>]`, so
+the logs can be searched by code. **When error tracking (Sentry or similar) is
+connected, the operations shell connects it in that one function;** callers
+do not change. Details are plain fields and never carry a person's data (no
+emails, names or filter values), because they go to a log now and to a third
+party later.
+
+The first caller is the 1,000-row guard in `forHub()` (code `CIVIC_ROW_CAP`).
+**The switch is `NODE_ENV`, and it stays that way (Adam):** with
+`NODE_ENV=production` (both Vercel projects, dev and production) a cut-off
+read is reported and its rows are returned, so a resident never gets an error
+page from it. Tests and local runs throw. It is deliberately not keyed off the
+production database's host.
+
+Not yet routed through it: the terminal error handler in `app.ts` and the
+many `console.error` lines in services and jobs. Moving them is a later,
+mechanical pass, best done when error tracking is actually connected.
+
+---
+
 ## Phase 3 approach (verified)
 
 Verified 2026-09-22 against a throwaway local Supabase (`supabase start`,

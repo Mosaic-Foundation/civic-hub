@@ -24,6 +24,7 @@ numbers below, or just grep the heading.
 | Auth, sessions, admin/board resolution | `src/middleware/auth.ts`, `src/modules/civic.auth/` |
 | Process registry and per-type handlers | `src/processes/registry.ts`, `src/processes/*Process.ts` |
 | Reading more than 1,000 rows: `readAll()` (pages), `inChunks()` (long id lists); the `CIVIC_ROW_CAP` guard | `src/db/readAll.ts`, `src/db/inChunks.ts`, `cutOffAtCap` in `src/db/forHub.ts` |
+| Reporting an error operators must see (where Sentry or similar connects later) | `src/utils/reportError.ts`; BUILD-PLAN "Error reporting" |
 | The feed's page (cursor, surface, visibility rules) | `src/services/feedPage.ts`, `src/controllers/feedController.ts`, `src/events/eventCursor.ts` |
 | DB client (service role, the thing tenancy replaces) | `src/db/client.ts`; only `src/db/`, `scripts/`, `tests/` may import it (`eslint.config.js`, `civic/raw-client`) |
 | Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |

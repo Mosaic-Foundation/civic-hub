@@ -10,7 +10,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createClient } from "@supabase/supabase-js";
-import { hubDbFrom, HubDbError, POSTGREST_MAX_ROWS, ROW_CAP_CODE, ROW_CAP_LOG_TAG } from "../../src/db/forHub.js";
+import { hubDbFrom, HubDbError, POSTGREST_MAX_ROWS, ROW_CAP_CODE } from "../../src/db/forHub.js";
 import { readAll } from "../../src/db/readAll.js";
 import { inChunks } from "../../src/db/inChunks.js";
 
@@ -105,9 +105,10 @@ describe("forHub — the cap in production", () => {
     const rows = await db.from("users").select("id").eq("email", "someone@example.test");
     expect(rows).toHaveLength(POSTGREST_MAX_ROWS);
     expect(logged).toHaveBeenCalledTimes(1);
+    // Through reportError(), the one place error tracking will connect.
     const line = String(logged.mock.calls[0]![0]);
-    expect(line.startsWith(ROW_CAP_LOG_TAG)).toBe(true);
-    expect(line).toMatch(/hub=floyd query=select,hub_id,email users: a read with no limit returned 1000 rows/);
+    expect(line.startsWith("[civic-error:CIVIC_ROW_CAP] users: a read with no limit returned 1000 rows")).toBe(true);
+    expect(line).toMatch(/\(hub=floyd table=users query=select,hub_id,email\)$/);
     // Column names only: a filter's value (here an email) never reaches the logs.
     expect(line).not.toContain("someone@example.test");
   });
@@ -167,5 +168,20 @@ describe("inChunks", () => {
     let called = false;
     expect(await inChunks([], async () => ((called = true), []))).toEqual([]);
     expect(called).toBe(false);
+  });
+});
+
+describe("reportError", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("writes one line: the code, the message, then the details that are set", async () => {
+    const { reportError } = await import("../../src/utils/reportError.js");
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    reportError("CIVIC_TEST", "something broke", { hub: "floyd", count: 3, skipped: undefined });
+    reportError("CIVIC_TEST", "no details");
+    expect(logged.mock.calls.map((c) => c[0])).toEqual([
+      "[civic-error:CIVIC_TEST] something broke (hub=floyd count=3)",
+      "[civic-error:CIVIC_TEST] no details",
+    ]);
   });
 });

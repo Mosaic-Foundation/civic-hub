@@ -575,8 +575,8 @@ runs on every push**, alongside `tsc` and a real UI build.
 - **The 1,000-row cap (2026-10-07):** `rowCap.test.ts` (over a stub that
   plays PostgREST's cap: a read with no limit that comes back with 1,000
   rows throws `CIVIC_ROW_CAP`, filtered or not (with `NODE_ENV=production`
-  it logs one `[civic-row-cap]` line, column names only, and returns the
-  rows); a read with `.limit()` or
+  it reports one `[civic-error:CIVIC_ROW_CAP]` line through `reportError()`,
+  column names only, and returns the rows; `reportError`'s line format); a read with `.limit()` or
   `.range()`, a write's `.select()` and a single-row read are let through;
   `readAll()` pages past the cap without losing or repeating a row;
   `inChunks()` splits long id lists); `feedActivity.test.ts` checks
