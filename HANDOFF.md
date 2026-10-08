@@ -73,8 +73,7 @@ button on demo hubs only.
   unnamed square: no landmark, sign or flag. Create hub writes it as the hub's own `identity.banner_url` / `_alt`
   (`DEFAULT_HUB_BANNER`, `src/shared/platform.ts`), so the admin replaces or clears it in Settings → Identity.
   Existing hubs are untouched. The console's create preview shows it. `control.test.ts` checks a new hub serves it.
-  **The file is 1,024 × 338, softer than ideal on wide screens. Replace it with the full-resolution export under the
-  same name; nothing else changes.**
+  The file is the upscaled version, 2,000 × 661 (300 KB). A larger export can replace it under the same name.
 
 **The migration:**
 - `processes.added_in_demo` (default false, partial index).
