@@ -80,12 +80,13 @@ TESTING.md.
 **Open:**
 - The share-callout fix makes the page jump by ~3rem while the callout shows. Check on dev; if it bothers you, the
   callout could sit above instead (it was moved below in 2026-09 because the sticky nav hid it).
-- Evaluator accounts and their sessions still stay after removal (the rest of R46: an "evaluation reset"). Not in
-  this slice.
-- An admin's own submissions on a demo hub are real content (not marked). Say if they should be marked too.
-- The demo bar is four lines tall at 375 px with the new sentence.
+- Evaluator accounts and their sessions still stay after removal (the rest of R46: an "evaluation reset").
+  **Adam: for the leaving-demo session (5).**
+- An admin's own submissions on a demo hub are real content (not marked). **Adam: keep them unmarked; they're real
+  work an admin may keep after going live.**
+- The demo bar is four lines tall at 375 px with the new sentence. **Adam: session 4.**
 - Remaining "resident" wording from the 3a list (`describe.ts` "Sent to N residents", the assistant and
-  meeting-summary prompts) is unchanged.
+  meeting-summary prompts) is unchanged. **Adam: session 4.**
 
 **For Adam, on dev after you push (dev runs `HUB_CRON_ENABLED=false`, so the daily job does not run there; use the
 button):**
