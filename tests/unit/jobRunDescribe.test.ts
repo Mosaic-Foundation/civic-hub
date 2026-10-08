@@ -3,6 +3,10 @@
 
 import { describe, it, expect } from "vitest";
 import { describeJobRun } from "../../src/jobs/describe.js";
+import { runWithHub } from "../../src/config/hubContext.js";
+import type { Hub } from "../../src/models/hub.js";
+
+const testHub = { id: "h1", hostname: "h1.example", name: "H1", status: "active", mode: "live" } as unknown as Hub;
 
 describe("describeJobRun", () => {
   it("records nothing for a run that did nothing (not the send hour, not configured)", () => {
@@ -113,14 +117,14 @@ describe("describeJobRun", () => {
       problems: ["1 news post could not be imported."],
     });
     expect(describeJobRun("digest", { status: 200, body: { sent_count: 40, failed_count: 0 } })?.summary).toBe(
-      "Sent to 40 residents",
+      "Sent to 40 people",
     );
     expect(describeJobRun("admin_digest", { status: 200, body: { empty: true, sent: 0, failed: 0 } })?.summary).toBe(
       "Nothing to report; no email sent",
     );
   });
 
-  it("digest: residents the hub's mode held back are not a failure (#36)", () => {
+  it("digest: people the hub's mode held back are not a failure (#36)", () => {
     expect(
       describeJobRun("digest", {
         status: 200,
@@ -128,7 +132,7 @@ describe("describeJobRun", () => {
       }),
     ).toEqual({
       status: "ok",
-      summary: "Sent to 2 residents; held back from 26 because this hub is in beta mode",
+      summary: "Sent to 2 people; held back from 26 because this hub is in beta mode",
       problems: [],
     });
     // A real failure alongside still fails, and counts only the real ones.
@@ -137,7 +141,20 @@ describe("describeJobRun", () => {
       body: { sent_count: 0, failed_count: 1, held_back_count: 5, held_back_reason: "this hub is in demo mode" },
     });
     expect(mixed?.status).toBe("failed");
-    expect(mixed?.problems).toEqual(["The digest could not be sent to 1 resident."]);
+    expect(mixed?.problems).toEqual(["The digest could not be sent to 1 person."]);
+  });
+});
+
+describe("digest wording follows the hub's noun", () => {
+  const body = { sent_count: 3, failed_count: 1 };
+  it("uses the hub kind's word, or the hub's own", () => {
+    const place = runWithHub(testHub, { "identity.hub_kind": "place" }, () => describeJobRun("digest", { status: 200, body }));
+    expect(place?.summary).toBe("Sent to 3 residents");
+    expect(place?.problems).toEqual(["The digest could not be sent to 1 resident."]);
+    const own = runWithHub(testHub, { "identity.hub_kind": "place", "copy.resident_noun": "neighbor" }, () =>
+      describeJobRun("digest", { status: 200, body }),
+    );
+    expect(own?.summary).toBe("Sent to 3 neighbors");
   });
 });
 

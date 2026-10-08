@@ -4,6 +4,86 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Handing a hub over: ownership at create, a Handover panel, one writer per setting (session 4) — 2026-10-08
+
+Review R48, R37, R11, R10, R38, R47, R39, R49, R52, docs item #6, and the 3b leftovers. Not pushed. **One migration**
+(`20261008000000_hub_previous_hostnames.sql`, additive: a column, a GIN index, a backfill from the console audit
+log). No dependencies or env vars. Decisions (Adam's four answers, all the recommended option): BUILD-PLAN "Handing a
+hub over". The ownership rules are one file, `src/shared/settingOwners.ts`.
+
+**Built:**
+1. **Create and Handover (R48, R37).** The create form has "Who runs it": operator (grey suggestion: the hub name),
+   contact address, "who runs this site", from-name (suggestion: the hub name), feedback address (suggestion: the
+   contact address), postal address (empty = the platform's). The console hub page has a **Handover** panel with
+   those plus hub name, governing body and board label (`PUT /control/hubs/:id/handover`, audited `hub.handover`).
+   It is editable while the hub is a demo and read-only with links to the hub's Settings after.
+2. **Feedback address (#6).** New public key `plugin.feedback.contact_email`, in Settings → Plugins → Feedback. The
+   Feedback page shows it, else `legal.contact_email`, else contact@civic.social (`feedbackContactEmail()`).
+3. **Renames carry (R11).** On a demo hub, a console rename replaces the hub name, operator and from-name where they
+   still read the old name, and says which. After handover it changes the registry name only, and says so. A rename
+   in Settings → Identity or the Handover panel carries the same way, and also to `hubs.name`.
+4. **One writer per setting (R10).** The console's mode field and plugin switches are read-only, with links
+   (PATCH `mode` and PUT `/plugins` answer 409). The governing body moved to the Handover panel. During demo, hub
+   Settings says the platform can also set the shared fields, and "last changed by" says "the platform operator".
+   Settings → Copy now says **Board label**. Admins keep two writers, by decision.
+5. **Admin invite (R38).** `src/services/adminInvite.ts`, sent on create, console add and hub People add, to the
+   added addresses only. Mail purpose `admin_invite` passes the mode guard, because the request's settings snapshot
+   predates the roster write. It links to https://docs.civic.social/start/setup ("Admin: your first hour" was merged
+   into that page and its address redirects there).
+6. **Moved addresses (R47).** A console hostname change appends the old address to `hubs.previous_hostnames`.
+   - The resolver answers the old address with 301 (308 for a write) to the same path, the `/api` prefix kept via
+     `civicOriginalUrl` from `api/index.ts`.
+   - The shell's `/hub-config` gets `hub_moved`, and `ui/src/main.tsx` replaces the location.
+   - Crawlers on share pages get a 301 from `api/og.ts`.
+   - `redirect_to` is now read too.
+7. **Smaller items.**
+   - Subjects name the hub (feedback, waitlist, meeting summaries, briefs, reviews). The step-up email has its own
+     subject and heading.
+   - The meeting-summary failure email no longer names a script.
+   - A new official defaults to the hub's governing body.
+   - Adding an admin from the console takes a fresh code. Unarchive asks first.
+   - Console errors are plain words, with no raw database messages or status codes.
+   - The demo bar is one sentence: two lines at 375 px, CTA "Remove samples".
+   - Job summaries and the assistant and meeting-summary prompts use the hub's noun.
+   - "Refresh samples" names templates by title.
+
+   Item 7's subjects, nouns and officials default were done by a Sonnet subagent; I reviewed the diff and fixed one
+   subject's grammar.
+
+**Tests:** unit 112 files, 1,332; API 37 files, 450 passed and 7 skipped, both modes; Playwright 37 passed and 2
+skipped. New: `tests/unit/handover.test.ts`, `tests/api/handover.test.ts`, `tests/e2e/handover.spec.ts`, and
+"moved hubs" in `hubResolver.test.ts`. TESTING.md has the details, the tests changed on purpose, and two local traps
+(`CIVIC_DEV_HUB=athens` for the demo specs; the Athens admin lockout after two API runs).
+
+**Open:**
+- The docs repo (`civic-hub-docs`) still describes the console's mode field and plugin switches, and doesn't mention
+  the Handover panel, the invite or the feedback address. That needs a docs pass.
+- `src/shared/wordlist/index.ts` tells a blocked submitter to email contact@civic.social on every hub. It could use the
+  hub's contact address; I left it, since it was outside this slice.
+- An admin added from the console is recorded in `control_audit_log` only, not in the hub's own admin actions.
+- The resolver's redirect covers moves made in the console. A hostname changed by hand in the database is not recorded.
+- The brief subject reads "<hub> Civic Brief: …", so a hub whose name already ends "Civic Hub" says "Civic" twice.
+
+**For Adam, on dev after you push:**
+1. Migrate dev (`20261008000000_hub_previous_hostnames.sql`). Its backfill turns earlier console moves (Athens,
+   Utopia, `sample-walk` off `vercel.app`) into redirects. Those old addresses only reach the deployment while Vercel
+   still aliases them.
+2. console.dev → New hub: fill "Who runs it" (leave the operator as the grey suggestion). After create, the first
+   admin's inbox should have "You're now an admin of <hub>".
+3. That hub's page → Handover: change the hub name. Expect "Also changed…: Operated by, Email from name, Registry
+   name" and the new name in the header on the hub site. Mode and Plugins are read-only with links.
+4. Add an admin on the console: a code is asked for, then the invite arrives. Do the same in the hub's Settings →
+   Admins & board.
+5. Move a test hub's address (Configuration → Hostname). Open an old link to a process page: it should land on the
+   new address, same path. A link shared before the move should do the same.
+6. On the hub: Settings → Plugins → Feedback, set an address, then open /feedback. Settings → Copy says "Board
+   label". As admin on a demo hub, Identity/Legal/Email show the "platform operator can also set…" note.
+7. Move the hub to beta in its Settings → Mode, then reload the console page: the Handover panel is read-only, and a
+   console rename says only the registry name changed.
+8. On a phone, the demo bar is two lines.
+
+---
+
 ## Demo hubs stay current, for every kind, and a visitor's submission goes live (session 3b) — 2026-10-07 (sixth part)
 
 Review issues #9 and #7, R18, R25, R46, and the 3a leftovers (`Review-Findings-2026-10-06.md`). Not pushed.

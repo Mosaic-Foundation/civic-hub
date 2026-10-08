@@ -124,7 +124,7 @@ Key naming is dotted, lowercase, and namespaced. The canonical keys:
 | `email.` | `email.from_name`, `email.from_address`, `email.postal_address` |
 | `beta.` | `beta.allowlist`, `beta.waitlist_enabled` (there is no `beta.enabled`: see `hubs.mode`) |
 | `moderation.` | `moderation.comment_identity_mode` |
-| `plugin.<id>.` | `plugin.<id>.enabled` and `plugin.<id>.<setting>` |
+| `plugin.<id>.` | `plugin.<id>.enabled` and `plugin.<id>.<setting>`; `plugin.feedback.contact_email` (added 2026-10-08, Adam: the address the Feedback page shows; unset = `legal.contact_email`, then the platform's; public) |
 
 `<id>` is the registry id: `vote`, `proposal`, `project`, `announcement`,
 `brief`, `meeting_summary`, `wordcloud`, `conversation`, `assistant`,
@@ -144,8 +144,9 @@ reader (`src/services/hubSettings.ts`) owns parsing; callers never parse
 
 **Public subset.** Only `identity.*`, `copy.*`, `legal.*`, `beta.enabled`,
 `beta.waitlist_enabled`, `moderation.comment_identity_mode`,
-`plugin.<id>.enabled`, `plugin.conversation.polis_url` and
-`plugin.wordcloud.onboarding_id` are served by `/api/hub-config`
+`plugin.<id>.enabled`, `plugin.conversation.polis_url`,
+`plugin.wordcloud.onboarding_id` and `plugin.feedback.contact_email` (2026-10-08)
+are served by `/api/hub-config`
 (`identity.*` includes `identity.logo_url`, added 2026-09-24, and
 `identity.hub_kind`, added 2026-09-27: the hub UI words the sign-up
 affirmation by it). `people.*`,
@@ -1475,6 +1476,76 @@ the session). HANDOFF "Demo hubs stay current" has what was built.
   comments, deliberation votes ("reactions"), brief responses and reviews of
   seeded samples; a unit test makes every child table either counted or named
   in `NOT_PARTICIPATION` with a reason.
+
+### Handing a hub over (session 4, 2026-10-08)
+
+Decided by Adam (the session prompt, and four answers in the session,
+2026-10-08). HANDOFF "Handing a hub over" has what was built. The rules live
+in one file, `src/shared/settingOwners.ts`, which the server and both UIs read.
+
+- **One writer per setting (R10).**
+  - *What residents see* — `identity.name`, `legal.operator_name`,
+    `legal.contact_email`, `legal.who_runs_this`, `email.from_name`,
+    `email.postal_address`, `plugin.feedback.contact_email`,
+    `copy.governing_body_name`, `copy.governing_body_short` (`HANDOVER_KEYS`)
+    — belongs to the hub's admins. **The console may set it while the hub is
+    a demo** (the hub page's Handover panel, `PUT /control/hubs/:id/handover`)
+    and shows it read-only with links to the hub's Settings once the hub is in
+    beta or live (409 on a write). While the hub is a demo, each hub Settings
+    section holding one of these says the platform can also set it, and
+    "last changed by" names a console write "the platform operator".
+  - *Mode* belongs to the hub's admins (Settings → Mode), as Contract 1 says.
+    The console creates a hub in a mode and then shows it read-only;
+    `PATCH /control/hubs/:id` refuses `mode` (409). This supersedes the
+    console's mode field from Phase 5.
+  - *Plugin switches* belong to the hub's admins. The create form sets where
+    they start; `PUT /control/hubs/:id/plugins` now answers 409.
+  - *Web address, status, archive* belong to the console.
+  - *The admin list* keeps two writers on purpose: the console is the way back
+    in when a hub has lost its admins. Both take a fresh code (the console's
+    add did not, R52), both send the invite, and both pages say so.
+  - `plugin.wordcloud.onboarding_id` keeps its system writers (the sample seed
+    and removal); they are not people, and the Settings field is its one
+    human writer.
+  - The governing body and its short form (now labelled **Board label** in
+    Settings → Copy) moved from the console's Configuration form to its
+    Handover panel; `PATCH /control/hubs/:id` refuses them. This supersedes
+    "the hub page edits it" under "Console and sample-content polish".
+- **Ownership details at create (R48, R37).** `ownership` on
+  `POST /control/hubs`: the six handover keys create did not already write,
+  validated as the hub's Settings validates them. Operator and from-name
+  default to the hub name as before; the rest stay unset (the shared
+  paragraph, the platform's addresses).
+- **Renames carry (R11).** A new name — the console's registry name on a demo
+  hub, the Handover panel's hub name, or Settings → Identity — replaces each
+  of `identity.name`, `legal.operator_name`, `email.from_name` (and the
+  registry name) that still reads exactly the old name. A value someone made
+  their own is left alone. After handover a console rename changes the
+  registry name only and says so. `renameFollowers()`; the hub side writes the
+  registry through `renameHub()` in `src/db/hubs.ts`.
+- **Admin invite (R38).** "You're now an admin of <hub>", with a link, three
+  first steps, what the mode means, and the docs' "Set up your hub"
+  (`PLATFORM_SETUP_GUIDE_URL`; the old "Admin: your first hour" address
+  redirects there). Sent from inside the hub's scope on create, console add
+  and hub People add, to the added addresses only, with mail purpose
+  `admin_invite` (the request's settings snapshot predates the roster write).
+  A failed invite never undoes the add; the page says who was not emailed.
+- **Moved addresses redirect (R47).** `hubs.previous_hostnames`
+  (`20261008000000`, additive, backfilled from the console's audit log):
+  a console hostname change appends the old address. The resolver checks it
+  before the local-dev rules, and answers with 301 (308 for a write) to the
+  same path on the new address, the `/api` prefix kept (`civicOriginalUrl`,
+  set in `api/index.ts`). The page shell's `/hub-config` gets
+  `404 { error: "hub_moved", location }` instead, because a cross-origin
+  redirect fails there; `ui/src/main.tsx` then replaces the location.
+  Crawlers on a share page get a 301 from `api/og.ts`. `redirect_to` (a hub
+  that has left the deployment) is now read the same way.
+- **Smaller items.** Every email subject names the hub, and no admin email
+  names an operator script (R39); the hub step-up email has its own subject;
+  a new official row defaults to the hub's governing body (R49); console
+  errors are plain words, and unarchive asks first (R52); the demo bar is one
+  sentence; "resident" in job summaries and the assistant and meeting-summary
+  prompts follows the hub's noun; "Refresh samples" names templates by title.
 
 ### Backups (2026-10-04)
 

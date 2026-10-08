@@ -8,6 +8,8 @@
 // instead. Neither run covered the whole meeting.
 
 import { describe, it, expect } from "vitest";
+import { runWithHub } from "../../src/config/hubContext.js";
+import type { Hub } from "../../src/models/hub.js";
 import {
   blockCountGuidance,
   buildSummarizationPrompt,
@@ -102,5 +104,24 @@ describe("buildSummarizationPrompt — coverage instructions", () => {
   it("still keeps the procedural-noise exclusion", () => {
     const p = buildSummarizationPrompt({ ...base, transcript_duration_seconds: 3600 });
     expect(p).toContain("Skip procedural micro-items");
+  });
+});
+
+describe("summary prompt names the hub's own people", () => {
+  const input = {
+    extraction_instructions: "",
+    meeting_title: "Regular Meeting",
+    meeting_date: "2026-09-01",
+    transcript_text: "",
+    has_video: false,
+    source_type: "minutes" as const,
+  };
+  const hub = { id: "h1", hostname: "h1.example", name: "H1", status: "active", mode: "live" } as unknown as Hub;
+  it("uses the hub's noun for the audience", () => {
+    const text = runWithHub(hub, { "identity.hub_kind": "place", "copy.resident_noun": "neighbor" }, () =>
+      buildSummarizationPrompt(input),
+    );
+    expect(text).toContain("neighbors are the audience");
+    expect(text).not.toContain("residents");
   });
 });

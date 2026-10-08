@@ -42,14 +42,14 @@ export function lockoutMessage(lockedUntilIso: string): string {
  * The code email. `title` and `rawSender` are escaped: a hub's display name
  * is admin-authored text.
  */
-export function renderCodeEmail(code: string, rawSender: string, action = "finish signing in"): string {
+export function renderCodeEmail(code: string, rawSender: string, action = "finish signing in", title = "Your sign-in code"): string {
   // "the" only where the name wants one (review R40): "the Example County
   // Civic Hub", but never "the We The People …".
   const inSender = escapeHtml(theName(rawSender));
   const signOff = escapeHtml(theName(rawSender, true));
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #1f2937;">
-      <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 16px;">Your sign-in code</h1>
+      <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 16px;">${escapeHtml(title)}</h1>
       <p style="font-size: 15px; line-height: 1.5; margin: 0 0 24px;">
         Enter this code in ${inSender} to ${escapeHtml(action)}:
       </p>

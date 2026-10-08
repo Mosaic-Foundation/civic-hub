@@ -101,8 +101,9 @@ describe("an organization hub with no jurisdiction", () => {
       jurisdiction_name: null,
       jurisdiction_code: null,
       jurisdiction_type: null,
-      governing_body: "",
     });
+    // The governing body is in the Handover panel since session 4.
+    expect(body.handover.values["copy.governing_body_name"]).toBe("");
     expect(body.sample_content.created.every((k: string) => k.startsWith("org_"))).toBe(true);
     expect(body.sample_content.created).toHaveLength(10);
     const procs = (await localRest(`processes?select=title,description&hub_id=eq.${ORG}`)) as Row[];
@@ -180,8 +181,8 @@ describe("an issue hub linked to a state", () => {
       jurisdiction_ocd_id: "ocd-division/country:us/state:va",
       jurisdiction_code: "us-va",
       jurisdiction_name: "Virginia",
-      governing_body: "",
     });
+    expect(res.body.handover.values["copy.governing_body_name"]).toBe("");
     const docs = await call("GET", "/hub-config/documents", host(ISSUE));
     expect(docs.body.documents["legal.code_of_conduct"]).not.toMatch(/residents of|local government/);
 

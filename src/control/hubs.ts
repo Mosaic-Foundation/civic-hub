@@ -12,7 +12,6 @@ import { getDb } from "../db/client.js";
 import { invalidateHubCache } from "../db/hubs.js";
 import { invalidateHubSettings } from "../db/hubSettingsStore.js";
 import {
-  ADMIN_SETTABLE_HUB_MODES,
   RESERVED_HUB_SLUGS,
   hubSlugRejectionReason,
   isHubMode,
@@ -35,6 +34,20 @@ import { getJurisdiction, type Jurisdiction } from "./jurisdictions.js";
 import { DEFAULT_HUB_KIND, hubKindOf, isHubKind, type HubKind } from "../shared/hubKind.js";
 import { jurisdictionCodeFor } from "../shared/jurisdictionNames.js";
 import { isValidTimeZone } from "../utils/hubTime.js";
+import { fieldSpec } from "../shared/hubSettingsSections.js";
+import { normalizeValue } from "../models/hubSettingsWrite.js";
+import { effectivePostalAddress } from "../services/hubSettings.js";
+import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
+import {
+  HANDED_OVER_NOTE,
+  HANDOVER_KEYS,
+  MODE_OWNER_NOTE,
+  SETTING_LABELS,
+  consoleOwnsHandoverKeys,
+  isHandoverKey,
+  renameFollowers,
+  type HandoverKey,
+} from "../shared/settingOwners.js";
 
 export class ControlInputError extends Error {
   constructor(message: string, readonly status = 400) {
@@ -44,11 +57,13 @@ export class ControlInputError extends Error {
 }
 
 const HUB_COLUMNS =
-  "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, jurisdiction_ocd_id, jurisdiction_custom, space_did, space_type, status, mode, created_at, updated_at, archived_at, redirect_to";
+  "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, jurisdiction_ocd_id, jurisdiction_custom, space_did, space_type, status, mode, created_at, updated_at, archived_at, redirect_to, previous_hostnames";
 
 export type ControlHub = Hub & {
   archived_at: string | null;
   redirect_to: string | null;
+  /** Addresses the hub has moved from; each redirects to `hostname` (20261008000000). */
+  previous_hostnames: string[];
   /** The jurisdictions row this hub serves (20260927000000), or null. */
   jurisdiction_ocd_id: string | null;
   /** "Other / not listed": a name with no OCD id, on purpose. */
@@ -98,8 +113,14 @@ async function settingRows(hubId: string, keys: readonly string[]): Promise<Reco
   return out;
 }
 
-async function writeSettings(hubId: string, values: Record<string, string>, actor: string): Promise<void> {
-  const rows = Object.entries(values).map(([key, value]) => ({ hub_id: hubId, key, value, updated_by: `console:${actor}` }));
+/** How a console write is recorded in hub_settings.updated_by (the hub's Settings page names it "the platform"). */
+function consoleBy(actor: string): string {
+  return `console:${actor}`;
+}
+
+/** `by` is stored as given: `console:<email>` from the console, the script's name from a script. */
+async function writeSettings(hubId: string, values: Record<string, string>, by: string): Promise<void> {
+  const rows = Object.entries(values).map(([key, value]) => ({ hub_id: hubId, key, value, updated_by: by }));
   if (rows.length === 0) return;
   const { error } = await getDb().from("hub_settings").upsert(rows, { onConflict: "hub_id,key" });
   if (error) throw new Error(`hub_settings write failed: ${error.message}`);
@@ -137,16 +158,6 @@ export async function hubAdmins(hubId: string): Promise<string[]> {
   return asEmailList(stored[KEYS.PEOPLE_ADMIN_EMAILS]);
 }
 
-export async function hubGoverningBody(hubId: string): Promise<string> {
-  const stored = await settingRows(hubId, [KEYS.COPY_GOVERNING_BODY_NAME]);
-  return stored[KEYS.COPY_GOVERNING_BODY_NAME] ?? "";
-}
-
-export async function hubGoverningBodyShort(hubId: string): Promise<string> {
-  const stored = await settingRows(hubId, [KEYS.COPY_GOVERNING_BODY_SHORT]);
-  return stored[KEYS.COPY_GOVERNING_BODY_SHORT] ?? "";
-}
-
 export async function hubKind(hubId: string): Promise<HubKind> {
   const stored = await settingRows(hubId, [KEYS.IDENTITY_HUB_KIND]);
   return hubKindOf(stored[KEYS.IDENTITY_HUB_KIND]);
@@ -174,6 +185,11 @@ export async function hostnameTakenBy(hostname: string, exceptHubId?: string): P
     return row.archived_at
       ? `"${hostname}" belongs to the archived hub "${row.id}". An archived hub's hostname stays taken.`
       : `"${hostname}" is already the hostname of hub "${row.id}".`;
+  }
+  const { data: moved } = await db.from("hubs").select("id").contains("previous_hostnames", [hostname]).limit(1);
+  const movedFrom = (moved ?? []) as Array<{ id: string }>;
+  if (movedFrom.length > 0 && movedFrom[0].id !== exceptHubId) {
+    return `"${hostname}" was hub "${movedFrom[0].id}"'s address and now redirects to it. A hostname a hub has used stays taken.`;
   }
   const { data: past } = await db
     .from("control_audit_log")
@@ -268,11 +284,63 @@ export interface CreateHubInput {
   /** Seed the sample content after creating (Phase 7). The form's default is on. */
   sampleContent?: boolean;
   /**
+   * Who answers for the hub (review R48, 2026-10-08): legal.operator_name,
+   * legal.contact_email, legal.who_runs_this, email.from_name,
+   * email.postal_address and plugin.feedback.contact_email. Operator and
+   * from-name default to the hub's name, as before; the rest stay unset
+   * (the shared paragraph, the platform's addresses) unless given.
+   */
+  ownership?: Partial<Record<OwnershipKey, string>>;
+  /**
    * The Plugins section of the create form: every plugin, on by default.
    * Written as the hub's own plugin.<id>.enabled rows, so no deployment env
    * fallback decides for a new hub. Omitted = every plugin on.
    */
   plugins?: Partial<Record<PluginId, boolean>>;
+}
+
+/** The create form's ownership fields: the handover keys create does not already take. */
+export const OWNERSHIP_KEYS = [
+  "legal.operator_name",
+  "legal.contact_email",
+  "legal.who_runs_this",
+  "email.from_name",
+  "email.postal_address",
+  "plugin.feedback.contact_email",
+] as const satisfies readonly HandoverKey[];
+export type OwnershipKey = (typeof OWNERSHIP_KEYS)[number];
+
+/**
+ * A handover setting's value as it will be stored, or a refusal in plain
+ * words. The same rules as the hub's own Settings page (normalizeValue).
+ */
+function handoverValue(key: string, raw: unknown): string {
+  const spec = fieldSpec(key);
+  if (!spec) throw new ControlInputError(`${SETTING_LABELS[key] ?? key} cannot be set here.`);
+  const v = normalizeValue(spec, typeof raw === "string" ? raw : raw ?? "");
+  if (typeof v === "object") throw new ControlInputError(plainSettingError(key, v.error));
+  return v;
+}
+
+/** "legal.contact_email must be …" → "Contact address: must be …"; any other message gets the label in front. */
+function plainSettingError(key: string, message: string): string {
+  const label = SETTING_LABELS[key];
+  if (!label) return message;
+  return message.startsWith(key) ? `${label}:${message.slice(key.length)}` : `${label}: ${message}`;
+}
+
+function parseOwnership(raw: unknown): Partial<Record<OwnershipKey, string>> | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "object" || Array.isArray(raw)) throw new ControlInputError("Send ownership as { <setting>: <value> }.");
+  const out: Partial<Record<OwnershipKey, string>> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!(OWNERSHIP_KEYS as readonly string[]).includes(key)) {
+      throw new ControlInputError(`${SETTING_LABELS[key] ?? key} is not one of the ownership details.`);
+    }
+    const v = handoverValue(key, value);
+    if (v !== "") out[key as OwnershipKey] = v;
+  }
+  return out;
 }
 
 export interface CreateHubPlan {
@@ -310,6 +378,7 @@ export function parseCreateInput(body: Record<string, unknown>): CreateHubInput 
     admins: admin ? [admin] : [],
     mode,
     sampleContent: body.sample_content === true,
+    ownership: parseOwnership(body.ownership),
     plugins: body.plugins === undefined ? undefined : parsePluginValues({ plugins: body.plugins }),
   };
 }
@@ -425,6 +494,8 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
     [KEYS.PEOPLE_ADMIN_EMAILS]: encodeList(input.admins),
     [KEYS.LEGAL_OPERATOR_NAME]: input.name,
     [KEYS.EMAIL_FROM_NAME]: input.name,
+    // What the form gave for who answers for the hub; the two above unless replaced.
+    ...(input.ownership ?? {}),
     [KEYS.IDENTITY_HUB_KIND]: kind,
     // A banner from the start (Adam, 2026-10-08), so the admin sees there is
     // one to make their own.
@@ -468,7 +539,15 @@ export async function createHub(
   const plan = await planCreateHub(input, opts.allowedModes);
   const db = getDb();
   const { error: hubErr } = await db.from("hubs").insert(plan.row);
-  if (hubErr) throw new ControlInputError(`The hub could not be created: ${hubErr.message}`, 409);
+  if (hubErr) {
+    // The checks above catch every refusal we know of; this is the database
+    // refusing something else. Say so in words, and keep its message for the log.
+    console.error(`[control] hub insert for ${input.slug} refused: ${hubErr.message}`);
+    throw new ControlInputError(
+      "The database refused to create this hub, and nothing was created. Check the slug and address, then try again; the server log has the details.",
+      409,
+    );
+  }
   try {
     await writeSettings(input.slug, plan.settings, opts.updatedBy);
   } catch (err) {
@@ -482,6 +561,11 @@ export async function createHub(
 }
 
 // --- Edit -----------------------------------------------------------------
+//
+// What the console's Configuration form changes: the registry row (name, web
+// address, place, status) and the two settings that describe the place
+// (kind, type). What residents see is the Handover panel's (below), and the
+// mode is the hub's admins' (src/shared/settingOwners.ts).
 
 export interface HubConfigPatch {
   hub_kind?: HubKind;
@@ -492,10 +576,7 @@ export interface HubConfigPatch {
   jurisdiction_ocd_id?: string | null;
   jurisdiction_custom?: boolean;
   jurisdiction_type?: JurisdictionType | null;
-  governing_body?: string;
-  governing_body_short?: string;
   status?: "active" | "suspended";
-  mode?: HubMode;
 }
 
 export interface HubConfigView {
@@ -507,10 +588,11 @@ export interface HubConfigView {
   jurisdiction_ocd_id: string | null;
   jurisdiction_custom: boolean;
   jurisdiction_type: JurisdictionType | null;
-  governing_body: string;
-  governing_body_short: string;
   status: string;
+  /** Shown read-only: the hub's admins change it (MODE_OWNER_NOTE). */
   mode: string | null;
+  /** Addresses this hub has moved from; each redirects to `hostname` (review R47). */
+  previous_hostnames: string[];
 }
 
 export async function hubConfigView(hub: ControlHub): Promise<HubConfigView> {
@@ -523,15 +605,18 @@ export async function hubConfigView(hub: ControlHub): Promise<HubConfigView> {
     jurisdiction_ocd_id: hub.jurisdiction_ocd_id ?? null,
     jurisdiction_custom: hub.jurisdiction_custom === true,
     jurisdiction_type: await hubJurisdictionType(hub.id),
-    governing_body: await hubGoverningBody(hub.id),
-    governing_body_short: await hubGoverningBodyShort(hub.id),
     status: hub.status,
     mode: hub.mode,
+    previous_hostnames: hub.previous_hostnames ?? [],
   };
 }
 
 export function parseConfigPatch(body: Record<string, unknown>): HubConfigPatch {
   const patch: HubConfigPatch = {};
+  if ("mode" in body) throw new ControlInputError(MODE_OWNER_NOTE, 409);
+  if ("governing_body" in body || "governing_body_short" in body) {
+    throw new ControlInputError("The governing body and board label are set in the Handover panel, while the hub is a demo.");
+  }
   if ("hub_kind" in body) {
     const k = text(body.hub_kind, 32);
     if (!isHubKind(k)) throw new ControlInputError(`"${k}" is not a kind of hub.`);
@@ -551,17 +636,10 @@ export function parseConfigPatch(body: Record<string, unknown>): HubConfigPatch 
     if (t && !isJurisdictionType(t)) throw new ControlInputError(`"${t}" is not a jurisdiction type.`);
     patch.jurisdiction_type = t as JurisdictionType | null;
   }
-  if ("governing_body" in body) patch.governing_body = text(body.governing_body);
-  if ("governing_body_short" in body) patch.governing_body_short = text(body.governing_body_short, 40);
   if ("status" in body) {
     const s = text(body.status);
     if (s !== "active" && s !== "suspended") throw new ControlInputError("Status is active or suspended.");
     patch.status = s;
-  }
-  if ("mode" in body) {
-    const m = text(body.mode);
-    if (!isHubMode(m)) throw new ControlInputError(`"${m}" is not a mode.`);
-    patch.mode = m;
   }
   return patch;
 }
@@ -576,11 +654,11 @@ export function changedFields(before: HubConfigView, patch: HubConfigPatch): Par
 }
 
 /**
- * Changes that take step-up: moving a hub's address (old links break),
- * pausing it, and changing who may sign in (its mode).
+ * Changes that take step-up: moving a hub's address (old links now
+ * redirect, but the move is still the hub's identity changing) and pausing it.
  */
 export function configChangeNeedsStepUp(changes: Partial<HubConfigView>): boolean {
-  return changes.hostname !== undefined || changes.status === "suspended" || changes.mode !== undefined;
+  return changes.hostname !== undefined || changes.status === "suspended";
 }
 
 /** Everything that can refuse a config change, checked before step-up is spent. */
@@ -616,10 +694,6 @@ export async function validateHubConfig(hub: ControlHub, changes: Partial<HubCon
       throw new ControlInputError("A jurisdiction name needs a jurisdiction from the list, or Other / not listed.");
     }
   }
-  if (changes.mode !== undefined && !ADMIN_SETTABLE_HUB_MODES.includes(changes.mode as HubMode)) {
-    // The database refuses any move INTO demo too (hubs_forbid_entering_demo).
-    throw new ControlInputError("A hub becomes a demo only when it is created. Choose beta or live.");
-  }
 }
 
 /**
@@ -634,12 +708,40 @@ export async function withDerivedCode(hub: ControlHub, changes: Partial<HubConfi
   return code ? { ...changes, jurisdiction_code: code } : changes;
 }
 
+/**
+ * What a save changed beyond the fields it named, in the words the console
+ * shows: settings that followed a rename, and a plain note when a rename
+ * could not reach what residents see.
+ */
+export interface FollowOn {
+  /** setting key (or "hubs.name") → its new value. */
+  carried: Record<string, string>;
+  note: string | null;
+}
+
+/** "Also changed: Hub name, Email from name → "X"." The console's own sentence for a FollowOn. */
+export function describeFollowOn(f: FollowOn): string | null {
+  const keys = Object.keys(f.carried);
+  const parts: string[] = [];
+  if (keys.length > 0) {
+    parts.push(
+      `Also changed, because they still read the old name: ${keys.map((k) => SETTING_LABELS[k] ?? k).join(", ")}.`,
+    );
+  }
+  if (f.note) parts.push(f.note);
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
+const RENAME_NOT_CARRIED =
+  "Only the registry name changed. This hub has left demo, so the name residents see, the operator and the email sender name are its admins' to change, in the hub's Settings → Identity.";
+
 export async function updateHubConfig(
   hub: ControlHub,
   changes: Partial<HubConfigView>,
   actor: string,
-): Promise<void> {
+): Promise<FollowOn> {
   await validateHubConfig(hub, changes);
+  const followOn: FollowOn = { carried: {}, note: null };
 
   const row: Record<string, unknown> = {};
   for (const k of [
@@ -650,27 +752,152 @@ export async function updateHubConfig(
     "jurisdiction_ocd_id",
     "jurisdiction_custom",
     "status",
-    "mode",
   ] as const) {
     if (changes[k] !== undefined) row[k] = changes[k];
   }
+  // The address it leaves keeps working: it redirects here (review R47).
+  if (changes.hostname !== undefined) {
+    row.previous_hostnames = movedHostnames(hub.previous_hostnames ?? [], hub.hostname, changes.hostname);
+  }
   if (Object.keys(row).length > 0) {
     const { error } = await getDb().from("hubs").update(row).eq("id", hub.id);
-    if (error) throw new ControlInputError(error.message, 409);
-  }
-  if (changes.governing_body !== undefined) {
-    await writeSettings(hub.id, { [KEYS.COPY_GOVERNING_BODY_NAME]: changes.governing_body }, actor);
-  }
-  if (changes.governing_body_short !== undefined) {
-    await writeSettings(hub.id, { [KEYS.COPY_GOVERNING_BODY_SHORT]: changes.governing_body_short }, actor);
+    if (error) {
+      console.error(`[control] hub update for ${hub.id} refused: ${error.message}`);
+      throw new ControlInputError("The database refused the change, and nothing was saved. The server log has the details.", 409);
+    }
   }
   if (changes.hub_kind !== undefined) {
-    await writeSettings(hub.id, { [KEYS.IDENTITY_HUB_KIND]: changes.hub_kind }, actor);
+    await writeSettings(hub.id, { [KEYS.IDENTITY_HUB_KIND]: changes.hub_kind }, consoleBy(actor));
   }
   if (changes.jurisdiction_type !== undefined) {
-    await writeSettings(hub.id, { [KEYS.IDENTITY_JURISDICTION_TYPE]: changes.jurisdiction_type ?? "" }, actor);
+    await writeSettings(hub.id, { [KEYS.IDENTITY_JURISDICTION_TYPE]: changes.jurisdiction_type ?? "" }, consoleBy(actor));
+  }
+  // A rename carries to what residents see while the console still owns it
+  // (review R11); after handover it says so instead.
+  if (changes.name !== undefined) {
+    if (consoleOwnsHandoverKeys(hub.mode)) {
+      const current = await settingRows(hub.id, [KEYS.IDENTITY_NAME, KEYS.LEGAL_OPERATOR_NAME, KEYS.EMAIL_FROM_NAME]);
+      followOn.carried = renameFollowers(hub.name, changes.name, current);
+      await writeSettings(hub.id, followOn.carried, consoleBy(actor));
+    } else {
+      followOn.note = RENAME_NOT_CARRIED;
+    }
   }
   refreshCaches(hub.id);
+  return followOn;
+}
+
+/** The hub's old addresses after a move from `from` to `to`: `from` added, `to` (moving back) removed. */
+export function movedHostnames(previous: readonly string[], from: string, to: string): string[] {
+  return [...new Set([...previous, from])].filter((h) => h !== to);
+}
+
+// --- Handover ---------------------------------------------------------------
+//
+// What residents see, set by the console before the hub is handed over and
+// by its admins after (review R48 + R10, Adam 2026-10-08).
+
+export interface HandoverView {
+  values: Record<HandoverKey, string>;
+  /** Per key, when the stored row last changed and who changed it ("console:<email>", a hub user's id, a script). */
+  changed: Partial<Record<HandoverKey, { at: string; by: string | null }>>;
+  /** False once the hub has left demo: the panel is read-only and links to the hub's Settings. */
+  editable: boolean;
+  /** What applies to an empty field, for the panel's hints. */
+  fallbacks: {
+    postal_address: string;
+    contact_email: string;
+    feedback_email: string;
+  };
+}
+
+export async function hubHandover(hub: ControlHub): Promise<HandoverView> {
+  const { data, error } = await getDb()
+    .from("hub_settings")
+    .select("key, value, updated_at, updated_by")
+    .eq("hub_id", hub.id)
+    .in("key", [...HANDOVER_KEYS]);
+  if (error) throw new Error(`hub_settings read failed: ${error.message}`);
+  const values = Object.fromEntries(HANDOVER_KEYS.map((k) => [k, ""])) as Record<HandoverKey, string>;
+  const changed: HandoverView["changed"] = {};
+  for (const r of (data ?? []) as Array<{ key: HandoverKey; value: string; updated_at: string; updated_by: string | null }>) {
+    values[r.key] = r.value;
+    changed[r.key] = { at: r.updated_at, by: r.updated_by };
+  }
+  const postal = await effectivePostalAddress(hub.id);
+  const contact = values["legal.contact_email"].trim() || PLATFORM_CONTACT_EMAIL;
+  return {
+    values,
+    changed,
+    editable: consoleOwnsHandoverKeys(hub.mode),
+    fallbacks: {
+      // The platform's address (or the retiring env one) when the hub has none.
+      postal_address: values["email.postal_address"].trim() ? "" : postal.value,
+      contact_email: PLATFORM_CONTACT_EMAIL,
+      feedback_email: contact,
+    },
+  };
+}
+
+/** `{ values: { <key>: <value> } }` → the validated values; anything not a handover key is refused. */
+export function parseHandoverPatch(body: unknown): Partial<Record<HandoverKey, string>> {
+  const values = (body as { values?: unknown })?.values;
+  if (!values || typeof values !== "object" || Array.isArray(values)) {
+    throw new ControlInputError("Send { values: { <setting>: <value> } }.");
+  }
+  const out: Partial<Record<HandoverKey, string>> = {};
+  for (const [key, raw] of Object.entries(values as Record<string, unknown>)) {
+    if (!isHandoverKey(key)) throw new ControlInputError(`${SETTING_LABELS[key] ?? key} is not set in the Handover panel.`);
+    out[key] = handoverValue(key, raw);
+  }
+  if (out["identity.name"] === "") throw new ControlInputError("Hub name: a hub needs a name.");
+  return out;
+}
+
+export interface HandoverResult extends FollowOn {
+  /** The keys the save itself changed, before → after. */
+  before: Record<string, string>;
+  after: Record<string, string>;
+}
+
+/**
+ * Save the Handover panel. Refused once the hub has left demo. A new hub
+ * name carries to the operator, the email sender name and the registry name
+ * where they still read the old one, as a rename in the hub's Settings does.
+ */
+export async function updateHandover(
+  hub: ControlHub,
+  patch: Partial<Record<HandoverKey, string>>,
+  actor: string,
+): Promise<HandoverResult> {
+  if (!consoleOwnsHandoverKeys(hub.mode)) throw new ControlInputError(HANDED_OVER_NOTE, 409);
+  const current = (await hubHandover(hub)).values;
+  const before: Record<string, string> = {};
+  const after: Record<string, string> = {};
+  for (const [k, v] of Object.entries(patch) as Array<[HandoverKey, string]>) {
+    if (current[k] !== v) {
+      before[k] = current[k];
+      after[k] = v;
+    }
+  }
+  const followOn: FollowOn = { carried: {}, note: null };
+  if (after["identity.name"] !== undefined) {
+    const oldName = current["identity.name"].trim() || hub.name;
+    const followers = renameFollowers(oldName, after["identity.name"], current, [KEYS.LEGAL_OPERATOR_NAME, KEYS.EMAIL_FROM_NAME]);
+    // A follower the panel set in the same save keeps what was typed.
+    for (const k of Object.keys(followers)) if (k in after) delete followers[k];
+    followOn.carried = followers;
+    if (hub.name.trim() === oldName.trim()) followOn.carried["hubs.name"] = after["identity.name"];
+  }
+  const { "hubs.name": registryName, ...carriedSettings } = followOn.carried;
+  const writes = { ...after, ...carriedSettings };
+  if (Object.keys(writes).length > 0) await writeSettings(hub.id, writes, consoleBy(actor));
+  if (registryName) {
+    const { error } = await getDb().from("hubs").update({ name: registryName }).eq("id", hub.id);
+    if (error) throw new Error(`hubs rename failed: ${error.message}`);
+  }
+  refreshCaches(hub.id);
+  return { ...followOn, before, after };
 }
 
 // --- Plugins -----------------------------------------------------------------
@@ -691,7 +918,7 @@ export function parsePluginValues(body: unknown): Partial<Record<PluginId, boole
 export async function setHubPlugins(hubId: string, values: Partial<Record<PluginId, boolean>>, actor: string): Promise<void> {
   const rows: Record<string, string> = {};
   for (const [id, on] of Object.entries(values)) rows[`plugin.${id}.enabled`] = on ? "true" : "false";
-  await writeSettings(hubId, rows, actor);
+  await writeSettings(hubId, rows, consoleBy(actor));
   refreshCaches(hubId);
 }
 
@@ -709,7 +936,7 @@ export function parseAdminList(body: unknown): string[] {
 }
 
 export async function setHubAdmins(hubId: string, admins: readonly string[], actor: string): Promise<void> {
-  await writeSettings(hubId, { [KEYS.PEOPLE_ADMIN_EMAILS]: encodeList(admins) }, actor);
+  await writeSettings(hubId, { [KEYS.PEOPLE_ADMIN_EMAILS]: encodeList(admins) }, consoleBy(actor));
   refreshCaches(hubId);
 }
 

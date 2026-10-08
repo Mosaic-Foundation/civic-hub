@@ -70,7 +70,7 @@ test.describe("A demo hub's sample meeting summary", () => {
     await page.goto(`/meeting-summary/${id}`);
 
     await expect(page.getByRole("region", { name: "Demo notice" })).toContainText(
-      "Sample items refresh from time to time; anything you add to them may be cleared.",
+      "items marked Sample aren't real, and are reset from time to time.",
     );
 
     // Minutes: on the page, not a PDF.

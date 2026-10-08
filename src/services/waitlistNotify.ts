@@ -9,7 +9,7 @@
 // who just filled in the form.
 
 import { sendEmail, unsentReason } from "../utils/email.js";
-import { getAdminEmailsSync } from "./hubSettings.js";
+import { getAdminEmailsSync, hubDisplayNameSync } from "./hubSettings.js";
 
 export interface WaitlistSignup {
   email: string;
@@ -61,9 +61,10 @@ export function renderWaitlistNotification(signup: WaitlistSignup): {
   // Name first when we have one — "TEST USER — Dana Reed" reads as a person,
   // "TEST USER — d.reed+beta@example.com" reads as a row.
   const who = signup.name ? `${signup.name} <${signup.email}>` : signup.email;
+  const tag = `[${hubDisplayNameSync()} waitlist]`;
   const subject = signup.wants_test_user
-    ? `[Civic Hub waitlist] TEST USER — ${who}`
-    : `[Civic Hub waitlist] ${who}`;
+    ? `${tag} TEST USER — ${who}`
+    : `${tag} ${who}`;
 
   const testUserRow = signup.wants_test_user
     ? `<p style="margin:12px 0;padding:12px 14px;background:#ecfdf5;border-left:3px solid #059669;border-radius:6px;font-size:14px;">

@@ -7,17 +7,17 @@
 // dumb bots — real users never see it.
 //
 // On submit failure (network down, server 500), we surface the
-// mailto:contact@civic.social escape hatch alongside the error so the
-// user can still get the message through.
+// hub's feedback address (hub.feedback_email: its own, else its contact
+// address, else the platform's) alongside the error so the user can still
+// get the message through.
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { submitFeedback, uploadFeedbackScreenshot, type FeedbackCategory } from "../services/api";
 import PostImagePicker from "../components/PostImagePicker";
+import hub from "../config/hub";
 import "./Feedback.css";
-
-const OPERATOR_EMAIL = "contact@civic.social";
 
 const CATEGORIES: ReadonlyArray<{
   value: FeedbackCategory;
@@ -252,7 +252,7 @@ export default function Feedback() {
           {error && (
             <p className="form-error">
               {error}{" "}
-              <a href={`mailto:${OPERATOR_EMAIL}`}>Email us instead.</a>
+              <a href={`mailto:${hub.feedback_email}`}>Email us instead.</a>
             </p>
           )}
 
@@ -267,7 +267,7 @@ export default function Feedback() {
 
         <p className="feedback-fallback">
           Prefer email?{" "}
-          <a href={`mailto:${OPERATOR_EMAIL}`}>{OPERATOR_EMAIL}</a>
+          <a href={`mailto:${hub.feedback_email}`}>{hub.feedback_email}</a>
         </p>
       </div>
     </div>

@@ -19,7 +19,7 @@
 // data you see would be a cross-tenant hole, not a convenience.
 
 import type { NextFunction, Request, Response } from "express";
-import { getHubByHostname, getHubBySlug } from "../db/hubs.js";
+import { getHubByHostname, getHubByPreviousHostname, getHubBySlug } from "../db/hubs.js";
 import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { runWithHub } from "../config/hubContext.js";
 import { isLocalHostname } from "../models/hub.js";
@@ -163,6 +163,62 @@ function sendHubPaused(req: Request, res: Response): void {
     );
 }
 
+/**
+ * Where a moved hub now answers, as an origin with no trailing slash, or null
+ * when it has not moved (review R47). Two ways a hub moves:
+ *   - `redirect_to`: the hub has left this deployment; a hostname or a URL.
+ *   - the request arrived on one of its `previous_hostnames`: it moved to
+ *     another address here, and `hub.hostname` is the new one.
+ */
+export function movedOrigin(hub: Hub, arrivedOn: string): string | null {
+  const away = hub.redirect_to?.trim();
+  if (away) {
+    if (/^https?:\/\//i.test(away)) {
+      try {
+        return new URL(away).origin;
+      } catch {
+        return null;
+      }
+    }
+    // A bare hostname, or nothing: a malformed value never becomes a Location.
+    const host = away.toLowerCase().replace(/\/.*$/, "");
+    return /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,62}$/.test(host) ? `https://${host}` : null;
+  }
+  if (arrivedOn && arrivedOn !== hub.hostname) {
+    return `${isLocalHostname(hub.hostname) ? "http" : "https"}://${hub.hostname}`;
+  }
+  return null;
+}
+
+/**
+ * The path and query the visitor asked for. On Vercel the API function strips
+ * `/api` before Express sees the request (api/index.ts); it keeps the
+ * original as `civicOriginalUrl` so a redirect lands on the same API path.
+ */
+function requestedPath(req: Request): string {
+  const original = (req as unknown as { civicOriginalUrl?: unknown }).civicOriginalUrl;
+  const path = typeof original === "string" && original.startsWith("/") ? original : req.originalUrl || "/";
+  // Never a protocol-relative path ("//elsewhere"): the origin is fixed above.
+  return path.replace(/^\/{2,}/, "/");
+}
+
+/**
+ * Answer for a hub that has moved. A browser page load and every API caller
+ * get a permanent redirect, path and query kept (308 for a write, so its
+ * method and body survive). The one exception is the UI's own /hub-config
+ * fetch: a cross-origin redirect there would fail on CORS, so it gets
+ * `hub_moved` with the new origin, and the page sends itself there
+ * (ui/src/main.tsx).
+ */
+function sendMoved(req: Request, res: Response, origin: string): void {
+  if (req.path === "/hub-config" && prefersJson(req)) {
+    res.status(404).json({ error: "hub_moved", location: origin });
+    return;
+  }
+  const status = req.method === "GET" || req.method === "HEAD" ? 301 : 308;
+  res.redirect(status, `${origin}${requestedPath(req)}`);
+}
+
 /** Resolve without deciding what to do about the result. Exported for tests. */
 export async function resolveHubForHostname(
   hostname: string,
@@ -202,8 +258,13 @@ export async function resolveHub(
     typeof req.query?.hub === "string" ? req.query.hub.toLowerCase() : undefined;
 
   let hub: Hub | null;
+  let moved: Hub | null = null;
   try {
-    hub = await resolveHubForHostname(hostname, queryHub);
+    // An address a hub moved away from still leads to it (review R47).
+    // Checked before the local-development rules, which would otherwise
+    // read "<old-slug>.localhost" as that hub and never redirect.
+    if (!(await getHubByHostname(hostname))) moved = await getHubByPreviousHostname(hostname);
+    hub = moved ? null : await resolveHubForHostname(hostname, queryHub);
   } catch (e) {
     // A registry read that throws is an outage, not an unknown hostname.
     // Say so rather than telling the caller their address is wrong.
@@ -215,7 +276,17 @@ export async function resolveHub(
   }
 
   if (!hub) {
+    const origin = moved ? movedOrigin(moved, hostname) : null;
+    if (origin) {
+      sendMoved(req, res, origin);
+      return;
+    }
     sendNoHub(req, res);
+    return;
+  }
+  const away = hub.redirect_to ? movedOrigin(hub, hostname) : null;
+  if (away) {
+    sendMoved(req, res, away);
     return;
   }
   if (hub.status === "suspended") {

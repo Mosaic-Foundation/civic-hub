@@ -59,6 +59,8 @@ const LOAD_TIMEOUT_MS = 2000;
 
 let loaded: HubConfig | null = null;
 let deadEnd: DeadEndCode | null = null;
+/** Set when the hub this address served has moved: its new origin (review R47). */
+let movedTo: string | null = null;
 
 /**
  * Who to tell when the config changes under a running page. The config is
@@ -118,6 +120,27 @@ export function getHubDeadEnd(): DeadEndCode | null {
 }
 
 /**
+ * The origin this address's hub moved to, or null. The server redirects every
+ * other request itself; this one answers in JSON because the shell's fetch
+ * cannot follow a redirect to another origin. main.tsx sends the page there.
+ */
+export function getHubMovedTo(): string | null {
+  return movedTo;
+}
+
+/** The new origin a `hub_moved` answer names, when it is an http(s) origin. Exported for tests. */
+export function movedToFromResponse(status: number, body: unknown): string | null {
+  const b = body as { error?: unknown; location?: unknown } | null;
+  if (status !== 404 || b?.error !== "hub_moved" || typeof b.location !== "string") return null;
+  try {
+    const url = new URL(b.location);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The dead end a /hub-config response announces, if any. Only the two
  * definitive answers count; any other failure (a 500, a proxy's error page, a
  * body that is not JSON) is transient, and renders the app on fallbacks.
@@ -154,7 +177,9 @@ export async function loadHubConfig(opts: { fresh?: boolean } = {}): Promise<Hub
       ...(opts.fresh ? { cache: "no-store" as const } : {}),
     });
     if (!res.ok) {
-      deadEnd = deadEndFromResponse(res.status, await res.json().catch(() => null));
+      const failure = await res.json().catch(() => null);
+      deadEnd = deadEndFromResponse(res.status, failure);
+      movedTo = movedToFromResponse(res.status, failure);
       return null;
     }
     const body = (await res.json()) as HubConfig;

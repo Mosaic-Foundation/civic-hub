@@ -5,6 +5,15 @@
 // round-tripping through engineering. Exported as string builders so
 // evals / tests can diff them.
 
+import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
+import { getSettingSync } from "../../services/hubSettings.js";
+import { KEYS } from "../../models/hubSettings.js";
+
+/** The hub's word for the people who read its summaries ("residents", "neighbors", "members"). */
+function hubPeople(): string {
+  return participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), 2, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
+}
+
 const DEFAULT_INSTRUCTIONS = `These are official government meeting records. Produce accurate, neutral summaries. Do not speculate. When in doubt about a fact, say the minutes or transcript are unclear rather than inventing detail.`;
 
 function instructionsBlock(raw: string): string {
@@ -154,7 +163,7 @@ Work only from what the transcript actually supports:
 - Do NOT infer agenda items that were never spoken about.
 - When a name, dollar figure, vote count, or ordinance number is unclear in the transcript, say so in plain language ("the transcript is unclear on the exact figure") rather than guessing a value.
 - Prefer describing what was discussed and decided over reconstructing formal procedure.
-- Public comment and citizen concerns are in scope — they are often the most useful part of the record for residents and appear nowhere else.`;
+- Public comment and citizen concerns are in scope — they are often the most useful part of the record for ${hubPeople()} and appear nowhere else.`;
 
   const sourceGuidance = isRecordingOnly
     ? recordingGuidance
@@ -179,7 +188,7 @@ ${sourceGuidance}
 
 ${transcriptBlock}
 
-Produce a chronological list of topic blocks. Each block covers one coherent agenda item or topic of discussion. Keep summaries short and plain-spoken — residents are the audience, not lawyers.
+Produce a chronological list of topic blocks. Each block covers one coherent agenda item or topic of discussion. Keep summaries short and plain-spoken — ${hubPeople()} are the audience, not lawyers.
 
 For each block, produce:
 - topic_title: a short phrase (under 12 words) naming the topic.

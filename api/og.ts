@@ -60,6 +60,8 @@ function siteUrlFor(req: IncomingMessage): string {
 interface HubBranding {
   name: string;
   bannerUrl: string;
+  /** The hub moved: its new origin (review R47). Crawlers are redirected there. */
+  movedTo?: string;
 }
 
 /** Cached per host for the life of the instance; identity rarely changes. */
@@ -81,7 +83,15 @@ async function fetchBranding(siteUrl: string): Promise<HubBranding> {
     const res = await fetch(`${siteUrl}/api/hub-config`, {
       headers: { Accept: "application/json" },
     });
-    if (!res.ok) return fallback;
+    if (!res.ok) {
+      // A moved hub answers hub_moved with its new origin; the page shell
+      // follows it in the browser, a crawler gets a redirect below.
+      const moved = (await res.json().catch(() => null)) as { error?: unknown; location?: unknown } | null;
+      if (res.status === 404 && moved?.error === "hub_moved" && typeof moved.location === "string" && /^https?:\/\//.test(moved.location)) {
+        return { ...fallback, movedTo: moved.location.replace(/\/$/, "") };
+      }
+      return fallback;
+    }
     const body = (await res.json()) as {
       hub?: { name?: string };
       settings?: Record<string, string>;
@@ -234,6 +244,11 @@ export default async function handler(
       fetchOgData(pathname, siteUrl),
       fetchBranding(siteUrl),
     ]);
+    if (branding.movedTo) {
+      res.writeHead(301, { Location: `${branding.movedTo}${pathname}` });
+      res.end();
+      return;
+    }
     if (og) {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end(ogHtml(og, pathname, siteUrl, branding));

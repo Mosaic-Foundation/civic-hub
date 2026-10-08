@@ -7,7 +7,7 @@ import '@fontsource-variable/manrope/index.css'
 import './styles/theme.css'
 import './index.css'
 import App from './App.tsx'
-import { loadHubConfig, applyHubHead, getHubDeadEnd } from './config/hubConfig'
+import { loadHubConfig, applyHubHead, getHubDeadEnd, getHubMovedTo } from './config/hubConfig'
 import { DEAD_ENDS, DEAD_END_STYLE } from '../../src/shared/deadEnd'
 import { HubConfigProvider } from './config/HubConfigContext'
 
@@ -67,6 +67,14 @@ await loadHubConfig()
 // sends (src/middleware/hub.ts). On Vercel this shell is a static file served
 // without the server, so the answer arrives here, from /hub-config, instead.
 // No app, no hub name, no build-time fallback identity.
+// A hub that moved to a new address (review R47): the same page there, path,
+// query and fragment kept. replace(), so Back does not return to the old one.
+const movedTo = getHubMovedTo()
+if (movedTo) {
+  window.location.replace(`${movedTo}${window.location.pathname}${window.location.search}${window.location.hash}`)
+  await new Promise(() => {})
+}
+
 const deadEnd = getHubDeadEnd()
 if (deadEnd) {
   const { title, body } = DEAD_ENDS[deadEnd]

@@ -9,6 +9,8 @@
 // checked the box must never end up flagged for the beta allowlist.
 
 import { describe, it, expect } from "vitest";
+import { runWithHub } from "../../src/config/hubContext.js";
+import type { Hub } from "../../src/models/hub.js";
 import { renderWaitlistNotification } from "../../src/services/waitlistNotify.js";
 import { readTestUserFlag } from "../../src/controllers/waitlistController.js";
 
@@ -123,5 +125,13 @@ describe("renderWaitlistNotification", () => {
       notes: "line one\nline two",
     });
     expect(html).toContain("line one<br>line two");
+  });
+});
+
+describe("the subject names the hub", () => {
+  it("leads with the hub's own name", () => {
+    const hub = { id: "h1", hostname: "h1.example", name: "H1", status: "active", mode: "live" } as unknown as Hub;
+    const { subject } = runWithHub(hub, { "identity.name": "Exampleville Civic Hub" }, () => renderWaitlistNotification(base));
+    expect(subject).toBe("[Exampleville Civic Hub waitlist] resident@example.com");
   });
 });

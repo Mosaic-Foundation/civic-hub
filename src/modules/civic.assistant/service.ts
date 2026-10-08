@@ -7,7 +7,7 @@ import {
 import { buildSystemPrompt, buildCocCheckPrompt } from "./systemPrompt.js";
 import { currentHub } from "../../config/hubContext.js";
 import { civicPlaceName } from "../../config/hub.js";
-import { hubKindOf } from "../../shared/hubKind.js";
+import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
 import { getSettingSync, hubDisplayNameSync } from "../../services/hubSettings.js";
 import { hubDocument } from "../../services/hubDocuments.js";
 import { KEYS } from "../../models/hubSettings.js";
@@ -37,6 +37,12 @@ export type CallClaudeMultiTurnFn = typeof callClaudeMultiTurn;
 export async function getHubConfig(): Promise<HubConfig> {
   const hub = currentHub();
   const place = civicPlaceName();
+  // The hub's own word for its people ("neighbors"), or the kind's default.
+  const people = participantNoun(
+    hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)),
+    2,
+    getSettingSync(KEYS.COPY_RESIDENT_NOUN),
+  );
   return {
     hub_name: hubDisplayNameSync(),
     // A hub that is not a place (identity.hub_kind) has participants, not
@@ -45,8 +51,8 @@ export async function getHubConfig(): Promise<HubConfig> {
       hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)) !== "place"
         ? "the people who take part in it"
         : place
-          ? `residents of ${place}`
-          : "the residents of the community it serves",
+          ? `${people} of ${place}`
+          : `the ${people} of the community it serves`,
     code_of_conduct: hub ? (await hubDocument(hub, KEYS.LEGAL_CODE_OF_CONDUCT)) ?? "" : "",
   };
 }

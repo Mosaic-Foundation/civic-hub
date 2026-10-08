@@ -1449,3 +1449,24 @@ export function samplePreviews(): Record<string, { pill: string; title: string }
   }
   return out;
 }
+
+/** What a template is called on the page: its title, the meeting's, the topic or the outcome's headline. */
+export function sampleTemplateTitle(t: SampleTemplate, names: SampleNames): string {
+  const raw =
+    t.kind === "meeting_summary"
+      ? t.meeting_title
+      : t.kind === "deliberation"
+        ? t.topic
+        : t.kind === "outcome"
+          ? t.headline
+          : t.title;
+  return fillSample(raw, names);
+}
+
+/**
+ * Every template's title, filled with one hub's names, by key: the console's
+ * "Refresh samples" result names what it added by title, not by id.
+ */
+export function sampleTemplateTitles(names: SampleNames): Record<string, string> {
+  return Object.fromEntries(SAMPLE_TEMPLATES.map((t) => [t.key, sampleTemplateTitle(t, names)]));
+}

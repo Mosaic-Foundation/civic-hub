@@ -167,6 +167,8 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "plugin.news_sync.connector", kind: "choice", options: NEWS_CONNECTOR_OPTIONS },
     { key: "plugin.news_sync.source_url", kind: "url" },
     { key: "plugin.digest.send_hour", kind: "hour" },
+    // The address the Feedback page shows (2026-10-08, Adam).
+    { key: "plugin.feedback.contact_email", kind: "email" },
   ],
 };
 

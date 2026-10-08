@@ -24,6 +24,7 @@
 // the RESOLVED list rather than the submitted one, because a submission of
 // nothing but blank strings is the same mistake with more typing.
 
+import { describeInvites, sendAdminInvites, type InviteReport } from "../services/adminInvite.js";
 import type { Request, Response } from "express";
 import { currentHubId } from "../config/hubContext.js";
 import {
@@ -136,6 +137,7 @@ export async function handleSetHubPeople(
 
   const hubId = currentHubId();
   try {
+    let invites: InviteReport | null = null;
     if (admins !== null) {
       const before = await getAdminEmails(hubId);
       await setAdminEmails(hubId, admins, user.id);
@@ -143,6 +145,9 @@ export async function handleSetHubPeople(
       if (rosterChanged(before, admins)) {
         await recordHubAdminAudit({ actor: user.email, action: "people.admins", before, after: admins });
       }
+      // Each new admin is told, with the first steps (review R38).
+      const added = admins.filter((e) => !before.includes(e.toLowerCase()));
+      if (added.length > 0) invites = await sendAdminInvites(added);
     }
     if (board !== null) {
       const before = await getBoardEmails(hubId);
@@ -152,7 +157,8 @@ export async function handleSetHubPeople(
         await recordHubAdminAudit({ actor: user.email, action: "people.board", before, after: board });
       }
     }
-    res.json(await loadPeople());
+    const people = await loadPeople();
+    res.json(invites ? { ...people, invites, invite_message: describeInvites(invites) } : people);
   } catch (err) {
     res
       .status(500)

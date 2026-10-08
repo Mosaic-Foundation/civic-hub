@@ -21,3 +21,19 @@ export const DEFAULT_HUB_BANNER = {
   url: "/hub-banner-default.webp",
   alt: "Aerial view of a town centre, with people gathering in a tree-lined square",
 } as const;
+
+/**
+ * Where the docs' "Set up your hub" guide lives (the staged guide that
+ * replaced "Admin: your first hour"; the old address redirects to it). The
+ * admin invite links here.
+ */
+export const PLATFORM_SETUP_GUIDE_URL = "https://docs.civic.social/start/setup";
+
+/**
+ * The address the Feedback page shows (2026-10-08, Adam): the hub's
+ * `plugin.feedback.contact_email`, else its `legal.contact_email`, else the
+ * platform's. Takes the raw values; empty and blank count as unset.
+ */
+export function feedbackContactEmail(feedbackEmail: string | undefined | null, contactEmail: string | undefined | null): string {
+  return feedbackEmail?.trim() || contactEmail?.trim() || PLATFORM_CONTACT_EMAIL;
+}

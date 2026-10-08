@@ -78,7 +78,8 @@ export default function PeopleSection() {
       setPeopleCodeSent(false);
       setPeopleMessage(
         `Saved. ${saved.admin_emails.length} admin${saved.admin_emails.length === 1 ? "" : "s"}, ` +
-          `${saved.board_emails.length} board member${saved.board_emails.length === 1 ? "" : "s"}.`,
+          `${saved.board_emails.length} board member${saved.board_emails.length === 1 ? "" : "s"}.` +
+          (saved.invite_message ? ` ${saved.invite_message}` : ""),
       );
     } catch (err) {
       setPeopleMessage(
@@ -98,6 +99,11 @@ export default function PeopleSection() {
         Board members can post announcements and are offered as brief
         recipients; they cannot reach admin pages. Both lists belong to
         this hub — an admin here is not an admin on any other hub.
+      </p>
+      <p className="form-hint">
+        A new admin gets an email saying so, with a link and the first steps.
+        The platform operator can also add or remove admins, so a hub that
+        loses all of its own can be handed back.
       </p>
       {adminsFromEnv && (
         <p className="form-hint">

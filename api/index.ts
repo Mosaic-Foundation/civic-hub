@@ -23,6 +23,9 @@ const app = withConsole(hubApp);
 export const maxDuration = 300;
 
 export default function handler(req: IncomingMessage, res: ServerResponse) {
+  // Kept for the moved-hub redirect (src/middleware/hub.ts), which must send
+  // an API caller to the same /api path on the hub's new address.
+  (req as IncomingMessage & { civicOriginalUrl?: string }).civicOriginalUrl = req.url;
   // Strip /api prefix so Express routes match their registered paths
   req.url = req.url!.replace(/^\/api/, "") || "/";
 

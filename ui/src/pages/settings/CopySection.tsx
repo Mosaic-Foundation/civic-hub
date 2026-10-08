@@ -71,10 +71,10 @@ export default function CopySection() {
           <TextField
             f={f}
             k="copy.governing_body_short"
-            label="Governing body, short"
+            label="Board label"
             placeholder="Council, Commission…"
             width={260}
-            hint={'In pills and running text: "Council meeting summaries", "passing on to the Council". Left empty, it comes from the full name.'}
+            hint={'The governing body\'s short name, in pills and running text: "Council meeting summaries", "passing on to the Council". Left empty, it comes from the full name.'}
           />
           <TextField
             f={f}

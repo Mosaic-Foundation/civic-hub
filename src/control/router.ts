@@ -10,6 +10,7 @@
 
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { RESERVED_HUB_SLUG_PURPOSES, type HubMode } from "../models/hub.js";
+import { PLUGINS_OWNER_NOTE } from "../shared/settingOwners.js";
 import { PLUGIN_IDS } from "../models/hubSettings.js";
 import { listAudit, listHubAdminAudit, recordAudit } from "./audit.js";
 import { exportHubArchive } from "./hubExport.js";
@@ -21,7 +22,9 @@ import { seedSampleContent, type SampleSeedReport } from "../services/sampleSeed
 import { refreshSamples, type SampleRefreshReport } from "../services/sampleRefresh.js";
 import { describeJobRun } from "../jobs/describe.js";
 import { recordJobRun } from "../services/jobRuns.js";
-import { kindsWithSamples, samplePreviews } from "../services/sampleTemplates.js";
+import { kindsWithSamples, samplePreviews, sampleTemplateTitles } from "../services/sampleTemplates.js";
+import { sampleNames } from "../services/sampleNames.js";
+import { describeInvites, sendAdminInvites, type InviteReport } from "../services/adminInvite.js";
 import {
   CODE_SENT,
   ControlAuthError,
@@ -46,7 +49,9 @@ import {
   changedFields,
   configChangeNeedsStepUp,
   createHub,
+  describeFollowOn,
   getHub,
+  hubHandover,
   hubAdmins,
   hubConfigView,
   hubPlugins,
@@ -55,11 +60,11 @@ import {
   parseAdminList,
   parseConfigPatch,
   parseCreateInput,
-  parsePluginValues,
+  parseHandoverPatch,
   productionCreateGuard,
   setHubAdmins,
-  setHubPlugins,
   unarchiveHub,
+  updateHandover,
   updateHubConfig,
   validateHubConfig,
   withDerivedCode,
@@ -113,8 +118,11 @@ function fail(res: Response, err: unknown): void {
     res.status(err.status).json({ error: err.message });
     return;
   }
+  // Not a refusal we wrote: say so in words, and keep the details for the log.
   console.error("[control]", err);
-  res.status(500).json({ error: err instanceof Error ? err.message : "Something went wrong." });
+  res.status(500).json({
+    error: "Something went wrong on the server, and the change may not have been made. Reload the page to see what was saved; the server log has the details.",
+  });
 }
 
 type Handler = (req: Request, res: Response) => Promise<void>;
@@ -185,7 +193,7 @@ async function seedSampleInHub(hubId: string): Promise<SampleSeedReport> {
  * hub, plus any template the hub lacks. Recorded like the job's own run, in
  * the hub's job_runs; no audit row (Adam).
  */
-async function refreshSamplesInHub(hubId: string): Promise<SampleRefreshReport> {
+async function refreshSamplesInHub(hubId: string): Promise<{ refresh: SampleRefreshReport; titles: Record<string, string> }> {
   const row = await getHubBySlug(hubId);
   if (!row) throw new Error(`hub ${hubId} not found`);
   const settings = await fetchHubSettings(hubId);
@@ -194,14 +202,31 @@ async function refreshSamplesInHub(hubId: string): Promise<SampleRefreshReport> 
     const report = await refreshSamples({ now: started, addMissing: true });
     const run = describeJobRun("sample_refresh", { status: 200, body: report as unknown as Record<string, unknown> });
     if (run) await recordJobRun("sample_refresh", started, run, { ...report, trigger: "console" });
-    return report;
+    // Titles beside the ids, filled with this hub's names, so the console
+    // says what it added by name (3b follow-up).
+    return { refresh: report, titles: sampleTemplateTitles(sampleNames()) };
   });
+}
+
+/** Email the admin invite from inside the hub's scope (sender, link and mode are the hub's). */
+async function inviteAdmins(hubId: string, emails: readonly string[]): Promise<InviteReport> {
+  if (emails.length === 0) return { sent: [], not_sent: [] };
+  try {
+    const row = await getHubBySlug(hubId);
+    if (!row) throw new Error(`hub ${hubId} not found`);
+    const settings = await fetchHubSettings(hubId);
+    return await withHubScope(row, settings, () => sendAdminInvites(emails));
+  } catch (err) {
+    console.error(`[control] admin invite for ${hubId} failed`, err);
+    return { sent: [], not_sent: emails.map((email) => ({ email, reason: "The email could not be sent." })) };
+  }
 }
 
 async function hubDetail(hub: ControlHub) {
   return {
     hub,
     config: await hubConfigView(hub),
+    handover: await hubHandover(hub),
     plugins: await hubPlugins(hub.id),
     admins: await hubAdmins(hub.id),
   };
@@ -347,7 +372,9 @@ export function controlRouter(): Router {
         sample = { error: err instanceof Error ? err.message : String(err) };
       }
     }
-    res.status(201).json({ ...(await hubDetail(hub)), sample_content: sample });
+    // The first admin hears about it (review R38).
+    const invites = await inviteAdmins(hub.id, input.admins);
+    res.status(201).json({ ...(await hubDetail(hub)), sample_content: sample, invites, message: describeInvites(invites) });
   }));
 
   r.get("/control/hubs/:id", route(async (req, res) => {
@@ -367,31 +394,45 @@ export function controlRouter(): Router {
     await validateHubConfig(hub, changes);
     if (configChangeNeedsStepUp(changes) && !(await stepUp(req, res))) return;
     changes = await withDerivedCode(hub, changes);
-    await updateHubConfig(hub, changes, actor(res));
+    const followOn = await updateHubConfig(hub, changes, actor(res));
     const priorValues = Object.fromEntries(
       Object.keys(changes).map((k) => [k, (before as unknown as Record<string, unknown>)[k]]),
     );
-    await audited(res, { actor: actor(res), action: "hub.update", hubId: hub.id, before: priorValues, after: changes });
-    res.json(await hubDetail((await getHub(hub.id))!));
+    await audited(res, {
+      actor: actor(res),
+      action: "hub.update",
+      hubId: hub.id,
+      before: priorValues,
+      after: Object.keys(followOn.carried).length ? { ...changes, carried: followOn.carried } : changes,
+    });
+    res.json({ ...(await hubDetail((await getHub(hub.id))!)), follow_on: followOn, message: describeFollowOn(followOn) });
   }));
 
-  r.put("/control/hubs/:id/plugins", route(async (req, res) => {
+  // What residents see, while the hub is a demo (review R48). Refused once
+  // it has left demo: then it is the hub's admins' (src/shared/settingOwners.ts).
+  r.put("/control/hubs/:id/handover", route(async (req, res) => {
     const hub = await loadHub(req, res);
     if (!hub) return;
-    const values = parsePluginValues(req.body);
-    const before = Object.fromEntries((await hubPlugins(hub.id)).map((p) => [p.id, p.enabled]));
-    const changed = Object.fromEntries(Object.entries(values).filter(([id, on]) => before[id] !== on));
-    if (Object.keys(changed).length > 0) {
-      await setHubPlugins(hub.id, changed, actor(res));
+    if (hub.archived_at) throw new ControlInputError("This hub is archived.");
+    const patch = parseHandoverPatch(req.body);
+    const result = await updateHandover(hub, patch, actor(res));
+    if (Object.keys(result.after).length > 0) {
       await audited(res, {
         actor: actor(res),
-        action: "hub.plugins",
+        action: "hub.handover",
         hubId: hub.id,
-        before: Object.fromEntries(Object.keys(changed).map((id) => [id, before[id]])),
-        after: changed,
+        before: result.before,
+        after: Object.keys(result.carried).length ? { ...result.after, carried: result.carried } : result.after,
       });
     }
-    res.json(await hubDetail(hub));
+    res.json({ ...(await hubDetail((await getHub(hub.id))!)), follow_on: result, message: describeFollowOn(result) });
+  }));
+
+  // Plugin switches are the hub's admins' after create (review R10, Adam
+  // 2026-10-08): the console shows them read-only. Answered rather than
+  // removed, so an old page or script is told why.
+  r.put("/control/hubs/:id/plugins", route(async () => {
+    throw new ControlInputError(PLUGINS_OWNER_NOTE, 409);
   }));
 
   r.put("/control/hubs/:id/admins", route(async (req, res) => {
@@ -399,15 +440,17 @@ export function controlRouter(): Router {
     if (!hub) return;
     const next = parseAdminList(req.body);
     const before = await hubAdmins(hub.id);
-    const removed = before.filter((e) => !next.includes(e));
-    // Removing an admin takes their access away: step-up, like a hub
-    // admin's own roster change. Adding one does not remove anything.
-    if (removed.length > 0 && !(await stepUp(req, res))) return;
-    if (JSON.stringify(before) !== JSON.stringify(next)) {
-      await setHubAdmins(hub.id, next, actor(res));
-      await audited(res, { actor: actor(res), action: "hub.admins", hubId: hub.id, before, after: next });
+    if (JSON.stringify(before) === JSON.stringify(next)) {
+      res.json(await hubDetail(hub));
+      return;
     }
-    res.json(await hubDetail(hub));
+    // Any change to who runs a hub takes a fresh code, adding as well as
+    // removing, as on the hub's own Admins & board page (review R52).
+    if (!(await stepUp(req, res))) return;
+    await setHubAdmins(hub.id, next, actor(res));
+    await audited(res, { actor: actor(res), action: "hub.admins", hubId: hub.id, before, after: next });
+    const invites = await inviteAdmins(hub.id, next.filter((e) => !before.includes(e)));
+    res.json({ ...(await hubDetail(hub)), invites, message: describeInvites(invites) });
   }));
 
   // Demo hubs only: a beta or live hub never gets samples back.
@@ -418,7 +461,8 @@ export function controlRouter(): Router {
     if (hub.mode !== "demo") {
       throw new ControlInputError("Samples are refreshed on demo hubs only; this hub is in " + hub.mode + " mode.");
     }
-    res.json({ refresh: await refreshSamplesInHub(hub.id) });
+    // Titles beside ids, so the console names what it added (3b follow-up).
+    res.json(await refreshSamplesInHub(hub.id));
   }));
 
   r.post("/control/hubs/:id/archive", route(async (req, res) => {

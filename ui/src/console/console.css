@@ -254,3 +254,4 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--c
 .cx-preview-card p { margin-top: 6px; font-weight: 600; }
 .cx-preview-sample { margin-left: 4px; border-style: dashed; }
 .cx-preview-signup { line-height: 1.4; }
+.cx-pre { white-space: pre-wrap; }

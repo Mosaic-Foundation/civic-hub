@@ -76,8 +76,8 @@ describe("a county hub created with sample content", () => {
   });
 
   it("infers the governing body from the type and the state, and stores the type", async () => {
-    expect(body.config.governing_body).toBe("Board of Supervisors");
-    expect(body.config.governing_body_short).toBe("Supervisors");
+    expect(body.handover.values["copy.governing_body_name"]).toBe("Board of Supervisors");
+    expect(body.handover.values["copy.governing_body_short"]).toBe("Supervisors");
     expect(body.config.jurisdiction_type).toBe("county");
   });
 
@@ -109,13 +109,13 @@ describe("a county hub created with sample content", () => {
     expect(closed.status).toBe("finalized");
   });
 
-  it("edits the short form from the hub page, and the hub serves it", async () => {
-    const res = await consoleCall("PATCH", `/control/hubs/${COUNTY}`, { cookie, body: { governing_body_short: "Board" } });
+  it("edits the board label in the hub page's Handover panel, and the hub serves it", async () => {
+    const res = await consoleCall("PUT", `/control/hubs/${COUNTY}/handover`, { cookie, body: { values: { "copy.governing_body_short": "Board" } } });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.config.governing_body_short).toBe("Board");
+    expect(res.body.handover.values["copy.governing_body_short"]).toBe("Board");
     const config = await call("GET", "/hub-config", host(COUNTY));
     expect(config.body.settings["copy.governing_body_short"]).toBe("Board");
-    await consoleCall("PATCH", `/control/hubs/${COUNTY}`, { cookie, body: { governing_body_short: "Supervisors" } });
+    await consoleCall("PUT", `/control/hubs/${COUNTY}/handover`, { cookie, body: { values: { "copy.governing_body_short": "Supervisors" } } });
   });
 
   it("publishes the sample meeting summary, saying it is a sample, with times and no recording", async () => {
@@ -223,8 +223,8 @@ describe("a school district hub", () => {
     // The create form's time zone (2026-10-06) is the hub's identity.timezone.
     const [tz] = (await localRest(`hub_settings?select=value&hub_id=eq.${SCHOOLS}&key=eq.identity.timezone`)) as Row[];
     expect(tz?.value).toBe("America/New_York");
-    expect(res.body.config.governing_body).toBe("School Board");
-    expect(res.body.config.governing_body_short).toBe("School Board");
+    expect(res.body.handover.values["copy.governing_body_name"]).toBe("School Board");
+    expect(res.body.handover.values["copy.governing_body_short"]).toBe("School Board");
     // Its own set (2026-10-07, review R18) and the budget hearing.
     const keys: string[] = res.body.sample_content.created;
     expect(keys).toHaveLength(11);
@@ -290,7 +290,9 @@ describe("a hub created with Conversations off", () => {
   });
 
   it("shows it once Conversations is turned on", async () => {
-    const res = await consoleCall("PUT", `/control/hubs/${NOCONV}/plugins`, { cookie, body: { plugins: { conversation: true } } });
+    // The hub's admins switch plugins (session 4): Settings → Plugins.
+    const admin = await mintSession(NOCONV, ADMIN);
+    const res = await call("PUT", "/admin/hub/settings", host(NOCONV), { section: "plugins", values: { "plugin.conversation.enabled": true } }, admin);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect((await call("GET", `/process/${convId}`, host(NOCONV))).status).toBe(200);
     const list = await call("GET", "/deliberations", host(NOCONV));
@@ -301,8 +303,8 @@ describe("a hub created with Conversations off", () => {
   });
 
   it("comes out with the rest when sample content is removed, even with Conversations off again", async () => {
-    await consoleCall("PUT", `/control/hubs/${NOCONV}/plugins`, { cookie, body: { plugins: { conversation: false } } });
     const admin = await mintSession(NOCONV, ADMIN);
+    await call("PUT", "/admin/hub/settings", host(NOCONV), { section: "plugins", values: { "plugin.conversation.enabled": false } }, admin);
     const code = String(100000 + Math.floor(Math.random() * 899999));
     await localRest("pending_verifications", {
       method: "POST",

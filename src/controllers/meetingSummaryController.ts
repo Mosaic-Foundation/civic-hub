@@ -81,7 +81,8 @@ import {
   type BrokenPublication,
 } from "../services/feedHealth.js";
 import { brokenLinkProblem } from "../jobs/describe.js";
-import { getSettingSync, getAdminEmailsSync } from "../services/hubSettings.js";
+import { getSettingSync, getAdminEmailsSync, hubDisplayNameSync } from "../services/hubSettings.js";
+import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
 import { KEYS } from "../models/hubSettings.js";
 import { processJurisdiction } from "../config/hub.js";
 
@@ -326,12 +327,12 @@ async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
       ? `completed with ${outcome.failed} failure(s)`
       : "needs your attention";
 
-  const subject = `[Civic Hub] Meeting summary cron ${headline}`;
+  const subject = `[${hubDisplayNameSync()}] Meeting summaries: ${headline}`;
   const failureLines = outcome.failures
     .map((f) => `<li><code>${f.source_id}</code>: ${f.error}</li>`)
     .join("\n");
   const html = `
-    <p>The meeting summary cron ${headline}.</p>
+    <p>The latest check for new meeting summaries ${headline}.</p>
     <p><strong>Why you're getting this:</strong> ${reason}</p>
     ${failureLines ? `<ul>${failureLines}</ul>` : ""}
     ${
@@ -360,8 +361,8 @@ async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
        Skipped existing: ${outcome.skippedExisting} |
        Failed: ${outcome.failed} |
        Duration: ${outcome.duration_ms}ms</p>
-    <p>Run it by hand to see the full trace:<br/>
-       <code>npx tsx scripts/diagnoseMeetingSummary.ts</code></p>
+    <p>You can check the source address under Settings, Plugins, Meeting summaries.
+       If it still fails after that, reply to ${PLATFORM_CONTACT_EMAIL}.</p>
   `;
 
   for (const to of recipients) {

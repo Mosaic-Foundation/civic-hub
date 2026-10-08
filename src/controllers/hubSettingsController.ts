@@ -41,6 +41,8 @@ import {
 } from "../shared/hubSettingsSections.js";
 import { documentSettingDefault, documentTemplate } from "../services/hubDocuments.js";
 import { getUser } from "../modules/civic.auth/index.js";
+import { renameHub } from "../db/hubs.js";
+import { RENAME_FOLLOWERS, SETTING_LABELS, consoleOwnsHandoverKeys, renameFollowers } from "../shared/settingOwners.js";
 
 export interface HubSettingsResponse {
   hub: {
@@ -70,6 +72,13 @@ export interface HubSettingsResponse {
   platform: { from_address: string; postal_address: EffectivePostalAddress };
   /** Document keys that have a shared default to restore. */
   restorable: string[];
+  /**
+   * True while the hub is a demo: the platform's console may also set what
+   * residents see (the Handover panel), so the page says so (review R10).
+   */
+  console_may_edit: boolean;
+  /** After a save: what else changed with it (a rename's followers), in words. Absent otherwise. */
+  follow_on?: string;
 }
 
 async function loadHubSettings(): Promise<HubSettingsResponse> {
@@ -105,7 +114,9 @@ async function loadHubSettings(): Promise<HubSettingsResponse> {
     }),
   );
   for (const entry of Object.values(changed)) {
-    if (entry.by) entry.by = names.get(entry.by) ?? null;
+    // The console records "console:<email>"; the page names it for what it is.
+    if (entry.by?.startsWith("console:")) entry.by = "the platform operator";
+    else if (entry.by) entry.by = names.get(entry.by) ?? null;
   }
 
   const restorable = EDITABLE_SETTING_KEYS.filter((key) => {
@@ -129,6 +140,7 @@ async function loadHubSettings(): Promise<HubSettingsResponse> {
       postal_address: await effectivePostalAddress(hubId),
     },
     restorable,
+    console_may_edit: consoleOwnsHandoverKeys(hub?.mode),
   };
 }
 
@@ -215,7 +227,12 @@ export async function handlePutHubSettings(req: Request, res: Response): Promise
 
     const actor = getAuthUser(res);
     const hubId = currentHubId();
-    await setSettings(hubId, entries, actor.id);
+
+    // A new hub name carries to the operator, the email sender name and the
+    // registry name where they still read the old one (review R11).
+    const followOn = await renameFollowOn(hubId, entries);
+    await setSettings(hubId, [...entries, ...followOn.settings], actor.id);
+    if (followOn.registryName) await renameHub(hubId, followOn.registryName);
 
     // One line per save, naming who and which keys — never the values, which
     // include whole documents.
@@ -224,11 +241,44 @@ export async function handlePutHubSettings(req: Request, res: Response): Promise
         `(${entries.map((e) => e.key).join(", ")})`,
     );
 
-    res.json(await loadHubSettings());
+    const fresh = await loadHubSettings();
+    res.json(followOn.message ? { ...fresh, follow_on: followOn.message } : fresh);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });
   }
+}
+
+/**
+ * What a save of `identity.name` carries with it: each follower
+ * (RENAME_FOLLOWERS) still reading the old name, unless the same save sets
+ * it, and the registry name when it is the old name too.
+ */
+async function renameFollowOn(
+  hubId: string,
+  entries: ReadonlyArray<{ key: string; value: string }>,
+): Promise<{ settings: Array<{ key: string; value: string }>; registryName: string | null; message: string | null }> {
+  const none = { settings: [], registryName: null, message: null };
+  const named = entries.find((e) => e.key === KEYS.IDENTITY_NAME);
+  const hub = currentHub();
+  if (!named || !hub) return none;
+  const current: Record<string, string> = {};
+  for (const key of RENAME_FOLLOWERS) current[key] = (await getSetting(hubId, key)) ?? "";
+  const oldName = current[KEYS.IDENTITY_NAME].trim() || hub.name;
+  // Cleared: the hub falls back to the registry name, so nothing follows.
+  const newName = named.value.trim();
+  if (!newName) return none;
+  const followers = renameFollowers(oldName, newName, current, [KEYS.LEGAL_OPERATOR_NAME, KEYS.EMAIL_FROM_NAME]);
+  const settings = Object.entries(followers)
+    .filter(([key]) => !entries.some((e) => e.key === key))
+    .map(([key, value]) => ({ key, value }));
+  const registryName = hub.name.trim() === oldName.trim() && newName !== hub.name ? newName : null;
+  const labels = [...settings.map((e) => SETTING_LABELS[e.key] ?? e.key), ...(registryName ? ["the name in the hub registry"] : [])];
+  return {
+    settings,
+    registryName,
+    message: labels.length ? `Also changed to the new name, because they still read the old one: ${labels.join(", ")}.` : null,
+  };
 }
 
 export async function handleGetSettingTemplate(req: Request, res: Response): Promise<void> {

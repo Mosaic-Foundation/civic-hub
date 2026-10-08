@@ -127,6 +127,11 @@ export const KEYS = {
   PLUGIN_CONVERSATION_POLIS_URL: "plugin.conversation.polis_url",
   PLUGIN_WORDCLOUD_ONBOARDING_ID: "plugin.wordcloud.onboarding_id",
   PLUGIN_FEEDBACK_RECIPIENTS: "plugin.feedback.recipients",
+  // The address the Feedback page shows people to write to (2026-10-08,
+  // Adam; docs item #6). Unset = the hub's legal.contact_email, then the
+  // platform's (feedbackContactEmail in src/shared/platform.ts). PUBLIC: the
+  // page prints it. Not where submissions go: that is `recipients`.
+  PLUGIN_FEEDBACK_CONTACT_EMAIL: "plugin.feedback.contact_email",
 
   PLUGIN_DIGEST_ENABLED: "plugin.digest.enabled",
   PLUGIN_ADMIN_DIGEST_ENABLED: "plugin.admin_digest.enabled",
@@ -313,6 +318,8 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   // shipped in the bundle as VITE_ variables.
   KEYS.PLUGIN_CONVERSATION_POLIS_URL,
   KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID,
+  // 2026-10-08 (Adam): the Feedback page prints it.
+  KEYS.PLUGIN_FEEDBACK_CONTACT_EMAIL,
 ];
 
 const PUBLIC_KEYS: ReadonlySet<string> = new Set(PUBLIC_KEY_LIST);

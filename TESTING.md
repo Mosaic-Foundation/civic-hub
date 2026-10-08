@@ -597,6 +597,57 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   - turning a turn's marker or a real process's `is_sample` /
     `added_in_demo` on is refused (`processes_marker_guard`);
   - removal takes the sample review's remaining turn.
+- **Handing a hub over (session 4, 2026-10-08).** New
+  `tests/unit/handover.test.ts`: the console owns what residents see only in
+  demo; every handover key is also on the hub's Settings page; the console's
+  PATCH refuses `mode` and the governing body; `renameFollowers` (followers
+  that still read the old name follow, one made someone's own does not);
+  `describeFollowOn`; create's `ownership` validated in plain words;
+  `parseHandoverPatch`; `movedHostnames`; the page shell's
+  `movedToFromResponse` (http(s) origins only); the feedback address's
+  fallbacks and that the key is public; the invite's subject, links, mode line
+  and escaping. `tests/unit/hubResolver.test.ts` gains "moved hubs": 301 from
+  an old address with path and query, 308 for a write with the `/api` prefix
+  kept, `hub_moved` for the shell's `/hub-config`, an unused address still
+  "no hub", `redirect_to`, and a malformed `redirect_to` is never a Location.
+  `tests/api/control.test.ts` (changed on purpose): create with ownership
+  details (served publicly where public; postal address not), the first
+  admin's invite; a console rename on a demo hub carries to the site and the
+  from-name and leaves a custom operator; the mode and plugins writes answer
+  409; adding an admin needs a fresh code and invites only the one added; new
+  "handover": the panel edits a demo hub and a new hub name carries (registry
+  too), a bad value is refused in plain words, a moved hub's old address
+  redirects (301 with `Location`) and the shell gets `hub_moved`, and after
+  the hub leaves demo the panel answers 409 and a rename says what it did not
+  change; "Refresh samples" returns titles with no placeholders left. New
+  `tests/api/handover.test.ts` (a console-made hub, archived after): hub
+  Settings says the platform may also edit during demo and names console
+  writes "the platform operator"; a Settings → Identity rename carries to
+  the operator, from-name and registry, and not to an operator made the
+  admin's own; `plugin.feedback.contact_email` round-trips and is public;
+  adding an admin in hub People invites the new one only; the note goes
+  after demo. Changed on purpose: `sampleSeed.test.ts`, `hubKinds.test.ts`,
+  `jurisdictions.test.ts` (the governing body is read from `handover`, the
+  board label edited through the Handover panel, Conversations switched on
+  through the hub's Settings), `controlPlane.test.ts` (mode no longer a
+  console step-up), `jobRunDescribe.test.ts`, `meetingSummaryPrompt.test.ts`,
+  `waitlistNotification.test.ts` (the hub's noun and name). New
+  `tests/e2e/handover.spec.ts`: the Feedback page shows the platform's
+  address, then the hub's own once set; Settings → Copy says "Board label";
+  the console's Handover panel saves a rename and a postal address, says what
+  followed, and shows mode and plugins read-only with links.
+  `sampleSummary.spec.ts` reads the shorter demo bar. Needs the migration
+  `20261008000000` on the local stack (`supabase migration up --local`).
+  **The demo specs need `CIVIC_DEV_HUB=athens`** on the e2e API (launch
+  config `hub-e2e-1008-athens`): without it `localhost` is Floyd (beta) and
+  five specs skip. Running `tests/api` twice within 15 minutes locks out
+  `admin+athens@example.test` (the wrong-code tests), which fails
+  `sampleContent.test.ts`'s removal; clear `pending_verifications.locked_until`
+  for that address, or wait. Results: unit 112 files, 1,332; API 37 files,
+  450 passed and 7 skipped, both modes (449 in the full run plus
+  `sampleContent.test.ts` rerun on its own after the lockout above); Playwright 37 passed, 2 skipped (the
+  feed pill while Athens has Meeting summaries off, and, until Athens's
+  samples are reseeded after the API run removed them, the demo-bar spec).
 
   Its real reviewed process is left behind on purpose (append-only history;
   `pending_review`, out of every list). API then 438 passed, 7 skipped, both

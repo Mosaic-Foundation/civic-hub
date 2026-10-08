@@ -159,8 +159,8 @@ describe("creating a hub", () => {
       jurisdiction_custom: false,
       jurisdiction_code: `us-zz-${BASE}`,
       jurisdiction_name: `${Name} County, Zedland`,
-      governing_body: "County Commission",
     });
+    expect(res.body.handover.values["copy.governing_body_name"]).toBe("County Commission");
   });
 
   it("custom: a typed name and no OCD id", async () => {

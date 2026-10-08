@@ -13,7 +13,7 @@ import { forHub, type HubDb } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { sendEmail, unsentReason } from "../../utils/email.js";
 import { generateId } from "../../utils/id.js";
-import { getAdminEmailsSync, getSettingSync } from "../../services/hubSettings.js";
+import { getAdminEmailsSync, hubDisplayNameSync, getSettingSync } from "../../services/hubSettings.js";
 import { KEYS, asEmailList } from "../../models/hubSettings.js";
 import {
   FEEDBACK_CATEGORIES,
@@ -253,7 +253,7 @@ async function notifyOperator(s: FeedbackSubmission): Promise<void> {
     );
     return;
   }
-  const subject = `[Civic Hub feedback] ${s.category} — ${s.message.slice(0, 60)}`;
+  const subject = `[${hubDisplayNameSync()} feedback] ${s.category} — ${s.message.slice(0, 60)}`;
   const html = renderOperatorEmail(s);
   for (const to of recipients) {
     const result = await sendEmail({ to, subject, html });

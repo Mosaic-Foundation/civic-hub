@@ -17,6 +17,7 @@ import {
   OFFICIAL_TYPE_LABELS,
   type OfficialType,
 } from "../../../../src/shared/officialTypes";
+import hub from "../../config/hub";
 import { useHubSettings, useUnsavedChangesGuard } from "./HubSettingsContext";
 
 type OfficialRow = Official & { sends_briefs: boolean };
@@ -72,7 +73,8 @@ export default function OfficialsSection() {
         email: "",
         name: "",
         official_type: "board_of_supervisors",
-        official_title: OFFICIAL_TYPE_LABELS.board_of_supervisors,
+        // This hub's own governing body; blank when it has none.
+        official_title: hub.governing_body_name,
         sends_briefs: true,
       },
     ]);
@@ -208,9 +210,9 @@ export default function OfficialsSection() {
               // office's default, so switching offices does the
               // obvious thing — but never clobber a title the admin
               // has customized ("Supervisor, District 3").
-              const isDefaultTitle = OFFICIAL_TYPES.some(
-                (t) => OFFICIAL_TYPE_LABELS[t] === official.official_title,
-              );
+              const isDefaultTitle =
+                official.official_title === hub.governing_body_name ||
+                OFFICIAL_TYPES.some((t) => OFFICIAL_TYPE_LABELS[t] === official.official_title);
               updateOfficial(i, {
                 official_type: nextType,
                 ...(isDefaultTitle

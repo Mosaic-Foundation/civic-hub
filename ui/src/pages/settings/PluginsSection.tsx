@@ -28,6 +28,7 @@ import {
   BooleanField,
   ChoiceField,
   DateField,
+  EmailField,
   HourField,
   NumberField,
   ProcessField,
@@ -37,6 +38,7 @@ import {
 } from "./fields";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
 import hub from "../../config/hub";
+import { feedbackContactEmail } from "../../../../src/shared/platform";
 import { pluginSetup } from "../../config/plugins";
 import {
   adminGetJobRuns,
@@ -422,6 +424,23 @@ function settingsPanel(f: FormApi, id: PluginId): React.ReactNode | null {
             <>
               In the hub's time zone, set under{" "}
               <Link to="/admin/settings/identity">Identity</Link>.
+            </>
+          }
+        />
+      );
+    case "feedback":
+      return (
+        <EmailField
+          f={f}
+          k="plugin.feedback.contact_email"
+          label="Address on the Feedback page"
+          placeholder={feedbackContactEmail(undefined, f.data.values["legal.contact_email"])}
+          hint={
+            <>
+              Where the <a href="/feedback" target="_blank" rel="noreferrer">Feedback page</a> tells
+              people to write if they would rather email. Left empty, it shows the contact address
+              under <Link to="/admin/settings/legal">Legal</Link>, or the platform's when that is
+              empty too: the address shown here.
             </>
           }
         />

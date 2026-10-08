@@ -71,6 +71,8 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   // Jurisdictions (20260927000000): the reference list and the hub's link to it.
   { table: "jurisdictions", columns: ["ocd_id", "census_geoid", "state", "type", "official_name", "display_name"], owner: "control" },
   { table: "hubs", columns: ["jurisdiction_ocd_id", "jurisdiction_custom"], owner: "control" },
+  // A moved hub's old addresses redirect (20261008000000, review R47).
+  { table: "hubs", columns: ["previous_hostnames", "redirect_to"], owner: "core/hubRegistry" },
   { table: "processes", columns: ["id", "hub_id", "type", "status", "state", "review_id"], owner: "core/processService" },
   { table: "events", columns: ["id", "event_type", "process_id", "data"], owner: "core/eventStore" },
   // The digest selects by it (20260926030000).

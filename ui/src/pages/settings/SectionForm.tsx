@@ -14,6 +14,7 @@ import {
 } from "../../../../src/shared/hubSettingsSections";
 import { adminGetSettingTemplate, type HubSettings } from "../../services/api";
 import { useHubSettings, useUnsavedChangesGuard } from "./HubSettingsContext";
+import { HANDOVER_KEYS, SETTING_LABELS } from "../../../../src/shared/settingOwners";
 
 /** Values in the form for keys the hub has not set: what the site uses today. */
 const FORM_DEFAULTS: Readonly<Record<string, string>> = {
@@ -140,7 +141,8 @@ export default function SectionForm({
       const next = fromServer(fresh);
       setInitial(next);
       setDraft(next);
-      setMessage({ text: savedMessage, error: false });
+      // A rename says what followed it (review R11).
+      setMessage({ text: fresh.follow_on ? `${savedMessage} ${fresh.follow_on}` : savedMessage, error: false });
       onSaved?.(fresh);
     } catch (err) {
       setMessage({
@@ -183,6 +185,7 @@ export default function SectionForm({
     <section className="settings-section">
       <h2 className="settings-section-title">{title}</h2>
       {intro && <div className="settings-section-intro">{intro}</div>}
+      <SharedWithConsole data={data} keys={keys} />
 
       <form
         className="settings-form"
@@ -246,4 +249,28 @@ function LastChanged({ data, keys }: { data: HubSettings; keys: readonly string[
       Last changed {latest.by ? <>by {latest.by} </> : null}on {when}.
     </p>
   );
+}
+
+/**
+ * While the hub is a demo, the platform operator can also set some of what
+ * residents see, from the console's Handover panel (review R10, Adam
+ * 2026-10-08). Said on each section that holds one, naming them; once the hub
+ * leaves demo they are this hub's admins' alone and the note goes.
+ */
+function SharedWithConsole({ data, keys }: { data: HubSettings; keys: readonly string[] }) {
+  if (!data.console_may_edit) return null;
+  const shared = HANDOVER_KEYS.filter((k) => keys.includes(k)).map((k) => SETTING_LABELS[k] ?? k);
+  if (shared.length === 0) return null;
+  return (
+    <p className="form-hint settings-note" data-testid="console-shared-note">
+      While this hub is a demo, the platform operator can also set {listOf(shared)}, for example when
+      handing the hub over. Once it moves to beta, only this hub's admins can. The line under Save
+      says who changed this section last.
+    </p>
+  );
+}
+
+function listOf(items: readonly string[]): string {
+  const lower = items.map((s) => (s.startsWith('"') ? s : s.charAt(0).toLowerCase() + s.slice(1)));
+  return lower.length <= 1 ? lower.join("") : `${lower.slice(0, -1).join(", ")} and ${lower[lower.length - 1]}`;
 }

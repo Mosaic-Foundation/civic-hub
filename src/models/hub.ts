@@ -22,6 +22,13 @@ export interface Hub {
   protocol_hub_id: string;
   /** Lowercase host the resolver matches on. No scheme, no port. */
   hostname: string;
+  /**
+   * Where this hub lives now that it has left this deployment (20260924040000);
+   * null while it is served here. A hostname or a URL. The resolver redirects
+   * every request for the hub to it (review R47). Optional: rows built by
+   * tests and scripts may leave it out.
+   */
+  redirect_to?: string | null;
   name: string;
   /** Civic place code, or null when this hub has no civic geography. */
   jurisdiction_code: string | null;

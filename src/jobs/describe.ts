@@ -10,6 +10,10 @@
 // vote-close that closed nothing.
 
 import type { JobOutcome } from "./types.js";
+import { currentHub } from "../config/hubContext.js";
+import { getSettingSync } from "../services/hubSettings.js";
+import { KEYS } from "../models/hubSettings.js";
+import { hubKindOf, participantNoun } from "../shared/hubKind.js";
 import { RECORD_GRACE_DAYS, SOURCE_QUIET_DAYS } from "../modules/civic.meeting_summary/readiness.js";
 
 export type JobRunStatus = "ok" | "flagged" | "failed";
@@ -27,6 +31,12 @@ type Body = Record<string, unknown>;
 const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 const arr = <T = Record<string, unknown>>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** "40 neighbors" in the hub's own word for its people; "people" when no hub is in scope. */
+const people = (n: number): string =>
+  currentHub()
+    ? `${n} ${participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), n, getSettingSync(KEYS.COPY_RESIDENT_NOUN))}`
+    : `${n} ${n === 1 ? "person" : "people"}`;
 
 function status(problemsFailed: string[], problemsFlagged: string[]): JobRunStatus {
   if (problemsFailed.length > 0) return "failed";
@@ -136,12 +146,12 @@ function describeNewsSync(b: Body): JobRunDescription {
 }
 
 function describeDigest(b: Body): JobRunDescription {
-  const failed = num(b.failed_count) > 0 ? [`The digest could not be sent to ${plural(num(b.failed_count), "resident", "residents")}.`] : [];
+  const failed = num(b.failed_count) > 0 ? [`The digest could not be sent to ${people(num(b.failed_count))}.`] : [];
   // Held back by the hub's mode is a decision, not a failure (review #36):
   // it goes in the summary, never in the problems.
   const held = num(b.held_back_count);
   const reason = typeof b.held_back_reason === "string" ? b.held_back_reason : "of this hub's mode";
-  let summary = `Sent to ${plural(num(b.sent_count), "resident", "residents")}`;
+  let summary = `Sent to ${people(num(b.sent_count))}`;
   if (held > 0) summary += `; held back from ${held} because ${reason}`;
   return { status: status(failed, []), summary, problems: failed };
 }

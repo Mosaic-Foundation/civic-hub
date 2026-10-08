@@ -44,7 +44,7 @@ export async function handleRequestStepUpCode(
     return;
   }
   try {
-    await requestVerification(user.email);
+    await requestVerification(user.email, "step_up");
     res.json({
       message: `A confirmation code has been sent to ${user.email}.`,
     });

@@ -14,17 +14,38 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * What to say when the answer carries no message of the console's own: a
+ * proxy's error page, a dropped connection (review R52). Plain words, never
+ * a status code or an error class.
+ */
+export function plainFailure(status: number | null): string {
+  if (status === null) return "Could not reach the console. Check your connection and try again.";
+  if (status === 401) return "Your console session has ended. Sign in again.";
+  if (status === 403) return "The request was blocked before it reached the console. Wait a minute and try again.";
+  if (status === 404) return "The console could not find that.";
+  if (status >= 500) return "The server could not finish that, and the change may not have been made. Reload the page to see what was saved.";
+  return "That did not work. Reload the page and try again.";
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`/api/control${path}`, {
-    method,
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json", "X-Civic-Console": "1" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`/api/control${path}`, {
+      method,
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "X-Civic-Console": "1" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError(plainFailure(null), 0);
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const code = typeof data.error === "string" && /^[a-z_]+$/.test(data.error) ? data.error : undefined;
-    throw new ApiError(data.message ?? data.error ?? `Request failed (${res.status})`, res.status, code);
+    // A code ("step_up_required") is for the page to act on, not to show: its message, or plain words.
+    const said = typeof data.message === "string" ? data.message : code ? undefined : data.error;
+    throw new ApiError(typeof said === "string" && said ? said : plainFailure(res.status), res.status, code);
   }
   return data as T;
 }
@@ -44,6 +65,7 @@ export interface Hub {
   created_at: string;
   archived_at: string | null;
   redirect_to: string | null;
+  previous_hostnames?: string[];
 }
 
 export interface HubConfig {
@@ -55,10 +77,20 @@ export interface HubConfig {
   jurisdiction_ocd_id: string | null;
   jurisdiction_custom: boolean;
   jurisdiction_type: string | null;
-  governing_body: string;
-  governing_body_short: string;
   status: string;
+  /** Read-only here: the hub's admins change it. */
   mode: string | null;
+  /** Addresses the hub moved from; each redirects to `hostname`. */
+  previous_hostnames: string[];
+}
+
+/** The keys the Handover panel edits (src/shared/settingOwners.ts HANDOVER_KEYS). */
+export interface HandoverView {
+  values: Record<string, string>;
+  changed: Record<string, { at: string; by: string | null }>;
+  /** False once the hub has left demo: read-only, with links to the hub's Settings. */
+  editable: boolean;
+  fallbacks: { postal_address: string; contact_email: string; feedback_email: string };
 }
 
 export interface PluginState {
@@ -70,6 +102,7 @@ export interface PluginState {
 export interface HubDetail {
   hub: Hub;
   config: HubConfig;
+  handover: HandoverView;
   plugins: PluginState[];
   admins: string[];
 }
@@ -163,18 +196,26 @@ export const api = {
       `/slug-suggestion?${new URLSearchParams({ name, ...(type ? { type } : {}), ...(state ? { state } : {}) }).toString()}`,
     ),
   createHub: (body: Record<string, unknown>) =>
-    request<HubDetail & { sample_content: { created: string[] } | { error: string } | null }>("POST", "/hubs", body),
+    request<HubDetail & { sample_content: { created: string[] } | { error: string } | null; message?: string | null }>(
+      "POST",
+      "/hubs",
+      body,
+    ),
   updateHub: (id: string, body: Record<string, unknown>) =>
-    request<HubDetail>("PATCH", `/hubs/${encodeURIComponent(id)}`, body),
-  setPlugins: (id: string, plugins: Record<string, boolean>, extra: Record<string, unknown> = {}) =>
-    request<HubDetail>("PUT", `/hubs/${encodeURIComponent(id)}/plugins`, { plugins, ...extra }),
+    request<HubDetail & { message?: string | null }>("PATCH", `/hubs/${encodeURIComponent(id)}`, body),
+  setHandover: (id: string, values: Record<string, string>) =>
+    request<HubDetail & { message?: string | null }>("PUT", `/hubs/${encodeURIComponent(id)}/handover`, { values }),
   setAdmins: (id: string, admins: string[], extra: Record<string, unknown> = {}) =>
-    request<HubDetail>("PUT", `/hubs/${encodeURIComponent(id)}/admins`, { admins, ...extra }),
+    request<HubDetail & { message?: string | null }>("PUT", `/hubs/${encodeURIComponent(id)}/admins`, { admins, ...extra }),
   archive: (id: string, extra: Record<string, unknown> = {}) =>
     request<HubDetail>("POST", `/hubs/${encodeURIComponent(id)}/archive`, extra),
   unarchive: (id: string) => request<HubDetail>("POST", `/hubs/${encodeURIComponent(id)}/unarchive`, {}),
   refreshSamples: (id: string) =>
-    request<{ refresh: SampleRefreshReport }>("POST", `/hubs/${encodeURIComponent(id)}/samples/refresh`, {}),
+    request<{ refresh: SampleRefreshReport; titles: Record<string, string> }>(
+      "POST",
+      `/hubs/${encodeURIComponent(id)}/samples/refresh`,
+      {},
+    ),
   exportHub: (id: string, extra: Record<string, unknown> = {}) =>
     request<HubExport>("POST", `/hubs/${encodeURIComponent(id)}/export`, extra),
   hubAdminAudit: (id: string) =>

@@ -13,12 +13,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getHubByHostname: vi.fn(),
   getHubBySlug: vi.fn(),
+  getHubByPreviousHostname: vi.fn(),
   fetchHubSettings: vi.fn(),
 }));
 
 vi.mock("../../src/db/hubs.js", () => ({
   getHubByHostname: mocks.getHubByHostname,
   getHubBySlug: mocks.getHubBySlug,
+  getHubByPreviousHostname: mocks.getHubByPreviousHostname,
   listActiveHubs: vi.fn(),
   invalidateHubCache: vi.fn(),
 }));
@@ -41,6 +43,7 @@ const {
   devHubSlugFromHostname,
   devDefaultHubSlug,
   prefersJson,
+  movedOrigin,
 } = await import("../../src/middleware/hub.js");
 
 const { hubSlugRejectionReason, isReservedHubSlug, isWellFormedHubSlug } =
@@ -69,12 +72,19 @@ function fakeReq(opts: {
   path?: string;
   accept?: string;
   query?: Record<string, string>;
+  method?: string;
+  url?: string;
+  /** What api/index.ts keeps before stripping /api. */
+  civicOriginalUrl?: string;
 }) {
   const accept = opts.accept ?? "*/*";
   return {
     headers: { host: opts.host },
     hostname: opts.host.split(":")[0],
     path: opts.path ?? "/",
+    method: opts.method ?? "GET",
+    originalUrl: opts.url ?? opts.path ?? "/",
+    ...(opts.civicOriginalUrl ? { civicOriginalUrl: opts.civicOriginalUrl } : {}),
     query: opts.query ?? {},
     accepts(types: string[]) {
       // A browser asks for text/html explicitly and wins with it; anything
@@ -91,8 +101,14 @@ function fakeRes() {
     body: undefined as unknown,
     type: "",
     headers: {} as Record<string, string>,
+    redirect: null as { status: number; location: string } | null,
   };
   const res = {
+    redirect(status: number, location: string) {
+      state.statusCode = status;
+      state.redirect = { status, location };
+      return res;
+    },
     status(code: number) {
       state.statusCode = code;
       return res;
@@ -125,6 +141,8 @@ beforeEach(() => {
   mocks.getHubBySlug.mockReset();
   mocks.getHubByHostname.mockResolvedValue(null);
   mocks.getHubBySlug.mockResolvedValue(null);
+  mocks.getHubByPreviousHostname.mockReset();
+  mocks.getHubByPreviousHostname.mockResolvedValue(null);
   mocks.fetchHubSettings.mockReset();
   mocks.fetchHubSettings.mockResolvedValue({});
   process.env.NODE_ENV = "development";
@@ -332,5 +350,67 @@ describe("hub slugs", () => {
     expect(isWellFormedHubSlug("has_underscore")).toBe(false);
     expect(isWellFormedHubSlug("a".repeat(33))).toBe(false); // too long
     expect(isWellFormedHubSlug("a".repeat(32))).toBe(true);
+  });
+});
+
+// A hub that moves keeps its old links working (review R47, session 4).
+describe("moved hubs", () => {
+  const moved = () => hub({ id: "athens", hostname: "athens.civic.social", previous_hostnames: ["athens-demo.civic.social"] });
+
+  it("redirects an old address to the new one, path and query kept", async () => {
+    mocks.getHubByPreviousHostname.mockResolvedValue(moved());
+    const req = fakeReq({ host: "athens-demo.civic.social", accept: "text/html", path: "/process/p1", url: "/process/p1?x=1" });
+    const res = fakeRes();
+    const next = vi.fn();
+    await resolveHub(req, res as never, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.state.redirect).toEqual({ status: 301, location: "https://athens.civic.social/process/p1?x=1" });
+  });
+
+  it("keeps the /api prefix Vercel stripped, and a write keeps its method (308)", async () => {
+    mocks.getHubByPreviousHostname.mockResolvedValue(moved());
+    const req = fakeReq({
+      host: "athens-demo.civic.social",
+      method: "POST",
+      path: "/process/p1/action",
+      url: "/process/p1/action",
+      civicOriginalUrl: "/api/process/p1/action",
+    });
+    const res = fakeRes();
+    await resolveHub(req, res as never, vi.fn());
+    expect(res.state.redirect).toEqual({ status: 308, location: "https://athens.civic.social/api/process/p1/action" });
+  });
+
+  it("answers the page shell's /hub-config with hub_moved, which a cross-origin fetch can read", async () => {
+    mocks.getHubByPreviousHostname.mockResolvedValue(moved());
+    const req = fakeReq({ host: "athens-demo.civic.social", path: "/hub-config" });
+    const res = fakeRes();
+    await resolveHub(req, res as never, vi.fn());
+    expect(res.state.statusCode).toBe(404);
+    expect(res.state.body).toEqual({ error: "hub_moved", location: "https://athens.civic.social" });
+  });
+
+  it("still says no hub for an address nobody used", async () => {
+    const req = fakeReq({ host: "never.civic.social" });
+    const res = fakeRes();
+    await resolveHub(req, res as never, vi.fn());
+    expect(res.state.body).toEqual({ error: "no_hub" });
+  });
+
+  it("sends a hub that left the deployment (redirect_to) to where it lives now", async () => {
+    mocks.getHubByHostname.mockResolvedValue(hub({ redirect_to: "https://civic.example.org/" }));
+    const req = fakeReq({ host: "floyd.civic.social", accept: "text/html", path: "/about", url: "/about" });
+    const res = fakeRes();
+    const next = vi.fn();
+    await resolveHub(req, res as never, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.state.redirect).toEqual({ status: 301, location: "https://civic.example.org/about" });
+  });
+
+  it("works out the new origin", () => {
+    expect(movedOrigin(hub({ redirect_to: "civic.example.org" }) as never, "floyd.civic.social")).toBe("https://civic.example.org");
+    expect(movedOrigin(hub() as never, "floyd.civic.social")).toBeNull();
+    expect(movedOrigin(hub() as never, "old.civic.social")).toBe("https://floyd.civic.social");
+    expect(movedOrigin(hub({ redirect_to: "javascript:alert(1)" }) as never, "x")).toBeNull();
   });
 });

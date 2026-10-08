@@ -1,7 +1,7 @@
 import { sendEmail, unsentReason } from "../../utils/email.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
 import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
-import { getSettingSync } from "../../services/hubSettings.js";
+import { getSettingSync, hubDisplayNameSync } from "../../services/hubSettings.js";
 import { KEYS } from "../../models/hubSettings.js";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).
@@ -35,7 +35,9 @@ async function send(input: {
   html: string;
   text: string;
 }): Promise<void> {
-  const result = await sendEmail(input);
+  // Every subject names the hub, so a person on several hubs can tell them apart.
+  const subject = `[${hubDisplayNameSync()}] ${input.subject}`;
+  const result = await sendEmail({ ...input, subject });
   if (result.held_back) {
     console.log(`[review/email] "${input.subject}" to ${input.to}: ${unsentReason(result)}`);
   } else if (!result.sent) {

@@ -1810,6 +1810,10 @@ export interface HubSettings {
   };
   /** Document keys with a shared default to restore. */
   restorable: string[];
+  /** While the hub is a demo, the platform's console may also set what residents see. */
+  console_may_edit: boolean;
+  /** After a save: what else it changed (a rename's followers), in words. */
+  follow_on?: string;
 }
 
 export function adminGetHubSettings(): Promise<HubSettings> {
@@ -1864,6 +1868,8 @@ export interface HubPeople {
   board_emails: string[];
   /** The roster is still the deployment's CIVIC_ADMIN_EMAILS bootstrap. */
   admins_from_env: boolean;
+  /** After a save that added admins: who got the invite email, in words. */
+  invite_message?: string | null;
 }
 
 export function adminGetHubPeople(): Promise<HubPeople> {

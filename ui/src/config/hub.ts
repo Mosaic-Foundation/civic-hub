@@ -29,6 +29,7 @@
  */
 
 import { getLoadedHubConfig, setting } from "./hubConfig";
+import { feedbackContactEmail } from "../../../src/shared/platform";
 import { hubKindOf, participantNoun, personLabel, type HubKind } from "../../../src/shared/hubKind";
 import {
   defaultBetaBanner,
@@ -356,6 +357,15 @@ const hub = {
 
   get contact_email(): string {
     return setting("legal.contact_email") ?? "";
+  },
+
+  /**
+   * Where the Feedback page tells people to write (2026-10-08, Adam): the
+   * hub's own feedback address, else its contact address, else the
+   * platform's. Never empty.
+   */
+  get feedback_email(): string {
+    return feedbackContactEmail(setting("plugin.feedback.contact_email"), setting("legal.contact_email"));
   },
 
   /**

@@ -29,7 +29,7 @@ numbers below, or just grep the heading.
 | DB client (service role, the thing tenancy replaces) | `src/db/client.ts`; only `src/db/`, `scripts/`, `tests/` may import it (`eslint.config.js`, `civic/raw-client`) |
 | Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |
 | Local Supabase stack (ports, auth, seed) | `supabase/config.toml`, `supabase/seed.sql` |
-| Migrations (73 files, 36 tables; non-additive: `20260926005000`, and `20260927010000` which drops the audit log's hub FK) | `supabase/migrations/` |
+| Migrations (75 files, 36 tables; non-additive: `20260926005000`, and `20260927010000` which drops the audit log's hub FK) | `supabase/migrations/` |
 | Scheduled jobs | `src/jobs/registry.ts` (the one list; `vercel.json` checked against it, `npm run jobs:crontab`), runners `src/jobs/runners.ts`, per-hub loop `src/jobs/runJob.ts` + `src/services/cronHubs.ts`, routes `src/routes/jobRoutes.ts` |
 | Scheduled-job run log: what each outcome means, recording, last-run route, admin digest section | `src/jobs/describe.ts`, `src/services/jobRuns.ts` (table `job_runs`, `20260929000000`), `GET /admin/hub/jobs/runs`, `src/modules/civic.admin_digest/service.ts` |
 | Meeting-summary readiness (when a meeting may be summarized) and quality flags | `src/modules/civic.meeting_summary/readiness.ts`, `effectiveQualityFlag` in `service.ts` |
@@ -74,6 +74,12 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Handing a hub over (2026-10-08, session 4)**: ownership at create, the
+  console's Handover panel (`PUT /control/hubs/:id/handover`), who writes
+  which setting (`src/shared/settingOwners.ts`), renames carry, the admin
+  invite (`src/services/adminInvite.ts`), `plugin.feedback.contact_email`,
+  moved addresses redirect (`hubs.previous_hostnames`, `20261008000000`) —
+  top of HANDOFF (grep the heading)
 - **Demo hubs stay current, every kind, visitors' submissions (2026-10-07, sixth
   part, session 3b)**: `src/services/sampleRefresh.ts`, the `sample_refresh`
   job, console "Refresh samples", school/organization/issue sample sets,

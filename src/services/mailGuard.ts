@@ -67,10 +67,10 @@ export interface MailDecision {
 }
 
 /**
- * What a message is, where that changes who may receive it. Only a sign-in
- * code does today; everything else is held to the mode rule.
+ * What a message is, where that changes who may receive it. A sign-in code
+ * and an admin invite do; everything else is held to the mode rule.
  */
-export type MailPurpose = "sign_in_code";
+export type MailPurpose = "sign_in_code" | "admin_invite";
 
 /**
  * The addresses a non-live hub may write to: the people who run it, and the
@@ -96,6 +96,11 @@ export function mailDecision(recipient: string, purpose?: MailPurpose): MailDeci
   const mode = hubModeSync();
   if (mode === "live") return { send: true };
   if (purpose === "sign_in_code") return { send: true };
+  // An admin invite goes only to an address that has just been put on the
+  // admin roster (src/services/adminInvite.ts), which this rule allows; the
+  // request's settings snapshot was read before that write, so it is not on
+  // the list here yet (2026-10-08).
+  if (purpose === "admin_invite") return { send: true };
 
   const to = recipient.trim().toLowerCase();
   if (allowedRecipients().has(to)) return { send: true };

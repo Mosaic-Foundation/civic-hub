@@ -21,7 +21,7 @@ import {
 import { sendAnnouncementReceipt } from "../modules/civic.announcement/receipt.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
-import { hubName } from "../config/hub.js";
+import { hubDisplayNameSync } from "../services/hubSettings.js";
 import {
   createProcess,
   getAllProcesses,
@@ -202,7 +202,7 @@ export async function handleCreateAnnouncement(
             (res.locals.authorName as string | null | undefined) ?? null,
           postedAt: record.createdAt,
           publicUrl: `${uiBaseUrl()}/announcement/${record.id}`,
-          hubLabel: hubName(),
+          hubLabel: hubDisplayNameSync(),
         },
         user.email,
       );

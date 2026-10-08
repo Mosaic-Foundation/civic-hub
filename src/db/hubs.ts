@@ -26,9 +26,11 @@ interface CacheEntry<T> {
 /** Keyed by hostname. A miss is cached too, so an unknown host is cheap. */
 const byHostname = new Map<string, CacheEntry<Hub | null>>();
 const bySlug = new Map<string, CacheEntry<Hub | null>>();
+/** Keyed by an address a hub has moved from. Misses cached too: this runs only after a hostname miss. */
+const byPreviousHostname = new Map<string, CacheEntry<Hub | null>>();
 
 const COLUMNS =
-  "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, space_did, space_type, status, mode, created_at, updated_at";
+  "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, space_did, space_type, status, mode, created_at, updated_at, redirect_to";
 
 function fresh<T>(entry: CacheEntry<T> | undefined): entry is CacheEntry<T> {
   return entry !== undefined && entry.expiresAt > Date.now();
@@ -46,6 +48,7 @@ function remember<T>(map: Map<string, CacheEntry<T>>, key: string, value: T): T 
 export function invalidateHubCache(): void {
   byHostname.clear();
   bySlug.clear();
+  byPreviousHostname.clear();
 }
 
 /**
@@ -73,6 +76,31 @@ export async function getHubByHostname(hostname: string): Promise<Hub | null> {
   const hub = (data as Hub | null) ?? null;
   if (hub) remember(bySlug, hub.id, hub);
   return remember(byHostname, key, hub);
+}
+
+/**
+ * The hub that used to answer on this hostname and has moved (review R47):
+ * `hubs.previous_hostnames` contains it. Null when none did, or when the read
+ * fails — including on a database without the column yet, where the
+ * resolver then answers "no hub here" exactly as it did before.
+ */
+export async function getHubByPreviousHostname(hostname: string): Promise<Hub | null> {
+  const key = hostname.trim().toLowerCase();
+  const cached = byPreviousHostname.get(key);
+  if (fresh(cached)) return cached.value;
+
+  const { data, error } = await getDb()
+    .from("hubs")
+    .select(COLUMNS)
+    .contains("previous_hostnames", [key])
+    .limit(1);
+
+  if (error) {
+    console.error(`[hubs] lookup by previous hostname "${key}" failed: ${error.message}`);
+    return null;
+  }
+  const hub = ((data ?? []) as Hub[])[0] ?? null;
+  return remember(byPreviousHostname, key, hub);
 }
 
 /**
@@ -123,6 +151,17 @@ export async function listActiveHubs(): Promise<Hub[]> {
  */
 export async function setHubMode(hubId: string, mode: string): Promise<void> {
   const { error } = await getDb().from("hubs").update({ mode }).eq("id", hubId);
+  if (error) throw new Error(error.message);
+  invalidateHubCache();
+}
+
+/**
+ * Rename a hub in the registry: the one other registry write a hub's own
+ * admin makes, when their new hub name replaces a registry name that still
+ * matched the old one (review R11, src/controllers/hubSettingsController.ts).
+ */
+export async function renameHub(hubId: string, name: string): Promise<void> {
+  const { error } = await getDb().from("hubs").update({ name }).eq("id", hubId);
   if (error) throw new Error(error.message);
   invalidateHubCache();
 }

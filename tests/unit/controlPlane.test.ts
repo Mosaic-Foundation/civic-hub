@@ -89,10 +89,9 @@ describe("the operator", () => {
 });
 
 describe("step-up", () => {
-  it("is needed to move, pause or change the mode of a hub; not to rename it or resume it", () => {
+  it("is needed to move or pause a hub; not to rename it or resume it (its mode is its admins', session 4)", () => {
     expect(configChangeNeedsStepUp({ hostname: "x.example.org" })).toBe(true);
     expect(configChangeNeedsStepUp({ status: "suspended" })).toBe(true);
-    expect(configChangeNeedsStepUp({ mode: "live" })).toBe(true);
     expect(configChangeNeedsStepUp({ name: "New" })).toBe(false);
     expect(configChangeNeedsStepUp({ status: "active" })).toBe(false);
   });

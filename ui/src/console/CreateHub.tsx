@@ -24,6 +24,7 @@ import { PLUGIN_NAMES } from "./pluginNames";
 import { DEFAULT_HUB_BANNER } from "../../../src/shared/platform";
 import { HUB_KINDS, affiliationClause, type HubKind } from "../../../src/shared/hubKind";
 import { SPLIT_STATES, suggestedTimeZone } from "../../../src/shared/stateTimeZones";
+import { PLATFORM_CONTACT_EMAIL } from "../../../src/shared/platform";
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$/;
 
@@ -97,6 +98,13 @@ export default function CreateHub() {
     governing_body_short: "",
     timezone: "",
     admin_email: "",
+    // Who answers for the hub (review R48). Empty = the suggestion or the platform's.
+    operator_name: "",
+    contact_email: "",
+    who_runs_this: "",
+    from_name: "",
+    postal_address: "",
+    feedback_email: "",
     mode: "demo" as HubMode,
     sample_content: true,
   });
@@ -271,12 +279,29 @@ export default function CreateHub() {
                 jurisdiction_custom: choice.kind === "custom",
                 sample_content: form.sample_content && samplesAvailable,
                 plugins,
+                // Untouched suggestions are submitted as shown; empty fields fall back on the hub.
+                ownership: {
+                  "legal.operator_name": form.operator_name || name,
+                  "email.from_name": form.from_name || name,
+                  "legal.contact_email": form.contact_email,
+                  "legal.who_runs_this": form.who_runs_this,
+                  "email.postal_address": form.postal_address,
+                  "plugin.feedback.contact_email": form.feedback_email || form.contact_email,
+                },
               });
               const seeded = created.sample_content;
               if (seeded && "error" in seeded) {
                 window.alert(
                   `The hub was created, but its sample content could not be added: ${seeded.error}\n\n` +
                     `Run scripts/seed-sample-content.ts --hub ${created.hub.id} to try again.`,
+                );
+              }
+              const invites = (created as { invites?: { not_sent?: Array<{ email: string; reason: string }> } }).invites;
+              if (invites?.not_sent?.length) {
+                window.alert(
+                  `The hub was created, but the admin invite could not be emailed to ${invites.not_sent
+                    .map((n) => `${n.email} (${n.reason})`)
+                    .join(", ")}. Tell them yourself, or remove and add them again on the hub's page.`,
                 );
               }
               go({ name: "hub", id: created.hub.id });
@@ -515,6 +540,75 @@ export default function CreateHub() {
           </details>
 
           <fieldset>
+            <legend>Who runs it</legend>
+            <p className="cx-muted cx-small">
+              What residents see about who answers for the hub. You can change these on the hub's page until its admins
+              move it out of demo; after that they are theirs, in the hub's Settings.
+            </p>
+            <div className="cx-two">
+              <label className="cx-field">
+                <span>Operated by</span>
+                <SuggestInput value={form.operator_name} suggestion={name} onChange={(v) => set("operator_name", v)} />
+                <small className="cx-muted">
+                  In the legal documents: a person, a group or an office.
+                  <SuggestNote value={form.operator_name} suggestion={name} />
+                </small>
+              </label>
+              <label className="cx-field">
+                <span>Contact address</span>
+                <input
+                  type="email"
+                  value={form.contact_email}
+                  onChange={(e) => set("contact_email", e.target.value.trim())}
+                  placeholder={PLATFORM_CONTACT_EMAIL}
+                />
+                <small className="cx-muted">Where the documents tell people to write. Empty: the platform's address.</small>
+              </label>
+            </div>
+            <label className="cx-field">
+              <span>"Who runs this site"</span>
+              <textarea rows={3} value={form.who_runs_this} onChange={(e) => set("who_runs_this", e.target.value)} />
+              <small className="cx-muted">
+                Opens the Privacy Policy and the Terms. Empty: the shared paragraph, which says the hub is not run by local
+                government. Write one if that is not true.
+              </small>
+            </label>
+            <div className="cx-two">
+              <label className="cx-field">
+                <span>Email from name</span>
+                <SuggestInput value={form.from_name} suggestion={name} onChange={(v) => set("from_name", v)} />
+                <small className="cx-muted">
+                  The sender name on the hub's emails.
+                  <SuggestNote value={form.from_name} suggestion={name} />
+                </small>
+              </label>
+              <label className="cx-field">
+                <span>Feedback address</span>
+                <SuggestInput
+                  value={form.feedback_email}
+                  suggestion={form.contact_email}
+                  onChange={(v) => set("feedback_email", v.trim())}
+                  placeholder={PLATFORM_CONTACT_EMAIL}
+                />
+                <small className="cx-muted">
+                  On the Feedback page. Empty: the contact address.
+                  <SuggestNote value={form.feedback_email} suggestion={form.contact_email} />
+                </small>
+              </label>
+            </div>
+            <label className="cx-field">
+              <span>Postal address</span>
+              <textarea
+                rows={2}
+                value={form.postal_address}
+                onChange={(e) => set("postal_address", e.target.value)}
+                placeholder="Empty: the platform's address"
+              />
+              <small className="cx-muted">In the footer of digests, which anti-spam law asks for.</small>
+            </label>
+          </fieldset>
+
+          <fieldset>
             <legend>People and access</legend>
             <label className="cx-field">
               <span>First admin</span>
@@ -526,7 +620,8 @@ export default function CreateHub() {
                 placeholder="name@example.org"
               />
               <small className="cx-muted">
-                Their email. They sign in with a real code, even on a demo hub, and run the hub's Settings.
+                Their email. They get an email saying they are the admin, with a link and the first steps. They sign
+                in with a real code, even on a demo hub, and run the hub's Settings.
               </small>
             </label>
             <div className="cx-field" role="radiogroup" aria-label="Who can join">

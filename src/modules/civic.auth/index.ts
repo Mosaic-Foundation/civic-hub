@@ -127,6 +127,8 @@ export function normalizeFullName(raw: unknown): string {
  */
 export async function requestVerification(
   email: string,
+  // "step_up" is a fresh code to confirm a change (adminStepUp.ts), not a sign-in.
+  purpose: "sign_in" | "step_up" = "sign_in",
 ): Promise<{ message: string; no_email?: true }> {
   const normalizedEmail = email.trim().toLowerCase();
 
@@ -248,8 +250,11 @@ export async function requestVerification(
   const hubDisplayName = hubDisplayNameSync();
   const result = await sendEmail({
     to: normalizedEmail,
-    subject: `Your ${hubDisplayName} sign-in code`,
-    html: renderOtpEmail(code, hubDisplayName),
+    subject:
+      purpose === "step_up"
+        ? `${hubDisplayName}: your code to confirm a change`
+        : `Your ${hubDisplayName} sign-in code`,
+    html: renderOtpEmail(code, hubDisplayName, purpose),
     // Through the mode guard on every mode: it goes only to the address that
     // asked (mailGuard.ts). This is what lets an official sign in on a demo.
     purpose: "sign_in_code",
@@ -292,8 +297,10 @@ export async function requestVerification(
   return { message: "Verification code sent" };
 }
 
-function renderOtpEmail(code: string, rawHubName: string): string {
-  return renderCodeEmail(code, rawHubName);
+function renderOtpEmail(code: string, rawHubName: string, purpose: "sign_in" | "step_up"): string {
+  return purpose === "step_up"
+    ? renderCodeEmail(code, rawHubName, "confirm your change", "Your code to confirm a change")
+    : renderCodeEmail(code, rawHubName);
 }
 
 /**

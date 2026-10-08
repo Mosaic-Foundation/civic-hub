@@ -33,7 +33,7 @@ export function formatBriefEmail(
   deps: BriefEmailDeps,
 ): { subject: string; html: string; text: string } {
   const c = state.content;
-  const subject = `Civic Brief: ${c.title}`;
+  const subject = `${deps.hubLabel} Civic Brief: ${c.title}`;
 
   const participation = c.participation_label
     ? c.participation_label
