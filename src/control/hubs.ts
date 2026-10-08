@@ -9,6 +9,7 @@
 
 import { DEFAULT_HUB_BANNER } from "../shared/platform.js";
 import { getDb } from "../db/client.js";
+import { readAll } from "../db/readAll.js";
 import { invalidateHubCache } from "../db/hubs.js";
 import { invalidateHubSettings } from "../db/hubSettingsStore.js";
 import {
@@ -93,10 +94,18 @@ function refreshCaches(hubId: string): void {
 
 // --- Reading -----------------------------------------------------------------
 
+/** Every hub, paged: one read stops at PostgREST's 1,000 rows, and new hubs come last. */
 export async function listHubs(): Promise<ControlHub[]> {
-  const { data, error } = await getDb().from("hubs").select(HUB_COLUMNS).order("created_at", { ascending: true });
-  if (error) throw new Error(`hubs read failed: ${error.message}`);
-  return (data ?? []) as ControlHub[];
+  return readAll(async (from, to) => {
+    const { data, error } = await getDb()
+      .from("hubs")
+      .select(HUB_COLUMNS)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw new Error(`hubs read failed: ${error.message}`);
+    return (data ?? []) as ControlHub[];
+  });
 }
 
 export async function getHub(id: string): Promise<ControlHub | null> {

@@ -22,6 +22,7 @@
 //
 // GUARDRAIL: This module MUST NOT import from civic.vote or civic.proposals.
 
+import { randomBytes } from "node:crypto";
 import { forHub, HubDbError, type HubDb, type Row } from "../../db/forHub.js";
 import { generateId } from "../../utils/id.js";
 import {
@@ -435,7 +436,32 @@ export async function verifyCode(
     await consumePendingCode(normalizedEmail, code, pending);
   }
 
-  // --- Find or create the user, on this hub ---
+  const user = await findOrCreateVerifiedUser(normalizedEmail);
+
+  // --- Create a session ---
+  const token = generateToken();
+  const sessionExpires = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+
+  // Stamped with the hub it was minted on, by forHub. A session is a bearer
+  // credential, so without this a token from one hub would authenticate its
+  // holder on every other hub this deployment serves.
+  await hubDb.from("sessions").insert({
+    token,
+    user_id: user.id,
+    expires_at: sessionExpires,
+  });
+
+  return { token, user };
+}
+
+/**
+ * The account for a verified address on the hub in scope: found (and marked
+ * verified), or created. Race-safe: unique (hub_id, email) rejects a second
+ * insert, and the loser reads the winner's row. Used by sign-in and by the
+ * start page's handoff (createHandoffSession).
+ */
+async function findOrCreateVerifiedUser(normalizedEmail: string): Promise<User> {
+  const hubDb = db();
   const existing = await hubDb
     .from("users")
     .select("*")
@@ -498,20 +524,66 @@ export async function verifyCode(
     }
   }
 
-  // --- Create a session ---
-  const token = generateToken();
-  const sessionExpires = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+  return user;
+}
 
-  // Stamped with the hub it was minted on, by forHub. A session is a bearer
-  // credential, so without this a token from one hub would authenticate its
-  // holder on every other hub this deployment serves.
-  await hubDb.from("sessions").insert({
+// --- The start page's handoff (session 4b, 2026-10-08) ---
+//
+// A person who creates a hub on the start page lands on it signed in. Hub
+// sessions are bearer tokens each hub's page keeps for its own origin, so
+// nothing set on the start page reaches the hub: the start page (as the
+// service role, inside the new hub's scope) mints a HANDOFF session here, a
+// token that lives two minutes, and sends the browser to
+// https://<hub>/#handoff=<token>. The fragment never reaches a server or a
+// Referer. The hub's page swaps it for an ordinary session at once
+// (POST /auth/handoff → exchangeHandoff) and strips it from the address bar.
+//
+// A handoff token is not a session: getUserFromToken refuses it, so it can
+// only be exchanged, once.
+
+const HANDOFF_PREFIX = "handoff";
+const HANDOFF_TTL_MS = 2 * 60 * 1000;
+
+function isHandoffToken(token: string): boolean {
+  return token.startsWith(`${HANDOFF_PREFIX}_`);
+}
+
+/** Mint a handoff for this address on the hub in scope, creating its account. Returns the token. */
+export async function createHandoffSession(email: string): Promise<string> {
+  const user = await findOrCreateVerifiedUser(email.trim().toLowerCase());
+  const token = `${HANDOFF_PREFIX}_${randomBytes(24).toString("base64url")}`;
+  await db().from("sessions").insert({
     token,
     user_id: user.id,
-    expires_at: sessionExpires,
+    expires_at: new Date(Date.now() + HANDOFF_TTL_MS).toISOString(),
   });
+  return token;
+}
 
-  return { token, user };
+/**
+ * Spend a handoff token for an ordinary session on the hub in scope. The
+ * delete is the spend: of two requests with one token, one gets the row.
+ */
+export async function exchangeHandoff(handoff: string): Promise<{ token: string; user: User }> {
+  const invalid = new Error("This sign-in link has expired. Sign in with your email instead.");
+  if (typeof handoff !== "string" || !isHandoffToken(handoff)) throw invalid;
+  const hubDb = db();
+  const spent = await hubDb
+    .from("sessions")
+    .delete()
+    .eq("token", handoff)
+    .select<{ user_id: string; expires_at: string }>("user_id, expires_at");
+  const row = spent[0];
+  if (!row || Date.now() > Date.parse(row.expires_at)) throw invalid;
+  const found = await hubDb.from("users").select("*").eq("id", row.user_id).maybeSingle();
+  if (!found) throw invalid;
+  const token = generateToken();
+  await hubDb.from("sessions").insert({
+    token,
+    user_id: row.user_id,
+    expires_at: new Date(Date.now() + SESSION_TTL_MS).toISOString(),
+  });
+  return { token, user: rowToUser(found) };
 }
 
 /**
@@ -594,6 +666,8 @@ export async function getUserFromToken(
   token: string,
 ): Promise<User | undefined> {
   if (!token) return undefined;
+  // A handoff token is exchanged once (exchangeHandoff), never used as a session.
+  if (isHandoffToken(token)) return undefined;
 
   // The hub filter is the point, not an optimisation. A token is valid only
   // on the hub it was minted on: a resident of a demo hub holding a session

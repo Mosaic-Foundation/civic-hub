@@ -176,6 +176,8 @@ jobs:
           # operator. tests/api/control.test.ts talks to it with Host set.
           CIVIC_CONSOLE_HOSTNAME: console.localhost
           CIVIC_CONSOLE_ADMIN_EMAIL: operator@example.test
+          # The start page (session 4b): tests/api/startPage.test.ts.
+          CIVIC_START_HOSTNAME: start.localhost
           CIVIC_ANON_SECRET: ci-only-anon-secret
           CRON_SECRET: ci-only-cron-secret
           # The leak harness walks /unsubscribe/digest with a real token for a

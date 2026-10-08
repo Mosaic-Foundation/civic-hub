@@ -4,6 +4,104 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Invite codes and the start page (session 4b) — 2026-10-08
+
+Adam can hand a trusted person a single-use code. That person creates their own demo hub at the start page and lands
+in it as its admin, signed in, without the console. Not pushed.
+
+- **Migration:** one, additive: `20261008010000_entitlements_start_page.sql`, five platform tables.
+- **New env var:** `CIVIC_START_HOSTNAME`.
+- **Dependencies:** none.
+- **Decisions:** BUILD-PLAN "Invite codes and the start page". Adam's four answers were all the recommended option:
+  - one person may redeem several codes;
+  - the start page's hostname is its own env var;
+  - "Who runs it" asks only for the operator and the contact address;
+  - the operator is emailed on each redemption.
+
+**Built:**
+1. **Invite codes in the console** (Invite codes tab; `src/control/entitlements.ts`, `ui/src/console/Invites.tsx`).
+   - Mint with an optional note and a lifetime (default 14 days, 1–90). The code is shown once with "Copy code and
+     link", and stored only as a SHA-256 hash.
+   - The list shows the last four characters, the note, status (unused / used / expired / revoked), and who used it
+     for which hub (linked). An unused code can be revoked.
+   - A code is an **entitlement** (`kind` hub.create, `quantity`, `used`, `expires_at`, `source` invite), so a payment
+     can later create the same row. Audited `invite.mint` and `invite.revoke`.
+2. **The start page** (`src/control/startRouter.ts`, `startAuth.ts`, `ui/start.html`, `ui/src/start/`).
+   - It runs on the control plane on its own hostname: `src/control/index.ts` routes it, and every route re-checks the
+     host. `start` is reserved, and `vercel.json` serves `start.html` on `start.civic.social` and
+     `start.dev.civic.social`.
+   - The steps: code → emailed sign-in code (platform sender) → a short form (kind, place, governing body and board
+     label, hub name, web address, time zone, operator, contact).
+   - The create goes through the console's own `createHub()`: demo mode, an address under the start page's parent
+     domain, the creator as the only admin, samples on, every plugin on. Then the creator is redirected to the hub.
+   - The JurisdictionPicker and SuggestInput are shared with the console. The picker has a `plain` mode with no OCD
+     ids for visitors.
+3. **The code is spent only once the hub exists.**
+   - The create claims the code with a conditional update, which also decides a race.
+   - Then it creates the hub and redeems the code.
+   - A failed create releases the claim.
+4. **Landing signed in.**
+   - `createHandoffSession()` in `civic.auth` mints a single-use handoff session that lives two minutes, inside the new
+     hub's scope.
+   - It travels in the URL fragment. The hub page's AuthContext swaps it at once via `POST /auth/handoff` and strips
+     it from the address bar.
+   - `getUserFromToken` refuses handoff tokens. `verifyCode`'s find-or-create of the user moved into a shared helper,
+     `findOrCreateVerifiedUser`.
+5. **Safety.**
+   - Every invalid, malformed, used, expired or revoked code gets one message.
+   - Rate limits are in the database (`start_attempts`, hashed buckets): 10 codes per IP an hour; 6 sign-in codes per
+     IP and 5 per address; 20 sign-ins per IP; 10 creates per IP. The hub's code rules (throttle, lockout) still
+     apply.
+   - Audit rows `invite.redeem`, `hub.create` (`via: "start"`) and `hub.sample_seed` record the creator as the actor.
+   - The creator gets the session-4 admin invite, and the operator gets "Invite code used: <hub>".
+6. **Also fixed:** the console's `listHubs()` pages past 1,000 rows (`readAll()`). Locally, test residue had pushed
+   new hubs off the console's list.
+
+**Tests:**
+- Unit: 113 files, 1,351.
+- API: 38 files. Hub token: 473 passed, 7 skipped. Service role: 472 passed, 7 skipped, and one failure, the
+  `listHubs` cap (item 6). After the fix `control.test.ts` passed 27/27 on its own; the whole pass was not rerun.
+- Playwright: 39 passed, 2 skipped.
+- New: `tests/unit/startPage.test.ts`, `tests/api/startPage.test.ts` (23 tests), `tests/e2e/startPage.spec.ts`
+  (Adam's colleague's path end to end).
+- TESTING.md has the details and how to run the e2e spec, which needs a `vite preview` build with `/api` proxied.
+
+**For Adam to set up (dev):**
+- Set `CIVIC_START_HOSTNAME=start.dev.civic.social` on `civic-hub-dev` (Production and Preview as dev uses), then
+  redeploy.
+- No DNS or domain change is needed for dev: `start.dev.civic.social` is one label under the `*.dev.civic.social`
+  wildcard already on `civic-hub-dev`, and its certificate is the wildcard's.
+- Migrate dev with `20261008010000`.
+- Production: leave `CIVIC_START_HOSTNAME` unset. `start.civic.social` is likewise covered by `*.civic.social` when
+  Adam opens it. Until then the page there says it is not open.
+
+**Open:**
+- **Prerequisites for open sign-up are still not done:** the console and start page in their own Vercel project, and
+  the hub app off the service-role key (BUILD-PLAN). Codes are for people Adam knows.
+- A hub landed on via the handoff still asks for name, residency and terms on first participation (the hub's own
+  sign-up gate). That is by design, but the creator meets it once.
+- `hubs.listActive()` (jobs' per-hub loop) also reads one page; fine below 1,000 active hubs.
+- If the database fails between creating the hub and recording the redemption, the hub exists and the code's claim
+  lapses after two minutes, so the code could be used again. The server log says so; the audit row would be missing
+  too.
+- The docs site has no page for the start page or invite codes yet.
+
+**For Adam, on dev after you push:**
+1. Migrate dev, set `CIVIC_START_HOSTNAME=start.dev.civic.social`, and redeploy.
+2. console.dev → Invite codes: mint one for your colleague with a note. Copy code and link.
+3. In a private window, open start.dev.civic.social. A wrong code gets the generic message; the real one goes to
+   sign-in.
+4. Sign in with an address that isn't your console address; the code comes by email from the platform sender.
+5. Fill the form: pick the place, keep the suggestions, choose an address. Create.
+6. You land on `<slug>.dev.civic.social` signed in. The header has Admin, the samples are there, and the inbox has
+   "You're now an admin of …".
+7. Your inbox has "Invite code used: …". The console's Invite codes shows it used, with the hub linked, and the audit
+   log has `invite.redeem` and `hub.create` by the colleague's address.
+8. Mint another code, revoke it, and try it on the start page: it gets the generic message.
+9. On a phone, the start page and form fit the width.
+
+---
+
 ## Handing a hub over: ownership at create, a Handover panel, one writer per setting (session 4) — 2026-10-08
 
 Review R48, R37, R11, R10, R38, R47, R39, R49, R52, docs item #6, and the 3b leftovers. Not pushed. **One migration**

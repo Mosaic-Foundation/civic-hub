@@ -3,6 +3,7 @@
 // Minimal email-based auth flow:
 //   POST /auth/request-code  — send verification code to email
 //   POST /auth/verify        — verify code, get session token
+//   POST /auth/handoff       — swap the start page's handoff token for a session
 //   POST /auth/residency     — affirm Floyd County residency
 //   GET  /auth/me            — get current user from session token
 //   POST /auth/logout        — destroy session
@@ -11,6 +12,7 @@ import { Request, Response } from "express";
 import {
   requestVerification,
   verifyCode,
+  exchangeHandoff,
   affirmResidency,
   acceptLegalTerms,
   updateDisplayName,
@@ -77,6 +79,35 @@ export async function handleVerify(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(400).json({ error: message });
+  }
+}
+
+/**
+ * POST /auth/handoff
+ * Body: { handoff: string }
+ *
+ * The start page (session 4b) sends a person who has just created this hub
+ * here with a two-minute handoff token in the URL fragment; the page swaps
+ * it for an ordinary session. Same answer shape as /auth/verify.
+ */
+export async function handleHandoff(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const { handoff } = (req.body ?? {}) as { handoff?: unknown };
+  try {
+    const result = await exchangeHandoff(typeof handoff === "string" ? handoff : "");
+    const authorship = await resolveAuthorship(result.user?.email);
+    res.json({
+      ...result,
+      role: authorship?.role ?? null,
+      author_label: authorship?.label ?? null,
+      official_type: authorship?.official?.type ?? null,
+      official_title: authorship?.official?.title ?? null,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    res.status(401).json({ error: message });
   }
 }
 

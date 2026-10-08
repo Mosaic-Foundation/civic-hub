@@ -118,6 +118,26 @@ export function verifyCode(
   return request("POST", "/auth/verify", { email, code });
 }
 
+/**
+ * The start page (session 4b) lands a hub's creator here with
+ * #handoff=<token>: a two-minute, single-use token, swapped for a session.
+ * Same answer as verifyCode.
+ */
+export function exchangeHandoff(handoff: string): ReturnType<typeof verifyCode> {
+  return request("POST", "/auth/handoff", { handoff });
+}
+
+/**
+ * The handoff token in the address, if any, removed from the address bar at
+ * once so it is not bookmarked, shared or kept in history.
+ */
+export function takeHandoffFromLocation(): string | null {
+  const match = /^#handoff=([^&]+)$/.exec(window.location.hash);
+  if (!match) return null;
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+  return decodeURIComponent(match[1]);
+}
+
 export function affirmResidency(
   token: string,
   fullName?: string,

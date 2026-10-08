@@ -21,6 +21,7 @@ import { defaultHubName, jurisdictionCodeFor } from "../../../src/shared/jurisdi
 import { fillSampleText } from "../../../src/shared/hubCopy";
 import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
 import { PLUGIN_NAMES } from "./pluginNames";
+import { SuggestInput, SuggestNote } from "./SuggestInput";
 import { DEFAULT_HUB_BANNER } from "../../../src/shared/platform";
 import { HUB_KINDS, affiliationClause, type HubKind } from "../../../src/shared/hubKind";
 import { SPLIT_STATES, suggestedTimeZone } from "../../../src/shared/stateTimeZones";
@@ -33,52 +34,6 @@ const MODES: Array<{ id: HubMode; label: string; hint: string }> = [
   { id: "beta", label: "Beta", hint: "Real codes by email; only the allow list may join, everyone else is offered the waitlist." },
   { id: "live", label: "Live", hint: "Real codes by email; open to anyone." },
 ];
-
-/**
- * A text field that shows a suggestion as grey text while it is empty. Tab
- * or Enter on the empty field accepts it (Tab then stays, so the text can be
- * edited); typing replaces it. The parent submits `value || suggestion`.
- */
-function SuggestInput({
-  value,
-  suggestion,
-  onChange,
-  placeholder,
-  className,
-  ...rest
-}: {
-  value: string;
-  suggestion: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
-  const suggesting = value === "" && suggestion !== "";
-  return (
-    <input
-      {...rest}
-      value={value}
-      placeholder={suggesting ? suggestion : placeholder}
-      className={[className, suggesting ? "cx-suggesting" : ""].filter(Boolean).join(" ") || undefined}
-      onChange={(e) => onChange(e.target.value)}
-      onKeyDown={(e) => {
-        if (suggesting && (e.key === "Tab" || e.key === "Enter") && !e.shiftKey) {
-          e.preventDefault();
-          onChange(suggestion);
-        }
-      }}
-    />
-  );
-}
-
-/** The hint under a field that holds a suggestion. */
-function SuggestNote({ value, suggestion }: { value: string; suggestion: string }) {
-  if (value !== "" || suggestion === "") return null;
-  return (
-    <span className="cx-suggest-note">
-      {" "}Suggested: saved as shown if you leave it. Tab makes it text you can edit; typing replaces it.
-    </span>
-  );
-}
 
 /** The place as it reads mid-sentence: no state. */
 function placeWithoutState(name: string): string {

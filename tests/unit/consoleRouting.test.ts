@@ -14,16 +14,36 @@ const CONSOLE_HOSTS = [
   "console.dev.civic.social", //      dev, since 2026-09-27
   "console-civic-hub-dev.vercel.app", // dev, before the dev wildcard
 ];
-const NOT_CONSOLE = ["floyd.civic.social", "athens.dev.civic.social", "civic-hub-dev.vercel.app", "consolexcivic.social"];
+const START_HOSTS = [
+  "start.civic.social", //      production (CIVIC_START_HOSTNAME unset there until Adam opens it)
+  "start.dev.civic.social", //  dev, since 2026-10-08 (session 4b)
+];
+const NOT_CONSOLE = [
+  "floyd.civic.social",
+  "athens.dev.civic.social",
+  "civic-hub-dev.vercel.app",
+  "consolexcivic.social",
+  ...START_HOSTS,
+];
+const NOT_START = [
+  "floyd.civic.social",
+  "athens.dev.civic.social",
+  "startxcivic.social",
+  "start.floyd.civic.social",
+  ...CONSOLE_HOSTS,
+];
 
-type Rule = { has?: Array<{ type: string; value: string }> };
-const consoleRules: Rule[] = [...vercel.redirects, ...vercel.rewrites].filter((r: Rule) =>
+type Rule = { destination: string; has?: Array<{ type: string; value: string }> };
+const hostRules: Rule[] = [...vercel.redirects, ...vercel.rewrites].filter((r: Rule) =>
   r.has?.some((h) => h.type === "host"),
 );
+const consoleRules = hostRules.filter((r) => r.destination === "/console.html");
+const startRules = hostRules.filter((r) => r.destination === "/start.html");
 
 describe("vercel.json serves the console on its hostnames only", () => {
-  it("has the redirect and the rewrite", () => {
+  it("has the redirect and the rewrite, and no other host rule but the start page's", () => {
     expect(consoleRules).toHaveLength(2);
+    expect(hostRules).toHaveLength(consoleRules.length + startRules.length);
   });
 
   for (const rule of consoleRules) {
@@ -33,4 +53,26 @@ describe("vercel.json serves the console on its hostnames only", () => {
       for (const h of NOT_CONSOLE) expect(pattern.test(h), h).toBe(false);
     });
   }
+});
+
+describe("vercel.json serves the start page on its hostnames only (session 4b)", () => {
+  it("has the redirect and the rewrite", () => {
+    expect(startRules).toHaveLength(2);
+  });
+
+  for (const rule of startRules) {
+    const pattern = new RegExp(rule.has!.find((h) => h.type === "host")!.value);
+    it(`${pattern} matches every start hostname, no hub and no console`, () => {
+      for (const h of START_HOSTS) expect(pattern.test(h), h).toBe(true);
+      for (const h of NOT_START) expect(pattern.test(h), h).toBe(false);
+    });
+  }
+
+  it("comes before the catch-all that serves the hub app", () => {
+    const rewrites = vercel.rewrites as Rule[];
+    const last = rewrites.findIndex((r) => r.destination === "/index.html");
+    for (const rule of startRules.filter((r) => rewrites.includes(r))) {
+      expect(rewrites.indexOf(rule)).toBeLessThan(last);
+    }
+  });
 });

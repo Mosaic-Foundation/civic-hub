@@ -5,6 +5,9 @@
 // request goes to the hub app and never reaches this directory's routes.
 // With no console hostname configured, this is the hub app, unchanged.
 //
+// The start page (session 4b): a request on CIVIC_START_HOSTNAME goes to
+// ./startRouter.ts, likewise never to the hub app. Unset = no start page.
+//
 // Imported only by the entry points (api/index.ts, src/index.ts). The hub
 // app, src/app.ts and everything it pulls in, may not import src/control/
 // (eslint rule civic/control-boundary): this directory is the one web
@@ -13,16 +16,22 @@
 // BUILD-PLAN-multi-tenant.md → Phase 5 → "Deferred, not done".)
 
 import express, { type Express } from "express";
-import { isConsoleHost } from "./config.js";
+import { isConsoleHost, isStartHost } from "./config.js";
 import { controlRouter } from "./router.js";
+import { startRouter } from "./startRouter.js";
 
 export function withConsole(hubApp: Express): Express {
   const front = express();
   front.disable("x-powered-by");
   const control = controlRouter();
+  const start = startRouter();
   front.use((req, res, next) => {
     if (isConsoleHost(req.headers.host)) {
       control(req, res, next);
+      return;
+    }
+    if (isStartHost(req.headers.host)) {
+      start(req, res, next);
       return;
     }
     hubApp(req, res, next);

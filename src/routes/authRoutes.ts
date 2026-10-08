@@ -2,6 +2,7 @@
 //
 // POST   /auth/request-code  — request verification code
 // POST   /auth/verify        — verify code and get session
+// POST   /auth/handoff       — the start page's handoff → a session (session 4b)
 // POST   /auth/residency     — affirm Floyd County residency
 // POST   /auth/accept-tos    — record legal acceptance
 // GET    /auth/me            — get current user
@@ -12,6 +13,7 @@ import { Router } from "express";
 import {
   handleRequestCode,
   handleVerify,
+  handleHandoff,
   handleAffirmResidency,
   handleAcceptTos,
   handleUpdateProfile,
@@ -24,6 +26,7 @@ const router = Router();
 
 router.post("/request-code", handleRequestCode);
 router.post("/verify", handleVerify);
+router.post("/handoff", handleHandoff);
 router.post("/residency", handleAffirmResidency);
 router.post("/accept-tos", handleAcceptTos);
 router.get("/me", handleGetMe);

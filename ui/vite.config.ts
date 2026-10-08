@@ -7,11 +7,13 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
-      // Two pages: the hub app, and the super admin's console
-      // (src/console/, served on the console hostname by vercel.json).
+      // Three pages: the hub app, the super admin's console (src/console/,
+      // served on the console hostname by vercel.json), and the start page
+      // (src/start/, on the start hostname; session 4b).
       input: {
         main: resolve(__dirname, 'index.html'),
         console: resolve(__dirname, 'console.html'),
+        start: resolve(__dirname, 'start.html'),
       },
     },
   },
@@ -19,7 +21,9 @@ export default defineConfig({
     // The console calls /api/control/* on its own origin. Locally that is
     // http://console.localhost:5173/console.html, proxied to the API with the
     // Host header kept, so the API sees the console hostname
-    // (CIVIC_CONSOLE_HOSTNAME=console.localhost). The hub app calls
+    // (CIVIC_CONSOLE_HOSTNAME=console.localhost). The start page likewise:
+    // http://start.localhost:5173/start.html with
+    // CIVIC_START_HOSTNAME=start.localhost. The hub app calls
     // http://localhost:3000 directly and does not use this.
     proxy: {
       '/api': {

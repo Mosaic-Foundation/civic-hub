@@ -74,6 +74,12 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Invite codes and the start page (2026-10-08, session 4b)**: entitlements
+  (`src/control/entitlements.ts`), the console's Invite codes tab, the start
+  page on `CIVIC_START_HOSTNAME` (`src/control/startRouter.ts`,
+  `startAuth.ts`, `ui/src/start/`), the handoff session
+  (`createHandoffSession`, `POST /auth/handoff`), DB rate limits
+  (`start_attempts`), `20261008010000` — top of HANDOFF (grep the heading)
 - **Handing a hub over (2026-10-08, session 4)**: ownership at create, the
   console's Handover panel (`PUT /control/hubs/:id/handover`), who writes
   which setting (`src/shared/settingOwners.ts`), renames carry, the admin

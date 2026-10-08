@@ -648,6 +648,77 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   `sampleContent.test.ts` rerun on its own after the lockout above); Playwright 37 passed, 2 skipped (the
   feed pill while Athens has Meeting summaries off, and, until Athens's
   samples are reseeded after the API run removed them, the demo-bar spec).
+- **Invite codes and the start page (session 4b, 2026-10-08).** The API
+  server needs **`CIVIC_START_HOSTNAME=start.localhost`** as well as the
+  console's two variables (CI sets all three), and the migration
+  `20261008010000` (`supabase migration up --local`).
+  - New `tests/unit/startPage.test.ts`:
+    - codes are `XXXX-XXXX-XXXX` without misread letters, never repeat, and
+      read loosely (case, spaces, O→0, I/L→1);
+    - the hash never contains the code;
+    - status order (revoked, used, expired, unused);
+    - mint defaults (14 days, 1–90);
+    - the start host is its env var only (unset = none), its parent
+      domain, and `startCreateBody` fixing demo, the address and the admin;
+    - `start` is reserved.
+  - `consoleRouting.test.ts` now also holds `vercel.json`'s two start-page
+    rules to the start hostnames, and checks they come before the hub
+    catch-all.
+  - `exportManifest.test.ts` counts 42 tables (the five new ones are
+    platform data, not exported).
+  - New `tests/api/startPage.test.ts` (fixture `tests/fixtures/startCall.ts`;
+    each test uses its own made-up `X-Forwarded-For`, so the hour's
+    rate-limit buckets start empty on every run; hubs archived after):
+    - **Routing:** the start routes are 404 on a hub's and the console's
+      host, and hub and console routes are 404 on the start host.
+    - **Requests:** writes need `X-Civic-Start`, and the steps need a session.
+    - **Codes:** mint (shown once, hashed, audited), list (no code, no hash),
+      revoke (once, audited), console session required.
+    - **Refusals:** wrong, malformed, expired, revoked and used codes all
+      get the same 403 and message.
+    - **Rate limits:** 10 codes per IP; 5 sign-in codes per address from any
+      IP; 6 per IP; hashed buckets; 5 wrong sign-in codes lock the address.
+    - **Happy path:** the creator is the only admin and the contact, the
+      operator is as typed, the code is used with a redemption, the audit
+      rows have the creator as actor, the start session ends, and the handoff
+      gives an admin session once.
+    - **Handoff limits:** it is refused as a bearer token, on another hub,
+      after it expires, and for an ordinary token.
+    - **Failed creates** (reserved slug, taken slug, a place with no place)
+      leave the code unused, and it works after.
+    - **Fixed by the server:** mode, address and admin sent by the form are
+      ignored.
+    - **Races:** two racing creates make one hub (201 and 403).
+    - **Revoked after sign-in:** refused, and the page is told.
+    - **Second code:** one person redeems a second code (Adam).
+    - **Sign-in first:** the form refuses a session not yet signed in.
+  - New `tests/e2e/startPage.spec.ts`, Adam's first use:
+    - the console mints a code, shown once, and lists it unused;
+    - on the start page a wrong code gets the generic message, then the real
+      one typed in lower case is accepted, followed by the sign-in;
+    - the form picks a listed county, sees the suggestions, sets the address
+      and operator, and creates;
+    - the browser lands on `<slug>.localhost` with the fragment stripped,
+      with a session in which it is admin;
+    - the console then shows the code used, by whom, with the hub linked,
+      and no Revoke.
+    - Another test checks the start page fits 375 px.
+  - **The e2e spec needs one origin for hub, console and start page with
+    `/api` proxied, keeping Host:** a production build behind `vite preview`
+    (`proxy: { '/api': { target: 'http://localhost:<api>', changeOrigin:
+    false, rewrite: p => p.replace(/^\/api/, '') } }`). Run it with
+    `CIVIC_E2E_UI_ORIGIN=http://localhost:<preview port>` and
+    `CIVIC_E2E_API_BASE=http://localhost:<preview port>/api`, with the API's
+    `CIVIC_UI_BASE_URL` set to the same origin (the handoff link's port).
+    The Vite dev server can't do this: the hub app calls `localhost:3000`
+    directly there.
+  - **Changed on purpose:** the console's `listHubs()` now pages with
+    `readAll()`. The local stack had 1,049 hubs from test runs, and the
+    console's list (so `control.test.ts` "lists it") stopped at
+    PostgREST's 1,000.
+  - Results: unit 113 files, 1,351; API 38 files: hub token 473 passed, 7 skipped; service role 472
+    passed, 7 skipped and the `listHubs` failure above, `control.test.ts` 27/27 after the fix;
+    Playwright 39 passed, 2 skipped (the same two as before).
 
   Its real reviewed process is left behind on purpose (append-only history;
   `pending_review`, out of every list). API then 438 passed, 7 skipped, both

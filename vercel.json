@@ -16,6 +16,17 @@
       "has": [
         {
           "type": "host",
+          "value": "^(start\\.civic\\.social|start\\.dev\\.civic\\.social)$"
+        }
+      ],
+      "destination": "/start.html",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
           "value": "^(console\\.civic\\.social|console\\.dev\\.civic\\.social|console-civic-hub-dev\\.vercel\\.app)$"
         }
       ],
@@ -24,6 +35,16 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/((?!api/|api$|assets/).*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "^(start\\.civic\\.social|start\\.dev\\.civic\\.social)$"
+        }
+      ],
+      "destination": "/start.html"
+    },
     {
       "source": "/((?!api/|api$|assets/).*)",
       "has": [

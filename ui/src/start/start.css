@@ -1,0 +1,17 @@
+/* The start page's few additions to the console's styles (session 4b). */
+.st-card { max-width: 440px; }
+.st-code { letter-spacing: 0.12em; font-size: 1.1rem; }
+.st-page { width: 100%; max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; }
+.st-head { margin-bottom: 16px; }
+.st-demo-note {
+  margin: 4px 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--cx-radius);
+  background: var(--cx-surface-2);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.st-leave { margin: 16px 0 0; text-align: center; font-size: 0.9rem; }
+@media (max-width: 560px) {
+  .st-page .cx-two { grid-template-columns: 1fr; }
+}

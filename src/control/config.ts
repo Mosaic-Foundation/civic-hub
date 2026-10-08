@@ -74,3 +74,37 @@ export function isProductionDatabase(): boolean {
     return false;
   }
 }
+
+// --- The start page (session 4b, 2026-10-08) ---------------------------------
+//
+//   CIVIC_START_HOSTNAME  where a person with an invite code creates their own
+//                         hub: start.civic.social in production,
+//                         start.dev.civic.social on dev, start.localhost
+//                         locally. Unset = no start page on this deployment
+//                         (Adam: production stays unset until he opens it).
+//                         vercel.json's start rules must name each one;
+//                         tests/unit/consoleRouting.test.ts checks.
+
+export function startHostname(): string | null {
+  const raw = process.env.CIVIC_START_HOSTNAME?.trim();
+  return raw ? normalizeHostname(raw) : null;
+}
+
+/** Did this request arrive on the start page's hostname? False when there is none. */
+export function isStartHost(hostHeader: string | undefined | null): boolean {
+  const host = startHostname();
+  return host !== null && normalizeHostname(hostHeader) === host;
+}
+
+/**
+ * The domain a hub made on the start page lives under: the start page's own
+ * parent. start.civic.social → civic.social, start.dev.civic.social →
+ * dev.civic.social, start.localhost → localhost. Null with no start page.
+ */
+export function startHubDomain(): string | null {
+  const host = startHostname();
+  if (!host) return null;
+  const dot = host.indexOf(".");
+  const parent = dot >= 0 ? host.slice(dot + 1) : "";
+  return parent || null;
+}

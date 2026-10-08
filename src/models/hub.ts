@@ -162,6 +162,7 @@ export const RESERVED_HUB_SLUG_PURPOSES: Readonly<Record<string, string>> = {
   control: "reads as the control plane",
   superadmin: "reads as the super admin",
   platform: "reads as the platform itself",
+  start: "the start page, where an invited person creates a hub (start.civic.social)",
   // Services the platform may run later.
   status: "a future status page",
   docs: "future documentation",

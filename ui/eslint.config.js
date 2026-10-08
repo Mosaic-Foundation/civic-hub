@@ -26,10 +26,24 @@ export default defineConfig([
   // twin is civic/control-boundary in ../eslint.config.js).
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/console/**'],
+    ignores: ['src/console/**', 'src/start/**'],
     rules: {
       'no-restricted-imports': ['error', {
-        patterns: [{ group: ['**/console', '**/console/**'], message: 'The hub app may not import the super admin console (src/console/).' }],
+        patterns: [
+          { group: ['**/console', '**/console/**'], message: 'The hub app may not import the super admin console (src/console/).' },
+          { group: ['**/start', '**/start/**'], message: 'The hub app may not import the start page (src/start/).' },
+        ],
+      }],
+    },
+  },
+  // The start page (src/start/, start.html; session 4b) is a platform page
+  // like the console: it may use the console's form pieces and src/shared/,
+  // nothing of the hub app's.
+  {
+    files: ['src/start/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{ regex: '^\\.\\./(?!console/|\\.\\./\\.\\./src/shared/)', message: 'The start page imports only the console and src/shared/, nothing of the hub app.' }],
       }],
     },
   },

@@ -6,6 +6,7 @@ import HubList from "./HubList";
 import CreateHub from "./CreateHub";
 import HubDetailPage from "./HubDetail";
 import AuditLog from "./AuditLog";
+import Invites from "./Invites";
 
 type Session = { email: string | null; operator_configured: boolean };
 
@@ -49,6 +50,9 @@ export default function App() {
           <a href={href({ name: "hubs" })} aria-current={route.name === "hubs" || route.name === "hub" ? "page" : undefined}>
             Hubs
           </a>
+          <a href={href({ name: "invites" })} aria-current={route.name === "invites" ? "page" : undefined}>
+            Invite codes
+          </a>
           <a href={href({ name: "audit" })} aria-current={route.name === "audit" ? "page" : undefined}>
             Audit log
           </a>
@@ -72,6 +76,7 @@ export default function App() {
         {route.name === "new" && <CreateHub />}
         {route.name === "hub" && <HubDetailPage id={route.id} />}
         {route.name === "audit" && <AuditLog />}
+        {route.name === "invites" && <Invites />}
       </main>
     </div>
   );

@@ -8,6 +8,8 @@ import {
   clearToken,
   getMe,
   logoutApi,
+  exchangeHandoff,
+  takeHandoffFromLocation,
 } from "../services/auth";
 
 interface AuthState {
@@ -68,34 +70,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   >(null);
   const [loading, setLoading] = useState(true);
 
-  // Try to restore session from localStorage on mount
+  // Try to restore session from localStorage on mount. A creator arriving
+  // from the start page brings a handoff token instead (session 4b): swap it
+  // for a session first, then restore as usual.
   useEffect(() => {
-    const stored = getStoredToken();
-    if (stored) {
-      getMe(stored)
-        .then(({ user: u, role: r, author_label, official_type, official_title }) => {
-          setUser(u);
-          setRole(r ?? null);
-          setAuthorLabel(author_label ?? null);
-          setOfficial(
-            official_type && official_title
-              ? { type: official_type, title: official_title }
-              : null,
-          );
-          setToken(stored);
-        })
-        .catch((err) => {
-          const status = (err as { status?: number }).status;
-          if (status === 401 || status === 403) {
-            clearToken();
-          } else {
+    function restore() {
+      const stored = getStoredToken();
+      if (stored) {
+        getMe(stored)
+          .then(({ user: u, role: r, author_label, official_type, official_title }) => {
+            setUser(u);
+            setRole(r ?? null);
+            setAuthorLabel(author_label ?? null);
+            setOfficial(
+              official_type && official_title
+                ? { type: official_type, title: official_title }
+                : null,
+            );
             setToken(stored);
-          }
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
+          })
+          .catch((err) => {
+            const status = (err as { status?: number }).status;
+            if (status === 401 || status === 403) {
+              clearToken();
+            } else {
+              setToken(stored);
+            }
+          })
+          .finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+      }
     }
+
+    const handoff = takeHandoffFromLocation();
+    const ready = handoff
+      ? exchangeHandoff(handoff)
+          .then(({ token: t }) => storeToken(t))
+          .catch(() => undefined) // expired or spent: the page shows signed out
+      : Promise.resolve();
+    void ready.then(restore);
   }, []);
 
   // Global 401 handler: the API client dispatches "civic:auth-expired" when a

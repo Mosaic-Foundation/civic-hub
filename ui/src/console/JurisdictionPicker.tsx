@@ -11,6 +11,12 @@ import { useEffect, useId, useRef, useState } from "react";
 import { api, type Jurisdiction, type JurisdictionMatch } from "./api";
 import { REFERENCE_JURISDICTION_TYPES, stateOfOcdId, type ReferenceJurisdictionType } from "../../../src/shared/jurisdictionType";
 
+/** Where the picker reads the list: the console's API, or the start page's (session 4b). */
+export interface JurisdictionSource {
+  states: () => Promise<{ states: Jurisdiction[] }>;
+  searchJurisdictions: (state: string, type: string, q: string) => Promise<{ matches: JurisdictionMatch[] }>;
+}
+
 export type JurisdictionChoice =
   | { kind: "listed"; row: JurisdictionMatch }
   | { kind: "custom" }
@@ -27,6 +33,8 @@ export function JurisdictionPicker({
   hubId,
   optional = false,
   onTypeChange,
+  source = api,
+  plain = false,
 }: {
   value: JurisdictionChoice;
   onChange: (choice: JurisdictionChoice) => void;
@@ -42,6 +50,10 @@ export function JurisdictionPicker({
    * form asks for a type once (2026-10-06).
    */
   onTypeChange?: (type: ReferenceJurisdictionType | "") => void;
+  /** The console's API unless given (the start page passes its own). */
+  source?: JurisdictionSource;
+  /** For a visitor (the start page): no OCD ids or census codes. */
+  plain?: boolean;
 }) {
   const [states, setStates] = useState<Jurisdiction[] | null>(null);
   const [state, setState] = useState(value.kind === "listed" ? value.row.state : (stateOfOcdId(currentOcdId) ?? ""));
@@ -59,14 +71,14 @@ export function JurisdictionPicker({
   const chosen = value.kind === "listed" ? value.row : null;
 
   useEffect(() => {
-    api
+    source
       .states()
       .then((r) => setStates(r.states))
       .catch((e: Error) => {
         setStates([]);
         setLoadError(e.message);
       });
-  }, []);
+  }, [source]);
 
   // The type-ahead, debounced; answers that arrive out of order are dropped.
   const searching =
@@ -75,7 +87,7 @@ export function JurisdictionPicker({
     if (!searching) return;
     const n = ++seq.current;
     const t = window.setTimeout(() => {
-      api
+      source
         .searchJurisdictions(state, type, q)
         .then((r) => {
           if (n === seq.current) {
@@ -86,7 +98,7 @@ export function JurisdictionPicker({
         .catch(() => n === seq.current && setMatches([]));
     }, 150);
     return () => window.clearTimeout(t);
-  }, [state, type, q, searching]);
+  }, [state, type, q, searching, source]);
 
   const listLoaded = states !== null && states.length > 0;
   const shown = searching ? matches : [];
@@ -129,7 +141,7 @@ export function JurisdictionPicker({
           <input type="radio" name={`${listId}-source`} checked={custom} onChange={() => onChange({ kind: "custom" })} />
           <span>
             Other / not listed
-            <small className="cx-muted">A neighbourhood, a tribal nation, an association: type its name below. No OCD id.</small>
+            <small className="cx-muted">A neighbourhood, a tribal nation, an association: type its name below.{plain ? "" : " No OCD id."}</small>
           </span>
         </label>
       </div>
@@ -274,7 +286,14 @@ export function JurisdictionPicker({
             {open && state && type && q && shown.length === 0 && (
               <small className="cx-muted">Nothing matches. Check the type, or choose Other / not listed.</small>
             )}
-            {chosen ? (
+            {chosen && plain ? (
+              chosen.type === "cdp" && (
+                <small className="cx-muted">
+                  This is a census-designated place: it has no local government of its own; its residents are governed by
+                  the surrounding county or town.
+                </small>
+              )
+            ) : chosen ? (
               <small className="cx-muted">
                 <span className="cx-mono cx-break">{chosen.ocd_id}</span> · Census: {chosen.official_name} · GEOID{" "}
                 {chosen.census_geoid}

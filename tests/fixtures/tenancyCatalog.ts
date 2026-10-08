@@ -37,6 +37,16 @@ export const NOT_HUB_SCOPED: Readonly<Record<string, string>> = {
   control_sessions: "the super admin's sessions; platform, not hub, data; service role (src/control/) only",
   control_audit_log:
     "every super admin action, across hubs; a hub must not read another's rows or its own audit trail's platform view; append-only, service role (src/control/) only",
+  // Invite codes and the start page (20261008010000, session 4b, Adam
+  // 2026-10-08). Platform data: a right to create a hub belongs to a person
+  // before any hub exists. Deny-all RLS, no policy; src/control/ only.
+  entitlements:
+    "rights granted on the platform (an invite code to create one hub; a payment later); hashed codes; no hub exists yet; service role (src/control/) only",
+  entitlement_redemptions:
+    "each use of an entitlement (who, which hub), across hubs; service role (src/control/) only",
+  start_codes: "the start page's emailed sign-in codes, hashed; platform, not hub, data; service role (src/control/) only",
+  start_sessions: "start-page sessions, by token hash; platform, not hub, data; service role (src/control/) only",
+  start_attempts: "the start page's rate-limit counters (hashed IPs and emails); platform data; service role (src/control/) only",
   // Reference data (20260927000000, Adam 2026-09-27): the same list of US
   // jurisdictions for every hub. Deny-all RLS, no policy; the service role
   // (the console) may only SELECT; the loader writes as the owner.

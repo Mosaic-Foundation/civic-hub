@@ -18,13 +18,13 @@ import { listStates, searchJurisdictions, suggestSlug } from "./jurisdictions.js
 import { getHubBySlug } from "../db/hubs.js";
 import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { withHubScope } from "../config/hubContext.js";
-import { seedSampleContent, type SampleSeedReport } from "../services/sampleSeed.js";
 import { refreshSamples, type SampleRefreshReport } from "../services/sampleRefresh.js";
 import { describeJobRun } from "../jobs/describe.js";
 import { recordJobRun } from "../services/jobRuns.js";
 import { kindsWithSamples, samplePreviews, sampleTemplateTitles } from "../services/sampleTemplates.js";
 import { sampleNames } from "../services/sampleNames.js";
-import { describeInvites, sendAdminInvites, type InviteReport } from "../services/adminInvite.js";
+import { describeInvites } from "../services/adminInvite.js";
+import { inviteAdmins, seedSampleInHub } from "./inHub.js";
 import {
   CODE_SENT,
   ControlAuthError,
@@ -37,11 +37,21 @@ import {
   type ControlSession,
 } from "./auth.js";
 import {
+  DEFAULT_INVITE_DAYS,
+  EntitlementError,
+  MAX_INVITE_DAYS,
+  listEntitlements,
+  mintInvite,
+  parseMintInput,
+  revokeEntitlement,
+} from "./entitlements.js";
+import {
   consoleAdminEmail,
   consoleHostname,
   isConsoleHost,
   isProductionDatabase,
   platformDomain,
+  startHostname,
 } from "./config.js";
 import {
   ControlInputError,
@@ -114,7 +124,7 @@ function clearSessionCookie(req: Request, res: Response): void {
 }
 
 function fail(res: Response, err: unknown): void {
-  if (err instanceof ControlAuthError || err instanceof ControlInputError) {
+  if (err instanceof ControlAuthError || err instanceof ControlInputError || err instanceof EntitlementError) {
     res.status(err.status).json({ error: err.message });
     return;
   }
@@ -180,14 +190,6 @@ async function loadHub(req: Request, res: Response): Promise<ControlHub | null> 
   return hub;
 }
 
-/** Seed the sample content inside the hub's own scope, as a request for it would run. */
-async function seedSampleInHub(hubId: string): Promise<SampleSeedReport> {
-  const row = await getHubBySlug(hubId);
-  if (!row) throw new Error(`hub ${hubId} not found after create`);
-  const settings = await fetchHubSettings(hubId);
-  return withHubScope(row, settings, () => seedSampleContent());
-}
-
 /**
  * "Refresh samples" (2026-10-07): the daily sample refresh, now, for one demo
  * hub, plus any template the hub lacks. Recorded like the job's own run, in
@@ -206,20 +208,6 @@ async function refreshSamplesInHub(hubId: string): Promise<{ refresh: SampleRefr
     // says what it added by name (3b follow-up).
     return { refresh: report, titles: sampleTemplateTitles(sampleNames()) };
   });
-}
-
-/** Email the admin invite from inside the hub's scope (sender, link and mode are the hub's). */
-async function inviteAdmins(hubId: string, emails: readonly string[]): Promise<InviteReport> {
-  if (emails.length === 0) return { sent: [], not_sent: [] };
-  try {
-    const row = await getHubBySlug(hubId);
-    if (!row) throw new Error(`hub ${hubId} not found`);
-    const settings = await fetchHubSettings(hubId);
-    return await withHubScope(row, settings, () => sendAdminInvites(emails));
-  } catch (err) {
-    console.error(`[control] admin invite for ${hubId} failed`, err);
-    return { sent: [], not_sent: emails.map((email) => ({ email, reason: "The email could not be sent." })) };
-  }
 }
 
 async function hubDetail(hub: ControlHub) {
@@ -520,6 +508,52 @@ export function controlRouter(): Router {
       },
     });
     res.json(result);
+  }));
+
+  // --- Invite codes (session 4b, Adam 2026-10-08) ---
+  //
+  // A code lets one person create one demo hub on the start page
+  // (CIVIC_START_HOSTNAME). Shown once, at mint; stored hashed. Minting and
+  // revoking are audited; neither takes step-up (a code grants a demo hub,
+  // and revoking only takes a grant away).
+
+  r.get("/control/invites", route(async (_req, res) => {
+    res.json({
+      invites: await listEntitlements(),
+      start_hostname: startHostname(),
+      default_days: DEFAULT_INVITE_DAYS,
+      max_days: MAX_INVITE_DAYS,
+    });
+  }));
+
+  r.post("/control/invites", route(async (req, res) => {
+    const input = parseMintInput(req.body);
+    const { code, entitlement } = await mintInvite(input, actor(res));
+    await audited(res, {
+      actor: actor(res),
+      action: "invite.mint",
+      before: null,
+      after: {
+        entitlement_id: entitlement.id,
+        kind: entitlement.kind,
+        quantity: entitlement.quantity,
+        code_hint: entitlement.code_hint,
+        note: entitlement.note,
+        expires_at: entitlement.expires_at,
+      },
+    });
+    res.status(201).json({ code, invite: entitlement, start_hostname: startHostname() });
+  }));
+
+  r.post("/control/invites/:id/revoke", route(async (req, res) => {
+    const { before, after } = await revokeEntitlement(String(req.params.id), actor(res));
+    await audited(res, {
+      actor: actor(res),
+      action: "invite.revoke",
+      before: { entitlement_id: before.id, code_hint: before.code_hint, note: before.note, revoked_at: null },
+      after: { entitlement_id: after.id, revoked_at: after.revoked_at },
+    });
+    res.json({ invites: await listEntitlements() });
   }));
 
   // --- Audit log ---

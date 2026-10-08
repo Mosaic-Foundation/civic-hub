@@ -1547,6 +1547,76 @@ in one file, `src/shared/settingOwners.ts`, which the server and both UIs read.
   sentence; "resident" in job summaries and the assistant and meeting-summary
   prompts follows the hub's noun; "Refresh samples" names templates by title.
 
+### Invite codes and the start page (session 4b, 2026-10-08)
+
+Decided by Adam (the session prompt, and four answers in the session,
+2026-10-08). HANDOFF "Invite codes and the start page" has what was built.
+
+The goal: Adam hands a trusted person a single-use code, and that person
+creates their own demo hub from a web page and lands in it as its admin,
+signed in, without the console. Later a payment grants the same right, so
+the code is an **entitlement, not a password**.
+
+- **Entitlements** (`20261008010000`, additive; `src/control/entitlements.ts`).
+  A row says what it allows (`kind`, today only `hub.create`), how many
+  (`quantity`, `used`), until when (`expires_at`), and where it came from
+  (`source`: `invite` now, `payment` later). Kind and source are checked in
+  code, not by constraints, so billing needs no migration to add `payment`.
+  Each use is a row of `entitlement_redemptions` (who, `created_hub_id`, when).
+  An invite's code is 12 Crockford base32 characters (`XXXX-XXXX-XXXX`),
+  shown once at mint and stored only as a SHA-256 hash; the list shows its
+  last four. Default lifetime 14 days, 1–90 allowed, with an optional note.
+  Mint and revoke need a console session, no step-up; both are audited
+  (`invite.mint`, `invite.revoke`).
+- **The start page runs on the control plane**, like the console: its own
+  hostname `CIVIC_START_HOSTNAME` (Adam: a new env var, not derived; unset =
+  no start page, so production stays closed until he sets it), routed by
+  `src/control/index.ts` to `src/control/startRouter.ts`, every route
+  re-checking the host, never reaching the hub app. `start` is a reserved
+  slug. `vercel.json` serves `start.html` on `start.civic.social` and
+  `start.dev.civic.social` (`tests/unit/consoleRouting.test.ts`).
+- **The flow.** Invite code → a start session (HttpOnly, SameSite=Strict
+  cookie, 2 hours, `X-Civic-Start` on writes) → an emailed code from the
+  platform sender to any address → the form → `createHub()` (the console's)
+  → `https://<slug>.<start's parent>/#handoff=<token>`.
+  - The form asks for: kind, place, governing body and board label, hub
+    name, web address, time zone, and of "Who runs it" only the operator and
+    the contact address (Adam). The contact defaults to the sign-in address.
+  - The server fixes the rest: demo mode, the address under the start page's
+    parent domain, the creator as the only admin, sample content on where the
+    kind has samples, every plugin on.
+- **The code is spent only when the hub exists.** Claim (a conditional
+  update holding the row for two minutes, so one of two racing creates
+  wins), create, then redeem; a failed create releases the claim.
+- **Landing signed in.** Hub sessions are bearer tokens kept per origin, so
+  the start page mints, inside the new hub's scope, a single-use handoff
+  session that lives two minutes (`createHandoffSession` in
+  `civic.auth`). The token travels in the URL fragment (never sent to a
+  server or a Referer). The hub's page swaps it at once for an ordinary
+  session (`POST /auth/handoff`) and strips it from the address bar.
+  `getUserFromToken` refuses a handoff token, so it can only be exchanged.
+- **Safety.**
+  - One answer for every code that cannot be used (wrong, malformed, used,
+    expired, revoked).
+  - Rate limits per hour, kept in the database (`start_attempts`, hashed
+    buckets) so they hold across serverless instances: 10 invite codes per
+    IP; 6 sign-in code requests per IP and 5 per address; 20 sign-in
+    attempts per IP; 10 creates per IP. The sign-in code also keeps the
+    hub's own rules (30 s throttle, 5 wrong guesses lock the address for 15
+    minutes).
+  - Audit rows `invite.redeem`, `hub.create` (`via: "start"`) and
+    `hub.sample_seed`, all with the creator as the actor.
+  - The creator gets the session-4 admin invite. The operator
+    (`CIVIC_CONSOLE_ADMIN_EMAIL`) gets a short email per redemption (Adam).
+- **One person may redeem more than one code** (Adam): each code is one hub.
+
+**Prerequisites for open sign-up, not done.** Codes are for people Adam
+knows. Before the start page takes payments or anyone without a code:
+(1) move the console and the start page to their own Vercel project, and
+(2) take the hub app off the service-role key. These are the Phase 5
+"Deferred, not done" items. Today the start page runs in the hub app's
+deployment, and every piece of code there can read the key.
+
 ### Backups (2026-10-04)
 
 Encrypted scheduled dumps outside Supabase, in a Google Cloud Storage bucket

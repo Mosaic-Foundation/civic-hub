@@ -132,6 +132,29 @@ export interface AuditEntry {
   after: unknown;
 }
 
+/** An invite code (session 4b): an entitlement to create one hub. The code itself is never sent back. */
+export interface Invite {
+  id: string;
+  kind: string;
+  quantity: number;
+  used: number;
+  code_hint: string | null;
+  note: string | null;
+  created_by: string;
+  created_at: string;
+  expires_at: string;
+  revoked_at: string | null;
+  status: "unused" | "used" | "expired" | "revoked";
+  redemptions: Array<{ email: string; hub_id: string | null; at: string }>;
+}
+
+export interface InviteList {
+  invites: Invite[];
+  start_hostname: string | null;
+  default_days: number;
+  max_days: number;
+}
+
 /** A row of the jurisdiction reference list (20260927000000). */
 export interface Jurisdiction {
   ocd_id: string;
@@ -182,6 +205,10 @@ export const api = {
   requestStepUp: () => request<{ message: string }>("POST", "/auth/step-up/request-code"),
 
   config: () => request<ConsoleConfig>("GET", "/config"),
+  invites: () => request<InviteList>("GET", "/invites"),
+  mintInvite: (note: string, days: number) =>
+    request<{ code: string; invite: Invite; start_hostname: string | null }>("POST", "/invites", { note, days }),
+  revokeInvite: (id: string) => request<{ invites: Invite[] }>("POST", `/invites/${encodeURIComponent(id)}/revoke`),
   hubs: () => request<{ hubs: Hub[] }>("GET", "/hubs"),
   hub: (id: string) => request<HubDetail>("GET", `/hubs/${encodeURIComponent(id)}`),
   states: () => request<{ states: Jurisdiction[] }>("GET", "/jurisdictions/states"),
