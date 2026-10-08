@@ -7,6 +7,7 @@
 // and scripts/create-hub.ts both call it. What differs between them is policy
 // the caller passes in (which modes it may create), not the steps.
 
+import { DEFAULT_HUB_BANNER } from "../shared/platform.js";
 import { getDb } from "../db/client.js";
 import { invalidateHubCache } from "../db/hubs.js";
 import { invalidateHubSettings } from "../db/hubSettingsStore.js";
@@ -425,6 +426,10 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
     [KEYS.LEGAL_OPERATOR_NAME]: input.name,
     [KEYS.EMAIL_FROM_NAME]: input.name,
     [KEYS.IDENTITY_HUB_KIND]: kind,
+    // A banner from the start (Adam, 2026-10-08), so the admin sees there is
+    // one to make their own.
+    [KEYS.IDENTITY_BANNER_URL]: DEFAULT_HUB_BANNER.url,
+    [KEYS.IDENTITY_BANNER_ALT]: DEFAULT_HUB_BANNER.alt,
   };
   // A place hub is titled by its place; any other kind by its own name (the default).
   if (jurisdictionName && kind === "place") settings[KEYS.IDENTITY_PAGE_TITLE] = `${jurisdictionName} — Civic Hub`;

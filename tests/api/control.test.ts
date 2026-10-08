@@ -140,6 +140,10 @@ describe("create hub", () => {
     const config = await call("GET", "/hub-config", HOST);
     expect(config.status).toBe(200);
     expect(config.body.hub).toMatchObject({ id: SLUG, mode: "demo" });
+    // Every new hub starts with the platform's banner, as its own setting
+    // (2026-10-08), which the admin can replace or clear.
+    expect(config.body.settings["identity.banner_url"]).toBe("/hub-banner-default.webp");
+    expect(config.body.settings["identity.banner_alt"]).toBeTruthy();
 
     const audit = await auditFor(SLUG);
     expect(audit[0]).toMatchObject({ action: "hub.create", actor_email: OPERATOR, before: null });

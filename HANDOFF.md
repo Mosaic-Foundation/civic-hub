@@ -69,6 +69,13 @@ button on demo hubs only.
 - Tests: `sampleRefresh.test.ts` (`defaults` lists About until the hub writes one) and `sampleSummary.spec.ts` (the
   timestamp bubble; the About note, or none on a hub that wrote its own).
 
+- **A default banner for every new hub (Adam, 2026-10-08).** `ui/public/hub-banner-default.webp` is a crowd in an
+  unnamed square: no landmark, sign or flag. Create hub writes it as the hub's own `identity.banner_url` / `_alt`
+  (`DEFAULT_HUB_BANNER`, `src/shared/platform.ts`), so the admin replaces or clears it in Settings → Identity.
+  Existing hubs are untouched. The console's create preview shows it. `control.test.ts` checks a new hub serves it.
+  **The file is 1,024 × 338, softer than ideal on wide screens. Replace it with the full-resolution export under the
+  same name; nothing else changes.**
+
 **The migration:**
 - `processes.added_in_demo` (default false, partial index).
 - The spawn trigger re-created to carry it.

@@ -238,6 +238,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--c
 .cx-preview { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 10px; }
 .cx-preview p { margin: 0; }
 .cx-preview-address { color: var(--cx-muted); word-break: break-all; }
+.cx-preview-banner { display: block; width: 100%; height: 56px; object-fit: cover; object-position: center 75%; border-radius: 8px; }
 .cx-preview-header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--cx-border); border-radius: 8px; }
 .cx-preview-logo {
   display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 6px;

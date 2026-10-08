@@ -21,6 +21,7 @@ import { defaultHubName, jurisdictionCodeFor } from "../../../src/shared/jurisdi
 import { fillSampleText } from "../../../src/shared/hubCopy";
 import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
 import { PLUGIN_NAMES } from "./pluginNames";
+import { DEFAULT_HUB_BANNER } from "../../../src/shared/platform";
 import { HUB_KINDS, affiliationClause, type HubKind } from "../../../src/shared/hubKind";
 import { SPLIT_STATES, suggestedTimeZone } from "../../../src/shared/stateTimeZones";
 
@@ -577,6 +578,8 @@ export default function CreateHub() {
         <aside className="cx-card cx-preview" aria-label="Preview">
           <p className="cx-eyebrow">Preview</p>
           <p className="cx-preview-address cx-mono">{hostname ? `https://${hostname}` : "https://…"}</p>
+          {/* Every new hub starts with this banner; its admin replaces it. */}
+          <img className="cx-preview-banner" src={DEFAULT_HUB_BANNER.url} alt="" />
           <div className="cx-preview-header">
             <span className="cx-preview-logo" aria-hidden="true">
               {(name || "?").trim().charAt(0).toUpperCase()}
