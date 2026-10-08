@@ -10,14 +10,14 @@
 export const PLATFORM_CONTACT_EMAIL = "contact@civic.social";
 
 /**
- * The banner every new hub starts with (Adam, 2026-10-08): a crowd in an
- * unnamed square, no landmark, sign or flag, so it makes no claim about any
- * place. Create hub writes it as the hub's own `identity.banner_url`, so the
+ * The banner every new hub starts with (Adam, 2026-10-08): an aerial view of
+ * an unnamed town centre (a square, storefronts, people as small figures),
+ * no landmark, readable sign or flag, so it makes no claim about any place. Create hub writes it as the hub's own `identity.banner_url`, so the
  * admin replaces or removes it in Settings like any banner; a hub made
  * before it, or one that cleared it, shows none. Shipped in ui/public/ (a
  * root-relative path, which the image validator accepts).
  */
 export const DEFAULT_HUB_BANNER = {
   url: "/hub-banner-default.webp",
-  alt: "People of all ages gathered in a public square",
+  alt: "Aerial view of a town centre, with people gathering in a tree-lined square",
 } as const;

@@ -69,11 +69,11 @@ button on demo hubs only.
 - Tests: `sampleRefresh.test.ts` (`defaults` lists About until the hub writes one) and `sampleSummary.spec.ts` (the
   timestamp bubble; the About note, or none on a hub that wrote its own).
 
-- **A default banner for every new hub (Adam, 2026-10-08).** `ui/public/hub-banner-default.webp` is a crowd in an
-  unnamed square: no landmark, sign or flag. Create hub writes it as the hub's own `identity.banner_url` / `_alt`
+- **A default banner for every new hub (Adam, 2026-10-08).** `ui/public/hub-banner-default.webp` is an aerial view
+  of an unnamed town centre: no landmark, readable sign or flag. Create hub writes it as the hub's own `identity.banner_url` / `_alt`
   (`DEFAULT_HUB_BANNER`, `src/shared/platform.ts`), so the admin replaces or clears it in Settings → Identity.
   Existing hubs are untouched. The console's create preview shows it. `control.test.ts` checks a new hub serves it.
-  The file is the upscaled version, 2,000 × 661 (300 KB). A larger export can replace it under the same name.
+  The file is 2,000 × 661 (420 KB). Replacing it under the same name updates every hub that uses it.
 
 **The migration:**
 - `processes.added_in_demo` (default false, partial index).
