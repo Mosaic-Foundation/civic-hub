@@ -86,6 +86,17 @@ in it as its admin, signed in, without the console. Not pushed.
   too.
 - The docs site has no page for the start page or invite codes yet.
 
+**Follow-ups the same day, from Adam's first walk on dev:**
+- **Schema refresh:** after the migration, dev needed `NOTIFY pgrst, 'reload schema';` before the console could
+  read the new tables.
+- **Time zone:** the console's Create hub and the start page choose it from a dropdown
+  (`ui/src/console/TimeZoneSelect.tsx`; zones in `src/shared/stateTimeZones.ts`).
+- **Hub order:** the console lists hubs newest first.
+- **No-match line:** the place search's no-match line points to "Other / not listed".
+- **"Your hub is ready":** the creator arriving from the start page gets this dialog with "Check your email"
+  (`ui/src/components/HubReadyDialog.tsx`), shown once and in place of the visitor's popup. The hub's terms prompt
+  now waits until it is closed (`App.tsx`).
+
 **For Adam, on dev after you push:**
 1. Migrate dev, set `CIVIC_START_HOSTNAME=start.dev.civic.social`, and redeploy.
 2. console.dev → Invite codes: mint one for your colleague with a note. Copy code and link.

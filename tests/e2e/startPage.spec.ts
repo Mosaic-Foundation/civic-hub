@@ -112,6 +112,20 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   });
   expect(me.role).toBe("admin");
   expect(me.user.email).toBe(email);
+
+  // "Your hub is ready: check your email", once, instead of the visitor's
+  // popup; the terms prompt waits until it is closed (2026-10-08).
+  const ready = page.getByRole("dialog", { name: /is ready/ });
+  await expect(ready).toBeVisible();
+  await expect(ready).toContainText("Check your email");
+  await expect(ready).toContainText(email);
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  if (process.env.CIVIC_E2E_SHOT) await page.screenshot({ path: process.env.CIVIC_E2E_SHOT });
+  await ready.getByRole("button", { name: "Look around first" }).click();
+  await expect(ready).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Before you continue…" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("dialog", { name: /is ready/ })).toHaveCount(0);
   const settings = (await localRest(`hub_settings?hub_id=eq.${slug}&key=eq.legal.operator_name&select=value`)) as Array<{ value: string }>;
   expect(settings[0]!.value).toBe(`The ${run} Group`);
   const zone = (await localRest(`hub_settings?hub_id=eq.${slug}&key=eq.identity.timezone&select=value`)) as Array<{ value: string }>;

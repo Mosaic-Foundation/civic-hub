@@ -11,6 +11,7 @@ import {
   exchangeHandoff,
   takeHandoffFromLocation,
 } from "../services/auth";
+import { markHubJustCreated } from "../utils/hubJustCreated";
 
 interface AuthState {
   user: AuthUser | null;
@@ -106,7 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handoff = takeHandoffFromLocation();
     const ready = handoff
       ? exchangeHandoff(handoff)
-          .then(({ token: t }) => storeToken(t))
+          .then(({ token: t }) => {
+            storeToken(t);
+            markHubJustCreated();
+          })
           .catch(() => undefined) // expired or spent: the page shows signed out
       : Promise.resolve();
     void ready.then(restore);

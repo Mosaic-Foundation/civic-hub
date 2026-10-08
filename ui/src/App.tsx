@@ -51,6 +51,8 @@ import WordCloud from "./pages/WordCloud";
 import CreateWordCloud from "./pages/CreateWordCloud";
 import IntroPopup, { hasSeenIntro } from "./components/IntroPopup";
 import ReAcceptModal from "./components/ReAcceptModal";
+import HubReadyDialog from "./components/HubReadyDialog";
+import { arrivingFromStartPage, hubJustCreated } from "./utils/hubJustCreated";
 import BetaBanner from "./components/BetaBanner";
 import DemoBanner from "./components/DemoBanner";
 import BetaWelcomeDialog from "./components/BetaWelcomeDialog";
@@ -101,8 +103,12 @@ function AppContent() {
   // Settings, refreshHubConfig() replaces it and everything below re-renders
   // with the new plugin switches, name and copy, without a reload.
   useHubConfig();
-  const [showIntro, setShowIntro] = useState(() => !hasSeenIntro());
+  // A hub's creator arriving from the start page gets "Your hub is ready"
+  // instead of the visitor's popup (2026-10-08).
+  const [showIntro, setShowIntro] = useState(() => !hasSeenIntro() && !arrivingFromStartPage());
   const { user, loading } = useAuth();
+  const [readyClosed, setReadyClosed] = useState(false);
+  const showReady = Boolean(user) && !readyClosed && hubJustCreated();
   const preview = usePreviewMode();
   const { pathname } = useLocation();
 
@@ -127,9 +133,10 @@ function AppContent() {
 
   return (
     <div className="app">
-      {showIntro && !inBetaPreview && (
+      {showIntro && !inBetaPreview && !showReady && (
         <IntroPopup onDismiss={() => setShowIntro(false)} />
       )}
+      {showReady && <HubReadyDialog email={user?.email ?? ""} onDismiss={() => setReadyClosed(true)} />}
 
       {/* One always-on beta bar for everyone — signed-in testers and
           signed-out preview browsers get the same demo-data reminder
@@ -241,7 +248,8 @@ function AppContent() {
           user's stored legal version is null or older than the current
           bundle. Blocking — user can't interact with the app until
           they accept or sign out. */}
-      <ReAcceptModal />
+      {/* After "Your hub is ready", not on top of it. */}
+      {!showReady && <ReAcceptModal />}
     </div>
   );
 }
