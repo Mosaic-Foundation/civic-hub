@@ -14,6 +14,7 @@ import { StartApiError, startApi, startJurisdictions, type StartConfig } from ".
 import type { SlugSuggestion } from "../console/api";
 import { JurisdictionPicker, type JurisdictionChoice } from "../console/JurisdictionPicker";
 import { SuggestInput } from "../console/SuggestInput";
+import { TimeZoneSelect } from "../console/TimeZoneSelect";
 import {
   JURISDICTION_TYPES,
   defaultGoverningBody,
@@ -327,13 +328,7 @@ export default function CreateForm({
           </div>
           <label className="cx-field">
             <span>Time zone</span>
-            <SuggestInput
-              className="cx-mono"
-              value={form.timezone}
-              suggestion={suggest.timezone}
-              onChange={(v) => set("timezone", v.trim())}
-              placeholder="America/New_York"
-            />
+            <TimeZoneSelect value={form.timezone} suggestion={suggest.timezone} onChange={(v) => set("timezone", v)} />
             <small className="cx-muted">
               For dates and the daily email's send hour.
               {listed && SPLIT_STATES.has(listed.state) && " This state spans more than one time zone: check it."}

@@ -91,10 +91,13 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   await page.getByRole("option", { name: /Pulaski County/ }).first().click();
   // Suggested from the place: the name, the governing body, the time zone.
   await expect(page.getByLabel("Hub name")).toHaveAttribute("placeholder", /Pulaski/);
-  await expect(page.getByLabel("Time zone")).toHaveAttribute("placeholder", "America/New_York");
+  // The time zone is a dropdown, showing the state's zone until another is chosen.
+  await expect(page.getByLabel("Time zone")).toHaveValue("America/New_York");
+  await expect(page.getByLabel("Time zone").locator("option", { hasText: "Pacific (Los Angeles)" })).toHaveCount(1);
   const slug = `e2e-start-${run}`;
   await page.locator("#st-slug").fill(slug);
   await expect(page.getByText(".localhost")).toBeVisible();
+  await page.getByLabel("Time zone").selectOption("America/Chicago");
   await page.getByLabel("Operated by").fill(`The ${run} Group`);
   await page.getByRole("button", { name: "Create my hub" }).click();
 
@@ -111,6 +114,8 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   expect(me.user.email).toBe(email);
   const settings = (await localRest(`hub_settings?hub_id=eq.${slug}&key=eq.legal.operator_name&select=value`)) as Array<{ value: string }>;
   expect(settings[0]!.value).toBe(`The ${run} Group`);
+  const zone = (await localRest(`hub_settings?hub_id=eq.${slug}&key=eq.identity.timezone&select=value`)) as Array<{ value: string }>;
+  expect(zone[0]!.value).toBe("America/Chicago");
 
   // --- Back in the console: the code is used, by the colleague, for that hub ---
   await consolePage.reload();

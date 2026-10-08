@@ -284,7 +284,7 @@ export function JurisdictionPicker({
               </ul>
             )}
             {open && state && type && q && shown.length === 0 && (
-              <small className="cx-muted">Nothing matches. Check the type, or choose Other / not listed.</small>
+              <small className="cx-muted">Nothing on the official list matches. Check the state and type; if the place isn't on the list (a neighbourhood, a new or informal place), choose <strong>Other / not listed</strong> above and type its name.</small>
             )}
             {chosen && plain ? (
               chosen.type === "cdp" && (

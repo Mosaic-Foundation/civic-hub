@@ -70,3 +70,29 @@ export const SPLIT_STATES: ReadonlySet<string> = new Set([
 export function suggestedTimeZone(state: string | null | undefined): string {
   return STATE_TIME_ZONES[(state ?? "").toLowerCase()] ?? "";
 }
+
+/**
+ * The US zones, first in every time zone dropdown, in plain words (Adam,
+ * 2026-10-08: the console and start page had a text box).
+ */
+export const US_TIME_ZONES: ReadonlyArray<{ id: string; label: string }> = [
+  { id: "America/New_York", label: "Eastern (New York)" },
+  { id: "America/Chicago", label: "Central (Chicago)" },
+  { id: "America/Denver", label: "Mountain (Denver)" },
+  { id: "America/Phoenix", label: "Mountain, no daylight saving (Phoenix)" },
+  { id: "America/Los_Angeles", label: "Pacific (Los Angeles)" },
+  { id: "America/Anchorage", label: "Alaska (Anchorage)" },
+  { id: "Pacific/Honolulu", label: "Hawaii (Honolulu)" },
+];
+
+/**
+ * Every other zone the runtime knows (`Intl.supportedValuesOf`), with
+ * `current` kept even if the runtime does not list it, so a saved value is
+ * never silently dropped.
+ */
+export function otherTimeZones(current = ""): string[] {
+  const all = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
+  const us = new Set(US_TIME_ZONES.map((z) => z.id));
+  const rest = all.filter((z) => !us.has(z));
+  return current && !us.has(current) && !rest.includes(current) ? [current, ...rest] : rest;
+}

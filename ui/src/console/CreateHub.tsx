@@ -22,6 +22,7 @@ import { fillSampleText } from "../../../src/shared/hubCopy";
 import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
 import { PLUGIN_NAMES } from "./pluginNames";
 import { SuggestInput, SuggestNote } from "./SuggestInput";
+import { TimeZoneSelect } from "./TimeZoneSelect";
 import { DEFAULT_HUB_BANNER } from "../../../src/shared/platform";
 import { HUB_KINDS, affiliationClause, type HubKind } from "../../../src/shared/hubKind";
 import { SPLIT_STATES, suggestedTimeZone } from "../../../src/shared/stateTimeZones";
@@ -456,17 +457,10 @@ export default function CreateHub() {
             )}
             <label className="cx-field">
               <span>Time zone</span>
-              <SuggestInput
-                className="cx-mono"
-                value={form.timezone}
-                suggestion={suggest.timezone}
-                onChange={(v) => set("timezone", v.trim())}
-                placeholder="America/New_York"
-              />
+              <TimeZoneSelect value={form.timezone} suggestion={suggest.timezone} onChange={(v) => set("timezone", v)} />
               <small className="cx-muted">
                 Dates and the daily digest's send hour. The hub's admin can change it in Settings → Identity.
                 {listed && SPLIT_STATES.has(listed.state) && " This state spans more than one time zone: check it."}
-                <SuggestNote value={form.timezone} suggestion={suggest.timezone} />
               </small>
             </label>
           </fieldset>

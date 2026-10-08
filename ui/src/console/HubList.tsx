@@ -14,7 +14,10 @@ export default function HubList() {
   }, []);
 
   const archived = hubs?.filter((h) => h.archived_at).length ?? 0;
-  const shown = hubs?.filter((h) => showArchived || !h.archived_at) ?? [];
+  // Newest first (Adam, 2026-10-08): the hub just made is at the top.
+  const shown = (hubs?.filter((h) => showArchived || !h.archived_at) ?? []).sort(
+    (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
+  );
 
   return (
     <section>
