@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type AuditEntry, type HubAdminAuditEntry, type HubDetail, type HubExport } from "./api";
+import {
+  api,
+  type AuditEntry,
+  type HubAdminAuditEntry,
+  type HubDetail,
+  type HubExport,
+  type SampleRefreshReport,
+} from "./api";
 import { JURISDICTION_TYPES, defaultGoverningBodyShort, hubTypeFor } from "../../../src/shared/jurisdictionType";
 import { jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
 import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
@@ -82,6 +89,7 @@ export default function HubDetailPage({ id }: { id: string }) {
         <ConfigSection key={JSON.stringify(detail.config)} detail={detail} onSaved={reload} withStepUp={withStepUp} />
         <PluginsSection key={JSON.stringify(detail.plugins)} detail={detail} onSaved={reload} />
         <AdminsSection detail={detail} onSaved={reload} withStepUp={withStepUp} />
+        {detail.hub.mode === "demo" && !detail.hub.archived_at && <SamplesSection detail={detail} />}
         <ExportSection detail={detail} onExported={load} withStepUp={withStepUp} />
         <LifecycleSection detail={detail} onSaved={reload} withStepUp={withStepUp} />
       </div>
@@ -454,6 +462,55 @@ function sizeLabel(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** "Refresh samples" (2026-10-07): demo hubs only, so it is not rendered otherwise. */
+function SamplesSection({ detail }: { detail: HubDetail }) {
+  const { busy, save, note } = useSave(() => {});
+  const [done, setDone] = useState<SampleRefreshReport | null>(null);
+  const { hub } = detail;
+  const changed = done ? done.replaced.length + done.added.length + done.minutes_added.length : 0;
+
+  return (
+    <section className="cx-card cx-form">
+      <h2 className="cx-h2">Sample content</h2>
+      <p className="cx-muted cx-small">
+        Every day, samples that close within three days (the open vote, the vote gathering endorsements, the open
+        proposal, the conversation) are replaced with a fresh copy. Anything visitors added to those items goes with
+        them. Refresh now does the same, and also adds any sample this hub is missing.
+      </p>
+      <div className="cx-actions">
+        <button
+          type="button"
+          className="cx-btn"
+          disabled={busy}
+          onClick={() =>
+            save(async () => {
+              const { refresh } = await api.refreshSamples(hub.id);
+              setDone(refresh);
+              return null;
+            })
+          }
+        >
+          {busy ? "Refreshing…" : "Refresh samples"}
+        </button>
+      </div>
+      {done && (
+        <p className="cx-alert cx-alert-ok" role="status">
+          {changed === 0
+            ? "Every sample is current; nothing changed."
+            : [
+                done.replaced.length ? `Replaced: ${done.replaced.map((r) => r.key).join(", ")}.` : "",
+                done.added.length ? `Added: ${done.added.join(", ")}.` : "",
+                done.minutes_added.length ? `Minutes added to: ${done.minutes_added.join(", ")}.` : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+        </p>
+      )}
+      {note}
+    </section>
+  );
 }
 
 function ExportSection({ detail, onExported, withStepUp }: { detail: HubDetail; onExported: () => void; withStepUp: WithStepUp }) {

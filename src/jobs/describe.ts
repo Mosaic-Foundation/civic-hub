@@ -160,12 +160,33 @@ function describeVoteClose(b: Body): JobRunDescription | null {
   return { status: status(failed, []), summary: `${plural(closed, "vote", "votes")} closed`, problems: failed };
 }
 
+/**
+ * The sample refresh (2026-10-07): a row only when it replaced or added
+ * something. A hub that is not in demo, or whose samples are all current,
+ * records nothing.
+ */
+function describeSampleRefresh(b: Body): JobRunDescription | null {
+  if (typeof b.skipped === "string") return null;
+  const replaced = arr<{ key?: string }>(b.replaced).length;
+  const added = arr(b.added).length;
+  const minutes = arr(b.minutes_added).length;
+  if (replaced + added + minutes === 0) return null;
+  const parts = [
+    replaced > 0 ? `${plural(replaced, "sample", "samples")} replaced with a fresh copy` : null,
+    added > 0 ? `${plural(added, "missing sample", "missing samples")} added` : null,
+    minutes > 0 ? `minutes added to ${plural(minutes, "sample meeting summary", "sample meeting summaries")}` : null,
+  ].filter(Boolean);
+  const summary = parts.join("; ");
+  return { status: "ok", summary: summary.charAt(0).toUpperCase() + summary.slice(1), problems: [] };
+}
+
 const DESCRIBERS: Readonly<Record<string, (b: Body) => JobRunDescription | null>> = {
   meeting_summary: describeMeetingSummary,
   news_sync: describeNewsSync,
   digest: describeDigest,
   admin_digest: describeAdminDigest,
   vote_close: describeVoteClose,
+  sample_refresh: describeSampleRefresh,
 };
 
 /**

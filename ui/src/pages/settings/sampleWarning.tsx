@@ -9,7 +9,10 @@ const KIND_NOUN: Record<string, [string, string]> = {
   endorsement: ["endorsement", "endorsements"],
   ballot: ["ballot", "ballots"],
   statement: ["statement", "statements"],
+  reaction: ["reaction to a statement", "reactions to statements"],
   submission: ["submission", "submissions"],
+  response: ["official response", "official responses"],
+  review: ["proposed edit", "proposed edits"],
 };
 
 function count(n: number, [one, many]: [string, string]): string {
@@ -26,11 +29,13 @@ export function realInputPhrase(summary: SampleContentSummary): string {
 
 export function SampleRemovalWarning({ summary }: { summary: SampleContentSummary }) {
   const real = realInputPhrase(summary);
+  const added = summary.added_in_demo ?? 0;
   return (
     <div className="settings-sample-warning" role="note">
       <p>
-        This deletes the {count(summary.processes, ["sample process", "sample processes"])} and everything attached
-        to them. It cannot be undone.
+        This deletes the {count(summary.processes, ["sample process", "sample processes"])}
+        {added > 0 && <>, the {count(added, ["item", "items"])} visitors added during the demo,</>} and everything
+        attached to them. It cannot be undone.
       </p>
       {summary.other_processes === 0 ? (
         <p>

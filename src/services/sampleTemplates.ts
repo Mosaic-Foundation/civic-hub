@@ -16,8 +16,7 @@
 // - Times are days relative to the moment of seeding (negative = past), so
 //   the open vote is open and the feed looks current whenever a hub is made.
 // - `fits`: the jurisdiction types (identity.jurisdiction_type) a template
-//   reads right in. The seed skips the rest. School districts are not
-//   covered properly yet — that is the later presets work.
+//   reads right in (place hubs). The seed skips the rest.
 
 import { JURISDICTION_TYPES, type JurisdictionType } from "../shared/jurisdictionType.js";
 import { HUB_KINDS, type HubKind } from "../shared/hubKind.js";
@@ -25,8 +24,13 @@ import { fillSampleText } from "../shared/hubCopy.js";
 
 /** Every type a general-purpose local government can be. */
 const LOCAL_GOVERNMENT: readonly JurisdictionType[] = ["county", "city", "town", "village", "borough", "other"];
+const SCHOOL_DISTRICT: readonly JurisdictionType[] = ["school_district"];
 const EVERY_TYPE: readonly JurisdictionType[] = JURISDICTION_TYPES.map((t) => t.id);
 const PLACE_ONLY: readonly HubKind[] = ["place"];
+// A hub of another kind has no jurisdiction type; `fits` is not read for it.
+// "other" takes the organization set (Adam, 2026-10-07).
+const ORGANIZATION: readonly HubKind[] = ["organization", "other"];
+const ISSUE: readonly HubKind[] = ["issue"];
 
 // --- Synthetic authors --------------------------------------------------------
 
@@ -63,10 +67,11 @@ interface Base {
   key: string;
   /**
    * The hub kinds (identity.hub_kind) the template reads right in
-   * (2026-09-27). All eleven are about a local government — its services, its
-   * budget, its governing body, its residents — so all are PLACE_ONLY; an
-   * issue campaign, an organization or another kind of hub gets none yet.
-   * Templates for those kinds are the later presets work.
+   * (2026-09-27). Since 2026-10-07 (review R18) every kind has its own set:
+   * local governments, school districts, organizations (and "other"), issue
+   * campaigns. Each set has the five a demo hub must always show (an open
+   * vote, a vote gathering endorsements, an open proposal, a conversation, a
+   * closed vote with its outcome), kept current by sampleRefresh.ts.
    */
   kinds: readonly HubKind[];
   /** Place hubs: the jurisdiction types it reads right in. */
@@ -169,6 +174,11 @@ export interface SampleMeetingSummary extends Base {
   meeting_at: number;
   published_at: number;
   blocks: ReadonlyArray<{ title: string; summary: string; at_minute: number; action: string | null }>;
+  /**
+   * The meeting's minutes as plain text, shown on the page in place of a
+   * minutes PDF (review issue #7, 2026-10-07). Paragraphs split on blank lines.
+   */
+  minutes: string;
 }
 
 /**
@@ -250,7 +260,7 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
     kind: "vote",
     kinds: PLACE_ONLY,
 
-    fits: EVERY_TYPE,
+    fits: LOCAL_GOVERNMENT,
     by: "ALEX",
     at: -21,
     title: "Library hours: add weekday evenings or Saturday afternoons?",
@@ -275,7 +285,7 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
     kind: "outcome",
     kinds: PLACE_ONLY,
 
-    fits: EVERY_TYPE,
+    fits: LOCAL_GOVERNMENT,
     by: "TEAM",
     at: -6,
     source: "vote_library_hours",
@@ -496,6 +506,13 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
         action: "Set the public hearing for next month's regular meeting.",
       },
     ],
+    minutes:
+      "Call to order. The chair called the regular meeting of the {GOVERNING_BODY} to order. A quorum was present. The agenda was approved as presented, and the minutes of the previous regular meeting were approved without changes.\n\n" +
+      "Public comment. Four residents spoke. Two asked for a marked crosswalk near an elementary school. One described flooding on a residential street after heavy rain and asked whether the drainage could be inspected. One thanked library staff for the trial of evening hours.\n\n" +
+      "Library hours trial. Staff reported on the first month of weekday evening hours. Members asked for visits broken down by hour and by day, and one member asked what Saturday afternoon hours would cost by comparison. Staff will return next month with usage figures and the cost of each option.\n\n" +
+      "Road resurfacing contract. Members reviewed three bids for this year's resurfacing work. Discussion weighed the lowest price against a competing bid with a shorter schedule, and whether to add a stretch of road residents had asked about. A motion to award the contract to the lowest qualified bidder carried by majority vote.\n\n" +
+      "Budget calendar. Staff presented the timeline for next year's budget: department requests, a work session, the proposed budget, and a public hearing before adoption. By consensus, the public hearing was set for next month's regular meeting.\n\n" +
+      "Adjournment. There being no further business, the meeting was adjourned.",
   },
 
   // 11 — new (2026-10-06). Fits every type: every place has things people
@@ -505,7 +522,7 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
     kind: "wordcloud",
     kinds: PLACE_ONLY,
 
-    fits: EVERY_TYPE,
+    fits: LOCAL_GOVERNMENT,
     by: "TEAM",
     at: -12,
     title: "What do you value most about {JURISDICTION}?",
@@ -524,13 +541,855 @@ export const SAMPLE_TEMPLATES: readonly SampleTemplate[] = [
       ["events", 2],
     ],
   },
+
+  // ===========================================================================
+  // School districts (2026-10-07, review R18; titles approved by Adam). The
+  // budget-hearing announcement above fits them too. {JURISDICTION} is the
+  // district, {GOVERNING_BODY} its board.
+  // ===========================================================================
+
+  {
+    key: "sd_vote_start_times",
+    kind: "vote",
+    kinds: PLACE_ONLY,
+    fits: SCHOOL_DISTRICT,
+    by: "JORDAN",
+    at: -6,
+    title: "Should high schools in {JURISDICTION} start later in the morning?",
+    description:
+      "Some families and teachers say teenagers would learn better with a later start. Others point out that a later start moves after-school jobs, sports and child care later too, and that bus routes may have to change for every school.\n\n" +
+      "This advisory vote asks which way families and residents lean. Pick one. The result goes to the {GOVERNING_BODY}; it does not decide anything by itself.",
+    method: "yes_no_unsure",
+    options: [
+      "Yes, start high schools later",
+      "No, keep the current start times",
+      "Study the costs and the bus schedule first",
+    ],
+    phase: "open",
+    opens_at: -6,
+    closes_at: 8,
+    ballots: [11, 8, 9],
+  },
+  {
+    key: "sd_vote_phones",
+    kind: "vote",
+    kinds: PLACE_ONLY,
+    fits: SCHOOL_DISTRICT,
+    by: "SAM",
+    at: -5,
+    title: "Should {JURISDICTION} limit student phone use during the school day?",
+    description:
+      "Some parents and teachers want phones put away during class, or for the whole day, to cut distraction. Others want students to be able to reach family, or use phones for schoolwork, and ask who would enforce a limit.\n\n" +
+      "This vote opens once enough people endorse it. Endorse it if you think the question should be asked; endorsing does not mean you would vote yes.",
+    method: "yes_no_unsure",
+    options: ["Yes", "No", "Unsure"],
+    phase: "proposed",
+    endorsed_by: ["SAM", "ALEX", "CASEY"],
+  },
+  {
+    key: "sd_vote_weather_days",
+    kind: "vote",
+    kinds: PLACE_ONLY,
+    fits: SCHOOL_DISTRICT,
+    by: "ALEX",
+    at: -21,
+    title: "Weather days: add make-up days in June or use remote learning days?",
+    description:
+      "When schools close for bad weather, the lost days have to be made up somehow. Adding days at the end of the year keeps learning in the classroom but runs into summer plans. Remote learning days avoid that but depend on every student having a device and a connection at home.\n\n" +
+      "This advisory vote asks which families and residents would prefer. The result goes to the {GOVERNING_BODY}.",
+    method: "yes_no_unsure",
+    options: [
+      "Add make-up days at the end of the year",
+      "Use remote learning days on bad-weather days",
+      "Shorten a holiday break instead",
+    ],
+    phase: "closed",
+    opens_at: -20,
+    closes_at: -6,
+    ballots: [19, 22, 9],
+  },
+  {
+    key: "sd_outcome_weather_days",
+    kind: "outcome",
+    kinds: PLACE_ONLY,
+    fits: SCHOOL_DISTRICT,
+    by: "TEAM",
+    at: -6,
+    source: "sd_vote_weather_days",
+    published_at: -4,
+    headline: "Remote learning days led, with make-up days in June close behind",
+    summary:
+      "The question. How lost weather days should be made up: extra days at the end of the year, remote learning days, or a shorter holiday break.\n\n" +
+      "Result. 50 people voted over two weeks: 44% remote learning days, 38% make-up days at the end of the year, 18% a shorter holiday break. No option had a majority.",
+    sections: [
+      {
+        heading: "What supporters of remote learning days said",
+        body: "The school year ends on time, summer jobs and camps are not disrupted, and a day at home with assignments is better than a day lost.",
+      },
+      {
+        heading: "What supporters of make-up days said",
+        body: "Students learn more in the classroom, younger students need an adult at home on a remote day, and not every household has a reliable connection.",
+      },
+      {
+        heading: "What supporters of a shorter break said",
+        body: "Families can plan around a known change to the calendar more easily than around days added at the last minute.",
+      },
+      {
+        heading: "Suggested next step",
+        body: "Ask how many students lack a device or a connection at home before choosing remote days. The vote is advisory; the decision rests with the {GOVERNING_BODY}.",
+      },
+    ],
+    participation_label: "50 people voted",
+    participation_count: 50,
+    sent_to: "{GOVERNING_BODY}",
+  },
+  {
+    key: "sd_proposal_board_materials",
+    kind: "proposal",
+    kinds: PLACE_ONLY,
+    fits: SCHOOL_DISTRICT,
+    by: "JORDAN",
+    at: -9,
+    title: "Post school board meeting materials a week before each meeting",
+    description:
+      "Agendas and the documents behind them are often available only a day or two before the {GOVERNING_BODY} meets, which leaves little time for families to read them or plan to speak.\n\n" +
+      "The proposal: {JURISDICTION} posts each meeting's agenda and supporting documents online at least seven days ahead, and marks anything added later. This is not a request about any particular decision.",
+    closes_at: 21,
+    endorsed_by: ["JORDAN", "ALEX", "CASEY"],
+    comments: [
+      {
+        by: "ALEX",
+        at: -8,
+        body: "I'd use this. I found out about a curriculum vote the night before and couldn't get the materials in time to read them.",
+      },
+      {
+        by: "SAM",
+        at: -7,
+        body: "Some items really do come up late, like a contract that needs a quick answer. A week is fine as the rule, but there has to be a way to add urgent items.",
+      },
+      {
+        by: "CASEY",
+        at: -5,
+        body: "Marking late additions clearly would cover that. I'd also like the documents in a format that opens on a phone.",
+      },
+    ],
+  },
+  {
+    key: "sd_deliberation_homework",
+    kind: "deliberation",
+    kinds: PLACE_ONLY,
+    fits: SCHOOL_DISTRICT,
+    by: "CASEY",
+    at: -10,
+    topic: "Homework: how much, and what kind, helps students?",
+    framing:
+      "Homework can reinforce what was taught in class and build habits. It can also crowd out sleep, family time, jobs and activities, and it lands differently on students with less help or less quiet space at home.\n\n" +
+      "React to each statement (agree, disagree or pass) and add your own. This conversation helps the {GOVERNING_BODY} and teachers see where families agree before any guidelines are written.",
+    closes_at: 32,
+    statements: [
+      "Regular practice at home helps students remember what they learned in class.",
+      "Younger students should have little or no homework.",
+      "Homework should never be the main part of a grade.",
+      "Students without help or quiet space at home are at a disadvantage when homework counts heavily.",
+      "Teachers in the same grade should coordinate so students don't get several large assignments on the same night.",
+      "Reading for pleasure at home is worth more than worksheets.",
+      "Without homework, many students would fall behind.",
+      "Families should be asked how long homework actually takes.",
+    ],
+    picture: {
+      participants: 22,
+      groups: [
+        { size: 12, agree: [0, 6], disagree: [1] },
+        { size: 10, agree: [1, 3, 5], disagree: [6] },
+      ],
+      consensus: [
+        { statement: 4, agree_rate: 0.91, votes: 22 },
+        { statement: 7, agree_rate: 0.82, votes: 21 },
+      ],
+    },
+  },
+  {
+    key: "sd_project_reading_buddies",
+    kind: "project",
+    kinds: PLACE_ONLY,
+    fits: SCHOOL_DISTRICT,
+    by: "CASEY",
+    at: -18,
+    title: "Reading buddies: volunteers for early readers",
+    description:
+      "A group of parents and neighbors is organizing volunteers to read one-on-one with early readers for half an hour a week, during the school day or in an after-school program.\n\n" +
+      "We are putting together a short guide for volunteers and a schedule that fits around class time. Volunteers would go through the district's usual volunteer screening.",
+    supported_by: ["JORDAN", "SAM"],
+    updates: [
+      {
+        at: -7,
+        body: "Fifteen people have signed up so far. Next step: a one-hour training session with a reading teacher, then a pilot in two classrooms.",
+      },
+    ],
+    comments: [
+      {
+        by: "SAM",
+        at: -12,
+        body: "Please keep it consistent: the same volunteer with the same child each week matters more than the number of volunteers.",
+      },
+      {
+        by: "ALEX",
+        at: -9,
+        body: "Could some of it happen after school too? Many working parents can't come during the day but would like to help.",
+      },
+    ],
+  },
+  {
+    key: "sd_announcement_boundaries",
+    kind: "announcement",
+    kinds: PLACE_ONLY,
+    fits: SCHOOL_DISTRICT,
+    by: "TEAM",
+    at: -8,
+    title: "Enrollment and attendance-boundary review: community meetings",
+    body:
+      "{JURISDICTION} is reviewing enrollment projections and the boundaries that decide which school each address attends.\n\n" +
+      "Community meetings will present the projections and any draft options, and a short survey will ask families what matters most to them. The results will be shared with the {GOVERNING_BODY} before any change is proposed.",
+  },
+  {
+    key: "sd_meeting_summary_regular",
+    kind: "meeting_summary",
+    kinds: PLACE_ONLY,
+    fits: SCHOOL_DISTRICT,
+    by: "TEAM",
+    at: -8,
+    meeting_title: "{GOVERNING_BODY} regular meeting",
+    meeting_at: -9,
+    published_at: -8,
+    blocks: [
+      {
+        title: "Public comment",
+        summary:
+          "Five people spoke. Two asked about crowding on one bus route, one asked for more after-school tutoring, one raised the condition of a playground, and one student spoke in favor of later start times.",
+        at_minute: 5,
+        action: null,
+      },
+      {
+        title: "Reading curriculum adoption",
+        summary:
+          "Staff presented the review committee's recommendation for new elementary reading materials. Members asked about training for teachers and the cost over several years.",
+        at_minute: 24,
+        action: "Adopted the recommended materials by majority vote.",
+      },
+      {
+        title: "Transportation update",
+        summary:
+          "Staff reported on driver vacancies and the routes that run late most often. Members asked whether routes could be combined and what the effect on ride times would be.",
+        at_minute: 47,
+        action: "Staff to bring options for the crowded route to the next meeting.",
+      },
+      {
+        title: "Budget calendar",
+        summary:
+          "Staff presented the timeline for next year's budget: school requests, a work session, the proposed budget, and a public hearing before adoption.",
+        at_minute: 66,
+        action: "Set the public hearing for next month's regular meeting.",
+      },
+    ],
+    minutes:
+      "Call to order. The board chair called the regular meeting of the {GOVERNING_BODY} to order. A quorum was present. The agenda was approved, and the minutes of the previous regular meeting were approved without changes.\n\n" +
+      "Public comment. Five people spoke. Two parents asked about crowding on one bus route. One asked for more after-school tutoring. One raised the condition of a playground. One student spoke in favor of later start times for high schools.\n\n" +
+      "Reading curriculum adoption. Staff presented the review committee's recommendation for new elementary reading materials. Members asked about training for teachers and the total cost over several years. A motion to adopt the recommended materials carried by majority vote.\n\n" +
+      "Transportation update. Staff reported on driver vacancies and the routes that most often run late. Members asked whether routes could be combined and how that would change ride times. Staff will bring options for the crowded route to the next meeting.\n\n" +
+      "Budget calendar. Staff presented the timeline for next year's budget. By consensus, the public hearing was set for next month's regular meeting.\n\n" +
+      "Adjournment. There being no further business, the meeting was adjourned.",
+  },
+  {
+    key: "sd_wordcloud_good_school",
+    kind: "wordcloud",
+    kinds: PLACE_ONLY,
+    fits: SCHOOL_DISTRICT,
+    by: "TEAM",
+    at: -12,
+    title: "What makes a good school?",
+    description: "One word is enough. Answers appear in the cloud as they come in.",
+    prompt: "In one word, what makes a good school?",
+    answers: [
+      ["teachers", 6],
+      ["safety", 5],
+      ["kindness", 4],
+      ["curiosity", 3],
+      ["community", 3],
+      ["reading", 3],
+      ["arts", 2],
+      ["sports", 2],
+      ["respect", 2],
+      ["challenge", 2],
+    ],
+  },
+
+  // ===========================================================================
+  // Organizations and clubs, and hubs of kind "other" (2026-10-07, review R18).
+  // Written in the members' own voice ("we", "our"), so no hub name needs an
+  // article; no place, no governing body.
+  // ===========================================================================
+
+  {
+    key: "org_vote_meeting_times",
+    kind: "vote",
+    kinds: ORGANIZATION,
+    fits: EVERY_TYPE,
+    by: "JORDAN",
+    at: -6,
+    title: "When should our regular meetings be held?",
+    description:
+      "Our meetings are at a time that suits some members and rules out others. Evenings are hard for people with young children, weekends for people who work them, and online meetings for people who prefer to meet face to face.\n\n" +
+      "Pick the option that would let you come most often. The result guides the next meeting schedule.",
+    method: "yes_no_unsure",
+    options: [
+      "Weekday evenings",
+      "Saturday mornings",
+      "Alternate between the two",
+      "Online, at a time we vote on each season",
+    ],
+    phase: "open",
+    opens_at: -6,
+    closes_at: 8,
+    ballots: [7, 6, 9, 4],
+  },
+  {
+    key: "org_vote_hybrid_annual",
+    kind: "vote",
+    kinds: ORGANIZATION,
+    fits: EVERY_TYPE,
+    by: "SAM",
+    at: -5,
+    title: "Should we hold our annual meeting online as well as in person?",
+    description:
+      "A meeting people can join online would let members who are away, ill or caring for someone take part. It also costs more to run well, and some members feel discussion is better when everyone is in the room.\n\n" +
+      "This vote opens once enough members endorse it. Endorse it if you think members should be asked; endorsing does not mean you would vote yes.",
+    method: "yes_no_unsure",
+    options: ["Yes", "No", "Unsure"],
+    phase: "proposed",
+    endorsed_by: ["SAM", "ALEX", "CASEY"],
+  },
+  {
+    key: "org_vote_member_news",
+    kind: "vote",
+    kinds: ORGANIZATION,
+    fits: EVERY_TYPE,
+    by: "ALEX",
+    at: -21,
+    title: "How should we share news with members?",
+    description:
+      "News reaches members in several ways today, and some people miss things. We want one main channel that most members will actually see.\n\n" +
+      "Pick the one you would rely on.",
+    method: "yes_no_unsure",
+    options: [
+      "A monthly email newsletter",
+      "Everything posted here on the hub",
+      "Short text messages for urgent news, the hub for the rest",
+    ],
+    phase: "closed",
+    opens_at: -20,
+    closes_at: -6,
+    ballots: [12, 7, 15],
+  },
+  {
+    key: "org_outcome_member_news",
+    kind: "outcome",
+    kinds: ORGANIZATION,
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -6,
+    source: "org_vote_member_news",
+    published_at: -4,
+    headline: "Text messages for urgent news, with the hub for the rest, came first",
+    summary:
+      "The question. Which one channel members would rely on for news: a monthly email newsletter, the hub, or text messages for urgent news with the hub for the rest.\n\n" +
+      "Result. 34 people voted over two weeks: 44% text messages plus the hub, 35% a monthly newsletter, 21% the hub alone. No option had a majority.",
+    sections: [
+      {
+        heading: "What supporters of text messages said",
+        body: "Urgent news, like a cancelled meeting, has to reach people the same day; everything else can wait for the hub.",
+      },
+      {
+        heading: "What supporters of a newsletter said",
+        body: "One message a month is easy to read and easy to find again, and not everyone wants texts.",
+      },
+      {
+        heading: "What supporters of the hub alone said",
+        body: "One place for everything is simplest to keep up to date and keeps members' phone numbers out of it.",
+      },
+      {
+        heading: "Suggested next step",
+        body: "Ask members to opt in to text messages, and keep a short monthly roundup for those who prefer email.",
+      },
+    ],
+    participation_label: "34 people voted",
+    participation_count: 34,
+    sent_to: "the organizers",
+  },
+  {
+    key: "org_proposal_meeting_notes",
+    kind: "proposal",
+    kinds: ORGANIZATION,
+    fits: EVERY_TYPE,
+    by: "JORDAN",
+    at: -9,
+    title: "Publish meeting notes within a week of each meeting",
+    description:
+      "Members who miss a meeting often don't hear what was decided until the next one. Notes exist, but they are not shared in one place or on any schedule.\n\n" +
+      "The proposal: a short set of notes — decisions, who agreed to do what, and open questions — posted here within seven days of every meeting.",
+    closes_at: 21,
+    endorsed_by: ["JORDAN", "ALEX", "CASEY"],
+    comments: [
+      {
+        by: "ALEX",
+        at: -8,
+        body: "Yes, please. I missed two meetings in a row and couldn't find out what had been decided.",
+      },
+      {
+        by: "SAM",
+        at: -7,
+        body: "Fine by me, but someone has to take this on. If it's always the same volunteer it won't last. Could we rotate?",
+      },
+      {
+        by: "CASEY",
+        at: -5,
+        body: "Rotating works if there's a simple template. A list of decisions and action items would be enough.",
+      },
+    ],
+  },
+  {
+    key: "org_deliberation_involvement",
+    kind: "deliberation",
+    kinds: ORGANIZATION,
+    fits: EVERY_TYPE,
+    by: "CASEY",
+    at: -10,
+    topic: "Getting more members involved: what would help?",
+    framing:
+      "A small group of members does most of the work, and many others would like to help but aren't sure how. Some say the time commitment is the problem; others say they are never asked.\n\n" +
+      "React to each statement (agree, disagree or pass) and add your own. The organizers will use the results to plan the coming year.",
+    closes_at: 32,
+    statements: [
+      "Small, one-time tasks would bring in people who can't commit to a regular role.",
+      "Most people get involved because someone asked them personally.",
+      "Our meetings are too long to attract new people.",
+      "New members should be paired with someone who has been involved for a while.",
+      "We should do fewer things, and do them well, rather than ask more of people.",
+      "Social events matter as much as business meetings for keeping people involved.",
+      "Roles and their time commitments should be written down so people know what they are signing up for.",
+      "The same few people end up doing everything because they never step back.",
+    ],
+    picture: {
+      participants: 19,
+      groups: [
+        { size: 10, agree: [0, 5, 6], disagree: [2] },
+        { size: 9, agree: [2, 4, 7], disagree: [5] },
+      ],
+      consensus: [
+        { statement: 1, agree_rate: 0.89, votes: 19 },
+        { statement: 6, agree_rate: 0.84, votes: 19 },
+      ],
+    },
+  },
+  {
+    key: "org_project_welcome_guide",
+    kind: "project",
+    kinds: ORGANIZATION,
+    fits: EVERY_TYPE,
+    by: "CASEY",
+    at: -18,
+    title: "A welcome guide for new members",
+    description:
+      "A few members are writing a short guide for people who have just joined: what we do, how decisions are made, when and where we meet, and how to get involved.\n\n" +
+      "We'd like help from members who joined recently and remember what they wished they had known.",
+    supported_by: ["JORDAN", "SAM"],
+    updates: [
+      {
+        at: -7,
+        body: "A first draft is done: four pages, with a one-page summary at the front. Next step: three new members read it and tell us what is missing.",
+      },
+    ],
+    comments: [
+      {
+        by: "SAM",
+        at: -12,
+        body: "Please include who to contact for what. That was the hardest thing to find out when I joined.",
+      },
+      {
+        by: "ALEX",
+        at: -9,
+        body: "Keep it short. A guide nobody reads doesn't help anyone.",
+      },
+    ],
+  },
+  {
+    key: "org_announcement_annual_meeting",
+    kind: "announcement",
+    kinds: ORGANIZATION,
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -2,
+    title: "Annual meeting and election of officers",
+    body:
+      "Our annual meeting will review the past year, present the budget for the coming one, and elect officers.\n\n" +
+      "Any member may stand for an office. Nominations are open until one week before the meeting; the date, time and place will be posted here.",
+  },
+  {
+    key: "org_meeting_summary_members",
+    kind: "meeting_summary",
+    kinds: ORGANIZATION,
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -8,
+    meeting_title: "Members' meeting",
+    meeting_at: -9,
+    published_at: -8,
+    blocks: [
+      {
+        title: "Member comments",
+        summary:
+          "Three members spoke. One asked for meetings to start on time, one suggested a shared calendar of events, and one thanked the volunteers who ran last month's event.",
+        at_minute: 3,
+        action: null,
+      },
+      {
+        title: "Treasurer's report",
+        summary:
+          "The treasurer reported income and spending for the quarter. Members asked how much is held in reserve and whether dues cover regular costs.",
+        at_minute: 15,
+        action: "Report accepted.",
+      },
+      {
+        title: "Committee updates",
+        summary:
+          "The events committee proposed two events for the coming season, and the outreach committee reported on a new welcome guide for members.",
+        at_minute: 31,
+        action: "Both events approved, subject to the budget.",
+      },
+      {
+        title: "Next meeting",
+        summary: "Members discussed moving meetings to a time more people can attend, pending the vote on meeting times.",
+        at_minute: 52,
+        action: "Next meeting date to be set after the vote closes.",
+      },
+    ],
+    minutes:
+      "Call to order. The chair opened the meeting. The agenda was approved, and the notes of the previous meeting were accepted.\n\n" +
+      "Member comments. Three members spoke. One asked for meetings to start on time. One suggested a shared calendar of events. One thanked the volunteers who ran last month's event.\n\n" +
+      "Treasurer's report. The treasurer reported income and spending for the quarter. Members asked how much is held in reserve and whether dues cover regular costs. The report was accepted.\n\n" +
+      "Committee updates. The events committee proposed two events for the coming season; both were approved, subject to the budget. The outreach committee reported on a welcome guide for new members.\n\n" +
+      "Next meeting. Members discussed moving meetings to a time more people can attend. The date of the next meeting will be set after the vote on meeting times closes.\n\n" +
+      "Adjournment. The meeting was adjourned.",
+  },
+  {
+    key: "org_wordcloud_why_join",
+    kind: "wordcloud",
+    kinds: ORGANIZATION,
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -12,
+    title: "Why did you join?",
+    description: "One word is enough. Answers appear in the cloud as they come in.",
+    prompt: "In one word, why did you join?",
+    answers: [
+      ["friends", 6],
+      ["community", 5],
+      ["purpose", 4],
+      ["learning", 3],
+      ["fun", 3],
+      ["support", 3],
+      ["belonging", 2],
+      ["change", 2],
+      ["skills", 2],
+      ["volunteering", 2],
+    ],
+  },
+
+  // ===========================================================================
+  // Issue campaigns (2026-10-07, review R18). About running a campaign, never
+  // about which side of any issue is right; the members' own voice, no place.
+  // ===========================================================================
+
+  {
+    key: "issue_vote_focus",
+    kind: "vote",
+    kinds: ISSUE,
+    fits: EVERY_TYPE,
+    by: "JORDAN",
+    at: -6,
+    title: "What should the campaign focus on in the next three months?",
+    description:
+      "We have more ideas than volunteers. Each of these reaches different people, and each takes a different kind of time.\n\n" +
+      "Pick the one you think would do the most good in the next three months. The result guides the organizers' plan.",
+    method: "yes_no_unsure",
+    options: [
+      "Talking with neighbors door to door",
+      "Meeting with elected officials",
+      "Hosting public information sessions",
+      "Building our presence online",
+    ],
+    phase: "open",
+    opens_at: -6,
+    closes_at: 8,
+    ballots: [9, 6, 8, 5],
+  },
+  {
+    key: "issue_vote_chapters",
+    kind: "vote",
+    kinds: ISSUE,
+    fits: EVERY_TYPE,
+    by: "SAM",
+    at: -5,
+    title: "Should we form local chapters?",
+    description:
+      "Local chapters could reach more people and let volunteers meet near where they live. They also take organizers to run, and could pull the campaign in different directions.\n\n" +
+      "This vote opens once enough people endorse it. Endorse it if you think the question should be asked; endorsing does not mean you would vote yes.",
+    method: "yes_no_unsure",
+    options: ["Yes", "No", "Unsure"],
+    phase: "proposed",
+    endorsed_by: ["SAM", "ALEX", "CASEY"],
+  },
+  {
+    key: "issue_vote_decisions",
+    kind: "vote",
+    kinds: ISSUE,
+    fits: EVERY_TYPE,
+    by: "ALEX",
+    at: -21,
+    title: "How should the campaign make decisions between meetings?",
+    description:
+      "Some decisions can't wait a month for the next meeting: a press request, an invitation to speak, a change of plan. Today nobody is sure who may decide.\n\n" +
+      "Pick the way you would trust most.",
+    method: "yes_no_unsure",
+    options: [
+      "A small steering committee decides and reports back",
+      "A quick poll of participants here on the hub",
+      "Wait for the next full meeting unless it is urgent",
+    ],
+    phase: "closed",
+    opens_at: -20,
+    closes_at: -6,
+    ballots: [11, 16, 7],
+  },
+  {
+    key: "issue_outcome_decisions",
+    kind: "outcome",
+    kinds: ISSUE,
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -6,
+    source: "issue_vote_decisions",
+    published_at: -4,
+    headline: "A quick poll of participants was the most popular choice",
+    summary:
+      "The question. Who should make the campaign's decisions between meetings: a steering committee, a quick poll here on the hub, or the next full meeting.\n\n" +
+      "Result. 34 people voted over two weeks: 47% a quick poll, 32% a steering committee, 21% wait for the next meeting. No option had a majority.",
+    sections: [
+      {
+        heading: "What supporters of a quick poll said",
+        body: "Everyone gets a say, and a poll can be done in a day or two.",
+      },
+      {
+        heading: "What supporters of a steering committee said",
+        body: "Some decisions need an answer within hours, and a small group that reports back is accountable.",
+      },
+      {
+        heading: "What supporters of waiting said",
+        body: "Few decisions are truly urgent, and a full meeting allows real discussion.",
+      },
+      {
+        heading: "Suggested next step",
+        body: "Combine them: a steering committee for decisions needed within a day or two, a poll for the rest, and both reported at the next meeting.",
+      },
+    ],
+    participation_label: "34 people voted",
+    participation_count: 34,
+    sent_to: "the organizers",
+  },
+  {
+    key: "issue_proposal_finances",
+    kind: "proposal",
+    kinds: ISSUE,
+    fits: EVERY_TYPE,
+    by: "JORDAN",
+    at: -9,
+    title: "Publish where the campaign's money comes from and how it is spent",
+    description:
+      "Supporters and skeptics both ask who funds the campaign. Being open about it would answer the question before it is asked.\n\n" +
+      "The proposal: a short report each quarter, posted here, listing income by kind of source and spending by category.",
+    closes_at: 21,
+    endorsed_by: ["JORDAN", "ALEX", "CASEY"],
+    comments: [
+      {
+        by: "ALEX",
+        at: -8,
+        body: "This would help when I talk to people. I get asked about funding more than about the issue itself.",
+      },
+      {
+        by: "SAM",
+        at: -7,
+        body: "Some donors may not want their names public. Kinds of source, not names, seems right.",
+      },
+      {
+        by: "CASEY",
+        at: -5,
+        body: "Agreed. And we should check what the law already requires us to report, so this lines up with it.",
+      },
+    ],
+  },
+  {
+    key: "issue_deliberation_disagree",
+    kind: "deliberation",
+    kinds: ISSUE,
+    fits: EVERY_TYPE,
+    by: "CASEY",
+    at: -10,
+    topic: "Reaching people who disagree with us: what works?",
+    framing:
+      "Most of our conversations are with people who already agree. Persuading others means listening to why they see it differently, and some of us find that easier than others.\n\n" +
+      "React to each statement (agree, disagree or pass) and add your own. The organizers will use the results to plan outreach and training.",
+    closes_at: 32,
+    statements: [
+      "Listening first matters more than having the best argument.",
+      "Personal stories persuade more people than facts and figures.",
+      "We should spend our time on people who are undecided, not on those firmly opposed.",
+      "People who disagree often have concerns we should take seriously and address.",
+      "Our materials use words that only people already involved understand.",
+      "Meeting in person works better than posting online.",
+      "We should invite people who disagree to speak at our events.",
+      "Volunteers need practice before they talk with strangers.",
+    ],
+    picture: {
+      participants: 20,
+      groups: [
+        { size: 11, agree: [0, 3, 6], disagree: [2] },
+        { size: 9, agree: [1, 2, 5], disagree: [6] },
+      ],
+      consensus: [
+        { statement: 7, agree_rate: 0.9, votes: 20 },
+        { statement: 4, agree_rate: 0.8, votes: 20 },
+      ],
+    },
+  },
+  {
+    key: "issue_project_explainer",
+    kind: "project",
+    kinds: ISSUE,
+    fits: EVERY_TYPE,
+    by: "CASEY",
+    at: -18,
+    title: "A one-page explainer for newcomers",
+    description:
+      "People who hear about the campaign for the first time ask the same questions. A few volunteers are writing a one-page explainer in plain language: what the issue is, what the campaign is asking for, and how to learn more from several sources.\n\n" +
+      "We'd like readers who are new to the issue to tell us what is unclear.",
+    supported_by: ["JORDAN", "SAM"],
+    updates: [
+      {
+        at: -7,
+        body: "A draft is ready. Next step: five people who are new to the issue read it and mark anything confusing.",
+      },
+    ],
+    comments: [
+      {
+        by: "SAM",
+        at: -12,
+        body: "Please include the strongest objections and our answers. People trust a page that admits there is another side.",
+      },
+      {
+        by: "ALEX",
+        at: -9,
+        body: "A version in other languages spoken here would reach more people.",
+      },
+    ],
+  },
+  {
+    key: "issue_announcement_training",
+    kind: "announcement",
+    kinds: ISSUE,
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -2,
+    title: "Volunteer training session",
+    body:
+      "A two-hour session for new and returning volunteers: what the campaign is asking for, how to talk with people who see it differently, and how to record what you hear.\n\n" +
+      "No experience needed. The date, time and place will be posted here.",
+  },
+  {
+    key: "issue_meeting_summary_organizing",
+    kind: "meeting_summary",
+    kinds: ISSUE,
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -8,
+    meeting_title: "Organizing meeting",
+    meeting_at: -9,
+    published_at: -8,
+    blocks: [
+      {
+        title: "Volunteer report",
+        summary:
+          "The volunteer coordinator reported on sign-ups since the last meeting and how many people have attended a training session.",
+        at_minute: 3,
+        action: null,
+      },
+      {
+        title: "Outreach plan",
+        summary:
+          "Participants discussed where to focus over the next three months, pending the vote, and how to follow up with people met at recent events.",
+        at_minute: 14,
+        action: "Organizers to draft a plan once the vote closes.",
+      },
+      {
+        title: "Budget",
+        summary:
+          "The treasurer reported income and spending since the last meeting. Participants asked about the cost of printed materials compared with online outreach.",
+        at_minute: 33,
+        action: "Report accepted.",
+      },
+      {
+        title: "Next steps",
+        summary: "Participants agreed on the next training session and who will prepare the explainer for newcomers.",
+        at_minute: 49,
+        action: "Training session to be announced on the hub.",
+      },
+    ],
+    minutes:
+      "Opening. The facilitator opened the meeting and reviewed the agenda. Notes of the previous meeting were accepted.\n\n" +
+      "Volunteer report. The volunteer coordinator reported on sign-ups since the last meeting and on attendance at training sessions.\n\n" +
+      "Outreach plan. Participants discussed where to focus over the next three months, pending the vote now open, and how to follow up with people met at recent events. Organizers will draft a plan once the vote closes.\n\n" +
+      "Budget. The treasurer reported income and spending since the last meeting. Participants asked about the cost of printed materials compared with online outreach. The report was accepted.\n\n" +
+      "Next steps. Participants agreed to hold another training session and named volunteers to prepare the explainer for newcomers.\n\n" +
+      "Close. The meeting was closed.",
+  },
+  {
+    key: "issue_wordcloud_why_matters",
+    kind: "wordcloud",
+    kinds: ISSUE,
+    fits: EVERY_TYPE,
+    by: "TEAM",
+    at: -12,
+    title: "Why does this issue matter to you?",
+    description: "One word is enough. Answers appear in the cloud as they come in.",
+    prompt: "In one word, why does this issue matter to you?",
+    answers: [
+      ["fairness", 6],
+      ["future", 5],
+      ["family", 4],
+      ["trust", 3],
+      ["voice", 3],
+      ["community", 3],
+      ["accountability", 2],
+      ["hope", 2],
+      ["children", 2],
+      ["respect", 2],
+    ],
+  },
 ];
 
 /**
  * The templates that fit a hub: its kind first (unset = place), then, for a
  * place hub, its jurisdiction type (unset = "other", a general-purpose local
- * government). An outcome comes only with its vote. May be empty: no
- * template fits an issue campaign or an organization yet.
+ * government). An outcome comes only with its vote. Every kind has a set
+ * since 2026-10-07.
  */
 export function templatesFor(type: JurisdictionType | null | undefined, kind: HubKind = "place"): SampleTemplate[] {
   const t: JurisdictionType = type ?? "other";

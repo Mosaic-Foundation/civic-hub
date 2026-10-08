@@ -112,7 +112,14 @@ const DAY = 24 * 60 * 60 * 1000;
  * type whose plugin is off) accept every template. Only this run sees the
  * switches that way; the stored settings are not touched.
  */
-export async function seedSampleContent(opts: { dryRun?: boolean; now?: Date } = {}): Promise<SampleSeedReport> {
+export async function seedSampleContent(
+  opts: {
+    dryRun?: boolean;
+    now?: Date;
+    /** Only these template keys (the sample refresh re-seeds one at a time). */
+    only?: readonly string[];
+  } = {},
+): Promise<SampleSeedReport> {
   const hub = currentHub();
   if (!hub) currentHubId(); // throws the usual "no hub in scope"
   const settings = { ...(currentHubSettings() ?? {}) };
@@ -120,12 +127,14 @@ export async function seedSampleContent(opts: { dryRun?: boolean; now?: Date } =
   return withHubScope(hub!, settings, () => seedInScope(opts));
 }
 
-async function seedInScope(opts: { dryRun?: boolean; now?: Date }): Promise<SampleSeedReport> {
+async function seedInScope(opts: { dryRun?: boolean; now?: Date; only?: readonly string[] }): Promise<SampleSeedReport> {
   const hubId = currentHubId();
   const run = new SeedRun(hubId, sampleNames(), opts.now ?? new Date());
   const typeRaw = getSettingSync(KEYS.IDENTITY_JURISDICTION_TYPE);
   const kind = hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND));
-  const fitting = templatesFor(isJurisdictionType(typeRaw) ? typeRaw : null, kind);
+  const fitting = templatesFor(isJurisdictionType(typeRaw) ? typeRaw : null, kind).filter(
+    (t) => !opts.only || opts.only.includes(t.key),
+  );
   const report: SampleSeedReport = {
     hub: hubId,
     dry_run: !!opts.dryRun,
@@ -591,7 +600,9 @@ class SeedRun {
     state.approved_at = this.at(t.published_at, 2);
     state.published_at = this.at(t.published_at, 2);
     p.status = "finalized";
-    p.state = state as unknown as Record<string, unknown>;
+    // Read on the page in place of a minutes PDF (review issue #7). Set here:
+    // the handler's initializeState keeps only the fields it knows.
+    p.state = { ...(state as unknown as Record<string, unknown>), sample_minutes: this.fill(t.minutes) };
     await saveProcessState(p);
   }
 

@@ -12,6 +12,8 @@ export type {
 export {
   submitForReview,
   submitAsCreator,
+  draftPassedCodeOfConduct,
+  DEMO_PUBLISH_ACTOR,
   approveReview,
   reopenForRevision,
   requestChanges,

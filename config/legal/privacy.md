@@ -3,7 +3,7 @@
 *Last updated: 2026-04-24*
 *Version: 1.2*
 
-{{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US privacy law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US privacy law{{/place}} before the {HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.{{/draft}}
+{{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US privacy law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US privacy law{{/place}} before {THE_HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.{{/draft}}
 
 ## Who runs this site
 
@@ -124,4 +124,4 @@ For privacy questions, data requests, or concerns about this policy:
 
 ---
 
-*This policy applies to the {HUB_NAME} at {HOSTNAME}. {{#place}}It does not apply to the {PLACE} government website or to any other site we link to.{{/place}}{{^place}}It does not apply to any other site we link to.{{/place}}*
+*This policy applies to {THE_HUB_NAME} at {HOSTNAME}. {{#place}}It does not apply to the {PLACE} government website or to any other site we link to.{{/place}}{{^place}}It does not apply to any other site we link to.{{/place}}*

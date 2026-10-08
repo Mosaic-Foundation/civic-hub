@@ -10,6 +10,7 @@ import { runNewsSyncForHub } from "../controllers/newsSyncController.js";
 import { RunSink, runMeetingSummaryForHub } from "../controllers/meetingSummaryController.js";
 import { sweepHubExports } from "../db/hubExportsBucket.js";
 import { closeExpiredProcesses } from "../services/processService.js";
+import { refreshSamples } from "../services/sampleRefresh.js";
 
 export const JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
   meeting_summary: async () => {
@@ -23,6 +24,10 @@ export const JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
   vote_close: async () => {
     const r = await closeExpiredProcesses("civic.vote");
     return { status: r.failed.length ? 500 : 200, body: r };
+  },
+  sample_refresh: async ({ now }) => {
+    const r = await refreshSamples({ now });
+    return { status: 200, body: r as unknown as Record<string, unknown> };
   },
 };
 

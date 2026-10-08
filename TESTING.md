@@ -556,6 +556,46 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   returns to the vote. `tests/api/auth.test.ts`: a demo hub's request-code
   answers `no_email: true`. Results: unit 110 files, 1291; API 35 files,
   420 passed, 7 skipped (hub-token pass); Playwright 34 passed, 1 skipped.
+- **Samples stay current, every kind, demo submissions (session 3b,
+  2026-10-07).** New `tests/unit/sampleRefresh.test.ts`: every place type and
+  every other kind gets the required mix (open vote, vote gathering
+  endorsements, closed vote with its outcome, proposal, conversation) across
+  all eight plugin types; non-place sets name no place, governing body or
+  residents; every sample summary has minutes; `refreshReason` (window,
+  left-its-phase, the closed vote never); the job's run description; and
+  `draftPassedCodeOfConduct` (never run, unavailable, hard block, changed).
+  `sampleContent.test.ts`: every child table is either counted as real input
+  or named in `NOT_PARTICIPATION` (R46), and `review_turns` follows its
+  review. New `tests/api/sampleRefresh.test.ts` (console-made hubs, archived
+  after): organization and issue sets; the summary serves `sample_minutes`;
+  the job (`/internal/sample-refresh/run?hub=`) replaces a vote closing
+  tomorrow, a proposal closing in two days and an endorsement vote that was
+  opened, under the same ids, taking a visitor's ballot row with it, leaving
+  the closed vote's row untouched, recording one `job_runs` row and none when
+  idle; a beta hub is skipped; "Refresh samples" adds all eleven to an empty
+  demo hub, backfills minutes, and refuses a live hub; a visitor's proposal
+  publishes on demo after a passed check (stored `is_sample` +
+  `added_in_demo`, no badge, in the feed), waits for review when the check
+  was unavailable, and waits on beta and live; removal counts project
+  comments, reactions and visitors' items and deletes their reviews and turns
+  (the new `review_turns` guard), while a real review's turn stays
+  append-only. New `tests/e2e/sampleSummary.spec.ts` (demo hubs with the
+  sample summary; Meeting summaries switched on and put back): the demo bar's
+  refresh line, "Read the minutes" shows the text, "Watch recording" shows the
+  note and does not navigate. Changed on purpose: `sampleSeed.test.ts` (the
+  school district's own set), `hubKinds.test.ts` (an organization gets its
+  set), `hubAdminSettings.test.ts` (`{THE_HUB_NAME}` in the templates),
+  `leakHarness.test.ts` (the new cron route skipped like `vote-close`),
+  `jobRegistry.test.ts`, `jurisdictions.test.ts`.
+  **Local notes:** apply the migration with `supabase migration up --local`.
+  `sampleContent.test.ts` removes Athens's samples, so a later
+  `sampleSummary.spec.ts` skips until Athens is re-seeded
+  (`scripts/seed-sample-content.ts --hub athens`). Run the two API files
+  that use the step-up separately, clearing
+  `pending_verifications.locked_until`, as before. Results: unit 111 files,
+  1,305; API 36 files, 434 passed, 7 skipped, **both modes**; Playwright 34
+  passed, 1 skipped (the feed pill, which skips while Athens has Meeting
+  summaries off), against a production build behind `vite preview` on :4196.
 
 > **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
 > `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs

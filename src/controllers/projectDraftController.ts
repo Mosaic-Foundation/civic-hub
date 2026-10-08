@@ -8,7 +8,7 @@ import {
   updateProjectDraft,
   setProjectDraftStatus,
 } from "../modules/civic.project_drafts/index.js";
-import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
+import { submitAsCreator, reviseAndResubmit, draftPassedCodeOfConduct } from "../modules/civic.review/index.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { personFallbackName } from "../services/creatorDisplay.js";
 
@@ -219,6 +219,7 @@ export async function handleSubmitProjectDraft(
         content,
       },
       user.email,
+      { cocPassed: draftPassedCodeOfConduct(draft) },
     );
 
     await setProjectDraftStatus(id, "submitted");

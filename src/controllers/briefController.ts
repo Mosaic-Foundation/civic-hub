@@ -212,8 +212,8 @@ export async function listOutcomes(q: OutcomesQuery) {
   const rows = await readAll((from, to) =>
     forHub(currentHubId())
       .from("processes")
-      .select<{ id: string; title: string | null; state: Record<string, unknown>; is_sample: boolean }>(
-        "id, title, state, is_sample",
+      .select<{ id: string; title: string | null; state: Record<string, unknown>; is_sample: boolean; added_in_demo: boolean }>(
+        "id, title, state, is_sample, added_in_demo",
       )
       .eq("type", "civic.brief")
       .eq("state->>publication_status", "published")
@@ -243,7 +243,8 @@ export async function listOutcomes(q: OutcomesQuery) {
         typeof sourceId === "string" ? (relatedCounts.get(sourceId) ?? 0) : 0,
       );
       // Sample content (Phase 7): listed, with the Sample badge.
-      return entry && r.is_sample ? { ...entry, is_sample: true } : entry;
+      // A visitor's demo submission is stored as sample but has no badge.
+      return entry && r.is_sample && !r.added_in_demo ? { ...entry, is_sample: true } : entry;
     })
     .filter((e): e is NonNullable<typeof e> => e !== null);
 

@@ -13,7 +13,7 @@ import {
   updateDeliberationDraft,
   setDeliberationDraftStatus,
 } from "../modules/civic.deliberation_drafts/index.js";
-import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
+import { submitAsCreator, reviseAndResubmit, draftPassedCodeOfConduct } from "../modules/civic.review/index.js";
 import { personFallbackName } from "../services/creatorDisplay.js";
 
 export async function handleCreateDeliberationDraft(
@@ -235,6 +235,7 @@ export async function handleSubmitDeliberationDraft(
         state: statePayload,
       },
       user.email,
+      { cocPassed: draftPassedCodeOfConduct(draft) },
     );
 
     await setDeliberationDraftStatus(id, "submitted");

@@ -1567,8 +1567,10 @@ export interface PublicMeetingSummary {
   published_at: string;
   ai_model: string;
   ai_attribution_label: string;
-  /** Sample content (Phase 7): written by hand, no recording or minutes behind it. */
+  /** Sample content (Phase 7): written by hand, no recording behind it. */
   is_sample?: boolean;
+  /** A sample's minutes, as plain text (2026-10-07); paragraphs split on blank lines. */
+  sample_minutes?: string;
 }
 
 export interface MeetingSummaryPatch {
@@ -1914,6 +1916,8 @@ export function adminSetHubMode(
 export interface SampleContentSummary {
   processes: number;
   by_type: Record<string, number>;
+  /** What visitors submitted while the hub was in demo; removed with the samples. */
+  added_in_demo?: number;
   users: number;
   /** Real people's input on sample processes, by kind; deleted with them. */
   real_input: Record<string, number>;

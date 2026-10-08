@@ -22,9 +22,9 @@ describe("job registry", () => {
     expect(vercel.crons).toEqual(vercelCrons());
   });
 
-  it("covers every job the brief names: both digests, meeting summaries, news sync, the vote close, the export sweep", () => {
+  it("covers every job the brief names: both digests, meeting summaries, news sync, the vote close, the export sweep, the sample refresh", () => {
     expect(JOBS.map((j) => j.id).sort()).toEqual(
-      ["admin_digest", "digest", "hub_exports_sweep", "meeting_summary", "news_sync", "vote_close"].sort(),
+      ["admin_digest", "digest", "hub_exports_sweep", "meeting_summary", "news_sync", "sample_refresh", "vote_close"].sort(),
     );
   });
 
@@ -48,7 +48,10 @@ describe("job registry", () => {
   });
 
   it("names a real plugin for every hub job, and no two jobs share a path", () => {
-    for (const job of JOBS) if (!isPlatformJob(job)) expect(PLUGIN_IDS).toContain(job.plugin);
+    // null: hub housekeeping no plugin owns (the sample refresh).
+    for (const job of JOBS) {
+      if (!isPlatformJob(job) && job.plugin !== null) expect(PLUGIN_IDS).toContain(job.plugin);
+    }
     const paths = JOBS.flatMap((j) => [j.path, ...(j.deprecatedPaths ?? [])]);
     expect(new Set(paths).size).toBe(paths.length);
   });

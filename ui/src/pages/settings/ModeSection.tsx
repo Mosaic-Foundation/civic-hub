@@ -58,7 +58,7 @@ export default function ModeSection() {
     if (mode === "demo") adminGetSampleContent().then(setSample).catch(() => setSample(null));
   }, [mode]);
 
-  const asksAboutSample = mode === "demo" && !!sample && sample.processes > 0;
+  const asksAboutSample = mode === "demo" && !!sample && sample.processes + (sample.added_in_demo ?? 0) > 0;
 
   const changing = !!mode && pending !== mode;
   useEffect(() => setDirty("mode", changing), [changing, setDirty]);

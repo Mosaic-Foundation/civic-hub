@@ -1400,6 +1400,59 @@ fits the hub" has what was built.
 - **Kind sections** in the shared documents work for any kind
   (`{{^issue}}`), not only `place`.
 
+### Samples stay current; every kind; visitors' submissions (session 3b, 2026-10-07)
+
+Decided by Adam (the session prompt's decisions of Oct 7, and three answers in
+the session). HANDOFF "Demo hubs stay current" has what was built.
+
+- **The refresh.** A demo hub must always show an open vote, a vote gathering
+  endorsements, an open proposal, an active conversation and a closed vote
+  with its published outcome. A daily hub job, `sample_refresh` (registry,
+  06:45 UTC, `plugin: null`: housekeeping no plugin owns), replaces a live
+  sample within **3 days** of its deadline, or one that has left the phase it
+  shows, with a fresh copy from the same template **under the same id**. It
+  never moves a deadline in place and never touches the closed vote, its
+  outcome, the other samples or visitors' items. Demo hubs only. Visitors'
+  input on a replaced item goes with it; the demo bar says so. No
+  `hub_admin_audit_log` rows: `job_runs` only (a row when something was
+  replaced or added, none when idle, as `vote_close`).
+- **"Refresh samples"** on the console's hub page: the same refresh now, plus
+  any fitting template the hub lacks, plus minutes for a sample summary
+  seeded before they existed. Demo hubs only (refused otherwise, so a
+  graduated hub never gets samples back); no step-up; recorded in the hub's
+  `job_runs` with `trigger: "console"`, no audit row.
+- **Every kind** (R18; titles approved by Adam): school districts have their
+  own ten plus the budget hearing (the library vote, its outcome and the
+  "value most" word cloud are now local-government only); organizations and
+  hubs of kind `other` share one set; issue campaigns have one. The
+  organization and issue sets use the members' own voice ("we", "our")
+  rather than `{HUB_NAME}`, so no article is needed, and are about running
+  the group or campaign, never about which side of an issue is right.
+- **Sample meeting summary** (issue #7): `minutes` text on every meeting
+  template, stored as `state.sample_minutes`, served only for a sample. The
+  page shows "Read the minutes" and a "Watch recording" that opens the note
+  "In a real hub this links to the meeting video…", going nowhere.
+- **Visitors' submissions on a demo hub** (R25). A non-admin's submission on
+  a demo hub is stored with `is_sample` and the new `processes.added_in_demo`
+  (`20261007000000`), so its events stay off `/events` and it is removed with
+  the samples, counted separately first ("the N items visitors added during
+  the demo"). It shows no Sample badge (`isSample` is false in the app). One
+  that passed the automated Code of Conduct check publishes at once
+  (`submitAsCreator`, actor `system:demo-publish`); one whose check never ran
+  or was unavailable still goes to review. An unavailable check is now stored
+  on the draft as a soft `check_unavailable` entry (submitting stays allowed,
+  as before) rather than as an empty pass. Beta and live always review.
+  Admins' own submissions are not marked.
+- **`review_turns` guard** (in the same migration): its turns may be deleted
+  only when the review's process is sample content; everything else stays
+  append-only, UPDATE refused for all. The same rule as the events guard.
+  Removal deletes the turns first, while the review exists. The export leaves
+  them behind with their review (`REVIEW_CHILD_COLUMNS`).
+- **Removal counts everything** (R46): `PARTICIPATION_TABLES` adds project
+  comments, deliberation votes ("reactions"), brief responses and reviews of
+  seeded samples; a unit test makes every child table either counted or named
+  in `NOT_PARTICIPATION` with a reason.
+
 ### Backups (2026-10-04)
 
 Encrypted scheduled dumps outside Supabase, in a Google Cloud Storage bucket

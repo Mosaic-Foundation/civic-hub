@@ -1603,9 +1603,16 @@ export async function handleGetPublicMeetingSummary(
       res.status(404).json({ error: "Meeting summary not found" });
       return;
     }
-    // Sample content (Phase 7): the page says so, and that no recording or
-    // minutes stand behind it.
-    res.json({ ...model, is_sample: record.isSample === true });
+    // Sample content (Phase 7): the page says so, and that no recording
+    // stands behind it. Its minutes are sample text the page shows in place
+    // of a minutes PDF (2026-10-07, review issue #7).
+    const sample = record.isSample === true;
+    const minutes = (record.state as Record<string, unknown>).sample_minutes;
+    res.json({
+      ...model,
+      is_sample: sample,
+      ...(sample && typeof minutes === "string" && minutes.trim() ? { sample_minutes: minutes } : {}),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });

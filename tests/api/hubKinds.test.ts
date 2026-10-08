@@ -3,7 +3,8 @@
 //
 //   - A place hub still needs a jurisdiction (the default kind is place).
 //   - An `organization` hub with no jurisdiction works end to end: created
-//     with no code, name or governing body; no sample content fits it; its
+//     with no code, name or governing body; it gets the organization
+//     sample set (2026-10-07, review R18), which names no place; its
 //     documents name no place and no government; its sign-up config says
 //     organization; a process it creates is stamped "local", publishes with no
 //     location, and its manifest names no jurisdiction.
@@ -92,7 +93,7 @@ describe("an organization hub with no jurisdiction", () => {
     body = res.body;
   });
 
-  it("has no place: no OCD id, name, code, type or governing body, and no sample content fits it", async () => {
+  it("has no place: no OCD id, name, code, type or governing body; its samples name none", async () => {
     expect(body.config).toMatchObject({
       hub_kind: "organization",
       jurisdiction_ocd_id: null,
@@ -102,9 +103,12 @@ describe("an organization hub with no jurisdiction", () => {
       jurisdiction_type: null,
       governing_body: "",
     });
-    expect(body.sample_content.created).toEqual([]);
-    const procs = (await localRest(`processes?select=id&hub_id=eq.${ORG}`)) as Row[];
-    expect(procs).toHaveLength(0);
+    expect(body.sample_content.created.every((k: string) => k.startsWith("org_"))).toBe(true);
+    expect(body.sample_content.created).toHaveLength(10);
+    const procs = (await localRest(`processes?select=title,description&hub_id=eq.${ORG}`)) as Row[];
+    expect(procs).toHaveLength(10);
+    const text = procs.map((p) => `${p.title} ${p.description}`).join("\n");
+    expect(text).not.toMatch(/\{[A-Z_]+\}|\bresidents?\b|county|government/i);
   });
 
   it("refuses a jurisdiction type or a governing body", async () => {

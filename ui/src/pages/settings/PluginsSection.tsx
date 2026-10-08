@@ -36,6 +36,7 @@ import {
   UrlField,
 } from "./fields";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
+import hub from "../../config/hub";
 import { pluginSetup } from "../../config/plugins";
 import {
   adminGetJobRuns,
@@ -61,7 +62,16 @@ const PLUGINS: Record<PluginId, { name: string; what: string }> = {
   assistant: { name: "Writing assistant", what: "AI help while drafting a vote, proposal, project or conversation." },
   search: { name: "Search", what: "Full-text search across everything on the hub." },
   feedback: { name: "Feedback", what: "A form for residents to report problems or suggest changes." },
-  digest: { name: "Resident digest", what: "A summary email of new activity to each resident who has not unsubscribed." },
+  // Worded from the hub's own noun (place: resident, organization: member,
+  // else participant, or copy.resident_noun); read at render, not at load.
+  digest: {
+    get name() {
+      return `${hub.person_label} digest`;
+    },
+    get what() {
+      return `A summary email of new activity to each ${hub.noun(1)} who has not unsubscribed.`;
+    },
+  },
   admin_digest: { name: "Admin digest", what: "A daily email to admins of what is waiting for review." },
 };
 

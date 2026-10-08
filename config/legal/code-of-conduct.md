@@ -3,7 +3,7 @@
 *Last updated: 2026-09-07*
 *Version: 1.2*
 
-{{#place}}The {HUB_NAME} is a place for residents of {PLACE} to engage with each other and with local government.{{/place}}{{^place}}The {HUB_NAME} is a place for the people who take part in it to engage with each other and with its organizers.{{/place}} For that to work, everyone needs to be able to participate without being harassed, attacked, or drowned out. This Code of Conduct describes how we keep the Hub civil — and, just as important, how we avoid the far worse problem of silencing opinions we happen to disagree with.
+{{#place}}{THE_HUB_NAME_CAP} is a place for residents of {PLACE} to engage with each other and with local government.{{/place}}{{^place}}{THE_HUB_NAME_CAP} is a place for the people who take part in it to engage with each other and with its organizers.{{/place}} For that to work, everyone needs to be able to participate without being harassed, attacked, or drowned out. This Code of Conduct describes how we keep the Hub civil — and, just as important, how we avoid the far worse problem of silencing opinions we happen to disagree with.
 
 ## Our north star: decorum, not opinion
 
@@ -23,7 +23,7 @@ Content that:
 - **Uses profanity or vulgar language.** This is a matter of decorum, not opinion. You can be blunt, frustrated, and forceful about an issue without swearing, and we want a tone where a neighbor who'd be put off by coarse language can still take part. Criticism doesn't lose any force when it's clean.
 - **Shares someone's private information without consent** (doxxing), including home addresses, phone numbers not already public, workplace details, or medical information. Public officials' publicly listed contact information is fair to share.
 - **Imports or reposts private content about specific people from other platforms** — for example, screenshots or copied social-media posts. Keep discussion on the Hub self-contained: engage with what people say *here*, not with what they said somewhere else. Linking to authoritative or official sources as references is permitted.
-- **Is spam or obvious off-topic noise** — repetitive posts, commercial solicitation, or {{#place}}content unrelated to {PLACE} civic matters.{{/place}}{{^place}}content unrelated to what the {HUB_NAME} is about.{{/place}}
+- **Is spam or obvious off-topic noise** — repetitive posts, commercial solicitation, or {{#place}}content unrelated to {PLACE} civic matters.{{/place}}{{^place}}content unrelated to what {THE_HUB_NAME} is about.{{/place}}
 - **Impersonates another person** or misrepresents your identity or affiliation to mislead others.
 - **Endangers or sexualizes minors** in any way.
 - **Incites imminent violence** or provides specific targets and means for harm.

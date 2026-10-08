@@ -13,7 +13,11 @@ export default function DemoBanner() {
     <div className="beta-banner demo-banner" role="region" aria-label="Demo notice">
       <span className="beta-banner-text">
         This is a demo hub.{" "}
-        <span className="beta-banner-sub">Content marked Sample is illustrative, not public record.</span>
+        <span className="beta-banner-sub">Content marked Sample is illustrative, not public record.</span>{" "}
+        {/* The daily sample refresh (2026-10-07) replaces a sample near its deadline. */}
+        <span className="beta-banner-sub">
+          Sample items refresh from time to time; anything you add to them may be cleared.
+        </span>
       </span>
       {isAdmin && (
         <Link className="beta-banner-cta" to="/admin/settings/sample">

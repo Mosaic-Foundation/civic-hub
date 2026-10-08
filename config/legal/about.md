@@ -1,8 +1,8 @@
-# About the {HUB_NAME}
+# About {THE_HUB_NAME}
 
-## What is the {HUB_NAME}?
+## What is {THE_HUB_NAME}?
 
-The {HUB_NAME} aims to improve how {{#place}}our community understands and expresses public sentiment on local issues{{/place}}{{^place}}the people who take part understand and express where they stand on the issues they share{{/place}}.
+{THE_HUB_NAME_CAP} aims to improve how {{#place}}our community understands and expresses public sentiment on local issues{{/place}}{{^place}}the people who take part understand and express where they stand on the issues they share{{/place}}.
 
 Between elections, there is often no clear way to understand what {{#place}}residents{{/place}}{{^place}}people{{/place}} actually think about specific topics. This platform is designed to provide a simple, structured way to make that visible.
 
@@ -56,7 +56,7 @@ To maintain basic integrity while keeping participation accessible:
 
 ## What comes next
 
-The {HUB_NAME} is still early.
+{THE_HUB_NAME_CAP} is still early.
 
 Future iterations may include:
 

@@ -15,6 +15,8 @@ export default function MeetingSummaryPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [summary, setSummary] = useState<PublicMeetingSummary | null>(null);
+  const [showMinutes, setShowMinutes] = useState(false);
+  const [showRecordingNote, setShowRecordingNote] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,7 +64,7 @@ export default function MeetingSummaryPage() {
   // a repeat of it (Adam, 2026-09-06: "it says not an authoritative
   // transcript twice").
   const disclaimerDetail = sample
-    ? "Sample: written by hand to show what a summary looks like. No meeting, recording or minutes stand behind it; on a real summary each time opens the recording at that moment."
+    ? "Sample: written by hand to show what a summary looks like. No real meeting stands behind it; on a real summary each time opens the recording at that moment."
     : hasVideo
       ? "Click a timestamp to jump to that moment on YouTube."
       : "Generated from the minutes document — no recording of this meeting is available.";
@@ -131,6 +133,33 @@ export default function MeetingSummaryPage() {
       </div>
 
       <div className="meeting-provenance">
+        {sample && (
+          // A sample has no PDF and no video (review issue #7, 2026-10-07):
+          // its minutes are text on this page, and "Watch recording" says
+          // what a real hub links to instead of going anywhere.
+          <>
+            {summary.sample_minutes && (
+              <button
+                type="button"
+                className="meeting-chip"
+                aria-expanded={showMinutes}
+                aria-controls="meeting-sample-minutes"
+                onClick={() => setShowMinutes((v) => !v)}
+              >
+                {showMinutes ? "Hide minutes" : "Read the minutes"}
+              </button>
+            )}
+            <button
+              type="button"
+              className="meeting-chip"
+              aria-expanded={showRecordingNote}
+              aria-controls="meeting-sample-recording-note"
+              onClick={() => setShowRecordingNote((v) => !v)}
+            >
+              Watch recording
+            </button>
+          </>
+        )}
         {summary.source_minutes_url ? (
           <a
             href={summary.source_minutes_url}
@@ -172,6 +201,21 @@ export default function MeetingSummaryPage() {
           </a>
         ))}
       </div>
+
+      {sample && showRecordingNote && (
+        <p id="meeting-sample-recording-note" className="meeting-sample-note" role="note">
+          In a real hub this links to the meeting video, and each time below
+          opens the video at that moment.
+        </p>
+      )}
+      {sample && showMinutes && summary.sample_minutes && (
+        <section id="meeting-sample-minutes" className="meeting-sample-minutes" aria-label="Minutes">
+          <h2>Minutes</h2>
+          {summary.sample_minutes.split(/\n\s*\n/).map((para, i) => (
+            <p key={i}>{para}</p>
+          ))}
+        </section>
+      )}
 
       {/* Sections collapse by default so the page opens as a scannable agenda
           of the whole meeting rather than a wall of prose. A four-hour meeting

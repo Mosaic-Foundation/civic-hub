@@ -86,6 +86,7 @@ export interface ProcessRow {
   created_at: string;
   updated_at: string;
   is_sample?: boolean;
+  added_in_demo?: boolean;
 }
 
 export function rowToProcess(row: ProcessRow): Process {
@@ -109,7 +110,11 @@ export function rowToProcess(row: ProcessRow): Process {
   };
 
   if (row.content) proc.content = row.content;
-  if (row.is_sample) proc.isSample = true;
+  // A visitor's submission on a demo hub is stored as sample content (out of
+  // /events, removed with the samples) but is not one of the samples: no
+  // badge, not illustrative (20261007000000_added_in_demo).
+  if (row.is_sample && !row.added_in_demo) proc.isSample = true;
+  if (row.added_in_demo) proc.addedInDemo = true;
   return proc;
 }
 
@@ -576,7 +581,9 @@ export async function getSampleProcessIds(): Promise<Set<string>> {
   const rows = await db()
     .from("processes")
     .select<{ id: string }>("id")
-    .eq("is_sample", true);
+    .eq("is_sample", true)
+    // A visitor's demo submission is stored as sample but shows no badge.
+    .eq("added_in_demo", false);
   return new Set(rows.map((r) => r.id));
 }
 

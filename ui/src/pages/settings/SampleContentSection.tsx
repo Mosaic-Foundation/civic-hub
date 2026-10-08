@@ -74,7 +74,7 @@ export default function SampleContentSection() {
       <h2 className="settings-section-title">Sample content</h2>
       {!summary ? (
         <p className="form-hint">Loading…</p>
-      ) : summary.processes === 0 ? (
+      ) : summary.processes + (summary.added_in_demo ?? 0) === 0 ? (
         <>
           <p className="form-hint">This hub has no sample content.</p>
           {message && !message.error && (
@@ -90,6 +90,12 @@ export default function SampleContentSection() {
             votes, proposals and announcements, each marked <strong>Sample</strong>, so the hub did not open empty.
             They are not public record: they never appear in the hub's public event feed, its export or participants'
             email digests.
+            {(summary.added_in_demo ?? 0) > 0 && (
+              <>
+                {" "}Visitors added {summary.added_in_demo} {summary.added_in_demo === 1 ? "item" : "items"} of their own
+                while the hub was a demo; those are removed with the samples.
+              </>
+            )}
           </p>
 
           {confirming && <SampleRemovalWarning summary={summary} />}

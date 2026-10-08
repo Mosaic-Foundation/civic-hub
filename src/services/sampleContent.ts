@@ -15,8 +15,11 @@
 // the database allows the event deletes because they are sample events
 // (events_delete_guard); a real event is refused, which is the point.
 //
+// Visitors' own items on a demo hub (`added_in_demo`, 2026-10-07) are sample
+// content in the database and go the same way, counted separately first.
+//
 // Not one transaction: PostgREST has none across statements. The order is
-// children first, then processes, then users, and every step deletes "what
+// review turns, children, then processes, then users, and every step deletes "what
 // is still there", so a removal that stops part-way is finished by running
 // it again. No step touches a non-sample row.
 
@@ -26,6 +29,7 @@ import { currentHubId } from "../config/hubContext.js";
 import {
   PARTICIPATION_TABLES,
   PROCESS_CHILD_COLUMNS,
+  REVIEW_CHILD_COLUMNS,
 } from "../models/sampleContent.js";
 import { recordHubAdminAudit } from "./hubAdminAudit.js";
 import { getSetting, setSetting } from "./hubSettings.js";
@@ -36,14 +40,21 @@ function db(): HubDb {
 }
 
 export interface SampleContentSummary {
-  /** Sample processes, by type. */
+  /** Seeded sample processes (not visitors' own items), by type. */
   processes: number;
   by_type: Record<string, number>;
+  /**
+   * What visitors submitted while the hub was in demo (2026-10-07, review
+   * R25): stored as demo content and removed with the samples.
+   */
+  added_in_demo: number;
   /** Synthetic authors. */
   users: number;
   /**
-   * Real people's input on sample processes, deleted with them — by kind
-   * (comment, endorsement, ballot, statement, submission).
+   * Real people's input on sample processes and visitors' items, deleted with
+   * them — by kind (comment, endorsement, ballot, statement, reaction,
+   * submission, response, review). Every table a person writes is counted
+   * (review R46).
    */
   real_input: Record<string, number>;
   real_input_total: number;
@@ -51,8 +62,17 @@ export interface SampleContentSummary {
   other_processes: number;
 }
 
-async function sampleProcesses(): Promise<Array<{ id: string; type: string }>> {
-  return db().from("processes").select<{ id: string; type: string }>("id, type").eq("is_sample", true);
+interface SampleProcessRow {
+  id: string;
+  type: string;
+  added_in_demo: boolean;
+}
+
+async function sampleProcesses(): Promise<SampleProcessRow[]> {
+  return db()
+    .from("processes")
+    .select<SampleProcessRow>("id, type, added_in_demo")
+    .eq("is_sample", true);
 }
 
 async function sampleUserIds(): Promise<string[]> {
@@ -64,26 +84,94 @@ async function sampleUserIds(): Promise<string[]> {
 export async function sampleContentSummary(): Promise<SampleContentSummary> {
   const procs = await sampleProcesses();
   const ids = procs.map((p) => p.id);
+  const seededIds = procs.filter((p) => !p.added_in_demo).map((p) => p.id);
   const users = await sampleUserIds();
   const by_type: Record<string, number> = {};
-  for (const p of procs) by_type[p.type] = (by_type[p.type] ?? 0) + 1;
+  for (const p of procs) if (!p.added_in_demo) by_type[p.type] = (by_type[p.type] ?? 0) + 1;
 
   const real_input: Record<string, number> = {};
   let real_input_total = 0;
-  if (ids.length > 0) {
-    for (const t of PARTICIPATION_TABLES) {
-      let q = db().from(t.table as TableName).count().in(t.processColumn, ids);
-      if (users.length > 0) q = q.not(t.userColumn, "in", `(${users.join(",")})`);
-      const n = await q;
-      if (n > 0) {
-        real_input[t.kind] = (real_input[t.kind] ?? 0) + n;
-        real_input_total += n;
-      }
+  for (const t of PARTICIPATION_TABLES) {
+    const scope = t.seededOnly ? seededIds : ids;
+    if (scope.length === 0) continue;
+    let q = db().from(t.table as TableName).count().in(t.processColumn, scope);
+    if (users.length > 0) q = q.not(t.userColumn, "in", `(${users.join(",")})`);
+    const n = await q;
+    if (n > 0) {
+      real_input[t.kind] = (real_input[t.kind] ?? 0) + n;
+      real_input_total += n;
     }
   }
 
   const other_processes = await db().from("processes").count().eq("is_sample", false);
-  return { processes: procs.length, by_type, users: users.length, real_input, real_input_total, other_processes };
+  return {
+    processes: seededIds.length,
+    by_type,
+    added_in_demo: procs.length - seededIds.length,
+    users: users.length,
+    real_input,
+    real_input_total,
+    other_processes,
+  };
+}
+
+/**
+ * Delete these sample processes and every row that belongs to them, counting
+ * what went into `deleted` by table. Refuses any id that is not sample
+ * content (the caller passes sample ids; this re-checks, so a real process
+ * can never go this way). Used by removal (all of them) and by the sample
+ * refresh (one live sample at a time, src/services/sampleRefresh.ts).
+ */
+export async function deleteSampleProcesses(
+  requested: string[],
+  deleted: Record<string, number> = {},
+): Promise<Record<string, number>> {
+  if (requested.length === 0) return deleted;
+  const rows = await db().from("processes").select<{ id: string }>("id").in("id", requested).eq("is_sample", true);
+  const ids = rows.map((r) => r.id);
+  if (ids.length === 0) return deleted;
+
+  const del = async (table: TableName, column: string, values: string[]): Promise<void> => {
+    if (values.length === 0) return;
+    const n = await db().from(table).count().in(column, values);
+    if (n === 0) return;
+    await db().from(table).delete().in(column, values);
+    deleted[table] = (deleted[table] ?? 0) + n;
+  };
+
+  // 1. Review turns, while their review still exists: the database lets a
+  //    sample process's turns go and no others (review_turns guard).
+  const reviews = await db().from("process_reviews").select<{ id: string }>("id").in("process_id", ids);
+  const reviewIds = reviews.map((r) => r.id);
+  for (const [table, column] of Object.entries(REVIEW_CHILD_COLUMNS)) {
+    await del(table as TableName, column, reviewIds);
+  }
+  // processes.review_id points at the review; let go of it first.
+  if (reviewIds.length > 0) await db().from("processes").update({ review_id: null }).in("id", ids);
+  // 2. Rows that belong to a sample process — every table in the shared
+  //    list except the process-sharing rows and events, which go below.
+  //    (FK cascades would take some of these anyway; deleting them
+  //    explicitly counts them and covers the tables with no FK.)
+  const later = new Set(["events", "proposals", "projects"]);
+  for (const [table, cols] of Object.entries(PROCESS_CHILD_COLUMNS)) {
+    if (later.has(table)) continue;
+    for (const c of cols) await del(table as TableName, c, ids);
+  }
+  // 3. The module rows that share their process's id.
+  await del("proposals", "id", ids);
+  await del("projects", "id", ids);
+  // 4. Their events: stamped sample by the database, so every event of a
+  //    sample process, whoever wrote it, may be deleted.
+  {
+    const n = await db().from("events").count().in("process_id", ids).eq("is_sample", true);
+    if (n > 0) {
+      await db().from("events").delete().in("process_id", ids).eq("is_sample", true);
+      deleted.events = (deleted.events ?? 0) + n;
+    }
+  }
+  // 5. The processes.
+  await del("processes", "id", ids);
+  return deleted;
 }
 
 export interface SampleRemovalResult {
@@ -101,41 +189,25 @@ export async function removeSampleContent(actorEmail: string): Promise<SampleRem
   const users = await sampleUserIds();
   const deleted: Record<string, number> = {};
 
-  const del = async (table: TableName, column: string, values: string[]): Promise<void> => {
-    if (values.length === 0) return;
-    const n = await db().from(table).count().in(column, values);
-    if (n === 0) return;
-    await db().from(table).delete().in(column, values);
-    deleted[table] = (deleted[table] ?? 0) + n;
-  };
-
-  // 1. Rows that belong to a sample process — every table in the shared
-  //    list except the marked ones and the process-sharing rows, which go
-  //    below. (FK cascades would take some of these anyway; deleting them
-  //    explicitly counts them and covers the tables with no FK.)
-  const later = new Set(["events", "proposals", "projects"]);
-  for (const [table, cols] of Object.entries(PROCESS_CHILD_COLUMNS)) {
-    if (later.has(table)) continue;
-    for (const c of cols) await del(table as TableName, c, ids);
-  }
-  // 2. The module rows that share their process's id.
-  await del("proposals", "id", ids);
-  await del("projects", "id", ids);
-  // 3. Sample events: stamped by the database, so this is every event of
-  //    every sample process, whoever wrote it.
+  await deleteSampleProcesses(ids, deleted);
+  // Any sample event left without a process (none expected).
   {
     const n = await db().from("events").count().eq("is_sample", true);
     if (n > 0) {
       await db().from("events").delete().eq("is_sample", true);
-      deleted.events = n;
+      deleted.events = (deleted.events ?? 0) + n;
     }
   }
-  // 4. The processes.
-  await del("processes", "id", ids);
-  // 5. The synthetic authors (their sessions cascade).
-  await del("users", "id", users);
-  // 6. A setting that names a sample process would point at nothing: the
-  //    hub's word cloud, which the seed chooses when there is none.
+  // The synthetic authors (their sessions cascade).
+  if (users.length > 0) {
+    const n = await db().from("users").count().in("id", users);
+    if (n > 0) {
+      await db().from("users").delete().in("id", users);
+      deleted.users = n;
+    }
+  }
+  // A setting that names a sample process would point at nothing: the
+  // hub's word cloud, which the seed chooses when there is none.
   const cleared: string[] = [];
   const chosen = await getSetting(currentHubId(), KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID);
   if (chosen && ids.includes(chosen)) {
@@ -151,7 +223,8 @@ export async function removeSampleContent(actorEmail: string): Promise<SampleRem
   });
   console.log(
     `[hub] sample content removed on ${currentHubId()} by ${actorEmail}: ` +
-      `${summary.processes} processes, ${summary.real_input_total} real inputs, ${summary.users} sample users`,
+      `${summary.processes} processes, ${summary.added_in_demo} added in demo, ` +
+      `${summary.real_input_total} real inputs, ${summary.users} sample users`,
   );
   return { summary, deleted };
 }
@@ -180,7 +253,7 @@ export async function sampleDeliverySuppressed(message: { to: string[]; subject:
 export async function hubContentFlags(hubId: string): Promise<{ samples: boolean; welcome: boolean }> {
   const db = forHub(hubId);
   const [samples, welcome] = await Promise.all([
-    db.from("processes").count().eq("is_sample", true).then((n) => n > 0, () => false),
+    db.from("processes").count().eq("is_sample", true).eq("added_in_demo", false).then((n) => n > 0, () => false),
     db.from("hub_settings").count().eq("key", KEYS.COPY_WELCOME).neq("value", "").then((n) => n > 0, () => false),
   ]);
   return { samples, welcome };

@@ -25,6 +25,7 @@ import { fetchHubDocuments } from "../db/hubSettingsStore.js";
 import { getSettingSync } from "./hubSettings.js";
 import { HUB_KINDS, hubKindOf } from "../shared/hubKind.js";
 import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
+import { theName } from "../shared/hubCopy.js";
 import { KEYS } from "../models/hubSettings.js";
 import type { Hub } from "../models/hub.js";
 
@@ -146,7 +147,13 @@ export function substitutions(hub: Hub): Record<string, string> {
   // Must match ui/src/config/hub.ts's `name` getter, or a document and the
   // page around it would call the same hub two different things.
   const displayName = getSettingSync(KEYS.IDENTITY_NAME)?.trim() || hub.name;
-  if (displayName) out.HUB_NAME = displayName;
+  if (displayName) {
+    out.HUB_NAME = displayName;
+    // With the right article for running text (review R19): {THE_HUB_NAME}
+    // mid-sentence, {THE_HUB_NAME_CAP} at the start of one.
+    out.THE_HUB_NAME = theName(displayName);
+    out.THE_HUB_NAME_CAP = theName(displayName, true);
+  }
   if (hub.hostname) out.HOSTNAME = hub.hostname;
 
   // A hub that is not a place (identity.hub_kind, 2026-09-27) is rendered
@@ -285,8 +292,14 @@ export function applySubstitutions(
   template: string,
   values: Readonly<Record<string, string>>,
 ): string {
+  // The article forms follow HUB_NAME unless the caller supplied them.
+  const all: Record<string, string> = { ...values };
+  if (values.HUB_NAME) {
+    all.THE_HUB_NAME ??= theName(values.HUB_NAME);
+    all.THE_HUB_NAME_CAP ??= theName(values.HUB_NAME, true);
+  }
   return resolveKindSections(template, values.HUB_KIND).replace(/\{([A-Z_]+)\}/g, (match, name: string) =>
-    Object.prototype.hasOwnProperty.call(values, name) ? values[name] : match,
+    Object.prototype.hasOwnProperty.call(all, name) ? all[name] : match,
   );
 }
 

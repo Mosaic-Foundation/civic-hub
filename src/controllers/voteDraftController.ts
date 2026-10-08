@@ -8,7 +8,7 @@ import {
   updateVoteDraft,
   setVoteDraftStatus,
 } from "../modules/civic.vote_drafts/index.js";
-import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
+import { submitAsCreator, reviseAndResubmit, draftPassedCodeOfConduct } from "../modules/civic.review/index.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { supportPhaseConfig } from "../modules/civic.vote/index.js";
 import { getSupportThreshold } from "../services/hubSettings.js";
@@ -215,6 +215,7 @@ export async function handleSubmitVoteDraft(
         state: stateInput,
       },
       user.email,
+      { cocPassed: draftPassedCodeOfConduct(draft) },
     );
 
     await setVoteDraftStatus(id, "submitted");

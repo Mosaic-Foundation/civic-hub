@@ -43,8 +43,12 @@ interface JobSpecBase {
 /** A job that runs once per active hub, inside that hub's scope. */
 export interface HubJobSpec extends JobSpecBase {
   readonly scope?: "hub";
-  /** The plugin this job belongs to. `plugin.<id>.enabled` off skips it per hub. */
-  readonly plugin: PluginId;
+  /**
+   * The plugin this job belongs to. `plugin.<id>.enabled` off skips it per
+   * hub. null: hub housekeeping no plugin owns, which every hub runs (the
+   * sample refresh, which decides for itself which hubs it applies to).
+   */
+  readonly plugin: PluginId | null;
 }
 
 /**
@@ -115,6 +119,13 @@ export const JOBS: readonly JobSpec[] = [
     // time for the digest. The close on read stays as the fallback.
     schedule: "5 * * * *",
     description: "Close votes past their deadline, per hub with Votes on (stamped with the deadline)",
+  },
+  {
+    id: "sample_refresh",
+    plugin: null,
+    path: "/sample-refresh/run",
+    schedule: "45 6 * * *",
+    description: "Replace demo hubs' live samples near their deadline (demo hubs only)",
   },
   {
     id: "hub_exports_sweep",

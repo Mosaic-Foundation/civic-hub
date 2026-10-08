@@ -3,11 +3,11 @@
 *Last updated: 2026-08-10*
 *Version: 1.2*
 
-{{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US consumer law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US consumer law{{/place}} before the {HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.{{/draft}}
+{{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US consumer law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US consumer law{{/place}} before {THE_HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.{{/draft}}
 
 ## Agreement
 
-By using the {HUB_NAME} ("the Hub") at {HOSTNAME}, you agree to these Terms of Service ("Terms"). If you don't agree, please don't use the Hub.
+By using {THE_HUB_NAME} ("the Hub") at {HOSTNAME}, you agree to these Terms of Service ("Terms"). If you don't agree, please don't use the Hub.
 
 {WHO_RUNS_THIS}
 
@@ -103,4 +103,4 @@ For questions about these Terms or to report a concern:
 
 ---
 
-*These Terms apply to the {HUB_NAME} at {HOSTNAME}. {{#place}}They do not apply to the {PLACE} government website or any other site we link to.{{/place}}{{^place}}They do not apply to any other site we link to.{{/place}}*
+*These Terms apply to {THE_HUB_NAME} at {HOSTNAME}. {{#place}}They do not apply to the {PLACE} government website or any other site we link to.{{/place}}{{^place}}They do not apply to any other site we link to.{{/place}}*

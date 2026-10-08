@@ -159,10 +159,12 @@ describe("hub kinds", () => {
     expect(participantNoun("other", 2)).toBe("participants");
   });
 
-  it("has sample templates for place hubs only, today", () => {
-    expect(kindsWithSamples()).toEqual(["place"]);
+  it("has sample templates for every kind of hub (2026-10-07, review R18)", () => {
+    expect(kindsWithSamples().sort()).toEqual(["issue", "organization", "other", "place"]);
     expect(templatesFor("county", "place").length).toBeGreaterThan(0);
-    for (const k of ["issue", "organization", "other"] as const) expect(templatesFor(null, k)).toEqual([]);
+    for (const k of ["issue", "organization", "other"] as const) expect(templatesFor(null, k).length).toBeGreaterThan(0);
+    // "other" takes the organization set.
+    expect(templatesFor(null, "other").map((t) => t.key)).toEqual(templatesFor(null, "organization").map((t) => t.key));
   });
 });
 

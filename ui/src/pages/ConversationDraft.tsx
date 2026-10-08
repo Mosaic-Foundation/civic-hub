@@ -15,6 +15,8 @@ import {
   type ProposedLink,
 } from "../services/api";
 import "./ProposeDraft.css";
+import { demoSubmitNote } from "../config/demoCopy";
+import hub from "../config/hub";
 
 /**
  * Conversation creation on the ONE shared flow — same shell, same lazy
@@ -225,7 +227,9 @@ export default function ConversationDraft() {
             <p className="confirm-finality-warning">
               {isAdmin
                 ? "Once submitted, your conversation goes live and participants can join right away."
-                : "Your conversation will be submitted for review before going live. You'll be notified when an admin has reviewed it."}
+                : hub.demo_mode
+                  ? demoSubmitNote("conversation")
+                  : "Your conversation will be submitted for review before going live. You'll be notified when an admin has reviewed it."}
             </p>
 
             {draft.assistant_helped && (
@@ -262,7 +266,7 @@ export default function ConversationDraft() {
                 onClick={confirmSubmit}
                 disabled={submitting}
               >
-                {submitting ? "Submitting..." : isAdmin ? "Create conversation" : "Submit for review"}
+                {submitting ? "Submitting..." : isAdmin ? "Create conversation" : hub.demo_mode ? "Submit" : "Submit for review"}
               </button>
               <button
                 type="button"

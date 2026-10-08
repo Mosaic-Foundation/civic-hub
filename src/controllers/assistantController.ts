@@ -18,6 +18,7 @@ import {
   callAssistant,
   getHubConfig,
   AUTOMATED_REVIEW_UNAVAILABLE_NOTICE,
+  CHECK_UNAVAILABLE_RESULT,
   type AssistantTypeConfig,
   type AssistantDraft,
   type Category,
@@ -234,7 +235,9 @@ export async function handleAssistantReview(
         console.error(`[assistant-review:${processType}] CoC check unavailable, failing open to human review:`, err instanceof Error ? err.message : err);
         unavailable = true;
       }
-      await config.draftStore.saveReviewResult(draft.id, suggestions);
+      // An unavailable check is stored as such (submitting stays allowed), so
+      // a demo hub never publishes the draft as if it had passed.
+      await config.draftStore.saveReviewResult(draft.id, unavailable ? [{ ...CHECK_UNAVAILABLE_RESULT }] : suggestions);
       const updated = await config.draftStore.get(draft.id);
       res.json({
         response: {

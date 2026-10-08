@@ -18,6 +18,9 @@ import { getHubBySlug } from "../db/hubs.js";
 import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { withHubScope } from "../config/hubContext.js";
 import { seedSampleContent, type SampleSeedReport } from "../services/sampleSeed.js";
+import { refreshSamples, type SampleRefreshReport } from "../services/sampleRefresh.js";
+import { describeJobRun } from "../jobs/describe.js";
+import { recordJobRun } from "../services/jobRuns.js";
 import { kindsWithSamples, samplePreviews } from "../services/sampleTemplates.js";
 import {
   CODE_SENT,
@@ -175,6 +178,24 @@ async function seedSampleInHub(hubId: string): Promise<SampleSeedReport> {
   if (!row) throw new Error(`hub ${hubId} not found after create`);
   const settings = await fetchHubSettings(hubId);
   return withHubScope(row, settings, () => seedSampleContent());
+}
+
+/**
+ * "Refresh samples" (2026-10-07): the daily sample refresh, now, for one demo
+ * hub, plus any template the hub lacks. Recorded like the job's own run, in
+ * the hub's job_runs; no audit row (Adam).
+ */
+async function refreshSamplesInHub(hubId: string): Promise<SampleRefreshReport> {
+  const row = await getHubBySlug(hubId);
+  if (!row) throw new Error(`hub ${hubId} not found`);
+  const settings = await fetchHubSettings(hubId);
+  return withHubScope(row, settings, async () => {
+    const started = new Date();
+    const report = await refreshSamples({ now: started, addMissing: true });
+    const run = describeJobRun("sample_refresh", { status: 200, body: report as unknown as Record<string, unknown> });
+    if (run) await recordJobRun("sample_refresh", started, run, { ...report, trigger: "console" });
+    return report;
+  });
 }
 
 async function hubDetail(hub: ControlHub) {
@@ -387,6 +408,17 @@ export function controlRouter(): Router {
       await audited(res, { actor: actor(res), action: "hub.admins", hubId: hub.id, before, after: next });
     }
     res.json(await hubDetail(hub));
+  }));
+
+  // Demo hubs only: a beta or live hub never gets samples back.
+  r.post("/control/hubs/:id/samples/refresh", route(async (req, res) => {
+    const hub = await loadHub(req, res);
+    if (!hub) return;
+    if (hub.archived_at) throw new ControlInputError("This hub is archived.");
+    if (hub.mode !== "demo") {
+      throw new ControlInputError("Samples are refreshed on demo hubs only; this hub is in " + hub.mode + " mode.");
+    }
+    res.json({ refresh: await refreshSamplesInHub(hub.id) });
   }));
 
   r.post("/control/hubs/:id/archive", route(async (req, res) => {

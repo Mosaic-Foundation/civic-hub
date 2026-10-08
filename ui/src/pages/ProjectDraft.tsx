@@ -16,6 +16,8 @@ import {
 import "./ProjectDraft.css";
 import type { ProposedLink } from "../services/api";
 import { getProjectDetail } from "../services/api";
+import { demoSubmitNote } from "../config/demoCopy";
+import hub from "../config/hub";
 
 /**
  * ONE creation flow — the drafting form IS the page. No path choice: AI
@@ -230,6 +232,8 @@ export default function ProjectDraft() {
                 ? "Your edits go live right away. The previous version stays visible on the project page under \"See what changed\", and people who support this project will be told it was edited."
                 : isAdmin
                   ? "Once submitted, your project can only be changed through Edit project, which keeps a visible history of every change."
+                  : hub.demo_mode
+                  ? demoSubmitNote("project")
                   : "Your project will be submitted for review before going live. You'll be notified when an admin has reviewed it."}
             </p>
 
@@ -267,7 +271,7 @@ export default function ProjectDraft() {
                 onClick={confirmSubmit}
                 disabled={submitting}
               >
-                {submitting ? "Submitting..." : editProcessId ? "Submit edits" : isAdmin ? "Submit project" : "Submit for review"}
+                {submitting ? "Submitting..." : editProcessId ? "Submit edits" : isAdmin ? "Submit project" : hub.demo_mode ? "Submit" : "Submit for review"}
               </button>
               <button
                 type="button"

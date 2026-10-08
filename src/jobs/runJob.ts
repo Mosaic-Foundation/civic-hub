@@ -30,7 +30,7 @@ export async function runJobAcrossHubs(
 ): Promise<JobRunReport | { status: 404; error: string }> {
   const runs = await forEachActiveHub<JobOutcome>(
     async () => {
-      if (!isPluginEnabledSync(job.plugin)) {
+      if (job.plugin && !isPluginEnabledSync(job.plugin)) {
         return {
           status: 200,
           body: { skipped: true, reason: `plugin.${job.plugin}.enabled is off` },

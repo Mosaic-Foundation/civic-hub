@@ -4,6 +4,102 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Demo hubs stay current, for every kind, and a visitor's submission goes live (session 3b) — 2026-10-07 (sixth part)
+
+Review issues #9 and #7, R18, R25, R46, and the 3a leftovers (`Review-Findings-2026-10-06.md`). Not pushed.
+**One migration** (`20261007000000_added_in_demo.sql`, additive plus one guard replaced; see below), one new cron in
+`vercel.json`, no dependencies or env vars. Decisions: BUILD-PLAN "Samples stay current; every kind; visitors'
+submissions". Adam approved the template titles, "marked and removed" for visitors' items, and a 3-day window with the
+button on demo hubs only.
+
+**Built:**
+1. **Samples stay current (#9).** `src/services/sampleRefresh.ts` and the `sample_refresh` job (registry, 06:45 UTC,
+   `plugin: null`, so `HubJobSpec.plugin` may now be null and `runJob` skips the switch check for it).
+   - On a demo hub it replaces the open vote, the endorsement vote, the proposal or the conversation when it closes
+     within 3 days, or has left the phase it is there to show. Replacing means deleting it with what it spawned and
+     everything attached (`deleteSampleProcesses`), then seeding it again under the same id
+     (`seedSampleContent({ only })`).
+   - Beta and live hubs are skipped. The closed vote, its outcome and visitors' items are never touched.
+   - `job_runs` gets a row only when something changed (`describeSampleRefresh`).
+   - The demo bar adds "Sample items refresh from time to time; anything you add to them may be cleared."
+2. **Console "Refresh samples"** (`POST /control/hubs/:id/samples/refresh`, a "Sample content" card on demo hubs only).
+   It runs the same refresh, adds missing templates, and gives an older sample summary its minutes. It is recorded in
+   `job_runs` (`trigger: "console"`), with no audit row.
+3. **Every kind (R18).** `src/services/sampleTemplates.ts` gains three sets, 30 templates:
+   - **School district:** `sd_*`, plus the budget hearing. The library vote, its outcome and the "value most" word
+     cloud are now local-government only.
+   - **Organization (and "other"):** `org_*`.
+   - **Issue campaign:** `issue_*`.
+
+   Each set has the required five and covers all eight plugin types. The organization and issue sets speak as "we"
+   rather than "Should {HUB_NAME} …", which read "Should Riverside Tenants Association …" without an article.
+4. **Sample meeting summary (#7).** Every meeting template has `minutes`, stored as `state.sample_minutes` (set after
+   create: the handler's `initializeState` drops unknown keys). It is served on `GET /meeting-summary/:id` for samples
+   only. The page has "Read the minutes" (text in place) and "Watch recording", which opens a note and goes nowhere.
+5. **A visitor's submission on demo (R25).**
+   - `submitForReview` stores a non-admin's submission on a demo hub with `is_sample` + `added_in_demo`.
+   - `submitAsCreator(…, { cocPassed })` publishes it at once when the Code of Conduct check passed
+     (`draftPassedCodeOfConduct`; the conversation path passes its own inline check). The actor is
+     `system:demo-publish`.
+   - If the check never ran or was unavailable, the submission goes to review. An unavailable check is stored on the
+     draft as a soft `check_unavailable` entry (`CHECK_UNAVAILABLE_RESULT`), so the form still allows submitting, as
+     before.
+   - The app treats `added_in_demo` as not a sample, so there is no badge (`rowToProcess`, `getSampleProcessIds`,
+     the feed and brief index). The four draft pages say so on demo before submit (`ui/src/config/demoCopy.ts`).
+6. **Removal (R46).**
+   - Real input now counts project comments, reactions (deliberation votes), official responses and reviews of
+     seeded samples.
+   - Visitors' items are counted apart (`added_in_demo` in the summary and the warning). Settings → Sample content
+     and leaving demo offer removal when only those are left.
+   - The export leaves sample reviews' turns behind (`REVIEW_CHILD_COLUMNS`, `reviewIds`).
+7. **Leftovers from 3a** (a Sonnet subagent; I reviewed the diff):
+   - `{THE_HUB_NAME}` / `{THE_HUB_NAME_CAP}` in the five legal templates (from `theName()`; Floyd's text is
+     unchanged).
+   - "Welcome to {theName(hub.name)}" in the intro pop-up and the beta dialog.
+   - "Email digest" (console and admin digest), and "<person label> digest" in Settings → Plugins.
+   - The share callout no longer covers the supporter count: `.process-share-row:has(.share-callout)` gets room
+     below. This is CSS only and not seen in a browser.
+
+**The migration:**
+- `processes.added_in_demo` (default false, partial index).
+- The spawn trigger re-created to carry it.
+- **`review_turns`' guard replaced:** turns of a review whose process is sample content may be deleted; everything else
+  stays append-only and UPDATE is refused for all. It follows the events guard. Without it a visitor's submission
+  (which has a review) could never be removed. Removal deletes turns first, while the review exists.
+
+**Tests:** unit 112 files, 1,311. API 36 files, 434 passed and 7 skipped, **both modes**. Playwright 34 passed and
+1 skipped (the feed pill, skipped while Athens has Meeting summaries off). New: `tests/unit/sampleRefresh.test.ts`,
+`tests/api/sampleRefresh.test.ts`, `tests/e2e/sampleSummary.spec.ts`. Details and the tests changed on purpose are in
+TESTING.md.
+
+**Open:**
+- The share-callout fix makes the page jump by ~3rem while the callout shows. Check on dev; if it bothers you, the
+  callout could sit above instead (it was moved below in 2026-09 because the sticky nav hid it).
+- Evaluator accounts and their sessions still stay after removal (the rest of R46: an "evaluation reset"). Not in
+  this slice.
+- An admin's own submissions on a demo hub are real content (not marked). Say if they should be marked too.
+- The demo bar is four lines tall at 375 px with the new sentence.
+- Remaining "resident" wording from the 3a list (`describe.ts` "Sent to N residents", the assistant and
+  meeting-summary prompts) is unchanged.
+
+**For Adam, on dev after you push (dev runs `HUB_CRON_ENABLED=false`, so the daily job does not run there; use the
+button):**
+1. Migrate dev (`20261007000000_added_in_demo.sql`), as usual.
+2. console.dev → **agora** → "Sample content" card → **Refresh samples**. Expect "Added: …" (whatever agora lacks),
+   "Minutes added to: meeting_summary_regular", and "Replaced: …" for anything closing within 3 days (the open vote,
+   which closes Oct 14, from Oct 11 on). After it, the open vote, endorsement vote, proposal and conversation should
+   all be live.
+3. agora → the sample meeting summary: "Read the minutes" shows text; "Watch recording" shows the note.
+4. agora, signed in as a non-admin test address: propose something and run the Code of Conduct check. Expect it to go
+   live at once with no Sample badge. In Settings → Sample content (as admin), expect "Visitors added 1 item…".
+5. console → New hub → **Organization** and **Issue campaign** with sample content: ten items each, worded "we", no
+   place. A **school district**: start times, phones, weather days, board materials, homework, reading buddies,
+   boundaries.
+6. On a beta hub, the same proposal goes to "In review".
+7. Legal pages on agora (About, Terms): the hub's name reads with the right article ("About the … Civic Hub").
+
+---
+
 ## Every word fits the hub: wording by kind and place (session 3a) — 2026-10-07 (fifth part)
 
 Review findings R13, R15–R17, R19–R24, R26–R30, R33, R40, R45, R53 (`Review-Findings-2026-10-06.md`). Not

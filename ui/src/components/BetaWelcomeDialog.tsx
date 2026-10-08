@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { theName } from "../../../src/shared/hubCopy";
 import hub from "../config/hub";
 import { pluginEnabled } from "../config/plugins";
 import AuthModal from "./AuthModal";
@@ -53,7 +54,7 @@ function WelcomeDialog({ onSignIn }: { onSignIn: () => void }) {
     <dialog
       ref={dialogRef}
       className="beta-welcome"
-      aria-label={`Welcome to the ${hub.name}`}
+      aria-label={`Welcome to ${theName(hub.name)}`}
       onClose={enterPreview}
       onClick={handleBackdropClick}
     >

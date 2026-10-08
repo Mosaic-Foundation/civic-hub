@@ -30,6 +30,8 @@ const root = resolve(import.meta.dirname, "../..");
 
 const FLOYD_NAMES = {
   HUB_NAME: "Floyd Civic Hub",
+  THE_HUB_NAME: "the Floyd Civic Hub",
+  THE_HUB_NAME_CAP: "The Floyd Civic Hub",
   HOSTNAME: "floyd.civic.social",
   PLACE: "Floyd County",
   JURISDICTION: "Floyd County, Virginia",
@@ -132,7 +134,7 @@ describe("the proposal guide is generic, and Floyd keeps its own", () => {
     const names = [...shared.matchAll(/\{([A-Z_]+)\}/g)].map((m) => m[1]);
     for (const name of names) {
       expect(
-        ["HUB_NAME", "PLACE", "JURISDICTION", "STATE", "GOVERNING_BODY"],
+        ["HUB_NAME", "THE_HUB_NAME", "THE_HUB_NAME_CAP", "PLACE", "JURISDICTION", "STATE", "GOVERNING_BODY"],
       ).toContain(name);
     }
   });

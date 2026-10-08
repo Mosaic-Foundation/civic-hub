@@ -29,7 +29,7 @@ numbers below, or just grep the heading.
 | DB client (service role, the thing tenancy replaces) | `src/db/client.ts`; only `src/db/`, `scripts/`, `tests/` may import it (`eslint.config.js`, `civic/raw-client`) |
 | Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |
 | Local Supabase stack (ports, auth, seed) | `supabase/config.toml`, `supabase/seed.sql` |
-| Migrations (72 files, 36 tables; non-additive: `20260926005000`, and `20260927010000` which drops the audit log's hub FK) | `supabase/migrations/` |
+| Migrations (73 files, 36 tables; non-additive: `20260926005000`, and `20260927010000` which drops the audit log's hub FK) | `supabase/migrations/` |
 | Scheduled jobs | `src/jobs/registry.ts` (the one list; `vercel.json` checked against it, `npm run jobs:crontab`), runners `src/jobs/runners.ts`, per-hub loop `src/jobs/runJob.ts` + `src/services/cronHubs.ts`, routes `src/routes/jobRoutes.ts` |
 | Scheduled-job run log: what each outcome means, recording, last-run route, admin digest section | `src/jobs/describe.ts`, `src/services/jobRuns.ts` (table `job_runs`, `20260929000000`), `GET /admin/hub/jobs/runs`, `src/modules/civic.admin_digest/service.ts` |
 | Meeting-summary readiness (when a meeting may be summarized) and quality flags | `src/modules/civic.meeting_summary/readiness.ts`, `effectiveQualityFlag` in `service.ts` |
@@ -45,7 +45,7 @@ numbers below, or just grep the heading.
 | Leak harness, RLS catalog test | `tests/api/leakHarness.test.ts`, `leakHarnessDb.test.ts`, `rlsCatalog.test.ts`, rules in `tests/fixtures/tenancyCatalog.ts` |
 | Atomic DB functions | `transition_process`, `cast_vote` (`20260924080000`), called via `src/db/atomic.ts` |
 | Hub export / import / restore (bundle format, runbook) | `src/control/hubBundle/format.ts`, `scripts/export-hub.ts`, `scripts/import-hub.ts`, `scripts/restore-hub.ts`, `scripts/lib/hubImport.ts`, `RUNBOOK-restore-hub.md` |
-| Sample content: templates, seed, removal, the row classification | `src/services/sampleTemplates.ts`, `src/services/sampleSeed.ts`, `src/services/sampleContent.ts`, `src/models/sampleContent.ts`, `scripts/seed-sample-content.ts` |
+| Sample content: templates, seed, removal, the row classification, the daily refresh | `src/services/sampleTemplates.ts`, `src/services/sampleSeed.ts`, `src/services/sampleContent.ts`, `src/services/sampleRefresh.ts`, `src/models/sampleContent.ts`, `scripts/seed-sample-content.ts` |
 | Hub admin audit log (fresh-code actions) | `src/services/hubAdminAudit.ts`; console reader `listHubAdminAudit` in `src/control/audit.ts` |
 | Place-name CI check + allow-list | `scripts/check-place-names.ts`, `scripts/place-name-allowlist.txt` |
 | A hub's seed values (read only by the seed script) | `config/hubs/<hub>/settings.json` |
@@ -74,6 +74,13 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Demo hubs stay current, every kind, visitors' submissions (2026-10-07, sixth
+  part, session 3b)**: `src/services/sampleRefresh.ts`, the `sample_refresh`
+  job, console "Refresh samples", school/organization/issue sample sets,
+  `sample_minutes`, `added_in_demo` + the `review_turns` guard
+  (`20261007000000`), demo publishing after the CoC check
+  (`draftPassedCodeOfConduct`, `CHECK_UNAVAILABLE_RESULT`), removal counts —
+  top of HANDOFF (grep the heading)
 - **Every word fits the hub (2026-10-07, fifth part, session 3a)**: legal
   placeholders and `draft_notes`, `src/shared/hubCopy.ts` (defaults by kind,
   `theName()`, `briefPillFor`), `copy.welcome_strip*` / `copy.beta_banner`,

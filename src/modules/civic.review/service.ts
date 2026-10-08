@@ -1,6 +1,6 @@
 import { forHub, type HubDb } from "../../db/forHub.js";
 import { assertProcessTypeEnabled } from "../../services/pluginGate.js";
-import { currentHubId } from "../../config/hubContext.js";
+import { currentHub, currentHubId } from "../../config/hubContext.js";
 import { createEdges } from "../../services/processLinks.js";
 import {
   draftPathFor,
@@ -46,6 +46,37 @@ function db(): HubDb {
 function getAdminEmails(): string[] {
   return getAdminEmailsSync();
 }
+
+/**
+ * A visitor on a demo hub (2026-10-07, review R25): anyone who is not one of
+ * the hub's admins, while the hub is in `demo` mode. Their submissions are
+ * stored as demo content (is_sample + added_in_demo), so "Remove sample
+ * content" clears them with the samples; and one that passed the automated
+ * Code of Conduct check publishes without waiting for an admin.
+ */
+function isDemoVisitor(creatorEmail: string): boolean {
+  if (currentHub()?.mode !== "demo") return false;
+  return !getAdminEmails().includes(creatorEmail.trim().toLowerCase());
+}
+
+/**
+ * Did the automated Code of Conduct check pass on a draft as it stands? It
+ * must have run (not never, and not "unavailable", which it stores as such),
+ * found no hard block, and the draft must not have changed since.
+ */
+export function draftPassedCodeOfConduct(draft: {
+  last_review_result: ReadonlyArray<{ severity: string; check_unavailable?: boolean }> | null;
+  draft_modified_since_review: boolean;
+}): boolean {
+  return (
+    Array.isArray(draft.last_review_result) &&
+    !draft.last_review_result.some((s) => s.severity === "hard" || s.check_unavailable === true) &&
+    !draft.draft_modified_since_review
+  );
+}
+
+/** The actor recorded when a demo hub publishes a visitor's submission itself. */
+export const DEMO_PUBLISH_ACTOR = "system:demo-publish";
 
 function takeSnapshot(process: {
   title: string;
@@ -94,6 +125,9 @@ export async function submitForReview(
     config: input.config ?? null,
     state: initialState,
     created_by: input.creator_id,
+    // Demo content from the first event on, so every event it ever has is a
+    // sample event (kept off /events, deletable with the samples).
+    ...(isDemoVisitor(input.creator_email) ? { is_sample: true, added_in_demo: true } : {}),
   };
 
   // Through forHub so the process is stamped with the hub it was submitted on.
@@ -219,15 +253,28 @@ export async function submitForReview(
 export async function submitAsCreator(
   input: SubmitForReviewInput,
   creatorEmail: string,
+  opts: {
+    /**
+     * The automated Code of Conduct check ran on exactly this text and found
+     * nothing. False when it was not run, was unavailable (it fails open to
+     * human review), or the text changed after it.
+     */
+    cocPassed?: boolean;
+  } = {},
 ): Promise<{ review_id: string; process_id: string; auto_approved: boolean }> {
   const isAdmin = getAdminEmails().includes(creatorEmail.trim().toLowerCase());
+  // On a demo hub nobody reviews (review R25): a visitor's submission that
+  // passed the check goes live at once, so the evaluator sees what a
+  // published one looks like. Beta and live hubs always review.
+  const demoPublish = !isAdmin && opts.cocPassed === true && isDemoVisitor(creatorEmail);
+  const autoApprove = isAdmin || demoPublish;
   const { review, process_id } = await submitForReview(input, {
-    notify: !isAdmin,
+    notify: !autoApprove,
   });
-  if (isAdmin) {
-    await approveReview(review.id, input.creator_id);
+  if (autoApprove) {
+    await approveReview(review.id, isAdmin ? input.creator_id : DEMO_PUBLISH_ACTOR);
   }
-  return { review_id: review.id, process_id, auto_approved: isAdmin };
+  return { review_id: review.id, process_id, auto_approved: autoApprove };
 }
 
 // --- Admin actions ---

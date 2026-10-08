@@ -374,7 +374,8 @@ describe("restore default", () => {
       admin,
     );
     expect(tpl.status).toBe(200);
-    expect(tpl.body.template).toContain("{HUB_NAME}");
+    // The hub's name, with or without its article ({THE_HUB_NAME}, 2026-10-07).
+    expect(tpl.body.template).toMatch(/\{(THE_)?HUB_NAME(_CAP)?\}/);
 
     // What the page's "Restore default" does: the template text, saved.
     const restored = await put("legal", { "legal.code_of_conduct": tpl.body.template });
@@ -387,7 +388,7 @@ describe("restore default", () => {
     const firstLine = tpl.body.template.split("\n")[0];
     expect(served.startsWith(firstLine)).toBe(true);
     expect(served).not.toContain("Our own code");
-    expect(served).not.toContain("{HUB_NAME}");
+    expect(served).not.toMatch(/\{(THE_)?HUB_NAME(_CAP)?\}/);
   });
 
   it("has no default for the Welcome page, and refuses a key it does not know", async () => {

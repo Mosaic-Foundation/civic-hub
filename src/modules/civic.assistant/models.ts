@@ -40,6 +40,13 @@ export interface Suggestion {
   field: DraftField | null;
   message: string;
   suggested_revision: string | null;
+  /**
+   * Stored on a draft when the Code of Conduct check could not run (it fails
+   * open: submitting stays allowed, and the form shows only hard blocks). A
+   * demo hub reads it to send the draft to review instead of publishing it
+   * (2026-10-07, review R25).
+   */
+  check_unavailable?: true;
 }
 
 export interface DraftProposal {

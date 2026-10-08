@@ -18,6 +18,8 @@ import {
 } from "../services/api";
 import "./ProposeDraftVote.css";
 import type { ProposedLink } from "../services/api";
+import { demoSubmitNote } from "../config/demoCopy";
+import hub from "../config/hub";
 
 /**
  * ONE creation flow — the drafting form IS the page. No path choice: AI
@@ -270,7 +272,9 @@ export default function ProposeDraftVote() {
             <p className="confirm-finality-warning">
               {isAdmin
                 ? "Once submitted, your vote cannot be edited. Please make sure everything looks the way you want it before submitting."
-                : "Your vote will be submitted for review before going live. You'll be notified when an admin has reviewed it."}
+                : hub.demo_mode
+                  ? demoSubmitNote("vote")
+                  : "Your vote will be submitted for review before going live. You'll be notified when an admin has reviewed it."}
             </p>
 
             {draft.assistant_helped && (
@@ -307,7 +311,7 @@ export default function ProposeDraftVote() {
                 onClick={confirmSubmit}
                 disabled={submitting}
               >
-                {submitting ? "Submitting..." : isAdmin ? "Submit vote" : "Submit for review"}
+                {submitting ? "Submitting..." : isAdmin ? "Submit vote" : hub.demo_mode ? "Submit" : "Submit for review"}
               </button>
               <button
                 type="button"

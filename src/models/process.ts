@@ -78,6 +78,12 @@ export interface Process {
    * a sample one.
    */
   isSample?: boolean;
+  /**
+   * Written by a visitor on a demo hub (`processes.added_in_demo`, 2026-10-07).
+   * Stored as sample content in the database, but `isSample` is false: it is
+   * no illustration, and shows no Sample badge.
+   */
+  addedInDemo?: boolean;
 }
 
 export interface CreateProcessInput {

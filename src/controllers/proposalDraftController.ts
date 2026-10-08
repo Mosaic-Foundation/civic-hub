@@ -9,7 +9,7 @@ import {
   claimDraftForSubmission,
 } from "../modules/civic.proposal_drafts/index.js";
 import { type Category } from "../modules/civic.assistant/index.js";
-import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
+import { submitAsCreator, reviseAndResubmit, draftPassedCodeOfConduct } from "../modules/civic.review/index.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { personFallbackName } from "../services/creatorDisplay.js";
 
@@ -259,6 +259,7 @@ export async function handleSubmitDraft(
           content,
         },
         user.email,
+        { cocPassed: draftPassedCodeOfConduct(draft) },
       );
 
       res.status(201).json(result);

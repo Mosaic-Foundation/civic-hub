@@ -951,6 +951,12 @@
   margin: -1rem 0 2rem;
 }
 
+/* The share callout drops below the buttons; make room for it so it does
+ * not sit on the supporter count that follows (review R33). */
+.process-share-row:has(.share-callout) {
+  margin-bottom: 5rem;
+}
+
 /* --- Vote panel --- */
 
 .vote-panel {

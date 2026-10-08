@@ -284,6 +284,7 @@ export async function handleCreateDeliberation(req: Request, res: Response): Pro
     // drafting flow (and no assistant), so the check runs here at submission
     // instead of on a draft. Hard findings block; an unavailable checker
     // fails open to human admin review, same as the draft flows.
+    let cocPassed = false;
     try {
       const findings = await checkTextAgainstCoC(
         [
@@ -304,6 +305,7 @@ export async function handleCreateDeliberation(req: Request, res: Response): Pro
         });
         return;
       }
+      cocPassed = true;
     } catch (cocErr) {
       console.error(
         "[deliberation-coc] automated check unavailable, failing open to human review:",
@@ -323,6 +325,7 @@ export async function handleCreateDeliberation(req: Request, res: Response): Pro
         state: statePayload,
       },
       user.email,
+      { cocPassed },
     );
 
     res.status(201).json(result);

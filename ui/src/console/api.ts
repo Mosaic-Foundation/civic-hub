@@ -120,6 +120,14 @@ export interface SlugSuggestion {
   passed_over: Array<{ slug: string; reason: string }>;
 }
 
+/** What "Refresh samples" did (src/services/sampleRefresh.ts). */
+export interface SampleRefreshReport {
+  skipped?: string;
+  replaced: Array<{ key: string; reason: string }>;
+  added: string[];
+  minutes_added: string[];
+}
+
 export interface HubExport {
   object_key: string;
   file_name: string;
@@ -165,6 +173,8 @@ export const api = {
   archive: (id: string, extra: Record<string, unknown> = {}) =>
     request<HubDetail>("POST", `/hubs/${encodeURIComponent(id)}/archive`, extra),
   unarchive: (id: string) => request<HubDetail>("POST", `/hubs/${encodeURIComponent(id)}/unarchive`, {}),
+  refreshSamples: (id: string) =>
+    request<{ refresh: SampleRefreshReport }>("POST", `/hubs/${encodeURIComponent(id)}/samples/refresh`, {}),
   exportHub: (id: string, extra: Record<string, unknown> = {}) =>
     request<HubExport>("POST", `/hubs/${encodeURIComponent(id)}/export`, extra),
   hubAdminAudit: (id: string) =>

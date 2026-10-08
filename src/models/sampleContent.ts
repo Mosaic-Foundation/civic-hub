@@ -58,16 +58,27 @@ export const NOT_PROCESS_CONTENT: Readonly<Record<string, string>> = {
   pending_verifications: "sign-in codes",
   project_drafts: "a resident's unsubmitted draft; the seed writes none",
   proposal_drafts: "a resident's unsubmitted draft; the seed writes none",
-  review_turns:
-    "keyed by review, not process; the seed writes no reviews, and a sample process under review cannot be removed (review_turns is append-only for every role)",
   sessions: "credentials; a sample user's sessions go with the user (ON DELETE CASCADE)",
   vote_drafts: "a resident's unsubmitted draft; the seed writes none",
   waitlist: "people asking to join",
 };
 
+/**
+ * Tables whose rows belong to a REVIEW, and the column naming it (2026-10-07).
+ * A visitor's submission on a demo hub has a review; its turns are sample
+ * content when the review's process is. Removal deletes them first, while the
+ * review still exists, which the database's review_turns guard requires
+ * (20261007000000_added_in_demo).
+ */
+export const REVIEW_CHILD_COLUMNS: Readonly<Record<string, string>> = {
+  review_turns: "review_id",
+};
+
 export interface SampleIds {
   processIds: ReadonlySet<string>;
   userIds: ReadonlySet<string>;
+  /** Reviews of sample processes (process_reviews.id). */
+  reviewIds?: ReadonlySet<string>;
 }
 
 /**
@@ -78,6 +89,8 @@ export function isSampleRow(table: string, row: Record<string, unknown>, ids: Sa
   if ((MARKED_TABLES as readonly string[]).includes(table) && row.is_sample === true) return true;
   if (table === "processes") return ids.processIds.has(String(row.id));
   if (table === "users") return ids.userIds.has(String(row.id));
+  const reviewCol = REVIEW_CHILD_COLUMNS[table];
+  if (reviewCol) return row[reviewCol] != null && (ids.reviewIds?.has(String(row[reviewCol])) ?? false);
   const cols = PROCESS_CHILD_COLUMNS[table];
   if (!cols) return false;
   return cols.some((c) => row[c] != null && ids.processIds.has(String(row[c])));
@@ -90,20 +103,55 @@ export function isSampleRow(table: string, row: Record<string, unknown>, ids: Sa
  * the column naming the person. Removal counts these for its warning: they
  * are deleted with the process. (`vote_records` holds anonymous ballots with
  * no person on them; `vote_participation` is the one row per voter.)
+ *
+ * Every PROCESS_CHILD_COLUMNS table a person writes is here (review R46,
+ * 2026-10-07); tests/unit/sampleContent.test.ts checks the rest are written
+ * by the hub itself. A review is counted only on a seeded sample (an edit a
+ * visitor proposed); a visitor's own submission is counted as the item.
  */
 export const PARTICIPATION_TABLES: ReadonlyArray<{
   table: string;
   processColumn: string;
   userColumn: string;
-  kind: "comment" | "endorsement" | "ballot" | "statement" | "submission";
+  kind: ParticipationKind;
+  /** Count only on the seeded samples, not on visitors' own items. */
+  seededOnly?: boolean;
 }> = [
   { table: "community_inputs", processColumn: "process_id", userColumn: "author_id", kind: "comment" },
+  { table: "project_comments", processColumn: "project_id", userColumn: "user_id", kind: "comment" },
   { table: "proposal_supports", processColumn: "proposal_id", userColumn: "user_id", kind: "endorsement" },
   { table: "project_sentiments", processColumn: "project_id", userColumn: "user_id", kind: "endorsement" },
   { table: "vote_participation", processColumn: "process_id", userColumn: "user_id", kind: "ballot" },
   { table: "deliberation_submissions", processColumn: "process_id", userColumn: "user_id", kind: "statement" },
+  { table: "deliberation_votes", processColumn: "process_id", userColumn: "user_id", kind: "reaction" },
   { table: "wordcloud_submissions", processColumn: "process_id", userColumn: "author_id", kind: "submission" },
+  { table: "brief_responses", processColumn: "brief_id", userColumn: "responder_id", kind: "response" },
+  { table: "process_reviews", processColumn: "process_id", userColumn: "creator_id", kind: "review", seededOnly: true },
 ];
+
+export type ParticipationKind =
+  | "comment"
+  | "endorsement"
+  | "ballot"
+  | "statement"
+  | "reaction"
+  | "submission"
+  | "response"
+  | "review";
+
+/**
+ * PROCESS_CHILD_COLUMNS tables no person writes: the hub, the seed or the
+ * process itself does. With PARTICIPATION_TABLES they cover the whole list.
+ */
+export const NOT_PARTICIPATION: Readonly<Record<string, string>> = {
+  active_vote_keys: "a voter's key while a vote is open; their ballot is counted through vote_participation",
+  events: "the log of the actions counted here",
+  process_links: "links between processes",
+  project_updates: "written by the project's own author",
+  projects: "the process's own row",
+  proposals: "the process's own row",
+  vote_records: "anonymous ballots; counted through vote_participation",
+};
 
 // --- Synthetic authors ------------------------------------------------------
 

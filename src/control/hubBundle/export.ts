@@ -102,12 +102,20 @@ export async function exportHub(opts: ExportOptions): Promise<BundleManifest> {
   // Sample content stays behind. Child rows are known only by their process,
   // so the marked tables are read first and kept for their own turn.
   const prefetched = new Map<string, Row[]>();
-  for (const table of ["processes", "users"]) {
+  for (const table of ["processes", "users", "process_reviews"]) {
     prefetched.set(table, await reader.tableRows(table, hubId, TABLE_KEYS[table]));
   }
+  const processIds = new Set(prefetched.get("processes")!.filter((r) => r.is_sample === true).map((r) => String(r.id)));
   const sampleIds: SampleIds = {
-    processIds: new Set(prefetched.get("processes")!.filter((r) => r.is_sample === true).map((r) => String(r.id))),
+    processIds,
     userIds: new Set(prefetched.get("users")!.filter((r) => r.is_sample === true).map((r) => String(r.id))),
+    // A visitor's demo submission has a review; its turns stay behind with it.
+    reviewIds: new Set(
+      prefetched
+        .get("process_reviews")!
+        .filter((r) => processIds.has(String(r.process_id)))
+        .map((r) => String(r.id)),
+    ),
   };
   for (const table of exportedTables()) {
     const key = TABLE_KEYS[table];

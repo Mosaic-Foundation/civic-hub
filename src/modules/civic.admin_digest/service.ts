@@ -232,9 +232,10 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
 export const JOB_NAMES: Readonly<Record<string, string>> = {
   meeting_summary: "Meeting summaries",
   news_sync: "News sync",
-  digest: "Resident digest",
+  digest: "Email digest",
   admin_digest: "Admin digest",
   vote_close: "Closing votes",
+  sample_refresh: "Sample refresh",
   job_runs: "Job run log",
 };
 

@@ -9,9 +9,11 @@ import { describe, it, expect } from "vitest";
 import { EXPORT_MANIFEST } from "../../src/db/schemaContract.js";
 import {
   MARKED_TABLES,
+  NOT_PARTICIPATION,
   NOT_PROCESS_CONTENT,
   PARTICIPATION_TABLES,
   PROCESS_CHILD_COLUMNS,
+  REVIEW_CHILD_COLUMNS,
   isSampleRow,
   sampleProcessId,
   sampleUserId,
@@ -35,6 +37,7 @@ describe("which rows are sample content", () => {
       ...MARKED_TABLES,
       ...Object.keys(PROCESS_CHILD_COLUMNS),
       ...Object.keys(NOT_PROCESS_CONTENT),
+      ...Object.keys(REVIEW_CHILD_COLUMNS),
     ]);
     const unclassified = EXPORT_MANIFEST.map((e) => e.table).filter((t) => !classified.has(t));
     expect(unclassified, "tables in neither PROCESS_CHILD_COLUMNS nor NOT_PROCESS_CONTENT").toEqual([]);
@@ -46,6 +49,24 @@ describe("which rows are sample content", () => {
     for (const t of PARTICIPATION_TABLES) {
       expect(PROCESS_CHILD_COLUMNS[t.table], t.table).toContain(t.processColumn);
     }
+  });
+
+  it("counts every table a person writes (review R46): the rest are named, with a reason", () => {
+    const counted = new Set(PARTICIPATION_TABLES.map((t) => t.table));
+    for (const table of Object.keys(PROCESS_CHILD_COLUMNS)) {
+      expect(counted.has(table) || table in NOT_PARTICIPATION, table).toBe(true);
+      expect(counted.has(table) && table in NOT_PARTICIPATION, table).toBe(false);
+    }
+    for (const t of ["project_comments", "deliberation_votes", "brief_responses", "process_reviews"]) {
+      expect(counted.has(t), t).toBe(true);
+    }
+  });
+
+  it("takes a sample review's turns with it, and no other review's", () => {
+    const withReviews = { ...ids, reviewIds: new Set(["rev_s"]) };
+    expect(isSampleRow("review_turns", { id: "t1", review_id: "rev_s" }, withReviews)).toBe(true);
+    expect(isSampleRow("review_turns", { id: "t2", review_id: "rev_real" }, withReviews)).toBe(false);
+    expect(isSampleRow("review_turns", { id: "t1", review_id: "rev_s" }, ids)).toBe(false);
   });
 
   const ids = { processIds: new Set(["proc_s"]), userIds: new Set(["user_s"]) };
@@ -153,9 +174,10 @@ describe("the sample templates", () => {
   });
 
   it("fits a school district with only what reads right there", () => {
-    expect(templatesFor("school_district").map((t) => t.key).sort()).toEqual(
-      ["announcement_budget_hearing", "outcome_library_hours", "vote_library_hours", "wordcloud_value"].sort(),
-    );
+    const keys = templatesFor("school_district").map((t) => t.key);
+    // Its own set plus the budget hearing; nothing about a library, roads or land use.
+    expect(keys.filter((k) => !k.startsWith("sd_"))).toEqual(["announcement_budget_hearing"]);
+    expect(keys.length).toBe(11);
     // No type set reads as a general-purpose local government.
     expect(templatesFor(null).length).toBe(templatesFor("other").length);
   });

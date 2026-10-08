@@ -4,8 +4,8 @@
 // A county hub in Virginia gets all eleven templates, the governing body the
 // form infers ("Board of Supervisors") and its short form ("Supervisors"),
 // its names filled in, every event
-// marked sample and none of it on GET /events; a school district gets only
-// the four that fit. Then the county hub's admin removes it all and the hub
+// marked sample and none of it on GET /events; a school district gets its
+// own set (2026-10-07). Then the county hub's admin removes it all and the hub
 // still serves, empty. (Idempotence is the script's, and is checked by hand
 // in the HANDOFF: the console seeds a hub once, at creation.)
 //
@@ -225,9 +225,14 @@ describe("a school district hub", () => {
     expect(tz?.value).toBe("America/New_York");
     expect(res.body.config.governing_body).toBe("School Board");
     expect(res.body.config.governing_body_short).toBe("School Board");
-    expect([...res.body.sample_content.created].sort()).toEqual(
-      ["announcement_budget_hearing", "outcome_library_hours", "vote_library_hours", "wordcloud_value"].sort(),
-    );
+    // Its own set (2026-10-07, review R18) and the budget hearing.
+    const keys: string[] = res.body.sample_content.created;
+    expect(keys).toHaveLength(11);
+    expect(keys.filter((k) => !k.startsWith("sd_"))).toEqual(["announcement_budget_hearing"]);
+    const procs = (await localRest(`processes?select=title,description&hub_id=eq.${SCHOOLS}`)) as Row[];
+    const text = procs.map((p) => `${p.title} ${p.description}`).join("\n");
+    expect(text).not.toMatch(/\{[A-Z_]+\}/);
+    expect(text).not.toMatch(/library|road|land use/i);
   });
 });
 

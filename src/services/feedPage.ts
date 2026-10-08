@@ -164,9 +164,12 @@ async function processFacts(events: CivicEvent[]): Promise<Map<string, ProcessFa
   // At most BATCH ids, so at most BATCH rows: one request, under the cap.
   const rows = await forHub(currentHubId())
     .from("processes")
-    .select<ProcessFacts & { id: string }>("id, status, type, is_sample")
+    .select<ProcessFacts & { id: string; added_in_demo: boolean }>("id, status, type, is_sample, added_in_demo")
     .in("id", ids);
-  for (const r of rows) facts.set(r.id, { status: r.status, type: r.type, is_sample: r.is_sample });
+  // A visitor's demo submission is stored as sample but shows no badge.
+  for (const r of rows) {
+    facts.set(r.id, { status: r.status, type: r.type, is_sample: r.is_sample && !r.added_in_demo });
+  }
   return facts;
 }
 
