@@ -236,3 +236,28 @@
   line-height: 1.4;
   font-family: inherit;
 }
+
+/* "Go back to draft" beside the submit button in the confirm step: it had
+   no rule and rendered as bare text (2026-10-07). The neutral partner of
+   .draft-submit-btn. */
+.draft-dispute-btn {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-strong, var(--color-border));
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.draft-dispute-btn:hover:not(:disabled) {
+  background: var(--color-surface-alt, var(--color-surface));
+}
+
+.draft-dispute-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

@@ -322,9 +322,19 @@ export default function AdminMeetingSummaries() {
           </p>
 
           <div className="meeting-ai-banner">
-            <strong>AI-generated, admin-reviewed.</strong> This summary was
-            produced by an AI model from the minutes PDF
-            {selected.source_video_url ? " and YouTube auto-transcript" : ""}.
+            {/* Its real sources (2026-10-07): this said "the minutes PDF" on
+                agenda- and recording-based summaries too, beside a Source
+                list reading "Minutes PDF: not yet posted". */}
+            <strong>AI-generated, admin-reviewed.</strong>{" "}
+            {selected.pending_revision ? "The published version" : "This summary"} was
+            produced by an AI model from{" "}
+            {[
+              selected.source_minutes_url ? "the minutes PDF" : selected.source_type === "agenda" ? "the agenda" : null,
+              selected.source_video_url ? "the YouTube auto-transcript" : null,
+            ]
+              .filter(Boolean)
+              .join(" and ") || "the meeting's public record"}
+            .
             It is not an authoritative transcript. Review every block before
             approving.
           </div>
@@ -366,6 +376,7 @@ export default function AdminMeetingSummaries() {
               discarding keeps what is published.
               <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem" }}>
                 <button
+                  type="button"
                   className="btn-primary"
                   disabled={revisionBusy}
                   onClick={() => resolveRevision("accept")}
@@ -373,6 +384,7 @@ export default function AdminMeetingSummaries() {
                   {revisionBusy ? "Working…" : "Accept revision"}
                 </button>
                 <button
+                  type="button"
                   className="btn-secondary"
                   disabled={revisionBusy}
                   onClick={() => resolveRevision("discard")}
@@ -386,6 +398,25 @@ export default function AdminMeetingSummaries() {
                 {selected.pending_revision.blocks.length} blocks (published
                 version has {selected.blocks.length})
               </p>
+              {/* What the revision was built from. The orange box and the
+                  Source list below describe the PUBLISHED version, which may
+                  predate the minutes the revision used. */}
+              <p style={{ marginTop: "0.25rem", fontSize: "0.85rem" }}>
+                Revision built from{" "}
+                {selected.pending_revision.source_minutes_url ? (
+                  <a href={selected.pending_revision.source_minutes_url} target="_blank" rel="noopener noreferrer">
+                    the minutes PDF
+                  </a>
+                ) : selected.pending_revision.source_video_url ? (
+                  "the meeting recording's transcript"
+                ) : (
+                  "the agenda"
+                )}
+                {selected.pending_revision.source_minutes_url && selected.pending_revision.source_video_url
+                  ? ", with the recording for timestamps"
+                  : ""}
+                .
+              </p>
             </div>
           )}
 
@@ -396,21 +427,44 @@ export default function AdminMeetingSummaries() {
               {selected.source_video_url && selected.quality_flag?.kind !== "transcript_unavailable" ? (
                 <>
                   <strong style={{ color: "#d97706" }}>
-                    Recording-based summary.
+                    {selected.pending_revision ? "Published version: recording-based summary." : "Recording-based summary."}
                   </strong>{" "}
-                  Built from the meeting recording's transcript, with the agenda
-                  as a topic guide — official minutes have not been posted yet.
-                  Automatic transcripts mishear names and figures, so check
-                  those closely. A revision will be offered for review once the
-                  minutes are available.
+                  {selected.pending_revision ? (
+                    <>
+                      The published version was built from the meeting recording's
+                      transcript, with the agenda as a topic guide, before official
+                      minutes were posted. The revision above replaces it if you
+                      accept it.
+                    </>
+                  ) : (
+                    <>
+                      Built from the meeting recording's transcript, with the agenda
+                      as a topic guide — official minutes have not been posted yet.
+                      Automatic transcripts mishear names and figures, so check
+                      those closely. A revision will be offered for review once the
+                      minutes are available.
+                    </>
+                  )}
                 </>
               ) : (
                 <>
-                  <strong style={{ color: "#d97706" }}>Agenda-based summary.</strong>{" "}
-                  Generated from the meeting agenda only — no recording or
-                  official minutes were available, so this describes what was
-                  planned rather than what happened. A revision will be offered
-                  for review once a recording or the minutes appear.
+                  <strong style={{ color: "#d97706" }}>
+                    {selected.pending_revision ? "Published version: agenda-based summary." : "Agenda-based summary."}
+                  </strong>{" "}
+                  {selected.pending_revision ? (
+                    <>
+                      The published version was generated from the meeting agenda
+                      only, so it describes what was planned rather than what
+                      happened. The revision above replaces it if you accept it.
+                    </>
+                  ) : (
+                    <>
+                      Generated from the meeting agenda only — no recording or
+                      official minutes were available, so this describes what was
+                      planned rather than what happened. A revision will be offered
+                      for review once a recording or the minutes appear.
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -418,16 +472,35 @@ export default function AdminMeetingSummaries() {
 
           {selected.source_type === "recording" && (
             <div className="meeting-ai-banner" style={{ borderLeftColor: "#d97706" }}>
-              <strong style={{ color: "#d97706" }}>Recording-based summary.</strong> This
-              summary was generated from the meeting's automatic video transcript — there
-              was no agenda or minutes document to work from. Automatic transcripts
-              mishear names and figures, so check those closely. It will be upgraded
-              automatically if minutes are posted for this date.
+              <strong style={{ color: "#d97706" }}>
+                {selected.pending_revision ? "Published version: recording-based summary." : "Recording-based summary."}
+              </strong>{" "}
+              {selected.pending_revision ? (
+                <>
+                  The published version was generated from the meeting's automatic
+                  video transcript, with no agenda or minutes to work from. The
+                  revision above replaces it if you accept it.
+                </>
+              ) : (
+                <>
+                  This summary was generated from the meeting's automatic video
+                  transcript — there was no agenda or minutes document to work
+                  from. Automatic transcripts mishear names and figures, so check
+                  those closely. It will be upgraded automatically if minutes are
+                  posted for this date.
+                </>
+              )}
             </div>
           )}
 
           <section className="admin-detail-section">
-            <h3>Source</h3>
+            <h3>{selected.pending_revision ? "Source of the published version" : "Source"}</h3>
+            {selected.pending_revision && (
+              <p className="meeting-source-note">
+                What the live summary was built from. The revision waiting above
+                says what it was built from.
+              </p>
+            )}
             <ul className="meeting-source-list">
               {selected.source_minutes_url ? (
                 <li>

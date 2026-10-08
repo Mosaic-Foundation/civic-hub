@@ -60,6 +60,18 @@ pushed; no migrations, dependencies or env vars. Decisions: BUILD-PLAN "Wording 
     "county government", …; not under `src/debug/`), and scans `config/legal/`. The debug mocks lost "rural
     Virginia" and "Blue Ridge Concrete".
 
+12. **Unstyled buttons (Adam, follow-up).**
+    - `.btn-primary` / `.btn-secondary` had no rule anywhere, so "Accept revision" and "Discard" on Admin →
+      Meeting summaries rendered as plain text. They are now global in `App.css`, built from the theme tokens
+      (primary = `--color-primary`; secondary is neutral).
+    - The sweep compared every `className` literal with the CSS. It found one more: `.draft-dispute-btn` ("Go
+      back to draft" in the four drafts' submit step), now styled in `DraftingForm.css`. The `share-icon-btn--*`
+      modifiers are hooks on a styled base class.
+    - While a revision waits, the orange box reads "Published version: …", the list is headed "Source of the
+      published version", and the grey AI banner names the published version's real sources (it said "the
+      minutes PDF" on every summary). The blue box says what the revision was built from.
+    - Checked in the browser on a local sample summary given a temporary revision, then restored.
+
 **Tests:**
 - Unit: 110 files, 1,291 tests.
 - API: 35 files, 420 passed and 7 skipped. That is one pass, hub-token mode, on the local stack.

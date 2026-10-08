@@ -231,3 +231,10 @@
   cursor: pointer;
   white-space: nowrap;
 }
+
+/* Under "Source of the published version" while a revision waits. */
+.meeting-source-note {
+  margin: 0 0 var(--space-xs, 0.25rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--color-text-muted, #6b7280);
+}
