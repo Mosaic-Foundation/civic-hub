@@ -8,9 +8,12 @@
 -- content" (and graduating out of demo) takes it with the samples, counted
 -- separately first. The scheduled sample refresh never touches it.
 --
--- Additive: one column with a default, one partial index, and the spawn
--- trigger re-created to carry the new mark as it already carries is_sample
--- (a vote spawned from a visitor's proposal is a visitor's too).
+-- Additive: two columns with defaults, one partial index, the spawn trigger
+-- re-created to carry the new mark as it already carries is_sample (a vote
+-- spawned from a visitor's proposal is a visitor's too), a guard that the
+-- markers are never turned on after insert, and review_turns' guard replaced
+-- by one that lets only sample turns be deleted (Adam's three conditions,
+-- 2026-10-07).
 
 ALTER TABLE processes ADD COLUMN IF NOT EXISTS added_in_demo boolean NOT NULL DEFAULT false;
 
@@ -47,16 +50,78 @@ BEGIN
 END;
 $$;
 
+-- The marker is set at insert, never later ---------------------------------
+--
+-- What may be deleted is decided by the marker (below, and the events guard),
+-- so the marker must never be turned on for a row that was real: an UPDATE
+-- that sets is_sample or added_in_demo on a process that did not have it is
+-- refused, for every role. They are set only at insert (the sample seed, a
+-- visitor's submission on a demo hub) or by the database's own stamping
+-- (_civic_process_inherit_sample). Turning a marker OFF stays allowed.
+
+CREATE OR REPLACE FUNCTION public._civic_processes_marker_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF (NEW.is_sample AND NOT OLD.is_sample) OR (NEW.added_in_demo AND NOT OLD.added_in_demo) THEN
+    RAISE EXCEPTION 'processes.is_sample and processes.added_in_demo are set only when a process is created'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS processes_marker_guard ON processes;
+CREATE TRIGGER processes_marker_guard
+  BEFORE UPDATE OF is_sample, added_in_demo ON processes
+  FOR EACH ROW EXECUTE FUNCTION public._civic_processes_marker_guard();
+
 -- review_turns: append-only, except a sample process's ----------------------
 --
 -- A visitor's submission goes through the review funnel, so it has a review
 -- and its turns. review_turns refused every UPDATE and DELETE (the shared
 -- prevent_modification()), so sample content with a review could never be
--- removed. The same rule events already follow (_civic_events_delete_guard):
--- the turns of a review whose process is sample content may be deleted; every
--- other turn stays append-only, and UPDATE stays refused for all. Removal
--- deletes the turns explicitly while their review still exists (a cascade
--- from the review would find no parent to check, and is refused).
+-- removed. Now the same rule as events (_civic_events_delete_guard), decided
+-- by the row's OWN marker:
+--
+--   - review_turns.is_sample is stamped by the database at insert from the
+--     review's process, whatever the client sent (a client cannot insert a
+--     deletable turn on a real review);
+--   - DELETE is allowed only when OLD.is_sample; every other turn stays
+--     append-only, for every role;
+--   - UPDATE is refused for all, so the marker can never be turned on later.
+--
+-- Restore and purge, which suspend triggers, are unchanged. No backfill: no
+-- sample process had a review before this migration (the seed writes none,
+-- and visitors' submissions are marked from this release on).
+
+ALTER TABLE review_turns ADD COLUMN IF NOT EXISTS is_sample boolean NOT NULL DEFAULT false;
+
+COMMENT ON COLUMN review_turns.is_sample IS
+  'Set by trigger at insert from the review''s process. Only sample turns may be deleted; none may be updated.';
+
+CREATE OR REPLACE FUNCTION public._civic_review_turn_inherit_sample()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  NEW.is_sample := EXISTS (
+    SELECT 1
+      FROM process_reviews r
+      JOIN processes p ON p.hub_id = r.hub_id AND p.id = r.process_id
+     WHERE r.hub_id = NEW.hub_id AND r.id = NEW.review_id AND p.is_sample
+  );
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS review_turns_inherit_sample ON review_turns;
+CREATE TRIGGER review_turns_inherit_sample
+  BEFORE INSERT ON review_turns
+  FOR EACH ROW EXECUTE FUNCTION public._civic_review_turn_inherit_sample();
 
 CREATE OR REPLACE FUNCTION public._civic_review_turns_guard()
 RETURNS trigger
@@ -64,12 +129,7 @@ LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-  IF TG_OP = 'DELETE' AND EXISTS (
-    SELECT 1
-      FROM process_reviews r
-      JOIN processes p ON p.hub_id = r.hub_id AND p.id = r.process_id
-     WHERE r.hub_id = OLD.hub_id AND r.id = OLD.review_id AND p.is_sample
-  ) THEN
+  IF TG_OP = 'DELETE' AND OLD.is_sample THEN
     RETURN OLD;
   END IF;
   RAISE EXCEPTION 'Table % is append-only; UPDATE/DELETE not permitted', TG_TABLE_NAME;

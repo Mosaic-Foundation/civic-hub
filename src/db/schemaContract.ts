@@ -81,6 +81,7 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "users", columns: ["is_sample"], owner: "core/sampleContent" },
   // Visitors' submissions on a demo hub (20261007000000).
   { table: "processes", columns: ["added_in_demo"], owner: "core/sampleContent" },
+  { table: "review_turns", columns: ["is_sample"], owner: "core/sampleContent" },
   { table: "hub_admin_audit_log", columns: ["hub_id", "actor_email", "action", "before", "after"], owner: "core/hubAdminAudit" },
   // Scheduled-job outcomes (20260929000000): the admin's last-run lines and the admin digest.
   { table: "job_runs", columns: ["hub_id", "job_id", "started_at", "finished_at", "status", "summary", "problems", "details"], owner: "core/jobRuns" },

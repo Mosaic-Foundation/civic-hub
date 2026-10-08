@@ -97,6 +97,13 @@ const REAL_PROC = `proc_real_athens_t${run}`;
 const SAMPLE_USER = `user_sample_athens_t${run}`;
 const REAL_USER = `user_real_athens_t${run}`;
 const ev = (suffix: string) => `evt_sample_t${run}_${suffix}`;
+// Review history (2026-10-07, session 3b): a real process under review, left
+// behind on purpose (its turns are append-only, so nothing can delete it; it
+// stays pending_review, out of every list), and reviews on the sample one.
+const REVIEWED_PROC = `proc_real_reviewed_t${run}`;
+const REAL_REVIEW = `rev_real_t${run}`;
+const SAMPLE_REVIEW = `rev_sample_t${run}`;
+const turn = (suffix: string) => `turn_t${run}_${suffix}`;
 
 function eventRow(id: string, processId: string, actor: string) {
   return {
@@ -231,6 +238,99 @@ describe("events stay append-only for the hub app", () => {
   });
 });
 
+describe("review history: only a sample process's turns may be deleted, and the marker is set only at insert", () => {
+  const turnRow = (id: string, reviewId: string, n: number, extra: Record<string, unknown> = {}) => ({
+    id,
+    hub_id: "athens",
+    review_id: reviewId,
+    turn_number: n,
+    actor: REAL_USER,
+    actor_role: "creator",
+    action: "submit",
+    ...extra,
+  });
+
+  beforeAll(async () => {
+    await localRest("processes", {
+      method: "POST",
+      body: JSON.stringify({ ...proc(REVIEWED_PROC, false), status: "pending_review" }),
+    });
+    const review = (id: string, processId: string) => ({
+      id,
+      hub_id: "athens",
+      process_id: processId,
+      creator_id: REAL_USER,
+      creator_name: "Real Resident",
+      creator_email: `real-${run}@example.test`,
+    });
+    await localRest("process_reviews", {
+      method: "POST",
+      body: JSON.stringify([review(REAL_REVIEW, REVIEWED_PROC), review(SAMPLE_REVIEW, SAMPLE_PROC)]),
+    });
+    // A client that claims a real turn is sample: the database decides.
+    await localRest("review_turns", {
+      method: "POST",
+      body: JSON.stringify(turnRow(turn("real"), REAL_REVIEW, 1, { is_sample: true })),
+    });
+    await localRest("review_turns", {
+      method: "POST",
+      body: JSON.stringify([turnRow(turn("s1"), SAMPLE_REVIEW, 1), turnRow(turn("s2"), SAMPLE_REVIEW, 2)]),
+    });
+  });
+
+  it("stamps each turn from its review's process, whatever the client sent", async () => {
+    const rows = (await localRest(`review_turns?select=id,is_sample&id=like.turn_t${run}*&order=id`)) as Array<{
+      id: string;
+      is_sample: boolean;
+    }>;
+    expect(Object.fromEntries(rows.map((r) => [r.id, r.is_sample]))).toEqual({
+      [turn("real")]: false,
+      [turn("s1")]: true,
+      [turn("s2")]: true,
+    });
+  });
+
+  it("lets the hub-token role delete a sample turn", async () => {
+    const res = await asAthensToken(`review_turns?id=eq.${turn("s1")}`, { method: "DELETE" });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect((await localRest(`review_turns?select=id&id=eq.${turn("s1")}`)) as unknown[]).toHaveLength(0);
+  });
+
+  it("refuses deleting a real turn, for the hub-token role and the service role", async () => {
+    const res = await asAthensToken(`review_turns?id=eq.${turn("real")}`, { method: "DELETE" });
+    expect(res.status, JSON.stringify(res.body)).toBeGreaterThanOrEqual(400);
+    await expect(localRest(`review_turns?id=eq.${turn("real")}`, { method: "DELETE" })).rejects.toThrow(/append-only/);
+    // Nor by deleting its review: the cascade meets the same guard.
+    await expect(localRest(`process_reviews?id=eq.${REAL_REVIEW}`, { method: "DELETE" })).rejects.toThrow(/append-only/);
+    expect((await localRest(`review_turns?select=id&id=eq.${turn("real")}`)) as unknown[]).toHaveLength(1);
+  });
+
+  it("refuses turning the marker on later: on a turn, or on a real process", async () => {
+    await expect(
+      localRest(`review_turns?id=eq.${turn("real")}`, { method: "PATCH", body: JSON.stringify({ is_sample: true }) }),
+    ).rejects.toThrow(/append-only/);
+    for (const marker of ["is_sample", "added_in_demo"]) {
+      await expect(
+        localRest(`processes?id=eq.${REVIEWED_PROC}`, { method: "PATCH", body: JSON.stringify({ [marker]: true }) }),
+        marker,
+      ).rejects.toThrow(/set only when a process is created/);
+      const byToken = await asAthensToken(`processes?id=eq.${REVIEWED_PROC}`, {
+        method: "PATCH",
+        body: JSON.stringify({ [marker]: true }),
+      });
+      expect(byToken.status, marker).toBeGreaterThanOrEqual(400);
+    }
+    const [row] = (await localRest(`processes?select=is_sample,added_in_demo&id=eq.${REVIEWED_PROC}`)) as Array<{
+      is_sample: boolean;
+      added_in_demo: boolean;
+    }>;
+    expect(row).toEqual({ is_sample: false, added_in_demo: false });
+    // And the real turn is still not deletable.
+    await expect(localRest(`review_turns?id=eq.${turn("real")}`, { method: "DELETE" })).rejects.toThrow(/append-only/);
+  });
+});
+
 // --- The app ------------------------------------------------------------------------
 
 describe("sample events are not public record", () => {
@@ -316,6 +416,9 @@ describe("removing the sample content", () => {
     expect((await localRest(`events?select=id&process_id=eq.${SAMPLE_PROC}`)) as unknown[]).toHaveLength(0);
     expect((await localRest(`community_inputs?select=id&id=like.ci_t${run}*`)) as unknown[]).toHaveLength(0);
     expect((await localRest(`users?select=id&id=eq.${SAMPLE_USER}`)) as unknown[]).toHaveLength(0);
+    // The sample process's review history went with it; the real one stayed.
+    expect((await localRest(`review_turns?select=id&review_id=eq.${SAMPLE_REVIEW}`)) as unknown[]).toHaveLength(0);
+    expect((await localRest(`review_turns?select=id&id=eq.${turn("real")}`)) as unknown[]).toHaveLength(1);
 
     // Kept: the real process, its event, the real person.
     expect((await localRest(`processes?select=id&id=eq.${REAL_PROC}`)) as unknown[]).toHaveLength(1);

@@ -63,11 +63,16 @@ button on demo hubs only.
 **The migration:**
 - `processes.added_in_demo` (default false, partial index).
 - The spawn trigger re-created to carry it.
-- **`review_turns`' guard replaced:** turns of a review whose process is sample content may be deleted; everything else
-  stays append-only and UPDATE is refused for all. It follows the events guard. Without it a visitor's submission
-  (which has a review) could never be removed. Removal deletes turns first, while the review exists.
+- **Review history, with Adam's three conditions (approved 2026-10-07, follow-up commit):**
+  - `review_turns.is_sample` is stamped at insert from the review's process, whatever the client sends.
+  - The guard deletes only when `OLD.is_sample`, for every role. UPDATE is refused for all.
+  - `processes_marker_guard` refuses any UPDATE that turns `is_sample` or `added_in_demo` on for a process that
+    lacked it.
 
-**Tests:** unit 112 files, 1,311. API 36 files, 434 passed and 7 skipped, **both modes**. Playwright 34 passed and
+  So real review history can never be made deletable. Without this, a visitor's submission (which has a review)
+  could never be removed. BUILD-PLAN records the rule beside the events rule (Phase 7).
+
+**Tests:** unit 111 files, 1,305. API 36 files, 438 passed and 7 skipped, **both modes** (after the follow-up). Playwright 34 passed and
 1 skipped (the feed pill, skipped while Athens has Meeting summaries off). New: `tests/unit/sampleRefresh.test.ts`,
 `tests/api/sampleRefresh.test.ts`, `tests/e2e/sampleSummary.spec.ts`. Details and the tests changed on purpose are in
 TESTING.md.

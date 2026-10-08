@@ -1072,6 +1072,29 @@ hub is empty and still works.
   service role and the owner (BYPASSRLS; scripts, restore, tests) are
   unaffected. A test proves both halves. `review_turns` is unchanged (the
   seed writes no reviews).
+- **Review history follows the same rule, decided in the database** (Adam,
+  2026-10-07, approving session 3b with three conditions;
+  `20261007000000`):
+  - `review_turns.is_sample` is stamped by a BEFORE INSERT trigger from the
+    review's process, overriding whatever the client sends.
+  - The guard allows DELETE only when `OLD.is_sample`, for every role.
+    UPDATE is refused for all.
+  - **A marker is set only at insert, never turned on later:** an UPDATE
+    that sets `processes.is_sample` or `processes.added_in_demo` on a
+    process that did not have it is refused, for every role
+    (`processes_marker_guard`). The sample seed, a visitor's submission on a
+    demo hub and the database's own spawn stamping set them at insert.
+    Turning a marker off stays allowed.
+
+  So real review history can never be made deletable. Tests
+  (`tests/api/sampleContent.test.ts`, both modes):
+  - a sample turn deletes;
+  - a real turn does not, directly or through its review's cascade;
+  - a client-sent `is_sample` on a real turn is overridden;
+  - flipping a turn's marker, or a real process's `is_sample` or
+    `added_in_demo`, is refused.
+
+  Restore and purge suspend triggers, as before.
 - **Sample stays out of** `GET /events`, `/activities/:id`, any federation
   output, the hub export (`isSampleContentRow()`) and every resident digest.
   It stays IN the hub's own feed and lists, with a "Sample" badge. Sample
@@ -1443,11 +1466,11 @@ the session). HANDOFF "Demo hubs stay current" has what was built.
   on the draft as a soft `check_unavailable` entry (submitting stays allowed,
   as before) rather than as an empty pass. Beta and live always review.
   Admins' own submissions are not marked.
-- **`review_turns` guard** (in the same migration): its turns may be deleted
-  only when the review's process is sample content; everything else stays
-  append-only, UPDATE refused for all. The same rule as the events guard.
-  Removal deletes the turns first, while the review exists. The export leaves
-  them behind with their review (`REVIEW_CHILD_COLUMNS`).
+- **`review_turns` guard** (in the same migration): see "Review history
+  follows the same rule" under Phase 7. In short, a turn's own `is_sample` is
+  stamped at insert, only those turns may be deleted, and a process's
+  markers can never be turned on after insert. The export leaves sample turns
+  behind with their review (`REVIEW_CHILD_COLUMNS`).
 - **Removal counts everything** (R46): `PARTICIPATION_TABLES` adds project
   comments, deliberation votes ("reactions"), brief responses and reviews of
   seeded samples; a unit test makes every child table either counted or named

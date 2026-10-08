@@ -66,8 +66,8 @@ export const NOT_PROCESS_CONTENT: Readonly<Record<string, string>> = {
 /**
  * Tables whose rows belong to a REVIEW, and the column naming it (2026-10-07).
  * A visitor's submission on a demo hub has a review; its turns are sample
- * content when the review's process is. Removal deletes them first, while the
- * review still exists, which the database's review_turns guard requires
+ * content when the review's process is. The database stamps each turn's own
+ * is_sample at insert and lets only those be deleted
  * (20261007000000_added_in_demo).
  */
 export const REVIEW_CHILD_COLUMNS: Readonly<Record<string, string>> = {

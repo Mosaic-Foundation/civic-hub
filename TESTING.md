@@ -587,7 +587,23 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   set), `hubAdminSettings.test.ts` (`{THE_HUB_NAME}` in the templates),
   `leakHarness.test.ts` (the new cron route skipped like `vote-close`),
   `jobRegistry.test.ts`, `jurisdictions.test.ts`.
-  **Local notes:** apply the migration with `supabase migration up --local`.
+  **Follow-up (Adam's conditions on the review-history guard):**
+  `sampleContent.test.ts` gains "review history":
+  - turns are stamped from their review's process, and a client-sent
+    `is_sample` on a real turn is overridden;
+  - the hub-token role deletes a sample turn;
+  - a real turn is refused for both roles, directly and through its
+    review's cascade;
+  - turning a turn's marker or a real process's `is_sample` /
+    `added_in_demo` on is refused (`processes_marker_guard`);
+  - removal takes the sample review's remaining turn.
+
+  Its real reviewed process is left behind on purpose (append-only history;
+  `pending_review`, out of every list). API then 438 passed, 7 skipped, both
+  modes.
+  **Local notes:** apply the migration with `supabase migration up --local`
+  (a stack that applied the first version of `20261007000000` can re-run the
+  file through `psql`; it is idempotent).
   `sampleContent.test.ts` removes Athens's samples, so a later
   `sampleSummary.spec.ts` skips until Athens is re-seeded
   (`scripts/seed-sample-content.ts --hub athens`). Run the two API files

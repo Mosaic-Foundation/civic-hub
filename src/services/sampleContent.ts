@@ -139,8 +139,8 @@ export async function deleteSampleProcesses(
     deleted[table] = (deleted[table] ?? 0) + n;
   };
 
-  // 1. Review turns, while their review still exists: the database lets a
-  //    sample process's turns go and no others (review_turns guard).
+  // 1. Review turns, counted: the database lets a turn go only when its own
+  //    is_sample (stamped at insert from the review's process) is set.
   const reviews = await db().from("process_reviews").select<{ id: string }>("id").in("process_id", ids);
   const reviewIds = reviews.map((r) => r.id);
   for (const [table, column] of Object.entries(REVIEW_CHILD_COLUMNS)) {
