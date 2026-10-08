@@ -86,6 +86,18 @@ in it as its admin, signed in, without the console. Not pushed.
   too.
 - The docs site has no page for the start page or invite codes yet.
 
+**Live on production, 2026-10-08 (evening).**
+- **What's live:** `main` is fast-forwarded to `fced635`, which also carries session 4 (Handover).
+- **Migrations:** `20261008000000` and `20261008010000` were pushed to production first (the prod ref was linked,
+  then relinked to dev). After that came `NOTIFY pgrst, 'reload schema';`.
+- **Start page:** `CIVIC_START_HOSTNAME=start.civic.social` is set on `civic-hub` (Production). Adam walked it.
+- **Two lessons:**
+  - Both databases needed the schema reload before the console could read the new tables.
+  - Production's variable was first set to the dev value (`start.dev.civic.social`). The console's link showed it,
+    and a production code would have been refused on dev's page. When opening a hostname variable on production,
+    check the console's Invite codes line names the production host.
+- **Still to remove:** the test hub from the production walk. Purge it, as `r1-check` was.
+
 **Follow-ups the same day, from Adam's first walk on dev:**
 - **Schema refresh:** after the migration, dev needed `NOTIFY pgrst, 'reload schema';` before the console could
   read the new tables.
