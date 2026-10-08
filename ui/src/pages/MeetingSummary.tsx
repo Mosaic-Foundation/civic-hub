@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   getMeetingSummary,
@@ -17,6 +17,15 @@ export default function MeetingSummaryPage() {
   const [summary, setSummary] = useState<PublicMeetingSummary | null>(null);
   const [showMinutes, setShowMinutes] = useState(false);
   const [showRecordingNote, setShowRecordingNote] = useState(false);
+  // A sample's timestamp note: which block's is showing; it goes on its own.
+  const [timeNoteAt, setTimeNoteAt] = useState<number | null>(null);
+  const timeNoteTimer = useRef<number | undefined>(undefined);
+  function showTimeNote(i: number) {
+    setTimeNoteAt(i);
+    window.clearTimeout(timeNoteTimer.current);
+    timeNoteTimer.current = window.setTimeout(() => setTimeNoteAt(null), 4000);
+  }
+  useEffect(() => () => window.clearTimeout(timeNoteTimer.current), []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -252,9 +261,35 @@ export default function MeetingSummaryPage() {
                     {formatSeconds(block.start_time_seconds)}
                   </a>
                 ) : sample && block.start_time_seconds !== null ? (
-                  // A sample has the times a real summary would, and nothing to open.
-                  <span className="meeting-block-timestamp meeting-block-timestamp--plain">
-                    {formatSeconds(block.start_time_seconds)}
+                  // A sample has the times a real summary would, and nothing
+                  // to open: a tap says what a real one does (Adam,
+                  // 2026-10-08), without toggling the section.
+                  <span className="meeting-block-timestamp-wrap">
+                    <button
+                      type="button"
+                      className="meeting-block-timestamp meeting-block-timestamp--sample"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showTimeNote(i);
+                      }}
+                    >
+                      {formatSeconds(block.start_time_seconds)}
+                    </button>
+                    {timeNoteAt === i && (
+                      <span
+                        className="meeting-time-note"
+                        role="status"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setTimeNoteAt(null);
+                        }}
+                      >
+                        In a real hub this opens the meeting video at{" "}
+                        {formatSeconds(block.start_time_seconds)}.
+                      </span>
+                    )}
                   </span>
                 ) : null}
                 <h2 className="meeting-block-title">{block.topic_title}</h2>

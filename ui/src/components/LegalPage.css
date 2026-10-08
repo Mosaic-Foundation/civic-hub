@@ -109,3 +109,14 @@
   font-size: 0.95rem;
   margin: var(--space-md, 1rem) 0;
 }
+
+/* A demo hub still showing the standard About text (2026-10-08). */
+.about-demo-note {
+  margin: var(--space-md) 0;
+  padding: var(--space-sm) var(--space-md);
+  border-left: 3px solid var(--color-primary);
+  background: var(--color-surface-alt, #faf8f4);
+  border-radius: var(--radius-sm, 4px);
+  font-size: var(--font-size-sm, 0.9rem);
+  line-height: 1.5;
+}

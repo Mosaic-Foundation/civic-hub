@@ -5,7 +5,7 @@
  * 1. The demo bar says sample items refresh and visitors' additions to them
  *    may be cleared.
  * 2. The sample meeting summary has minutes to read on the page, and its
- *    "Watch recording" opens a note instead of going anywhere.
+ *    "Watch recording" and each time open a note instead of going anywhere.
  *
  * Acts on whichever hub `localhost` resolves to (Athens on the local stack
  * with CI's env), skipped unless it is a demo hub with the sample summary
@@ -85,5 +85,31 @@ test.describe("A demo hub's sample meeting summary", () => {
     await page.getByRole("button", { name: "Watch recording" }).click();
     await expect(page.getByRole("note").filter({ hasText: "In a real hub this links to the meeting video" })).toBeVisible();
     expect(page.url()).toBe(url);
+
+    // A time says what it would open, and does not open the section.
+    const block = page.locator(".meeting-block").first();
+    await block.locator("button.meeting-block-timestamp").click();
+    await expect(block.getByRole("status")).toContainText("In a real hub this opens the meeting video at");
+    expect(await block.evaluate((el) => (el as HTMLDetailsElement).open)).toBe(false);
+    expect(page.url()).toBe(url);
+  });
+
+  test("the About page says when it is still the standard text", async ({ page, request }) => {
+    const config = await hubConfig(request);
+    test.skip(config.hub.mode !== "demo", "not a demo hub");
+    const docs = (await (await request.get(`${API}/hub-config/documents`)).json()) as { defaults?: string[] };
+    await page.addInitScript(() => {
+      localStorage.setItem("seen_intro_popup", "true");
+      localStorage.setItem("welcome-banner-dismissed-v2", "true");
+    });
+    await page.goto("/about");
+    await expect(page.locator(".legal-prose h1, .legal-prose h2").first()).toBeVisible();
+    const note = page.getByRole("note").filter({ hasText: "standard About page" });
+    if (docs.defaults?.includes("copy.about")) {
+      await expect(note).toContainText("can rewrite it");
+    } else {
+      // The hub wrote its own (Athens does): no note.
+      await expect(note).toHaveCount(0);
+    }
   });
 });

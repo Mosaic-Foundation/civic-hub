@@ -60,6 +60,15 @@ button on demo hubs only.
    - The share callout no longer covers the supporter count: `.process-share-row:has(.share-callout)` gets room
      below. This is CSS only and not seen in a browser.
 
+**Follow-ups from Adam's dev check (2026-10-08):**
+- A sample summary's timestamps are buttons. A tap shows a bubble under the time ("In a real hub this opens the
+  meeting video at 21:00."), which goes after 4 seconds or on a tap, and the section doesn't open.
+- On a demo hub whose About page is still the shared text, a note above it says so and names Settings → Copy & pages
+  → About (a link for admins). `GET /hub-config/documents` now also returns `defaults`: the document keys served
+  from the shared templates. The UI reads it through `loadedIsDefault()` and `isDefault` on `useHubDocument`.
+- Tests: `sampleRefresh.test.ts` (`defaults` lists About until the hub writes one) and `sampleSummary.spec.ts` (the
+  timestamp bubble; the About note, or none on a hub that wrote its own).
+
 **The migration:**
 - `processes.added_in_demo` (default false, partial index).
 - The spawn trigger re-created to carry it.

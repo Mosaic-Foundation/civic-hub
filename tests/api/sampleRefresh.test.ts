@@ -121,6 +121,28 @@ describe("the sample meeting summary (issue #7)", () => {
   });
 });
 
+describe("which documents are still the shared default (2026-10-08)", () => {
+  it("lists About until the hub writes its own", async () => {
+    const before = await call("GET", "/hub-config/documents", host(DEMO));
+    expect(before.status).toBe(200);
+    expect(before.body.defaults).toContain("copy.about");
+    expect(before.body.defaults).toContain("legal.terms");
+
+    const admin = await mintSession(DEMO, ADMIN);
+    const put = await call(
+      "PUT",
+      "/admin/hub/settings",
+      host(DEMO),
+      { section: "copy", values: { "copy.about": "# About us\n\nOur own words." } },
+      admin,
+    );
+    expect(put.status, JSON.stringify(put.body)).toBe(200);
+    const after = await call("GET", "/hub-config/documents", host(DEMO));
+    expect(after.body.defaults).not.toContain("copy.about");
+    expect(after.body.documents["copy.about"]).toContain("Our own words.");
+  });
+});
+
 describe("the daily sample refresh", () => {
   const OPEN = () => pid(DEMO, "vote_internet");
   const ENDORSING = () => pid(DEMO, "vote_fire_rescue");

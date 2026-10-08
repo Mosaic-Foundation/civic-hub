@@ -29,6 +29,7 @@ let cache: Record<string, string> | null = null;
 // "Draft starter content — review before launch", per document: served
 // beside the documents, shown to the hub's admins only (2026-10-07).
 let draftNotes: Record<string, string[]> = {};
+let defaults: Set<string> = new Set();
 let inFlight: Promise<Record<string, string>> | null = null;
 
 /** Mirrors the dev-only hub forwarding in hubConfig.ts. */
@@ -55,9 +56,10 @@ export function loadHubDocuments(): Promise<Record<string, string>> {
     headers: { Accept: "application/json" },
   })
     .then((res) => (res.ok ? res.json() : { documents: {} }))
-    .then((body: { documents?: Record<string, string>; draft_notes?: Record<string, string[]> }) => {
+    .then((body: { documents?: Record<string, string>; draft_notes?: Record<string, string[]>; defaults?: string[] }) => {
       cache = body.documents ?? {};
       draftNotes = body.draft_notes ?? {};
+      defaults = new Set(body.defaults ?? []);
       return cache;
     })
     .catch(() => {
@@ -69,6 +71,11 @@ export function loadHubDocuments(): Promise<Record<string, string>> {
     });
 
   return inFlight;
+}
+
+/** Is this loaded document the shared template, not one the hub wrote? */
+export function loadedIsDefault(key: DocumentKey): boolean {
+  return defaults.has(key);
 }
 
 /** The draft notes taken out of a loaded document; [] when none. */

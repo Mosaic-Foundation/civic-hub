@@ -314,12 +314,15 @@ export async function hubDocuments(hub: Hub): Promise<HubDocuments> {
 /** The documents, and the draft notes taken out of them (splitDraftNotes). */
 export async function hubDocumentsWithNotes(
   hub: Hub,
-): Promise<{ documents: HubDocuments; draft_notes: HubDraftNotes }> {
+): Promise<{ documents: HubDocuments; draft_notes: HubDraftNotes; defaults: string[] }> {
   const overrides = await fetchHubDocuments(hub.id);
   const values = substitutions(hub);
   resolveWhoRunsThis(values, getSettingSync(KEYS.LEGAL_WHO_RUNS_THIS));
   const out: HubDocuments = {};
   const notes: HubDraftNotes = {};
+  // The documents served from the shared templates, not written by the hub
+  // (2026-10-08, Adam): a demo hub's About page says it can be rewritten.
+  const defaults: string[] = [];
 
   for (const [key, fileName] of Object.entries(TEMPLATES)) {
     // A hub's own document goes through substitution too. Whoever authored it
@@ -327,6 +330,7 @@ export async function hubDocumentsWithNotes(
     // "{HUB_NAME}" instead of hard-coding a name that a rename would strand.
     const override = overrides[key];
     const source = override || readTemplate(fileName);
+    if (!override && source) defaults.push(key);
     if (source !== null && source !== undefined) {
       const { body, notes: found } = splitDraftNotes(applySubstitutions(source, values));
       out[key] = body;
@@ -342,7 +346,7 @@ export async function hubDocumentsWithNotes(
   const welcome = overrides[KEYS.COPY_WELCOME];
   if (welcome) out[KEYS.COPY_WELCOME] = applySubstitutions(welcome, values);
 
-  return { documents: out, draft_notes: notes };
+  return { documents: out, draft_notes: notes, defaults };
 }
 
 /** One document, for the server-side consumers (the drafting assistant). */

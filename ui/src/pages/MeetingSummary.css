@@ -408,3 +408,45 @@ button.meeting-chip {
 .meeting-sample-minutes p {
   margin: 0 0 var(--space-sm);
 }
+
+/* A sample's timestamps (2026-10-08): they look like a real summary's and,
+   tapped, say what a real one opens, in a bubble under the time. */
+button.meeting-block-timestamp--sample {
+  border: none;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+.meeting-block-timestamp-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.meeting-time-note {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 5;
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 3rem));
+  padding: 6px 10px;
+  font-size: var(--font-size-sm, 0.85rem);
+  font-weight: 400;
+  line-height: 1.4;
+  color: #fff;
+  background: var(--pill-vote-fg, #1e3a5f);
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+}
+
+.meeting-time-note::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 14px;
+  border: 7px solid transparent;
+  border-top: 0;
+  border-bottom-color: var(--pill-vote-fg, #1e3a5f);
+}

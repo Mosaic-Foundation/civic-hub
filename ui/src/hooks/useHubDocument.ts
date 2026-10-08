@@ -3,6 +3,7 @@ import {
   loadHubDocuments,
   loadedDocument,
   loadedDraftNotes,
+  loadedIsDefault,
   type DocumentKey,
 } from "../config/hubDocuments";
 
@@ -26,14 +27,20 @@ import {
  */
 export type HubDocument =
   | { status: "loading" }
-  | { status: "ready"; markdown: string; draftNotes: string[] }
+  | {
+      status: "ready";
+      markdown: string;
+      draftNotes: string[];
+      /** Served from the shared template: the hub has not written its own. */
+      isDefault: boolean;
+    }
   | { status: "missing" };
 
 export function useHubDocument(key: DocumentKey): HubDocument {
   const [doc, setDoc] = useState<HubDocument>(() => {
     const already = loadedDocument(key);
     return already
-      ? { status: "ready", markdown: already, draftNotes: loadedDraftNotes(key) }
+      ? { status: "ready", markdown: already, draftNotes: loadedDraftNotes(key), isDefault: loadedIsDefault(key) }
       : { status: "loading" };
   });
 
@@ -44,7 +51,7 @@ export function useHubDocument(key: DocumentKey): HubDocument {
       const served = loadedDocument(key);
       setDoc(
         served
-          ? { status: "ready", markdown: served, draftNotes: loadedDraftNotes(key) }
+          ? { status: "ready", markdown: served, draftNotes: loadedDraftNotes(key), isDefault: loadedIsDefault(key) }
           : { status: "missing" },
       );
     });

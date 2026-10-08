@@ -21,11 +21,16 @@ import remarkGfm from "remark-gfm";
 import hub from "../config/hub";
 import { clearIntroSeen } from "../components/IntroPopup";
 import { useHubDocument } from "../hooks/useHubDocument";
+import { useAuth } from "../context/AuthContext";
 import "../components/LegalPage.css";
 
 export default function About() {
   const [introCleared, setIntroCleared] = useState(false);
   const doc = useHubDocument("copy.about");
+  const { isAdmin } = useAuth();
+  // A demo hub still showing the standard text says it can be rewritten
+  // (Adam, 2026-10-08): it is written for every hub, so it reads generic.
+  const standardOnDemo = hub.demo_mode && doc.status === "ready" && doc.isDefault;
 
   function handleShowWelcomeAgain() {
     clearIntroSeen();
@@ -35,6 +40,20 @@ export default function About() {
   return (
     <div className="page about-page">
       <Link to="/" className="back-link">&larr; Home</Link>
+
+      {standardOnDemo && (
+        <p className="about-demo-note" role="note">
+          This is the standard About page every new hub starts with.{" "}
+          {isAdmin ? (
+            <>
+              You can rewrite it for this hub in{" "}
+              <Link to="/admin/settings/copy">Settings → Copy &amp; pages → About</Link>.
+            </>
+          ) : (
+            <>The hub's admins can rewrite it in Settings → Copy &amp; pages → About.</>
+          )}
+        </p>
+      )}
 
       <div className="legal-prose">
         {doc.status === "ready" ? (
