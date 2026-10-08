@@ -74,6 +74,11 @@ numbers below, or just grep the heading.
 - Polis JWT auth — 7206–7245; Polis leaked token / wedged conversation — 1740–1831
 
 ### Multi-tenancy (the `multi-tenant` branch)
+- **Every word fits the hub (2026-10-07, fifth part, session 3a)**: legal
+  placeholders and `draft_notes`, `src/shared/hubCopy.ts` (defaults by kind,
+  `theName()`, `briefPillFor`), `copy.welcome_strip*` / `copy.beta_banner`,
+  `copy.resident_noun` wired, demo sign-in `no_email`, sign-up `&return=`,
+  `fitSlug()`, the extended place-name check — top of HANDOFF (grep the heading)
 - **No read stops at 1,000 rows (2026-10-07, fourth part)**: feed paged on
   the server (`src/services/feedPage.ts`, `next_cursor`, `surface`,
   `FEED_EVENT_TYPES`), `getAllEvents` gone, `getModerationEvents`,

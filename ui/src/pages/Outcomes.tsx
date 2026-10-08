@@ -149,7 +149,7 @@ export default function Outcomes() {
       {!loading && !error && page && page.outcomes.length === 0 && (
         <p className="outcomes-status">
           {page.total_unfiltered === 0
-            ? "No processes have completed yet. When one does, its outcome is published here permanently."
+            ? "No outcomes yet. When a vote or another process finishes, its result is published here for good."
             : "No outcomes match these filters."}
         </p>
       )}

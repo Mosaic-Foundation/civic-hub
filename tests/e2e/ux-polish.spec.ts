@@ -7,6 +7,7 @@
 
 import { test, expect } from "@playwright/test";
 import { E2E_API_BASE } from "./hubApi";
+import { theName } from "../../src/shared/hubCopy.js";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -99,7 +100,14 @@ test.describe("Hub config strings", () => {
 
     const title = page.locator(".welcome-banner .welcome-banner-title");
     await expect(title).toBeVisible();
-    await expect(title).toHaveText(`Welcome — the ${hubName} is a community pilot program`);
+    // Since 2026-10-07 (review R17): "Welcome to the <hub>", no pilot program,
+    // and the paragraph worded for the hub's kind — never another kind's.
+    await expect(title).toHaveText(`Welcome to ${theName(hubName)}`);
+    const body = page.locator(".welcome-banner .welcome-banner-body");
+    await expect(body).not.toContainText("pilot program");
+    if (config.settings["identity.jurisdiction_type"] !== "county") {
+      await expect(body).not.toContainText("county government");
+    }
   });
 
   test("legal page title follows '{title} · {hub.name}' pattern", async ({ page }) => {

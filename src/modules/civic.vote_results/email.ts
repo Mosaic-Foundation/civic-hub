@@ -5,6 +5,13 @@
 // SendEmailFn in models.ts).
 
 import type { VoteResultsContent, VoteResultsProcessState } from "./models.js";
+import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
+import { getSettingSync } from "../../services/hubSettings.js";
+import { KEYS } from "../../models/hubSettings.js";
+
+// What the people taking part are called on this hub (review R29, 2026-10-07).
+const hubNoun = (n: number): string =>
+  participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), n, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
 
 export interface VoteResultsEmail {
   subject: string;
@@ -54,7 +61,7 @@ function renderText(
   }
 
   lines.push(
-    `Participation: ${c.participation_count} resident${c.participation_count === 1 ? "" : "s"}`,
+    `Participation: ${c.participation_count} ${hubNoun(c.participation_count)}`,
   );
   lines.push("");
   lines.push("Positions:");
@@ -95,7 +102,7 @@ function renderHtml(
   const adminNotes = c.admin_notes.trim().length
     ? `<h3>Notes from the Civic Hub</h3><p>${escape(c.admin_notes.trim()).replace(/\n/g, "<br/>")}</p>`
     : "";
-  const participants = `${c.participation_count} resident${c.participation_count === 1 ? "" : "s"}`;
+  const participants = `${c.participation_count} ${hubNoun(c.participation_count)}`;
   const aboutVote = c.vote_context?.description
     ? `
       <h3>About this vote</h3>

@@ -9,6 +9,7 @@ import TitleField from "./TitleField";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
+import hub from "../config/hub";
 
 interface Props {
   /** Related processes the author has picked. Optional by design — the
@@ -154,7 +155,7 @@ export default function ProjectDraftingForm({
           )}
           {titleLocked && (
             <p id="draft-title-locked" className="form-hint">
-              The title is locked because residents have already supported this project under it.
+              The title is locked because {hub.noun(2)} have already supported this project under it.
             </p>
           )}
           <FieldGuide guidance={fieldGuidance} field="title" />

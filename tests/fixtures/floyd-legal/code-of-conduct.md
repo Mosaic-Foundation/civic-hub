@@ -33,7 +33,7 @@ Content that:
 We will not remove:
 
 - Opinions you disagree with, even strongly.
-- Civil criticism of elected officials, county employees, or any public figure acting in a public capacity.
+- Civil criticism of elected officials, public employees, or any public figure acting in a public capacity.
 - Accurate statements of fact that someone finds embarrassing or inconvenient.
 - Dissenting views on policy — budgets, ordinances, land use, public safety, schools, or any other civic topic.
 - Rhetoric that is blunt, emotional, or forceful, as long as it sticks to ideas rather than attacking people.

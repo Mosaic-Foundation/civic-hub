@@ -8,6 +8,7 @@
 // requested, how many wrong guesses it takes, and how long the lockout is.
 // Extracted 2026-09-26 (Phase 5 part one) from ./index.ts, unchanged.
 
+import { theName } from "../../shared/hubCopy.js";
 import { randomInt } from "node:crypto";
 
 export const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -42,12 +43,15 @@ export function lockoutMessage(lockedUntilIso: string): string {
  * is admin-authored text.
  */
 export function renderCodeEmail(code: string, rawSender: string, action = "finish signing in"): string {
-  const sender = escapeHtml(rawSender);
+  // "the" only where the name wants one (review R40): "the Example County
+  // Civic Hub", but never "the We The People …".
+  const inSender = escapeHtml(theName(rawSender));
+  const signOff = escapeHtml(theName(rawSender, true));
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #1f2937;">
       <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 16px;">Your sign-in code</h1>
       <p style="font-size: 15px; line-height: 1.5; margin: 0 0 24px;">
-        Enter this code in the ${sender} to ${escapeHtml(action)}:
+        Enter this code in ${inSender} to ${escapeHtml(action)}:
       </p>
       <div style="font-size: 32px; font-weight: 600; letter-spacing: 8px; background: #f3f4f6; padding: 16px 24px; border-radius: 8px; text-align: center; margin: 0 0 24px;">
         ${code}
@@ -56,7 +60,7 @@ export function renderCodeEmail(code: string, rawSender: string, action = "finis
         This code expires in 10 minutes. If you didn't request it, you can ignore this email.
       </p>
       <p style="font-size: 13px; color: #6b7280; line-height: 1.5; margin: 0;">
-        — The ${sender}
+        — ${signOff}
       </p>
     </div>
   `;

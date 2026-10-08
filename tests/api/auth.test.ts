@@ -23,6 +23,17 @@ describe("Auth endpoints", () => {
     expect(body.message).toBeDefined();
   });
 
+  it("a demo hub says no email was sent, so the code step can say so (review R22)", async () => {
+    // Bare localhost is the demo hub (CIVIC_DEV_HUB=athens in CI).
+    const { body } = await apiJson<{ message: string; no_email?: boolean }>("/auth/request-code", {
+      method: "POST",
+      body: JSON.stringify({ email: `demo-${Date.now()}@example.test` }),
+    });
+    expect(body.no_email).toBe(true);
+    expect(body.message).toMatch(/any six digits/);
+    expect(body.message).not.toMatch(/we sent/i);
+  });
+
   it("POST /auth/request-code rejects invalid email", async () => {
     const { status } = await apiJson("/auth/request-code", {
       method: "POST",

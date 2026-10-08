@@ -102,11 +102,8 @@ export default function Process() {
           process.status,
         )}
         sample={Boolean(process.is_sample)}
-        aside={
-          isVote && voteState?.jurisdiction && voteState.jurisdiction !== "local" ? (
-            <span className="jurisdiction-badge">{voteState.jurisdiction}</span>
-          ) : null
-        }
+        // The jurisdiction code ("us-xx-example") is protocol data, not
+        // something a visitor reads; its badge is gone (review R26).
       />
 
       <BriefPointer processId={process.id} />

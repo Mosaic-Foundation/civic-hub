@@ -54,7 +54,7 @@ export default function EmailSection() {
             hint={postalSourceHint(f.data.platform.postal_address.source)}
           />
           <p className="form-hint settings-note">
-            Whether this hub sends the resident and admin digests, and when,
+            Whether this hub sends the participant and admin digests, and when,
             is under <Link to="/admin/settings/plugins">Plugins</Link>.
           </p>
         </>

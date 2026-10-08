@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { pluginEnabled } from "../config/plugins";
 import { onboardingTarget } from "../config/pluginRules";
@@ -14,7 +15,7 @@ import {
 import { CURRENT_LEGAL_VERSION } from "../config/legal";
 import hub from "../config/hub";
 import WaitlistForm from "./WaitlistForm";
-import { affiliationClause, personLabel } from "../../../src/shared/hubKind";
+import { affiliationClause, pluralNoun } from "../../../src/shared/hubKind";
 
 /**
  * Slice 13.10: deferred login() until the residency + legal gate
@@ -53,7 +54,8 @@ interface Props {
 }
 
 export default function AuthModal({ onComplete, onDismiss }: Props) {
-  const { user, token, login, updateUser } = useAuth();
+  const { user, token, login, updateUser, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>(() => {
     // Any verified user lands on the gate step — it renders only the
     // pieces they're missing (residency checkbox and/or name field),
@@ -79,8 +81,12 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  /** Whatever the server said when the code was requested. */
-  const [serverNotice, setServerNotice] = useState<string | null>(null);
+  /**
+   * The server sent no email (a demo hub, an ordinary visitor): any six
+   * digits sign in, and the code step must not say "Check your email"
+   * (review R22). The server decides — an admin on a demo hub gets a code.
+   */
+  const [noEmail, setNoEmail] = useState(false);
   // Set when the backend rejects the email because the hub is in private
   // beta and the address isn't on the allow-list. Instead of a dead-end
   // error we swap the email form for a waitlist capture.
@@ -123,8 +129,8 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
       // digits" and emails nothing; an ordinary hub answers with the usual
       // "we sent a code". The client holds no demo flag and no bypass code —
       // there is nothing to hold, since a demo hub accepts any six digits.
-      const { message } = await requestCode(email.trim());
-      setServerNotice(message ?? null);
+      const { no_email } = await requestCode(email.trim());
+      setNoEmail(no_email === true);
       setStep("code");
     } catch (err) {
       const message =
@@ -211,7 +217,15 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
   const gateUser = pendingAuth?.user ?? user;
   const needsResidency = !gateUser?.is_resident;
   // Residence, membership or nothing, by the hub's kind (identity.hub_kind).
-  const affirmation = affiliationClause(hub.kind, { place: hub.jurisdiction, hub: hub.name });
+  // An admin affirms none of them: they run the hub, and may not live there
+  // (review R23). A demo hub asks only that the visitor is trying the demo,
+  // so no copy saying the place is made up sits above "I am a resident of".
+  const gateIsAdmin = pendingAuth ? pendingAuth.role === "admin" : isAdmin;
+  const affirmation = gateIsAdmin
+    ? null
+    : hub.demo_mode
+      ? "I'm trying this demo"
+      : affiliationClause(hub.kind, { place: hub.jurisdiction, hub: hub.name });
   const needsName = !gateUser?.full_name;
 
   async function handleResidency(e: React.FormEvent) {
@@ -224,7 +238,9 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
     }
     if (needsResidency && !gateChecked) {
       setError(
-        "Please confirm your residency and acceptance of the policies to continue.",
+        affirmation
+          ? "Please tick the box to confirm and accept the policies."
+          : "Please tick the box to accept the policies.",
       );
       return;
     }
@@ -287,11 +303,20 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
           pendingAuth.official,
         );
         // First-time signup — route to the onboarding word cloud if configured
-        // and Word clouds is on; otherwise they stay (the home page).
+        // and Word clouds is on; otherwise they stay where they are.
+        //
+        // KEEPING THEIR PLACE (review R24). This used to be a full page load
+        // to the word cloud, which dropped whatever asked for sign-in — the
+        // vote option they clicked — and the cloud's Skip went home. Now the
+        // waiting action runs first (the vote is cast while this page still
+        // holds it), then an in-app move to the cloud carries this page's
+        // address, and Skip / Continue bring them back to it.
         if (needsResidency) {
-          const target = onboardingTarget(hub.onboarding_wordcloud_id, pluginEnabled("wordcloud"));
+          const here = `${window.location.pathname}${window.location.search}`;
+          const target = onboardingTarget(hub.onboarding_wordcloud_id, pluginEnabled("wordcloud"), here);
           if (target) {
-            window.location.href = target;
+            onComplete();
+            navigate(target);
             return;
           }
         }
@@ -300,7 +325,7 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
       }
       onComplete();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to confirm residency");
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -361,7 +386,9 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
             <p className="auth-description">
               {hub.beta_mode
                 ? "Beta testers: enter the email address you were invited with and we'll send you a one-time code."
-                : "Enter your email and we'll send you a one-time code. No password needed."}
+                : hub.demo_mode
+                  ? "Enter your email to try this demo hub. No password needed."
+                  : "Enter your email and we'll send you a one-time code. No password needed."}
             </p>
 
             <div className="form-field">
@@ -412,11 +439,22 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
         {/* Step 2: Verify code */}
         {step === "code" && (
           <form onSubmit={handleVerifyCode}>
-            <h2 className="auth-title">Check your email</h2>
-            <p className="auth-description">
-              We sent a 6-digit code to <strong>{email}</strong>
-            </p>
-            {serverNotice && <p className="auth-hint">{serverNotice}</p>}
+            {noEmail ? (
+              <>
+                <h2 className="auth-title">Enter any six digits</h2>
+                <p className="auth-description">
+                  This is a demo hub, so no email is sent. Type any six digits
+                  to sign in as <strong>{email}</strong>.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="auth-title">Check your email</h2>
+                <p className="auth-description">
+                  We sent a 6-digit code to <strong>{email}</strong>
+                </p>
+              </>
+            )}
 
             <div className="form-field">
               <label htmlFor="auth-code" className="form-label">Verification code</label>
@@ -444,14 +482,16 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
               {loading ? "Verifying..." : "Verify"}
             </button>
 
-            <button
-              type="button"
-              className="auth-back-link"
-              onClick={handleResendCode}
-              disabled={loading}
-            >
-              Resend code
-            </button>
+            {!noEmail && (
+              <button
+                type="button"
+                className="auth-back-link"
+                onClick={handleResendCode}
+                disabled={loading}
+              >
+                Resend code
+              </button>
+            )}
             <button
               type="button"
               className="auth-back-link"
@@ -473,8 +513,10 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
             </h2>
             <p className="auth-description">
               {needsResidency
-                ? hub.residency_intro
-                : `${personLabel(hub.kind)}s now take part under their real name. Your name appears on comments you post (unless you choose to comment anonymously) — votes are always anonymous.`}
+                ? gateIsAdmin
+                  ? "Please review the policies below."
+                  : hub.residency_intro
+                : `${pluralNoun(hub.person_label)} now take part under their real name. Your name appears on comments you post (unless you choose to comment anonymously) — votes are always anonymous.`}
             </p>
 
             {needsName && (

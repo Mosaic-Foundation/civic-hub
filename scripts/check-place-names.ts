@@ -14,7 +14,8 @@
  * looked plausible, which is why nobody noticed.
  *
  * WHAT IS SCANNED. Every .ts/.tsx/.js/.css file under src/, ui/src/ and api/,
- * plus ui/.env and ui/index.html (everything compiled into, or served with,
+ * every .md/.json file under config/legal/ (2026-10-07), plus ui/.env and
+ * ui/index.html (everything compiled into, or served with,
  * the one build every hub shares), with comments removed first. Comments are exempt on purpose: a great many of
  * them explain *why* a value is data by describing what went wrong when it
  * was not, and that history is worth more than the word it costs. Removal
@@ -46,6 +47,10 @@ const ROOT = resolve(import.meta.dirname, "..");
 // like src/ — ui/.env held Floyd's whole branding until 2026-09-24, which is
 // how Utopia came to greet visitors as Floyd County residents.
 const SCAN_DIRS = ["src", "ui/src", "api"];
+// The shared legal documents and their defaults (2026-10-07, review R53):
+// every hub renders them, so a place written into one is a place on every
+// hub's terms page. Markdown and JSON have no comments to exempt.
+const SCAN_DOC_DIRS = ["config/legal"];
 const SCAN_FILES = ["ui/.env", "ui/index.html"];
 const ALLOWLIST = resolve(ROOT, "scripts/place-name-allowlist.txt");
 
@@ -57,7 +62,25 @@ const ALLOWLIST = resolve(ROOT, "scripts/place-name-allowlist.txt");
 export const PLACE_NAME_PATTERNS: readonly RegExp[] = [
   /floyd/i,
   /board of supervisors/i,
+  // Added 2026-10-07 (review R53): the first hub's state and region, and its
+  // body's short form, which slipped past the two above.
+  /virginia/i,
+  /blue ridge/i,
+  /\bsupervisors\b/i,
 ];
+
+/**
+ * County wording where a hub may be a town, a school district or no place at
+ * all: "county government", "the county", "county employees" (2026-10-07,
+ * review R53). The word on its own stays legal — "county" is a type of place,
+ * and a type id. Not applied under src/debug/: the dev-only seed data there
+ * is written for a county hub and never reaches another (CIVIC_ALLOW_SEED).
+ */
+export const COUNTY_WORDING_PATTERNS: readonly RegExp[] = [
+  /\bthe county\b/i,
+  /\bcounty (government|employees|staff|officials|residents|board)\b/i,
+];
+const COUNTY_WORDING_EXEMPT = ["src/debug/"];
 
 export interface Hit {
   file: string; // repo-relative, forward slashes
@@ -82,6 +105,16 @@ function sourceFiles(dir: string): string[] {
   return out;
 }
 
+function docFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const name of readdirSync(dir)) {
+    const full = resolve(dir, name);
+    if (statSync(full).isDirectory()) out.push(...docFiles(full));
+    else if (/\.(md|json)$/.test(name)) out.push(full);
+  }
+  return out;
+}
+
 /**
  * The file with every comment replaced by spaces of the same shape, so line
  * numbers survive. The scanner knows strings, template literals, regex
@@ -92,6 +125,8 @@ export function blankComments(text: string, fileName: string): string {
   if (fileName.endsWith(".env") || /\.env\.[^/]+$/.test(fileName)) {
     return text.replace(/^\s*#.*$/gm, blank);
   }
+  // Documents have no comments: every word in them is shown to someone.
+  if (/\.(md|json)$/.test(fileName)) return text;
   if (fileName.endsWith(".html")) {
     return text.replace(/<!--[\s\S]*?-->/g, blank);
   }
@@ -164,13 +199,18 @@ export function findPlaceNameHits(root: string = ROOT): Hit[] {
   const files = [
     ...SCAN_DIRS.flatMap((dir) => sourceFiles(resolve(root, dir))),
     ...SCAN_FILES.map((f) => resolve(root, f)),
+    ...SCAN_DOC_DIRS.flatMap((dir) => docFiles(resolve(root, dir))),
   ];
   {
     for (const file of files) {
       const code = blankComments(readFileSync(file, "utf-8"), file);
       const lines = code.split("\n");
+      const rel = relative(root, file).split("\\").join("/");
+      const patterns = COUNTY_WORDING_EXEMPT.some((d) => rel.startsWith(d))
+        ? PLACE_NAME_PATTERNS
+        : [...PLACE_NAME_PATTERNS, ...COUNTY_WORDING_PATTERNS];
       lines.forEach((text, i) => {
-        if (PLACE_NAME_PATTERNS.some((p) => p.test(text))) {
+        if (patterns.some((p) => p.test(text))) {
           hits.push({
             file: relative(root, file).split("\\").join("/"),
             line: i + 1,

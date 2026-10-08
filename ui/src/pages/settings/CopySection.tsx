@@ -1,5 +1,8 @@
 import SectionForm from "./SectionForm";
-import { DocumentField, TextAreaField, TextField } from "./fields";
+import { BooleanField, DocumentField, TextAreaField, TextField } from "./fields";
+import hub from "../../config/hub";
+import { defaultBetaBanner } from "../../../../src/shared/hubCopy";
+import { participantNoun } from "../../../../src/shared/hubKind";
 
 export default function CopySection() {
   return (
@@ -17,10 +20,37 @@ export default function CopySection() {
         <>
           <TextAreaField
             f={f}
+            k="copy.welcome_strip"
+            label="Welcome strip"
+            rows={3}
+            placeholder={hub.welcome_strip_default}
+            hint={`The paragraph under "${hub.welcome_strip_title}" at the top of the home page. Left empty, it shows the text above, worded for this kind of hub. Plain text.`}
+          />
+          <BooleanField
+            f={f}
+            k="copy.welcome_strip_hidden"
+            label="Hide the welcome strip"
+            hint="Nobody sees the strip while this is on. Visitors can also dismiss it for themselves."
+          />
+          <TextAreaField
+            f={f}
+            k="copy.beta_banner"
+            label="Beta bar"
+            rows={2}
+            placeholder={defaultBetaBanner({
+              kind: hub.kind,
+              jurisdictionType: hub.jurisdiction_type,
+              hubName: hub.name,
+              hasSamples: false,
+            })}
+            hint="The bar across every page while the hub is in beta. Left empty, it says the hub is in beta and, while sample content is left, that content marked Sample is not real. Plain text."
+          />
+          <TextAreaField
+            f={f}
             k="copy.intro_body"
             label="Intro"
             rows={3}
-            placeholder="This is where residents keep up with local government, raise topics that matter, help make sense of issues together, and have conversations to see where the community stands."
+            placeholder={hub.intro_body_default}
             hint="The paragraph in the welcome pop-up a first-time visitor sees. Plain text."
           />
           <TextAreaField
@@ -42,17 +72,17 @@ export default function CopySection() {
             f={f}
             k="copy.governing_body_short"
             label="Governing body, short"
-            placeholder="Supervisors, Council…"
+            placeholder="Council, Commission…"
             width={260}
-            hint={'In pills and running text: "Supervisors meeting summaries", "passing on to the Supervisors". Left empty, it comes from the full name.'}
+            hint={'In pills and running text: "Council meeting summaries", "passing on to the Council". Left empty, it comes from the full name.'}
           />
           <TextField
             f={f}
             k="copy.resident_noun"
-            label="What residents are called"
-            placeholder="resident"
+            label="What participants are called"
+            placeholder={participantNoun(hub.kind, 1)}
             width={260}
-            hint="Saved for this hub, but not shown on any page yet: the site still says “resident” everywhere. It will be used once those words are wired to it."
+            hint={`One word, singular: "neighbor", "student". Used wherever the site counts or names the people taking part ("12 ${hub.noun(2)} voted"). Left empty, it follows the kind of hub: resident, member or participant.`}
           />
           <DocumentField
             f={f}

@@ -33,3 +33,13 @@ src/models/hub.ts | floyd: "Floyd's hub; | reserved slug in the one reserved lis
 # depends on its state; Virginia's are Boards of Supervisors. Not a place: a
 # default the operator corrects, keyed on the jurisdiction code's state.
 src/shared/jurisdictionType.ts | "Board of Supervisors" : "County Commission" | the county default by state (us-va-… → Board of Supervisors), a suggestion on the console's create form
+
+# Recognising a governing body's members in its name (2026-10-06): a list of
+# generic words a body's name can end in, not a place (added 2026-10-07 when
+# the check began matching "supervisors").
+src/shared/jurisdictionType.ts | chosen freeholders | defaultGoverningBodyShort(): "… of Supervisors" gives "Supervisors", among a dozen generic member words
+src/shared/jurisdictionType.ts | assembly | defaultGoverningBodyShort(): a list of generic words that are themselves a body's short form
+
+# The governing state of a hub that is not a place, until it sets its own
+# (Adam, 2026-09-27): a value in config, which is where a place name belongs.
+config/legal/defaults.json | "Virginia" | legal.governing_state's shared default, documented in BUILD-PLAN "hub_settings"

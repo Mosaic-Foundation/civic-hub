@@ -113,8 +113,8 @@ export default function AdminFeedback() {
       <AdminTabs />
       <h1>Feedback</h1>
       <p className="admin-page-description">
-        Everything residents have sent through the feedback form, newest
-        first. Topic suggestions are residents nominating subjects the Hub
+        Everything people have sent through the feedback form, newest
+        first. Topic suggestions are people nominating subjects the Hub
         should take up — filter to them when you're deciding what to launch
         with. This archive is read-only; nothing here can be edited or
         removed.

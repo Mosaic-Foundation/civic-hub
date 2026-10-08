@@ -3,7 +3,7 @@
 *Last updated: 2026-04-24*
 *Version: 1.2*
 
-> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US privacy law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US privacy law{{/place}} before the {HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.
+{{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US privacy law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US privacy law{{/place}} before the {HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.{{/draft}}
 
 ## Who runs this site
 
@@ -97,7 +97,7 @@ You have the right to:
 - **Correct** — tell us to fix inaccurate information.
 - **Delete** — close your account and have your personal account data deleted, subject to the civic-record retention note above.
 - **Opt out of the digest** — at any time, either through the Settings page or via the one-click unsubscribe link in every digest email.
-- **Complain** — to us directly (we'll take it seriously) {{#place}}or to the {STATE} Attorney General's office if you believe we've violated {STATE}'s Consumer Data Protection Act.{{/place}}{{^place}}or to your state's Attorney General.{{/place}}
+- **Complain** — to us directly (we'll take it seriously) {{#place}}or to the {STATE} Attorney General's office.{{/place}}{{^place}}or to your state's Attorney General.{{/place}}
 
 To exercise any of these rights, email {CONTACT_EMAIL}. We'll respond within 30 days.
 

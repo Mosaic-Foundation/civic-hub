@@ -49,17 +49,44 @@ export function baseName(officialName: string, type: ReferenceJurisdictionType):
  * Shape only; whether each is free is the server's question.
  */
 export function slugCandidates(name: string, type: ReferenceJurisdictionType | null, state: string | null, max = 12): string[] {
-  const base = slugify(name).slice(0, 32).replace(/-+$/, "");
+  const base = fitSlug(slugify(name));
   if (!base) return [];
-  const fit = (s: string) => s.slice(0, 32).replace(/-+$/, "");
   const out = [base];
-  if (type) out.push(fit(`${base}-${TYPE_WORD[type]}`));
-  if (state) out.push(fit(`${base}-${state}`));
+  if (type) out.push(`${fitSlug(base, SLUG_MAX - TYPE_WORD[type].length - 1)}-${TYPE_WORD[type]}`);
+  if (state) out.push(`${fitSlug(base, SLUG_MAX - state.length - 1)}-${state}`);
   for (let n = 2; out.length < max; n++) {
     const suffix = `-${n}`;
-    out.push(`${base.slice(0, 32 - suffix.length).replace(/-+$/, "")}${suffix}`);
+    out.push(`${fitSlug(base, SLUG_MAX - suffix.length)}${suffix}`);
   }
   return [...new Set(out)];
+}
+
+/** The longest suggested slug: a hub's web address and permanent id. */
+export const SLUG_MAX = 32;
+
+/** Words a long name can lose without becoming another name. */
+const SLUG_FILLER = new Set(["the", "of", "and", "administrative", "unified", "consolidated", "independent", "public", "community"]);
+
+/**
+ * A slug cut to `max` characters at a word boundary, never mid-word (review
+ * R20: "…-administrative-scho"). Too long, it first loses filler words
+ * ("bend-la-pine-administrative-school-district-1" →
+ * "bend-la-pine-school-district-1"), then whole words from the end.
+ */
+export function fitSlug(slug: string, max = SLUG_MAX): string {
+  const s = slug.replace(/^-+|-+$/g, "");
+  if (s.length <= max) return s;
+  const words = s.split("-").filter((w, i) => i === 0 || !SLUG_FILLER.has(w));
+  const joined = words.join("-");
+  if (joined.length <= max) return joined;
+  let acc = "";
+  for (const w of words) {
+    const next = acc ? `${acc}-${w}` : w;
+    if (next.length > max) break;
+    acc = next;
+  }
+  // A single word longer than max: nothing to keep whole, so cut it.
+  return acc || s.slice(0, max).replace(/-+$/, "");
 }
 
 /** The word a code adds for a jurisdiction below county level. */

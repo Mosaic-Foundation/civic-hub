@@ -278,7 +278,7 @@ export function cronAlertReason(outcome: CronOutcome): string | null {
     return (
       `${outcome.staleRevisions.length} revision(s) have been waiting for review ` +
       `longer than ${REVISION_NAG_DAYS} days. The published summaries are ` +
-      `unaffected, but the newer versions are not reaching residents.`
+      `unaffected, but the newer versions are not reaching the public.`
     );
   }
   if (outcome.staleSummaries && outcome.staleSummaries.length > 0) {

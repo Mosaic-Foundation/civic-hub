@@ -7,8 +7,9 @@ import "./BetaBanner.css";
 /**
  * Always-on beta bar, shown to EVERYONE in the full app whenever
  * hub.beta_mode is true — signed-in testers and signed-out preview
- * browsers alike. One message: this hub is in beta and seeded with demo
- * content, not real community input. Deliberately not dismissible — the
+ * browsers alike. One message, editable per hub (`copy.beta_banner`):
+ * this hub is in beta — and, while sample content is left, that the content
+ * marked Sample is not real community input. Deliberately not dismissible — the
  * reminder must survive a tester three pages deep in a seeded process.
  * Gone at public launch with zero code change when beta_mode flips off.
  *
@@ -32,13 +33,9 @@ export default function BetaBanner() {
     <>
       <div className="beta-banner" role="region" aria-label="Beta notice">
         <span className="beta-banner-text">
-          You're browsing the {hub.name} beta —{" "}
-          <strong>
-            much of what you see is demo content, not real community topics.
-          </strong>{" "}
-          <span className="beta-banner-sub">
-            Real topics from {hub.jurisdiction} arrive at public launch.
-          </span>
+          {/* The hub's own sentence, or the default, which mentions sample
+              content only while some is left (review R45). */}
+          {hub.beta_banner}
         </span>
         {showCta && (
           <button

@@ -21,7 +21,6 @@ import {
   getInputs,
 } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { personLabel } from "../../../src/shared/hubKind";
 import hub from "../config/hub";
 
 interface Props {
@@ -94,7 +93,7 @@ export default function CommunityInputPanel({ processId, config }: Props) {
 
   const label =
     config?.label ??
-    "Shared alongside residents' votes. Does not affect vote results.";
+    "Shared alongside the votes. Does not affect vote results.";
 
   async function handleHideSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -204,7 +203,7 @@ export default function CommunityInputPanel({ processId, config }: Props) {
                   "Anonymous"
                 ) : (
                   <Creator
-                    name={input.author_name || personLabel(hub.kind)}
+                    name={input.author_name || hub.person_label}
                     isAdmin={input.author_is_admin}
                     officialType={input.author_official_type}
                     officialTitle={input.author_official_title}
@@ -255,7 +254,7 @@ export default function CommunityInputPanel({ processId, config }: Props) {
             <h2 className="auth-title">Hide this comment?</h2>
             <p className="auth-description">
               The reason is stored in the moderation audit log and is
-              not shown to the public. Residents see a tombstone linking
+              not shown to the public. Everyone else sees a tombstone linking
               to the Code of Conduct.
             </p>
 

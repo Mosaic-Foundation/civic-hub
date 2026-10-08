@@ -395,10 +395,10 @@ const ATHENS_COUNCIL_MEETING_APRIL_23: SeedScenario = {
         {
           topic_title: "Downtown sidewalk project — contract award",
           topic_summary:
-            "The Council reviewed three bids received for the Main Street sidewalk replacement project. The bid review committee recommended awarding to Blue Ridge Concrete (lowest qualifying bid at $186,400) over two higher bids. Construction is scheduled to begin May 12 and complete by late June. The contract includes a $10,000 contingency for unforeseen subgrade conditions.",
+            "The Council reviewed three bids received for the Main Street sidewalk replacement project. The bid review committee recommended awarding to Ridgeline Concrete (lowest qualifying bid at $186,400) over two higher bids. Construction is scheduled to begin May 12 and complete by late June. The contract includes a $10,000 contingency for unforeseen subgrade conditions.",
           start_time_seconds: null,
           action_taken:
-            "Motion to award contract to Blue Ridge Concrete passed 5–0.",
+            "Motion to award contract to Ridgeline Concrete passed 5–0.",
         },
         {
           topic_title: "Recycling contract renewal",

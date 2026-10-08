@@ -3,8 +3,6 @@
 *Last updated: 2026-04-24*
 *Version: 1.2*
 
-> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer familiar with Virginia and US privacy law before the Floyd Civic Hub accepts its first resident sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.
-
 ## Who runs this site
 
 The Floyd Civic Hub ("the Hub," "we," "us") is operated by Adam Lake. The Hub is an independent civic participation platform — **we are not affiliated with or operated by the Floyd County government or the Board of Supervisors** — and it exists to help residents take part in local civic life.
@@ -99,7 +97,7 @@ You have the right to:
 - **Correct** — tell us to fix inaccurate information.
 - **Delete** — close your account and have your personal account data deleted, subject to the civic-record retention note above.
 - **Opt out of the digest** — at any time, either through the Settings page or via the one-click unsubscribe link in every digest email.
-- **Complain** — to us directly (we'll take it seriously) or to the Virginia Attorney General's office if you believe we've violated Virginia's Consumer Data Protection Act.
+- **Complain** — to us directly (we'll take it seriously) or to the Virginia Attorney General's office.
 
 To exercise any of these rights, email contact@civic.social. We'll respond within 30 days.
 

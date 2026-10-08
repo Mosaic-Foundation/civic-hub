@@ -2,7 +2,7 @@
 
 ## What is the {HUB_NAME}?
 
-The {HUB_NAME} is a pilot program aimed at improving how our community understands and expresses public sentiment on local issues.
+The {HUB_NAME} aims to improve how {{#place}}our community understands and expresses public sentiment on local issues{{/place}}{{^place}}the people who take part understand and express where they stand on the issues they share{{/place}}.
 
 Between elections, there is often no clear way to understand what {{#place}}residents{{/place}}{{^place}}people{{/place}} actually think about specific topics. This platform is designed to provide a simple, structured way to make that visible.
 
@@ -21,8 +21,8 @@ Each issue includes clear context and tradeoffs to support informed participatio
 
 This platform is not:
 
-- A political campaign or advocacy effort
-- A discussion forum or social network
+{{^issue}}- A political campaign or advocacy effort
+{{/issue}}- A discussion forum or social network
 - A replacement for official elections or governance
 
 It does not make decisions or set policy.
@@ -32,8 +32,9 @@ It does not make decisions or set policy.
 Results from votes are:
 
 - Publicly visible
-- Shared with relevant local officials
-- Intended as an advisory signal only
+{{#place}}- Shared with relevant local officials
+{{/place}}{{^place}}- Shared with the Hub's organizers
+{{/place}}- Intended as an advisory signal only
 
 ## Neutrality and nonpartisanship
 
@@ -55,7 +56,7 @@ To maintain basic integrity while keeping participation accessible:
 
 ## What comes next
 
-This is an early pilot program.
+The {HUB_NAME} is still early.
 
 Future iterations may include:
 

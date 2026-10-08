@@ -38,7 +38,7 @@ Flag proposals where one of these layers is missing in a way that leaves a reade
 
 When a proposal makes an empirical claim — about what something does, what laws say, what numbers show, what is happening — a source strengthens it. Empirical claims include:
 
-- *"The county collects [X data]"*
+- *"{{#place}}The {PLACE} government{{/place}}{{^place}}The organization{{/place}} collects [X data]"*
 - *"The cost of [Y] is [Z]"*
 - *"[Some entity] has said [thing]"*
 - *"Studies show [outcome]"*
@@ -86,7 +86,7 @@ Tone issues are soft suggestions unless they cross into Code of Conduct territor
 
 Specificity is what allows voters to know what they are endorsing.
 
-For Issues: a clear outcome the user wants. *"I'm concerned about X"* is incomplete; *"I want the county to investigate X"* is clearer.
+For Issues: a clear outcome the user wants. *"I'm concerned about X"* is incomplete; *"I want {{#place}}the {PLACE} government{{/place}}{{^place}}the organizers{{/place}} to investigate X"* is clearer.
 
 For Ideas: enough specificity that supporters know what they're supporting. *"We need more community spaces"* is vague; *"Open the old elementary school gym for evening community use"* is specific.
 

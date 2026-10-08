@@ -109,6 +109,12 @@ export interface Activity {
    */
   pill: string;
   /**
+   * A brief's source process type (kind "brief" only), so a reader that
+   * knows the hub can word its pill: a vote's brief is "Brief to the
+   * Supervisors" on the feed (Adam, 2026-10-07; briefPillFor in hubCopy).
+   */
+  briefSource?: string;
+  /**
    * Where the card links. Either a dedicated relative SPA path (wordcloud /
    * proposal / conversation, whose public page differs from /process/:id) or
    * the event's own `action_url` verbatim — which may be an absolute external
@@ -360,6 +366,7 @@ function classifyResultPublished(
       kind: "brief",
       color: briefColorOf(srcType),
       pill: briefPill(srcType),
+      briefSource: srcType,
       href: `/brief/${id}`,
     };
   }

@@ -321,11 +321,6 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
               Your vote and comment have been submitted.
             </p>
           )}
-          {justVoted && voteWasUpdated && (
-            <p className="vote-confirmation">
-              Your vote has been updated.
-            </p>
-          )}
           {commentWarning && (
             <p className="vote-comment-warning">{commentWarning}</p>
           )}

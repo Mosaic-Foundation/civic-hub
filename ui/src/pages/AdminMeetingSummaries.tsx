@@ -505,7 +505,7 @@ export default function AdminMeetingSummaries() {
               value={meetingTitle}
               onChange={(e) => setMeetingTitle(e.target.value)}
               disabled={!isPending}
-              placeholder={`${hub.governing_body_name} Regular Meeting`}
+              placeholder={hub.governing_body_name ? `${hub.governing_body_name} Regular Meeting` : "Regular Meeting"}
             />
           </section>
 
@@ -745,7 +745,7 @@ export default function AdminMeetingSummaries() {
       <div className="admin-meeting-summaries-body">
         <h1>Meeting summaries</h1>
         <p className="admin-subtitle">
-          AI-generated summaries of {hub.governing_body_name} meetings.
+          AI-generated summaries of {hub.governing_body_name ? `${hub.governing_body_name} meetings` : "meetings"}.
           Review topic blocks and approve to publish to the public feed.
         </p>
 

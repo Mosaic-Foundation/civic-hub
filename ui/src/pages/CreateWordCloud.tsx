@@ -64,7 +64,7 @@ export default function CreateWordCloud() {
       <Link to="/" className="back-link">&larr; Home</Link>
       <h1>Create a word cloud</h1>
       <p className="create-wordcloud-lede">
-        Ask residents an open-ended question. Their responses aggregate into a
+        Ask people an open-ended question. Their responses aggregate into a
         live word cloud visible to everyone.
       </p>
 
@@ -112,7 +112,7 @@ export default function CreateWordCloud() {
             Prompt <span className="required">*</span>
           </label>
           <p className="form-hint">
-            The question residents will answer. Keep it open-ended — one or two
+            The question people will answer. Keep it open-ended — one or two
             sentences works best.
           </p>
           <textarea

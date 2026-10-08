@@ -9,7 +9,7 @@ import {
 } from "../services/api";
 import SearchBar from "../components/SearchBar";
 import { relativeTime, absoluteTime } from "../components/FeedPost";
-import hub from "../config/hub";
+import hub, { meetingSummaryLabel } from "../config/hub";
 import { processTypeShown } from "../config/plugins";
 import { searchChipsShown } from "../config/pluginRules";
 // FeedFilter.css carries the .feed-filter-pill--<kind> rules we
@@ -79,19 +79,43 @@ function fromIsoToBucket(from: string | null): DateBucket {
   return "year";
 }
 
+// Every type search can return (2026-10-07): a type missing here showed as
+// "Post", which is how a brief came to read like a stray post. The classes
+// are the feed's own type colours.
 const TYPE_PILL_LABELS: Record<string, string> = {
   "civic.vote": "Vote",
   "civic.vote_results": "Vote results",
+  "civic.brief": "Brief",
+  "civic.proposal": "Proposal",
+  "civic.project": "Project",
+  "civic.polis_deliberation": "Conversation",
+  "civic.wordcloud": "Word cloud",
   "civic.announcement": "Announcement",
   "civic.meeting_summary": "Meeting summary",
 };
 
 const TYPE_PILL_CLASSES: Record<string, string> = {
-  "civic.vote": "feed-pill--vote-open",
-  "civic.vote_results": "feed-pill--vote-results",
-  "civic.announcement": "feed-pill--announcement",
-  "civic.meeting_summary": "feed-pill--meeting",
+  "civic.vote": "feed-pill--type-vote",
+  "civic.vote_results": "feed-pill--type-vote",
+  "civic.brief": "feed-pill--type-generic",
+  "civic.proposal": "feed-pill--type-proposal",
+  "civic.project": "feed-pill--type-project",
+  "civic.polis_deliberation": "feed-pill--type-conversation",
+  "civic.wordcloud": "feed-pill--type-wordcloud",
+  "civic.announcement": "feed-pill--type-announcement",
+  "civic.meeting_summary": "feed-pill--type-meeting",
 };
+
+/**
+ * A result's heading. A brief carries its source's title (spawnBrief), so it
+ * read as a second copy of the vote; it says what it is instead: "Brief to
+ * the Supervisors: <title>", as the brief page does.
+ */
+function hitTitle(hit: SearchHit): string {
+  if (hit.type !== "civic.brief") return hit.title;
+  const short = hub.governing_body_short;
+  return short ? `Brief to the ${short}: ${hit.title}` : `Brief: ${hit.title}`;
+}
 
 export default function SearchPage() {
   const [params, setParams] = useSearchParams();
@@ -429,12 +453,12 @@ function SearchBody({
 }
 
 function ResultCard({ hit }: { hit: SearchHit }) {
-  const pillLabel = TYPE_PILL_LABELS[hit.type] ?? "Post";
+  const pillLabel = hit.type === "civic.meeting_summary" ? meetingSummaryLabel(false) : (TYPE_PILL_LABELS[hit.type] ?? "Post");
   const pillClass = TYPE_PILL_CLASSES[hit.type] ?? "";
   return (
     <Link to={hit.href} className="search-page-card">
       <div className="search-page-card-head">
-        <h2 className="search-page-card-title">{hit.title}</h2>
+        <h2 className="search-page-card-title">{hitTitle(hit)}</h2>
         <span className={`feed-pill ${pillClass}`}>{pillLabel}</span>
       </div>
       {hit.description && (

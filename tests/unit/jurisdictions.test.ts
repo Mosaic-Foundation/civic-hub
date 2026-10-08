@@ -215,9 +215,14 @@ describe("the shared documents, by hub kind", () => {
     for (const f of files) {
       const raw = readFileSync(join(dir, f), "utf8");
       const out = resolveKindSections(raw, "place");
-      expect(out, f).not.toMatch(/\{\{[#^/]?place\}\}/);
+      expect(out, f).not.toMatch(/\{\{[#^/]?(place|issue|organization|other)\}\}/);
       // Every place sentence survives: the section markers are the only change.
-      const markersOnly = raw.replace(/\{\{\^place\}\}[\s\S]*?\{\{\/place\}\}/g, "").replace(/\{\{#place\}\}|\{\{\/place\}\}/g, "");
+      // Since 2026-10-07 any kind can have a section ({{^issue}} in About):
+      // a place hub keeps "not an issue" text and drops other kinds' own.
+      const markersOnly = raw
+        .replace(/\{\{\^place\}\}[\s\S]*?\{\{\/place\}\}/g, "")
+        .replace(/\{\{#(issue|organization|other)\}\}[\s\S]*?\{\{\/\1\}\}/g, "")
+        .replace(/\{\{[#^]?\/?(place|issue|organization|other)\}\}/g, "");
       expect(out, f).toBe(markersOnly);
     }
   });

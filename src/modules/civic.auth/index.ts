@@ -127,7 +127,7 @@ export function normalizeFullName(raw: unknown): string {
  */
 export async function requestVerification(
   email: string,
-): Promise<{ message: string }> {
+): Promise<{ message: string; no_email?: true }> {
   const normalizedEmail = email.trim().toLowerCase();
 
   if (!normalizedEmail || !normalizedEmail.includes("@")) {
@@ -164,8 +164,12 @@ export async function requestVerification(
     console.log(
       `[auth] Demo hub signin for ${normalizedEmail} — no code emailed.`,
     );
+    // `no_email` tells the sign-in screen not to say "Check your email"
+    // (review R22): nothing was sent. An admin on the same demo hub gets the
+    // ordinary answer and a real code.
     return {
-      message: "This is a demo hub. Enter any six digits to sign in.",
+      message: "No email is sent on a demo hub. Enter any six digits to sign in.",
+      no_email: true,
     };
   }
 

@@ -12,16 +12,18 @@
 // page load — a CustomLink mapped onto react-markdown's anchor renderer
 // handles that.
 //
-// Placeholders the server could not fill (`{GOVERNING_BODY}` on a hub
-// that has not named one) are rendered verbatim, deliberately: they are
-// impossible to miss in review, and a sentence with a visible hole is
-// better than a sentence with an invisible one.
+// Every placeholder in the shared templates has a value since 2026-10-07
+// (server fallbacks). The "Draft starter content — review before launch"
+// note arrives beside the document, not in it, and only the hub's admins
+// see it: it is a reminder to review, not something an evaluator should
+// read on a public terms page.
 
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import hub from "../config/hub";
+import { useAuth } from "../context/AuthContext";
 import type { HubDocument } from "../hooks/useHubDocument";
 import "./LegalPage.css";
 
@@ -60,6 +62,7 @@ function CustomLink({
 }
 
 export default function LegalPage({ document: doc, title }: Props) {
+  const { isAdmin } = useAuth();
   // Set the document title so the legal page is identifiable in the
   // browser tab. We don't reset on unmount — React Router's next page
   // will overwrite it if it cares.
@@ -73,6 +76,16 @@ export default function LegalPage({ document: doc, title }: Props) {
         &larr; Home
       </Link>
       <div className="legal-prose">
+        {doc.status === "ready" && isAdmin && doc.draftNotes.length > 0 && (
+          <blockquote className="legal-draft-note" aria-label="Note for admins">
+            {doc.draftNotes.map((note) => (
+              <ReactMarkdown key={note} remarkPlugins={[remarkGfm]} components={{ a: CustomLink }}>
+                {note}
+              </ReactMarkdown>
+            ))}
+            <p className="legal-draft-note-who">Only admins see this note.</p>
+          </blockquote>
+        )}
         {doc.status === "ready" ? (
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}

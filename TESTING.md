@@ -541,6 +541,21 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   1258 passed; Playwright 30 passed, 1 skipped (dev UI on :5173, API
   `hub-e2e-1006` on :3000). Load as you scroll (same day): Playwright 31
   passed, 1 skipped.
+- **Wording by kind and place (session 3a, 2026-10-07).** New
+  `tests/unit/hubWording.test.ts`: for a county, a town, a school district,
+  an organization and an issue campaign, the welcome strip, tagline, intro
+  and beta bar carry no placeholder and no other kind's wording, and the
+  legal pages (rendered through `hubDocumentsWithNotes` under `runWithHub`)
+  have every placeholder filled and no draft note. Also the article rule
+  (`theName`, `fillSampleText`, the sign-in email), `fitSlug`, the Selectboard
+  default, the brief pill, the sign-up return path (`safeReturnPath` refuses
+  `//`, `/\`, schemes) and the extended place-name patterns. New
+  `tests/e2e/signupWording.spec.ts` (demo hubs only): the code step says
+  "Enter any six digits" and the checkbox "I'm trying this demo"; signing up
+  from a vote casts it, goes through the onboarding word cloud, and Skip
+  returns to the vote. `tests/api/auth.test.ts`: a demo hub's request-code
+  answers `no_email: true`. Results: unit 110 files, 1291; API 35 files,
+  420 passed, 7 skipped (hub-token pass); Playwright 34 passed, 1 skipped.
 
 > **Update 2026-09-24:** CI now runs this layer too — the `api-tests` job in
 > `.github/workflows/ci.yml` starts the Supabase local stack, seeds both hubs

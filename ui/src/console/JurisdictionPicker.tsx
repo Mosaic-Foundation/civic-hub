@@ -279,7 +279,7 @@ export function JurisdictionPicker({
                 <span className="cx-mono cx-break">{chosen.ocd_id}</span> · Census: {chosen.official_name} · GEOID{" "}
                 {chosen.census_geoid}
                 {chosen.type === "cdp" &&
-                  ". A census-designated place has no local government of its own; its residents are governed by the county around it."}
+                  ". A census-designated place has no local government of its own; its residents are governed by the surrounding county or town."}
               </small>
             ) : (
               <small className="cx-muted">The place this hub serves, from the official list. Enter picks the highlighted match.</small>

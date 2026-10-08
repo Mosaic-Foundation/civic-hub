@@ -3,7 +3,7 @@
 *Last updated: 2026-08-10*
 *Version: 1.2*
 
-> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US consumer law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US consumer law{{/place}} before the {HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.
+{{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US consumer law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US consumer law{{/place}} before the {HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.{{/draft}}
 
 ## Agreement
 

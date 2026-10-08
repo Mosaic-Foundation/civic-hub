@@ -178,7 +178,7 @@ export default function PostAnnouncement() {
       <p className="post-announcement-lede">
         {isEditMode
           ? "Changes are logged. The announcement page will show an \"edited\" timestamp."
-          : "Announcements publish immediately and appear in the public feed. One-way — residents can read but not reply."}
+          : "Announcements publish immediately and appear in the public feed. One-way — people can read but not reply."}
       </p>
 
       <form onSubmit={handleSubmit} className="post-announcement-form">

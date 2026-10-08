@@ -23,7 +23,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fetchHubDocuments } from "../db/hubSettingsStore.js";
 import { getSettingSync } from "./hubSettings.js";
-import { hubKindOf } from "../shared/hubKind.js";
+import { HUB_KINDS, hubKindOf } from "../shared/hubKind.js";
+import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
 import { KEYS } from "../models/hubSettings.js";
 import type { Hub } from "../models/hub.js";
 
@@ -49,6 +50,9 @@ const TEMPLATES: Readonly<Record<string, string>> = {
 const WHO_RUNS_THIS_TEMPLATE = "who-runs-this.md";
 
 export type HubDocuments = Record<string, string>;
+
+/** Per document key, the draft notes taken out of it (admins see them). */
+export type HubDraftNotes = Record<string, string[]>;
 
 /**
  * Templates are read from disk once and kept. They are part of the deployment,
@@ -123,10 +127,14 @@ export function documentSettingDefault(key: string): string | undefined {
  * them; shared templates cannot, so the hub says it once and all four
  * documents read it.
  *
- * A placeholder with no value is LEFT AS IT IS, deliberately. The documents
- * are draft starter content and say so; a hub that has not configured its
- * governing body should show `{GOVERNING_BODY}` in review, not quietly render
- * a sentence with a hole in it.
+ * EVERY PLACEHOLDER THE TEMPLATES USE HAS A VALUE (2026-10-07, review R15).
+ * Until then a missing value was left visible on purpose, for review — and an
+ * evaluator on a new hub read a literal `{CONTACT_EMAIL}` on the terms page.
+ * The fallbacks: the operator is the hub's name (Adam, 2026-10-07: keep the
+ * hub name until a hub names its own), the contact address is the platform's,
+ * a place hub with no governing body says "local government", and a place
+ * with no state in its name uses the governing state's default. A hub's own
+ * text can still use a placeholder nobody defines; that one stays visible.
  */
 export function substitutions(hub: Hub): Record<string, string> {
   const jurisdiction = hub.jurisdiction_name?.trim() ?? "";
@@ -161,13 +169,13 @@ export function substitutions(hub: Hub): Record<string, string> {
   if (place?.trim()) out.PLACE = place.trim();
   if (state) out.STATE = state;
 
-  const governingBody = getSettingSync(KEYS.COPY_GOVERNING_BODY_NAME);
-  if (governingBody) out.GOVERNING_BODY = governingBody;
+  const governingBody = getSettingSync(KEYS.COPY_GOVERNING_BODY_NAME)?.trim();
+  out.GOVERNING_BODY = governingBody || "local government";
   return withOperator(out);
 }
 
 function withOperator(out: Record<string, string>): Record<string, string> {
-  const operator = getSettingSync(KEYS.LEGAL_OPERATOR_NAME);
+  const operator = getSettingSync(KEYS.LEGAL_OPERATOR_NAME)?.trim() || out.HUB_NAME;
   if (operator) {
     out.OPERATOR = operator;
     // The name the admin panel shows beside the editor, matching the key.
@@ -175,14 +183,21 @@ function withOperator(out: Record<string, string>): Record<string, string> {
     out.OPERATOR_NAME = operator;
   }
 
-  const contactEmail = getSettingSync(KEYS.LEGAL_CONTACT_EMAIL);
-  if (contactEmail) out.CONTACT_EMAIL = contactEmail;
+  out.CONTACT_EMAIL = getSettingSync(KEYS.LEGAL_CONTACT_EMAIL)?.trim() || PLATFORM_CONTACT_EMAIL;
 
   // Used by the sentences of a hub that is not a place (its governing law,
   // the draft note); a place hub's use its own {STATE}.
   const governingState =
     getSettingSync(KEYS.LEGAL_GOVERNING_STATE)?.trim() || documentSettingDefault(KEYS.LEGAL_GOVERNING_STATE);
-  if (governingState) out.GOVERNING_STATE = governingState;
+  if (governingState) {
+    out.GOVERNING_STATE = governingState;
+    // A custom place written without its state ("Riverside") still needs one.
+    if (out.HUB_KIND === "place" && !out.STATE) out.STATE = governingState;
+  }
+  if (out.HUB_KIND === "place" && !out.PLACE && out.HUB_NAME) {
+    out.PLACE = out.HUB_NAME;
+    out.JURISDICTION ??= out.HUB_NAME;
+  }
 
   return out;
 }
@@ -222,16 +237,44 @@ export function whoRunsThisDefault(hub: Hub | null): string {
     : template.trim();
 }
 
+const KIND_SECTION = new RegExp(
+  `\\{\\{([#^])(${HUB_KINDS.map((k) => k.id).join("|")})\\}\\}([\\s\\S]*?)\\{\\{\\/\\2\\}\\}`,
+  "g",
+);
+
 /**
  * Keep the sections that apply to this kind of hub and drop the rest:
  * `{{#place}}…{{/place}}` is for place hubs, `{{^place}}…{{/place}}` for every
- * other kind (2026-09-27). A section may span lines. `kind` unset = place.
+ * other kind (2026-09-27). Any kind works the same way since 2026-10-07
+ * (`{{^issue}}` — About's "not an advocacy effort" is untrue of a campaign).
+ * A section may span lines. `kind` unset = place.
  */
 export function resolveKindSections(template: string, kind: string | undefined): string {
-  const isPlace = !kind || kind === "place";
-  return template.replace(/\{\{([#^])place\}\}([\s\S]*?)\{\{\/place\}\}/g, (_m, flag: string, body: string) =>
-    (flag === "#") === isPlace ? body : "",
+  const actual = hubKindOf(kind);
+  return template.replace(KIND_SECTION, (_m, flag: string, name: string, body: string) =>
+    (flag === "#") === (actual === name) ? body : "",
   );
+}
+
+/**
+ * Take the `{{#draft}}…{{/draft}}` notes out of a rendered document
+ * (2026-10-07, review R15). "Draft starter content — review before launch"
+ * is a reminder for the hub's admins, not something an evaluator should read
+ * on the public terms page, so the document is served without it and the
+ * notes travel beside it for the page to show admins only. A hub's stored
+ * copy from before the markers existed carries the note as a bare blockquote;
+ * that is taken out the same way.
+ */
+export function splitDraftNotes(text: string): { body: string; notes: string[] } {
+  const notes: string[] = [];
+  const take = (_m: string, note: string) => {
+    notes.push(note.trim().replace(/^>\s*/, ""));
+    return "";
+  };
+  const body = text
+    .replace(/\{\{#draft\}\}([\s\S]*?)\{\{\/draft\}\}\n*/g, take)
+    .replace(/^(> \*\*Draft starter content[^\n]*)\n*/m, take);
+  return { body, notes };
 }
 
 /**
@@ -252,10 +295,18 @@ export function applySubstitutions(
  * templates everywhere else.
  */
 export async function hubDocuments(hub: Hub): Promise<HubDocuments> {
+  return (await hubDocumentsWithNotes(hub)).documents;
+}
+
+/** The documents, and the draft notes taken out of them (splitDraftNotes). */
+export async function hubDocumentsWithNotes(
+  hub: Hub,
+): Promise<{ documents: HubDocuments; draft_notes: HubDraftNotes }> {
   const overrides = await fetchHubDocuments(hub.id);
   const values = substitutions(hub);
   resolveWhoRunsThis(values, getSettingSync(KEYS.LEGAL_WHO_RUNS_THIS));
   const out: HubDocuments = {};
+  const notes: HubDraftNotes = {};
 
   for (const [key, fileName] of Object.entries(TEMPLATES)) {
     // A hub's own document goes through substitution too. Whoever authored it
@@ -264,7 +315,9 @@ export async function hubDocuments(hub: Hub): Promise<HubDocuments> {
     const override = overrides[key];
     const source = override || readTemplate(fileName);
     if (source !== null && source !== undefined) {
-      out[key] = applySubstitutions(source, values);
+      const { body, notes: found } = splitDraftNotes(applySubstitutions(source, values));
+      out[key] = body;
+      if (found.length) notes[key] = found;
     }
   }
 
@@ -276,7 +329,7 @@ export async function hubDocuments(hub: Hub): Promise<HubDocuments> {
   const welcome = overrides[KEYS.COPY_WELCOME];
   if (welcome) out[KEYS.COPY_WELCOME] = applySubstitutions(welcome, values);
 
-  return out;
+  return { documents: out, draft_notes: notes };
 }
 
 /** One document, for the server-side consumers (the drafting assistant). */

@@ -6,6 +6,13 @@
 // link to the public brief page. Mirrors civic.vote_results/email.ts.
 
 import type { BriefProcessState } from "./models.js";
+import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
+import { getSettingSync } from "../../services/hubSettings.js";
+import { KEYS } from "../../models/hubSettings.js";
+
+// What the people taking part are called on this hub (review R29, 2026-10-07).
+const hubNoun = (n: number): string =>
+  participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), n, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
 
 function esc(s: string): string {
   return String(s)
@@ -43,7 +50,7 @@ export function formatBriefEmail(
 
   const commentsHtml =
     c.comments.length > 0
-      ? `<h3 style="margin:16px 0 4px;">In residents' words</h3><ul>${c.comments
+      ? `<h3 style="margin:16px 0 4px;">In ${hubNoun(2)}' words</h3><ul>${c.comments
           .slice(0, 10)
           .map((cm) => `<li>${esc(cm)}</li>`)
           .join("")}</ul>`
@@ -79,7 +86,7 @@ export function formatBriefEmail(
     .join("\n");
   const commentsText =
     c.comments.length > 0
-      ? `\n\nIn residents' words:\n${c.comments
+      ? `\n\nIn ${hubNoun(2)}' words:\n${c.comments
           .slice(0, 10)
           .map((cm) => `- ${cm}`)
           .join("\n")}`

@@ -85,7 +85,8 @@ export interface ConsoleConfig {
   hub_specific_env_vars: string[];
   create_refusal: string | null;
   /** The create form's preview: one sample card's first line, placeholders left in. */
-  sample_preview?: { pill: string; title: string };
+  /** Keyed "<kind>:<type>" ("place:town", "issue:"); null = nothing would be seeded. */
+  sample_previews?: Record<string, { pill: string; title: string } | null>;
 }
 
 export interface AuditEntry {

@@ -28,6 +28,13 @@ import { spawnBriefFromClosedProcess, findExistingBriefId } from "./spawnBrief.j
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import { proposalAssistantConfig } from "./proposalAssistantConfig.js";
 import { setDraftStatus as setProposalDraftStatus } from "../modules/civic.proposal_drafts/index.js";
+import { hubKindOf, participantNoun } from "../shared/hubKind.js";
+import { getSettingSync } from "../services/hubSettings.js";
+import { KEYS } from "../models/hubSettings.js";
+
+// What the people taking part are called on this hub (review R29, 2026-10-07).
+const hubNoun = (n: number): string =>
+  participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), n, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
 
 function db() {
   return forHub(currentHubId());
@@ -176,7 +183,7 @@ const proposalAdapter: ProcessHandler = {
       // Best-effort — admin can add comments during review.
     }
 
-    const supporters = `${support} resident${support === 1 ? "" : "s"}`;
+    const supporters = `${support} ${hubNoun(support)}`;
     return {
       title: process.title,
       headline:

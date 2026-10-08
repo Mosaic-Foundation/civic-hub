@@ -117,8 +117,8 @@ Key naming is dotted, lowercase, and namespaced. The canonical keys:
 
 | Namespace | Keys |
 |---|---|
-| `identity.` | `identity.name`, `identity.label`, `identity.tagline`, `identity.page_title`, `identity.description`, `identity.banner_url`, `identity.banner_alt`, `identity.theme`, `identity.logo_url` (added 2026-09-24, Adam), `identity.timezone` (added 2026-09-24, Phase 2c), `identity.jurisdiction_type` (added 2026-09-26, Phase 7; admin-only; place hubs only), `identity.hub_kind` (added 2026-09-27: `place` / `issue` / `organization` / `other`, unset = place; public) |
-| `copy.` | `copy.intro_body`, `copy.residency_intro`, `copy.welcome`, `copy.about`, `copy.resident_noun`, `copy.governing_body_name`, `copy.governing_body_short` |
+| `identity.` | `identity.name`, `identity.label`, `identity.tagline`, `identity.page_title`, `identity.description`, `identity.banner_url`, `identity.banner_alt`, `identity.theme`, `identity.logo_url` (added 2026-09-24, Adam), `identity.timezone` (added 2026-09-24, Phase 2c), `identity.jurisdiction_type` (added 2026-09-26, Phase 7; place hubs only; public since 2026-10-07, Adam: the welcome strip and tagline say "town government"), `identity.hub_kind` (added 2026-09-27: `place` / `issue` / `organization` / `other`, unset = place; public) |
+| `copy.` | `copy.intro_body`, `copy.residency_intro`, `copy.welcome`, `copy.about`, `copy.resident_noun` (read since 2026-10-07: overrides the kind's noun), `copy.governing_body_name`, `copy.governing_body_short`, `copy.welcome_strip`, `copy.welcome_strip_hidden` (boolean), `copy.beta_banner` (the last three added 2026-10-07, Adam; public) |
 | `legal.` | `legal.terms`, `legal.privacy`, `legal.code_of_conduct`, `legal.proposal_best_practices`, `legal.governing_state` (added 2026-09-27: the state whose law governs a non-place hub's documents; admin-editable; unset = `config/legal/defaults.json`, "Virginia"; public, as it is printed in them) |
 | `people.` | `people.admin_emails`, `people.board_emails`, `people.brief_recipients`, `people.announcement_authors` |
 | `email.` | `email.from_name`, `email.from_address`, `email.postal_address` |
@@ -1371,6 +1371,34 @@ sample-content polish".
   works locally in both modes (`tests/api/crons.test.ts`). Not changed: a
   run that does nothing (a vote close that closed nothing) still records
   nothing, by design (`src/jobs/describe.ts`).
+
+### Wording by kind and place (session 3a, 2026-10-07)
+
+Decided by Adam (four answers in the session, 2026-10-07). HANDOFF "Every word
+fits the hub" has what was built.
+
+- **Operator:** a hub that has not named its own reads as operated by **the
+  hub's name** (unchanged; create keeps writing `legal.operator_name`). Every
+  other placeholder in the shared documents now has a value: contact →
+  `PLATFORM_CONTACT_EMAIL` (`src/shared/platform.ts`, contact@civic.social);
+  a place hub with no governing body → "local government"; a place with no
+  state in its name → the governing state's default.
+- **Draft note:** `{{#draft}}…{{/draft}}` in the templates. The server takes
+  it out of the document and serves it beside it (`draft_notes` on
+  `GET /hub-config/documents`); the page shows it to admins only.
+- **Privacy law:** named for no state. A place hub's line ends "…or to the
+  {STATE} Attorney General's office."
+- **New keys:** `copy.welcome_strip`, `copy.welcome_strip_hidden`,
+  `copy.beta_banner` (public, Settings → Copy). `identity.jurisdiction_type`
+  joins the public subset. `copy.resident_noun` is wired in.
+- **Defaults by kind and type:** `src/shared/hubCopy.ts` (welcome strip,
+  tagline, intro, beta bar, the article rule `theName()`, the vote brief's
+  pill "Brief to the <board short>").
+- **`/hub-config` gains `content: { samples, welcome }`.** The beta bar
+  mentions sample content only while some is left, and no link points at
+  `/welcome` unless the hub wrote one ("Learn more" goes to About).
+- **Kind sections** in the shared documents work for any kind
+  (`{{^issue}}`), not only `place`.
 
 ### Backups (2026-10-04)
 

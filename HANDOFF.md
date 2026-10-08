@@ -4,6 +4,95 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Every word fits the hub: wording by kind and place (session 3a) — 2026-10-07 (fifth part)
+
+Review findings R13, R15–R17, R19–R24, R26–R30, R33, R40, R45, R53 (`Review-Findings-2026-10-06.md`). Not
+pushed; no migrations, dependencies or env vars. Decisions: BUILD-PLAN "Wording by kind and place".
+
+**Built:**
+1. **Legal pages (R15, R16).**
+   - Every placeholder has a value: `substitutions()` in `src/services/hubDocuments.ts` falls back to the hub's
+     name (operator, as Adam chose), `PLATFORM_CONTACT_EMAIL` (`src/shared/platform.ts`), "local government"
+     and the governing state.
+   - The draft note is a `{{#draft}}` section, served as `draft_notes` beside the documents and shown to admins
+     only (`LegalPage.tsx`). A stored copy's bare "> **Draft starter content" blockquote is taken out the same way.
+   - The privacy policy names no state's law. The Code of Conduct says "public employees" (and "the Hub's
+     organizers" off place hubs).
+   - About lost "pilot program" and, on an issue hub, "not … an advocacy effort". `{{#kind}}` / `{{^kind}}`
+     sections now work for any kind.
+2. **Welcome strip, tagline, intro, beta bar (R17, R45).**
+   - The defaults are worded by kind and type of place in `src/shared/hubCopy.ts`.
+   - Three new keys in Settings → Copy: `copy.welcome_strip`, `copy.welcome_strip_hidden` and
+     `copy.beta_banner`. `identity.jurisdiction_type` is now public.
+   - `/hub-config` serves `content: {samples, welcome}`. The beta bar mentions Sample content only while some is
+     left.
+3. **Nouns (R29, R28, R13).** `copy.resident_noun` is wired in: `participantNoun()` / `personLabel()` take it,
+   and the UI uses `hub.noun(n)` / `hub.person_label`. The sweep (results, briefs, emails, admin pages, assistant
+   examples without "the county" or "the Board") was done by a subagent; its review list is under Open. The
+   `hub.governing_body_name` fallback is "", and the "Delivered to…" lines drop when there is no body.
+4. **Demo sign-in (R22, R23).**
+   - The server answers `no_email: true`, and the code step reads "Enter any six digits", with no "Check your
+     email" and no Resend.
+   - On a demo hub the checkbox reads "I'm trying this demo". An admin affirms nothing.
+5. **Sign-up keeps its place (R24).** The waiting action (the vote clicked) runs first. Then an in-app move to
+   the onboarding word cloud carries `&return=<path>`, and its Skip / Continue go back (`safeReturnPath()` in
+   `ui/src/config/pluginRules.ts`).
+6. **Articles (R19, R40).** `theName()` gives "the Town of Example", "the … School District", "the … Civic Hub",
+   but "Example County" and "We The People …". It is used by the sample text (`fillSampleText`, shared with the
+   console preview), the sign-in email, the welcome strip and the empty feed.
+7. **Dead ends and empty states (R27, R30).**
+   - The Welcome nav link shows only when the hub wrote one, and "Learn more" goes to About otherwise.
+   - New wording for the Votes and Outcomes empty states and the empty feed. The signed-out Settings page has a
+     Sign in button.
+8. **Vote page (R26, R33).**
+   - Removed: the jurisdiction badge, the CSS Title Case on options and the doubled "updated" message.
+   - An open vote whose results are hidden no longer says "be the first to vote" (an unknown count is not 0).
+   - The Dismiss button is no longer red. Proposals say "supporters" in the list too.
+   - A New England town's suggested body is "Selectboard". The "Supervisors" hint examples are gone.
+9. **Briefs (Adam, Oct 7).** The feed and digest pill on a vote's brief reads "Brief to the <board short>"
+   (`briefPillFor`). Search labels every type, and a brief is titled "Brief to the …: <title>".
+10. **Create form (R20, R21).**
+    - `fitSlug()` cuts at a word boundary after dropping filler words ("bend-la-pine-school-district-1").
+    - The preview comes from a template that will be seeded for that kind and type (`sample_previews` on
+      `/control/config`).
+    - The suggestion hint says an untouched suggestion is saved as shown.
+11. **Place-name check (R53).** It adds Virginia, Blue Ridge, Supervisors and county wording ("the county",
+    "county government", …; not under `src/debug/`), and scans `config/legal/`. The debug mocks lost "rural
+    Virginia" and "Blue Ridge Concrete".
+
+**Tests:**
+- Unit: 110 files, 1,291 tests.
+- API: 35 files, 420 passed and 7 skipped. That is one pass, hub-token mode, on the local stack.
+  `sampleContent.test.ts` hit the known shared-stack sign-in lockout once (TESTING.md); after the local row was
+  cleared it passed.
+- Playwright: 34 passed, 1 skipped.
+- New: `tests/unit/hubWording.test.ts` (five kinds and place types; legal pages through `hubDocumentsWithNotes`
+  under `runWithHub`; articles; slug; brief pill; return path; the extended check),
+  `tests/e2e/signupWording.spec.ts` (demo copy; sign up from a vote, cast, Skip returns), and a `no_email` case
+  in `tests/api/auth.test.ts`.
+- Changed on purpose:
+  - The Floyd golden copies (the draft line, the law name, "public employees").
+  - `jurisdictions.test.ts` (any-kind sections).
+  - `hubSettings.test.ts` ("is still early").
+  - `hubKinds.test.ts` (the draft note is in `draft_notes`).
+  - `ux-polish.spec.ts` (the banner title).
+
+**Open:**
+- **Floyd's live legal text changes on deploy.** The privacy line loses "Virginia's Consumer Data Protection Act",
+  the CoC says "public employees", and the draft note leaves the public page. `CURRENT_LEGAL_VERSION` was not
+  bumped, so nobody is asked to re-accept. Adam to decide whether that is right.
+- "the {HUB_NAME}" is still written with a fixed article in the legal templates and some UI strings ("Welcome to
+  the {hub.name}." in the intro pop-up). `theName()` exists for them.
+- R33: the share tooltip covering the supporter count is not fixed.
+- Subagent review list, not changed:
+  - "Sent to N residents" in `src/jobs/describe.ts` (a test asserts it; may run without a hub).
+  - "Resident digest" plugin labels (job registry, admin digest, `ui/src/console/pluginNames.ts`,
+    `PluginsSection.tsx`).
+  - Console strings.
+  - "residents" in the deliberation assistant's instruction text and the meeting-summary prompts (place-only).
+- `hub.governing_body_ref` comes from the short form, so a hub with only a full name reads "the governing body"
+  there.
+
 ## No read stops at 1,000 rows; the feed pages on the server — 2026-10-07 (fourth part)
 
 PostgREST answers one request with at most 1,000 rows and says nothing about the rest. Not pushed; no migrations,

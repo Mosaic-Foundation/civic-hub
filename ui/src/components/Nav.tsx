@@ -27,6 +27,8 @@ const DRAWER_LINKS: ReadonlyArray<{
   label: string;
   end?: boolean;
   plugin?: PluginId;
+  /** Shown only when this is true at render time (a getter on `hub`). */
+  when?: () => boolean;
 }> = [
   { to: "/", label: "Feed", end: true },
   { to: "/deliberations", label: "Conversations", plugin: "conversation" },
@@ -34,7 +36,9 @@ const DRAWER_LINKS: ReadonlyArray<{
   { to: "/votes", label: "Votes", plugin: "vote" },
   { to: "/projects", label: "Projects", plugin: "project" },
   { to: "/outcomes", label: "Outcomes", plugin: "brief" },
-  { to: "/welcome", label: "Welcome" },
+  // Only when the hub has written one (review R27): an empty Welcome page
+  // was the first dead end an evaluator met.
+  { to: "/welcome", label: "Welcome", when: () => hub.has_welcome },
   { to: "/about", label: "About" },
 ];
 
@@ -168,7 +172,7 @@ export default function Nav() {
   const onFeedbackPage = location.pathname === "/feedback";
 
   // Hidden when the hub switched the plugin off (config/plugins.tsx).
-  const drawerLinks = DRAWER_LINKS.filter((l) => !l.plugin || pluginEnabled(l.plugin));
+  const drawerLinks = DRAWER_LINKS.filter((l) => (!l.plugin || pluginEnabled(l.plugin)) && (!l.when || l.when()));
   const searchEnabled = pluginEnabled("search");
   const feedbackEnabled = pluginEnabled("feedback");
 

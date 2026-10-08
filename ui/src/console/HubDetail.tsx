@@ -313,7 +313,7 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
             placeholder={defaultGoverningBodyShort(form.governing_body)}
             onChange={(e) => setForm({ ...form, governing_body_short: e.target.value })}
           />
-          <small className="cx-muted">In pills and running text: "Supervisors meeting summaries".</small>
+          <small className="cx-muted">In pills and running text: "Council meeting summaries".</small>
         </label>
       </div>
       </>)}

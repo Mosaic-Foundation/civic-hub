@@ -71,27 +71,32 @@ export function isJurisdictionType(value: unknown): value is JurisdictionType {
   return typeof value === "string" && JURISDICTION_TYPES.some((t) => t.id === value);
 }
 
+/** States whose towns usually have a Selectboard, by postal code. */
+const SELECTBOARD_STATES: ReadonlySet<string> = new Set(["ct", "ma", "me", "nh", "vt"]);
+
 /**
  * The usual governing body for a type of place, or "" when there is no
  * usual one. Counties differ by state: Virginia's are governed by a Board of
  * Supervisors, most others by a County Commission (Adam, 2026-09-26). The
  * state comes from the OCD id (`…/state:va/…`) when there is one, otherwise
- * from the jurisdiction code (`us-va-…`).
+ * from the jurisdiction code (`us-va-…`). A New England town's is a
+ * Selectboard (2026-10-07).
  */
 export function defaultGoverningBody(
   type: JurisdictionType | null | undefined,
   jurisdictionCode?: string | null,
   ocdId?: string | null,
 ): string {
+  const state = stateOfOcdId(ocdId) ?? /^us-([a-z]{2})-/.exec(jurisdictionCode ?? "")?.[1] ?? null;
   switch (type) {
-    case "county": {
-      const state = stateOfOcdId(ocdId) ?? /^us-([a-z]{2})-/.exec(jurisdictionCode ?? "")?.[1] ?? null;
+    case "county":
       return state === "va" ? "Board of Supervisors" : "County Commission";
-    }
     case "city":
       return "City Council";
     case "town":
-      return "Town Council";
+      // New England towns are governed by a Selectboard (review R33,
+      // 2026-10-07): a town meeting elects it, and no Town Council exists.
+      return state && SELECTBOARD_STATES.has(state) ? "Selectboard" : "Town Council";
     case "village":
       return "Village Board";
     case "borough":

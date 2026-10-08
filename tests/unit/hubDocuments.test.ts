@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import {
   applySubstitutions,
+  splitDraftNotes,
   substitutions,
 } from "../../src/services/hubDocuments.js";
 import type { Hub } from "../../src/models/hub.js";
@@ -83,7 +84,8 @@ describe("shared legal documents", () => {
     (templatePath, originalPath) => {
       const template = readFileSync(resolve(root, templatePath), "utf-8");
       const original = readFileSync(resolve(root, originalPath), "utf-8");
-      expect(sha(applySubstitutions(template, FLOYD))).toBe(sha(original));
+      // The draft note is served beside the document, to admins (2026-10-07).
+      expect(sha(splitDraftNotes(applySubstitutions(template, FLOYD)).body)).toBe(sha(original));
     },
   );
 
@@ -285,16 +287,17 @@ describe("a hub's substitutions come from its own row", () => {
     expect(values.STATE).toBe("Virginia");
   });
 
-  it("omits what the hub has not said, rather than guessing", () => {
-    // Outside a request there is no settings snapshot, so the operator and
-    // contact address are simply absent — and applySubstitutions then leaves
-    // {OPERATOR} visible rather than rendering an empty phrase.
+  it("falls back to the hub's name and the platform's address (review R15)", () => {
+    // Outside a request there is no settings snapshot. Until 2026-10-07 the
+    // operator and contact address were then left as visible placeholders,
+    // and an evaluator read a literal {CONTACT_EMAIL} on the terms page.
     const values = substitutions(hubRow({ jurisdiction_name: null }));
-    expect(values.OPERATOR).toBeUndefined();
-    expect(values.CONTACT_EMAIL).toBeUndefined();
-    expect(values.PLACE).toBeUndefined();
+    expect(values.OPERATOR).toBe("Athens Civic Hub");
+    expect(values.CONTACT_EMAIL).toBe("contact@civic.social");
+    expect(values.PLACE).toBe("Athens Civic Hub");
+    expect(values.GOVERNING_BODY).toBe("local government");
     expect(applySubstitutions("operated by {OPERATOR}", values)).toBe(
-      "operated by {OPERATOR}",
+      "operated by Athens Civic Hub",
     );
   });
 });

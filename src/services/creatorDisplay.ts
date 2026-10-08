@@ -128,7 +128,7 @@ export function redactForAudience(
  * 2026-10-06). Read per hub, so it is a function.
  */
 export function personFallbackName(): string {
-  return personLabel(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)));
+  return personLabel(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), getSettingSync(KEYS.COPY_RESIDENT_NOUN));
 }
 
 /** The value used for any id we can't resolve to a real person. */

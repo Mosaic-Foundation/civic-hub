@@ -1190,7 +1190,7 @@
 .tally-label {
   width: 6rem;
   font-size: 0.9rem;
-  text-transform: capitalize;
+  /* No text-transform: an option reads as its author wrote it (review R26). */
 }
 
 .tally-bar-track {
@@ -1404,7 +1404,6 @@
   border-radius: 4px;
   font-size: 0.85rem;
   color: var(--muted-text);
-  text-transform: capitalize;
 }
 
 /* --- Section description --- */

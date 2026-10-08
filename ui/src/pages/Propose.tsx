@@ -115,7 +115,7 @@ export default function Propose() {
                         sample={Boolean(p.is_sample)}
                         meta={[
                           cardDate(p.created_at),
-                          `${p.support_count} endorsement${p.support_count !== 1 ? "s" : ""}`,
+                          `${p.support_count} supporter${p.support_count !== 1 ? "s" : ""}`,
                           cardDate(p.closes_at) && `closes ${cardDate(p.closes_at)}`,
                         ]}
                       />
@@ -140,7 +140,7 @@ export default function Propose() {
                         sample={Boolean(p.is_sample)}
                         meta={[
                           cardDate(p.created_at),
-                          `${p.support_count} endorsement${p.support_count !== 1 ? "s" : ""}`,
+                          `${p.support_count} supporter${p.support_count !== 1 ? "s" : ""}`,
                           cardDate(p.closes_at) && `closed ${cardDate(p.closes_at)}`,
                         ]}
                       />

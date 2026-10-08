@@ -47,7 +47,7 @@ const INTENTS = [
     route: "/deliberations/new",
     badge: "When in doubt, start here",
     guidance:
-      "Residents share their views; responses cluster into opinion groups, surfacing common ground.",
+      "People share their views; responses cluster into opinion groups, surfacing common ground.",
     guidanceWeight: "light" as const,
   },
   {

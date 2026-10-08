@@ -18,7 +18,7 @@ const VOTE_BEST_PRACTICES = `# Vote Best Practices — Civic Hub
 The title IS the vote question. It should be phrased as something neighbors can meaningfully say yes or no to (or choose between options on). Strong titles are specific enough that a voter scrolling the list understands what they're weighing in on without opening the details.
 
 Weak: *"Traffic issues"*, *"We need change"*, *"Library funding"*
-Strong: *"Should we add sidewalks on Main Street between First and Third?"*, *"Should the county extend library hours to include Sundays?"*, *"Should food trucks be allowed on Main Street during the Saturday market?"*
+Strong: *"Should we add sidewalks on Main Street between First and Third?"*, *"Should the library extend its hours to include Sundays?"*, *"Should food trucks be allowed on Main Street during the Saturday market?"*
 
 Flag titles that are topics rather than questions. A vote title should be something a voter can respond to.
 
@@ -107,13 +107,13 @@ The draft state names the voting method. When it is Approval, the Options field 
     {
       field: "title",
       hint: "Phrase it as a question neighbors can answer — not a topic.",
-      example: "Should the county extend library hours to include Sundays?",
+      example: "Should the library extend its hours to include Sundays?",
     },
     {
       field: "description",
       hint: "Give voters fair context: what's being asked, who's affected, and what would change. Inform, don't persuade.",
       example:
-        "The library closes at 5pm on weekends. Sunday hours would cost about one staff shift; the board wants to know if residents would use them.",
+        "The library closes at 5pm on weekends. Sunday hours would cost about one staff shift; decision-makers want to know if people would use them.",
     },
     {
       field: "sources",

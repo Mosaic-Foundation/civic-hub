@@ -168,3 +168,20 @@ export async function sampleDeliverySuppressed(message: { to: string[]; subject:
   );
   return { sent: [], held_back: message.to.map((email) => ({ email, reason: SAMPLE_HOLD_REASON })) };
 }
+
+/**
+ * What the hub's public pages need to know about its content (2026-10-07,
+ * review R27, R45): whether any sample content is left — the beta bar stops
+ * calling the hub's content "demo content" once it is gone — and whether the
+ * hub has written a Welcome page, without which no link points at /welcome.
+ * Two counts on every boot; a failed read answers "none", which only drops a
+ * sentence or a link.
+ */
+export async function hubContentFlags(hubId: string): Promise<{ samples: boolean; welcome: boolean }> {
+  const db = forHub(hubId);
+  const [samples, welcome] = await Promise.all([
+    db.from("processes").count().eq("is_sample", true).then((n) => n > 0, () => false),
+    db.from("hub_settings").count().eq("key", KEYS.COPY_WELCOME).neq("value", "").then((n) => n > 0, () => false),
+  ]);
+  return { samples, welcome };
+}

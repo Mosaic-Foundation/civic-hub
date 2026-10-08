@@ -29,6 +29,13 @@ import {
   updateProjectDraft,
 } from "../modules/civic.project_drafts/index.js";
 import { readAll } from "../db/readAll.js";
+import { hubKindOf, participantNoun } from "../shared/hubKind.js";
+import { getSettingSync } from "../services/hubSettings.js";
+import { KEYS } from "../models/hubSettings.js";
+
+// What the people taking part are called on this hub (review R29, 2026-10-07).
+const hubNoun = (n: number): string =>
+  participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), n, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
 
 function db() {
   return forHub(currentHubId());
@@ -256,7 +263,7 @@ const projectAdapter: ProcessHandler = {
       summary: process.description ?? "",
       sections,
       participation_label:
-        weighedIn > 0 ? `${weighedIn} resident${weighedIn === 1 ? "" : "s"} weighed in` : null,
+        weighedIn > 0 ? `${weighedIn} ${hubNoun(weighedIn)} weighed in` : null,
       participation_count: weighedIn,
       comments: [],
       admin_notes: "",

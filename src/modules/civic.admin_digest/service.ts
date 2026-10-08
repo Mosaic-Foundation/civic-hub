@@ -436,7 +436,7 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
       <h1 style="font-size:18px;font-weight:600;margin:0 0 8px;color:#1e3a5f;">${escapeHtml(p.hub_name)} — admin queue</h1>
       <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">
         Daily summary of items waiting for your review, scheduled jobs that
-        need a look, and feedback residents sent in the last 24 hours.
+        need a look, and feedback people sent in the last 24 hours.
       </p>
       ${sections}
       <p style="margin:32px 0 0;color:#9ca3af;font-size:12px;">

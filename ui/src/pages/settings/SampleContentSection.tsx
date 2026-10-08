@@ -88,7 +88,7 @@ export default function SampleContentSection() {
           <p className="form-hint">
             This hub has {summary.processes} sample {summary.processes === 1 ? "process" : "processes"}: illustrative
             votes, proposals and announcements, each marked <strong>Sample</strong>, so the hub did not open empty.
-            They are not public record: they never appear in the hub's public event feed, its export or residents'
+            They are not public record: they never appear in the hub's public event feed, its export or participants'
             email digests.
           </p>
 

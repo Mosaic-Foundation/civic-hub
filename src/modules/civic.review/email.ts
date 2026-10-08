@@ -1,5 +1,12 @@
 import { sendEmail, unsentReason } from "../../utils/email.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
+import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
+import { getSettingSync } from "../../services/hubSettings.js";
+import { KEYS } from "../../models/hubSettings.js";
+
+// What the people taking part are called on this hub (review R29, 2026-10-07).
+const hubNoun = (n: number): string =>
+  participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), n, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
 
 /**
  * Escape user-controlled values before interpolating into email HTML. Without
@@ -123,13 +130,13 @@ export async function notifyAdminActivationFailed(input: {
       <p>You approved the ${typeLabel} <strong>"${esc(input.title)}"</strong>, but the step that
       makes it live did not complete. <strong>The approval stands</strong> — nothing was lost, and
       the creator has already been told it was approved.</p>
-      <p>It is resting at <strong>${esc(input.resting_status)}</strong>, which means residents
+      <p>It is resting at <strong>${esc(input.resting_status)}</strong>, which means people
       cannot take part in it yet. Open it in the admin area and start it manually.</p>
       <p><a href="${url}">Go to the admin process list</a></p>
       <p style="color:#666;font-size:13px">Process <code>${esc(input.process_id)}</code><br>
       Reason: ${esc(input.error)}</p>
     `,
-    text: `You approved the ${typeLabel} "${input.title}", but the step that makes it live did not complete.\n\nThe approval stands — nothing was lost, and the creator has already been told it was approved. It is resting at "${input.resting_status}", which means residents cannot take part in it yet. Open it in the admin area and start it manually.\n\n${url}\n\nProcess ${input.process_id}\nReason: ${input.error}`,
+    text: `You approved the ${typeLabel} "${input.title}", but the step that makes it live did not complete.\n\nThe approval stands — nothing was lost, and the creator has already been told it was approved. It is resting at "${input.resting_status}", which means people cannot take part in it yet. Open it in the admin area and start it manually.\n\n${url}\n\nProcess ${input.process_id}\nReason: ${input.error}`,
   });
 }
 
@@ -199,10 +206,10 @@ export async function notifyCreatorApproved(input: {
       html: `
         <p>Hi ${esc(input.creator_name)},</p>
         <p>Your ${typeLabel} <strong>"${esc(input.title)}"</strong> has been approved and published as a proposed vote.</p>
-        <p>Voting opens once <strong>${threshold} residents</strong> support it. Share it with neighbors who care about this issue to help it reach the threshold.</p>
+        <p>Voting opens once <strong>${threshold} ${hubNoun(threshold)}</strong> support it. Share it with neighbors who care about this issue to help it reach the threshold.</p>
         <p><a href="${url}">View your ${typeLabel}</a></p>
       `,
-      text: `Hi ${input.creator_name},\n\nYour ${typeLabel} "${input.title}" has been approved and published as a proposed vote.\n\nVoting opens once ${threshold} residents support it. Share it with neighbors who care about this issue to help it reach the threshold.\n\nView it: ${url}`,
+      text: `Hi ${input.creator_name},\n\nYour ${typeLabel} "${input.title}" has been approved and published as a proposed vote.\n\nVoting opens once ${threshold} ${hubNoun(threshold)} support it. Share it with neighbors who care about this issue to help it reach the threshold.\n\nView it: ${url}`,
     });
     return;
   }

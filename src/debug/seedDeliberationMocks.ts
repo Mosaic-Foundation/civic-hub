@@ -440,7 +440,7 @@ const FLOCK_STATEMENTS: MockStatement[] = [
   },
   {
     id: 2,
-    text: "I don't want the government tracking where I drive every day. This is rural Virginia, not a police state.",
+    text: "I don't want the government tracking where I drive every day. This is a rural place, not a police state.",
     is_seed: true,
     created: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
   },
@@ -518,7 +518,7 @@ const FLOCK_STATEMENTS: MockStatement[] = [
   },
   {
     id: 15,
-    text: "Other rural counties in Virginia have these and crime clearance rates went up. The data supports keeping them.",
+    text: "Other rural counties in the state have these and crime clearance rates went up. The data supports keeping them.",
     is_seed: false,
     created: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
   },
@@ -550,7 +550,7 @@ const FLOCK_CLUSTERS: MockClusterState = {
           repness: 0.89,
         },
         {
-          text: "I don't want the government tracking where I drive every day. This is rural Virginia, not a police state.",
+          text: "I don't want the government tracking where I drive every day. This is a rural place, not a police state.",
           direction: "disagree",
           repness: 0.78,
         },
@@ -561,7 +561,7 @@ const FLOCK_CLUSTERS: MockClusterState = {
       size: 17,
       representative_statements: [
         {
-          text: "I don't want the government tracking where I drive every day. This is rural Virginia, not a police state.",
+          text: "I don't want the government tracking where I drive every day. This is a rural place, not a police state.",
           direction: "agree",
           repness: 0.93,
         },

@@ -18,6 +18,7 @@ import {
   type ReferenceJurisdictionType,
 } from "../../../src/shared/jurisdictionType";
 import { defaultHubName, jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
+import { fillSampleText } from "../../../src/shared/hubCopy";
 import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
 import { PLUGIN_NAMES } from "./pluginNames";
 import { HUB_KINDS, affiliationClause, type HubKind } from "../../../src/shared/hubKind";
@@ -70,7 +71,11 @@ function SuggestInput({
 /** The hint under a field that holds a suggestion. */
 function SuggestNote({ value, suggestion }: { value: string; suggestion: string }) {
   if (value !== "" || suggestion === "") return null;
-  return <span className="cx-suggest-note"> Suggested: Tab accepts it, typing replaces it.</span>;
+  return (
+    <span className="cx-suggest-note">
+      {" "}Suggested: saved as shown if you leave it. Tab makes it text you can edit; typing replaces it.
+    </span>
+  );
 }
 
 /** The place as it reads mid-sentence: no state. */
@@ -211,10 +216,16 @@ export default function CreateHub() {
   // --- The preview ---------------------------------------------------------
 
   const previewPlace = placeName ? placeWithoutState(placeName) : name;
-  const sampleTitle = (config?.sample_preview?.title ?? "")
-    .replace(/\{JURISDICTION\}/g, previewPlace || "your place")
-    .replace(/\{GOVERNING_BODY\}/g, governingBody || "local government")
-    .replace(/\{HUB_NAME\}/g, name || "your hub");
+  // A card that will be seeded for this kind and type (review R21), filled
+  // the way the seed fills it, articles included.
+  const samplePreview = config?.sample_previews?.[`${hubKind}:${isPlace ? hubType || "" : ""}`] ?? null;
+  const sampleTitle = samplePreview
+    ? fillSampleText(samplePreview.title, {
+        JURISDICTION: previewPlace || "your place",
+        GOVERNING_BODY: governingBody || "local government",
+        HUB_NAME: name || "your hub",
+      })
+    : "";
   const signUpLine = affiliationClause(hubKind, { place: placeName || "…", hub: name || "…" });
 
   return (
@@ -578,7 +589,7 @@ export default function CreateHub() {
           </div>
           {form.sample_content && samplesAvailable && sampleTitle ? (
             <div className="cx-preview-card">
-              <span className="cx-preview-pill">{config?.sample_preview?.pill ?? "Vote open"}</span>
+              <span className="cx-preview-pill">{samplePreview?.pill ?? "Vote open"}</span>
               <span className="cx-preview-pill cx-preview-sample">Sample</span>
               <p>{sampleTitle}</p>
             </div>

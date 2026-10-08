@@ -164,9 +164,11 @@ export default function BriefPage() {
           </time>
           .
         </p>
-      ) : brief.delivered_recipient_count > 0 && brief.approved_at ? (
+      ) : brief.delivered_recipient_count > 0 && brief.approved_at && hub.governing_body_short ? (
+        // No governing body (a non-place hub) means no "delivered to" line
+        // (review R29, 2026-10-07).
         <p className="vote-results-delivery">
-          Delivered to the {hub.governing_body_name} on{" "}
+          Delivered to the {hub.governing_body_name || hub.governing_body_short} on{" "}
           {new Date(brief.approved_at).toLocaleDateString(undefined, {
             year: "numeric",
             month: "long",
@@ -239,7 +241,7 @@ export default function BriefPage() {
 
       {brief.comments.length > 0 && (
         <section className="vote-results-section">
-          <h2>In residents' words</h2>
+          <h2>In {hub.noun(2)}&apos; words</h2>
           <ul className="vote-results-comments">
             {brief.comments.map((c, i) => (
               <li key={i}>{c}</li>

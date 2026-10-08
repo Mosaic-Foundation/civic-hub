@@ -143,7 +143,9 @@ function mapModelToMeta(
       return {
         title: str(model.title),
         description: str(model.description),
-        totalVotes: num(model.total_votes) ?? 0,
+        // Null while the vote hides its results: unknown, not zero, or the
+        // card says "be the first to vote" over 30 ballots (review R26).
+        totalVotes: num(model.total_votes),
       };
 
     case "civic.vote_results": {

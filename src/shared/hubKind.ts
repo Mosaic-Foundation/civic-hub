@@ -35,19 +35,30 @@ export function hubKindOf(value: string | null | undefined): HubKind {
 /**
  * What the people taking part are called: residents of a place hub, members
  * of an organization, participants anywhere else — a campaign has no
- * residents and no members (Adam, 2026-10-06).
+ * residents and no members (Adam, 2026-10-06). A hub may name them itself
+ * (`copy.resident_noun`, wired in 2026-10-07: "neighbor", "student"); pass it
+ * as `custom`, singular, and the plural is formed from it.
  */
-export function participantNoun(kind: HubKind, count: number): string {
-  const one = kind === "place" ? "resident" : kind === "organization" ? "member" : "participant";
-  return count === 1 ? one : `${one}s`;
+export function participantNoun(kind: HubKind, count: number, custom?: string | null): string {
+  const own = custom?.trim().toLowerCase();
+  const one = own || (kind === "place" ? "resident" : kind === "organization" ? "member" : "participant");
+  return count === 1 ? one : pluralNoun(one);
+}
+
+/** "resident" → "residents", "family" → "families", "class" → "classes". */
+export function pluralNoun(one: string): string {
+  if (/[^aeiou]y$/i.test(one)) return `${one.slice(0, -1)}ies`;
+  if (/(s|x|z|ch|sh)$/i.test(one)) return `${one}es`;
+  return `${one}s`;
 }
 
 /**
  * The byline of someone whose name is not shown — a signed-out viewer's
- * view, or an account with no name: "Resident", "Member", "Participant".
+ * view, or an account with no name: "Resident", "Member", "Participant",
+ * or the hub's own noun.
  */
-export function personLabel(kind: HubKind): string {
-  const noun = participantNoun(kind, 1);
+export function personLabel(kind: HubKind, custom?: string | null): string {
+  const noun = participantNoun(kind, 1, custom);
   return noun.charAt(0).toUpperCase() + noun.slice(1);
 }
 

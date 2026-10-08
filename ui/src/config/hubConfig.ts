@@ -44,6 +44,8 @@ export interface HubConfig {
    * Optional so a config from an older server still parses.
    */
   plugin_setup?: Record<string, PluginSetupStatus>;
+  /** Sample content left, a Welcome page written (2026-10-07). Optional, like plugin_setup. */
+  content?: { samples: boolean; welcome: boolean };
 }
 
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";

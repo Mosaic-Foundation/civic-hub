@@ -23,9 +23,10 @@ import type { Request, Response } from "express";
 import { pluginSetupFor } from "../services/pluginSetup.js";
 import type { PluginSetupStatus } from "../shared/pluginSetup.js";
 import { getPublicSettings } from "../services/hubSettings.js";
-import { hubDocuments } from "../services/hubDocuments.js";
+import { hubDocumentsWithNotes } from "../services/hubDocuments.js";
 import type { Hub, HubMode } from "../models/hub.js";
 import { hubModeFor } from "../services/hubSettings.js";
+import { hubContentFlags } from "../services/sampleContent.js";
 
 /** The hub fields the contract makes public. */
 interface PublicHub {
@@ -52,6 +53,11 @@ export interface HubConfigResponse {
    * means ready. The rule: src/shared/pluginSetup.ts.
    */
   plugin_setup: Record<string, PluginSetupStatus>;
+  /**
+   * What the hub holds (added 2026-10-07): any sample content left, and a
+   * Welcome page of its own. The beta bar and the /welcome links read them.
+   */
+  content: { samples: boolean; welcome: boolean };
 }
 
 function publicHub(hub: Hub): PublicHub {
@@ -80,7 +86,7 @@ export async function handleGetHubConfig(
   }
 
   const settings = await getPublicSettings(hub.id);
-  const pluginSetup = await pluginSetupFor(hub.id);
+  const [pluginSetup, content] = await Promise.all([pluginSetupFor(hub.id), hubContentFlags(hub.id)]);
 
   // `private`, not `public`: this response differs per hostname, and a shared
   // cache that keyed it wrongly would serve one hub's identity on another's
@@ -88,7 +94,7 @@ export async function handleGetHubConfig(
   // edits these values from the Settings page and expects the next reload to
   // show them. Express's ETag makes the revalidation a 304 with no body.
   res.set("Cache-Control", "private, no-cache");
-  const body: HubConfigResponse = { hub: publicHub(hub), settings, plugin_setup: pluginSetup };
+  const body: HubConfigResponse = { hub: publicHub(hub), settings, plugin_setup: pluginSetup, content };
   res.json(body);
 }
 
@@ -113,5 +119,8 @@ export async function handleGetHubDocuments(
   // edits a document expects to see it on the next reload. ETag keeps the
   // unchanged case to a 304.
   res.set("Cache-Control", "private, no-cache");
-  res.json({ documents: await hubDocuments(hub) });
+  // The draft notes ride beside the documents, not in them: the page shows
+  // them to admins only (2026-10-07). They say nothing that is not true of
+  // every hub's starter text, so serving them to everyone discloses nothing.
+  res.json(await hubDocumentsWithNotes(hub));
 }

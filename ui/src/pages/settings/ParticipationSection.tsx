@@ -140,7 +140,7 @@ export default function ParticipationSection() {
         <p className="form-hint">
           Votes are always anonymous (ballot secrecy) and creating a
           process always carries the creator's real name — those are
-          fixed. This setting controls how residents appear on
+          fixed. This setting controls how people appear on
           community comments.
         </p>
         <label className="form-label" htmlFor="comment-identity-mode">
@@ -158,7 +158,7 @@ export default function ParticipationSection() {
             Real name required — no anonymous comments
           </option>
           <option value="anonymous_optional">
-            Real name by default — residents may opt into anonymity
+            Real name by default — people may opt into anonymity
           </option>
           <option value="anonymous_only">
             Anonymous only — no names shown on comments

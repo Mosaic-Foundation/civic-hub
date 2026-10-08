@@ -165,7 +165,7 @@ export default function Votes() {
               {activeVotes.length === 0 ? (
                 <p className="empty-state-inline">
                   {completedVotes.length === 0
-                    ? "Nothing here yet. Come back soon — the first issues will launch shortly."
+                    ? "No votes yet. When one opens, it will show up here."
                     : hub.governing_body_short
                       ? `No active votes right now. When the ${hub.governing_body_short} asks for input, it'll show up here.`
                       : "No active votes right now. New votes will show up here."}

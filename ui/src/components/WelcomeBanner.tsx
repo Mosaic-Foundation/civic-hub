@@ -25,7 +25,10 @@ function dismiss(): void {
 export default function WelcomeBanner() {
   const [visible, setVisible] = useState(() => !isDismissed());
 
-  if (!visible) return null;
+  // The hub's own paragraph, or the default by kind and type of place
+  // (src/shared/hubCopy.ts, review R17); hidden in Settings → Copy.
+  if (!visible || hub.welcome_strip_hidden) return null;
+  const custom = hub.welcome_strip !== hub.welcome_strip_default;
 
   function handleDismiss() {
     dismiss();
@@ -36,25 +39,31 @@ export default function WelcomeBanner() {
     <section className="welcome-banner">
       <div className="welcome-banner-inner">
         <div className="welcome-banner-content">
-          <h2 className="welcome-banner-title">
-            Welcome — the {hub.name} is a community pilot program
-          </h2>
+          <h2 className="welcome-banner-title">{hub.welcome_strip_title}</h2>
           <p className="welcome-banner-body">
-            A new space to follow county government, raise the issues that
-            matter, and decide together. It's early and still evolving
-            {/* The button is the Feedback plugin's; without it, no pointer. */}
-            {pluginEnabled("feedback") ? (
+            {hub.welcome_strip}
+            {/* The default goes on to the feedback pointer; a hub's own
+                paragraph is shown as written. The button is the Feedback
+                plugin's; without it, no pointer. */}
+            {!custom && (
               <>
-                {" "}— use the feedback button at the top anytime to report a
-                bug, suggest a feature, or share anything else.
+                {" "}It's early and still evolving
+                {pluginEnabled("feedback") ? (
+                  <>
+                    {" "}— use the feedback button at the top anytime to report a
+                    bug, suggest a feature, or share anything else.
+                  </>
+                ) : (
+                  "."
+                )}{" "}
+                We're building this with you.
               </>
-            ) : (
-              "."
-            )}{" "}
-            We're building this with you.
+            )}
           </p>
           <div className="welcome-banner-actions">
-            <Link to="/welcome" className="welcome-banner-button">
+            {/* The Welcome page when the hub has written one, else About
+                (review R27: never a page that says it has nothing). */}
+            <Link to={hub.has_welcome ? "/welcome" : "/about"} className="welcome-banner-button">
               Learn more
             </Link>
             <button

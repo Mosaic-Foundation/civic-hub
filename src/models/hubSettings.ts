@@ -37,7 +37,9 @@ export const KEYS = {
   // school_district or other (src/shared/jurisdictionType.ts). Added
   // 2026-09-26 (Phase 7, Adam). Set by the console at create; the create
   // form infers the governing body from it, and the sample seed skips
-  // templates that do not fit it. Admin-only: not on the public list.
+  // templates that do not fit it. PUBLIC since 2026-10-07 (Adam): the hub UI
+  // words its welcome strip and tagline by it ("town government"), and the
+  // type is no more than the place's own name already says.
   IDENTITY_JURISDICTION_TYPE: "identity.jurisdiction_type",
   // What the hub is: place, issue, organization or other
   // (src/shared/hubKind.ts). Added 2026-09-27 (Adam). Unset = place. PUBLIC:
@@ -53,6 +55,13 @@ export const KEYS = {
   COPY_RESIDENT_NOUN: "copy.resident_noun",
   COPY_GOVERNING_BODY_NAME: "copy.governing_body_name",
   COPY_GOVERNING_BODY_SHORT: "copy.governing_body_short",
+  // The home page's welcome strip and the beta bar (2026-10-07, Adam; review
+  // R17, R45). Unset = the default by hub kind and type of place
+  // (src/shared/hubCopy.ts). `welcome_strip_hidden` is a boolean: "true"
+  // hides the strip for everyone. All three public: every visitor sees them.
+  COPY_WELCOME_STRIP: "copy.welcome_strip",
+  COPY_WELCOME_STRIP_HIDDEN: "copy.welcome_strip_hidden",
+  COPY_BETA_BANNER: "copy.beta_banner",
 
   LEGAL_TERMS: "legal.terms",
   LEGAL_PRIVACY: "legal.privacy",
@@ -270,12 +279,16 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   KEYS.IDENTITY_THEME,
   KEYS.IDENTITY_LOGO_URL,
   KEYS.IDENTITY_HUB_KIND,
+  KEYS.IDENTITY_JURISDICTION_TYPE,
 
   KEYS.COPY_INTRO_BODY,
   KEYS.COPY_RESIDENCY_INTRO,
   KEYS.COPY_RESIDENT_NOUN,
   KEYS.COPY_GOVERNING_BODY_NAME,
   KEYS.COPY_GOVERNING_BODY_SHORT,
+  KEYS.COPY_WELCOME_STRIP,
+  KEYS.COPY_WELCOME_STRIP_HIDDEN,
+  KEYS.COPY_BETA_BANNER,
 
   KEYS.LEGAL_TERMS,
   KEYS.LEGAL_PRIVACY,

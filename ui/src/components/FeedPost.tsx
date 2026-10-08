@@ -3,6 +3,7 @@ import type { CivicEvent } from "../services/api";
 import { useIsWideViewport } from "../hooks/useIsWideViewport";
 import hub, { meetingSummaryLabel } from "../config/hub";
 import SampleBadge from "./SampleBadge";
+import { briefPillFor } from "../../../src/shared/hubCopy";
 import {
   briefResponseContext,
   classifyActivity,
@@ -100,7 +101,9 @@ export function eventToPost(
     pillLabel:
       activity.kind === "meeting"
         ? meetingSummaryLabel(false)
-        : activity.pill,
+        : activity.kind === "brief"
+          ? briefPillFor(activity.briefSource, hub.governing_body_short, activity.pill)
+          : activity.pill,
     pillKind: activity.kind,
     pillColor: activity.color,
     summary,
@@ -155,7 +158,11 @@ function buildTitleSummary(
         title: getTitle(id) ?? "Vote results",
         // Summary carries context; the participation/comment counts live on
         // the engagement line so the two don't both say "N residents voted".
-        summary: headline || `Delivered to the ${hub.governing_body_name}.`,
+        summary:
+          headline ||
+          (hub.governing_body_short
+            ? `Delivered to the ${hub.governing_body_name || hub.governing_body_short}.`
+            : ""),
       };
     }
 

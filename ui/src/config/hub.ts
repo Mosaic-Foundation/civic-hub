@@ -29,7 +29,16 @@
  */
 
 import { getLoadedHubConfig, setting } from "./hubConfig";
-import { hubKindOf, type HubKind } from "../../../src/shared/hubKind";
+import { hubKindOf, participantNoun, personLabel, type HubKind } from "../../../src/shared/hubKind";
+import {
+  defaultBetaBanner,
+  defaultIntroBody,
+  defaultTagline,
+  defaultWelcomeStrip,
+  theName,
+  welcomeStripTitle,
+  type HubCopyContext,
+} from "../../../src/shared/hubCopy";
 import { defaultGoverningBodyShort } from "../../../src/shared/jurisdictionType";
 
 /** Env var, trimmed, or undefined when unset or blank. */
@@ -52,6 +61,16 @@ function hubDisplayName(): string {
   );
 }
 
+/** What the shared copy defaults (src/shared/hubCopy.ts) are worded from. */
+function copyContext(): HubCopyContext {
+  return {
+    kind: hubKindOf(setting("identity.hub_kind")),
+    jurisdictionType: setting("identity.jurisdiction_type"),
+    hubName: setting("identity.name") ?? hubDisplayName(),
+    residentNoun: setting("copy.resident_noun"),
+  };
+}
+
 /**
  * The sign-up gate's line when the hub has written none: what the checkbox
  * below it asks, by kind (2026-10-06) — residence, membership, or only the
@@ -59,13 +78,18 @@ function hubDisplayName(): string {
  */
 function residencyIntroFallback(): string {
   const kind = hubKindOf(setting("identity.hub_kind"));
+  // A demo hub asks no one to affirm where they live (review R23): it says
+  // what the checkbox below it does ask.
+  const demo = getLoadedHubConfig()?.hub.mode === "demo";
   const ask =
-    kind === "place"
-      ? "please confirm your residency and review the policies below"
-      : kind === "organization"
-        ? "please confirm your membership and review the policies below"
-        : "please review the policies below";
-  return `To participate in ${hubDisplayName()}, ${ask}.`;
+    demo
+      ? "please confirm you are trying this demo and review the policies below"
+      : kind === "place"
+        ? "please confirm your residency and review the policies below"
+        : kind === "organization"
+          ? "please confirm your membership and review the policies below"
+          : "please review the policies below";
+  return `To participate in ${theName(setting("identity.name") ?? hubDisplayName())}, ${ask}.`;
 }
 
 /** `hub.governing_body_short`, as a function (see hubDisplayName on `this`). */
@@ -167,8 +191,58 @@ const hub = {
     return (
       setting("identity.tagline") ??
       env(import.meta.env.VITE_HUB_TAGLINE) ??
-      "Stay informed on local government, raise the issues that matter, work on projects together, and see where our community stands."
+      defaultTagline(copyContext())
     );
+  },
+
+  /** `identity.jurisdiction_type` (public since 2026-10-07): "town", "county"…; "" when unset. */
+  get jurisdiction_type(): string {
+    return setting("identity.jurisdiction_type") ?? "";
+  },
+
+  /**
+   * What the people taking part are called, by count: "resident(s)",
+   * "member(s)", "participant(s)", or the hub's own `copy.resident_noun`.
+   */
+  noun(count: number): string {
+    return participantNoun(hubKindOf(setting("identity.hub_kind")), count, setting("copy.resident_noun"));
+  },
+
+  /** The byline of someone whose name is not shown: "Resident", "Member"… */
+  get person_label(): string {
+    return personLabel(hubKindOf(setting("identity.hub_kind")), setting("copy.resident_noun"));
+  },
+
+  /** The home page's welcome strip (review R17): heading, paragraph, and whether it shows. */
+  get welcome_strip_title(): string {
+    return welcomeStripTitle(copyContext());
+  },
+
+  get welcome_strip(): string {
+    return setting("copy.welcome_strip") ?? defaultWelcomeStrip(copyContext());
+  },
+
+  /** The paragraph the strip shows when the hub has written none. */
+  get welcome_strip_default(): string {
+    return defaultWelcomeStrip(copyContext());
+  },
+
+  /** True when the hub hid the strip (`copy.welcome_strip_hidden`). */
+  get welcome_strip_hidden(): boolean {
+    return setting("copy.welcome_strip_hidden") === "true";
+  },
+
+  /** The beta bar's sentence (review R45): the hub's own, or the default by whether samples are left. */
+  get beta_banner(): string {
+    return (
+      setting("copy.beta_banner") ??
+      defaultBetaBanner({ ...copyContext(), hasSamples: getLoadedHubConfig()?.content?.samples ?? false })
+    );
+  },
+
+  /** True when the hub has written a Welcome page; no link points at /welcome otherwise (review R27). */
+  get has_welcome(): boolean {
+    return getLoadedHubConfig()?.content?.welcome ?? false;
   },
 
   /**
@@ -223,7 +297,9 @@ const hub = {
     return (
       setting("copy.governing_body_name") ??
       env(import.meta.env.VITE_HUB_GOVERNING_BODY_NAME) ??
-      "Governing Body"
+      // "" for a hub with no governing body: callers drop the phrase
+      // (review R29, 2026-10-07).
+      ""
     );
   },
 
@@ -250,8 +326,13 @@ const hub = {
     return (
       setting("copy.intro_body") ??
       env(import.meta.env.VITE_HUB_INTRO_BODY) ??
-      "This is where residents keep up with local government, raise topics that matter, help make sense of issues together, and have conversations to see where the community stands."
+      defaultIntroBody(copyContext())
     );
+  },
+
+  /** The pop-up paragraph when the hub has written none, by kind and type of place. */
+  get intro_body_default(): string {
+    return defaultIntroBody(copyContext());
   },
 
   get residency_intro(): string {

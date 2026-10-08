@@ -65,6 +65,11 @@
   color: var(--color-text, #1f2937);
 }
 
+.legal-draft-note-who {
+  font-style: italic;
+  color: var(--color-text-muted, #6b7280);
+}
+
 .legal-prose blockquote p:last-child {
   margin-bottom: 0;
 }

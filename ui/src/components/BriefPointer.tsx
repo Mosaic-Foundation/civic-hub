@@ -9,6 +9,7 @@ import {
 import { friendlyType } from "./ProcessLinkPicker";
 import { absoluteDate } from "../utils/dates";
 import "./BriefPointer.css";
+import hub from "../config/hub";
 
 /**
  * The brief ↔ source pairing, surfaced where a reader actually looks.
@@ -78,7 +79,7 @@ function deliveryLine(brief: PublicBrief): string {
     return `Sent to ${joinNames(brief.sent_to)} on ${absoluteDate(brief.delivered_at)}.`;
   }
   if (brief.delivered_recipient_count > 0) {
-    return "Sent to the governing body.";
+    return `Sent to ${hub.governing_body_ref}.`;
   }
   return `Published ${absoluteDate(brief.published_at)}.`;
 }

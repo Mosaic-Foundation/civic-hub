@@ -77,7 +77,13 @@ export default function VoteResultsPage() {
   // actually went out to the Board. Legacy records may not have it
   // populated; fall back to a date-less line and don't surface
   // recipient emails publicly.
+  // A hub with no governing body (anything but a place hub) has nobody to
+  // deliver to, so the line is dropped (review R29, 2026-10-07).
+  const deliveredTo = hub.governing_body_short
+    ? hub.governing_body_name || hub.governing_body_short
+    : "";
   const deliveryLine = (() => {
+    if (!deliveredTo) return null;
     if (results.approved_at) {
       const d = new Date(results.approved_at);
       const dateLabel = d.toLocaleDateString(undefined, {
@@ -85,9 +91,9 @@ export default function VoteResultsPage() {
         month: "long",
         day: "numeric",
       });
-      return `Delivered to the ${hub.governing_body_name} on ${dateLabel}.`;
+      return `Delivered to the ${deliveredTo} on ${dateLabel}.`;
     }
-    return `Delivered to the ${hub.governing_body_name}.`;
+    return `Delivered to the ${deliveredTo}.`;
   })();
 
   return (
@@ -122,9 +128,11 @@ export default function VoteResultsPage() {
         </p>
       </header>
 
-      <aside className="vote-results-delivery" aria-label="Delivery indicator">
-        {deliveryLine}
-      </aside>
+      {deliveryLine && (
+        <aside className="vote-results-delivery" aria-label="Delivery indicator">
+          {deliveryLine}
+        </aside>
+      )}
 
       {results.image_url && (
         <PostFeaturedImage
@@ -217,7 +225,7 @@ export default function VoteResultsPage() {
         <h2>Results</h2>
         <p className="vote-results-participation">
           <strong>{results.participation_count}</strong>{" "}
-          resident{results.participation_count === 1 ? "" : "s"} voted
+          {hub.noun(results.participation_count)} voted
           {ctx?.method === "approval" ? " (approval voting — each voter could approve multiple options)" : ""}.
         </p>
         <ul className="brief-bars">
@@ -242,7 +250,7 @@ export default function VoteResultsPage() {
 
       {results.comments.length > 0 && (
         <section className="vote-results-section">
-          <h2>What residents said</h2>
+          <h2>What {hub.noun(2)} said</h2>
           <ul className="brief-comments-list">
             {results.comments.map((c, i) => (
               <li key={i}>{c}</li>

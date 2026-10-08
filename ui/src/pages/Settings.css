@@ -230,3 +230,10 @@
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   color: var(--color-text);
 }
+
+/* The signed-out page's sign-in button (review R30): the modal's button,
+   sized to its label rather than the page. */
+.settings-signin {
+  width: auto;
+  padding: 0.6rem 1.5rem;
+}

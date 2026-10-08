@@ -227,7 +227,7 @@ export default function ProjectDraft() {
 
             <p className={`confirm-finality-warning${editProcessId ? " confirm-finality-warning--edit" : ""}`}>
               {editProcessId
-                ? "Your edits go live right away. The previous version stays visible on the project page under \"See what changed\", and residents who support this project will be told it was edited."
+                ? "Your edits go live right away. The previous version stays visible on the project page under \"See what changed\", and people who support this project will be told it was edited."
                 : isAdmin
                   ? "Once submitted, your project can only be changed through Edit project, which keeps a visible history of every change."
                   : "Your project will be submitted for review before going live. You'll be notified when an admin has reviewed it."}

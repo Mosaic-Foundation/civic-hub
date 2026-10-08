@@ -57,7 +57,7 @@ Project. Action-oriented. Focus on who would benefit, what it would take, who's 
       field: "description",
       hint: "Say what you're proposing, why it matters, and what an endorsement would mean. A few plain sentences is plenty.",
       example:
-        "Our street floods every heavy rain. I'd like the county to assess the drainage; endorsing asks the Board to look into it.",
+        "Our street floods every heavy rain. I'd like the local government to assess the drainage; endorsing asks the people responsible to look into it.",
     },
     {
       field: "sources",

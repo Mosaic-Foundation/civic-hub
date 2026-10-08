@@ -140,7 +140,9 @@ describe("an organization hub with no jurisdiction", () => {
     const docs = await call("GET", "/hub-config/documents", host(ORG));
     expect(docs.body.documents["legal.terms"]).toContain("governed by the laws of Maryland");
     expect(docs.body.documents["legal.terms"]).toContain("state or federal courts located in Maryland");
-    expect(docs.body.documents["legal.privacy"]).toContain("familiar with Maryland and US privacy law");
+    // The draft note travels beside the document since 2026-10-07 (admins see it).
+    expect(docs.body.draft_notes["legal.privacy"][0]).toContain("familiar with Maryland and US privacy law");
+    expect(docs.body.documents["legal.privacy"]).not.toContain("Draft starter content");
   });
 
   it("publishes a process with no place, and a manifest with no jurisdiction", async () => {

@@ -14,6 +14,8 @@ import { useAuth } from "../context/AuthContext";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import hub from "../config/hub";
+import { safeReturnPath } from "../config/pluginRules";
+import { theName } from "../../../src/shared/hubCopy";
 import ProcessHeader from "../components/ProcessHeader";
 import { statusDisplay } from "../components/statusDisplay";
 import "./WordCloud.css";
@@ -501,6 +503,9 @@ export default function WordCloud() {
   const navigate = useNavigate();
   const { actorId, loading: authLoading } = useAuth();
   const isOnboarding = searchParams.get("onboarding") === "1";
+  // The page that asked the new account to sign in (review R24), else home.
+  const returnPath = isOnboarding ? safeReturnPath(searchParams.get("return")) : null;
+  const exitTo = returnPath ?? "/";
   const [wc, setWc] = useState<WordcloudState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -563,7 +568,7 @@ export default function WordCloud() {
       {isOnboarding && (
         <button
           className="wordcloud-skip-btn"
-          onClick={() => navigate("/")}
+          onClick={() => navigate(exitTo)}
         >
           Skip &rarr;
         </button>
@@ -574,7 +579,7 @@ export default function WordCloud() {
           <h2>One quick thing before you dive in</h2>
           <p>
             This is optional — tell us in a few words what you love about{" "}
-            {hub.place}, or skip straight to the feed.
+            {hub.place}, or skip straight {returnPath ? "back to where you were" : "to the feed"}.
           </p>
         </div>
       )}
@@ -630,9 +635,9 @@ export default function WordCloud() {
         <button
           type="button"
           className="wordcloud-proceed-btn"
-          onClick={() => navigate("/")}
+          onClick={() => navigate(exitTo)}
         >
-          Continue to the {hub.name} &rarr;
+          {returnPath ? <>Back to where you were &rarr;</> : <>Continue to {theName(hub.name)} &rarr;</>}
         </button>
       </div>
 

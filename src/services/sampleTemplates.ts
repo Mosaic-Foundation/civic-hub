@@ -21,6 +21,7 @@
 
 import { JURISDICTION_TYPES, type JurisdictionType } from "../shared/jurisdictionType.js";
 import { HUB_KINDS, type HubKind } from "../shared/hubKind.js";
+import { fillSampleText } from "../shared/hubCopy.js";
 
 /** Every type a general-purpose local government can be. */
 const LOCAL_GOVERNMENT: readonly JurisdictionType[] = ["county", "city", "town", "village", "borough", "other"];
@@ -544,9 +545,12 @@ export interface SampleNames {
   GOVERNING_BODY: string;
 }
 
-/** Fill the three placeholders. Nothing else is ever substituted. */
+/**
+ * Fill the three placeholders. Nothing else is ever substituted. The place
+ * takes its article where English wants one (fillSampleText, review R19).
+ */
 export function fillSample(text: string, names: SampleNames): string {
-  return text.replace(/\{(HUB_NAME|JURISDICTION|GOVERNING_BODY)\}/g, (_m, k: keyof SampleNames) => names[k]);
+  return fillSampleText(text, names);
 }
 
 /** The hub kinds that have at least one sample template (the create form's checkbox). */
@@ -557,9 +561,32 @@ export function kindsWithSamples(): HubKind[] {
 /**
  * The console's create-form preview (2026-10-06): the first line of one
  * sample card, with its placeholders left in for the form to fill from what
- * is typed. The open vote: it names the place.
+ * is typed. Since 2026-10-07 (review R21) it is a card that WILL be seeded
+ * for that kind and type of place — an open vote first — keyed
+ * "<kind>:<type>" ("place:school_district", "organization:"); null when
+ * nothing would be seeded.
  */
-export function samplePreview(): { pill: string; title: string } {
-  const t = SAMPLE_TEMPLATES.find((x) => x.key === "vote_internet");
-  return { pill: "Vote open", title: t && t.kind === "vote" ? t.title : "" };
+export function samplePreview(
+  type: JurisdictionType | null | undefined,
+  kind: HubKind = "place",
+): { pill: string; title: string } | null {
+  const fitting = templatesFor(type, kind).filter((x) => x.kind !== "outcome");
+  const t = fitting.find((x) => x.kind === "vote") ?? fitting[0];
+  if (!t) return null;
+  const title = "title" in t && typeof t.title === "string" ? t.title : "";
+  return { pill: t.kind === "vote" ? "Vote open" : "Sample", title };
+}
+
+/** samplePreview for every kind and type, for the console's config. */
+export function samplePreviews(): Record<string, { pill: string; title: string } | null> {
+  const out: Record<string, { pill: string; title: string } | null> = {};
+  for (const k of HUB_KINDS.map((x) => x.id)) {
+    if (k !== "place") {
+      out[`${k}:`] = samplePreview(null, k);
+      continue;
+    }
+    for (const t of JURISDICTION_TYPES.map((x) => x.id)) out[`place:${t}`] = samplePreview(t, k);
+    out["place:"] = samplePreview(null, k);
+  }
+  return out;
 }

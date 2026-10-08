@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import AuthModal from "../components/AuthModal";
 import { setDigestFrequency } from "../services/api";
 import hub from "../config/hub";
 import { pluginEnabled } from "../config/plugins";
@@ -21,6 +22,9 @@ import "./Settings.css";
 
 export default function Settings() {
   const { user, logout, loading, updateUser } = useAuth();
+  // Signed out, the page offers sign-in itself (review R30) rather than only
+  // a way back to the feed.
+  const [showAuth, setShowAuth] = useState(false);
   const navigate = useNavigate();
   // Arrived from an email's unsubscribe link (the server redirects here
   // after recording it). Say so plainly — the select below shows the
@@ -186,9 +190,19 @@ export default function Settings() {
           </p>
         )}
         <p className="settings-status">
-          You need to be signed in to manage your settings.{" "}
-          <Link to="/">Return to the feed</Link>.
+          Sign in to manage your settings.
         </p>
+        <p>
+          <button type="button" className="auth-continue-button settings-signin" onClick={() => setShowAuth(true)}>
+            Sign in
+          </button>
+        </p>
+        <p className="settings-status">
+          <Link to="/">Return to the feed</Link>
+        </p>
+        {showAuth && (
+          <AuthModal onComplete={() => setShowAuth(false)} onDismiss={() => setShowAuth(false)} />
+        )}
       </div>
     );
   }

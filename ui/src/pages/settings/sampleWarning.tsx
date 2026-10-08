@@ -34,7 +34,7 @@ export function SampleRemovalWarning({ summary }: { summary: SampleContentSummar
       </p>
       {summary.other_processes === 0 ? (
         <p>
-          <strong>The hub will have no processes</strong> until you or its residents create some.
+          <strong>The hub will have no processes</strong> until you or other people create some.
         </p>
       ) : (
         <p>

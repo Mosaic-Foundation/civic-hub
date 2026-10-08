@@ -168,7 +168,7 @@ export default function PostImagePicker({
             Describe this image for people using screen readers <span className="optional">(optional but recommended)</span>
           </label>
           <p className="form-hint">
-            E.g. "Main Street with autumn leaves" — not "photo of Main Street". Helps residents using screen readers understand what's in the photo.
+            E.g. "Main Street with autumn leaves" — not "photo of Main Street". Helps people using screen readers understand what's in the photo.
           </p>
           <textarea
             id="post-image-alt"

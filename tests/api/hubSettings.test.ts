@@ -83,7 +83,8 @@ describe("settings are scoped by hub", () => {
     expect(floydAbout).toBeDefined();
     expect(floydAbout).not.toContain("demonstration");
     expect(floydAbout).not.toContain("Athens");
-    expect(floydAbout).toContain("pilot program");
+    // "pilot program" left the shared text on 2026-10-07 (review R17).
+    expect(floydAbout).toContain("is still early");
 
     // And neither is the other.
     expect(floydAbout).not.toBe(athens.body.documents["copy.about"]);

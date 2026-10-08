@@ -8,7 +8,7 @@ export default function LegalSection() {
       title="Legal"
       intro={
         <p className="form-hint">
-          The documents residents agree to. Every hub starts from the same
+          The documents people agree to. Every hub starts from the same
           shared text with its own names filled in — the operator and contact
           address below are substituted into all of them.
         </p>
@@ -29,7 +29,7 @@ export default function LegalSection() {
             k="legal.contact_email"
             label="Contact address"
             placeholder="contact@example.com"
-            hint="Where the documents tell residents to write with a question, an appeal, or a data request. A shared inbox is fine."
+            hint="Where the documents tell people to write with a question, an appeal, or a data request. A shared inbox is fine."
           />
           <TextField
             f={f}
@@ -57,7 +57,7 @@ export default function LegalSection() {
             label="Terms of Service"
             hint={
               <>
-                The <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> residents agree to by using this hub.
+                The <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> people agree to by using this hub.
               </>
             }
           />

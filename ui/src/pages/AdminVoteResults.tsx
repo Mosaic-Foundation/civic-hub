@@ -169,8 +169,8 @@ export default function AdminVoteResults() {
           <section className="admin-detail-section">
             <h3>Participation</h3>
             <p>
-              {selected.content.participation_count} resident
-              {selected.content.participation_count === 1 ? "" : "s"} voted.
+              {selected.content.participation_count}{" "}
+              {hub.noun(selected.content.participation_count)} voted.
             </p>
           </section>
 
@@ -346,7 +346,7 @@ export default function AdminVoteResults() {
         <h1>Briefs</h1>
         <p className="admin-subtitle">
           Review and approve the brief a process produces when it closes.
-          Approval delivers it to the {hub.governing_body_name} and publishes
+          Approval {hub.governing_body_short ? `delivers it to ${hub.governing_body_ref} and publishes` : "publishes"}
           it to the public feed. (Today this covers closed votes; other process
           types join as their briefs are built.)
         </p>

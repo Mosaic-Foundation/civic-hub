@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   loadHubDocuments,
   loadedDocument,
+  loadedDraftNotes,
   type DocumentKey,
 } from "../config/hubDocuments";
 
@@ -25,13 +26,15 @@ import {
  */
 export type HubDocument =
   | { status: "loading" }
-  | { status: "ready"; markdown: string }
+  | { status: "ready"; markdown: string; draftNotes: string[] }
   | { status: "missing" };
 
 export function useHubDocument(key: DocumentKey): HubDocument {
   const [doc, setDoc] = useState<HubDocument>(() => {
     const already = loadedDocument(key);
-    return already ? { status: "ready", markdown: already } : { status: "loading" };
+    return already
+      ? { status: "ready", markdown: already, draftNotes: loadedDraftNotes(key) }
+      : { status: "loading" };
   });
 
   useEffect(() => {
@@ -39,7 +42,11 @@ export function useHubDocument(key: DocumentKey): HubDocument {
     loadHubDocuments().then(() => {
       if (cancelled) return;
       const served = loadedDocument(key);
-      setDoc(served ? { status: "ready", markdown: served } : { status: "missing" });
+      setDoc(
+        served
+          ? { status: "ready", markdown: served, draftNotes: loadedDraftNotes(key) }
+          : { status: "missing" },
+      );
     });
     return () => {
       cancelled = true;

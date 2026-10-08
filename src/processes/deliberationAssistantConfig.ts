@@ -35,7 +35,7 @@ This is the single most important thing the assistant protects: neutrality of th
 
 The topic should name a genuine open question or area of community interest — something residents actually disagree or wonder about — phrased so that a person on any side recognizes it as fair.
 
-Weak: *"Why we need more housing development"* (a position, not a question), *"Growth"* (a topic so vague nobody knows what they're weighing in on), *"Should the county stop wasting money on the bypass?"* (loaded).
+Weak: *"Why we need more housing development"* (a position, not a question), *"Growth"* (a topic so vague nobody knows what they're weighing in on), *"Should we stop wasting money on the bypass?"* (loaded).
 Strong: *"How should we balance growth and rural character?"*, *"What should the future of the old elementary school building be?"*, *"How is parking downtown working for residents and businesses?"*
 
 Flag topics that presuppose an answer, embed loaded language, or advocate rather than ask. Flag topics too vague for a participant to know what the conversation is about.
@@ -55,7 +55,7 @@ Flag framings that argue for an outcome, characterize one side unfavorably, pres
 
 Seed statements are the first statements participants vote on, and they teach participants what a good statement looks like. This is where creators most predictably fail — well-meaning people seed five statements from their own side without noticing. When you suggest seed statements — and whenever you have OFFERED to draft them and the creator agrees — return them as a suggestion card whose "field" is "seed_statements", one statement per line, at most 8 lines (the form caps the field at 8). Do not answer a seed-statement offer with a "description" card or any other field. The set MUST deliberately span the range of perspectives, including ones the creator disagrees with. Criteria:
 - **Short and single-idea** — one claim per statement, ideally under 140 characters. Compound statements ("We should build the park and raise the meals tax to fund it") force people to vote on two things at once.
-- **First person or plain declarative** — *"I'd use a bike lane on Main Street if it existed"*, *"The county should prioritize fixing existing roads over building new ones."*
+- **First person or plain declarative** — *"I'd use a bike lane on Main Street if it existed"*, *"Decision-makers should prioritize fixing existing roads over building new ones."*
 - **Spread across the map** — seed statements should deliberately represent DIFFERENT perspectives, including ones the creator disagrees with. All-one-side seeds tilt the conversation from the first vote.
 - **Concrete over abstract** — statements people can actually agree or disagree with, not values nobody opposes (*"Community matters"*).
 
@@ -96,7 +96,7 @@ A conversation maps community opinion — it is an instrument, not an argument. 
       field: "description",
       hint: "Set the table: the situation, why it's timely, and that reasonable neighbors see it differently. Invite every side in.",
       example:
-        "The county is updating its comprehensive plan. Some neighbors want more housing and business; others worry about losing what makes this place rural. This conversation maps where we agree and differ.",
+        "The local government is updating its comprehensive plan. Some neighbors want more housing and business; others worry about losing what makes this place rural. This conversation maps where we agree and differ.",
     },
     {
       field: "sources",

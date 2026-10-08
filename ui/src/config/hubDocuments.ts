@@ -26,6 +26,9 @@ export type DocumentKey =
   | "copy.welcome";
 
 let cache: Record<string, string> | null = null;
+// "Draft starter content — review before launch", per document: served
+// beside the documents, shown to the hub's admins only (2026-10-07).
+let draftNotes: Record<string, string[]> = {};
 let inFlight: Promise<Record<string, string>> | null = null;
 
 /** Mirrors the dev-only hub forwarding in hubConfig.ts. */
@@ -52,8 +55,9 @@ export function loadHubDocuments(): Promise<Record<string, string>> {
     headers: { Accept: "application/json" },
   })
     .then((res) => (res.ok ? res.json() : { documents: {} }))
-    .then((body: { documents?: Record<string, string> }) => {
+    .then((body: { documents?: Record<string, string>; draft_notes?: Record<string, string[]> }) => {
       cache = body.documents ?? {};
+      draftNotes = body.draft_notes ?? {};
       return cache;
     })
     .catch(() => {
@@ -65,6 +69,11 @@ export function loadHubDocuments(): Promise<Record<string, string>> {
     });
 
   return inFlight;
+}
+
+/** The draft notes taken out of a loaded document; [] when none. */
+export function loadedDraftNotes(key: DocumentKey): string[] {
+  return draftNotes[key] ?? [];
 }
 
 /** The loaded document, or undefined before the fetch resolves. */

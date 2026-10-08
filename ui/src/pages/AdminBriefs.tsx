@@ -565,7 +565,7 @@ export default function AdminBriefs() {
         <h1>Briefs</h1>
         <p className="admin-subtitle">
           Review and approve the brief a process produces when it closes.
-          Approval delivers it to the {hub.governing_body_name} and publishes it
+          Approval {hub.governing_body_short ? `delivers it to ${hub.governing_body_ref} and publishes it` : "publishes it"}
           to the public feed as the process's final result.
         </p>
 

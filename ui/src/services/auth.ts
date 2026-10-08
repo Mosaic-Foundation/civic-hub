@@ -100,7 +100,7 @@ export function clearToken(): void {
 
 // --- API calls ---
 
-export function requestCode(email: string): Promise<{ message: string }> {
+export function requestCode(email: string): Promise<{ message: string; no_email?: boolean }> {
   return request("POST", "/auth/request-code", { email });
 }
 

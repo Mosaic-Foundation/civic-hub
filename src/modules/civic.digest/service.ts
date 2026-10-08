@@ -26,6 +26,7 @@ import { getSettingSync } from "../../services/hubSettings.js";
 import { KEYS } from "../../models/hubSettings.js";
 import { isSubstantiveEdit } from "../../services/processEdits.js";
 import { defaultGoverningBodyShort } from "../../shared/jurisdictionType.js";
+import { briefPillFor } from "../../shared/hubCopy.js";
 import type {
   DigestAssemblyInput,
   DigestEmail,
@@ -154,8 +155,17 @@ function eventToItem(
     kind: activity.kind,
     color: activity.color,
     title,
-    // Pill label is the classifier's — identical to the feed card pill.
-    pill_label: activity.pill,
+    // Pill label is the classifier's — identical to the feed card pill,
+    // including a vote brief's "Brief to the <board>" (2026-10-07).
+    pill_label:
+      activity.kind === "brief"
+        ? briefPillFor(
+            activity.briefSource,
+            getSettingSync(KEYS.COPY_GOVERNING_BODY_SHORT) ||
+              defaultGoverningBodyShort(getSettingSync(KEYS.COPY_GOVERNING_BODY_NAME)),
+            activity.pill,
+          )
+        : activity.pill,
     summary,
     action_url: absolutize(activity.href, uiBase),
     timestamp: event.timestamp,
@@ -214,7 +224,7 @@ function digestTitleSummary(
     case "vote-results": {
       const count =
         typeof d?.participation_count === "number" ? d.participation_count : 0;
-      const noun = participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), count);
+      const noun = participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), count, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
       const headline =
         typeof d?.headline_result === "string" ? d.headline_result : "";
       return {

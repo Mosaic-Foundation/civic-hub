@@ -1,6 +1,6 @@
-import { participantNoun } from "../../../src/shared/hubKind";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHubConfig } from "../config/HubConfigContext";
+import { theName } from "../../../src/shared/hubCopy";
 import { Link } from "react-router-dom";
 import hub from "../config/hub";
 import {
@@ -265,7 +265,8 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
             return {
               title: vote.title,
               description: vote.description,
-              totalVotes: vote.total_votes ?? 0,
+              // Null while results are hidden: unknown, not zero (review R26).
+              totalVotes: vote.total_votes ?? undefined,
             };
           });
           break;
@@ -480,7 +481,9 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
     return (
       <section className="feed">
         <p className="feed-status">
-          {hub.jurisdiction}'s civic feed is just getting started. Visit{" "}
+          {/* Not "<place, state>'s civic feed" (review R30): a hub's name
+              reads on any kind of hub, with its article. */}
+          The feed for {theName(hub.name)} is just getting started. Visit{" "}
           <Link to="/about">About</Link> to learn how this hub works.
         </p>
       </section>
@@ -547,15 +550,16 @@ function buildEngagement(
 ): string | null {
   switch (kind) {
     case "vote-open": {
-      const n = meta.totalVotes ?? 0;
+      if (meta.totalVotes === undefined) return "Open for input";
+      const n = meta.totalVotes;
       if (n === 0) return "Open for input — be the first to vote";
-      const noun = `${participantNoun(hub.kind, n)} ${n === 1 ? "has" : "have"}`;
+      const noun = `${hub.noun(n)} ${n === 1 ? "has" : "have"}`;
       return `${formatCount(n)} ${noun} voted so far`;
     }
     case "vote-closed": {
       const n = meta.totalVotes ?? 0;
       if (n === 0) return null;
-      return `${formatCount(n)} ${participantNoun(hub.kind, n)} voted`;
+      return `${formatCount(n)} ${hub.noun(n)} voted`;
     }
     case "vote-results": {
       const n = meta.totalVotes ?? 0;
@@ -563,7 +567,7 @@ function buildEngagement(
       if (n === 0 && m === 0) return null;
       const parts: string[] = [];
       if (n > 0) {
-        parts.push(`${formatCount(n)} ${participantNoun(hub.kind, n)} voted`);
+        parts.push(`${formatCount(n)} ${hub.noun(n)} voted`);
       }
       if (m > 0) {
         const noun = m === 1 ? "comment" : "comments";
