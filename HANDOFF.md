@@ -9,7 +9,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 From the audit handoff (A1, A5, A6, A8, and the `/revise` route left over from Audit 1). Adam's decisions in chat:
 delete existing sessions and codes (non-additive), leaving demo ends only demo sessions, the moderate sign-in
 limits, the proposed AI limits with overrides set in the console. Report: `Audit-2-Session-Report-2026-10-11.md`
-in Mosaic Foundation Management. On dev (head `6031fda`); not yet on production. **Releasing it signs everyone out
+in Mosaic Foundation Management. **Live on production 2026-10-11** (`main` = `15295fa`, migration applied). **Releasing it signs everyone out
 once, on every hub.** Follow-ups from Adam's dev check: a demo hub's code step fills in `123456` with Verify focused;
 the assistant chat shows the server's reason for `ai_rate_limited` / `ai_budget_spent` / `message_too_long` (it said
 "Something went wrong"; `tests/e2e/assistantLimits.spec.ts`); opening the assistant is a counted turn, and the
