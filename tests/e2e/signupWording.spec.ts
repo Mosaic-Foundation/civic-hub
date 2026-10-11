@@ -60,7 +60,9 @@ async function signUpToGate(page: Page) {
   await expect(page.getByRole("heading", { name: "Enter any six digits" })).toBeVisible();
   await expect(page.getByText("Check your email")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Resend code" })).toHaveCount(0);
-  await page.getByPlaceholder("------").fill("123456");
+  // Filled in on a demo hub, with Verify ready (2026-10-11).
+  await expect(page.getByPlaceholder("------")).toHaveValue("123456");
+  await expect(page.getByRole("button", { name: "Verify", exact: true })).toBeFocused();
   await page.getByRole("button", { name: "Verify", exact: true }).click();
   await expect(page.locator(".auth-legal-checkbox")).toBeVisible();
 }

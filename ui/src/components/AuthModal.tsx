@@ -131,6 +131,10 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
       // there is nothing to hold, since a demo hub accepts any six digits.
       const { no_email } = await requestCode(email.trim());
       setNoEmail(no_email === true);
+      // On a demo hub the code is filled in and Verify is ready (Adam,
+      // 2026-10-11): people skim past "no email is sent" and go looking for
+      // one. Any six digits work, so these do; they can type others.
+      if (no_email === true) setCode("123456");
       setStep("code");
     } catch (err) {
       const message =
@@ -443,8 +447,9 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
               <>
                 <h2 className="auth-title">Enter any six digits</h2>
                 <p className="auth-description">
-                  This is a demo hub, so no email is sent. Type any six digits
-                  to sign in as <strong>{email}</strong>.
+                  On a live hub you would get a six-digit code by email. This is
+                  a demo, so <strong>no email is sent: any six digits work</strong>.
+                  We've filled some in. Press Verify to sign in as {email}.
                 </p>
               </>
             ) : (
@@ -466,7 +471,7 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="------"
                 maxLength={6}
-                autoFocus
+                autoFocus={!noEmail}
                 disabled={loading}
               />
             </div>
@@ -478,6 +483,8 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
               type="submit"
               className="auth-continue-button"
               disabled={loading || !code.trim()}
+              // On a demo hub the code is already there: Verify is the next step.
+              autoFocus={noEmail}
             >
               {loading ? "Verifying..." : "Verify"}
             </button>
@@ -495,7 +502,7 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
             <button
               type="button"
               className="auth-back-link"
-              onClick={() => { setStep("email"); setCode(""); setError(null); setNotice(null); }}
+              onClick={() => { setStep("email"); setCode(""); setNoEmail(false); setError(null); setNotice(null); }}
               disabled={loading}
             >
               Use a different email
