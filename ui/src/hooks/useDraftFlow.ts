@@ -13,6 +13,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { pluginEnabled } from "../config/plugins";
 import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "./useRequireAuth";
+import { ApiError } from "../utils/httpError";
 import {
   getAssistantUiConfig,
   sendAssistantMessage,
@@ -73,7 +74,16 @@ function isNetworkDrop(err: unknown): boolean {
   return err instanceof TypeError || /load failed|failed to fetch|network|connection/i.test(msg);
 }
 
-function friendlyError(msg: string): string {
+/**
+ * The server's own refusals are already worded for the person (Audit 2's AI
+ * limits: too many turns, the hub's day is spent, a message too long), so
+ * they are shown as they are rather than as "something went wrong".
+ */
+const SERVER_WORDED = new Set(["ai_rate_limited", "ai_budget_spent", "message_too_long"]);
+
+function friendlyError(err: unknown): string {
+  if (err instanceof ApiError && err.code && SERVER_WORDED.has(err.code)) return err.message;
+  const msg = err instanceof Error ? err.message : "Unknown error";
   if (/load failed|failed to fetch|network|connection/i.test(msg))
     return "The connection dropped — that can happen if you switch apps while I'm working. Tap Try again.";
   if (msg.includes("rate_limit") || msg.includes("429"))
@@ -323,10 +333,9 @@ export function useDraftFlow<D extends BaseDraft>({
           setPhase("free_form");
         }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown error";
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: friendlyError(msg) },
+          { role: "assistant", content: friendlyError(err) },
         ]);
       } finally {
         setAssistantLoading(false);
@@ -378,10 +387,9 @@ export function useDraftFlow<D extends BaseDraft>({
             commitDraft(result.draft);
             pushAssistantResponse(result.response);
           } catch (err) {
-            const msg = err instanceof Error ? err.message : "Unknown error";
             setMessages((prev) => [
               ...prev,
-              { role: "assistant", content: friendlyError(msg) },
+              { role: "assistant", content: friendlyError(err) },
             ]);
           } finally {
             setAssistantLoading(false);
@@ -423,8 +431,7 @@ export function useDraftFlow<D extends BaseDraft>({
         pushAssistantResponse(result.response);
         setPhase("free_form");
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        setMessages((prev) => [...prev, { role: "assistant", content: friendlyError(msg) }]);
+        setMessages((prev) => [...prev, { role: "assistant", content: friendlyError(err) }]);
       } finally {
         setAssistantLoading(false);
         setSuggesting(false);
@@ -453,11 +460,10 @@ export function useDraftFlow<D extends BaseDraft>({
         setReviewNotice(result.review_unavailable ? result.response.message : null);
         pushAssistantResponse(result.response);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown error";
         setReviewFailed(true);
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: friendlyError(msg) },
+          { role: "assistant", content: friendlyError(err) },
         ]);
       } finally {
         setAssistantLoading(false);
