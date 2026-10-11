@@ -443,7 +443,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /feed/": { query: ["", "?limit=200", "?process_id=" /* + floyd vote, below */] },
   "GET /api/feed/": { query: ["", "?limit=200"] },
   "GET /\\.well-known/civic.json": {},
-  "GET /debug/seed": { skip: "writes seed data (dev only, CIVIC_ALLOW_SEED); not a read surface" },
+
   "GET /internal/meeting-summary/run": { skip: "cron: calls the model and the hub's meeting source; per-hub scope is tests/unit/jobsPerHub" },
   "GET /internal/news-sync/run": { skip: "cron: fetches the hub's external feed; per-hub scope is tests/unit/jobsPerHub" },
   "GET /internal/floyd-news-sync/run": { skip: "cron (deprecated path of news-sync); as above" },

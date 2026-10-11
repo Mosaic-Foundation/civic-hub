@@ -12,6 +12,8 @@
 // reverse is an impersonated admin. When in doubt, require the code.
 
 import { getAdminEmailsSync, getBoardEmailsSync } from "./hubSettings.js";
+import { forHub } from "../db/forHub.js";
+import { KEYS, KEY_ALIASES } from "../models/hubSettings.js";
 import { getAnnouncementAuthors } from "./hubSettings.js";
 import { currentHubIdOrNull } from "../config/hubContext.js";
 import { lookupOfficialByEmail } from "./officials.js";
@@ -45,6 +47,50 @@ export async function isPrivilegedEmail(email: string): Promise<boolean> {
   } catch (e) {
     console.error(
       `[auth] privilege check failed for ${normalized}, treating as privileged: ` +
+        `${e instanceof Error ? e.message : String(e)}`,
+    );
+    return true;
+  }
+}
+
+/** The settings rows that make an address privileged (and their legacy keys). */
+const PRIVILEGE_KEYS = [
+  KEYS.PEOPLE_ADMIN_EMAILS,
+  KEYS.PEOPLE_BOARD_EMAILS,
+  KEYS.PEOPLE_ANNOUNCEMENT_AUTHORS,
+  KEY_ALIASES[KEYS.PEOPLE_ANNOUNCEMENT_AUTHORS]!,
+];
+
+/**
+ * isPrivilegedEmail, read from the database now rather than from the
+ * request's settings snapshot (Audit 2).
+ *
+ * The snapshot can be up to a minute old on a serverless instance, so an
+ * address an admin has just added could still sign in on a demo hub's any
+ * six digits there. Such a session could never pass an admin check (it is a
+ * demo session), and it reads as signed out once the snapshot catches up; but
+ * sign-in is rare enough to read the lists fresh, so the window does not
+ * exist at all. Every address-shaped string in the rows counts, as in the
+ * database trigger, whatever the row's shape. Fails closed.
+ */
+export async function isPrivilegedEmailNow(email: string): Promise<boolean> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return false;
+  const hubId = currentHubIdOrNull();
+  if (!hubId) return isPrivilegedEmail(normalized);
+  try {
+    const rows = await forHub(hubId)
+      .from("hub_settings")
+      .select<{ value: string }>("value")
+      .in("key", PRIVILEGE_KEYS);
+    for (const row of rows) {
+      const found: string[] = String(row.value).toLowerCase().match(/[^\][\s",;{}:<>]+@[^\][\s",;{}:<>]+/g) ?? [];
+      if (found.includes(normalized)) return true;
+    }
+    return (await lookupOfficialByEmail(normalized)) !== null;
+  } catch (e) {
+    console.error(
+      `[auth] fresh privilege check failed for ${normalized}, treating as privileged: ` +
         `${e instanceof Error ? e.message : String(e)}`,
     );
     return true;

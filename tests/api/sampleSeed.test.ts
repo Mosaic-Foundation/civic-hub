@@ -18,7 +18,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
-import { localRest, mintSession } from "../fixtures/adminSession.js";
+import { localRest, mintSession, plantHubCode } from "../fixtures/adminSession.js";
 import { auditFor, consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
 
 const run = Date.now().toString(36);
@@ -171,11 +171,7 @@ describe("a county hub created with sample content", () => {
   it("comes out in one audited action, leaving a hub that still serves", async () => {
     const admin = await mintSession(COUNTY, ADMIN);
     const code = String(100000 + Math.floor(Math.random() * 899999));
-    await localRest("pending_verifications", {
-      method: "POST",
-      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify({ hub_id: COUNTY, email: ADMIN, code, expires_at: new Date(Date.now() + 600_000).toISOString(), attempts: 0 }),
-    });
+    await plantHubCode(COUNTY, ADMIN, code);
     const before = await call("GET", "/admin/hub/sample-content", host(COUNTY), undefined, admin);
     expect(before.body).toMatchObject({ processes: 11, other_processes: 0, real_input_total: 0 });
 
@@ -306,11 +302,7 @@ describe("a hub created with Conversations off", () => {
     const admin = await mintSession(NOCONV, ADMIN);
     await call("PUT", "/admin/hub/settings", host(NOCONV), { section: "plugins", values: { "plugin.conversation.enabled": false } }, admin);
     const code = String(100000 + Math.floor(Math.random() * 899999));
-    await localRest("pending_verifications", {
-      method: "POST",
-      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify({ hub_id: NOCONV, email: ADMIN, code, expires_at: new Date(Date.now() + 600_000).toISOString(), attempts: 0 }),
-    });
+    await plantHubCode(NOCONV, ADMIN, code);
     const res = await call("POST", "/admin/hub/sample-content/remove", host(NOCONV), { code }, admin);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect((await localRest(`processes?select=id&hub_id=eq.${NOCONV}`)) as Row[]).toHaveLength(0);

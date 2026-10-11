@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { AiLimitError, admitAiCall } from "../services/aiBudget.js";
 import { getAuthUser, resolveCallerId } from "../middleware/auth.js";
 import { getPolisAdapter } from "../processes/deliberationBoot.js";
 import { forHub } from "../db/forHub.js";
@@ -286,6 +287,9 @@ export async function handleCreateDeliberation(req: Request, res: Response): Pro
     // fails open to human admin review, same as the draft flows.
     let cocPassed = false;
     try {
+      // Counted like the drafts' check (Audit 2): over the hourly count is a
+      // 429; a spent hub budget falls through to "unavailable" below.
+      await admitAiCall("review", user.id);
       const findings = await checkTextAgainstCoC(
         [
           { label: "Topic", text: String(topic) },
@@ -307,6 +311,10 @@ export async function handleCreateDeliberation(req: Request, res: Response): Pro
       }
       cocPassed = true;
     } catch (cocErr) {
+      if (cocErr instanceof AiLimitError && !cocErr.budget) {
+        res.status(cocErr.status).json({ error: cocErr.message, code: "ai_rate_limited" });
+        return;
+      }
       console.error(
         "[deliberation-coc] automated check unavailable, failing open to human review:",
         cocErr instanceof Error ? cocErr.message : cocErr,

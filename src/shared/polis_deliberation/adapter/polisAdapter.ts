@@ -45,6 +45,7 @@ function polisError(status: number, path: string, body: string): PolisApiError {
 
 export function createPolisAdapter(config: PolisAdapterConfig): PolisAdapter {
   const { baseUrl, authToken } = config;
+  const doFetch = config.fetch ?? ((url, init) => fetch(url, init));
 
   /**
    * Only GETs are retried.
@@ -82,8 +83,9 @@ export function createPolisAdapter(config: PolisAdapterConfig): PolisAdapter {
       );
 
       try {
-        const res = await fetch(url, {
-          ...opts,
+        const res = await doFetch(url, {
+          method: opts.method,
+          body: typeof opts.body === "string" ? opts.body : undefined,
           signal: controller.signal,
           headers: {
             "Content-Type": "application/json",

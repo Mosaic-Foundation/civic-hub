@@ -6,26 +6,15 @@
 
 import type { HeldBackRecipient } from "../components/HeldBackNote";
 import { ApiError, apiErrorCode, apiErrorMessage } from "../utils/httpError";
+import { getStoredToken } from "./auth";
 
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
 
 /**
- * Token storage — shared with services/auth.ts. Must stay in sync with the
- * TOKEN_KEY defined there. The backend now enforces Bearer tokens on all
- * action endpoints (POST /process/:id/action, /proposals, /proposals/:id/support,
- * /process/:id/input, /admin/*). Without this header, those endpoints return
- * 401 and the UI shows "Authentication required".
+ * The session token comes from services/auth.ts (getStoredToken), the one
+ * place it is stored. The backend enforces Bearer tokens on all action
+ * endpoints; without the header they answer 401.
  */
-const TOKEN_KEY = "civic_auth_token";
-
-function getStoredToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    // localStorage can throw in some privacy modes — fail safe.
-    return null;
-  }
-}
 
 // --- Short-lived GET cache (perf pass, 2026-08-28) --------------------------
 //

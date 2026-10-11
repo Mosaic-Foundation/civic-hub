@@ -13,7 +13,54 @@
 // service-role key — public, printed by `supabase start` on every machine, and
 // already in .github/workflows/ci.yml.
 
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
+
+const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
+
+/**
+ * A session row as the server writes it since Audit 2: the token's SHA-256,
+ * and how it was proved. A minted session stands for a code sign-in.
+ */
+async function insertSession(hubId: string, userId: string, assurance: "code" | "demo" = "code"): Promise<string> {
+  const token = randomBytes(32).toString("base64url");
+  await rest("sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      token: sha256(token),
+      user_id: userId,
+      hub_id: hubId,
+      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      assurance,
+    }),
+  });
+  return token;
+}
+
+/**
+ * Put a known sign-in code in place on a hub, as if it had been emailed
+ * (stored hashed, as the server stores it). `createdAgoMs` backdates it past
+ * the 30-second request throttle.
+ */
+export async function plantHubCode(
+  hubId: string,
+  email: string,
+  code: string,
+  opts: { attempts?: number; expiresInMs?: number; createdAgoMs?: number } = {},
+): Promise<void> {
+  await rest("pending_verifications?on_conflict=hub_id,email", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({
+      hub_id: hubId,
+      email: email.trim().toLowerCase(),
+      code_hash: sha256(code),
+      expires_at: new Date(Date.now() + (opts.expiresInMs ?? 10 * 60_000)).toISOString(),
+      created_at: new Date(Date.now() - (opts.createdAgoMs ?? 60_000)).toISOString(),
+      attempts: opts.attempts ?? 0,
+      locked_until: null,
+    }),
+  });
+}
 
 const LOCAL_SERVICE_ROLE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
@@ -81,17 +128,24 @@ export async function mintSession(hubId: string, email: string): Promise<string>
     });
   }
 
-  const token = `sess_${randomBytes(12).toString("hex")}`;
-  await rest("sessions", {
-    method: "POST",
-    body: JSON.stringify({
-      token,
-      user_id: userId,
-      hub_id: hubId,
-      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-    }),
-  });
-  return token;
+  return insertSession(hubId, userId);
+}
+
+/** A demo hub's any-six-digits session for `email` (Audit 2 tests). */
+export async function mintDemoSession(hubId: string, email: string): Promise<string> {
+  const normalized = email.trim().toLowerCase();
+  const found = (await rest(
+    `users?select=id&hub_id=eq.${encodeURIComponent(hubId)}&email=eq.${encodeURIComponent(normalized)}`,
+  )) as Array<{ id: string }>;
+  let userId = found[0]?.id;
+  if (!userId) {
+    userId = `user_${randomBytes(8).toString("hex")}`;
+    await rest("users", {
+      method: "POST",
+      body: JSON.stringify({ id: userId, hub_id: hubId, email: normalized, email_verified: true, is_resident: true, full_name: "Demo Visitor" }),
+    });
+  }
+  return insertSession(hubId, userId, "demo");
 }
 
 /**
@@ -100,17 +154,7 @@ export async function mintSession(hubId: string, email: string): Promise<string>
  * must not authenticate anyone.
  */
 export async function mintSessionForUser(hubId: string, userId: string): Promise<string> {
-  const token = `sess_${randomBytes(12).toString("hex")}`;
-  await rest("sessions", {
-    method: "POST",
-    body: JSON.stringify({
-      token,
-      user_id: userId,
-      hub_id: hubId,
-      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-    }),
-  });
-  return token;
+  return insertSession(hubId, userId);
 }
 
 /** One hub setting's stored row, read straight from the local stack. */

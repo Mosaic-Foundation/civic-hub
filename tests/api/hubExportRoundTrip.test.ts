@@ -180,8 +180,8 @@ beforeAll(async () => {
   await q(`insert into vote_participation (user_id, process_id, hub_id, has_voted) values ($1, $2, $3, true)`, [ids.u2, ids.vote, HUB]);
   await q(`insert into vote_records (receipt_id, process_id, hub_id, choice) values ($1, $2, $3, 'Yes')`, [`rcpt_${randomBytes(6).toString("hex")}`, ids.vote, HUB]);
   await q(`insert into waitlist (email, hub_id, name) values ($1, $2, 'Cy')`, [`cy+${HUB}@example.test`, HUB]);
-  await q(`insert into sessions (token, user_id, hub_id, expires_at) values ($1, $2, $3, now() + interval '1 day')`, [randomBytes(16).toString("hex"), ids.u1, HUB]);
-  await q(`insert into pending_verifications (email, hub_id, code, expires_at) values ($1, $2, '111111', now() + interval '10 minutes')`, [`dee+${HUB}@example.test`, HUB]);
+  await q(`insert into sessions (token, user_id, hub_id, expires_at, assurance) values ($1, $2, $3, now() + interval '1 day', 'code')`, [randomBytes(32).toString("hex"), ids.u1, HUB]);
+  await q(`insert into pending_verifications (email, hub_id, code_hash, expires_at) values ($1, $2, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', now() + interval '10 minutes')`, [`dee+${HUB}@example.test`, HUB]);
 }, 60_000);
 
 afterAll(async () => {
@@ -214,7 +214,7 @@ describe("hub export → import → restore, on the local stack", () => {
     expect(rows.hub_settings).toBe(before.hub_settings - 1);
     expect(m.excluded_settings.map((s: { key: string }) => s.key)).toEqual(["demo_bypass_code"]);
     expect(m.tables.map((t: { table: string }) => t.table)).not.toContain("sessions");
-    expect(m.omitted_tables.map((t: { table: string }) => t.table).sort()).toEqual(["job_runs", "link_previews", "pending_verifications", "sessions"]);
+    expect(m.omitted_tables.map((t: { table: string }) => t.table).sort()).toEqual(["ai_usage", "job_runs", "link_previews", "pending_verifications", "sessions"]);
     expect(m.images.count).toBe(2);
     expect(JSON.parse(await readFile(join(bundle, "hub.json"), "utf8")).jurisdiction_ocd_id).toBe(OCD);
 

@@ -12,8 +12,9 @@
 // gets the same answer and nothing is sent or stored, so the form does not
 // say who the operator is.
 
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { getDb } from "../db/client.js";
+import { HOUR_MS, takeRateLimit } from "../db/rateLimit.js";
+import { randomToken, sameHexHash, sha256Hex } from "../utils/hash.js";
 import { sendEmail } from "../utils/email.js";
 import {
   LOCKOUT_MS,
@@ -40,14 +41,22 @@ export class ControlAuthError extends Error {
   }
 }
 
-function sha256(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
+const sha256 = sha256Hex;
 
-function sameHash(a: string, b: string): boolean {
-  const x = Buffer.from(a, "hex");
-  const y = Buffer.from(b, "hex");
-  return x.length === y.length && timingSafeEqual(x, y);
+/**
+ * Per IP per hour (Audit 2, Adam 2026-10-11), sign-in and step-up together:
+ * one person needs a handful. Counted before anything else, including for an
+ * address that is not the operator's, so the form cannot be used to mail-bomb
+ * the operator or to guess at the code.
+ */
+export const CONSOLE_LIMITS = { request_code: { ip: 5 }, verify: { ip: 10 } } as const;
+const TOO_MANY = "Too many tries from here. Wait an hour and try again.";
+
+async function limit(step: keyof typeof CONSOLE_LIMITS, ip: string): Promise<void> {
+  const refused = await takeRateLimit([
+    { scope: `console.${step}`, by: "ip", value: ip, limit: CONSOLE_LIMITS[step].ip, windowMs: HOUR_MS },
+  ]);
+  if (refused) throw new ControlAuthError(TOO_MANY, 429);
 }
 
 function normalizeEmail(raw: unknown): string {
@@ -83,9 +92,10 @@ async function readCode(email: string, purpose: CodePurpose): Promise<CodeRow | 
  * Email a code for `purpose`. For anyone but the allowed address, does
  * nothing and says the same thing.
  */
-export async function requestCode(rawEmail: unknown, purpose: CodePurpose): Promise<string> {
+export async function requestCode(rawEmail: unknown, purpose: CodePurpose, ip: string): Promise<string> {
   const email = normalizeEmail(rawEmail);
   if (!email.includes("@")) throw new ControlAuthError("Enter an email address.");
+  await limit("request_code", ip);
 
   const config = consoleAdminEmail();
   if (!config.ok) {
@@ -140,36 +150,48 @@ export async function requestCode(rawEmail: unknown, purpose: CodePurpose): Prom
 
 /**
  * Check a code and spend it. Same rules as a hub's consumePendingCode:
- * lockout, expiry, the wrong-guess cap, single use.
+ * lockout, expiry, the wrong-guess cap, single use; and, like it, one attempt
+ * is spent atomically (take_control_code_attempt) before the code is compared.
  */
-export async function consumeCode(rawEmail: unknown, purpose: CodePurpose, rawCode: unknown): Promise<string> {
+export async function consumeCode(rawEmail: unknown, purpose: CodePurpose, rawCode: unknown, ip: string): Promise<string> {
   const email = normalizeEmail(rawEmail);
   const code = typeof rawCode === "string" ? rawCode.trim() : "";
+  await limit("verify", ip);
   if (!/^\d{6}$/.test(code)) throw new ControlAuthError("Enter the six-digit code.");
   if (!isConsoleAdmin(email)) throw new ControlAuthError("Invalid code.", 401);
 
-  const row = await readCode(email, purpose);
-  if (!row) throw new ControlAuthError("No code is waiting. Request a new one.", 401);
-  if (row.locked_until && Date.now() < Date.parse(row.locked_until)) {
-    throw new ControlAuthError(lockoutMessage(row.locked_until), 429);
-  }
   const db = getDb();
-  const spend = () => db.from("control_codes").delete().eq("email", email).eq("purpose", purpose);
+  const { data: taken, error } = await db.rpc("take_control_code_attempt", {
+    p_email: email,
+    p_purpose: purpose,
+    p_max: MAX_VERIFY_ATTEMPTS,
+    p_lock_seconds: Math.round(LOCKOUT_MS / 1000),
+  });
+  if (error) throw new Error(`take_control_code_attempt failed: ${error.message}`);
+  const row = ((taken ?? []) as Array<{ code_hash: string; expires_at: string; attempts: number }>)[0];
+  if (!row) {
+    const current = await readCode(email, purpose);
+    if (!current) throw new ControlAuthError("No code is waiting. Request a new one.", 401);
+    if (current.locked_until && Date.now() < Date.parse(current.locked_until)) {
+      throw new ControlAuthError(lockoutMessage(current.locked_until), 429);
+    }
+    throw new ControlAuthError("That code can no longer be used. Request a new one.", 401);
+  }
+  const spend = () =>
+    db.from("control_codes").delete().eq("email", email).eq("purpose", purpose).eq("code_hash", row.code_hash).select("email");
   if (Date.now() > Date.parse(row.expires_at)) {
     await spend();
     throw new ControlAuthError("That code has expired. Request a new one.", 401);
   }
-  if (!sameHash(row.code_hash, sha256(code))) {
-    const attempts = row.attempts + 1;
-    const locked = attempts >= MAX_VERIFY_ATTEMPTS ? new Date(Date.now() + LOCKOUT_MS).toISOString() : null;
-    await db
-      .from("control_codes")
-      .update({ attempts, locked_until: locked })
-      .eq("email", email)
-      .eq("purpose", purpose);
-    throw new ControlAuthError(locked ? lockoutMessage(locked) : "Invalid code.", locked ? 429 : 401);
+  if (!sameHexHash(row.code_hash, sha256(code))) {
+    if (row.attempts >= MAX_VERIFY_ATTEMPTS) {
+      throw new ControlAuthError(lockoutMessage(new Date(Date.now() + LOCKOUT_MS).toISOString()), 429);
+    }
+    throw new ControlAuthError("Invalid code.", 401);
   }
-  await spend(); // a code works once
+  // A code works once: the delete is the spend.
+  const { data: spent } = await spend();
+  if (!spent || spent.length === 0) throw new ControlAuthError("That code has already been used. Request a new one.", 401);
   return email;
 }
 
@@ -180,7 +202,7 @@ export interface ControlSession {
 
 /** Start a session; returns the token, which is never stored. */
 export async function createSession(email: string): Promise<{ token: string; expiresAt: string }> {
-  const token = randomBytes(32).toString("base64url");
+  const token = randomToken();
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
   const { error } = await getDb()
     .from("control_sessions")

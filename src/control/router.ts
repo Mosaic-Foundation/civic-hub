@@ -9,6 +9,7 @@
 // well: `step_up_code` in the body, spent on use.
 
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
+import { clientIp } from "../utils/clientIp.js";
 import { RESERVED_HUB_SLUG_PURPOSES, type HubMode } from "../models/hub.js";
 import { PLUGINS_OWNER_NOTE } from "../shared/settingOwners.js";
 import { PLUGIN_IDS } from "../models/hubSettings.js";
@@ -63,6 +64,8 @@ import {
   getHub,
   hubHandover,
   hubAdmins,
+  hubAiLimits,
+  updateHubAiLimits,
   hubConfigView,
   hubPlugins,
   hubSpecificEnvVars,
@@ -180,7 +183,7 @@ async function stepUp(req: Request, res: Response): Promise<boolean> {
     res.status(403).json({ error: "step_up_required", message: "This change needs a fresh code." });
     return false;
   }
-  await consumeCode(actor(res), "step_up", code);
+  await consumeCode(actor(res), "step_up", code, clientIp(req));
   return true;
 }
 
@@ -217,6 +220,7 @@ async function hubDetail(hub: ControlHub) {
     handover: await hubHandover(hub),
     plugins: await hubPlugins(hub.id),
     admins: await hubAdmins(hub.id),
+    ai_limits: await hubAiLimits(hub),
   };
 }
 
@@ -251,13 +255,13 @@ export function controlRouter(): Router {
   }));
 
   r.post("/control/auth/request-code", route(async (req, res) => {
-    const message = await requestCode((req.body as { email?: unknown })?.email, "sign_in");
+    const message = await requestCode((req.body as { email?: unknown })?.email, "sign_in", clientIp(req));
     res.json({ message });
   }));
 
   r.post("/control/auth/verify", route(async (req, res) => {
     const body = req.body as { email?: unknown; code?: unknown };
-    const email = await consumeCode(body.email, "sign_in", body.code);
+    const email = await consumeCode(body.email, "sign_in", body.code, clientIp(req));
     const { token } = await createSession(email);
     res.locals.controlSession = { email, expires_at: "" };
     await audited(res, { actor: email, action: "console.sign_in" });
@@ -279,8 +283,8 @@ export function controlRouter(): Router {
     requireSession(req, res, next).catch((err) => fail(res, err));
   });
 
-  r.post("/control/auth/step-up/request-code", route(async (_req, res) => {
-    await requestCode(actor(res), "step_up");
+  r.post("/control/auth/step-up/request-code", route(async (req, res) => {
+    await requestCode(actor(res), "step_up", clientIp(req));
     res.json({ message: CODE_SENT });
   }));
 
@@ -414,6 +418,17 @@ export function controlRouter(): Router {
       });
     }
     res.json({ ...(await hubDetail((await getHub(hub.id))!)), follow_on: result, message: describeFollowOn(result) });
+  }));
+
+  // AI limits (Audit 2, A6): the operator's overrides of the defaults, at any
+  // time. Not destructive, so no step-up; audited.
+  r.put("/control/hubs/:id/ai-limits", route(async (req, res) => {
+    const hub = await loadHub(req, res);
+    if (!hub) return;
+    if (hub.archived_at) throw new ControlInputError("This hub is archived.");
+    const result = await updateHubAiLimits(hub, req.body, actor(res));
+    await audited(res, { actor: actor(res), action: "hub.ai_limits", hubId: hub.id, before: result.before, after: result.after });
+    res.json(await hubDetail((await getHub(hub.id))!));
   }));
 
   // Plugin switches are the hub's admins' after create (review R10, Adam

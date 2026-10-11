@@ -40,6 +40,13 @@ import { normalizeValue } from "../models/hubSettingsWrite.js";
 import { effectivePostalAddress } from "../services/hubSettings.js";
 import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
 import {
+  aiLimitDefaults,
+  aiLimitOverridesProblem,
+  effectiveAiLimits,
+  parseAiLimitOverrides,
+  type AiLimits,
+} from "../shared/aiLimits.js";
+import {
   HANDED_OVER_NOTE,
   HANDOVER_KEYS,
   MODE_OWNER_NOTE,
@@ -970,4 +977,53 @@ export async function unarchiveHub(hub: ControlHub): Promise<void> {
   const { error } = await getDb().from("hubs").update({ archived_at: null }).eq("id", hub.id);
   if (error) throw new Error(`unarchive failed: ${error.message}`);
   refreshCaches(hub.id);
+}
+
+// --- AI limits (Audit 2, A6) -------------------------------------------------
+//
+// The operator's overrides of a hub's AI limits, kept in `limits.ai` (a JSON
+// object of the fields that differ from the defaults for the hub's mode).
+// The console's to write at any time; a hub's own admins never see or set it.
+
+export interface HubAiLimitsView {
+  /** The defaults for the hub's mode. */
+  defaults: AiLimits;
+  /** Only the fields the operator changed. */
+  overrides: Partial<AiLimits>;
+  /** What the hub runs with now. */
+  effective: AiLimits;
+}
+
+export async function hubAiLimits(hub: ControlHub): Promise<HubAiLimitsView> {
+  const raw = (await settingRows(hub.id, [KEYS.LIMITS_AI]))[KEYS.LIMITS_AI];
+  return {
+    defaults: aiLimitDefaults(hub.mode),
+    overrides: parseAiLimitOverrides(raw),
+    effective: effectiveAiLimits(hub.mode, raw),
+  };
+}
+
+/**
+ * Apply a patch of overrides: a number or boolean sets a field, null puts it
+ * back to the default. A value equal to the default is stored as no override,
+ * so a hub that later changes mode gets that mode's default.
+ */
+export async function updateHubAiLimits(
+  hub: ControlHub,
+  body: unknown,
+  actor: string,
+): Promise<{ before: Partial<AiLimits>; after: Partial<AiLimits> }> {
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new ControlInputError("Send the limits to change.");
+  const patch = body as Record<string, unknown>;
+  const problem = aiLimitOverridesProblem(patch);
+  if (problem) throw new ControlInputError(problem);
+  const view = await hubAiLimits(hub);
+  const next: Record<string, unknown> = { ...view.overrides };
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === null || v === view.defaults[k as keyof AiLimits]) delete next[k];
+    else next[k] = v;
+  }
+  await writeSettings(hub.id, { [KEYS.LIMITS_AI]: JSON.stringify(next) }, consoleBy(actor));
+  refreshCaches(hub.id);
+  return { before: view.overrides, after: next as Partial<AiLimits> };
 }

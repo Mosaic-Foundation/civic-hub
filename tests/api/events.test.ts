@@ -62,7 +62,10 @@ describe("GET /events — the activity collection", () => {
     expect(body.type).toBe("OrderedCollection");
     expect(body.id).toMatch(/\/events$/);
     expect(body.first).toContain("page=true");
-    expect(typeof body.totalItems).toBe("number");
+    // Omitted by design when the hub withholds more processes than one filter
+    // can name (eventController: `countable`); the local stack's Athens gets
+    // there from accumulated test runs, a fresh one (CI) does not.
+    if (body.totalItems !== undefined) expect(typeof body.totalItems).toBe("number");
   });
 
   it("honors Accept: application/ld+json without changing the body", async () => {
@@ -163,12 +166,16 @@ describe("GET /events — the activity collection", () => {
     let url: string | undefined = collection.first;
     let counted = 0;
     let guard = 0;
-    while (url && guard++ < 100) {
+    // A loop guard, not a size limit: the local stack's events grow with every
+    // test run (103 pages by 2026-10-11).
+    while (url && guard++ < 2000) {
       const { body }: { body: Page } = await fetchUrl<Page>(url);
       counted += body.orderedItems.length;
       url = body.next;
     }
-    expect(collection.totalItems).toBe(counted);
+    // See above: an omitted count is the designed answer for a hub with very
+    // many withheld processes; when it is given, it must be exact.
+    if (collection.totalItems !== undefined) expect(collection.totalItems).toBe(counted);
   });
 
   it("clamps limit rather than rejecting it", async () => {

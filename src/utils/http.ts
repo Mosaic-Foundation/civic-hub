@@ -1,35 +1,27 @@
-// Thin HTTP helpers — HTML + PDF fetch with abort-controller timeouts.
-// Bans redirects to non-http(s) schemes as a minimal hardening step.
+// Thin HTTP helpers — HTML, XML, PDF and JSON fetches with timeouts, for the
+// sources a hub's admin configures (meeting-summary connectors, news sync).
+//
+// Every fetch goes through the SSRF guard (Audit 2, src/utils/ssrfGuard.ts):
+// an admin-chosen URL cannot reach an internal address, by name, by redirect
+// or by a DNS answer that changes between check and connect, and a body is
+// read only up to a cap.
+
+import { DEFAULT_MAX_BYTES, guardedFetch } from "./ssrfGuard.js";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
-
-function bannedScheme(url: string): boolean {
-  try {
-    const u = new URL(url);
-    return u.protocol !== "http:" && u.protocol !== "https:";
-  } catch {
-    return true;
-  }
-}
+/** A meeting packet can be large; matches MAX_PDF_BYTES in the pipeline. */
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
 async function fetchWithTimeout(
   url: string,
-  init: RequestInit = {},
+  init: { method?: string; headers?: Record<string, string>; body?: string } = {},
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  maxBytes = DEFAULT_MAX_BYTES,
 ): Promise<Response> {
-  if (bannedScheme(url)) {
-    throw new Error(`Refusing to fetch non-http(s) URL: ${url}`);
-  }
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { ...init, signal: controller.signal });
-    // Redirects are followed by fetch; surface a clear error if the final
-    // URL is somehow non-http(s) (shouldn't happen under normal redirects).
-    if (res.url && bannedScheme(res.url)) {
-      throw new Error(`Redirected to non-http(s) URL: ${res.url}`);
-    }
-    return res;
+    return await guardedFetch(url, { ...init, signal: controller.signal, maxBytes });
   } finally {
     clearTimeout(t);
   }
@@ -86,6 +78,7 @@ export async function fetchPdf(
       },
     },
     30_000,
+    MAX_PDF_BYTES,
   );
   if (!res.ok) {
     throw new Error(`fetchPdf ${url} — ${res.status} ${res.statusText}`);

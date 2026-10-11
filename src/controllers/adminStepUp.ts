@@ -21,6 +21,8 @@
 import type { Request, Response } from "express";
 import { requestVerification, consumePendingCode } from "../modules/civic.auth/index.js";
 import type { User } from "../modules/civic.auth/index.js";
+import { clientIp } from "../utils/clientIp.js";
+import { RateLimitedError } from "../db/rateLimit.js";
 
 export function caller(res: Response): User | undefined {
   return res.locals.authUser as User | undefined;
@@ -35,7 +37,7 @@ export function caller(res: Response): User | undefined {
  * authorized by the admin session that accompanies it.
  */
 export async function handleRequestStepUpCode(
-  _req: Request,
+  req: Request,
   res: Response,
 ): Promise<void> {
   const user = caller(res);
@@ -44,13 +46,14 @@ export async function handleRequestStepUpCode(
     return;
   }
   try {
-    await requestVerification(user.email, "step_up");
+    // Counted in the same per-IP and per-address buckets as a sign-in code.
+    await requestVerification(user.email, clientIp(req), "step_up");
     res.json({
       message: `A confirmation code has been sent to ${user.email}.`,
     });
   } catch (err) {
     res
-      .status(400)
+      .status(err instanceof RateLimitedError ? 429 : 400)
       .json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
 }
@@ -64,6 +67,7 @@ export async function handleRequestStepUpCode(
  * rejected step-up leaves the hub exactly as it was.
  */
 export async function requireStepUpCode(
+  req: Request,
   res: Response,
   rawCode: unknown,
 ): Promise<boolean> {
@@ -85,11 +89,11 @@ export async function requireStepUpCode(
   try {
     // A wrong code here counts toward the same lockout as a wrong sign-in
     // code, which is the point of sharing the function rather than the rule.
-    await consumePendingCode(user.email, code);
+    await consumePendingCode(user.email, code, clientIp(req));
     return true;
   } catch (err) {
     res
-      .status(400)
+      .status(err instanceof RateLimitedError ? 429 : 400)
       .json({ error: err instanceof Error ? err.message : "Unknown error" });
     return false;
   }

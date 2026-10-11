@@ -56,6 +56,8 @@ import hubConfigRoutes from "./routes/hubConfigRoutes.js";
 import { pingDb, pingHubDb } from "./db/health.js";
 import { validateEmailConfig } from "./utils/email.js";
 import { validateSchemaAtStartup, getSchemaReport } from "./db/schemaCheck.js";
+import { checkDevFlags } from "./config/devFlags.js";
+import { API_SECURITY_HEADERS } from "./shared/securityHeaders.js";
 
 const app = express();
 
@@ -84,9 +86,19 @@ const allowAnyOrigin = !isProd && parsedOrigins.length === 0;
 assertSpaceIdentityConfigured();
 
 validateEmailConfig();
+// A development flag (CIVIC_ALLOW_SEED, CIVIC_RATE_LIMITS=off) set in
+// production is ignored and reported, once (Audit 2, src/config/devFlags.ts).
+checkDevFlags();
 // Schema contract check — logs once per cold start. Non-blocking: a hub with
 // drift must still boot, precisely so /health can explain what is wrong.
 validateSchemaAtStartup();
+
+// Security headers on every response (Audit 2): the UI's pages get theirs
+// from vercel.json; see src/shared/securityHeaders.ts.
+app.use((_req, res, next) => {
+  for (const [name, value] of Object.entries(API_SECURITY_HEADERS)) res.setHeader(name, value);
+  next();
+});
 
 app.use((req, res, next) => {
   const origin = req.headers.origin as string | undefined;
@@ -337,7 +349,7 @@ app.get("/", (_req, res) => {
       "GET /activities/:id": "Dereference a single civic activity",
       "GET /api/feed": "Internal UI read model, paged: { events, count, process_meta, next_cursor } (limit / cursor / surface / process_id / event_type / pretty)",
       "GET /.well-known/civic.json": "Discovery manifest",
-      "GET /debug/seed": "Seed sample data (dev only)",
+      "POST /debug/seed": "Seed sample data (dev only, admin)",
       "GET /health": "Health check",
     },
   });

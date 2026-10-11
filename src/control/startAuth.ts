@@ -8,13 +8,16 @@
 // are. Codes and session tokens are stored only as SHA-256 hashes, in
 // `start_codes` and `start_sessions` (platform tables, deny-all RLS).
 //
-// Rate limits live in the database (`start_attempts`), so they hold across
-// serverless instances: by IP for every step, and by email for code
-// requests. IPs and emails are stored hashed.
+// Rate limits live in the database, so they hold across serverless
+// instances: by IP for every step, and by email for code requests. IPs and
+// emails are stored hashed. Since Audit 2 (2026-10-11) they go through the
+// platform's one limiter (src/db/rateLimit.ts, rate_limit_take), which counts
+// and records in one transaction; start_attempts, which counted and then
+// inserted from here, is retired.
 
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import type { Request } from "express";
 import { getDb } from "../db/client.js";
+import { HOUR_MS, rateLimitBucket, takeRateLimit } from "../db/rateLimit.js";
+import { randomToken, sameHexHash, sha256Hex } from "../utils/hash.js";
 import { sendEmail } from "../utils/email.js";
 import {
   LOCKOUT_MS,
@@ -38,15 +41,7 @@ export class StartError extends Error {
   }
 }
 
-function sha256(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-function sameHash(a: string, b: string): boolean {
-  const x = Buffer.from(a, "hex");
-  const y = Buffer.from(b, "hex");
-  return x.length === y.length && timingSafeEqual(x, y);
-}
+const sha256 = sha256Hex;
 
 const EMAIL_RE = /^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$/;
 
@@ -71,34 +66,14 @@ export const START_LIMITS = {
 } as const;
 export type StartStep = keyof typeof START_LIMITS;
 
-const WINDOW_MS = 60 * 60 * 1000;
-const PRUNE_AFTER_MS = 24 * 60 * 60 * 1000;
-
 export const TOO_MANY = "Too many tries from here. Wait an hour and try again.";
 const TOO_MANY_FOR_ADDRESS = "Too many codes for that address. Wait an hour and try again.";
 
-/**
- * The caller's IP: Vercel's x-forwarded-for, first hop (Vercel sets the
- * header itself, so a client cannot choose it there); locally, the socket.
- */
-export function clientIp(req: Request): string {
-  const fwd = req.headers["x-forwarded-for"];
-  const first = typeof fwd === "string" ? fwd.split(",")[0]!.trim() : "";
-  return first || req.ip || "unknown";
-}
+export { clientIp } from "../utils/clientIp.js";
 
-function bucket(step: StartStep, by: "ip" | "email", value: string): string {
-  return `${step}:${by}:${sha256(`civic-start:${value}`)}`;
-}
-
-async function countSince(key: string, since: Date): Promise<number> {
-  const { count, error } = await getDb()
-    .from("start_attempts")
-    .select("id", { count: "exact", head: true })
-    .eq("bucket", key)
-    .gte("at", since.toISOString());
-  if (error) throw new Error(`start_attempts read failed: ${error.message}`);
-  return count ?? 0;
+/** The bucket a step's IP or address is counted in (exported for tests). */
+export function startBucket(step: StartStep, by: "ip" | "email", value: string): string {
+  return rateLimitBucket(`start.${step}`, by, value);
 }
 
 /**
@@ -107,20 +82,12 @@ async function countSince(key: string, since: Date): Promise<number> {
  */
 export async function rateLimit(step: StartStep, ip: string, email?: string): Promise<void> {
   const limits = START_LIMITS[step] as { ip: number; email?: number };
-  const since = new Date(Date.now() - WINDOW_MS);
-  const ipKey = bucket(step, "ip", ip);
-  if ((await countSince(ipKey, since)) >= limits.ip) throw new StartError(TOO_MANY, 429);
-  const keys = [ipKey];
+  const checks = [{ scope: `start.${step}`, by: "ip", value: ip, limit: limits.ip, windowMs: HOUR_MS }];
   if (email && limits.email !== undefined) {
-    const emailKey = bucket(step, "email", email);
-    if ((await countSince(emailKey, since)) >= limits.email) throw new StartError(TOO_MANY_FOR_ADDRESS, 429);
-    keys.push(emailKey);
+    checks.push({ scope: `start.${step}`, by: "email", value: email, limit: limits.email, windowMs: HOUR_MS });
   }
-  const db = getDb();
-  const { error } = await db.from("start_attempts").insert(keys.map((k) => ({ bucket: k })));
-  if (error) throw new Error(`start_attempts write failed: ${error.message}`);
-  // Keep the table small: anything older than a day says nothing any more.
-  await db.from("start_attempts").delete().lt("at", new Date(Date.now() - PRUNE_AFTER_MS).toISOString());
+  const refused = await takeRateLimit(checks);
+  if (refused) throw new StartError(refused.by === "ip" ? TOO_MANY : TOO_MANY_FOR_ADDRESS, 429);
 }
 
 // --- Sessions ------------------------------------------------------------------
@@ -134,7 +101,7 @@ export interface StartSession {
 
 /** Open a session for a good invite code. Returns the token, which is never stored. */
 export async function openStartSession(entitlementId: string): Promise<string> {
-  const token = randomBytes(32).toString("base64url");
+  const token = randomToken();
   const { error } = await getDb().from("start_sessions").insert({
     token_hash: sha256(token),
     entitlement_id: entitlementId,
@@ -231,28 +198,39 @@ export async function requestStartCode(email: string): Promise<string> {
 /**
  * Check the emailed code and spend it; the session is now this address's.
  * Same rules as a hub's consumePendingCode: lockout, expiry, the wrong-guess
- * cap, single use.
+ * cap, single use, and one attempt spent atomically before the compare.
  */
 export async function verifyStartCode(session: StartSession, email: string, rawCode: unknown): Promise<void> {
   const code = typeof rawCode === "string" ? rawCode.trim() : "";
   if (!/^\d{6}$/.test(code)) throw new StartError("Enter the six-digit code.");
-  const row = await readCode(email);
-  if (!row) throw new StartError("No code is waiting for that address. Ask for a new one.", 401);
-  if (row.locked_until && Date.now() < Date.parse(row.locked_until)) {
-    throw new StartError(lockoutMessage(row.locked_until), 429);
-  }
   const db = getDb();
-  const spend = () => db.from("start_codes").delete().eq("email", email);
+  const { data: taken, error } = await db.rpc("take_start_code_attempt", {
+    p_email: email,
+    p_max: MAX_VERIFY_ATTEMPTS,
+    p_lock_seconds: Math.round(LOCKOUT_MS / 1000),
+  });
+  if (error) throw new Error(`take_start_code_attempt failed: ${error.message}`);
+  const row = ((taken ?? []) as Array<{ code_hash: string; expires_at: string; attempts: number }>)[0];
+  if (!row) {
+    const current = await readCode(email);
+    if (!current) throw new StartError("No code is waiting for that address. Ask for a new one.", 401);
+    if (current.locked_until && Date.now() < Date.parse(current.locked_until)) {
+      throw new StartError(lockoutMessage(current.locked_until), 429);
+    }
+    throw new StartError("That code can no longer be used. Ask for a new one.", 401);
+  }
+  const spend = () => db.from("start_codes").delete().eq("email", email).eq("code_hash", row.code_hash).select("email");
   if (Date.now() > Date.parse(row.expires_at)) {
     await spend();
     throw new StartError("That code has expired. Ask for a new one.", 401);
   }
-  if (!sameHash(row.code_hash, sha256(code))) {
-    const attempts = row.attempts + 1;
-    const locked = attempts >= MAX_VERIFY_ATTEMPTS ? new Date(Date.now() + LOCKOUT_MS).toISOString() : null;
-    await db.from("start_codes").update({ attempts, locked_until: locked }).eq("email", email);
-    throw new StartError(locked ? lockoutMessage(locked) : "That code is not right. Check the email and try again.", locked ? 429 : 401);
+  if (!sameHexHash(row.code_hash, sha256(code))) {
+    if (row.attempts >= MAX_VERIFY_ATTEMPTS) {
+      throw new StartError(lockoutMessage(new Date(Date.now() + LOCKOUT_MS).toISOString()), 429);
+    }
+    throw new StartError("That code is not right. Check the email and try again.", 401);
   }
-  await spend(); // a code works once
+  const { data: spent } = await spend(); // a code works once: the delete is the spend
+  if (!spent || spent.length === 0) throw new StartError("That code has already been used. Ask for a new one.", 401);
   await setSessionEmail(session, email);
 }

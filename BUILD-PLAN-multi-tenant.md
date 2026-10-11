@@ -1689,6 +1689,24 @@ Not yet routed through it: the terminal error handler in `app.ts` and the
 many `console.error` lines in services and jobs. Moving them is a later,
 mechanical pass, best done when error tracking is actually connected.
 
+### Sign-in and abuse limits (Audit 2, 2026-10-11, Adam)
+
+Decided by Adam in the Audit 2 session. HANDOFF "Audit 2: sign-in and abuse" has what was built.
+
+- **Sessions and codes are stored only as SHA-256** (hub, console, start page). Releasing the change deleted every
+  hub session and pending code (approved): everyone signs in again once.
+- **Every session has an assurance level**, `code` or `demo`. A demo session is never privileged and ends when the
+  hub leaves demo; leaving demo ends **only** demo sessions (Adam), so the admin making the switch stays signed in.
+- **Sign-in limits per IP per hour, platform-wide** (one atomic limiter, `rate_limit_take`): hub 20 code requests
+  per IP and 5 per address, 40 code checks per IP; console 5 and 10; start page as in session 4b. Sized for a
+  public meeting on shared Wi-Fi.
+- **AI limits** (`src/shared/aiLimits.ts`): 20 assistant turns per person per hour and 60 per day, 200 per hub per
+  hour, 30 Code of Conduct checks per person per hour, 1.5M tokens per hub per day (demo 300k), 4,000-character
+  messages, the last 12 messages sent, no web search on demo hubs. **The operator changes them per hub in the
+  console** (Adam: easier than the terminal); a hub's own admins cannot. Scheduled jobs are not counted.
+- **Development flags never work in production** (`NODE_ENV=production`): `CIVIC_ALLOW_SEED`,
+  `CIVIC_RATE_LIMITS=off`, `CIVIC_SSRF_ALLOW_PRIVATE`. Set there, they are ignored and reported, not fatal.
+
 ---
 
 ## Phase 3 approach (verified)

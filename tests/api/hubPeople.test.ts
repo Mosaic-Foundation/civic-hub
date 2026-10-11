@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { request } from "node:http";
-import { API_BASE } from "../fixtures/helpers.js";
+import { API_BASE, freshTestIp } from "../fixtures/helpers.js";
 
 /**
  * Who may see and change a hub's admin roster, over HTTP.
@@ -37,6 +37,8 @@ function call(
         headers: {
           Accept: "application/json",
           Host: host,
+          // A fresh client address per request: the sign-in limits count per IP (Audit 2).
+          "X-Forwarded-For": freshTestIp(),
           "Content-Type": "application/json",
           ...(payload ? { "Content-Length": Buffer.byteLength(payload) } : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

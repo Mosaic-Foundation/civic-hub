@@ -13,7 +13,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
-import { localRest, mintSession } from "../fixtures/adminSession.js";
+import { localRest, mintSession, plantHubCode } from "../fixtures/adminSession.js";
 import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
 
 const run = Date.now().toString(36);
@@ -32,11 +32,7 @@ async function stepCode(): Promise<string> {
 /** A hub admin's step-up code, as the emailed one would have been stored. */
 async function hubCode(email: string): Promise<string> {
   const code = String(100000 + Math.floor(Math.random() * 899999));
-  await localRest("pending_verifications", {
-    method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-    body: JSON.stringify({ hub_id: SLUG, email, code, expires_at: new Date(Date.now() + 10 * 60_000).toISOString(), attempts: 0 }),
-  });
+  await plantHubCode(SLUG, email, code);
   return code;
 }
 

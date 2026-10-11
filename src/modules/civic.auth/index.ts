@@ -22,9 +22,9 @@
 //
 // GUARDRAIL: This module MUST NOT import from civic.vote or civic.proposals.
 
-import { randomBytes } from "node:crypto";
 import { forHub, HubDbError, type HubDb, type Row } from "../../db/forHub.js";
 import { generateId } from "../../utils/id.js";
+import { randomToken, sameHexHash, sha256Hex } from "../../utils/hash.js";
 import {
   OTP_TTL_MS,
   MAX_VERIFY_ATTEMPTS,
@@ -35,6 +35,7 @@ import {
   renderCodeEmail,
 } from "./otp.js";
 import { sendEmail } from "../../utils/email.js";
+import { limitCodeCheck, limitCodeRequest } from "./limits.js";
 import {
   getAdminEmailsSync,
   isBetaEnabledSync,
@@ -42,16 +43,18 @@ import {
   isEmailOnBetaAllowlist,
   hubDisplayNameSync,
 } from "../../services/hubSettings.js";
-import { isPrivilegedEmail } from "../../services/privilegedAccounts.js";
+import { isPrivilegedEmail, isPrivilegedEmailNow } from "../../services/privilegedAccounts.js";
 import { lookupOfficialByEmail } from "../../services/officials.js";
 import { currentHubId, currentHubIdOrNull } from "../../config/hubContext.js";
-import type { User, PendingVerification, Session } from "./models.js";
+import type { User, PendingVerification, Session, SessionAssurance } from "./models.js";
 import { readAll } from "../../db/readAll.js";
 
-export type { User, PendingVerification, Session } from "./models.js";
+export type { User, PendingVerification, Session, SessionAssurance } from "./models.js";
 
 // --- Constants ---
 
+// A "keep me signed in" option, when it comes, is a longer expires_at on the
+// same row; nothing else about a session changes.
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 // The code's rules (TTL, attempts, throttle, lockout) live in ./otp.ts,
 // shared with the super admin's sign-in.
@@ -68,10 +71,35 @@ function db(): HubDb {
 const ADDRESS_IN_USE_ELSEWHERE =
   "This address can't be used to sign in to this hub yet. Please use a different address.";
 
-// --- OTP / token generation ---
+// --- Session tokens ---
+//
+// 256 random bits. The browser holds the token; the database holds only its
+// SHA-256 (sessions.token, constraint sessions_token_is_hash), and every
+// lookup hashes what was presented, as the console's sessions always have
+// (Audit 2, 2026-10-11). Before that a token was 60 random bits stored as is.
 
 function generateToken(): string {
-  return generateId("sess");
+  return randomToken();
+}
+
+/** Start a session for this account on the hub in scope; returns the token. */
+async function insertSession(
+  hubDb: HubDb,
+  userId: string,
+  assurance: SessionAssurance,
+  ttlMs = SESSION_TTL_MS,
+  token = generateToken(),
+): Promise<string> {
+  // Stamped with the hub it was minted on, by forHub. A session is a bearer
+  // credential, so without this a token from one hub would authenticate its
+  // holder on every other hub this deployment serves.
+  await hubDb.from("sessions").insert({
+    token: sha256Hex(token),
+    user_id: userId,
+    expires_at: new Date(Date.now() + ttlMs).toISOString(),
+    assurance,
+  });
+  return token;
 }
 
 // --- Row mappers ---
@@ -128,6 +156,9 @@ export function normalizeFullName(raw: unknown): string {
  */
 export async function requestVerification(
   email: string,
+  // The caller's IP (src/utils/clientIp.ts), for the per-IP limit. Required,
+  // so no caller can skip the limits by forgetting them.
+  ip: string,
   // "step_up" is a fresh code to confirm a change (adminStepUp.ts), not a sign-in.
   purpose: "sign_in" | "step_up" = "sign_in",
 ): Promise<{ message: string; no_email?: true }> {
@@ -136,6 +167,10 @@ export async function requestVerification(
   if (!normalizedEmail || !normalizedEmail.includes("@")) {
     throw new Error("Invalid email address");
   }
+
+  // Counted first, before anything is looked up or sent: a request refused
+  // here costs nothing, and a demo hub's requests count too (Audit 2).
+  await limitCodeRequest(ip, currentHubId(), normalizedEmail);
 
   // A demo hub does not email sign-in codes. Any visitor can look around, so
   // the OTP generation, the pending_verifications insert and the Resend send
@@ -163,7 +198,7 @@ export async function requestVerification(
   // hub is; "any six digits" for those accounts would mean anyone who knows
   // an admin's email address can be that admin. The relaxation is for people
   // looking around, never for the people running the place.
-  if (isDemoHubSync() && !(await isPrivilegedEmail(normalizedEmail))) {
+  if (isDemoHubSync() && !(await isPrivilegedEmailNow(normalizedEmail))) {
     console.log(
       `[auth] Demo hub signin for ${normalizedEmail} — no code emailed.`,
     );
@@ -227,7 +262,10 @@ export async function requestVerification(
     .upsert(
       {
         email: normalizedEmail,
-        code,
+        // Only the hash is kept (constraint pending_verifications_no_plain_code).
+        // A later "Sign in" link in the email adds its own hash beside this
+        // one and is checked through the same attempt counter.
+        code_hash: sha256Hex(code),
         expires_at: expires.toISOString(),
         created_at: now.toISOString(),
         attempts: 0, // fresh code, reset the wrong-guess counter
@@ -316,77 +354,77 @@ function renderOtpEmail(code: string, rawHubName: string, purpose: "sign_in" | "
  * pending row is deleted, which is what makes a code single-use: a second
  * attempt finds no row and is refused.
  *
- * `pending` may be passed in when the caller has already fetched it, to avoid
- * a second read of the same row.
+ * ATOMIC (Audit 2, 2026-10-11). take_code_attempt spends one attempt in one
+ * conditional UPDATE and returns the code's hash only while attempts are under
+ * the limit and no lock is running; the attempt that reaches the limit sets
+ * the lock in the same statement. The code is compared only when a row comes
+ * back. Before this the count was read, compared and written back from here,
+ * so N concurrent guesses advanced it by about one.
  */
 export async function consumePendingCode(
   email: string,
   code: string,
-  pending?: {
-    code: string;
-    expires_at: string;
-    attempts?: number | null;
-    locked_until?: string | null;
-  } | null,
+  // The caller's IP, for the per-IP limit on codes typed in.
+  ip: string,
 ): Promise<void> {
   const hubDb = db();
   const normalizedEmail = email.trim().toLowerCase();
 
-  let row = pending;
-  if (row === undefined) {
-    row = await hubDb
-      .from("pending_verifications")
-      .select<{
-        code: string;
-        expires_at: string;
-        attempts: number | null;
-        locked_until: string | null;
-      }>("*")
-      .eq("email", normalizedEmail)
-      .maybeSingle();
-  }
+  await limitCodeCheck(ip);
+
+  const taken = await hubDb.rpc<Array<{ code_hash: string; expires_at: string; attempts: number }>>(
+    "take_code_attempt",
+    {
+      p_email: normalizedEmail,
+      p_max: MAX_VERIFY_ATTEMPTS,
+      p_lock_seconds: Math.round(LOCKOUT_MS / 1000),
+    },
+  );
+  const row = Array.isArray(taken) ? taken[0] : undefined;
 
   if (!row) {
-    throw new Error(
-      "No pending verification for this email. Request a new code.",
-    );
+    // No attempt was left to spend. Say why.
+    const current = await hubDb
+      .from("pending_verifications")
+      .select<{ locked_until: string | null }>("locked_until")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+    if (!current) {
+      throw new Error("No pending verification for this email. Request a new code.");
+    }
+    if (current.locked_until && Date.now() < Date.parse(current.locked_until)) {
+      throw new Error(lockoutMessage(current.locked_until));
+    }
+    // The lock has passed, but this code used up its tries; it is dead.
+    throw new Error("That code can no longer be used. Request a new code.");
   }
-  // Lockout: if the email is in its post-brute-force cooldown, refuse to
-  // verify regardless of the code entered.
-  if (row.locked_until && new Date() < new Date(row.locked_until)) {
-    throw new Error(lockoutMessage(row.locked_until));
-  }
-  if (new Date() > new Date(row.expires_at)) {
+  if (Date.now() > Date.parse(row.expires_at)) {
     await hubDb
       .from("pending_verifications")
       .delete()
-      .eq("email", normalizedEmail);
+      .eq("email", normalizedEmail)
+      .eq("code_hash", row.code_hash);
     throw new Error("Verification code expired. Request a new code.");
   }
-  if (row.code !== code) {
-    // Count the wrong guess; after MAX_VERIFY_ATTEMPTS, lock the email for
-    // LOCKOUT_MS (both verify and request-code refuse until it passes). This
-    // is the core anti-brute-force defense.
-    const attempts = (row.attempts ?? 0) + 1;
-    if (attempts >= MAX_VERIFY_ATTEMPTS) {
-      const lockedUntil = new Date(Date.now() + LOCKOUT_MS).toISOString();
-      await hubDb
-        .from("pending_verifications")
-        .update({ attempts, locked_until: lockedUntil })
-        .eq("email", normalizedEmail);
-      throw new Error(lockoutMessage(lockedUntil));
+  if (!sameHexHash(row.code_hash, sha256Hex(String(code).trim()))) {
+    if (row.attempts >= MAX_VERIFY_ATTEMPTS) {
+      // This attempt reached the limit; the database locked the address.
+      throw new Error(lockoutMessage(new Date(Date.now() + LOCKOUT_MS).toISOString()));
     }
-    await hubDb
-      .from("pending_verifications")
-      .update({ attempts })
-      .eq("email", normalizedEmail);
     throw new Error("Invalid verification code");
   }
-  // Spend it. A code works once.
-  await hubDb
+  // Spend it: the delete is the spend, so of two requests with the right
+  // code, one gets the row. Only this code's row, so a newer code requested
+  // in the meantime is left alone.
+  const spent = await hubDb
     .from("pending_verifications")
     .delete()
-    .eq("email", normalizedEmail);
+    .eq("email", normalizedEmail)
+    .eq("code_hash", row.code_hash)
+    .select<{ email: string }>("email");
+  if (spent.length === 0) {
+    throw new Error("That code has already been used. Request a new code.");
+  }
 }
 
 /**
@@ -396,21 +434,11 @@ export async function consumePendingCode(
 export async function verifyCode(
   email: string,
   code: string,
+  // The caller's IP, for the per-IP limit on codes typed in.
+  ip: string,
 ): Promise<{ token: string; user: User }> {
   const normalizedEmail = email.trim().toLowerCase();
   const hubDb = db();
-
-  // --- Validate the OTP ---
-  const pending = await hubDb
-    .from("pending_verifications")
-    .select<{
-      code: string;
-      expires_at: string;
-      attempts: number | null;
-      locked_until: string | null;
-    }>("*")
-    .eq("email", normalizedEmail)
-    .maybeSingle();
 
   // A demo hub accepts any six digits from an ordinary visitor (see
   // requestVerification). Gated on the hub's own `mode`, which lives only in
@@ -421,36 +449,30 @@ export async function verifyCode(
   // because an admin who can be impersonated by typing six digits is not an
   // admin. The shape check keeps the form's validation honest and stops an
   // empty submission walking in.
+  //
+  // Such a session is a DEMO session (Audit 2): it proves nothing about the
+  // mailbox, so it never passes an admin, official or poster check, it reads
+  // as signed out once the hub leaves demo, and it ends if its address is
+  // later made privileged (the triggers in 20261011100000).
+  let assurance: SessionAssurance;
   if (
     isDemoHubSync() &&
-    !(await isPrivilegedEmail(normalizedEmail)) &&
-    /^\d{6}$/.test(code.trim())
+    /^\d{6}$/.test(code.trim()) &&
+    !(await isPrivilegedEmailNow(normalizedEmail))
   ) {
-    if (pending) {
-      await hubDb
-        .from("pending_verifications")
-        .delete()
-        .eq("email", normalizedEmail);
-    }
+    await limitCodeCheck(ip);
+    await hubDb
+      .from("pending_verifications")
+      .delete()
+      .eq("email", normalizedEmail);
+    assurance = "demo";
   } else {
-    await consumePendingCode(normalizedEmail, code, pending);
+    await consumePendingCode(normalizedEmail, code, ip);
+    assurance = "code";
   }
 
   const user = await findOrCreateVerifiedUser(normalizedEmail);
-
-  // --- Create a session ---
-  const token = generateToken();
-  const sessionExpires = new Date(Date.now() + SESSION_TTL_MS).toISOString();
-
-  // Stamped with the hub it was minted on, by forHub. A session is a bearer
-  // credential, so without this a token from one hub would authenticate its
-  // holder on every other hub this deployment serves.
-  await hubDb.from("sessions").insert({
-    token,
-    user_id: user.id,
-    expires_at: sessionExpires,
-  });
-
+  const token = await insertSession(hubDb, user.id, assurance);
   return { token, user };
 }
 
@@ -548,16 +570,14 @@ function isHandoffToken(token: string): boolean {
   return token.startsWith(`${HANDOFF_PREFIX}_`);
 }
 
-/** Mint a handoff for this address on the hub in scope, creating its account. Returns the token. */
+/**
+ * Mint a handoff for this address on the hub in scope, creating its account.
+ * Returns the token. The start page proved the address with its own emailed
+ * code, so the handoff, and the session it becomes, are 'code' sessions.
+ */
 export async function createHandoffSession(email: string): Promise<string> {
   const user = await findOrCreateVerifiedUser(email.trim().toLowerCase());
-  const token = `${HANDOFF_PREFIX}_${randomBytes(24).toString("base64url")}`;
-  await db().from("sessions").insert({
-    token,
-    user_id: user.id,
-    expires_at: new Date(Date.now() + HANDOFF_TTL_MS).toISOString(),
-  });
-  return token;
+  return insertSession(db(), user.id, "code", HANDOFF_TTL_MS, `${HANDOFF_PREFIX}_${randomToken()}`);
 }
 
 /**
@@ -571,18 +591,13 @@ export async function exchangeHandoff(handoff: string): Promise<{ token: string;
   const spent = await hubDb
     .from("sessions")
     .delete()
-    .eq("token", handoff)
-    .select<{ user_id: string; expires_at: string }>("user_id, expires_at");
+    .eq("token", sha256Hex(handoff))
+    .select<{ user_id: string; expires_at: string; assurance: SessionAssurance }>("user_id, expires_at, assurance");
   const row = spent[0];
   if (!row || Date.now() > Date.parse(row.expires_at)) throw invalid;
   const found = await hubDb.from("users").select("*").eq("id", row.user_id).maybeSingle();
   if (!found) throw invalid;
-  const token = generateToken();
-  await hubDb.from("sessions").insert({
-    token,
-    user_id: row.user_id,
-    expires_at: new Date(Date.now() + SESSION_TTL_MS).toISOString(),
-  });
+  const token = await insertSession(hubDb, row.user_id, row.assurance);
   return { token, user: rowToUser(found) };
 }
 
@@ -665,6 +680,25 @@ export async function acceptLegalTerms(
 export async function getUserFromToken(
   token: string,
 ): Promise<User | undefined> {
+  return (await getSessionFromToken(token))?.user;
+}
+
+/** A signed-in caller: the account, and how the session was proved. */
+export interface SessionInfo {
+  user: User;
+  assurance: SessionAssurance;
+}
+
+/**
+ * The session a token belongs to, or undefined. A DEMO session (Audit 2)
+ * reads as no session at all when the hub is not a demo any more, or when its
+ * address has become privileged since: the triggers in 20261011100000 delete
+ * such sessions as it happens, and this is the same rule at read time, so no
+ * code path that checks a role by email can be reached by one.
+ */
+export async function getSessionFromToken(
+  token: string,
+): Promise<SessionInfo | undefined> {
   if (!token) return undefined;
   // A handoff token is exchanged once (exchangeHandoff), never used as a session.
   if (isHandoffToken(token)) return undefined;
@@ -686,25 +720,36 @@ export async function getUserFromToken(
   // error must not authenticate anyone, and a sign-in check is not the place
   // to turn a blip into a 500 on every page.
   try {
+    const tokenHash = sha256Hex(token);
     const session = await hubDb
       .from("sessions")
-      .select<{ user_id: string; expires_at: string }>("user_id, expires_at")
-      .eq("token", token)
+      .select<{ user_id: string; expires_at: string; assurance: SessionAssurance }>(
+        "user_id, expires_at, assurance",
+      )
+      .eq("token", tokenHash)
       .maybeSingle();
     if (!session) return undefined;
 
     if (new Date() > new Date(session.expires_at)) {
       // Opportunistic cleanup of the expired session.
-      await hubDb.from("sessions").delete().eq("token", token);
+      await hubDb.from("sessions").delete().eq("token", tokenHash);
       return undefined;
     }
 
-    const user = await hubDb
+    const assurance: SessionAssurance = session.assurance === "code" ? "code" : "demo";
+    if (assurance === "demo" && !isDemoHubSync()) return undefined;
+
+    const row = await hubDb
       .from("users")
       .select("*")
       .eq("id", session.user_id)
       .maybeSingle();
-    return user ? rowToUser(user) : undefined;
+    if (!row) return undefined;
+    const user = rowToUser(row);
+    // isPrivilegedEmail fails closed (true on a read error), so a wobble
+    // signs a demo visitor out rather than letting one through.
+    if (assurance === "demo" && (await isPrivilegedEmail(user.email))) return undefined;
+    return { user, assurance };
   } catch (err) {
     console.error(`[auth] session lookup failed: ${(err as Error).message}`);
     return undefined;
@@ -733,7 +778,7 @@ export async function logout(token: string): Promise<void> {
   // destroy a session belonging to another.
   const hubId = currentHubIdOrNull();
   if (!hubId) return;
-  await forHub(hubId).from("sessions").delete().eq("token", token);
+  await forHub(hubId).from("sessions").delete().eq("token", sha256Hex(token));
 }
 
 /**

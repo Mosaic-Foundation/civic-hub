@@ -19,8 +19,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { request } from "node:http";
 import { randomBytes } from "node:crypto";
-import { API_BASE } from "../fixtures/helpers.js";
-import { localRest, localStack, mintSession } from "../fixtures/adminSession.js";
+import { API_BASE, freshTestIp } from "../fixtures/helpers.js";
+import { localRest, localStack, mintSession, plantHubCode } from "../fixtures/adminSession.js";
 import { parseSigningKey, signHubToken } from "../../src/db/hubToken.js";
 
 const LOCAL_JWT_SECRET = "super-secret-jwt-token-with-at-least-32-characters-long";
@@ -66,6 +66,8 @@ function call(method: string, path: string, body?: unknown, token?: string): Pro
           Accept: "application/json",
           Host: ATHENS,
           "Content-Type": "application/json",
+          // A fresh client address per request: the sign-in limits count per IP (Audit 2).
+          "X-Forwarded-For": freshTestIp(),
           ...(payload ? { "Content-Length": Buffer.byteLength(payload) } : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
@@ -395,17 +397,7 @@ describe("removing the sample content", () => {
   it("deletes exactly the sample content, and records who did it", async () => {
     // A fresh code, as the emailed step-up would have stored it.
     const code = String(100000 + Math.floor(Math.random() * 899999));
-    await localRest("pending_verifications", {
-      method: "POST",
-      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify({
-        hub_id: "athens",
-        email: ATHENS_ADMIN,
-        code,
-        expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
-        attempts: 0,
-      }),
-    });
+    await plantHubCode("athens", ATHENS_ADMIN, code);
     const { status, body } = await call("POST", "/admin/hub/sample-content/remove", { code }, admin);
     expect(status, JSON.stringify(body)).toBe(200);
     expect(body.summary.processes).toBe(0);

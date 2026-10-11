@@ -10,7 +10,12 @@
 // where any caller could POST { actor: "<anyone>" } and act as that user.
 
 import { NextFunction, Request, Response } from "express";
-import { getUserFromToken, type User } from "../modules/civic.auth/index.js";
+import {
+  getSessionFromToken,
+  getUserFromToken,
+  type SessionAssurance,
+  type User,
+} from "../modules/civic.auth/index.js";
 import {
   areOfficialsMigrated,
   getAdminEmailsSync,
@@ -230,12 +235,13 @@ export async function requireAuth(
       res.status(401).json({ error: "Authentication required" });
       return;
     }
-    const user = await getUserFromToken(token);
-    if (!user) {
+    const session = await getSessionFromToken(token);
+    if (!session) {
       res.status(401).json({ error: "Invalid or expired session" });
       return;
     }
-    res.locals.authUser = user;
+    res.locals.authUser = session.user;
+    res.locals.authAssurance = session.assurance;
     next();
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -280,6 +286,20 @@ export async function requireResident(
 }
 
 /**
+ * Was the caller's mailbox proved with an emailed code? A demo hub's
+ * any-six-digits session was not (Audit 2), and never carries a privilege:
+ * the three gates below refuse it before they look at any roster.
+ */
+function codeVerified(res: Response): boolean {
+  return (res.locals.authAssurance as SessionAssurance | undefined) === "code";
+}
+
+const CODE_SIGN_IN_REQUIRED = {
+  error: "Sign in with a code sent to your email to do this.",
+  code: "code_sign_in_required",
+};
+
+/**
  * Require an authenticated user on this hub's admin roster
  * (`people.admin_emails`; inside a hub never from env).
  * Matching is case-insensitive.
@@ -292,6 +312,10 @@ export async function requireAdmin(
   await requireAuth(req, res, async () => {
     const user = res.locals.authUser as User | undefined;
     if (!user) return;
+    if (!codeVerified(res)) {
+      res.status(403).json(CODE_SIGN_IN_REQUIRED);
+      return;
+    }
 
     const allowed = adminEmails();
     if (allowed.size === 0) {
@@ -336,6 +360,10 @@ export async function requireAnnouncementPoster(
   await requireAuth(req, res, async () => {
     const user = res.locals.authUser as User | undefined;
     if (!user) return;
+    if (!codeVerified(res)) {
+      res.status(403).json(CODE_SIGN_IN_REQUIRED);
+      return;
+    }
 
     const authorship = await resolveAuthorship(user.email);
     if (!authorship) {
@@ -379,6 +407,10 @@ export async function requireOfficial(
   await requireAuth(req, res, async () => {
     const user = res.locals.authUser as User | undefined;
     if (!user) return;
+    if (!codeVerified(res)) {
+      res.status(403).json(CODE_SIGN_IN_REQUIRED);
+      return;
+    }
 
     const official = await resolveOfficial(user.email);
     if (!official) {

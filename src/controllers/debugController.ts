@@ -9,6 +9,7 @@
 //      Supabase project is hard-coded as a 403. To seed a fresh dev
 //      project, leave its hostname absent from the list.
 
+import { seedAllowed } from "../config/devFlags.js";
 import { Request, Response } from "express";
 import {
   createProcess,
@@ -190,11 +191,12 @@ export async function handleSeed(
     return;
   }
 
-  // Layer 1 — env flag. Default deny; opt-in per environment.
-  if (process.env.CIVIC_ALLOW_SEED !== "true") {
+  // Layer 1 — env flag. Default deny; opt-in per environment, and refused
+  // with NODE_ENV=production whatever the flag says (Audit 2).
+  if (!seedAllowed()) {
     res.status(403).json({
       error:
-        "Seeding is disabled in this environment. Set CIVIC_ALLOW_SEED=true to enable.",
+        "Seeding is disabled in this environment. Set CIVIC_ALLOW_SEED=true to enable (never in production).",
     });
     return;
   }

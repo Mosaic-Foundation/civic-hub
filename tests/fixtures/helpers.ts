@@ -13,6 +13,17 @@
 export const API_BASE = process.env.CIVIC_API_BASE?.trim() || "http://localhost:3000";
 export const UI_BASE = "http://localhost:5173";
 
+/**
+ * A made-up client address for X-Forwarded-For. The server's sign-in rate
+ * limits (Audit 2) count per IP; locally the header is taken as given, so a
+ * fresh address per sign-in keeps one suite from using up another's hour.
+ * Tests of the limits themselves pass one address on purpose.
+ */
+export function freshTestIp(): string {
+  const n = () => Math.floor(Math.random() * 256);
+  return `10.${n()}.${n()}.${1 + Math.floor(Math.random() * 254)}`;
+}
+
 // ---------------------------------------------------------------------------
 // HTTP helpers
 // ---------------------------------------------------------------------------
@@ -26,6 +37,10 @@ export async function api(
     ...rest,
     headers: {
       "Content-Type": "application/json",
+      // A fresh client address per request unless the test names one: the
+      // sign-in limits count per IP (Audit 2), and a test run must not use up
+      // the next run's hour.
+      "X-Forwarded-For": freshTestIp(),
       ...(headers as Record<string, string> | undefined),
     },
   });
@@ -51,8 +66,10 @@ const BYPASS_CODE = "000000";
  * Uses the demo bypass code (CIVIC_DEMO_BYPASS_CODE=000000).
  */
 async function signIn(email: string): Promise<{ token: string; userId: string }> {
+  const ip = { "X-Forwarded-For": freshTestIp() };
   await api("/auth/request-code", {
     method: "POST",
+    headers: ip,
     body: JSON.stringify({ email }),
   });
 
@@ -62,6 +79,7 @@ async function signIn(email: string): Promise<{ token: string; userId: string }>
     error?: string;
   }>("/auth/verify", {
     method: "POST",
+    headers: ip,
     body: JSON.stringify({ email, code: BYPASS_CODE }),
   });
 
@@ -119,7 +137,12 @@ export function authHeaders(token: string): Record<string, string> {
  * Idempotent — safe to call multiple times.
  */
 export async function ensureSeedData(): Promise<void> {
-  await api("/debug/seed");
+  // POST and a hub admin's since Audit 2. The dev hub (CIVIC_DEV_HUB, Athens
+  // in CI and the launch configs) answers on a bare localhost.
+  const { mintSession } = await import("./adminSession.js");
+  const hub = process.env.CIVIC_TEST_DEV_HUB ?? "athens";
+  const token = await mintSession(hub, process.env.CIVIC_TEST_DEV_HUB_ADMIN ?? `admin+${hub}@example.test`);
+  await api("/debug/seed", { method: "POST", headers: authHeaders(token) });
 }
 
 // ---------------------------------------------------------------------------

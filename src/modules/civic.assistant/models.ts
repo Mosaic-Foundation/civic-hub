@@ -85,6 +85,10 @@ export interface CallAssistantInput {
   conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
   user_message: string;
   hub_config: HubConfig;
+  /** What the call is for, for the hub's usage record (Audit 2). */
+  purpose?: "assistant.message" | "assistant.suggest";
+  /** The hub's AI limits that shape the call: how much history, and search. */
+  limits?: { history_messages: number; web_search: boolean };
 }
 
 /**

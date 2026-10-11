@@ -30,7 +30,7 @@ export async function handleRemoveSampleContent(req: Request, res: Response): Pr
     return;
   }
   const body = (req.body ?? {}) as { code?: unknown };
-  if (!(await requireStepUpCode(res, body.code))) return;
+  if (!(await requireStepUpCode(req, res, body.code))) return;
   try {
     const result = await removeSampleContent(user.email);
     res.json({ removed: result.summary, deleted: result.deleted, summary: await sampleContentSummary() });

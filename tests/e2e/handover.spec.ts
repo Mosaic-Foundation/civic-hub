@@ -19,7 +19,8 @@ import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleC
 import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 import { E2E_API_BASE as API } from "./hubApi";
 
-const CONSOLE_UI = "http://console.localhost:5173/console.html";
+const UI = new URL(process.env.CIVIC_E2E_UI_ORIGIN?.trim() || "http://localhost:5173");
+const CONSOLE_UI = `${UI.protocol}//console.localhost${UI.port ? `:${UI.port}` : ""}/console.html`;
 
 async function hubConfig(request: APIRequestContext): Promise<{ hub: { id: string }; settings: Record<string, string> }> {
   return (await request.get(`${API}/hub-config`)).json();

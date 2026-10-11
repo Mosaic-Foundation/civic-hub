@@ -23,6 +23,8 @@ import {
   logout,
 } from "../modules/civic.auth/index.js";
 import { resolveAuthorship } from "../middleware/auth.js";
+import { clientIp } from "../utils/clientIp.js";
+import { RateLimitedError } from "../db/rateLimit.js";
 
 /**
  * POST /auth/request-code
@@ -40,11 +42,11 @@ export async function handleRequestCode(
   }
 
   try {
-    const result = await requestVerification(email);
+    const result = await requestVerification(String(email), clientIp(req));
     res.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+    res.status(err instanceof RateLimitedError ? 429 : 400).json({ error: message });
   }
 }
 
@@ -64,7 +66,7 @@ export async function handleVerify(
   }
 
   try {
-    const result = await verifyCode(email, code);
+    const result = await verifyCode(String(email), String(code), clientIp(req));
     // Include role + author_label + office alongside the token + user so
     // the UI gets the posting-privilege bit and the byline pill without a
     // follow-up /auth/me call.
@@ -78,7 +80,7 @@ export async function handleVerify(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+    res.status(err instanceof RateLimitedError ? 429 : 400).json({ error: message });
   }
 }
 

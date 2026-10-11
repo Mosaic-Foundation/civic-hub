@@ -22,12 +22,19 @@ const ADMIN = "admin@athens.example";
 
 vi.mock("../../src/services/privilegedAccounts.js", () => ({
   isPrivilegedEmail: async (email: string) => email.trim().toLowerCase() === OFFICIAL,
+  isPrivilegedEmailNow: async (email: string) => email.trim().toLowerCase() === OFFICIAL,
 }));
 
 // The officials list: only OFFICIAL is on it.
 vi.mock("../../src/services/officials.js", () => ({
   lookupOfficialByEmail: async (email: string) =>
     email === OFFICIAL ? { official_type: "board_of_supervisors", official_title: "Chair" } : null,
+}));
+
+// The sign-in rate limits (Audit 2) are the database's; here, nothing is limited.
+vi.mock("../../src/db/rateLimit.js", async (orig) => ({
+  ...(await orig<typeof import("../../src/db/rateLimit.js")>()),
+  takeRateLimit: async () => null,
 }));
 
 // pending_verifications: nothing recent, the upsert succeeds.
@@ -71,12 +78,12 @@ afterEach(() => {
 describe("a privileged account on a demo hub", () => {
   it("is sent its sign-in code", async () => {
     expect(ATHENS_HUB.mode).toBe("demo");
-    await runWithHub(ATHENS_HUB, SETTINGS, () => requestVerification(OFFICIAL));
+    await runWithHub(ATHENS_HUB, SETTINGS, () => requestVerification(OFFICIAL, "203.0.113.7"));
     expect(sentTo).toEqual([OFFICIAL]);
   });
 
   it("an ordinary visitor still gets no email (any six digits)", async () => {
-    const res = await runWithHub(ATHENS_HUB, SETTINGS, () => requestVerification("visitor@example.com"));
+    const res = await runWithHub(ATHENS_HUB, SETTINGS, () => requestVerification("visitor@example.com", "203.0.113.7"));
     expect(res.message).toMatch(/any six digits/);
     expect(sentTo).toEqual([]);
   });
@@ -94,13 +101,13 @@ describe("a privileged account on a demo hub", () => {
 describe("an official on a beta hub (Adam, 2026-10-07)", () => {
   it("is let in as if on the allow list, and sent their code", async () => {
     expect(FLOYD_HUB.mode).toBe("beta");
-    await runWithHub(FLOYD_HUB, SETTINGS, () => requestVerification(OFFICIAL));
+    await runWithHub(FLOYD_HUB, SETTINGS, () => requestVerification(OFFICIAL, "203.0.113.7"));
     expect(sentTo).toEqual([OFFICIAL]);
   });
 
   it("someone on no list is still refused", async () => {
     await expect(
-      runWithHub(FLOYD_HUB, SETTINGS, () => requestVerification("stranger@example.com")),
+      runWithHub(FLOYD_HUB, SETTINGS, () => requestVerification("stranger@example.com", "203.0.113.7")),
     ).rejects.toThrow("private beta");
     expect(sentTo).toEqual([]);
   });

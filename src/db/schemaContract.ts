@@ -88,8 +88,10 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   // Scheduled-job outcomes (20260929000000): the admin's last-run lines and the admin digest.
   { table: "job_runs", columns: ["hub_id", "job_id", "started_at", "finished_at", "status", "summary", "problems", "details"], owner: "core/jobRuns" },
   { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at", "edits_seen_at", "feedback_seen_at", "briefs_seen_at", "meeting_summaries_seen_at"], owner: "civic.auth" },
-  { table: "sessions", owner: "civic.auth" },
-  { table: "pending_verifications", columns: ["attempts", "locked_until"], owner: "civic.auth" },
+  { table: "sessions", columns: ["token", "assurance"], owner: "civic.auth" },
+  { table: "pending_verifications", columns: ["code_hash", "attempts", "locked_until"], owner: "civic.auth" },
+  { table: "rate_limit_hits", columns: ["bucket", "at"], owner: "core/rateLimit" },
+  { table: "ai_usage", columns: ["hub_id", "purpose", "model", "input_tokens", "output_tokens", "web_searches", "at"], owner: "civic.assistant" },
   { table: "hub_settings", columns: ["key", "value"], owner: "core/hubSettings" },
   { table: "waitlist", columns: ["email", "name", "wants_test_user"], owner: "core/waitlist" },
   { table: "feedback_submissions", columns: ["screenshot_url"], owner: "civic.feedback" },
@@ -139,6 +141,7 @@ export interface ExportManifestEntry {
 
 export const EXPORT_MANIFEST: readonly ExportManifestEntry[] = [
   { table: "active_vote_keys", rows: "export" },
+  { table: "ai_usage", rows: "omit", reason: "an operational record of paid model calls, for this host's daily budget" },
   { table: "brief_responses", rows: "export" },
   { table: "community_inputs", rows: "export" },
   { table: "deliberation_drafts", rows: "export" },

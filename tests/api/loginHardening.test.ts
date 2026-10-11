@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { request } from "node:http";
-import { API_BASE } from "../fixtures/helpers.js";
+import { API_BASE, freshTestIp } from "../fixtures/helpers.js";
+import { plantHubCode } from "../fixtures/adminSession.js";
 
 /**
  * Sign-in is the tenancy boundary that matters most: a session token is a
@@ -49,6 +50,8 @@ function call(
         headers: {
           Accept: "application/json",
           Host: host,
+          // A fresh client address per request: the sign-in limits count per IP (Audit 2).
+          "X-Forwarded-For": freshTestIp(),
           "Content-Type": "application/json",
           ...(payload ? { "Content-Length": Buffer.byteLength(payload) } : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -147,7 +150,9 @@ describe("one-time codes", () => {
     // privileged account, so the real code path applies even though the hub
     // is a demo — which is exactly the case worth locking.
     const email = ATHENS_ADMIN;
-    await call("POST", "/auth/request-code", ATHENS, { email });
+    // Planted rather than requested: this address is asked for by several
+    // files, and its five codes an hour (Audit 2) would leave none to lock.
+    await plantHubCode("athens", email, "918273");
 
     let sawLockout = false;
     for (let i = 0; i < 8; i++) {

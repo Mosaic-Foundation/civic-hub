@@ -86,16 +86,33 @@ export type AuthRole = "admin" | "author" | null;
 
 const TOKEN_KEY = "civic_auth_token";
 
+// The one place the token is read and written (src/services/api.ts reads it
+// through getStoredToken). Storage can be blocked (a privacy mode, a site
+// setting, a full quota) and then every access throws; that reads as "not
+// signed in" rather than an error that leaves a page blank (audit F6).
+
 export function getStoredToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export function storeToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    // Signed in for this page only; the next visit asks again.
+  }
 }
 
 export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // Nothing stored, or nothing reachable: either way no token remains here.
+  }
 }
 
 // --- API calls ---

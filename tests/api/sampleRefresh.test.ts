@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { checkedHashFor } from "../fixtures/codeOfConduct.js";
 import { api } from "../fixtures/helpers.js";
-import { localRest, mintSession } from "../fixtures/adminSession.js";
+import { localRest, mintSession, plantHubCode } from "../fixtures/adminSession.js";
 import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
 
 const run = Date.now().toString(36);
@@ -368,11 +368,7 @@ describe("removal counts everything it deletes (R46)", () => {
     expect(before.body.real_input.reaction).toBe(1);
 
     const code = String(100000 + Math.floor(Math.random() * 899999));
-    await localRest("pending_verifications", {
-      method: "POST",
-      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify({ hub_id: DEMO, email: ADMIN, code, expires_at: new Date(Date.now() + 600_000).toISOString(), attempts: 0 }),
-    });
+    await plantHubCode(DEMO, ADMIN, code);
     const res = await call("POST", "/admin/hub/sample-content/remove", host(DEMO), { code }, admin);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     // Everything, the visitors' items and their reviews included.

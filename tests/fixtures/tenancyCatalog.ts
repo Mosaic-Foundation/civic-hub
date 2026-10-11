@@ -46,7 +46,11 @@ export const NOT_HUB_SCOPED: Readonly<Record<string, string>> = {
     "each use of an entitlement (who, which hub), across hubs; service role (src/control/) only",
   start_codes: "the start page's emailed sign-in codes, hashed; platform, not hub, data; service role (src/control/) only",
   start_sessions: "start-page sessions, by token hash; platform, not hub, data; service role (src/control/) only",
-  start_attempts: "the start page's rate-limit counters (hashed IPs and emails); platform data; service role (src/control/) only",
+  start_attempts: "RETIRED 2026-10-11 (Audit 2), unused until dropped: the start page's old rate-limit counters; platform data; service role only",
+  // Audit 2 (20261011100000, Adam 2026-10-11): one table for every rate limit
+  // on the platform, so per-IP limits hold across hubs.
+  rate_limit_hits:
+    "rate-limit counters for hub sign-in, the console, the start page and assistant calls (hashed IPs, addresses, account ids); platform data, shared by every hub on purpose; service role (src/db/rateLimit.ts) only",
   // Reference data (20260927000000, Adam 2026-09-27): the same list of US
   // jurisdictions for every hub. Deny-all RLS, no policy; the service role
   // (the console) may only SELECT; the loader writes as the owner.

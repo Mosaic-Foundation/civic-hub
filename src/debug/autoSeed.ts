@@ -8,6 +8,7 @@
 // in the in-memory store, we skip. On cold starts with a fresh instance,
 // the guard is re-entered once.
 
+import { seedAllowed } from "../config/devFlags.js";
 import {
   createProcess,
   executeAction,
@@ -44,7 +45,8 @@ import {
 import { localizeScenario } from "./localizeScenario.js";
 
 function allowSeed(): boolean {
-  return process.env.CIVIC_ALLOW_SEED === "true";
+  // Never in production, whatever the env says (src/config/devFlags.ts).
+  return seedAllowed();
 }
 
 /**

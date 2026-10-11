@@ -107,6 +107,38 @@ export async function handleMarkReviewsSeen(
 
 // --- Creator endpoints ---
 
+const REVISE_TITLE_MAX = 200;
+const REVISE_DESCRIPTION_MAX = 20_000;
+const REVISE_NOTE_MAX = 2_000;
+
+/** The fields a quick revise may change, checked; or why not, in words. */
+export function reviseFields(
+  body: Record<string, unknown>,
+): { title?: string; description?: string; note?: string } | string {
+  const out: { title?: string; description?: string; note?: string } = {};
+  if (body.title !== undefined) {
+    if (typeof body.title !== "string" || !body.title.trim()) return "A title is required.";
+    if (body.title.trim().length > REVISE_TITLE_MAX) return `The title must be ${REVISE_TITLE_MAX} characters or fewer.`;
+    out.title = body.title.trim();
+  }
+  if (body.description !== undefined) {
+    if (typeof body.description !== "string") return "The description must be text.";
+    if (body.description.length > REVISE_DESCRIPTION_MAX) {
+      return `The description must be ${REVISE_DESCRIPTION_MAX.toLocaleString("en-US")} characters or fewer.`;
+    }
+    out.description = body.description;
+  }
+  if (body.note !== undefined && body.note !== null) {
+    if (typeof body.note !== "string") return "The note must be text.";
+    if (body.note.length > REVISE_NOTE_MAX) return `The note must be ${REVISE_NOTE_MAX.toLocaleString("en-US")} characters or fewer.`;
+    out.note = body.note;
+  }
+  if (body.content !== undefined || body.config !== undefined || body.state !== undefined) {
+    return "Only the title, the description and a note can be revised here. Reopen the draft to change anything else.";
+  }
+  return out;
+}
+
 export async function handleRevise(
   req: Request,
   res: Response,
@@ -114,15 +146,21 @@ export async function handleRevise(
   try {
     const user = getAuthUser(res);
     const reviewId = req.params.reviewId as string;
-    const body = req.body as Record<string, unknown>;
+    const body = (req.body ?? {}) as Record<string, unknown>;
 
-    const review = await reviseAndResubmit(reviewId, user.id, {
-      title: body.title as string | undefined,
-      description: body.description as string | undefined,
-      content: body.content as Record<string, unknown> | undefined,
-      config: body.config as Record<string, unknown> | undefined,
-      note: body.note as string | undefined,
-    });
+    // The creator's quick revise (My submissions) changes the title and the
+    // description, with a note to the reviewer: that is all the UI sends, and
+    // all this route takes (Audit 2, the leftover from Audit 1). It used to
+    // write a creator's raw `content` and `config` to their pending process,
+    // skipping the type's validation. A revision that changes anything else
+    // goes through the type's own draft (`draft_path` from /reopen), whose
+    // resubmit runs the type's validation and builds the state.
+    const fields = reviseFields(body);
+    if (typeof fields === "string") {
+      res.status(400).json({ error: fields });
+      return;
+    }
+    const review = await reviseAndResubmit(reviewId, user.id, fields);
 
     res.json(review);
   } catch (err) {

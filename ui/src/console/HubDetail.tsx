@@ -17,6 +17,7 @@ import {
 import { jurisdictionCodeFor } from "../../../src/shared/jurisdictionNames";
 import { JurisdictionPicker, type JurisdictionChoice } from "./JurisdictionPicker";
 import { HUB_KINDS } from "../../../src/shared/hubKind";
+import { AI_LIMIT_FIELDS, type AiLimits } from "../../../src/shared/aiLimits";
 import { href } from "./route";
 import { useStepUp } from "./StepUp";
 import { ModeBadge, StatusBadge } from "./ui";
@@ -106,6 +107,7 @@ export default function HubDetailPage({ id }: { id: string }) {
         <HandoverSection key={JSON.stringify(detail.handover)} detail={detail} onSaved={reload} />
         <PluginsSection detail={detail} />
         <AdminsSection detail={detail} onSaved={reload} withStepUp={withStepUp} />
+        <AiLimitsSection key={JSON.stringify(detail.ai_limits)} detail={detail} onSaved={reload} />
         {detail.hub.mode === "demo" && !detail.hub.archived_at && <SamplesSection detail={detail} />}
         <ExportSection detail={detail} onExported={load} withStepUp={withStepUp} />
         <LifecycleSection detail={detail} onSaved={reload} withStepUp={withStepUp} />
@@ -475,6 +477,79 @@ function HandoverSection({ detail, onSaved }: { detail: HubDetail; onSaved: (res
         <div className="cx-actions">
           <button className="cx-btn cx-btn-primary" disabled={busy || Object.keys(changed).length === 0}>
             {busy ? "Saving…" : "Save handover details"}
+          </button>
+        </div>
+      )}
+    </form>
+  );
+}
+
+/**
+ * The operator's limits on this hub's paid AI calls (Audit 2, A6). Each field
+ * shows the default for the hub's mode; an empty field, or the default, means
+ * no override. The hub's own admins never see these.
+ */
+function AiLimitsSection({ detail, onSaved }: { detail: HubDetail; onSaved: (result?: unknown) => void }) {
+  const { defaults, overrides } = detail.ai_limits;
+  const initial = Object.fromEntries(
+    AI_LIMIT_FIELDS.map((f) => [f.key, overrides[f.key] === undefined ? "" : String(overrides[f.key])]),
+  );
+  const [form, setForm] = useState<Record<string, string>>(initial);
+  const [search, setSearch] = useState<"" | "on" | "off">(
+    overrides.web_search === undefined ? "" : overrides.web_search ? "on" : "off",
+  );
+  const { busy, save, note } = useSave(onSaved);
+  const patch: Partial<Record<keyof AiLimits, number | boolean | null>> = {};
+  for (const f of AI_LIMIT_FIELDS) {
+    if ((form[f.key] ?? "") === (initial[f.key] ?? "")) continue;
+    const raw = (form[f.key] ?? "").replace(/[,\s]/g, "");
+    patch[f.key] = raw === "" ? null : Number(raw);
+  }
+  const initialSearch = overrides.web_search === undefined ? "" : overrides.web_search ? "on" : "off";
+  if (search !== initialSearch) patch.web_search = search === "" ? null : search === "on";
+  const archived = !!detail.hub.archived_at;
+
+  return (
+    <form
+      className="cx-card cx-form"
+      aria-label="AI limits"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save(() => api.setAiLimits(detail.hub.id, patch));
+      }}
+    >
+      <h2 className="cx-h2">AI limits</h2>
+      <p className="cx-muted cx-small">
+        How much this hub's people may use the drafting assistant and the Code of Conduct check. Leave a field empty for
+        the default ({detail.hub.mode === "demo" ? "a demo hub's" : "a hub's"} default is shown). When the day's tokens
+        are spent, the assistant pauses until the next day and Code of Conduct checks go to an admin. Saved here, a
+        change reaches every server within a minute.
+      </p>
+      {AI_LIMIT_FIELDS.map((f) => (
+        <label className="cx-field" key={f.key}>
+          <span>{f.label}</span>
+          <input
+            inputMode="numeric"
+            value={form[f.key] ?? ""}
+            placeholder={defaults[f.key].toLocaleString("en-US")}
+            disabled={archived}
+            onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+          />
+        </label>
+      ))}
+      <label className="cx-field">
+        <span>Web search in the assistant</span>
+        <select value={search} disabled={archived} onChange={(e) => setSearch(e.target.value as "" | "on" | "off")}>
+          <option value="">Default ({defaults.web_search ? "on" : "off"})</option>
+          <option value="on">On</option>
+          <option value="off">Off</option>
+        </select>
+      </label>
+      {note}
+      {!archived && (
+        <div className="cx-actions">
+          <button className="cx-btn cx-btn-primary" disabled={busy || Object.keys(patch).length === 0}>
+            {busy ? "Saving…" : "Save AI limits"}
           </button>
         </div>
       )}

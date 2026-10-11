@@ -11,6 +11,7 @@ import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
 import { getSettingSync, hubDisplayNameSync } from "../../services/hubSettings.js";
 import { hubDocument } from "../../services/hubDocuments.js";
 import { KEYS } from "../../models/hubSettings.js";
+import { recordAiUsage } from "../../services/aiBudget.js";
 import type {
   CallAssistantInput,
   AssistantResponse,
@@ -63,27 +64,24 @@ export async function callAssistant(
 ): Promise<AssistantResponse> {
   const model = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
 
-  const systemPrompt = buildSystemPrompt(
-    input.hub_config,
-    input.category,
-    input.draft_state,
-    input.phase,
-    input.config,
-  );
+  // Web search is off on a demo hub by default, and wherever the operator
+  // turned it off (Audit 2). The prompt's search guidance is then overridden
+  // in so many words, so the model does not offer what it cannot do.
+  const webSearch = input.limits?.web_search ?? true;
+  const systemPrompt =
+    buildSystemPrompt(input.hub_config, input.category, input.draft_state, input.phase, input.config) +
+    (webSearch ? "" : NO_WEB_SEARCH);
 
   const messages: MultiTurnMessage[] = [
-    ...input.conversation_history,
+    ...recentTurns(input.conversation_history, input.limits?.history_messages),
     { role: "user", content: input.user_message },
   ];
 
   const tools = [
-    {
-      type: "web_search_20250305",
-      name: "web_search",
-      max_uses: 3,
-    },
+    ...(webSearch ? [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }] : []),
     buildRespondTool(input.config.fields, { includeDraft: true }),
   ];
+  const purpose = input.purpose ?? "assistant.message";
   // "any": the model must end on a tool call, so a turn can search first and
   // still finish with a validated reply — never plain text we have to parse.
   const call = { tools, toolChoice: { type: "any" }, responseTool: RESPONSE_TOOL, maxTokens: 4096 };
@@ -92,6 +90,7 @@ export async function callAssistant(
   // sources card in one JSON object; at 1536 the JSON was being cut off
   // and the person got the prose with no card (2026-09-02).
   const result = await claude({ model, system: systemPrompt, messages, ...call });
+  await recordAiUsage({ purpose, model, usage: result.usage, webSearches: result.serverToolUses });
   const parsed = toAssistantResponse(result, input.config.fields);
 
   // Never let "On it — let me take a look" be the end of a turn. If the model
@@ -116,6 +115,7 @@ export async function callAssistant(
       ],
       ...call,
     });
+    await recordAiUsage({ purpose, model, usage: followUp.usage, webSearches: followUp.serverToolUses });
     const nudged = toAssistantResponse(followUp, input.config.fields);
     // The backstop. Two promises in a row is the model failing to act, and
     // shipping the second one would repeat exactly the dead end this guards
@@ -128,6 +128,23 @@ export async function callAssistant(
   }
 
   return withSomethingToSay(dropRedundantSuggestions(parsed, input.draft_state));
+}
+
+/** Appended to the system prompt where web search is off. */
+const NO_WEB_SEARCH = `
+
+## Web search is not available here
+This hub has no web search. You do not have a search tool, whatever the guidance above says. Do not offer to search or say you will look something up. If a source would help, tell the person what kind of source to look for and suggest they paste what they find.`;
+
+/**
+ * The last `max` messages of the conversation, starting on a person's turn
+ * (the API wants the first message to be the user's). Undefined keeps all.
+ */
+export function recentTurns<T extends { role: "user" | "assistant" }>(history: readonly T[], max?: number): T[] {
+  if (max === undefined || history.length <= max) return [...history];
+  const tail = history.slice(history.length - max);
+  const firstUser = tail.findIndex((m) => m.role === "user");
+  return firstUser < 0 ? [] : tail.slice(firstUser);
 }
 
 /** What the person gets when the model twice promised to act and twice
@@ -260,6 +277,7 @@ export async function checkTextAgainstCoC(
     toolChoice: { type: "tool", name: RESPONSE_TOOL },
     responseTool: RESPONSE_TOOL,
   });
+  await recordAiUsage({ purpose: "assistant.review", model, usage: result.usage });
 
   // Everything this prompt returns is a CoC finding — normalize to hard.
   return toAssistantResponse(result, []).suggestions.map((s) => ({

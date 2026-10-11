@@ -130,7 +130,7 @@ export async function handleSetHubPeople(
     return;
   }
 
-  if (!(await requireStepUpCode(res, body.code))) return;
+  if (!(await requireStepUpCode(req, res, body.code))) return;
 
   const hubId = currentHubId();
   try {

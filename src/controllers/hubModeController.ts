@@ -9,6 +9,11 @@
 //   POST /admin/hub/mode/request-code   emails the caller a code
 //   POST /admin/hub/mode                { mode, code } applies the change
 //
+// LEAVING DEMO ENDS THE HUB'S DEMO SESSIONS (Audit 2): a trigger on `hubs`
+// (20261011100000) deletes every session signed in on demo's any six digits,
+// so they end the moment the mode changes, on every server. Sessions proved by
+// an emailed code, the admin's own among them, carry on.
+//
 // WHAT CANNOT BE DONE HERE AT ALL: moving a hub into demo. Demo is the one
 // mode that relaxes sign-in, and it is set when a hub is created, by the
 // control plane. A trigger on `hubs` refuses the update as well, so this
@@ -53,7 +58,7 @@ export async function handleSetHubMode(
   }
 
   // Then prove the mailbox, before anything is written.
-  if (!(await requireStepUpCode(res, body.code))) return;
+  if (!(await requireStepUpCode(req, res, body.code))) return;
 
   const mode = body.mode as string;
   const from = hubModeFor(hub);

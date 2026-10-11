@@ -10,6 +10,7 @@
 // Each test uses its own made-up client address (freshIp), so the hour's
 // rate-limit buckets start empty on every run.
 
+import { createHash } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest } from "../fixtures/adminSession.js";
@@ -345,7 +346,9 @@ describe("creating a hub", () => {
     created.push(slug);
     const handoff = decodeURIComponent(res.body.redirect.split("#handoff=")[1]);
     expect((await call("POST", "/auth/handoff", "athens.localhost", { handoff })).status).toBe(401);
-    await localRest(`sessions?token=eq.${encodeURIComponent(handoff)}`, {
+    // Stored as its SHA-256 since Audit 2.
+    const handoffHash = createHash("sha256").update(handoff).digest("hex");
+    await localRest(`sessions?token=eq.${handoffHash}`, {
       method: "PATCH",
       body: JSON.stringify({ expires_at: new Date(Date.now() - 1000).toISOString() }),
     });

@@ -5,6 +5,7 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { request } from "node:http";
+import { freshTestIp } from "./helpers.js";
 import { API_BASE } from "./helpers.js";
 import { localRest } from "./adminSession.js";
 
@@ -21,7 +22,10 @@ export interface ConsoleResponse {
 export function consoleCall(
   method: string,
   path: string,
-  opts: { body?: unknown; cookie?: string; csrf?: boolean; host?: string } = {},
+  // ip: the client address the server's rate limits see (X-Forwarded-For).
+  // Each call gets a fresh one unless a test names it, so suites never share
+  // the console's per-IP buckets (Audit 2).
+  opts: { body?: unknown; cookie?: string; csrf?: boolean; host?: string; ip?: string } = {},
 ): Promise<ConsoleResponse> {
   const url = new URL(`${API_BASE}${path}`);
   const payload = opts.body === undefined ? undefined : JSON.stringify(opts.body);
@@ -36,6 +40,7 @@ export function consoleCall(
           Accept: "application/json",
           Host: opts.host ?? CONSOLE_HOST,
           "Content-Type": "application/json",
+          "X-Forwarded-For": opts.ip ?? freshTestIp(),
           ...(opts.csrf === false ? {} : { "X-Civic-Console": "1" }),
           ...(opts.cookie ? { Cookie: opts.cookie } : {}),
           ...(payload ? { "Content-Length": Buffer.byteLength(payload) } : {}),

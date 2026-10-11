@@ -24,6 +24,12 @@ export default defineConfig({
 
   use: {
     baseURL: "http://localhost:5173",
+    // The API's sign-in limits count per client IP (Audit 2). Every browser
+    // request reaches it from this machine, so each run claims its own
+    // made-up address; locally the API takes X-Forwarded-For as given.
+    extraHTTPHeaders: {
+      "X-Forwarded-For": `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${1 + Math.floor(Math.random() * 254)}`,
+    },
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },

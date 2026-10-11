@@ -105,7 +105,7 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   await page.waitForURL(new RegExp(`^${UI.protocol}//${slug}\\.localhost`), { timeout: 30_000 });
   created.push(slug);
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe("");
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("civic_auth_token"))).toMatch(/^sess_/);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("civic_auth_token"))).toMatch(/^[A-Za-z0-9_-]{43}$/); // 256 bits, base64url (Audit 2)
   const me = await page.evaluate(async () => {
     const res = await fetch("/api/auth/me", { headers: { Authorization: `Bearer ${localStorage.getItem("civic_auth_token")}` } });
     return res.json();

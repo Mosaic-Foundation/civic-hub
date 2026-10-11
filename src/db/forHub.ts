@@ -44,16 +44,18 @@
 // `authenticated` with a minted, hub-scoped JWT (src/db/hubToken.ts), so the
 // forced RLS policies are a second, independent filter. Callers do not change.
 
+import { seedAllowed } from "../config/devFlags.js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDb, getHubTokenDb, hubTokensEnabled } from "./client.js";
 import { reportError } from "../utils/reportError.js";
 
 /**
- * Every table that carries hub_id — 32 of the 33. `hubs` is the registry,
+ * Every table that carries hub_id. `hubs` is the registry,
  * read by src/db/hubs.ts, and is deliberately unreachable from here.
  */
 export const HUB_TABLES = [
   "active_vote_keys",
+  "ai_usage",
   "brief_responses",
   "community_inputs",
   "deliberation_drafts",
@@ -396,8 +398,8 @@ const cache = new Map<string, HubDb>();
  * a production path by being imported somewhere else.
  */
 export function forHubDevReset(hubId: string): HubDb {
-  if (process.env.CIVIC_ALLOW_SEED !== "true") {
-    throw new Error("forHubDevReset: dev reset only (CIVIC_ALLOW_SEED is not true).");
+  if (!seedAllowed()) {
+    throw new Error("forHubDevReset: dev reset only (CIVIC_ALLOW_SEED is not true, or this is production).");
   }
   return hubDbFrom(getDb(), hubId);
 }

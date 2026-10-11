@@ -4,6 +4,8 @@ import type { ReferenceJurisdictionType } from "../../../src/shared/jurisdiction
 // session cookie (HttpOnly; the page never sees it) rides along. Every
 // request carries X-Civic-Console, which the server requires on writes.
 
+import type { AiLimits } from "../../../src/shared/aiLimits";
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
@@ -105,6 +107,7 @@ export interface HubDetail {
   handover: HandoverView;
   plugins: PluginState[];
   admins: string[];
+  ai_limits: { defaults: AiLimits; overrides: Partial<AiLimits>; effective: AiLimits };
 }
 
 export interface ConsoleConfig {
@@ -232,6 +235,9 @@ export const api = {
     request<HubDetail & { message?: string | null }>("PATCH", `/hubs/${encodeURIComponent(id)}`, body),
   setHandover: (id: string, values: Record<string, string>) =>
     request<HubDetail & { message?: string | null }>("PUT", `/hubs/${encodeURIComponent(id)}/handover`, { values }),
+  /** A number or boolean sets a limit; null puts it back to the default. */
+  setAiLimits: (id: string, patch: Partial<Record<keyof AiLimits, number | boolean | null>>) =>
+    request<HubDetail>("PUT", `/hubs/${encodeURIComponent(id)}/ai-limits`, patch),
   setAdmins: (id: string, admins: string[], extra: Record<string, unknown> = {}) =>
     request<HubDetail & { message?: string | null }>("PUT", `/hubs/${encodeURIComponent(id)}/admins`, { admins, ...extra }),
   archive: (id: string, extra: Record<string, unknown> = {}) =>

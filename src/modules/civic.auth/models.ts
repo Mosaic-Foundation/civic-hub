@@ -55,14 +55,24 @@ export interface User {
 /** Pending verification — an OTP code sent to an email */
 export interface PendingVerification {
   email: string;
-  code: string;
+  /** SHA-256 (hex) of the emailed code; the code itself is never stored. */
+  code_hash: string;
   created_at: string;
   expires_at: string;
 }
 
-/** Session — maps a token to a user ID */
+/**
+ * How a session was proved (Audit 2, 2026-10-11). "code": the holder typed a
+ * code emailed to them. "demo": a demo hub's any-six-digits sign-in, which
+ * proves nothing about the mailbox and never carries a privilege.
+ */
+export type SessionAssurance = "code" | "demo";
+
+/** Session — maps a token's hash to a user ID */
 export interface Session {
+  /** SHA-256 (hex) of the bearer token; the token itself is never stored. */
   token: string;
   user_id: string;
   created_at: string;
+  assurance: SessionAssurance;
 }

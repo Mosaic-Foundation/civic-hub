@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { UI_SECURITY_HEADERS } from '../src/shared/securityHeaders.ts'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -11,9 +12,9 @@ export default defineConfig({
       // served on the console hostname by vercel.json), and the start page
       // (src/start/, on the start hostname; session 4b).
       input: {
-        main: resolve(__dirname, 'index.html'),
-        console: resolve(__dirname, 'console.html'),
-        start: resolve(__dirname, 'start.html'),
+        main: resolve(import.meta.dirname, 'index.html'),
+        console: resolve(import.meta.dirname, 'console.html'),
+        start: resolve(import.meta.dirname, 'start.html'),
       },
     },
   },
@@ -32,5 +33,11 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
+  },
+  // A production build served locally gets production's headers (vercel.json
+  // has the same ones), so Playwright runs the pages under the real CSP. The
+  // dev server does not: Vite's dev client needs inline scripts.
+  preview: {
+    headers: { ...UI_SECURITY_HEADERS },
   },
 })

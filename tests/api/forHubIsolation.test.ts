@@ -12,7 +12,7 @@
 // tests/fixtures/adminSession.ts, because it writes rows.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { hubDbFrom, HubDbError, type HubDb } from "../../src/db/forHub.js";
 import { localStack } from "../fixtures/adminSession.js";
@@ -27,6 +27,7 @@ const raw = createClient(url, key, {
 const floyd: HubDb = hubDbFrom(raw, "floyd");
 const athens: HubDb = hubDbFrom(raw, "athens");
 
+const sha = (v: string) => createHash("sha256").update(v).digest("hex");
 const run = randomBytes(4).toString("hex");
 const FLOYD_ROW = `fb_isofloyd_${run}`;
 const ATHENS_ROW = `fb_isoathens_${run}`;
@@ -150,7 +151,7 @@ describe("forHub against the database — another hub's rows", () => {
   it("an upsert that would conflict on a global key throws", () => {
     expect(() =>
       athens.from("pending_verifications").upsert(
-        { email: EMAIL, code: "123456", expires_at: new Date().toISOString() },
+        { email: EMAIL, code_hash: sha("123456"), expires_at: new Date().toISOString() },
         { onConflict: "email" },
       ),
     ).toThrow(/onConflict/);
@@ -163,17 +164,17 @@ describe("forHub against the database — another hub's rows", () => {
     const expires = new Date(Date.now() + 600_000).toISOString();
     await floyd
       .from("pending_verifications")
-      .upsert({ email: EMAIL, code: "111111", expires_at: expires }, { onConflict: "hub_id,email" });
+      .upsert({ email: EMAIL, code_hash: sha("111111"), expires_at: expires }, { onConflict: "hub_id,email" });
     await athens
       .from("pending_verifications")
-      .upsert({ email: EMAIL, code: "222222", expires_at: expires }, { onConflict: "hub_id,email" });
+      .upsert({ email: EMAIL, code_hash: sha("222222"), expires_at: expires }, { onConflict: "hub_id,email" });
     await athens
       .from("pending_verifications")
-      .upsert({ email: EMAIL, code: "333333", expires_at: expires }, { onConflict: "hub_id,email" });
-    const rows = await raw.from("pending_verifications").select("hub_id, code").eq("email", EMAIL).order("hub_id");
+      .upsert({ email: EMAIL, code_hash: sha("333333"), expires_at: expires }, { onConflict: "hub_id,email" });
+    const rows = await raw.from("pending_verifications").select("hub_id, code_hash").eq("email", EMAIL).order("hub_id");
     expect(rows.data).toEqual([
-      { hub_id: "athens", code: "333333" },
-      { hub_id: "floyd", code: "111111" },
+      { hub_id: "athens", code_hash: sha("333333") },
+      { hub_id: "floyd", code_hash: sha("111111") },
     ]);
   });
 
@@ -261,7 +262,8 @@ describe("composite foreign keys: a row references only its own hub's rows", () 
   });
 
   const session = (userId: string) => ({
-    token: `sess_fk_${randomBytes(8).toString("hex")}`,
+    token: sha(randomBytes(16).toString("hex")),
+    assurance: "code",
     user_id: userId,
     expires_at: new Date(Date.now() + 60_000).toISOString(),
   });

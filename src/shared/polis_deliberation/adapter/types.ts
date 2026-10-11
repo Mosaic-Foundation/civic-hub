@@ -4,6 +4,15 @@
 export interface PolisAdapterConfig {
   baseUrl: string;
   authToken: string;
+  /**
+   * The fetch to use. The hub passes its SSRF-guarded fetch (Audit 2): a
+   * hub's admin chooses the Polis URL, so it must not reach an internal
+   * address. Defaults to the global fetch.
+   */
+  fetch?: (
+    url: string,
+    init: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal },
+  ) => Promise<Response>;
 }
 
 export interface CreateDeliberationInput {

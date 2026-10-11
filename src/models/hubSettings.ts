@@ -116,6 +116,11 @@ export const KEYS = {
 
   MODERATION_COMMENT_IDENTITY_MODE: "moderation.comment_identity_mode",
 
+  // The operator's overrides of the AI limits (Audit 2, src/shared/aiLimits.ts):
+  // a JSON object of the fields to change. Written only by the console; it is
+  // in no Settings section, so a hub's own admins cannot set it.
+  LIMITS_AI: "limits.ai",
+
   PLUGIN_VOTE_SUPPORT_THRESHOLD: "plugin.vote.support_threshold",
   // How long a new vote may stay open, in whole days, chosen by the resident
   // drafting it within the hub's range. Added 2026-09-24 (Phase 2c, Adam):

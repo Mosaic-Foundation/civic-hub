@@ -5,6 +5,7 @@ import { emitEvent } from "../events/eventEmitter.js";
 import { describeSubmissionFields } from "../shared/submissionPreview.js";
 import { setDeliberationDraftStatus } from "../modules/civic.deliberation_drafts/index.js";
 import { generateId } from "../utils/id.js";
+import { guardedFetch } from "../utils/ssrfGuard.js";
 import { callClaude, DEFAULT_MODEL } from "../utils/anthropic.js";
 import { getActionDispatcher } from "./registry.js";
 import { isPastDeadline } from "../utils/deadline.js";
@@ -41,6 +42,8 @@ export function bootDeliberation(): ProcessHandler {
   _adapter = createPolisAdapter({
     baseUrl: polisBaseUrl,
     authToken: polisAuthToken,
+    // The Polis URL is a hub setting its admin chooses: guarded (Audit 2).
+    fetch: guardedFetch,
   });
 
   const llmClient = {

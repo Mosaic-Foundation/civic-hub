@@ -4,6 +4,66 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Audit 2: sign-in and abuse — 2026-10-11
+
+From the audit handoff (A1, A5, A6, A8, and the `/revise` route left over from Audit 1). Adam's decisions in chat:
+delete existing sessions and codes (non-additive), leaving demo ends only demo sessions, the moderate sign-in
+limits, the proposed AI limits with overrides set in the console. Report: `Audit-2-Session-Report-2026-10-11.md`
+in Mosaic Foundation Management. Not pushed. **Releasing it signs everyone out once, on every hub.**
+
+- **Migration** `20261011100000_sign_in_and_abuse.sql`. Non-additive (approved): deletes every `sessions` and
+  `pending_verifications` row. Additive: `sessions.assurance` (`code` | `demo`, no default) and
+  `sessions_token_is_hash`; `pending_verifications.code_hash` (`code` must be NULL); `take_code_attempt`,
+  `take_control_code_attempt`, `take_start_code_attempt`; `rate_limit_hits` + `rate_limit_take()` (platform);
+  `ai_usage` + `ai_tokens_since()` (hub data, not exported); three triggers that end demo sessions (below).
+  `start_attempts` is retired, not dropped.
+- **Env:** `CIVIC_RATE_LIMITS=off` and `CIVIC_SSRF_ALLOW_PRIVATE=true` (dev only); with `CIVIC_ALLOW_SEED` all three
+  are ignored and reported under `NODE_ENV=production` (`src/config/devFlags.ts`). `.env.example` no longer ships
+  `CIVIC_ALLOW_SEED=true`. **Dependencies:** `nodemailer` removed; express 4.22.3, image-size 2.0.4,
+  react-router-dom 7.18.4, vite 8.3.4, `npm audit fix` (0 advisories); lockfiles from npm 12.2.0;
+  `allowScripts` now names esbuild 0.27.2.
+
+**What changed:**
+- **A1.** One attempt at a code is one conditional UPDATE (`take_*_code_attempt`): the row comes back only under
+  the limit and outside a lock, the fifth attempt sets the lock, the code is compared only after; the delete is
+  the spend. Hub, console and start page alike. Per-IP limits in Postgres for every sign-in step
+  (`src/db/rateLimit.ts`, one atomic `rate_limit_take`): hub 20 code requests per IP and 5 per address per hour,
+  40 code checks per IP (step-up shares them); console 5 and 10; start page unchanged in number, now atomic. IP
+  buckets are platform-wide. `requestVerification`, `verifyCode` and `consumePendingCode` take the caller's IP as a
+  required argument. Hub session tokens are 256 random bits, stored and looked up as SHA-256; codes are stored hashed.
+- **A5.** A session carries `assurance`. `requireAdmin`, `requireOfficial` and `requireAnnouncementPoster` refuse
+  a demo session (403 `code_sign_in_required`). `getSessionFromToken` reads a demo session as signed out once the
+  hub is not a demo, or once its address is privileged. Triggers end non-code sessions when an address is written
+  into `people.admin_emails`, `people.board_emails` or `people.announcement_authors` (and the legacy key), when an
+  account is made an official, and end demo sessions when a hub leaves demo. Sign-in reads the privilege lists
+  fresh (`isPrivilegedEmailNow`), not from the minute-old settings snapshot.
+- **A6.** `src/shared/aiLimits.ts` (defaults by mode, overrides in `limits.ai`, which only the console writes:
+  `PUT /control/hubs/:id/ai-limits`, the console's "AI limits" card). `src/services/aiBudget.ts`: per-person and
+  per-hub counts, the daily token budget from `ai_usage`. Chat and suggestions: 20/person/hour, 60/day,
+  200/hub/hour; Code of Conduct checks 30/person/hour; 1.5M tokens/hub/day (demo 300k); messages up to 4,000
+  characters; the last 12 messages sent; no web search on demo hubs. A spent budget pauses the assistant and sends
+  checks to human review, as an unavailable check does.
+- **A8.** `/debug/seed` is `POST` and `requireAdmin`. Security headers: `src/shared/securityHeaders.ts`, the same
+  strings in `vercel.json` (unit test keeps them equal), the API's own stricter set, and `vite preview` serves them
+  so Playwright runs the pages under the CSP. `ui/src/services/auth.ts` wraps storage; `api.ts` reads the token
+  through it. SSRF: `guardedFetch` connects to the address it checked (node:http `lookup`), follows redirects by
+  hand, caps bodies (5 MB; PDFs 20 MB; previews 2 MB); IPv6 forms via `net.BlockList`; used by `utils/http.ts`
+  (meeting connectors, news sync), link previews and the hub's Polis adapter.
+- **`/reviews/:id/revise`** takes only a checked title, description and note (`reviseFields`); raw `content`,
+  `config` or `state` are refused. Anything else is changed through the type's own draft.
+
+**Tests:** new API `auditSignIn`, `aiLimits`, `auditHardening`; unit `aiLimits`, `securityHeaders`,
+`reviseFields`, `ssrfGuard` (extended); E2E `securityHeaders.spec.ts`. Every request fixture sends a fresh
+`X-Forwarded-For`, and Playwright claims one address per run (TESTING.md). Results: unit 121 files, 1,407; API 44
+files, 543 passed and 7 skipped in each mode; Playwright 43 passed, 2 skipped (preview build on :5240).
+
+**Open / next:** pick a quiet time to release (everyone signs out). A determined attacker can still keep one
+address locked out (about four cycles an hour fits under any per-IP limit a meeting room needs). The "Sign in"
+link in the code email adds a link hash beside `code_hash`, checked through `take_code_attempt`; "keep me signed
+in" is a longer `expires_at` on the same row. Drop `start_attempts` later.
+
+---
+
 ## Audit 1: what production exposed today — 2026-10-11
 
 From the audit handoff (`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Civic-Hub-Audit-Handoff-2026-10-10.md`),

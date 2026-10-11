@@ -761,6 +761,35 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
       untouched.
   - The full-suite runs came before two small changes: the schema-contract column and the VotePanel account fix.
     Re-run after them: unit, `/health`, and the two vote specs.
+- **Audit 2, sign-in and abuse (2026-10-11):**
+  - **Rate limits and the suites.** Sign-in, console and assistant limits count per client IP in the database,
+    and every server in a run shares them. Locally the API takes `X-Forwarded-For` as given, so every request
+    fixture sends a fresh made-up address (`freshTestIp()` in `tests/fixtures/helpers.ts`, used by `api()`,
+    `call()` in `hostCall.ts`, `consoleCall()` and the local `call` helpers in `loginHardening`, `hubPeople`,
+    `sampleContent`), and `playwright.config.ts` claims one address per run (`extraHTTPHeaders`). A test of a limit
+    passes one address on purpose. A new file with its own request helper must do the same, or it fails 429 once
+    the loopback address has used its hour. `CIVIC_RATE_LIMITS=off` exists for local work; the suites do not need it.
+  - **Codes and sessions are hashed.** Plant a hub code with `plantHubCode(hub, email, code)` and mint sessions
+    with `mintSession` / `mintDemoSession` (`tests/fixtures/adminSession.ts`); never write `pending_verifications.code`
+    or a plain `sessions.token` (constraints refuse both).
+  - **New suites:** `tests/api/auditSignIn.test.ts` (two console-made hubs, demo and beta: hashed storage, 20
+    concurrent wrong guesses spend exactly 5 attempts, 6 concurrent right codes sign in once, the per-IP, per-address
+    and cross-hub limits, the console's and start page's attempt functions under concurrency, a demo session never
+    privileged, the three triggers, leaving demo); `tests/api/aiLimits.test.ts` (console defaults and overrides, a
+    hub admin cannot set them, the message cap, the per-person count, the spent budget; no paid call: the test
+    servers have no key, so a counted call answers 500); `tests/api/auditHardening.test.ts` (seed is an admin's
+    POST; headers on the API). Unit: `aiLimits`, `securityHeaders` (vercel.json equals the shared headers),
+    `reviseFields`, `ssrfGuard` (address forms, pinning, the size cap). E2E: `securityHeaders.spec.ts`.
+  - **The CSP in Playwright.** `vite preview` serves the security headers (`ui/vite.config.ts`); the dev server
+    cannot. Run the suite against a production build: `npm run build` in `ui/`, then `vite preview` on :5240 with
+    `/api` proxied to the API (Host kept), then `CIVIC_API_BASE=http://localhost:<api>
+    CIVIC_E2E_API_BASE=http://localhost:5240/api CIVIC_E2E_UI_ORIGIN=http://localhost:5240 npx playwright test`
+    with `baseURL` http://localhost:5240. Against the dev server `securityHeaders.spec.ts` skips and says why.
+    :5240 because the CI-env API servers name it as `CIVIC_UI_BASE_URL` for the start page's handoff.
+  - **Running both modes back to back.** `loginHardening` locks `admin+athens@example.test` for 15 minutes; clear
+    its `pending_verifications` row between the two passes.
+  - **Results:** unit 121 files, 1,407; API 44 files, 543 passed and 7 skipped in each mode; Playwright 43 passed,
+    2 skipped.
 - **Audit 1, live exposure (2026-10-11):** within one hub, what visitors and residents must not see or do.
   - New `tests/api/auditLiveExposure.test.ts` (Athens; switches Meeting summaries on for the file and back; archives
     every row it inserts so no later suite lists a bare row):
@@ -1405,7 +1434,7 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,

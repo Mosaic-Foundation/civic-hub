@@ -7,6 +7,7 @@
 //   POST /assistant/:processType/drafts/:id/message — conversation turn
 //   POST /assistant/:processType/drafts/:id/review  — Code of Conduct check
 
+import { AiLimitError, admitAiCall, currentAiLimits } from "../services/aiBudget.js";
 import { checkTextAgainstCoC } from "../modules/civic.assistant/service.js";
 import type { Suggestion } from "../modules/civic.assistant/models.js";
 import { Request, Response } from "express";
@@ -121,6 +122,13 @@ async function loadDraftForUser(
   return draft;
 }
 
+/** Answer a refused AI call with its own status and words. True when sent. */
+function sendAiLimit(res: Response, err: unknown): boolean {
+  if (!(err instanceof AiLimitError)) return false;
+  res.status(err.status).json({ error: err.message, code: err.budget ? "ai_budget_spent" : "ai_rate_limited" });
+  return true;
+}
+
 /** POST /assistant/:processType/drafts/:id/message */
 export async function handleAssistantMessage(
   req: Request,
@@ -138,6 +146,14 @@ export async function handleAssistantMessage(
     res.status(400).json({ error: "user_message is required" });
     return;
   }
+  const maxChars = currentAiLimits().max_message_chars;
+  if (user_message.length > maxChars) {
+    res.status(400).json({
+      error: `That message is too long for the assistant. Please keep it under ${maxChars.toLocaleString("en-US")} characters.`,
+      code: "message_too_long",
+    });
+    return;
+  }
   if (!phase || !VALID_PHASES.has(phase)) {
     res.status(400).json({ error: "phase must be: brainstorm, review, or free_form" });
     return;
@@ -151,6 +167,7 @@ export async function handleAssistantMessage(
       ? ((draft.category ?? "idea") as Category)
       : undefined;
 
+    const limits = await admitAiCall("chat", getAuthUser(res).id);
     const response = await callAssistant({
       phase: phase as Phase,
       category,
@@ -159,6 +176,8 @@ export async function handleAssistantMessage(
       conversation_history: draft.conversation_history,
       user_message,
       hub_config: await getHubConfig(),
+      purpose: "assistant.message",
+      limits,
     });
 
     await config.draftStore.appendConversation(draft.id, user_message, response.message);
@@ -182,6 +201,7 @@ export async function handleAssistantMessage(
     const updatedDraft = await config.draftStore.get(draft.id);
     res.json({ response, draft: updatedDraft });
   } catch (err) {
+    if (sendAiLimit(res, err)) return;
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error(`[assistant:${processType}]`, message);
     res.status(500).json({ error: message });
@@ -219,8 +239,14 @@ export async function handleAssistantReview(
       let suggestions: Suggestion[] = [];
       let unavailable = false;
       try {
+        // A person over their hourly count is told so (429, below). A hub
+        // whose budget is spent is not a reason to block a submission: the
+        // check is "unavailable" and the draft goes to an admin, as when the
+        // model itself is down.
+        await admitAiCall("review", getAuthUser(res).id);
         suggestions = await checkTextAgainstCoC(fields, await getHubConfig());
       } catch (err) {
+        if (err instanceof AiLimitError && !err.budget) throw err;
         console.error(`[assistant-review:${processType}] CoC check unavailable, failing open to human review:`, err instanceof Error ? err.message : err);
         unavailable = true;
       }
@@ -248,6 +274,7 @@ export async function handleAssistantReview(
     }
 
   } catch (err) {
+    if (sendAiLimit(res, err)) return;
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error(`[assistant-review:${processType}]`, message);
     res.status(500).json({ error: message });
@@ -283,6 +310,7 @@ export async function handleAssistantSuggest(
     const message =
       `Please review my current draft against ${config.bestPracticesTitle} and suggest ` +
       "concrete improvements as structured suggestions I can apply.";
+    const limits = await admitAiCall("chat", getAuthUser(res).id);
     const response = await callAssistant({
       phase: "review",
       category,
@@ -291,6 +319,8 @@ export async function handleAssistantSuggest(
       conversation_history: draft.conversation_history,
       user_message: message,
       hub_config: await getHubConfig(),
+      purpose: "assistant.suggest",
+      limits,
     });
     // Advice is a conversation turn, not writing assistance until applied
     // (Apply is what marks assistant_helped).
@@ -298,6 +328,7 @@ export async function handleAssistantSuggest(
     const updated = await config.draftStore.get(draft.id);
     res.json({ response, draft: updated });
   } catch (err) {
+    if (sendAiLimit(res, err)) return;
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error(`[assistant-suggest:${processType}]`, message);
     res.status(500).json({ error: message });

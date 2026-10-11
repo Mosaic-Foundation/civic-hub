@@ -5,7 +5,10 @@
 // for relative-link resolution in the parser.
 
 import type { FetchHtmlFn } from "../modules/civic.link_preview/index.js";
-import { assertPublicUrl } from "../utils/ssrfGuard.js";
+import { assertPublicUrl, guardedFetch } from "../utils/ssrfGuard.js";
+
+/** A page's head is all a preview reads; more than this is not a page worth previewing. */
+const MAX_PREVIEW_BYTES = 2 * 1024 * 1024;
 
 export const fetchHtmlForPreview: FetchHtmlFn = async (url, opts) => {
   const controller = new AbortController();
@@ -20,9 +23,12 @@ export const fetchHtmlForPreview: FetchHtmlFn = async (url, opts) => {
     // Manual redirect loop — `redirect: "manual"` lets us surface the
     // hop count and stop early if the server is bouncing us in a loop.
     while (true) {
-      const res = await fetch(current, {
+      // guardedFetch connects to the address it checked (no DNS rebinding
+      // between the check above and the connection) and caps the body.
+      const res = await guardedFetch(current, {
         method: "GET",
         redirect: "manual",
+        maxBytes: MAX_PREVIEW_BYTES,
         signal: controller.signal,
         headers: {
           "User-Agent": opts.userAgent,
