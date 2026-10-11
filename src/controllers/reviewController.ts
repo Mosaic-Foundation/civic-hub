@@ -5,7 +5,6 @@ import type { SubmissionField } from "../shared/submissionPreview.js";
 import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
 import {
   reopenForRevision,
-  submitForReview,
   approveReview,
   requestChanges,
   declineReview,
@@ -107,56 +106,6 @@ export async function handleMarkReviewsSeen(
 }
 
 // --- Creator endpoints ---
-
-export async function handleSubmitForReview(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    const body = req.body as Record<string, unknown>;
-    const process_type = body.process_type as string | undefined;
-    const title = body.title as string | undefined;
-    const description = body.description as string | undefined;
-    const content = body.content as Record<string, unknown> | undefined;
-    const config = body.config as Record<string, unknown> | undefined;
-    const state = body.state as Record<string, unknown> | undefined;
-
-    if (!process_type || !title || !description) {
-      res
-        .status(400)
-        .json({ error: "process_type, title, and description are required" });
-      return;
-    }
-
-    // Creator identity comes from the authenticated session, NEVER the request
-    // body. Taking creator_email from the body let a resident make the hub send
-    // review emails to an arbitrary address (an email-relay / phishing vector).
-    const creator_email = user.email;
-    const creator_name = user.full_name ?? user.display_name ?? user.email;
-
-    const result = await submitForReview({
-      process_type,
-      title,
-      description,
-      creator_id: user.id,
-      creator_name,
-      creator_email,
-      content,
-      config,
-      state,
-    });
-
-    res.status(201).json(result);
-  } catch (err) {
-    if (isPluginDisabledError(err)) {
-      res.status(404).json({ error: err.message });
-      return;
-    }
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
-  }
-}
 
 export async function handleRevise(
   req: Request,

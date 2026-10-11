@@ -139,7 +139,12 @@ export interface AssistantDraftStore {
     userMessage: string,
     assistantMessage: string,
   ): Promise<void>;
-  saveReviewResult(id: string, suggestions: Suggestion[]): Promise<void>;
+  /**
+   * Store a Code of Conduct result. `checkedHash` is the hash of the fields
+   * the check read (services/codeOfConduct.ts), or null for a result that is
+   * not the check's (a chat turn's hard block).
+   */
+  saveReviewResult(id: string, suggestions: Suggestion[], checkedHash: string | null): Promise<void>;
   /** Write a generated starting draft into the form fields. Marks assistant_helped. */
   applyGeneratedDraft(id: string, draft: DraftProposal): Promise<void>;
 }

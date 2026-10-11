@@ -34,6 +34,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomBytes } from "node:crypto";
 import { call } from "../fixtures/hostCall.js";
+import { pendingProposalReview } from "../fixtures/codeOfConduct.js";
 import { localRest, localStack, mintSession } from "../fixtures/adminSession.js";
 
 // ---- the digest's mail, captured in-process (section 3) --------------------
@@ -253,15 +254,7 @@ beforeAll(async () => {
   B.project = project.body.id;
   ok(await call("POST", `/projects/${B.project}/sentiment`, FLOYD, { sentiment: "support" }, tokens.floydAdmin));
 
-  const review = await call(
-    "POST",
-    "/reviews/submit",
-    FLOYD,
-    { process_type: "civic.vote", title: `Review ${MARKER_B}`, description: `About ${MARKER_B}`, state: { options: ["Yes", "No"], voting_duration_ms: 86_400_000 } },
-    tokens.floydResident,
-  );
-  ok(review, 201);
-  B.review = review.body.review?.id ?? review.body.review_id ?? review.body.id;
+  B.review = (await pendingProposalReview(FLOYD, tokens.floydResident, `Review ${MARKER_B}`)).review_id;
 
   for (const [kind, key] of [["votes", "voteDraft"], ["proposals", "proposalDraft"], ["projects", "projectDraft"], ["deliberations", "deliberationDraft"]] as const) {
     const d = await call("POST", `/${kind}/drafts`, FLOYD, {}, tokens.floydResident);

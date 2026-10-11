@@ -8,7 +8,7 @@
  *   - a signed-in request to the SAME endpoints returns real names
  *     (member experience unchanged);
  *   - unauthenticated /events (AS2) and /api/feed carry no raw resident
- *     actor ids, while a signed-in request still does.
+ *     actor ids, nor does a signed-in resident's (audit C2); an admin's does.
  *
  * NOT RUN IN CI (see TESTING.md "Running integration tests in CI" — CI
  * has no database and no server). Run locally with the dev server up:
@@ -22,6 +22,7 @@ import {
   getResidentToken,
   authHeaders,
 } from "../fixtures/helpers.js";
+import { mintSession } from "../fixtures/adminSession.js";
 
 interface CreatorFields {
   creator_name?: string;
@@ -127,13 +128,21 @@ describe("public anonymity — proposal detail + comments", () => {
     }
   });
 
-  it("signed-in /events still serves the canonical actor IRIs", async () => {
-    const { body } = await apiJson<{ orderedItems: { actor: string }[] }>(
+  it("signed-in /events hides account ids from a resident, not from an admin (audit C2)", async () => {
+    const asResident = await apiJson<{ orderedItems: { actor: string }[] }>(
       `/events?context=${proposalId}&page=true`,
       { headers: authHeaders(commenterToken) },
     );
+    expect(asResident.body.orderedItems.length).toBeGreaterThan(0);
+    expect(JSON.stringify(asResident.body)).not.toContain("/users/user_");
+    // The bare test host is the demo hub; its admin keeps the canonical IRIs.
+    const admin = await mintSession("athens", "admin+athens@example.test");
+    const asAdmin = await apiJson<{ orderedItems: { actor: string }[] }>(
+      `/events?context=${proposalId}&page=true`,
+      { headers: authHeaders(admin) },
+    );
     expect(
-      body.orderedItems.some((i) => i.actor.includes("/users/user_")),
+      asAdmin.body.orderedItems.some((i) => i.actor.includes("/users/user_")),
     ).toBe(true);
   });
 

@@ -761,6 +761,43 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
       untouched.
   - The full-suite runs came before two small changes: the schema-contract column and the VotePanel account fix.
     Re-run after them: unit, `/health`, and the two vote specs.
+- **Audit 1, live exposure (2026-10-11):** within one hub, what visitors and residents must not see or do.
+  - New `tests/api/auditLiveExposure.test.ts` (Athens; switches Meeting summaries on for the file and back; archives
+    every row it inserts so no later suite lists a bare row):
+    - **A2:** search as a visitor, a resident and an admin finds no pending brief, no approved-but-unpublished vote
+      result, no pending meeting summary, no admin notes on them, no moderation reason and no recipient email;
+      a published brief and a published summary are found by their public text (the controls).
+    - **A3:** for every registered type, a resident calling a non-resident action (Polis: start, close, poll_state,
+      regenerate_summary) gets 403 and the row is untouched; an admin gets the handler's status rule instead.
+    - **A4:** a never-checked draft is refused; `skip_modified_flag` from the client is ignored; a text change written
+      behind the flag's back is caught by the hash; a links-only edit keeps a passed check; a live project edit with
+      an unavailable check is refused.
+    - **A8:** hide/restore of an anonymous comment writes no author id (a named one still does);
+      `/events?context=`, `/activities/:id` and `/api/feed?process_id=` serve nothing for an archived or
+      pending-review process, to anyone; `POST /reviews/submit` is 404.
+    - **C2:** a visitor's and a signed-in resident's `/events`, `/activities/:id` and `/api/feed` carry no raw account
+      id; an admin's do; a resident is one token within one process.
+  - New unit files: `residentActions.test.ts` (each type's list, no lifecycle action on any, Polis status per
+    action), `codeOfConductHash.test.ts` (the hash moves with every checked field and nothing else, option labels
+    checked), `searchCardSummary.test.ts` (no admin-notes fallback), `hubSettingsUnavailable.test.ts` (a failed
+    read throws, no env roster). `hubResolver.test.ts`: 503 `hub_settings_unavailable`. `publicRedaction.test.ts`:
+    the member audience and `scrubAccountIds`. `adminRoster.test.ts` now expects no env roster inside a hub.
+    `sampleRefresh.test.ts` (unit) tests `codeOfConductVerdict`.
+  - **Fixture `tests/fixtures/codeOfConduct.ts`.** A test that fakes a passed check by writing the draft row must
+    also write `coc_checked_hash: checkedHashFor(fields)`. `pendingProposalReview()` makes "a pending review" the way
+    a resident does (it replaces `/reviews/submit` in the leak harness, `hubIsolationControllers` and
+    `pluginToggles`).
+  - **Changed on purpose:** `pluginToggles.test.ts` searched for *pending* vote results and meeting summaries, which
+    worked only because of the A2 leak; its fixtures are published now, with an extra pending one for the admin
+    digest. `publicAnonymity.test.ts`: a signed-in resident no longer sees `/users/user_…` IRIs; an admin does.
+    `sampleRefresh.test.ts` (API): a never-checked submit is refused.
+  - New E2E `codeOfConductCheck.spec.ts`: on a vote draft, Ready after the check; "Draft changed" and Submit disabled
+    after an edit (the server's decision now); Ready again after the check, and the submit returns 201.
+  - Results: unit 118 files, 1,392; API 41 files, 520 passed and 7 skipped **in each mode** (`audit1-api-3250`,
+    `audit1-api-3251` in `.claude/launch.json`), with `sampleContent.test.ts` rerun alone after clearing the known
+    admin+athens lockout; Playwright on `hub-e2e-1008-athens` + `hub-ui-5173`: 39 passed, 2 skipped, and
+    `startPage.spec.ts`'s two tests failing for the setup reason above (the start page is untouched; its API
+    suite passed in both modes).
 
   Its real reviewed process is left behind on purpose (append-only history;
   `pending_review`, out of every list). API then 438 passed, 7 skipped, both
@@ -1368,7 +1405,7 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,

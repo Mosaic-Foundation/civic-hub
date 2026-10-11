@@ -246,10 +246,7 @@ export async function hideComment(
     data: {
       moderation: {
         action: "comment_hidden",
-        target: {
-          comment_id: existing.id,
-          comment_author_id: existing.author_id,
-        },
+        target: moderationTarget(existing),
         reason: trimmedReason,
         hidden_by: admin_id,
       },
@@ -257,6 +254,17 @@ export async function hideComment(
   });
 
   return updated;
+}
+
+/**
+ * Which comment a moderation event is about. An anonymous comment's author
+ * is never named, not even in a restricted event: the log is permanent and
+ * exported, and anonymity is never pierced, even for admins.
+ */
+function moderationTarget(comment: CommunityInput): Record<string, string> {
+  return comment.is_anonymous
+    ? { comment_id: comment.id }
+    : { comment_id: comment.id, comment_author_id: comment.author_id };
 }
 
 /**
@@ -293,10 +301,7 @@ export async function restoreComment(
     data: {
       moderation: {
         action: "comment_restored",
-        target: {
-          comment_id: existing.id,
-          comment_author_id: existing.author_id,
-        },
+        target: moderationTarget(existing),
         reason: existing.moderation?.reason ?? null,
         restored_by: admin_id,
       },

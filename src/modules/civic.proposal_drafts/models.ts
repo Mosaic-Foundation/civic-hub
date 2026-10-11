@@ -27,6 +27,8 @@ export interface ProposalDraft {
   conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
   last_review_result: Suggestion[] | null;
   draft_modified_since_review: boolean;
+  /** Hash of the fields the Code of Conduct check last read (services/codeOfConduct.ts). */
+  coc_checked_hash: string | null;
   steward_approved: boolean | null;
   assistant_helped: boolean;
   links: ProposedLink[];
@@ -48,7 +50,6 @@ export interface UpdateDraftInput {
   category?: Category;
   proposal_duration_ms?: number;
   links?: ProposedLink[];
-  skip_modified_flag?: boolean;
   /** The value being written is assistant-produced text (Apply on a
    *  suggestion card) — sets assistant_helped on the draft. */
   assistant_applied?: boolean;

@@ -95,7 +95,7 @@ async function runScenario(
   });
 
   for (const action of scenario.actions ?? []) {
-    await executeAction(process.id, action);
+    await executeAction(process.id, action, "system");
   }
 
   if (scenario.inputs) {

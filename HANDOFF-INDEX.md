@@ -29,7 +29,7 @@ numbers below, or just grep the heading.
 | DB client (service role, the thing tenancy replaces) | `src/db/client.ts`; only `src/db/`, `scripts/`, `tests/` may import it (`eslint.config.js`, `civic/raw-client`) |
 | Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |
 | Local Supabase stack (ports, auth, seed) | `supabase/config.toml`, `supabase/seed.sql` |
-| Migrations (75 files, 36 tables; non-additive: `20260926005000`, and `20260927010000` which drops the audit log's hub FK; `20261010000000` nulls ballot times and reshuffles ballots, Adam approved) | `supabase/migrations/` |
+| Migrations (78 files, 36 tables; non-additive: `20260926005000`, and `20260927010000` which drops the audit log's hub FK; `20261010000000` nulls ballot times and reshuffles ballots, Adam approved; `20261011000000` rebuilds search_doc and scrubs anonymous moderation events, Adam approved) | `supabase/migrations/` |
 | Scheduled jobs | `src/jobs/registry.ts` (the one list; `vercel.json` checked against it, `npm run jobs:crontab`), runners `src/jobs/runners.ts`, per-hub loop `src/jobs/runJob.ts` + `src/services/cronHubs.ts`, routes `src/routes/jobRoutes.ts` |
 | Scheduled-job run log: what each outcome means, recording, last-run route, admin digest section | `src/jobs/describe.ts`, `src/services/jobRuns.ts` (table `job_runs`, `20260929000000`), `GET /admin/hub/jobs/runs`, `src/modules/civic.admin_digest/service.ts` |
 | Meeting-summary readiness (when a meeting may be summarized) and quality flags | `src/modules/civic.meeting_summary/readiness.ts`, `effectiveQualityFlag` in `service.ts` |
@@ -43,6 +43,7 @@ numbers below, or just grep the heading.
 | No-hub / paused pages (server and static shell) | `src/shared/deadEnd.ts`, `src/middleware/hub.ts`, `ui/src/main.tsx` |
 | Cutover runbook, dev refresh from a prod dump, pre-switch check | `RUNBOOK-cutover.md`, `scripts/dev-refresh-from-dump.sh`, `scripts/dev-refresh-reseed.ts`, `scripts/check-tenancy.ts` |
 | Leak harness, RLS catalog test | `tests/api/leakHarness.test.ts`, `leakHarnessDb.test.ts`, `rlsCatalog.test.ts`, rules in `tests/fixtures/tenancyCatalog.ts` |
+| Code of Conduct check standing (fields, hash, verdict) | `src/services/codeOfConduct.ts` |
 | Atomic DB functions | `transition_process` (`20260924080000`), `cast_ballot`, `reshuffle_ballots`, `claim_vote_key`, `ballot_by_receipt` (`20261010000000`; `cast_vote` retired), called via `src/db/atomic.ts` |
 | Hub export / import / restore (bundle format, runbook) | `src/control/hubBundle/format.ts`, `scripts/export-hub.ts`, `scripts/import-hub.ts`, `scripts/restore-hub.ts`, `scripts/lib/hubImport.ts`, `RUNBOOK-restore-hub.md` |
 | Sample content: templates, seed, removal, the row classification, the daily refresh | `src/services/sampleTemplates.ts`, `src/services/sampleSeed.ts`, `src/services/sampleContent.ts`, `src/services/sampleRefresh.ts`, `src/models/sampleContent.ts`, `scripts/seed-sample-content.ts` |
@@ -67,6 +68,11 @@ numbers below, or just grep the heading.
 - Pluggable voting methods + approval voting — 7420–7484
 
 ### Security, identity, anonymity
+- **Audit 1, live exposure (2026-10-11)**: search from public text only
+  (`_civic_public_search_text`, `20261011000000`), `ProcessHandler.residentActions` + `executeAction(..., caller)`,
+  the Code of Conduct hash (`src/services/codeOfConduct.ts`, `coc_checked_hash`), history withheld by id
+  (`isProcessHistoryServable`), settings 503 and no env roster inside a hub, `/reviews/submit` removed, account ids
+  hidden from non-admins (`redactEvent` audiences); tests `auditLiveExposure.test.ts` — top of HANDOFF (grep the heading)
 - **Ballot secrecy against the raw data (2026-10-10)**: voter-held receipts
   (`cast_ballot`, change key hash, `ui/src/services/voteReceipts.ts`), no
   ballot time (`vote_records_no_time`), `reshuffle_ballots` at close and

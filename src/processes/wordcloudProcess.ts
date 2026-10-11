@@ -79,6 +79,8 @@ const wordcloudProcess: ProcessHandler = {
   ],
 
   type: "civic.wordcloud",
+  // A resident submits words; activate, snapshot and close are an admin's.
+  residentActions: ["process.submit"],
   detailPath: (id: string) => `/wordcloud/${id}`,
 
 

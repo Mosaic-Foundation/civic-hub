@@ -16,7 +16,6 @@ export default function PeopleSection() {
 
   const [adminEmails, setAdminEmails] = useState<string[]>([]);
   const [boardEmails, setBoardEmails] = useState<string[]>([]);
-  const [adminsFromEnv, setAdminsFromEnv] = useState(false);
   const [savedSnapshot, setSavedSnapshot] = useState("");
   const [peopleCode, setPeopleCode] = useState("");
   const [peopleCodeSent, setPeopleCodeSent] = useState(false);
@@ -28,7 +27,6 @@ export default function PeopleSection() {
       .then((p) => {
         setAdminEmails(p.admin_emails);
         setBoardEmails(p.board_emails);
-        setAdminsFromEnv(p.admins_from_env);
         setSavedSnapshot(JSON.stringify({ admin_emails: p.admin_emails, board_emails: p.board_emails }));
       })
       .catch((err: Error) => {
@@ -70,7 +68,6 @@ export default function PeopleSection() {
       });
       setAdminEmails(saved.admin_emails);
       setBoardEmails(saved.board_emails);
-      setAdminsFromEnv(saved.admins_from_env);
       setSavedSnapshot(
         JSON.stringify({ admin_emails: saved.admin_emails, board_emails: saved.board_emails }),
       );
@@ -105,14 +102,6 @@ export default function PeopleSection() {
         The platform operator can also add or remove admins, so a hub that
         loses all of its own can be handed back.
       </p>
-      {adminsFromEnv && (
-        <p className="form-hint">
-          <strong>This hub has no roster of its own yet</strong>, so the
-          admins below come from the deployment's CIVIC_ADMIN_EMAILS.
-          Saving writes a roster for this hub and the deployment variable
-          stops applying to it.
-        </p>
-      )}
 
       <EmailListEditor
         label="Admins"

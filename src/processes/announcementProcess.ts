@@ -25,6 +25,8 @@ function getState(process: Process): AnnouncementProcessState {
 
 const announcementProcess: ProcessHandler = {
   type: "civic.announcement",
+  // Residents act on this type through its own routes, or not at all.
+  residentActions: [],
   detailPath: (id: string) => `/announcement/${id}`,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {

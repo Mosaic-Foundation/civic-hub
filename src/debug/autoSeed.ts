@@ -116,7 +116,7 @@ async function runScenario(scenario: SeedScenario, hubId: string): Promise<void>
   } else {
     // civic.vote / civic.proposal — generic actions + community inputs.
     for (const action of scenario.actions ?? []) {
-      await executeAction(proc.id, action);
+      await executeAction(proc.id, action, "system");
     }
     if (scenario.inputs) {
       for (const input of scenario.inputs) {

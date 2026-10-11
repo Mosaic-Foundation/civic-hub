@@ -42,11 +42,10 @@ function extractToken(req: Request): string | null {
  * paths that run for every visitor.
  *
  * THE ROSTER IS `people.admin_emails`, a hub_settings row an admin edits in
- * the admin panel. CIVIC_ADMIN_EMAILS is the BOOTSTRAP only: it answers for a
- * hub that has written no row, which is how a fresh deployment gets its first
- * administrator, and it stops having a say the moment one is written. Outside
- * a request there is no hub, so the bootstrap answers — which is what crons
- * and scripts have always read.
+ * the admin panel, set at creation and handover from the console. Inside a
+ * hub it never comes from env (services/hubSettings.ts resolve): a hub with
+ * no row has no admins. Only outside a request, with no hub at all, does
+ * CIVIC_ADMIN_EMAILS answer.
  */
 function adminEmails(): Set<string> {
   return new Set(getAdminEmailsSync());
@@ -74,9 +73,8 @@ export function isAdminEmail(email: string | undefined | null): boolean {
  *   1. users.official_type / official_title — the managed role
  *   2. hub_settings.announcement_authors    — the legacy email-keyed list,
  *      whose free-form label becomes the title and whose type is inferred.
- *      getAnnouncementAuthors() itself falls back to CIVIC_BOARD_EMAILS
- *      when no list has been saved, so that env var remains the
- *      last-resort seed exactly as before.
+ *      getAnnouncementAuthors() itself falls back to the hub's board
+ *      roster when no list has been saved.
  *   3. nothing — a resident.
  *
  * Tiers 2 and 3 are switched OFF once `officials_migrated` is set (the
@@ -283,7 +281,7 @@ export async function requireResident(
 
 /**
  * Require an authenticated user on this hub's admin roster
- * (`people.admin_emails`, with CIVIC_ADMIN_EMAILS as the bootstrap).
+ * (`people.admin_emails`; inside a hub never from env).
  * Matching is case-insensitive.
  */
 export async function requireAdmin(
@@ -303,8 +301,8 @@ export async function requireAdmin(
       // exactly why the roster endpoint refuses to empty it.
       res.status(503).json({
         error:
-          "This hub has no administrators. Add one to people.admin_emails, " +
-          "or set CIVIC_ADMIN_EMAILS on the server to bootstrap.",
+          "This hub has no administrators. The platform operator sets them " +
+          "from the console (the hub's handover panel).",
       });
       return;
     }

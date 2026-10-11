@@ -15,6 +15,11 @@ import { getProcessHandler } from "../processes/registry.js";
 import { currentHub } from "../config/hubContext.js";
 import { hubDocument } from "../services/hubDocuments.js";
 import {
+  codeOfConductFields,
+  codeOfConductHash,
+  toDraftState,
+} from "../services/codeOfConduct.js";
+import {
   callAssistant,
   getHubConfig,
   AUTOMATED_REVIEW_UNAVAILABLE_NOTICE,
@@ -45,19 +50,6 @@ async function withHubGuide(config: AssistantTypeConfig): Promise<AssistantTypeC
   return doc ? { ...config, bestPractices: doc } : config;
 }
 
-function toDraftState(draft: AssistantDraft): DraftState {
-  return {
-    title: draft.title,
-    description: draft.description,
-    sources: draft.sources,
-    considerations: draft.considerations ?? "",
-    ...(draft.seed_statements !== undefined
-      ? { seed_statements: draft.seed_statements }
-      : {}),
-    ...(draft.options !== undefined ? { options: draft.options } : {}),
-    ...(draft.method !== undefined ? { method: draft.method } : {}),
-  };
-}
 
 /**
  * The type's config narrowed to the fields that apply to THIS draft — a vote
@@ -183,7 +175,8 @@ export async function handleAssistantMessage(
     // (Adam, 2026-09-02).
     const hardBlocks = response.suggestions.filter((s) => s.severity === "hard");
     if (hardBlocks.length > 0) {
-      await config.draftStore.saveReviewResult(draft.id, hardBlocks);
+      // No hash: a chat turn is not the check, so this never counts as one.
+      await config.draftStore.saveReviewResult(draft.id, hardBlocks, null);
     }
 
     const updatedDraft = await config.draftStore.get(draft.id);
@@ -219,14 +212,10 @@ export async function handleAssistantReview(
     // search, no chat turn. Writing help lives in the assistant panel, where
     // the person asks for it. Same for creation and for edits.
     {
-      const state = toDraftState(draft);
-      const fields = [
-        { label: "Title", text: state.title ?? "" },
-        { label: "Description", text: state.description ?? "" },
-        { label: "Sources", text: state.sources ?? "" },
-        { label: "Considerations", text: state.considerations ?? "" },
-        { label: "Seed statements", text: state.seed_statements ?? "" },
-      ];
+      // The hash is of exactly the text the check reads, so a submit can
+      // tell whether this result covers the draft as it then stands.
+      const fields = codeOfConductFields(toDraftState(draft));
+      const checkedHash = codeOfConductHash(fields);
       let suggestions: Suggestion[] = [];
       let unavailable = false;
       try {
@@ -237,7 +226,11 @@ export async function handleAssistantReview(
       }
       // An unavailable check is stored as such (submitting stays allowed), so
       // a demo hub never publishes the draft as if it had passed.
-      await config.draftStore.saveReviewResult(draft.id, unavailable ? [{ ...CHECK_UNAVAILABLE_RESULT }] : suggestions);
+      await config.draftStore.saveReviewResult(
+        draft.id,
+        unavailable ? [{ ...CHECK_UNAVAILABLE_RESULT }] : suggestions,
+        checkedHash,
+      );
       const updated = await config.draftStore.get(draft.id);
       res.json({
         response: {

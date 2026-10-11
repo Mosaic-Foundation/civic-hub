@@ -22,11 +22,9 @@
 
 import { Request, Response } from "express";
 import { buildFeedProcessMeta } from "../services/feedMeta.js";
+import { isProcessHistoryServable } from "../services/processService.js";
 import { isAdminEmail, resolveCallerUser } from "../middleware/auth.js";
-import {
-  officialActorIds,
-  redactEventForPublic,
-} from "../events/publicRedaction.js";
+import { officialActorIds, redactEvent } from "../events/publicRedaction.js";
 import {
   INVALID_CURSOR,
   decodeCursor,
@@ -75,16 +73,21 @@ export async function handleGetFeed(
     const caller = await resolveCallerUser(req);
     const isAdmin = !!caller && isAdminEmail(caller.email);
 
-    const page = await readFeedPage({ limit, cursor, processId, eventType, surface, isAdmin });
+    // A lookup of one process serves nothing while its page would not:
+    // archived, pending review, or a switched-off plugin.
+    const withheld = !!processId && !(await isProcessHistoryServable(processId, { hubSurface: true }));
+    const page = withheld
+      ? { events: [], nextCursor: null }
+      : await readFeedPage({ limit, cursor, processId, eventType, surface, isAdmin });
     let events = page.events;
 
-    // Public anonymity (2026-08-31): with no valid session at all, resident
-    // actors are rewritten to per-process opaque tokens and name-shaped
-    // payload fields are scrubbed before the events leave the API. Any
-    // signed-in caller (member or admin) gets the events unchanged.
-    if (!caller) {
+    // Account ids are hidden from everyone but a hub admin; names only from
+    // the signed-out public (events/publicRedaction.ts, audit C2). The feed
+    // UI reads neither, so residents see the same cards as before.
+    if (!isAdmin) {
       const officials = await officialActorIds(events);
-      events = events.map((e) => redactEventForPublic(e, officials));
+      const audience = caller ? "member" : "public";
+      events = events.map((e) => redactEvent(e, officials, audience));
     }
 
     // Enrich the feed view with per-process card metadata, batched here

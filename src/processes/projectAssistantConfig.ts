@@ -106,7 +106,7 @@ Projects are action-oriented living pages. Focus on helping the user describe wh
     },
     appendConversation: (id, userMessage, assistantMessage) =>
       appendProjectConversation(id, userMessage, assistantMessage),
-    saveReviewResult: (id, suggestions) => saveProjectReviewResult(id, suggestions),
+    saveReviewResult: (id, suggestions, checkedHash) => saveProjectReviewResult(id, suggestions, checkedHash),
     applyGeneratedDraft: async (id, draft) => {
       await applyProjectDraftProposal(id, draft.title, draft.description, draft.sources);
     },

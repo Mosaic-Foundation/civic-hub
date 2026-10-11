@@ -12,6 +12,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
+import { checkedHashFor } from "../fixtures/codeOfConduct.js";
 import { api } from "../fixtures/helpers.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
 import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
@@ -280,13 +281,15 @@ describe("a visitor's submission", () => {
     const token = await mintSession(slug, email);
     const draft = await call("POST", "/proposals/drafts", host(slug), { category: "idea" }, token);
     expect(draft.status, JSON.stringify(draft.body)).toBe(201);
+    const fields = { title: `A visitor's idea ${run}`, description: "Put a bench by the bus stop." };
     await localRest(`proposal_drafts?id=eq.${draft.body.id}`, {
       method: "PATCH",
       body: JSON.stringify({
-        title: `A visitor's idea ${run}`,
-        description: "Put a bench by the bus stop.",
+        ...fields,
         last_review_result: coc,
         draft_modified_since_review: false,
+        // As the check would have stored it: the hash of the text it read.
+        coc_checked_hash: coc === null ? null : checkedHashFor(fields),
       }),
     });
     const res = await call("POST", `/proposals/drafts/${draft.body.id}/submit`, host(slug), {}, token);
@@ -311,7 +314,16 @@ describe("a visitor's submission", () => {
     expect(wire.every((e) => e.is_sample === true)).toBe(true);
   });
 
-  it("still waits for review on a demo hub when the check never ran or was unavailable", async () => {
+  it("is refused on a demo hub when the check never ran (audit A4)", async () => {
+    const token = await mintSession(DEMO, `visitor-e-${run}@example.test`);
+    const draft = await call("POST", "/proposals/drafts", host(DEMO), { category: "idea" }, token);
+    await call("PATCH", `/proposals/drafts/${draft.body.id}`, host(DEMO), { title: `Unchecked ${run}`, description: "x" }, token);
+    const res = await call("POST", `/proposals/drafts/${draft.body.id}/submit`, host(DEMO), {}, token);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/Run the Code of Conduct check/);
+  });
+
+  it("still waits for review on a demo hub when the check was unavailable", async () => {
     const unavailable = {
       severity: "soft",
       quoted_text: null,

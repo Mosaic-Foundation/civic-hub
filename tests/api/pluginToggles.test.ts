@@ -17,6 +17,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
+import { pendingProposalReview } from "../fixtures/codeOfConduct.js";
 import { localRest, mintSession, storedSetting } from "../fixtures/adminSession.js";
 
 const ATHENS = "athens.localhost";
@@ -368,16 +369,22 @@ let anchorVote = "";
 let anchorCloud = "";
 let athensResident = "";
 
-/** A fixture's state: what makes it count where the test looks. */
-function fixtureState(type: string): Record<string, unknown> {
-  if (type === "civic.brief") return { publication_status: "published" };
-  if (type === "civic.vote_results") return { publication_status: "pending" };
-  if (type === "civic.meeting_summary") return { approval_status: "pending" };
+/**
+ * A fixture's state: what makes it count where the test looks. Published, so
+ * search and link candidates find it while the plugin is on (search shows
+ * only published outcomes, audit A2); the admin digest's pending count reads
+ * the extra pending fixture inserted below.
+ */
+function fixtureState(type: string, pending = false): Record<string, unknown> {
+  if (type === "civic.brief" || type === "civic.vote_results") {
+    return { publication_status: pending ? "pending" : "published" };
+  }
+  if (type === "civic.meeting_summary") return { approval_status: pending ? "pending" : "published" };
   return {};
 }
 
-async function insertFixture(type: string, word: string): Promise<string> {
-  const id = `proc_plugtest_${word}`;
+async function insertFixture(type: string, word: string, pending = false): Promise<string> {
+  const id = `proc_plugtest_${pending ? "pending_" : ""}${word}`;
   await localRest("processes", {
     method: "POST",
     body: JSON.stringify({
@@ -389,7 +396,7 @@ async function insertFixture(type: string, word: string): Promise<string> {
       jurisdiction: "us-test-athens",
       status: "active",
       content: {},
-      state: fixtureState(type),
+      state: fixtureState(type, pending),
       created_by: "user:civic-admin",
     }),
   });
@@ -455,6 +462,8 @@ describe("every plugin, switched off on Athens", () => {
         const id = await insertFixture(type, word);
         fixtures.set(type, { id, word });
         await linkFixture(anchorFor(c), id);
+        // What the admin digest counts: one awaiting approval.
+        if (c.digest) await insertFixture(type, word, true);
       }
     }
     // The digest's proposals and feedback sections read their own tables.
@@ -624,23 +633,17 @@ describe("a pending review of a switched-off type", () => {
 
   beforeAll(async () => {
     athensResident ||= await mintSession("athens", `resident+plugtest${run}@example.test`);
-    const res = await call(
-      "POST",
-      "/reviews/submit",
+    ({ review_id: reviewId, process_id: processId } = await pendingProposalReview(
       ATHENS,
-      { process_type: "civic.wordcloud", title: `Pending cloud ${run}`, description: "x", state: { prompts: [{ id: "p1", text: "One word?" }] } },
       athensResident,
-    );
-    expect(res.status, JSON.stringify(res.body)).toBe(201);
-    reviewId = res.body.review.id;
-    processId = res.body.process_id;
-    expect(res.body.review.status).toBe("pending_review");
-    await setAthens({ "plugin.wordcloud.enabled": "false" });
+      `Pending proposal ${run}`,
+    ));
+    await setAthens({ "plugin.proposal.enabled": "false" });
   });
 
   afterAll(async () => {
-    await setAthens({ "plugin.wordcloud.enabled": "true" });
-    await localRest("hub_settings?hub_id=eq.athens&key=eq.plugin.wordcloud.enabled", { method: "DELETE" });
+    await setAthens({ "plugin.proposal.enabled": "true" });
+    await localRest("hub_settings?hub_id=eq.athens&key=eq.plugin.proposal.enabled", { method: "DELETE" });
   });
 
   it("is gone from the admin queue and the creator's list", async () => {
@@ -659,7 +662,7 @@ describe("a pending review of a switched-off type", () => {
   });
 
   it("comes back with the plugin, and can be approved", async () => {
-    await setAthens({ "plugin.wordcloud.enabled": "true" });
+    await setAthens({ "plugin.proposal.enabled": "true" });
     const queue = await call("GET", "/admin/reviews?status=pending_review", ATHENS, undefined, athensAdmin);
     expect(JSON.stringify(queue.body)).toContain(reviewId);
     const res = await call("POST", `/admin/reviews/${reviewId}/approve`, ATHENS, {}, athensAdmin);

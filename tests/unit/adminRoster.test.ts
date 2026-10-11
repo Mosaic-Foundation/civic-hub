@@ -8,10 +8,10 @@ import type { SettingsMap } from "../../src/db/hubSettingsStore.js";
 /**
  * ADMINS ARE DATA, NOT DEPLOYMENT CONFIGURATION.
  *
- * `people.admin_emails` is the source of truth and CIVIC_ADMIN_EMAILS is the
- * bootstrap: the answer for a hub that has written no roster yet, which is
- * how a fresh deployment gets its first administrator. The moment a hub
- * writes one, the environment variable stops having a say in that hub.
+ * `people.admin_emails` is the source of truth. Inside a hub the server's env
+ * never answers for people, not even for a hub that has written no roster
+ * (audit A8, 2026-10-11): that hub has no admins, and the console sets them.
+ * CIVIC_ADMIN_EMAILS answers only outside a request, with no hub at all.
  *
  * This matters most on a deployment serving several hubs, where one variable
  * cannot hold two answers: without the row-first rule, adding an Athens admin
@@ -70,9 +70,11 @@ describe("the admin roster is the hub's own data", () => {
     expect(admins).not.toContain(ENV_ADMIN);
   });
 
-  it("falls back to CIVIC_ADMIN_EMAILS only when the hub has no row", () => {
-    // The bootstrap. Without it a brand-new deployment has no way in.
-    expect(inHub("fresh", {}, getAdminEmailsSync)).toEqual([ENV_ADMIN]);
+  it("never falls back to CIVIC_ADMIN_EMAILS inside a hub, even with no row", () => {
+    // An env roster would make the same people admins of every hub that had
+    // not saved its own. No row means no admins: requireAdmin fails closed.
+    expect(inHub("fresh", {}, getAdminEmailsSync)).toEqual([]);
+    expect(inHub("fresh", {}, () => isAdminEmail(ENV_ADMIN))).toBe(false);
   });
 
   it("gives two hubs on one deployment two different admins", () => {
@@ -120,12 +122,10 @@ describe("the admin roster is the hub's own data", () => {
       inHub("athens", { "people.board_emails": '["council@athens.example"]' },
         getBoardEmailsSync),
     ).toEqual(["council@athens.example"]);
-    expect(inHub("fresh", {}, getBoardEmailsSync)).toEqual([
-      "bootstrap-board@example.test",
-    ]);
+    expect(inHub("fresh", {}, getBoardEmailsSync)).toEqual([]);
   });
 
-  it("answers from the bootstrap outside a request", () => {
+  it("answers from env only outside a request", () => {
     // Crons and scripts have no hub in scope and always have read the
     // environment. That behaviour is unchanged.
     expect(getAdminEmailsSync()).toEqual([ENV_ADMIN]);

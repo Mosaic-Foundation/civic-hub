@@ -39,15 +39,15 @@ async function main(hub: Hub) {
   const id = vote.id;
   console.log(`  vote ${id} (status ${vote.status})`);
 
-  await executeAction(id, { type: "process.activate", actor: "verify-script", payload: {} });
+  await executeAction(id, { type: "process.activate", actor: "verify-script", payload: {} }, "system");
 
   // 2. Three ballots.
-  await executeAction(id, { type: "process.vote", actor: "voter_a", payload: { option: "yes" } });
-  await executeAction(id, { type: "process.vote", actor: "voter_b", payload: { option: "yes" } });
-  await executeAction(id, { type: "process.vote", actor: "voter_c", payload: { option: "no" } });
+  await executeAction(id, { type: "process.vote", actor: "voter_a", payload: { option: "yes" } }, "system");
+  await executeAction(id, { type: "process.vote", actor: "voter_b", payload: { option: "yes" } }, "system");
+  await executeAction(id, { type: "process.vote", actor: "voter_c", payload: { option: "no" } }, "system");
 
   // 3. Close → the universal seam should spawn a brief (NOT a vote_results).
-  await executeAction(id, { type: "process.close", actor: "verify-script", payload: {} });
+  await executeAction(id, { type: "process.close", actor: "verify-script", payload: {} }, "system");
 
   const closed = await getProcess(id);
   ok(closed?.status === "closed", `vote is closed (got "${closed?.status}")`);

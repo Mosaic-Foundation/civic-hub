@@ -48,13 +48,23 @@ export function invalidateHubSettings(hubId?: string): void {
   }
 }
 
+/** A hub's settings could not be read. The hub answers 503 until they can. */
+export class HubSettingsUnavailableError extends Error {
+  constructor(hubId: string, cause: string) {
+    super(`Settings for hub "${hubId}" could not be read: ${cause}`);
+    this.name = "HubSettingsUnavailableError";
+  }
+}
+
 /**
  * Every setting for one hub.
  *
- * Returns an empty map when the table cannot be read, rather than throwing.
- * Settings are configuration with fallbacks behind them: a hub that briefly
- * cannot read them should serve its env-var defaults, not a 500. The failure
- * is logged, and /health reports on the database.
+ * Throws HubSettingsUnavailableError when the table cannot be read. It used
+ * to return an empty map, and every key then fell back to the server's env:
+ * the hub's admin roster became CIVIC_ADMIN_EMAILS for that request. A hub
+ * that cannot read its settings does not know who its people are, so it
+ * says it is unavailable (the hub resolver's 503) rather than guess. Nothing
+ * is cached on failure, so the next request tries again.
  */
 export async function fetchHubSettings(hubId: string): Promise<SettingsMap> {
   const cached = cache.get(hubId);
@@ -70,8 +80,9 @@ export async function fetchHubSettings(hubId: string): Promise<SettingsMap> {
       .select<{ key: string; value: string }>("key, value")
       .not("key", "in", DOCUMENT_KEY_LIST);
   } catch (err) {
-    console.error(`[hub_settings] load for "${hubId}" failed: ${(err as Error).message}`);
-    return {};
+    const message = (err as Error).message;
+    console.error(`[hub_settings] load for "${hubId}" failed: ${message}`);
+    throw new HubSettingsUnavailableError(hubId, message);
   }
 
   const map: Record<string, string> = {};

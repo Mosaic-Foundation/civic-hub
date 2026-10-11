@@ -116,7 +116,7 @@ A conversation maps community opinion — it is an instrument, not an argument. 
     },
     appendConversation: (id, userMessage, assistantMessage) =>
       appendDeliberationConversation(id, userMessage, assistantMessage),
-    saveReviewResult: (id, suggestions) => saveDeliberationReviewResult(id, suggestions),
+    saveReviewResult: (id, suggestions, checkedHash) => saveDeliberationReviewResult(id, suggestions, checkedHash),
     applyGeneratedDraft: async (id, draft) => {
       await applyDeliberationDraftProposal(
         id,

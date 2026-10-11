@@ -599,7 +599,7 @@ export function getDraft(id: string): Promise<ProposalDraft> {
 
 export function updateDraft(
   id: string,
-  patch: Partial<Pick<ProposalDraft, "title" | "description" | "sources" | "considerations" | "category" | "proposal_duration_ms" | "links">> & { skip_modified_flag?: boolean; assistant_applied?: boolean },
+  patch: Partial<Pick<ProposalDraft, "title" | "description" | "sources" | "considerations" | "category" | "proposal_duration_ms" | "links">> & { assistant_applied?: boolean },
 ): Promise<ProposalDraft> {
   return request("PATCH", `/proposals/drafts/${id}`, patch);
 }
@@ -709,7 +709,7 @@ export function getVoteDraft(id: string): Promise<VoteDraft> {
 
 export function updateVoteDraft(
   id: string,
-  patch: Partial<Pick<VoteDraft, "title" | "description" | "sources" | "voting_duration_ms" | "method" | "custom_options" | "links">> & { skip_modified_flag?: boolean; assistant_applied?: boolean },
+  patch: Partial<Pick<VoteDraft, "title" | "description" | "sources" | "voting_duration_ms" | "method" | "custom_options" | "links">> & { assistant_applied?: boolean },
 ): Promise<VoteDraft> {
   return request("PATCH", `/votes/drafts/${id}`, patch);
 }
@@ -848,7 +848,7 @@ export function getProjectDraft(id: string): Promise<ProjectDraft> {
 
 export function updateProjectDraft(
   id: string,
-  patch: Partial<Pick<ProjectDraft, "title" | "description" | "sources" | "banner_image_url" | "banner_image_alt" | "links">> & { skip_modified_flag?: boolean; assistant_applied?: boolean },
+  patch: Partial<Pick<ProjectDraft, "title" | "description" | "sources" | "banner_image_url" | "banner_image_alt" | "links">> & { assistant_applied?: boolean },
 ): Promise<ProjectDraft> {
   return request("PATCH", `/projects/drafts/${id}`, patch);
 }
@@ -1897,7 +1897,6 @@ export interface HubPeople {
   admin_emails: string[];
   board_emails: string[];
   /** The roster is still the deployment's CIVIC_ADMIN_EMAILS bootstrap. */
-  admins_from_env: boolean;
   /** After a save that added admins: who got the invite email, in words. */
   invite_message?: string | null;
 }
@@ -2378,7 +2377,7 @@ export function getDeliberationDraft(id: string): Promise<DeliberationDraft> {
 
 export function updateDeliberationDraft(
   id: string,
-  patch: Partial<Pick<DeliberationDraft, "title" | "description" | "sources" | "seed_statements" | "duration_ms" | "participation_threshold" | "links">> & { skip_modified_flag?: boolean; assistant_applied?: boolean },
+  patch: Partial<Pick<DeliberationDraft, "title" | "description" | "sources" | "seed_statements" | "duration_ms" | "participation_threshold" | "links">> & { assistant_applied?: boolean },
 ): Promise<DeliberationDraft> {
   return request("PATCH", `/deliberations/drafts/${id}`, patch);
 }
@@ -2635,18 +2634,6 @@ export interface ReviewDetail {
   detail_path?: string | null;
 }
 
-export function submitForReview(input: {
-  process_type: string;
-  title: string;
-  description: string;
-  creator_name: string;
-  creator_email: string;
-  content?: Record<string, unknown>;
-  config?: Record<string, unknown>;
-  state?: Record<string, unknown>;
-}): Promise<{ review: ProcessReviewSummary; process_id: string }> {
-  return request("POST", "/reviews/submit", input);
-}
 
 export function getMyReviews(): Promise<ProcessReviewSummary[]> {
   return request("GET", "/reviews/mine");

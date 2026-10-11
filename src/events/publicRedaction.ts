@@ -1,26 +1,35 @@
-// Public-wire redaction — resident anonymity for unauthenticated callers
-// of GET /events (AS2), GET /activities/:id, and GET /api/feed.
+// Wire redaction — account ids hidden from everyone but hub admins, names
+// hidden from signed-out visitors. Serves GET /events (AS2),
+// GET /activities/:id and GET /api/feed.
 //
-// PUBLIC ANONYMITY (2026-08-31). The stored event log is untouched (it is
-// the append-only source of truth); this module redacts AT SERVE TIME,
-// and only for audience 'public' (no valid session token). Authenticated
-// callers — members and admins — receive exactly what they received
-// before.
+// The stored event log is untouched (it is the append-only source of
+// truth); this module redacts AT SERVE TIME, by audience:
+//   - admin   : the events as stored.
+//   - member  : a signed-in non-admin. Account ids are replaced (below);
+//               names stay, because something said publicly is public
+//               within the hub (Adam, audit C2, 2026-10-11). Before this, any
+//               signed-in resident could read raw user ids here and link a
+//               person's named comments to the rest of their activity.
+//   - public  : no session. Account ids replaced AND name-shaped payload
+//               fields scrubbed (public anonymity, 2026-08-31).
+// Something said anonymously stays anonymous for every audience: an
+// anonymous comment's event carries actor "anonymous" and no author id.
 //
 // Two leaks this closes:
-//   1. THE ACTOR. Events carry the raw hub user id, and the AS2
-//      serializer turned it into a stable global IRI
-//      (`{ui}/users/<raw-id>`). Both are per-user tracking handles the
-//      fingerprint guardrail forbids: they re-link one person's
-//      contributions across every process on the site. Resident actors
-//      are replaced with a PER-PROCESS opaque token —
+//   1. ACCOUNT IDS. Events carry the raw hub user id as the actor, and the
+//      AS2 serializer turned it into a stable global IRI
+//      (`{ui}/users/<raw-id>`); payloads carry it too (`submitted_by`,
+//      `created_by`, `author_id`, ...). Each is a per-user tracking handle
+//      the fingerprint guardrail forbids: it re-links one person's
+//      contributions across every process. Resident ids, in the actor and
+//      anywhere in the payload, are replaced with a PER-PROCESS opaque token —
 //      HMAC-SHA256(CIVIC_ANON_SECRET, process_id : user_id), truncated —
 //      deterministic within a process (a consumer can still see that two
 //      activities in one process share an author) but unlinkable across
 //      processes. Officials, system actors, and DIDs pass through.
-//   2. NAME-SHAPED PAYLOAD FIELDS. `hub:payload` / feed `data` carry the
-//      internal payload verbatim, which includes post-time name
-//      snapshots (announcements stamp author_display_name). Non-official
+//   2. NAME-SHAPED PAYLOAD FIELDS (public only). `hub:payload` / feed
+//      `data` carry the internal payload verbatim, which includes post-time
+//      name snapshots (announcements stamp author_display_name). Non-official
 //      snapshots are replaced with the "Admin" role label (only
 //      admins/officials can author them, so a non-official author IS an
 //      admin); generic name keys are dropped. `responder_name` (Civic
@@ -133,18 +142,54 @@ export function scrubPayloadForPublic(value: unknown, depth = 0): unknown {
   return out;
 }
 
+/** Who is reading: decides what is redacted (see the header). */
+export type WireAudience = "admin" | "member" | "public";
+
+/** A hub account id as stored: `user_<hex>`, or the legacy `user:<id>`. */
+const ACCOUNT_ID = /^(?:user:[A-Za-z0-9_-]+|user_[A-Za-z0-9]+)$/;
+
 /**
- * Redact one internal event for a public caller of GET /api/feed:
- * resident actor → per-process opaque token; payload scrubbed. The
- * event's identity, type, timestamps, and process linkage are untouched.
+ * Replace every account id among a payload's string values with the
+ * per-process token, wherever it sits and whatever its key is called, so a
+ * new payload field cannot reintroduce the leak. Officials keep theirs.
  */
-export function redactEventForPublic(
+export function scrubAccountIds(
+  value: unknown,
+  processId: string | null | undefined,
+  officials: Set<string>,
+  depth = 0,
+): unknown {
+  if (typeof value === "string") {
+    return ACCOUNT_ID.test(value) && !officials.has(participantUserId(value))
+      ? anonymousActorToken(value, processId)
+      : value;
+  }
+  if (depth > 6 || !value || typeof value !== "object") return value;
+  if (Array.isArray(value)) {
+    return value.map((entry) => scrubAccountIds(entry, processId, officials, depth + 1));
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    out[key] = scrubAccountIds(entry, processId, officials, depth + 1);
+  }
+  return out;
+}
+
+/**
+ * Redact one internal event for a non-admin reader: resident actor and
+ * payload account ids → per-process opaque token; for the public, name
+ * fields scrubbed too. The event's identity, type, timestamps, and process
+ * linkage are untouched.
+ */
+export function redactEvent(
   event: CivicEvent,
   officials: Set<string>,
+  audience: Exclude<WireAudience, "admin">,
 ): CivicEvent {
+  const named = audience === "public" ? scrubPayloadForPublic(event.data ?? {}) : (event.data ?? {});
   const out: CivicEvent = {
     ...event,
-    data: scrubPayloadForPublic(event.data ?? {}) as CivicEvent["data"],
+    data: scrubAccountIds(named, event.process_id, officials) as CivicEvent["data"],
   };
   if (
     isParticipantActor(event.actor) &&
@@ -155,22 +200,31 @@ export function redactEventForPublic(
   return out;
 }
 
+/** redactEvent for a signed-out caller of GET /api/feed. */
+export function redactEventForPublic(
+  event: CivicEvent,
+  officials: Set<string>,
+): CivicEvent {
+  return redactEvent(event, officials, "public");
+}
+
 /**
- * Serialize one event for a PUBLIC caller of the AS2 surface. The
- * default toActivity() output (members, admins, the emission-path
- * validator, the golden tests) is byte-identical to before — this
- * wrapper only exists on the public read path.
+ * Serialize one event for a non-admin caller of the AS2 surface. The
+ * default toActivity() output (admins, the emission-path validator, the
+ * golden tests) is byte-identical to before — this wrapper only exists on
+ * the redacted read paths.
  *
- * The public actor IRI for a resident is process-scoped:
+ * The actor IRI for a resident is process-scoped:
  *   {ui}/process/<pid>/participants/<opaque token>
  * so it cannot re-link the person across processes; with no process to
  * scope to it is the shared {ui}/users/anonymous.
  */
-export function toPublicActivity(
+export function toRedactedActivity(
   event: CivicEvent,
   officials: Set<string>,
+  audience: Exclude<WireAudience, "admin">,
 ): Record<string, unknown> {
-  const redacted = redactEventForPublic(event, officials);
+  const redacted = redactEvent(event, officials, audience);
   if (redacted.actor === event.actor) {
     // Official / system / DID actor — default serialization of the
     // scrubbed event.
@@ -180,4 +234,12 @@ export function toPublicActivity(
     ? `${uiBaseUrl()}/process/${event.process_id}/participants/${redacted.actor}`
     : `${uiBaseUrl()}/users/anonymous`;
   return toActivity(redacted, { actorIriOverride: actorIri });
+}
+
+/** toRedactedActivity for a signed-out caller. */
+export function toPublicActivity(
+  event: CivicEvent,
+  officials: Set<string>,
+): Record<string, unknown> {
+  return toRedactedActivity(event, officials, "public");
 }

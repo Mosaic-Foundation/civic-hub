@@ -70,7 +70,7 @@ async function run(hub: Hub) {
     createdBy: "user:p2verify",
     state: { options: ["yes", "no", "unsure"] },
   });
-  await executeAction(voteId, { type: "process.activate", actor: "user:p2verify", payload: {} });
+  await executeAction(voteId, { type: "process.activate", actor: "user:p2verify", payload: {} }, "system");
   // Backdate the voting window so the next read should auto-close it.
   const vp = await getProcess(voteId);
   (vp!.state as Record<string, unknown>).voting_closes_at = PAST;
@@ -97,7 +97,7 @@ async function run(hub: Hub) {
     createdBy: "user:p2verify",
     state: { options: ["yes", "no"] },
   });
-  await executeAction(badVoteId, { type: "process.activate", actor: "user:p2verify", payload: {} });
+  await executeAction(badVoteId, { type: "process.activate", actor: "user:p2verify", payload: {} }, "system");
   const bvp = await getProcess(badVoteId);
   (bvp!.state as Record<string, unknown>).voting_closes_at = "not-a-date";
   await saveProcessState(bvp!);

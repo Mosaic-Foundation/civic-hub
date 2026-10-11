@@ -37,13 +37,11 @@ export interface BaseDraft {
 }
 
 interface PatchOptions {
-  skipModifiedFlag?: boolean;
   assistantApplied?: boolean;
 }
 
 interface EditBuffer {
   fields: Record<string, unknown>;
-  skip: boolean;
   assistantApplied: boolean;
 }
 
@@ -186,7 +184,7 @@ export function useDraftFlow<D extends BaseDraft>({
 
   const draftRef = useRef<D | null>(null);
   const draftPromise = useRef<Promise<D> | null>(null);
-  const buffer = useRef<EditBuffer>({ fields: {}, skip: true, assistantApplied: false });
+  const buffer = useRef<EditBuffer>({ fields: {}, assistantApplied: false });
   const assistantSeeded = useRef(false);
 
   const commitDraft = useCallback((d: D) => {
@@ -238,7 +236,7 @@ export function useDraftFlow<D extends BaseDraft>({
   function takeBuffer(): EditBuffer | null {
     const buf = buffer.current;
     if (Object.keys(buf.fields).length === 0) return null;
-    buffer.current = { fields: {}, skip: true, assistantApplied: false };
+    buffer.current = { fields: {}, assistantApplied: false };
     setPendingFields({});
     return buf;
   }
@@ -246,7 +244,6 @@ export function useDraftFlow<D extends BaseDraft>({
   function bufferPayload(buf: EditBuffer): Record<string, unknown> {
     return {
       ...buf.fields,
-      ...(buf.skip ? { skip_modified_flag: true } : {}),
       ...(buf.assistantApplied ? { assistant_applied: true } : {}),
     };
   }
@@ -282,7 +279,6 @@ export function useDraftFlow<D extends BaseDraft>({
     async (fields: Record<string, unknown>, opts?: PatchOptions): Promise<void> => {
       const buf = buffer.current;
       Object.assign(buf.fields, fields);
-      buf.skip = buf.skip && opts?.skipModifiedFlag === true;
       buf.assistantApplied = buf.assistantApplied || opts?.assistantApplied === true;
       setPendingFields({ ...buf.fields });
 
@@ -517,7 +513,7 @@ export function useDraftFlow<D extends BaseDraft>({
 
       await queuePatch(
         { [suggestion.field]: newValue },
-        { skipModifiedFlag: true, assistantApplied: true },
+        { assistantApplied: true },
       );
 
       // The forms' inputs are uncontrolled (defaultValue), so the applied

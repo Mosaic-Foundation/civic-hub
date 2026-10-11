@@ -37,6 +37,8 @@ vi.mock("../../src/db/forHub.js", async (orig) => {
   for (const m of ["select", "eq"]) builder[m] = () => builder;
   builder.maybeSingle = async () => null;
   builder.upsert = async () => [];
+  // hub_settings: no stored rows (a failed read is now an error, not {}).
+  builder.not = async () => [];
   return { ...real, forHub: () => ({ from: () => builder }) };
 });
 

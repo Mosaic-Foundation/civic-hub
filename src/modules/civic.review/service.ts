@@ -59,22 +59,6 @@ function isDemoVisitor(creatorEmail: string): boolean {
   return !getAdminEmails().includes(creatorEmail.trim().toLowerCase());
 }
 
-/**
- * Did the automated Code of Conduct check pass on a draft as it stands? It
- * must have run (not never, and not "unavailable", which it stores as such),
- * found no hard block, and the draft must not have changed since.
- */
-export function draftPassedCodeOfConduct(draft: {
-  last_review_result: ReadonlyArray<{ severity: string; check_unavailable?: boolean }> | null;
-  draft_modified_since_review: boolean;
-}): boolean {
-  return (
-    Array.isArray(draft.last_review_result) &&
-    !draft.last_review_result.some((s) => s.severity === "hard" || s.check_unavailable === true) &&
-    !draft.draft_modified_since_review
-  );
-}
-
 /** The actor recorded when a demo hub publishes a visitor's submission itself. */
 export const DEMO_PUBLISH_ACTOR = "system:demo-publish";
 
@@ -460,7 +444,7 @@ export async function approveReview(
       type: activation.action.type,
       actor: review.creator_id,
       payload: {},
-    });
+    }, "system");
   }
 
   } catch (workErr) {
@@ -495,7 +479,7 @@ export async function approveReview(
         type: activation.action.type,
         actor: review.creator_id,
         payload: {},
-      });
+      }, "system");
     } catch (startErr) {
       activationStalled = true;
       const reason =

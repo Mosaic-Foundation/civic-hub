@@ -28,6 +28,8 @@ function getState(process: Process): VoteResultsProcessState {
 
 const voteResultsProcess: ProcessHandler = {
   type: "civic.vote_results",
+  // Residents act on this type through its own routes, or not at all.
+  residentActions: [],
   detailPath: (id: string) => `/vote-results/${id}`,
   // Social previews carry the approved headline, not the (empty) row
   // description. Unpublished records are not shareable at all.

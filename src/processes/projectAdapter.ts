@@ -43,6 +43,8 @@ function db() {
 
 const projectAdapter: ProcessHandler = {
   type: "civic.project",
+  // Residents act on this type through its own routes, or not at all.
+  residentActions: [],
   detailPath: (id: string) => `/project/${id}`,
   draftPath: (draftId: string) => `/projects/new?draft=${encodeURIComponent(draftId)}`,
   reopenDraft: (draftId: string) => setProjectDraftStatus(draftId, "drafting"),
@@ -91,7 +93,6 @@ const projectAdapter: ProcessHandler = {
       banner_image_url: project?.banner_image_url ?? (content.banner_image_url as string | null) ?? null,
       banner_image_alt: project?.banner_image_alt ?? (content.banner_image_alt as string | null) ?? null,
       links: validateLinkSet(process.id, links),
-      skip_modified_flag: true,
     });
     return draft.id;
   },
@@ -105,12 +106,11 @@ const projectAdapter: ProcessHandler = {
       banner_image_url: project?.banner_image_url ?? (content.banner_image_url as string | null) ?? null,
       banner_image_alt: project?.banner_image_alt ?? (content.banner_image_alt as string | null) ?? null,
       links: validateLinkSet(process.id, links),
-      skip_modified_flag: true,
     });
     // Fresh start: no stale check result, and the check must run again.
     await db()
       .from("project_drafts")
-      .update({ last_review_result: null, draft_modified_since_review: true })
+      .update({ last_review_result: null, draft_modified_since_review: true, coc_checked_hash: null })
       .eq("id", draftId);
   },
   listSupportedBy: async (userId) => {

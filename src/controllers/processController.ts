@@ -7,6 +7,7 @@ import {
   createProcess,
   getProcess,
   executeAction,
+  ActionNotAllowedError,
   listProcessSummaries,
   getProcessState,
 } from "../services/processService.js";
@@ -84,21 +85,6 @@ export async function handleGetProcess(
   }
 }
 
-/**
- * Lifecycle-control actions — these move a process through its state
- * machine (or publish from it) rather than participate in it. Open to
- * admins only: without this gate any resident could close or activate
- * anyone's vote, or process.propose their own pending_review vote to
- * bypass admin review. Participation actions (process.vote, .support,
- * .unsupport, .submit, proposal.support) stay resident-level.
- */
-const ADMIN_ONLY_ACTIONS = new Set([
-  "process.activate",
-  "process.close",
-  "process.propose",
-  "process.snapshot",
-]);
-
 export async function handleProcessAction(
   req: Request,
   res: Response,
@@ -116,11 +102,6 @@ export async function handleProcessAction(
     const user = getAuthUser(res);
     const isAdmin = isAdminEmail(user.email);
 
-    if (ADMIN_ONLY_ACTIONS.has(type) && !isAdmin) {
-      res.status(403).json({ error: "Admin access required for this action" });
-      return;
-    }
-
     // Non-public processes (pending_review, archived) accept no actions
     // from non-admins. 404 (not 403) so the id's existence isn't leaked.
     const target = await getProcess(id);
@@ -133,11 +114,15 @@ export async function handleProcessAction(
       return;
     }
 
-    const { process, result } = await executeAction(id, {
-      type,
-      actor: user.id,
-      payload: payload ?? {},
-    });
+    // Which actions a resident may call is the handler's allowlist
+    // (residentActions), checked in executeAction; lifecycle control
+    // (activate, close, propose, snapshot, a conversation's start) is not on
+    // any of them.
+    const { process, result } = await executeAction(
+      id,
+      { type, actor: user.id, payload: payload ?? {} },
+      isAdmin ? "admin" : "resident",
+    );
 
     res.json({ process, result });
   } catch (err) {
@@ -145,7 +130,9 @@ export async function handleProcessAction(
 
     // A refused vote carries a code the voting panel keys its explanation on
     // (no receipt on this browser, a receipt that is not theirs).
-    if (err instanceof VoteRefusedError) {
+    if (err instanceof ActionNotAllowedError) {
+      res.status(403).json({ error: "Admin access required for this action" });
+    } else if (err instanceof VoteRefusedError) {
       res.status(400).json({ error: message, code: err.code });
     } else if (message.includes("not found")) {
       res.status(404).json({ error: message });

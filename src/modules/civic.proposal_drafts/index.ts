@@ -30,6 +30,7 @@ interface DraftRow {
   conversation_history: unknown;
   last_review_result: unknown;
   draft_modified_since_review: boolean;
+  coc_checked_hash: string | null;
   steward_approved: boolean | null;
   assistant_helped: boolean;
   status: string;
@@ -56,6 +57,7 @@ function rowToDraft(row: DraftRow): ProposalDraft {
       ? (row.last_review_result as Suggestion[])
       : null,
     draft_modified_since_review: row.draft_modified_since_review,
+    coc_checked_hash: row.coc_checked_hash ?? null,
     steward_approved: row.steward_approved,
     assistant_helped: row.assistant_helped,
     status: row.status as DraftStatus,
@@ -111,6 +113,9 @@ export async function listUserDrafts(
   return rows.map((r) => rowToDraft(r));
 }
 
+/** The columns whose text the Code of Conduct check reads (via the draft store). */
+const CHECKED_FIELDS = ["title", "description", "sources", "considerations"];
+
 export async function updateDraft(
   id: string,
   patch: UpdateDraftInput,
@@ -132,7 +137,11 @@ export async function updateDraft(
     updates.assistant_helped = true;
   }
 
-  if (!patch.skip_modified_flag) {
+  // A change to a field the Code of Conduct check reads means it has to run
+  // again; links, images and settings do not. Decided here, never by the
+  // client. This flag is what the form shows; the submit gate compares the
+  // check's hash (services/codeOfConduct.ts) either way.
+  if (CHECKED_FIELDS.some((k) => k in updates)) {
     updates.draft_modified_since_review = true;
   }
 
@@ -174,12 +183,14 @@ export async function appendConversation(
 export async function saveReviewResult(
   id: string,
   suggestions: Suggestion[],
+  checkedHash: string | null,
 ): Promise<void> {
   await db()
     .from("proposal_drafts")
     .update({
       last_review_result: suggestions,
       draft_modified_since_review: false,
+      coc_checked_hash: checkedHash,
     })
     .eq("id", id);
 }

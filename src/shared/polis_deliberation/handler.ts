@@ -8,8 +8,19 @@ import type {
 
 export const PROCESS_TYPE = "civic.polis_deliberation";
 
+/** The status each action may run from. Approval leaves a conversation at
+ *  "draft" until it starts; regenerating is for a closed one whose summary
+ *  failed or needs another pass. */
+const ACTION_STATUSES: Readonly<Record<string, readonly string[]>> = {
+  start: ["draft"],
+  close: ["active"],
+  poll_state: ["active"],
+  regenerate_summary: ["closed"],
+};
+
 export interface ProcessHandlerShape {
   type: string;
+  residentActions: readonly string[];
   initializeState(input: Record<string, unknown>): Record<string, unknown>;
   handleAction(
     process: { id: string; status: string; state: Record<string, unknown>; spaceSlug?: string; jurisdiction?: string; createdBy?: string },
@@ -48,6 +59,9 @@ export function createPolisDeliberationHandler(
 
   const handler: ProcessHandlerShape = {
     type: PROCESS_TYPE,
+    // Residents take part in Polis itself; every action here is an admin's
+    // or the hub's (approval starts it, the deadline closes it).
+    residentActions: [],
 
     initializeState(input: Record<string, unknown>): Record<string, unknown> {
       const cfg = input as unknown as PolisDeliberationInput;
@@ -72,6 +86,17 @@ export function createPolisDeliberationHandler(
 
     async handleAction(process, action) {
       const state = process.state as unknown as PolisDeliberationState;
+
+      // Each action runs from one status only. Without this, a second
+      // `start` opens a new Polis conversation and orphans the first one's
+      // statements, and `close` or `regenerate_summary` on the wrong status
+      // runs a paid summary for nothing.
+      const allowedFrom = ACTION_STATUSES[action.type];
+      if (allowedFrom && !allowedFrom.includes(process.status)) {
+        throw new Error(
+          `Cannot ${action.type} a conversation that is ${process.status}`,
+        );
+      }
 
       switch (action.type) {
         case "start": {

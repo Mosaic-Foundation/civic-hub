@@ -50,7 +50,7 @@ async function main(hub: Hub): Promise<void> {
     type: "process.activate",
     actor: "user:civic-admin",
     payload: {},
-  });
+  }, "system");
 
   for (const [actor, option] of [
     ["user:dev-resident-1", "Yes"],
@@ -61,7 +61,7 @@ async function main(hub: Hub): Promise<void> {
       type: "process.vote",
       actor,
       payload: { option },
-    });
+    }, "system");
   }
 
   await submitInput(
@@ -75,7 +75,7 @@ async function main(hub: Hub): Promise<void> {
     type: "process.close",
     actor: "system:auto-close",
     payload: {},
-  });
+  }, "system");
 
   const after = await getEventCount();
   console.log(

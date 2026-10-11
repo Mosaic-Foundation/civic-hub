@@ -35,6 +35,8 @@ export interface DeliberationDraft {
   conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
   last_review_result: Suggestion[] | null;
   draft_modified_since_review: boolean;
+  /** Hash of the fields the Code of Conduct check last read (services/codeOfConduct.ts). */
+  coc_checked_hash: string | null;
   assistant_helped: boolean;
   status: DeliberationDraftStatus;
   created_at: string;
@@ -54,7 +56,6 @@ export interface UpdateDeliberationDraftInput {
   duration_ms?: number;
   participation_threshold?: number | null;
   links?: ProposedLink[];
-  skip_modified_flag?: boolean;
   /** The value being written is assistant-produced text (Apply on a
    *  suggestion card) — sets assistant_helped on the draft. */
   assistant_applied?: boolean;

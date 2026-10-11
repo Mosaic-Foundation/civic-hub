@@ -8,7 +8,8 @@ import {
   updateProjectDraft,
   setProjectDraftStatus,
 } from "../modules/civic.project_drafts/index.js";
-import { submitAsCreator, reviseAndResubmit, draftPassedCodeOfConduct } from "../modules/civic.review/index.js";
+import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
+import { codeOfConductStanding } from "../services/codeOfConduct.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { personFallbackName } from "../services/creatorDisplay.js";
 
@@ -92,7 +93,7 @@ export async function handleUpdateProjectDraft(
       return;
     }
 
-    const { title, description, sources, banner_image_url, banner_image_alt, links, skip_modified_flag, assistant_applied } = req.body;
+    const { title, description, sources, banner_image_url, banner_image_alt, links, assistant_applied } = req.body;
 
     const updated = await updateProjectDraft(id, {
       title,
@@ -104,7 +105,6 @@ export async function handleUpdateProjectDraft(
       // self-link/vocabulary checks; the real from_id is the process created
       // at submission. A draft can't link to itself in any meaningful sense.
       links: links === undefined ? undefined : validateLinkSet("", links),
-      skip_modified_flag: skip_modified_flag === true,
       assistant_applied: assistant_applied === true,
     });
     res.json(updated);
@@ -140,19 +140,11 @@ export async function handleSubmitProjectDraft(
       return;
     }
 
-    const hasHardBlocks = (draft.last_review_result ?? []).some(
-      (s) => s.severity === "hard",
-    );
-    if (hasHardBlocks) {
-      res.status(400).json({
-        error: "Cannot submit: unresolved Code of Conduct concerns. Review your draft.",
-      });
-      return;
-    }
-    if (draft.draft_modified_since_review) {
-      res.status(400).json({
-        error: "Draft has been modified since last review. Please review again before submitting.",
-      });
+    // The Code of Conduct check must have run on exactly this text
+    // (services/codeOfConduct.ts); the client cannot say it did.
+    const coc = await codeOfConductStanding("civic.project", draft);
+    if (coc.refusal) {
+      res.status(400).json({ error: coc.refusal });
       return;
     }
 
@@ -170,10 +162,17 @@ export async function handleSubmitProjectDraft(
 
     // Edit of a LIVE project (creator or admin, from "Edit project"): diff
     // against the process, apply in place, record the change, notify
-    // supporters. Nothing is re-reviewed; the Code of Conduct check above
-    // already gated this submit.
+    // supporters. No admin sees it first, so the Code of Conduct check must
+    // have PASSED on this text: an unavailable check, which lets a new
+    // submission through to an admin, does not let an edit go live.
     const editProcessId = typeof req.body?.edit_process_id === "string" ? req.body.edit_process_id : undefined;
     if (editProcessId) {
+      if (!coc.passed) {
+        res.status(400).json({
+          error: "The Code of Conduct check couldn't run, so these edits can't go live yet. Run the check again in a moment.",
+        });
+        return;
+      }
       const changes = await applyEdit(editProcessId, { id: user.id, email: user.email }, {
         title: draft.title.trim(),
         description: draft.description.trim(),
@@ -219,7 +218,7 @@ export async function handleSubmitProjectDraft(
         content,
       },
       user.email,
-      { cocPassed: draftPassedCodeOfConduct(draft) },
+      { cocPassed: coc.passed },
     );
 
     await setProjectDraftStatus(id, "submitted");

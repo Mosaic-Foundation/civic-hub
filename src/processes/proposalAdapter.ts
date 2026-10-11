@@ -42,6 +42,8 @@ function db() {
 
 const proposalAdapter: ProcessHandler = {
   type: "civic.proposal",
+  // Residents act on this type through its own routes, or not at all.
+  residentActions: [],
   detailPath: (id: string) => `/proposal/${id}`,
   draftPath: (draftId: string) => `/propose/new?draft=${encodeURIComponent(draftId)}`,
   reopenDraft: (draftId: string) => setProposalDraftStatus(draftId, "drafting"),

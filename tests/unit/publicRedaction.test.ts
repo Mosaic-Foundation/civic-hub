@@ -21,9 +21,12 @@ import {
   anonymousActorToken,
   isParticipantActor,
   participantUserId,
+  redactEvent,
   redactEventForPublic,
+  scrubAccountIds,
   scrubPayloadForPublic,
   toPublicActivity,
+  toRedactedActivity,
 } from "../../src/events/publicRedaction.js";
 
 const ENV = {
@@ -231,9 +234,64 @@ describe("toPublicActivity — the AS2 path", () => {
     expect(toPublicActivity(e, new Set(["user_dana"]))).toEqual(toActivity(e));
   });
 
-  it("the member/admin path (plain toActivity) is unchanged: raw-id IRI", () => {
+  it("the admin path (plain toActivity) is unchanged: raw-id IRI", () => {
     expect(toActivity(event()).actor).toBe(
       "https://app.floyd.example/users/user_dana",
     );
+  });
+});
+
+// Audit C2 (Adam, 2026-10-11): account ids are hidden from everyone but hub
+// admins. A signed-in resident keeps names (said publicly, public within the
+// hub) but never sees a raw user id, in the actor or anywhere in the payload.
+describe("account ids are hidden from signed-in non-admins", () => {
+  const withIds = () =>
+    event({
+      data: {
+        proposal: { title: "Benches", submitted_by: "user_dana", author_name: "Dana" },
+        created_by: "user:dev-resident-1",
+        supporters: ["user_dana", "user_erin"],
+        process_id: "proc_alpha",
+      },
+    });
+
+  it("member: actor and payload ids become the per-process token; names stay", () => {
+    const redacted = redactEvent(withIds(), NO_OFFICIALS, "member");
+    const wire = JSON.stringify(redacted);
+    expect(redacted.actor).toBe(anonymousActorToken("user_dana", "proc_alpha"));
+    expect(wire).not.toContain("user_dana");
+    expect(wire).not.toContain("user_erin");
+    expect(wire).not.toContain("dev-resident-1");
+    expect(wire).toContain("Dana");
+    // The same person is the same token across actor and payload, in one process.
+    const data = redacted.data as { proposal: { submitted_by: string } };
+    expect(data.proposal.submitted_by).toBe(redacted.actor);
+    // Non-account strings are untouched.
+    expect((redacted.data as { process_id: string }).process_id).toBe("proc_alpha");
+  });
+
+  it("public: the same ids hidden, and names scrubbed too", () => {
+    const wire = JSON.stringify(redactEvent(withIds(), NO_OFFICIALS, "public"));
+    expect(wire).not.toContain("user_dana");
+    expect(wire).not.toContain("Dana");
+  });
+
+  it("an official's id stays, in the actor and the payload", () => {
+    const officials = new Set(["user_dana"]);
+    const redacted = redactEvent(withIds(), officials, "member");
+    expect(redacted.actor).toBe("user_dana");
+    expect(JSON.stringify(redacted.data)).toContain("user_dana");
+    expect(JSON.stringify(redacted.data)).not.toContain("user_erin");
+  });
+
+  it("the AS2 path for a member carries no raw-id IRI", () => {
+    const activity = toRedactedActivity(withIds(), NO_OFFICIALS, "member");
+    expect(JSON.stringify(activity)).not.toContain("user_dana");
+    expect(activity.actor as string).toMatch(/\/process\/proc_alpha\/participants\/anon-/);
+  });
+
+  it("scrubAccountIds finds ids under any key, at any depth", () => {
+    const out = scrubAccountIds({ a: { b: [{ whoever: "user_0123456789abcdef" }] } }, "proc_alpha", NO_OFFICIALS);
+    expect(JSON.stringify(out)).not.toContain("user_0123456789abcdef");
   });
 });

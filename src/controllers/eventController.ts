@@ -26,11 +26,11 @@ import {
 } from "../events/activitySerializer.js";
 import { getUserFromToken } from "../modules/civic.auth/index.js";
 import { isAdminEmail, resolveCallerUser } from "../middleware/auth.js";
-import { getNonPublicProcessIds } from "../services/processService.js";
-import type { Audience } from "../services/creatorDisplay.js";
+import { getNonPublicProcessIds, isProcessHistoryServable } from "../services/processService.js";
 import {
   officialActorIds,
-  toPublicActivity,
+  toRedactedActivity,
+  type WireAudience,
 } from "../events/publicRedaction.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 import {
@@ -94,18 +94,18 @@ export async function callerIsAdmin(req: Request): Promise<boolean> {
 
 /**
  * One token resolution for both serving decisions on this surface:
- * restricted-event visibility (admin) and resident anonymization
- * (public anonymity, 2026-08-31 — any VALID session is a member and
- * receives the wire unchanged; only the anonymous public gets redacted
- * actors and payloads).
+ * restricted-event visibility (admin) and redaction (events/publicRedaction):
+ * account ids are hidden from everyone but hub admins, names only from the
+ * signed-out public (audit C2, 2026-10-11).
  */
 async function callerView(
   req: Request,
-): Promise<{ isAdmin: boolean; audience: Audience }> {
+): Promise<{ isAdmin: boolean; audience: WireAudience }> {
   const user = await resolveCallerUser(req);
+  const isAdmin = !!user && isAdminEmail(user.email);
   return {
-    isAdmin: !!user && isAdminEmail(user.email),
-    audience: user ? "member" : "public",
+    isAdmin,
+    audience: isAdmin ? "admin" : user ? "member" : "public",
   };
 }
 
@@ -163,12 +163,18 @@ export async function handleGetActivity(
       res.status(404).json({ error: "Activity not found" });
       return;
     }
+    // An archived or pending-review process serves no history, by id or
+    // otherwise: the same rule as its page, for everyone.
+    if (event.process_id && !(await isProcessHistoryServable(event.process_id, { hubSurface: false }))) {
+      res.status(404).json({ error: "Activity not found" });
+      return;
+    }
 
     res.setHeader("Content-Type", negotiateActivityType(req));
-    if (caller.audience === "public") {
-      res.json(toPublicActivity(event, await officialActorIds([event])));
-    } else {
+    if (caller.audience === "admin") {
       res.json(toActivity(event));
+    } else {
+      res.json(toRedactedActivity(event, await officialActorIds([event]), caller.audience));
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -231,13 +237,16 @@ async function buildCollection(
   const hidden = filters.processId
     ? new Set<string>()
     : await getNonPublicProcessIds();
+  // A lookup of one process that is archived or pending review answers as
+  // an empty collection, the same as a process with no activity (§5.2).
+  const withheld = !!filters.processId && !(await isProcessHistoryServable(filters.processId, { hubSurface: false }));
 
   // `totalItems` counts only what THIS caller can page through, so it never
   // signals the existence of activities the serving rule withholds. Skipped
   // when the suppression list is too large to express as a filter, and when
   // the type filter matched nothing (the answer is then trivially zero).
   const countable = hidden.size <= MAX_LIMIT;
-  const totalItems = filters.unmatchedType
+  const totalItems = filters.unmatchedType || withheld
     ? 0
     : countable
       ? await countEvents({
@@ -268,7 +277,8 @@ async function buildPage(
   let events: Awaited<ReturnType<typeof getEventPage>>["events"] = [];
   let nextCursor: EventCursor | null = null;
 
-  if (!filters.unmatchedType) {
+  const withheld = !!filters.processId && !(await isProcessHistoryServable(filters.processId, { hubSurface: false }));
+  if (!filters.unmatchedType && !withheld) {
     const page = await getEventPage({
       limit: filters.limit,
       cursor,
@@ -282,8 +292,7 @@ async function buildPage(
     // Visibility, unchanged from the v0.1 feed:
     //  - events of archived / pending-review processes are suppressed for
     //    everyone (admins included) so removed items leave no ghost cards;
-    //    skipped when the caller asked for one specific process, which is an
-    //    explicit lookup rather than the feed;
+    //    a lookup of one such process is withheld whole, above;
     //  - restricted events are admin-only.
     // Both filter the page AFTER the keyset read, so a page may carry fewer
     // than `limit` items while `next` still points at more. That is a valid
@@ -301,20 +310,19 @@ async function buildPage(
     }
   }
 
-  // Public anonymity: unauthenticated callers get resident actors
-  // rewritten to per-process opaque IRIs and name-shaped payload fields
-  // scrubbed. Any valid session (member or admin) gets the canonical
-  // documents, unchanged.
+  // Everyone but an admin gets resident account ids rewritten to
+  // per-process opaque IRIs; the signed-out public also loses name-shaped
+  // payload fields. Admins get the canonical documents, unchanged.
   const officials =
-    audience === "public" ? await officialActorIds(events) : null;
+    audience === "admin" ? null : await officialActorIds(events);
 
   const page: Record<string, unknown> = {
     "@context": [AS2_CONTEXT, CIVIC_CONTEXT],
     id: pageUrl(filters, cursor),
     type: "OrderedCollectionPage",
     partOf: collectionUrl(filters),
-    orderedItems: officials
-      ? events.map((e) => toPublicActivity(e, officials))
+    orderedItems: officials && audience !== "admin"
+      ? events.map((e) => toRedactedActivity(e, officials, audience))
       : events.map((e) => toActivity(e)),
   };
   // `next` is absent on the last page (§6.1) and carries the request's filter

@@ -108,15 +108,11 @@ function cardSummary(row: SearchHitRow): string {
   if (row.description && row.description.trim().length > 0) {
     return stripMarkdown(row.description).trim();
   }
-  // Fallback: peek into common state shapes for body / admin_notes /
-  // meeting first-block summary. Cheap and best-effort; the row's
-  // description is set by the controller in most cases anyway.
+  // Fallback: an announcement's body, which is public. Nothing else on
+  // `state` is read here: admin notes and the like are not a card summary.
   const state = row.state ?? {};
-  const content = (state as { content?: { body?: unknown; admin_notes?: unknown } }).content;
+  const content = (state as { content?: { body?: unknown } }).content;
   if (content && typeof content.body === "string") return content.body.trim();
-  if (content && typeof content.admin_notes === "string" && content.admin_notes.trim().length > 0) {
-    return content.admin_notes.trim();
-  }
   return "";
 }
 

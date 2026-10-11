@@ -104,17 +104,17 @@ export default function ConversationDraft() {
   const handleLinksChange = useCallback(
     (links: ProposedLink[]) => {
       setLocalLinks(links);
-      // skip_modified_flag: adding a link is not a content change, so it must
-      // not invalidate a Code of Conduct check the author already passed.
-      void flow.queuePatch({ links }, { skipModifiedFlag: true });
+      // Links are not read by the Code of Conduct check, so the server leaves
+      // a passed check standing.
+      void flow.queuePatch({ links });
     },
     [flow.queuePatch],
   );
 
   const handleThresholdChange = useCallback(
     (n: number | null) => {
-      // Not a content change — the CoC check reads topic/framing only.
-      void flow.queuePatch({ participation_threshold: n }, { skipModifiedFlag: true });
+      // Not a content change: the server leaves the check standing.
+      void flow.queuePatch({ participation_threshold: n });
     },
     [flow.queuePatch],
   );

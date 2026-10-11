@@ -12,7 +12,7 @@ export const AUTOMATED_REVIEW_UNAVAILABLE_NOTICE =
 /**
  * What a draft stores when the check could not run: a soft entry (never shown
  * on the form, never blocking) that says so, so the result is not mistaken
- * for a pass (draftPassedCodeOfConduct in civic.review).
+ * for a pass (codeOfConductVerdict in services/codeOfConduct.ts).
  */
 export const CHECK_UNAVAILABLE_RESULT = {
   severity: "soft",

@@ -9,7 +9,8 @@ import {
   claimDraftForSubmission,
 } from "../modules/civic.proposal_drafts/index.js";
 import { type Category } from "../modules/civic.assistant/index.js";
-import { submitAsCreator, reviseAndResubmit, draftPassedCodeOfConduct } from "../modules/civic.review/index.js";
+import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
+import { codeOfConductStanding } from "../services/codeOfConduct.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { personFallbackName } from "../services/creatorDisplay.js";
 
@@ -107,7 +108,7 @@ export async function handleUpdateDraft(
       return;
     }
 
-    const { title, description, sources, considerations, category, proposal_duration_ms, links, skip_modified_flag, assistant_applied } = req.body;
+    const { title, description, sources, considerations, category, proposal_duration_ms, links, assistant_applied } = req.body;
 
     if (category && !VALID_CATEGORIES.has(category)) {
       res.status(400).json({ error: "Invalid category" });
@@ -138,7 +139,6 @@ export async function handleUpdateDraft(
       // self-link/vocabulary checks; the real from_id is the process created
       // at submission. A draft can't link to itself in any meaningful sense.
       links: links === undefined ? undefined : validateLinkSet("", links),
-      skip_modified_flag: skip_modified_flag === true,
       assistant_applied: assistant_applied === true,
     });
     res.json(updated);
@@ -174,19 +174,11 @@ export async function handleSubmitDraft(
       return;
     }
 
-    const hasHardBlocks = (draft.last_review_result ?? []).some(
-      (s) => s.severity === "hard",
-    );
-    if (hasHardBlocks) {
-      res.status(400).json({
-        error: "Cannot submit: unresolved Code of Conduct concerns. Please review your draft and address all issues.",
-      });
-      return;
-    }
-    if (draft.draft_modified_since_review) {
-      res.status(400).json({
-        error: "Draft has been modified since last review. Please review again before submitting.",
-      });
+    // The Code of Conduct check must have run on exactly this text
+    // (services/codeOfConduct.ts); the client cannot say it did.
+    const coc = await codeOfConductStanding("civic.proposal", draft);
+    if (coc.refusal) {
+      res.status(400).json({ error: coc.refusal });
       return;
     }
 
@@ -259,7 +251,7 @@ export async function handleSubmitDraft(
           content,
         },
         user.email,
-        { cocPassed: draftPassedCodeOfConduct(draft) },
+        { cocPassed: coc.passed },
       );
 
       res.status(201).json(result);

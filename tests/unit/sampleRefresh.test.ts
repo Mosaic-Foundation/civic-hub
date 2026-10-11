@@ -8,7 +8,7 @@ import { describe, it, expect } from "vitest";
 import { SAMPLE_TEMPLATES, templatesFor, type SampleTemplate } from "../../src/services/sampleTemplates.js";
 import { REFRESH_WINDOW_DAYS, refreshReason } from "../../src/services/sampleRefresh.js";
 import { describeJobRun } from "../../src/jobs/describe.js";
-import { draftPassedCodeOfConduct } from "../../src/modules/civic.review/service.js";
+import { codeOfConductVerdict } from "../../src/services/codeOfConduct.js";
 import { CHECK_UNAVAILABLE_RESULT } from "../../src/modules/civic.assistant/index.js";
 import { JURISDICTION_TYPES } from "../../src/shared/jurisdictionType.js";
 
@@ -122,16 +122,28 @@ describe("the sample refresh's run log", () => {
 });
 
 describe("the Code of Conduct gate for demo publishing", () => {
+  const H = "hash-of-the-text";
+  const passed = (d: Parameters<typeof codeOfConductVerdict>[0], now: string | null = H) =>
+    codeOfConductVerdict(d, now).passed;
+
   it("passes only a draft the check ran on, found nothing in, and that has not changed", () => {
-    expect(draftPassedCodeOfConduct({ last_review_result: [], draft_modified_since_review: false })).toBe(true);
+    expect(passed({ last_review_result: [], coc_checked_hash: H })).toBe(true);
     // Never run.
-    expect(draftPassedCodeOfConduct({ last_review_result: null, draft_modified_since_review: false })).toBe(false);
+    expect(passed({ last_review_result: null, coc_checked_hash: null })).toBe(false);
     // The checker was unavailable: stored as such (submitting stays allowed).
-    expect(
-      draftPassedCodeOfConduct({ last_review_result: [{ ...CHECK_UNAVAILABLE_RESULT }], draft_modified_since_review: false }),
-    ).toBe(false);
-    expect(draftPassedCodeOfConduct({ last_review_result: [], draft_modified_since_review: true })).toBe(false);
-    expect(draftPassedCodeOfConduct({ last_review_result: [{ severity: "hard" }], draft_modified_since_review: false })).toBe(false);
-    expect(draftPassedCodeOfConduct({ last_review_result: [{ severity: "soft" }], draft_modified_since_review: false })).toBe(true);
+    expect(passed({ last_review_result: [{ ...CHECK_UNAVAILABLE_RESULT }], coc_checked_hash: H })).toBe(false);
+    // The text changed after the check read it.
+    expect(passed({ last_review_result: [], coc_checked_hash: H }, "another-text")).toBe(false);
+    // Checked before the hash existed.
+    expect(passed({ last_review_result: [], coc_checked_hash: null })).toBe(false);
+    expect(passed({ last_review_result: [{ severity: "hard" }], coc_checked_hash: H })).toBe(false);
+    expect(passed({ last_review_result: [{ severity: "soft" }], coc_checked_hash: H })).toBe(true);
+  });
+
+  it("refuses submitting without a check on this text, allows it when the checker was down", () => {
+    expect(codeOfConductVerdict({ last_review_result: null, coc_checked_hash: null }, H).refusal).toMatch(/Run the Code of Conduct check/);
+    expect(codeOfConductVerdict({ last_review_result: [], coc_checked_hash: H }, "edited").refusal).toMatch(/modified since last review/);
+    expect(codeOfConductVerdict({ last_review_result: [{ severity: "hard" }], coc_checked_hash: H }, H).refusal).toMatch(/unresolved/);
+    expect(codeOfConductVerdict({ last_review_result: [{ ...CHECK_UNAVAILABLE_RESULT }], coc_checked_hash: H }, H).refusal).toBeNull();
   });
 });

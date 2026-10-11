@@ -4,6 +4,80 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Audit 1: what production exposed today — 2026-10-11
+
+From the audit handoff (`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Civic-Hub-Audit-Handoff-2026-10-10.md`),
+items A2, A3, A4, part of A8, and Adam's decision on C2. Adam approved the four non-additive or behaviour choices in
+chat: rebuild `search_doc`, remove `POST /reviews/submit`, no env roster inside a hub, scrub old anonymous moderation
+events. Report: `Audit-1-Session-Report-2026-10-11.md` in Mosaic Foundation Management. Not pushed.
+
+- **Migration:** `20261011000000_audit_live_exposure.sql`.
+  - Non-additive (approved): replaces the `search_doc` trigger function and both search RPCs, rebuilds every
+    process's `search_doc` (with `processes_updated_at` held off), and removes `comment_author_id` from existing
+    hide/restore events of anonymous comments (with `events_no_update` held off for the one statement).
+  - Additive: `coc_checked_hash` on the four drafts tables; helpers `_civic_json_strings`,
+    `_civic_public_search_text`, `_civic_search_publishable`.
+- **New env vars / dependencies:** none. **Removed behaviour:** `CIVIC_ADMIN_EMAILS` / `CIVIC_BOARD_EMAILS` /
+  `BOARD_RECIPIENT_EMAIL` no longer answer for any hub; they answer only outside a hub (scripts with no `--hub`).
+
+**What changed:**
+- **A2, search shows only what's public.** `search_doc` is built per type from public text only
+  (`_civic_public_search_text`); a brief or vote result indexes nothing until `publication_status = 'published'`,
+  a meeting summary until `approval_status = 'published'`. The RPCs apply the same rule (`_civic_search_publishable`),
+  so a stale document cannot leak either. Recipients, delivery reports, moderation reasons, supporters, AI settings
+  and unreviewed revisions are never indexed. The card summary no longer falls back to `admin_notes`. A new process
+  type indexes its title and description until it gets a branch in `_civic_public_search_text`.
+- **A3, residents call only resident actions.** `ProcessHandler.residentActions` (required): `civic.vote` support,
+  unsupport, vote; `civic.wordcloud` submit; every other type none. `executeAction(id, action, caller)` takes
+  `"resident" | "admin" | "system"` as a required argument and refuses a resident anything off the list
+  (`ActionNotAllowedError` → 403). The controller's four-item denylist is gone. The Polis handler checks status per
+  action: `start` from `draft`, `close` / `poll_state` from `active`, `regenerate_summary` from `closed`.
+- **A4, the Code of Conduct check cannot be skipped.** `src/services/codeOfConduct.ts`: the fields the check reads
+  (now including a vote's option labels), their hash, and `codeOfConductStanding()`. The check stores the hash of
+  the text it read; every submit compares it with the draft's text now, read through the type's draft store.
+  `skip_modified_flag` is no longer accepted or sent; the server sets `draft_modified_since_review` when a checked
+  field changes (links, images, duration and threshold do not). A never-checked draft is refused ("Run the Code of
+  Conduct check"). A live project edit needs a check that passed, not one that was unavailable. A chat turn's hard
+  block is stored with no hash, so it never counts as a check. `draftPassedCodeOfConduct` is replaced by the pure
+  `codeOfConductVerdict`.
+- **A8, anonymous comment moderation:** hide/restore events of an anonymous comment carry only `comment_id`.
+- **A8, history by id:** `/events?context=`, `/activities/:id` and `/api/feed?process_id=` serve nothing for an
+  archived or pending-review process, for everyone (`isProcessHistoryServable`). An id with no process row is
+  served as before. `/api/feed` also withholds a switched-off type; `/events` keeps it.
+- **A8, settings read failure:** `fetchHubSettings` throws `HubSettingsUnavailableError` (never caches it); the hub
+  resolver answers 503 `hub_settings_unavailable` with `Retry-After: 30`. Inside a hub, `people.*` keys never come
+  from env (`resolve()` in `services/hubSettings.ts`); a hub with no roster has no admins, and `requireAdmin`'s 503
+  now says the console sets them. The People settings note about the env roster (`admins_from_env`) is gone.
+- **A8, `POST /reviews/submit`:** removed, with the UI's unused `submitForReview`. Every type is created through its
+  own drafts route.
+- **C2, account ids hidden from everyone but hub admins.** `events/publicRedaction.ts` has three audiences:
+  admin (as stored), member (signed-in non-admin: actor and every `user_…` / `user:` string anywhere in the
+  payload become the per-process token; names stay), public (the same, plus names scrubbed). Applied on `/events`,
+  `/activities/:id` and `/api/feed`. The feed UI reads neither field, so residents see the same cards.
+
+**Tests:** new `tests/api/auditLiveExposure.test.ts` (within-hub: search as visitor, resident and admin; every
+registered type's resident refusal; the check-skipping paths; anonymous moderation events; history of archived and
+pending-review processes; the removed route; C2). New unit files `residentActions`, `codeOfConductHash`,
+`searchCardSummary`, `hubSettingsUnavailable`; additions to `publicRedaction`, `hubResolver`, `adminRoster`,
+`sampleRefresh`. Fixture `tests/fixtures/codeOfConduct.ts` (`checkedHashFor`, `pendingProposalReview`, which
+replaces `/reviews/submit` in the leak harness, the isolation suite and the plugin-switch suite).
+`pluginToggles.test.ts` searched for *pending* vote results and meeting summaries, which only worked because of the
+A2 leak; its fixtures are now published, with a separate pending one for the admin digest.
+
+**Results:** unit 118 files, 1,392; API 41 files, 520 passed and 7 skipped in each mode (service role and minted
+hub tokens; `sampleContent.test.ts` rerun alone after the known admin+athens lockout); Playwright 39 passed, 2 skipped,
+`startPage.spec.ts` 2 failing for its known setup reason (TESTING.md). Details in TESTING.md.
+
+**Open / next:**
+- Production check before deploy: every active hub has a non-empty `people.admin_emails` row (query in the report).
+  Dev's 14 active hubs all do.
+- `POST /reviews/:id/revise` still writes a creator's raw `content` / `config` to their pending process (same class as
+  A8's raw submit). Not in this slice.
+- Drafts that passed the check before deploy have no hash and run it once more.
+- The mono-root `shared/process-plugins/polis_deliberation` fork is not changed (audit F5).
+
+---
+
 ## Ballot secrecy against the raw data — 2026-10-10
 
 **The promise:** nobody can tell how a given resident voted, including Mosaic operators and anyone who obtains a copy

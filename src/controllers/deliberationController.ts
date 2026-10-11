@@ -343,7 +343,7 @@ export async function handleStartDeliberation(req: Request, res: Response): Prom
       type: "start",
       actor: user.id,
       payload: {},
-    });
+    }, "admin");
 
     res.json(result);
   } catch (err: any) {
@@ -360,7 +360,7 @@ export async function closeDeliberation(req: Request, res: Response): Promise<vo
       type: "close",
       actor: user.id,
       payload: {},
-    });
+    }, "admin");
 
     res.json(result);
   } catch (err: any) {
@@ -377,7 +377,7 @@ export async function regenerateSummary(req: Request, res: Response): Promise<vo
       type: "regenerate_summary",
       actor: user.id,
       payload: {},
-    });
+    }, "admin");
 
     res.json(result);
   } catch (err: any) {

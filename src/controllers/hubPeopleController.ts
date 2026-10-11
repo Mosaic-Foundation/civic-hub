@@ -28,7 +28,6 @@ import { describeInvites, sendAdminInvites, type InviteReport } from "../service
 import type { Request, Response } from "express";
 import { currentHubId } from "../config/hubContext.js";
 import {
-  adminsAreFromEnv,
   getAdminEmails,
   getBoardEmails,
   setAdminEmails,
@@ -41,7 +40,6 @@ export interface HubPeopleResponse {
   admin_emails: string[];
   board_emails: string[];
   /** True while the roster is still coming from CIVIC_ADMIN_EMAILS. */
-  admins_from_env: boolean;
 }
 
 /** Trim, drop blanks, lowercase, dedupe. Anything not a string is not an email. */
@@ -85,7 +83,6 @@ async function loadPeople(): Promise<HubPeopleResponse> {
   return {
     admin_emails,
     board_emails,
-    admins_from_env: await adminsAreFromEnv(hubId),
   };
 }
 

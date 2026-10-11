@@ -11,6 +11,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
+import { pendingProposalReview } from "../fixtures/codeOfConduct.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
 
 const ATHENS = "athens.localhost";
@@ -71,21 +72,8 @@ beforeAll(async () => {
     prompts: [{ id: "p1", text: "One word for this place?" }],
   });
 
-  const submitted = await call(
-    "POST",
-    "/reviews/submit",
-    FLOYD,
-    {
-      process_type: "civic.vote",
-      title: `Floyd review ${run}`,
-      description: "Waiting for Floyd's admins.",
-      state: { options: ["Yes", "No"], voting_duration_ms: 86_400_000 },
-    },
-    floydResident,
-  );
-  ok(submitted, 201);
-  reviewId = submitted.body.review?.id ?? submitted.body.review_id ?? submitted.body.id;
-  expect(reviewId, JSON.stringify(submitted.body)).toBeTruthy();
+  reviewId = (await pendingProposalReview(FLOYD, floydResident, `Floyd review ${run}`)).review_id;
+  expect(reviewId).toBeTruthy();
 
   await localRest("processes", {
     method: "POST",

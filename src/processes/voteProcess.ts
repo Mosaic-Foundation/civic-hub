@@ -119,6 +119,9 @@ const voteProcess: ProcessHandler = {
   ],
 
   type: "civic.vote",
+  // Support while gathering, then a ballot. Propose, activate and close are
+  // lifecycle control: an admin's, or the hub's on a deadline.
+  residentActions: ["process.support", "process.unsupport", "process.vote"],
   detailPath: (id: string) => `/process/${id}`,
   draftPath: (draftId: string) => `/votes/new?draft=${encodeURIComponent(draftId)}`,
   reopenDraft: (draftId: string) => setVoteDraftStatus(draftId, "drafting"),

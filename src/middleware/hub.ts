@@ -20,7 +20,7 @@
 
 import type { NextFunction, Request, Response } from "express";
 import { getHubByHostname, getHubByPreviousHostname, getHubBySlug } from "../db/hubs.js";
-import { fetchHubSettings } from "../db/hubSettingsStore.js";
+import { fetchHubSettings, HubSettingsUnavailableError } from "../db/hubSettingsStore.js";
 import { runWithHub } from "../config/hubContext.js";
 import { isLocalHostname } from "../models/hub.js";
 import { DEAD_ENDS, DEAD_END_STYLE } from "../shared/deadEnd.js";
@@ -300,7 +300,17 @@ export async function resolveHub(
   // rest of the request. Loading them per read would put a round trip inside
   // isAdminEmail(), which runs on paths served to every visitor; loading them
   // here is what lets those readers stay synchronous.
-  const settings = await fetchHubSettings(hub.id);
+  let settings: Awaited<ReturnType<typeof fetchHubSettings>>;
+  try {
+    settings = await fetchHubSettings(hub.id);
+  } catch (err) {
+    if (!(err instanceof HubSettingsUnavailableError)) throw err;
+    // Without its settings the hub does not know its admins or its copy:
+    // unavailable, and retry, rather than an answer built from env.
+    res.setHeader("Retry-After", "30");
+    res.status(503).json({ error: "hub_settings_unavailable" });
+    return;
+  }
 
   req.hub = hub;
   runWithHub(hub, settings, () => next());

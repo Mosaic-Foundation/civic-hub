@@ -80,7 +80,14 @@ function fromEnv(key: string): string | undefined {
   return undefined;
 }
 
-/** Steps 1-3 against an already-loaded map. */
+/**
+ * Steps 1-3 against an already-loaded map. A map means a hub is in scope, and
+ * inside a hub the people keys (admins, board, officials, recipients) never
+ * come from the server's env: one deployment serves many hubs, and an env
+ * roster would make the same people admins of every hub that had not saved
+ * its own. A hub with no roster has no admins (requireAdmin fails closed);
+ * the console sets them. Outside a hub (a script with no --hub) env answers.
+ */
 function resolve(map: SettingsMap | null, key: string): string | undefined {
   if (map) {
     const direct = map[key];
@@ -90,9 +97,12 @@ function resolve(map: SettingsMap | null, key: string): string | undefined {
       const aliased = map[alias];
       if (aliased !== undefined && aliased !== "") return aliased;
     }
+    if (key.startsWith(PEOPLE_PREFIX)) return undefined;
   }
   return fromEnv(key);
 }
+
+const PEOPLE_PREFIX = "people.";
 
 // --- generic accessors ----------------------------------------------------
 
@@ -264,8 +274,8 @@ export async function setContactEmail(
  *
  * Synchronous because it gates fourteen call sites, several on read paths
  * that run for every visitor. An Athens admin is not a Floyd admin: the list
- * is per hub, and outside a request this falls back to CIVIC_ADMIN_EMAILS so
- * crons and scripts keep the behaviour they had.
+ * is per hub and never read from env inside one (see resolve); outside a
+ * request, with no hub at all, it is CIVIC_ADMIN_EMAILS.
  */
 export function getAdminEmailsSync(): string[] {
   return asEmailList(getSettingSync(KEYS.PEOPLE_ADMIN_EMAILS));
@@ -301,24 +311,6 @@ export async function setBoardEmails(
   const cleaned = asEmailList(encodeList([...emails]));
   await setSetting(hubId, KEYS.PEOPLE_BOARD_EMAILS, encodeList(cleaned), updatedBy);
   return cleaned;
-}
-
-/**
- * Is this hub's admin roster still the deployment's bootstrap?
- *
- * True when the hub has written no `people.admin_emails` row, so the answer
- * is coming from CIVIC_ADMIN_EMAILS — which every unseeded hub on the same
- * deployment shares. The admin panel says so rather than presenting a list
- * that looks like this hub's own.
- */
-export async function adminsAreFromEnv(hubId: string): Promise<boolean> {
-  try {
-    const rows = await getAllSettings(hubId);
-    return rows[KEYS.PEOPLE_ADMIN_EMAILS] === undefined;
-  } catch {
-    // Unable to tell — do not claim the roster belongs to the hub.
-    return true;
-  }
 }
 
 /**

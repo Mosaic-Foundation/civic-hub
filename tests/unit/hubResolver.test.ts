@@ -29,6 +29,7 @@ vi.mock("../../src/db/hubs.js", () => ({
 // database read, and this layer has no database.
 vi.mock("../../src/db/hubSettingsStore.js", () => ({
   fetchHubSettings: mocks.fetchHubSettings,
+  HubSettingsUnavailableError: class HubSettingsUnavailableError extends Error {},
   fetchHubSettingRows: vi.fn(),
   writeHubSetting: vi.fn(),
   writeHubSettings: vi.fn(),
@@ -111,6 +112,10 @@ function fakeRes() {
     },
     status(code: number) {
       state.statusCode = code;
+      return res;
+    },
+    setHeader(name: string, value: string) {
+      state.headers[name.toLowerCase()] = value;
       return res;
     },
     json(body: unknown) {
@@ -290,6 +295,21 @@ describe("resolveHub middleware", () => {
     expect(next).not.toHaveBeenCalled();
     expect(res.state.statusCode).toBe(503);
     expect(res.state.body).toEqual({ error: "hub_suspended" });
+  });
+
+  it("answers 503 when the hub's settings cannot be read, never an env roster (audit A8)", async () => {
+    // A failed read used to return {} and every key fell back to env, so
+    // CIVIC_ADMIN_EMAILS became the hub's admins for that request.
+    const { HubSettingsUnavailableError } = await import("../../src/db/hubSettingsStore.js");
+    mocks.getHubByHostname.mockResolvedValue(hub());
+    mocks.fetchHubSettings.mockRejectedValueOnce(new HubSettingsUnavailableError("down"));
+    const req = fakeReq({ host: "floyd.civic.social" });
+    const res = fakeRes();
+    const next = vi.fn();
+    await resolveHub(req, res as never, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.state.statusCode).toBe(503);
+    expect(res.state.body).toEqual({ error: "hub_settings_unavailable" });
   });
 
   it("lets /health through without a hub", async () => {

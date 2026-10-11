@@ -72,7 +72,7 @@ Project. Action-oriented. Focus on who would benefit, what it would take, who's 
     },
     appendConversation: (id, userMessage, assistantMessage) =>
       appendConversation(id, userMessage, assistantMessage),
-    saveReviewResult: (id, suggestions) => saveReviewResult(id, suggestions),
+    saveReviewResult: (id, suggestions, checkedHash) => saveReviewResult(id, suggestions, checkedHash),
     applyGeneratedDraft: async (id, draft) => {
       await applyDraftProposal(
         id,

@@ -232,6 +232,15 @@ export interface ProcessHandler {
    */
   getAssistantConfig?(): AssistantTypeConfig;
 
+  /**
+   * The actions a resident may call through `POST /process/:id/action`. An
+   * allowlist, checked once in executeAction: any action not named here
+   * needs an admin (or the hub itself: a deadline close, an approval's
+   * activation). Required, so a new type has to decide; a type whose
+   * residents act through its own routes, or not at all, declares `[]`.
+   */
+  residentActions: readonly string[];
+
   /** Initialize process-specific state from creation input */
   initializeState(input: Record<string, unknown>): Record<string, unknown>;
 
@@ -369,9 +378,18 @@ export type ProcessFactory = (input: CreateProcessInput) => Promise<Process>;
  * importing processService directly (circular dependency).
  *
  * Used by lazy deadline-close (ProcessHandler.closeIfExpired) for types whose
- * close runs through the generic action dispatcher (vote, deliberation).
+ * close runs through the generic action dispatcher (vote, deliberation). It
+ * acts as the hub itself ("system"), so it is not held to residentActions.
  */
 export type ActionDispatcher = (
   processId: string,
   action: ProcessAction,
 ) => Promise<{ process: Process; result: Record<string, unknown> }>;
+
+/**
+ * Who is calling executeAction. "resident" is held to the handler's
+ * residentActions; "admin" (a hub admin, checked by the caller) and "system"
+ * (the hub acting on its own: a deadline close, an approval's activation, a
+ * seed) are not. A required argument, so no call site gets a default.
+ */
+export type ActionCaller = "resident" | "admin" | "system";

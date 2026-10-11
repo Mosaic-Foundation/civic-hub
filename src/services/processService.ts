@@ -39,6 +39,7 @@ import {
   findExistingBriefId,
 } from "../processes/spawnBrief.js";
 import { forHub, type HubDb } from "../db/forHub.js";
+import type { ActionCaller } from "../processes/types.js";
 import { currentHubId } from "../config/hubContext.js";
 import {
   resolveInitialStatus,
@@ -205,8 +206,8 @@ setProcessFactory(createProcess);
 
 // Inject the action dispatcher so handlers can run their own close action
 // (lazy deadline-close) through the normal persisted-action path without a
-// circular import back into this module.
-setActionDispatcher(executeAction);
+// circular import back into this module. It acts as the hub itself.
+setActionDispatcher((processId, action) => executeAction(processId, action, "system"));
 
 // --- Read ------------------------------------------------------------------
 
@@ -259,24 +260,40 @@ export async function getAllProcesses(types?: string[]): Promise<Process[]> {
 
 // --- Action dispatch -------------------------------------------------------
 
+/** A resident called an action their handler does not open to residents. */
+export class ActionNotAllowedError extends Error {
+  constructor(actionType: string) {
+    super(`Admin access required for this action (${actionType})`);
+    this.name = "ActionNotAllowedError";
+  }
+}
+
 export async function executeAction(
   processId: string,
   action: ProcessAction,
+  caller: ActionCaller,
 ): Promise<{ process: Process; result: Record<string, unknown> }> {
   const process = await getProcess(processId);
   if (!process) {
     throw new Error(`Process not found: ${processId}`);
   }
 
+  const handler = getProcessHandler(process.definition.type);
+  if (!handler) {
+    throw new Error(`Unsupported process type: ${process.definition.type}`);
+  }
+
+  // Residents may call only what the handler opens to them; everything else
+  // is an admin's or the hub's. Checked before the status, so a refused
+  // caller learns nothing about where the process is in its lifecycle.
+  if (caller === "resident" && !handler.residentActions.includes(action.type)) {
+    throw new ActionNotAllowedError(action.type);
+  }
+
   if (!isActionable(process.status)) {
     throw new Error(
       `Process ${processId} is finalized and cannot accept actions`,
     );
-  }
-
-  const handler = getProcessHandler(process.definition.type);
-  if (!handler) {
-    throw new Error(`Unsupported process type: ${process.definition.type}`);
   }
 
   const previousStatus = process.status;
@@ -828,6 +845,30 @@ export async function getNonPublicProcessIds(): Promise<Set<string>> {
       .range(from, to),
   );
   return new Set(data.map((r) => r.id));
+}
+
+/**
+ * Whether a process's history may be served when it is asked for by id:
+ * the rule the process pages apply (getProcessState). False for a process
+ * that is archived or still pending review. An id with no process row (a
+ * purged process, an id that never was one) is served as the feed serves
+ * it: the rule withholds what is hidden, not what is gone. `hubSurface` adds
+ * the hub UI's own rule, a switched-off plugin; the protocol surface
+ * (GET /events) keeps a switched-off type's record.
+ */
+export async function isProcessHistoryServable(
+  processId: string,
+  opts: { hubSurface: boolean },
+): Promise<boolean> {
+  const rows = await db()
+    .from("processes")
+    .select<{ status: ProcessStatus; type: string }>("status, type")
+    .eq("id", processId)
+    .limit(1);
+  const row = rows[0];
+  if (!row) return true;
+  if (!isPubliclyFetchable(row.status)) return false;
+  return !opts.hubSurface || isProcessTypeEnabled(row.type);
 }
 
 /**

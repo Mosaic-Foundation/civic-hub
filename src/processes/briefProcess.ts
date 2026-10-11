@@ -23,6 +23,8 @@ function getState(process: Process): BriefProcessState {
 
 const briefProcess: ProcessHandler = {
   type: "civic.brief",
+  // Residents act on this type through its own routes, or not at all.
+  residentActions: [],
   detailPath: (id: string) => `/brief/${id}`,
   // Social previews carry the approved headline, not the (empty) row
   // description. Unpublished records are not shareable at all.

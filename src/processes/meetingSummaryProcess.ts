@@ -26,6 +26,8 @@ function getState(process: Process): MeetingSummaryProcessState {
 
 const meetingSummaryProcess: ProcessHandler = {
   type: "civic.meeting_summary",
+  // Residents act on this type through its own routes, or not at all.
+  residentActions: [],
   detailPath: (id: string) => `/meeting-summary/${id}`,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {

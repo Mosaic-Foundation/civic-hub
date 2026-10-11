@@ -141,7 +141,7 @@ The draft state names the voting method. When it is Approval, the Options field 
     },
     appendConversation: (id, userMessage, assistantMessage) =>
       appendVoteConversation(id, userMessage, assistantMessage),
-    saveReviewResult: (id, suggestions) => saveVoteReviewResult(id, suggestions),
+    saveReviewResult: (id, suggestions, checkedHash) => saveVoteReviewResult(id, suggestions, checkedHash),
     applyGeneratedDraft: async (id, draft) => {
       await applyVoteDraftProposal(id, draft.title, draft.description, draft.sources);
       // A first draft for an approval vote may carry its options too.
