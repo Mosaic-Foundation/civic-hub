@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   getVoteLog,
   verifyReceipt,
@@ -19,10 +19,33 @@ function formatChoice(raw: string): string {
   return raw;
 }
 
+/** `#receipt=<id>` from the fragment, which the browser never sends to a server. */
+function receiptFromHash(hash: string): string {
+  const m = /(?:^#|&)receipt=([^&]*)/.exec(hash);
+  if (!m) return "";
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return "";
+  }
+}
+
 export default function VoteLog() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const initialReceipt = searchParams.get("receipt") ?? "";
+  const location = useLocation();
+  const navigate = useNavigate();
+  // The receipt comes in the fragment (2026-10-10). Older links put it in
+  // the query string; still read, then moved to the fragment so it is not
+  // sent again on a reload.
+  const legacyReceipt = searchParams.get("receipt") ?? "";
+  const [initialReceipt] = useState(() => receiptFromHash(location.hash) || legacyReceipt);
+
+  useEffect(() => {
+    if (legacyReceipt) {
+      navigate(`${location.pathname}#receipt=${encodeURIComponent(legacyReceipt)}`, { replace: true });
+    }
+  }, [legacyReceipt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [process, setProcess] = useState<ProcessState | null>(null);
   const [voteLog, setVoteLog] = useState<VoteLogResponse | null>(null);

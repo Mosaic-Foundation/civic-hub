@@ -198,6 +198,16 @@ a second key holder (a community admin). Either key alone opens every backup.
   and any `restore_scratch` database: they hold residents' personal data.
 - Clear the clipboard if a step failed before doing it: `pbcopy < /dev/null`.
 - Write what happened at the top of HANDOFF.md.
+- **Ballot secrecy (2026-10-10).** A backup taken before
+  `20261010000000_ballot_secrecy_at_rest.sql` still links voters to ballots:
+  the bridge rows of votes open then, each ballot's time, and ballots in the
+  order they were cast. Restored whole, it brings those links back into the
+  live database. Its migration history lacks `20261010000000`, so the next
+  `db push` re-runs it, which blanks the times and reshuffles the ballots.
+  Check that it ran (`select count(*) from vote_records where created_at is
+  not null` is 0). Bridge rows of votes still open drain as before: early
+  voters collect a key, close clears the rest. A scratch restore (§3) of an
+  old backup holds the links for as long as it exists: delete it (above).
 
 ---
 

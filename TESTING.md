@@ -719,6 +719,48 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
   - Results: unit 113 files, 1,351; API 38 files: hub token 473 passed, 7 skipped; service role 472
     passed, 7 skipped and the `listHubs` failure above, `control.test.ts` 27/27 after the fix;
     Playwright 39 passed, 2 skipped (the same two as before).
+- **Ballot secrecy against the raw data (2026-10-10):**
+  - `ballotSecrecy.test.ts` holds the raw data the way an operator or a stolen backup would, after a run of votes and
+    changes through the app. It needs the local stack's Postgres (`CIVIC_TEST_DATABASE_URL`, default local; refuses any
+    other host) and runs `scripts/export-hub.ts --from-postgres --no-images` for Floyd. It checks:
+    - no bridge row left, and no row in **any** `public` table holding a voter's id and a receipt;
+    - no ballot time, and no participation or event time inside a ballot row;
+    - the ballots share one `xmin` (the close's reshuffle) and none with a participation row or event;
+    - heap order does not reproduce cast order, and positional pairing with participation does not reproduce who cast
+      what;
+    - the export has no line with a voter and a receipt, no ballot time, and ballots in receipt order;
+    - the change key is stored only hashed.
+
+    And the app's side:
+    - a change with the receipt keeps it;
+    - without it, 400 `already_voted` with the "browser where you voted" message;
+    - a wrong key or another voter's receipt gets `receipt_not_accepted`;
+    - an early voter (cast through the legacy `cast_vote`) collects a key once via `POST /votes/:id/claim-receipt`;
+    - one participation row and one ballot per voter, and the tally is everyone's final choice;
+    - POST verify works; the old GET is 404.
+  - `ballotSecrecyCatalog.test.ts` runs `tests/fixtures/ballotSecrecyRules.ts` on the real catalog: no person, time,
+    clock or sequence default on `vote_records`; no receipt column outside it (and the retired bridge); nothing new
+    writing `active_vote_keys`; `cast_ballot` not touching it. It also checks the database refuses a timed ballot.
+  - Unit `ballotSecrecyRules.test.ts` proves each rule fails on the change it stops, plus static guards: no
+    `.eq("receipt_id")` or `receipt_id=eq.` in `src/`, no `getActiveChoice`, no `cast_vote` rpc, no `?receipt=` in
+    `ui/src`, and the vote log line names no voter.
+  - `atomicFunctions.test.ts` and `leakHarnessDb.test.ts` now drive `cast_ballot`; the latter adds `reshuffle_ballots`,
+    `claim_vote_key` and `ballot_by_receipt` under an Athens token against Floyd.
+  - `leakHarness.test.ts`: POST verify and claim-receipt are in the write plan, and Floyd's receipt is posted against
+    Athens's vote.
+  - E2E `voteReceipt.spec.ts` covers vote, reload (the choice comes from the held receipt), change with the same
+    receipt, the `#receipt=` link, and a fresh browser told its vote is counted with no buttons. The fix for sign-up
+    from a vote keeping its receipt is covered by the existing `signupWording.spec.ts`.
+  - Results:
+    - unit 114 files, 1,362;
+    - API 40 files, 494 passed and 7 skipped in each mode (service role on `start-api-3240`, hub token on
+      `start-api-3241`). The `sampleContent.test.ts` removal hit the known admin+athens lockout on the second full run
+      and passed 17/17 in both modes rerun alone after clearing `locked_until`.
+    - Playwright on `hub-e2e-1008-athens` + `hub-ui-5173`: 38 passed (with `signupWording` after the fix), 2 skipped, and `startPage.spec.ts`'s two tests
+      failing because that setup is not the preview-build one they need (above). Not run in it; the start page is
+      untouched.
+  - The full-suite runs came before two small changes: the schema-contract column and the VotePanel account fix.
+    Re-run after them: unit, `/health`, and the two vote specs.
 
   Its real reviewed process is left behind on purpose (append-only history;
   `pending_review`, out of every list). API then 438 passed, 7 skipped, both

@@ -138,18 +138,18 @@ describe("an Athens session cannot vote on, or read the votes of, a Floyd proces
 describe("an Athens session cannot verify a Floyd receipt", () => {
   it("by receipt id", async () => {
     const control = await call(
-      "GET",
-      `/votes/${floydProcessId}/verify?receipt=${floydReceipt}`,
+      "POST",
+      `/votes/${floydProcessId}/verify`,
       FLOYD,
-      undefined,
+      { receipt: floydReceipt },
       floydAdmin,
     );
     expect(control.status).toBe(200);
     const res = await call(
-      "GET",
-      `/votes/${floydProcessId}/verify?receipt=${floydReceipt}`,
+      "POST",
+      `/votes/${floydProcessId}/verify`,
       ATHENS,
-      undefined,
+      { receipt: floydReceipt },
       athensResident,
     );
     expect(res.status).toBe(404);

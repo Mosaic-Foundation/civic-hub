@@ -117,8 +117,11 @@ export const JOBS: readonly JobSpec[] = [
     // Hourly, so a vote closes within the hour of its deadline on every hub,
     // read or not, and its close — stamped with the deadline — is recorded in
     // time for the digest. The close on read stays as the fallback.
+    // It also reshuffles open votes' ballots (ballot secrecy): keep it a few
+    // minutes BEFORE the backups' :17 (civic-hub-backups dump.yml), so each
+    // dump sees freshly shuffled ballots.
     schedule: "5 * * * *",
-    description: "Close votes past their deadline, per hub with Votes on (stamped with the deadline)",
+    description: "Close votes past their deadline, per hub with Votes on (stamped with the deadline); reshuffle open votes' ballots",
   },
   {
     id: "sample_refresh",

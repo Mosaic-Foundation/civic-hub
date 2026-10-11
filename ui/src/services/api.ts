@@ -5,7 +5,7 @@
  */
 
 import type { HeldBackRecipient } from "../components/HeldBackNote";
-import { apiErrorMessage } from "../utils/httpError";
+import { ApiError, apiErrorCode, apiErrorMessage } from "../utils/httpError";
 
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
 
@@ -41,7 +41,7 @@ function getStoredToken(): string | null {
 //     is never hidden behind a stale list (post a proposal → the list
 //     refetches fresh).
 //   - The allowlist holds only list/identity endpoints. Per-actor detail
-//     reads (/process/:id/state carries your_current_vote etc.) are
+//     reads (/process/:id/state carries has_voted etc.) are
 //     deliberately NOT cacheable.
 //   - Keyed by path + auth token, so sign-in/out never serves the other
 //     identity's payload.
@@ -97,7 +97,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       window.dispatchEvent(new CustomEvent("civic:auth-expired"));
     }
     const err = await res.json().catch(() => null);
-    throw new Error(apiErrorMessage(err, res.status, res.statusText));
+    throw new ApiError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err));
   }
 
   const data = await res.json();
@@ -234,7 +234,9 @@ export interface VoteState {
   tally: Record<string, number> | null;
   total_votes: number | null;
   has_voted: boolean | null;
-  your_current_vote: string | string[] | null;
+  // No "your current vote": the hub keeps no link from a voter to a ballot.
+  // The voter's own choice comes from the receipt this browser holds
+  // (services/voteReceipts.ts).
   has_supported: boolean | null;
   support_count: number;
   support_threshold: number;
@@ -302,8 +304,8 @@ export function listProcesses(types?: string[]): Promise<ProcessSummary[]> {
 
 export function getProcessState(id: string): Promise<ProcessState> {
   // The caller's identity rides on the Bearer token (request() attaches
-  // it) — the server resolves per-actor fields (has_voted,
-  // your_current_vote) from the session, never from a query param.
+  // it) — the server resolves per-actor fields (has_voted) from the
+  // session, never from a query param.
   return request("GET", `/process/${id}/state`);
 }
 
@@ -314,19 +316,35 @@ export interface ActionResult {
   result: Record<string, unknown>;
 }
 
-export function submitVote(processId: string, actor: string, option: string): Promise<ActionResult> {
+/** The receipt and change key a voter's browser holds, sent to change a vote. */
+export interface HeldReceiptPayload {
+  receipt_id: string;
+  change_key: string;
+}
+
+export function submitVote(
+  processId: string,
+  actor: string,
+  option: string,
+  receipt: HeldReceiptPayload | null = null,
+): Promise<ActionResult> {
   return request("POST", `/process/${processId}/action`, {
     type: "process.vote",
     actor,
-    payload: { option },
+    payload: receipt ? { option, receipt } : { option },
   });
 }
 
-export function submitApprovalVote(processId: string, actor: string, selections: string[]): Promise<ActionResult> {
+export function submitApprovalVote(
+  processId: string,
+  actor: string,
+  selections: string[],
+  receipt: HeldReceiptPayload | null = null,
+): Promise<ActionResult> {
   return request("POST", `/process/${processId}/action`, {
     type: "process.vote",
     actor,
-    payload: { selections },
+    payload: receipt ? { selections, receipt } : { selections },
   });
 }
 
@@ -940,8 +958,20 @@ export function getVoteLog(processId: string): Promise<VoteLogResponse> {
   return request("GET", `/votes/${processId}/log`);
 }
 
+/** A POST: the receipt goes in the body, never in a URL a log would keep. */
 export function verifyReceipt(processId: string, receiptId: string): Promise<ReceiptVerifyResponse> {
-  return request("GET", `/votes/${processId}/verify?receipt=${encodeURIComponent(receiptId)}`);
+  return request("POST", `/votes/${processId}/verify`, { receipt: receiptId });
+}
+
+/**
+ * For someone who voted before receipts moved to the voter (2026-10-10), on
+ * a vote still open: their receipt and a change key, handed over once.
+ * ApiError 404 `no_receipt_to_claim` when there is nothing to collect.
+ */
+export function claimVoteReceipt(
+  processId: string,
+): Promise<{ receipt_id: string; change_key: string; choice: string }> {
+  return request("POST", `/votes/${processId}/claim-receipt`, {});
 }
 
 // --- Civic Events (feed layer) ---
@@ -1852,7 +1882,7 @@ export async function uploadHubImage(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => null);
-    throw new Error(apiErrorMessage(err, res.status, res.statusText));
+    throw new ApiError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err));
   }
   return res.json();
 }
@@ -1987,7 +2017,7 @@ export async function uploadPostImage(file: Blob): Promise<UploadedImage> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => null);
-    throw new Error(apiErrorMessage(err, res.status, res.statusText));
+    throw new ApiError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err));
   }
   return res.json();
 }
@@ -2005,7 +2035,7 @@ export async function uploadProjectImage(file: Blob): Promise<UploadedImage> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => null);
-    throw new Error(apiErrorMessage(err, res.status, res.statusText));
+    throw new ApiError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err));
   }
   return res.json();
 }
@@ -2410,7 +2440,7 @@ export async function uploadFeedbackScreenshot(file: Blob): Promise<UploadedImag
   });
   if (!res.ok) {
     const err = await res.json().catch(() => null);
-    throw new Error(apiErrorMessage(err, res.status, res.statusText));
+    throw new ApiError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err));
   }
   return res.json();
 }

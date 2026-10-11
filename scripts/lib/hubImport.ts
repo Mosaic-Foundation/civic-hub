@@ -378,6 +378,8 @@ export interface ImportPlan {
   existing: Record<string, number>;
   imageUploads: Array<{ key: string; bytes: Buffer; contentType: string }>;
   targetNormalize: ((t: string) => string) | undefined;
+  /** What the rows written must fingerprint to: the manifest's, or that with ballot times blanked. */
+  expectedFingerprint: string;
 }
 
 /** Tables whose triggers refuse deletes; cleared only with the triggers suspended (restore, purge). */
@@ -488,6 +490,22 @@ export async function planImport(client: pg.Client, b: LoadedBundle, opts: Impor
   const rows = new Map<string, Row[]>();
   for (const [t, rs] of b.tables) rows.set(t, rs.map((r) => JSON.parse(rewrite(JSON.stringify(r))) as Row));
 
+  // Ballot secrecy (2026-10-10): a ballot carries no time (the target's
+  // vote_records_no_time constraint). A bundle exported before then has one
+  // on each ballot; it is blanked on the way in, and the rows written must
+  // match the bundle with exactly that change. Ballots go in receipt order,
+  // which is random, so no voting order comes with them.
+  let expectedFingerprint = b.manifest.fingerprint;
+  const ballots = rows.get("vote_records");
+  if (ballots?.some((r) => r.created_at !== null && r.created_at !== undefined)) {
+    const blank = (rs: Row[]) => rs.map((r) => ("created_at" in r ? { ...r, created_at: null } : r));
+    rows.set("vote_records", blank(ballots));
+    expectedFingerprint = fingerprintTables(
+      [...b.tables].map(([table, rs]) => ({ table, rows: table === "vote_records" ? blank(rs) : rs })),
+      sourceNormalizer(b.manifest, b.images),
+    );
+  }
+
   // Restore: what is there now, and may it be cleared?
   const existing: Record<string, number> = {};
   if (opts.mode === "restore") {
@@ -528,7 +546,7 @@ export async function planImport(client: pg.Client, b: LoadedBundle, opts: Impor
 
   const isNullable = (t: string, c: string) => catalog.columns.get(t)?.get(c)?.nullable ?? false;
   const { order, deferred } = insertOrder([...rows.keys()], catalog.fks, isNullable);
-  return { catalog, order, deferred, hubRow, rows, existing, imageUploads, targetNormalize };
+  return { catalog, order, deferred, hubRow, rows, existing, imageUploads, targetNormalize, expectedFingerprint };
 }
 
 // --- Apply -------------------------------------------------------------------
@@ -672,12 +690,12 @@ export async function applyImport(
     }
     const mismatched = b.manifest.tables.filter((t) => counts[t.table] !== t.rows);
     const fingerprint = fingerprintTables(readBack, plan.targetNormalize);
-    if (mismatched.length || fingerprint !== b.manifest.fingerprint) {
+    if (mismatched.length || fingerprint !== plan.expectedFingerprint) {
       throw new ImportRefused(
         "What was written does not match the bundle; rolled back.",
         [
           ...mismatched.map((t) => `${t.table}: ${counts[t.table]} rows written, bundle has ${t.rows}`),
-          ...(fingerprint !== b.manifest.fingerprint ? ["content fingerprint differs"] : []),
+          ...(fingerprint !== plan.expectedFingerprint ? ["content fingerprint differs"] : []),
         ],
       );
     }

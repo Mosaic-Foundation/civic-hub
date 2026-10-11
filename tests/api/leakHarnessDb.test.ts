@@ -4,7 +4,8 @@
 // leakHarness.test.ts walks the app; this file proves the second layer on its
 // own terms, so it holds whatever the code does: a token for Athens sees no
 // Floyd row in any hub table, cannot write one, cannot move a row across, and
-// cannot drive transition_process or cast_vote (or their helpers) on Floyd.
+// cannot drive transition_process, cast_ballot, reshuffle_ballots,
+// claim_vote_key or ballot_by_receipt (or their helpers) on Floyd.
 // And for each atomic function, a failure forced part-way through under the
 // minted token leaves no residue in any table it writes.
 //
@@ -14,10 +15,12 @@
 // LOCAL ONLY (localStack() refuses anything else). Needs `supabase start`.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createHmac, createSign, randomBytes } from "node:crypto";
+import { createHash, createHmac, createSign, randomBytes } from "node:crypto";
 import { localRest, localStack } from "../fixtures/adminSession.js";
 import { HUB_TABLES } from "../../src/db/forHub.js";
 import { parseSigningKey, signHubToken } from "../../src/db/hubToken.js";
+
+const keyHash = (k: string) => createHash("sha256").update(k, "utf8").digest("hex");
 
 const LOCAL_JWT_SECRET = "super-secret-jwt-token-with-at-least-32-characters-long";
 const LOCAL_PUBLISHABLE_KEY = "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
@@ -212,10 +215,26 @@ describe("the atomic functions under a hub token", () => {
         p_hub_id, p_process_id: floydProcess, p_to_status: "closed", p_actor: "rlsdb", p_event: null,
       });
       expect(t.body?.code, JSON.stringify(t.body)).toBe("P0002");
-      const v = await rpc("athens", "cast_vote", {
+      const v = await rpc("athens", "cast_ballot", {
         p_hub_id, p_process_id: floydProcess, p_user_id: voter(1), p_choice: "Yes", p_event: null,
+        p_receipt: null, p_key_hash: null, p_new_key_hash: keyHash("k"),
       });
       expect(v.body?.code, JSON.stringify(v.body)).toBe("P0002");
+      const r = await rpc("athens", "reshuffle_ballots", { p_hub_id, p_process_id: floydProcess });
+      expect(r.body?.code, JSON.stringify(r.body)).toBe("P0002");
+      const c = await rpc("athens", "claim_vote_key", {
+        p_hub_id, p_process_id: floydProcess, p_user_id: voter(1), p_key_hash: keyHash("k"),
+      });
+      expect(c.body?.code, JSON.stringify(c.body)).toBe("P0002");
+    }
+    // ballot_by_receipt does not lock: under the Athens token, Floyd's ballot
+    // is simply not there.
+    const planted = (await localRest(`vote_records?process_id=eq.${floydProcess}&select=receipt_id&limit=1`)) as Array<{ receipt_id: string }>;
+    if (planted.length) {
+      const b = await rpc("athens", "ballot_by_receipt", {
+        p_hub_id: "floyd", p_process_id: floydProcess, p_receipt: planted[0].receipt_id,
+      });
+      expect(b.body ?? null, JSON.stringify(b.body)).toBeNull();
     }
     const lock = await rpc("athens", "_civic_lock_process", { p_hub_id: "floyd", p_process_id: floydProcess });
     expect(lock.body?.code).toBe("P0002");
@@ -247,35 +266,41 @@ describe("the atomic functions under a hub token", () => {
     bridge: await localRest(`active_vote_keys?process_id=eq.${athensVote}&user_id=eq.${userId}`),
   });
 
-  it("cast_vote works for its own hub under the token (the control)", async () => {
+  it("cast_ballot works for its own hub under the token (the control)", async () => {
     firstEventId = `evt_rlsdb_${run}_1`;
-    const res = await rpc("athens", "cast_vote", {
+    const res = await rpc("athens", "cast_ballot", {
       p_hub_id: "athens",
       p_process_id: athensVote,
       p_user_id: voter(1),
       p_choice: "Yes",
       p_event: eventRow(firstEventId, athensVote, voter(1), "civic.process.vote_submitted"),
+      p_receipt: null,
+      p_key_hash: null,
+      p_new_key_hash: keyHash("rlsdb-1"),
     });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     const s = await ballotRows(voter(1));
     expect(s.participation).toHaveLength(1);
-    expect(s.bridge).toEqual([expect.objectContaining({ hub_id: "athens", receipt_id: res.body.receipt_id })]);
+    expect(s.bridge).toEqual([]);
     expect(await localRest(`vote_records?receipt_id=eq.${res.body.receipt_id}&select=choice,hub_id`)).toEqual([
       { choice: "Yes", hub_id: "athens" },
     ]);
   });
 
-  it("cast_vote: a failure at its last write leaves no ballot, participation, bridge or event", async () => {
+  it("cast_ballot: a failure at its last write leaves no ballot, participation, bridge or event", async () => {
     const ballotsBefore = await localRest(`vote_records?process_id=eq.${athensVote}&select=receipt_id,choice&order=receipt_id`);
     const eventsBefore = await localRest(`events?process_id=eq.${athensVote}&select=id&order=id`);
     // The event id already exists: the insert fails after the three ballot
     // rows were written inside the transaction.
-    const res = await rpc("athens", "cast_vote", {
+    const res = await rpc("athens", "cast_ballot", {
       p_hub_id: "athens",
       p_process_id: athensVote,
       p_user_id: voter(2),
       p_choice: "No",
       p_event: eventRow(firstEventId, athensVote, voter(2), "civic.process.vote_submitted"),
+      p_receipt: null,
+      p_key_hash: null,
+      p_new_key_hash: keyHash("rlsdb-2"),
     });
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(res.body?.code, JSON.stringify(res.body)).toBe("23505");
@@ -283,9 +308,10 @@ describe("the atomic functions under a hub token", () => {
     expect(await localRest(`vote_records?process_id=eq.${athensVote}&select=receipt_id,choice&order=receipt_id`)).toEqual(ballotsBefore);
     expect(await localRest(`events?process_id=eq.${athensVote}&select=id&order=id`)).toEqual(eventsBefore);
     // And the voter is not locked out: the next attempt goes through.
-    const retry = await rpc("athens", "cast_vote", {
+    const retry = await rpc("athens", "cast_ballot", {
       p_hub_id: "athens", p_process_id: athensVote, p_user_id: voter(2), p_choice: "No",
       p_event: eventRow(`evt_rlsdb_${run}_2`, athensVote, voter(2), "civic.process.vote_submitted"),
+      p_receipt: null, p_key_hash: null, p_new_key_hash: keyHash("rlsdb-2"),
     });
     expect(retry.status, JSON.stringify(retry.body)).toBe(200);
   });

@@ -57,8 +57,8 @@ export default function Process() {
       setLoading(false);
     }
     // actorId isn't read here directly, but a sign-in/out changes the
-    // Bearer token request() sends — refetch so has_voted /
-    // your_current_vote reflect the new session.
+    // Bearer token request() sends — refetch so has_voted reflects the
+    // new session.
   }, [id, actorId]);
 
   useEffect(() => {

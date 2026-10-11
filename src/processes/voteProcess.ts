@@ -28,10 +28,14 @@ import {
 import {
   recordOrUpdateVote,
   clearActiveVoteKeysForProcess,
-  getActiveChoice,
   getBallotChoicesForProcess,
   hasUserVoted,
+  reshuffleBallotsForProcess,
+  VoteRefusedError,
+  type HeldReceipt,
 } from "../modules/civic.receipts/index.js";
+import { AlreadyVotedError } from "../db/atomic.js";
+import { reportError } from "../utils/reportError.js";
 import { getInputsByProcess } from "../modules/civic.input/index.js";
 import { getActionDispatcher } from "./registry.js";
 import { findExistingBriefId } from "./spawnBrief.js";
@@ -64,6 +68,15 @@ function syncStatus(process: Process, state: VoteProcessState): void {
 
 // --- Handler implementation ---
 
+/** The receipt and change key a voter's browser sent with a change, if any. */
+function parseHeldReceipt(raw: unknown): HeldReceipt | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.receipt_id !== "string" || typeof r.change_key !== "string") return null;
+  if (!r.receipt_id || r.receipt_id.length > 100 || !r.change_key || r.change_key.length > 200) return null;
+  return { receipt_id: r.receipt_id, change_key: r.change_key };
+}
+
 const voteProcess: ProcessHandler = {
   // The two-table split below is the anonymous-ballot guarantee, not an
   // accident of normalization: vote_records knows the choice but not the
@@ -73,7 +86,8 @@ const voteProcess: ProcessHandler = {
   requiredSchema: [
     {
       table: "vote_records",
-      columns: ["receipt_id", "process_id", "choice"],
+      // change_key_hash: the voter holds the receipt (20261010000000).
+      columns: ["receipt_id", "process_id", "choice", "change_key_hash"],
       forbiddenColumns: [
         {
           column: "user_id",
@@ -96,6 +110,8 @@ const voteProcess: ProcessHandler = {
       owner: "civic.vote",
     },
     {
+      // Retired 2026-10-10: only read and cleared (early voters collecting
+      // a key; close). Drop this entry with the table.
       table: "active_vote_keys",
       columns: ["user_id", "process_id", "receipt_id"],
       owner: "civic.vote",
@@ -179,20 +195,17 @@ const voteProcess: ProcessHandler = {
           ? action.payload.selections
           : action.payload.option;
 
-        // Ballot secrecy: the module never stores ballots in state, so
-        // the previous choice comes from the receipts bridge. A voter
-        // with participation but no active key voted before the bridge
-        // existed (or the vote closed under them) — refuse the change
-        // up front rather than double-counting them as a first vote.
-        const previousSerialized = await getActiveChoice(action.actor, process.id);
-        if (
-          previousSerialized === null &&
-          (await hasUserVoted(action.actor, process.id))
-        ) {
-          throw new Error("You have already voted on this process");
+        // Ballot secrecy (2026-10-10): the hub keeps no link from a voter
+        // to their ballot. A change is the voter's browser presenting the
+        // receipt and change key it was given; without them, someone who has
+        // voted is refused, and their vote still counts.
+        const held = parseHeldReceipt(action.payload.receipt);
+        if (!held && (await hasUserVoted(action.actor, process.id))) {
+          const refused = new AlreadyVotedError();
+          throw new VoteRefusedError(refused.code, refused.message);
         }
 
-        // The vote_submitted event is built here but written by cast_vote,
+        // The vote_submitted event is built here but written by cast_ballot,
         // in the same transaction as the ballot (src/db/atomic.ts): captured
         // from the module rather than emitted, so there is never an event
         // without its ballot or a ballot without its event.
@@ -208,29 +221,25 @@ const voteProcess: ProcessHandler = {
           state,
           action.actor,
           ballotInput,
-          previousSerialized,
+          held !== null,
           voteCtx,
         );
         syncStatus(process, outcome.state);
 
-        // Same-ballot re-submit short-circuits in the lifecycle module —
-        // no receipt churn needed.
-        if (outcome.result.unchanged) {
-          result = { ...outcome.result };
-          break;
-        }
-
-        // Record (or update) the user's receipt. receipt_id stays stable
-        // across changes so a previously-shown receipt always verifies
-        // to the current choice.
+        // Record the ballot, or change it under the voter's receipt. The
+        // receipt stays the same across changes, so it always verifies to
+        // the current choice. The change key is returned on a first vote
+        // only, once; the hub stores its hash.
         const method = getVotingMethod(methodKey);
         const serialized = method.serializeForReceipt(outcome.result.ballot as Ballot);
-        const receipt = await recordOrUpdateVote(process.id, action.actor, serialized, submitted);
+        const receipt = await recordOrUpdateVote(process.id, action.actor, serialized, submitted, held);
 
         result = {
           ...outcome.result,
           receipt_id: receipt.receipt_id,
+          ...(receipt.change_key ? { change_key: receipt.change_key } : {}),
           vote_updated: receipt.updated,
+          ...(receipt.unchanged ? { unchanged: true } : {}),
         };
         break;
       }
@@ -263,10 +272,17 @@ const voteProcess: ProcessHandler = {
         syncStatus(process, outcome.state);
         result = outcome.result;
 
-        // Drop the user_id ↔ receipt_id bridge so the post-close
-        // snapshot retains the strict separation between
-        // vote_participation and vote_records.
+        // Drop any bridge rows left from before 2026-10-10 (early voters
+        // who never came back for their key), then rewrite the ballots in
+        // random order: every copy taken after close has no row order or
+        // transaction id that lines a ballot up with its voter. A failed
+        // reshuffle does not undo the close; the hourly job retries it.
         await clearActiveVoteKeysForProcess(process.id);
+        try {
+          await reshuffleBallotsForProcess(process.id);
+        } catch (err) {
+          reportError("vote.close.reshuffle", (err as Error).message, { process_id: process.id });
+        }
 
         // A vote finishes when it closes (Adam, 2026-10-07): it is finalized
         // here and publishes its own results, which the feed and digest post
@@ -301,10 +317,6 @@ const voteProcess: ProcessHandler = {
     const hasVoted = actor
       ? await hasUserVoted(actor, process.id)
       : null;
-    const yourSerialized =
-      actor && state.status === "active"
-        ? await getActiveChoice(actor, process.id)
-        : null;
 
     // Ballots are only needed when results are visible AND no finalized
     // snapshot exists (finalized votes read state.result instead).
@@ -327,8 +339,6 @@ const voteProcess: ProcessHandler = {
       createdBy: process.createdBy,
     }, actor, {
       has_voted: hasVoted,
-      your_current_vote:
-        yourSerialized !== null ? method.parseReceipt(yourSerialized) : null,
       ballots,
     });
 

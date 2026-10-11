@@ -165,8 +165,11 @@ function describeAdminDigest(b: Body): JobRunDescription {
 function describeVoteClose(b: Body): JobRunDescription | null {
   const closed = arr(b.closed).length;
   const failedRows = arr<{ id?: string; error?: string }>(b.failed);
-  if (closed === 0 && failedRows.length === 0) return null;
+  const reshuffleError = typeof b.reshuffle_error === "string" ? b.reshuffle_error : null;
+  // The hourly ballot reshuffle is routine: recorded only when it fails.
+  if (closed === 0 && failedRows.length === 0 && !reshuffleError) return null;
   const failed = failedRows.map((f) => `Could not close ${f.id ?? "a vote"}: ${f.error ?? "unknown error"}`);
+  if (reshuffleError) failed.push(`Could not reshuffle open votes' ballots: ${reshuffleError}`);
   return { status: status(failed, []), summary: `${plural(closed, "vote", "votes")} closed`, problems: failed };
 }
 

@@ -11,6 +11,7 @@ import { RunSink, runMeetingSummaryForHub } from "../controllers/meetingSummaryC
 import { sweepHubExports } from "../db/hubExportsBucket.js";
 import { closeExpiredProcesses } from "../services/processService.js";
 import { refreshSamples } from "../services/sampleRefresh.js";
+import { reshuffleOpenBallots } from "../modules/civic.receipts/index.js";
 
 export const JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
   meeting_summary: async () => {
@@ -21,9 +22,21 @@ export const JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
   news_sync: () => runNewsSyncForHub(),
   digest: (input) => runDigestForHub(input),
   admin_digest: () => runAdminDigestForHub(),
-  vote_close: async () => {
+  vote_close: async ({ now }) => {
     const r = await closeExpiredProcesses("civic.vote");
-    return { status: r.failed.length ? 500 : 200, body: r };
+    // Then rewrite the ballots of every open vote in random order (ballot
+    // secrecy, 2026-10-10): this runs at :05, about 12 minutes before each
+    // 6-hourly backup, so a backup lines no ballot up with its voter by row
+    // order except those cast in the minutes between.
+    let reshuffled: { processes: number; ballots: number } | null = null;
+    let reshuffleError: string | null = null;
+    try {
+      reshuffled = await reshuffleOpenBallots(now);
+    } catch (err) {
+      reshuffleError = (err as Error).message;
+    }
+    const failed = r.failed.length > 0 || reshuffleError !== null;
+    return { status: failed ? 500 : 200, body: { ...r, reshuffled, reshuffle_error: reshuffleError } };
   },
   sample_refresh: async ({ now }) => {
     const r = await refreshSamples({ now });

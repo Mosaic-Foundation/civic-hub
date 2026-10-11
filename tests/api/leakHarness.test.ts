@@ -435,7 +435,6 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /admin/settings": {},
   "GET /admin/moderation/log": {},
   "GET /votes/:id/log": {},
-  "GET /votes/:id/verify": { query: [] /* filled in below: ?receipt=<floyd receipt> */ },
   "GET /vote-results/:id": {},
   "GET /brief/": {},
   "GET /brief/:id": {},
@@ -500,7 +499,6 @@ function expand(route: string, plan: Plan): Array<{ path: string; echoed: string
       [B.vote, B.proposal, B.project, B.wordcloud, B.brief, B.announcement, B.conversation].map((id) => `?page=/${s}/${id}`),
     )];
   }
-  if (route === "GET /votes/:id/verify") queries = ["", `?receipt=${B.receipt}`];
   if (route === "GET /link-preview/") queries = ["", `?url=${encodeURIComponent(B.previewUrl)}`];
   if (route === "GET /unsubscribe/digest") queries = ["", "?token=not-a-real-token", `?token=${encodeURIComponent(B.unsubscribeToken)}`];
   if (route === "GET /feed/") queries = ["", "?limit=200", `?process_id=${B.vote}`];
@@ -607,6 +605,9 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "DELETE /process/:id/links/:linkId": {},
   "POST /process/:id/edit": { body: { title: X.title, description: X.description } },
   "POST /process/:id/action": { body: { type: "process.vote", payload: { option: "No" } } },
+  // Receipt verification moved to a POST (2026-10-10): the receipt in the body.
+  "POST /votes/:id/verify": { body: { receipt: "" /* filled below with Floyd's receipt */ } },
+  "POST /votes/:id/claim-receipt": { body: {} },
   "POST /process/:id/input": { body: { body: X.body } },
   "POST /assistant/:processType/drafts/:id/message": { body: { message: "hello" } },
   "POST /assistant/:processType/drafts/:id/review": { body: {} },
@@ -671,7 +672,12 @@ describe("writes, as Athens, naming Floyd's ids", () => {
           .replace(":linkId", B.link || "no-link")
           .replace(":commentId", B.comment)
           .replace(/:(id|processId|reviewId)/, id);
-        const body = plan.body && "to_id" in plan.body ? { ...plan.body, to_id: B.wordcloud } : plan.body;
+        const body =
+          plan.body && "to_id" in plan.body
+            ? { ...plan.body, to_id: B.wordcloud }
+            : plan.body && "receipt" in plan.body
+              ? { ...plan.body, receipt: B.receipt }
+              : plan.body;
         for (const [who, token] of [["admin", tokens.athensAdmin], ["resident", tokens.athensResident]] as const) {
           requests.push({ label: `${who} ${method} ${filled}`, method, path: filled, body, token, echoed: [id, B.link, B.comment, B.wordcloud] });
         }
@@ -686,6 +692,17 @@ describe("writes, as Athens, naming Floyd's ids", () => {
     ];
     for (const c of bodyCases) {
       requests.push({ label: `admin ${c.method} ${c.path} (Floyd ids in the body)`, ...c, token: tokens.athensAdmin, echoed: [B.vote, B.meeting, B.brief] });
+    }
+    // Floyd's receipt against Athens's own vote: must verify nothing.
+    for (const [who, token] of [["admin", tokens.athensAdmin], ["resident", tokens.athensResident]] as const) {
+      requests.push({
+        label: `${who} POST /votes/${A.vote}/verify (Floyd receipt in the body)`,
+        method: "POST",
+        path: `/votes/${A.vote}/verify`,
+        body: { receipt: B.receipt },
+        token,
+        echoed: [B.receipt, `Yes ${MARKER_B}`],
+      });
     }
 
     const problems: string[] = [];

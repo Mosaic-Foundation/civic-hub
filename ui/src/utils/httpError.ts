@@ -15,3 +15,25 @@ export function apiErrorMessage(body: unknown, status: number, statusText = ""):
   if (status === 403) return "The request was blocked before it reached the hub (403). Try again in a few minutes.";
   return statusText ? `Request failed: ${status} ${statusText}` : `Request failed: ${status}`;
 }
+
+/**
+ * A failed request, with the server's machine-readable `code` when it sent
+ * one (a refused vote: `already_voted`, `receipt_not_accepted`, …), so a
+ * caller can explain instead of only showing the message.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+  constructor(message: string, status: number, code: string | null) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+/** The `code` field of an error body, or null. */
+export function apiErrorCode(body: unknown): string | null {
+  const code = (body as { code?: unknown } | null)?.code;
+  return typeof code === "string" && code ? code : null;
+}

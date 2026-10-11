@@ -1,14 +1,59 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import ShareMoment from "./ShareMoment";
-import type { VoteState } from "../services/api";
-import { submitVote, submitApprovalVote, supportVote, unsupportVote, submitInput } from "../services/api";
+import type { ActionResult, HeldReceiptPayload, VoteState } from "../services/api";
+import {
+  claimVoteReceipt,
+  submitVote,
+  submitApprovalVote,
+  supportVote,
+  unsupportVote,
+  submitInput,
+} from "../services/api";
+import { ApiError } from "../utils/httpError";
+import { dropHeldReceipt, getHeldReceipt, saveHeldReceipt, type HeldReceipt } from "../services/voteReceipts";
+import { getMe, getStoredToken } from "../services/auth";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
 import AuthModal from "./AuthModal";
 import hub from "../config/hub";
 
 const COMMENT_MAX = 500;
+
+// One collection per account and vote at a time (React's development double
+// effects would otherwise ask twice, and the second answer is "nothing").
+const claimsInFlight = new Map<string, Promise<HeldReceipt | null>>();
+
+/**
+ * For someone who voted before receipts moved to the voter: collect their
+ * receipt and change key once, and keep them on this browser. null when
+ * there is nothing to collect (they voted from another browser).
+ */
+function collectEarlyReceipt(actor: string, processId: string, approval: boolean): Promise<HeldReceipt | null> {
+  const key = `${actor}:${processId}`;
+  let p = claimsInFlight.get(key);
+  if (!p) {
+    p = claimVoteReceipt(processId)
+      .then((r) => {
+        let choice: string | string[] = r.choice;
+        if (approval) {
+          try {
+            const parsed: unknown = JSON.parse(r.choice);
+            if (Array.isArray(parsed)) choice = parsed.map(String);
+          } catch {
+            // Keep the stored text.
+          }
+        }
+        const held: HeldReceipt = { receipt_id: r.receipt_id, change_key: r.change_key, choice };
+        saveHeldReceipt(actor, processId, held);
+        return held;
+      })
+      .catch(() => getHeldReceipt(actor, processId))
+      .finally(() => claimsInFlight.delete(key));
+    claimsInFlight.set(key, p);
+  }
+  return p;
+}
 
 interface Props {
   process: VoteState;
@@ -21,7 +66,18 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [justVoted, setJustVoted] = useState<string | string[] | null>(null);
   const [voteWasUpdated, setVoteWasUpdated] = useState(false);
-  const [receiptId, setReceiptId] = useState<string | null>(null);
+  // The receipt this browser holds for this vote, if any. The hub cannot
+  // look it up: it keeps nothing that links this person to their ballot.
+  const [held, setHeld] = useState<HeldReceipt | null>(() => getHeldReceipt(actor, process.id));
+  // Voted, and this browser has no receipt: the vote counts, but only the
+  // browser it was cast from can change it.
+  const [votedElsewhere, setVotedElsewhere] = useState(false);
+  const [receiptNotKept, setReceiptNotKept] = useState(false);
+  // The account a receipt is kept under. A vote cast right after signing up
+  // runs from a callback made before sign-in, when `actor` was still
+  // "anonymous": read the latest value, and ask the server if it is not in yet.
+  const actorRef = useRef(actor);
+  actorRef.current = actor;
   const [comment, setComment] = useState("");
   const [commentAnonymous, setCommentAnonymous] = useState(false);
   const [commentSubmitted, setCommentSubmitted] = useState(false);
@@ -37,25 +93,97 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
   const canSeeResults = process.tally !== null;
   const isApproval = process.method === "approval";
 
-  async function doVote(option: string) {
+  // A different account or vote: read what this browser holds for it.
+  useEffect(() => {
+    setHeld(getHeldReceipt(actor, process.id));
+    setVotedElsewhere(false);
+  }, [actor, process.id]);
+
+  // Voted with no receipt here: someone who voted before receipts moved to
+  // the voter collects theirs once; anyone else voted from another browser.
+  useEffect(() => {
+    if (!isActive || process.has_voted !== true || held) return;
+    let live = true;
+    collectEarlyReceipt(actor, process.id, isApproval).then((r) => {
+      if (!live) return;
+      if (r) setHeld(r);
+      else setVotedElsewhere(true);
+    });
+    return () => {
+      live = false;
+    };
+  }, [isActive, process.has_voted, held, actor, process.id, isApproval]);
+
+  /** The signed-in account's id, even when the vote was cast from a pre-sign-in callback. */
+  async function keeperId(): Promise<string> {
+    const known = actorRef.current;
+    if (known && known !== "anonymous") return known;
+    const token = getStoredToken();
+    if (!token) return "";
+    try {
+      return (await getMe(token)).user.id;
+    } catch {
+      return "";
+    }
+  }
+
+  /**
+   * Cast a ballot, or change it with the receipt this browser holds, and
+   * keep the receipt. `send` makes the request for one method's ballot.
+   */
+  async function castBallot(
+    choice: string | string[],
+    send: (receipt: HeldReceiptPayload | null) => Promise<ActionResult>,
+  ) {
     setLoading(true);
     setError(null);
     setCommentWarning(null);
+    let current = held;
     try {
-      const result = await submitVote(process.id, actor, option);
-      const resultPayload = result.result as Record<string, unknown>;
-      const receipt = resultPayload?.receipt_id as string | undefined;
-      const updated = resultPayload?.vote_updated === true;
-      setJustVoted(option);
-      setVoteWasUpdated(updated);
-      if (receipt) setReceiptId(receipt);
+      let result: ActionResult;
+      try {
+        result = await send(current ? { receipt_id: current.receipt_id, change_key: current.change_key } : null);
+      } catch (err) {
+        if (err instanceof ApiError && err.code === "receipt_without_vote") {
+          // A receipt on this browser that is not this account's ballot:
+          // forget it and vote without it.
+          dropHeldReceipt(actor, process.id);
+          current = null;
+          setHeld(null);
+          result = await send(null);
+        } else {
+          throw err;
+        }
+      }
+      const payload = result.result as Record<string, unknown>;
+      const receiptId = typeof payload?.receipt_id === "string" ? payload.receipt_id : null;
+      const changeKey = typeof payload?.change_key === "string" ? payload.change_key : current?.change_key ?? null;
+      setJustVoted(choice);
+      setVoteWasUpdated(payload?.vote_updated === true);
+      if (receiptId && changeKey) {
+        const next: HeldReceipt = { receipt_id: receiptId, change_key: changeKey, choice };
+        // Kept before it is shown, so a re-read of storage finds it.
+        setReceiptNotKept(!saveHeldReceipt(await keeperId(), process.id, next));
+        setHeld(next);
+      }
       await submitCommentIfPresent();
       onVoted();
     } catch (err) {
+      if (err instanceof ApiError && (err.code === "already_voted" || err.code === "receipt_not_accepted")) {
+        if (err.code === "receipt_not_accepted") {
+          dropHeldReceipt(actor, process.id);
+          setHeld(null);
+        }
+        setVotedElsewhere(true);
+      }
       setError(err instanceof Error ? err.message : "Vote failed");
     } finally {
       setLoading(false);
     }
+  }
+
+  function doVote(option: string) {
+    return castBallot(option, (receipt) => submitVote(process.id, actor, option, receipt));
   }
 
   async function doApprovalVote() {
@@ -64,24 +192,7 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
       setError("Select at least one option");
       return;
     }
-    setLoading(true);
-    setError(null);
-    setCommentWarning(null);
-    try {
-      const result = await submitApprovalVote(process.id, actor, selections);
-      const resultPayload = result.result as Record<string, unknown>;
-      const receipt = resultPayload?.receipt_id as string | undefined;
-      const updated = resultPayload?.vote_updated === true;
-      setJustVoted(selections);
-      setVoteWasUpdated(updated);
-      if (receipt) setReceiptId(receipt);
-      await submitCommentIfPresent();
-      onVoted();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Vote failed");
-    } finally {
-      setLoading(false);
-    }
+    await castBallot(selections, (receipt) => submitApprovalVote(process.id, actor, selections, receipt));
   }
 
   async function submitCommentIfPresent() {
@@ -222,8 +333,28 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
 
       {/* Active voting */}
       {isActive && (() => {
-        const currentVote = justVoted ?? process.your_current_vote;
+        const currentVote = justVoted ?? held?.choice ?? null;
         const hasExistingVote = currentVote !== null;
+
+        // Voted, and this browser holds no receipt: the vote counts, and only
+        // the browser it was cast from can change it. Say so plainly rather
+        // than offer buttons that would be refused.
+        if (!hasExistingVote && (votedElsewhere || (process.has_voted === true && !held))) {
+          return (
+            <div className="vote-options">
+              <h4>Your vote</h4>
+              <div className="vote-receipt vote-receipt-elsewhere">
+                <p className="vote-receipt-title">You've already voted, and your vote is counted</p>
+                <p className="vote-receipt-explanation">
+                  {votedElsewhere
+                    ? "You can change it only from the browser where you voted, until voting closes. " +
+                      "We don't keep any record that links you to your ballot, so this browser has no way to find it."
+                    : "Checking this browser for your receipt…"}
+                </p>
+              </div>
+            </div>
+          );
+        }
 
         return (
         <div className="vote-options">
@@ -335,15 +466,24 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
                 </p>
               )}
               <p className="vote-receipt-explanation">
-                This is your anonymous vote receipt. You can use it to verify that
-                your vote was included in the final results. Your identity is not
-                associated with this receipt.
+                This is your anonymous vote receipt. This browser keeps it, so you
+                can change your vote here until voting closes, and check afterwards
+                that it was counted. We keep no record that links you to it.
               </p>
-              {receiptId && (
+              {receiptNotKept && (
+                <p className="vote-comment-warning">
+                  This browser won't keep your receipt, so you won't be able to change
+                  your vote. Your vote is counted. Copy the receipt below if you want to
+                  check it after voting closes.
+                </p>
+              )}
+              {held && (
                 <>
-                  <p className="vote-receipt-id">Your receipt: <code>{receiptId}</code></p>
+                  <p className="vote-receipt-id">Your receipt: <code>{held.receipt_id}</code></p>
+                  {/* The receipt rides in the fragment, which the browser never
+                      sends to a server, so no request log records it. */}
                   <Link
-                    to={`/votes/${process.id}/log?receipt=${encodeURIComponent(receiptId)}`}
+                    to={`/votes/${process.id}/log#receipt=${encodeURIComponent(held.receipt_id)}`}
                     className="vote-receipt-verify-link"
                   >
                     Verify my vote

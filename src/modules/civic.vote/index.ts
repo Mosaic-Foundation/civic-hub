@@ -294,15 +294,15 @@ export async function activate(
  * Delegates ballot validation to the voting method.
  *
  * Ballot secrecy: this function never stores the ballot in state — the
- * host hub persists it via civic.receipts. `previousSerialized` is the
- * user's current receipt choice (from active_vote_keys) or null for a
- * first-time vote; the host looks it up so this module stays pure.
+ * host hub persists it via civic.receipts. `changing` is true when the voter
+ * presented the receipt and change key they hold (a change of their vote),
+ * false for a first vote.
  */
 export async function submitVote(
   state: VoteProcessState,
   actor: string,
   ballotInput: unknown,
-  previousSerialized: string | null,
+  changing: boolean,
   ctx: ProcessContext
 ): Promise<ActionOutcome> {
   if (!isVotingOpen(state.status)) {
@@ -325,23 +325,17 @@ export async function submitVote(
 
   const ballot = method.validateBallot(ballotInput, state.options);
 
-  const previousBallot =
-    previousSerialized !== null ? method.parseReceipt(previousSerialized) : null;
-
-  // No-op: re-submitting the same choice is treated as a confirmation,
-  // not a state change. Skip the event so the audit log doesn't fill
-  // with redundant entries when residents click their current option.
-  if (previousBallot !== null && method.isSameBallot(previousBallot, ballot)) {
-    return { state, result: { ballot, previous_ballot: previousBallot, unchanged: true } };
-  }
-
-  if (previousBallot === null) {
+  // A change is the voter presenting their own receipt: the hub cannot look
+  // up their previous ballot (it keeps no link from voter to ballot), so it
+  // neither counts them again nor knows what they had. A change to the same
+  // choice is recognised by the database, which then writes nothing.
+  if (!changing) {
     state.total_votes += 1;
   }
 
-  await emitVoteSubmitted(ctx, actor, previousBallot !== null);
+  await emitVoteSubmitted(ctx, actor, changing);
 
-  return { state, result: { ballot, previous_ballot: previousBallot } };
+  return { state, result: { ballot, changed: changing } };
 }
 
 /**
@@ -417,14 +411,14 @@ export async function finalizeVote(
  * Actor-specific vote info, resolved by the host hub from the
  * civic.receipts tables (this module never touches storage):
  *   has_voted          — vote_participation lookup (null when no actor)
- *   your_current_vote  — active_vote_keys → vote_records, only while the
- *                        vote is open; null after close (paper-ballot model)
+ *   (no "your current vote": the hub keeps no link from a voter to a
+ *   ballot; the voter's browser knows its own choice from the receipt it
+ *   holds — 2026-10-10)
  *   ballots            — all anonymized ballots, needed only when results
  *                        are visible and no finalized result snapshot exists
  */
 export interface VoteReadContext {
   has_voted: boolean | null;
-  your_current_vote: Ballot | null;
   ballots: Ballot[] | null;
 }
 
@@ -440,7 +434,6 @@ export function getReadModel(
     (view.ballots ? computeTally(view.ballots, state.options, methodKey) : null);
   const hasVoted = view.has_voted;
   const hasSupported = actor ? actor in state.supporters : null;
-  const yourCurrentVote = view.your_current_vote;
 
   // Results visible after voting, when closed, or when finalized
   const showResults =
@@ -459,7 +452,6 @@ export function getReadModel(
     tally: showResults && tally ? tally.tally : null,
     total_votes: showResults ? tally?.total_votes ?? state.total_votes : null,
     has_voted: hasVoted,
-    your_current_vote: yourCurrentVote,
     has_supported: hasSupported,
     support_count: state.support_count,
     support_threshold: state.config.support_threshold,

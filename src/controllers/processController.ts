@@ -1,6 +1,7 @@
 // Process controller — handles HTTP request/response for process endpoints
 
 import { isPluginDisabledError, isProcessTypeEnabled } from "../services/pluginGate.js";
+import { VoteRefusedError } from "../modules/civic.receipts/index.js";
 import { Request, Response } from "express";
 import {
   createProcess,
@@ -142,7 +143,11 @@ export async function handleProcessAction(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
 
-    if (message.includes("not found")) {
+    // A refused vote carries a code the voting panel keys its explanation on
+    // (no receipt on this browser, a receipt that is not theirs).
+    if (err instanceof VoteRefusedError) {
+      res.status(400).json({ error: message, code: err.code });
+    } else if (message.includes("not found")) {
       res.status(404).json({ error: message });
     } else {
       res.status(400).json({ error: message });

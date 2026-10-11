@@ -4,6 +4,85 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Ballot secrecy against the raw data — 2026-10-10
+
+**The promise:** nobody can tell how a given resident voted, including Mosaic operators and anyone who obtains a copy
+of the database or a backup. Until now the app kept ballots from the public and from hub admins, but a raw copy
+linked them four ways. All four were verified on the local stack (a vote cast in a rolled-back transaction):
+- the `active_vote_keys` bridge, for every open vote;
+- identical `now()` timestamps on the ballot, the participation row, the bridge and the event's `recorded_at`;
+- physical row order: `pg_dump` pairs the n-th voter with the n-th ballot;
+- a shared `xmin` between the ballot and the voter-named event.
+
+Request logs added two more: receipts in URLs, and Supabase logging `active_vote_keys?user_id=…` beside
+`vote_records?receipt_id=…`. The full threat analysis and Adam's answers are in
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Ballot-Secrecy-Session-Report-2026-10-10.md`.
+Not pushed.
+
+- **Migration:** `20261010000000_ballot_secrecy_at_rest.sql`.
+  - Additive: `vote_records.change_key_hash`; functions `cast_ballot`, `reshuffle_ballots`, `claim_vote_key`,
+    `ballot_by_receipt`.
+  - Non-additive, approved by Adam in chat: `vote_records.created_at` loses its default and NOT NULL, every value is
+    set to NULL, and CHECK `vote_records_no_time` keeps it NULL; every stored ballot is reshuffled once.
+  - `cast_vote` and `active_vote_keys` stay for the deploy window. **A later migration drops both** once no vote open
+    on deploy day is still open.
+- **New env vars / dependencies:** none.
+
+**How it works now:**
+- **The voter holds the receipt.** A first vote returns `receipt_id` and a `change_key`, once; the ballot stores
+  `sha256(change_key)`. The browser keeps both (`ui/src/services/voteReceipts.ts`, localStorage per hub, account and
+  vote). A change sends both in the action payload (`payload.receipt`), and `cast_ballot` updates the ballot only
+  when the hash matches. The receipt id stays the same across changes.
+- **No receipt** (another browser, cleared data): refused with `code: already_voted`. VotePanel then says the vote
+  is counted and can be changed only from the browser where it was cast, and shows no buttons.
+- **A wrong key or someone else's receipt:** `receipt_not_accepted`. A receipt from another account on the same
+  browser: `receipt_without_vote`; the panel drops it and votes without it.
+- **`your_current_vote` is gone** from the read model. The panel's highlight comes from the held receipt.
+- **Early voters** (voted before this, vote still open): `POST /votes/:id/claim-receipt` hands their browser a key
+  for their bridged receipt once and deletes the row. VotePanel calls it on its own. Unclaimed rows go at close.
+- **Order and xmin:** `reshuffle_ballots` rewrites a process's ballots in random order (same receipts, choices, key
+  hashes). It runs at close, and in the hourly `vote_close` job (at :05) for open votes and votes that changed status
+  in the last two hours. The job runs about 12 minutes before each 6-hourly backup (`:17`). Recorded in `job_runs`
+  only on failure.
+- **Logs:**
+  - Verify is `POST /votes/:id/verify {receipt}`; the GET is removed.
+  - The receipt link is `/votes/:id/log#receipt=…`. VoteLog reads the fragment and moves an old `?receipt=` link to
+    the fragment.
+  - Receipt lookups go through RPC bodies, never PostgREST URL filters.
+  - The `vote_submitted` log line says "by a voter".
+- **Import / restore:** a bundle from before this blanks ballot times on the way in and checks the fingerprint with
+  exactly that change (`expectedFingerprint`). Ballots load in receipt order. `RUNBOOK-restore-database.md` §6 says
+  what restoring an old full backup brings back.
+- Sample ballots carry no time. The schema contract requires `change_key_hash`.
+
+**Found and fixed on the way:** signing up from a vote cast it from a callback made before sign-in, so the receipt
+would have been kept under "anonymous". VotePanel now resolves the account when it saves (`keeperId`).
+
+**Tests:**
+- New `tests/api/ballotSecrecy.test.ts`: votes, changes, refusals, an early voter, the close and tally, then the
+  raw-data checks:
+  - every table scanned for a voter beside a receipt;
+  - no ballot time;
+  - no shared xmin;
+  - heap order;
+  - a `--from-postgres` per-hub export.
+- New `tests/api/ballotSecrecyCatalog.test.ts` and `tests/fixtures/ballotSecrecyRules.ts`: the schema rules, and the
+  database refusing a timed ballot. `tests/unit/ballotSecrecyRules.test.ts` covers each rule failing, plus static
+  guards: no receipt in a URL filter or query string, no `getActiveChoice`, no legacy `cast_vote` call, and the log
+  line.
+- New `tests/e2e/voteReceipt.spec.ts`.
+- Converted `atomicFunctions`, `leakHarnessDb` (cast_ballot, reshuffle, claim, ballot_by_receipt under a hub token)
+  and `leakHarness` (POST verify and claim in the write plan, Floyd's receipt against Athens's vote).
+
+**Open / for later:**
+- The drop migration for `active_vote_keys` and `cast_vote`, after the last vote open on deploy day closes. It also
+  drops `vote_records.created_at` and the retired schema-contract entry.
+- Next session: the "Your vote" mark and the receipt download, both from `voteReceipts.ts`.
+- Residual risks are stated in the report: the live database within the hour, WAL and physical backups, and old
+  backups until they age out (monthly ones to about November 2027).
+
+---
+
 ## Invite codes and the start page (session 4b) — 2026-10-08
 
 Adam can hand a trusted person a single-use code. That person creates their own demo hub at the start page and lands

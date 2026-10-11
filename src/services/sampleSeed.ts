@@ -297,8 +297,8 @@ class SeedRun {
     }
   }
 
-  /** Anonymous ballots (receipt + choice, no person), spread over the window. */
-  private async ballots(p: Process, t: SampleVote, fromIso: string, toIso: string): Promise<number> {
+  /** Anonymous ballots: receipt + choice, no person and no time. */
+  private async ballots(p: Process, t: SampleVote): Promise<number> {
     const pool: string[] = [];
     t.options.forEach((opt, i) => {
       for (let k = 0; k < (t.ballots?.[i] ?? 0); k++) pool.push(this.fill(opt));
@@ -310,14 +310,12 @@ class SeedRun {
       const j = Math.floor((seed / 233280) * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
-    const from = new Date(fromIso).getTime();
-    const to = Math.min(new Date(toIso).getTime(), this.now.getTime() - 60_000);
+    // No time on a ballot, sample or not (vote_records_no_time, 2026-10-10).
     const method = vote.getVotingMethod(t.method);
-    const rows = pool.map((opt, i) => ({
+    const rows = pool.map((opt) => ({
       receipt_id: randomUUID(),
       process_id: p.id,
       choice: method.key === "approval" ? JSON.stringify([opt]) : opt,
-      created_at: new Date(from + ((to - from) * (i + 1)) / (pool.length + 1)).toISOString(),
     }));
     if (rows.length) await this.db.from("vote_records").insert(rows);
     return rows.length;
@@ -359,7 +357,7 @@ class SeedRun {
     ({ state: st } = await vote.activate(st, author.id, this.voteCtx(p, opens)));
     st.voting_opens_at = opens;
     st.voting_closes_at = this.at(t.closes_at ?? 7);
-    st.total_votes = await this.ballots(p, t, opens, st.voting_closes_at);
+    st.total_votes = await this.ballots(p, t);
     await this.persistVote(p, st, "draft", opens, author.id);
 
     if (t.phase === "closed") {

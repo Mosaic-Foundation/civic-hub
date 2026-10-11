@@ -8,7 +8,9 @@ export interface VoteRecord {
   receipt_id: string;
   process_id: string;
   choice: string;
-  created_at: string; // internal only — never exposed publicly
+  /** sha256 of the change key the voter holds; never exposed. */
+  change_key_hash: string | null;
+  // No time: vote_records.created_at is always NULL (20261010000000).
 }
 
 export interface UserParticipation {
