@@ -1,4 +1,5 @@
 import { forHub, type HubDb } from "../../db/forHub.js";
+import { reportError } from "../../utils/reportError.js";
 import { assertProcessTypeEnabled } from "../../services/pluginGate.js";
 import { currentHub, currentHubId } from "../../config/hubContext.js";
 import { createEdges } from "../../services/processLinks.js";
@@ -256,7 +257,20 @@ export async function submitAsCreator(
     notify: !autoApprove,
   });
   if (autoApprove) {
-    await approveReview(review.id, isAdmin ? input.creator_id : DEMO_PUBLISH_ACTOR);
+    // The submission exists now. If going live at once fails (an approval
+    // action that must run did not), it stays in the queue for an admin:
+    // the submit succeeded, the shortcut did not. Throwing here would tell
+    // the person it failed, and their retry would queue the draft twice
+    // (Audit 3, seen on dev 2026-10-11).
+    try {
+      await approveReview(review.id, isAdmin ? input.creator_id : DEMO_PUBLISH_ACTOR);
+    } catch (err) {
+      reportError("review.auto_approve", err instanceof Error ? err.message : String(err), {
+        review_id: review.id,
+        process_type: input.process_type,
+      });
+      return { review_id: review.id, process_id, auto_approved: false };
+    }
   }
   return { review_id: review.id, process_id, auto_approved: autoApprove };
 }
