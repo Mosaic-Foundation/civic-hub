@@ -40,7 +40,8 @@ import { getInputsByProcess } from "../modules/civic.input/index.js";
 import { closeThroughDispatcher } from "./registry.js";
 import { afterActionCommits } from "../services/actionScope.js";
 import { describeSubmissionFields } from "../shared/submissionPreview.js";
-import { setVoteDraftStatus } from "../modules/civic.vote_drafts/index.js";
+import { setDraftStatus } from "../modules/civic.drafts/index.js";
+import { voteDraftKind } from "./draftKinds.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 
 import { isPastDeadline } from "../utils/deadline.js";
@@ -129,7 +130,7 @@ const voteProcess: ProcessHandler = {
   retrySafeActions: ["process.propose", "process.support", "process.unsupport", "process.activate", "process.close"],
   detailPath: (id: string) => `/process/${id}`,
   draftPath: (draftId: string) => `/votes/new?draft=${encodeURIComponent(draftId)}`,
-  reopenDraft: (draftId: string) => setVoteDraftStatus(draftId, "drafting"),
+  reopenDraft: (draftId: string) => setDraftStatus(voteDraftKind.spec, draftId, "drafting"),
 
   getAssistantConfig: () => voteAssistantConfig,
 

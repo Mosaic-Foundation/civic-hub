@@ -15,8 +15,11 @@ import Process from "./pages/Process";
 import About from "./pages/About";
 import SearchPage from "./pages/Search";
 import Propose from "./pages/Propose";
-import ProposeDraft from "./pages/ProposeDraft";
-import ProposeDraftVote from "./pages/ProposeDraftVote";
+import DraftPage from "./pages/draft/DraftPage";
+import { voteKind } from "./pages/draft/voteKind";
+import { projectKind } from "./pages/draft/projectKind";
+import { conversationKind } from "./pages/draft/conversationKind";
+import { proposalKind } from "./pages/draft/proposalKind";
 import ProposalDetail from "./pages/ProposalDetail";
 import AdminVoteResults from "./pages/AdminVoteResults";
 import AdminBriefs from "./pages/AdminBriefs";
@@ -37,10 +40,8 @@ import Welcome from "./pages/Welcome";
 import Projects from "./pages/Projects";
 import Outcomes from "./pages/Outcomes";
 import Deliberations from "./pages/Deliberations";
-import ConversationDraft from "./pages/ConversationDraft";
 import DeliberationDetail from "./pages/DeliberationDetail";
 import ProjectDetail from "./pages/ProjectDetail";
-import ProjectDraft from "./pages/ProjectDraft";
 import AdminModeration from "./pages/AdminModeration";
 import AdminArchived from "./pages/AdminArchived";
 import AdminEdits from "./pages/AdminEdits";
@@ -161,14 +162,14 @@ function AppContent() {
           <Route path="/votes" element={whenPlugin("vote", <Votes />)} />
           <Route path="/process/:id" element={whenPlugin("vote", <Process />)} />
           <Route path="/propose" element={whenPlugin("proposal", <Propose />)} />
-          <Route path="/propose/new" element={whenPlugin("proposal", <ProposeDraft />)} />
-          <Route path="/votes/new" element={whenPlugin("vote", <ProposeDraftVote />)} />
+          <Route path="/propose/new" element={whenPlugin("proposal", <DraftPage config={proposalKind} />)} />
+          <Route path="/votes/new" element={whenPlugin("vote", <DraftPage config={voteKind} />)} />
           <Route path="/proposal/:id" element={whenPlugin("proposal", <ProposalDetail />)} />
           <Route path="/projects" element={whenPlugin("project", <Projects />)} />
-          <Route path="/projects/new" element={whenPlugin("project", <ProjectDraft />)} />
+          <Route path="/projects/new" element={whenPlugin("project", <DraftPage config={projectKind} />)} />
           <Route path="/project/:id" element={whenPlugin("project", <ProjectDetail />)} />
           <Route path="/deliberations" element={whenPlugin("conversation", <Deliberations />)} />
-          <Route path="/deliberations/new" element={whenPlugin("conversation", <ConversationDraft />)} />
+          <Route path="/deliberations/new" element={whenPlugin("conversation", <DraftPage config={conversationKind} />)} />
           <Route path="/deliberation/:id" element={whenPlugin("conversation", <DeliberationDetail />)} />
           <Route path="/wordcloud/new" element={whenPlugin("wordcloud", <CreateWordCloud />)} />
           <Route path="/wordcloud/:id" element={whenPlugin("wordcloud", <WordCloud />)} />

@@ -387,9 +387,12 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /votes/drafts/": {},
   "GET /votes/drafts/duration-limits": {},
   "GET /votes/drafts/:id": {},
+  // Since Audit 3 every drafting kind has the owner's list route.
+  "GET /projects/drafts/": {},
   "GET /projects/drafts/:id": {},
   "GET /projects/": {},
   "GET /projects/:id": {},
+  "GET /deliberations/drafts/": {},
   "GET /deliberations/drafts/:id": {},
   "GET /deliberations/": {},
   "GET /deliberations/:processId": {},

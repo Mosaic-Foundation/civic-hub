@@ -14,7 +14,7 @@ export interface ParsedSourceLine {
  * Split a source line into its link text and its href, or null when the line
  * holds no URL at all.
  *
- * Why this exists: voteDraftController stored `{url: line, label: line}` for
+ * Why this exists: the vote drafts controller stored `{url: line, label: line}` for
  * every source, so the href was the entire line ("DOE C-MAP program page:
  * https://…"). A browser treats that as a RELATIVE path and lands on a blank
  * hub page — the bug Adam hit on 2026-09-04.

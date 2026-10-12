@@ -574,25 +574,6 @@ export interface AssistantResponse {
   } | null;
 }
 
-export function createDraft(category?: DraftCategory): Promise<ProposalDraft> {
-  return request("POST", "/proposals/drafts", { category });
-}
-
-export function listDrafts(): Promise<ProposalDraft[]> {
-  return request("GET", "/proposals/drafts");
-}
-
-export function getDraft(id: string): Promise<ProposalDraft> {
-  return request("GET", `/proposals/drafts/${id}`);
-}
-
-export function updateDraft(
-  id: string,
-  patch: Partial<Pick<ProposalDraft, "title" | "description" | "sources" | "considerations" | "category" | "proposal_duration_ms" | "links">> & { assistant_applied?: boolean },
-): Promise<ProposalDraft> {
-  return request("PATCH", `/proposals/drafts/${id}`, patch);
-}
-
 /**
  * Result of creating any reviewable process. Creation always flows through the
  * one path: submit for review, then auto-approve when the creator is an admin.
@@ -605,13 +586,6 @@ export interface CreateProcessResult {
   auto_approved: boolean;
 }
 
-export function submitDraft(
-  draftId: string,
-  opts?: SubmitDraftOptions,
-): Promise<CreateProcessResult> {
-  return request("POST", `/proposals/drafts/${draftId}/submit`, opts ?? {});
-}
-
 /** Passing `review_id` turns a submit into a revision of that review (after
  *  an admin requested changes): the process is updated in place and goes
  *  back into the queue instead of a second process being created. */
@@ -619,6 +593,36 @@ export interface SubmitDraftOptions {
   review_id?: string;
   /** Edit of a LIVE process (from "Edit project"): apply in place, record, notify. */
   edit_process_id?: string;
+}
+
+/** The drafting kinds, each at its own path on the server (one router, src/routes/draftRoutes.ts). */
+export type DraftKindName = "proposal" | "vote" | "project" | "conversation";
+
+const DRAFT_PATHS: Record<DraftKindName, string> = {
+  proposal: "/proposals/drafts",
+  vote: "/votes/drafts",
+  project: "/projects/drafts",
+  conversation: "/deliberations/drafts",
+};
+
+export interface DraftApi<D> {
+  create(body?: Record<string, unknown>): Promise<D>;
+  list(): Promise<D[]>;
+  get(id: string): Promise<D>;
+  update(id: string, patch: Record<string, unknown>): Promise<D>;
+  submit(id: string, opts?: SubmitDraftOptions): Promise<CreateProcessResult>;
+}
+
+/** One drafts client for every kind (Audit 3): create, list, read, edit, submit. */
+export function draftApi<D>(kind: DraftKindName): DraftApi<D> {
+  const base = DRAFT_PATHS[kind];
+  return {
+    create: (body) => request("POST", base, body),
+    list: () => request("GET", base),
+    get: (id) => request("GET", `${base}/${id}`),
+    update: (id, patch) => request("PATCH", `${base}/${id}`, patch),
+    submit: (id, opts) => request("POST", `${base}/${id}/submit`, opts ?? {}),
+  };
 }
 
 // --- Creator edits of a live process (universal /process/:id routes) ---
@@ -686,28 +690,6 @@ export interface VoteDurationLimits {
 
 export function getVoteDurationLimits(): Promise<VoteDurationLimits> {
   return request("GET", "/votes/drafts/duration-limits");
-}
-
-export function createVoteDraft(): Promise<VoteDraft> {
-  return request("POST", "/votes/drafts");
-}
-
-export function getVoteDraft(id: string): Promise<VoteDraft> {
-  return request("GET", `/votes/drafts/${id}`);
-}
-
-export function updateVoteDraft(
-  id: string,
-  patch: Partial<Pick<VoteDraft, "title" | "description" | "sources" | "voting_duration_ms" | "method" | "custom_options" | "links">> & { assistant_applied?: boolean },
-): Promise<VoteDraft> {
-  return request("PATCH", `/votes/drafts/${id}`, patch);
-}
-
-export function submitVoteDraft(
-  draftId: string,
-  opts?: SubmitDraftOptions,
-): Promise<CreateProcessResult> {
-  return request("POST", `/votes/drafts/${draftId}/submit`, opts ?? {});
 }
 
 // --- Projects (community project pages) ---
@@ -825,28 +807,6 @@ export interface ProjectDraft {
   created_at: string;
   updated_at: string;
   links: ProposedLink[];
-}
-
-export function createProjectDraft(): Promise<ProjectDraft> {
-  return request("POST", "/projects/drafts");
-}
-
-export function getProjectDraft(id: string): Promise<ProjectDraft> {
-  return request("GET", `/projects/drafts/${id}`);
-}
-
-export function updateProjectDraft(
-  id: string,
-  patch: Partial<Pick<ProjectDraft, "title" | "description" | "sources" | "banner_image_url" | "banner_image_alt" | "links">> & { assistant_applied?: boolean },
-): Promise<ProjectDraft> {
-  return request("PATCH", `/projects/drafts/${id}`, patch);
-}
-
-export function submitProjectDraft(
-  draftId: string,
-  opts?: SubmitDraftOptions,
-): Promise<CreateProcessResult> {
-  return request("POST", `/projects/drafts/${draftId}/submit`, opts ?? {});
 }
 
 // --- Admin: Proposal Review ---
@@ -2354,28 +2314,6 @@ export interface DeliberationDraft {
   created_at: string;
   updated_at: string;
   links: ProposedLink[];
-}
-
-export function createDeliberationDraft(): Promise<DeliberationDraft> {
-  return request("POST", "/deliberations/drafts");
-}
-
-export function getDeliberationDraft(id: string): Promise<DeliberationDraft> {
-  return request("GET", `/deliberations/drafts/${id}`);
-}
-
-export function updateDeliberationDraft(
-  id: string,
-  patch: Partial<Pick<DeliberationDraft, "title" | "description" | "sources" | "seed_statements" | "duration_ms" | "participation_threshold" | "links">> & { assistant_applied?: boolean },
-): Promise<DeliberationDraft> {
-  return request("PATCH", `/deliberations/drafts/${id}`, patch);
-}
-
-export function submitDeliberationDraft(
-  draftId: string,
-  opts?: SubmitDraftOptions,
-): Promise<CreateProcessResult> {
-  return request("POST", `/deliberations/drafts/${draftId}/submit`, opts ?? {});
 }
 
 export function startDeliberation(processId: string): Promise<unknown> {

@@ -21,10 +21,12 @@ import debugRoutes from "./routes/debugRoutes.js";
 import inputRoutes from "./routes/inputRoutes.js";
 import proposalRoutes from "./routes/proposalRoutes.js";
 import assistantRoutes from "./routes/assistantRoutes.js";
-import proposalDraftRoutes from "./routes/proposalDraftRoutes.js";
+import { draftRouter } from "./routes/draftRoutes.js";
+import { requireResident } from "./middleware/auth.js";
+import { proposalDraftKind, voteDraftKind, projectDraftKind, deliberationDraftKind } from "./processes/draftKinds.js";
+import { voteDurationLimitsSync } from "./services/hubSettings.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import voteDraftRoutes from "./routes/voteDraftRoutes.js";
 import voteLogRoutes from "./routes/voteLogRoutes.js";
 import voteResultsRoutes from "./routes/voteResultsRoutes.js";
 import briefRoutes from "./routes/briefRoutes.js";
@@ -36,9 +38,7 @@ import meetingSummaryRoutes from "./routes/meetingSummaryRoutes.js";
 import { jobRouter } from "./routes/jobRoutes.js";
 import { JOBS, internalPath } from "./jobs/registry.js";
 import projectRoutes from "./routes/projectRoutes.js";
-import projectDraftRoutes from "./routes/projectDraftRoutes.js";
 import deliberationRoutes from "./routes/deliberationRoutes.js";
-import deliberationDraftRoutes from "./routes/deliberationDraftRoutes.js";
 import feedbackRoutes from "./routes/feedbackRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
@@ -169,15 +169,25 @@ app.use("/assistant", assistantRoutes);
 
 // Proposal draft endpoints — draft storage + submission (mounted before
 // /proposals so /proposals/drafts doesn't get caught by /proposals/:id).
-app.use("/proposals/drafts", requirePlugin("proposal"), proposalDraftRoutes);
+app.use("/proposals/drafts", requirePlugin("proposal"), draftRouter(proposalDraftKind));
 
 // Vote draft endpoints — AI-augmented vote drafting (mounted before /votes
 // so /votes/drafts doesn't get caught by /votes/:id).
-app.use("/votes/drafts", requirePlugin("vote"), voteDraftRoutes);
+app.use(
+  "/votes/drafts",
+  requirePlugin("vote"),
+  draftRouter(voteDraftKind, (router) => {
+    // The hub's allowed voting windows, for the duration picker.
+    router.get("/duration-limits", requireResident, (_req, res) => {
+      const { minDays, maxDays, defaultDays } = voteDurationLimitsSync();
+      res.json({ min_days: minDays, max_days: maxDays, default_days: defaultDays });
+    });
+  }),
+);
 
 // Project draft endpoints — AI-augmented project drafting (mounted before
 // /projects so /projects/drafts doesn't get caught by /projects/:id).
-app.use("/projects/drafts", requirePlugin("project"), projectDraftRoutes);
+app.use("/projects/drafts", requirePlugin("project"), draftRouter(projectDraftKind));
 
 // Project endpoints — community project pages with sentiment + comments
 app.use("/projects", requirePlugin("project"), projectRoutes);
@@ -185,7 +195,7 @@ app.use("/projects", requirePlugin("project"), projectRoutes);
 // Deliberation endpoints — Polis-backed community deliberation
 // Conversation draft endpoints — mounted before /deliberations so
 // /deliberations/drafts doesn't get caught by /deliberations/:processId.
-app.use("/deliberations/drafts", requirePlugin("conversation"), deliberationDraftRoutes);
+app.use("/deliberations/drafts", requirePlugin("conversation"), draftRouter(deliberationDraftKind));
 
 app.use("/deliberations", requirePlugin("conversation"), deliberationRoutes);
 

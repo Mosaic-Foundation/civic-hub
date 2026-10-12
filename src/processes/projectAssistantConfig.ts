@@ -3,12 +3,8 @@
 // proposalAssistantConfig.ts for the pattern.
 
 import type { AssistantTypeConfig } from "../modules/civic.assistant/index.js";
-import {
-  getProjectDraft,
-  appendProjectConversation,
-  saveProjectReviewResult,
-  applyProjectDraftProposal,
-} from "../modules/civic.project_drafts/index.js";
+import { getDraft, appendConversation, saveReviewResult, applyGeneratedDraft } from "../modules/civic.drafts/index.js";
+import { projectDraftKind } from "./draftKinds.js";
 
 const PROJECT_BEST_PRACTICES = `# Project Best Practices — Civic Hub
 
@@ -100,15 +96,15 @@ Projects are action-oriented living pages. Focus on helping the user describe wh
   ],
   draftStore: {
     async get(id) {
-      const draft = await getProjectDraft(id);
-      if (!draft) return undefined;
-      return { ...draft, considerations: "" };
+      const draft = await getDraft(projectDraftKind.spec, id);
+      return draft ? ({ ...draft, considerations: "" } as never) : undefined;
     },
     appendConversation: (id, userMessage, assistantMessage) =>
-      appendProjectConversation(id, userMessage, assistantMessage),
-    saveReviewResult: (id, suggestions, checkedHash) => saveProjectReviewResult(id, suggestions, checkedHash),
+      appendConversation(projectDraftKind.spec, id, userMessage, assistantMessage),
+    saveReviewResult: (id, suggestions, checkedHash) =>
+      saveReviewResult(projectDraftKind.spec, id, suggestions, checkedHash),
     applyGeneratedDraft: async (id, draft) => {
-      await applyProjectDraftProposal(id, draft.title, draft.description, draft.sources);
+      await applyGeneratedDraft(projectDraftKind.spec, id, { ...draft });
     },
   },
 };

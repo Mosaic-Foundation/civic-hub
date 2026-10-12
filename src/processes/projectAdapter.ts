@@ -23,11 +23,8 @@ import { emitProjectUpdated } from "../modules/civic.projects/events.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import { projectAssistantConfig } from "./projectAssistantConfig.js";
-import {
-  createProjectDraft,
-  setProjectDraftStatus,
-  updateProjectDraft,
-} from "../modules/civic.project_drafts/index.js";
+import { createDraft, setDraftStatus, updateDraft } from "../modules/civic.drafts/index.js";
+import { projectDraftKind } from "./draftKinds.js";
 import { readAll } from "../db/readAll.js";
 import { hubKindOf, participantNoun } from "../shared/hubKind.js";
 import { getSettingSync } from "../services/hubSettings.js";
@@ -47,7 +44,7 @@ const projectAdapter: ProcessHandler = {
   residentActions: [],
   detailPath: (id: string) => `/project/${id}`,
   draftPath: (draftId: string) => `/projects/new?draft=${encodeURIComponent(draftId)}`,
-  reopenDraft: (draftId: string) => setProjectDraftStatus(draftId, "drafting"),
+  reopenDraft: (draftId: string) => setDraftStatus(projectDraftKind.spec, draftId, "drafting"),
 
   // Creator edits (the only type that allows them — Adam, 2026-09-03):
   // while the project is active; the title locks once anyone supports it,
@@ -85,8 +82,8 @@ const projectAdapter: ProcessHandler = {
   draftFromProcess: async (process, editorId, links) => {
     const project = await getProject(process.id);
     const content = (process.content ?? {}) as Record<string, unknown>;
-    const draft = await createProjectDraft({ user_id: editorId });
-    await updateProjectDraft(draft.id, {
+    const draft = await createDraft(projectDraftKind.spec, editorId);
+    await updateDraft(projectDraftKind.spec, draft.id, {
       title: process.title,
       description: project?.description ?? process.description ?? "",
       sources: (project?.sources ?? (content.sources as string[] | undefined) ?? []).join("\n"),
@@ -99,7 +96,7 @@ const projectAdapter: ProcessHandler = {
   syncDraftFromProcess: async (draftId, process, links) => {
     const project = await getProject(process.id);
     const content = (process.content ?? {}) as Record<string, unknown>;
-    await updateProjectDraft(draftId, {
+    await updateDraft(projectDraftKind.spec, draftId, {
       title: process.title,
       description: project?.description ?? process.description ?? "",
       sources: (project?.sources ?? (content.sources as string[] | undefined) ?? []).join("\n"),

@@ -208,7 +208,7 @@ export interface ProcessHandler {
 
   /**
    * Optional: the drafting page for one of this type's drafts, e.g.
-   * `/projects/new?draft=pdraft_abc`. Used by "Edit & resubmit" to send the
+   * `/projects/new?draft=prjdraft_abc`. Used by "Edit & resubmit" to send the
    * creator back into their real form. Omit for a type without drafts.
    */
   draftPath?(draftId: string): string;

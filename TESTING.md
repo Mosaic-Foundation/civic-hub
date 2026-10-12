@@ -761,6 +761,30 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
       untouched.
   - The full-suite runs came before two small changes: the schema-contract column and the VotePanel account fix.
     Re-run after them: unit, `/health`, and the two vote specs.
+- **Audit 3, concurrency and one drafts system (2026-10-11):**
+  - **New suites:** `tests/api/auditConcurrency.test.ts` (twelve readers, the list and an admin's close at once on
+    an expired vote: one `ended`, one `result_published`, one brief; two admin closes; a ballot after the deadline
+    through the app and straight at `cast_ballot`; ten ballots at once; ten endorsements at once; six crossing the
+    threshold together open the vote once; endorse and withdraw racing; `transition_process` refusing a stale status
+    or version and writing no event; the one-brief index). `tests/api/auditDrafts.test.ts` (each of the four kinds:
+    owner-only create/read/edit/list, 401s signed out, the one Code of Conduct gate, five submits at once make one
+    review; a failed conversation submit releases its draft; the `prjdraft` prefix; the one-review index, in a
+    rolled-back transaction). Unit `actionScope`. E2E `drafts.spec.ts` (each kind created end to end on its page).
+  - **Direct DB rows:** `auditConcurrency` inserts bare brief rows to test the index. They are `archived` and deleted
+    in `afterAll`: a bare `active` brief with no `content` makes every process list on that hub answer 500 (the
+    first run did exactly that to most of the suite).
+  - **PostgREST retries SQLSTATE 40001 by itself, for ever.** A database function that refuses with 40001 makes the
+    request loop until the pool is exhausted (every later request 401s "Invalid or expired session"). Refuse with
+    P0001 and a message; `transition_process` does (`process_changed`).
+  - **Local duplicates before the index:** a stack that ran the suites before this change has duplicate briefs
+    (the race). `supabase migration up --local` fails on the index until they are removed (HANDOFF, "Found on the
+    way").
+  - **Playwright** as for Audit 2, on a preview build at :5280 proxied to :3270 (`CIVIC_UI_BASE_URL` of the audit3
+    servers in `.claude/launch.json`), with a local config overriding `baseURL` and dropping `webServer`.
+  - **Results:** unit 122 files, 1,411. API 46 files: 568 passed, 7 skipped in each mode (service role: `leakHarness` and `auditConcurrency` rerun alone after the
+    list-route plans were added; part one alone: 45 files,
+    553). Playwright 49 passed, 2 skipped. Once, under the full run, one of the ten simultaneous ballots got
+    "An invalid response was received from the upstream server" from the local gateway; three reruns passed.
 - **Audit 2, sign-in and abuse (2026-10-11):**
   - **Rate limits and the suites.** Sign-in, console and assistant limits count per client IP in the database,
     and every server in a run shares them. Locally the API takes `X-Forwarded-For` as given, so every request

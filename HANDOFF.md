@@ -4,7 +4,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
-## Audit 3, part one: two at once can't produce a wrong result — 2026-10-11
+## Audit 3: two at once can't produce a wrong result; one drafts system — 2026-10-11
 
 From the audit handoff, A7. Adam's decisions in chat: reads keep closing an expired vote or conversation, now
 single-winner; endorsements get the smaller fix (version check and retry, supporters stay in state); drop
@@ -48,6 +48,33 @@ Results: unit 122 files; API 45 files, 553 passed and 7 skipped in each mode; Pl
 
 **Found on the way:** the local stack held 20 duplicate briefs written milliseconds apart by earlier test runs: the
 race this fixes. Removed locally before the index.
+
+**Part two (F1): one drafts system.** Migration `20261011210000_one_review_per_draft.sql` (additive): unique
+`process_reviews (hub_id, draft_id) WHERE draft_id IS NOT NULL`; dev had no duplicates.
+- **Server.** `src/modules/civic.drafts/` is the one store (base fields, `DraftSpec` per kind: table, id prefix, the
+  kind's own fields with `read` / `write` / `checked`); `src/processes/draftKinds.ts` declares the four kinds (spec +
+  required fields + what a submission creates; projects add `applyLiveEdit`); `controllers/draftController.ts` and
+  `routes/draftRoutes.ts` are the factories, mounted at the old URLs in `app.ts`. The four `civic.*_drafts` modules,
+  controllers and routers are gone. The assistant configs' `draftStore` read through the generic store. Tables and
+  URLs unchanged; no data moved.
+- **Every kind claims the draft before creating anything** (was proposals only): a second submit gets 409 "Draft has
+  already been submitted"; a failed submission releases the draft. The Code of Conduct gate is the one
+  `codeOfConductStanding` call in the controller, unchanged.
+- **Drift resolved:** every route is `requireResident` (projects used `requireAuth` for read/edit, which added
+  nothing: only a resident creates a draft and only its owner reads it); every kind has the owner's list route; new
+  project drafts are `prjdraft_…` (shared `pdraft` with proposals; old rows keep theirs). Seed-statement parsing is
+  `src/shared/seedStatements.ts` (the unit test now tests the real function).
+- **UI.** One `pages/draft/DraftPage.tsx` driven by a `DraftKindConfig` (`pages/draft/{proposal,vote,project,
+  conversation}Kind.tsx`, forms in `pages/draft/forms/`), one `draftApi(kind)` in `services/api.ts`, one
+  `components/ConfirmDialog.tsx`, one `durationLabel()`. Replaces `ProposeDraft`, `ProposeDraftVote`,
+  `ProjectDraft`, `ConversationDraft`. Same markup, wording and navigation; the drafting CSS files are imported in the
+  order the old pages loaded them.
+
+**Tests (part two):** new API `auditDrafts` (each kind: owner-only CRUD and list, signed-out 401s, the one CoC gate,
+five submits at once → one 201 and one review; a failed conversation submit releases its draft; `prjdraft` prefix;
+the review index); E2E `drafts.spec.ts` (each kind created end to end on its page). `leakHarness` plans the two new
+list routes. Results: unit 122 files, 1,411; API 46 files, 568 passed and 7 skipped in each mode (in the service-role run
+`leakHarness` and one flaky ballot test were rerun alone after the fix; TESTING.md); Playwright 49 passed, 2 skipped (preview build on :5280).
 
 **Open:** a word cloud's one-answer-per-prompt check is check-then-insert (no unique index). A losing deadline close
 of a conversation still made its Polis close call (rare now: the claim). `onArchive` hooks that rewrite the row leave

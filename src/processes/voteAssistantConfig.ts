@@ -3,7 +3,8 @@
 // the pattern.
 
 import type { AssistantTypeConfig, DraftField } from "../modules/civic.assistant/index.js";
-import { getVoteDraft, appendVoteConversation, saveVoteReviewResult, applyVoteDraftProposal, updateVoteDraft } from "../modules/civic.vote_drafts/index.js";
+import { getDraft, appendConversation, saveReviewResult, applyGeneratedDraft, updateDraft } from "../modules/civic.drafts/index.js";
+import { voteDraftKind, type VoteDraft } from "./draftKinds.js";
 
 const VOTE_BEST_PRACTICES = `# Vote Best Practices — Civic Hub
 
@@ -127,7 +128,7 @@ The draft state names the voting method. When it is Approval, the Options field 
   ],
   draftStore: {
     async get(id) {
-      const draft = await getVoteDraft(id);
+      const draft = await getDraft<VoteDraft>(voteDraftKind.spec, id);
       if (!draft) return undefined;
       // The assistant reads options as one-per-line text; the form stores an
       // array. Method rides along so activeFields (and the prompt) can tell
@@ -140,13 +141,14 @@ The draft state names the voting method. When it is Approval, the Options field 
       };
     },
     appendConversation: (id, userMessage, assistantMessage) =>
-      appendVoteConversation(id, userMessage, assistantMessage),
-    saveReviewResult: (id, suggestions, checkedHash) => saveVoteReviewResult(id, suggestions, checkedHash),
+      appendConversation(voteDraftKind.spec, id, userMessage, assistantMessage),
+    saveReviewResult: (id, suggestions, checkedHash) =>
+      saveReviewResult(voteDraftKind.spec, id, suggestions, checkedHash),
     applyGeneratedDraft: async (id, draft) => {
-      await applyVoteDraftProposal(id, draft.title, draft.description, draft.sources);
+      await applyGeneratedDraft(voteDraftKind.spec, id, { title: draft.title, description: draft.description, sources: draft.sources });
       // A first draft for an approval vote may carry its options too.
       const options = (draft.options ?? "").split("\n").map((o) => o.trim()).filter(Boolean);
-      if (options.length >= 2) await updateVoteDraft(id, { custom_options: options });
+      if (options.length >= 2) await updateDraft(voteDraftKind.spec, id, { custom_options: options });
     },
   },
 };

@@ -10,12 +10,8 @@
 // suggestion card, which marks assistant_helped (the public disclosure).
 
 import type { AssistantTypeConfig } from "../modules/civic.assistant/index.js";
-import {
-  getDeliberationDraft,
-  appendDeliberationConversation,
-  saveDeliberationReviewResult,
-  applyDeliberationDraftProposal,
-} from "../modules/civic.deliberation_drafts/index.js";
+import { getDraft, appendConversation, saveReviewResult, applyGeneratedDraft } from "../modules/civic.drafts/index.js";
+import { deliberationDraftKind } from "./draftKinds.js";
 
 const CONVERSATION_BEST_PRACTICES = `# Conversation Best Practices — Civic Hub
 
@@ -110,21 +106,15 @@ A conversation maps community opinion — it is an instrument, not an argument. 
   ],
   draftStore: {
     async get(id) {
-      const draft = await getDeliberationDraft(id);
-      if (!draft) return undefined;
-      return { ...draft, considerations: "" };
+      const draft = await getDraft(deliberationDraftKind.spec, id);
+      return draft ? ({ ...draft, considerations: "" } as never) : undefined;
     },
     appendConversation: (id, userMessage, assistantMessage) =>
-      appendDeliberationConversation(id, userMessage, assistantMessage),
-    saveReviewResult: (id, suggestions, checkedHash) => saveDeliberationReviewResult(id, suggestions, checkedHash),
+      appendConversation(deliberationDraftKind.spec, id, userMessage, assistantMessage),
+    saveReviewResult: (id, suggestions, checkedHash) =>
+      saveReviewResult(deliberationDraftKind.spec, id, suggestions, checkedHash),
     applyGeneratedDraft: async (id, draft) => {
-      await applyDeliberationDraftProposal(
-        id,
-        draft.title,
-        draft.description,
-        draft.sources,
-        draft.seed_statements ?? "",
-      );
+      await applyGeneratedDraft(deliberationDraftKind.spec, id, { ...draft });
     },
   },
 };

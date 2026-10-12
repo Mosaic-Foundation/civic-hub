@@ -6,12 +6,8 @@
 
 import type { AssistantTypeConfig } from "../modules/civic.assistant/index.js";
 import { KEYS } from "../models/hubSettings.js";
-import {
-  getDraft,
-  appendConversation,
-  saveReviewResult,
-  applyDraftProposal,
-} from "../modules/civic.proposal_drafts/index.js";
+import { getDraft, appendConversation, saveReviewResult, applyGeneratedDraft } from "../modules/civic.drafts/index.js";
+import { proposalDraftKind } from "./draftKinds.js";
 
 /**
  * Stand-in for the hub's own guide, used only when no hub is in scope (a unit
@@ -66,21 +62,15 @@ Project. Action-oriented. Focus on who would benefit, what it would take, who's 
   ],
   draftStore: {
     async get(id) {
-      const draft = await getDraft(id);
-      if (!draft) return undefined;
-      return { ...draft };
+      const draft = await getDraft(proposalDraftKind.spec, id);
+      return draft ? ({ ...draft } as never) : undefined;
     },
     appendConversation: (id, userMessage, assistantMessage) =>
-      appendConversation(id, userMessage, assistantMessage),
-    saveReviewResult: (id, suggestions, checkedHash) => saveReviewResult(id, suggestions, checkedHash),
+      appendConversation(proposalDraftKind.spec, id, userMessage, assistantMessage),
+    saveReviewResult: (id, suggestions, checkedHash) =>
+      saveReviewResult(proposalDraftKind.spec, id, suggestions, checkedHash),
     applyGeneratedDraft: async (id, draft) => {
-      await applyDraftProposal(
-        id,
-        draft.title,
-        draft.description,
-        draft.sources,
-        draft.considerations,
-      );
+      await applyGeneratedDraft(proposalDraftKind.spec, id, { ...draft });
     },
   },
 };

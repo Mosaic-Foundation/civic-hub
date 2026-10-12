@@ -27,7 +27,8 @@ import { getInputsByProcess } from "../modules/civic.input/index.js";
 import { spawnBriefFromClosedProcess, findExistingBriefId } from "./spawnBrief.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import { proposalAssistantConfig } from "./proposalAssistantConfig.js";
-import { setDraftStatus as setProposalDraftStatus } from "../modules/civic.proposal_drafts/index.js";
+import { setDraftStatus } from "../modules/civic.drafts/index.js";
+import { proposalDraftKind } from "./draftKinds.js";
 import { hubKindOf, participantNoun } from "../shared/hubKind.js";
 import { getSettingSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
@@ -46,7 +47,7 @@ const proposalAdapter: ProcessHandler = {
   residentActions: [],
   detailPath: (id: string) => `/proposal/${id}`,
   draftPath: (draftId: string) => `/propose/new?draft=${encodeURIComponent(draftId)}`,
-  reopenDraft: (draftId: string) => setProposalDraftStatus(draftId, "drafting"),
+  reopenDraft: (draftId: string) => setDraftStatus(proposalDraftKind.spec, draftId, "drafting"),
 
   getAssistantConfig: () => proposalAssistantConfig,
 
