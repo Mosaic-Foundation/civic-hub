@@ -764,6 +764,28 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
       untouched.
   - The full-suite runs came before two small changes: the schema-contract column and the VotePanel account fix.
     Re-run after them: unit, `/health`, and the two vote specs.
+- **CI fix and function grants (2026-10-12):**
+  - **`api-tests` was red from `26eb49d` to `cd1729a`**, on one thing: `events.test.ts > GET /activities/:id` in the
+    first (service-role) pass. It read `/events?page=true&limit=1` and took item 0. A page is filtered after its
+    read, so it comes back empty, with `next` set, when the newest event is restricted or its process is withheld
+    (§6.1). Which event is newest depends on the file that ran before; on a fresh database (CI's first pass) it
+    was a hidden one. Now `newestVisibleActivity()` follows `next` until a page has an item.
+  - **`ensureSeedData()` checks its answer.** It answers 409 `reseed_blocked` once any review exists on the hub
+    (`review_turns` is append-only), which is nearly always, locally and in CI; that is accepted. Any other
+    non-200 now fails the test instead of passing unnoticed. Don't write a test that assumes the seed's own events
+    are the newest.
+  - **New:** `tests/api/functionGrants.test.ts` (migration `20261012100000`), read from the catalog with
+    `has_function_privilege()`, never by calling: PUBLIC and anon can run no function in `public` unless it is on
+    `ANON_ALLOWED` (empty); `authenticated` and `service_role` can run exactly the migration's lists; a new function
+    gets EXECUTE for no one but its owner. **A migration that adds a function grants it by name** and adds it to the
+    lists in that test.
+  - **The ten-simultaneous-ballots flake** (`auditConcurrency.test.ts`, hub-token mode) did not recur: alone 6/6,
+    full hub-token passes 3/3 here, and every CI hub-token pass has been green. Kong's "invalid response from the
+    upstream server" is what an in-flight request gets when Postgres restarts. In Audit 4 that happened because a
+    test was calling a refused function (the local image segfaults); that test was fixed before commit. If it
+    recurs, check `docker logs supabase_db_civic-hub` for "terminated by signal 11" first.
+  - **Results:** unit 125 files, 1,463 passed; API, service role and hub tokens: 47 files, 575 passed and 7 skipped
+    each; type-check and lint clean.
 - **Audit 4, errors, tooling and the health check (2026-10-12):**
   - **New tests:**
     - `tests/api/auditDrafts.test.ts`, "a failed auto-approval leaves the submission in the queue" (guards `33b65b8`).

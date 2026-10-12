@@ -77,6 +77,9 @@ numbers below, or just grep the heading.
 - Pluggable voting methods + approval voting — 7420–7484
 
 ### Security, identity, anonymity
+- **CI fix + function grants (2026-10-12)**: `events.test.ts` hidden-newest-event fix, `ensureSeedData()` checks
+  its answer, `20261012100000_function_execute_grants.sql` (EXECUTE by name, nothing for anon, default privileges),
+  `tests/api/functionGrants.test.ts` — top of HANDOFF (grep the heading)
 - **Audit 4 (2026-10-12)**: one error answer (`src/errors/`, `route()`, `{error, code, ref}`, redacted
   `reportError`), `/health` names the database functions (`functionContract.ts`, `function_catalog()`,
   `20261012000000`), `src/config/env.ts`, CI (`npm ci`, pins, audit, type-check of tests, UI lint, `e2e.yml`),

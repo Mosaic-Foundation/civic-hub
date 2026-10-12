@@ -47,6 +47,22 @@ async function fetchUrl<T>(url: string): Promise<{ status: number; body: T }> {
   return { status: res.status, body: (await res.json()) as T };
 }
 
+/**
+ * The newest activity this caller can see. A page is filtered after its read,
+ * so `limit=1` can come back empty with `next` set (§6.1) when the newest
+ * event is restricted or its process is withheld; which event that is depends
+ * on the file that ran before. Follows `next` until a page has one.
+ */
+async function newestVisibleActivity(): Promise<Record<string, any>> {
+  let { body: page } = await apiJson<Page>("/events?page=true&limit=50");
+  for (let pages = 0; pages < 20; pages++) {
+    if (page.orderedItems.length > 0) return page.orderedItems[0];
+    if (!page.next) break;
+    page = (await fetchUrl<Page>(page.next)).body;
+  }
+  throw new Error("no activity visible to an anonymous caller on the dev hub");
+}
+
 describe("GET /events — the activity collection", () => {
   beforeAll(async () => {
     await ensureSeedData();
@@ -273,16 +289,14 @@ describe("GET /activities/:id", () => {
   });
 
   it("dereferences the id an activity carries", async () => {
-    const { body: page } = await apiJson<Page>("/events?page=true&limit=1");
-    const activity = page.orderedItems[0];
+    const activity = await newestVisibleActivity();
     const { status, body } = await fetchUrl<Record<string, unknown>>(activity.id);
     expect(status).toBe(200);
     expect(body).toEqual(activity);
   });
 
   it("serves application/activity+json", async () => {
-    const { body: page } = await apiJson<Page>("/events?page=true&limit=1");
-    const res = await fetch(page.orderedItems[0].id);
+    const res = await fetch((await newestVisibleActivity()).id);
     expect(res.headers.get("content-type")).toContain("application/activity+json");
   });
 

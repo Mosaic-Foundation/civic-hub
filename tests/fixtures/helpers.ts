@@ -142,7 +142,15 @@ export async function ensureSeedData(): Promise<void> {
   const { mintSession } = await import("./adminSession.js");
   const hub = process.env.CIVIC_TEST_DEV_HUB ?? "athens";
   const token = await mintSession(hub, process.env.CIVIC_TEST_DEV_HUB_ADMIN ?? `admin+${hub}@example.test`);
-  await api("/debug/seed", { method: "POST", headers: authHeaders(token) });
+  const res = await api("/debug/seed", { method: "POST", headers: authHeaders(token) });
+  // 409 reseed_blocked is the usual answer once any review exists on the hub
+  // (review_turns is append-only): the data already there stands, and tests
+  // must not assume the seed's own events are the newest. Anything else is a
+  // broken seed, which used to pass unnoticed.
+  if (res.status === 200) return;
+  const body = (await res.json().catch(() => ({}))) as { code?: string };
+  if (res.status === 409 && body.code === "reseed_blocked") return;
+  throw new Error(`POST /debug/seed answered ${res.status} ${JSON.stringify(body)}`);
 }
 
 // ---------------------------------------------------------------------------

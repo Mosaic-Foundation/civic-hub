@@ -4,6 +4,29 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## CI green again; database functions granted by name — 2026-10-12
+
+Two parts, from Adam's brief. Report: `CI-Fix-Report-2026-10-12.md` in Mosaic Foundation Management. Not pushed.
+
+- **CI (`api-tests`) was red since `26eb49d`** on one test, not on setup: `events.test.ts` took the first item of a
+  one-item `/events` page, which is empty when the newest event is hidden (a valid page, §6.1). It now follows
+  `next`. `ensureSeedData()` now fails on any answer but 200 or 409 `reseed_blocked` (it had been silently
+  409ing). Details in TESTING.md, "CI fix and function grants".
+- **E2E runs** on `multi-tenant` pushes: 3m53s on `6154710`. It skipped `cd1729a` because an empty commit matches
+  no path, and GitHub's emails list only failures.
+- **Migration `20261012100000_function_execute_grants.sql`.** Privileges only; no schema or row change; never
+  raises. EXECUTE on every function in `public` is revoked from PUBLIC, anon, authenticated and service_role, then
+  granted by name: hub-token calls plus the helpers they reach to `authenticated`; those plus
+  `function_catalog`, `tenancy_catalog`, `rate_limit_take`, `take_control_code_attempt`, `take_start_code_attempt`
+  and the legacy `cast_vote` to `service_role`; nothing to anon; trigger functions to no one (EXECUTE is checked
+  when a trigger is created, not when it fires). Default privileges: a new function made by `postgres` is
+  runnable by no one else until granted, locally and hosted alike. Why: hosted projects grant new functions to
+  anon by default, so anon could run `tenancy_catalog()` and `rate_limit_take()` on dev.
+- **Release:** migration first, as usual. Before it, run the read-only grants query in the report on production
+  and compare it with the migration's lists; any function there that the lists don't name needs a decision first.
+- **Open:** the flake did not recur (TESTING.md); whether hosted Postgres also segfaults on a refused call is
+  still open (Audit 4 report). After the migration, both local full passes logged no refused function call and no backend crash.
+
 ## Audit 4: one error answer, a health check that names functions, CI that checks what we rely on — 2026-10-12
 
 From the audit handoff, F2 and F7, plus the health-check item Adam agreed after Audit 3. Adam's decisions in chat:
