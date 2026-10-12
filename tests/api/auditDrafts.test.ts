@@ -16,7 +16,7 @@
 // LOCAL ONLY (writes draft rows straight to the local stack to fake a check
 // that could not run). Needs a server (CIVIC_API_BASE). Both CI passes.
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import pg from "pg";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
@@ -169,6 +169,74 @@ describe("a submission that fails releases its draft", () => {
     expect(res.status).toBe(400);
     const [draft] = (await localRest(`${kind.table}?select=status&id=eq.${id}`)) as Array<{ status: string }>;
     expect(draft.status).toBe("drafting");
+  });
+});
+
+describe("a failed auto-approval leaves the submission in the queue", () => {
+  // 33b65b8: going live at once (an admin's submission) failed after the review
+  // existed; the submit reported failure and released the draft, so a second
+  // click queued it twice (seen on dev 2026-10-11, a vote whose approval action
+  // hit a function dev did not have yet). A trigger on this test's own rows
+  // makes the vote's required "propose" step fail the same way.
+  const fn = `audit_autofail_${tag}`;
+  const marker = `Autofail ${tag}`;
+  let db: pg.Client;
+
+  beforeAll(async () => {
+    db = new pg.Client({ connectionString: DB_URL });
+    await db.connect();
+    await db.query(`
+      CREATE FUNCTION public.${fn}() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW.title LIKE '${marker}%' AND (NEW.state->>'status') IS DISTINCT FROM (OLD.state->>'status') THEN
+          RAISE EXCEPTION 'forced approval failure (test)';
+        END IF;
+        RETURN NEW;
+      END $$`);
+    await db.query(`CREATE TRIGGER ${fn} BEFORE UPDATE ON public.processes FOR EACH ROW EXECUTE FUNCTION public.${fn}()`);
+  });
+
+  afterAll(async () => {
+    await db.query(`DROP TRIGGER IF EXISTS ${fn} ON public.processes`).catch(() => {});
+    await db.query(`DROP FUNCTION IF EXISTS public.${fn}()`).catch(() => {});
+    await db.end();
+  });
+
+  it("the submit succeeds, one review waits, the draft stays submitted, a second submit is refused", async () => {
+    const admin = await mintSession("floyd", "admin@example.test");
+    const kind = KINDS[1];
+    const created = await call("POST", kind.path, FLOYD, {}, admin);
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const id = created.body.id as string;
+    const text = { title: marker, description: `Description of ${marker}.` };
+    expect((await call("PATCH", `${kind.path}/${id}`, FLOYD, text, admin)).status).toBe(200);
+    await localRest(`${kind.table}?id=eq.${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ last_review_result: [], draft_modified_since_review: false, coc_checked_hash: checkedHashFor(text) }),
+    });
+
+    const first = await call("POST", `${kind.path}/${id}/submit`, FLOYD, {}, admin);
+    expect(first.status, JSON.stringify(first.body)).toBe(201);
+    expect(first.body.auto_approved).toBe(false);
+
+    const reviews = (await localRest(`process_reviews?select=id,status,process_id&draft_id=eq.${id}`)) as Array<{
+      status: string;
+      process_id: string;
+    }>;
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].status).toBe("pending_review");
+    expect(reviews[0].process_id).toBe(first.body.process_id);
+    const [proc] = (await localRest(`processes?select=status&id=eq.${reviews[0].process_id}`)) as Array<{ status: string }>;
+    expect(proc.status).toBe("pending_review");
+    const [draft] = (await localRest(`${kind.table}?select=status&id=eq.${id}`)) as Array<{ status: string }>;
+    expect(draft.status).toBe("submitted");
+
+    const second = await call("POST", `${kind.path}/${id}/submit`, FLOYD, {}, admin);
+    // Told it was already submitted (400 today when the first submit has
+    // finished, 409 when it races one; F2 makes both a conflict).
+    expect([400, 409]).toContain(second.status);
+    expect(second.body.error).toMatch(/already (been )?submitted/);
+    expect((await localRest(`process_reviews?select=id&draft_id=eq.${id}`)) as unknown[]).toHaveLength(1);
   });
 });
 
