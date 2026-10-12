@@ -41,40 +41,7 @@ export type { VotingMethod, Ballot } from "./methods.js";
 // Static metadata describing the civic.vote process type, its lifecycle,
 // available actions, and configuration schema. Exposed for discovery endpoints.
 
-export const PROCESS_DESCRIPTOR = {
-  type: "civic.vote",
-  version: "0.1",
-  lifecycle: {
-    states: ["draft", "proposed", "threshold_met", "active", "closed", "finalized"],
-    paths: {
-      direct: ["draft", "active", "closed", "finalized"],
-      proposal_required: ["draft", "proposed", "threshold_met", "active", "closed", "finalized"],
-    },
-  },
-  actions: [
-    { name: "process.propose", from: ["draft"], to: "proposed", description: "Submit for community support" },
-    { name: "process.support", from: ["proposed"], to: null, description: "Endorse a proposed vote" },
-    { name: "process.unsupport", from: ["proposed"], to: null, description: "Remove endorsement (only before threshold is met)" },
-    { name: "process.activate", from: ["draft", "threshold_met"], to: "active", description: "Open the voting window" },
-    { name: "process.vote", from: ["active"], to: null, description: "Cast or change a vote" },
-    { name: "process.close", from: ["active"], to: "closed", description: "End the voting window; aggregation runs immediately" },
-  ],
-  config_schema: {
-    support_threshold: { type: "number", default: 5, description: "Endorsements required before activation" },
-    voting_duration_ms: { type: "number", default: 2592000000, description: "Voting window duration in milliseconds (default: 30 days)" },
-    activation_mode: { type: "string", enum: ["direct", "proposal_required"], default: "direct", description: "Controls which lifecycle path is available" },
-    method: { type: "string", enum: ["yes_no_unsure", "approval"], default: "yes_no_unsure", description: "Voting method (determines ballot shape and tally algorithm)" },
-  },
-  events: [
-    "civic.process.proposed",
-    "civic.process.threshold_met",
-    "civic.process.started",
-    "civic.process.vote_submitted",
-    "civic.process.ended",
-    "civic.process.aggregation_completed",
-    "civic.process.result_published",
-  ],
-} as const;
+// What this type is: VOTE_DESCRIPTOR in src/processes/voteProcess.ts.
 
 /**
  * Default voting window (30 days) when a caller doesn't specify one. Owned by

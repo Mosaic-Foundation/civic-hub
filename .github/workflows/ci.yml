@@ -213,6 +213,10 @@ jobs:
           # The leak harness walks /unsubscribe/digest with a real token for a
           # Floyd resident; it signs with the same value (CIVIC_TEST_DIGEST_SECRET).
           DIGEST_UNSUBSCRIBE_SECRET: ci-only-digest-unsubscribe-secret
+          # Conversations talk to the in-memory Polis behind the real adapter
+          # (src/debug/fakePolis.ts): the plugin conformance suite walks them,
+          # and makes Polis down, slow or erroring, with no network.
+          CIVIC_POLIS_FAKE: "on"
 
       - name: API tests (service role)
         run: npx vitest run tests/api

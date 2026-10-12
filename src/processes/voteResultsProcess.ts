@@ -15,6 +15,7 @@
 import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
+import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
 import {
   createVoteResultsState,
   getAdminReadModel,
@@ -27,10 +28,45 @@ function getState(process: Process): VoteResultsProcessState {
   return process.state as unknown as VoteResultsProcessState;
 }
 
+/**
+ * What a vote-results record is (src/processes/descriptor.ts). A legacy
+ * record: votes stopped creating them when briefs became the one results
+ * artifact (the vote's close, src/processes/types.ts generateBrief), but the
+ * type stays registered for the records that exist and for their admin
+ * routes (/admin/vote-results/*). It has no process actions: edit and approve
+ * are those routes, and their events are listed in `emits` only. Approval
+ * emails the board, then sets the row to finalized.
+ *
+ * Spec mismatch: Civic Process Spec §4.2 "publish" is published then
+ * archived; this type's row goes active (created, pending review) to
+ * finalized (published), and never uses closed.
+ */
+export const VOTE_RESULTS_DESCRIPTOR: ProcessTypeDescriptor = {
+  type: "civic.vote_results",
+  version: "0.1",
+  contract: CONTRACT_VERSION,
+  tier: 1,
+  plugin: "vote",
+  lifecycle_profile: "publish",
+  states: ["active", "finalized"],
+  initial_status: "active",
+  actions: [],
+  emits: [
+    "civic.process.aggregation_completed",
+    "civic.process.outcome_recorded",
+    "civic.process.result_published",
+  ],
+  creation: { resident: null, admin: false, system: false },
+  deadline: null,
+  brief: false,
+  tables: [],
+  outside_services: [],
+  examples: {},
+};
+
 const voteResultsProcess: ProcessHandler = {
   type: "civic.vote_results",
-  // Residents act on this type through its own routes, or not at all.
-  residentActions: [],
+  descriptor: VOTE_RESULTS_DESCRIPTOR,
   detailPath: (id: string) => `/vote-results/${id}`,
   // Social previews carry the approved headline, not the (empty) row
   // description. Unpublished records are not shareable at all.

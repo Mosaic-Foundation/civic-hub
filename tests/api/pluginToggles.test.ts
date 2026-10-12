@@ -18,6 +18,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { pendingProposalReview } from "../fixtures/codeOfConduct.js";
+import { liveProposal } from "../fixtures/liveProcess.js";
 import { localRest, mintSession, storedSetting } from "../fixtures/adminSession.js";
 
 const ATHENS = "athens.localhost";
@@ -467,8 +468,7 @@ describe("every plugin, switched off on Athens", () => {
       }
     }
     // The digest's proposals and feedback sections read their own tables.
-    const proposal = await call("POST", "/proposals", ATHENS, { title: `Plugin switch proposal ${run}`, description: "Fixture." }, athensResident);
-    expect(proposal.status, JSON.stringify(proposal.body)).toBe(201);
+    await liveProposal(ATHENS, athensResident, `Plugin switch proposal ${run}`, "Fixture.");
     const feedback = await call("POST", "/feedback", ATHENS, { category: "idea", message: `Plugin switch fixture ${run}` });
     expect(feedback.status, JSON.stringify(feedback.body)).toBeLessThan(300);
   });

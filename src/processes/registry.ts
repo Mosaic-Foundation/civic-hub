@@ -7,6 +7,13 @@
 import { ValidationError } from "../errors/index.js";
 import { ProcessHandler, ProcessFactory, ActionDispatcher } from "./types.js";
 import type { ApprovalActivation } from "./types.js";
+import {
+  registerDescriptor,
+  publicDescriptor,
+  type ActionDescriptor,
+  type ProcessTypeDescriptor,
+  type PublicProcessType,
+} from "./descriptor.js";
 import type { Process } from "../models/process.js";
 import type { PluginId } from "../models/hubSettings.js";
 import voteProcess from "./voteProcess.js";
@@ -51,29 +58,60 @@ const processRegistry: Record<string, ProcessHandler> = {
   "civic.wordcloud": wordcloudProcess,
 };
 
+// Each handler's descriptor is the one declaration of what its type is
+// (src/processes/descriptor.ts). Registered here for the emission path's
+// Stage 1 check, and read below for everything that used to be listed by hand.
+for (const handler of Object.values(processRegistry)) registerDescriptor(handler.descriptor);
+
 /**
  * The plugin each process type belongs to (BUILD-PLAN-multi-tenant.md,
- * `plugin.<id>.` ids). `plugin.<id>.enabled` off on a hub means that hub
- * cannot create the type, cannot read or act on one by id, and does not list
- * or feed it — while every existing row stays exactly as it is, so turning
- * the plugin back on loses nothing. See src/services/pluginGate.ts.
- *
- * Every registered type must appear here; tests/unit/pluginGate.test.ts
- * fails otherwise, so a new type cannot ship without deciding its plugin.
- * `civic.vote_results` is the pre-brief results record a vote produced, so
- * it belongs to votes.
+ * `plugin.<id>.` ids), from each type's descriptor. `plugin.<id>.enabled` off
+ * on a hub means that hub cannot create the type, cannot read or act on one
+ * by id, and does not list or feed it — while every existing row stays
+ * exactly as it is, so turning the plugin back on loses nothing. See
+ * src/services/pluginGate.ts. `civic.vote_results` is the pre-brief results
+ * record a vote produced, so it belongs to votes.
  */
-export const PROCESS_TYPE_PLUGINS: Readonly<Record<string, PluginId>> = {
-  "civic.vote": "vote",
-  "civic.proposal": "proposal",
-  "civic.project": "project",
-  "civic.vote_results": "vote",
-  "civic.brief": "brief",
-  "civic.announcement": "announcement",
-  "civic.meeting_summary": "meeting_summary",
-  "civic.polis_deliberation": "conversation",
-  "civic.wordcloud": "wordcloud",
-};
+export const PROCESS_TYPE_PLUGINS: Readonly<Record<string, PluginId>> = Object.fromEntries(
+  Object.entries(processRegistry).map(([type, handler]) => [type, handler.descriptor.plugin]),
+);
+
+/** A registered type's descriptor. */
+export function getDescriptor(type: string): ProcessTypeDescriptor | undefined {
+  return processRegistry[type]?.descriptor;
+}
+
+/** One action of a registered type, as its descriptor declares it. */
+export function declaredAction(type: string, action: string): ActionDescriptor | undefined {
+  return processRegistry[type]?.descriptor.actions.find((a) => a.name === action);
+}
+
+/**
+ * The actions a resident may call through `POST /process/:id/action`: the
+ * Audit 1 allowlist, now read from the descriptor. Any action not named here
+ * needs an admin, the process's creator (where the descriptor says so), or the
+ * hub itself.
+ */
+export function residentActionsOf(type: string): string[] {
+  return (getDescriptor(type)?.actions ?? [])
+    .filter((a) => a.callers.includes("resident"))
+    .map((a) => a.name);
+}
+
+/** The actions executeAction may run again after a conflict (Audit 3). */
+export function retrySafeActionsOf(type: string): string[] {
+  return (getDescriptor(type)?.actions ?? []).filter((a) => a.retry_safe).map((a) => a.name);
+}
+
+/**
+ * The public parts of every registered type's descriptor (GET
+ * /.well-known/civic.json), narrowed by the caller to the types a hub has on.
+ */
+export function publicProcessTypes(include: (type: string) => boolean): PublicProcessType[] {
+  return Object.values(processRegistry)
+    .filter((h) => include(h.type))
+    .map((h) => publicDescriptor(h.descriptor));
+}
 
 /** Every registered process type, for checks that must cover all of them. */
 export function registeredProcessTypes(): string[] {

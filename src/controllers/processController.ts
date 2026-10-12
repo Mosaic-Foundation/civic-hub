@@ -1,6 +1,6 @@
 // Process controller — handles HTTP request/response for process endpoints
 
-import { isProcessTypeEnabled } from "../services/pluginGate.js";
+import { assertProcessTypeEnabled, isProcessTypeEnabled } from "../services/pluginGate.js";
 import { NotFoundError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import {
@@ -17,12 +17,27 @@ import {
 } from "../middleware/auth.js";
 import { isPubliclyFetchable } from "../services/processLifecycle.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
+import { getDescriptor } from "../processes/registry.js";
+import type { Response } from "express";
+import type { Process } from "../models/process.js";
 
 export const handleCreateProcess = route(async (req, res) => {
   const { definition, title, description, jurisdiction, state, content } = req.body;
 
   if (!definition?.type || !title) {
     throw new ValidationError("Missing required fields: definition.type, title");
+  }
+
+  // A type an admin does not create directly (proposals and projects make
+  // their own rows on approval) is created only through drafts and review.
+  // A switched-off plugin's type is not on this hub at all: that answer first.
+  assertProcessTypeEnabled(definition.type);
+  const descriptor = getDescriptor(definition.type);
+  if (descriptor && !descriptor.creation.admin) {
+    throw new ValidationError(
+      "That kind of process is created by submitting a draft for review.",
+      "created_through_review",
+    );
   }
 
   // Actor comes from the authenticated admin session, not the request body.
@@ -64,29 +79,39 @@ export const handleProcessAction = route(async (req, res) => {
 
   if (!type) throw new ValidationError("Missing required field: type");
 
-  // Actor is the authenticated user — never taken from the request body.
-  const user = getAuthUser(res);
-  const isAdmin = isAdminEmail(user.email);
-
-  // Non-public processes (pending_review, archived) accept no actions
-  // from non-admins. 404 (not 403) so the id's existence isn't leaked.
-  const target = await getProcess(id);
-  if (!target || !isProcessTypeEnabled(target.definition.type)) throw new NotFoundError("Process not found");
-  if (!isPubliclyFetchable(target.status) && !isAdmin) throw new NotFoundError("Process not found");
-
-  // Which actions a resident may call is the handler's allowlist
-  // (residentActions), checked in executeAction; lifecycle control
-  // (activate, close, propose, snapshot, a conversation's start) is not on
-  // any of them. A refusal is a typed error from the handler (src/errors/):
-  // a refused vote carries the code the voting panel keys its explanation on.
-  const { process, result } = await executeAction(
-    id,
-    { type, actor: user.id, payload: payload ?? {} },
-    isAdmin ? "admin" : "resident",
-  );
-
+  const { process, result } = await actOnProcess(res, id, type, payload ?? {});
   res.json({ process, result });
 });
+
+/**
+ * Run one action as the signed-in person, through executeAction: the one
+ * action path for `POST /process/:id/action` and for a type's own routes
+ * (`POST /proposals/:id/support`, `POST /projects/:id/complete`, …), which
+ * pass `expectedType` so another type's id is not found there.
+ *
+ * Actor is the authenticated user — never taken from the request body.
+ * Non-public processes (pending_review, archived) accept no actions from
+ * non-admins, and a switched-off plugin's process is not there: 404 (not 403)
+ * so the id's existence isn't leaked. Who may call which action is the
+ * type's descriptor, checked in executeAction. A refusal is a typed error from
+ * the handler (src/errors/): a refused vote carries the code the voting panel
+ * keys its explanation on.
+ */
+export async function actOnProcess(
+  res: Response,
+  id: string,
+  type: string,
+  payload: Record<string, unknown>,
+  expectedType?: string,
+): Promise<{ process: Process; result: Record<string, unknown> }> {
+  const user = getAuthUser(res);
+  const isAdmin = isAdminEmail(user.email);
+  const target = await getProcess(id);
+  if (!target || !isProcessTypeEnabled(target.definition.type)) throw new NotFoundError("Process not found");
+  if (expectedType && target.definition.type !== expectedType) throw new NotFoundError("Process not found");
+  if (!isPubliclyFetchable(target.status) && !isAdmin) throw new NotFoundError("Process not found");
+  return executeAction(id, { type, actor: user.id, payload }, isAdmin ? "admin" : "resident");
+}
 
 // --- Read layer for UI consumption ---
 

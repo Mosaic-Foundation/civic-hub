@@ -1,41 +1,22 @@
 // Proposal controller — handles HTTP request/response for proposal endpoints
 //
-// User-facing operations: submit, support, list, detail.
+// User-facing operations: support, list, detail. A proposal is created by
+// submitting a draft for review (POST /proposals/drafts/:id/submit); the
+// direct create route was removed 2026-10-12 (it skipped review).
 // Admin operations are in adminController.ts.
 
 import { NotFoundError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
-import { emitEvent } from "../events/eventEmitter.js";
 import {
-  createProposal,
   listProposals,
-  supportProposal,
-  withdrawProposalSupport,
   getProposalReadModel,
   getProposalSummary,
 } from "../modules/civic.proposals/index.js";
-import { getAuthUser, resolveCallerUser } from "../middleware/auth.js";
+import { resolveCallerUser } from "../middleware/auth.js";
+import { actOnProcess } from "./processController.js";
 import { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import { getSampleProcessIds } from "../services/processService.js";
-
-/**
- * POST /proposals — submit a new proposal
- */
-export const handleSubmitProposal = route(async (req, res) => {
-  const { title, description, optional_links, category, assistant_helped } = req.body;
-
-  if (!title) {
-    throw new ValidationError("Missing required field: title");
-  }
-
-  const user = getAuthUser(res);
-  const proposal = await createProposal(
-    { title, description, optional_links, submitted_by: user.id, category, assistant_helped },
-    emitEvent,
-  );
-  res.status(201).json(proposal);
-});
 
 /**
  * GET /proposals — list all proposals (optionally filtered by status)
@@ -100,26 +81,16 @@ export const handleGetProposal = route(async (req, res) => {
 });
 
 /**
- * POST /proposals/:id/support — endorse a proposal
+ * POST /proposals/:id/support and DELETE /proposals/:id/support — support a
+ * proposal, or withdraw support: process.support / process.unsupport through
+ * the one action path (src/controllers/processController.ts, actOnProcess).
  */
-export const handleUnsupportProposal = route(async (req, res) => {
-  const id = req.params.id as string;
-
-  const user = getAuthUser(res);
-  const proposal = await withdrawProposalSupport(id, user.id, emitEvent);
-  res.json({
-    support_count: proposal.support_count,
-    status: proposal.status,
-  });
+export const handleSupportProposal = route(async (req, res) => {
+  const { result } = await actOnProcess(res, req.params.id as string, "process.support", {}, "civic.proposal");
+  res.json({ support_count: result.support_count, status: result.status });
 });
 
-export const handleSupportProposal = route(async (req, res) => {
-  const id = req.params.id as string;
-
-  const user = getAuthUser(res);
-  const proposal = await supportProposal(id, user.id, emitEvent);
-  res.json({
-    support_count: proposal.support_count,
-    status: proposal.status,
-  });
+export const handleUnsupportProposal = route(async (req, res) => {
+  const { result } = await actOnProcess(res, req.params.id as string, "process.unsupport", {}, "civic.proposal");
+  res.json({ support_count: result.support_count, status: result.status });
 });

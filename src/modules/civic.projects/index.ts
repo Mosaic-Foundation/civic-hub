@@ -14,7 +14,6 @@ import {
   emitProjectCreated,
   emitProjectUpdated,
   emitProjectSentimentChanged,
-  emitProjectArchived,
   emitProjectCompleted,
   type EmitEventFn,
 } from "./events.js";
@@ -177,68 +176,18 @@ export async function updateProject(
   return rowToProject(data);
 }
 
-export async function archiveProject(
-  id: string,
-  actor: string,
-  emit: EmitEventFn,
-): Promise<void> {
-  const project = await getProject(id);
-  if (!project) throw new NotFoundError("Project not found", "project_not_found");
-  if (project.user_id !== actor) {
-    throw new ForbiddenError("Only the project creator can archive this project", "creator_only");
-  }
-
-  const now = new Date().toISOString();
-  await db()
-    .from("projects")
-    .update({ status: "archived" as ProjectStatus, updated_at: now })
-    .eq("id", id);
-
-  // Keep the canonical processes row in sync (source of truth for the unified
-  // read layer). Without this, an archived project would still surface in
-  // getAllProcesses, which filters on the processes-row status. No-op for any
-  // legacy project that predates the unified processes row.
-  await db()
-    .from("processes")
-    .update({ status: "archived", updated_at: now })
-    .eq("id", id);
-
-  // Archive is a terminal lifecycle transition — emit an event so the change
-  // is recorded in the event log (the source of truth) rather than silent.
-  await emitProjectArchived({ project_id: id, emit }, actor);
-}
-
 /**
- * Mark a project complete — its terminal, "done" transition (distinct from
- * archive, which hides it). Sets the child + canonical processes rows to
- * completed/closed in lockstep and emits a completion event. The processes
- * row goes to "closed" (still publicly visible — a finished project stays
- * on the record) so the universal brief seam / caller can spawn its brief.
- * Auth is enforced by the caller (creator or admin).
+ * Copy a committed completion onto the projects row (only an active one). A
+ * project's status changes through executeAction (src/processes/
+ * projectAdapter.ts, process.complete): the processes row, with its events,
+ * in one transaction; this copy is written after it commits.
  */
-export async function completeProject(
-  id: string,
-  actor: string,
-  emit: EmitEventFn,
-): Promise<void> {
-  const project = await getProject(id);
-  if (!project) throw new NotFoundError("Project not found", "project_not_found");
-  if (project.status !== "active") {
-    throw new ConflictError("Only an active project can be completed.", "project_not_active");
-  }
-
-  const now = new Date().toISOString();
+export async function markProjectCompleted(id: string): Promise<void> {
   await db()
     .from("projects")
-    .update({ status: "completed" as ProjectStatus, updated_at: now })
-    .eq("id", id);
-
-  await db()
-    .from("processes")
-    .update({ status: "closed", updated_at: now })
-    .eq("id", id);
-
-  await emitProjectCompleted({ project_id: id, emit }, actor);
+    .update({ status: "completed" as ProjectStatus, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("status", "active");
 }
 
 // --- Project Updates -------------------------------------------------------

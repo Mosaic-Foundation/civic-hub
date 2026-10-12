@@ -39,26 +39,4 @@ export {
 
 export { formatVoteResultsEmail, headlineFor } from "./email.js";
 
-export const PROCESS_DESCRIPTOR = {
-  type: "civic.vote_results",
-  version: "0.1",
-  lifecycle: {
-    states: ["active", "closed", "finalized"],
-    publication_sub_states: ["pending", "approved", "published"],
-    paths: {
-      standard: ["active", "closed", "finalized"],
-    },
-  },
-  actions: [
-    // All vote-results transitions happen via the admin HTTP surface,
-    // not process actions on /process/:id/action. The admin routes
-    // orchestrate the approval sequence.
-  ],
-  events: [
-    "civic.process.created",
-    "civic.process.aggregation_completed",
-    "civic.process.updated",
-    "civic.process.outcome_recorded",
-    "civic.process.result_published",
-  ],
-} as const;
+// What this type is: VOTE_RESULTS_DESCRIPTOR in src/processes/voteResultsProcess.ts.

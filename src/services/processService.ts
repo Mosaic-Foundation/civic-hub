@@ -31,6 +31,7 @@ import {
   ProcessStatus,
 } from "../models/process.js";
 import { buildEvent, emitEvent } from "../events/eventEmitter.js";
+import type { CivicEvent } from "../models/event.js";
 import { generateId } from "../utils/id.js";
 import {
   getProcessHandler,
@@ -38,7 +39,15 @@ import {
   setActionDispatcher,
   setDeadlineCloser,
   PROCESS_TYPE_PLUGINS,
+  declaredAction,
+  retrySafeActionsOf,
 } from "../processes/registry.js";
+import {
+  allowedTargets,
+  descriptorViolation,
+  HOST_EVENT_TYPES,
+  type ActionDescriptor,
+} from "../processes/descriptor.js";
 import {
   spawnBriefFromClosedProcess,
   findExistingBriefId,
@@ -278,18 +287,31 @@ export class ActionNotAllowedError extends ForbiddenError {
 /** How many times a retry-safe action runs before a conflict is refused. */
 const MAX_ACTION_ATTEMPTS = 8;
 
+/**
+ * What an approval adds to the action that activates it (src/modules/
+ * civic.review/service.ts): the process's `created` event, written first in
+ * the same transaction as the activation, and no `updated` event for leaving
+ * pending_review (the `created` event is the process's birth). If the
+ * activation fails, neither is written, so a failed approval leaves no trace
+ * in the public log (Audit 4's stray event).
+ */
+export interface ApprovalWrite {
+  leadingEvents: CivicEvent[];
+}
+
 export async function executeAction(
   processId: string,
   action: ProcessAction,
   caller: ActionCaller,
+  approval?: ApprovalWrite,
 ): Promise<{ process: Process; result: Record<string, unknown> }> {
   for (let attempt = 1; ; attempt++) {
     try {
-      return await attemptAction(processId, action, caller);
+      return await attemptAction(processId, action, caller, approval);
     } catch (err) {
       if (!(err instanceof ProcessChangedError) || attempt >= MAX_ACTION_ATTEMPTS) throw err;
       const handler = await handlerFor(processId);
-      if (!handler?.retrySafeActions?.includes(action.type)) throw err;
+      if (!handler || !retrySafeActionsOf(handler.type).includes(action.type)) throw err;
       // Another write won; read again and redo the action on top of it. A
       // short random wait spreads out a burst (endorsements at a meeting).
       await new Promise((r) => setTimeout(r, 5 + Math.random() * 20 * attempt));
@@ -311,6 +333,7 @@ async function attemptAction(
   processId: string,
   action: ProcessAction,
   caller: ActionCaller,
+  approval?: ApprovalWrite,
 ): Promise<{ process: Process; result: Record<string, unknown> }> {
   const process = await getProcess(processId);
   if (!process) {
@@ -322,11 +345,20 @@ async function attemptAction(
     throw new Error(`Unsupported process type: ${process.definition.type}`);
   }
 
-  // Residents may call only what the handler opens to them; everything else
-  // is an admin's or the hub's. Checked before the status, so a refused
-  // caller learns nothing about where the process is in its lifecycle.
-  if (caller === "resident" && !handler.residentActions.includes(action.type)) {
+  // The descriptor says who may call what. A resident may call only what it
+  // opens to residents, or to the creator when they are the creator;
+  // everything else is an admin's or the hub's. Checked before the status, so
+  // a refused caller learns nothing about where the process is.
+  const declared = declaredAction(handler.type, action.type);
+  if (caller === "resident" && !residentMayCall(declared, process, action.actor)) {
     throw new ActionNotAllowedError(action.type);
+  }
+  if (!declared) {
+    descriptorViolation(
+      "descriptor.undeclared_action",
+      `${handler.type}: action ${action.type} is not in its descriptor`,
+      { process_type: handler.type, action: action.type },
+    );
   }
 
   if (!isActionable(process.status)) {
@@ -346,12 +378,19 @@ async function attemptAction(
     () => handler.handleAction(process, action),
   );
 
+  // What the handler did, against what its descriptor says the action does:
+  // where it may run from, where it may leave the process, what it emits.
+  // Checked after the handler so its own refusal (a vote that is closed)
+  // reaches the caller first; before the write, so a disagreement outside
+  // production writes nothing.
+  if (declared) checkAgainstDescriptor(handler.type, declared, previousStatus, process.status, events);
+
   if (rowImage(process) !== before) {
     // One transaction: the new status and state, the handler's events, and a
     // status change's process.updated event. Refused if the row's status or
     // version moved since the read above, so nothing is overwritten and a
     // losing close publishes nothing.
-    const statusEvent = shouldEmitStatusUpdate(previousStatus, process.status)
+    const statusEvent = !approval && shouldEmitStatusUpdate(previousStatus, process.status)
       ? buildEvent({
           event_type: "civic.process.updated",
           actor: action.actor,
@@ -376,14 +415,14 @@ async function attemptAction(
       state: process.state,
       expectedStatus: previousStatus,
       expectedVersion: process.version,
-      events,
+      events: [...(approval?.leadingEvents ?? []), ...events],
     });
     process.updatedAt = out.updated_at;
     process.version = out.version;
   } else {
     // Nothing on the process row changed (a ballot, a word-cloud entry: their
     // rows are elsewhere): its events are written as they were, unconditioned.
-    for (const event of events) {
+    for (const event of [...(approval?.leadingEvents ?? []), ...events]) {
       await appendEvent(event);
       console.log(`[event] ${event.event_type} by ${event.actor} (${event.id})`);
     }
@@ -413,6 +452,46 @@ async function attemptAction(
   }
 
   return { process, result };
+}
+
+/** Whether a resident may call an action: the descriptor opens it to residents, or to the creator and they are. */
+function residentMayCall(declared: ActionDescriptor | undefined, process: Process, actor: string): boolean {
+  if (!declared) return false;
+  if (declared.callers.includes("resident")) return true;
+  return declared.callers.includes("creator") && actor !== "" && actor === process.createdBy;
+}
+
+function checkAgainstDescriptor(
+  type: string,
+  declared: ActionDescriptor,
+  from: ProcessStatus,
+  to: ProcessStatus,
+  events: ReadonlyArray<{ event_type: string }>,
+): void {
+  const context = { process_type: type, action: declared.name, from, to };
+  if (!declared.from.includes(from)) {
+    descriptorViolation(
+      "descriptor.wrong_from",
+      `${type}: ${declared.name} ran from ${from}; its descriptor allows ${declared.from.join(", ")}`,
+      context,
+    );
+  }
+  if (!allowedTargets(declared, from).includes(to)) {
+    descriptorViolation(
+      "descriptor.wrong_to",
+      `${type}: ${declared.name} left the process ${to}; its descriptor says ${allowedTargets(declared, from).join(" or ")}`,
+      context,
+    );
+  }
+  for (const e of events) {
+    if (!declared.emits.includes(e.event_type) && !HOST_EVENT_TYPES.includes(e.event_type)) {
+      descriptorViolation(
+        "descriptor.undeclared_event",
+        `${type}: ${declared.name} emitted ${e.event_type}, which the action does not declare`,
+        { ...context, event_type: e.event_type },
+      );
+    }
+  }
 }
 
 /** A process is terminal once closed or finalized — the moment its brief

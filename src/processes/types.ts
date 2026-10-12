@@ -11,6 +11,7 @@ import type { SubmissionField, SubmissionSource } from "../shared/submissionPrev
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import type { SchemaRequirement } from "../db/schemaContract.js";
 import type { AssistantTypeConfig } from "../modules/civic.assistant/index.js";
+import type { ProcessTypeDescriptor } from "./descriptor.js";
 
 /**
  * Whether — and which parts of — a live process its creator may edit.
@@ -115,6 +116,14 @@ export interface ProcessHandler {
    * default for a type that is live the moment it is approved.
    */
   activationOnApproval?(process: Process): ApprovalActivation;
+
+  /**
+   * Optional: storage this type creates when a review is approved, after the
+   * process row has gone live (proposals and projects make their own row,
+   * keyed by the process id). Replaces the review service's switch over
+   * types. A throw rolls the approval back to the review queue.
+   */
+  onApproved?(process: Process, creatorId: string): Promise<void>;
 
   /**
    * Optional: the fields a creator submitted, for the "Your submission" /
@@ -233,25 +242,14 @@ export interface ProcessHandler {
   getAssistantConfig?(): AssistantTypeConfig;
 
   /**
-   * The actions a resident may call through `POST /process/:id/action`. An
-   * allowlist, checked once in executeAction: any action not named here
-   * needs an admin (or the hub itself: a deadline close, an approval's
-   * activation). Required, so a new type has to decide; a type whose
-   * residents act through its own routes, or not at all, declares `[]`.
+   * What this type is: its states and transitions, its actions and who may
+   * call each, the events it emits, its tables, how one is created, its trust
+   * tier (src/processes/descriptor.ts). Required, so a new type has to say.
+   * The registry derives the resident allowlist (Audit 1), the retry-safe
+   * actions (Audit 3) and the type's plugin from it; executeAction and the
+   * emission path check what the handler does against it.
    */
-  residentActions: readonly string[];
-
-  /**
-   * The actions executeAction may run again when another write lands on the
-   * process between its read and its write (Audit 3). Safe only when the
-   * action's every effect is its change to the process's status and state and
-   * the events it emits about the process (held and written with that
-   * change): anything else it does (a call to another service, a row in
-   * another table) would happen twice. Work for after the write goes through
-   * afterActionCommits (src/services/actionScope.ts). Any action not named
-   * here is refused on a conflict (ProcessChangedError, 409), never retried.
-   */
-  retrySafeActions?: readonly string[];
+  descriptor: ProcessTypeDescriptor;
 
   /** Initialize process-specific state from creation input */
   initializeState(input: Record<string, unknown>): Record<string, unknown>;
@@ -394,7 +392,7 @@ export type ProcessFactory = (input: CreateProcessInput) => Promise<Process>;
  *
  * Used by lazy deadline-close (ProcessHandler.closeIfExpired) for types whose
  * close runs through the generic action dispatcher (vote, deliberation). It
- * acts as the hub itself ("system"), so it is not held to residentActions.
+ * acts as the hub itself ("system"), so it is not held to the resident allowlist.
  */
 export type ActionDispatcher = (
   processId: string,
@@ -402,9 +400,11 @@ export type ActionDispatcher = (
 ) => Promise<{ process: Process; result: Record<string, unknown> }>;
 
 /**
- * Who is calling executeAction. "resident" is held to the handler's
- * residentActions; "admin" (a hub admin, checked by the caller) and "system"
- * (the hub acting on its own: a deadline close, an approval's activation, a
- * seed) are not. A required argument, so no call site gets a default.
+ * Who is calling executeAction. "resident" is held to the actions its
+ * descriptor opens to residents (or to the process's creator, when the
+ * resident is the creator); "admin" (a hub admin, checked by the caller) and
+ * "system" (the hub acting on its own: a deadline close, an approval's
+ * activation, a seed) to the actions open to them. A required argument, so no
+ * call site gets a default.
  */
 export type ActionCaller = "resident" | "admin" | "system";

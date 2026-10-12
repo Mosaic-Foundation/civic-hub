@@ -27,6 +27,7 @@ numbers below, or just grep the heading.
 | Server-side fetches of URLs others chose (SSRF guard) | `src/utils/ssrfGuard.ts` (`guardedFetch`), `src/utils/http.ts` |
 | Security headers (API, vercel.json, vite preview) | `src/shared/securityHeaders.ts` |
 | Process registry and per-type handlers | `src/processes/registry.ts`, `src/processes/*Process.ts` |
+| What each process type is (descriptor: states, actions + callers, events, tables, creation, tier), the static check, the conformance suite, the fake Polis | `src/processes/descriptor.ts`, `src/processes/descriptorCheck.ts`, `tests/conformance/` (README for plugin authors), `tests/api/conformance.test.ts`, `src/debug/fakePolis.ts` (`CIVIC_POLIS_FAKE=on`) |
 | Reading more than 1,000 rows: `readAll()` (pages), `inChunks()` (long id lists); the `CIVIC_ROW_CAP` guard | `src/db/readAll.ts`, `src/db/inChunks.ts`, `cutOffAtCap` in `src/db/forHub.ts` |
 | Reporting an error operators must see (where Sentry or similar connects later) | `src/utils/reportError.ts`; BUILD-PLAN "Error reporting" |
 | Error responses: typed errors, the one wrapper, the response shape, what is logged and redacted | `src/errors/index.ts`, `src/http/route.ts` (`route()`, `sendError()`), `src/utils/redact.ts`; BUILD-PLAN "Error responses" |
@@ -77,6 +78,10 @@ numbers below, or just grep the heading.
 - Pluggable voting methods + approval voting — 7420–7484
 
 ### Security, identity, anonymity
+- **Plugin conformance (2026-10-12)**: descriptors on every type (Stage 1 checks in `executeAction` and the
+  emitter), one suite for every type (`tests/conformance/`), proposals and projects on `executeAction`, approval
+  as one write (no stray `created`), `POST /proposals` + `POST /projects` removed, fake Polis + Tier 3 findings —
+  top of HANDOFF (grep the heading)
 - **CI fix + function grants (2026-10-12)**: `events.test.ts` hidden-newest-event fix, `ensureSeedData()` checks
   its answer, `20261012100000_function_execute_grants.sql` (EXECUTE by name, nothing for anon, default privileges),
   `tests/api/functionGrants.test.ts` — top of HANDOFF (grep the heading)

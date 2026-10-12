@@ -7,6 +7,7 @@ import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { ProcessHandler } from "./types.js";
+import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import {
@@ -40,35 +41,102 @@ function db() {
   return forHub(currentHubId());
 }
 
-export const PROCESS_DESCRIPTOR = {
+// What this type is: WORDCLOUD_DESCRIPTOR below.
+
+/**
+ * What a word cloud is (src/processes/descriptor.ts). Residents submit one
+ * short answer per prompt while it is active; activate, snapshot and close
+ * are an admin's. Neither a deadline nor a brief: an evergreen cloud stays
+ * active until an admin closes it.
+ *
+ * Retry-safe: activate, snapshot and close change only the process row and
+ * their events (snapshot and close only read the submissions table). A
+ * submission is not: it writes a row of its own.
+ *
+ * The word cloud keeps a copy of its status on state, synced with the row.
+ *
+ * Spec mismatch: Civic Process Spec §4.2 "continuous" is closed manually and
+ * then finalized; a word cloud stops at closed.
+ */
+export const WORDCLOUD_DESCRIPTOR: ProcessTypeDescriptor = {
   type: "civic.wordcloud",
   version: "0.1",
-  lifecycle: {
-    states: ["draft", "active", "closed"],
-    transitions: [
-      { from: "draft", to: "active", action: "process.activate" },
-      { from: "active", to: "closed", action: "process.close" },
-    ],
-  },
+  contract: CONTRACT_VERSION,
+  tier: 1,
+  plugin: "wordcloud",
+  lifecycle_profile: "continuous",
+  states: ["draft", "active", "closed"],
+  initial_status: "draft",
   actions: [
-    { name: "process.activate", from: ["draft"], to: "active", description: "Open for submissions" },
-    { name: "process.submit", from: ["active"], to: null, description: "Submit a response to a prompt" },
-    { name: "process.snapshot", from: ["active"], to: null, description: "Publish a point-in-time snapshot of the cloud" },
-    { name: "process.close", from: ["active"], to: "closed", description: "Close submissions and publish final result" },
+    {
+      name: "process.activate",
+      description: "Open the word cloud for submissions",
+      callers: ["admin"],
+      from: ["draft"],
+      to: "active",
+      emits: ["civic.process.started"],
+      retry_safe: true,
+    },
+    {
+      name: "process.submit",
+      description: "Submit a short answer to one of the prompts",
+      callers: ["resident", "admin"],
+      from: ["active"],
+      to: null,
+      emits: ["civic.process.submission_received"],
+      once_per_participant: true,
+      input_schema: {
+        type: "object",
+        properties: {
+          prompt_id: { type: "string" },
+          text: { type: "string" },
+          device_token: { type: "string" },
+        },
+        required: ["prompt_id", "text"],
+        examples: [{ prompt_id: "prompt_1", text: "parks" }],
+      },
+    },
+    {
+      name: "process.snapshot",
+      description: "Publish a point-in-time snapshot of the cloud",
+      callers: ["admin"],
+      from: ["active"],
+      to: null,
+      emits: ["civic.process.result_published"],
+      retry_safe: true,
+    },
+    {
+      name: "process.close",
+      description: "Close submissions and publish the final cloud",
+      callers: ["admin"],
+      from: ["active"],
+      to: "closed",
+      emits: ["civic.process.ended", "civic.process.result_published"],
+      retry_safe: true,
+    },
   ],
-  config_schema: {
-    prompts: { type: "array", description: "One or more prompts with { id, text, max_length? }" },
-    lifecycle_mode: { type: "string", enum: ["fixed", "evergreen"], default: "evergreen" },
-    max_submission_length: { type: "number", default: 280 },
-    display_threshold: { type: "number", default: 1 },
-  },
-  events: [
+  emits: [
     "civic.process.started",
     "civic.process.submission_received",
     "civic.process.result_published",
     "civic.process.ended",
   ],
-} as const;
+  creation: { resident: null, admin: true, system: false },
+  deadline: null,
+  brief: false,
+  tables: ["wordcloud_submissions"],
+  outside_services: [],
+  examples: {
+    create: {
+      body: {
+        definition: { type: "civic.wordcloud", version: "0.1" },
+        title: "Conformance word cloud",
+        description: "One word.",
+        state: { prompts: [{ id: "p1", text: "One word?" }] },
+      },
+    },
+  },
+};
 
 const wordcloudProcess: ProcessHandler = {
   requiredSchema: [
@@ -80,8 +148,7 @@ const wordcloudProcess: ProcessHandler = {
   ],
 
   type: "civic.wordcloud",
-  // A resident submits words; activate, snapshot and close are an admin's.
-  residentActions: ["process.submit"],
+  descriptor: WORDCLOUD_DESCRIPTOR,
   detailPath: (id: string) => `/wordcloud/${id}`,
 
 

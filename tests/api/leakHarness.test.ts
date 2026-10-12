@@ -35,6 +35,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomBytes } from "node:crypto";
 import { call } from "../fixtures/hostCall.js";
 import { pendingProposalReview } from "../fixtures/codeOfConduct.js";
+import { liveProject, liveProposal } from "../fixtures/liveProcess.js";
 import { localRest, localStack, mintSession } from "../fixtures/adminSession.js";
 
 // ---- the digest's mail, captured in-process (section 3) --------------------
@@ -243,15 +244,11 @@ beforeAll(async () => {
   });
   ok(await call("POST", `/process/${B.wordcloud}/action`, FLOYD, { type: "process.submit", payload: { prompt_id: "p1", text: `w${MARKER_B}` } }, tokens.floydResident));
 
-  const proposal = await call("POST", "/proposals", FLOYD, { title: `Proposal ${MARKER_B}`, description: `About ${MARKER_B}` }, tokens.floydResident);
-  ok(proposal, 201);
-  B.proposal = proposal.body.id;
+  B.proposal = await liveProposal(FLOYD, tokens.floydResident, `Proposal ${MARKER_B}`, `About ${MARKER_B}`);
   const support = await call("POST", `/proposals/${B.proposal}/support`, FLOYD, {}, tokens.floydAdmin);
   expect(support.status).toBeLessThan(500);
 
-  const project = await call("POST", "/projects", FLOYD, { title: `Project ${MARKER_B}`, description: `About ${MARKER_B}` }, tokens.floydResident);
-  ok(project, 201);
-  B.project = project.body.id;
+  B.project = await liveProject(FLOYD, tokens.floydResident, `Project ${MARKER_B}`, `About ${MARKER_B}`);
   ok(await call("POST", `/projects/${B.project}/sentiment`, FLOYD, { sentiment: "support" }, tokens.floydAdmin));
 
   B.review = (await pendingProposalReview(FLOYD, tokens.floydResident, `Review ${MARKER_B}`)).review_id;
@@ -368,6 +365,7 @@ type Plan = { query?: string[]; skip?: string; ids?: "events" };
 const GET_PLAN: Record<string, Plan> = {
   "GET /": {},
   "GET /health": {},
+  "GET /debug/polis-fake": { skip: "development only (CIVIC_POLIS_FAKE=on): the fake Polis's call log, admin only" },
   "GET /hub-config": {},
   "GET /hub-config/documents": { query: ["", "?key=copy.about", "?keys=copy.about"] },
   "GET /auth/me": {},

@@ -9,6 +9,7 @@
 import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
+import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
 import {
   createAnnouncementState,
   getPublicReadModel,
@@ -24,10 +25,41 @@ function getState(process: Process): AnnouncementProcessState {
   return process.state as unknown as AnnouncementProcessState;
 }
 
+/**
+ * What an announcement is (src/processes/descriptor.ts). It is published the
+ * moment it is made: the announcement routes (admins and officials) and the
+ * news sync job create the row, emit result_published, and set it to
+ * finalized. Edits, removal and restore are those routes and emit only
+ * civic.process.updated. It has no process actions.
+ *
+ * Spec mismatch: Civic Process Spec §4.2 "publish" is published then
+ * archived; an announcement is born active and finalized in the same request
+ * (the row is never observably active), and "archived" is the host's.
+ */
+export const ANNOUNCEMENT_DESCRIPTOR: ProcessTypeDescriptor = {
+  type: "civic.announcement",
+  version: "0.1",
+  contract: CONTRACT_VERSION,
+  tier: 1,
+  plugin: "announcement",
+  lifecycle_profile: "publish",
+  states: ["active", "finalized"],
+  initial_status: "active",
+  actions: [],
+  emits: ["civic.process.result_published"],
+  creation: { resident: null, admin: true, system: true },
+  deadline: null,
+  brief: false,
+  tables: [],
+  outside_services: [],
+  examples: {
+    create: { path: "/announcement", body: { title: "Conformance announcement", body: "A notice." } },
+  },
+};
+
 const announcementProcess: ProcessHandler = {
   type: "civic.announcement",
-  // Residents act on this type through its own routes, or not at all.
-  residentActions: [],
+  descriptor: ANNOUNCEMENT_DESCRIPTOR,
   detailPath: (id: string) => `/announcement/${id}`,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {

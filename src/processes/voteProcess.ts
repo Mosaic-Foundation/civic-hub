@@ -9,6 +9,7 @@ import { Process, ProcessAction } from "../models/process.js";
 import { buildEvent, emitEvent } from "../events/eventEmitter.js";
 import type { CivicEvent } from "../models/event.js";
 import { ProcessHandler } from "./types.js";
+import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
 import { voteAssistantConfig } from "./voteAssistantConfig.js";
 import {
   createVoteState,
@@ -68,6 +69,134 @@ function syncStatus(process: Process, state: VoteProcessState): void {
   process.status = state.status;
 }
 
+// --- Descriptor ---
+
+/**
+ * What a vote is (src/processes/descriptor.ts). Residents support while it
+ * gathers endorsements, then cast a ballot; propose, activate and close are
+ * lifecycle control, an admin's or the hub's (an approval, a deadline).
+ *
+ * Retry-safe: propose, support, unsupport, activate and close change only the
+ * vote's state and the events written with it, so on a conflict they run
+ * again on a fresh read (two endorsements at once both count; a close that
+ * lost to a ballot re-tallies with it). A ballot is not: cast_ballot writes
+ * it, and the count, in its own transaction.
+ *
+ * An approval runs propose (or activate, for a vote configured for direct
+ * activation) from pending_review, in the same transaction as the approval's
+ * status change (src/modules/civic.review/service.ts).
+ */
+export const VOTE_DESCRIPTOR: ProcessTypeDescriptor = {
+  type: "civic.vote",
+  version: "0.1",
+  contract: CONTRACT_VERSION,
+  tier: 1,
+  plugin: "vote",
+  lifecycle_profile: "deliberative",
+  states: ["draft", "proposed", "threshold_met", "active", "closed", "finalized"],
+  initial_status: "draft",
+  actions: [
+    {
+      name: "process.propose",
+      description: "Open the vote for community endorsements",
+      callers: ["admin", "system"],
+      from: ["draft", "pending_review"],
+      to: "proposed",
+      emits: ["civic.process.proposed"],
+      retry_safe: true,
+    },
+    {
+      name: "process.support",
+      description: "Endorse a proposed vote; at the threshold it opens for ballots",
+      callers: ["resident", "admin"],
+      from: ["proposed"],
+      to: ["proposed", "active"],
+      emits: ["civic.process.threshold_met", "civic.process.started"],
+      retry_safe: true,
+      once_per_participant: true,
+      input_schema: { type: "object", properties: {}, examples: [{}] },
+    },
+    {
+      name: "process.unsupport",
+      description: "Withdraw an endorsement before the threshold is met",
+      callers: ["resident", "admin"],
+      from: ["proposed"],
+      to: null,
+      emits: [],
+      retry_safe: true,
+      input_schema: { type: "object", properties: {}, examples: [{}] },
+    },
+    {
+      name: "process.activate",
+      description: "Open the voting window",
+      callers: ["admin", "system"],
+      from: ["draft", "threshold_met", "pending_review"],
+      to: "active",
+      emits: ["civic.process.started"],
+      retry_safe: true,
+    },
+    {
+      name: "process.vote",
+      description: "Cast a ballot, or change one with its receipt",
+      callers: ["resident", "admin"],
+      from: ["active"],
+      to: null,
+      emits: ["civic.process.vote_submitted"],
+      once_per_participant: true,
+      input_schema: {
+        type: "object",
+        properties: {
+          option: { type: "string" },
+          selections: { type: "array", items: { type: "string" } },
+          receipt: {
+            type: "object",
+            properties: { receipt_id: { type: "string" }, change_key: { type: "string" } },
+          },
+        },
+        examples: [{ option: "yes" }],
+      },
+    },
+    {
+      name: "process.close",
+      description: "End the voting window; the tally is published and the vote finalized",
+      callers: ["admin", "system"],
+      from: ["active"],
+      to: "finalized",
+      emits: [
+        "civic.process.ended",
+        "civic.process.aggregation_completed",
+        "civic.process.result_published",
+      ],
+      retry_safe: true,
+    },
+  ],
+  emits: [
+    "civic.process.proposed",
+    "civic.process.threshold_met",
+    "civic.process.started",
+    "civic.process.vote_submitted",
+    "civic.process.ended",
+    "civic.process.aggregation_completed",
+    "civic.process.result_published",
+  ],
+  creation: { resident: { drafts: "/votes/drafts" }, admin: true, system: false },
+  deadline: { action: "process.close", source: "state.voting_closes_at" },
+  brief: true,
+  tables: ["vote_records", "vote_participation", "active_vote_keys", "vote_drafts"],
+  outside_services: [],
+  examples: {
+    draft: { title: "Conformance vote", description: "Should the hub try this?" },
+    create: {
+      body: {
+        definition: { type: "civic.vote", version: "0.1" },
+        title: "Conformance vote",
+        description: "Should the hub try this?",
+        state: { config: { activation_mode: "direct" } },
+      },
+    },
+  },
+};
+
 // --- Handler implementation ---
 
 /** The receipt and change key a voter's browser sent with a change, if any. */
@@ -121,14 +250,7 @@ const voteProcess: ProcessHandler = {
   ],
 
   type: "civic.vote",
-  // Support while gathering, then a ballot. Propose, activate and close are
-  // lifecycle control: an admin's, or the hub's on a deadline.
-  residentActions: ["process.support", "process.unsupport", "process.vote"],
-  // Their only effects are the vote's state and its events, so on a conflict
-  // they run again on a fresh read: two endorsements at once both count, and
-  // a close that lost to a ballot re-tallies with it. A ballot is not here:
-  // cast_ballot writes it, and the count, in its own transaction.
-  retrySafeActions: ["process.propose", "process.support", "process.unsupport", "process.activate", "process.close"],
+  descriptor: VOTE_DESCRIPTOR,
   detailPath: (id: string) => `/process/${id}`,
   draftPath: (draftId: string) => `/votes/new?draft=${encodeURIComponent(draftId)}`,
   reopenDraft: (draftId: string) => setDraftStatus(voteDraftKind.spec, draftId, "drafting"),

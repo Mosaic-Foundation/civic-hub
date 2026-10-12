@@ -9,7 +9,7 @@
 // Evergreen mode stays in active indefinitely; admin can snapshot or close.
 
 import { ConflictError, ValidationError } from "../../errors/index.js";
-import { forHub, type HubDb } from "../../db/forHub.js";
+import { forHub, HubDbError, type HubDb } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
 import { assertPassesWordlist } from "../../shared/wordlist/index.js";
@@ -195,18 +195,30 @@ export async function submitResponse(
 
   const id = generateId("wcsub");
 
-  const data = await db()
-    .from("wordcloud_submissions")
-    .insert({
-      id,
-      process_id: ctx.process_id,
-      prompt_id: payload.prompt_id,
-      author_id: actor || null,
-      body,
-      device_token: payload.device_token ?? null,
-    })
-    .select<SubmissionRow>()
-    .single();
+  // The count above answers a second submit with a plain refusal; two at the
+  // same moment both pass it, and the unique index on (process, prompt,
+  // author) lets one in (20260617000000). The other is the same refusal, not
+  // a 500 (plugin conformance, 2026-10-12).
+  let data: SubmissionRow;
+  try {
+    data = await db()
+      .from("wordcloud_submissions")
+      .insert({
+        id,
+        process_id: ctx.process_id,
+        prompt_id: payload.prompt_id,
+        author_id: actor || null,
+        body,
+        device_token: payload.device_token ?? null,
+      })
+      .select<SubmissionRow>()
+      .single();
+  } catch (err) {
+    if (actor && err instanceof HubDbError && err.code === "23505") {
+      throw new ConflictError("You have already submitted a response to this prompt", "already_submitted");
+    }
+    throw err;
+  }
 
   const submission = rowToSubmission(data);
 

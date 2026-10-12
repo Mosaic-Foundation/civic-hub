@@ -194,12 +194,17 @@ describe("a failed auto-approval leaves the submission in the queue", () => {
         RETURN NEW;
       END $$`);
     await db.query(`CREATE TRIGGER ${fn} BEFORE UPDATE ON public.processes FOR EACH ROW EXECUTE FUNCTION public.${fn}()`);
+    // PostgREST reloads its schema on DDL and drops connections in flight;
+    // let it settle so no other request meets a 502 (plugin conformance,
+    // 2026-10-12: the likely cause of the "ballot gateway flake").
+    await new Promise((r) => setTimeout(r, 1_500));
   });
 
   afterAll(async () => {
     await db.query(`DROP TRIGGER IF EXISTS ${fn} ON public.processes`).catch(() => {});
     await db.query(`DROP FUNCTION IF EXISTS public.${fn}()`).catch(() => {});
     await db.end();
+    await new Promise((r) => setTimeout(r, 1_500));
   });
 
   it("the submit succeeds, one review waits, the draft stays submitted, a second submit is refused", async () => {

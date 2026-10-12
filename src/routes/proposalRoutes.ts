@@ -1,13 +1,16 @@
 // Proposal routes — user-facing proposal submission and endorsement
 //
-// POST /proposals           — submit a new proposal         (requireResident)
 // GET  /proposals           — list proposals                (public)
 // GET  /proposals/:id       — get proposal detail           (public)
 // POST /proposals/:id/support — endorse a proposal          (requireResident)
+// DELETE /proposals/:id/support — withdraw support           (requireResident)
+//
+// A proposal is created through drafts and review. POST /proposals, which
+// published one with no review and no Code of Conduct check, was removed
+// 2026-10-12.
 
 import { Router } from "express";
 import {
-  handleSubmitProposal,
   handleListProposals,
   handleGetProposal,
   handleSupportProposal,
@@ -17,7 +20,6 @@ import { requireResident } from "../middleware/auth.js";
 
 const router = Router();
 
-router.post("/", requireResident, handleSubmitProposal);
 router.get("/", handleListProposals);
 router.get("/:id", handleGetProposal);
 router.post("/:id/support", requireResident, handleSupportProposal);

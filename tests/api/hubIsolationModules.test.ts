@@ -16,6 +16,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
+import { liveProject, liveProposal } from "../fixtures/liveProcess.js";
 
 const ATHENS = "athens.localhost";
 const FLOYD = "floyd.civic.social";
@@ -70,15 +71,7 @@ beforeAll(async () => {
 
 describe("proposals", () => {
   beforeAll(async () => {
-    const res = await call(
-      "POST",
-      "/proposals",
-      FLOYD,
-      { title: `Floyd proposal ${run}`, description: "Only Floyd should see this." },
-      floydResident,
-    );
-    ok(res, 201);
-    ids.proposal = res.body.id;
+    ids.proposal = await liveProposal(FLOYD, floydResident, `Floyd proposal ${run}`, "Only Floyd should see this.");
   });
 
   it("by id: Floyd sees it, Athens gets 404", async () => {
@@ -104,15 +97,7 @@ describe("proposals", () => {
 
 describe("projects", () => {
   beforeAll(async () => {
-    const res = await call(
-      "POST",
-      "/projects",
-      FLOYD,
-      { title: `Floyd project ${run}`, description: "Only Floyd should see this." },
-      floydResident,
-    );
-    ok(res, 201);
-    ids.project = res.body.id;
+    ids.project = await liveProject(FLOYD, floydResident, `Floyd project ${run}`, "Only Floyd should see this.");
   });
 
   it("by id: Floyd sees it, Athens gets 404", async () => {

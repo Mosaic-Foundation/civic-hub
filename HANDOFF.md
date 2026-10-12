@@ -4,6 +4,81 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Plugin conformance: one descriptor per type, one suite, one action path — 2026-10-12
+
+Parts 1 and 2 of the conformance slice, in one session. Reports: `Plugin-Conformance-Session-Report-2026-10-12.md`
+and `Plugin-Conformance-Handoff-to-Management-2026-10-12.md` in Mosaic Foundation Management. Not pushed.
+
+**Adam's decisions:**
+- A dev-only fake Polis, with the suite covering the three trust tiers.
+- A descriptor disagreement is refused outside production and reported in production.
+- `civic.json` serves only the public parts of each descriptor.
+- A `creator` role.
+- The /proposals and /projects routes become thin wrappers.
+- The child tables keep a mirrored status.
+- `POST /proposals` and `POST /projects` are removed.
+
+**What changed:**
+- **One descriptor per type** (`src/processes/descriptor.ts`, `ProcessHandler.descriptor`, required). It states:
+  - states and transitions; actions with callers, from/to, emits, `retry_safe`, `once_per_participant` and an
+    `input_schema` with examples;
+  - the type's event types, its tables and how one is created;
+  - its tier and outside services, plus examples for the suite.
+
+  All nine types have one, and the six old unused `PROCESS_DESCRIPTOR`s are gone. The registry derives from it the
+  resident allowlist (Audit 1), the retry-safe actions (Audit 3) and `PROCESS_TYPE_PLUGINS`.
+  `GET /.well-known/civic.json` gains `process_types` (public parts only).
+- **The hub checks handlers against descriptors** (plugin architecture §5a, Stage 1).
+  - `executeAction` refuses an undeclared action, a wrong from/to, and an undeclared held event.
+  - The emitter refuses an event its type does not declare.
+  - All of these are refused outside production and reported in production (`descriptor.*`).
+  - A resident may call an action open to residents, or to the creator when they are the creator.
+- **One action path** for proposals and projects. Support, withdrawal, close, sentiment and Complete run through
+  `executeAction` / `transition_process`. A proposal's close is claimed once (`closeAtDeadline`), and its brief
+  and a project's come from the universal seam. The child rows' status is written after the commit
+  (`markProposalClosed`, `markProjectCompleted`); `closeExpiredProposal`, `archiveProposal`, `archiveProject` and
+  `completeProject` are gone.
+- **Approval is one write.**
+  - Leaving pending_review and the `created` event commit together; with a required activation (a vote), they
+    commit in the activation's own transaction.
+  - A failed approval leaves nothing in the public log. This is the stray event Audit 4 recorded.
+  - The child row (proposals, projects) now comes from `ProcessHandler.onApproved`, not a switch in the review
+    service.
+- **Removed `POST /proposals` and `POST /projects`.** They published with no review, no check and no process row.
+  Run the read-only query in the report on production to see whether anyone used them. `POST /process` now
+  refuses a type whose descriptor says admins don't create it (400 `created_through_review`).
+- **Word cloud:** a second simultaneous submit by the same person answered 500. It now answers 409; the unique
+  index from 20260617000000 already kept the count right. The suite's step 4b found it.
+- **The fake Polis** (`CIVIC_POLIS_FAKE=on`, refused in production). It stands behind the real adapter, which
+  now takes `timeoutMs` and `retryDelaysMs`, and can be made down, slow or erroring (`/debug/polis-fake`, only
+  under the flag). Compare it with real Polis by hand: `scripts/compare-fake-polis.ts --create-on-real`.
+- **The suite:** `tests/conformance/` (`runConformance`, the driver, the README for plugin authors) and
+  `tests/api/conformance.test.ts`. CI's API servers set `CIVIC_POLIS_FAKE=on`.
+
+**Tier 3 findings, reported and not fixed (Adam):**
+- Polis gets the hub's account id as its participant id, not an opaque one.
+- One shared `POLIS_AUTH_TOKEN` stands in for every participant.
+- Polis doesn't refuse participants itself (`use_xid_whitelist: false`).
+- Passing: outages don't block a close, deadlines are the hub's, and the hub refuses signed-out, other-hub and
+  late participation.
+
+**Migrations:** none. **Signed out:** nobody.
+
+**Tests:** all green locally. CI has not run yet.
+- `npm test`: 174 files, 2,126 tests.
+- Minted-token API: 48 files, 651 tests.
+- Playwright: 49 passed, 2 skipped.
+
+**Open:**
+- Announcements, briefs, meeting summaries and vote results still change status in their own modules, not
+  through `executeAction`. Their descriptors declare no actions, so nothing disagrees, but they aren't on the one
+  path.
+- Process spec §7.2 says creation and the terminal transition should emit `civic.process.created` and
+  `civic.process.ended`; proposals and projects emit `civic.proposal.*` and `civic.project.*` for these instead.
+  Renaming them is a wire change (audit D).
+- The walk takes the first move from each status, so where two actions from one status lead to different
+  statuses, only one branch is walked (no type has such a branch that matters today).
+
 ## CI green again; database functions granted by name — 2026-10-12
 
 Two parts, from Adam's brief. Report: `CI-Fix-Report-2026-10-12.md` in Mosaic Foundation Management. Not pushed.

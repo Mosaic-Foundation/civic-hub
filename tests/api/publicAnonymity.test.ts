@@ -10,19 +10,21 @@
  *   - unauthenticated /events (AS2) and /api/feed carry no raw resident
  *     actor ids, nor does a signed-in resident's (audit C2); an admin's does.
  *
- * NOT RUN IN CI (see TESTING.md "Running integration tests in CI" — CI
- * has no database and no server). Run locally with the dev server up:
- *   npx vitest run tests/api/publicAnonymity.test.ts
+ * Runs in both CI API passes (needs the local stack and a server).
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
-import {
-  api,
-  apiJson,
-  getResidentToken,
-  authHeaders,
-} from "../fixtures/helpers.js";
+import { call } from "../fixtures/hostCall.js";
 import { mintSession } from "../fixtures/adminSession.js";
+import { BETA } from "../conformance/driver.js";
+import { liveProposal } from "../fixtures/liveProcess.js";
+
+// On the beta hub (2026-10-12): a proposal is now made through a draft and
+// review, and a visitor's submission on the demo hub is sample content, kept
+// off /events by design. A beta resident's approved proposal is ordinary.
+const FLOYD = BETA.host;
+const get = <T,>(path: string, token?: string) =>
+  call("GET", path, FLOYD, undefined, token) as Promise<{ status: number; body: T }>;
 
 interface CreatorFields {
   creator_name?: string;
@@ -47,42 +49,20 @@ describe("public anonymity — proposal detail + comments", () => {
   let proposalId: string;
 
   beforeAll(async () => {
-    authorToken = await getResidentToken();
-    commenterToken = await getResidentToken();
-    // getResidentToken names everyone "Test Resident"; give the two
-    // accounts distinct names so a leak is unambiguous.
-    await api("/auth/me", {
-      method: "PATCH",
-      headers: authHeaders(authorToken),
-      body: JSON.stringify({ full_name: AUTHOR_NAME }),
-    });
-    await api("/auth/me", {
-      method: "PATCH",
-      headers: authHeaders(commenterToken),
-      body: JSON.stringify({ full_name: COMMENTER_NAME }),
-    });
+    const run = Date.now().toString(36);
+    authorToken = await mintSession("floyd", `anonymity-author-${run}@example.test`);
+    commenterToken = await mintSession("floyd", `anonymity-commenter-${run}@example.test`);
+    // Distinct names so a leak is unambiguous.
+    await call("PATCH", "/auth/me", FLOYD, { full_name: AUTHOR_NAME }, authorToken);
+    await call("PATCH", "/auth/me", FLOYD, { full_name: COMMENTER_NAME }, commenterToken);
 
-    const { body } = await apiJson<{ id: string }>("/proposals", {
-      method: "POST",
-      headers: authHeaders(authorToken),
-      body: JSON.stringify({
-        title: `Anonymity integration ${Date.now()}`,
-        description: "public-anonymity integration fixture",
-      }),
-    });
-    proposalId = body.id;
+    proposalId = await liveProposal(FLOYD, authorToken, `Anonymity integration ${Date.now()}`, "public-anonymity integration fixture");
 
-    await api(`/process/${proposalId}/input`, {
-      method: "POST",
-      headers: authHeaders(commenterToken),
-      body: JSON.stringify({ body: "A comment from the second resident." }),
-    });
+    await call("POST", `/process/${proposalId}/input`, FLOYD, { body: "A comment from the second resident." }, commenterToken);
   });
 
   it("unauthenticated detail is redacted to Resident 1", async () => {
-    const { status, body } = await apiJson<CreatorFields>(
-      `/proposals/${proposalId}`,
-    );
+    const { status, body } = await get<CreatorFields>(`/proposals/${proposalId}`);
     expect(status).toBe(200);
     expect(body.creator_name).toBe("Resident 1");
     expect(body.creator_is_admin).toBe(false);
@@ -91,9 +71,7 @@ describe("public anonymity — proposal detail + comments", () => {
   });
 
   it("unauthenticated comments are numbered from the same map", async () => {
-    const { body } = await apiJson<CommentRow[]>(
-      `/process/${proposalId}/input`,
-    );
+    const { body } = await get<CommentRow[]>(`/process/${proposalId}/input`);
     const comment = body.find((c) =>
       c.body.includes("second resident"),
     );
@@ -104,15 +82,10 @@ describe("public anonymity — proposal detail + comments", () => {
   });
 
   it("a signed-in request to the same endpoints returns real names", async () => {
-    const detail = await apiJson<CreatorFields>(`/proposals/${proposalId}`, {
-      headers: authHeaders(commenterToken),
-    });
+    const detail = await get<CreatorFields>(`/proposals/${proposalId}`, commenterToken);
     expect(detail.body.creator_name).toBe(AUTHOR_NAME);
 
-    const comments = await apiJson<CommentRow[]>(
-      `/process/${proposalId}/input`,
-      { headers: authHeaders(commenterToken) },
-    );
+    const comments = await get<CommentRow[]>(`/process/${proposalId}/input`, commenterToken);
     const comment = comments.body.find((c) =>
       c.body.includes("second resident"),
     );
@@ -120,34 +93,26 @@ describe("public anonymity — proposal detail + comments", () => {
   });
 
   it("unauthenticated /events carries no raw resident actor for this process", async () => {
-    const { body } = await apiJson<{ orderedItems: { actor: string }[] }>(
-      `/events?context=${proposalId}&page=true`,
-    );
+    const { body } = await get<{ orderedItems: { actor: string }[] }>(`/events?context=${proposalId}&page=true`);
     for (const item of body.orderedItems) {
       expect(item.actor).not.toMatch(/\/users\/user_/);
     }
   });
 
   it("signed-in /events hides account ids from a resident, not from an admin (audit C2)", async () => {
-    const asResident = await apiJson<{ orderedItems: { actor: string }[] }>(
-      `/events?context=${proposalId}&page=true`,
-      { headers: authHeaders(commenterToken) },
-    );
+    const asResident = await get<{ orderedItems: { actor: string }[] }>(`/events?context=${proposalId}&page=true`, commenterToken);
     expect(asResident.body.orderedItems.length).toBeGreaterThan(0);
     expect(JSON.stringify(asResident.body)).not.toContain("/users/user_");
-    // The bare test host is the demo hub; its admin keeps the canonical IRIs.
-    const admin = await mintSession("athens", "admin+athens@example.test");
-    const asAdmin = await apiJson<{ orderedItems: { actor: string }[] }>(
-      `/events?context=${proposalId}&page=true`,
-      { headers: authHeaders(admin) },
-    );
+    // The hub's admin keeps the canonical IRIs.
+    const admin = await mintSession("floyd", "admin@example.test");
+    const asAdmin = await get<{ orderedItems: { actor: string }[] }>(`/events?context=${proposalId}&page=true`, admin);
     expect(
       asAdmin.body.orderedItems.some((i) => i.actor.includes("/users/user_")),
     ).toBe(true);
   });
 
   it("unauthenticated /api/feed carries neither name", async () => {
-    const { body } = await apiJson<unknown>(`/api/feed`);
+    const { body } = await get<unknown>(`/api/feed`);
     const raw = JSON.stringify(body);
     expect(raw).not.toContain(AUTHOR_NAME);
     expect(raw).not.toContain(COMMENTER_NAME);

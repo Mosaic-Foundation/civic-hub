@@ -45,22 +45,4 @@ export {
   emitAnnouncementUpdated,
 } from "./events.js";
 
-export const PROCESS_DESCRIPTOR = {
-  type: "civic.announcement",
-  version: "0.1",
-  lifecycle: {
-    // Instant-publish: Phase 0 (Initiation) → Phase 6 (Publication) directly.
-    // Spec Phases 1–5 are intentionally skipped for this process kind.
-    // See HANDOFF.md and the process_kind discussion.
-    states: ["finalized"],
-  },
-  actions: [
-    // All transitions happen via the /announcement HTTP surface, not the
-    // generic /process/:id/action dispatcher.
-  ],
-  events: [
-    "civic.process.created",
-    "civic.process.result_published",
-    "civic.process.updated",
-  ],
-} as const;
+// What this type is: ANNOUNCEMENT_DESCRIPTOR in src/processes/announcementProcess.ts.

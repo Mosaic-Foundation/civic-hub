@@ -9,6 +9,7 @@
 import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
+import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
 import {
   createBriefState,
   getAdminReadModel,
@@ -22,10 +23,45 @@ function getState(process: Process): BriefProcessState {
   return process.state as unknown as BriefProcessState;
 }
 
+/**
+ * What a brief is (src/processes/descriptor.ts). The hub spawns one when a
+ * process closes (spawnBriefFromClosedProcess); an admin reviews, edits and
+ * approves it through /admin/briefs/*, and approval publishes it and sets the
+ * row to finalized. It has no process actions. An official's response
+ * (POST /brief/:id/respond, a different table's write) emits action_taken
+ * outside any action.
+ *
+ * Spec mismatch: Civic Process Spec §4.2 "publish" is published then
+ * archived; this type's row goes active (pending review) to finalized
+ * (published), and never uses closed.
+ */
+export const BRIEF_DESCRIPTOR: ProcessTypeDescriptor = {
+  type: "civic.brief",
+  version: "0.1",
+  contract: CONTRACT_VERSION,
+  tier: 1,
+  plugin: "brief",
+  lifecycle_profile: "publish",
+  states: ["active", "finalized"],
+  initial_status: "active",
+  actions: [],
+  emits: [
+    "civic.process.aggregation_completed",
+    "civic.process.outcome_recorded",
+    "civic.process.result_published",
+    "civic.process.action_taken",
+  ],
+  creation: { resident: null, admin: false, system: true },
+  deadline: null,
+  brief: false,
+  tables: ["brief_responses"],
+  outside_services: [],
+  examples: {},
+};
+
 const briefProcess: ProcessHandler = {
   type: "civic.brief",
-  // Residents act on this type through its own routes, or not at all.
-  residentActions: [],
+  descriptor: BRIEF_DESCRIPTOR,
   detailPath: (id: string) => `/brief/${id}`,
   // Social previews carry the approved headline, not the (empty) row
   // description. Unpublished records are not shareable at all.

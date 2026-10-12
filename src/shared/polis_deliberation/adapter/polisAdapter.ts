@@ -45,6 +45,8 @@ function polisError(status: number, path: string, body: string): PolisApiError {
 
 export function createPolisAdapter(config: PolisAdapterConfig): PolisAdapter {
   const { baseUrl, authToken } = config;
+  const timeoutMs = config.timeoutMs ?? REQUEST_TIMEOUT_MS;
+  const retryDelays = config.retryDelaysMs ?? RETRY_DELAYS;
   const doFetch = config.fetch ?? ((url, init) => fetch(url, init));
 
   /**
@@ -68,18 +70,18 @@ export function createPolisAdapter(config: PolisAdapterConfig): PolisAdapter {
   ): Promise<T> {
     const url = `${baseUrl}${path}`;
     const retryable = isRetryable(opts);
-    const maxAttempts = retryable ? RETRY_DELAYS.length : 0;
+    const maxAttempts = retryable ? retryDelays.length : 0;
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= maxAttempts; attempt++) {
       if (attempt > 0) {
-        await sleep(RETRY_DELAYS[attempt - 1]);
+        await sleep(retryDelays[attempt - 1]);
       }
 
       const controller = new AbortController();
       const timeout = setTimeout(
         () => controller.abort(),
-        REQUEST_TIMEOUT_MS,
+        timeoutMs,
       );
 
       try {

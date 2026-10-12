@@ -5,27 +5,34 @@
 // vote" mechanism lives in the civic.vote `proposal_required` lifecycle, not
 // here). See /decisions/audit-2026-06-25-process-and-feed-consistency.md.
 //
-// Proposals are NOT driven through the generic /process/:id/action dispatcher.
-// Intake and endorsement happen via the /proposals HTTP surface and the
-// civic.proposals module's own service functions, which own the relational
-// `proposals` table. This adapter exists so proposals live in the same process
-// store and register as a known process type for the unified read layer
-// (getAllProcesses / listProcessSummaries), discovery, and the dispatch loop.
-//
-// Because the module's rich read models are async (they query the `proposals`
-// table) and the ProcessHandler read interface is synchronous, this adapter
-// returns only the canonical fields carried on the `processes` row. Full
-// proposal detail continues to be served by the dedicated /proposals routes.
+// One action path (2026-10-12): support, withdrawing support and the close run
+// through executeAction like every other type's actions, so the close changes
+// status through transition_process (refused if anything wrote the row first,
+// one close and one brief however many readers notice the deadline) and the
+// descriptor below is checked against each of them. The /proposals routes are
+// thin wrappers over executeAction. The `proposals` row keeps its own copy of
+// the status for its read model: written after the process row commits
+// (afterActionCommits), never before.
 
 import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
+import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { emitEvent } from "../events/eventEmitter.js";
-import { closeExpiredProposal, getProposal } from "../modules/civic.proposals/index.js";
+import {
+  createProposal,
+  getProposal,
+  supportProposal,
+  withdrawProposalSupport,
+  markProposalClosed,
+} from "../modules/civic.proposals/index.js";
+import { emitProposalClosed } from "../modules/civic.proposals/events.js";
+import { closeThroughDispatcher } from "./registry.js";
+import { afterActionCommits } from "../services/actionScope.js";
+import { isPastDeadline } from "../utils/deadline.js";
 import { getInputsByProcess } from "../modules/civic.input/index.js";
-import { spawnBriefFromClosedProcess, findExistingBriefId } from "./spawnBrief.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import { proposalAssistantConfig } from "./proposalAssistantConfig.js";
 import { setDraftStatus } from "../modules/civic.drafts/index.js";
@@ -42,10 +49,81 @@ function db() {
   return forHub(currentHubId());
 }
 
+/** The actor a deadline close runs as, hourly or on read. */
+const AUTO_CLOSE_ACTOR = "system:auto-close";
+
+/** How long a proposal is open when its submission carries no duration (as before 2026-10-12). */
+const DEFAULT_PROPOSAL_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * What a proposal is (src/processes/descriptor.ts). Residents support it, or
+ * withdraw support, while it is open; it closes at its deadline (or when an
+ * admin closes it) and its brief reports the support it drew.
+ *
+ * Spec (Civic Process §7.2): its close emits civic.proposal.closed, not
+ * civic.process.ended, and its creation civic.proposal.submitted, not
+ * civic.process.created. Renaming them is a wire change; recorded, not made.
+ */
+export const PROPOSAL_DESCRIPTOR: ProcessTypeDescriptor = {
+  type: "civic.proposal",
+  version: "0.1",
+  contract: CONTRACT_VERSION,
+  tier: 1,
+  plugin: "proposal",
+  lifecycle_profile: "continuous",
+  states: ["active", "closed"],
+  initial_status: "active",
+  actions: [
+    {
+      name: "process.support",
+      description: "Support an open proposal",
+      callers: ["resident", "admin"],
+      from: ["active"],
+      to: null,
+      emits: ["civic.proposal.supported"],
+      once_per_participant: true,
+      input_schema: { type: "object", properties: {}, examples: [{}] },
+    },
+    {
+      name: "process.unsupport",
+      description: "Withdraw support while the proposal is open",
+      callers: ["resident", "admin"],
+      from: ["active"],
+      to: null,
+      emits: ["civic.proposal.support_withdrawn"],
+      input_schema: { type: "object", properties: {}, examples: [{}] },
+    },
+    {
+      name: "process.close",
+      description: "Close the proposal; its support is part of the record",
+      callers: ["admin", "system"],
+      from: ["active"],
+      to: "closed",
+      emits: ["civic.proposal.closed"],
+      // Its only other effect, the proposals row's copy of the status, is
+      // written after the process row commits.
+      retry_safe: true,
+    },
+  ],
+  emits: [
+    "civic.proposal.submitted",
+    "civic.proposal.supported",
+    "civic.proposal.support_withdrawn",
+    "civic.proposal.closed",
+  ],
+  creation: { resident: { drafts: "/proposals/drafts" }, admin: false, system: false },
+  deadline: { action: "process.close", source: "proposals.closes_at" },
+  brief: true,
+  tables: ["proposals", "proposal_supports", "proposal_drafts"],
+  outside_services: [],
+  examples: {
+    draft: { title: "Conformance proposal", description: "An idea to gauge interest in.", category: "idea" },
+  },
+};
+
 const proposalAdapter: ProcessHandler = {
   type: "civic.proposal",
-  // Residents act on this type through its own routes, or not at all.
-  residentActions: [],
+  descriptor: PROPOSAL_DESCRIPTOR,
   detailPath: (id: string) => `/proposal/${id}`,
   draftPath: (draftId: string) => `/propose/new?draft=${encodeURIComponent(draftId)}`,
   reopenDraft: (draftId: string) => setDraftStatus(proposalDraftKind.spec, draftId, "drafting"),
@@ -58,14 +136,55 @@ const proposalAdapter: ProcessHandler = {
     return {};
   },
 
-  async handleAction(
-    _process: Process,
-    action: ProcessAction,
-  ): Promise<Record<string, unknown>> {
-    throw new ValidationError(
-      "Proposals don't take actions here. Support a proposal from its own page.",
-        "action_not_supported",
+  // The proposals row is created when the review is approved, keyed by the
+  // canonical process id, so the processes row stays the permanent record.
+  async onApproved(process: Process, creatorId: string): Promise<void> {
+    const content = (process.content ?? {}) as Record<string, unknown>;
+    const durationMs = (content.proposal_duration_ms as number) || DEFAULT_PROPOSAL_DURATION_MS;
+    await createProposal(
+      {
+        id: process.id,
+        title: process.title,
+        description: process.description || undefined,
+        optional_links: (content.optional_links as string[]) ?? undefined,
+        submitted_by: creatorId,
+        category: (content.category as string) ?? undefined,
+        assistant_helped: (content.assistant_helped as boolean) ?? false,
+        closes_at: new Date(Date.now() + durationMs).toISOString(),
+      },
+      emitEvent,
     );
+  },
+
+  async handleAction(process: Process, action: ProcessAction): Promise<Record<string, unknown>> {
+    switch (action.type) {
+      case "process.support": {
+        const proposal = await supportProposal(process.id, action.actor, emitEvent);
+        return { support_count: proposal.support_count, status: proposal.status };
+      }
+      case "process.unsupport": {
+        const proposal = await withdrawProposalSupport(process.id, action.actor, emitEvent);
+        return { support_count: proposal.support_count, status: proposal.status };
+      }
+      case "process.close": {
+        const proposal = await getProposal(process.id);
+        process.status = "closed";
+        await emitProposalClosed(
+          { proposal_id: process.id, emit: emitEvent },
+          action.actor,
+          { support_count: proposal?.support_count ?? 0 },
+          action.at,
+        );
+        const id = process.id;
+        await afterActionCommits(() => markProposalClosed(id));
+        return { status: "closed" };
+      }
+      default:
+        throw new ValidationError(
+          "That action isn't supported on a proposal.",
+          "action_not_supported",
+        );
+    }
   },
 
   getReadModel(process: Process): Record<string, unknown> {
@@ -91,31 +210,20 @@ const proposalAdapter: ProcessHandler = {
     };
   },
 
-  // Lazy deadline-close: when a live proposal's closes_at has elapsed, the
-  // module transitions it to "closed" (child row + canonical processes row) and
-  // emits civic.proposal.closed. The processes row is the source of truth for
-  // the canonical status carried here, so reflect the new status in-memory for
-  // the summary/read model produced right after this returns.
+  // Lazy deadline-close: an active proposal past its closes_at runs the
+  // close action through the shared dispatcher, claimed once however many
+  // readers notice (processService.closeAtDeadline); its brief comes from the
+  // universal seam in executeAction, like every other type's.
   async closeIfExpired(process: Process): Promise<Process> {
     if (process.status !== "active") return process;
-    const closed = await closeExpiredProposal(process.id, emitEvent);
-    if (closed) {
-      process.status = "closed";
-      // Spawn the proposal's brief here (proposal close doesn't run through
-      // executeAction, so the universal seam can't fire). Best-effort +
-      // idempotent — a brief failure must not wedge the close.
-      try {
-        if (!(await findExistingBriefId(process.id))) {
-          await spawnBriefFromClosedProcess(process, "system:proposal-close");
-        }
-      } catch (err) {
-        console.warn(
-          `[brief] spawn on proposal close ${process.id} failed:`,
-          err instanceof Error ? err.message : err,
-        );
-      }
-    }
-    return process;
+    const proposal = await getProposal(process.id);
+    if (!proposal || !isPastDeadline(proposal.closes_at)) return process;
+    return closeThroughDispatcher(process, {
+      type: "process.close",
+      actor: AUTO_CLOSE_ACTOR,
+      payload: {},
+      at: new Date(proposal.closes_at!).toISOString(),
+    });
   },
 
   // Universal brief: a closed proposal's outcome is how much support it drew.

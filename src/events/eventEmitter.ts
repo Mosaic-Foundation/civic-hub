@@ -16,6 +16,7 @@ import { generateId } from "../utils/id.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 import { protocolHubId } from "../config/hub.js";
 import { holdForAction } from "../services/actionScope.js";
+import { descriptorViolation, isDeclaredEventType } from "../processes/descriptor.js";
 
 /**
  * Create and durably store a spec-compliant civic event.
@@ -109,7 +110,28 @@ export function buildEvent(input: CreateEventInput): CivicEvent {
     );
   }
 
+  checkDeclaredEventType(event);
+
   return event;
+}
+
+/**
+ * Plugin architecture §5a, Stage 1: an event about a process of a registered
+ * type must be one its descriptor declares (or one the hub emits for every
+ * type). The type is read from `data.process.type`, which the emitter stamps;
+ * an event without one names no type to check against, and the conformance
+ * suite checks those by process instead. Refused outside production, reported
+ * in production (Adam, 2026-10-12).
+ */
+function checkDeclaredEventType(event: CivicEvent): void {
+  const proc = event.data.process as { type?: unknown } | undefined;
+  const type = typeof proc?.type === "string" ? proc.type : null;
+  if (!type || isDeclaredEventType(type, event.event_type)) return;
+  descriptorViolation(
+    "descriptor.undeclared_event",
+    `${type} emitted ${event.event_type}, which its descriptor does not declare`,
+    { process_type: type, event_type: event.event_type },
+  );
 }
 
 /**

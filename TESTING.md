@@ -55,6 +55,48 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Plugin conformance suite (2026-10-12)
+
+**Every process type passes one shared suite; registering a type is enough to have it tested.** The steps and
+what a plugin author needs are in `tests/conformance/README.md`.
+
+- **Run it:** `tests/api/conformance.test.ts` calls `runConformance({ handlers: getAllHandlers() })`, so it runs
+  in both CI API passes. Locally:
+  ```bash
+  cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && CIVIC_API_BASE=http://localhost:3000 npx vitest run tests/api/conformance.test.ts
+  ```
+- **The server needs `CIVIC_POLIS_FAKE=on`** (development only, refused in production). Conversations then talk
+  to an in-memory Polis behind the real adapter (`src/debug/fakePolis.ts`). CI's `api-tests` servers set it. The
+  Tier 3 steps make that Polis down, slow or erroring through `PUT /debug/polis-fake`, which exists only under
+  the flag.
+- **The static half** (`src/processes/descriptorCheck.ts`) also runs without a server, in
+  `tests/unit/processDescriptors.test.ts`.
+- **Disagreements are refused outside production.** The hub refuses, with a 500 under a dev server, an action
+  that is not in its type's descriptor, that runs from or lands in a status it doesn't declare, or that emits an
+  undeclared event (Stage 1, at the emission path). So every API and E2E test also checks descriptors. In
+  production these are reported (`descriptor.*` codes), not refused.
+- **Mutation-checked:** putting the stray `created` back fails step 3 on both hubs, and an event missing from a
+  descriptor fails the walk.
+- **Not walked:** types only the hub creates (brief, meeting summary, the retired vote results) get step 1 only,
+  shown as skipped.
+- **The suite installs one trigger per run** (step 3's failing approval) and waits 1.5 s after its DDL.
+  PostgREST reloads its schema on any DDL and drops connections in flight, so a ballot sent a second later got
+  the gateway's 502 ("invalid response from the upstream server"). That is very likely the "ballot flake" Audits
+  3 and 4 recorded: `auditDrafts.test.ts` makes a trigger the same way, and now waits too.
+- **Fixtures for a live proposal or project:** `tests/fixtures/liveProcess.ts` (draft, check, submit, approve).
+  `POST /proposals` and `POST /projects` are gone.
+- **E2E locally the CI way** needs `CIVIC_E2E_UI_ORIGIN=http://localhost:4173` as well as `CIVIC_E2E_BASE_URL`;
+  without it, the console and start-page specs go to :5173.
+
+**Counts (2026-10-12, local):**
+- `npm test`: 174 files, 2,126 passed, 10 skipped, 1 todo.
+- API in minted-token mode: 48 files, 651 passed.
+- Unit: 126 files, 1,475 passed.
+- Playwright: 49 passed, 2 skipped.
+- The suite: 78 passed, 3 skipped (hub-created types), 1 todo (tier 2).
+
+---
+
 ## Three Test Layers
 
 ### API Integration Tests (Vitest)
@@ -1541,7 +1583,7 @@ hands-on use and leave permanent residue in a database that gets browsed.
 
 ---
 
-*Last updated: 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,

@@ -67,6 +67,8 @@ export async function emitProposalClosed(
   ctx: EventContext,
   actor: string,
   data: { support_count: number },
+  /** A deadline close happened at the deadline, not when it was noticed. */
+  timestamp?: string,
 ): Promise<void> {
   await ctx.emit({
     event_type: "civic.proposal.closed",
@@ -75,6 +77,7 @@ export async function emitProposalClosed(
     jurisdiction: ctx.jurisdiction ?? defaultJurisdiction(),
     processType: "civic.proposal",
     data: { proposal: data },
+    timestamp,
   });
 }
 

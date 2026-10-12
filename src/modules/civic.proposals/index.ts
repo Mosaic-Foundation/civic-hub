@@ -27,10 +27,8 @@ import {
   emitProposalSubmitted,
   emitProposalSupported,
   emitProposalSupportWithdrawn,
-  emitProposalClosed,
   type EmitEventFn,
 } from "./events.js";
-import { isPastDeadline } from "../../utils/deadline.js";
 
 export type {
   Proposal,
@@ -362,90 +360,19 @@ export async function hasUserSupported(
 
 
 // --- Status transitions ----------------------------------------------------
+//
+// A proposal's status changes through executeAction (src/processes/
+// proposalAdapter.ts): the processes row is the record, written with its
+// events in one transaction. The proposals row keeps a copy for its read
+// model, written here after that transaction commits.
 
-/**
- * Archive a proposal (admin action — reject or shelve).
- *
- * Flips BOTH the child `proposals` row and the canonical `processes` row to
- * "archived" so the two stay in lockstep — otherwise an archived proposal would
- * still surface in the unified read layer (getAllProcesses filters on the
- * processes-row status, not the child row).
- */
-export async function archiveProposal(proposalId: string): Promise<void> {
-  const proposal = await getProposal(proposalId);
-  if (!proposal) {
-    throw new NotFoundError("Proposal not found", "proposal_not_found");
-  }
-  if (proposal.status === "converted") {
-    throw new ConflictError("Cannot archive a converted proposal", "proposal_converted");
-  }
-
-  const now = new Date().toISOString();
+/** Copy a committed close onto the proposals row (only an open one). */
+export async function markProposalClosed(proposalId: string): Promise<void> {
   await db()
     .from("proposals")
-    .update({
-      status: "archived" as ProposalStatus,
-      updated_at: now,
-    })
-    .eq("id", proposalId);
-
-  // Keep the canonical processes row in sync (no-op for any legacy proposal
-  // that predates the unified processes row).
-  await db()
-    .from("processes")
-    .update({ status: "archived", updated_at: now })
-    .eq("id", proposalId);
-}
-
-/**
- * Lazy deadline-close for a proposal. If the proposal is still open
- * ("submitted") and its closes_at has elapsed (guarded against malformed
- * timestamps), transition it to the terminal "closed" status, sync the
- * canonical processes row, and emit a lifecycle event.
- *
- * Idempotent and safe to call on every read: a proposal not in "submitted",
- * with no/future/invalid deadline, returns `false` and changes nothing.
- * Returns `true` iff it actually closed the proposal.
- */
-export async function closeExpiredProposal(
-  proposalId: string,
-  emit: EmitEventFn,
-): Promise<boolean> {
-  const proposal = await getProposal(proposalId);
-  if (!proposal) return false;
-  // Only an open proposal closes. "closed"/"archived"/legacy states are no-ops.
-  if (proposal.status !== "submitted") return false;
-  if (!isPastDeadline(proposal.closes_at)) return false;
-
-  const now = new Date().toISOString();
-  // Atomic claim: close only if still "submitted". Two concurrent lazy-close
-  // reads previously both passed the status check above and both updated +
-  // emitted, producing duplicate civic.proposal.closed events. The conditional
-  // update means only one wins the row; the loser gets an empty result.
-  const claimed = await db()
-    .from("proposals")
-    .update({ status: "closed" as ProposalStatus, updated_at: now })
+    .update({ status: "closed" as ProposalStatus, updated_at: new Date().toISOString() })
     .eq("id", proposalId)
-    .eq("status", "submitted")
-    .select<{ id: string }>("id");
-  if (!claimed || claimed.length === 0) return false; // lost the race — no-op
-
-  // Keep the canonical processes row in sync (source of truth for the unified
-  // read layer). No-op for any legacy proposal without a processes row.
-  await db()
-    .from("processes")
-    .update({ status: "closed", updated_at: now })
-    .eq("id", proposalId);
-
-  console.log(`[auto-close] Proposal ${proposalId} past deadline ${proposal.closes_at}, closed.`);
-
-  await emitProposalClosed(
-    { proposal_id: proposalId, emit },
-    "system:auto-close",
-    { support_count: proposal.support_count },
-  );
-
-  return true;
+    .eq("status", "submitted");
 }
 
 // --- Read models -----------------------------------------------------------

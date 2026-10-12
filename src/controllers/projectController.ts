@@ -1,98 +1,27 @@
-import { ForbiddenError, NotFoundError, ValidationError } from "../errors/index.js";
+import { NotFoundError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
-import type { Process } from "../models/process.js";
-import { emitEvent } from "../events/eventEmitter.js";
-import { defaultJurisdiction } from "../config/hub.js";
-import { currentHubId } from "../config/hubContext.js";
-import {
-  getAuthUser,
-  resolveCallerUser,
-  isAdminEmail,
-} from "../middleware/auth.js";
+import { resolveCallerUser } from "../middleware/auth.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import {
-  createProject,
   listProjects,
-  getProject,
   getProjectReadModel,
   getProjectSummary,
-  setProjectSentiment,
-  completeProject,
 } from "../modules/civic.projects/index.js";
-import type { SentimentValue } from "../modules/civic.projects/models.js";
 import { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
-import { getProcess, getSampleProcessIds } from "../services/processService.js";
-import {
-  spawnBriefFromClosedProcess,
-  findExistingBriefId,
-} from "../processes/spawnBrief.js";
+import { getSampleProcessIds } from "../services/processService.js";
+import { actOnProcess } from "./processController.js";
 
 /**
- * POST /projects/:id/complete — mark a project complete (creator or admin).
- * Transitions the project to completed and spawns its Civic Brief (pending
- * admin review), like every other process's close.
+ * POST /projects/:id/complete — mark a project complete (its creator or an
+ * admin): process.complete through the one action path. The project closes
+ * and the universal seam in executeAction spawns its Civic Brief for review.
  */
 export const handleCompleteProject = route(async (req, res) => {
-  const user = getAuthUser(res);
-  const id = req.params.id as string;
-  const project = await getProject(id);
-  if (!project) {
-    throw new NotFoundError("Project not found");
-  }
-  if (project.user_id !== user.id && !isAdminEmail(user.email)) {
-    throw new ForbiddenError("Only the project creator or an admin can complete this project.");
-  }
-
-  await completeProject(id, user.id, emitEvent);
-
-  // Spawn the brief (projects don't run through executeAction). A project
-  // may not have a canonical processes row (createProject only writes the
-  // projects table), so build the source Process from the project data
-  // rather than relying on getProcess.
-  try {
-    if (!(await findExistingBriefId(id))) {
-      const existing = await getProcess(id);
-      const source: Process = existing ?? {
-        id,
-        definition: { type: "civic.project", version: "0.1" },
-        title: project.title,
-        description: project.description ?? "",
-        status: "closed",
-        hubId: currentHubId(),
-        jurisdiction: defaultJurisdiction(),
-        createdBy: project.user_id,
-        createdAt: project.created_at,
-        updatedAt: new Date().toISOString(),
-        state: {},
-      };
-      await spawnBriefFromClosedProcess(source, user.id);
-    }
-  } catch (err) {
-    console.warn(
-      `[brief] spawn on project completion ${id} failed:`,
-      err instanceof Error ? err.message : err,
-    );
-  }
-
+  await actOnProcess(res, req.params.id as string, "process.complete", {}, "civic.project");
   res.json({
     ok: true,
     message: "Project marked complete. A brief was created for admin review.",
   });
-});
-
-export const handleCreateProject = route(async (req, res) => {
-  const { title, description, sources, assistant_helped } = req.body;
-
-  if (!title) {
-    throw new ValidationError("Missing required field: title");
-  }
-
-  const user = getAuthUser(res);
-  const project = await createProject(
-    { title, description, sources, user_id: user.id, assistant_helped },
-    emitEvent,
-  );
-  res.status(201).json(project);
 });
 
 export const handleListProjects = route(async (req, res) => {
@@ -154,23 +83,9 @@ export const handleGetProject = route(async (req, res) => {
 });
 
 
+/** POST /projects/:id/sentiment — process.sentiment through the one action path. */
 export const handleSetSentiment = route(async (req, res) => {
-  const projectId = req.params.id as string;
   const { sentiment } = req.body ?? {};
-
-  const validSentiments = ["support", "oppose", "neutral"];
-  if (!sentiment || !validSentiments.includes(sentiment)) {
-    throw new ValidationError(`sentiment must be one of: ${validSentiments.join(", ")}`);
-  }
-
-  const user = getAuthUser(res);
-  const result = await setProjectSentiment(
-    projectId,
-    user.id,
-    sentiment as SentimentValue | "neutral",
-    emitEvent,
-  );
+  const { result } = await actOnProcess(res, req.params.id as string, "process.sentiment", { sentiment }, "civic.project");
   res.json(result);
 });
-
-

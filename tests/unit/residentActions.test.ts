@@ -1,4 +1,5 @@
-// Residents can only call resident actions (audit A3, 2026-10-11).
+// Residents can only call resident actions (audit A3, 2026-10-11). Since
+// 2026-10-12 the list is each type's descriptor (callers include "resident").
 //
 // POST /process/:id/action is open to residents, and admin-only actions used
 // to be a four-item denylist in the controller: a resident could call the
@@ -9,15 +10,17 @@
 // (tests/api/residentActions.test.ts) proves the refusal end to end.
 
 import { describe, it, expect } from "vitest";
-import { getProcessHandler, getRegisteredTypes } from "../../src/processes/registry.js";
+import { getRegisteredTypes, residentActionsOf } from "../../src/processes/registry.js";
 import { createPolisDeliberationHandler } from "../../src/shared/polis_deliberation/handler.js";
 
 /** What each type opens to residents. A new type must be added here on purpose. */
 const EXPECTED: Record<string, string[]> = {
   "civic.vote": ["process.support", "process.unsupport", "process.vote"],
   "civic.wordcloud": ["process.submit"],
-  "civic.proposal": [],
-  "civic.project": [],
+  // Proposals and projects moved onto the shared action path (2026-10-12):
+  // support and sentiment are resident actions now, as votes' are.
+  "civic.proposal": ["process.support", "process.unsupport"],
+  "civic.project": ["process.sentiment"],
   "civic.vote_results": [],
   "civic.brief": [],
   "civic.announcement": [],
@@ -31,6 +34,7 @@ const NEVER_RESIDENT = [
   "process.close",
   "process.propose",
   "process.snapshot",
+  "process.complete",
   "start",
   "close",
   "poll_state",
@@ -44,15 +48,13 @@ describe("each handler declares its resident actions", () => {
 
   for (const [type, actions] of Object.entries(EXPECTED)) {
     it(`${type}: ${actions.length ? actions.join(", ") : "none"}`, () => {
-      const handler = getProcessHandler(type);
-      expect(Array.isArray(handler?.residentActions)).toBe(true);
-      expect([...(handler?.residentActions ?? [])].sort()).toEqual([...actions].sort());
+      expect(residentActionsOf(type).sort()).toEqual([...actions].sort());
     });
   }
 
   it("no type opens a lifecycle action to residents", () => {
     for (const type of getRegisteredTypes()) {
-      const open = getProcessHandler(type)?.residentActions ?? [];
+      const open = residentActionsOf(type);
       for (const action of NEVER_RESIDENT) expect(open).not.toContain(action);
     }
   });

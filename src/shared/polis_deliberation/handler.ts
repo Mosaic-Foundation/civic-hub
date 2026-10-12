@@ -21,7 +21,6 @@ const ACTION_STATUSES: Readonly<Record<string, readonly string[]>> = {
 
 export interface ProcessHandlerShape {
   type: string;
-  residentActions: readonly string[];
   initializeState(input: Record<string, unknown>): Record<string, unknown>;
   handleAction(
     process: { id: string; status: string; state: Record<string, unknown>; spaceSlug?: string; jurisdiction?: string; createdBy?: string },
@@ -60,9 +59,6 @@ export function createPolisDeliberationHandler(
 
   const handler: ProcessHandlerShape = {
     type: PROCESS_TYPE,
-    // Residents take part in Polis itself; every action here is an admin's
-    // or the hub's (approval starts it, the deadline closes it).
-    residentActions: [],
 
     initializeState(input: Record<string, unknown>): Record<string, unknown> {
       const cfg = input as unknown as PolisDeliberationInput;

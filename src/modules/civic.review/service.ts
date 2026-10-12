@@ -31,10 +31,9 @@ import {
   notifyAdminWithdrawn,
   notifyAdminActivationFailed,
 } from "./email.js";
-import { emitEvent } from "../../events/eventEmitter.js";
+import { buildEvent } from "../../events/eventEmitter.js";
+import { transitionProcess } from "../../db/atomic.js";
 import { executeAction, getDisabledTypeProcessIds, rowToProcess, type ProcessRow } from "../../services/processService.js";
-import { createProject } from "../civic.projects/index.js";
-import { createProposal } from "../civic.proposals/index.js";
 import { defaultJurisdiction } from "../../config/hub.js";
 import { getAdminEmailsSync } from "../../services/hubSettings.js";
 import { readAll } from "../../db/readAll.js";
@@ -360,14 +359,18 @@ export async function approveReview(
   // We've claimed the review. If any posting step below fails, roll the claim
   // back so the review returns to pending_review instead of getting stuck as
   // "approved" with nothing actually posted.
+  //
+  // Going live is one write (2026-10-12): the process leaves pending_review
+  // and its public `created` event is written in the same transaction, which
+  // for a REQUIRED activation is the activation's own transaction. A failed
+  // activation therefore writes neither, and the process is still waiting in
+  // the queue with nothing in the public log. Before, the status was flipped
+  // and `created` emitted first, so a failed vote approval left a stray
+  // `created` behind and the eventual approval wrote a second (Audit 4).
+  const process = rowToProcess(proc);
+  const handler = getProcessHandler(proc.type);
+  let wentLive = false;
   try {
-  // Update process status to live (safe to run once we've claimed the review)
-  const now = new Date().toISOString();
-  await db()
-    .from("processes")
-    .update({ status: liveStatus, updated_at: now })
-    .eq("id", review.process_id);
-
   // Add the approval turn
   const nextTurn = await getNextTurnNumber(reviewId);
   const turnId = generateId("turn");
@@ -382,44 +385,47 @@ export async function approveReview(
     process_snapshot: null,
   });
 
-  // For types with their own relational tables, create the child row on
-  // approval — keyed by the canonical process id (review.process_id) so the
-  // placeholder `processes` row becomes the permanent record and we don't fork
-  // a second id. The `processes` row's status was already flipped to live
-  // above. Votes and conversations carry all their state on the `processes`
-  // row, so they need no child row here.
-  if (proc.type === "civic.project") {
-    const content = (proc.content ?? {}) as Record<string, unknown>;
-    await createProject(
-      {
-        id: review.process_id,
-        title: proc.title,
-        description: proc.description ?? "",
-        sources: (content.sources as string[]) ?? [],
-        user_id: review.creator_id,
-        assistant_helped: (content.assistant_helped as boolean) ?? false,
-        banner_image_url: (content.banner_image_url as string) ?? undefined,
-        banner_image_alt: (content.banner_image_alt as string) ?? undefined,
-      },
-      emitEvent,
+  // The public `created` event, unless the type announces its own creation
+  // when its row is made (proposals: civic.proposal.submitted; projects:
+  // civic.project.created): a type that makes its own row on approval
+  // (onApproved) announces itself there, as it did before.
+  const createdEvent = handler?.onApproved
+    ? null
+    : buildEvent({
+        event_type: "civic.process.created",
+        actor: review.creator_id,
+        process_id: review.process_id,
+        jurisdiction: defaultJurisdiction(),
+        data: { process: { type: proc.type, title: proc.title } },
+      });
+
+  if (activation.action?.onFailure === "required") {
+    // The process row is still pending_review; the activation moves it live,
+    // with `created` first, or nothing happens at all.
+    await executeAction(
+      review.process_id,
+      { type: activation.action.type, actor: review.creator_id, payload: {} },
+      "system",
+      { leadingEvents: createdEvent ? [createdEvent] : [] },
     );
-  } else if (proc.type === "civic.proposal") {
-    const content = (proc.content ?? {}) as Record<string, unknown>;
-    const durationMs = (content.proposal_duration_ms as number) || 30 * 24 * 60 * 60 * 1000;
-    const closesAt = new Date(Date.now() + durationMs).toISOString();
-    await createProposal(
-      {
-        id: review.process_id,
-        title: proc.title,
-        description: proc.description ?? undefined,
-        optional_links: (content.optional_links as string[]) ?? undefined,
-        submitted_by: review.creator_id,
-        category: (content.category as string) ?? undefined,
-        assistant_helped: (content.assistant_helped as boolean) ?? false,
-        closes_at: closesAt,
-      },
-      emitEvent,
-    );
+  } else {
+    await transitionProcess({
+      hubId: currentHubId(),
+      processId: review.process_id,
+      toStatus: liveStatus,
+      actor: adminActor,
+      event: null,
+      expectedStatus: "pending_review",
+      expectedVersion: process.version,
+      events: createdEvent ? [createdEvent] : [],
+    });
+  }
+  wentLive = true;
+
+  // Storage the type makes once it is live (proposals and projects create
+  // their own row, keyed by the canonical process id).
+  if (handler?.onApproved) {
+    await handler.onApproved(process, review.creator_id);
   }
 
   // Emit review approved event (restricted)
@@ -430,50 +436,20 @@ export async function approveReview(
     review_id: reviewId,
     data: { status: liveStatus },
   });
-
-  // Emit public process created event (the process is now live)
-  // Skip for projects and proposals — they emit their own events
-  if (proc.type !== "civic.project" && proc.type !== "civic.proposal") {
-    await emitEvent({
-      event_type: "civic.process.created",
-      actor: review.creator_id,
-      process_id: review.process_id,
-      jurisdiction: defaultJurisdiction(),
-      data: {
-        process: {
-          type: proc.type,
-          title: proc.title,
-        },
-      },
-    });
-  }
-
-  // A REQUIRED activation runs inside the claim: the process row's status is
-  // already live, but the type's own state machine is not, and a process that
-  // looks open while refusing every action is worse than one that was never
-  // approved. A failure therefore falls through to the rollback below and the
-  // admin retries cleanly. (Votes: the row says "proposed" but addSupport
-  // gates on state.status, which createVoteState leaves at "draft".)
-  if (activation.action?.onFailure === "required") {
-    await executeAction(review.process_id, {
-      type: activation.action.type,
-      actor: review.creator_id,
-      payload: {},
-    }, "system");
-  }
-
   } catch (workErr) {
-    // Posting failed after we claimed the review — revert review + process
-    // to pending_review so the admin can retry cleanly rather than hitting
-    // "Cannot approve review in status: approved".
+    // Posting failed after we claimed the review — revert the review (and the
+    // process, if it went live) to pending_review so the admin can retry
+    // cleanly rather than hitting "Cannot approve review in status: approved".
     await db()
       .from("process_reviews")
       .update({ status: "pending_review" as ReviewStatus })
       .eq("id", reviewId);
-    await db()
-      .from("processes")
-      .update({ status: "pending_review" })
-      .eq("id", review.process_id);
+    if (wentLive) {
+      await db()
+        .from("processes")
+        .update({ status: "pending_review" })
+        .eq("id", review.process_id);
+    }
     throw workErr;
   }
 

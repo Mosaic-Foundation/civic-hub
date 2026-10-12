@@ -13,6 +13,10 @@ export interface PolisAdapterConfig {
     url: string,
     init: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal },
   ) => Promise<Response>;
+  /** How long one request may take before it is abandoned. Default 15 s. */
+  timeoutMs?: number;
+  /** The waits between retries of a read. Default 0.5 s, 1.5 s, 3 s. */
+  retryDelaysMs?: readonly number[];
 }
 
 export interface CreateDeliberationInput {

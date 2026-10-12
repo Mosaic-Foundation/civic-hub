@@ -12,6 +12,7 @@
 import { ValidationError } from "../errors/index.js";
 import type { Process, ProcessAction } from "../models/process.js";
 import type { ProcessHandler } from "./types.js";
+import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
 import {
   createMeetingSummaryState,
   getAdminReadModel,
@@ -25,10 +26,44 @@ function getState(process: Process): MeetingSummaryProcessState {
   return process.state as unknown as MeetingSummaryProcessState;
 }
 
+/**
+ * What a meeting summary is (src/processes/descriptor.ts). The meeting
+ * summary job (/internal/meeting-summary/run) creates one pending review; an
+ * admin edits and approves it through /admin/meeting-summaries/*, and
+ * approval publishes it and sets the row to finalized. The job may also
+ * publish one itself. It has no process actions. A revision staged on a
+ * published summary stays on its state; the row stays finalized.
+ *
+ * Spec mismatch: Civic Process Spec §4.2 "publish" is published then
+ * archived; this type goes active (pending review) to finalized (published)
+ * and never uses closed.
+ */
+export const MEETING_SUMMARY_DESCRIPTOR: ProcessTypeDescriptor = {
+  type: "civic.meeting_summary",
+  version: "0.1",
+  contract: CONTRACT_VERSION,
+  tier: 1,
+  plugin: "meeting_summary",
+  lifecycle_profile: "publish",
+  states: ["active", "finalized"],
+  initial_status: "active",
+  actions: [],
+  emits: [
+    "civic.process.aggregation_completed",
+    "civic.process.outcome_recorded",
+    "civic.process.result_published",
+  ],
+  creation: { resident: null, admin: false, system: true },
+  deadline: null,
+  brief: false,
+  tables: [],
+  outside_services: [],
+  examples: {},
+};
+
 const meetingSummaryProcess: ProcessHandler = {
   type: "civic.meeting_summary",
-  // Residents act on this type through its own routes, or not at all.
-  residentActions: [],
+  descriptor: MEETING_SUMMARY_DESCRIPTOR,
   detailPath: (id: string) => `/meeting-summary/${id}`,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {

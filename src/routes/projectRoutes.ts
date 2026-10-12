@@ -1,6 +1,5 @@
 import { Router } from "express";
 import {
-  handleCreateProject,
   handleListProjects,
   handleGetProject,
   handleSetSentiment,
@@ -10,7 +9,9 @@ import { requireResident } from "../middleware/auth.js";
 
 const router = Router();
 
-router.post("/", requireResident, handleCreateProject);
+// A project is created through drafts and review. POST /projects, which
+// published one with no review and no Code of Conduct check, was removed
+// 2026-10-12.
 router.get("/", handleListProjects);
 router.get("/:id", handleGetProject);
 router.post("/:id/sentiment", requireResident, handleSetSentiment);

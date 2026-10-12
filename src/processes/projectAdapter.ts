@@ -1,26 +1,32 @@
 // civic.project process handler — thin adapter around the civic.projects module.
 //
 // A Project is a resident- or org-run initiative with updates, comments, and
-// support/oppose sentiment. Like proposals, projects are NOT driven through the
-// generic /process/:id/action dispatcher: their lifecycle is owned by the
-// civic.projects module and the /projects HTTP surface, which back the
-// relational `projects` table. This adapter exists so projects live in the same
-// process store and register as a known process type for the unified read layer
-// (getAllProcesses / listProcessSummaries), discovery, and the dispatch loop.
+// support/oppose sentiment. Its relational `projects` table carries the rich
+// read model served by the /projects routes.
 //
-// The module's rich read models are async (they query the `projects` table)
-// while the ProcessHandler read interface is synchronous, so this adapter
-// returns only the canonical fields carried on the `processes` row. Full
-// project detail continues to be served by the dedicated /projects routes.
+// One action path (2026-10-12): sentiment and Complete run through
+// executeAction like every other type's actions, so Complete changes status
+// through transition_process and its brief comes from the universal seam. The
+// /projects routes are thin wrappers over executeAction. The `projects` row
+// keeps its own copy of the status, written after the process row commits.
 
 import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
+import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
+import { afterActionCommits } from "../services/actionScope.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
-import { getProject, listProjectUpdates } from "../modules/civic.projects/index.js";
-import { emitProjectUpdated } from "../modules/civic.projects/events.js";
+import {
+  createProject,
+  getProject,
+  listProjectUpdates,
+  setProjectSentiment,
+  markProjectCompleted,
+  type SentimentValue,
+} from "../modules/civic.projects/index.js";
+import { emitProjectCompleted, emitProjectUpdated } from "../modules/civic.projects/events.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
 import { projectAssistantConfig } from "./projectAssistantConfig.js";
@@ -39,10 +45,67 @@ function db() {
   return forHub(currentHubId());
 }
 
+const SENTIMENTS = ["support", "oppose", "neutral"] as const;
+
+/**
+ * What a project is (src/processes/descriptor.ts). Residents say whether they
+ * support or oppose it while it is active; its creator (or an admin) marks it
+ * complete, which closes it and makes its brief. It has no deadline.
+ *
+ * Spec (Civic Process §7.2): its creation emits civic.project.created and its
+ * completion civic.project.updated, not civic.process.created/ended. Renaming
+ * them is a wire change; recorded, not made.
+ */
+export const PROJECT_DESCRIPTOR: ProcessTypeDescriptor = {
+  type: "civic.project",
+  version: "0.1",
+  contract: CONTRACT_VERSION,
+  tier: 1,
+  plugin: "project",
+  lifecycle_profile: "continuous",
+  states: ["active", "closed"],
+  initial_status: "active",
+  actions: [
+    {
+      name: "process.sentiment",
+      description: "Support or oppose an active project, or clear your view",
+      callers: ["resident", "admin"],
+      from: ["active"],
+      to: null,
+      emits: ["civic.project.sentiment_changed"],
+      input_schema: {
+        type: "object",
+        properties: { sentiment: { enum: [...SENTIMENTS] } },
+        required: ["sentiment"],
+        examples: [{ sentiment: "support" }],
+      },
+    },
+    {
+      name: "process.complete",
+      description: "Mark the project complete; it closes and its brief goes to review",
+      callers: ["creator", "admin"],
+      from: ["active"],
+      to: "closed",
+      emits: ["civic.project.updated"],
+      // Its only other effect, the projects row's copy of the status, is
+      // written after the process row commits.
+      retry_safe: true,
+    },
+  ],
+  emits: ["civic.project.created", "civic.project.updated", "civic.project.sentiment_changed"],
+  creation: { resident: { drafts: "/projects/drafts" }, admin: false, system: false },
+  deadline: null,
+  brief: true,
+  tables: ["projects", "project_sentiments", "project_drafts"],
+  outside_services: [],
+  examples: {
+    draft: { title: "Conformance project", description: "Something residents are doing." },
+  },
+};
+
 const projectAdapter: ProcessHandler = {
   type: "civic.project",
-  // Residents act on this type through its own routes, or not at all.
-  residentActions: [],
+  descriptor: PROJECT_DESCRIPTOR,
   detailPath: (id: string) => `/project/${id}`,
   draftPath: (draftId: string) => `/projects/new?draft=${encodeURIComponent(draftId)}`,
   reopenDraft: (draftId: string) => setDraftStatus(projectDraftKind.spec, draftId, "drafting"),
@@ -145,14 +208,47 @@ const projectAdapter: ProcessHandler = {
     return {};
   },
 
-  async handleAction(
-    _process: Process,
-    action: ProcessAction,
-  ): Promise<Record<string, unknown>> {
-    throw new ValidationError(
-      "Projects don't take actions here. Use the project's own page for updates, comments, and sentiment.",
-        "action_not_supported",
+  // The projects row is created when the review is approved, keyed by the
+  // canonical process id, so the processes row stays the permanent record.
+  async onApproved(process: Process, creatorId: string): Promise<void> {
+    const content = (process.content ?? {}) as Record<string, unknown>;
+    await createProject(
+      {
+        id: process.id,
+        title: process.title,
+        description: process.description ?? "",
+        sources: (content.sources as string[]) ?? [],
+        user_id: creatorId,
+        assistant_helped: (content.assistant_helped as boolean) ?? false,
+        banner_image_url: (content.banner_image_url as string) ?? undefined,
+        banner_image_alt: (content.banner_image_alt as string) ?? undefined,
+      },
+      emitEvent,
     );
+  },
+
+  async handleAction(process: Process, action: ProcessAction): Promise<Record<string, unknown>> {
+    switch (action.type) {
+      case "process.sentiment": {
+        const sentiment = action.payload.sentiment;
+        if (typeof sentiment !== "string" || !(SENTIMENTS as readonly string[]).includes(sentiment)) {
+          throw new ValidationError(`sentiment must be one of: ${SENTIMENTS.join(", ")}`, "invalid_sentiment");
+        }
+        return setProjectSentiment(process.id, action.actor, sentiment as SentimentValue | "neutral", emitEvent);
+      }
+      case "process.complete": {
+        process.status = "closed";
+        await emitProjectCompleted({ project_id: process.id, emit: emitEvent }, action.actor);
+        const id = process.id;
+        await afterActionCommits(() => markProjectCompleted(id));
+        return { status: "closed" };
+      }
+      default:
+        throw new ValidationError(
+          "That action isn't supported on a project.",
+          "action_not_supported",
+        );
+    }
   },
 
   getReadModel(process: Process): Record<string, unknown> {

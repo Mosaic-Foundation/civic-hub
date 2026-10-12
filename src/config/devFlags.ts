@@ -5,9 +5,13 @@
 //   CIVIC_RATE_LIMITS=off   — sign-in and assistant rate limits are skipped
 //   CIVIC_SSRF_ALLOW_PRIVATE=true — server-side fetches may reach private
 //                             addresses (a Polis on localhost)
+//   CIVIC_POLIS_FAKE=on     — conversations talk to an in-memory Polis behind
+//                             the real adapter (src/debug/fakePolis.ts), so the
+//                             conformance suite can walk them without the
+//                             network, and make Polis down, slow or erroring
 //
 // With NODE_ENV=production (every Vercel deployment, dev and production) all
-// three are refused: the flag reads as unset, and the boot check reports it, once,
+// four are refused: the flag reads as unset, and the boot check reports it, once,
 // as an error operators see. Refused rather than fatal on purpose: a stray env
 // var should not take every hub on the deployment offline, and ignoring it is
 // already the safe outcome.
@@ -34,6 +38,11 @@ export function privateFetchAllowed(): boolean {
   return env.CIVIC_SSRF_ALLOW_PRIVATE === "true" && !isProduction();
 }
 
+/** Do conversations use the in-memory Polis? Never in production. */
+export function polisFakeEnabled(): boolean {
+  return env.CIVIC_POLIS_FAKE === "on" && !isProduction();
+}
+
 let checked = false;
 
 /** Report, once per process, a development flag set where it is refused. */
@@ -46,6 +55,9 @@ export function checkDevFlags(): void {
   }
   if (env.CIVIC_SSRF_ALLOW_PRIVATE === "true") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_SSRF_ALLOW_PRIVATE=true is set in production and is ignored. Remove it from this deployment.", {});
+  }
+  if (env.CIVIC_POLIS_FAKE === "on") {
+    reportError("CIVIC_DEV_FLAG", "CIVIC_POLIS_FAKE=on is set in production and is ignored. Remove it from this deployment.", {});
   }
   if (env.CIVIC_RATE_LIMITS === "off") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_RATE_LIMITS=off is set in production and is ignored. Remove it from this deployment.", {});

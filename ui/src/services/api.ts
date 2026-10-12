@@ -431,21 +431,6 @@ export interface CivicProposalDetail {
   is_sample?: boolean;
 }
 
-/** Submit a new proposal */
-export function submitProposal(
-  title: string,
-  submittedBy: string,
-  description?: string,
-  optionalLinks?: string[]
-): Promise<CivicProposalDetail> {
-  return request("POST", "/proposals", {
-    title,
-    submitted_by: submittedBy,
-    description,
-    optional_links: optionalLinks,
-  });
-}
-
 /** List proposals (optional status filter) */
 export function listCivicProposals(status?: CivicProposalStatus): Promise<CivicProposalSummary[]> {
   const params = status ? `?status=${encodeURIComponent(status)}` : "";

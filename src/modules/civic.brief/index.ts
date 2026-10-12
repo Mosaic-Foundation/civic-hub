@@ -60,26 +60,7 @@ export {
 } from "./responses.js";
 export { emitBriefResponseAdded } from "./events.js";
 
-export const PROCESS_DESCRIPTOR = {
-  type: "civic.brief",
-  version: "0.1",
-  lifecycle: {
-    states: ["active", "closed", "finalized"],
-    publication_sub_states: ["pending", "approved", "published"],
-    paths: { standard: ["active", "closed", "finalized"] },
-  },
-  actions: [
-    // All brief transitions happen via the admin HTTP surface, not process
-    // actions — the admin routes orchestrate the approval sequence.
-  ],
-  events: [
-    "civic.process.created",
-    "civic.process.aggregation_completed",
-    "civic.process.updated",
-    "civic.process.outcome_recorded",
-    "civic.process.result_published",
-  ],
-} as const;
+// What this type is: BRIEF_DESCRIPTOR in src/processes/briefProcess.ts.
 
 export type { BriefIndexEntry } from "./service.js";
 export {

@@ -6,11 +6,14 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import {
+  api,
   apiJson,
   getResidentToken,
   getBasicToken,
   authHeaders,
 } from "../fixtures/helpers.js";
+import { DEMO } from "../conformance/driver.js";
+import { liveProposal } from "../fixtures/liveProcess.js";
 
 describe("Proposal endpoints", () => {
   let residentToken: string;
@@ -27,64 +30,23 @@ describe("Proposal endpoints", () => {
     expect(Array.isArray(body)).toBe(true);
   });
 
-  it("POST /proposals requires authentication", async () => {
-    const { status } = await apiJson("/proposals", {
-      method: "POST",
-      body: JSON.stringify({
-        title: "Test proposal",
-        description: "Should require auth",
-      }),
-    });
-    expect(status).toBe(401);
-  });
-
-  it("POST /proposals requires residency", async () => {
-    const { status } = await apiJson("/proposals", {
-      method: "POST",
-      headers: authHeaders(basicToken),
-      body: JSON.stringify({
-        title: "Test proposal",
-        description: "Should require residency",
-      }),
-    });
-    expect(status).toBe(403);
-  });
-
-  it("resident can submit a proposal", async () => {
-    const proposal = {
-      title: `Test proposal ${Date.now()}`,
-      description: "A test proposal for automated testing",
-    };
-
-    const { status, body } = await apiJson<{
-      id: string;
-      title: string;
-    }>("/proposals", {
-      method: "POST",
-      headers: authHeaders(residentToken),
-      body: JSON.stringify(proposal),
-    });
-
-    expect(status).toBe(201);
-    expect(body.id).toBeDefined();
-    expect(body.title).toBe(proposal.title);
+  it("POST /proposals is gone: 404, signed in or not", async () => {
+    const body = JSON.stringify({ title: "Test proposal", description: "Removed route" });
+    const anon = await api("/proposals", { method: "POST", body });
+    expect(anon.status).toBe(404);
+    const signedIn = await api("/proposals", { method: "POST", headers: authHeaders(residentToken), body });
+    expect(signedIn.status).toBe(404);
+    const basic = await api("/proposals", { method: "POST", headers: authHeaders(basicToken), body });
+    expect(basic.status).toBe(404);
   });
 
   it("GET /proposals/:id returns proposal detail", async () => {
-    // Create a proposal first
-    const { body: created } = await apiJson<{ id: string }>("/proposals", {
-      method: "POST",
-      headers: authHeaders(residentToken),
-      body: JSON.stringify({
-        title: `Detail test ${Date.now()}`,
-        description: "For detail endpoint test",
-      }),
-    });
+    const id = await liveProposal(DEMO.host, residentToken, `Detail test ${Date.now()}`, "For detail endpoint test");
 
     const { status, body } = await apiJson<{ id: string; title: string }>(
-      `/proposals/${created.id}`,
+      `/proposals/${id}`,
     );
     expect(status).toBe(200);
-    expect(body.id).toBe(created.id);
+    expect(body.id).toBe(id);
   });
 });

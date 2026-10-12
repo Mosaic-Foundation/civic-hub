@@ -141,29 +141,4 @@ export {
 } from "./connectors/wixCms.js";
 export type { WixMeetingRow } from "./connectors/wixCms.js";
 
-export const PROCESS_DESCRIPTOR = {
-  type: "civic.meeting_summary",
-  version: "0.1",
-  lifecycle: {
-    // Deviates from Civic Process Spec §6.2 in the same way civic.brief
-    // does: "closed" is skipped because the process has no participation
-    // window. See HANDOFF.md Slice 3 and Slice 6 notes.
-    states: ["active", "finalized"],
-    approval_sub_states: ["pending", "approved", "published"],
-    paths: {
-      standard: ["active", "finalized"],
-    },
-  },
-  actions: [
-    // All meeting-summary transitions happen via the cron + admin HTTP
-    // surfaces (not /process/:id/action). The adapter throws on any
-    // generic process action to surface misrouting.
-  ],
-  events: [
-    "civic.process.created",
-    "civic.process.aggregation_completed",
-    "civic.process.updated",
-    "civic.process.outcome_recorded",
-    "civic.process.result_published",
-  ],
-} as const;
+// What this type is: MEETING_SUMMARY_DESCRIPTOR in src/processes/meetingSummaryProcess.ts.
