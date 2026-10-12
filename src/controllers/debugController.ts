@@ -9,8 +9,10 @@
 //      Supabase project is hard-coded as a 403. To seed a fresh dev
 //      project, leave its hostname absent from the list.
 
+import { env } from "../config/env.js";
+import { ConflictError, ForbiddenError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { seedAllowed } from "../config/devFlags.js";
-import { Request, Response } from "express";
 import {
   createProcess,
   executeAction,
@@ -47,7 +49,7 @@ const PROTECTED_SUPABASE_HOSTS: ReadonlyArray<string> = [
 ];
 
 function supabaseHostFromEnv(): string | null {
-  const raw = process.env.SUPABASE_URL?.trim();
+  const raw = env.SUPABASE_URL?.trim();
   if (!raw) return null;
   try {
     return new URL(raw).hostname.toLowerCase();
@@ -72,8 +74,8 @@ async function reseedBlocker(): Promise<string | null> {
   try {
     count = await db().from("review_turns").count();
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return `Could not inspect review_turns (${message}).`;
+    console.error("[seed] could not inspect review_turns:", err instanceof Error ? err.message : err);
+    return "Could not check whether the database can be reseeded. Nothing was deleted.";
   }
   if (count > 0) {
     return (
@@ -171,10 +173,7 @@ async function seedDeliberation(
   };
 }
 
-export async function handleSeed(
-  _req: Request,
-  res: Response,
-): Promise<void> {
+export const handleSeed = route(async (_req, res) => {
   // Layer 2 — hard-coded production host denylist. Checked FIRST so a
   // stale CIVIC_ALLOW_SEED=true in a local .env can never reach prod.
   const host = supabaseHostFromEnv();
@@ -183,82 +182,74 @@ export async function handleSeed(
       `[seed] BLOCKED: refusing to seed against protected production host "${host}". ` +
         `Use a separate dev Supabase project for seeding.`,
     );
-    res.status(403).json({
-      error:
-        `Seeding is permanently disabled against the production Supabase host (${host}). ` +
-        `Use a separate Supabase project for dev seeding — see civic-hub/src/controllers/debugController.ts.`,
-    });
-    return;
+    throw new ForbiddenError(
+      "Seeding is permanently disabled against the production database. " +
+        "Use a separate Supabase project for dev seeding — see civic-hub/src/controllers/debugController.ts.",
+      "seed_disabled",
+    );
   }
 
   // Layer 1 — env flag. Default deny; opt-in per environment, and refused
   // with NODE_ENV=production whatever the flag says (Audit 2).
   if (!seedAllowed()) {
-    res.status(403).json({
-      error:
-        "Seeding is disabled in this environment. Set CIVIC_ALLOW_SEED=true to enable (never in production).",
-    });
-    return;
-  }
-
-  try {
-    // Fail BEFORE destroying anything. review_turns is append-only (a BEFORE
-    // DELETE trigger blocks row deletes), so once any review exists the
-    // cascade processes → process_reviews → review_turns cannot run and the
-    // reseed is impossible. Discovering that after clearEvents() used to
-    // leave the database in its worst state — processes with no activity log,
-    // which neither this endpoint nor auto-seed can repair — so the blocker is
-    // checked up front and the data is left untouched.
-    const blocker = await reseedBlocker();
-    if (blocker) throw new Error(blocker);
-
-    console.log("\n[seed] Clearing existing data...");
-    // Clear in dependency order: events first (they reference process IDs),
-    // then processes + everything else.
-    await clearEvents();
-    try {
-      await clearProcesses();
-    } catch (err) {
-      // wordcloud_submissions holds an FK to processes too. PostgREST can't
-      // issue TRUNCATE, so a dev reseed needs a one-time manual wipe. Surface
-      // that instead of a raw 500.
-      const msg = err instanceof Error ? err.message : String(err);
-      throw new Error(`Could not clear processes (${msg}). ${MANUAL_WIPE_HINT}`);
-    }
-    await clearInputs();
-    await clearProposals();
-    await clearAuth();
-    await clearReceipts();
-
-    console.log("[seed] Seeding system...");
-
-    const createdProcesses: Record<string, unknown>[] = [];
-
-    // Green Box — active vote
-    createdProcesses.push(await runScenario(localizeScenario(GREEN_BOX_VOTE)));
-
-    // Flock Camera — proposed vote
-    createdProcesses.push(await runScenario(localizeScenario(FLOCK_CAMERA_VOTE)));
-
-    // Deliberation / conversation seed data — bypasses Polis API
-    for (const scenario of ALL_DELIBERATION_SEEDS) {
-      createdProcesses.push(await seedDeliberation(localizeScenario(scenario)));
-    }
-
-    const eventCount = await getEventCount();
-
-    console.log(
-      `[seed] Created ${createdProcesses.length} processes, ${eventCount} events\n`,
+    throw new ForbiddenError(
+      "Seeding is disabled in this environment. Set CIVIC_ALLOW_SEED=true to enable (never in production).",
+      "seed_disabled",
     );
-
-    res.json({
-      message: "Seed data created",
-      processes: createdProcesses,
-      event_count: eventCount,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("[seed] failed:", err);
-    res.status(500).json({ error: message });
   }
-}
+
+  // Fail BEFORE destroying anything. review_turns is append-only (a BEFORE
+  // DELETE trigger blocks row deletes), so once any review exists the
+  // cascade processes → process_reviews → review_turns cannot run and the
+  // reseed is impossible. Discovering that after clearEvents() used to
+  // leave the database in its worst state — processes with no activity log,
+  // which neither this endpoint nor auto-seed can repair — so the blocker is
+  // checked up front and the data is left untouched.
+  const blocker = await reseedBlocker();
+  if (blocker) throw new ConflictError(blocker, "reseed_blocked");
+
+  console.log("\n[seed] Clearing existing data...");
+  // Clear in dependency order: events first (they reference process IDs),
+  // then processes + everything else.
+  await clearEvents();
+  try {
+    await clearProcesses();
+  } catch (err) {
+    // wordcloud_submissions holds an FK to processes too. PostgREST can't
+    // issue TRUNCATE, so a dev reseed needs a one-time manual wipe. Surface
+    // that instead of a raw 500.
+    console.error("[seed] could not clear processes:", err instanceof Error ? err.message : err);
+    throw new ConflictError(`Could not clear processes. ${MANUAL_WIPE_HINT}`, "reseed_blocked");
+  }
+  await clearInputs();
+  await clearProposals();
+  await clearAuth();
+  await clearReceipts();
+
+  console.log("[seed] Seeding system...");
+
+  const createdProcesses: Record<string, unknown>[] = [];
+
+  // Green Box — active vote
+  createdProcesses.push(await runScenario(localizeScenario(GREEN_BOX_VOTE)));
+
+  // Flock Camera — proposed vote
+  createdProcesses.push(await runScenario(localizeScenario(FLOCK_CAMERA_VOTE)));
+
+  // Deliberation / conversation seed data — bypasses Polis API
+  for (const scenario of ALL_DELIBERATION_SEEDS) {
+    createdProcesses.push(await seedDeliberation(localizeScenario(scenario)));
+  }
+
+  const eventCount = await getEventCount();
+
+  console.log(
+    `[seed] Created ${createdProcesses.length} processes, ${eventCount} events\n`,
+  );
+
+  res.json({
+    message: "Seed data created",
+    processes: createdProcesses,
+    event_count: eventCount,
+  });
+});

@@ -12,6 +12,7 @@
 // Renamed from `briefProcess.ts` in Slice 8.5. Behavior is unchanged
 // beyond the rename + the new vote_context snapshot input fields.
 
+import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
 import {
@@ -59,8 +60,9 @@ const voteResultsProcess: ProcessHandler = {
     ] as const;
     for (const key of required) {
       if (!(key in input)) {
-        throw new Error(
-          `civic.vote_results initializeState requires "${key}" — vote-results can only be created by the vote-close flow.`,
+        throw new ValidationError(
+          "Vote results are created automatically when a vote closes; they can't be created directly.",
+          "cannot_create_directly",
         );
       }
     }
@@ -92,9 +94,9 @@ const voteResultsProcess: ProcessHandler = {
   ): Promise<Record<string, unknown>> {
     // No HTTP actions reach vote-results records. Any attempt indicates
     // a misrouting.
-    throw new Error(
-      `civic.vote_results does not accept process actions (received "${action.type}"). ` +
-        `Vote-results review happens via /admin/vote-results/*.`,
+    throw new ValidationError(
+      "Vote results don't take actions here. Review them from the admin vote-results page.",
+        "action_not_supported",
     );
   },
 

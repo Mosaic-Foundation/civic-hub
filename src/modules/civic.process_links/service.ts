@@ -4,6 +4,7 @@
 // Supabase adapter lives in src/services/processLinks.ts; this module never
 // imports it.
 
+import { ValidationError } from "../../errors/index.js";
 import {
   RELATIONS,
   RELATION_LABELS,
@@ -15,17 +16,17 @@ import {
   type RenderedLinks,
 } from "./models.js";
 
-export class LinkValidationError extends Error {
+export class LinkValidationError extends ValidationError {
+  declare readonly code: "unknown_relation" | "self_link" | "missing_target" | "too_many";
   constructor(
     message: string,
-    readonly code:
+    code:
       | "unknown_relation"
       | "self_link"
       | "missing_target"
       | "too_many",
   ) {
-    super(message);
-    this.name = "LinkValidationError";
+    super(message, code);
   }
 }
 

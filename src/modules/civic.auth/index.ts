@@ -22,6 +22,8 @@
 //
 // GUARDRAIL: This module MUST NOT import from civic.vote or civic.proposals.
 
+import { env } from "../../config/env.js";
+import { ConflictError, ForbiddenError, NotFoundError, RateLimitedError, UnauthorizedError, ValidationError } from "../../errors/index.js";
 import { forHub, HubDbError, type HubDb, type Row } from "../../db/forHub.js";
 import { generateId } from "../../utils/id.js";
 import { randomToken, sameHexHash, sha256Hex } from "../../utils/hash.js";
@@ -137,10 +139,10 @@ function rowToUser(row: Record<string, unknown>): User {
 export function normalizeFullName(raw: unknown): string {
   const value = typeof raw === "string" ? raw.trim().replace(/\s+/g, " ") : "";
   if (value.length < 2) {
-    throw new Error("Please enter your full name");
+    throw new ValidationError("Please enter your full name", "name_required");
   }
   if (value.length > 100) {
-    throw new Error("Name must be 100 characters or fewer");
+    throw new ValidationError("Name must be 100 characters or fewer", "name_too_long");
   }
   return value;
 }
@@ -165,7 +167,7 @@ export async function requestVerification(
   const normalizedEmail = email.trim().toLowerCase();
 
   if (!normalizedEmail || !normalizedEmail.includes("@")) {
-    throw new Error("Invalid email address");
+    throw new ValidationError("Invalid email address", "invalid_email");
   }
 
   // Counted first, before anything is looked up or sent: a request refused
@@ -223,7 +225,7 @@ export async function requestVerification(
         (await isEmailOnBetaAllowlist(currentHubId(), normalizedEmail)) ||
         (await lookupOfficialByEmail(normalizedEmail)) !== null;
       if (!allowed) {
-        throw new Error("This hub is currently in private beta.");
+        throw new ForbiddenError("This hub is currently in private beta.", "beta_closed");
       }
     }
   }
@@ -240,7 +242,7 @@ export async function requestVerification(
   // Lockout: if this email is in its post-brute-force cooldown, refuse to issue
   // a new code (otherwise the lockout is trivially escaped by re-requesting).
   if (recent?.locked_until && Date.now() < new Date(recent.locked_until).getTime()) {
-    throw new Error(lockoutMessage(recent.locked_until));
+    throw new RateLimitedError(lockoutMessage(recent.locked_until), "locked_out");
   }
   // Throttle: reject a fresh code if one was requested for this email very
   // recently. Without this an attacker could reset the wrong-guess cap by
@@ -249,7 +251,7 @@ export async function requestVerification(
     recent?.created_at &&
     Date.now() - new Date(recent.created_at).getTime() < REQUEST_THROTTLE_MS
   ) {
-    throw new Error("Please wait a moment before requesting another code.");
+    throw new RateLimitedError("Please wait a moment before requesting another code.", "code_throttled");
   }
 
   const code = generateOTP();
@@ -279,7 +281,7 @@ export async function requestVerification(
     // the post-cutover cleanup has: a pending code on another hub.
     if (err instanceof HubDbError && err.code === "23505") {
       console.warn(`[auth] ${normalizedEmail} has a pending code on another hub (global key)`);
-      throw new Error(ADDRESS_IN_USE_ELSEWHERE);
+      throw new ConflictError(ADDRESS_IN_USE_ELSEWHERE, "address_in_use_elsewhere");
     }
     throw new Error(`Auth: failed to store verification: ${(err as Error).message}`);
   }
@@ -323,7 +325,7 @@ export async function requestVerification(
     // Keyless is a different case and is genuinely local development: there
     // is no mailer at all, the console IS the mailbox, and no real user is
     // waiting on an email that will not arrive.
-    if (!process.env.RESEND_API_KEY) {
+    if (!env.RESEND_API_KEY) {
       console.log(`\n[auth] Verification code for ${normalizedEmail}: ${code}\n`);
     } else {
       console.warn(
@@ -390,13 +392,13 @@ export async function consumePendingCode(
       .eq("email", normalizedEmail)
       .maybeSingle();
     if (!current) {
-      throw new Error("No pending verification for this email. Request a new code.");
+      throw new ValidationError("No pending verification for this email. Request a new code.", "no_pending_code");
     }
     if (current.locked_until && Date.now() < Date.parse(current.locked_until)) {
-      throw new Error(lockoutMessage(current.locked_until));
+      throw new RateLimitedError(lockoutMessage(current.locked_until), "locked_out");
     }
     // The lock has passed, but this code used up its tries; it is dead.
-    throw new Error("That code can no longer be used. Request a new code.");
+    throw new ValidationError("That code can no longer be used. Request a new code.", "code_unusable");
   }
   if (Date.now() > Date.parse(row.expires_at)) {
     await hubDb
@@ -404,14 +406,14 @@ export async function consumePendingCode(
       .delete()
       .eq("email", normalizedEmail)
       .eq("code_hash", row.code_hash);
-    throw new Error("Verification code expired. Request a new code.");
+    throw new ValidationError("Verification code expired. Request a new code.", "code_expired");
   }
   if (!sameHexHash(row.code_hash, sha256Hex(String(code).trim()))) {
     if (row.attempts >= MAX_VERIFY_ATTEMPTS) {
       // This attempt reached the limit; the database locked the address.
-      throw new Error(lockoutMessage(new Date(Date.now() + LOCKOUT_MS).toISOString()));
+      throw new RateLimitedError(lockoutMessage(new Date(Date.now() + LOCKOUT_MS).toISOString()), "locked_out");
     }
-    throw new Error("Invalid verification code");
+    throw new ValidationError("Invalid verification code", "invalid_code");
   }
   // Spend it: the delete is the spend, so of two requests with the right
   // code, one gets the row. Only this code's row, so a newer code requested
@@ -423,7 +425,7 @@ export async function consumePendingCode(
     .eq("code_hash", row.code_hash)
     .select<{ email: string }>("email");
   if (spent.length === 0) {
-    throw new Error("That code has already been used. Request a new code.");
+    throw new ValidationError("That code has already been used. Request a new code.", "code_used");
   }
 }
 
@@ -540,7 +542,7 @@ async function findOrCreateVerifiedUser(normalizedEmail: string): Promise<User> 
         // on a database without the post-cutover cleanup), so the address
         // has an account on another hub.
         console.warn(`[auth] ${normalizedEmail} has an account on another hub (global key)`);
-        throw new Error(ADDRESS_IN_USE_ELSEWHERE);
+        throw new ConflictError(ADDRESS_IN_USE_ELSEWHERE, "address_in_use_elsewhere");
       }
       user = rowToUser(refetch);
     }
@@ -585,7 +587,7 @@ export async function createHandoffSession(email: string): Promise<string> {
  * delete is the spend: of two requests with one token, one gets the row.
  */
 export async function exchangeHandoff(handoff: string): Promise<{ token: string; user: User }> {
-  const invalid = new Error("This sign-in link has expired. Sign in with your email instead.");
+  const invalid = new UnauthorizedError("This sign-in link has expired. Sign in with your email instead.", "handoff_expired");
   if (typeof handoff !== "string" || !isHandoffToken(handoff)) throw invalid;
   const hubDb = db();
   const spent = await hubDb
@@ -621,7 +623,7 @@ export async function affirmResidency(
     .select()
     .maybeSingle();
 
-  if (!data) throw new Error("User not found");
+  if (!data) throw new NotFoundError("User not found", "user_not_found");
 
   console.log(`[auth] User ${userId} affirmed residency`);
   return rowToUser(data);
@@ -643,7 +645,7 @@ export async function updateFullName(
     .eq("id", userId)
     .select()
     .maybeSingle();
-  if (!data) throw new Error("User not found");
+  if (!data) throw new NotFoundError("User not found", "user_not_found");
   return rowToUser(data);
 }
 
@@ -666,7 +668,7 @@ export async function acceptLegalTerms(
     .eq("id", userId)
     .select()
     .maybeSingle();
-  if (!data) throw new Error("User not found");
+  if (!data) throw new NotFoundError("User not found", "user_not_found");
   console.log(`[auth] User ${userId} accepted legal v${version}`);
   return rowToUser(data);
 }
@@ -840,7 +842,7 @@ export async function updateHideAiDraftingHelp(
     .eq("id", userId)
     .select()
     .maybeSingle();
-  if (!data) throw new Error("User not found");
+  if (!data) throw new NotFoundError("User not found", "user_not_found");
   return rowToUser(data);
 }
 
@@ -855,7 +857,7 @@ export async function updateDisplayName(
     .eq("id", userId)
     .select()
     .maybeSingle();
-  if (!data) throw new Error("User not found");
+  if (!data) throw new NotFoundError("User not found", "user_not_found");
   return rowToUser(data);
 }
 
@@ -877,7 +879,7 @@ export async function setDigestFrequency(
     .select()
     .maybeSingle();
 
-  if (!data) throw new Error("User not found");
+  if (!data) throw new NotFoundError("User not found", "user_not_found");
   return rowToUser(data);
 }
 

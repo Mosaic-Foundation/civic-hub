@@ -14,6 +14,7 @@
 // A failed invite never undoes the change that caused it: the admin is
 // added either way, and the caller says who was not emailed.
 
+import { env } from "../config/env.js";
 import { currentHub } from "../config/hubContext.js";
 import { hubDisplayNameSync, hubModeSync } from "./hubSettings.js";
 import { sendEmail } from "../utils/email.js";
@@ -93,7 +94,7 @@ export async function sendAdminInvites(emails: readonly string[]): Promise<Invit
   const message = renderAdminInvite({ hubName: hubDisplayNameSync(), hubUrl: uiBaseUrl(), mode: hubModeSync() });
   for (const to of emails) {
     try {
-      if (!process.env.RESEND_API_KEY) {
+      if (!env.RESEND_API_KEY) {
         // Local development: show what would have gone, as the mailer does.
         console.log(`---- [admin-invite] RESEND_API_KEY unset — logging email ----\nTo: ${to}\nSubject: ${message.subject}\n\n${message.text}\n---- end ----`);
         report.sent.push(to);

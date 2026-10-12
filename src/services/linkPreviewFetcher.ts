@@ -4,6 +4,7 @@
 // can cap the chain length per the spec (3) and surface the final URL
 // for relative-link resolution in the parser.
 
+import { ValidationError } from "../errors/index.js";
 import type { FetchHtmlFn } from "../modules/civic.link_preview/index.js";
 import { assertPublicUrl, guardedFetch } from "../utils/ssrfGuard.js";
 
@@ -48,7 +49,7 @@ export const fetchHtmlForPreview: FetchHtmlFn = async (url, opts) => {
           };
         }
         if (redirects >= opts.maxRedirects) {
-          throw new Error(`Exceeded ${opts.maxRedirects} redirects`);
+          throw new ValidationError("That link redirects too many times.", "too_many_redirects");
         }
         const next = new URL(location, current).toString();
         // Re-validate the redirect target — a public URL can 302 to an

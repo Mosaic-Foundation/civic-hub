@@ -55,8 +55,8 @@ export default function DeliberationDetail() {
     try {
       const detail = await getDeliberation(id);
       setProcess(detail);
-    } catch (err: any) {
-      setError(err.message ?? "Unknown error");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }

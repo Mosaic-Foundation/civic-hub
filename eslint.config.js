@@ -164,4 +164,17 @@ export default [
     plugins: { civic: { rules: { "raw-client": rawClientRule, "control-boundary": controlBoundaryRule } } },
     rules: { "civic/raw-client": "error", "civic/control-boundary": "error" },
   },
+  // One typed config module (Audit 4, F7): the server and api/ read their
+  // environment only through src/config/env.ts. Scripts and tests read their
+  // own.
+  {
+    files: ["src/**/*.ts", "api/**/*.ts"],
+    ignores: ["src/config/env.ts"],
+    rules: {
+      "no-restricted-properties": [
+        "error",
+        { object: "process", property: "env", message: "Read the environment through src/config/env.ts (env.X)." },
+      ],
+    },
+  },
 ];

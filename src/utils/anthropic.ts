@@ -10,6 +10,9 @@
 //   ANTHROPIC_API_KEY  — required. Starts with `sk-ant-…`.
 //   ANTHROPIC_MODEL    — optional; default defined in DEFAULT_MODEL.
 
+import { env } from "../config/env.js";
+import { CivicError, UnavailableError } from "../errors/index.js";
+
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 /**
@@ -79,17 +82,21 @@ interface AnthropicResponse {
 export async function callClaude(
   input: CallClaudeInput,
 ): Promise<CallClaudeResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not configured");
+    throw notConfigured();
   }
 
   try {
-    return await callClaudeOnce(apiKey, input);
+    try {
+      return await callClaudeOnce(apiKey, input);
+    } catch (err) {
+      if (!isTransient(err)) throw err;
+      await sleep(2000);
+      return await callClaudeOnce(apiKey, input);
+    }
   } catch (err) {
-    if (!isTransient(err)) throw err;
-    await sleep(2000);
-    return callClaudeOnce(apiKey, input);
+    throw providerFailure(err);
   }
 }
 
@@ -151,14 +158,16 @@ async function callClaudeOnce(
     const err = new Error(
       `Anthropic API ${res.status}: ${errText.slice(0, 300)}`,
     );
-    (err as Error & { transient?: boolean }).transient = isServer;
+    (err as Error & { transient?: boolean; provider?: boolean }).transient = isServer;
+    (err as Error & { provider?: boolean }).provider = true;
     throw err;
   }
 
   const data = (await res.json()) as AnthropicResponse;
   if (data.error) {
-    throw new Error(
-      `Anthropic error: ${data.error.type} ${data.error.message}`,
+    throw Object.assign(
+      new Error(`Anthropic error: ${data.error.type} ${data.error.message}`),
+      { provider: true },
     );
   }
 
@@ -198,18 +207,22 @@ export interface CallClaudeMultiTurnInput {
 export async function callClaudeMultiTurn(
   input: CallClaudeMultiTurnInput,
 ): Promise<CallClaudeResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not configured");
+    throw notConfigured();
   }
 
   const doCall = () => callClaudeMultiTurnOnce(apiKey, input);
   try {
-    return await doCall();
+    try {
+      return await doCall();
+    } catch (err) {
+      if (!isTransient(err)) throw err;
+      await sleep(2000);
+      return await doCall();
+    }
   } catch (err) {
-    if (!isTransient(err)) throw err;
-    await sleep(2000);
-    return doCall();
+    throw providerFailure(err);
   }
 }
 
@@ -275,14 +288,16 @@ async function callClaudeMultiTurnOnce(
       const err = new Error(
         `Anthropic API ${res.status}: ${errText.slice(0, 300)}`,
       );
-      (err as Error & { transient?: boolean }).transient = isServer;
+      (err as Error & { transient?: boolean; provider?: boolean }).transient = isServer;
+    (err as Error & { provider?: boolean }).provider = true;
       throw err;
     }
 
     const data = (await res.json()) as AnthropicResponse;
     if (data.error) {
-      throw new Error(
-        `Anthropic error: ${data.error.type} ${data.error.message}`,
+      throw Object.assign(
+        new Error(`Anthropic error: ${data.error.type} ${data.error.message}`),
+        { provider: true },
       );
     }
 
@@ -396,6 +411,36 @@ async function callClaudeMultiTurnOnce(
   }
 
   throw new Error("Tool use loop exceeded maximum rounds");
+}
+
+/**
+ * The provider (or the network to it) failed after the retry. The person gets
+ * a plain "try again" (503); the provider's own text goes to the log and rides
+ * along as the cause. Anything that is not a provider failure passes through.
+ */
+/**
+ * No key on this deployment: the assistant is not set up. Typed, so a person
+ * is told so in words (503 ai_not_configured); the log line names the variable.
+ */
+function notConfigured(): UnavailableError {
+  console.error("[anthropic] ANTHROPIC_API_KEY is not configured");
+  return new UnavailableError(
+    "The assistant isn't set up on this hub yet. Please contact the hub admin.",
+    "ai_not_configured",
+  );
+}
+
+function providerFailure(err: unknown): unknown {
+  if (err instanceof CivicError) return err;
+  if (err instanceof Error && ((err as Error & { provider?: boolean }).provider === true || isTransient(err))) {
+    console.error(`[anthropic] provider unavailable: ${err.message}`);
+    return new UnavailableError(
+      "The AI service isn't responding right now. Please try again in a moment.",
+      "ai_unavailable",
+      { cause: err },
+    );
+  }
+  return err;
 }
 
 function isTransient(err: unknown): boolean {

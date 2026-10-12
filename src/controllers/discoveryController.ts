@@ -6,13 +6,13 @@
 // process types it can run. Deliberately minimal — an indexer needs to know
 // who this space is, where its stream is, and what it can do.
 
-import { Request, Response } from "express";
+import { route } from "../http/route.js";
 import { isProcessTypeEnabled } from "../services/pluginGate.js";
 import { baseUrl } from "../utils/baseUrl.js";
 import { getRegisteredTypes } from "../processes/registry.js";
 import { civicPlaceCode, hubName, spaceDid } from "../config/hub.js";
 
-export function handleDiscoveryManifest(_req: Request, res: Response): void {
+export const handleDiscoveryManifest = route((_req, res) => {
   const hub = baseUrl();
   const placeCode = civicPlaceCode();
 
@@ -45,4 +45,4 @@ export function handleDiscoveryManifest(_req: Request, res: Response): void {
   };
 
   res.json(manifest);
-}
+});

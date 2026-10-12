@@ -8,6 +8,7 @@
 // Lifecycle: draft → active → closed (subset per ADR-003).
 // Evergreen mode stays in active indefinitely; admin can snapshot or close.
 
+import { ConflictError, ValidationError } from "../../errors/index.js";
 import { forHub, type HubDb } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
@@ -88,7 +89,7 @@ export function createWordcloudState(
 ): WordcloudProcessState {
   const prompts = (input.prompts as WordcloudPrompt[] | undefined) ?? [];
   if (prompts.length === 0) {
-    throw new Error("civic.wordcloud requires at least one prompt");
+    throw new ValidationError("A word cloud needs at least one prompt.", "prompt_required");
   }
 
   const lifecycleMode =
@@ -118,8 +119,9 @@ export async function activateWordcloud(
   ctx: WordcloudContext,
 ): Promise<{ state: WordcloudProcessState; result: Record<string, unknown> }> {
   if (state.status !== "draft") {
-    throw new Error(
-      `Cannot activate: process is in "${state.status}" state, not "draft"`,
+    throw new ConflictError(
+      "This word cloud has already been activated.",
+      "wrong_status",
     );
   }
   state.status = "active";
@@ -152,24 +154,25 @@ export async function submitResponse(
   result: Record<string, unknown>;
 }> {
   if (state.status !== "active") {
-    throw new Error(
-      `Cannot submit: process is in "${state.status}" state, not "active"`,
+    throw new ConflictError(
+      "This word cloud is not accepting responses.",
+      "not_active",
     );
   }
 
   const prompt = state.prompts.find((p) => p.id === payload.prompt_id);
   if (!prompt) {
-    throw new Error(`Unknown prompt_id: ${payload.prompt_id}`);
+    throw new ValidationError("That prompt does not exist on this word cloud.", "unknown_prompt");
   }
 
   const body = (payload.text ?? "").trim();
   if (!body) {
-    throw new Error("Submission text cannot be empty");
+    throw new ValidationError("Submission text cannot be empty", "text_required");
   }
 
   const maxLen = prompt.max_length ?? state.config.max_submission_length;
   if (body.length > maxLen) {
-    throw new Error(`Submission exceeds maximum length of ${maxLen} characters`);
+    throw new ValidationError(`Submission exceeds maximum length of ${maxLen} characters`, "text_too_long");
   }
 
   // Egregious-slur pre-filter (see src/shared/wordlist). Word-cloud words are
@@ -186,7 +189,7 @@ export async function submitResponse(
       .eq("prompt_id", payload.prompt_id)
       .eq("author_id", actor);
     if (count > 0) {
-      throw new Error("You have already submitted a response to this prompt");
+      throw new ConflictError("You have already submitted a response to this prompt", "already_submitted");
     }
   }
 
@@ -233,8 +236,9 @@ export async function snapshotWordcloud(
   ctx: WordcloudContext,
 ): Promise<{ state: WordcloudProcessState; result: Record<string, unknown> }> {
   if (state.status !== "active") {
-    throw new Error(
-      `Cannot snapshot: process is in "${state.status}" state, not "active"`,
+    throw new ConflictError(
+      "This word cloud is not active.",
+      "not_active",
     );
   }
 
@@ -267,8 +271,9 @@ export async function closeWordcloud(
   ctx: WordcloudContext,
 ): Promise<{ state: WordcloudProcessState; result: Record<string, unknown> }> {
   if (state.status !== "active") {
-    throw new Error(
-      `Cannot close: process is in "${state.status}" state, not "active"`,
+    throw new ConflictError(
+      "This word cloud is not active.",
+      "not_active",
     );
   }
 

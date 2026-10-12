@@ -448,7 +448,7 @@ describe("handover", () => {
 
     const shell = await call("GET", "/hub-config", oldHost);
     expect(shell.status).toBe(404);
-    expect(shell.body.error).toBe("hub_moved");
+    expect(shell.body.code).toBe("hub_moved");
     expect(shell.body.location).toMatch(new RegExp(`^http://${newHost.replace(/\./g, "\\.")}`));
 
     expect((await call("GET", "/hub-config", newHost)).body.hub.id).toBe(slug);

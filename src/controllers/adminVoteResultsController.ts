@@ -22,7 +22,8 @@
 // (events are the source of truth) and is an accepted pilot-phase
 // limitation for the same reason as the executeAction race condition.
 
-import { Request, Response } from "express";
+import { ConflictError, NotFoundError, UnavailableError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { enrichCreator } from "../services/creatorDisplay.js";
 import {
@@ -78,270 +79,225 @@ function isPublicationStatus(s: string): s is VoteResultsPublicationStatus {
  * GET /admin/vote-results — list with optional ?status= filter.
  * Returns pending first (needing review), then approved, then published.
  */
-export async function handleAdminListVoteResults(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const statusFilter = req.query.status as string | undefined;
-    const all = await getAllProcesses();
-    // Only legacy civic.vote_results rows (existing published vote briefs).
-    // The `civic.brief` string is now the NEW generic brief module — its
-    // records are served by the /admin/briefs controller, not here.
-    const records = all.filter(
-      (p) => p.definition.type === "civic.vote_results",
-    );
+export const handleAdminListVoteResults = route(async (req, res) => {
+  const statusFilter = req.query.status as string | undefined;
+  const all = await getAllProcesses();
+  // Only legacy civic.vote_results rows (existing published vote briefs).
+  // The `civic.brief` string is now the NEW generic brief module — its
+  // records are served by the /admin/briefs controller, not here.
+  const records = all.filter(
+    (p) => p.definition.type === "civic.vote_results",
+  );
 
-    const summaries = records.map((p) => ({
-      ...getAdminSummary(voteResultsState(p), {
-        id: p.id,
-        title: p.title,
-        createdAt: p.createdAt,
-      }),
-    }));
+  const summaries = records.map((p) => ({
+    ...getAdminSummary(voteResultsState(p), {
+      id: p.id,
+      title: p.title,
+      createdAt: p.createdAt,
+    }),
+  }));
 
-    const filtered =
-      statusFilter && isPublicationStatus(statusFilter)
-        ? summaries.filter((b) => b.publication_status === statusFilter)
-        : summaries;
+  const filtered =
+    statusFilter && isPublicationStatus(statusFilter)
+      ? summaries.filter((b) => b.publication_status === statusFilter)
+      : summaries;
 
-    // Sort: pending first, then approved, then published. Within each
-    // bucket, newest generated first.
-    const rank: Record<string, number> = { pending: 0, approved: 1, published: 2 };
-    filtered.sort((a, b) => {
-      const statusA = (a.publication_status as string) ?? "";
-      const statusB = (b.publication_status as string) ?? "";
-      const r = (rank[statusA] ?? 99) - (rank[statusB] ?? 99);
-      if (r !== 0) return r;
-      const ga = (a.generated_at as string) ?? "";
-      const gb = (b.generated_at as string) ?? "";
-      return gb.localeCompare(ga);
-    });
+  // Sort: pending first, then approved, then published. Within each
+  // bucket, newest generated first.
+  const rank: Record<string, number> = { pending: 0, approved: 1, published: 2 };
+  filtered.sort((a, b) => {
+    const statusA = (a.publication_status as string) ?? "";
+    const statusB = (b.publication_status as string) ?? "";
+    const r = (rank[statusA] ?? 99) - (rank[statusB] ?? 99);
+    if (r !== 0) return r;
+    const ga = (a.generated_at as string) ?? "";
+    const gb = (b.generated_at as string) ?? "";
+    return gb.localeCompare(ga);
+  });
 
-    res.json(filtered);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
-  }
-}
+  res.json(filtered);
+});
 
 /**
  * GET /admin/vote-results/:id — full detail for admin review.
  */
-export async function handleAdminGetVoteResults(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const id = req.params.id as string;
-    const record = await getProcess(id);
-    if (!record || record.definition.type !== "civic.vote_results") {
-      res.status(404).json({ error: "Vote results not found" });
-      return;
-    }
-    const model = await enrichCreator(
-      getAdminReadModel(voteResultsState(record), {
-        id: record.id,
-        title: record.title,
-        createdAt: record.createdAt,
-        createdBy: record.createdBy,
-      }),
-      { keepRawId: true, audience: "member" },
-    );
-    res.json(model);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+export const handleAdminGetVoteResults = route(async (req, res) => {
+  const id = req.params.id as string;
+  const record = await getProcess(id);
+  if (!record || record.definition.type !== "civic.vote_results") {
+    throw new NotFoundError("Vote results not found");
   }
-}
+  const model = await enrichCreator(
+    getAdminReadModel(voteResultsState(record), {
+      id: record.id,
+      title: record.title,
+      createdAt: record.createdAt,
+      createdBy: record.createdBy,
+    }),
+    { keepRawId: true, audience: "member" },
+  );
+  res.json(model);
+});
 
 /**
  * PATCH /admin/vote-results/:id — edit comments and admin_notes.
  * Rejects with 409 if the record is no longer in pending status.
  */
-export async function handlePatchVoteResults(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const id = req.params.id as string;
-    const record = await getProcess(id);
-    if (!record || record.definition.type !== "civic.vote_results") {
-      res.status(404).json({ error: "Vote results not found" });
-      return;
-    }
-    const state = voteResultsState(record);
-    if (state.publication_status !== "pending") {
-      res.status(409).json({
-        error: `Cannot edit vote results: publication_status is "${state.publication_status}".`,
-      });
-      return;
-    }
-
-    const body = req.body ?? {};
-    const patch: VoteResultsContentPatch = {};
-    if (Array.isArray(body.comments)) patch.comments = body.comments;
-    if (typeof body.admin_notes === "string") patch.admin_notes = body.admin_notes;
-    // Image patch semantics match civic.announcement: null clears,
-    // string sets, undefined leaves alone. The module enforces the
-    // alt-text-required-when-image-set rule.
-    if (body.image_url === null || typeof body.image_url === "string") {
-      patch.image_url = body.image_url as string | null;
-    }
-    if (body.image_alt === null || typeof body.image_alt === "string") {
-      patch.image_alt = body.image_alt as string | null;
-    }
-
-    const actor = getAuthUser(res).id;
-    const ctx = {
-      process_id: record.id,
-      jurisdiction: record.jurisdiction,
-      emit: emitEvent,
-    };
-
-    await editVoteResults(state, actor, patch, ctx);
-    await saveProcessState(record);
-
-    // Pre-warm the link-preview cache for any URLs the admin embedded
-    // in admin_notes. Vote-results admin_notes is the canonical "free
-    // text" surface for this module — comments[] is sanitized to short
-    // statements that rarely contain URLs. Fire-and-forget; failures
-    // logged but never bubble up to the admin save.
-    const noteUrls = extractUrls(state.content.admin_notes);
-    if (noteUrls.length > 0) warmPreviewsInBackground(noteUrls);
-
-    const model = await enrichCreator(
-      getAdminReadModel(state, {
-        id: record.id,
-        title: record.title,
-        createdAt: record.createdAt,
-        createdBy: record.createdBy,
-      }),
-      { keepRawId: true, audience: "member" },
-    );
-    res.json(model);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+export const handlePatchVoteResults = route(async (req, res) => {
+  const id = req.params.id as string;
+  const record = await getProcess(id);
+  if (!record || record.definition.type !== "civic.vote_results") {
+    throw new NotFoundError("Vote results not found");
   }
-}
+  const state = voteResultsState(record);
+  if (state.publication_status !== "pending") {
+    throw new ConflictError(`Cannot edit vote results: publication_status is "${state.publication_status}".`);
+  }
+
+  const body = req.body ?? {};
+  const patch: VoteResultsContentPatch = {};
+  if (Array.isArray(body.comments)) patch.comments = body.comments;
+  if (typeof body.admin_notes === "string") patch.admin_notes = body.admin_notes;
+  // Image patch semantics match civic.announcement: null clears,
+  // string sets, undefined leaves alone. The module enforces the
+  // alt-text-required-when-image-set rule.
+  if (body.image_url === null || typeof body.image_url === "string") {
+    patch.image_url = body.image_url as string | null;
+  }
+  if (body.image_alt === null || typeof body.image_alt === "string") {
+    patch.image_alt = body.image_alt as string | null;
+  }
+
+  const actor = getAuthUser(res).id;
+  const ctx = {
+    process_id: record.id,
+    jurisdiction: record.jurisdiction,
+    emit: emitEvent,
+  };
+
+  await editVoteResults(state, actor, patch, ctx);
+  await saveProcessState(record);
+
+  // Pre-warm the link-preview cache for any URLs the admin embedded
+  // in admin_notes. Vote-results admin_notes is the canonical "free
+  // text" surface for this module — comments[] is sanitized to short
+  // statements that rarely contain URLs. Fire-and-forget; failures
+  // logged but never bubble up to the admin save.
+  const noteUrls = extractUrls(state.content.admin_notes);
+  if (noteUrls.length > 0) warmPreviewsInBackground(noteUrls);
+
+  const model = await enrichCreator(
+    getAdminReadModel(state, {
+      id: record.id,
+      title: record.title,
+      createdAt: record.createdAt,
+      createdBy: record.createdBy,
+    }),
+    { keepRawId: true, audience: "member" },
+  );
+  res.json(model);
+});
 
 /**
  * POST /admin/vote-results/:id/approve — run the full approval orchestration.
  */
-export async function handleApproveVoteResults(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const id = req.params.id as string;
-    const record = await getProcess(id);
-    if (!record || record.definition.type !== "civic.vote_results") {
-      res.status(404).json({ error: "Vote results not found" });
+export const handleApproveVoteResults = route(async (req, res) => {
+  const id = req.params.id as string;
+  const record = await getProcess(id);
+  if (!record || record.definition.type !== "civic.vote_results") {
+    throw new NotFoundError("Vote results not found");
+  }
+
+  const state = voteResultsState(record);
+  if (state.publication_status !== "pending") {
+    throw new ConflictError(`Vote results are already ${state.publication_status}.`);
+  }
+
+  // Recipients: admin-configured DB value first, env var
+  // (BOARD_RECIPIENT_EMAIL) as safety-net fallback so existing
+  // deploys keep working before an admin has opened the settings
+  // panel for the first time.
+  const recipients = await getVoteResultsRecipients(currentHubId());
+  if (recipients.length === 0) {
+    throw new UnavailableError("Approval unavailable: no recipients configured. Set them in " +
+        "Admin → Vote results → Settings (or as BOARD_RECIPIENT_EMAIL env var).");
+  }
+
+  const actor = getAuthUser(res).id;
+  const ctx = {
+    process_id: record.id,
+    jurisdiction: record.jurisdiction,
+    emit: emitEvent,
+  };
+
+  // Closure called by the vote-results module once the record reaches
+  // "published". Loads the linked vote, calls the vote module's
+  // finalizeVote directly (library-only; no HTTP path), then persists
+  // the vote.
+  const finalizeLinkedVote = async (voteId: string, byActor: string) => {
+    const voteRecord = await getProcess(voteId);
+    if (!voteRecord) {
+      throw new Error(`Linked vote not found: ${voteId}`);
+    }
+    if (voteRecord.definition.type !== "civic.vote") {
+      throw new Error(
+        `Linked process ${voteId} is not a civic.vote (type=${voteRecord.definition.type})`,
+      );
+    }
+    if (voteRecord.status === "finalized") {
+      // Idempotency: if the vote was already finalized (e.g. a prior
+      // approval attempt succeeded at this step), skip cleanly.
       return;
     }
-
-    const state = voteResultsState(record);
-    if (state.publication_status !== "pending") {
-      res.status(409).json({
-        error: `Vote results are already ${state.publication_status}.`,
-      });
-      return;
-    }
-
-    // Recipients: admin-configured DB value first, env var
-    // (BOARD_RECIPIENT_EMAIL) as safety-net fallback so existing
-    // deploys keep working before an admin has opened the settings
-    // panel for the first time.
-    const recipients = await getVoteResultsRecipients(currentHubId());
-    if (recipients.length === 0) {
-      res.status(503).json({
-        error:
-          "Approval unavailable: no recipients configured. Set them in " +
-          "Admin → Vote results → Settings (or as BOARD_RECIPIENT_EMAIL env var).",
-      });
-      return;
-    }
-
-    const actor = getAuthUser(res).id;
-    const ctx = {
-      process_id: record.id,
-      jurisdiction: record.jurisdiction,
+    const voteCtx = {
+      process_id: voteRecord.id,
+      jurisdiction: voteRecord.jurisdiction,
       emit: emitEvent,
     };
-
-    // Closure called by the vote-results module once the record reaches
-    // "published". Loads the linked vote, calls the vote module's
-    // finalizeVote directly (library-only; no HTTP path), then persists
-    // the vote.
-    const finalizeLinkedVote = async (voteId: string, byActor: string) => {
-      const voteRecord = await getProcess(voteId);
-      if (!voteRecord) {
-        throw new Error(`Linked vote not found: ${voteId}`);
-      }
-      if (voteRecord.definition.type !== "civic.vote") {
-        throw new Error(
-          `Linked process ${voteId} is not a civic.vote (type=${voteRecord.definition.type})`,
-        );
-      }
-      if (voteRecord.status === "finalized") {
-        // Idempotency: if the vote was already finalized (e.g. a prior
-        // approval attempt succeeded at this step), skip cleanly.
-        return;
-      }
-      const voteCtx = {
-        process_id: voteRecord.id,
-        jurisdiction: voteRecord.jurisdiction,
-        emit: emitEvent,
-      };
-      // Ballots come from the anonymized receipts table — the vote's
-      // state carries no individual ballots (ballot secrecy).
-      const vState = voteState(voteRecord);
-      const method = getVotingMethod(vState.method ?? DEFAULT_METHOD);
-      const ballots = (await getBallotChoicesForProcess(voteRecord.id)).map(
-        (c) => method.parseReceipt(c),
-      );
-      await finalizeVote(vState, byActor, ballots, voteCtx);
-      voteRecord.status = voteState(voteRecord).status;
-      await saveProcessState(voteRecord);
-    };
-
-    await approveVoteResults(state, actor, ctx, {
-      recipients,
-      hubLabel: hubDisplayNameSync(),
-      publicVoteResultsUrl: publicVoteResultsUrl(record.id),
-      // Sample results are never delivered (Phase 7).
-      sendEmail: record.isSample ? sampleDeliverySuppressed : sendEmail,
-      finalizeLinkedVote,
-    });
-
-    // Persist mutations (publication_status, timestamps, delivered_to).
-    // Also advance process-level status: published vote-results are
-    // terminal, i.e. "finalized" in the spec's state machine.
-    record.status = "finalized";
-    await saveProcessState(record);
-
-    const model = await enrichCreator(
-      getAdminReadModel(state, {
-        id: record.id,
-        title: record.title,
-        createdAt: record.createdAt,
-        createdBy: record.createdBy,
-      }),
-      { keepRawId: true, audience: "member" },
+    // Ballots come from the anonymized receipts table — the vote's
+    // state carries no individual ballots (ballot secrecy).
+    const vState = voteState(voteRecord);
+    const method = getVotingMethod(vState.method ?? DEFAULT_METHOD);
+    const ballots = (await getBallotChoicesForProcess(voteRecord.id)).map(
+      (c) => method.parseReceipt(c),
     );
-    // Held back is not failed (review #34): the results published; say who
-    // was not emailed and why.
-    const heldBack = state.held_back ?? [];
-    res.json({
-      message: publishedMessage(state.delivered_to, {
-        names: heldBack.map((h) => h.email),
-        reasons: heldBack.map((h) => h.reason),
-      }),
-      vote_results: model,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
-  }
-}
+    await finalizeVote(vState, byActor, ballots, voteCtx);
+    voteRecord.status = voteState(voteRecord).status;
+    await saveProcessState(voteRecord);
+  };
+
+  await approveVoteResults(state, actor, ctx, {
+    recipients,
+    hubLabel: hubDisplayNameSync(),
+    publicVoteResultsUrl: publicVoteResultsUrl(record.id),
+    // Sample results are never delivered (Phase 7).
+    sendEmail: record.isSample ? sampleDeliverySuppressed : sendEmail,
+    finalizeLinkedVote,
+  });
+
+  // Persist mutations (publication_status, timestamps, delivered_to).
+  // Also advance process-level status: published vote-results are
+  // terminal, i.e. "finalized" in the spec's state machine.
+  record.status = "finalized";
+  await saveProcessState(record);
+
+  const model = await enrichCreator(
+    getAdminReadModel(state, {
+      id: record.id,
+      title: record.title,
+      createdAt: record.createdAt,
+      createdBy: record.createdBy,
+    }),
+    { keepRawId: true, audience: "member" },
+  );
+  // Held back is not failed (review #34): the results published; say who
+  // was not emailed and why.
+  const heldBack = state.held_back ?? [];
+  res.json({
+    message: publishedMessage(state.delivered_to, {
+      names: heldBack.map((h) => h.email),
+      reasons: heldBack.map((h) => h.reason),
+    }),
+    vote_results: model,
+  });
+});

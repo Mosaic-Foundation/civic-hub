@@ -25,6 +25,7 @@
 // which Node cannot expose as named ESM imports. Pointing at the ESM
 // build directly is the robust workaround and survives package updates
 // so long as the ESM file name stays stable.
+import { env } from "../config/env.js";
 // @ts-expect-error — deep import has no declaration file; see above
 import { YoutubeTranscript } from "youtube-transcript/dist/youtube-transcript.esm.js";
 import type { TranscriptSegment } from "../modules/civic.meeting_summary/index.js";
@@ -69,12 +70,12 @@ export async function fetchYouTubeTranscript(
     throw new Error(`Invalid YouTube watch URL: ${watchUrl}`);
   }
 
-  const supadataKey = process.env.SUPADATA_API_KEY?.trim();
+  const supadataKey = env.SUPADATA_API_KEY?.trim();
   if (supadataKey) {
     return fetchViaSupadata(id, supadataKey);
   }
 
-  const searchApiKey = process.env.SEARCHAPI_API_KEY?.trim();
+  const searchApiKey = env.SEARCHAPI_API_KEY?.trim();
   if (searchApiKey) {
     return fetchViaSearchApi(id, searchApiKey);
   }

@@ -31,11 +31,12 @@
 //   CIVIC_HUB_ID=civic-hub-floyd     (or your chosen id)
 //   CIVIC_JURISDICTION=us-va-floyd
 //   CIVIC_SPACE_DID=did:web:floyd.civic.social
+import { env, processEnv } from "./env.js";
 import { baseUrl } from "../utils/baseUrl.js";
 import { currentHub } from "./hubContext.js";
 
-export const HUB_ID = process.env.CIVIC_HUB_ID ?? "civic-hub-local";
-export const DEFAULT_JURISDICTION = process.env.CIVIC_JURISDICTION ?? "local";
+export const HUB_ID = env.CIVIC_HUB_ID ?? "civic-hub-local";
+export const DEFAULT_JURISDICTION = env.CIVIC_JURISDICTION ?? "local";
 
 /**
  * Values of CIVIC_JURISDICTION (and of an event's `jurisdiction` field) that
@@ -74,7 +75,7 @@ export function normalizePlaceCode(
 export function civicPlaceCode(): string | null {
   const hub = currentHub();
   if (hub) return normalizePlaceCode(hub.jurisdiction_code);
-  return normalizePlaceCode(process.env.CIVIC_JURISDICTION ?? DEFAULT_JURISDICTION);
+  return normalizePlaceCode(env.CIVIC_JURISDICTION ?? DEFAULT_JURISDICTION);
 }
 
 /**
@@ -98,7 +99,7 @@ export function civicPlaceName(): string | null {
     const fromHub = hub.jurisdiction_name?.trim();
     return fromHub ? fromHub : null;
   }
-  const name = process.env.CIVIC_JURISDICTION_NAME?.trim();
+  const name = env.CIVIC_JURISDICTION_NAME?.trim();
   return name ? name : null;
 }
 
@@ -130,7 +131,7 @@ export function processJurisdiction(): string | undefined {
 export function hubName(): string {
   const hub = currentHub();
   if (hub) return hub.name;
-  return process.env.HUB_NAME?.trim() || "Civic Hub";
+  return env.HUB_NAME?.trim() || "Civic Hub";
 }
 
 /**
@@ -159,7 +160,7 @@ export function protocolHubId(): string {
 export function spaceDid(): string {
   const hub = currentHub();
   if (hub) return hub.space_did;
-  const configured = process.env.CIVIC_SPACE_DID?.trim();
+  const configured = env.CIVIC_SPACE_DID?.trim();
   if (configured) return configured;
   return deriveDidWeb(baseUrl());
 }
@@ -181,7 +182,7 @@ export function spaceDid(): string {
  * @throws in production when CIVIC_SPACE_DID is unset or malformed.
  */
 export function assertSpaceIdentityConfigured(
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv = processEnv(),
 ): void {
   const configured = env.CIVIC_SPACE_DID?.trim();
   const isProd = env.NODE_ENV === "production";

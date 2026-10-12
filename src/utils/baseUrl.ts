@@ -24,6 +24,7 @@
 //
 // Both strip trailing slashes so callers can write `${baseUrl()}/events`.
 
+import { env } from "../config/env.js";
 import { currentHub } from "../config/hubContext.js";
 import { isLocalHostname } from "../models/hub.js";
 
@@ -32,12 +33,12 @@ function stripTrailingSlash(s: string): string {
 }
 
 function envApiBase(): string {
-  return stripTrailingSlash(process.env.BASE_URL ?? "http://localhost:3000");
+  return stripTrailingSlash(env.BASE_URL ?? "http://localhost:3000");
 }
 
 function envUiBase(): string {
   return stripTrailingSlash(
-    process.env.CIVIC_UI_BASE_URL ?? process.env.BASE_URL ?? "http://localhost:3000",
+    env.CIVIC_UI_BASE_URL ?? env.BASE_URL ?? "http://localhost:3000",
   );
 }
 
@@ -47,7 +48,7 @@ function envUiBase(): string {
  */
 export function hubOrigin(hostname: string, devTemplate: string): string {
   const host = hostname.trim().toLowerCase();
-  if (process.env.NODE_ENV !== "production" && isLocalHostname(host)) {
+  if (env.NODE_ENV !== "production" && isLocalHostname(host)) {
     let port = "";
     try {
       const t = new URL(devTemplate);

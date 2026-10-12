@@ -22,6 +22,7 @@
 // here goes through forHub(), so one hub's roster never lists, promotes or
 // demotes another hub's officials.
 
+import { ConflictError } from "../errors/index.js";
 import { forHub, HubDbError, type HubDb } from "../db/forHub.js";
 import { generateId } from "../utils/id.js";
 import { currentHubId } from "../config/hubContext.js";
@@ -260,8 +261,9 @@ async function findOrCreateUserByEmail(email: string): Promise<string> {
       // (20260926005000) has. Kept as a guard. The admin is not told which
       // hub, only that it cannot be designated yet.
       console.error(`[officials] ${normalized} is in use on another hub (global unique email)`);
-      throw new Error(
-        `${normalized} cannot be designated on this hub yet: the address is in use elsewhere on this platform.`,
+      throw new ConflictError(
+        "That address cannot be designated on this hub yet: it is in use elsewhere on this platform.",
+        "address_in_use_elsewhere",
       );
     }
     throw err;

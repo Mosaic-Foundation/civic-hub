@@ -9,7 +9,8 @@
 // RPC functions defined in the migration. This controller is a thin
 // orchestration layer.
 
-import type { Request, Response } from "express";
+import type { Request } from "express";
+import { route } from "../http/route.js";
 import {
   executeSearch,
   type SearchQuery,
@@ -63,40 +64,31 @@ function readDate(req: Request, key: string): string | undefined {
   return raw.trim();
 }
 
-export async function handleSearch(req: Request, res: Response): Promise<void> {
-  try {
-    const q = typeof req.query.q === "string" ? req.query.q : "";
-    const query: SearchQuery = {
-      q,
-      types: readTypes(req),
-      from: readDate(req, "from"),
-      to: readDate(req, "to"),
-      sort: readSort(req),
-      limit: readNumber(req, "limit"),
-      offset: readNumber(req, "offset"),
-    };
+export const handleSearch = route(async (req, res) => {
+  const q = typeof req.query.q === "string" ? req.query.q : "";
+  const query: SearchQuery = {
+    q,
+    types: readTypes(req),
+    from: readDate(req, "from"),
+    to: readDate(req, "to"),
+    sort: readSort(req),
+    limit: readNumber(req, "limit"),
+    offset: readNumber(req, "offset"),
+  };
 
-    const page = await executeSearch(query, {
-      execute: executeSearchRpc,
-      count: countSearchRpc,
-      hrefFor: processDetailPath,
-    });
+  const page = await executeSearch(query, {
+    execute: executeSearchRpc,
+    count: countSearchRpc,
+    hrefFor: processDetailPath,
+  });
 
-    // Structured per-request log — useful for spotting slow queries
-    // or empty-result patterns without sampling the full request log.
-    const safeQ = page.query.q.replace(/"/g, '\\"');
-    const typesCount = page.query.types?.length ?? 0;
-    console.log(
-      `[search] q="${safeQ}" types=${typesCount} hits=${page.hits.length} total=${page.total} took_ms=${page.took_ms}`,
-    );
+  // Structured per-request log — useful for spotting slow queries
+  // or empty-result patterns without sampling the full request log.
+  const safeQ = page.query.q.replace(/"/g, '\\"');
+  const typesCount = page.query.types?.length ?? 0;
+  console.log(
+    `[search] q="${safeQ}" types=${typesCount} hits=${page.hits.length} total=${page.total} took_ms=${page.took_ms}`,
+  );
 
-    res.json(page);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Search failed";
-    // Bad input → 400; everything else → 500.
-    const isClient =
-      message.startsWith("Invalid date") ||
-      message.startsWith("`types`");
-    res.status(isClient ? 400 : 500).json({ error: message });
-  }
-}
+  res.json(page);
+});

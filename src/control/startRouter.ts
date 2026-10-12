@@ -25,8 +25,11 @@
 // The session cookie is HttpOnly and SameSite=Strict; every write also needs
 // the X-Civic-Start header, which a cross-site form cannot send.
 
+import { env } from "../config/env.js";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { recordAudit } from "./audit.js";
+import { CivicError } from "../errors/index.js";
+import { logUnexpected, newRef } from "../http/route.js";
 import { consoleAdminEmail, consoleHostname, isStartHost, startHubDomain } from "./config.js";
 import {
   EntitlementError,
@@ -79,7 +82,7 @@ function readCookie(req: Request, name: string): string | undefined {
 }
 
 function isHttps(req: Request): boolean {
-  return req.secure || req.headers["x-forwarded-proto"] === "https" || process.env.NODE_ENV === "production";
+  return req.secure || req.headers["x-forwarded-proto"] === "https" || env.NODE_ENV === "production";
 }
 
 function setSessionCookie(req: Request, res: Response, token: string): void {
@@ -100,14 +103,19 @@ function clearSessionCookie(req: Request, res: Response): void {
   res.setHeader("Set-Cookie", parts.join("; "));
 }
 
-function fail(res: Response, err: unknown): void {
-  if (err instanceof StartError || err instanceof EntitlementError || err instanceof ControlInputError) {
-    res.status(err.status).json({ error: err.message });
+/** The start page's error answer, in the hub's shape (see src/control/router.ts). */
+function fail(req: Request, res: Response, err: unknown): void {
+  if (err instanceof CivicError && err.status < 500) {
+    res.status(err.status).json({ error: err.message, code: err.code });
     return;
   }
-  console.error("[start]", err);
-  res.status(500).json({
-    error: "Something went wrong on our side, and your hub may not have been made. Wait a minute and try again; your code still works if it wasn't.",
+  const ref = newRef();
+  const status = err instanceof CivicError ? err.status : 500;
+  logUnexpected(req, err, status, ref, !(err instanceof CivicError));
+  res.status(status).json({
+    error: `Something went wrong on our side, and your hub may not have been made. Wait a minute and try again; your code still works if it wasn't. (Reference ${ref})`,
+    code: err instanceof CivicError ? err.code : "internal_error",
+    ref,
   });
 }
 
@@ -115,7 +123,7 @@ type Handler = (req: Request, res: Response) => Promise<void>;
 
 function route(fn: Handler) {
   return (req: Request, res: Response) => {
-    fn(req, res).catch((err) => fail(res, err));
+    fn(req, res).catch((err) => fail(req, res, err));
   };
 }
 

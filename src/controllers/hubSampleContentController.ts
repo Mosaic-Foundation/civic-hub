@@ -9,32 +9,24 @@
 // Graduating out of demo asks the same question through POST /admin/hub/mode
 // (`remove_sample_content`), which calls the same service.
 
-import type { Request, Response } from "express";
+import { UnauthorizedError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { caller, requireStepUpCode } from "./adminStepUp.js";
 import { removeSampleContent, sampleContentSummary } from "../services/sampleContent.js";
 
 export { handleRequestStepUpCode as handleRequestSampleRemovalCode } from "./adminStepUp.js";
 
-export async function handleGetSampleContent(_req: Request, res: Response): Promise<void> {
-  try {
-    res.json(await sampleContentSummary());
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
-  }
-}
+export const handleGetSampleContent = route(async (_req, res) => {
+  res.json(await sampleContentSummary());
+});
 
-export async function handleRemoveSampleContent(req: Request, res: Response): Promise<void> {
+export const handleRemoveSampleContent = route(async (req, res) => {
   const user = caller(res);
   if (!user) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
+    throw new UnauthorizedError("Authentication required");
   }
   const body = (req.body ?? {}) as { code?: unknown };
-  if (!(await requireStepUpCode(req, res, body.code))) return;
-  try {
-    const result = await removeSampleContent(user.email);
-    res.json({ removed: result.summary, deleted: result.deleted, summary: await sampleContentSummary() });
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
-  }
-}
+  await requireStepUpCode(req, res, body.code);
+  const result = await removeSampleContent(user.email);
+  res.json({ removed: result.summary, deleted: result.deleted, summary: await sampleContentSummary() });
+});

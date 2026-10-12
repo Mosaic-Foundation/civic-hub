@@ -19,6 +19,7 @@ numbers below, or just grep the heading.
 | Settings key names, aliases, env fallbacks, public list | `src/models/hubSettings.ts` |
 | Shared legal documents + per-hub substitution | `config/legal/`, `src/services/hubDocuments.ts` |
 | Seeding a hub's settings from env | `scripts/seed-hub-settings.ts` |
+| Releasing a change with migrations: the order (migrations, schema reload, code, `/health`), pre-checks, the guard | `RUNBOOK-release.md` |
 | Dev deployment runbook + Preview env checklist; dev domain `*.dev.civic.social` (§9) | `DEPLOY-dev.md` |
 | Guards: production db push, deploy env safety | `scripts/db-push.sh`, `scripts/check-deploy-env.ts` |
 | Auth, sessions, admin/board resolution | `src/middleware/auth.ts`, `src/modules/civic.auth/` (limits: `limits.ts`) |
@@ -28,6 +29,9 @@ numbers below, or just grep the heading.
 | Process registry and per-type handlers | `src/processes/registry.ts`, `src/processes/*Process.ts` |
 | Reading more than 1,000 rows: `readAll()` (pages), `inChunks()` (long id lists); the `CIVIC_ROW_CAP` guard | `src/db/readAll.ts`, `src/db/inChunks.ts`, `cutOffAtCap` in `src/db/forHub.ts` |
 | Reporting an error operators must see (where Sentry or similar connects later) | `src/utils/reportError.ts`; BUILD-PLAN "Error reporting" |
+| Error responses: typed errors, the one wrapper, the response shape, what is logged and redacted | `src/errors/index.ts`, `src/http/route.ts` (`route()`, `sendError()`), `src/utils/redact.ts`; BUILD-PLAN "Error responses" |
+| Environment: the one reader of `process.env` (lint-enforced in `src/` and `api/`) | `src/config/env.ts`; dev-only flags `src/config/devFlags.ts` |
+| What `/health` checks: tables and columns, and the database functions the code calls | `src/db/schemaContract.ts`, `src/db/functionContract.ts` (`function_catalog()`, `20261012000000`), `src/db/schemaCheck.ts`; drift test `tests/unit/functionContract.test.ts` |
 | The feed's page (cursor, surface, visibility rules) | `src/services/feedPage.ts`, `src/controllers/feedController.ts`, `src/events/eventCursor.ts` |
 | DB client (service role, the thing tenancy replaces) | `src/db/client.ts`; only `src/db/`, `scripts/`, `tests/` may import it (`eslint.config.js`, `civic/raw-client`) |
 | Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |
@@ -73,6 +77,10 @@ numbers below, or just grep the heading.
 - Pluggable voting methods + approval voting — 7420–7484
 
 ### Security, identity, anonymity
+- **Audit 4 (2026-10-12)**: one error answer (`src/errors/`, `route()`, `{error, code, ref}`, redacted
+  `reportError`), `/health` names the database functions (`functionContract.ts`, `function_catalog()`,
+  `20261012000000`), `src/config/env.ts`, CI (`npm ci`, pins, audit, type-check of tests, UI lint, `e2e.yml`),
+  `RUNBOOK-release.md`; the local image's segfault on denied function calls — top of HANDOFF (grep the heading)
 - **Audit 3 (2026-10-11)**: one write per action (`transition_process` expected status/version + held events),
   close once (`close_claimed_until`, one brief per source), `cast_ballot` refuses closed votes, endorsements by
   retry; one drafts system (store, kinds, factories, `DraftPage`), one review per draft; `start_attempts` dropped;

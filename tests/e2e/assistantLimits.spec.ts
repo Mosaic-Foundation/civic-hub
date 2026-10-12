@@ -68,7 +68,7 @@ test("over the hourly limit, the chat says to wait a while", async ({ page, requ
     await page.getByRole("button", { name: "Open the assistant" }).click();
     // Opening the assistant is a turn: it asks the model for its first
     // question (with no AI key here, that call fails after being counted).
-    await expect(page.getByText(/isn't configured yet/)).toBeVisible();
+    await expect(page.getByText(/isn't set up on this hub yet/)).toBeVisible();
     // So the person's first message is the second turn, and is refused, in
     // the server's words.
     const box = page.getByPlaceholder(/Type your answer here|Ask for help with your draft/);

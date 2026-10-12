@@ -19,6 +19,7 @@
 //
 // Pure functions only; the controller and the tests share them.
 
+import { ConflictError } from "../../errors/index.js";
 import type { SummaryBlock, TranscriptSegment } from "./models.js";
 
 /**
@@ -86,10 +87,13 @@ export function qualityFlag(
  * Thrown by summarizeMeeting when the meeting has no usable record yet. Not a
  * failure: the run counts it as waiting and tries again next time.
  */
-export class MeetingNotReadyError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "MeetingNotReadyError";
+export class MeetingNotReadyError extends ConflictError {
+  /** Why, in the provider's own words. For the run's log; never sent to a client. */
+  readonly detail: string | undefined;
+
+  constructor(message: string, detail?: string) {
+    super(message, "meeting_not_ready");
+    this.detail = detail;
   }
 }
 

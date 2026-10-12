@@ -13,7 +13,6 @@ import { publishedMessage } from "../../src/shared/delivery.js";
 
 const ctx: BriefProcessContext = {
   process_id: "brief_1",
-  hub_id: "hub",
   jurisdiction: "us-test",
   emit: vi.fn(async () => undefined),
 };

@@ -5,7 +5,7 @@ import { deliberationAssistantConfig } from "../../src/processes/deliberationAss
 import { voteAssistantConfig } from "../../src/processes/voteAssistantConfig";
 import { projectAssistantConfig } from "../../src/processes/projectAssistantConfig";
 
-const hub = { hub_name: "Test Hub", community_description: "a test community" };
+const hub = { hub_name: "Test Hub", community_description: "a test community", code_of_conduct: "" };
 
 function promptFor(config: Parameters<typeof buildSystemPrompt>[4], draft: Record<string, string>) {
   return buildSystemPrompt(hub, "idea", draft as never, "free_form", config);

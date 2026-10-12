@@ -1,3 +1,4 @@
+import type { HubJobSpec } from "../../src/jobs/registry.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -167,7 +168,7 @@ const { JOB_RUNNERS } = await import("../../src/jobs/runners.js");
 const { runJobAcrossHubs } = await import("../../src/jobs/runJob.js");
 
 async function runJob(id: string) {
-  const report = await runJobAcrossHubs(jobById(id)!, JOB_RUNNERS[id], {
+  const report = await runJobAcrossHubs((jobById(id) as HubJobSpec), JOB_RUNNERS[id], {
     now: new Date(),
     force: false,
     onlyHub: "floyd",

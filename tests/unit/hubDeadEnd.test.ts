@@ -35,3 +35,10 @@ describe("deadEndFromResponse", () => {
     expect(DEAD_ENDS.no_hub.title).toBe("No hub here");
   });
 });
+
+describe("the error shape since Audit 4", () => {
+  it("reads the code from `code`, with a sentence in `error`", () => {
+    expect(deadEndFromResponse(404, { error: "No civic hub is configured here.", code: "no_hub" })).toBe("no_hub");
+    expect(deadEndFromResponse(503, { error: "Paused.", code: "hub_suspended" })).toBe("hub_suspended");
+  });
+});

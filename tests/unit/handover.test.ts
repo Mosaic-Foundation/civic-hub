@@ -154,3 +154,11 @@ describe("the admin invite (R38)", () => {
     expect(describeInvites({ sent: [], not_sent: [] })).toBeNull();
   });
 });
+
+describe("hub_moved in the error shape since Audit 4", () => {
+  it("reads the code from `code`", () => {
+    expect(movedToFromResponse(404, { error: "This hub has moved.", code: "hub_moved", location: "https://x.civic.social" })).toBe(
+      "https://x.civic.social",
+    );
+  });
+});

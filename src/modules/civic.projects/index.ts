@@ -1,3 +1,4 @@
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../../errors/index.js";
 import { forHub, type HubDb } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
@@ -75,7 +76,7 @@ export async function createProject(
   emit: EmitEventFn,
 ): Promise<Project> {
   if (!input.title || input.title.trim().length === 0) {
-    throw new Error("Project title is required");
+    throw new ValidationError("Project title is required", "title_required");
   }
 
   const id = input.id ?? generateId("proj");
@@ -155,9 +156,9 @@ export async function updateProject(
   emit: EmitEventFn,
 ): Promise<Project> {
   const project = await getProject(id);
-  if (!project) throw new Error(`Project not found: ${id}`);
+  if (!project) throw new NotFoundError("Project not found", "project_not_found");
   if (project.user_id !== actor) {
-    throw new Error("Only the project creator can edit this project");
+    throw new ForbiddenError("Only the project creator can edit this project", "creator_only");
   }
 
   const updates: Record<string, unknown> = {
@@ -182,9 +183,9 @@ export async function archiveProject(
   emit: EmitEventFn,
 ): Promise<void> {
   const project = await getProject(id);
-  if (!project) throw new Error(`Project not found: ${id}`);
+  if (!project) throw new NotFoundError("Project not found", "project_not_found");
   if (project.user_id !== actor) {
-    throw new Error("Only the project creator can archive this project");
+    throw new ForbiddenError("Only the project creator can archive this project", "creator_only");
   }
 
   const now = new Date().toISOString();
@@ -221,9 +222,9 @@ export async function completeProject(
   emit: EmitEventFn,
 ): Promise<void> {
   const project = await getProject(id);
-  if (!project) throw new Error(`Project not found: ${id}`);
+  if (!project) throw new NotFoundError("Project not found", "project_not_found");
   if (project.status !== "active") {
-    throw new Error(`Only an active project can be completed (is "${project.status}").`);
+    throw new ConflictError("Only an active project can be completed.", "project_not_active");
   }
 
   const now = new Date().toISOString();
@@ -278,9 +279,9 @@ export async function setProjectSentiment(
   emit: EmitEventFn,
 ): Promise<{ support_count: number; oppose_count: number; user_sentiment: SentimentValue | null }> {
   const project = await getProject(projectId);
-  if (!project) throw new Error(`Project not found: ${projectId}`);
+  if (!project) throw new NotFoundError("Project not found", "project_not_found");
   if (project.status !== "active") {
-    throw new Error("Cannot change sentiment on an archived project");
+    throw new ConflictError("Cannot change sentiment on an archived project", "project_not_active");
   }
 
   const hubDb = db();

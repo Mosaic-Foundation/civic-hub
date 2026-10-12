@@ -19,10 +19,11 @@
 // on a demo hub — so this path cannot be used to skip verification either.
 
 import type { Request, Response } from "express";
+import { UnauthorizedError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { requestVerification, consumePendingCode } from "../modules/civic.auth/index.js";
 import type { User } from "../modules/civic.auth/index.js";
 import { clientIp } from "../utils/clientIp.js";
-import { RateLimitedError } from "../db/rateLimit.js";
 
 export function caller(res: Response): User | undefined {
   return res.locals.authUser as User | undefined;
@@ -36,65 +37,41 @@ export function caller(res: Response): User | undefined {
  * not scoped to the act: it is proof of the mailbox, and the act is
  * authorized by the admin session that accompanies it.
  */
-export async function handleRequestStepUpCode(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleRequestStepUpCode = route(async (req, res) => {
   const user = caller(res);
-  if (!user) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
-  }
-  try {
-    // Counted in the same per-IP and per-address buckets as a sign-in code.
-    await requestVerification(user.email, clientIp(req), "step_up");
-    res.json({
-      message: `A confirmation code has been sent to ${user.email}.`,
-    });
-  } catch (err) {
-    res
-      .status(err instanceof RateLimitedError ? 429 : 400)
-      .json({ error: err instanceof Error ? err.message : "Unknown error" });
-  }
-}
+  if (!user) throw new UnauthorizedError("Authentication required");
+  // Counted in the same per-IP and per-address buckets as a sign-in code.
+  await requestVerification(user.email, clientIp(req), "step_up");
+  res.json({
+    message: `A confirmation code has been sent to ${user.email}.`,
+  });
+});
 
 /**
  * Consume the code the caller supplied, or answer the request with why not.
  *
- * Returns true when the caller proved the mailbox. A false return means a
- * response has ALREADY been sent, so the caller returns immediately and
- * touches nothing — the check runs before any write, deliberately, so a
- * rejected step-up leaves the hub exactly as it was.
+ * Returns normally when the caller proved the mailbox; otherwise it THROWS
+ * a typed error, which the route() wrapping the calling handler answers. The
+ * check runs before any write, deliberately, so a rejected step-up leaves
+ * the hub exactly as it was.
  */
 export async function requireStepUpCode(
   req: Request,
   res: Response,
   rawCode: unknown,
-): Promise<boolean> {
+): Promise<void> {
   const user = caller(res);
-  if (!user) {
-    res.status(401).json({ error: "Authentication required" });
-    return false;
-  }
+  if (!user) throw new UnauthorizedError("Authentication required");
 
   const code = typeof rawCode === "string" ? rawCode.trim() : "";
   if (!code) {
-    res.status(400).json({
-      error:
-        "A confirmation code is required. Request one, then submit it with the change.",
-    });
-    return false;
+    throw new ValidationError(
+      "A confirmation code is required. Request one, then submit it with the change.",
+      "confirmation_code_required",
+    );
   }
 
-  try {
-    // A wrong code here counts toward the same lockout as a wrong sign-in
-    // code, which is the point of sharing the function rather than the rule.
-    await consumePendingCode(user.email, code, clientIp(req));
-    return true;
-  } catch (err) {
-    res
-      .status(err instanceof RateLimitedError ? 429 : 400)
-      .json({ error: err instanceof Error ? err.message : "Unknown error" });
-    return false;
-  }
+  // A wrong code here counts toward the same lockout as a wrong sign-in
+  // code, which is the point of sharing the function rather than the rule.
+  await consumePendingCode(user.email, code, clientIp(req));
 }

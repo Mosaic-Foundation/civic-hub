@@ -3,6 +3,7 @@
 // No I/O beyond the injected emit callback. Persistence of state changes
 // is the host hub's responsibility (via processService.saveProcessState).
 
+import { ForbiddenError, ValidationError } from "../../errors/index.js";
 import type {
   AnnouncementActionOutcome,
   AnnouncementContent,
@@ -86,7 +87,7 @@ export async function updateAnnouncement(
   ctx: AnnouncementProcessContext,
 ): Promise<AnnouncementActionOutcome> {
   if (!canEdit(state, editor.id, editor.role)) {
-    throw new Error("Not authorized to edit this announcement.");
+    throw new ForbiddenError("Not authorized to edit this announcement.", "not_authorized");
   }
 
   const editedFields: Array<"title" | "body" | "links" | "image"> = [];
@@ -153,23 +154,23 @@ function sanitizeContent(
 ): AnnouncementContent {
   const title = (c.title ?? "").trim();
   if (title.length === 0) {
-    throw new Error("Announcement title is required.");
+    throw new ValidationError("Announcement title is required.");
   }
   if (title.length > TITLE_MAX) {
-    throw new Error(`Announcement title must be <= ${TITLE_MAX} characters.`);
+    throw new ValidationError(`Announcement title must be <= ${TITLE_MAX} characters.`);
   }
 
   const body = (c.body ?? "").trim();
   if (!opts.allowEmptyBody && body.length === 0) {
-    throw new Error("Announcement body is required.");
+    throw new ValidationError("Announcement body is required.");
   }
   if (body.length > BODY_MAX) {
-    throw new Error(`Announcement body must be <= ${BODY_MAX} characters.`);
+    throw new ValidationError(`Announcement body must be <= ${BODY_MAX} characters.`);
   }
 
   const rawLinks = Array.isArray(c.links) ? c.links : [];
   if (rawLinks.length > LINKS_MAX) {
-    throw new Error(`At most ${LINKS_MAX} links per announcement.`);
+    throw new ValidationError(`At most ${LINKS_MAX} links per announcement.`);
   }
   const links: AnnouncementLink[] = [];
   for (const l of rawLinks) {
@@ -177,16 +178,16 @@ function sanitizeContent(
     const url = (l?.url ?? "").trim();
     if (label.length === 0 && url.length === 0) continue; // silently skip empty rows
     if (label.length === 0 || url.length === 0) {
-      throw new Error("Each link requires both a label and a URL.");
+      throw new ValidationError("Each link requires both a label and a URL.");
     }
     if (label.length > LINK_LABEL_MAX) {
-      throw new Error(`Link label must be <= ${LINK_LABEL_MAX} characters.`);
+      throw new ValidationError(`Link label must be <= ${LINK_LABEL_MAX} characters.`);
     }
     if (url.length > LINK_URL_MAX) {
-      throw new Error(`Link URL must be <= ${LINK_URL_MAX} characters.`);
+      throw new ValidationError(`Link URL must be <= ${LINK_URL_MAX} characters.`);
     }
     if (!/^https?:\/\//i.test(url)) {
-      throw new Error(`Link URL must start with http:// or https://: ${url}`);
+      throw new ValidationError(`Link URL must start with http:// or https://.`);
     }
     links.push({ label, url });
   }
@@ -203,13 +204,13 @@ function sanitizeContent(
   const rawAlt = typeof c.image_alt === "string" ? c.image_alt.trim() : "";
   if (rawUrl.length > 0) {
     if (rawUrl.length > IMAGE_URL_MAX) {
-      throw new Error(`Image URL must be <= ${IMAGE_URL_MAX} characters.`);
+      throw new ValidationError(`Image URL must be <= ${IMAGE_URL_MAX} characters.`);
     }
     if (!/^https?:\/\//i.test(rawUrl)) {
-      throw new Error("Image URL must start with http:// or https://.");
+      throw new ValidationError("Image URL must start with http:// or https://.");
     }
     if (rawAlt.length > IMAGE_ALT_MAX) {
-      throw new Error(`Alt text must be <= ${IMAGE_ALT_MAX} characters.`);
+      throw new ValidationError(`Alt text must be <= ${IMAGE_ALT_MAX} characters.`);
     }
     image_url = rawUrl;
     image_alt = rawAlt.length > 0 ? rawAlt : null;
@@ -242,10 +243,10 @@ export async function removeAnnouncement(
 ): Promise<{ state: AnnouncementProcessState }> {
   const trimmedReason = (reason ?? "").trim();
   if (trimmedReason.length === 0) {
-    throw new Error("A reason is required when removing an announcement.");
+    throw new ValidationError("A reason is required when removing an announcement.", "reason_required");
   }
   if (trimmedReason.length > MODERATION_REASON_MAX) {
-    throw new Error(`Reason must be <= ${MODERATION_REASON_MAX} characters.`);
+    throw new ValidationError(`Reason must be <= ${MODERATION_REASON_MAX} characters.`);
   }
   if (state.moderation?.removed) return { state };
 

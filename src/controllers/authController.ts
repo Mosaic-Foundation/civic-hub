@@ -8,7 +8,9 @@
 //   GET  /auth/me            — get current user from session token
 //   POST /auth/logout        — destroy session
 
-import { Request, Response } from "express";
+import { UnauthorizedError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
+import type { Request } from "express";
 import {
   requestVerification,
   verifyCode,
@@ -24,65 +26,42 @@ import {
 } from "../modules/civic.auth/index.js";
 import { resolveAuthorship } from "../middleware/auth.js";
 import { clientIp } from "../utils/clientIp.js";
-import { RateLimitedError } from "../db/rateLimit.js";
 
 /**
  * POST /auth/request-code
  * Body: { email: string }
  */
-export async function handleRequestCode(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  const { email } = req.body;
+export const handleRequestCode = route(async (req, res) => {
+  const { email } = req.body ?? {};
 
-  if (!email) {
-    res.status(400).json({ error: "Missing required field: email" });
-    return;
-  }
+  if (!email) throw new ValidationError("Missing required field: email");
 
-  try {
-    const result = await requestVerification(String(email), clientIp(req));
-    res.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(err instanceof RateLimitedError ? 429 : 400).json({ error: message });
-  }
-}
+  const result = await requestVerification(String(email), clientIp(req));
+  res.json(result);
+});
 
 /**
  * POST /auth/verify
  * Body: { email: string, code: string }
  */
-export async function handleVerify(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  const { email, code } = req.body;
+export const handleVerify = route(async (req, res) => {
+  const { email, code } = req.body ?? {};
 
-  if (!email || !code) {
-    res.status(400).json({ error: "Missing required fields: email, code" });
-    return;
-  }
+  if (!email || !code) throw new ValidationError("Missing required fields: email, code");
 
-  try {
-    const result = await verifyCode(String(email), String(code), clientIp(req));
-    // Include role + author_label + office alongside the token + user so
-    // the UI gets the posting-privilege bit and the byline pill without a
-    // follow-up /auth/me call.
-    const authorship = await resolveAuthorship(result.user?.email);
-    res.json({
-      ...result,
-      role: authorship?.role ?? null,
-      author_label: authorship?.label ?? null,
-      official_type: authorship?.official?.type ?? null,
-      official_title: authorship?.official?.title ?? null,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(err instanceof RateLimitedError ? 429 : 400).json({ error: message });
-  }
-}
+  const result = await verifyCode(String(email), String(code), clientIp(req));
+  // Include role + author_label + office alongside the token + user so
+  // the UI gets the posting-privilege bit and the byline pill without a
+  // follow-up /auth/me call.
+  const authorship = await resolveAuthorship(result.user?.email);
+  res.json({
+    ...result,
+    role: authorship?.role ?? null,
+    author_label: authorship?.label ?? null,
+    official_type: authorship?.official?.type ?? null,
+    official_title: authorship?.official?.title ?? null,
+  });
+});
 
 /**
  * POST /auth/handoff
@@ -92,26 +71,18 @@ export async function handleVerify(
  * here with a two-minute handoff token in the URL fragment; the page swaps
  * it for an ordinary session. Same answer shape as /auth/verify.
  */
-export async function handleHandoff(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleHandoff = route(async (req, res) => {
   const { handoff } = (req.body ?? {}) as { handoff?: unknown };
-  try {
-    const result = await exchangeHandoff(typeof handoff === "string" ? handoff : "");
-    const authorship = await resolveAuthorship(result.user?.email);
-    res.json({
-      ...result,
-      role: authorship?.role ?? null,
-      author_label: authorship?.label ?? null,
-      official_type: authorship?.official?.type ?? null,
-      official_title: authorship?.official?.title ?? null,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(401).json({ error: message });
-  }
-}
+  const result = await exchangeHandoff(typeof handoff === "string" ? handoff : "");
+  const authorship = await resolveAuthorship(result.user?.email);
+  res.json({
+    ...result,
+    role: authorship?.role ?? null,
+    author_label: authorship?.label ?? null,
+    official_type: authorship?.official?.type ?? null,
+    official_title: authorship?.official?.title ?? null,
+  });
+});
 
 /**
  * POST /auth/residency
@@ -122,20 +93,15 @@ export async function handleHandoff(
  * residency affirmation. full_name is required unless the account
  * already has one (pre-policy accounts re-affirming for other reasons).
  */
-export async function handleAffirmResidency(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleAffirmResidency = route(async (req, res) => {
   const token = extractToken(req);
   if (!token) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
+    throw new UnauthorizedError("Authentication required");
   }
 
   const user = await getUserFromToken(token);
   if (!user) {
-    res.status(401).json({ error: "Invalid or expired session" });
-    return;
+    throw new UnauthorizedError("Invalid or expired session");
   }
 
   const { full_name } = (req.body ?? {}) as { full_name?: unknown };
@@ -143,42 +109,31 @@ export async function handleAffirmResidency(
     !user.full_name &&
     (typeof full_name !== "string" || full_name.trim().length === 0)
   ) {
-    res.status(400).json({ error: "full_name is required" });
-    return;
+    throw new ValidationError("full_name is required");
   }
 
-  try {
-    const updated = await affirmResidency(
-      user.id,
-      typeof full_name === "string" && full_name.trim().length > 0
-        ? full_name
-        : undefined,
-    );
-    res.json({ user: updated });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
-  }
-}
+  const updated = await affirmResidency(
+    user.id,
+    typeof full_name === "string" && full_name.trim().length > 0
+      ? full_name
+      : undefined,
+  );
+  res.json({ user: updated });
+});
 
 /**
  * GET /auth/me
  * Header: Authorization: Bearer <token>
  */
-export async function handleGetMe(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleGetMe = route(async (req, res) => {
   const token = extractToken(req);
   if (!token) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
+    throw new UnauthorizedError("Authentication required");
   }
 
   const user = await getUserFromToken(token);
   if (!user) {
-    res.status(401).json({ error: "Invalid or expired session" });
-    return;
+    throw new UnauthorizedError("Invalid or expired session");
   }
 
   // Include the derived role + author label so the UI can gate the admin
@@ -192,7 +147,7 @@ export async function handleGetMe(
     official_type: authorship?.official?.type ?? null,
     official_title: authorship?.official?.title ?? null,
   });
-}
+});
 
 /**
  * POST /auth/accept-tos
@@ -205,33 +160,22 @@ export async function handleGetMe(
  * checkbox path and the re-acceptance modal that fires when a user's
  * stored version is older than CURRENT_LEGAL_VERSION. Slice 11.
  */
-export async function handleAcceptTos(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleAcceptTos = route(async (req, res) => {
   const token = extractToken(req);
   if (!token) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
+    throw new UnauthorizedError("Authentication required");
   }
   const user = await getUserFromToken(token);
   if (!user) {
-    res.status(401).json({ error: "Invalid or expired session" });
-    return;
+    throw new UnauthorizedError("Invalid or expired session");
   }
   const { version } = (req.body ?? {}) as { version?: unknown };
   if (typeof version !== "string" || version.trim().length === 0) {
-    res.status(400).json({ error: "version (string) is required" });
-    return;
+    throw new ValidationError("version (string) is required");
   }
-  try {
-    const updated = await acceptLegalTerms(user.id, version.trim());
-    res.json({ user: updated });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
-  }
-}
+  const updated = await acceptLegalTerms(user.id, version.trim());
+  res.json({ user: updated });
+});
 
 /**
  * PATCH /auth/me
@@ -242,19 +186,14 @@ export async function handleAcceptTos(
  * user's real name; used by the re-gate flow for accounts that pre-date
  * the required-name policy. At least one field must be present.
  */
-export async function handleUpdateProfile(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleUpdateProfile = route(async (req, res) => {
   const token = extractToken(req);
   if (!token) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
+    throw new UnauthorizedError("Authentication required");
   }
   const user = await getUserFromToken(token);
   if (!user) {
-    res.status(401).json({ error: "Invalid or expired session" });
-    return;
+    throw new UnauthorizedError("Invalid or expired session");
   }
   const { display_name, full_name, hide_ai_drafting_help } = (req.body ?? {}) as {
     display_name?: unknown;
@@ -265,59 +204,47 @@ export async function handleUpdateProfile(
   const hasFullName = full_name !== undefined;
   const hasHideDraftingHelp = hide_ai_drafting_help !== undefined;
   if (!hasDisplayName && !hasFullName && !hasHideDraftingHelp) {
-    res.status(400).json({ error: "Nothing to update" });
-    return;
+    throw new ValidationError("Nothing to update");
   }
   if (hasDisplayName && display_name !== null && typeof display_name !== "string") {
-    res.status(400).json({ error: "display_name must be a string or null" });
-    return;
+    throw new ValidationError("display_name must be a string or null");
   }
   if (hasFullName && typeof full_name !== "string") {
-    res.status(400).json({ error: "full_name must be a string" });
-    return;
+    throw new ValidationError("full_name must be a string");
   }
   if (hasHideDraftingHelp && typeof hide_ai_drafting_help !== "boolean") {
-    res.status(400).json({ error: "hide_ai_drafting_help must be a boolean" });
-    return;
+    throw new ValidationError("hide_ai_drafting_help must be a boolean");
   }
-  try {
-    let updated = user;
-    if (hasFullName) {
-      updated = await updateFullName(user.id, full_name as string);
-    }
-    if (hasDisplayName) {
-      updated = await updateDisplayName(
-        user.id,
-        typeof display_name === "string" ? display_name : null,
-      );
-    }
-    if (hasHideDraftingHelp) {
-      updated = await updateHideAiDraftingHelp(
-        user.id,
-        hide_ai_drafting_help as boolean,
-      );
-    }
-    res.json({ user: updated });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+  let updated = user;
+  if (hasFullName) {
+    updated = await updateFullName(user.id, full_name as string);
   }
-}
+  if (hasDisplayName) {
+    updated = await updateDisplayName(
+      user.id,
+      typeof display_name === "string" ? display_name : null,
+    );
+  }
+  if (hasHideDraftingHelp) {
+    updated = await updateHideAiDraftingHelp(
+      user.id,
+      hide_ai_drafting_help as boolean,
+    );
+  }
+  res.json({ user: updated });
+});
 
 /**
  * POST /auth/logout
  * Header: Authorization: Bearer <token>
  */
-export async function handleLogout(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleLogout = route(async (req, res) => {
   const token = extractToken(req);
   if (token) {
     await logout(token);
   }
   res.json({ message: "Logged out" });
-}
+});
 
 /**
  * DELETE /auth/me
@@ -329,28 +256,18 @@ export async function handleLogout(
  * (comments, endorsements, vote-participation) are intentionally
  * orphaned, not deleted — see deleteAccount() doc comment.
  */
-export async function handleDeleteAccount(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleDeleteAccount = route(async (req, res) => {
   const token = extractToken(req);
   if (!token) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
+    throw new UnauthorizedError("Authentication required");
   }
-  try {
-    const user = await getUserFromToken(token);
-    if (!user) {
-      res.status(401).json({ error: "Invalid or expired session" });
-      return;
-    }
-    await deleteAccount(user.id, user.email);
-    res.json({ message: "Account deleted" });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+  const user = await getUserFromToken(token);
+  if (!user) {
+    throw new UnauthorizedError("Invalid or expired session");
   }
-}
+  await deleteAccount(user.id, user.email);
+  res.json({ message: "Account deleted" });
+});
 
 // --- Helpers ---
 

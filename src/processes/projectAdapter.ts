@@ -13,6 +13,7 @@
 // returns only the canonical fields carried on the `processes` row. Full
 // project detail continues to be served by the dedicated /projects routes.
 
+import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
 import { forHub } from "../db/forHub.js";
@@ -148,9 +149,9 @@ const projectAdapter: ProcessHandler = {
     _process: Process,
     action: ProcessAction,
   ): Promise<Record<string, unknown>> {
-    throw new Error(
-      `civic.project does not accept generic process actions (received "${action.type}"). ` +
-        `Use the /projects endpoints for updates, comments, and sentiment.`,
+    throw new ValidationError(
+      "Projects don't take actions here. Use the project's own page for updates, comments, and sentiment.",
+        "action_not_supported",
     );
   },
 

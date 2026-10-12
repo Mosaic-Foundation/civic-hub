@@ -20,7 +20,9 @@
 //
 // Slice 5; per hub since Phase 2c.
 
-import { Request, Response } from "express";
+import { env } from "../config/env.js";
+import { ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { currentHubId } from "../config/hubContext.js";
 import { getEventsSince } from "../events/eventStore.js";
 import { getProcess } from "../services/processService.js";
@@ -171,7 +173,7 @@ export async function runDigestForHub(input: {
   }
 
   const started = Date.now();
-  const secret = process.env.DIGEST_UNSUBSCRIBE_SECRET;
+  const secret = env.DIGEST_UNSUBSCRIBE_SECRET;
   if (!secret || secret.length < 16) {
     return {
       status: 500,
@@ -487,12 +489,11 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export async function handleUnsubscribeDigest(
-  req: Request,
-  res: Response,
-): Promise<void> {
+// An HTML page for a person clicking a link in an email, so its refusals are
+// rendered pages, not JSON; route() still answers anything unforeseen.
+export const handleUnsubscribeDigest = route(async (req, res) => {
   const token = typeof req.query.token === "string" ? req.query.token : "";
-  const secret = process.env.DIGEST_UNSUBSCRIBE_SECRET;
+  const secret = env.DIGEST_UNSUBSCRIBE_SECRET;
 
   if (!secret || secret.length < 16) {
     res.status(500).type("html").send(
@@ -547,8 +548,8 @@ export async function handleUnsubscribeDigest(
     // happened, signed in or not.
     res.redirect(302, `${uiBaseUrl()}/settings?digest=unsubscribed`);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error(`[digest] unsubscribe failed for user=${userId}: ${message}`);
+    // Logged for the operator; the page below says nothing of the cause.
+    console.error(`[digest] unsubscribe failed for user=${userId}:`, err instanceof Error ? err.message : err);
     res.status(500).type("html").send(
       renderUnsubscribePage({
         title: "Unsubscribe failed",
@@ -559,7 +560,7 @@ export async function handleUnsubscribeDigest(
       }),
     );
   }
-}
+});
 
 // --- PATCH /user/settings/digest -------------------------------------------
 
@@ -572,54 +573,38 @@ export async function handleUnsubscribeDigest(
  *
  * Returns { digest_frequency_days: number|null }.
  */
-export async function handlePatchDigestSubscription(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    const body = (req.body ?? {}) as {
-      subscribed?: unknown;
-      digest_frequency_days?: unknown;
-    };
+export const handlePatchDigestSubscription = route(async (req, res) => {
+  const user = getAuthUser(res);
+  const body = (req.body ?? {}) as {
+    subscribed?: unknown;
+    digest_frequency_days?: unknown;
+  };
 
-    let frequencyDays: number | null;
+  let frequencyDays: number | null;
 
-    if (body.digest_frequency_days !== undefined) {
-      // New format: explicit frequency
-      if (body.digest_frequency_days === null) {
-        frequencyDays = null;
-      } else if (
-        typeof body.digest_frequency_days === "number" &&
-        Number.isInteger(body.digest_frequency_days) &&
-        body.digest_frequency_days >= 1 &&
-        body.digest_frequency_days <= 30
-      ) {
-        frequencyDays = body.digest_frequency_days;
-      } else {
-        res.status(400).json({
-          error:
-            "digest_frequency_days must be null (unsubscribe) or an integer 1-30.",
-        });
-        return;
-      }
-    } else if (typeof body.subscribed === "boolean") {
-      // Legacy boolean format for backwards compatibility
-      frequencyDays = body.subscribed ? 1 : null;
+  if (body.digest_frequency_days !== undefined) {
+    // New format: explicit frequency
+    if (body.digest_frequency_days === null) {
+      frequencyDays = null;
+    } else if (
+      typeof body.digest_frequency_days === "number" &&
+      Number.isInteger(body.digest_frequency_days) &&
+      body.digest_frequency_days >= 1 &&
+      body.digest_frequency_days <= 30
+    ) {
+      frequencyDays = body.digest_frequency_days;
     } else {
-      res.status(400).json({
-        error:
-          "Body must include { digest_frequency_days: number|null } or { subscribed: boolean }",
-      });
-      return;
+      throw new ValidationError("digest_frequency_days must be null (unsubscribe) or an integer 1-30.");
     }
-
-    const updated = await setDigestFrequency(user.id, frequencyDays);
-    res.json({
-      digest_frequency_days: updated.digest_frequency_days,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+  } else if (typeof body.subscribed === "boolean") {
+    // Legacy boolean format for backwards compatibility
+    frequencyDays = body.subscribed ? 1 : null;
+  } else {
+    throw new ValidationError("Body must include { digest_frequency_days: number|null } or { subscribed: boolean }");
   }
-}
+
+  const updated = await setDigestFrequency(user.id, frequencyDays);
+  res.json({
+    digest_frequency_days: updated.digest_frequency_days,
+  });
+});

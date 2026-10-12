@@ -305,7 +305,7 @@ describe("a missing-timestamps summary is flagged, not published", () => {
       quality_flag: flaggedState().quality_flag,
     };
     expect(() => acceptRevision(state)).toThrow(FlaggedSummaryError);
-    acceptRevision(state, undefined, { confirmFlagged: true });
-    expect(state.quality_flag?.kind).toBe("timestamps_missing");
+    const accepted = acceptRevision(state, undefined, { confirmFlagged: true });
+    expect(accepted.quality_flag?.kind).toBe("timestamps_missing");
   });
 });

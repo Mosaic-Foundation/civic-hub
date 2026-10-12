@@ -80,6 +80,7 @@ export default function WordcloudTeaser() {
 
   useEffect(() => {
     if (!id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
       setHidden(true);
       return;
     }

@@ -14,7 +14,7 @@
 // cannot drift from what the mapping table can actually emit, and
 // tests/unit/extensionTerms.test.ts fails if a term is emitted undeclared.
 
-import type { Request, Response } from "express";
+import { route } from "../http/route.js";
 import {
   EXTENSION_TERMS,
   hubNamespace,
@@ -24,7 +24,7 @@ import { hubName } from "../config/hub.js";
 
 const LD_JSON = "application/ld+json; charset=utf-8";
 
-export function handleGetNamespace(_req: Request, res: Response): void {
+export const handleGetNamespace = route((_req, res) => {
   const ns = hubNamespace();
 
   res.setHeader("Content-Type", LD_JSON);
@@ -53,4 +53,4 @@ export function handleGetNamespace(_req: Request, res: Response): void {
       comment: t.why,
     })),
   });
-}
+});

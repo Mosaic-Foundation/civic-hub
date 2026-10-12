@@ -16,7 +16,7 @@ import { buildRespondTool } from "../../src/modules/civic.assistant/service";
 import { buildSystemPrompt } from "../../src/modules/civic.assistant/systemPrompt";
 import type { DraftState, HubConfig } from "../../src/modules/civic.assistant/models";
 
-const HUB: HubConfig = { hub_name: "Test Hub", community_description: "residents of Testville" };
+const HUB: HubConfig = { hub_name: "Test Hub", community_description: "residents of Testville", code_of_conduct: "" };
 const base: DraftState = { title: "Which rules?", description: "", sources: "", considerations: "" };
 
 const active = (method: string) =>

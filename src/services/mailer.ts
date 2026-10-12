@@ -25,6 +25,8 @@
 // are officials and third parties who should not see each other's
 // addresses.
 
+import { env } from "../config/env.js";
+import { UnavailableError } from "../errors/index.js";
 import { sendEmail as sendViaResend } from "../utils/email.js";
 import { mailDecision } from "./mailGuard.js";
 import { hubModeHoldReason, type DeliveryReport } from "../shared/delivery.js";
@@ -54,7 +56,7 @@ export async function sendEmail(message: EmailMessage): Promise<DeliveryReport> 
     );
   }
 
-  if (!process.env.RESEND_API_KEY) {
+  if (!env.RESEND_API_KEY) {
     if (deliverable.length === 0) return report;
     // Visible, structured fallback so local dev runs can see what would
     // have been sent. Treated as success for flow purposes.
@@ -87,7 +89,13 @@ export async function sendEmail(message: EmailMessage): Promise<DeliveryReport> 
   }
 
   if (failures.length > 0) {
-    throw new Error(`Email delivery failed: ${failures.join("; ")}`);
+    // The person gets a plain message; which address failed and why (the
+    // sender's own text) stays in the log through the cause.
+    throw new UnavailableError(
+      "Email couldn't be delivered to everyone. Please try again in a moment.",
+      "email_unavailable",
+      { cause: new Error(`Email delivery failed: ${failures.join("; ")}`) },
+    );
   }
   console.log(
     `[mailer] delivered "${message.subject}" to ${report.sent.length} recipient(s)`,

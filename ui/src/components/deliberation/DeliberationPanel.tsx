@@ -56,8 +56,8 @@ export default function DeliberationPanel({ processId, showTopic, onParticipated
       const p = await getDeliberation(processId);
       setProcess(p);
       setHasSubmitted(!!p.has_submitted);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
     }
   }, [processId, user?.id]);
 

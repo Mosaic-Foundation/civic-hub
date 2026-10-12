@@ -102,7 +102,7 @@ test.describe("Demo sign-in and sign-up", () => {
     const keys = ["plugin.wordcloud.enabled", "plugin.wordcloud.onboarding_id", "plugin.vote.enabled"];
     const before = await Promise.all(keys.map(async (k) => [k, await storedSetting(hub.id, k)] as const));
     restore = async () => {
-      const stored = before.filter(([, v]) => v !== undefined);
+      const stored = before.flatMap(([k, v]) => (v === undefined ? [] : ([[k, v]] as const)));
       if (stored.length) await putPlugins(request, token, Object.fromEntries(stored));
       // A key the hub had no row for goes back to having none.
       for (const [k, v] of before) {

@@ -1685,9 +1685,66 @@ read is reported and its rows are returned, so a resident never gets an error
 page from it. Tests and local runs throw. It is deliberately not keyed off the
 production database's host.
 
-Not yet routed through it: the terminal error handler in `app.ts` and the
-many `console.error` lines in services and jobs. Moving them is a later,
-mechanical pass, best done when error tracking is actually connected.
+Since Audit 4 every unexpected HTTP error goes through it (`http.unexpected`,
+see "Error responses" below). Not yet routed through it: the many
+`console.error` lines in services and jobs, a later mechanical pass best done
+when error tracking is actually connected.
+
+### Error responses (Audit 4, 2026-10-12, Adam)
+
+Every error the hub, the console and the start page answer has one shape. Later work (actions that
+show right away, the plugin conformance suite) builds its messages on it.
+
+```json
+{ "error": "<a sentence a person can read>", "code": "<snake_case>", "ref": "<8 hex, only on 5xx>" }
+```
+
+- **`error`** is what the UI shows. It is plain words, with no ids, table names, SQL or upstream
+  text. It never carries a value from the database.
+- **`code`** is what code branches on (`already_submitted`, `vote_closed`, `process_changed`,
+  `name_required`, `no_hub`, `hub_moved`…). Codes are stable; a message may be reworded. Before
+  Audit 4 a few answers carried the code in `error` (`no_hub`, `hub_suspended`, `hub_moved`); the
+  UI reads `code` and falls back to `error`.
+- **`ref`** appears on an unexpected error (500) and on 503. The same reference is on the log
+  line, so a person can quote it.
+- **Extra fields** are allowed beside these where a caller needs them (`location` on `hub_moved`,
+  `needs_confirmation` on a flagged summary). 429 and 503 send `Retry-After` when the thrower
+  knows it.
+
+**Status comes from the error's type, never from its text.** The typed errors are in
+`src/errors/index.ts`:
+
+| Class | Status | Use |
+|---|---|---|
+| `ValidationError` | 400 | missing field, bad value, broken rule |
+| `UnauthorizedError` | 401 | not signed in, session ended |
+| `ForbiddenError` | 403 | signed in, not allowed |
+| `NotFoundError` | 404 | no such thing, or hidden on purpose |
+| `ConflictError` | 409 | exists, but its state forbids it (already submitted, closed, changed meanwhile) |
+| `PayloadTooLargeError` | 413 | upload too large |
+| `RateLimitedError` | 429 | a limit |
+| `UnavailableError` | 503 | something it needs is down; try again |
+
+They share the base `CivicError(status, code, message)`. Plugins throw them too: a process
+handler's refusal must be one of these. **Any other error is unexpected**: it answers 500 with
+"Something went wrong on our side, and it may not have been saved. Reload the page and try
+again. (Reference …)".
+
+**One path.**
+- Every hub handler and middleware is wrapped by `route()` (`src/http/route.ts`). A throw or
+  rejection goes to `sendError()`, and so does the terminal error handler in `app.ts`.
+- The console and the start page keep their own wrappers (`src/control/router.ts`,
+  `startRouter.ts`) and answer the same shape.
+
+**What is logged (Adam).**
+- An unexpected error or a 503 writes the full error and stack to the deployment log, with the
+  reference.
+- It also writes one line through `reportError("http.unexpected" | "http.unavailable", …)`.
+  That line carries the error's class, its message with every value redacted
+  (`src/utils/redact.ts`: emails, quoted values, Postgres key details, ids, URLs, tokens, long
+  numbers), the method, the **route pattern** (`/process/:id/action`, never the URL), the status,
+  the database code and the reference.
+- A refusal (4xx) is not reported.
 
 ### Sign-in and abuse limits (Audit 2, 2026-10-11, Adam)
 

@@ -7,6 +7,8 @@
 // and scripts/create-hub.ts both call it. What differs between them is policy
 // the caller passes in (which modes it may create), not the steps.
 
+import { envVar, processEnv } from "../config/env.js";
+import { CivicError, codeForStatus } from "../errors/index.js";
 import { DEFAULT_HUB_BANNER } from "../shared/platform.js";
 import { getDb } from "../db/client.js";
 import { readAll } from "../db/readAll.js";
@@ -57,10 +59,9 @@ import {
   type HandoverKey,
 } from "../shared/settingOwners.js";
 
-export class ControlInputError extends Error {
-  constructor(message: string, readonly status = 400) {
-    super(message);
-    this.name = "ControlInputError";
+export class ControlInputError extends CivicError {
+  constructor(message: string, status = 400) {
+    super(status, codeForStatus(status), message);
   }
 }
 
@@ -151,7 +152,7 @@ export interface PluginState {
 
 function envFallback(key: string): string | undefined {
   for (const name of ENV_FALLBACKS[key] ?? []) {
-    const v = process.env[name]?.trim();
+    const v = envVar(name)?.trim();
     if (v) return v;
   }
   return undefined;
@@ -239,7 +240,7 @@ export function hostnameShapeProblem(hostname: string): string | null {
 // --- The MEETING_* / FLOYD_NEWS_* guard --------------------------------------
 
 /** Set, non-empty env vars whose values every hub on the deployment falls back to. */
-export function hubSpecificEnvVars(env: NodeJS.ProcessEnv = process.env): string[] {
+export function hubSpecificEnvVars(env: NodeJS.ProcessEnv = processEnv()): string[] {
   return Object.keys(env)
     .filter((k) => /^(MEETING_|FLOYD_NEWS_)/.test(k) && (env[k] ?? "").trim() !== "")
     .sort();
@@ -253,7 +254,7 @@ export function hubSpecificEnvVars(env: NodeJS.ProcessEnv = process.env): string
  * rows at the cutover; the env vars stay only for the rollback week
  * (RUNBOOK §7).
  */
-export function productionCreateGuard(existingHubs: number, env: NodeJS.ProcessEnv = process.env): string | null {
+export function productionCreateGuard(existingHubs: number, env: NodeJS.ProcessEnv = processEnv()): string | null {
   if (!isProductionDatabase() || existingHubs === 0) return null;
   const vars = hubSpecificEnvVars(env);
   if (vars.length === 0) return null;

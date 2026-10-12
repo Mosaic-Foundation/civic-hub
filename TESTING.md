@@ -27,6 +27,9 @@ supabase start
 # API integration tests (requires dev server running on :3000)
 npm run test
 
+# Type-check tests/, scripts/ and api/ (vitest does not; CI does)
+npm run typecheck
+
 # E2E browser tests (auto-starts backend + frontend if not running)
 npm run test:e2e
 
@@ -761,6 +764,55 @@ Hit the Express backend directly via fetch, no browser. Fast, high coverage.
       untouched.
   - The full-suite runs came before two small changes: the schema-contract column and the VotePanel account fix.
     Re-run after them: unit, `/health`, and the two vote specs.
+- **Audit 4, errors, tooling and the health check (2026-10-12):**
+  - **New tests:**
+    - `tests/api/auditDrafts.test.ts`, "a failed auto-approval leaves the submission in the queue" (guards `33b65b8`).
+      A trigger on the test's own rows (title `Autofail <run>`) makes a vote's "propose" step fail. The admin's
+      submit still answers 201 with `auto_approved: false`, one review waits as `pending_review`, and the draft
+      stays `submitted`. A second submit is 409 `already_submitted`. It fails on the code before `33b65b8`.
+    - Unit `functionContract` checks three things:
+      - every `.rpc()` in `src/` and `api/` names a listed function, and every listed one is called;
+      - the newest migration definition of each has exactly the listed arguments;
+      - `compareFunctions()` reports missing, mismatched and overloaded functions.
+    - Unit `errorResponse` checks:
+      - status from the type, never from the text;
+      - no database text in a 500;
+      - the log has the full error, and `reportError` has a redacted line with the route pattern;
+      - Retry-After, streams, and `redactValues`.
+    - Unit `envConfig`: read at access time, empty is unset, and the dev flags are refused in production.
+    - `tests/api/health.test.ts`: `/health` counts the functions. In a rolled-back transaction it finds a function
+      left at Audit 2's arguments and a second version of another. It also checks `function_catalog`'s grants.
+  - **Status changes the suites now pin** (BUILD-PLAN "Error responses"):
+    - a second submit is 409 `already_submitted`, whether or not the first has finished;
+    - a closed vote is 409 `vote_closed`, and so is `already_voted`;
+    - a conversation action from the wrong status is 409;
+    - a sign-in lockout is 429 `locked_out`, and a closed beta is 403 `beta_closed`;
+    - with no `ANTHROPIC_API_KEY`, the assistant answers 503 `ai_not_configured` (it was a 500 carrying the
+      variable's name, which the UI matched on);
+    - hub resolver answers carry the code in `code` (`no_hub`, `hub_moved`…) and a sentence in `error`.
+  - **Do not call a function as a role that may not execute it, on the local stack.** On
+    `supabase/postgres:17.6.1.111` (CLI 2.110.0), "permission denied for function" kills the backend with signal 11,
+    and the whole database restarts. This happens through PostgREST and in plain SQL alike, and for older functions
+    too (`tenancy_catalog`, `rate_limit_take`). A denied table read is fine. Mid-suite it shows up as
+    `PGRST001`/`PGRST002` 503s and "the database system is not accepting connections" in unrelated files. Check
+    grants with `has_function_privilege()` instead. Whether hosted projects behave the same is open (Audit 4
+    report).
+  - **Playwright without a scratch config.** `playwright.config.ts` takes `CIVIC_E2E_BASE_URL`, and
+    `ui/vite.config.ts` proxies `/api` in `vite preview` to `CIVIC_PREVIEW_API`. Locally:
+    - start `audit3-api-3270`, then `audit4-ui-5280` (`.claude/launch.json` at the monorepo root);
+    - run `CIVIC_E2E_BASE_URL=http://localhost:5280 CIVIC_E2E_UI_ORIGIN=http://localhost:5280
+      CIVIC_E2E_API_BASE=http://localhost:5280/api CIVIC_API_BASE=http://localhost:3270 npx playwright test`.
+    - CI does the same on :4173 (`.github/workflows/e2e.yml`).
+  - **Results:**
+    - lint, unit and API with the service role: 171 files, 2,035 passed, 7 skipped (unit 125 files);
+    - API with hub tokens: 46 files, 571 passed and 7 skipped. One of ten simultaneous ballots got the local
+      gateway's "invalid response from the upstream server" in two of three full passes, and the file passed alone
+      three times (seen once in Audit 3). One full pass also had the console refuse to create a sample hub, which
+      did not recur;
+    - Playwright: 49 passed, 2 skipped;
+    - type-check of tests, scripts and `api/`: 0 errors;
+    - UI lint: 0 errors;
+    - `npm audit`: 0 in both packages.
 - **Audit 3, concurrency and one drafts system (2026-10-11):**
   - **New suites:** `tests/api/auditConcurrency.test.ts` (twelve readers, the list and an admin's close at once on
     an expired vote: one `ended`, one `result_published`, one brief; two admin closes; a ballot after the deadline
@@ -1397,6 +1449,15 @@ The goal: before any push to `main`, every row in this table should have at leas
 ## Running integration tests in CI
 
 **Read this before writing anything in `tests/api/` or `tests/e2e/`.**
+
+**Update 2026-10-12 (Audit 4): CI checks everything the suites rely on.**
+- `ci.yml` uses npm 12.2.0 and `npm ci` (as Vercel does), pins every action by commit and the Supabase CLI
+  (2.110.0), and runs `npm audit --audit-level=high` in both packages.
+- It type-checks `tests/`, `scripts/` and `api/` (`npm run typecheck`, `tsconfig.check.json`) and runs the UI lint
+  with its import boundaries.
+- **The Playwright suite runs in `.github/workflows/e2e.yml`.** It runs on pushes to `multi-tenant` and by hand
+  (workflow_dispatch); a docs-only push skips it, and a newer push cancels the older run. It uses a preview
+  build on :4173 and one service-role API on :3000, on the same seeded local stack.
 
 **Update 2026-09-25 (multi-tenant Phase 3): the API layer runs twice.** The
 `api-tests` job starts two servers on the one local stack — `:3000` with

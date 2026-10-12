@@ -18,6 +18,7 @@
 // document scans are unreadable), body comes from the feed's description when
 // present, otherwise a strict Claude paraphrase of the title, otherwise empty.
 //
+import { env } from "../config/env.js";
 import {
   discoverNewsEntries,
   paraphraseTitle,
@@ -46,7 +47,7 @@ import { civicPlaceShortName, processJurisdiction } from "../config/hub.js";
 const CRON_ACTOR = "system:news-sync-cron";
 
 function modelName(): string {
-  return process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL;
+  return env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL;
 }
 
 /**
@@ -176,7 +177,7 @@ export async function runNewsSyncForHub(): Promise<NewsSyncHubOutcome> {
         // non-fatal: we fall back to an empty body and log a warning.
         let body = entry.body;
         if (!body) {
-          if (!process.env.ANTHROPIC_API_KEY) {
+          if (!env.ANTHROPIC_API_KEY) {
             console.warn(
               `[news-sync] no body and ANTHROPIC_API_KEY unset — skipping paraphrase for ${entry.share_url}`,
             );

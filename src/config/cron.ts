@@ -24,6 +24,7 @@
 // "disabled" so a human reading the log sees a decision rather than a
 // no-op that might be a bug.
 
+import { env } from "./env.js";
 import type { NextFunction, Request, Response } from "express";
 
 /**
@@ -33,7 +34,7 @@ import type { NextFunction, Request, Response } from "express";
  * a serverless instance that outlives a configuration change picks it up.
  */
 export function cronsEnabled(): boolean {
-  return process.env.HUB_CRON_ENABLED?.trim().toLowerCase() !== "false";
+  return env.HUB_CRON_ENABLED?.trim().toLowerCase() !== "false";
 }
 
 /**

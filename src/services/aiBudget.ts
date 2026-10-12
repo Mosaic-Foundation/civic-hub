@@ -6,6 +6,7 @@
 // Every call the budget counts is recorded here too (recordAiUsage), with its
 // purpose, its model and its tokens, and no account id.
 
+import { CivicError } from "../errors/index.js";
 import { forHub } from "../db/forHub.js";
 import { DAY_MS, HOUR_MS, takeRateLimit } from "../db/rateLimit.js";
 import { currentHubId, currentHubIdOrNull } from "../config/hubContext.js";
@@ -18,15 +19,14 @@ export type AiPurpose = "assistant.message" | "assistant.suggest" | "assistant.r
 const BUDGET_PURPOSES: readonly AiPurpose[] = ["assistant.message", "assistant.suggest", "assistant.review"];
 
 /** Refused by a limit. `status` is what the HTTP layer answers. */
-export class AiLimitError extends Error {
+export class AiLimitError extends CivicError {
   constructor(
     message: string,
-    readonly status: number,
+    status: number,
     /** The hub's budget is spent (as opposed to one person's limit). */
     readonly budget = false,
   ) {
-    super(message);
-    this.name = "AiLimitError";
+    super(status, budget ? "ai_budget_spent" : "ai_rate_limited", message);
   }
 }
 

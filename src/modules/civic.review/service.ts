@@ -1,3 +1,4 @@
+import { ConflictError, ForbiddenError, NotFoundError } from "../../errors/index.js";
 import { forHub, type HubDb } from "../../db/forHub.js";
 import { reportError } from "../../utils/reportError.js";
 import { assertProcessTypeEnabled } from "../../services/pluginGate.js";
@@ -282,9 +283,9 @@ export async function approveReview(
   adminActor: string,
 ): Promise<{ review: ProcessReview; process_id: string }> {
   const review = await getReview(reviewId);
-  if (!review) throw new Error("Review not found");
+  if (!review) throw new NotFoundError("Review not found");
   if (review.status !== "pending_review") {
-    throw new Error(`Cannot approve review in status: ${review.status}`);
+    throw new ConflictError(`Cannot approve review in status: ${review.status}`, "review_not_pending");
   }
 
   // Load the process
@@ -345,7 +346,7 @@ export async function approveReview(
     .select();
   if (claimedRows.length === 0) {
     // Someone already approved this between our read and write.
-    throw new Error("Review has already been approved");
+    throw new ConflictError("Review has already been approved", "already_approved");
   }
   const updatedReview = claimedRows[0];
 
@@ -551,10 +552,11 @@ export async function requestChanges(
   note: string,
 ): Promise<ProcessReview> {
   const review = await getReview(reviewId);
-  if (!review) throw new Error("Review not found");
+  if (!review) throw new NotFoundError("Review not found");
   if (review.status !== "pending_review") {
-    throw new Error(
+    throw new ConflictError(
       `Cannot request changes on review in status: ${review.status}`,
+      "review_not_pending",
     );
   }
 
@@ -618,9 +620,9 @@ export async function declineReview(
   reason: string,
 ): Promise<ProcessReview> {
   const review = await getReview(reviewId);
-  if (!review) throw new Error("Review not found");
+  if (!review) throw new NotFoundError("Review not found");
   if (review.status !== "pending_review") {
-    throw new Error(`Cannot decline review in status: ${review.status}`);
+    throw new ConflictError(`Cannot decline review in status: ${review.status}`, "review_not_pending");
   }
 
   // Archive the process
@@ -692,14 +694,15 @@ export async function reviseAndResubmit(
   input: ReviseInput,
 ): Promise<ProcessReview> {
   const review = await getReview(reviewId);
-  if (!review) throw new Error("Review not found");
+  if (!review) throw new NotFoundError("Review not found");
   if (review.status !== "changes_requested") {
-    throw new Error(
+    throw new ConflictError(
       `Cannot revise review in status: ${review.status}`,
+      "review_not_pending",
     );
   }
   if (review.creator_id !== creatorActor) {
-    throw new Error("Only the creator can revise this submission");
+    throw new ForbiddenError("Only the creator can revise this submission");
   }
 
   // Update process fields if provided
@@ -826,15 +829,15 @@ export async function withdrawReview(
   creatorActor: string,
 ): Promise<ProcessReview> {
   const review = await getReview(reviewId);
-  if (!review) throw new Error("Review not found");
+  if (!review) throw new NotFoundError("Review not found");
   if (
     review.status !== "pending_review" &&
     review.status !== "changes_requested"
   ) {
-    throw new Error(`Cannot withdraw review in status: ${review.status}`);
+    throw new ConflictError(`Cannot withdraw review in status: ${review.status}`, "review_not_pending");
   }
   if (review.creator_id !== creatorActor) {
-    throw new Error("Only the creator can withdraw this submission");
+    throw new ForbiddenError("Only the creator can withdraw this submission");
   }
 
   // Archive the process
@@ -1064,12 +1067,12 @@ export async function reopenForRevision(
   creatorActor: string,
 ): Promise<{ draft_id: string; draft_path: string } | null> {
   const review = await getReview(reviewId);
-  if (!review) throw new Error("Review not found");
+  if (!review) throw new NotFoundError("Review not found");
   if (review.creator_id !== creatorActor) {
-    throw new Error("Only the creator can revise this submission");
+    throw new ForbiddenError("Only the creator can revise this submission");
   }
   if (review.status !== "changes_requested") {
-    throw new Error(`Cannot revise review in status: ${review.status}`);
+    throw new ConflictError(`Cannot revise review in status: ${review.status}`, "review_not_pending");
   }
   if (!review.draft_id) return null;
 

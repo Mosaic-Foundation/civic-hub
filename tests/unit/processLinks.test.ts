@@ -13,6 +13,7 @@ import {
   validateLink,
   validateLinkSet,
 } from "../../src/modules/civic.process_links/index.js";
+import type { ProcessStatus } from "../../src/models/process.js";
 import { isPubliclyFetchable } from "../../src/services/processLifecycle.js";
 import type {
   LinkPeer,
@@ -245,7 +246,8 @@ describe("visibility inheritance", () => {
   });
 
   it("shows live and completed processes", () => {
-    for (const status of ["active", "closed", "finalized", "proposed", "threshold_met"]) {
+    const live: ProcessStatus[] = ["active", "closed", "finalized", "proposed", "threshold_met"];
+    for (const status of live) {
       expect(isPubliclyFetchable(status)).toBe(true);
     }
   });

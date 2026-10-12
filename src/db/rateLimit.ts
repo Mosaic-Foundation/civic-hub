@@ -50,11 +50,5 @@ export async function takeRateLimit(checks: readonly RateLimitCheck[]): Promise<
   return index > 0 ? checks[index - 1]! : null;
 }
 
-/** Thrown by a limit; the HTTP layer answers 429 with its message. */
-export class RateLimitedError extends Error {
-  readonly status = 429;
-  constructor(message: string) {
-    super(message);
-    this.name = "RateLimitedError";
-  }
-}
+/** Thrown by a limit; the HTTP layer answers 429 with its message (src/errors/). */
+export { RateLimitedError } from "../errors/index.js";

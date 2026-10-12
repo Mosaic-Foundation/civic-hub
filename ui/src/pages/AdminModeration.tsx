@@ -60,6 +60,7 @@ export default function AdminModeration() {
   useEffect(() => {
     if (authLoading) return;
     if (!isAdmin) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
       setLoading(false);
       return;
     }

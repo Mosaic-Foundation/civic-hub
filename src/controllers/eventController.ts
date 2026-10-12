@@ -11,7 +11,9 @@
 // The hub UI does NOT read this surface; it reads GET /api/feed (see
 // feedController.ts), which still serves the internal event shape.
 
-import { Request, Response } from "express";
+import { NotFoundError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
+import { Request } from "express";
 import {
   countEvents,
   getEventById,
@@ -111,76 +113,52 @@ async function callerView(
 
 // --- GET /events -----------------------------------------------------------
 
-export async function handleGetActivityCollection(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const filters = readFilters(req);
-    const paged = req.query.page === "true" || typeof req.query.cursor === "string";
+export const handleGetActivityCollection = route(async (req, res) => {
+  const filters = readFilters(req);
+  const paged = req.query.page === "true" || typeof req.query.cursor === "string";
 
-    if (!paged) {
-      res.setHeader("Content-Type", negotiateActivityType(req));
-      res.json(await buildCollection(req, filters));
-      return;
-    }
-
-    const cursor = decodeCursor(req.query.cursor);
-    if (cursor === INVALID_CURSOR) {
-      res.status(400).json({ error: "Invalid cursor" });
-      return;
-    }
-
+  if (!paged) {
     res.setHeader("Content-Type", negotiateActivityType(req));
-    res.json(await buildPage(req, filters, cursor));
-  } catch (err) {
-    // A stored event that cannot be serialized lands here. That is a loud
-    // failure by design (see activitySerializer.ts): new events are validated
-    // at the emission path, so this can only mean the log holds a row from
-    // before its type was mapped — which must be fixed, not papered over.
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+    res.json(await buildCollection(req, filters));
+    return;
   }
-}
+
+  const cursor = decodeCursor(req.query.cursor);
+  if (cursor === INVALID_CURSOR) {
+    throw new ValidationError("Invalid cursor");
+  }
+
+  res.setHeader("Content-Type", negotiateActivityType(req));
+  res.json(await buildPage(req, filters, cursor));
+});
 
 // --- GET /activities/:id ---------------------------------------------------
 
-export async function handleGetActivity(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const id = String(req.params.id ?? "");
-    const event = await getEventById(id);
-    // Spec §5.2: a restricted activity is indistinguishable from an absent
-    // one. Same 404, same body — an unauthorized caller learns nothing.
-    if (!event) {
-      res.status(404).json({ error: "Activity not found" });
-      return;
-    }
-    const caller = await callerView(req);
-    if (event.meta?.visibility === "restricted" && !caller.isAdmin) {
-      res.status(404).json({ error: "Activity not found" });
-      return;
-    }
-    // An archived or pending-review process serves no history, by id or
-    // otherwise: the same rule as its page, for everyone.
-    if (event.process_id && !(await isProcessHistoryServable(event.process_id, { hubSurface: false }))) {
-      res.status(404).json({ error: "Activity not found" });
-      return;
-    }
-
-    res.setHeader("Content-Type", negotiateActivityType(req));
-    if (caller.audience === "admin") {
-      res.json(toActivity(event));
-    } else {
-      res.json(toRedactedActivity(event, await officialActorIds([event]), caller.audience));
-    }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+export const handleGetActivity = route(async (req, res) => {
+  const id = String(req.params.id ?? "");
+  const event = await getEventById(id);
+  // Spec §5.2: a restricted activity is indistinguishable from an absent
+  // one. Same 404, same body — an unauthorized caller learns nothing.
+  if (!event) {
+    throw new NotFoundError("Activity not found");
   }
-}
+  const caller = await callerView(req);
+  if (event.meta?.visibility === "restricted" && !caller.isAdmin) {
+    throw new NotFoundError("Activity not found");
+  }
+  // An archived or pending-review process serves no history, by id or
+  // otherwise: the same rule as its page, for everyone.
+  if (event.process_id && !(await isProcessHistoryServable(event.process_id, { hubSurface: false }))) {
+    throw new NotFoundError("Activity not found");
+  }
+
+  res.setHeader("Content-Type", negotiateActivityType(req));
+  if (caller.audience === "admin") {
+    res.json(toActivity(event));
+  } else {
+    res.json(toRedactedActivity(event, await officialActorIds([event]), caller.audience));
+  }
+});
 
 // --- Collection assembly ---------------------------------------------------
 

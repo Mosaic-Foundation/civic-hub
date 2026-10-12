@@ -5,6 +5,7 @@
 // limiter, and the user-agent override. This service only knows how
 // to turn a URL into a LinkPreview.
 
+import { CivicError } from "../../errors/index.js";
 import { parseHtmlToPreview } from "./scraper.js";
 import type { FetchHtmlFn, LinkPreview } from "./models.js";
 import {
@@ -101,7 +102,11 @@ export async function fetchLinkPreview(
       error: null,
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    // A refusal of the address (blocked, unresolvable, too large) is plain
+    // text meant for a person; anything else is the network's own wording and
+    // stays in the log.
+    if (!(err instanceof CivicError)) console.warn(`[link_preview] fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+    const message = err instanceof CivicError ? err.message : "Couldn't fetch this link.";
     return errorPreview(url, message, deps);
   }
 }

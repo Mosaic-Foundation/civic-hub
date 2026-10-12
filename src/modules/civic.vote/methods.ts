@@ -11,6 +11,7 @@
 //   2. Register it in VOTING_METHODS below
 //   3. No other file changes needed
 
+import { ValidationError } from "../../errors/index.js";
 import type { VoteResult } from "./models.js";
 
 // --- Interface ---------------------------------------------------------------
@@ -60,10 +61,10 @@ const yesNoUnsure: VotingMethod = {
 
   validateBallot(input: unknown, options: string[]): string {
     if (typeof input !== "string" || !input) {
-      throw new Error("process.vote requires payload.option");
+      throw new ValidationError("Choose an option to vote.", "option_required");
     }
     if (!options.includes(input)) {
-      throw new Error(
+      throw new ValidationError(
         `Invalid option "${input}". Valid options: ${options.join(", ")}`,
       );
     }
@@ -127,17 +128,17 @@ const approval: VotingMethod = {
 
   validateBallot(input: unknown, options: string[]): string[] {
     if (!Array.isArray(input) || input.length === 0) {
-      throw new Error(
+      throw new ValidationError(
         "Approval voting requires payload.selections (a non-empty array of approved options)",
       );
     }
     const selections = input as string[];
     for (const s of selections) {
       if (typeof s !== "string") {
-        throw new Error("Each selection must be a string");
+        throw new ValidationError("Each selection must be a string");
       }
       if (!options.includes(s)) {
-        throw new Error(
+        throw new ValidationError(
           `Invalid selection "${s}". Valid options: ${options.join(", ")}`,
         );
       }
@@ -227,7 +228,7 @@ export const DEFAULT_METHOD = "yes_no_unsure";
 export function getVotingMethod(key: string): VotingMethod {
   const method = VOTING_METHODS[key];
   if (!method) {
-    throw new Error(
+    throw new ValidationError(
       `Unknown voting method "${key}". Available: ${Object.keys(VOTING_METHODS).join(", ")}`,
     );
   }

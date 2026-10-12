@@ -181,6 +181,7 @@ export default function Nav() {
   // every 60s while the tab is open.
   useEffect(() => {
     if (!user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
       setNotifCount(0);
       return;
     }

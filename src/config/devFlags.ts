@@ -12,25 +12,26 @@
 // var should not take every hub on the deployment offline, and ignoring it is
 // already the safe outcome.
 
+import { env } from "./env.js";
 import { reportError } from "../utils/reportError.js";
 
 function isProduction(): boolean {
-  return process.env.NODE_ENV === "production";
+  return env.NODE_ENV === "production";
 }
 
 /** May this process seed (wipe and refill) a hub? Never in production. */
 export function seedAllowed(): boolean {
-  return process.env.CIVIC_ALLOW_SEED === "true" && !isProduction();
+  return env.CIVIC_ALLOW_SEED === "true" && !isProduction();
 }
 
 /** Are rate limits on? Always in production. */
 export function rateLimitsEnabled(): boolean {
-  return process.env.CIVIC_RATE_LIMITS !== "off" || isProduction();
+  return env.CIVIC_RATE_LIMITS !== "off" || isProduction();
 }
 
 /** May a server-side fetch reach a private address? Never in production. */
 export function privateFetchAllowed(): boolean {
-  return process.env.CIVIC_SSRF_ALLOW_PRIVATE === "true" && !isProduction();
+  return env.CIVIC_SSRF_ALLOW_PRIVATE === "true" && !isProduction();
 }
 
 let checked = false;
@@ -40,13 +41,13 @@ export function checkDevFlags(): void {
   if (checked) return;
   checked = true;
   if (!isProduction()) return;
-  if (process.env.CIVIC_ALLOW_SEED === "true") {
+  if (env.CIVIC_ALLOW_SEED === "true") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_ALLOW_SEED=true is set in production and is ignored. Remove it from this deployment.", {});
   }
-  if (process.env.CIVIC_SSRF_ALLOW_PRIVATE === "true") {
+  if (env.CIVIC_SSRF_ALLOW_PRIVATE === "true") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_SSRF_ALLOW_PRIVATE=true is set in production and is ignored. Remove it from this deployment.", {});
   }
-  if (process.env.CIVIC_RATE_LIMITS === "off") {
+  if (env.CIVIC_RATE_LIMITS === "off") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_RATE_LIMITS=off is set in production and is ignored. Remove it from this deployment.", {});
   }
 }

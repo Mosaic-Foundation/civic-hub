@@ -34,6 +34,7 @@ export default function VoteResultsPage() {
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
     setLoading(true);
     getPublicVoteResults(id)
       .then((r) => {

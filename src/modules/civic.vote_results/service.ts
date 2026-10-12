@@ -4,6 +4,7 @@
 // lives here beyond what the injected callbacks perform. The host hub is
 // responsible for persisting state changes after these functions return.
 
+import { ConflictError, ValidationError } from "../../errors/index.js";
 import type {
   CreateVoteResultsFromVoteInput,
   FinalizeLinkedVoteFn,
@@ -103,8 +104,9 @@ export async function editVoteResults(
   ctx: VoteResultsProcessContext,
 ): Promise<VoteResultsActionOutcome> {
   if (!canEdit(state)) {
-    throw new Error(
-      `Vote results cannot be edited: publication_status is "${state.publication_status}"`,
+    throw new ConflictError(
+      "These vote results can no longer be edited.",
+      "not_editable",
     );
   }
 
@@ -160,13 +162,13 @@ function sanitizeImage(
     return { image_url: null, image_alt: null };
   }
   if (url.length > IMAGE_URL_MAX) {
-    throw new Error(`Image URL must be <= ${IMAGE_URL_MAX} characters.`);
+    throw new ValidationError(`Image URL must be <= ${IMAGE_URL_MAX} characters.`);
   }
   if (!/^https?:\/\//i.test(url)) {
-    throw new Error("Image URL must start with http:// or https://.");
+    throw new ValidationError("Image URL must start with http:// or https://.");
   }
   if (alt.length > IMAGE_ALT_MAX) {
-    throw new Error(`Alt text must be <= ${IMAGE_ALT_MAX} characters.`);
+    throw new ValidationError(`Alt text must be <= ${IMAGE_ALT_MAX} characters.`);
   }
   return { image_url: url, image_alt: alt.length > 0 ? alt : null };
 }
@@ -214,8 +216,9 @@ export async function approveVoteResults(
   },
 ): Promise<VoteResultsActionOutcome> {
   if (!canApprove(state)) {
-    throw new Error(
-      `Vote results cannot be approved: publication_status is "${state.publication_status}"`,
+    throw new ConflictError(
+      "These vote results cannot be approved in their current state.",
+      "not_approvable",
     );
   }
   if (deps.recipients.length === 0) {

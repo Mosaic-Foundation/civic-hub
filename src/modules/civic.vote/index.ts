@@ -11,6 +11,7 @@
 // Action functions are async because event emission is durable — the host
 // hub awaits the DB write before the action completes.
 
+import { ConflictError, ValidationError } from "../../errors/index.js";
 import type {
   VoteConfig,
   VoteProcessState,
@@ -124,7 +125,7 @@ export function createVoteState(
   const options = inputOptions ?? method.defaultOptions ?? [];
 
   if (options.length < method.minOptions) {
-    throw new Error(
+    throw new ValidationError(
       `Voting method "${methodKey}" requires at least ${method.minOptions} options, got ${options.length}`,
     );
   }
@@ -191,11 +192,11 @@ export async function addSupport(
   ctx: ProcessContext
 ): Promise<ActionOutcome> {
   if (!isAcceptingSupport(state.status)) {
-    throw new Error(`Cannot support: process is in "${state.status}" state, not "proposed"`);
+    throw new ConflictError(`Cannot support: process is in "${state.status}" state, not "proposed"`);
   }
 
   if (state.supporters[actor]) {
-    throw new Error("You have already supported this proposal");
+    throw new ConflictError("You have already supported this proposal", "already_supported");
   }
 
   state.supporters[actor] = true;
@@ -240,14 +241,14 @@ export async function removeSupport(
   _ctx: ProcessContext
 ): Promise<ActionOutcome> {
   if (!isAcceptingSupport(state.status)) {
-    throw new Error(
+    throw new ConflictError(
       `Cannot remove endorsement: process is in "${state.status}" state. ` +
       `Endorsements can only be removed while the proposal is gathering support.`
     );
   }
 
   if (!state.supporters[actor]) {
-    throw new Error("You have not endorsed this proposal");
+    throw new ConflictError("You have not endorsed this proposal", "not_supported");
   }
 
   delete state.supporters[actor];
@@ -306,7 +307,7 @@ export async function submitVote(
   ctx: ProcessContext
 ): Promise<ActionOutcome> {
   if (!isVotingOpen(state.status)) {
-    throw new Error(`Cannot submit vote: process is in "${state.status}" state, not "active"`);
+    throw new ConflictError(`Cannot submit vote: process is in "${state.status}" state, not "active"`);
   }
 
   // Auto-close if voting window has expired. Guard against a malformed
@@ -316,7 +317,7 @@ export async function submitVote(
     const closesAt = new Date(state.voting_closes_at).getTime();
     if (Number.isFinite(closesAt) && Date.now() > closesAt) {
       state.status = "closed";
-      throw new Error("Cannot submit vote: voting window has expired");
+      throw new ConflictError("Cannot submit vote: voting window has expired", "vote_closed");
     }
   }
 

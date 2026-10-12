@@ -6,7 +6,8 @@
 //   - GET /wordcloud/:id/cloud — aggregated cloud data per prompt
 //   - GET /wordcloud/:id      — full read model with cloud data
 
-import { Request, Response } from "express";
+import { NotFoundError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { getProcess } from "../services/processService.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
@@ -77,98 +78,71 @@ async function hasWordcloudSubmission(
   }
 }
 
-export async function handleGetWordcloudCloud(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const id = req.params.id as string;
-    const process = await getProcess(id);
-    if (!process || process.definition.type !== "civic.wordcloud") {
-      res.status(404).json({ error: "Word cloud not found" });
-      return;
-    }
-
-    const state = getState(process);
-    const clouds = await buildClouds(process.id, state);
-    const submissionCount = await getSubmissionCount(process.id);
-
-    res.json({
-      id: process.id,
-      status: state.status,
-      submission_count: submissionCount,
-      clouds,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+export const handleGetWordcloudCloud = route(async (req, res) => {
+  const id = req.params.id as string;
+  const process = await getProcess(id);
+  if (!process || process.definition.type !== "civic.wordcloud") {
+    throw new NotFoundError("Word cloud not found");
   }
-}
 
-export async function handleGetWordcloudResponses(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const id = req.params.id as string;
-    const promptId = req.query.prompt_id as string | undefined;
-    const process = await getProcess(id);
-    if (!process || process.definition.type !== "civic.wordcloud") {
-      res.status(404).json({ error: "Word cloud not found" });
-      return;
-    }
+  const state = getState(process);
+  const clouds = await buildClouds(process.id, state);
+  const submissionCount = await getSubmissionCount(process.id);
 
-    const responses = await listWordcloudResponses(id, promptId);
+  res.json({
+    id: process.id,
+    status: state.status,
+    submission_count: submissionCount,
+    clouds,
+  });
+});
 
-    res.json({ responses });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+export const handleGetWordcloudResponses = route(async (req, res) => {
+  const id = req.params.id as string;
+  const promptId = req.query.prompt_id as string | undefined;
+  const process = await getProcess(id);
+  if (!process || process.definition.type !== "civic.wordcloud") {
+    throw new NotFoundError("Word cloud not found");
   }
-}
 
-export async function handleGetWordcloud(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const id = req.params.id as string;
-    const process = await getProcess(id);
-    if (!process || process.definition.type !== "civic.wordcloud") {
-      res.status(404).json({ error: "Word cloud not found" });
-      return;
-    }
+  const responses = await listWordcloudResponses(id, promptId);
 
-    const state = getState(process);
-    const clouds = await buildClouds(process.id, state);
-    const submissionCount = await getSubmissionCount(process.id);
+  res.json({ responses });
+});
 
-    // Caller identity comes from the session token, never from ?actor= (which
-    // let anyone learn whether another resident had contributed by passing
-    // their id). Anonymous callers get the public read model with
-    // has_submitted false.
-    const actor = await resolveCallerId(req);
-    const hasSubmitted = actor ? await hasWordcloudSubmission(id, actor) : false;
-
-    res.json({
-      id: process.id,
-      type: "civic.wordcloud",
-      title: process.title,
-      description: process.description,
-      status: state.status,
-      prompts: state.prompts,
-      lifecycle_mode: state.lifecycle_mode,
-      config: state.config,
-      submission_count: submissionCount,
-      clouds,
-      jurisdiction: process.jurisdiction,
-      created_at: process.createdAt,
-      created_by: process.createdBy,
-      has_submitted: hasSubmitted,
-      ...(process.isSample ? { is_sample: true } : {}),
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+export const handleGetWordcloud = route(async (req, res) => {
+  const id = req.params.id as string;
+  const process = await getProcess(id);
+  if (!process || process.definition.type !== "civic.wordcloud") {
+    throw new NotFoundError("Word cloud not found");
   }
-}
+
+  const state = getState(process);
+  const clouds = await buildClouds(process.id, state);
+  const submissionCount = await getSubmissionCount(process.id);
+
+  // Caller identity comes from the session token, never from ?actor= (which
+  // let anyone learn whether another resident had contributed by passing
+  // their id). Anonymous callers get the public read model with
+  // has_submitted false.
+  const actor = await resolveCallerId(req);
+  const hasSubmitted = actor ? await hasWordcloudSubmission(id, actor) : false;
+
+  res.json({
+    id: process.id,
+    type: "civic.wordcloud",
+    title: process.title,
+    description: process.description,
+    status: state.status,
+    prompts: state.prompts,
+    lifecycle_mode: state.lifecycle_mode,
+    config: state.config,
+    submission_count: submissionCount,
+    clouds,
+    jurisdiction: process.jurisdiction,
+    created_at: process.createdAt,
+    created_by: process.createdBy,
+    has_submitted: hasSubmitted,
+    ...(process.isSample ? { is_sample: true } : {}),
+  });
+});

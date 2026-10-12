@@ -140,7 +140,7 @@ describe("votes and changes, with the receipt the voter holds", () => {
 
   it("a change without the receipt is refused, and says why", async () => {
     const res = await vote(voters[3], "Unsure", null);
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
     expect(res.body.code).toBe("already_voted");
     expect(res.body.error).toMatch(/your vote is counted/i);
     expect(res.body.error).toMatch(/browser where you voted/i);

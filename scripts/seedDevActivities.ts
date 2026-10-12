@@ -68,7 +68,7 @@ async function main(hub: Hub): Promise<void> {
     process_.id,
     "user:dev-resident-1",
     "Dev fixture comment — this exercises the comment_added activity.",
-    { hub_id: hub.id, jurisdiction: processJurisdiction() ?? DEFAULT_JURISDICTION, emit: emitEvent },
+    { jurisdiction: processJurisdiction() ?? DEFAULT_JURISDICTION, emit: emitEvent },
   );
 
   await executeAction(process_.id, {

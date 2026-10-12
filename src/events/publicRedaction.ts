@@ -41,6 +41,7 @@
 // distinctness is lost, but nothing leaks. Never fall back to a
 // derivable digest. The secret must be set on prod AND preview.
 
+import { env } from "../config/env.js";
 import { createHmac } from "node:crypto";
 import type { CivicEvent } from "../models/event.js";
 import {
@@ -75,7 +76,7 @@ export function anonymousActorToken(
   actor: string,
   processId: string | null | undefined,
 ): string {
-  const secret = process.env.CIVIC_ANON_SECRET;
+  const secret = env.CIVIC_ANON_SECRET;
   if (!secret || !processId) return "anonymous";
   const digest = createHmac("sha256", secret)
     .update(`${processId}:${participantUserId(actor)}`)

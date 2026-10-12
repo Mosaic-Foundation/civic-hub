@@ -24,6 +24,7 @@ interface HubConfigResult {
     hub?: Record<string, unknown>;
     settings?: Record<string, string>;
     error?: string;
+    code?: string;
   };
 }
 
@@ -91,7 +92,7 @@ describe("GET /hub-config", () => {
   it("serves no hub for a hostname no hub claims", async () => {
     const { status, body } = await hubConfig("nope.example.com");
     expect(status).toBe(404);
-    expect(body.error).toBe("no_hub");
+    expect(body.code).toBe("no_hub");
     expect(body.hub).toBeUndefined();
   });
 

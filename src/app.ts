@@ -4,8 +4,9 @@
 // This file sets up all middleware, routes, and auto-seeding.
 // It does NOT call app.listen() — that's the caller's job.
 
+import { env } from "./config/env.js";
 import { deploymentCommit, deploymentId } from "./config/deployment.js";
-import { isPluginDisabledError } from "./services/pluginGate.js";
+import { errorHandler, route } from "./http/route.js";
 import { requirePlugin } from "./middleware/pluginGate.js";
 import express from "express";
 import processRoutes from "./routes/processRoutes.js";
@@ -64,12 +65,12 @@ const app = express();
 // CORS — allowed origins come from CIVIC_ALLOWED_ORIGINS (comma-separated).
 // If the env var is unset and NODE_ENV !== "production", we default to "*"
 // for dev convenience. In production, an unset var is a hard failure.
-const parsedOrigins = (process.env.CIVIC_ALLOWED_ORIGINS ?? "")
+const parsedOrigins = (env.CIVIC_ALLOWED_ORIGINS ?? "")
   .split(",")
   .map((o) => o.trim())
   .filter((o) => o.length > 0);
 
-const isProd = process.env.NODE_ENV === "production";
+const isProd = env.NODE_ENV === "production";
 
 if (isProd && parsedOrigins.length === 0) {
   throw new Error(
@@ -178,10 +179,10 @@ app.use(
   requirePlugin("vote"),
   draftRouter(voteDraftKind, (router) => {
     // The hub's allowed voting windows, for the duration picker.
-    router.get("/duration-limits", requireResident, (_req, res) => {
+    router.get("/duration-limits", requireResident, route((_req, res) => {
       const { minDays, maxDays, defaultDays } = voteDurationLimitsSync();
       res.json({ min_days: minDays, max_days: maxDays, default_days: defaultDays });
-    });
+    }));
   }),
 );
 
@@ -295,7 +296,7 @@ app.use("/.well-known", discoveryRoutes);
 app.use("/debug", debugRoutes);
 
 // Root — overview of available endpoints
-app.get("/", (_req, res) => {
+app.get("/", route((_req, res) => {
   res.json({
     name: "Civic Hub",
     version: "0.1.0",
@@ -363,10 +364,10 @@ app.get("/", (_req, res) => {
       "GET /health": "Health check",
     },
   });
-});
+}));
 
 // Health check — includes a DB ping so you can verify Supabase connectivity
-app.get("/health", async (req, res) => {
+app.get("/health", route(async (req, res) => {
   const db = await pingDb();
   // Phase 3: which role hub queries run as, and that a minted token for this
   // host's hub verifies. /health is hub-exempt, so the host is looked up here;
@@ -405,35 +406,16 @@ app.get("/health", async (req, res) => {
     deployed_at: deploymentId(),
     timestamp: new Date().toISOString(),
   });
-});
+}));
 
 // Auto-seed is triggered by the `ensureSeeded` middleware on first request,
 // and is gated behind CIVIC_ALLOW_SEED so it never runs in production.
 
-// Terminal error handler — MUST be the last app.use, after all routes. Catches
-// synchronous throws in middleware and anything a handler passes to next(err),
-// logs it (the observability gap: no Sentry yet), and always returns a clean
-// 500 without leaking internals. Controllers already try/catch their own async
-// errors; this is the safety net for the rest so an error can't hang a request.
-app.use(
-  (
-    err: unknown,
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction,
-  ) => {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(
-      `[unhandled] ${message}`,
-      err instanceof Error ? err.stack : "",
-    );
-    if (res.headersSent) return;
-    if (isPluginDisabledError(err)) {
-      res.status(404).json({ error: "Not found" });
-      return;
-    }
-    res.status(500).json({ error: "Internal server error" });
-  },
-);
+// Terminal error handler — MUST be the last app.use, after all routes. Errors
+// passed to next(err), thrown by middleware, or refused by the body parser
+// answer through the same sendError() as every route() (src/http/route.ts):
+// a typed error's own status and message, otherwise a plain message with a
+// reference and the full error in the log.
+app.use(errorHandler);
 
 export default app;

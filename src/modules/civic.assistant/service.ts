@@ -1,3 +1,4 @@
+import { env } from "../../config/env.js";
 import { stripMarkdown } from "../../shared/markdown.js";
 import {
   callClaudeMultiTurn,
@@ -62,7 +63,7 @@ export async function callAssistant(
   input: CallAssistantInput,
   claude: CallClaudeMultiTurnFn = callClaudeMultiTurn,
 ): Promise<AssistantResponse> {
-  const model = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  const model = env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
 
   // Web search is off on a demo hub by default, and wherever the operator
   // turned it off (Audit 2). The prompt's search guidance is then overridden
@@ -251,7 +252,7 @@ export async function checkTextAgainstCoC(
   hubConfig: HubConfig,
   claude: CallClaudeMultiTurnFn = callClaudeMultiTurn,
 ): Promise<Suggestion[]> {
-  const model = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  const model = env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
   // Formatting is not content: the check reads the stripped text so a
   // marker can neither hide a violation nor be mistaken for one.
   const submission = fields

@@ -17,6 +17,7 @@
 // returns only the canonical fields carried on the `processes` row. Full
 // proposal detail continues to be served by the dedicated /proposals routes.
 
+import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
 import { forHub } from "../db/forHub.js";
@@ -61,9 +62,9 @@ const proposalAdapter: ProcessHandler = {
     _process: Process,
     action: ProcessAction,
   ): Promise<Record<string, unknown>> {
-    throw new Error(
-      `civic.proposal does not accept generic process actions (received "${action.type}"). ` +
-        `Support a proposal via the /proposals/:id/support endpoint.`,
+    throw new ValidationError(
+      "Proposals don't take actions here. Support a proposal from its own page.",
+        "action_not_supported",
     );
   },
 

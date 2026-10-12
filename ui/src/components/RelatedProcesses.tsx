@@ -4,7 +4,6 @@ import {
   addProcessLink,
   getProcessLinks,
   removeProcessLink,
-  type LinkCandidate,
   type ProcessLinks,
   type ProposedLink,
   type RenderedLink,
@@ -80,7 +79,7 @@ export default function RelatedProcesses({
   // overrides it for surfaces that display links but never originate them.
   const canEdit = !readOnly && links.can_edit === true;
 
-  async function handlePick(link: ProposedLink, _peer: LinkCandidate) {
+  async function handlePick(link: ProposedLink) {
     setBusy(true);
     setError(null);
     try {

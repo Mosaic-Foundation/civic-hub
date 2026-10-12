@@ -4,6 +4,7 @@
 // through PostgREST (paged, key-ordered), objects through Storage. What the
 // console uses, and scripts/export-hub.ts by default.
 
+import { env } from "../../config/env.js";
 import { getDb } from "../../db/client.js";
 import type { HubRowReader, ObjectReader } from "./export.js";
 import type { Row } from "./format.js";
@@ -33,7 +34,7 @@ export function supabaseRowReader(): HubRowReader {
 }
 
 export function supabaseObjectReader(bucket: string): ObjectReader {
-  const base = process.env.SUPABASE_URL;
+  const base = env.SUPABASE_URL;
   if (!base) throw new Error("export: SUPABASE_URL is not set");
   const store = () => getDb().storage.from(bucket);
 

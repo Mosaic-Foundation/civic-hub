@@ -6,7 +6,9 @@
 // (src/config/cron.ts), so a job added to the registry is covered by it
 // without anyone remembering to.
 
-import { Router, type Request, type Response } from "express";
+import { Router } from "express";
+import { NotFoundError, UnauthorizedError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { JOBS, isPlatformJob, type JobSpec } from "../jobs/registry.js";
 import { JOB_RUNNERS, PLATFORM_JOB_RUNNERS } from "../jobs/runners.js";
 import { runJobAcrossHubs } from "../jobs/runJob.js";
@@ -14,10 +16,9 @@ import { isCronAuthorized } from "../jobs/cronAuth.js";
 import { requestedHub } from "../services/cronHubs.js";
 
 function handlerFor(job: JobSpec, calledAs: string) {
-  return async (req: Request, res: Response): Promise<void> => {
+  return route(async (req, res) => {
     if (!isCronAuthorized(req.headers.authorization)) {
-      res.status(401).json({ error: "Invalid or missing cron credential" });
-      return;
+      throw new UnauthorizedError("Invalid or missing cron credential", "invalid_cron_credential");
     }
     if (calledAs !== job.path) {
       console.warn(
@@ -27,38 +28,26 @@ function handlerFor(job: JobSpec, calledAs: string) {
     const force = req.query.force === "true" || req.query.force === "1";
     if (isPlatformJob(job)) {
       const run = PLATFORM_JOB_RUNNERS[job.id];
-      if (!run) {
-        res.status(500).json({ error: `job "${job.id}" has no runner` });
-        return;
-      }
+      if (!run) throw new Error(`job "${job.id}" has no runner`);
       const outcome = await run({ now: new Date(), force });
       res.status(outcome.status).json({ job: job.id, platform: outcome.body });
       return;
     }
     const onlyHub = requestedHub(req.query);
     if (onlyHub === undefined) {
-      res.status(400).json({ error: "hub must be a hub slug" });
-      return;
+      throw new ValidationError("hub must be a hub slug", "invalid_hub");
     }
     const runner = JOB_RUNNERS[job.id];
-    if (!runner) {
-      res.status(500).json({ error: `job "${job.id}" has no runner` });
-      return;
-    }
+    if (!runner) throw new Error(`job "${job.id}" has no runner`);
     const report = await runJobAcrossHubs(job, runner, { now: new Date(), force, onlyHub });
-    if ("error" in report) {
-      res.status(report.status).json({ error: report.error });
-      return;
-    }
+    if ("error" in report) throw new NotFoundError(report.error, "hub_not_found");
     res.status(report.status).json({ job: job.id, hubs: report.hubs });
-  };
+  });
 }
 
 export const jobRouter = Router();
 for (const job of JOBS) {
   for (const path of [job.path, ...(job.deprecatedPaths ?? [])]) {
-    jobRouter.get(path, (req, res, next) => {
-      handlerFor(job, path)(req, res).catch(next);
-    });
+    jobRouter.get(path, handlerFor(job, path));
   }
 }

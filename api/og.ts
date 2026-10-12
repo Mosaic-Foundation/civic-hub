@@ -9,6 +9,7 @@
 // GET /share/meta; browsers get the built SPA so React Router handles
 // client-side routing.
 
+import { env } from "../src/config/env.js";
 import type { IncomingMessage, ServerResponse } from "http";
 import { readFileSync } from "fs";
 import { resolve } from "path";
@@ -32,8 +33,8 @@ export function isSocialCrawler(userAgent: string): boolean {
 // single-hub self-hosted deployment that has no hubs row.
 // Placeless: this function serves every hub, and a card that names one hub
 // is wrong on all the others.
-const FALLBACK_HUB_NAME = process.env.VITE_HUB_PAGE_TITLE?.trim() || "Civic Hub";
-const FALLBACK_BANNER_URL = process.env.VITE_HUB_BANNER_URL?.trim() || "";
+const FALLBACK_HUB_NAME = env.VITE_HUB_PAGE_TITLE?.trim() || "Civic Hub";
+const FALLBACK_BANNER_URL = env.VITE_HUB_BANNER_URL?.trim() || "";
 
 /**
  * This request's own origin.
@@ -47,8 +48,8 @@ function siteUrlFor(req: IncomingMessage): string {
   const host = (req.headers.host ?? "").trim().toLowerCase();
   if (!host) {
     return (
-      process.env.CIVIC_UI_BASE_URL ??
-      process.env.BASE_URL ??
+      env.CIVIC_UI_BASE_URL ??
+      env.BASE_URL ??
       // The platform, not a hub: a request with no Host names no hub.
       "https://civic.social"
     ).replace(/\/$/, "");
@@ -86,8 +87,8 @@ async function fetchBranding(siteUrl: string): Promise<HubBranding> {
     if (!res.ok) {
       // A moved hub answers hub_moved with its new origin; the page shell
       // follows it in the browser, a crawler gets a redirect below.
-      const moved = (await res.json().catch(() => null)) as { error?: unknown; location?: unknown } | null;
-      if (res.status === 404 && moved?.error === "hub_moved" && typeof moved.location === "string" && /^https?:\/\//.test(moved.location)) {
+      const moved = (await res.json().catch(() => null)) as { error?: unknown; code?: unknown; location?: unknown } | null;
+      if (res.status === 404 && (moved?.code ?? moved?.error) === "hub_moved" && typeof moved?.location === "string" && /^https?:\/\//.test(moved.location)) {
         return { ...fallback, movedTo: moved.location.replace(/\/$/, "") };
       }
       return fallback;

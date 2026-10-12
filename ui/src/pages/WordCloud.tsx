@@ -364,6 +364,7 @@ function ResponsesList({
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
     setLoaded(false);
     getWordcloudResponses(processId, promptId)
       .then((data) => {
@@ -434,9 +435,8 @@ function PromptSection({
     !isActive || hasSubmitted || !isOnboarding,
   );
 
-  useEffect(() => {
-    if (hasSubmitted) setRevealed(true);
-  }, [hasSubmitted]);
+  // Submitting reveals the cloud too: derived, not copied in an effect.
+  const shown = revealed || hasSubmitted;
   const entries = cloud?.entries ?? [];
   const effectiveMax = prompt.max_length ?? maxLength;
   const totalSubmissions = cloud?.total_submissions ?? 0;
@@ -461,9 +461,9 @@ function PromptSection({
         </p>
       )}
 
-      <div className={`wordcloud-cloud-wrapper${revealed ? " wordcloud-cloud-revealed" : ""}`}>
+      <div className={`wordcloud-cloud-wrapper${shown ? " wordcloud-cloud-revealed" : ""}`}>
         <CloudViz entries={entries} />
-        {!revealed && (
+        {!shown && (
           <div className="wordcloud-cloud-overlay">
             <p className="wordcloud-cloud-overlay-cta">
               Add yours to reveal the cloud
@@ -477,14 +477,14 @@ function PromptSection({
         )}
       </div>
 
-      {revealed && cloud && (
+      {shown && cloud && (
         <p className="wordcloud-submission-count">
           {cloud.total_submissions}{" "}
           {cloud.total_submissions === 1 ? "response" : "responses"}
         </p>
       )}
 
-      {revealed && (
+      {shown && (
         <ResponsesList
           processId={processId}
           promptId={prompt.id}
@@ -492,7 +492,7 @@ function PromptSection({
         />
       )}
 
-      {revealed && <RankedList entries={entries} />}
+      {shown && <RankedList entries={entries} />}
     </section>
   );
 }

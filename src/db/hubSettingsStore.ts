@@ -10,6 +10,7 @@
 // and an admin check that does its own round trip is a round trip on every
 // request that checks one.
 
+import { UnavailableError } from "../errors/index.js";
 import { forHub } from "./forHub.js";
 import { DOCUMENT_KEYS } from "../models/hubSettings.js";
 
@@ -49,10 +50,12 @@ export function invalidateHubSettings(hubId?: string): void {
 }
 
 /** A hub's settings could not be read. The hub answers 503 until they can. */
-export class HubSettingsUnavailableError extends Error {
-  constructor(hubId: string, cause: string) {
-    super(`Settings for hub "${hubId}" could not be read: ${cause}`);
-    this.name = "HubSettingsUnavailableError";
+export class HubSettingsUnavailableError extends UnavailableError {
+  constructor(readonly hubId: string, cause: string) {
+    super("This hub can't be reached right now. Please try again in a moment.", "hub_settings_unavailable", {
+      retryAfterSeconds: 30,
+      cause: `settings for hub ${hubId} could not be read: ${cause}`,
+    });
   }
 }
 

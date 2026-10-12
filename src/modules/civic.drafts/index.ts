@@ -8,6 +8,7 @@
 // Each kind keeps its own table (no data moved). Rows are read and written
 // through forHub(), so a draft is only ever seen inside its hub.
 
+import { NotFoundError } from "../../errors/index.js";
 import { forHub, type HubDb } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
@@ -143,7 +144,7 @@ export async function appendConversation(
   assistantMessage: string,
 ): Promise<void> {
   const draft = await getDraft(spec, id);
-  if (!draft) throw new Error(`Draft not found: ${id}`);
+  if (!draft) throw new NotFoundError("Draft not found");
   const history = [
     ...draft.conversation_history,
     { role: "user" as const, content: userMessage },

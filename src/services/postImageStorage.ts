@@ -15,6 +15,7 @@
 // remove. Objects uploaded before (`YYYY/MM/…`, `hubs/<hub_id>/…`) keep their
 // keys; their URLs are stored whole and stay valid.
 
+import { env, envVar } from "../config/env.js";
 import { uploadPublicObject } from "../db/storage.js";
 
 const BUCKET_ENV = "SUPABASE_STORAGE_BUCKET";
@@ -36,14 +37,14 @@ export const UPLOAD_CEILING_MB = 4;
 
 /** 4 MB default; IMAGE_UPLOAD_MAX_MB can lower it, never raise it past UPLOAD_CEILING_MB. */
 export function imageUploadMaxBytes(): number {
-  const raw = process.env.IMAGE_UPLOAD_MAX_MB;
+  const raw = env.IMAGE_UPLOAD_MAX_MB;
   const mb = raw ? Number(raw) : UPLOAD_CEILING_MB;
   const valid = Number.isFinite(mb) && mb > 0 ? mb : UPLOAD_CEILING_MB;
   return Math.floor(Math.min(valid, UPLOAD_CEILING_MB) * 1024 * 1024);
 }
 
 export function postImageBucket(): string {
-  return process.env[BUCKET_ENV] ?? DEFAULT_BUCKET;
+  return envVar(BUCKET_ENV) ?? DEFAULT_BUCKET;
 }
 
 /**

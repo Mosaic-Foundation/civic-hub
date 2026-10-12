@@ -75,7 +75,7 @@ async function storage(method: string, key: string, body?: Buffer): Promise<Resp
   return fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${key}`, {
     method,
     headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, ...(body ? { "Content-Type": "image/png" } : {}) },
-    body,
+    body: body ? new Uint8Array(body) : undefined,
   });
 }
 

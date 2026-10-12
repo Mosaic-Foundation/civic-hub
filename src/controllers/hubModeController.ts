@@ -19,7 +19,8 @@
 // control plane. A trigger on `hubs` refuses the update as well, so this
 // check is the readable error rather than the only defence.
 
-import type { Request, Response } from "express";
+import { NotFoundError, UnauthorizedError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { setHubMode } from "../db/hubs.js";
 import { hubModeChangeRejectionReason } from "../models/hub.js";
 import { hubModeFor } from "../services/hubSettings.js";
@@ -31,20 +32,11 @@ import { removeSampleContent } from "../services/sampleContent.js";
 // since the hardening pass, and it is now the shared step-up handler.
 export { handleRequestStepUpCode as handleRequestModeChangeCode } from "./adminStepUp.js";
 
-export async function handleSetHubMode(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleSetHubMode = route(async (req, res) => {
   const hub = req.hub;
   const user = caller(res);
-  if (!hub) {
-    res.status(404).json({ error: "no_hub" });
-    return;
-  }
-  if (!user) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
-  }
+  if (!hub) throw new NotFoundError("No civic hub is configured at this address.", "no_hub");
+  if (!user) throw new UnauthorizedError("Authentication required");
 
   const body = req.body as { mode?: unknown; code?: unknown; remove_sample_content?: unknown };
 
@@ -52,43 +44,33 @@ export async function handleSetHubMode(
   // single-use, so an admin who asks for something the rules forbid should
   // not also have to go and fetch another one.
   const rejection = hubModeChangeRejectionReason(hubModeFor(hub), body.mode);
-  if (rejection) {
-    res.status(400).json({ error: rejection });
-    return;
-  }
+  if (rejection) throw new ValidationError(rejection, "mode_change_rejected");
 
   // Then prove the mailbox, before anything is written.
-  if (!(await requireStepUpCode(req, res, body.code))) return;
+  await requireStepUpCode(req, res, body.code);
 
   const mode = body.mode as string;
   const from = hubModeFor(hub);
 
-  try {
-    // Graduating out of demo asks whether to take the sample content out
-    // (Phase 7); the admin's answer rides along with the same code. Removal
-    // first, so a hub that asked for both never goes live with it.
-    let removedSample: unknown = null;
-    if (body.remove_sample_content === true && from === "demo" && mode !== "demo") {
-      removedSample = (await removeSampleContent(user.email)).summary;
-    }
-    await setHubMode(hub.id, mode);
-    await recordHubAdminAudit({
-      actor: user.email,
-      action: "hub.mode",
-      before: { mode: from },
-      after: { mode, ...(removedSample ? { removed_sample_content: true } : {}) },
-    });
-  } catch (err) {
-    const raw = err instanceof Error ? err.message : String(err);
-    // The trigger refuses any move into demo. Surface it as the rule it is
-    // rather than as a database error.
-    const message = /demo mode/i.test(raw)
-      ? "A hub cannot be moved into demo mode. Demo is set when the hub is created."
-      : raw;
-    res.status(400).json({ error: message });
-    return;
+  // The trigger on `hubs` that refuses any move into demo is only a backstop:
+  // hubModeChangeRejectionReason above already answers that as a plain
+  // ValidationError, so a database refusal here is unexpected (generic 500).
+  //
+  // Graduating out of demo asks whether to take the sample content out
+  // (Phase 7); the admin's answer rides along with the same code. Removal
+  // first, so a hub that asked for both never goes live with it.
+  let removedSample: unknown = null;
+  if (body.remove_sample_content === true && from === "demo" && mode !== "demo") {
+    removedSample = (await removeSampleContent(user.email)).summary;
   }
+  await setHubMode(hub.id, mode);
+  await recordHubAdminAudit({
+    actor: user.email,
+    action: "hub.mode",
+    before: { mode: from },
+    after: { mode, ...(removedSample ? { removed_sample_content: true } : {}) },
+  });
 
   console.log(`[hub] mode changed: ${hub.id} ${from} -> ${mode} by ${user.email}`);
   res.json({ hub_id: hub.id, mode });
-}
+});

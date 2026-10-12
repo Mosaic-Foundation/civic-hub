@@ -16,6 +16,7 @@
 // drafting form with ?draft=&edit=; the draft's submit controller passes
 // edit_process_id and this service applies the diff in place.
 
+import { CivicError } from "../errors/index.js";
 import { forHub, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { emitEvent } from "../events/eventEmitter.js";
@@ -192,9 +193,10 @@ export function diffEdit(
   return { changed_fields: changed, previous, current: after, formatting_only_fields: formattingOnly, formatting_values: formattingValues };
 }
 
-export class EditError extends Error {
-  status: number;
-  constructor(message: string, status = 400) { super(message); this.status = status; }
+export class EditError extends CivicError {
+  constructor(message: string, status = 400) {
+    super(status, status === 404 ? "not_found" : status === 403 ? "forbidden" : status === 409 ? "conflict" : "invalid_edit", message);
+  }
 }
 
 /**

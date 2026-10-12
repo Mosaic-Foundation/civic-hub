@@ -11,6 +11,7 @@
 //   - readers may serve stale-while-revalidate; for MVP we re-fetch
 //     synchronously on cache miss / staleness and write through.
 
+import { env } from "../config/env.js";
 import { forHub, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import {
@@ -106,7 +107,7 @@ export async function getOrRefreshPreview(url: string): Promise<LinkPreview> {
   if (cached && !isStale(cached, now)) return cached;
 
   const userAgent =
-    process.env.LINK_PREVIEW_USER_AGENT ||
+    env.LINK_PREVIEW_USER_AGENT ||
     "Civic Hub Link Preview Bot (+https://civic.social)";
 
   const fresh = await fetchLinkPreview(url, {

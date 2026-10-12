@@ -38,6 +38,12 @@ const ATHENS: Hub = {
 /** A response that records what the handler said instead of sending it. */
 function fakeRes(signedIn = true) {
   const out = { status: 0, body: undefined as any };
+  // route() answers asynchronously and returns nothing, so the test waits for
+  // the response being written rather than for the handler's return value.
+  let answered: () => void = () => {};
+  const done = new Promise<void>((resolve) => {
+    answered = resolve;
+  });
   const res = {
     locals: signedIn
       ? { authUser: { id: "user_1", email: "admin@athens.example" } }
@@ -49,16 +55,19 @@ function fakeRes(signedIn = true) {
     json(payload: unknown) {
       out.status = out.status || 200;
       out.body = payload;
+      answered();
       return this;
     },
   } as unknown as Response;
-  return { res, out };
+  return { res, out, done };
 }
 
-function post(body: unknown, signedIn = true) {
-  const { res, out } = fakeRes(signedIn);
+async function post(body: unknown, signedIn = true) {
+  const { res, out, done } = fakeRes(signedIn);
   const req = { body } as Request;
-  return runWithHub(ATHENS, {}, () => handleSetHubPeople(req, res)).then(() => out);
+  runWithHub(ATHENS, {}, () => handleSetHubPeople(req, res, () => {}));
+  await done;
+  return out;
 }
 
 describe("the admin roster refuses a change before it spends a code", () => {
@@ -140,10 +149,12 @@ describe("the roster endpoints are actually mounted, and behind requireAdmin", (
   it("puts requireAdmin ahead of every route in the file", async () => {
     const router = (await import("../../src/routes/adminRoutes.js")).default;
     const layers = (router as unknown as {
-      stack: Array<{ route?: unknown; name: string }>;
+      stack: Array<{ route?: unknown; handle: unknown }>;
     }).stack;
+    const { requireAdmin } = await import("../../src/middleware/auth.js");
     const firstRoute = layers.findIndex((l) => l.route);
-    const guard = layers.findIndex((l) => !l.route && l.name === "requireAdmin");
+    // route() wraps the guard in an unnamed function, so match by identity.
+    const guard = layers.findIndex((l) => !l.route && l.handle === requireAdmin);
     expect(guard).toBeGreaterThanOrEqual(0);
     expect(guard).toBeLessThan(firstRoute);
   });

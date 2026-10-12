@@ -3,15 +3,18 @@
  * Manages session token in localStorage.
  */
 
-import { apiErrorMessage } from "../utils/httpError";
+import { apiErrorMessage, apiErrorCode } from "../utils/httpError";
 
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
 
 class AuthError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /** The server's error code (`beta_closed`, `locked_out`…), when it sent one. */
+  code: string | null;
+  constructor(message: string, status: number, code: string | null = null) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -29,7 +32,7 @@ async function request<T>(method: string, path: string, body?: unknown, token?: 
 
   if (!res.ok) {
     const err = await res.json().catch(() => null);
-    throw new AuthError(apiErrorMessage(err, res.status, res.statusText), res.status);
+    throw new AuthError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err));
   }
 
   return res.json();

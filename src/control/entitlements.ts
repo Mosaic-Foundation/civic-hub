@@ -18,6 +18,7 @@
 //   redeemEntitlement()  records the use and releases the hold, or
 //   releaseClaim()       releases it after a failed create.
 
+import { CivicError, codeForStatus } from "../errors/index.js";
 import { createHash, randomInt } from "node:crypto";
 import { getDb } from "../db/client.js";
 import { generateId } from "../utils/id.js";
@@ -39,10 +40,9 @@ export const CLAIM_MS = 2 * 60 * 1000;
 export const INVITE_REFUSED =
   "That code can't be used. Check it, or ask the person who gave it to you for a new one.";
 
-export class EntitlementError extends Error {
-  constructor(message: string, readonly status = 400) {
-    super(message);
-    this.name = "EntitlementError";
+export class EntitlementError extends CivicError {
+  constructor(message: string, status = 400) {
+    super(status, codeForStatus(status), message);
   }
 }
 

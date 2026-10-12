@@ -63,7 +63,7 @@ async function seed(_hub: Hub) {
         type: "process.submit",
         actor: s.actor,
         payload: { prompt_id: "p1", text: s.text },
-      });
+      }, "system");
       success++;
       console.log(`  ${success}/${samples.length}: "${s.text}"`);
     } catch (err) {

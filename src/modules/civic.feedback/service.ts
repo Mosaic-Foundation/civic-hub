@@ -9,6 +9,7 @@
 // listFeedback() is the admin read path (/admin/feedback). It is the only
 // reader: feedback never flows through emitEvent() and is never public.
 
+import { ValidationError } from "../../errors/index.js";
 import { forHub, type HubDb } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { sendEmail, unsentReason } from "../../utils/email.js";
@@ -56,12 +57,7 @@ export function sendsImmediateEmail(category: FeedbackCategory): boolean {
   return IMMEDIATE_EMAIL_CATEGORIES.has(category);
 }
 
-export class FeedbackValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "FeedbackValidationError";
-  }
-}
+export class FeedbackValidationError extends ValidationError {}
 
 function isValidCategory(value: unknown): value is FeedbackCategory {
   return (

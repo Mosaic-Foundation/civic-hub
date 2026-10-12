@@ -15,6 +15,7 @@
 // Publication sub-state (pending | approved | published) mirrors the
 // admin workflow more finely than process status alone can.
 
+import { ConflictError } from "../../errors/index.js";
 import type { VoteResultsProcessState, VoteResultsPublicationStatus } from "./models.js";
 
 export function canEdit(state: VoteResultsProcessState): boolean {
@@ -43,8 +44,9 @@ export function assertPublicationTransition(
     published: [],
   };
   if (!allowed[from].includes(to)) {
-    throw new Error(
-      `Invalid vote-results publication transition: ${from} → ${to}`,
+    throw new ConflictError(
+      "That publication step is not allowed from the current state.",
+      "invalid_transition",
     );
   }
 }

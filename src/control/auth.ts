@@ -12,6 +12,8 @@
 // gets the same answer and nothing is sent or stored, so the form does not
 // say who the operator is.
 
+import { env } from "../config/env.js";
+import { CivicError, codeForStatus } from "../errors/index.js";
 import { getDb } from "../db/client.js";
 import { HOUR_MS, takeRateLimit } from "../db/rateLimit.js";
 import { randomToken, sameHexHash, sha256Hex } from "../utils/hash.js";
@@ -34,10 +36,9 @@ export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
 export const CODE_SENT = "If that address may sign in here, a code is on its way.";
 
-export class ControlAuthError extends Error {
-  constructor(message: string, readonly status = 400) {
-    super(message);
-    this.name = "ControlAuthError";
+export class ControlAuthError extends CivicError {
+  constructor(message: string, status = 400) {
+    super(status, codeForStatus(status), message);
   }
 }
 
@@ -141,7 +142,7 @@ export async function requestCode(rawEmail: unknown, purpose: CodePurpose, ip: s
     console.warn(`[control] code email NOT sent (${result.error}).`);
     // As a hub's sign-in: the code reaches the log only when there is no
     // mailer at all, which is local development.
-    if (!process.env.RESEND_API_KEY) {
+    if (!env.RESEND_API_KEY) {
       console.log(`\n[control] ${purpose} code for ${email}: ${code}\n`);
     }
   }

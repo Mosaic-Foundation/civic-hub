@@ -16,7 +16,7 @@ export interface DeadEnd {
   body: string;
 }
 
-/** Keyed by the API's error code (`{ error: "no_hub" }`, `"hub_suspended"`). */
+/** Keyed by the API's error code (`{ error, code: "no_hub" }`, `"hub_suspended"`). */
 export const DEAD_ENDS = {
   no_hub: {
     title: "No hub here",

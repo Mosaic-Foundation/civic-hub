@@ -8,7 +8,8 @@
 // list is NOT fatal (a conversation/project brief can publish to the feed
 // without an official email list).
 
-import { Request, Response } from "express";
+import { ConflictError, NotFoundError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { enrichCreator } from "../services/creatorDisplay.js";
 import {
@@ -52,214 +53,172 @@ function isPublicationStatus(s: string): s is BriefPublicationStatus {
 }
 
 /** GET /admin/briefs — list with optional ?status=, pending first. */
-export async function handleAdminListBriefs(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const statusFilter = req.query.status as string | undefined;
-    const all = await getAllProcesses();
-    const records = all.filter((p) => p.definition.type === BRIEF_TYPE);
+export const handleAdminListBriefs = route(async (req, res) => {
+  const statusFilter = req.query.status as string | undefined;
+  const all = await getAllProcesses();
+  const records = all.filter((p) => p.definition.type === BRIEF_TYPE);
 
-    const summaries = records.map((p) =>
-      getAdminSummary(briefState(p), {
-        id: p.id,
-        title: p.title,
-        createdAt: p.createdAt,
-      }),
+  const summaries = records.map((p) =>
+    getAdminSummary(briefState(p), {
+      id: p.id,
+      title: p.title,
+      createdAt: p.createdAt,
+    }),
+  );
+
+  const filtered =
+    statusFilter && isPublicationStatus(statusFilter)
+      ? summaries.filter((b) => b.publication_status === statusFilter)
+      : summaries;
+
+  const rank: Record<string, number> = { pending: 0, approved: 1, published: 2 };
+  filtered.sort((a, b) => {
+    const r =
+      (rank[(a.publication_status as string) ?? ""] ?? 99) -
+      (rank[(b.publication_status as string) ?? ""] ?? 99);
+    if (r !== 0) return r;
+    return ((b.generated_at as string) ?? "").localeCompare(
+      (a.generated_at as string) ?? "",
     );
+  });
 
-    const filtered =
-      statusFilter && isPublicationStatus(statusFilter)
-        ? summaries.filter((b) => b.publication_status === statusFilter)
-        : summaries;
-
-    const rank: Record<string, number> = { pending: 0, approved: 1, published: 2 };
-    filtered.sort((a, b) => {
-      const r =
-        (rank[(a.publication_status as string) ?? ""] ?? 99) -
-        (rank[(b.publication_status as string) ?? ""] ?? 99);
-      if (r !== 0) return r;
-      return ((b.generated_at as string) ?? "").localeCompare(
-        (a.generated_at as string) ?? "",
-      );
-    });
-
-    res.json(filtered);
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
-  }
-}
+  res.json(filtered);
+});
 
 /** GET /admin/briefs/:id — full detail for admin review. */
-export async function handleAdminGetBrief(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const record = await getProcess(req.params.id as string);
-    if (!record || record.definition.type !== BRIEF_TYPE) {
-      res.status(404).json({ error: "Brief not found" });
-      return;
-    }
-    const model = await enrichCreator(
-      getAdminReadModel(briefState(record), {
-        id: record.id,
-        title: record.title,
-        createdAt: record.createdAt,
-        createdBy: record.createdBy,
-      }),
-      { keepRawId: true, audience: "member" },
-    );
-    res.json(model);
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+export const handleAdminGetBrief = route(async (req, res) => {
+  const record = await getProcess(req.params.id as string);
+  if (!record || record.definition.type !== BRIEF_TYPE) {
+    throw new NotFoundError("Brief not found");
   }
-}
+  const model = await enrichCreator(
+    getAdminReadModel(briefState(record), {
+      id: record.id,
+      title: record.title,
+      createdAt: record.createdAt,
+      createdBy: record.createdBy,
+    }),
+    { keepRawId: true, audience: "member" },
+  );
+  res.json(model);
+});
 
 /** PATCH /admin/briefs/:id — edit headline/summary/comments/notes/image. */
-export async function handlePatchBrief(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const record = await getProcess(req.params.id as string);
-    if (!record || record.definition.type !== BRIEF_TYPE) {
-      res.status(404).json({ error: "Brief not found" });
-      return;
-    }
-    const state = briefState(record);
-    if (state.publication_status !== "pending") {
-      res.status(409).json({
-        error: `Cannot edit brief: publication_status is "${state.publication_status}".`,
-      });
-      return;
-    }
-
-    const body = req.body ?? {};
-    const patch: BriefContentPatch = {};
-    if (Array.isArray(body.comments)) patch.comments = body.comments;
-    if (typeof body.admin_notes === "string") patch.admin_notes = body.admin_notes;
-    if (typeof body.headline === "string") patch.headline = body.headline;
-    if (typeof body.summary === "string") patch.summary = body.summary;
-    if (body.image_url === null || typeof body.image_url === "string") {
-      patch.image_url = body.image_url as string | null;
-    }
-    if (body.image_alt === null || typeof body.image_alt === "string") {
-      patch.image_alt = body.image_alt as string | null;
-    }
-
-    // Per-review delivery selection rides the same PATCH as the content
-    // edits. setRecipients validates (labels required — the label is what
-    // the public receipt shows) and throws a user-facing message the UI
-    // renders verbatim. A 400, not a 500: it's the admin's input.
-    if (body.recipients !== undefined) {
-      try {
-        setRecipients(state, body.recipients);
-      } catch (err) {
-        res.status(400).json({
-          error: err instanceof Error ? err.message : "Invalid recipients",
-        });
-        return;
-      }
-    }
-
-    const actor = getAuthUser(res).id;
-    const ctx = {
-      process_id: record.id,
-      jurisdiction: record.jurisdiction,
-      emit: emitEvent,
-    };
-
-    await editBrief(state, actor, patch, ctx);
-    await saveProcessState(record);
-
-    const noteUrls = extractUrls(state.content.admin_notes);
-    if (noteUrls.length > 0) warmPreviewsInBackground(noteUrls);
-
-    const model = await enrichCreator(
-      getAdminReadModel(state, {
-        id: record.id,
-        title: record.title,
-        createdAt: record.createdAt,
-        createdBy: record.createdBy,
-      }),
-      { keepRawId: true, audience: "member" },
-    );
-    res.json(model);
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+export const handlePatchBrief = route(async (req, res) => {
+  const record = await getProcess(req.params.id as string);
+  if (!record || record.definition.type !== BRIEF_TYPE) {
+    throw new NotFoundError("Brief not found");
   }
-}
+  const state = briefState(record);
+  if (state.publication_status !== "pending") {
+    throw new ConflictError(`Cannot edit brief: publication_status is "${state.publication_status}".`);
+  }
+
+  const body = req.body ?? {};
+  const patch: BriefContentPatch = {};
+  if (Array.isArray(body.comments)) patch.comments = body.comments;
+  if (typeof body.admin_notes === "string") patch.admin_notes = body.admin_notes;
+  if (typeof body.headline === "string") patch.headline = body.headline;
+  if (typeof body.summary === "string") patch.summary = body.summary;
+  if (body.image_url === null || typeof body.image_url === "string") {
+    patch.image_url = body.image_url as string | null;
+  }
+  if (body.image_alt === null || typeof body.image_alt === "string") {
+    patch.image_alt = body.image_alt as string | null;
+  }
+
+  // Per-review delivery selection rides the same PATCH as the content
+  // edits. setRecipients validates (labels required — the label is what
+  // the public receipt shows) and throws a user-facing message the UI
+  // renders verbatim (a ValidationError, so a 400, not a 500).
+  if (body.recipients !== undefined) {
+    setRecipients(state, body.recipients);
+  }
+
+  const actor = getAuthUser(res).id;
+  const ctx = {
+    process_id: record.id,
+    jurisdiction: record.jurisdiction,
+    emit: emitEvent,
+  };
+
+  await editBrief(state, actor, patch, ctx);
+  await saveProcessState(record);
+
+  const noteUrls = extractUrls(state.content.admin_notes);
+  if (noteUrls.length > 0) warmPreviewsInBackground(noteUrls);
+
+  const model = await enrichCreator(
+    getAdminReadModel(state, {
+      id: record.id,
+      title: record.title,
+      createdAt: record.createdAt,
+      createdBy: record.createdBy,
+    }),
+    { keepRawId: true, audience: "member" },
+  );
+  res.json(model);
+});
 
 /** POST /admin/briefs/:id/approve — deliver, publish, finalize the source. */
-export async function handleApproveBrief(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const record = await getProcess(req.params.id as string);
-    if (!record || record.definition.type !== BRIEF_TYPE) {
-      res.status(404).json({ error: "Brief not found" });
-      return;
-    }
-    const state = briefState(record);
-    if (state.publication_status !== "pending") {
-      res.status(409).json({ error: `Brief is already ${state.publication_status}.` });
-      return;
-    }
-
-    // Delivery goes to the admin's per-review selection (state.recipients,
-    // set via PATCH during review). The hub-wide "Brief recipients"
-    // setting is only the fallback for briefs whose review predates the
-    // picker. Empty is allowed either way — the brief still publishes to
-    // the feed, just without an email.
-    const fallbackRecipients = await getVoteResultsRecipients(currentHubId());
-
-    const actor = getAuthUser(res).id;
-    const ctx = {
-      process_id: record.id,
-      jurisdiction: record.jurisdiction,
-      emit: emitEvent,
-    };
-
-    await approveBrief(state, actor, ctx, {
-      fallbackRecipients,
-      hubLabel: hubDisplayNameSync(),
-      publicBriefUrl: publicBriefUrl(record.id),
-      // A sample brief is never delivered (Phase 7).
-      sendEmail: record.isSample ? sampleDeliverySuppressed : sendEmail,
-      finalizeSource: finalizeBriefSource,
-    });
-
-    // A published brief is terminal.
-    record.status = "finalized";
-    await saveProcessState(record);
-
-    const model = await enrichCreator(
-      getAdminReadModel(state, {
-        id: record.id,
-        title: record.title,
-        createdAt: record.createdAt,
-        createdBy: record.createdBy,
-      }),
-      { keepRawId: true, audience: "member" },
-    );
-    // Held back is not failed (review #34): say who was not emailed and why,
-    // e.g. "Published. Not emailed to Board of Supervisors because this hub
-    // is in demo mode." Labels when the admin chose recipients, else addresses.
-    const heldBack = state.held_back ?? [];
-    const message = publishedMessage(
-      state.delivered_to_labels?.length ? state.delivered_to_labels : state.delivered_to,
-      {
-        names: state.held_back_labels?.length
-          ? state.held_back_labels
-          : heldBack.map((h) => h.email),
-        reasons: heldBack.map((h) => h.reason),
-      },
-    );
-    res.json({ message, brief: model });
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+export const handleApproveBrief = route(async (req, res) => {
+  const record = await getProcess(req.params.id as string);
+  if (!record || record.definition.type !== BRIEF_TYPE) {
+    throw new NotFoundError("Brief not found");
   }
-}
+  const state = briefState(record);
+  if (state.publication_status !== "pending") {
+    throw new ConflictError(`Brief is already ${state.publication_status}.`);
+  }
+
+  // Delivery goes to the admin's per-review selection (state.recipients,
+  // set via PATCH during review). The hub-wide "Brief recipients"
+  // setting is only the fallback for briefs whose review predates the
+  // picker. Empty is allowed either way — the brief still publishes to
+  // the feed, just without an email.
+  const fallbackRecipients = await getVoteResultsRecipients(currentHubId());
+
+  const actor = getAuthUser(res).id;
+  const ctx = {
+    process_id: record.id,
+    jurisdiction: record.jurisdiction,
+    emit: emitEvent,
+  };
+
+  await approveBrief(state, actor, ctx, {
+    fallbackRecipients,
+    hubLabel: hubDisplayNameSync(),
+    publicBriefUrl: publicBriefUrl(record.id),
+    // A sample brief is never delivered (Phase 7).
+    sendEmail: record.isSample ? sampleDeliverySuppressed : sendEmail,
+    finalizeSource: finalizeBriefSource,
+  });
+
+  // A published brief is terminal.
+  record.status = "finalized";
+  await saveProcessState(record);
+
+  const model = await enrichCreator(
+    getAdminReadModel(state, {
+      id: record.id,
+      title: record.title,
+      createdAt: record.createdAt,
+      createdBy: record.createdBy,
+    }),
+    { keepRawId: true, audience: "member" },
+  );
+  // Held back is not failed (review #34): say who was not emailed and why,
+  // e.g. "Published. Not emailed to Board of Supervisors because this hub
+  // is in demo mode." Labels when the admin chose recipients, else addresses.
+  const heldBack = state.held_back ?? [];
+  const message = publishedMessage(
+    state.delivered_to_labels?.length ? state.delivered_to_labels : state.delivered_to,
+    {
+      names: state.held_back_labels?.length
+        ? state.held_back_labels
+        : heldBack.map((h) => h.email),
+      reasons: heldBack.map((h) => h.reason),
+    },
+  );
+  res.json({ message, brief: model });
+});

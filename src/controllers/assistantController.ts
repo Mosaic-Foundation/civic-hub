@@ -7,10 +7,12 @@
 //   POST /assistant/:processType/drafts/:id/message — conversation turn
 //   POST /assistant/:processType/drafts/:id/review  — Code of Conduct check
 
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { AiLimitError, admitAiCall, currentAiLimits } from "../services/aiBudget.js";
 import { checkTextAgainstCoC } from "../modules/civic.assistant/service.js";
 import type { Suggestion } from "../modules/civic.assistant/models.js";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { getAuthUser } from "../middleware/auth.js";
 import { getProcessHandler } from "../processes/registry.js";
 import { currentHub } from "../config/hubContext.js";
@@ -71,10 +73,7 @@ function effectiveConfig(config: AssistantTypeConfig, draft: DraftState): Assist
  * inline guidance shown to everyone (assistant or not). Public — it leaks
  * nothing beyond copy that renders on the form anyway.
  */
-export async function handleGetAssistantConfig(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleGetAssistantConfig = route(async (req, res) => {
   const processType = req.params.processType as string;
   const config = lookupConfig(processType);
 
@@ -92,194 +91,146 @@ export async function handleGetAssistantConfig(
     supports_categories: config.supportsCategories,
     field_guidance: config.fieldGuidance,
   });
-}
+});
 
 /**
- * Shared ownership/state gate for the two draft endpoints. Writes the
- * error response and returns undefined when the request must not proceed.
+ * Shared ownership/state gate for the draft endpoints. Throws a typed error
+ * when the request must not proceed.
  */
 async function loadDraftForUser(
   req: Request,
   res: Response,
   config: AssistantTypeConfig,
-): Promise<AssistantDraft | undefined> {
+): Promise<AssistantDraft> {
   const user = getAuthUser(res);
   const id = req.params.id as string;
 
   const draft = await config.draftStore.get(id);
-  if (!draft) {
-    res.status(404).json({ error: "Draft not found" });
-    return undefined;
-  }
-  if (draft.user_id !== user.id) {
-    res.status(403).json({ error: "Not authorized" });
-    return undefined;
-  }
+  if (!draft) throw new NotFoundError("Draft not found");
+  if (draft.user_id !== user.id) throw new ForbiddenError("Not authorized");
   if (draft.status !== "drafting") {
-    res.status(400).json({ error: "Draft is not in drafting state" });
-    return undefined;
+    throw new ConflictError("Draft is not in drafting state", "already_submitted");
   }
   return draft;
 }
 
-/** Answer a refused AI call with its own status and words. True when sent. */
-function sendAiLimit(res: Response, err: unknown): boolean {
-  if (!(err instanceof AiLimitError)) return false;
-  res.status(err.status).json({ error: err.message, code: err.budget ? "ai_budget_spent" : "ai_rate_limited" });
-  return true;
-}
-
 /** POST /assistant/:processType/drafts/:id/message */
-export async function handleAssistantMessage(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleAssistantMessage = route(async (req, res) => {
   const processType = req.params.processType as string;
-  const { phase, user_message } = req.body;
+  const { phase, user_message } = req.body ?? {};
 
   const config = lookupConfig(processType);
-  if (!config) {
-    res.status(404).json({ error: `No drafting assistant for process type: ${processType}` });
-    return;
-  }
+  if (!config) throw new NotFoundError("No drafting assistant for this process type", "no_assistant");
   if (!user_message || typeof user_message !== "string") {
-    res.status(400).json({ error: "user_message is required" });
-    return;
+    throw new ValidationError("user_message is required");
   }
   const maxChars = currentAiLimits().max_message_chars;
   if (user_message.length > maxChars) {
-    res.status(400).json({
-      error: `That message is too long for the assistant. Please keep it under ${maxChars.toLocaleString("en-US")} characters.`,
-      code: "message_too_long",
-    });
-    return;
+    throw new ValidationError(
+      `That message is too long for the assistant. Please keep it under ${maxChars.toLocaleString("en-US")} characters.`,
+      "message_too_long",
+    );
   }
   if (!phase || !VALID_PHASES.has(phase)) {
-    res.status(400).json({ error: "phase must be: brainstorm, review, or free_form" });
-    return;
+    throw new ValidationError("phase must be: brainstorm, review, or free_form");
   }
 
-  try {
-    const draft = await loadDraftForUser(req, res, config);
-    if (!draft) return;
+  const draft = await loadDraftForUser(req, res, config);
 
-    const category = config.supportsCategories
-      ? ((draft.category ?? "idea") as Category)
-      : undefined;
+  const category = config.supportsCategories
+    ? ((draft.category ?? "idea") as Category)
+    : undefined;
 
-    const limits = await admitAiCall("chat", getAuthUser(res).id);
-    const response = await callAssistant({
-      phase: phase as Phase,
-      category,
-      config: effectiveConfig(await withHubGuide(config), toDraftState(draft)),
-      draft_state: toDraftState(draft),
-      conversation_history: draft.conversation_history,
-      user_message,
-      hub_config: await getHubConfig(),
-      purpose: "assistant.message",
-      limits,
-    });
+  const limits = await admitAiCall("chat", getAuthUser(res).id);
+  const response = await callAssistant({
+    phase: phase as Phase,
+    category,
+    config: effectiveConfig(await withHubGuide(config), toDraftState(draft)),
+    draft_state: toDraftState(draft),
+    conversation_history: draft.conversation_history,
+    user_message,
+    hub_config: await getHubConfig(),
+    purpose: "assistant.message",
+    limits,
+  });
 
-    await config.draftStore.appendConversation(draft.id, user_message, response.message);
+  await config.draftStore.appendConversation(draft.id, user_message, response.message);
 
-    if (response.draft_proposal) {
-      await config.draftStore.applyGeneratedDraft(draft.id, response.draft_proposal);
-    }
-
-    // Chat suggestions live in the chat — their Apply buttons work from the
-    // cards there. Only HARD blocks are persisted onto the draft, because
-    // they gate submission and must be visible on the form view too. Soft
-    // cards (a sources list, a rewrite) used to be saved here as well and
-    // then reappeared on the form as "Code of Conduct check" results
-    // (Adam, 2026-09-02).
-    const hardBlocks = response.suggestions.filter((s) => s.severity === "hard");
-    if (hardBlocks.length > 0) {
-      // No hash: a chat turn is not the check, so this never counts as one.
-      await config.draftStore.saveReviewResult(draft.id, hardBlocks, null);
-    }
-
-    const updatedDraft = await config.draftStore.get(draft.id);
-    res.json({ response, draft: updatedDraft });
-  } catch (err) {
-    if (sendAiLimit(res, err)) return;
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error(`[assistant:${processType}]`, message);
-    res.status(500).json({ error: message });
+  if (response.draft_proposal) {
+    await config.draftStore.applyGeneratedDraft(draft.id, response.draft_proposal);
   }
-}
+
+  // Chat suggestions live in the chat — their Apply buttons work from the
+  // cards there. Only HARD blocks are persisted onto the draft, because
+  // they gate submission and must be visible on the form view too. Soft
+  // cards (a sources list, a rewrite) used to be saved here as well and
+  // then reappeared on the form as "Code of Conduct check" results
+  // (Adam, 2026-09-02).
+  const hardBlocks = response.suggestions.filter((s) => s.severity === "hard");
+  if (hardBlocks.length > 0) {
+    // No hash: a chat turn is not the check, so this never counts as one.
+    await config.draftStore.saveReviewResult(draft.id, hardBlocks, null);
+  }
+
+  const updatedDraft = await config.draftStore.get(draft.id);
+  res.json({ response, draft: updatedDraft });
+});
 
 /** POST /assistant/:processType/drafts/:id/review — the always-on CoC check. */
-export async function handleAssistantReview(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleAssistantReview = route(async (req, res) => {
   const processType = req.params.processType as string;
 
   const config = lookupConfig(processType);
-  if (!config) {
-    res.status(404).json({ error: `No drafting assistant for process type: ${processType}` });
-    return;
-  }
+  if (!config) throw new NotFoundError("No drafting assistant for this process type", "no_assistant");
 
+  const draft = await loadDraftForUser(req, res, config);
+
+  // The check is the Code of Conduct check and nothing else (Adam,
+  // 2026-09-03: "it should suggest changes only based on code of conduct
+  // violations… the writing assistant should be a different thing").
+  // Hard blocks only; no best-practices advice, no fact-checking, no web
+  // search, no chat turn. Writing help lives in the assistant panel, where
+  // the person asks for it. Same for creation and for edits.
+  // The hash is of exactly the text the check reads, so a submit can
+  // tell whether this result covers the draft as it then stands.
+  const fields = codeOfConductFields(toDraftState(draft));
+  const checkedHash = codeOfConductHash(fields);
+  let suggestions: Suggestion[] = [];
+  let unavailable = false;
   try {
-    const draft = await loadDraftForUser(req, res, config);
-    if (!draft) return;
-
-    // The check is the Code of Conduct check and nothing else (Adam,
-    // 2026-09-03: "it should suggest changes only based on code of conduct
-    // violations… the writing assistant should be a different thing").
-    // Hard blocks only; no best-practices advice, no fact-checking, no web
-    // search, no chat turn. Writing help lives in the assistant panel, where
-    // the person asks for it. Same for creation and for edits.
-    {
-      // The hash is of exactly the text the check reads, so a submit can
-      // tell whether this result covers the draft as it then stands.
-      const fields = codeOfConductFields(toDraftState(draft));
-      const checkedHash = codeOfConductHash(fields);
-      let suggestions: Suggestion[] = [];
-      let unavailable = false;
-      try {
-        // A person over their hourly count is told so (429, below). A hub
-        // whose budget is spent is not a reason to block a submission: the
-        // check is "unavailable" and the draft goes to an admin, as when the
-        // model itself is down.
-        await admitAiCall("review", getAuthUser(res).id);
-        suggestions = await checkTextAgainstCoC(fields, await getHubConfig());
-      } catch (err) {
-        if (err instanceof AiLimitError && !err.budget) throw err;
-        console.error(`[assistant-review:${processType}] CoC check unavailable, failing open to human review:`, err instanceof Error ? err.message : err);
-        unavailable = true;
-      }
-      // An unavailable check is stored as such (submitting stays allowed), so
-      // a demo hub never publishes the draft as if it had passed.
-      await config.draftStore.saveReviewResult(
-        draft.id,
-        unavailable ? [{ ...CHECK_UNAVAILABLE_RESULT }] : suggestions,
-        checkedHash,
-      );
-      const updated = await config.draftStore.get(draft.id);
-      res.json({
-        response: {
-          message: unavailable
-            ? AUTOMATED_REVIEW_UNAVAILABLE_NOTICE
-            : suggestions.length
-              ? "The Code of Conduct check found something that must be fixed first."
-              : "No Code of Conduct issues found.",
-          suggestions,
-        },
-        draft: updated,
-        ...(unavailable ? { review_unavailable: true } : {}),
-      });
-      return;
-    }
-
+    // A person over their hourly count is told so (429, below). A hub
+    // whose budget is spent is not a reason to block a submission: the
+    // check is "unavailable" and the draft goes to an admin, as when the
+    // model itself is down.
+    await admitAiCall("review", getAuthUser(res).id);
+    suggestions = await checkTextAgainstCoC(fields, await getHubConfig());
   } catch (err) {
-    if (sendAiLimit(res, err)) return;
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error(`[assistant-review:${processType}]`, message);
-    res.status(500).json({ error: message });
+    if (err instanceof AiLimitError && !err.budget) throw err;
+    console.error(`[assistant-review:${processType}] CoC check unavailable, failing open to human review:`, err instanceof Error ? err.message : err);
+    unavailable = true;
   }
-}
+  // An unavailable check is stored as such (submitting stays allowed), so
+  // a demo hub never publishes the draft as if it had passed.
+  await config.draftStore.saveReviewResult(
+    draft.id,
+    unavailable ? [{ ...CHECK_UNAVAILABLE_RESULT }] : suggestions,
+    checkedHash,
+  );
+  const updated = await config.draftStore.get(draft.id);
+  res.json({
+    response: {
+      message: unavailable
+        ? AUTOMATED_REVIEW_UNAVAILABLE_NOTICE
+        : suggestions.length
+          ? "The Code of Conduct check found something that must be fixed first."
+          : "No Code of Conduct issues found.",
+      suggestions,
+    },
+    draft: updated,
+    ...(unavailable ? { review_unavailable: true } : {}),
+  });
+  return;
+});
 
 
 /**
@@ -291,46 +242,32 @@ export async function handleAssistantReview(
  * is saved as the draft's check result, so asking for advice never counts
  * as having run the check.
  */
-export async function handleAssistantSuggest(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleAssistantSuggest = route(async (req, res) => {
   const processType = req.params.processType as string;
   const config = lookupConfig(processType);
-  if (!config) {
-    res.status(404).json({ error: `No drafting assistant for process type: ${processType}` });
-    return;
-  }
-  try {
-    const draft = await loadDraftForUser(req, res, config);
-    if (!draft) return;
-    const category = config.supportsCategories
-      ? ((draft.category ?? "idea") as Category)
-      : undefined;
-    const message =
-      `Please review my current draft against ${config.bestPracticesTitle} and suggest ` +
-      "concrete improvements as structured suggestions I can apply.";
-    const limits = await admitAiCall("chat", getAuthUser(res).id);
-    const response = await callAssistant({
-      phase: "review",
-      category,
-      config: effectiveConfig(await withHubGuide(config), toDraftState(draft)),
-      draft_state: toDraftState(draft),
-      conversation_history: draft.conversation_history,
-      user_message: message,
-      hub_config: await getHubConfig(),
-      purpose: "assistant.suggest",
-      limits,
-    });
-    // Advice is a conversation turn, not writing assistance until applied
-    // (Apply is what marks assistant_helped).
-    await config.draftStore.appendConversation(draft.id, message, response.message);
-    const updated = await config.draftStore.get(draft.id);
-    res.json({ response, draft: updated });
-  } catch (err) {
-    if (sendAiLimit(res, err)) return;
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error(`[assistant-suggest:${processType}]`, message);
-    res.status(500).json({ error: message });
-  }
-}
+  if (!config) throw new NotFoundError("No drafting assistant for this process type", "no_assistant");
+  const draft = await loadDraftForUser(req, res, config);
+  const category = config.supportsCategories
+    ? ((draft.category ?? "idea") as Category)
+    : undefined;
+  const message =
+    `Please review my current draft against ${config.bestPracticesTitle} and suggest ` +
+    "concrete improvements as structured suggestions I can apply.";
+  const limits = await admitAiCall("chat", getAuthUser(res).id);
+  const response = await callAssistant({
+    phase: "review",
+    category,
+    config: effectiveConfig(await withHubGuide(config), toDraftState(draft)),
+    draft_state: toDraftState(draft),
+    conversation_history: draft.conversation_history,
+    user_message: message,
+    hub_config: await getHubConfig(),
+    purpose: "assistant.suggest",
+    limits,
+  });
+  // Advice is a conversation turn, not writing assistance until applied
+  // (Apply is what marks assistant_helped).
+  await config.draftStore.appendConversation(draft.id, message, response.message);
+  const updated = await config.draftStore.get(draft.id);
+  res.json({ response, draft: updated });
+});

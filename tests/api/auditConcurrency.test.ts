@@ -157,7 +157,8 @@ describe("a ballot is refused once the vote is not open", () => {
     await expire(id);
     const [t] = await residentTokens(1);
     const res = await act(id, "process.vote", t, { option: "Yes" });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("vote_closed");
     const { rows } = await db.query("SELECT count(*)::int AS n FROM vote_records WHERE process_id = $1", [id]);
     expect(rows[0].n).toBe(0);
   });

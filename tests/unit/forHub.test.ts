@@ -225,6 +225,7 @@ describe("forHub — upserts are stamped and must conflict within the hub", () =
     expect(() =>
       athens.from("pending_verifications").upsert({ email: "a@b.c" }, { onConflict: "email" }),
     ).toThrow(/onConflict/);
+    // @ts-expect-error -- deliberate: no conflict target; the type refuses it, and the runtime guard is what is under test
     expect(() => athens.from("link_previews").upsert({ url: "https://x" })).toThrow(
       /onConflict/,
     );

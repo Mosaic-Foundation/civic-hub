@@ -187,6 +187,8 @@ select hub_id, count(*) from hub_settings group by hub_id;
 
 ## 6. Deploy
 
+**Every release since: `RUNBOOK-release.md`**: migrations first, then code, then `/health`.
+
 The branch is pushed. Set `multi-tenant` as the production branch on
 **`civic-hub-dev`** (Settings → Git → Production Branch), then redeploy.
 

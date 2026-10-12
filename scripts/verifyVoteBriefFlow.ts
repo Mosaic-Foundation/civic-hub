@@ -27,7 +27,6 @@ async function main(hub: Hub) {
     definition: { type: "civic.vote", version: "0.1" },
     title: "E2E Vote Brief Test",
     description: "Should the test pass?",
-    hubId: hub.id,
     jurisdiction: processJurisdiction() ?? DEFAULT_JURISDICTION,
     createdBy: "verify-script",
     state: {

@@ -4,6 +4,7 @@
 // lives here beyond what the injected callbacks perform. The host hub is
 // responsible for persisting state changes after these functions return.
 
+import { ConflictError } from "../../errors/index.js";
 import type {
   CreateMeetingSummaryInput,
   MeetingSummaryPatch,
@@ -98,8 +99,9 @@ export async function editMeetingSummary(
   ctx: MeetingSummaryProcessContext,
 ): Promise<MeetingSummaryProcessState> {
   if (!canEdit(state)) {
-    throw new Error(
-      `Meeting summary cannot be edited: approval_status is "${state.approval_status}"`,
+    throw new ConflictError(
+      "This meeting summary can no longer be edited.",
+      "not_editable",
     );
   }
 
@@ -169,10 +171,9 @@ export function effectiveQualityFlag(
  * Refused approval of a flagged summary (or revision) without confirmation.
  * The admin route answers 409 with the message; the UI asks and resends.
  */
-export class FlaggedSummaryError extends Error {
+export class FlaggedSummaryError extends ConflictError {
   constructor(flagMessage: string) {
-    super(`Needs confirmation: ${flagMessage}`);
-    this.name = "FlaggedSummaryError";
+    super(`Needs confirmation: ${flagMessage}`, "needs_confirmation");
   }
 }
 
@@ -195,8 +196,9 @@ export async function approveMeetingSummary(
   opts: { confirmFlagged?: boolean } = {},
 ): Promise<MeetingSummaryProcessState> {
   if (!canApprove(state)) {
-    throw new Error(
-      `Meeting summary cannot be approved: approval_status is "${state.approval_status}"`,
+    throw new ConflictError(
+      "This meeting summary cannot be approved in its current state.",
+      "not_approvable",
     );
   }
   // A flagged summary is published only by someone who has seen the flag.
@@ -328,7 +330,7 @@ export function acceptRevision(
   opts: { confirmFlagged?: boolean } = {},
 ): MeetingSummaryProcessState {
   const rev = state.pending_revision;
-  if (!rev) throw new Error("No revision is waiting for review");
+  if (!rev) throw new ConflictError("No revision is waiting for review", "no_pending_revision");
   if (rev.quality_flag && !opts.confirmFlagged) {
     throw new FlaggedSummaryError(rev.quality_flag.message);
   }
@@ -353,7 +355,7 @@ export function discardRevision(
   state: MeetingSummaryProcessState,
 ): MeetingSummaryProcessState {
   if (!state.pending_revision) {
-    throw new Error("No revision is waiting for review");
+    throw new ConflictError("No revision is waiting for review", "no_pending_revision");
   }
   state.pending_revision = null;
   return state;

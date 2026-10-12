@@ -24,8 +24,9 @@
 // the RESOLVED list rather than the submitted one, because a submission of
 // nothing but blank strings is the same mistake with more typing.
 
+import { UnauthorizedError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { describeInvites, sendAdminInvites, type InviteReport } from "../services/adminInvite.js";
-import type { Request, Response } from "express";
 import { currentHubId } from "../config/hubContext.js";
 import {
   getAdminEmails,
@@ -52,7 +53,7 @@ function cleanEmails(raw: unknown): string[] | null {
     const email = entry.trim().toLowerCase();
     if (!email) continue;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw new Error(`"${entry.trim()}" is not an email address.`);
+      throw new ValidationError(`"${entry.trim()}" is not an email address.`, "invalid_email");
     }
     if (seen.has(email)) continue;
     seen.add(email);
@@ -61,18 +62,9 @@ function cleanEmails(raw: unknown): string[] | null {
   return out;
 }
 
-export async function handleGetHubPeople(
-  _req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    res.json(await loadPeople());
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: err instanceof Error ? err.message : "Unknown error" });
-  }
-}
+export const handleGetHubPeople = route(async (_req, res) => {
+  res.json(await loadPeople());
+});
 
 async function loadPeople(): Promise<HubPeopleResponse> {
   const hubId = currentHubId();
@@ -86,15 +78,9 @@ async function loadPeople(): Promise<HubPeopleResponse> {
   };
 }
 
-export async function handleSetHubPeople(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleSetHubPeople = route(async (req, res) => {
   const user = caller(res);
-  if (!user) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
-  }
+  if (!user) throw new UnauthorizedError("Authentication required");
 
   const body = (req.body ?? {}) as {
     admin_emails?: unknown;
@@ -103,65 +89,47 @@ export async function handleSetHubPeople(
   };
 
   // Shape and rules first, so a rejected change never spends a code.
-  let admins: string[] | null;
-  let board: string[] | null;
-  try {
-    admins = body.admin_emails === undefined ? null : cleanEmails(body.admin_emails);
-    board = body.board_emails === undefined ? null : cleanEmails(body.board_emails);
-  } catch (err) {
-    res
-      .status(400)
-      .json({ error: err instanceof Error ? err.message : "Invalid email list" });
-    return;
-  }
+  const admins = body.admin_emails === undefined ? null : cleanEmails(body.admin_emails);
+  const board = body.board_emails === undefined ? null : cleanEmails(body.board_emails);
   if (body.admin_emails !== undefined && admins === null) {
-    res.status(400).json({ error: "admin_emails must be an array of strings." });
-    return;
+    throw new ValidationError("admin_emails must be an array of strings.");
   }
   if (body.board_emails !== undefined && board === null) {
-    res.status(400).json({ error: "board_emails must be an array of strings." });
-    return;
+    throw new ValidationError("board_emails must be an array of strings.");
   }
   if (admins !== null && admins.length === 0) {
-    res.status(400).json({
-      error:
-        "A hub must keep at least one admin. Add the replacement first, then remove yourself.",
-    });
-    return;
+    throw new ValidationError(
+      "A hub must keep at least one admin. Add the replacement first, then remove yourself.",
+      "last_admin",
+    );
   }
 
-  if (!(await requireStepUpCode(req, res, body.code))) return;
+  await requireStepUpCode(req, res, body.code);
 
   const hubId = currentHubId();
-  try {
-    let invites: InviteReport | null = null;
-    if (admins !== null) {
-      const before = await getAdminEmails(hubId);
-      await setAdminEmails(hubId, admins, user.id);
-      logRosterChange("admin", hubId, user.email, before, admins);
-      if (rosterChanged(before, admins)) {
-        await recordHubAdminAudit({ actor: user.email, action: "people.admins", before, after: admins });
-      }
-      // Each new admin is told, with the first steps (review R38).
-      const added = admins.filter((e) => !before.includes(e.toLowerCase()));
-      if (added.length > 0) invites = await sendAdminInvites(added);
+  let invites: InviteReport | null = null;
+  if (admins !== null) {
+    const before = await getAdminEmails(hubId);
+    await setAdminEmails(hubId, admins, user.id);
+    logRosterChange("admin", hubId, user.email, before, admins);
+    if (rosterChanged(before, admins)) {
+      await recordHubAdminAudit({ actor: user.email, action: "people.admins", before, after: admins });
     }
-    if (board !== null) {
-      const before = await getBoardEmails(hubId);
-      await setBoardEmails(hubId, board, user.id);
-      logRosterChange("board", hubId, user.email, before, board);
-      if (rosterChanged(before, board)) {
-        await recordHubAdminAudit({ actor: user.email, action: "people.board", before, after: board });
-      }
-    }
-    const people = await loadPeople();
-    res.json(invites ? { ...people, invites, invite_message: describeInvites(invites) } : people);
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: err instanceof Error ? err.message : "Unknown error" });
+    // Each new admin is told, with the first steps (review R38).
+    const added = admins.filter((e) => !before.includes(e.toLowerCase()));
+    if (added.length > 0) invites = await sendAdminInvites(added);
   }
-}
+  if (board !== null) {
+    const before = await getBoardEmails(hubId);
+    await setBoardEmails(hubId, board, user.id);
+    logRosterChange("board", hubId, user.email, before, board);
+    if (rosterChanged(before, board)) {
+      await recordHubAdminAudit({ actor: user.email, action: "people.board", before, after: board });
+    }
+  }
+  const people = await loadPeople();
+  res.json(invites ? { ...people, invites, invite_message: describeInvites(invites) } : people);
+});
 
 /**
  * Say who changed whose access, and how.

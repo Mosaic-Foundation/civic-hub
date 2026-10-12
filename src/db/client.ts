@@ -17,13 +17,14 @@
 //   SUPABASE_URL                  Project URL (e.g. https://xxx.supabase.co)
 //   SUPABASE_SERVICE_ROLE_KEY     Service role secret (starts with eyJ…)
 
+import { env, envVar } from "../config/env.js";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { hubToken } from "./hubToken.js";
 
 let cached: SupabaseClient | null = null;
 
 function read(name: string): string {
-  const v = process.env[name];
+  const v = envVar(name);
   if (!v || v.trim() === "") {
     throw new Error(
       `Missing required env var: ${name}. ` +
@@ -90,7 +91,7 @@ export function pinServiceRole(): void {
 /** Whether forHub() should use minted hub tokens right now. */
 export function hubTokensEnabled(): boolean {
   if (pinnedToServiceRole) return false;
-  return ON.has((process.env.CIVIC_HUB_MINTED_TOKEN ?? "").trim().toLowerCase());
+  return ON.has((env.CIVIC_HUB_MINTED_TOKEN ?? "").trim().toLowerCase());
 }
 
 /**
@@ -100,7 +101,7 @@ export function hubTokensEnabled(): boolean {
  */
 export function getHubTokenDb(hubId: string): SupabaseClient {
   const url = read("SUPABASE_URL");
-  const apiKey = process.env.SUPABASE_PUBLISHABLE_KEY?.trim() || "no-gateway-key";
+  const apiKey = env.SUPABASE_PUBLISHABLE_KEY?.trim() || "no-gateway-key";
   hubToken(hubId); // mint once now, so a missing or bad key fails here, loudly
   return createClient(url, apiKey, {
     auth: { persistSession: false, autoRefreshToken: false },

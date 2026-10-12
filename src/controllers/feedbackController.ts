@@ -5,19 +5,14 @@
 // field `website` silently discards spam — returns 200 with a normal
 // shape so bots can't probe the difference.
 
-import type { Request, Response } from "express";
+import { ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { getUserFromToken } from "../modules/civic.auth/index.js";
-import {
-  FeedbackValidationError,
-  submitFeedback,
-} from "../modules/civic.feedback/index.js";
+import { submitFeedback } from "../modules/civic.feedback/index.js";
 
 const MESSAGE_MAX_LEN = 4000;
 
-export async function handleSubmitFeedback(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleSubmitFeedback = route(async (req, res) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
 
   // Honeypot — a bot will dutifully fill every input. Real users never
@@ -34,14 +29,10 @@ export async function handleSubmitFeedback(
   const screenshotUrl = typeof body.screenshot_url === "string" ? body.screenshot_url : null;
 
   if (typeof message !== "string" || message.trim().length === 0) {
-    res.status(400).json({ error: "message is required" });
-    return;
+    throw new ValidationError("message is required");
   }
   if (message.length > MESSAGE_MAX_LEN) {
-    res.status(400).json({
-      error: `message must be ${MESSAGE_MAX_LEN} characters or fewer`,
-    });
-    return;
+    throw new ValidationError(`message must be ${MESSAGE_MAX_LEN} characters or fewer`);
   }
 
   // Optional bearer-token resolution. Failure short of an authenticated
@@ -64,27 +55,17 @@ export async function handleSubmitFeedback(
   const userAgentHeader = req.headers["user-agent"];
   const userAgent = typeof userAgentHeader === "string" ? userAgentHeader : null;
 
-  try {
-    const submission = await submitFeedback({
-      category: category as never, // service-level validation will reject invalids
-      message,
-      name: resolvedName,
-      email: resolvedEmail,
-      user_id: userId,
-      user_agent: userAgent,
-      screenshot_url: screenshotUrl,
-    });
-    res.json({
-      message: "Thanks for the feedback.",
-      submission_id: submission.id,
-    });
-  } catch (err) {
-    if (err instanceof FeedbackValidationError) {
-      res.status(400).json({ error: err.message });
-      return;
-    }
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    console.error(`[feedback] submit failed: ${msg}`);
-    res.status(500).json({ error: "Could not save feedback" });
-  }
-}
+  const submission = await submitFeedback({
+    category: category as never, // service-level validation will reject invalids
+    message,
+    name: resolvedName,
+    email: resolvedEmail,
+    user_id: userId,
+    user_agent: userAgent,
+    screenshot_url: screenshotUrl,
+  });
+  res.json({
+    message: "Thanks for the feedback.",
+    submission_id: submission.id,
+  });
+});

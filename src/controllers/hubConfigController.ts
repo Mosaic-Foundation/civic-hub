@@ -19,7 +19,9 @@
 // kilobytes and almost no request renders one, so they are served separately
 // by GET /hub-config/documents rather than loaded on every boot.
 
-import type { Request, Response } from "express";
+import { NotFoundError } from "../errors/index.js";
+import { route } from "../http/route.js";
+import type { Request } from "express";
 import { pluginSetupFor } from "../services/pluginSetup.js";
 import type { PluginSetupStatus } from "../shared/pluginSetup.js";
 import { getPublicSettings } from "../services/hubSettings.js";
@@ -72,17 +74,13 @@ function publicHub(hub: Hub): PublicHub {
   };
 }
 
-export async function handleGetHubConfig(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleGetHubConfig = route(async (req, res) => {
   const hub = req.hub;
   if (!hub) {
     // Unreachable in practice: the resolver answers before any handler runs.
     // Explicit anyway, so a future change to middleware order fails loudly
     // instead of serving a config with no hub behind it.
-    res.status(404).json({ error: "no_hub" });
-    return;
+    throw new NotFoundError("No civic hub is configured at this address.", "no_hub");
   }
 
   const settings = await getPublicSettings(hub.id);
@@ -96,7 +94,7 @@ export async function handleGetHubConfig(
   res.set("Cache-Control", "private, no-cache");
   const body: HubConfigResponse = { hub: publicHub(hub), settings, plugin_setup: pluginSetup, content };
   res.json(body);
-}
+});
 
 /**
  * GET /hub-config/documents — the hub's legal pages and About text.
@@ -106,14 +104,10 @@ export async function handleGetHubConfig(
  * Putting them in the boot payload would make every visitor download the
  * terms of service to look at the feed.
  */
-export async function handleGetHubDocuments(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleGetHubDocuments = route(async (req, res) => {
   const hub = req.hub;
   if (!hub) {
-    res.status(404).json({ error: "no_hub" });
-    return;
+    throw new NotFoundError("No civic hub is configured at this address.", "no_hub");
   }
   // Revalidated every time, for the same reason as the config: an admin who
   // edits a document expects to see it on the next reload. ETag keeps the
@@ -123,4 +117,4 @@ export async function handleGetHubDocuments(
   // them to admins only (2026-10-07). They say nothing that is not true of
   // every hub's starter text, so serving them to everyone discloses nothing.
   res.json(await hubDocumentsWithNotes(hub));
-}
+});

@@ -7,6 +7,7 @@
 // Since 2026-10-07 (review #34) it resolves with a report, and a recipient
 // the hub's mode holds back is reported as held back, never as a failure.
 
+import { UnavailableError } from "../../src/errors/index.js";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("../../src/utils/email.js", () => ({
@@ -68,14 +69,15 @@ describe("mailer.sendEmail", () => {
     mocked
       .mockResolvedValueOnce({ sent: true, provider: "resend", id: "x" })
       .mockResolvedValueOnce({ sent: false, error: "domain not verified" });
-    await expect(sendEmail(message)).rejects.toThrow(
-      "Email delivery failed: b@example.gov: domain not verified",
-    );
+    const err = await sendEmail(message).catch((e) => e);
+    expect(err).toBeInstanceOf(UnavailableError);
+    expect(err.message).not.toContain("domain not verified");
+    expect(err.cause.message).toBe("Email delivery failed: b@example.gov: domain not verified");
   });
 
   it("throws when the provider throws", async () => {
     mocked.mockRejectedValue(new Error("network down"));
-    await expect(sendEmail(message)).rejects.toThrow("Email delivery failed");
+    await expect(sendEmail(message)).rejects.toBeInstanceOf(UnavailableError);
   });
 
   it("logs and resolves when no key is configured (local dev)", async () => {
@@ -123,8 +125,8 @@ describe("mailer.sendEmail", () => {
 
   it("still throws on a real failure on a demo hub", async () => {
     mocked.mockResolvedValue({ sent: false, error: "Resend 500" });
-    await expect(runWithHub(hub("demo"), ADMIN, () => sendEmail(message))).rejects.toThrow(
-      "Email delivery failed: a@example.gov: Resend 500",
-    );
+    const err = await runWithHub(hub("demo"), ADMIN, () => sendEmail(message)).catch((e) => e);
+    expect(err).toBeInstanceOf(UnavailableError);
+    expect(err.cause.message).toBe("Email delivery failed: a@example.gov: Resend 500");
   });
 });

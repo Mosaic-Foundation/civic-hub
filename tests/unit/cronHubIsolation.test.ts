@@ -1,3 +1,4 @@
+import type { HubJobSpec } from "../../src/jobs/registry.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -126,7 +127,7 @@ const { runJobAcrossHubs } = await import("../../src/jobs/runJob.js");
 
 /** One pass of a registry job, as its route would run it. */
 async function runJob(id: string, onlyHub: string | null = null) {
-  const report = await runJobAcrossHubs(jobById(id)!, JOB_RUNNERS[id], {
+  const report = await runJobAcrossHubs((jobById(id) as HubJobSpec), JOB_RUNNERS[id], {
     now: new Date(),
     force: false,
     onlyHub,

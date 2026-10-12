@@ -4,6 +4,7 @@
 // review, then approval walks it approved → published as delivery and
 // publication complete.
 
+import { ConflictError } from "../../errors/index.js";
 import type { BriefProcessState, BriefPublicationStatus } from "./models.js";
 
 export function canEdit(state: BriefProcessState): boolean {
@@ -32,6 +33,6 @@ export function assertPublicationTransition(
     published: [],
   };
   if (!allowed[from].includes(to)) {
-    throw new Error(`Invalid brief publication transition: ${from} → ${to}`);
+    throw new ConflictError("That publication step is not allowed from the brief's current state.", "invalid_transition");
   }
 }

@@ -3,6 +3,7 @@
 // Adapts the module's service interface to the hub's ProcessHandler contract.
 // Lifecycle: draft → active → closed (per ADR-003, flexible lifecycle profiles).
 
+import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { ProcessHandler } from "./types.js";
@@ -158,7 +159,7 @@ const wordcloudProcess: ProcessHandler = {
         return outcome.result;
       }
       default:
-        throw new Error(`Unknown action type for civic.wordcloud: ${action.type}`);
+        throw new ValidationError("That action isn't supported on a word cloud.", "action_not_supported");
     }
   },
 

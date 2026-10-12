@@ -57,3 +57,79 @@ describe("Health and Discovery", () => {
     }
   });
 });
+
+// Audit 4: /health names the database functions the code calls
+// (src/db/functionContract.ts) and checks them against the live catalog through
+// public.function_catalog(). LOCAL ONLY for the catalog part (pg on the stack).
+describe("Health checks the database functions", () => {
+  it("GET /health counts the functions among what it checked", async () => {
+    const { FUNCTION_CONTRACT } = await import("../../src/db/functionContract.js");
+    const { status, body } = await apiJson<{ status: string; schema: { ok: boolean; checked: number; gaps: string[] } }>(
+      "/health",
+    );
+    expect(status).toBe(200);
+    expect(body.schema.ok).toBe(true);
+    expect(body.schema.gaps).toEqual([]);
+    expect(body.schema.checked).toBeGreaterThan(FUNCTION_CONTRACT.length);
+  });
+
+  it("the catalog finds a function behind the code, and two versions of one", async () => {
+    const pg = (await import("pg")).default;
+    const { compareFunctions, FUNCTION_CONTRACT } = await import("../../src/db/functionContract.js");
+    const url = process.env.CIVIC_TEST_DATABASE_URL?.trim() || "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+    if (!["127.0.0.1", "localhost"].includes(new URL(url).hostname)) throw new Error("health: local stack only");
+    const db = new pg.Client({ connectionString: url });
+    await db.connect();
+    const catalog = async () =>
+      (await db.query("SELECT * FROM public.function_catalog($1)", [FUNCTION_CONTRACT.map((f) => f.name)])).rows;
+    try {
+      expect(compareFunctions(FUNCTION_CONTRACT, await catalog())).toEqual([]);
+      // In a transaction rolled back at the end: nothing is left behind.
+      await db.query("BEGIN");
+      // A database still on Audit 2's transition_process (the dev incident).
+      await db.query(
+        "DROP FUNCTION public.transition_process(text, text, text, text, jsonb, jsonb, text, bigint, jsonb)",
+      );
+      await db.query(
+        `CREATE FUNCTION public.transition_process(p_hub_id text, p_process_id text, p_to_status text, p_actor text, p_event jsonb, p_state jsonb DEFAULT NULL)
+         RETURNS jsonb LANGUAGE sql AS $$ SELECT NULL::jsonb $$`,
+      );
+      // And a second version of another.
+      await db.query(
+        "CREATE FUNCTION public.reshuffle_ballots(p_hub_id text, p_process_id text, p_extra integer) RETURNS integer LANGUAGE sql AS $$ SELECT 0 $$",
+      );
+      const gaps = compareFunctions(FUNCTION_CONTRACT, await catalog());
+      expect(gaps.map((g) => [g.name, g.kind])).toEqual([
+        ["transition_process", "mismatched_function"],
+        ["reshuffle_ballots", "overloaded_function"],
+      ]);
+    } finally {
+      await db.query("ROLLBACK").catch(() => {});
+      await db.end();
+    }
+  });
+
+  it("the catalog is the service role's only", async () => {
+    // Asked of the catalog, not by calling it as anon: on the local Supabase
+    // image (postgres 17.6.1.111) a call to a function the role may not
+    // execute crashes the database backend (signal 11; TESTING.md, Audit 4).
+    const pg = (await import("pg")).default;
+    const db = new pg.Client({
+      connectionString: process.env.CIVIC_TEST_DATABASE_URL?.trim() || "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+    });
+    await db.connect();
+    try {
+      const { rows } = await db.query(
+        `SELECT r.rolname, has_function_privilege(r.rolname, 'public.function_catalog(text[])', 'EXECUTE') AS can
+           FROM pg_roles r WHERE r.rolname IN ('anon', 'authenticated', 'service_role') ORDER BY 1`,
+      );
+      expect(rows).toEqual([
+        { rolname: "anon", can: false },
+        { rolname: "authenticated", can: false },
+        { rolname: "service_role", can: true },
+      ]);
+    } finally {
+      await db.end();
+    }
+  });
+});

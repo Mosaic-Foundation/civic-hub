@@ -9,6 +9,7 @@
 // so the registry can initialize state and produce read models alongside
 // other process types.
 
+import { ValidationError } from "../errors/index.js";
 import type { Process, ProcessAction } from "../models/process.js";
 import type { ProcessHandler } from "./types.js";
 import {
@@ -44,8 +45,9 @@ const meetingSummaryProcess: ProcessHandler = {
     ] as const;
     for (const key of required) {
       if (!(key in input)) {
-        throw new Error(
-          `civic.meeting_summary initializeState requires "${key}" — summaries can only be created by the meeting-summary cron.`,
+        throw new ValidationError(
+          "Meeting summaries are created automatically; they can't be created directly.",
+          "cannot_create_directly",
         );
       }
     }
@@ -79,9 +81,9 @@ const meetingSummaryProcess: ProcessHandler = {
     _process: Process,
     action: ProcessAction,
   ): Promise<Record<string, unknown>> {
-    throw new Error(
-      `civic.meeting_summary does not accept process actions (received "${action.type}"). ` +
-        `Meeting summary review happens via /admin/meeting-summaries/*.`,
+    throw new ValidationError(
+      "Meeting summaries don't take actions here. Review them from the admin meeting-summaries page.",
+        "action_not_supported",
     );
   },
 

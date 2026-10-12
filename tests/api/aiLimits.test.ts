@@ -6,7 +6,7 @@
 // limits from the hub's own Settings.
 //
 // The test servers have no ANTHROPIC_API_KEY, so a chat turn that is let
-// through answers 500 after it was counted. That is all these tests need: no
+// through answers 503 ai_not_configured after it was counted. All these tests need: no
 // paid call is ever made here.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -97,6 +97,9 @@ describe("the hub enforces them", () => {
     for (let i = 0; i < 2; i++) {
       const r = await call("POST", message(draft), HOST, { phase: "free_form", user_message: "hello" }, token);
       expect(r.status, JSON.stringify(r.body)).not.toBe(429);
+      // Let through and counted; with no key here, the assistant says it isn't set up (Audit 4).
+      expect(r.status).toBe(503);
+      expect(r.body.code).toBe("ai_not_configured");
     }
     const refused = await call("POST", message(draft), HOST, { phase: "free_form", user_message: "hello" }, token);
     expect(refused.status).toBe(429);

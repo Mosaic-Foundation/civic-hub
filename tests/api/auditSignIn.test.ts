@@ -109,7 +109,9 @@ describe("the wrong-code counter is atomic", () => {
     const results = await Promise.all(
       Array.from({ length: 20 }, () => call("POST", "/auth/verify", BETA_HOST, { email, code: "000001" })),
     );
-    for (const r of results) expect(r.status).toBe(400);
+    // A wrong guess is 400; once locked, 429 locked_out (Audit 4).
+    for (const r of results) expect([400, 429]).toContain(r.status);
+    expect(results.filter((r) => r.status === 429).every((r) => r.body.code === "locked_out")).toBe(true);
     const row = await pendingRow(BETA, email);
     expect(row?.attempts).toBe(5);
     expect(row?.locked_until && Date.parse(row.locked_until) > Date.now()).toBe(true);
@@ -117,7 +119,8 @@ describe("the wrong-code counter is atomic", () => {
 
     // The right code is refused now, and a fresh code can't be requested.
     const right = await call("POST", "/auth/verify", BETA_HOST, { email, code: "735102" });
-    expect(right.status).toBe(400);
+    expect(right.status).toBe(429);
+    expect(right.body.code).toBe("locked_out");
     expect(String(right.body.error)).toMatch(/too many/i);
   });
 
@@ -165,12 +168,12 @@ describe("per-IP and per-address limits", () => {
   });
 
   it("an address may be sent five codes an hour, from anywhere", async () => {
-    // On the beta hub this address is on no list: each request answers 400
-    // ("private beta") and still counts, so the sixth is refused for the
-    // address, whichever network it comes from.
+    // On the beta hub this address is on no list: each request answers 403
+    // beta_closed ("private beta"; 400 before Audit 4) and still counts, so the
+    // sixth is refused for the address, whichever network it comes from.
     const email = `addr-${run}@example.test`;
     for (let i = 0; i < 5; i++) {
-      expect((await call("POST", "/auth/request-code", BETA_HOST, { email })).status).toBe(400);
+      expect((await call("POST", "/auth/request-code", BETA_HOST, { email })).status).toBe(403);
     }
     const refused = await call("POST", "/auth/request-code", BETA_HOST, { email });
     expect(refused.status).toBe(429);

@@ -5,6 +5,7 @@
 // callClaude implementations (see civic-hub/src/utils/anthropic,
 // youtube, http). Keeps the module portable and testable.
 
+import { ValidationError } from "../../errors/index.js";
 import type {
   CallClaudeFn,
   CreateMeetingSummaryInput,
@@ -103,8 +104,9 @@ export async function summarizeMeeting(
       : "recording";
 
   if (!pdfUrl && !entry.source_video_url) {
-    throw new Error(
+    throw new ValidationError(
       "Nothing to summarize: the entry has no minutes PDF, no agenda PDF, and no recording",
+      "nothing_to_summarize",
     );
   }
 
@@ -149,8 +151,11 @@ export async function summarizeMeeting(
       flag = qualityFlag("transcript_unavailable", transcriptProblem);
       transcript = [];
     } else {
+      // The provider's own wording stays in the log, not in the error a person reads.
+      console.warn(`[meeting_summary] transcript not ready: ${transcriptProblem}`);
       throw new MeetingNotReadyError(
-        `Waiting for the video's transcript: ${transcriptProblem}`,
+        "Waiting for the video's transcript to be available.",
+        transcriptProblem,
       );
     }
   }
@@ -162,8 +167,9 @@ export async function summarizeMeeting(
     const pdf = await deps.fetchPdf(pdfUrl);
     if (pdf.bytes.length > MAX_PDF_BYTES) {
       const sizeMb = (pdf.bytes.length / (1024 * 1024)).toFixed(1);
-      throw new Error(
+      throw new ValidationError(
         `PDF too large: ${sizeMb}MB exceeds ${MAX_PDF_BYTES / (1024 * 1024)}MB limit — skipping`,
+        "pdf_too_large",
       );
     }
     pdfBase64 = uint8ToBase64(pdf.bytes);

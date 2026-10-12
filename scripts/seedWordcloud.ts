@@ -38,7 +38,7 @@ async function seed(_hub: Hub) {
     type: "process.activate",
     actor: "admin",
     payload: {},
-  });
+  }, "system");
   console.log("Active!");
 
   // Submit sample responses
@@ -50,7 +50,7 @@ async function seed(_hub: Hub) {
         type: "process.submit",
         actor: s.actor,
         payload: { prompt_id: "p1", text: s.text },
-      });
+      }, "system");
       console.log(`  Submitted: "${s.text}" (${s.actor})`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

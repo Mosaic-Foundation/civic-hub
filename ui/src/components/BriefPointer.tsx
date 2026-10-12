@@ -42,6 +42,7 @@ function useBriefPair(processId: string): {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
     setLoaded(false);
     getProcessLinks(processId)
       .then((links) => {
@@ -96,6 +97,7 @@ export function BriefPointer({ processId }: { processId: string }) {
   const briefId = brief?.peer.id ?? null;
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
     setDetail(null);
     if (!briefId) return;
     getPublicBrief(briefId)

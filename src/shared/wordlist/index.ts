@@ -31,6 +31,8 @@
 // Each entry here is matched against a normalized token from the submission.
 // Kept deliberately minimal — the unambiguous slurs civil discourse never
 // needs. Review and extend with care; every addition risks a false positive.
+import { ValidationError } from "../../errors/index.js";
+
 const BLOCKED_TERMS_RAW: string[] = [
   // Racial / ethnic slurs
   "nigger",
@@ -206,13 +208,13 @@ export function wordlistBlockMessage(category: WordlistCategory): string {
 /**
  * Convenience guard used at submission points. Throws an Error with the
  * user-facing block message when `text` is blocked; otherwise returns.
- * Controllers surface the thrown message as a 400.
+ * A ValidationError: the HTTP layer answers 400 with its message.
  */
 export function assertPassesWordlist(text: string): void {
   const result = checkWordlist(text);
   if (result.blocked) {
     // Log the term for the operator; the thrown message never includes it.
     console.warn(`[wordlist] blocked ${result.category} submission containing "${result.term}"`);
-    throw new Error(wordlistBlockMessage(result.category ?? "slur"));
+    throw new ValidationError(wordlistBlockMessage(result.category ?? "slur"), "wordlist_blocked");
   }
 }

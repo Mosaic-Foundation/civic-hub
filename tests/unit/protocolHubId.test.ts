@@ -23,6 +23,7 @@ function created(hub_id?: string) {
     actor: "user_1",
     process_id: "proc_1",
     // What callers pass today: the process's TENANT id. Must be ignored.
+    // @ts-expect-error -- deliberate: a stale hub_id on the input must be ignored at runtime
     hub_id,
     jurisdiction: "local",
     data: { process: { type: "civic.vote", title: "t" } },

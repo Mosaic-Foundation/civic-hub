@@ -44,6 +44,7 @@
 // `authenticated` with a minted, hub-scoped JWT (src/db/hubToken.ts), so the
 // forced RLS policies are a second, independent filter. Callers do not change.
 
+import { env } from "../config/env.js";
 import { seedAllowed } from "../config/devFlags.js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDb, getHubTokenDb, hubTokensEnabled } from "./client.js";
@@ -239,7 +240,7 @@ export const ROW_CAP_CODE = "CIVIC_ROW_CAP";
  */
 /** Throw (tests, local dev) or log and carry on (production). */
 function rowCapThrows(): boolean {
-  return process.env.NODE_ENV !== "production";
+  return env.NODE_ENV !== "production";
 }
 
 function cutOffAtCap(b: Thenable, data: unknown): boolean {

@@ -17,6 +17,7 @@
 // runs again on a fresh read; any other is refused with a 409. So two writes
 // never overwrite each other, and a close that loses a race writes nothing.
 
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../errors/index.js";
 import { transitionProcess, ProcessChangedError } from "../db/atomic.js";
 import { runInActionScope } from "./actionScope.js";
 import { appendEvent } from "../events/eventStore.js";
@@ -132,7 +133,7 @@ export async function createProcess(
 ): Promise<Process> {
   const handler = getProcessHandler(input.definition.type);
   if (!handler) {
-    throw new Error(`Unsupported process type: ${input.definition.type}`);
+    throw new ValidationError("That kind of process isn't supported on this hub.", "unsupported_process_type");
   }
   // A hub that switched this type's plugin off cannot create one, by any path.
   assertProcessTypeEnabled(input.definition.type);
@@ -268,10 +269,9 @@ export async function getAllProcesses(types?: string[]): Promise<Process[]> {
 // --- Action dispatch -------------------------------------------------------
 
 /** A resident called an action their handler does not open to residents. */
-export class ActionNotAllowedError extends Error {
-  constructor(actionType: string) {
-    super(`Admin access required for this action (${actionType})`);
-    this.name = "ActionNotAllowedError";
+export class ActionNotAllowedError extends ForbiddenError {
+  constructor(readonly actionType: string) {
+    super("Admin access required for this action", "admin_required");
   }
 }
 
@@ -314,7 +314,7 @@ async function attemptAction(
 ): Promise<{ process: Process; result: Record<string, unknown> }> {
   const process = await getProcess(processId);
   if (!process) {
-    throw new Error(`Process not found: ${processId}`);
+    throw new NotFoundError("Process not found");
   }
 
   const handler = getProcessHandler(process.definition.type);
@@ -330,9 +330,7 @@ async function attemptAction(
   }
 
   if (!isActionable(process.status)) {
-    throw new Error(
-      `Process ${processId} is finalized and cannot accept actions`,
-    );
+    throw new ConflictError("This is finished and can't take any more actions.", "process_finalized");
   }
 
   const previousStatus = process.status;
@@ -750,16 +748,14 @@ export async function archiveProcess(
   reason: string,
 ): Promise<Process> {
   const process = await getProcess(id);
-  if (!process) throw new Error(`Process not found: ${id}`);
+  if (!process) throw new NotFoundError("Process not found");
 
   const trimmedReason = (reason ?? "").trim();
   if (!trimmedReason) {
-    throw new Error("An archive reason is required");
+    throw new ValidationError("An archive reason is required");
   }
   if (trimmedReason.length > ARCHIVE_REASON_MAX) {
-    throw new Error(
-      `Archive reason must be ${ARCHIVE_REASON_MAX} characters or fewer`,
-    );
+    throw new ValidationError(`Archive reason must be ${ARCHIVE_REASON_MAX} characters or fewer`);
   }
 
   // Idempotent — re-archiving an archived process is a no-op.
@@ -834,7 +830,7 @@ export async function restoreProcess(
   adminId: string,
 ): Promise<Process> {
   const process = await getProcess(id);
-  if (!process) throw new Error(`Process not found: ${id}`);
+  if (!process) throw new NotFoundError("Process not found");
   if (process.status !== "archived") return process;
 
   const archive = (process.state?.archive ?? null) as ArchiveMeta | null;

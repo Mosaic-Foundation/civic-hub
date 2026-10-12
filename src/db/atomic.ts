@@ -8,6 +8,7 @@
 // instead of emitting it: the function writes it with the state change, or
 // neither.
 
+import { ConflictError, ValidationError } from "../errors/index.js";
 import { forHub, HubDbError } from "./forHub.js";
 import { eventToRow } from "../events/eventStore.js";
 import type { CivicEvent } from "../models/event.js";
@@ -17,32 +18,30 @@ import type { CivicEvent } from "../models/event.js";
  * only the browser holding their receipt can change it. The server keeps
  * nothing that would let it find their ballot (2026-10-10).
  */
-export class AlreadyVotedError extends Error {
-  readonly code = "already_voted";
+export class AlreadyVotedError extends ConflictError {
+  declare readonly code: "already_voted";
   constructor() {
     super(
       "You've already voted, and your vote is counted. You can change it only from the browser where you voted, " +
         "because we don't keep any record that links you to your ballot.",
+      "already_voted",
     );
-    this.name = "AlreadyVotedError";
   }
 }
 
 /** A change whose receipt and key do not match a ballot of this vote. */
-export class ReceiptNotAcceptedError extends Error {
-  readonly code = "receipt_not_accepted";
+export class ReceiptNotAcceptedError extends ValidationError {
+  declare readonly code: "receipt_not_accepted";
   constructor() {
-    super("That receipt can't change a vote here. Your vote is still counted.");
-    this.name = "ReceiptNotAcceptedError";
+    super("That receipt can't change a vote here. Your vote is still counted.", "receipt_not_accepted");
   }
 }
 
 /** A receipt presented by someone who has not voted on this vote. */
-export class ReceiptWithoutVoteError extends Error {
-  readonly code = "receipt_without_vote";
+export class ReceiptWithoutVoteError extends ValidationError {
+  declare readonly code: "receipt_without_vote";
   constructor() {
-    super("That receipt isn't from your vote. Vote without it.");
-    this.name = "ReceiptWithoutVoteError";
+    super("That receipt isn't from your vote. Vote without it.", "receipt_without_vote");
   }
 }
 
@@ -58,20 +57,19 @@ function logged(event: CivicEvent | null): void {
  * Another write landed on the process between the caller's read and its
  * write (its status or version no longer matches). Nothing was written.
  */
-export class ProcessChangedError extends Error {
-  readonly code = "process_changed";
+export class ProcessChangedError extends ConflictError {
+  declare readonly code: "process_changed";
+  /** What moved (for the log; never sent to the client). */
   constructor(detail?: string) {
-    super(`This changed while you were acting on it. Reload and try again.${detail ? ` (${detail})` : ""}`);
-    this.name = "ProcessChangedError";
+    super("This changed while you were acting on it. Reload and try again.", "process_changed", { cause: detail });
   }
 }
 
 /** A ballot for a vote that is not open, or is past its deadline. */
-export class VoteClosedError extends Error {
-  readonly code = "vote_closed";
+export class VoteClosedError extends ConflictError {
+  declare readonly code: "vote_closed";
   constructor() {
-    super("Voting has closed. Your ballot was not recorded.");
-    this.name = "VoteClosedError";
+    super("Voting has closed. Your ballot was not recorded.", "vote_closed");
   }
 }
 

@@ -248,7 +248,7 @@ describe("a hub with more than 1,000 events", () => {
   it("the guard refuses a new unbounded read, and readAll reads it whole", async () => {
     const { forHub, ROW_CAP_CODE } = await import("../../src/db/forHub.js");
     const { readAll } = await import("../../src/db/readAll.js");
-    const err = await onHub(() => forHub(HUB).from("events").select("id").then(() => null, (e: unknown) => e));
+    const err = await onHub(() => Promise.resolve(forHub(HUB).from("events").select("id").then(() => null, (e: unknown) => e)));
     expect(err).toMatchObject({ code: ROW_CAP_CODE });
     const all = await onHub(() =>
       readAll((from, to) => forHub(HUB).from("events").select<{ id: string }>("id").order("id").range(from, to)),

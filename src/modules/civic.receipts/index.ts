@@ -27,6 +27,7 @@
 // through forHub(). hub_id is NOT a join key in the sense of the guardrail:
 // both tables already carry process_id, and a process belongs to one hub.
 
+import { CivicError } from "../../errors/index.js";
 import { forHub, type HubDb } from "../../db/forHub.js";
 import { createHash, randomBytes } from "node:crypto";
 import {
@@ -68,13 +69,11 @@ function newChangeKey(): string {
 /** The refusals a voter can act on, by code (the UI keys its message on it). */
 export type VoteRefusal = "already_voted" | "receipt_not_accepted" | "receipt_without_vote" | "vote_closed";
 
-export class VoteRefusedError extends Error {
-  constructor(
-    readonly code: VoteRefusal,
-    message: string,
-  ) {
-    super(message);
-    this.name = "VoteRefusedError";
+export class VoteRefusedError extends CivicError {
+  declare readonly code: VoteRefusal;
+  /** A closed vote or an existing ballot is a conflict (409); a receipt that doesn't fit is a bad request (400). */
+  constructor(code: VoteRefusal, message: string) {
+    super(code === "vote_closed" || code === "already_voted" ? 409 : 400, code, message);
   }
 }
 
@@ -115,7 +114,8 @@ export async function recordOrUpdateVote(
     ) {
       throw new VoteRefusedError(err.code, err.message);
     }
-    throw new Error(`Receipts: ${(err as Error).message}`);
+    if (err instanceof CivicError) throw err;
+    throw new Error(`Receipts: ${(err as Error).message}`, { cause: err });
   }
 }
 

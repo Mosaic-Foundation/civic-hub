@@ -8,6 +8,7 @@
 // in the in-memory store, we skip. On cold starts with a fresh instance,
 // the guard is re-entered once.
 
+import { env } from "../config/env.js";
 import { seedAllowed } from "../config/devFlags.js";
 import {
   createProcess,
@@ -62,7 +63,7 @@ function allowSeed(): boolean {
  * scenario references) so adding a fixture is a one-line change.
  */
 function selectScenarios(): SeedScenario[] {
-  const fixture = process.env.CIVIC_SEED_FIXTURE?.trim().toLowerCase();
+  const fixture = env.CIVIC_SEED_FIXTURE?.trim().toLowerCase();
   switch (fixture) {
     case "athens":
       // Order matters for visual freshness in the feed (events sort
@@ -209,7 +210,7 @@ export async function seedOnStartup(): Promise<void> {
     }
 
     const scenarios = selectScenarios();
-    const fixtureName = process.env.CIVIC_SEED_FIXTURE?.trim().toLowerCase() || "default";
+    const fixtureName = env.CIVIC_SEED_FIXTURE?.trim().toLowerCase() || "default";
     console.log(`[auto-seed] Seeding hub "${hubId}" (fixture: ${fixtureName})...`);
     for (const scenario of scenarios) {
       await runScenario(scenario, hubId);

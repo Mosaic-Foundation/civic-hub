@@ -140,9 +140,9 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
       const message =
         err instanceof Error ? err.message : "Failed to send code";
       // The beta allow-list gate rejects unknown emails at the request-code
-      // step (civic.auth requestVerification). Turn that into a waitlist
-      // invitation rather than a red error the visitor can't act on.
-      if (/private beta/i.test(message)) {
+      // step (civic.auth requestVerification), code `beta_closed`. Turn that
+      // into a waitlist invitation rather than a red error the visitor can't act on.
+      if ((err as { code?: unknown } | null)?.code === "beta_closed") {
         setBetaBlocked(true);
       } else {
         setError(message);

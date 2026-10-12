@@ -4,6 +4,7 @@
 // at /modules/civic.vote/. It adapts the module's service interface
 // to the hub's ProcessHandler contract.
 
+import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { buildEvent, emitEvent } from "../events/eventEmitter.js";
 import type { CivicEvent } from "../models/event.js";
@@ -306,7 +307,7 @@ const voteProcess: ProcessHandler = {
       // closed before 2026-10-07, civic.vote_results) call `finalizeVote` as
       // a library import and are no-ops for a vote already finalized.
       default:
-        throw new Error(`Unknown action type for civic.vote: ${action.type}`);
+        throw new ValidationError("That action isn't supported on a vote.", "action_not_supported");
     }
 
     return result;

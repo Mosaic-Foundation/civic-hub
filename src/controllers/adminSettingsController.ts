@@ -20,7 +20,8 @@
 // More settings can be added by extending SettingsResponse + the PATCH
 // body handler.
 
-import { Request, Response } from "express";
+import { ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import {
   type AnnouncementAuthor,
   type WaitlistEntry,
@@ -84,120 +85,83 @@ async function loadSettings(): Promise<SettingsResponse> {
   };
 }
 
-export async function handleGetSettings(
-  _req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    res.json(await loadSettings());
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+export const handleGetSettings = route(async (_req, res) => {
+  res.json(await loadSettings());
+});
+
+export const handlePatchSettings = route(async (req, res) => {
+  const actor = getAuthUser(res).id;
+  const body = (req.body ?? {}) as {
+    brief_recipient_emails?: unknown;
+    officials?: unknown;
+    announcement_authors?: unknown;
+    beta_allowlist?: unknown;
+    support_threshold?: unknown;
+    comment_identity_mode?: unknown;
+  };
+
+  if (body.brief_recipient_emails !== undefined) {
+    if (!Array.isArray(body.brief_recipient_emails)) {
+      throw new ValidationError("brief_recipient_emails must be an array of strings.");
+    }
+    const input = body.brief_recipient_emails.filter(
+      (e): e is string => typeof e === "string",
+    );
+    await setVoteResultsRecipients(currentHubId(), input, actor);
   }
-}
 
-export async function handlePatchSettings(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const actor = getAuthUser(res).id;
-    const body = (req.body ?? {}) as {
-      brief_recipient_emails?: unknown;
-      officials?: unknown;
-      announcement_authors?: unknown;
-      beta_allowlist?: unknown;
-      support_threshold?: unknown;
-      comment_identity_mode?: unknown;
-    };
-
-    if (body.brief_recipient_emails !== undefined) {
-      if (!Array.isArray(body.brief_recipient_emails)) {
-        res.status(400).json({
-          error: "brief_recipient_emails must be an array of strings.",
-        });
-        return;
-      }
-      const input = body.brief_recipient_emails.filter(
-        (e): e is string => typeof e === "string",
-      );
-      await setVoteResultsRecipients(currentHubId(), input, actor);
+  if (body.officials !== undefined) {
+    if (!Array.isArray(body.officials)) {
+      throw new ValidationError("officials must be an array of { email, name?, official_type, official_title } objects.");
     }
-
-    if (body.officials !== undefined) {
-      if (!Array.isArray(body.officials)) {
-        res.status(400).json({
-          error:
-            "officials must be an array of { email, name?, official_type, official_title } objects.",
-        });
-        return;
-      }
-      // setOfficials() normalizes and validates: it drops rows with no
-      // email or no title (the DB's both-or-neither CHECK), narrows an
-      // unrecognized type to "other" rather than rejecting the save, and
-      // demotes any account absent from the list.
-      await setOfficials(body.officials, actor);
-    }
-
-    if (body.announcement_authors !== undefined) {
-      if (!Array.isArray(body.announcement_authors)) {
-        res.status(400).json({
-          error:
-            "announcement_authors must be an array of { email, label } objects.",
-        });
-        return;
-      }
-      const input: AnnouncementAuthor[] = [];
-      for (const entry of body.announcement_authors) {
-        if (!entry || typeof entry !== "object") continue;
-        const e = entry as { email?: unknown; name?: unknown; label?: unknown };
-        if (typeof e.email === "string" && typeof e.label === "string") {
-          const name = typeof e.name === "string" ? e.name : undefined;
-          input.push(name ? { email: e.email, name, label: e.label } : { email: e.email, label: e.label });
-        }
-      }
-      await setAnnouncementAuthors(currentHubId(), input, actor);
-    }
-
-    if (body.beta_allowlist !== undefined) {
-      if (!Array.isArray(body.beta_allowlist)) {
-        res.status(400).json({
-          error: "beta_allowlist must be an array of email strings.",
-        });
-        return;
-      }
-      const input = body.beta_allowlist.filter(
-        (e): e is string => typeof e === "string",
-      );
-      await setBetaAllowlist(currentHubId(), input, actor);
-    }
-
-    if (body.support_threshold !== undefined) {
-      const n = Number(body.support_threshold);
-      if (!Number.isFinite(n) || n < 0) {
-        res.status(400).json({
-          error: "support_threshold must be a number >= 0 (0 skips the support phase).",
-        });
-        return;
-      }
-      await setSupportThreshold(currentHubId(), n, actor);
-    }
-
-    if (body.comment_identity_mode !== undefined) {
-      if (typeof body.comment_identity_mode !== "string") {
-        res.status(400).json({
-          error:
-            "comment_identity_mode must be one of: real_name, anonymous_optional, anonymous_only.",
-        });
-        return;
-      }
-      // setCommentIdentityMode validates the value and throws on junk.
-      await setCommentIdentityMode(currentHubId(), body.comment_identity_mode, actor);
-    }
-
-    res.json(await loadSettings());
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+    // setOfficials() normalizes and validates: it drops rows with no
+    // email or no title (the DB's both-or-neither CHECK), narrows an
+    // unrecognized type to "other" rather than rejecting the save, and
+    // demotes any account absent from the list.
+    await setOfficials(body.officials, actor);
   }
-}
+
+  if (body.announcement_authors !== undefined) {
+    if (!Array.isArray(body.announcement_authors)) {
+      throw new ValidationError("announcement_authors must be an array of { email, label } objects.");
+    }
+    const input: AnnouncementAuthor[] = [];
+    for (const entry of body.announcement_authors) {
+      if (!entry || typeof entry !== "object") continue;
+      const e = entry as { email?: unknown; name?: unknown; label?: unknown };
+      if (typeof e.email === "string" && typeof e.label === "string") {
+        const name = typeof e.name === "string" ? e.name : undefined;
+        input.push(name ? { email: e.email, name, label: e.label } : { email: e.email, label: e.label });
+      }
+    }
+    await setAnnouncementAuthors(currentHubId(), input, actor);
+  }
+
+  if (body.beta_allowlist !== undefined) {
+    if (!Array.isArray(body.beta_allowlist)) {
+      throw new ValidationError("beta_allowlist must be an array of email strings.");
+    }
+    const input = body.beta_allowlist.filter(
+      (e): e is string => typeof e === "string",
+    );
+    await setBetaAllowlist(currentHubId(), input, actor);
+  }
+
+  if (body.support_threshold !== undefined) {
+    const n = Number(body.support_threshold);
+    if (!Number.isFinite(n) || n < 0) {
+      throw new ValidationError("support_threshold must be a number >= 0 (0 skips the support phase).");
+    }
+    await setSupportThreshold(currentHubId(), n, actor);
+  }
+
+  if (body.comment_identity_mode !== undefined) {
+    if (typeof body.comment_identity_mode !== "string") {
+      throw new ValidationError("comment_identity_mode must be one of: real_name, anonymous_optional, anonymous_only.");
+    }
+    // setCommentIdentityMode validates the value and throws on junk.
+    await setCommentIdentityMode(currentHubId(), body.comment_identity_mode, actor);
+  }
+
+  res.json(await loadSettings());
+});

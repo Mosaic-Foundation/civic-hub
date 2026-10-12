@@ -82,7 +82,13 @@ function multipartRequest(file: Buffer, query: Record<string, string>, mime = "i
 }
 
 function fakeResponse(userId: string) {
+  // route() answers asynchronously and returns nothing: tests wait on `done`.
+  let answered: () => void = () => {};
+  const done = new Promise<void>((resolve) => {
+    answered = resolve;
+  });
   const res = {
+    done,
     locals: { authUser: { id: userId, email: `${userId}@example.test` } },
     statusCode: 0,
     body: undefined as unknown,
@@ -92,6 +98,7 @@ function fakeResponse(userId: string) {
     },
     json(payload: unknown) {
       this.body = payload;
+      answered();
       return this;
     },
   };
@@ -107,9 +114,8 @@ async function upload(
 ) {
   const req = multipartRequest(file, { kind }, mime);
   const res = fakeResponse(userId);
-  await runWithHub(hub, {}, () =>
-    handleHubImageUpload(req as any, res as any),
-  );
+  runWithHub(hub, {}, () => handleHubImageUpload(req as any, res as any, () => {}));
+  await res.done;
   return res;
 }
 
@@ -195,7 +201,7 @@ describe("POST /upload/hub-image", () => {
     // Incompressible bytes after a valid header, so the body really is > 1 MB.
     const oversized = Buffer.concat([png(256, 256), randomBytes(1_100_000)]);
     const res = await upload(ATHENS_HUB, oversized, "logo");
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(413);
     expect((res.body as { error: string }).error).toMatch(/upload limit/);
     expect(uploads).toHaveLength(0);
   });
@@ -209,7 +215,8 @@ describe("POST /upload/hub-image", () => {
     uploads.length = 0;
     const req = multipartRequest(png(400, 400), {});
     const res = fakeResponse("user_post_image");
-    await runWithHub(ATHENS_HUB, {}, () => handlePostImageUpload(req as any, res as any));
+    runWithHub(ATHENS_HUB, {}, () => handlePostImageUpload(req as any, res as any, () => {}));
+    await res.done;
     expect(res.statusCode).toBe(201);
     expect(uploads[0]).toMatch(/^athens\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.png$/);
   });

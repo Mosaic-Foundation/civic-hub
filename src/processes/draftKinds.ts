@@ -5,6 +5,7 @@
 // (src/controllers/draftController.ts, src/routes/draftRoutes.ts). A new
 // drafting type declares a DraftKind here and mounts draftRouter(kind).
 
+import { ValidationError } from "../errors/index.js";
 import type { DraftSpec, Draft, BaseDraft } from "../modules/civic.drafts/index.js";
 import { voteDurationLimitsSync, getSupportThreshold } from "../services/hubSettings.js";
 import { supportPhaseConfig } from "../modules/civic.vote/index.js";
@@ -78,7 +79,7 @@ export const proposalDraftKind: DraftKind<ProposalDraft> = {
     fields: {
       category: {
         write: (v) => {
-          if (v && !VALID_CATEGORIES.has(String(v))) throw new Error("Invalid category");
+          if (v && !VALID_CATEGORIES.has(String(v))) throw new ValidationError("Invalid category");
           return v;
         },
       },
@@ -89,7 +90,7 @@ export const proposalDraftKind: DraftKind<ProposalDraft> = {
           // 2 weeks to 3 months: the 6-month option was retired 2026-08-28
           // when every duration-bearing type adopted the same picker.
           if (isNaN(dur) || dur < 14 * DAY_MS || dur > 90 * DAY_MS) {
-            throw new Error("Duration must be between 2 weeks and 3 months");
+            throw new ValidationError("Duration must be between 2 weeks and 3 months");
           }
           return dur;
         },
@@ -102,7 +103,7 @@ export const proposalDraftKind: DraftKind<ProposalDraft> = {
   createInput(body) {
     const category = body.category;
     if (category && !VALID_CATEGORIES.has(String(category))) {
-      throw new Error("Invalid category. Must be: issue, idea, or project");
+      throw new ValidationError("Invalid category. Must be: issue, idea, or project");
     }
     return { category };
   },
@@ -154,7 +155,7 @@ export const voteDraftKind: DraftKind<VoteDraft> = {
           const ms = Number(v);
           const { minDays, maxDays } = voteDurationLimitsSync();
           if (!(ms >= minDays * DAY_MS && ms <= maxDays * DAY_MS)) {
-            throw new Error(
+            throw new ValidationError(
               `voting_duration_ms must be between ${minDays * DAY_MS} (${minDays} days) and ${maxDays * DAY_MS} (${maxDays} days)`,
             );
           }
@@ -164,7 +165,7 @@ export const voteDraftKind: DraftKind<VoteDraft> = {
       method: {
         read: (v) => (v as string | null) ?? "yes_no_unsure",
         write: (v) => {
-          if (!VOTE_METHODS.includes(String(v))) throw new Error(`method must be one of: ${VOTE_METHODS.join(", ")}`);
+          if (!VOTE_METHODS.includes(String(v))) throw new ValidationError(`method must be one of: ${VOTE_METHODS.join(", ")}`);
           return v;
         },
         checked: true,
@@ -173,7 +174,7 @@ export const voteDraftKind: DraftKind<VoteDraft> = {
         read: (v) => (Array.isArray(v) ? (v as string[]) : null),
         write: (v) => {
           if (v !== null && (!Array.isArray(v) || v.length < 2)) {
-            throw new Error("custom_options must be an array with at least 2 items");
+            throw new ValidationError("custom_options must be an array with at least 2 items");
           }
           return v;
         },
@@ -290,7 +291,7 @@ export const deliberationDraftKind: DraftKind<DeliberationDraft> = {
         write: (v) => {
           const ms = Number(v);
           if (ms < 14 * DAY_MS || ms > 90 * DAY_MS) {
-            throw new Error(`duration_ms must be between ${14 * DAY_MS} (2 weeks) and ${90 * DAY_MS} (3 months)`);
+            throw new ValidationError(`duration_ms must be between ${14 * DAY_MS} (2 weeks) and ${90 * DAY_MS} (3 months)`);
           }
           return ms;
         },
@@ -299,7 +300,7 @@ export const deliberationDraftKind: DraftKind<DeliberationDraft> = {
         read: (v) => (v === null || v === undefined ? null : Number(v)),
         write: (v) => {
           if (v !== null && (!Number.isInteger(v) || (v as number) < 1)) {
-            throw new Error("participation_threshold must be a positive integer or null");
+            throw new ValidationError("participation_threshold must be a positive integer or null");
           }
           return v;
         },

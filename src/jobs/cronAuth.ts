@@ -2,8 +2,9 @@
 // Vercel Cron injects it; a manual run passes it by hand. No secret set
 // means nothing is authorized.
 
+import { env } from "../config/env.js";
 export function isCronAuthorized(authorization: string | undefined): boolean {
-  const secret = process.env.CRON_SECRET;
+  const secret = env.CRON_SECRET;
   if (!secret) return false;
   const header = authorization ?? "";
   if (!header.startsWith("Bearer ")) return false;

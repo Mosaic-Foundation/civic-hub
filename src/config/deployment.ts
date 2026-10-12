@@ -7,14 +7,15 @@
 // pretending to be on Vercel. The Vercel names win where both are set, which
 // is only ever on Vercel.
 
+import { env } from "./env.js";
 export function deploymentCommit(): string {
   return (
-    process.env.VERCEL_GIT_COMMIT_SHA?.trim() ||
-    process.env.GIT_COMMIT_SHA?.trim() ||
+    env.VERCEL_GIT_COMMIT_SHA?.trim() ||
+    env.GIT_COMMIT_SHA?.trim() ||
     "unknown"
   );
 }
 
 export function deploymentId(): string | null {
-  return process.env.VERCEL_DEPLOYMENT_ID?.trim() || process.env.DEPLOYMENT_ID?.trim() || null;
+  return env.VERCEL_DEPLOYMENT_ID?.trim() || env.DEPLOYMENT_ID?.trim() || null;
 }

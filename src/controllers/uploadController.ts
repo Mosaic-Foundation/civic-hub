@@ -14,6 +14,8 @@
 // (header-only read, ~10 KB) as a guard against pathological uploads
 // that bypassed the client resize.
 
+import { PayloadTooLargeError, RateLimitedError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import type { Request, Response } from "express";
 import busboy from "busboy";
 import { imageSize } from "image-size";
@@ -70,7 +72,7 @@ function parseSingleFile(
     const headers = req.headers;
     const contentType = headers["content-type"];
     if (!contentType || !contentType.startsWith("multipart/form-data")) {
-      reject(new Error("Expected multipart/form-data."));
+      reject(new ValidationError("Expected multipart/form-data.", "invalid_upload"));
       return;
     }
 
@@ -104,7 +106,8 @@ function parseSingleFile(
     bb.on("error", (err) => {
       if (resolved) return;
       resolved = true;
-      reject(err instanceof Error ? err : new Error(String(err)));
+      // Busboy only errors on a malformed multipart body: the sender's fault.
+      reject(new ValidationError("That upload couldn't be read.", "invalid_upload"));
     });
 
     bb.on("close", () => {
@@ -112,14 +115,15 @@ function parseSingleFile(
       resolved = true;
       if (truncated) {
         reject(
-          new Error(
+          new PayloadTooLargeError(
             `Image exceeds the ${Math.round(maxBytes / (1024 * 1024))} MB upload limit.`,
+            "image_too_large",
           ),
         );
         return;
       }
       if (chunks.length === 0) {
-        reject(new Error("No file received in the upload."));
+        reject(new ValidationError("No file received in the upload.", "no_file"));
         return;
       }
       resolve({ buffer: Buffer.concat(chunks), mime, filename });
@@ -184,98 +188,71 @@ export const HUB_IMAGE_LIMITS: Readonly<Record<"banner" | "logo", ImageUploadLim
 };
 
 export function makeImageUploadHandler(limits: ImageUploadLimits) {
-  return async function handleImageUpload(
-    req: Request,
-    res: Response,
-  ): Promise<void> {
+  return route(async (req, res) => {
     await uploadImage(req, res, limits);
-  };
+  });
 }
 
 export const handlePostImageUpload = makeImageUploadHandler(POST_IMAGE_LIMITS);
 
 /** POST /upload/hub-image?kind=banner|logo — admin only. */
-export async function handleHubImageUpload(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleHubImageUpload = route(async (req, res) => {
   const kind = String(req.query.kind ?? "");
   if (kind !== "banner" && kind !== "logo") {
-    res.status(400).json({ error: 'kind must be "banner" or "logo".' });
-    return;
+    throw new ValidationError('kind must be "banner" or "logo".');
   }
   await uploadImage(req, res, HUB_IMAGE_LIMITS[kind]);
-}
+});
 
 async function uploadImage(
   req: Request,
   res: Response,
   limits: ImageUploadLimits,
 ): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    if (!recordUpload(user.id)) {
-      res.status(429).json({
-        error: `Upload rate limit exceeded (${RATE_LIMIT} per hour). Try again later.`,
-      });
-      return;
-    }
-
-    const maxBytes = limits.maxBytes();
-    const parsed = await parseSingleFile(req, maxBytes);
-
-    if (limits.mimeTypes && !limits.mimeTypes.has(parsed.mime)) {
-      res.status(400).json({ error: "This image must be a PNG." });
-      return;
-    }
-    if (!POST_IMAGE_MIME_WHITELIST.has(parsed.mime)) {
-      res.status(400).json({
-        error: `Unsupported image type "${parsed.mime}". Allowed: JPEG, PNG, WebP, GIF.`,
-      });
-      return;
-    }
-
-    // Dimension probe — cheap header read, doesn't decode the full image.
-    let dims: { width?: number; height?: number };
-    try {
-      dims = imageSize(parsed.buffer);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      res.status(400).json({ error: `Could not read image dimensions: ${msg}` });
-      return;
-    }
-    const w = dims.width ?? 0;
-    const h = dims.height ?? 0;
-    if (w < limits.minWidth || h < limits.minHeight) {
-      res.status(400).json({
-        error: `Image is too small (${w}×${h}). Minimum ${limits.minWidth}×${limits.minHeight}.`,
-      });
-      return;
-    }
-    if (limits.square && Math.abs(w - h) > Math.max(w, h) * 0.02) {
-      res.status(400).json({
-        error: `Image must be square (this one is ${w}×${h}).`,
-      });
-      return;
-    }
-    if (w > limits.maxDimension || h > limits.maxDimension) {
-      res.status(400).json({
-        error: `Image is too large (${w}×${h}). Resize to ${limits.maxDimension} px on the long edge before uploading. (The composer does this automatically — if you're seeing this on the web app, refresh and try again.)`,
-      });
-      return;
-    }
-
-    const prefix = limits.prefix(req, res);
-    const { url } = await uploadPostImage(currentHubId(), parsed.buffer, parsed.mime, prefix);
-    res.status(201).json({ url, width: w, height: h, mime: parsed.mime });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Upload failed";
-    // 4xx for client-shaped errors, 500 for storage / server problems.
-    const isClientErr =
-      message.startsWith("Expected multipart") ||
-      message.startsWith("No file") ||
-      message.includes("upload limit") ||
-      message.includes("Storage upload failed");
-    res.status(isClientErr ? 400 : 500).json({ error: message });
+  const user = getAuthUser(res);
+  if (!recordUpload(user.id)) {
+    throw new RateLimitedError(`Upload rate limit exceeded (${RATE_LIMIT} per hour). Try again later.`, "upload_rate_limited");
   }
+
+  const maxBytes = limits.maxBytes();
+  const parsed = await parseSingleFile(req, maxBytes);
+
+  if (limits.mimeTypes && !limits.mimeTypes.has(parsed.mime)) {
+    throw new ValidationError("This image must be a PNG.", "unsupported_image_type");
+  }
+  if (!POST_IMAGE_MIME_WHITELIST.has(parsed.mime)) {
+    throw new ValidationError(
+      `Unsupported image type "${parsed.mime}". Allowed: JPEG, PNG, WebP, GIF.`,
+      "unsupported_image_type",
+    );
+  }
+
+  // Dimension probe — cheap header read, doesn't decode the full image.
+  let dims: { width?: number; height?: number };
+  try {
+    dims = imageSize(parsed.buffer);
+  } catch {
+    throw new ValidationError("That file doesn't look like a valid image.", "invalid_image");
+  }
+  const w = dims.width ?? 0;
+  const h = dims.height ?? 0;
+  if (w < limits.minWidth || h < limits.minHeight) {
+    throw new ValidationError(
+      `Image is too small (${w}×${h}). Minimum ${limits.minWidth}×${limits.minHeight}.`,
+      "image_dimensions",
+    );
+  }
+  if (limits.square && Math.abs(w - h) > Math.max(w, h) * 0.02) {
+    throw new ValidationError(`Image must be square (this one is ${w}×${h}).`, "image_dimensions");
+  }
+  if (w > limits.maxDimension || h > limits.maxDimension) {
+    throw new ValidationError(
+      `Image is too large (${w}×${h}). Resize to ${limits.maxDimension} px on the long edge before uploading. (The composer does this automatically — if you're seeing this on the web app, refresh and try again.)`,
+      "image_dimensions",
+    );
+  }
+
+  const prefix = limits.prefix(req, res);
+  const { url } = await uploadPostImage(currentHubId(), parsed.buffer, parsed.mime, prefix);
+  res.status(201).json({ url, width: w, height: h, mime: parsed.mime });
 }

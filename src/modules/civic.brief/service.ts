@@ -6,6 +6,7 @@
 // handler already produced the BriefContent, so generation here is just
 // wrapping it in the process state.
 
+import { ConflictError, ValidationError } from "../../errors/index.js";
 import type {
   BriefActionOutcome,
   BriefContent,
@@ -88,8 +89,9 @@ export async function editBrief(
   ctx: BriefProcessContext,
 ): Promise<BriefActionOutcome> {
   if (!canEdit(state)) {
-    throw new Error(
-      `Brief cannot be edited: publication_status is "${state.publication_status}"`,
+    throw new ConflictError(
+      "This brief can no longer be edited.",
+      "brief_not_editable",
     );
   }
 
@@ -124,13 +126,13 @@ function sanitizeImage(
   const alt = typeof rawAlt === "string" ? rawAlt.trim() : "";
   if (url.length === 0) return { image_url: null, image_alt: null };
   if (url.length > IMAGE_URL_MAX) {
-    throw new Error(`Image URL must be <= ${IMAGE_URL_MAX} characters.`);
+    throw new ValidationError(`Image URL must be <= ${IMAGE_URL_MAX} characters.`);
   }
   if (!/^https?:\/\//i.test(url)) {
-    throw new Error("Image URL must start with http:// or https://.");
+    throw new ValidationError("Image URL must start with http:// or https://.");
   }
   if (alt.length > IMAGE_ALT_MAX) {
-    throw new Error(`Alt text must be <= ${IMAGE_ALT_MAX} characters.`);
+    throw new ValidationError(`Alt text must be <= ${IMAGE_ALT_MAX} characters.`);
   }
   return { image_url: url, image_alt: alt.length > 0 ? alt : null };
 }
@@ -152,7 +154,7 @@ export const RECIPIENT_LABEL_MAX = 120;
  */
 export function normalizeRecipients(raw: unknown): BriefRecipient[] {
   if (!Array.isArray(raw)) {
-    throw new Error("Recipients must be a list of { email, label }.");
+    throw new ValidationError("Recipients must be a list of { email, label }.");
   }
   const seen = new Set<string>();
   const out: BriefRecipient[] = [];
@@ -167,21 +169,22 @@ export function normalizeRecipients(raw: unknown): BriefRecipient[] {
     const group = typeof e.group === "string" ? e.group.trim() : "";
     if (email.length === 0 && label.length === 0) continue; // blank row
     if (!EMAIL_SHAPE.test(email)) {
-      throw new Error(`"${email || "(empty)"}" is not a valid email address.`);
+      throw new ValidationError(`"${email || "(empty)"}" is not a valid email address.`, "invalid_email");
     }
     if (label.length === 0) {
-      throw new Error(
+      throw new ValidationError(
         `Recipient ${email} needs a display label — it is what the ` +
           `published brief shows in place of the address.`,
+        "recipient_label_required",
       );
     }
     if (label.length > RECIPIENT_LABEL_MAX) {
-      throw new Error(
+      throw new ValidationError(
         `Recipient labels must be ${RECIPIENT_LABEL_MAX} characters or fewer.`,
       );
     }
     if (group.length > RECIPIENT_LABEL_MAX) {
-      throw new Error(
+      throw new ValidationError(
         `Recipient group names must be ${RECIPIENT_LABEL_MAX} characters or fewer.`,
       );
     }
@@ -231,8 +234,9 @@ export function setRecipients(
   raw: unknown,
 ): BriefRecipient[] {
   if (!canEdit(state)) {
-    throw new Error(
-      `Recipients cannot be changed: publication_status is "${state.publication_status}"`,
+    throw new ConflictError(
+      "Recipients can no longer be changed on this brief.",
+      "brief_not_editable",
     );
   }
   const recipients = normalizeRecipients(raw);
@@ -293,8 +297,9 @@ export async function approveBrief(
   },
 ): Promise<BriefActionOutcome> {
   if (!canApprove(state)) {
-    throw new Error(
-      `Brief cannot be approved: publication_status is "${state.publication_status}"`,
+    throw new ConflictError(
+      "This brief cannot be approved in its current state.",
+      "brief_not_approvable",
     );
   }
 

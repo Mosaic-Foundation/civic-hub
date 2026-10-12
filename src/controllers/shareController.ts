@@ -1,4 +1,6 @@
-import type { Request, Response } from "express";
+import { NotFoundError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
+import type { Request } from "express";
 import { getEnabledProcess } from "../services/processService.js";
 import { buildShareMeta, parseDetailPath } from "../services/shareMeta.js";
 
@@ -22,23 +24,17 @@ export function pagePath(query: Request["query"]): string {
   return "";
 }
 
-export async function handleGetShareMeta(req: Request, res: Response): Promise<void> {
+export const handleGetShareMeta = route(async (req, res) => {
   const path = pagePath(req.query);
   const parsed = parseDetailPath(path);
   if (!parsed) {
-    res.status(400).json({ error: "page must look like /section/id" });
-    return;
+    throw new ValidationError("page must look like /section/id");
   }
-  try {
-    const process = await getEnabledProcess(parsed.id);
-    const meta = process ? buildShareMeta(path, process) : null;
-    if (!meta) {
-      res.status(404).json({ error: "Not shareable" });
-      return;
-    }
-    res.setHeader("Cache-Control", "public, max-age=300");
-    res.json(meta);
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : "Failed" });
+  const process = await getEnabledProcess(parsed.id);
+  const meta = process ? buildShareMeta(path, process) : null;
+  if (!meta) {
+    throw new NotFoundError("Not shareable");
   }
-}
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.json(meta);
+});

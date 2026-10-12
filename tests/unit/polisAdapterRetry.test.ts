@@ -39,7 +39,7 @@ describe("polis adapter — writes are never retried", () => {
     const abort = Object.assign(new Error("aborted"), { name: "AbortError" });
     fetchMock.mockRejectedValue(abort);
 
-    await expect(adapter().createDeliberation({ topic: "t", description: "d" }))
+    await expect(adapter().createDeliberation({ topic: "t", description: "d", strict_moderation: false }))
       .rejects.toThrow();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -62,6 +62,7 @@ describe("polis adapter — a seed failure never loses the conversation", () => 
     const out = await adapter().createDeliberation({
       topic: "t",
       description: "d",
+      strict_moderation: false,
       seed_statements: ["one"],
     });
     // The orphan bug: the id existed on Polis and never reached the hub.
@@ -77,6 +78,7 @@ describe("polis adapter — a seed failure never loses the conversation", () => 
     const out = await adapter().createDeliberation({
       topic: "t",
       description: "d",
+      strict_moderation: false,
       seed_statements: ["already there", "new one"],
     });
     expect(out.conversation_id).toBe("5fm62xv5ma");
@@ -96,7 +98,7 @@ describe("polis adapter — errors never carry the upstream body", () => {
     fetchMock.mockResolvedValue(res(409, leaky));
 
     await expect(
-      adapter().createDeliberation({ topic: "t", description: "d" }),
+      adapter().createDeliberation({ topic: "t", description: "d", strict_moderation: false }),
     ).rejects.toThrow(
       expect.objectContaining({
         message: expect.not.stringContaining("eyJ"),
@@ -107,7 +109,7 @@ describe("polis adapter — errors never carry the upstream body", () => {
   it("carries the status and code as fields instead", async () => {
     fetchMock.mockResolvedValue(res(409, { error: "polis_err_post_comment_duplicate" }));
     await adapter()
-      .createDeliberation({ topic: "t", description: "d" })
+      .createDeliberation({ topic: "t", description: "d", strict_moderation: false })
       .catch((e) => {
         expect(e.status).toBe(409);
         expect(e.polisCode).toBe("polis_err_post_comment_duplicate");

@@ -1,3 +1,4 @@
+import { ApiError } from "../utils/httpError";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -164,13 +165,15 @@ export default function AdminReviews() {
       setDetail(refreshed);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Approve failed";
-      // Already-approved (duplicate click, or a prior approve that succeeded):
-      // don't show a scary error — refresh to reflect the live state.
-      if (
-        msg.includes("already been approved") ||
-        msg.includes("Cannot approve review in status: approved")
-      ) {
-        setActionMessage("This submission was already approved and posted.");
+      const code = err instanceof ApiError ? err.code : null;
+      // Already decided (a duplicate click, or another admin got there
+      // first): don't show a scary error, refresh to show where it stands.
+      if (code === "already_approved" || code === "review_not_pending") {
+        setActionMessage(
+          code === "already_approved"
+            ? "This submission was already approved and posted."
+            : "This submission has already been decided. Showing where it stands now.",
+        );
         const refreshed = await adminGetReview(routeId).catch(() => null);
         if (refreshed) setDetail(refreshed);
       } else {

@@ -12,6 +12,7 @@
 // The conversion to a vote is handled by the service/controller layer,
 // which coordinates between this module and the vote module.
 
+import { ConflictError, NotFoundError, ValidationError } from "../../errors/index.js";
 import { forHub, HubDbError, type HubDb } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
@@ -102,7 +103,7 @@ export async function createProposal(
   emit: EmitEventFn,
 ): Promise<Proposal> {
   if (!input.title || input.title.trim().length === 0) {
-    throw new Error("Proposal title is required");
+    throw new ValidationError("Proposal title is required", "title_required");
   }
 
   const id = input.id ?? generateId("prop");
@@ -225,12 +226,12 @@ export async function supportProposal(
   // Load current proposal and validate state.
   const proposal = await getProposal(proposalId);
   if (!proposal) {
-    throw new Error(`Proposal not found: ${proposalId}`);
+    throw new NotFoundError("Proposal not found", "proposal_not_found");
   }
   if (proposal.status !== "submitted") {
-    throw new Error(
-      `Cannot support proposal: proposal is in "${proposal.status}" state. ` +
-      `Only proposals in "submitted" state accept endorsements.`,
+    throw new ConflictError(
+      "This proposal is no longer accepting support.",
+      "proposal_not_open",
     );
   }
 
@@ -242,7 +243,7 @@ export async function supportProposal(
     });
   } catch (err) {
     if (err instanceof HubDbError && err.code === "23505") {
-      throw new Error("You have already supported this proposal");
+      throw new ConflictError("You have already supported this proposal", "already_supported");
     }
     throw err;
   }
@@ -296,11 +297,12 @@ export async function withdrawProposalSupport(
 
   const proposal = await getProposal(proposalId);
   if (!proposal) {
-    throw new Error(`Proposal not found: ${proposalId}`);
+    throw new NotFoundError("Proposal not found", "proposal_not_found");
   }
   if (proposal.status !== "submitted") {
-    throw new Error(
+    throw new ConflictError(
       "Support can no longer be withdrawn: this proposal has closed and its support is part of the record.",
+      "support_locked",
     );
   }
 
@@ -311,7 +313,7 @@ export async function withdrawProposalSupport(
     .eq("user_id", userId)
     .select();
   if (!removed || removed.length === 0) {
-    throw new Error("You haven't supported this proposal");
+    throw new ConflictError("You haven't supported this proposal", "not_supported");
   }
 
   const newCount = await hubDb
@@ -372,10 +374,10 @@ export async function hasUserSupported(
 export async function archiveProposal(proposalId: string): Promise<void> {
   const proposal = await getProposal(proposalId);
   if (!proposal) {
-    throw new Error(`Proposal not found: ${proposalId}`);
+    throw new NotFoundError("Proposal not found", "proposal_not_found");
   }
   if (proposal.status === "converted") {
-    throw new Error("Cannot archive a converted proposal");
+    throw new ConflictError("Cannot archive a converted proposal", "proposal_converted");
   }
 
   const now = new Date().toISOString();

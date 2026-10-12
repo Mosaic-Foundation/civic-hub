@@ -1,3 +1,4 @@
+import { ConflictError } from "../../errors/index.js";
 import type { ReviewStatus, ReviewTurnAction, ReviewActorRole } from "./models.js";
 
 export interface Transition {
@@ -41,7 +42,7 @@ export function getNextStatus(
 ): ReviewStatus {
   const t = findTransition(from, action, actor_role);
   if (!t) {
-    throw new Error(`Invalid transition: ${from} + ${action} by ${actor_role}`);
+    throw new ConflictError(`Invalid transition: ${from} + ${action} by ${actor_role}`);
   }
   return t.to;
 }

@@ -18,6 +18,7 @@
 // entirely in production: a query parameter that can change which tenant's
 // data you see would be a cross-tenant hole, not a convenience.
 
+import { env } from "../config/env.js";
 import type { NextFunction, Request, Response } from "express";
 import { getHubByHostname, getHubByPreviousHostname, getHubBySlug } from "../db/hubs.js";
 import { fetchHubSettings, HubSettingsUnavailableError } from "../db/hubSettingsStore.js";
@@ -60,7 +61,7 @@ function isHubExempt(path: string): boolean {
 }
 
 function isProduction(): boolean {
-  return process.env.NODE_ENV === "production";
+  return env.NODE_ENV === "production";
 }
 
 /**
@@ -101,7 +102,7 @@ export function devHubSlugFromHostname(hostname: string): string | null {
 
 /** The slug a bare localhost resolves to. */
 export function devDefaultHubSlug(): string {
-  const configured = process.env.CIVIC_DEV_HUB?.trim().toLowerCase();
+  const configured = env.CIVIC_DEV_HUB?.trim().toLowerCase();
   return configured && isWellFormedHubSlug(configured)
     ? configured
     : MIGRATION_DEFAULT_HUB_ID;
@@ -139,9 +140,11 @@ function deadEndPage(title: string, body: string): string {
 </body></html>`;
 }
 
+const UNREACHABLE = "This hub can't be reached right now. Please try again in a moment.";
+
 function sendNoHub(req: Request, res: Response): void {
   if (prefersJson(req)) {
-    res.status(404).json({ error: "no_hub" });
+    res.status(404).json({ error: DEAD_ENDS.no_hub.body, code: "no_hub" });
     return;
   }
   res
@@ -152,7 +155,7 @@ function sendNoHub(req: Request, res: Response): void {
 
 function sendHubPaused(req: Request, res: Response): void {
   if (prefersJson(req)) {
-    res.status(503).json({ error: "hub_suspended" });
+    res.status(503).json({ error: DEAD_ENDS.hub_suspended.body, code: "hub_suspended" });
     return;
   }
   res
@@ -212,7 +215,7 @@ function requestedPath(req: Request): string {
  */
 function sendMoved(req: Request, res: Response, origin: string): void {
   if (req.path === "/hub-config" && prefersJson(req)) {
-    res.status(404).json({ error: "hub_moved", location: origin });
+    res.status(404).json({ error: "This hub has moved to a new address.", code: "hub_moved", location: origin });
     return;
   }
   const status = req.method === "GET" || req.method === "HEAD" ? 301 : 308;
@@ -271,7 +274,8 @@ export async function resolveHub(
     console.error(
       `[hub] resolver failed for "${hostname}": ${e instanceof Error ? e.message : String(e)}`,
     );
-    res.status(503).json({ error: "hub_registry_unavailable" });
+    res.setHeader("Retry-After", "30");
+    res.status(503).json({ error: UNREACHABLE, code: "hub_registry_unavailable" });
     return;
   }
 
@@ -308,7 +312,7 @@ export async function resolveHub(
     // Without its settings the hub does not know its admins or its copy:
     // unavailable, and retry, rather than an answer built from env.
     res.setHeader("Retry-After", "30");
-    res.status(503).json({ error: "hub_settings_unavailable" });
+    res.status(503).json({ error: UNREACHABLE, code: "hub_settings_unavailable" });
     return;
   }
 

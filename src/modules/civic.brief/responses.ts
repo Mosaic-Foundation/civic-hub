@@ -13,6 +13,7 @@
 // Express or Supabase, so the whole behaviour is coverable in tests/unit
 // — the layer CI actually runs.
 
+import { ValidationError } from "../../errors/index.js";
 import type { BriefProcessState } from "./models.js";
 
 /** Bounds for a response body — mirrors brief_responses_body_bounds. */
@@ -94,10 +95,10 @@ export function respondGate(
 export function normalizeResponseBody(raw: unknown): string {
   const body = typeof raw === "string" ? raw.trim() : "";
   if (body.length === 0) {
-    throw new Error("A response cannot be empty.");
+    throw new ValidationError("A response cannot be empty.", "response_required");
   }
   if (body.length > RESPONSE_BODY_MAX) {
-    throw new Error(
+    throw new ValidationError(
       `A response must be ${RESPONSE_BODY_MAX} characters or fewer.`,
     );
   }

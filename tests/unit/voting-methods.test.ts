@@ -35,11 +35,11 @@ describe("yes_no_unsure method", () => {
     });
 
     it("rejects non-string input", () => {
-      expect(() => m.validateBallot(123, options)).toThrow("payload.option");
+      expect(() => m.validateBallot(123, options)).toThrow("Choose an option to vote.");
     });
 
     it("rejects empty string", () => {
-      expect(() => m.validateBallot("", options)).toThrow("payload.option");
+      expect(() => m.validateBallot("", options)).toThrow("Choose an option to vote.");
     });
 
     it("rejects unknown option", () => {

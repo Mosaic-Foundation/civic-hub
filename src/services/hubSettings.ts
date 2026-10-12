@@ -27,6 +27,8 @@
 //
 // Both go through the same resolution order, so they cannot disagree.
 
+import { envVar, processEnv } from "../config/env.js";
+import { ValidationError } from "../errors/index.js";
 import {
   fetchHubSettings,
   fetchHubSettingRows,
@@ -74,7 +76,7 @@ export const SETTING_KEYS = {
 
 function fromEnv(key: string): string | undefined {
   for (const name of ENV_FALLBACKS[key] ?? []) {
-    const v = process.env[name]?.trim();
+    const v = envVar(name)?.trim();
     if (v) return v;
   }
   return undefined;
@@ -501,7 +503,7 @@ export interface EffectivePostalAddress {
 }
 
 /** The address a digest footer prints, and where it comes from. Hub first, then the platform. */
-export function postalAddressFrom(map: SettingsMap | null, env: NodeJS.ProcessEnv = process.env): EffectivePostalAddress {
+export function postalAddressFrom(map: SettingsMap | null, env: NodeJS.ProcessEnv = processEnv()): EffectivePostalAddress {
   const own = map?.[KEYS.EMAIL_POSTAL_ADDRESS]?.trim();
   if (own) return { value: own, source: "hub" };
   for (const name of ENV_FALLBACKS[KEYS.EMAIL_POSTAL_ADDRESS] ?? []) {
@@ -638,8 +640,9 @@ export async function setCommentIdentityMode(
   updatedBy: string | null,
 ): Promise<CommentIdentityMode> {
   if (!(COMMENT_IDENTITY_MODES as string[]).includes(mode)) {
-    throw new Error(
-      `Invalid comment identity mode "${mode}". Valid: ${COMMENT_IDENTITY_MODES.join(", ")}`,
+    throw new ValidationError(
+      `Comment identity mode must be one of: ${COMMENT_IDENTITY_MODES.join(", ")}.`,
+      "invalid_comment_identity_mode",
     );
   }
   await setSetting(

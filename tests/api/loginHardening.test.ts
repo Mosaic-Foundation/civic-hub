@@ -160,11 +160,14 @@ describe("one-time codes", () => {
         email,
         code: "000001",
       });
-      expect(status).toBe(400);
-      if (/too many|locked|try again/i.test(String(body.error))) {
+      // A wrong guess is 400; the lockout is a limit, 429 locked_out (Audit 4).
+      if (status === 429) {
+        expect(body.code).toBe("locked_out");
+        expect(String(body.error)).toMatch(/too many|locked|try again/i);
         sawLockout = true;
         break;
       }
+      expect(status).toBe(400);
     }
     expect(sawLockout, "expected a lockout message after repeated guesses").toBe(true);
   });
@@ -185,7 +188,9 @@ describe("a demo hub still protects the people who run it", () => {
       email,
       code: "654321",
     });
-    expect(status).toBe(400);
+    // Refused: a wrong code (400), or the address is still locked from the
+    // lockout test above (429). Either way, no session.
+    expect([400, 429]).toContain(status);
     expect(body.token).toBeUndefined();
   });
 

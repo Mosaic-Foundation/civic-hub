@@ -37,7 +37,19 @@ export default defineConfig({
   // A production build served locally gets production's headers (vercel.json
   // has the same ones), so Playwright runs the pages under the real CSP. The
   // dev server does not: Vite's dev client needs inline scripts.
+  //
+  // `/api` is proxied as on Vercel (Host kept, prefix stripped), to the API at
+  // CIVIC_PREVIEW_API (default :3000), so a preview build is what Playwright
+  // runs against, locally and in CI (.github/workflows/e2e.yml).
   preview: {
     headers: { ...UI_SECURITY_HEADERS },
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: process.env.CIVIC_PREVIEW_API || 'http://localhost:3000',
+        changeOrigin: false,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
 })

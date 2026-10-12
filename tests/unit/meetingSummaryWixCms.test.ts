@@ -22,7 +22,9 @@ const OPTS = {
   type_exclude: "",
 };
 
-const ROWS: WixMeetingRow[] = [
+// Wix also returns label columns (recording2, recording3) the connector ignores;
+// the intersection lets the fixture carry them.
+const ROWS: (WixMeetingRow & Record<string, unknown>)[] = [
   {
     title1: "August 11, 2026",
     title: "Regular Meeting",

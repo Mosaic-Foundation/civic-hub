@@ -9,6 +9,7 @@ import { describe, it, expect, vi } from "vitest";
 import { summarizeMeeting } from "../../src/modules/civic.meeting_summary/pipeline.js";
 import { MeetingNotReadyError } from "../../src/modules/civic.meeting_summary/readiness.js";
 import type {
+  CallClaudeFn,
   MeetingEntry,
   MeetingSummaryConfig,
 } from "../../src/modules/civic.meeting_summary/models.js";
@@ -49,7 +50,7 @@ function deps(overrides: Partial<Parameters<typeof summarizeMeeting>[2]> = {}) {
       { start: 0, text: "Call to order." },
       { start: 420, text: "Next item is the broadband expansion update." },
     ]),
-    callClaude: vi.fn(async () => ({ text: BLOCKS_JSON, model: "claude-sonnet-4-6" })),
+    callClaude: vi.fn(async (_input: Parameters<CallClaudeFn>[0]) => ({ text: BLOCKS_JSON, model: "claude-sonnet-4-6" })),
     ...overrides,
   };
 }
@@ -66,7 +67,7 @@ describe("summarizeMeeting — transcript-only meetings", () => {
   it("sends no document block to Claude when there is no PDF", async () => {
     const d = deps();
     await summarizeMeeting(recordingOnly, cfg, d);
-    const call = d.callClaude.mock.calls[0][0] as Record<string, unknown>;
+    const call = vi.mocked(d.callClaude).mock.calls[0]![0] as Record<string, unknown>;
     expect(call.documentBase64).toBeUndefined();
   });
 
@@ -94,7 +95,7 @@ describe("summarizeMeeting — transcript-only meetings", () => {
     });
     const err = await summarizeMeeting(recordingOnly, cfg, d).catch((e) => e);
     expect(err).toBeInstanceOf(MeetingNotReadyError);
-    expect(String(err.message)).toMatch(/Supadata 429/);
+    expect(String(err.detail)).toMatch(/Supadata 429/);
   });
 
   it("rejects an entry with no document and no recording", async () => {
@@ -113,7 +114,7 @@ describe("summarizeMeeting — document-backed meetings still work", () => {
     const result = await summarizeMeeting(withMinutes, cfg, d);
     expect(result.sourceType).toBe("minutes");
     expect(d.fetchPdf).toHaveBeenCalledWith(withMinutes.source_minutes_url);
-    const call = d.callClaude.mock.calls[0][0] as Record<string, unknown>;
+    const call = vi.mocked(d.callClaude).mock.calls[0]![0] as Record<string, unknown>;
     expect(call.documentBase64).toBeDefined();
   });
 

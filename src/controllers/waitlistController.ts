@@ -1,4 +1,5 @@
-import type { Request, Response } from "express";
+import { ConflictError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { forHub, HubDbError } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { notifyAdminsOfWaitlistSignup } from "../services/waitlistNotify.js";
@@ -19,10 +20,7 @@ export function readTestUserFlag(value: unknown): boolean {
   return false;
 }
 
-export async function handleJoinWaitlist(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleJoinWaitlist = route(async (req, res) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
 
   if (typeof body.website === "string" && body.website.trim().length > 0) {
@@ -33,8 +31,7 @@ export async function handleJoinWaitlist(
   const email =
     typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   if (!email || !email.includes("@")) {
-    res.status(400).json({ error: "A valid email is required." });
-    return;
+    throw new ValidationError("A valid email is required.", "invalid_email");
   }
 
   const notes =
@@ -67,16 +64,12 @@ export async function handleJoinWaitlist(
     // Kept as a guard. Says so without naming the other hub.
     if (err instanceof HubDbError && err.code === "23505") {
       console.warn(`[waitlist] ${email} is already waiting for another hub (global key)`);
-      res.status(409).json({
-        error:
-          "This address can't be added to this hub's waitlist yet. Please use a different address.",
-      });
-      return;
+      throw new ConflictError(
+        "This address can't be added to this hub's waitlist yet. Please use a different address.",
+        "waitlist_address_taken",
+      );
     }
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    console.error(`[waitlist] insert failed: ${msg}`);
-    res.status(500).json({ error: "Could not join waitlist. Please try again." });
-    return;
+    throw err;
   }
 
   // Operator notification. Awaited on purpose: on serverless the function is
@@ -98,4 +91,4 @@ export async function handleJoinWaitlist(
   });
 
   res.json({ message: "You're on the list! We'll email you when access opens up." });
-}
+});

@@ -10,7 +10,9 @@
 // limit is per-isolate, not per-deployment). Hardening path: a small
 // Postgres counter table or Vercel KV.
 
-import type { Request, Response } from "express";
+import { RateLimitedError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
+import type { Request } from "express";
 import { validatePreviewUrl } from "../modules/civic.link_preview/index.js";
 import { getOrRefreshPreview } from "../services/linkPreviewCache.js";
 
@@ -42,27 +44,19 @@ function checkRate(key: string): boolean {
   return true;
 }
 
-export async function handleGetLinkPreview(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export const handleGetLinkPreview = route(async (req, res) => {
   const key = clientKey(req);
   if (!checkRate(key)) {
-    res
-      .status(429)
-      .json({ error: `Rate limit exceeded (${RATE_LIMIT}/min). Slow down.` });
-    return;
+    throw new RateLimitedError(`Rate limit exceeded (${RATE_LIMIT}/min). Slow down.`);
   }
 
   const raw = req.query.url;
   if (typeof raw !== "string") {
-    res.status(400).json({ error: "Missing required query parameter: url" });
-    return;
+    throw new ValidationError("Missing required query parameter: url");
   }
   const validation = validatePreviewUrl(raw);
   if ("error" in validation) {
-    res.status(400).json({ error: validation.error });
-    return;
+    throw new ValidationError(validation.error, "invalid_url");
   }
 
   try {
@@ -72,7 +66,9 @@ export async function handleGetLinkPreview(
     res.setHeader("Cache-Control", "public, max-age=300, s-maxage=600");
     res.status(200).json(preview);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Preview failed";
+    // A preview is decoration: a page that can't be fetched answers 200 with
+    // empty fields, and the reason stays in the log.
+    console.warn("[link-preview] preview failed:", err instanceof Error ? err.message : err);
     res.status(200).json({
       url: validation.url,
       canonical_url: null,
@@ -81,7 +77,7 @@ export async function handleGetLinkPreview(
       image_url: null,
       site_name: null,
       fetched_at: new Date().toISOString(),
-      error: message,
+      error: "A preview isn't available for this link.",
     });
   }
-}
+});

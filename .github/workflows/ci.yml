@@ -10,26 +10,45 @@ on:
   push:
   pull_request:
 
+# A newer push to the same branch makes the older run moot.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Actions are pinned by commit (the tag is in the comment); bump them together.
+# The Supabase CLI and npm are pinned by version: npm 12 is what Vercel's
+# Node 24 image runs, and its `npm ci` refuses a lockfile npm 11 wrote.
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
 
+      - name: npm 12
+        run: npm install -g npm@12.2.0
+
       # --- Backend: install, typecheck (tsc), run infra-free unit tests ---
-      # Use `npm install` (not `npm ci`): the dep tree includes optional,
-      # platform-specific WASM bindings (@rolldown/@emnapi) that resolve to
-      # different versions on Linux vs macOS, so a macOS-generated lockfile
-      # fails `npm ci`'s cross-platform strictness. `npm install` tolerates it
-      # and matches what Vercel runs on deploy.
+      # `npm ci`, as Vercel runs it: the lockfile is the install, exactly.
+      # (Until 2026-10 this was `npm install`, because a lockfile written by
+      # npm 11 on a Mac failed `npm ci` on Linux; lockfiles are written with
+      # npm 12 since 2026-09-03.)
       - name: Backend install
-        run: npm install --include=dev
+        run: npm ci --include=dev
       - name: Backend typecheck
         run: npm run build
+      # tests/, scripts/ and api/ too (tsconfig.check.json): vitest runs the
+      # tests without type-checking them, and api/ is bundled on deploy.
+      - name: Typecheck tests, scripts, api
+        run: npm run typecheck
+      # High and critical advisories fail the build, in the backend and the
+      # UI alike (.npmrc's audit=false only skips the install-time request).
+      - name: Backend audit
+        run: npm audit --audit-level=high
       # No string in src/ or ui/src/ may name a place: a place name is a hub's
       # data (its hubs row or hub_settings), never code. Comments are exempt;
       # anything else needs an entry with a reason in
@@ -48,9 +67,17 @@ jobs:
         # server and are not runnable in CI. `npm test` would run everything.
         run: npx vitest run tests/unit
 
-      # --- UI: install, real typecheck + build (tsc -b && vite build) ---
+      # --- UI: install, lint, real typecheck + build (tsc -b && vite build) ---
       - name: UI install
-        run: npm install --include=dev
+        run: npm ci --include=dev
+        working-directory: ui
+      - name: UI audit
+        run: npm audit --audit-level=high
+        working-directory: ui
+      # Includes the import boundaries: the hub app may not import the console
+      # or the start page (ui/eslint.config.js).
+      - name: UI lint
+        run: npm run lint
         working-directory: ui
       - name: UI build
         run: npm run build
@@ -78,15 +105,18 @@ jobs:
   api-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
 
-      - uses: supabase/setup-cli@v1
+      - name: npm 12
+        run: npm install -g npm@12.2.0
+
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
-          version: latest
+          version: 2.110.0
 
       # Applies every migration, then supabase/seed.sql, which is where the
       # second hub (athens) comes from. The API tests assert that two
@@ -95,7 +125,7 @@ jobs:
         run: supabase start
 
       - name: Install
-        run: npm install --include=dev
+        run: npm ci --include=dev
 
       # The keys below are the Supabase CLI's fixed local development keys.
       # They are public, identical on every machine, and reach nothing but the

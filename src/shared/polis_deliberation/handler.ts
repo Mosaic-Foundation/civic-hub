@@ -1,3 +1,4 @@
+import { ConflictError, ValidationError } from "../../errors/index.js";
 import type { PolisAdapter } from "./adapter/types.js";
 import type { PolisHostInterface } from "./hostInterface.js";
 import type {
@@ -93,9 +94,7 @@ export function createPolisDeliberationHandler(
       // runs a paid summary for nothing.
       const allowedFrom = ACTION_STATUSES[action.type];
       if (allowedFrom && !allowedFrom.includes(process.status)) {
-        throw new Error(
-          `Cannot ${action.type} a conversation that is ${process.status}`,
-        );
+        throw new ConflictError(`Cannot ${action.type} a conversation that is ${process.status}`, "wrong_status");
       }
 
       switch (action.type) {
@@ -253,9 +252,7 @@ export function createPolisDeliberationHandler(
         }
 
         default:
-          throw new Error(
-            `Unknown action "${action.type}" for ${PROCESS_TYPE}`,
-          );
+          throw new ValidationError(`Unknown action "${action.type}" for ${PROCESS_TYPE}`, "unknown_action");
       }
     },
 

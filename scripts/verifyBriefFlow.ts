@@ -66,11 +66,10 @@ async function main(hub: Hub) {
   const state = briefProc.state as unknown as BriefProcessState;
   await approveBrief(state, "verify-script", {
     process_id: briefProc.id,
-    hub_id: briefProc.hubId,
     jurisdiction: briefProc.jurisdiction,
     emit: emitEvent,
   }, {
-    recipients: [],
+    fallbackRecipients: [],
     hubLabel: "Test Hub",
     publicBriefUrl: `https://hub/brief/${briefProc.id}`,
     sendEmail: async () => undefined,

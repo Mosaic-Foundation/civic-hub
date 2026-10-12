@@ -10,6 +10,7 @@
 // GUARDRAIL: This module MUST NOT import from civic.vote or any
 // lifecycle/results code. Community input is a parallel data stream.
 
+import { NotFoundError, ValidationError } from "../../errors/index.js";
 import { forHub } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
@@ -100,7 +101,7 @@ export async function submitInput(
   },
 ): Promise<CommunityInput> {
   if (!body || body.trim().length === 0) {
-    throw new Error("Input body cannot be empty");
+    throw new ValidationError("Input body cannot be empty", "body_required");
   }
 
   // Egregious-slur pre-filter (see src/shared/wordlist). Blocks the obvious
@@ -212,14 +213,14 @@ export async function hideComment(
 ): Promise<CommunityInput> {
   const trimmedReason = (reason ?? "").trim();
   if (trimmedReason.length === 0) {
-    throw new Error("A reason is required when hiding a comment.");
+    throw new ValidationError("A reason is required when hiding a comment.", "reason_required");
   }
   if (trimmedReason.length > MODERATION_REASON_MAX) {
-    throw new Error(`Reason must be <= ${MODERATION_REASON_MAX} characters.`);
+    throw new ValidationError(`Reason must be <= ${MODERATION_REASON_MAX} characters.`);
   }
 
   const existing = await getInputById(comment_id);
-  if (!existing) throw new Error("Comment not found");
+  if (!existing) throw new NotFoundError("Comment not found", "comment_not_found");
   if (existing.moderation?.hidden) return existing;
 
   const now = new Date().toISOString();
@@ -279,7 +280,7 @@ export async function restoreComment(
   ctx: InputContext,
 ): Promise<CommunityInput> {
   const existing = await getInputById(comment_id);
-  if (!existing) throw new Error("Comment not found");
+  if (!existing) throw new NotFoundError("Comment not found", "comment_not_found");
   if (!existing.moderation?.hidden) return existing;
 
   const now = new Date().toISOString();

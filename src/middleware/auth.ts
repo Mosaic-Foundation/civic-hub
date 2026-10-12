@@ -9,7 +9,9 @@
 // read the actor from there, NOT from request bodies. This closes the hole
 // where any caller could POST { actor: "<anyone>" } and act as that user.
 
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
+import { ForbiddenError, UnauthorizedError, UnavailableError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import {
   getSessionFromToken,
   getUserFromToken,
@@ -224,30 +226,24 @@ export async function resolveCallerUser(
   }
 }
 
-export async function requireAuth(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  try {
-    const token = extractToken(req);
-    if (!token) {
-      res.status(401).json({ error: "Authentication required" });
-      return;
-    }
-    const session = await getSessionFromToken(token);
-    if (!session) {
-      res.status(401).json({ error: "Invalid or expired session" });
-      return;
-    }
-    res.locals.authUser = session.user;
-    res.locals.authAssurance = session.assurance;
-    next();
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
-  }
+/**
+ * The signed-in user, from the session token, or UnauthorizedError. Stores
+ * the user and the session's assurance on res.locals for the handler.
+ */
+async function sessionUser(req: Request, res: Response): Promise<User> {
+  const token = extractToken(req);
+  if (!token) throw new UnauthorizedError("Authentication required", "sign_in_required");
+  const session = await getSessionFromToken(token);
+  if (!session) throw new UnauthorizedError("Invalid or expired session", "session_expired");
+  res.locals.authUser = session.user;
+  res.locals.authAssurance = session.assurance;
+  return session.user;
 }
+
+export const requireAuth = route(async (req, res, next) => {
+  await sessionUser(req, res);
+  next();
+});
 
 /**
  * Require a valid session AND a user who has affirmed residency AND a
@@ -256,87 +252,53 @@ export async function requireAuth(
  * the add-your-name step).
  * Use this for all civic-participation actions (vote, support, submit, etc.).
  */
-export async function requireResident(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  await requireAuth(req, res, async () => {
-    const user = res.locals.authUser as User | undefined;
-    if (!user) {
-      // requireAuth already responded
-      return;
-    }
-    if (!user.is_resident) {
-      res.status(403).json({
-        error: "Residency affirmation required to participate",
-        code: "residency_required",
-      });
-      return;
-    }
-    if (!user.full_name) {
-      res.status(403).json({
-        error: "Please add your name to participate",
-        code: "name_required",
-      });
-      return;
-    }
-    next();
-  });
-}
+export const requireResident = route(async (req, res, next) => {
+  const user = await sessionUser(req, res);
+  if (!user.is_resident) {
+    throw new ForbiddenError("Residency affirmation required to participate", "residency_required");
+  }
+  if (!user.full_name) {
+    throw new ForbiddenError("Please add your name to participate", "name_required");
+  }
+  next();
+});
 
 /**
  * Was the caller's mailbox proved with an emailed code? A demo hub's
  * any-six-digits session was not (Audit 2), and never carries a privilege:
  * the three gates below refuse it before they look at any roster.
  */
-function codeVerified(res: Response): boolean {
-  return (res.locals.authAssurance as SessionAssurance | undefined) === "code";
+function requireCodeVerified(res: Response): void {
+  if ((res.locals.authAssurance as SessionAssurance | undefined) !== "code") {
+    throw new ForbiddenError("Sign in with a code sent to your email to do this.", "code_sign_in_required");
+  }
 }
-
-const CODE_SIGN_IN_REQUIRED = {
-  error: "Sign in with a code sent to your email to do this.",
-  code: "code_sign_in_required",
-};
 
 /**
  * Require an authenticated user on this hub's admin roster
  * (`people.admin_emails`; inside a hub never from env).
  * Matching is case-insensitive.
  */
-export async function requireAdmin(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  await requireAuth(req, res, async () => {
-    const user = res.locals.authUser as User | undefined;
-    if (!user) return;
-    if (!codeVerified(res)) {
-      res.status(403).json(CODE_SIGN_IN_REQUIRED);
-      return;
-    }
+export const requireAdmin = route(async (req, res, next) => {
+  const user = await sessionUser(req, res);
+  requireCodeVerified(res);
 
-    const allowed = adminEmails();
-    if (allowed.size === 0) {
-      // Fail safely: no admins configured means nobody is admin.
-      // Fail closed AND say how to recover. A hub in this state has nobody
-      // who can add an administrator through the admin panel, which is
-      // exactly why the roster endpoint refuses to empty it.
-      res.status(503).json({
-        error:
-          "This hub has no administrators. The platform operator sets them " +
-          "from the console (the hub's handover panel).",
-      });
-      return;
-    }
-    if (!allowed.has(user.email.toLowerCase())) {
-      res.status(403).json({ error: "Admin access required" });
-      return;
-    }
-    next();
-  });
-}
+  const allowed = adminEmails();
+  if (allowed.size === 0) {
+    // Fail closed AND say how to recover. A hub in this state has nobody
+    // who can add an administrator through the admin panel, which is
+    // exactly why the roster endpoint refuses to empty it.
+    throw new UnavailableError(
+      "This hub has no administrators. The platform operator sets them " +
+        "from the console (the hub's handover panel).",
+      "no_admins",
+    );
+  }
+  if (!allowed.has(user.email.toLowerCase())) {
+    throw new ForbiddenError("Admin access required", "admin_required");
+  }
+  next();
+});
 
 /**
  * Require an authenticated user authorized to post announcements —
@@ -352,39 +314,28 @@ export async function requireAdmin(
  * is on the author list can post / edit announcements but cannot reach
  * any /admin/* route.
  */
-export async function requireAnnouncementPoster(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  await requireAuth(req, res, async () => {
-    const user = res.locals.authUser as User | undefined;
-    if (!user) return;
-    if (!codeVerified(res)) {
-      res.status(403).json(CODE_SIGN_IN_REQUIRED);
-      return;
-    }
+export const requireAnnouncementPoster = route(async (req, res, next) => {
+  const user = await sessionUser(req, res);
+  requireCodeVerified(res);
 
-    const authorship = await resolveAuthorship(user.email);
-    if (!authorship) {
-      res.status(403).json({
-        error:
-          "You are not authorized to post announcements. Ask an admin to add your email.",
-      });
-      return;
-    }
+  const authorship = await resolveAuthorship(user.email);
+  if (!authorship) {
+    throw new ForbiddenError(
+      "You are not authorized to post announcements. Ask an admin to add your email.",
+      "author_required",
+    );
+  }
 
-    res.locals.effectiveRole = authorship.role;
-    res.locals.authorLabel = authorship.label;
-    res.locals.authorOfficial = authorship.official;
-    // Admin-curated display name for a listed author (null for admins, or
-    // when the admin left it blank). The handler prefers this over the
-    // poster's own account name so the admin controls how a board author
-    // appears even before that person has set up their account.
-    res.locals.authorName = authorship.name;
-    next();
-  });
-}
+  res.locals.effectiveRole = authorship.role;
+  res.locals.authorLabel = authorship.label;
+  res.locals.authorOfficial = authorship.official;
+  // Admin-curated display name for a listed author (null for admins, or
+  // when the admin left it blank). The handler prefers this over the
+  // poster's own account name so the admin controls how a board author
+  // appears even before that person has set up their account.
+  res.locals.authorName = authorship.name;
+  next();
+});
 
 /**
  * Require an authenticated user whose ACCOUNT holds the official role
@@ -399,32 +350,21 @@ export async function requireAnnouncementPoster(
  * Sets `res.locals.officialIdentity` (the {type, title} snapshot the
  * handler stamps onto whatever it writes).
  */
-export async function requireOfficial(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  await requireAuth(req, res, async () => {
-    const user = res.locals.authUser as User | undefined;
-    if (!user) return;
-    if (!codeVerified(res)) {
-      res.status(403).json(CODE_SIGN_IN_REQUIRED);
-      return;
-    }
+export const requireOfficial = route(async (req, res, next) => {
+  const user = await sessionUser(req, res);
+  requireCodeVerified(res);
 
-    const official = await resolveOfficial(user.email);
-    if (!official) {
-      res.status(403).json({
-        error:
-          "Only accounts holding an official role can post a response. " +
-          "Ask a hub admin to designate your office.",
-      });
-      return;
-    }
-    res.locals.officialIdentity = official;
-    next();
-  });
-}
+  const official = await resolveOfficial(user.email);
+  if (!official) {
+    throw new ForbiddenError(
+      "Only accounts holding an official role can post a response. " +
+        "Ask a hub admin to designate your office.",
+      "official_required",
+    );
+  }
+  res.locals.officialIdentity = official;
+  next();
+});
 
 // Backward-compat alias. Old callers imported `requireBoardOrAdmin`; the
 // new name is `requireAnnouncementPoster` which reflects the DB-backed,

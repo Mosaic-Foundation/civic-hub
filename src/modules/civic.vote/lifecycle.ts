@@ -8,6 +8,7 @@
 //
 // No skipping within a path. No reversal.
 
+import { ConflictError } from "../../errors/index.js";
 import type { VoteStatus } from "./models.js";
 
 type ActivationMode = "direct" | "proposal_required";
@@ -41,7 +42,7 @@ export function canTransition(from: VoteStatus, to: VoteStatus, mode: Activation
 export function assertTransition(from: VoteStatus, to: VoteStatus, mode: ActivationMode = "direct"): void {
   if (!canTransition(from, to, mode)) {
     const valid = getTransitions(mode)[from];
-    throw new Error(
+    throw new ConflictError(
       `Invalid lifecycle transition: ${from} → ${to} (activation_mode: ${mode}). ` +
         `Valid transitions from "${from}": [${valid.join(", ")}]`
     );

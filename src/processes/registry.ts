@@ -4,6 +4,7 @@
 // Each process type (e.g. civic.vote, civic.proposal) implements a handler.
 // Future work may allow dynamic loading, but for now this is static.
 
+import { ValidationError } from "../errors/index.js";
 import { ProcessHandler, ProcessFactory, ActionDispatcher } from "./types.js";
 import type { ApprovalActivation } from "./types.js";
 import type { Process } from "../models/process.js";
@@ -191,7 +192,7 @@ export function draftPathFor(type: string, draftId: string): string | null {
 export async function reopenDraftForRevision(type: string, draftId: string): Promise<void> {
   const handler = processRegistry[type];
   if (!handler?.reopenDraft) {
-    throw new Error(`Process type ${type} does not support revising a draft`);
+    throw new ValidationError("This kind of process can't be revised after it is submitted.", "revision_not_supported");
   }
   await handler.reopenDraft(draftId);
 }

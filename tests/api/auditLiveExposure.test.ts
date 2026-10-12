@@ -185,8 +185,8 @@ describe("A3: a resident can call only resident actions", () => {
   it("an admin is not held to the resident list", async () => {
     const id = await insertProcess({ type: "civic.polis_deliberation", status: "closed", title: `Admin ${run}` });
     const res = await call("POST", `/process/${id}/action`, HOST, { type: "start", payload: {} }, admin);
-    // Not the resident refusal: the handler's own status rule answers.
-    expect(res.status).toBe(400);
+    // Not the resident refusal: the handler's own status rule answers (a conflict since Audit 4).
+    expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/Cannot start a conversation that is closed/);
   });
 });

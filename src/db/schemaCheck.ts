@@ -10,16 +10,25 @@
 
 import { getDb } from "./client.js";
 import { currentRequirements, type SchemaRequirement } from "./schemaContract.js";
+import { compareFunctions, FUNCTION_CATALOG, FUNCTION_CONTRACT, type FunctionRequirement } from "./functionContract.js";
 
 /** Postgres: relation (table/view) does not exist. */
 const UNDEFINED_TABLE = "42P01";
 /** Postgres: column does not exist. */
 const UNDEFINED_COLUMN = "42703";
+/** PostgREST: no function by that name and arguments in its schema cache. */
+const UNKNOWN_FUNCTION = "PGRST202";
 
 export interface SchemaGap {
   table: string;
   owner: string;
-  kind: "missing_table" | "missing_column" | "forbidden_column";
+  kind:
+    | "missing_table"
+    | "missing_column"
+    | "forbidden_column"
+    | "missing_function"
+    | "mismatched_function"
+    | "overloaded_function";
   detail: string;
 }
 
@@ -156,12 +165,50 @@ export async function runSchemaCheck(
     }
   }
 
+  const functions = await runFunctionCheck();
+  gaps.push(...functions.gaps);
+  inconclusive.push(...functions.inconclusive);
+
   return {
     ok: gaps.length === 0,
-    checked: requirements.length,
+    checked: requirements.length + functions.checked,
     gaps,
     inconclusive,
     duration_ms: Date.now() - startedAt,
+  };
+}
+
+/**
+ * Compare the functions the code calls (functionContract.ts) with the live
+ * catalog. A gap names the function, so a deploy that runs ahead of its
+ * migration turns /health red instead of failing a resident's action.
+ */
+export async function runFunctionCheck(
+  contract: readonly FunctionRequirement[] = FUNCTION_CONTRACT,
+): Promise<{ checked: number; gaps: SchemaGap[]; inconclusive: Array<{ table: string; detail: string }> }> {
+  const { data, error } = await getDb().rpc(FUNCTION_CATALOG, { p_names: contract.map((f) => f.name) });
+  if (error) {
+    if (error.code === UNKNOWN_FUNCTION) {
+      return {
+        checked: 0,
+        gaps: [
+          {
+            table: `${FUNCTION_CATALOG}()`,
+            owner: "db/functionContract",
+            kind: "missing_function",
+            detail: `${FUNCTION_CATALOG}(p_names text[]) is missing (migration 20261012000000), so the functions the code calls were not checked`,
+          },
+        ],
+        inconclusive: [],
+      };
+    }
+    return { checked: 0, gaps: [], inconclusive: [{ table: `${FUNCTION_CATALOG}()`, detail: error.message?.trim() || "no message" }] };
+  }
+  const rows = (data ?? []) as Array<{ name: string; identity_args: string }>;
+  return {
+    checked: contract.length,
+    gaps: compareFunctions(contract, rows).map((g) => ({ table: `${g.name}()`, owner: g.owner, kind: g.kind, detail: g.detail })),
+    inconclusive: [],
   };
 }
 
@@ -215,14 +262,14 @@ export function resetSchemaReportCache(): void {
  */
 export function formatSchemaReport(report: SchemaReport): string {
   if (report.ok && report.inconclusive.length === 0) {
-    return `[schema] ✓ ${report.checked} table(s) match the code (${report.duration_ms}ms)`;
+    return `[schema] ✓ ${report.checked} table(s) and function(s) match the code (${report.duration_ms}ms)`;
   }
 
   const lines: string[] = [];
   if (!report.ok) {
     lines.push(
       `[schema] ❌ DRIFT — the deployed code expects ${report.gaps.length} thing(s) this database does not have. ` +
-        `Apply the pending migration(s) in supabase/migrations; writes to these tables are failing right now.`,
+        `Apply the pending migration(s) in supabase/migrations; writes to these tables and calls to these functions are failing right now.`,
     );
     for (const gap of report.gaps) {
       lines.push(`[schema]    ${gap.table} (${gap.owner}): ${gap.detail}`);

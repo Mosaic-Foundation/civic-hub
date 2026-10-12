@@ -6,6 +6,7 @@
 // dispatcher — their admin surface is /admin/briefs/*. This adapter exists
 // to initialize state and produce read models.
 
+import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
 import {
@@ -45,8 +46,9 @@ const briefProcess: ProcessHandler = {
     const required = ["source_process_id", "source_process_type", "content"] as const;
     for (const key of required) {
       if (!(key in input)) {
-        throw new Error(
-          `civic.brief initializeState requires "${key}" — briefs can only be created by the process-close flow.`,
+        throw new ValidationError(
+          "Briefs are created automatically when a process closes; they can't be created directly.",
+          "cannot_create_directly",
         );
       }
     }
@@ -62,9 +64,9 @@ const briefProcess: ProcessHandler = {
     _process: Process,
     action: ProcessAction,
   ): Promise<Record<string, unknown>> {
-    throw new Error(
-      `civic.brief does not accept process actions (received "${action.type}"). ` +
-        `Brief review happens via /admin/briefs/*.`,
+    throw new ValidationError(
+      "Briefs don't take actions here. Review them from the admin briefs page.",
+        "action_not_supported",
     );
   },
 

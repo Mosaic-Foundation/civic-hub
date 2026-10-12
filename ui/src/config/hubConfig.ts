@@ -130,8 +130,8 @@ export function getHubMovedTo(): string | null {
 
 /** The new origin a `hub_moved` answer names, when it is an http(s) origin. Exported for tests. */
 export function movedToFromResponse(status: number, body: unknown): string | null {
-  const b = body as { error?: unknown; location?: unknown } | null;
-  if (status !== 404 || b?.error !== "hub_moved" || typeof b.location !== "string") return null;
+  const b = body as { error?: unknown; code?: unknown; location?: unknown } | null;
+  if (!b || status !== 404 || (b.code ?? b.error) !== "hub_moved" || typeof b.location !== "string") return null;
   try {
     const url = new URL(b.location);
     return url.protocol === "https:" || url.protocol === "http:" ? url.origin : null;
@@ -147,7 +147,9 @@ export function movedToFromResponse(status: number, body: unknown): string | nul
  * Exported for tests.
  */
 export function deadEndFromResponse(status: number, body: unknown): DeadEndCode | null {
-  const code = (body as { error?: unknown } | null)?.error;
+  // `code` since Audit 4; `error` carried the code before.
+  const b = body as { error?: unknown; code?: unknown } | null;
+  const code = b?.code ?? b?.error;
   if (status === 404 && code === "no_hub") return code;
   if (status === 503 && code === "hub_suspended") return code;
   return null;

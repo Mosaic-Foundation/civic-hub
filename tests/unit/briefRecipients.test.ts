@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import type {
   BriefContent,
   BriefProcessContext,
+  SendEmailFn,
 } from "../../src/modules/civic.brief/models.js";
 import {
   RECIPIENT_LABEL_MAX,
@@ -15,7 +16,6 @@ import {
 
 const ctx: BriefProcessContext = {
   process_id: "brief_1",
-  hub_id: "hub",
   jurisdiction: "us-va-floyd",
   emit: vi.fn(async () => undefined),
 };
@@ -105,7 +105,7 @@ describe("setRecipients", () => {
   it("rejects changes once no longer pending — the delivery already happened", () => {
     const state = pendingState();
     state.publication_status = "published";
-    expect(() => setRecipients(state, [JANE])).toThrow(/cannot be changed/);
+    expect(() => setRecipients(state, [JANE])).toThrow(/can no longer be changed/);
   });
 });
 
@@ -116,7 +116,7 @@ describe("approveBrief — per-brief recipients", () => {
     fallbackRecipients: ["clerk@floyd.gov"],
     hubLabel: "Test Hub",
     publicBriefUrl: "https://hub/brief/brief_1",
-    sendEmail: vi.fn(async () => undefined),
+    sendEmail: vi.fn(async (_m: Parameters<SendEmailFn>[0]) => undefined),
     finalizeSource: vi.fn(async () => undefined),
   });
 
@@ -170,7 +170,7 @@ describe("getPublicReadModel — the Sent-to receipt", () => {
       fallbackRecipients: [],
       hubLabel: "H",
       publicBriefUrl: "u",
-      sendEmail: vi.fn(async () => undefined),
+      sendEmail: vi.fn(async (_m: Parameters<SendEmailFn>[0]) => undefined),
       finalizeSource: vi.fn(async () => undefined),
     });
 
@@ -192,7 +192,7 @@ describe("getPublicReadModel — the Sent-to receipt", () => {
       fallbackRecipients: ["clerk@floyd.gov"],
       hubLabel: "H",
       publicBriefUrl: "u",
-      sendEmail: vi.fn(async () => undefined),
+      sendEmail: vi.fn(async (_m: Parameters<SendEmailFn>[0]) => undefined),
       finalizeSource: vi.fn(async () => undefined),
     });
 
@@ -274,7 +274,7 @@ describe("approveBrief — grouped delivery", () => {
       fallbackRecipients: ["clerk@floyd.gov"],
       hubLabel: "Test Hub",
       publicBriefUrl: "https://hub/brief/brief_1",
-      sendEmail: vi.fn(async () => undefined),
+      sendEmail: vi.fn(async (_m: Parameters<SendEmailFn>[0]) => undefined),
       finalizeSource: vi.fn(async () => undefined),
     };
 

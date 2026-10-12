@@ -23,7 +23,9 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
 
   use: {
-    baseURL: "http://localhost:5173",
+    // CIVIC_E2E_BASE_URL: a preview build (`vite preview`, which serves the
+    // production security headers); CI uses one (.github/workflows/e2e.yml).
+    baseURL: process.env.CIVIC_E2E_BASE_URL?.trim() || "http://localhost:5173",
     // The API's sign-in limits count per client IP (Audit 2). Every browser
     // request reaches it from this machine, so each run claims its own
     // made-up address; locally the API takes X-Forwarded-For as given.
@@ -50,7 +52,9 @@ export default defineConfig({
     // },
   ],
 
-  webServer: [
+  // Started here only when no base URL is given: with CIVIC_E2E_BASE_URL the
+  // caller runs the API and the preview itself.
+  webServer: process.env.CIVIC_E2E_BASE_URL ? undefined : [
     {
       command: "npm run dev",
       port: 3000,

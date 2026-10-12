@@ -210,7 +210,7 @@ describe("formatSchemaReport — what a human actually reads", () => {
   };
 
   it("says so plainly when everything matches", () => {
-    expect(formatSchemaReport(clean)).toContain("27 table(s) match");
+    expect(formatSchemaReport(clean)).toContain("27 table(s) and function(s) match");
   });
 
   it("names the table, the owner, and the missing column", () => {

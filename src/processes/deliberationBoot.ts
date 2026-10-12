@@ -1,3 +1,4 @@
+import { env } from "../config/env.js";
 import { createPolisDeliberationHandler } from "../shared/polis_deliberation/handler.js";
 import { createPolisAdapter } from "../shared/polis_deliberation/adapter/polisAdapter.js";
 import { createPolisSummarizer } from "../shared/polis_deliberation/summarization/polisSummarizer.js";
@@ -32,7 +33,7 @@ export function getPolisAdapter(): PolisAdapter {
 
 export function bootDeliberation(): ProcessHandler {
   const polisBaseUrl = getSettingSync(KEYS.PLUGIN_CONVERSATION_POLIS_URL) || DEFAULT_POLIS_URL;
-  const polisAuthToken = process.env.POLIS_AUTH_TOKEN || "";
+  const polisAuthToken = env.POLIS_AUTH_TOKEN || "";
 
   if (!polisAuthToken) {
     console.log(

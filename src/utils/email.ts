@@ -13,6 +13,7 @@
 //                              write to
 // Both are no-ops for a live hub on a properly configured deployment.
 
+import { env } from "../config/env.js";
 import { currentSender, isSandboxSender } from "../services/emailSender.js";
 import { allowDelivery, type MailPurpose } from "../services/mailGuard.js";
 import { hubModeHoldReason } from "../shared/delivery.js";
@@ -23,9 +24,9 @@ import { hubModeHoldReason } from "../shared/delivery.js";
  * rather than failing silently per-request.
  */
 export function validateEmailConfig(): void {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM?.trim() || process.env.SMTP_FROM?.trim();
-  const isProd = process.env.NODE_ENV === "production";
+  const apiKey = env.RESEND_API_KEY;
+  const from = env.RESEND_FROM?.trim() || env.SMTP_FROM?.trim();
+  const isProd = env.NODE_ENV === "production";
 
   if (!apiKey) {
     const msg = "RESEND_API_KEY is not set — emails will NOT be sent.";
@@ -105,7 +106,7 @@ export async function sendEmail(
     };
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = env.RESEND_API_KEY;
   if (!apiKey) {
     return { sent: false, error: "RESEND_API_KEY is not configured" };
   }

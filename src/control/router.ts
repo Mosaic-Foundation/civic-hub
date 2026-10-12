@@ -8,8 +8,11 @@
 // cross-site form cannot send. Destructive writes need a step-up code as
 // well: `step_up_code` in the body, spent on use.
 
+import { env } from "../config/env.js";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { clientIp } from "../utils/clientIp.js";
+import { CivicError } from "../errors/index.js";
+import { logUnexpected, newRef } from "../http/route.js";
 import { RESERVED_HUB_SLUG_PURPOSES, type HubMode } from "../models/hub.js";
 import { PLUGINS_OWNER_NOTE } from "../shared/settingOwners.js";
 import { PLUGIN_IDS } from "../models/hubSettings.js";
@@ -105,7 +108,7 @@ function readCookie(req: Request, name: string): string | undefined {
 }
 
 function isHttps(req: Request): boolean {
-  return req.secure || req.headers["x-forwarded-proto"] === "https" || process.env.NODE_ENV === "production";
+  return req.secure || req.headers["x-forwarded-proto"] === "https" || env.NODE_ENV === "production";
 }
 
 function setSessionCookie(req: Request, res: Response, token: string): void {
@@ -126,15 +129,23 @@ function clearSessionCookie(req: Request, res: Response): void {
   res.setHeader("Set-Cookie", parts.join("; "));
 }
 
-function fail(res: Response, err: unknown): void {
-  if (err instanceof ControlAuthError || err instanceof ControlInputError || err instanceof EntitlementError) {
-    res.status(err.status).json({ error: err.message });
+/**
+ * The console's error answer, in the hub's shape ({ error, code }; src/errors/).
+ * A refusal answers its own status; anything else is logged in full with a
+ * reference (logUnexpected) and answered in words, with that reference.
+ */
+function fail(req: Request, res: Response, err: unknown): void {
+  if (err instanceof CivicError && err.status < 500) {
+    res.status(err.status).json({ error: err.message, code: err.code });
     return;
   }
-  // Not a refusal we wrote: say so in words, and keep the details for the log.
-  console.error("[control]", err);
-  res.status(500).json({
-    error: "Something went wrong on the server, and the change may not have been made. Reload the page to see what was saved; the server log has the details.",
+  const ref = newRef();
+  const status = err instanceof CivicError ? err.status : 500;
+  logUnexpected(req, err, status, ref, !(err instanceof CivicError));
+  res.status(status).json({
+    error: `Something went wrong on the server, and the change may not have been made. Reload the page to see what was saved. (Reference ${ref})`,
+    code: err instanceof CivicError ? err.code : "internal_error",
+    ref,
   });
 }
 
@@ -142,7 +153,7 @@ type Handler = (req: Request, res: Response) => Promise<void>;
 
 function route(fn: Handler) {
   return (req: Request, res: Response) => {
-    fn(req, res).catch((err) => fail(res, err));
+    fn(req, res).catch((err) => fail(req, res, err));
   };
 }
 
@@ -280,7 +291,7 @@ export function controlRouter(): Router {
 
   // Everything below needs a session.
   r.use("/control", (req, res, next) => {
-    requireSession(req, res, next).catch((err) => fail(res, err));
+    requireSession(req, res, next).catch((err) => fail(req, res, err));
   });
 
   r.post("/control/auth/step-up/request-code", route(async (req, res) => {

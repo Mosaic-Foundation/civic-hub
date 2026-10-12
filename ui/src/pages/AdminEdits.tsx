@@ -35,6 +35,7 @@ export default function AdminEdits() {
 
   useEffect(() => {
     if (authLoading) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
     if (!isAdmin) { setLoading(false); return; }
     let cancelled = false;
     adminListEdits()

@@ -135,7 +135,7 @@ describe.each(KINDS)("$name drafts", (kind) => {
     );
     const created = results.filter((r) => r.status === 201);
     expect(created, JSON.stringify(results.map((r) => [r.status, r.body]))).toHaveLength(1);
-    for (const r of results.filter((x) => x.status !== 201)) expect([400, 409]).toContain(r.status);
+    for (const r of results.filter((x) => x.status !== 201)) expect(r.status).toBe(409);
     expect(created[0].body.auto_approved).toBe(false);
 
     const reviews = (await localRest(`process_reviews?select=id,process_id&draft_id=eq.${id}`)) as Array<{
@@ -232,10 +232,10 @@ describe("a failed auto-approval leaves the submission in the queue", () => {
     expect(draft.status).toBe("submitted");
 
     const second = await call("POST", `${kind.path}/${id}/submit`, FLOYD, {}, admin);
-    // Told it was already submitted (400 today when the first submit has
-    // finished, 409 when it races one; F2 makes both a conflict).
-    expect([400, 409]).toContain(second.status);
-    expect(second.body.error).toMatch(/already (been )?submitted/);
+    // Told it was already submitted: a conflict, finished first submit or not (Audit 4).
+    expect(second.status).toBe(409);
+    expect(second.body.code).toBe("already_submitted");
+    expect(second.body.error).toBe("Draft has already been submitted");
     expect((await localRest(`process_reviews?select=id&draft_id=eq.${id}`)) as unknown[]).toHaveLength(1);
   });
 });

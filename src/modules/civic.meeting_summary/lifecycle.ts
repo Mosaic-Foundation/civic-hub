@@ -7,6 +7,7 @@
 // brief's documented deviation from Civic Process Spec §6.2 — "closed"
 // is skipped because there is no participation window.
 
+import { ConflictError } from "../../errors/index.js";
 import type {
   MeetingSummaryApprovalStatus,
   MeetingSummaryProcessState,
@@ -41,8 +42,9 @@ export function assertApprovalTransition(
     published: [],
   };
   if (!allowed[from].includes(to)) {
-    throw new Error(
-      `Invalid meeting summary approval transition: ${from} → ${to}`,
+    throw new ConflictError(
+      "That approval step is not allowed from the summary's current state.",
+      "invalid_transition",
     );
   }
 }

@@ -13,6 +13,7 @@
 // bucket is public, so an object's URL resolves without any token.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { UnavailableError } from "../errors/index.js";
 import { getDb, getHubTokenDb, hubTokensEnabled } from "./client.js";
 
 const HUB_ID_SHAPE = /^[a-z0-9-]{2,32}$/;
@@ -49,7 +50,11 @@ export async function uploadPublicObject(
     cacheControl: options.cacheControl,
   });
   if (upload.error) {
-    throw new Error(`Storage upload failed (bucket=${bucket}): ${upload.error.message}`);
+    throw new UnavailableError(
+      "The image couldn't be stored right now. Please try again in a moment.",
+      "storage_unavailable",
+      { cause: new Error(`Storage upload failed (bucket=${bucket}): ${upload.error.message}`) },
+    );
   }
   const { data } = storage.getPublicUrl(key);
   if (!data?.publicUrl) {

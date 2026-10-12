@@ -13,10 +13,11 @@
 //
 // See BUILD-PLAN-multi-tenant.md → Phase 5 → "The super admin, as decided".
 
+import { env } from "../config/env.js";
 import { normalizeHostname } from "../middleware/hub.js";
 
 export function consoleHostname(): string | null {
-  const raw = process.env.CIVIC_CONSOLE_HOSTNAME?.trim();
+  const raw = env.CIVIC_CONSOLE_HOSTNAME?.trim();
   return raw ? normalizeHostname(raw) : null;
 }
 
@@ -45,7 +46,7 @@ export type AdminEmailConfig =
   | { ok: false; problem: string };
 
 export function consoleAdminEmail(): AdminEmailConfig {
-  const raw = process.env.CIVIC_CONSOLE_ADMIN_EMAIL?.trim().toLowerCase() ?? "";
+  const raw = env.CIVIC_CONSOLE_ADMIN_EMAIL?.trim().toLowerCase() ?? "";
   if (!raw) return { ok: false, problem: "CIVIC_CONSOLE_ADMIN_EMAIL is not set." };
   if (/[,;\s]/.test(raw)) {
     return { ok: false, problem: "CIVIC_CONSOLE_ADMIN_EMAIL must name exactly one address." };
@@ -66,7 +67,7 @@ const PRODUCTION_SUPABASE_HOSTS: readonly string[] = [
 ];
 
 export function isProductionDatabase(): boolean {
-  const raw = process.env.SUPABASE_URL?.trim();
+  const raw = env.SUPABASE_URL?.trim();
   if (!raw) return false;
   try {
     return PRODUCTION_SUPABASE_HOSTS.includes(new URL(raw).hostname.toLowerCase());
@@ -86,7 +87,7 @@ export function isProductionDatabase(): boolean {
 //                         tests/unit/consoleRouting.test.ts checks.
 
 export function startHostname(): string | null {
-  const raw = process.env.CIVIC_START_HOSTNAME?.trim();
+  const raw = env.CIVIC_START_HOSTNAME?.trim();
   return raw ? normalizeHostname(raw) : null;
 }
 

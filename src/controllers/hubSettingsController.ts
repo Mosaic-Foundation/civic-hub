@@ -18,7 +18,8 @@
 // the build plan's "Hub admin edits in the UI" table. An unknown key is
 // refused and nothing in the write is stored.
 
-import type { Request, Response } from "express";
+import { NotFoundError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { currentHub, currentHubId } from "../config/hubContext.js";
 import {
@@ -144,28 +145,18 @@ async function loadHubSettings(): Promise<HubSettingsResponse> {
   };
 }
 
-export async function handleGetHubSettings(_req: Request, res: Response): Promise<void> {
-  try {
-    res.json(await loadHubSettings());
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
-  }
-}
+export const handleGetHubSettings = route(async (_req, res) => {
+  res.json(await loadHubSettings());
+});
 
 /**
  * GET /admin/hub/plugins/live — live items per plugin on this hub, for the
  * Plugins page's warning that switching one off hides them and suspends
  * their deadlines. Shape: { counts: { vote: 3, project: 1, ... } }.
  */
-export async function handleGetPluginLiveCounts(_req: Request, res: Response): Promise<void> {
-  try {
-    res.json({ counts: await countLiveProcessesByPlugin() });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
-  }
-}
+export const handleGetPluginLiveCounts = route(async (_req, res) => {
+  res.json({ counts: await countLiveProcessesByPlugin() });
+});
 
 /**
  * GET /admin/hub/jobs/runs — each scheduled job's last run on this hub, for
@@ -174,80 +165,70 @@ export async function handleGetPluginLiveCounts(_req: Request, res: Response): P
  * last one, so a failure stays visible after a later clean run.
  * Shape: { jobs: [{ job_id, job_name, plugin, last, last_problem }] }.
  */
-export async function handleGetJobRuns(_req: Request, res: Response): Promise<void> {
-  try {
-    const runs = await latestJobRuns();
-    const jobs = JOBS.filter((j): j is HubJobSpec => !isPlatformJob(j)).map((j) => ({
-      job_id: j.id,
-      job_name: JOB_NAMES[j.id] ?? j.id,
-      plugin: j.plugin,
-      last: runs[j.id]?.last ?? null,
-      last_problem: runs[j.id]?.last_problem ?? null,
-    }));
-    res.json({ jobs });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
-  }
-}
+export const handleGetJobRuns = route(async (_req, res) => {
+  const runs = await latestJobRuns();
+  const jobs = JOBS.filter((j): j is HubJobSpec => !isPlatformJob(j)).map((j) => ({
+    job_id: j.id,
+    job_name: JOB_NAMES[j.id] ?? j.id,
+    plugin: j.plugin,
+    last: runs[j.id]?.last ?? null,
+    last_problem: runs[j.id]?.last_problem ?? null,
+  }));
+  res.json({ jobs });
+});
 
-export async function handlePutHubSettings(req: Request, res: Response): Promise<void> {
-  try {
-    const body = (req.body ?? {}) as { section?: unknown; values?: unknown };
-    const result = validateSettingsWrite(body.section, body.values);
-    if (!result.ok) {
-      res.status(400).json({
-        error: result.error,
-        ...(result.unknownKeys ? { unknown_keys: result.unknownKeys } : {}),
-      });
-      return;
-    }
-
-    // A document saved exactly as its shared template is stored as "" — the
-    // hub is USING the default, not holding a copy of it. That is what
-    // "restore default" means: a copy would stop following the template the
-    // next time the shared text is corrected, and nobody would know why.
-    const entries = result.entries.map((e) => {
-      const template = documentTemplate(e.key);
-      return template !== null && e.value.trim() === template.trim()
-        ? { key: e.key, value: "" }
-        : e;
+export const handlePutHubSettings = route(async (req, res) => {
+  const body = (req.body ?? {}) as { section?: unknown; values?: unknown };
+  const result = validateSettingsWrite(body.section, body.values);
+  if (!result.ok) {
+    res.status(400).json({
+      error: result.error,
+      code: "invalid_settings",
+      ...(result.unknownKeys ? { unknown_keys: result.unknownKeys } : {}),
     });
-
-    // A "process" field names one of this hub's processes of its type.
-    for (const e of entries) {
-      const spec = fieldSpec(e.key);
-      if (spec?.kind !== "process" || e.value === "") continue;
-      const p = await getProcess(e.value);
-      if (!p || p.definition.type !== spec.processType) {
-        res.status(400).json({ error: `${e.key}: no ${spec.processType} process "${e.value}" on this hub.` });
-        return;
-      }
-    }
-
-    const actor = getAuthUser(res);
-    const hubId = currentHubId();
-
-    // A new hub name carries to the operator, the email sender name and the
-    // registry name where they still read the old one (review R11).
-    const followOn = await renameFollowOn(hubId, entries);
-    await setSettings(hubId, [...entries, ...followOn.settings], actor.id);
-    if (followOn.registryName) await renameHub(hubId, followOn.registryName);
-
-    // One line per save, naming who and which keys — never the values, which
-    // include whole documents.
-    console.log(
-      `[hub-settings] ${hubId}: ${actor.email} saved ${result.section} ` +
-        `(${entries.map((e) => e.key).join(", ")})`,
-    );
-
-    const fresh = await loadHubSettings();
-    res.json(followOn.message ? { ...fresh, follow_on: followOn.message } : fresh);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+    return;
   }
-}
+
+  // A document saved exactly as its shared template is stored as "" — the
+  // hub is USING the default, not holding a copy of it. That is what
+  // "restore default" means: a copy would stop following the template the
+  // next time the shared text is corrected, and nobody would know why.
+  const entries = result.entries.map((e) => {
+    const template = documentTemplate(e.key);
+    return template !== null && e.value.trim() === template.trim()
+      ? { key: e.key, value: "" }
+      : e;
+  });
+
+  // A "process" field names one of this hub's processes of its type.
+  for (const e of entries) {
+    const spec = fieldSpec(e.key);
+    if (spec?.kind !== "process" || e.value === "") continue;
+    const p = await getProcess(e.value);
+    if (!p || p.definition.type !== spec.processType) {
+      throw new ValidationError(`${e.key}: no ${spec.processType} process "${e.value}" on this hub.`);
+    }
+  }
+
+  const actor = getAuthUser(res);
+  const hubId = currentHubId();
+
+  // A new hub name carries to the operator, the email sender name and the
+  // registry name where they still read the old one (review R11).
+  const followOn = await renameFollowOn(hubId, entries);
+  await setSettings(hubId, [...entries, ...followOn.settings], actor.id);
+  if (followOn.registryName) await renameHub(hubId, followOn.registryName);
+
+  // One line per save, naming who and which keys — never the values, which
+  // include whole documents.
+  console.log(
+    `[hub-settings] ${hubId}: ${actor.email} saved ${result.section} ` +
+      `(${entries.map((e) => e.key).join(", ")})`,
+  );
+
+  const fresh = await loadHubSettings();
+  res.json(followOn.message ? { ...fresh, follow_on: followOn.message } : fresh);
+});
 
 /**
  * What a save of `identity.name` carries with it: each follower
@@ -281,17 +262,15 @@ async function renameFollowOn(
   };
 }
 
-export async function handleGetSettingTemplate(req: Request, res: Response): Promise<void> {
+export const handleGetSettingTemplate = route(async (req, res) => {
   const key = String(req.params.key ?? "");
   const spec = fieldSpec(key);
   if (!spec) {
-    res.status(400).json({ error: `Unknown setting: ${key}.` });
-    return;
+    throw new ValidationError(`Unknown setting: ${key}.`);
   }
   const template = documentTemplate(key);
   if (template === null) {
-    res.status(404).json({ error: `${key} has no shared default.` });
-    return;
+    throw new NotFoundError(`${key} has no shared default.`);
   }
   res.json({ key, template });
-}
+});

@@ -1,5 +1,6 @@
+import { ForbiddenError, NotFoundError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import { Request, Response } from "express";
-import { isPluginDisabledError } from "../services/pluginGate.js";
 import { describeSubmission } from "../processes/registry.js";
 import type { SubmissionField } from "../shared/submissionPreview.js";
 import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
@@ -74,36 +75,20 @@ function submissionFor(proc: unknown): SubmissionField[] | null {
   });
 }
 
-export async function handleGetReviewNotifications(
-  _req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    const count = await countReviewNotifications(
-      user.id,
-      isAdminEmail(user.email),
-    );
-    res.json({ count });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
-  }
-}
+export const handleGetReviewNotifications = route(async (_req, res) => {
+  const user = getAuthUser(res);
+  const count = await countReviewNotifications(
+    user.id,
+    isAdminEmail(user.email),
+  );
+  res.json({ count });
+});
 
-export async function handleMarkReviewsSeen(
-  _req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    await markReviewsSeen(user.id);
-    res.json({ ok: true });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
-  }
-}
+export const handleMarkReviewsSeen = route(async (_req, res) => {
+  const user = getAuthUser(res);
+  await markReviewsSeen(user.id);
+  res.json({ ok: true });
+});
 
 // --- Creator endpoints ---
 
@@ -139,270 +124,144 @@ export function reviseFields(
   return out;
 }
 
-export async function handleRevise(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    const reviewId = req.params.reviewId as string;
-    const body = (req.body ?? {}) as Record<string, unknown>;
+export const handleRevise = route(async (req, res) => {
+  const user = getAuthUser(res);
+  const reviewId = req.params.reviewId as string;
+  const body = (req.body ?? {}) as Record<string, unknown>;
 
-    // The creator's quick revise (My submissions) changes the title and the
-    // description, with a note to the reviewer: that is all the UI sends, and
-    // all this route takes (Audit 2, the leftover from Audit 1). It used to
-    // write a creator's raw `content` and `config` to their pending process,
-    // skipping the type's validation. A revision that changes anything else
-    // goes through the type's own draft (`draft_path` from /reopen), whose
-    // resubmit runs the type's validation and builds the state.
-    const fields = reviseFields(body);
-    if (typeof fields === "string") {
-      res.status(400).json({ error: fields });
-      return;
-    }
-    const review = await reviseAndResubmit(reviewId, user.id, fields);
-
-    res.json(review);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    const status = message.includes("not found")
-      ? 404
-      : message.includes("Only the creator")
-        ? 403
-        : message.includes("Cannot revise")
-          ? 409
-          : 500;
-    res.status(status).json({ error: message });
+  // The creator's quick revise (My submissions) changes the title and the
+  // description, with a note to the reviewer: that is all the UI sends, and
+  // all this route takes (Audit 2, the leftover from Audit 1). It used to
+  // write a creator's raw `content` and `config` to their pending process,
+  // skipping the type's validation. A revision that changes anything else
+  // goes through the type's own draft (`draft_path` from /reopen), whose
+  // resubmit runs the type's validation and builds the state.
+  const fields = reviseFields(body);
+  if (typeof fields === "string") {
+    throw new ValidationError(fields);
   }
-}
+  const review = await reviseAndResubmit(reviewId, user.id, fields);
 
-export async function handleReopen(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    const reviewId = req.params.reviewId as string;
-    const result = await reopenForRevision(reviewId, user.id);
-    // null → no draft on record: the client falls back to the inline form.
-    res.json(result ?? { draft_id: null, draft_path: null });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    const status = message.includes("not found")
-      ? 404
-      : message.includes("Only the creator")
-        ? 403
-        : message.includes("Cannot revise")
-          ? 409
-          : 500;
-    res.status(status).json({ error: message });
+  res.json(review);
+});
+
+export const handleReopen = route(async (req, res) => {
+  const user = getAuthUser(res);
+  const reviewId = req.params.reviewId as string;
+  const result = await reopenForRevision(reviewId, user.id);
+  // null → no draft on record: the client falls back to the inline form.
+  res.json(result ?? { draft_id: null, draft_path: null });
+});
+
+export const handleWithdraw = route(async (req, res) => {
+  const user = getAuthUser(res);
+  const reviewId = req.params.reviewId as string;
+
+  const review = await withdrawReview(reviewId, user.id);
+  res.json(review);
+});
+
+export const handleGetMyReviews = route(async (req, res) => {
+  const user = getAuthUser(res);
+  const reviews = await listCreatorReviews(user.id);
+
+  const enriched = await Promise.all(
+    reviews.map(async (review) => {
+      const proc = await getProcessSummary(review.process_id);
+      return {
+        ...review,
+        process_type: proc?.type ?? null,
+        process_title: proc?.title ?? null,
+      };
+    }),
+  );
+
+  res.json(enriched);
+});
+
+export const handleGetReview = route(async (req, res) => {
+  const user = getAuthUser(res);
+  const reviewId = req.params.reviewId as string;
+
+  const review = await getReview(reviewId);
+  if (!review) {
+    throw new NotFoundError("Review not found");
   }
-}
 
-export async function handleWithdraw(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    const reviewId = req.params.reviewId as string;
-
-    const review = await withdrawReview(reviewId, user.id);
-    res.json(review);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    const status = message.includes("not found")
-      ? 404
-      : message.includes("Only the creator")
-        ? 403
-        : message.includes("Cannot withdraw")
-          ? 409
-          : 500;
-    res.status(status).json({ error: message });
+  if (review.creator_id !== user.id && !isAdminEmail(user.email)) {
+    throw new ForbiddenError("Access denied");
   }
-}
 
-export async function handleGetMyReviews(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    const reviews = await listCreatorReviews(user.id);
+  const turns = await getReviewTurns(reviewId);
+  const proc = await getProcessRow(review.process_id);
 
-    const enriched = await Promise.all(
-      reviews.map(async (review) => {
-        const proc = await getProcessSummary(review.process_id);
-        return {
-          ...review,
-          process_type: proc?.type ?? null,
-          process_title: proc?.title ?? null,
-        };
-      }),
-    );
-
-    res.json(enriched);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
-  }
-}
-
-export async function handleGetReview(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    const reviewId = req.params.reviewId as string;
-
-    const review = await getReview(reviewId);
-    if (!review) {
-      res.status(404).json({ error: "Review not found" });
-      return;
-    }
-
-    if (review.creator_id !== user.id && !isAdminEmail(user.email)) {
-      res.status(403).json({ error: "Access denied" });
-      return;
-    }
-
-    const turns = await getReviewTurns(reviewId);
-    const proc = await getProcessRow(review.process_id);
-
-    res.json({ review, turns, process: proc, submission: submissionFor(proc), detail_path: detailPathFor(proc) });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
-  }
-}
+  res.json({ review, turns, process: proc, submission: submissionFor(proc), detail_path: detailPathFor(proc) });
+});
 
 // --- Admin endpoints ---
 
-export async function handleAdminListReviews(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const status = req.query.status as string | undefined;
-    const reviews = await listReviews(status);
+export const handleAdminListReviews = route(async (req, res) => {
+  const status = req.query.status as string | undefined;
+  const reviews = await listReviews(status);
 
-    const enriched = await Promise.all(
-      reviews.map(async (review) => {
-        const proc = await getProcessSummary(review.process_id);
-        return {
-          ...review,
-          process_type: proc?.type ?? null,
-          process_title: proc?.title ?? null,
-        };
-      }),
-    );
+  const enriched = await Promise.all(
+    reviews.map(async (review) => {
+      const proc = await getProcessSummary(review.process_id);
+      return {
+        ...review,
+        process_type: proc?.type ?? null,
+        process_title: proc?.title ?? null,
+      };
+    }),
+  );
 
-    res.json(enriched);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+  res.json(enriched);
+});
+
+export const handleAdminGetReview = route(async (req, res) => {
+  const reviewId = req.params.reviewId as string;
+
+  const review = await getReview(reviewId);
+  if (!review) {
+    throw new NotFoundError("Review not found");
   }
-}
 
-export async function handleAdminGetReview(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const reviewId = req.params.reviewId as string;
+  const turns = await getReviewTurns(reviewId);
+  const proc = await getProcessRow(review.process_id);
 
-    const review = await getReview(reviewId);
-    if (!review) {
-      res.status(404).json({ error: "Review not found" });
-      return;
-    }
+  res.json({ review, turns, process: proc, submission: submissionFor(proc), detail_path: detailPathFor(proc) });
+});
 
-    const turns = await getReviewTurns(reviewId);
-    const proc = await getProcessRow(review.process_id);
+export const handleAdminApprove = route(async (req, res) => {
+  const user = getAuthUser(res);
+  const reviewId = req.params.reviewId as string;
 
-    res.json({ review, turns, process: proc, submission: submissionFor(proc), detail_path: detailPathFor(proc) });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+  const result = await approveReview(reviewId, user.id);
+  res.json(result);
+});
+
+export const handleAdminRequestChanges = route(async (req, res) => {
+  const user = getAuthUser(res);
+  const reviewId = req.params.reviewId as string;
+  const note = (req.body as Record<string, unknown>).note as string | undefined;
+
+  if (!note || note.trim().length === 0) {
+    throw new ValidationError("A note is required when requesting changes");
   }
-}
 
-export async function handleAdminApprove(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    const reviewId = req.params.reviewId as string;
+  const review = await requestChanges(reviewId, user.id, note);
+  res.json(review);
+});
 
-    const result = await approveReview(reviewId, user.id);
-    res.json(result);
-  } catch (err) {
-    if (isPluginDisabledError(err)) {
-      res.status(404).json({ error: err.message, code: err.code });
-      return;
-    }
-    const message = err instanceof Error ? err.message : "Unknown error";
-    const status = message.includes("not found")
-      ? 404
-      : message.includes("Cannot approve") || message.includes("already been approved")
-        ? 409
-        : 500;
-    res.status(status).json({ error: message });
+export const handleAdminDecline = route(async (req, res) => {
+  const user = getAuthUser(res);
+  const reviewId = req.params.reviewId as string;
+  const reason = (req.body as Record<string, unknown>).reason as string | undefined;
+
+  if (!reason || reason.trim().length === 0) {
+    throw new ValidationError("A reason is required when declining");
   }
-}
 
-export async function handleAdminRequestChanges(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    const reviewId = req.params.reviewId as string;
-    const note = (req.body as Record<string, unknown>).note as string | undefined;
-
-    if (!note || note.trim().length === 0) {
-      res.status(400).json({ error: "A note is required when requesting changes" });
-      return;
-    }
-
-    const review = await requestChanges(reviewId, user.id, note);
-    res.json(review);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    const status = message.includes("not found")
-      ? 404
-      : message.includes("Cannot request")
-        ? 409
-        : 500;
-    res.status(status).json({ error: message });
-  }
-}
-
-export async function handleAdminDecline(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const user = getAuthUser(res);
-    const reviewId = req.params.reviewId as string;
-    const reason = (req.body as Record<string, unknown>).reason as string | undefined;
-
-    if (!reason || reason.trim().length === 0) {
-      res.status(400).json({ error: "A reason is required when declining" });
-      return;
-    }
-
-    const review = await declineReview(reviewId, user.id, reason);
-    res.json(review);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    const status = message.includes("not found")
-      ? 404
-      : message.includes("Cannot decline")
-        ? 409
-        : 500;
-    res.status(status).json({ error: message });
-  }
-}
+  const review = await declineReview(reviewId, user.id, reason);
+  res.json(review);
+});

@@ -19,6 +19,12 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Hot reload only (a file that exports a component and something else
+      // reloads the whole page in dev). A warning, not a CI failure (Adam,
+      // Audit 4); moving the 22 exports is left for the frontend work (F6).
+      'react-refresh/only-export-components': 'warn',
+    },
   },
   // The super admin's page (src/console/, console.html) and the hub app are
   // separate: the hub app may not import the console, and the console

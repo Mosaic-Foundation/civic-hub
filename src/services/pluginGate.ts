@@ -15,17 +15,15 @@
 // deliberately NOT filtered: it is the hub's published record, and what a hub
 // published stays published.
 
+import { NotFoundError } from "../errors/index.js";
 import { isPluginEnabledSync } from "./hubSettings.js";
 import { PROCESS_TYPE_PLUGINS, registeredProcessTypes } from "../processes/registry.js";
 import type { PluginId } from "../models/hubSettings.js";
 
 /** Thrown when code asks to create a process whose plugin is off. */
-export class PluginDisabledError extends Error {
-  readonly status = 404;
-  readonly code = "plugin_disabled";
+export class PluginDisabledError extends NotFoundError {
   constructor(readonly plugin: PluginId, what: string) {
-    super(`${what} is not available on this hub`);
-    this.name = "PluginDisabledError";
+    super(`${what} is not available on this hub`, "plugin_disabled");
   }
 }
 

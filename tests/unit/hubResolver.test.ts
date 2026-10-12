@@ -263,7 +263,7 @@ describe("resolveHub middleware", () => {
     await resolveHub(req, res as never, next);
     expect(next).not.toHaveBeenCalled();
     expect(res.state.statusCode).toBe(404);
-    expect(res.state.body).toEqual({ error: "no_hub" });
+    expect(res.state.body).toEqual({ error: "No civic hub is configured at this address. Check the link you followed.", code: "no_hub" });
   });
 
   it("answers an unknown hostname with a plain page for a browser", async () => {
@@ -294,7 +294,7 @@ describe("resolveHub middleware", () => {
     await resolveHub(req, res as never, next);
     expect(next).not.toHaveBeenCalled();
     expect(res.state.statusCode).toBe(503);
-    expect(res.state.body).toEqual({ error: "hub_suspended" });
+    expect(res.state.body).toMatchObject({ code: "hub_suspended" });
   });
 
   it("answers 503 when the hub's settings cannot be read, never an env roster (audit A8)", async () => {
@@ -302,14 +302,14 @@ describe("resolveHub middleware", () => {
     // CIVIC_ADMIN_EMAILS became the hub's admins for that request.
     const { HubSettingsUnavailableError } = await import("../../src/db/hubSettingsStore.js");
     mocks.getHubByHostname.mockResolvedValue(hub());
-    mocks.fetchHubSettings.mockRejectedValueOnce(new HubSettingsUnavailableError("down"));
+    mocks.fetchHubSettings.mockRejectedValueOnce(new HubSettingsUnavailableError("floyd", "down"));
     const req = fakeReq({ host: "floyd.civic.social" });
     const res = fakeRes();
     const next = vi.fn();
     await resolveHub(req, res as never, next);
     expect(next).not.toHaveBeenCalled();
     expect(res.state.statusCode).toBe(503);
-    expect(res.state.body).toEqual({ error: "hub_settings_unavailable" });
+    expect(res.state.body).toEqual({ error: "This hub can't be reached right now. Please try again in a moment.", code: "hub_settings_unavailable" });
   });
 
   it("lets /health through without a hub", async () => {
@@ -335,7 +335,7 @@ describe("resolveHub middleware", () => {
     const res = fakeRes();
     await resolveHub(req, res as never, vi.fn());
     expect(res.state.statusCode).toBe(503);
-    expect(res.state.body).toEqual({ error: "hub_registry_unavailable" });
+    expect(res.state.body).toEqual({ error: "This hub can't be reached right now. Please try again in a moment.", code: "hub_registry_unavailable" });
   });
 });
 
@@ -407,14 +407,14 @@ describe("moved hubs", () => {
     const res = fakeRes();
     await resolveHub(req, res as never, vi.fn());
     expect(res.state.statusCode).toBe(404);
-    expect(res.state.body).toEqual({ error: "hub_moved", location: "https://athens.civic.social" });
+    expect(res.state.body).toEqual({ error: "This hub has moved to a new address.", code: "hub_moved", location: "https://athens.civic.social" });
   });
 
   it("still says no hub for an address nobody used", async () => {
     const req = fakeReq({ host: "never.civic.social" });
     const res = fakeRes();
     await resolveHub(req, res as never, vi.fn());
-    expect(res.state.body).toEqual({ error: "no_hub" });
+    expect(res.state.body).toEqual({ error: "No civic hub is configured at this address. Check the link you followed.", code: "no_hub" });
   });
 
   it("sends a hub that left the deployment (redirect_to) to where it lives now", async () => {

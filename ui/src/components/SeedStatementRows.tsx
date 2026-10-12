@@ -117,7 +117,10 @@ export default function SeedStatementRows({
     return deduped.length > 0 ? deduped : [""];
   });
   const rowsRef = useRef(rows);
-  rowsRef.current = rows;
+  // After each commit, not during render (react-hooks/refs): handlers read it later.
+  useLayoutEffect(() => {
+    rowsRef.current = rows;
+  });
 
   const inputs = useRef<Array<HTMLTextAreaElement | null>>([]);
   const pendingFocus = useRef<{ index: number; caret: Caret } | null>(null);
@@ -156,6 +159,7 @@ export default function SeedStatementRows({
     // typed. Clearing is always a local action (it goes through emit and so is
     // already showing); the only external changes worth adopting carry content.
     if (incoming.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- adopts an outside change to the `value` prop into the rows being edited; the guards above keep it from echoing
     setRows(incomingRows.length > 0 ? incomingRows : [""]);
   }, [value]);
 

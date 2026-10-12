@@ -4,6 +4,107 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Audit 4: one error answer, a health check that names functions, CI that checks what we rely on — 2026-10-12
+
+From the audit handoff, F2 and F7, plus the health-check item Adam agreed after Audit 3. Adam's decisions in chat:
+- `reportError` gets no values: redacted text and the route pattern.
+- Handlers' refusals are typed errors, which plugins may throw too; anything else is a plain 500 with a reference.
+- The UI lint hot-reload rule is a warning.
+- Build only the light release guard; the database-reading one is proposed in the runbook.
+- Playwright runs on `multi-tenant` pushes, not docs-only ones.
+- The approval's stray event is recorded for the conformance session.
+
+Report: `Audit-4-Session-Report-2026-10-12.md` in Mosaic Foundation Management. Not pushed.
+
+- **Step 0.** `5032fa8` adds the test for `33b65b8` (failed auto-approval). Every suite was green before
+  anything else changed; Audit 3 was released on that.
+- **Migration** `20261012000000_function_catalog.sql`. Additive: a read-only `function_catalog(text[])`, executable
+  by the service role only. It never raises.
+- **Env:** none new. `src/config/env.ts` is the only reader of `process.env` in `src/` and `api/` (lint rule
+  `no-restricted-properties`). It trims, and treats empty as unset.
+- **Dependencies:** `@types/busboy` moved to devDependencies; `@types/express` is now ^4.17.25 (it was 5, against
+  Express 4). UI `npm audit fix` (brace-expansion and others, all build tooling). Both lockfiles are from npm 12.2.0.
+
+**What changed:**
+- **`/health` names the database functions** (`src/db/functionContract.ts`: twelve functions with their identity
+  arguments).
+  - It compares them with the live catalog. A missing, mismatched or overloaded function is a gap, and the answer
+    is 503.
+  - `function_catalog` itself missing is a gap too.
+  - `tests/unit/functionContract.test.ts` ties the list to every `.rpc()` call and to the migrations folder. That
+    is guard (a) in `RUNBOOK-release.md`.
+- **One error answer** (BUILD-PLAN "Error responses"): `{ error, code, ref? }`, with the status from the type
+  (`src/errors/index.ts`).
+  - Every hub handler and middleware is wrapped by `route()` (`src/http/route.ts`). The terminal handler uses the
+    same `sendError()`.
+  - The console and start page keep their own wrappers, with the same shape.
+  - An unexpected error answers "Something went wrong on our side… (Reference x)". The log gets the full error;
+    `reportError("http.unexpected")` gets a line with no values in it (`src/utils/redact.ts`).
+  - Existing error classes now extend the typed ones. Audit 3's conflict message is unchanged; its detail goes to
+    the log only.
+  - ~300 throw sites in modules, services and handlers were classified, and 177 hand-written `try` blocks in the
+    HTTP layer were removed or reduced.
+  - No status is chosen from message text any more. Two exceptions are the typed boundaries: `atomic.ts`
+    (database refusal words to typed errors) and `anthropic.ts` (network failure to `ai_unavailable`).
+- **Status changes** (the full list is in the report):
+  - second submit, closed vote and already-voted, state refusals: 409;
+  - lockout: 429;
+  - closed beta: 403;
+  - over-size upload: 413;
+  - an AI provider down, or no key: 503 `ai_unavailable` / `ai_not_configured`;
+  - email or storage down: 503;
+  - handler validation (bad `initializeState`, unknown action): 400, which was 500.
+- **The UI keys on codes, not text:**
+  - the assistant (`useDraftFlow.friendlyError`);
+  - the beta gate (`AuthModal`, `beta_closed`);
+  - an already-decided approval (`AdminReviews`);
+  - the dead-end and moved pages (`code`, falling back to `error`).
+- **Tooling:**
+  - `npm run typecheck` (`tsconfig.check.json`) covers tests, scripts and `api/`, and the 45 errors it found are
+    fixed. The security test `forHub.test.ts` keeps its one-argument call under `@ts-expect-error`, with the
+    reason.
+  - UI lint is at 0 errors. The changes:
+    - 4 small fixes;
+    - the word cloud's reveal is derived instead of set in an effect;
+    - `SeedStatementRows` updates its ref after commit;
+    - 11 fetch-reset effects are disabled per line, with a reason;
+    - the hot-reload rule is a warning.
+  - CI changes:
+    - `npm ci` with npm 12.2.0;
+    - actions pinned by commit, and the Supabase CLI at 2.110.0;
+    - `npm audit --audit-level=high` in both packages, plus the type-check and the UI lint;
+    - new `e2e.yml`.
+  - `.npmrc`'s `audit=false` stays: it only skips the install-time request, and CI runs the audit explicitly.
+- **`RUNBOOK-release.md`:**
+  - migrations first, then the schema reload, then the code, then `/health`, on dev and production;
+  - the pre-checks;
+  - the 40001 rule;
+  - guard (a), built, and guard (b), proposed.
+
+**Tests:** see TESTING.md "Audit 4". The results:
+- lint, unit and API with the service role: 171 files, 2,035 passed, 7 skipped;
+- API with hub tokens: 571 passed, 7 skipped, apart from the known local-gateway ballot flake;
+- Playwright: 49 passed, 2 skipped;
+- type-check, UI lint and audits: clean.
+
+**Found on the way:**
+- **The local Postgres image segfaults on "permission denied for function"** (signal 11, the whole database
+  restarts). It does this for any function the caller's role may not execute, including the existing
+  `tenancy_catalog`, and it explained this session's scattered mid-suite failures. Unknown whether hosted projects
+  do the same; if they do, anyone holding the anon key could restart the database. Adam to decide how to check
+  (report).
+- **When a required activation fails, approval leaves events behind.** The rollback leaves `civic.review.approved`
+  and the public `civic.process.created` in the log, and the later approval writes "created" again. Dev's
+  "Audit 3" vote is a known example; its history is left as it is. This is for the conformance session.
+
+**Open:**
+- Polis outages still answer the generic 500, not 503: its error type carries the upstream status as a field.
+- The cron job bodies (news sync, digests, meeting-summary runs) still put raw text in `error`. Only the
+  cron-secret caller and the operator log see it.
+- Guard (b) waits on the console's own Vercel project.
+
+---
+
 ## Audit 3: two at once can't produce a wrong result; one drafts system — 2026-10-11
 
 From the audit handoff, A7. Adam's decisions in chat: reads keep closing an expired vote or conversation, now

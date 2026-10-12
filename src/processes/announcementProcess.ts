@@ -6,6 +6,7 @@
 // This adapter exists so announcements live in the same process store
 // and register as a known process type for discovery / feed rendering.
 
+import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
 import {
@@ -35,8 +36,9 @@ const announcementProcess: ProcessHandler = {
     const required = ["title", "body", "author_id", "author_role"] as const;
     for (const key of required) {
       if (!(key in input)) {
-        throw new Error(
-          `civic.announcement initializeState requires "${key}"`,
+        throw new ValidationError(
+          `An announcement needs a ${key.replace("_", " ")}.`,
+          "missing_field",
         );
       }
     }
@@ -74,9 +76,9 @@ const announcementProcess: ProcessHandler = {
     action: ProcessAction,
   ): Promise<Record<string, unknown>> {
     // No HTTP actions reach announcements via the generic dispatcher.
-    throw new Error(
-      `civic.announcement does not accept process actions (received "${action.type}"). ` +
-        `Create / edit happens via /announcement HTTP endpoints.`,
+    throw new ValidationError(
+      "Announcements don't take actions here. Create and edit them from the announcements page.",
+        "action_not_supported",
     );
   },
 

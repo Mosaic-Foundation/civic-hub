@@ -1,3 +1,4 @@
+import type { HubJobSpec } from "../../src/jobs/registry.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -60,7 +61,7 @@ const { JOB_RUNNERS } = await import("../../src/jobs/runners.js");
 const { runJobAcrossHubs } = await import("../../src/jobs/runJob.js");
 
 async function run(id: string, now: Date, opts: { force?: boolean; onlyHub?: string | null } = {}) {
-  const report = await runJobAcrossHubs(jobById(id)!, JOB_RUNNERS[id], {
+  const report = await runJobAcrossHubs((jobById(id) as HubJobSpec), JOB_RUNNERS[id], {
     now,
     force: opts.force ?? false,
     onlyHub: opts.onlyHub ?? null,
@@ -157,7 +158,7 @@ describe("admin digest: each hub's own admins", () => {
 describe("one hub's failure is its own", () => {
   it("reports the throw for that hub, runs the next, and fails the cron", async () => {
     const report = await runJobAcrossHubs(
-      jobById("admin_digest")!,
+      (jobById("admin_digest") as HubJobSpec),
       async () => {
         const { currentHubId } = await import("../../src/config/hubContext.js");
         if (currentHubId() === "floyd") throw new Error("floyd's source is down");

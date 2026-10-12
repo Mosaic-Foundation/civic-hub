@@ -15,6 +15,8 @@
 // and records in one transaction; start_attempts, which counted and then
 // inserted from here, was dropped by Audit 3.
 
+import { env } from "../config/env.js";
+import { CivicError, codeForStatus } from "../errors/index.js";
 import { getDb } from "../db/client.js";
 import { HOUR_MS, rateLimitBucket, takeRateLimit } from "../db/rateLimit.js";
 import { randomToken, sameHexHash, sha256Hex } from "../utils/hash.js";
@@ -34,10 +36,9 @@ export const START_SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 
 export const START_CODE_SENT = "A code is on its way. It lasts ten minutes.";
 
-export class StartError extends Error {
-  constructor(message: string, readonly status = 400) {
-    super(message);
-    this.name = "StartError";
+export class StartError extends CivicError {
+  constructor(message: string, status = 400) {
+    super(status, codeForStatus(status), message);
   }
 }
 
@@ -189,8 +190,8 @@ export async function requestStartCode(email: string): Promise<string> {
     console.warn(`[start] code email NOT sent (${result.error}).`);
     // As a hub's sign-in: the code reaches the log only when there is no
     // mailer at all, which is local development.
-    if (!process.env.RESEND_API_KEY) console.log(`\n[start] sign-in code for ${email}: ${code}\n`);
-    if (process.env.RESEND_API_KEY) throw new StartError("The code could not be sent. Try again in a minute.", 502);
+    if (!env.RESEND_API_KEY) console.log(`\n[start] sign-in code for ${email}: ${code}\n`);
+    if (env.RESEND_API_KEY) throw new StartError("The code could not be sent. Try again in a minute.", 502);
   }
   return START_CODE_SENT;
 }

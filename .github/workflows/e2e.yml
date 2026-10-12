@@ -1,0 +1,131 @@
+name: E2E
+
+# The Playwright suite (tests/e2e) against a production build of the UI, on
+# the same local Supabase stack the API tests use (ci.yml). Added in Audit 4.
+#
+# When it runs (Adam, 2026-10-12): every push to `multi-tenant`, so a release
+# is checked before `main` is fast-forwarded to it; not when only documents
+# changed; a newer push cancels the run it supersedes; and by hand from the
+# Actions tab (workflow_dispatch) on any branch.
+
+on:
+  push:
+    branches: [multi-tenant]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "config/legal/**"
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+
+      - name: npm 12
+        run: npm install -g npm@12.2.0
+
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: 2.110.0
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Install
+        run: |
+          npm ci --include=dev
+          npm ci --include=dev --prefix ui
+
+      - name: Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # As in ci.yml's api-tests job: the CLI's fixed, public, local-only keys.
+      - name: Seed hub settings
+        run: |
+          npx tsx scripts/seed-hub-settings.ts --hub floyd
+          npx tsx scripts/seed-hub-settings.ts --hub athens
+        env:
+          SUPABASE_URL: http://127.0.0.1:54321
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.LOCAL_SERVICE_ROLE_KEY }}
+          CIVIC_ADMIN_EMAILS: admin@example.test
+
+      - name: Load the jurisdiction list
+        run: node --import tsx scripts/load-jurisdictions.ts
+        env:
+          CIVIC_TARGET_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+
+      # The UI calls /api on its own origin, as on Vercel; `vite preview`
+      # proxies it to the API with the Host kept (ui/vite.config.ts) and serves
+      # the production security headers, so the pages run under the real CSP.
+      - name: Build the UI
+        run: npm run build --prefix ui
+
+      - name: Start the hub and the preview
+        run: |
+          node --import tsx src/index.ts > /tmp/hub.log 2>&1 &
+          (cd ui && CIVIC_PREVIEW_API=http://localhost:3000 npx vite preview --port 4173 --strictPort > /tmp/preview.log 2>&1 &)
+          for url in http://localhost:3000/health http://localhost:4173/; do
+            ok=""
+            for i in $(seq 1 30); do
+              curl -sf "$url" >/dev/null && ok=1 && break
+              sleep 1
+            done
+            if [ -z "$ok" ]; then
+              echo "$url did not come up:"; cat /tmp/hub.log /tmp/preview.log; exit 1
+            fi
+          done
+        env:
+          PORT: "3000"
+          BASE_URL: http://localhost:3000
+          SUPABASE_URL: http://127.0.0.1:54321
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.LOCAL_SERVICE_ROLE_KEY }}
+          NODE_ENV: development
+          CIVIC_ALLOW_SEED: "true"
+          CIVIC_ADMIN_EMAILS: admin@example.test
+          CIVIC_DEV_HUB: athens
+          CIVIC_JURISDICTION: us-va-floyd
+          CIVIC_CONSOLE_HOSTNAME: console.localhost
+          CIVIC_CONSOLE_ADMIN_EMAIL: operator@example.test
+          CIVIC_START_HOSTNAME: start.localhost
+          # The start page hands a new hub's admin to the UI here.
+          CIVIC_UI_BASE_URL: http://localhost:4173
+          CIVIC_ANON_SECRET: ci-only-anon-secret
+          CRON_SECRET: ci-only-cron-secret
+          DIGEST_UNSUBSCRIBE_SECRET: ci-only-digest-unsubscribe-secret
+
+      - name: Playwright
+        run: npx playwright test
+        env:
+          CI: "true"
+          CIVIC_E2E_BASE_URL: http://localhost:4173
+          CIVIC_E2E_UI_ORIGIN: http://localhost:4173
+          CIVIC_E2E_API_BASE: http://localhost:4173/api
+          CIVIC_API_BASE: http://localhost:3000
+
+      - name: Report and logs on failure
+        if: failure()
+        run: |
+          echo "=== hub"; cat /tmp/hub.log || true
+          echo "=== preview"; cat /tmp/preview.log || true
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
+
+env:
+  # The Supabase CLI's fixed local key. Public by design; see ci.yml.
+  LOCAL_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU

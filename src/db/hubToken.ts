@@ -19,6 +19,7 @@
 //
 // The key is server-only. The UI never sees it, or any token minted with it.
 
+import { env } from "../config/env.js";
 import { createHmac, createPrivateKey, createSign, type KeyObject } from "node:crypto";
 
 /**
@@ -136,7 +137,7 @@ export function hubToken(hubId: string): string {
   const now = Math.floor(Date.now() / 1000);
   const cached = tokens.get(hubId);
   if (cached && now < cached.refreshAt) return cached.token;
-  signer ??= parseSigningKey(process.env.CIVIC_HUB_SIGNING_KEY);
+  signer ??= parseSigningKey(env.CIVIC_HUB_SIGNING_KEY);
   const token = signHubToken(signer, hubId, now);
   tokens.set(hubId, { token, refreshAt: now + Math.floor(HUB_TOKEN_TTL_SECONDS / 2) });
   return token;

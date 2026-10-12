@@ -11,7 +11,8 @@
 // newest first. Public consumers never see these events; admins do via
 // /admin/moderation/log.
 
-import { Request, Response } from "express";
+import { NotFoundError, ValidationError } from "../errors/index.js";
+import { route } from "../http/route.js";
 import {
   getInputById,
   hideComment,
@@ -39,66 +40,45 @@ function readReason(body: unknown): string {
 
 // --- Comments --------------------------------------------------------
 
-export async function handleHideComment(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const admin = getAuthUser(res);
-    const commentId = req.params.commentId as string;
-    const reason = readReason(req.body);
-    if (!reason || reason.trim().length === 0) {
-      res.status(400).json({ error: "reason is required (string)" });
-      return;
-    }
-    const existing = await getInputById(commentId);
-    if (!existing) {
-      res.status(404).json({ error: "Comment not found" });
-      return;
-    }
-    const process = await getProcess(existing.process_id);
-    if (!process) {
-      res.status(404).json({ error: "Parent process not found" });
-      return;
-    }
-    const updated = await hideComment(commentId, admin.id, reason, {
-      jurisdiction: process.jurisdiction,
-      emit: emitEvent,
-    });
-    res.json(updated);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+export const handleHideComment = route(async (req, res) => {
+  const admin = getAuthUser(res);
+  const commentId = req.params.commentId as string;
+  const reason = readReason(req.body);
+  if (!reason || reason.trim().length === 0) {
+    throw new ValidationError("reason is required (string)");
   }
-}
+  const existing = await getInputById(commentId);
+  if (!existing) {
+    throw new NotFoundError("Comment not found");
+  }
+  const process = await getProcess(existing.process_id);
+  if (!process) {
+    throw new NotFoundError("Parent process not found");
+  }
+  const updated = await hideComment(commentId, admin.id, reason, {
+    jurisdiction: process.jurisdiction,
+    emit: emitEvent,
+  });
+  res.json(updated);
+});
 
-export async function handleRestoreComment(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const admin = getAuthUser(res);
-    const commentId = req.params.commentId as string;
-    const existing = await getInputById(commentId);
-    if (!existing) {
-      res.status(404).json({ error: "Comment not found" });
-      return;
-    }
-    const process = await getProcess(existing.process_id);
-    if (!process) {
-      res.status(404).json({ error: "Parent process not found" });
-      return;
-    }
-    const updated = await restoreComment(commentId, admin.id, {
-      jurisdiction: process.jurisdiction,
-      emit: emitEvent,
-    });
-    res.json(updated);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+export const handleRestoreComment = route(async (req, res) => {
+  const admin = getAuthUser(res);
+  const commentId = req.params.commentId as string;
+  const existing = await getInputById(commentId);
+  if (!existing) {
+    throw new NotFoundError("Comment not found");
   }
-}
+  const process = await getProcess(existing.process_id);
+  if (!process) {
+    throw new NotFoundError("Parent process not found");
+  }
+  const updated = await restoreComment(commentId, admin.id, {
+    jurisdiction: process.jurisdiction,
+    emit: emitEvent,
+  });
+  res.json(updated);
+});
 
 // --- Announcements ---------------------------------------------------
 
@@ -106,66 +86,47 @@ function getState(record: { state: Record<string, unknown> }): AnnouncementProce
   return record.state as unknown as AnnouncementProcessState;
 }
 
-export async function handleRemoveAnnouncement(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const admin = getAuthUser(res);
-    const id = req.params.id as string;
-    const reason = readReason(req.body);
-    if (!reason || reason.trim().length === 0) {
-      res.status(400).json({ error: "reason is required (string)" });
-      return;
-    }
-    const record = await getProcess(id);
-    if (!record || record.definition.type !== "civic.announcement") {
-      res.status(404).json({ error: "Announcement not found" });
-      return;
-    }
-    const state = getState(record);
-    await removeAnnouncement(state, admin.id, reason, {
-      process_id: record.id,
-      jurisdiction: record.jurisdiction,
-      emit: emitEvent,
-    });
-    await saveProcessState(record);
-    res.json(
-      getAdminReadModel(state, { id: record.id, createdAt: record.createdAt }),
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+export const handleRemoveAnnouncement = route(async (req, res) => {
+  const admin = getAuthUser(res);
+  const id = req.params.id as string;
+  const reason = readReason(req.body);
+  if (!reason || reason.trim().length === 0) {
+    throw new ValidationError("reason is required (string)");
   }
-}
+  const record = await getProcess(id);
+  if (!record || record.definition.type !== "civic.announcement") {
+    throw new NotFoundError("Announcement not found");
+  }
+  const state = getState(record);
+  await removeAnnouncement(state, admin.id, reason, {
+    process_id: record.id,
+    jurisdiction: record.jurisdiction,
+    emit: emitEvent,
+  });
+  await saveProcessState(record);
+  res.json(
+    getAdminReadModel(state, { id: record.id, createdAt: record.createdAt }),
+  );
+});
 
-export async function handleRestoreAnnouncement(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    const admin = getAuthUser(res);
-    const id = req.params.id as string;
-    const record = await getProcess(id);
-    if (!record || record.definition.type !== "civic.announcement") {
-      res.status(404).json({ error: "Announcement not found" });
-      return;
-    }
-    const state = getState(record);
-    await restoreAnnouncement(state, admin.id, {
-      process_id: record.id,
-      jurisdiction: record.jurisdiction,
-      emit: emitEvent,
-    });
-    await saveProcessState(record);
-    res.json(
-      getAdminReadModel(state, { id: record.id, createdAt: record.createdAt }),
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+export const handleRestoreAnnouncement = route(async (req, res) => {
+  const admin = getAuthUser(res);
+  const id = req.params.id as string;
+  const record = await getProcess(id);
+  if (!record || record.definition.type !== "civic.announcement") {
+    throw new NotFoundError("Announcement not found");
   }
-}
+  const state = getState(record);
+  await restoreAnnouncement(state, admin.id, {
+    process_id: record.id,
+    jurisdiction: record.jurisdiction,
+    emit: emitEvent,
+  });
+  await saveProcessState(record);
+  res.json(
+    getAdminReadModel(state, { id: record.id, createdAt: record.createdAt }),
+  );
+});
 
 // --- Moderation log --------------------------------------------------
 
@@ -190,66 +151,58 @@ interface ModerationLogEntry {
  * once. Removed/deleted processes resolve to null and the UI shows the
  * raw process_id.
  */
-export async function handleGetModerationLog(
-  _req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    // Asks the database for moderation events only, every one of them
-    // (paged). It read the whole log until 2026-10-07, which the server cut
-    // at the newest 1,000 events, so older actions fell off the log.
-    const moderationEvents = await getModerationEvents();
+export const handleGetModerationLog = route(async (_req, res) => {
+  // Asks the database for moderation events only, every one of them
+  // (paged). It read the whole log until 2026-10-07, which the server cut
+  // at the newest 1,000 events, so older actions fell off the log.
+  const moderationEvents = await getModerationEvents();
 
-    // Cache process lookups so we don't re-fetch the same one per event.
-    const titleCache = new Map<string, string | null>();
-    async function lookupTitle(pid: string): Promise<string | null> {
-      if (titleCache.has(pid)) return titleCache.get(pid) ?? null;
-      try {
-        const record = await getProcess(pid);
-        const title = record?.title ?? null;
-        titleCache.set(pid, title);
-        return title;
-      } catch {
-        titleCache.set(pid, null);
-        return null;
-      }
+  // Cache process lookups so we don't re-fetch the same one per event.
+  const titleCache = new Map<string, string | null>();
+  async function lookupTitle(pid: string): Promise<string | null> {
+    if (titleCache.has(pid)) return titleCache.get(pid) ?? null;
+    try {
+      const record = await getProcess(pid);
+      const title = record?.title ?? null;
+      titleCache.set(pid, title);
+      return title;
+    } catch {
+      titleCache.set(pid, null);
+      return null;
     }
-
-    const log: ModerationLogEntry[] = [];
-    for (const ev of moderationEvents) {
-      const data = ev.data as {
-        moderation?: {
-          action?: string;
-          reason?: string;
-          target?: { comment_id?: string };
-        };
-      };
-      const action = data.moderation?.action ?? "unknown";
-      const targetKind: ModerationLogEntry["target_kind"] = action.startsWith(
-        "comment_",
-      )
-        ? "comment"
-        : action.startsWith("announcement_")
-          ? "announcement"
-          : action.startsWith("process_")
-            ? "process"
-            : null;
-      const title = await lookupTitle(ev.process_id);
-      log.push({
-        event_id: ev.id,
-        timestamp: ev.timestamp,
-        process_id: ev.process_id,
-        process_title: title,
-        action,
-        target_kind: targetKind,
-        reason: data.moderation?.reason ?? null,
-        admin: ev.actor,
-      });
-    }
-
-    res.json({ entries: log, count: log.length });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
   }
-}
+
+  const log: ModerationLogEntry[] = [];
+  for (const ev of moderationEvents) {
+    const data = ev.data as {
+      moderation?: {
+        action?: string;
+        reason?: string;
+        target?: { comment_id?: string };
+      };
+    };
+    const action = data.moderation?.action ?? "unknown";
+    const targetKind: ModerationLogEntry["target_kind"] = action.startsWith(
+      "comment_",
+    )
+      ? "comment"
+      : action.startsWith("announcement_")
+        ? "announcement"
+        : action.startsWith("process_")
+          ? "process"
+          : null;
+    const title = await lookupTitle(ev.process_id);
+    log.push({
+      event_id: ev.id,
+      timestamp: ev.timestamp,
+      process_id: ev.process_id,
+      process_title: title,
+      action,
+      target_kind: targetKind,
+      reason: data.moderation?.reason ?? null,
+      admin: ev.actor,
+    });
+  }
+
+  res.json({ entries: log, count: log.length });
+});

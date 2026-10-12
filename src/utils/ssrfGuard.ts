@@ -22,6 +22,7 @@
 // with CIVIC_SSRF_ALLOW_PRIVATE=true, which production refuses
 // (src/config/devFlags.ts).
 
+import { ValidationError } from "../errors/index.js";
 import { lookup as dnsLookup } from "node:dns";
 import { lookup } from "node:dns/promises";
 import http from "node:http";
@@ -84,12 +85,12 @@ function checkUrl(rawUrl: string): URL {
   try {
     u = new URL(rawUrl);
   } catch {
-    throw new Error("Malformed URL.");
+    throw new ValidationError("Malformed URL.", "invalid_url");
   }
   if (u.protocol !== "http:" && u.protocol !== "https:") {
-    throw new Error("Only http:// and https:// URLs are allowed.");
+    throw new ValidationError("Only http:// and https:// URLs are allowed.", "invalid_url");
   }
-  if (u.username || u.password) throw new Error("URLs with a user name or password are not fetched.");
+  if (u.username || u.password) throw new ValidationError("URLs with a user name or password are not fetched.", "invalid_url");
   return u;
 }
 
@@ -103,18 +104,18 @@ export async function assertPublicUrl(rawUrl: string): Promise<void> {
   if (privateFetchAllowed()) return;
   const host = u.hostname.replace(/^\[|\]$/g, "");
   if (net.isIP(host)) {
-    if (isBlockedIp(host)) throw new Error("Blocked internal address.");
+    if (isBlockedIp(host)) throw new ValidationError("Blocked internal address.", "blocked_address");
     return;
   }
   let addrs: { address: string }[];
   try {
     addrs = await lookup(host, { all: true });
   } catch {
-    throw new Error("Could not resolve host.");
+    throw new ValidationError("Could not resolve host.", "unresolvable_host");
   }
-  if (addrs.length === 0) throw new Error("Could not resolve host.");
+  if (addrs.length === 0) throw new ValidationError("Could not resolve host.", "unresolvable_host");
   for (const { address } of addrs) {
-    if (isBlockedIp(address)) throw new Error("Blocked internal address.");
+    if (isBlockedIp(address)) throw new ValidationError("Blocked internal address.", "blocked_address");
   }
 }
 
@@ -156,10 +157,9 @@ export interface GuardedFetchInit {
 export const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 
 /** The body was larger than the caller allows. */
-export class ResponseTooLargeError extends Error {
-  constructor(url: string, maxBytes: number) {
-    super(`Response from ${url} is larger than ${Math.round(maxBytes / 1024)} KB; not read.`);
-    this.name = "ResponseTooLargeError";
+export class ResponseTooLargeError extends ValidationError {
+  constructor(_url: string, maxBytes: number) {
+    super(`That page is larger than ${Math.round(maxBytes / 1024)} KB, so it was not read.`, "response_too_large");
   }
 }
 
@@ -174,7 +174,7 @@ function requestOnce(url: URL, init: GuardedFetchInit, maxBytes: number): Promis
   return new Promise((resolve, reject) => {
     const host = url.hostname.replace(/^\[|\]$/g, "");
     if (net.isIP(host) && !privateFetchAllowed() && isBlockedIp(host)) {
-      reject(new Error("Blocked internal address."));
+      reject(new ValidationError("Blocked internal address.", "blocked_address"));
       return;
     }
     const mod = url.protocol === "https:" ? https : http;
@@ -239,7 +239,7 @@ export async function guardedFetch(rawUrl: string, init: GuardedFetchInit = {}):
     const raw = await requestOnce(current, { ...init, method, body }, maxBytes);
     const location = raw.headers.get("location");
     if (init.redirect !== "manual" && raw.status >= 300 && raw.status < 400 && location) {
-      if (hop >= maxRedirects) throw new Error(`Exceeded ${maxRedirects} redirects`);
+      if (hop >= maxRedirects) throw new ValidationError("That link redirects too many times.", "too_many_redirects");
       current = checkUrl(new URL(location, current).toString());
       // 303, and 301/302 after a POST, continue as a GET without the body.
       if (raw.status === 303 || ((raw.status === 301 || raw.status === 302) && method !== "GET" && method !== "HEAD")) {

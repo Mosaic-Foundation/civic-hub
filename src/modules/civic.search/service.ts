@@ -4,6 +4,7 @@
 // returns hits, the other runs the count RPC. This module never
 // imports Supabase, Express, or anything hub-specific.
 
+import { ValidationError } from "../../errors/index.js";
 import { stripMarkdown } from "../../shared/markdown.js";
 import type {
   SearchCountFn,
@@ -48,7 +49,7 @@ export function validateQuery(input: SearchQuery): SearchFilters | null {
   let internalTypes: string[] | null = null;
   if (input.types !== undefined) {
     if (!Array.isArray(input.types)) {
-      throw new Error("`types` must be an array of strings.");
+      throw new ValidationError("`types` must be an array of strings.");
     }
     const valid = input.types
       .map((t) => String(t))
@@ -84,7 +85,7 @@ function normalizeIso(input: string | null | undefined): string | null {
   if (trimmed.length === 0) return null;
   const d = new Date(trimmed);
   if (Number.isNaN(d.getTime())) {
-    throw new Error(`Invalid date: ${input}`);
+    throw new ValidationError("That is not a valid date.", "invalid_date");
   }
   return d.toISOString();
 }

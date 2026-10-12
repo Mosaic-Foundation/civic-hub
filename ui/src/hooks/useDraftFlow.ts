@@ -76,22 +76,26 @@ function isNetworkDrop(err: unknown): boolean {
 
 /**
  * The server's own refusals are already worded for the person (Audit 2's AI
- * limits: too many turns, the hub's day is spent, a message too long), so
- * they are shown as they are rather than as "something went wrong".
+ * limits: too many turns, the hub's day is spent, a message too long; Audit
+ * 4's typed errors: the assistant not set up, the AI service down), so they
+ * are shown as they are rather than as "something went wrong". Keyed on the
+ * error's code, never on its text.
  */
-const SERVER_WORDED = new Set(["ai_rate_limited", "ai_budget_spent", "message_too_long"]);
+const SERVER_WORDED = new Set([
+  "ai_rate_limited",
+  "ai_budget_spent",
+  "message_too_long",
+  "ai_not_configured",
+  "ai_unavailable",
+]);
 
 function friendlyError(err: unknown): string {
   if (err instanceof ApiError && err.code && SERVER_WORDED.has(err.code)) return err.message;
-  const msg = err instanceof Error ? err.message : "Unknown error";
-  if (/load failed|failed to fetch|network|connection/i.test(msg))
+  // No response at all: the browser's own fetch failure, not the server's words.
+  if (!(err instanceof ApiError) && isNetworkDrop(err))
     return "The connection dropped — that can happen if you switch apps while I'm working. Tap Try again.";
-  if (msg.includes("rate_limit") || msg.includes("429"))
+  if (err instanceof ApiError && err.status === 429)
     return "The assistant is getting too many requests right now. Wait a moment and try again.";
-  if (msg.includes("ANTHROPIC_API_KEY"))
-    return "The assistant isn't configured yet. Please contact the hub admin.";
-  if (msg.includes("timeout") || msg.includes("aborted"))
-    return "The assistant took too long to respond. Try again with a shorter message.";
   return "Something went wrong with the assistant. Try again in a moment.";
 }
 
