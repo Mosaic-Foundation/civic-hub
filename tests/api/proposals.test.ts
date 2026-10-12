@@ -30,14 +30,13 @@ describe("Proposal endpoints", () => {
     expect(Array.isArray(body)).toBe(true);
   });
 
-  it("POST /proposals is gone: 404, signed in or not", async () => {
+  it("POST /proposals is gone: a JSON 404 in the error shape, signed in or not", async () => {
     const body = JSON.stringify({ title: "Test proposal", description: "Removed route" });
-    const anon = await api("/proposals", { method: "POST", body });
-    expect(anon.status).toBe(404);
-    const signedIn = await api("/proposals", { method: "POST", headers: authHeaders(residentToken), body });
-    expect(signedIn.status).toBe(404);
-    const basic = await api("/proposals", { method: "POST", headers: authHeaders(basicToken), body });
-    expect(basic.status).toBe(404);
+    for (const headers of [{}, authHeaders(residentToken), authHeaders(basicToken)]) {
+      const res = await api("/proposals", { method: "POST", headers, body });
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ error: expect.any(String), code: "not_found" });
+    }
   });
 
   it("GET /proposals/:id returns proposal detail", async () => {

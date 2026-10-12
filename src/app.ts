@@ -7,6 +7,7 @@
 import { env } from "./config/env.js";
 import { deploymentCommit, deploymentId } from "./config/deployment.js";
 import { errorHandler, route } from "./http/route.js";
+import { NotFoundError } from "./errors/index.js";
 import { requirePlugin } from "./middleware/pluginGate.js";
 import express from "express";
 import processRoutes from "./routes/processRoutes.js";
@@ -410,6 +411,14 @@ app.get("/health", route(async (req, res) => {
 
 // Auto-seed is triggered by the `ensureSeeded` middleware on first request,
 // and is gated behind CIVIC_ALLOW_SEED so it never runs in production.
+
+// Any request no route above matched, for every method: the agreed error
+// shape, not Express's "Cannot POST /proposals" page. This app only ever sees
+// API requests (vercel.json sends plain paths to the web page), so nothing
+// a browser navigates to lands here. After every route, before errorHandler.
+app.use(route(() => {
+  throw new NotFoundError("There's nothing at this address.");
+}));
 
 // Terminal error handler — MUST be the last app.use, after all routes. Errors
 // passed to next(err), thrown by middleware, or refused by the body parser
