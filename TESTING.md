@@ -79,10 +79,15 @@ what a plugin author needs are in `tests/conformance/README.md`.
   descriptor fails the walk.
 - **Not walked:** types only the hub creates (brief, meeting summary, the retired vote results) get step 1 only,
   shown as skipped.
-- **The suite installs one trigger per run** (step 3's failing approval) and waits 1.5 s after its DDL.
-  PostgREST reloads its schema on any DDL and drops connections in flight, so a ballot sent a second later got
-  the gateway's 502 ("invalid response from the upstream server"). That is very likely the "ballot flake" Audits
-  3 and 4 recorded: `auditDrafts.test.ts` makes a trigger the same way, and now waits too.
+- **The suite installs one trigger per run** (step 3's failing approval) and waits 1.5 s after its DDL, and
+  `auditDrafts.test.ts` now waits after its own. This is because of the "ballot flake" Audits 3 and 4 recorded
+  (the gateway's 502, "invalid response from the upstream server").
+  - **The cause:** PostgREST re-initialises its connection pool on every schema reload, and a request in flight
+    at that moment gets the 502.
+  - **What triggers it:** any test that runs DDL or `NOTIFY pgrst` causes a reload, and several do.
+  - **The evidence:** in a full run on 2026-10-12, both 502s fell in minutes with pool resets. The settles remove
+    two sources, not all of them, so a lone 502 under concurrent writes still means "rerun the file".
+  - **Production:** nothing runs DDL there while residents act, so it is not a production risk.
 - **Fixtures for a live proposal or project:** `tests/fixtures/liveProcess.ts` (draft, check, submit, approve).
   `POST /proposals` and `POST /projects` are gone.
 - **E2E locally the CI way** needs `CIVIC_E2E_UI_ORIGIN=http://localhost:4173` as well as `CIVIC_E2E_BASE_URL`;
@@ -94,6 +99,8 @@ what a plugin author needs are in `tests/conformance/README.md`.
 - Unit: 126 files, 1,475 passed.
 - Playwright: 49 passed, 2 skipped.
 - The suite: 78 passed, 3 skipped (hub-created types), 1 todo (tier 2).
+- After removing `lifecycle_profile` and the contract version, the same counts held in both modes. The
+  service-role pass needed one rerun of `auditConcurrency` and the suite, for the 502 above.
 
 ---
 

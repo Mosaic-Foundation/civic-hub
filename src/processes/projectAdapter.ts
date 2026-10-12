@@ -13,7 +13,7 @@
 import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
-import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
+import type { ProcessTypeDescriptor } from "./descriptor.js";
 import { afterActionCommits } from "../services/actionScope.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
@@ -52,17 +52,14 @@ const SENTIMENTS = ["support", "oppose", "neutral"] as const;
  * support or oppose it while it is active; its creator (or an admin) marks it
  * complete, which closes it and makes its brief. It has no deadline.
  *
- * Spec (Civic Process §7.2): its creation emits civic.project.created and its
- * completion civic.project.updated, not civic.process.created/ended. Renaming
- * them is a wire change; recorded, not made.
+ * Its creation is announced as civic.project.created and its completion as
+ * civic.project.updated.
  */
 export const PROJECT_DESCRIPTOR: ProcessTypeDescriptor = {
   type: "civic.project",
   version: "0.1",
-  contract: CONTRACT_VERSION,
   tier: 1,
   plugin: "project",
-  lifecycle_profile: "continuous",
   states: ["active", "closed"],
   initial_status: "active",
   actions: [

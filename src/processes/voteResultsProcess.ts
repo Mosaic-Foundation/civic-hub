@@ -15,7 +15,7 @@
 import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
-import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
+import type { ProcessTypeDescriptor } from "./descriptor.js";
 import {
   createVoteResultsState,
   getAdminReadModel,
@@ -37,17 +37,14 @@ function getState(process: Process): VoteResultsProcessState {
  * are those routes, and their events are listed in `emits` only. Approval
  * emails the board, then sets the row to finalized.
  *
- * Spec mismatch: Civic Process Spec §4.2 "publish" is published then
- * archived; this type's row goes active (created, pending review) to
- * finalized (published), and never uses closed.
+ * Lifecycle: active (created, pending review) to finalized (published); never
+ * closed.
  */
 export const VOTE_RESULTS_DESCRIPTOR: ProcessTypeDescriptor = {
   type: "civic.vote_results",
   version: "0.1",
-  contract: CONTRACT_VERSION,
   tier: 1,
   plugin: "vote",
-  lifecycle_profile: "publish",
   states: ["active", "finalized"],
   initial_status: "active",
   actions: [],

@@ -9,7 +9,7 @@ import { Process, ProcessAction } from "../models/process.js";
 import { buildEvent, emitEvent } from "../events/eventEmitter.js";
 import type { CivicEvent } from "../models/event.js";
 import { ProcessHandler } from "./types.js";
-import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
+import type { ProcessTypeDescriptor } from "./descriptor.js";
 import { voteAssistantConfig } from "./voteAssistantConfig.js";
 import {
   createVoteState,
@@ -89,10 +89,8 @@ function syncStatus(process: Process, state: VoteProcessState): void {
 export const VOTE_DESCRIPTOR: ProcessTypeDescriptor = {
   type: "civic.vote",
   version: "0.1",
-  contract: CONTRACT_VERSION,
   tier: 1,
   plugin: "vote",
-  lifecycle_profile: "deliberative",
   states: ["draft", "proposed", "threshold_met", "active", "closed", "finalized"],
   initial_status: "draft",
   actions: [

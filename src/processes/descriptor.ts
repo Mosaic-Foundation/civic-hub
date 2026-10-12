@@ -6,7 +6,9 @@
 // comes into being, and its trust tier with any outside service. Shaped after
 // the Civic Process Specification §12.1 descriptor (actions as `name`,
 // `input_schema`, `emits`) and the plugin architecture's manifest (§3, §4.1:
-// tier, contract version, `activities.emit`, state tables).
+// tier, `activities.emit`, state tables). Only what serves the hub and the
+// conformance suite; a contract version comes when there is a second version
+// or a second host (Adam, 2026-10-12).
 //
 // It is load-bearing, not documentation:
 //   - the registry derives each type's resident allowlist, its retry-safe
@@ -33,9 +35,6 @@ import { reportError, type ErrorDetails } from "../utils/reportError.js";
 import type { ProcessStatus } from "../models/process.js";
 import type { PluginId } from "../models/hubSettings.js";
 
-/** The contract version every descriptor in this hub targets (plugin architecture §6). */
-export const CONTRACT_VERSION = "civic-process/0.2";
-
 /**
  * Who may call an action through executeAction.
  *   resident: any signed-in resident;
@@ -54,9 +53,6 @@ export type DescriptorRole = "resident" | "creator" | "admin" | "system";
  * external service the hub reaches through one adapter (§10a).
  */
 export type TrustTier = 1 | 2 | 3;
-
-/** Civic Process Specification §4.2. */
-export type LifecycleProfile = "deliberative" | "continuous" | "publish" | "ephemeral";
 
 /**
  * Statuses any process can be in whatever its type, because the hub, not the
@@ -160,11 +156,9 @@ export interface OutsideService {
 export interface ProcessTypeDescriptor {
   type: string;
   version: string;
-  contract: typeof CONTRACT_VERSION;
   tier: TrustTier;
   /** The plugin that switches this type on and off on a hub. */
   plugin: PluginId;
-  lifecycle_profile: LifecycleProfile;
   /** The statuses its own lifecycle uses (HOST_STATES are implied). */
   states: readonly ProcessStatus[];
   /** The status createProcess gives a new one. */
@@ -211,9 +205,8 @@ export interface ProcessTypeDescriptor {
 export interface PublicProcessType {
   type: string;
   version: string;
-  contract: string;
   tier: TrustTier;
-  lifecycle: { profile: LifecycleProfile; states: readonly ProcessStatus[] };
+  lifecycle: { states: readonly ProcessStatus[] };
   actions: Array<{
     name: string;
     description: string;
@@ -231,9 +224,8 @@ export function publicDescriptor(d: ProcessTypeDescriptor): PublicProcessType {
   return {
     type: d.type,
     version: d.version,
-    contract: d.contract,
     tier: d.tier,
-    lifecycle: { profile: d.lifecycle_profile, states: [...d.states, ...HOST_STATES] },
+    lifecycle: { states: [...d.states, ...HOST_STATES] },
     actions: d.actions.map((a) => ({
       name: a.name,
       description: a.description,

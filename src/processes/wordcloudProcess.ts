@@ -7,7 +7,7 @@ import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { ProcessHandler } from "./types.js";
-import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
+import type { ProcessTypeDescriptor } from "./descriptor.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import {
@@ -55,16 +55,13 @@ function db() {
  *
  * The word cloud keeps a copy of its status on state, synced with the row.
  *
- * Spec mismatch: Civic Process Spec §4.2 "continuous" is closed manually and
- * then finalized; a word cloud stops at closed.
+ * Lifecycle: draft, active, closed; it stops at closed.
  */
 export const WORDCLOUD_DESCRIPTOR: ProcessTypeDescriptor = {
   type: "civic.wordcloud",
   version: "0.1",
-  contract: CONTRACT_VERSION,
   tier: 1,
   plugin: "wordcloud",
-  lifecycle_profile: "continuous",
   states: ["draft", "active", "closed"],
   initial_status: "draft",
   actions: [

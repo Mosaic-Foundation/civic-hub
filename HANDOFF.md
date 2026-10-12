@@ -25,7 +25,8 @@ and `Plugin-Conformance-Handoff-to-Management-2026-10-12.md` in Mosaic Foundatio
   - the type's event types, its tables and how one is created;
   - its tier and outside services, plus examples for the suite.
 
-  All nine types have one, and the six old unused `PROCESS_DESCRIPTOR`s are gone. The registry derives from it the
+  All nine types have one, and the six old unused `PROCESS_DESCRIPTOR`s are gone. It carries only what the hub
+  and the suite use: no lifecycle profile, and no contract version until there is a second version or host. The registry derives from it the
   resident allowlist (Audit 1), the retry-safe actions (Audit 3) and `PROCESS_TYPE_PLUGINS`.
   `GET /.well-known/civic.json` gains `process_types` (public parts only).
 - **The hub checks handlers against descriptors** (plugin architecture §5a, Stage 1).
@@ -73,9 +74,10 @@ and `Plugin-Conformance-Handoff-to-Management-2026-10-12.md` in Mosaic Foundatio
 - Announcements, briefs, meeting summaries and vote results still change status in their own modules, not
   through `executeAction`. Their descriptors declare no actions, so nothing disagrees, but they aren't on the one
   path.
-- Process spec §7.2 says creation and the terminal transition should emit `civic.process.created` and
-  `civic.process.ended`; proposals and projects emit `civic.proposal.*` and `civic.project.*` for these instead.
-  Renaming them is a wire change (audit D).
+- Where the hub's practice differs from the specs and works, the report proposes spec changes (Adam: the hub
+  informs the specs, not the reverse). Two items are Adam's open choices:
+  - whether every type also emits a universal `created` and `ended`;
+  - whether endorsements emit an event.
 - The walk takes the first move from each status, so where two actions from one status lead to different
   statuses, only one branch is walked (no type has such a branch that matters today).
 

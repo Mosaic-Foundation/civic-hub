@@ -32,7 +32,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import {
-  CONTRACT_VERSION,
   HOST_EVENT_TYPES,
   allowedTargets,
   type ActionDescriptor,
@@ -105,8 +104,7 @@ export function runConformance(options: ConformanceOptions): void {
       for (const h of options.handlers) {
         const entry = served.find((t) => t.type === h.type);
         expect(entry, `${h.type} missing from process_types`).toBeTruthy();
-        expect(entry!.contract).toBe(CONTRACT_VERSION);
-        expect(Object.keys(entry!).sort()).toEqual(["actions", "contract", "emits", "lifecycle", "tier", "type", "version"]);
+        expect(Object.keys(entry!).sort()).toEqual(["actions", "emits", "lifecycle", "tier", "type", "version"]);
       }
     });
   });

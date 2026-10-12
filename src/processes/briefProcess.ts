@@ -9,7 +9,7 @@
 import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
-import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
+import type { ProcessTypeDescriptor } from "./descriptor.js";
 import {
   createBriefState,
   getAdminReadModel,
@@ -31,17 +31,13 @@ function getState(process: Process): BriefProcessState {
  * (POST /brief/:id/respond, a different table's write) emits action_taken
  * outside any action.
  *
- * Spec mismatch: Civic Process Spec §4.2 "publish" is published then
- * archived; this type's row goes active (pending review) to finalized
- * (published), and never uses closed.
+ * Lifecycle: active (pending review) to finalized (published); never closed.
  */
 export const BRIEF_DESCRIPTOR: ProcessTypeDescriptor = {
   type: "civic.brief",
   version: "0.1",
-  contract: CONTRACT_VERSION,
   tier: 1,
   plugin: "brief",
-  lifecycle_profile: "publish",
   states: ["active", "finalized"],
   initial_status: "active",
   actions: [],

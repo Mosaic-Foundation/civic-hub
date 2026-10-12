@@ -12,7 +12,7 @@
 import { ValidationError } from "../errors/index.js";
 import type { Process, ProcessAction } from "../models/process.js";
 import type { ProcessHandler } from "./types.js";
-import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
+import type { ProcessTypeDescriptor } from "./descriptor.js";
 import {
   createMeetingSummaryState,
   getAdminReadModel,
@@ -34,17 +34,13 @@ function getState(process: Process): MeetingSummaryProcessState {
  * publish one itself. It has no process actions. A revision staged on a
  * published summary stays on its state; the row stays finalized.
  *
- * Spec mismatch: Civic Process Spec §4.2 "publish" is published then
- * archived; this type goes active (pending review) to finalized (published)
- * and never uses closed.
+ * Lifecycle: active (pending review) to finalized (published); never closed.
  */
 export const MEETING_SUMMARY_DESCRIPTOR: ProcessTypeDescriptor = {
   type: "civic.meeting_summary",
   version: "0.1",
-  contract: CONTRACT_VERSION,
   tier: 1,
   plugin: "meeting_summary",
-  lifecycle_profile: "publish",
   states: ["active", "finalized"],
   initial_status: "active",
   actions: [],

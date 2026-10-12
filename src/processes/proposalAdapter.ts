@@ -17,7 +17,7 @@
 import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
-import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
+import type { ProcessTypeDescriptor } from "./descriptor.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { emitEvent } from "../events/eventEmitter.js";
@@ -60,17 +60,14 @@ const DEFAULT_PROPOSAL_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
  * withdraw support, while it is open; it closes at its deadline (or when an
  * admin closes it) and its brief reports the support it drew.
  *
- * Spec (Civic Process §7.2): its close emits civic.proposal.closed, not
- * civic.process.ended, and its creation civic.proposal.submitted, not
- * civic.process.created. Renaming them is a wire change; recorded, not made.
+ * Its creation is announced as civic.proposal.submitted and its close as
+ * civic.proposal.closed.
  */
 export const PROPOSAL_DESCRIPTOR: ProcessTypeDescriptor = {
   type: "civic.proposal",
   version: "0.1",
-  contract: CONTRACT_VERSION,
   tier: 1,
   plugin: "proposal",
-  lifecycle_profile: "continuous",
   states: ["active", "closed"],
   initial_status: "active",
   actions: [

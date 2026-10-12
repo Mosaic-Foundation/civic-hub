@@ -8,7 +8,6 @@
 // naming the type and what to declare or fix.
 
 import {
-  CONTRACT_VERSION,
   HOST_EVENT_TYPES,
   HOST_STATES,
   allowedTargets,
@@ -54,7 +53,6 @@ export function checkDescriptor(handler: ProcessHandler, host: HostFacts): strin
   // Identity and manifest fields.
   if (d.type !== t) add(`descriptor.type is ${d.type}; the handler is ${t}`);
   if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(d.type)) add(`type must be reverse-namespace (vendor.name)`);
-  if (d.contract !== CONTRACT_VERSION) add(`targets contract ${d.contract}; this hub supports ${CONTRACT_VERSION}`);
   if (!host.pluginIds.includes(d.plugin)) add(`plugin ${d.plugin} is not a plugin id`);
   if (d.tier === 2) add(`declares tier 2 (sandboxed); no sandbox runtime exists yet, so it cannot run here`);
   if (d.tier === 3 && d.outside_services.length === 0) add(`is tier 3 but declares no outside service`);

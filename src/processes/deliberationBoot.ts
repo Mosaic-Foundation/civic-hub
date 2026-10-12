@@ -13,7 +13,7 @@ import { closeThroughDispatcher } from "./registry.js";
 import { isPastDeadline } from "../utils/deadline.js";
 import type { Process } from "../models/process.js";
 import type { ProcessHandler } from "./types.js";
-import { CONTRACT_VERSION, type ProcessTypeDescriptor } from "./descriptor.js";
+import type { ProcessTypeDescriptor } from "./descriptor.js";
 import type { PolisHostInterface } from "../shared/polis_deliberation/hostInterface.js";
 import type { PolisAdapter } from "../shared/polis_deliberation/adapter/types.js";
 import type { PolisDeliberationState } from "../shared/polis_deliberation/types.js";
@@ -48,18 +48,14 @@ import {
  *
  * Tier 3: Polis is an outside service reached through one adapter.
  *
- * Spec mismatch: Civic Process Spec §4.2 "deliberative" ends at finalized;
- * a conversation stops at closed. Its brief, when published, finalizes the
- * source conversation (finalizeBriefSource), so a published one is
- * finalized, and finalized is in `states`.
+ * Lifecycle: draft, active, closed. Its brief, when published, finalizes the
+ * conversation (finalizeBriefSource), so a published one is finalized.
  */
 export const POLIS_DELIBERATION_DESCRIPTOR: ProcessTypeDescriptor = {
   type: "civic.polis_deliberation",
   version: "0.1",
-  contract: CONTRACT_VERSION,
   tier: 3,
   plugin: "conversation",
-  lifecycle_profile: "deliberative",
   states: ["draft", "active", "closed", "finalized"],
   initial_status: "active",
   actions: [
