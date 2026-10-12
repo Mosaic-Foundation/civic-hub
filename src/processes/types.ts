@@ -241,12 +241,27 @@ export interface ProcessHandler {
    */
   residentActions: readonly string[];
 
+  /**
+   * The actions executeAction may run again when another write lands on the
+   * process between its read and its write (Audit 3). Safe only when the
+   * action's every effect is its change to the process's status and state and
+   * the events it emits about the process (held and written with that
+   * change): anything else it does (a call to another service, a row in
+   * another table) would happen twice. Work for after the write goes through
+   * afterActionCommits (src/services/actionScope.ts). Any action not named
+   * here is refused on a conflict (ProcessChangedError, 409), never retried.
+   */
+  retrySafeActions?: readonly string[];
+
   /** Initialize process-specific state from creation input */
   initializeState(input: Record<string, unknown>): Record<string, unknown>;
 
   /**
-   * Handle an action — returns result data. May mutate process/state and emit events.
-   * Async because event emission is durable (persisted before the promise resolves).
+   * Handle an action — returns result data. May mutate process/state and emit
+   * events. The events it emits about this process are held and written with
+   * the new status and state, in one transaction, only if no other write
+   * landed in between (src/services/actionScope.ts); an action that changes
+   * nothing on the process row writes its events as they are.
    */
   handleAction(
     process: Process,

@@ -33,6 +33,7 @@ import {
   AlreadyVotedError,
   ReceiptNotAcceptedError,
   ReceiptWithoutVoteError,
+  VoteClosedError,
   ballotByReceipt,
   castBallot,
   claimVoteKey as claimVoteKeyRpc,
@@ -65,7 +66,7 @@ function newChangeKey(): string {
 }
 
 /** The refusals a voter can act on, by code (the UI keys its message on it). */
-export type VoteRefusal = "already_voted" | "receipt_not_accepted" | "receipt_without_vote";
+export type VoteRefusal = "already_voted" | "receipt_not_accepted" | "receipt_without_vote" | "vote_closed";
 
 export class VoteRefusedError extends Error {
   constructor(
@@ -109,7 +110,8 @@ export async function recordOrUpdateVote(
     if (
       err instanceof AlreadyVotedError ||
       err instanceof ReceiptNotAcceptedError ||
-      err instanceof ReceiptWithoutVoteError
+      err instanceof ReceiptWithoutVoteError ||
+      err instanceof VoteClosedError
     ) {
       throw new VoteRefusedError(err.code, err.message);
     }

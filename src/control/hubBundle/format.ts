@@ -91,6 +91,16 @@ export const EXCLUDED_COLUMNS: ReadonlyArray<{ table: string; column: string; re
     column: "search_doc",
     reason: "the full-text search index, rebuilt from title, description and state by a trigger on insert",
   },
+  {
+    table: "processes",
+    column: "version",
+    reason: "the row's write counter (Audit 3), bumped by a trigger on every update; a restored row starts again at 0",
+  },
+  {
+    table: "processes",
+    column: "close_claimed_until",
+    reason: "a reader's short claim on a deadline close in progress (Audit 3); means nothing on another install",
+  },
 ];
 
 export function isExcludedColumn(table: string, column: string): boolean {

@@ -10,13 +10,16 @@
 // This service delegates all process-specific logic to registered handlers
 // and owns: storage, ID generation, lifecycle events, and the dispatch loop.
 //
-// Known limitation (accepted for the pilot): concurrent actions on the same
-// process can race, because executeAction() does "read state → mutate →
-// write state". Under low concurrency this is fine. Hardening path:
-//   - optimistic locking via updated_at compare-and-swap, or
-//   - SELECT ... FOR UPDATE inside a Postgres RPC.
+// Concurrency (Audit 3, 2026-10-11): executeAction reads the process, runs
+// the handler, and writes the new status, state and the handler's events in
+// one transaction that is refused if the row's version moved in between
+// (transition_process). A refused action that its handler declares retry-safe
+// runs again on a fresh read; any other is refused with a 409. So two writes
+// never overwrite each other, and a close that loses a race writes nothing.
 
-import { transitionProcess } from "../db/atomic.js";
+import { transitionProcess, ProcessChangedError } from "../db/atomic.js";
+import { runInActionScope } from "./actionScope.js";
+import { appendEvent } from "../events/eventStore.js";
 import { assertProcessTypeEnabled, disabledProcessTypes, isProcessTypeEnabled } from "./pluginGate.js";
 import {
   Process,
@@ -32,6 +35,7 @@ import {
   getProcessHandler,
   setProcessFactory,
   setActionDispatcher,
+  setDeadlineCloser,
   PROCESS_TYPE_PLUGINS,
 } from "../processes/registry.js";
 import {
@@ -86,6 +90,7 @@ export interface ProcessRow {
   ends_at: string | null;
   created_at: string;
   updated_at: string;
+  version?: number | string;
   is_sample?: boolean;
   added_in_demo?: boolean;
 }
@@ -109,6 +114,7 @@ export function rowToProcess(row: ProcessRow): Process {
     updatedAt: row.updated_at,
     state: row.state ?? {},
   };
+  if (row.version !== undefined && row.version !== null) proc.version = Number(row.version);
 
   if (row.content) proc.content = row.content;
   // A visitor's submission on a demo hub is stored as sample content (out of
@@ -208,6 +214,7 @@ setProcessFactory(createProcess);
 // (lazy deadline-close) through the normal persisted-action path without a
 // circular import back into this module. It acts as the hub itself.
 setActionDispatcher((processId, action) => executeAction(processId, action, "system"));
+setDeadlineCloser((process, action) => closeAtDeadline(process, action));
 
 // --- Read ------------------------------------------------------------------
 
@@ -268,7 +275,39 @@ export class ActionNotAllowedError extends Error {
   }
 }
 
+/** How many times a retry-safe action runs before a conflict is refused. */
+const MAX_ACTION_ATTEMPTS = 8;
+
 export async function executeAction(
+  processId: string,
+  action: ProcessAction,
+  caller: ActionCaller,
+): Promise<{ process: Process; result: Record<string, unknown> }> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await attemptAction(processId, action, caller);
+    } catch (err) {
+      if (!(err instanceof ProcessChangedError) || attempt >= MAX_ACTION_ATTEMPTS) throw err;
+      const handler = await handlerFor(processId);
+      if (!handler?.retrySafeActions?.includes(action.type)) throw err;
+      // Another write won; read again and redo the action on top of it. A
+      // short random wait spreads out a burst (endorsements at a meeting).
+      await new Promise((r) => setTimeout(r, 5 + Math.random() * 20 * attempt));
+    }
+  }
+}
+
+async function handlerFor(processId: string) {
+  const process = await getProcess(processId);
+  return process ? getProcessHandler(process.definition.type) : undefined;
+}
+
+/** Status and state as one comparable string: "did the handler change the row?" */
+function rowImage(process: Process): string {
+  return JSON.stringify({ status: process.status, state: process.state });
+}
+
+async function attemptAction(
   processId: string,
   action: ProcessAction,
   caller: ActionCaller,
@@ -297,60 +336,68 @@ export async function executeAction(
   }
 
   const previousStatus = process.status;
+  const before = rowImage(process);
 
   console.log(`[action] ${action.type} on ${processId} by ${action.actor}`);
 
   // Handler mutates process.state (and optionally process.status) in place,
-  // then returns a result payload. It may also emit action-specific events.
-  const result = await handler.handleAction(process, action);
+  // then returns a result payload. The events it emits about this process
+  // are held (actionScope) and written below with the state, or not at all.
+  const { value: result, events, afterCommit } = await runInActionScope(
+    process.id,
+    () => handler.handleAction(process, action),
+  );
 
-  // Persist the mutated process back. A status change and its
-  // process.updated event are one transaction (transition_process), so the
-  // log can never show a status the row does not have, or the reverse; a
-  // change to state alone is a plain update, as before.
-  if (shouldEmitStatusUpdate(previousStatus, process.status)) {
-    const event = buildEvent({
-      event_type: "civic.process.updated",
-      actor: action.actor,
-      process_id: process.id,
-      jurisdiction: process.jurisdiction,
-      processType: process.definition.type,
-      data: {
-        process: {
-          previous_status: previousStatus,
-          status: process.status,
-        },
-      },
-      timestamp: action.at,
-    });
+  if (rowImage(process) !== before) {
+    // One transaction: the new status and state, the handler's events, and a
+    // status change's process.updated event. Refused if the row's status or
+    // version moved since the read above, so nothing is overwritten and a
+    // losing close publishes nothing.
+    const statusEvent = shouldEmitStatusUpdate(previousStatus, process.status)
+      ? buildEvent({
+          event_type: "civic.process.updated",
+          actor: action.actor,
+          process_id: process.id,
+          jurisdiction: process.jurisdiction,
+          processType: process.definition.type,
+          data: {
+            process: {
+              previous_status: previousStatus,
+              status: process.status,
+            },
+          },
+          timestamp: action.at,
+        })
+      : null;
     const out = await transitionProcess({
       hubId: currentHubId(),
       processId: process.id,
       toStatus: process.status,
       actor: action.actor,
-      event,
+      event: statusEvent,
       state: process.state,
+      expectedStatus: previousStatus,
+      expectedVersion: process.version,
+      events,
     });
     process.updatedAt = out.updated_at;
+    process.version = out.version;
   } else {
-    const now = new Date().toISOString();
-    await db()
-      .from("processes")
-      .update({
-        status: process.status,
-        state: process.state,
-        updated_at: now,
-      })
-      .eq("id", process.id);
-    process.updatedAt = now;
+    // Nothing on the process row changed (a ballot, a word-cloud entry: their
+    // rows are elsewhere): its events are written as they were, unconditioned.
+    for (const event of events) {
+      await appendEvent(event);
+      console.log(`[event] ${event.event_type} by ${event.actor} (${event.id})`);
+    }
   }
+
+  for (const fn of afterCommit) await fn();
 
   // Universal brief seam: when a process transitions INTO a terminal state,
   // spawn its Civic Brief (pending admin review) if its handler produces one.
-  // A no-op for types without generateBrief (e.g. votes, which keep their
-  // own civic.vote_results pipeline). Best-effort + idempotent: a failure
-  // here must never wedge the close, and a double-close spawns only one
-  // brief (findExistingBriefId collapses the common window).
+  // A no-op for types without generateBrief. Only the action whose write won
+  // gets here, and the spawn is insert-or-skip on a unique index, so a
+  // process has one brief. Best-effort: a failure must never wedge the close.
   const enteredTerminal =
     !isTerminalStatus(previousStatus) && isTerminalStatus(process.status);
   if (enteredTerminal && handler.generateBrief) {
@@ -401,7 +448,41 @@ async function autoCloseIfExpired(process: Process): Promise<Process> {
     console.warn(
       `[auto-close] Failed to close ${process.definition.type} ${process.id}: ${msg}`,
     );
-    return process;
+    // The row as it is now: another reader's close may have won.
+    return (await getProcess(process.id).catch(() => undefined)) ?? process;
+  }
+}
+
+/** How long one reader's claim on a deadline close holds off the others. */
+const CLOSE_CLAIM_MS = 2 * 60 * 1000;
+
+/**
+ * A deadline close, run once however many readers notice the deadline at
+ * the same moment (Audit 3). A reader first claims the close on the row
+ * (`close_claimed_until`, a conditional update: one wins); the others return
+ * the process as it is, so a conversation's summary is written once and not
+ * by every page load during the seconds it takes. The claim lapses after
+ * CLOSE_CLAIM_MS, so a close that failed is tried again by a later read or
+ * the hourly job. The close itself is an ordinary action, refused if anything
+ * else wrote the row first; a refusal after another close won returns the
+ * closed process, not an error.
+ */
+async function closeAtDeadline(process: Process, action: ProcessAction): Promise<Process> {
+  const now = new Date();
+  const claimed = await db()
+    .from("processes")
+    .update({ close_claimed_until: new Date(now.getTime() + CLOSE_CLAIM_MS).toISOString() })
+    .eq("id", process.id)
+    .eq("status", process.status)
+    .or(`close_claimed_until.is.null,close_claimed_until.lt.${now.toISOString()}`)
+    .select<{ id: string }>("id");
+  if (claimed.length === 0) return (await getProcess(process.id)) ?? process;
+  try {
+    return (await executeAction(process.id, action, "system")).process;
+  } catch (err) {
+    const current = await getProcess(process.id);
+    if (current && current.status !== process.status) return current;
+    throw err;
   }
 }
 
@@ -617,7 +698,7 @@ export async function getSampleProcessIds(): Promise<Set<string>> {
  */
 export async function saveProcessState(process: Process): Promise<void> {
   const now = new Date().toISOString();
-  await db()
+  let q = db()
     .from("processes")
     .update({
       status: process.status,
@@ -625,7 +706,17 @@ export async function saveProcessState(process: Process): Promise<void> {
       updated_at: now,
     })
     .eq("id", process.id);
-  process.updatedAt = now;
+  // Read from a row: refused, not overwritten, if someone wrote since.
+  if (typeof process.version === "number") q = q.eq("version", process.version);
+  const rows = await q.select<{ version: number | string; updated_at: string }>("version, updated_at");
+  if (rows.length === 0) {
+    if (typeof process.version === "number") {
+      throw new ProcessChangedError(`version ${process.version}`);
+    }
+    return;
+  }
+  process.updatedAt = rows[0].updated_at;
+  process.version = Number(rows[0].version);
 }
 
 // --- Archive / restore (soft-remove) ---------------------------------------
@@ -694,6 +785,8 @@ export async function archiveProcess(
     toStatus: "archived",
     actor: adminId,
     state: nextState,
+    expectedStatus: process.status,
+    expectedVersion: process.version,
     event: buildEvent({
       event_type: "civic.process.updated",
       actor: adminId,
@@ -715,6 +808,7 @@ export async function archiveProcess(
   process.status = "archived";
   process.state = nextState;
   process.updatedAt = archivedAt.updated_at;
+  process.version = archivedAt.version;
 
   // Let the handler sync storage it owns (a child table's status column, a
   // status kept inside state). Best-effort by design — see ProcessHandler
@@ -765,6 +859,8 @@ export async function restoreProcess(
     toStatus: restoreStatus,
     actor: adminId,
     state: nextState,
+    expectedStatus: "archived",
+    expectedVersion: process.version,
     event: buildEvent({
       event_type: "civic.process.updated",
       actor: adminId,
@@ -782,6 +878,7 @@ export async function restoreProcess(
   process.status = restoreStatus;
   process.state = nextState;
   process.updatedAt = restoredAt.updated_at;
+  process.version = restoredAt.version;
 
   // Mirror of the archive hook. previousStatus is passed so a handler can put
   // its child row back where it was rather than guessing a default.

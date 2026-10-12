@@ -4,6 +4,57 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Audit 3, part one: two at once can't produce a wrong result — 2026-10-11
+
+From the audit handoff, A7. Adam's decisions in chat: reads keep closing an expired vote or conversation, now
+single-winner; endorsements get the smaller fix (version check and retry, supporters stay in state); drop
+`start_attempts` (non-additive). Report: `Audit-3-Session-Report-2026-10-11.md` in Mosaic Foundation Management.
+Not pushed.
+
+- **Migration** `20261011200000_concurrency.sql`. Additive: `processes.version` (bumped by trigger on every update),
+  `processes.close_claimed_until`, unique index `processes_one_brief_per_source`. Replaced, compatible signature:
+  `transition_process` (new `p_expected_status`, `p_expected_version`, `p_events`, all defaulted); `cast_ballot`
+  (same signature). Non-additive (approved): `DROP TABLE start_attempts`. **Before applying to production, run the
+  duplicate-brief query in the report;** the index cannot be built over duplicates. Dev had none.
+- **New env vars / dependencies:** none.
+
+**What changed:**
+- **One write per action.** `executeAction` reads the process (with its `version`), runs the handler inside an
+  action scope (`src/services/actionScope.ts`), and writes status, state and the handler's events in one
+  `transition_process` call that refuses (`P0001 process_changed`) when the status or version moved. `emitEvent`
+  holds an event about the acting process instead of writing it; events about other processes write at once. An
+  action that changed nothing on the row writes its events as before. Work for after the write:
+  `afterActionCommits`. Not SQLSTATE 40001: PostgREST retries those itself, for ever.
+- **Retry is opt-in.** `ProcessHandler.retrySafeActions`: on a conflict, these run again on a fresh read (up to 8
+  times, jittered); anything else is refused with `ProcessChangedError` (409 message). Vote: propose, support,
+  unsupport, activate, close.
+- **Close once.** A deadline close goes through `closeThroughDispatcher` → `processService.closeAtDeadline`: one
+  reader claims it (`close_claimed_until`, two minutes), the others return the process as is; a close that loses to
+  another close returns the closed process, not an error. The vote close no longer short-circuits on an existing
+  brief; ballot reshuffle and bridge cleanup run after the write. The brief spawn is insert-or-skip on the unique
+  index.
+- **Ballots.** `cast_ballot` refuses unless the vote is `active` and before `voting_closes_at`, under the row lock
+  (`vote_not_open` → `VoteClosedError`, code `vote_closed`), and adds one to `state.total_votes` for a first vote.
+  The vote module no longer counts in JS. Ballot secrecy (receipts, no times, shuffling) unchanged.
+- **`saveProcessState`** refuses a write from a stale copy (version check). The sample seed refreshes its copy
+  after its own `created_at` stamp.
+- Hub exports leave out `version` and `close_claimed_until` (`EXCLUDED_COLUMNS`). Schema contract names both.
+
+**Tests:** new API `auditConcurrency` (12 readers + list + admin close at once → one close, one result, one brief;
+two admin closes; ballot after deadline through the app and straight at `cast_ballot`; 10 ballots at once; 10
+endorsements at once; crossing the threshold together; endorse and withdraw racing; `transition_process`
+refusals; the brief index). Unit `actionScope`. `startPage.test.ts` reads `rate_limit_hits` (was `start_attempts`).
+Results: unit 122 files; API 45 files, 553 passed and 7 skipped in each mode; Playwright 45 passed, 2 skipped.
+
+**Found on the way:** the local stack held 20 duplicate briefs written milliseconds apart by earlier test runs: the
+race this fixes. Removed locally before the index.
+
+**Open:** a word cloud's one-answer-per-prompt check is check-then-insert (no unique index). A losing deadline close
+of a conversation still made its Polis close call (rare now: the claim). `onArchive` hooks that rewrite the row leave
+the in-memory version stale.
+
+---
+
 ## Audit 2: sign-in and abuse — 2026-10-11
 
 From the audit handoff (A1, A5, A6, A8, and the `/revise` route left over from Audit 1). Adam's decisions in chat:

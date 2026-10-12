@@ -116,6 +116,29 @@ export function getActionDispatcher(): ActionDispatcher {
 }
 
 /**
+ * A deadline close, dispatched by a handler's closeIfExpired (vote,
+ * conversation). Set by the service layer (processService.closeAtDeadline),
+ * as the dispatcher is: one reader claims the close, the others return the
+ * process as it is, and the claimed close runs through executeAction.
+ */
+type DeadlineCloser = (process: Process, action: Parameters<ActionDispatcher>[1]) => Promise<Process>;
+let deadlineCloser: DeadlineCloser | null = null;
+
+export function setDeadlineCloser(closer: DeadlineCloser): void {
+  deadlineCloser = closer;
+}
+
+export function closeThroughDispatcher(
+  process: Process,
+  action: Parameters<ActionDispatcher>[1],
+): Promise<Process> {
+  if (!deadlineCloser) {
+    throw new Error("Deadline closer not initialized — service layer must call setDeadlineCloser()");
+  }
+  return deadlineCloser(process, action);
+}
+
+/**
  * Look up the handler for a given process type.
  * Returns undefined if no handler is registered.
  */

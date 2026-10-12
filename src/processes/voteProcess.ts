@@ -37,8 +37,8 @@ import {
 import { AlreadyVotedError } from "../db/atomic.js";
 import { reportError } from "../utils/reportError.js";
 import { getInputsByProcess } from "../modules/civic.input/index.js";
-import { getActionDispatcher } from "./registry.js";
-import { findExistingBriefId } from "./spawnBrief.js";
+import { closeThroughDispatcher } from "./registry.js";
+import { afterActionCommits } from "../services/actionScope.js";
 import { describeSubmissionFields } from "../shared/submissionPreview.js";
 import { setVoteDraftStatus } from "../modules/civic.vote_drafts/index.js";
 import type { BriefContent } from "../modules/civic.brief/index.js";
@@ -122,6 +122,11 @@ const voteProcess: ProcessHandler = {
   // Support while gathering, then a ballot. Propose, activate and close are
   // lifecycle control: an admin's, or the hub's on a deadline.
   residentActions: ["process.support", "process.unsupport", "process.vote"],
+  // Their only effects are the vote's state and its events, so on a conflict
+  // they run again on a fresh read: two endorsements at once both count, and
+  // a close that lost to a ballot re-tallies with it. A ballot is not here:
+  // cast_ballot writes it, and the count, in its own transaction.
+  retrySafeActions: ["process.propose", "process.support", "process.unsupport", "process.activate", "process.close"],
   detailPath: (id: string) => `/process/${id}`,
   draftPath: (draftId: string) => `/votes/new?draft=${encodeURIComponent(draftId)}`,
   reopenDraft: (draftId: string) => setVoteDraftStatus(draftId, "drafting"),
@@ -247,19 +252,9 @@ const voteProcess: ProcessHandler = {
         break;
       }
       case "process.close": {
-        // Idempotency guard for the lazy-close race: if this vote already has a
-        // brief, the close already ran — don't re-tally, re-emit, or spawn a
-        // duplicate. Just make sure the status reflects closed.
-        const existingBriefId = await findExistingBriefId(process.id);
-        if (existingBriefId) {
-          if (state.status === "active") {
-            state.status = "closed";
-            syncStatus(process, state);
-          }
-          result = { already_closed: true, brief_process_id: existingBriefId };
-          break;
-        }
-
+        // Two closes at once (a deadline noticed by two page loads, the hourly
+        // job and a read) both get here; only one's write wins, and the
+        // other's events are never written (executeAction, actionScope).
         const methodKey = state.method ?? DEFAULT_METHOD;
         const method = getVotingMethod(methodKey);
         const ballots = (await getBallotChoicesForProcess(process.id)).map(
@@ -275,17 +270,22 @@ const voteProcess: ProcessHandler = {
         syncStatus(process, outcome.state);
         result = outcome.result;
 
-        // Drop any bridge rows left from before 2026-10-10 (early voters
-        // who never came back for their key), then rewrite the ballots in
-        // random order: every copy taken after close has no row order or
-        // transaction id that lines a ballot up with its voter. A failed
+        // Once the close has won: drop any bridge rows left from before
+        // 2026-10-10 (early voters who never came back for their key), then
+        // rewrite the ballots in random order, so every copy taken after
+        // close has no row order or transaction id that lines a ballot up
+        // with its voter. After the write, because no ballot can land after
+        // it (cast_ballot refuses a vote that is not active). A failed
         // reshuffle does not undo the close; the hourly job retries it.
-        await clearActiveVoteKeysForProcess(process.id);
-        try {
-          await reshuffleBallotsForProcess(process.id);
-        } catch (err) {
-          reportError("vote.close.reshuffle", (err as Error).message, { process_id: process.id });
-        }
+        const closedId = process.id;
+        await afterActionCommits(async () => {
+          await clearActiveVoteKeysForProcess(closedId);
+          try {
+            await reshuffleBallotsForProcess(closedId);
+          } catch (err) {
+            reportError("vote.close.reshuffle", (err as Error).message, { process_id: closedId });
+          }
+        });
 
         // A vote finishes when it closes (Adam, 2026-10-07): it is finalized
         // here and publishes its own results, which the feed and digest post
@@ -377,13 +377,12 @@ const voteProcess: ProcessHandler = {
     console.log(
       `[auto-close] Vote ${process.id} expired at ${state.voting_closes_at}, closing now.`,
     );
-    const { process: updated } = await getActionDispatcher()(process.id, {
+    return closeThroughDispatcher(process, {
       type: "process.close",
       actor: AUTO_CLOSE_ACTOR,
       payload: {},
       at: new Date(state.voting_closes_at!).toISOString(),
     });
-    return updated;
   },
 
   // Universal brief: a closed vote's tally IS its results brief. Recomputes

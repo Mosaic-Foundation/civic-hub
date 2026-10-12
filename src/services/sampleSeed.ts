@@ -256,6 +256,10 @@ class SeedRun {
       isSample: true,
     });
     await this.stamp("processes", { id: p.id }, at);
+    // The stamp is a write, so it moved the row's version; this copy is the
+    // seed's own and carries on from it (saveProcessState checks it).
+    const row = await this.db.from("processes").select<{ version: number | string }>("version").eq("id", p.id).single();
+    p.version = Number(row.version);
     return p;
   }
 

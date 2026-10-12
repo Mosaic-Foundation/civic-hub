@@ -83,7 +83,8 @@ describe("export manifest", () => {
     // start_codes, start_sessions, start_attempts — platform data, held
     // before any hub exists, not in a hub's export. 44 since 2026-10-11
     // (Audit 2): ai_usage (hub data, omitted) and rate_limit_hits (platform).
-    expect(schema.tables.size).toBe(44);
+    // 43 since 2026-10-11 (Audit 3): start_attempts dropped.
+    expect(schema.tables.size).toBe(43);
     expect(schema.withHubId.size).toBe(33);
     expect(schema.tables.has("hubs")).toBe(true);
     expect(schema.withHubId.has("hubs")).toBe(false);

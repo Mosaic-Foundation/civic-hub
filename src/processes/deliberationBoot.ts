@@ -7,7 +7,7 @@ import { setDeliberationDraftStatus } from "../modules/civic.deliberation_drafts
 import { generateId } from "../utils/id.js";
 import { guardedFetch } from "../utils/ssrfGuard.js";
 import { callClaude, DEFAULT_MODEL } from "../utils/anthropic.js";
-import { getActionDispatcher } from "./registry.js";
+import { closeThroughDispatcher } from "./registry.js";
 import { isPastDeadline } from "../utils/deadline.js";
 import type { Process } from "../models/process.js";
 import type { ProcessHandler } from "./types.js";
@@ -192,12 +192,11 @@ export function bootDeliberation(): ProcessHandler {
     console.log(
       `[auto-close] Deliberation ${process.id} past deadline ${deadline}, closing now.`,
     );
-    const { process: updated } = await getActionDispatcher()(process.id, {
+    return closeThroughDispatcher(process, {
       type: "close",
       actor: "system:auto-close",
       payload: {},
     });
-    return updated;
   };
 
   // Universal brief: a closed conversation's outcome is its Civic Brief.

@@ -55,8 +55,31 @@ function logged(event: CivicEvent | null): void {
 }
 
 /**
- * Change a process's status — and its state, when given — and write the
- * event recording it, in one transaction.
+ * Another write landed on the process between the caller's read and its
+ * write (its status or version no longer matches). Nothing was written.
+ */
+export class ProcessChangedError extends Error {
+  readonly code = "process_changed";
+  constructor(detail?: string) {
+    super(`This changed while you were acting on it. Reload and try again.${detail ? ` (${detail})` : ""}`);
+    this.name = "ProcessChangedError";
+  }
+}
+
+/** A ballot for a vote that is not open, or is past its deadline. */
+export class VoteClosedError extends Error {
+  readonly code = "vote_closed";
+  constructor() {
+    super("Voting has closed. Your ballot was not recorded.");
+    this.name = "VoteClosedError";
+  }
+}
+
+/**
+ * Write a process's status and state, the events its action emitted, and
+ * the event recording a status change, in one transaction. With
+ * `expectedStatus` / `expectedVersion`, refuses (ProcessChangedError) when
+ * the row no longer has them, so two writes cannot overwrite each other.
  */
 export async function transitionProcess(input: {
   hubId: string;
@@ -65,19 +88,32 @@ export async function transitionProcess(input: {
   actor: string;
   event: CivicEvent | null;
   state?: Record<string, unknown>;
-}): Promise<{ previous_status: string; status: string; updated_at: string }> {
-  const out = await forHub(input.hubId).rpc<{ previous_status: string; status: string; updated_at: string }>(
-    "transition_process",
-    {
+  expectedStatus?: string;
+  expectedVersion?: number;
+  /** The action's own events about this process, written first, in order. */
+  events?: CivicEvent[];
+}): Promise<{ previous_status: string; status: string; updated_at: string; version: number }> {
+  let out: { previous_status: string; status: string; updated_at: string; version: number };
+  try {
+    out = await forHub(input.hubId).rpc<typeof out>("transition_process", {
       p_process_id: input.processId,
       p_to_status: input.toStatus,
       p_actor: input.actor,
       p_event: input.event ? eventToRow(input.event) : null,
       p_state: input.state ?? null,
-    },
-  );
+      p_expected_status: input.expectedStatus ?? null,
+      p_expected_version: input.expectedVersion ?? null,
+      p_events: input.events && input.events.length > 0 ? input.events.map(eventToRow) : null,
+    });
+  } catch (err) {
+    if (err instanceof HubDbError && err.code === "P0001" && /process_changed/.test(err.message)) {
+      throw new ProcessChangedError(err.details);
+    }
+    throw err;
+  }
+  for (const e of input.events ?? []) logged(e);
   logged(input.event);
-  return out;
+  return { ...out, version: Number(out.version) };
 }
 
 /**
@@ -117,6 +153,7 @@ export async function castBallot(input: {
       if (/already_voted/.test(err.message)) throw new AlreadyVotedError();
       if (/receipt_not_accepted/.test(err.message)) throw new ReceiptNotAcceptedError();
       if (/receipt_without_vote/.test(err.message)) throw new ReceiptWithoutVoteError();
+      if (/vote_not_open/.test(err.message)) throw new VoteClosedError();
     }
     throw err;
   }

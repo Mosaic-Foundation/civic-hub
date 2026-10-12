@@ -245,10 +245,10 @@ describe("rate limits", () => {
   it("stores hashed buckets: no address or email in the clear", async () => {
     const ip = freshIp();
     await startCall("POST", "/start/invite", { body: { code: "ZZZZ-ZZZZ-ZZZZ" }, ip });
-    const rows = (await localRest(`start_attempts?select=bucket&order=id.desc&limit=50`)) as Array<{ bucket: string }>;
+    const rows = (await localRest(`rate_limit_hits?select=bucket&bucket=like.start.*&order=at.desc&limit=50`)) as Array<{ bucket: string }>;
     expect(rows.length).toBeGreaterThan(0);
     for (const r of rows) {
-      expect(r.bucket).toMatch(/^[a-z_]+:(ip|email):[0-9a-f]{64}$/);
+      expect(r.bucket).toMatch(/^start\.[a-z_]+:(ip|email):[0-9a-f]{64}$/);
       expect(r.bucket).not.toContain(ip);
     }
   });

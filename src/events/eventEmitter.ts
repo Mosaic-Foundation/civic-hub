@@ -15,6 +15,7 @@ import { validateForEmission } from "./activitySerializer.js";
 import { generateId } from "../utils/id.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 import { protocolHubId } from "../config/hub.js";
+import { holdForAction } from "../services/actionScope.js";
 
 /**
  * Create and durably store a spec-compliant civic event.
@@ -25,6 +26,9 @@ import { protocolHubId } from "../config/hub.js";
  */
 export async function emitEvent(input: CreateEventInput): Promise<CivicEvent> {
   const event = buildEvent(input);
+  // Inside a process action, an event about that process is written with the
+  // action's state change, or not at all (src/services/actionScope.ts).
+  if (holdForAction(event)) return event;
   await appendEvent(event);
   console.log(`[event] ${event.event_type} by ${event.actor} (${event.id})`);
   return event;

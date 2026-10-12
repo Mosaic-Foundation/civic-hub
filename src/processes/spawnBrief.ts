@@ -11,7 +11,7 @@ import { isPluginEnabledSync } from "../services/hubSettings.js";
 import { Process } from "../models/process.js";
 import { getProcessFactory, getProcessHandler } from "./registry.js";
 import { emitEvent } from "../events/eventEmitter.js";
-import { forHub } from "../db/forHub.js";
+import { forHub, HubDbError } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { emitBriefAggregationCompleted } from "../modules/civic.brief/events.js";
 import type { BriefProcessState } from "../modules/civic.brief/index.js";
@@ -42,19 +42,28 @@ export async function spawnBriefFromClosedProcess(
   if (!content) return null;
 
   const factory = getProcessFactory();
-  const brief = await factory({
-    definition: { type: "civic.brief", version: "0.1" },
-    // Mirror the source's title; the "Brief" pill/tab/heading disambiguate.
-    title: source.title,
-    description: source.description,
-    jurisdiction: source.jurisdiction,
-    createdBy: actor,
-    state: {
-      source_process_id: source.id,
-      source_process_type: sourceType,
-      content,
-    },
-  });
+  // Insert-or-skip: a source has at most one brief, enforced by a unique
+  // index (processes_one_brief_per_source). A second spawn for the same
+  // source is refused before anything is written, and is not an error.
+  let brief: Process;
+  try {
+    brief = await factory({
+      definition: { type: "civic.brief", version: "0.1" },
+      // Mirror the source's title; the "Brief" pill/tab/heading disambiguate.
+      title: source.title,
+      description: source.description,
+      jurisdiction: source.jurisdiction,
+      createdBy: actor,
+      state: {
+        source_process_id: source.id,
+        source_process_type: sourceType,
+        content,
+      },
+    });
+  } catch (err) {
+    if (err instanceof HubDbError && err.code === "23505") return null;
+    throw err;
+  }
 
   // civic.process.created is already emitted by the generic factory; emit
   // only the aggregation_completed pair (mirrors the vote-results spawn).
@@ -73,11 +82,9 @@ export async function spawnBriefFromClosedProcess(
 }
 
 /**
- * Guard against duplicate briefs — a process should have at most one brief.
- * Returns the id of an existing civic.brief for this source, or null.
- * Callers spawn only when this returns null, mirroring the idempotent
- * vote-results spawn (collapses the common double-close window; not a full
- * mutex).
+ * The id of this source's brief, or null. A source has at most one (a unique
+ * index); callers check first to skip generating a brief that would be
+ * refused.
  */
 export async function findExistingBriefId(
   sourceProcessId: string,

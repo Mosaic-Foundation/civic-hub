@@ -74,6 +74,9 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   // A moved hub's old addresses redirect (20261008000000, review R47).
   { table: "hubs", columns: ["previous_hostnames", "redirect_to"], owner: "core/hubRegistry" },
   { table: "processes", columns: ["id", "hub_id", "type", "status", "state", "review_id"], owner: "core/processService" },
+  // Audit 3: the write counter every version-checked write compares, and a
+  // deadline close's claim (20261011200000).
+  { table: "processes", columns: ["version", "close_claimed_until"], owner: "core/processService" },
   { table: "events", columns: ["id", "event_type", "process_id", "data"], owner: "core/eventStore" },
   // The digest selects by it (20260926030000).
   { table: "events", columns: ["recorded_at"], owner: "digest" },

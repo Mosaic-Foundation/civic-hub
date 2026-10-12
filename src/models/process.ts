@@ -69,6 +69,13 @@ export interface Process {
   createdBy: string; // userId or DID
   createdAt: string; // ISO 8601
   updatedAt: string;
+  /**
+   * The row's write counter (`processes.version`, bumped by trigger on every
+   * update). A write made from this copy is refused once it no longer
+   * matches: someone else wrote in between (Audit 3). Absent on a Process
+   * that was not read from a row.
+   */
+  version?: number;
   state: Record<string, unknown>; // process-specific state
   content?: ProcessContent; // structured issue content (optional)
   /**

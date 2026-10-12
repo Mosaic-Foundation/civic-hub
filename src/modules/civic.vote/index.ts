@@ -325,13 +325,11 @@ export async function submitVote(
 
   const ballot = method.validateBallot(ballotInput, state.options);
 
-  // A change is the voter presenting their own receipt: the hub cannot look
-  // up their previous ballot (it keeps no link from voter to ballot), so it
-  // neither counts them again nor knows what they had. A change to the same
-  // choice is recognised by the database, which then writes nothing.
-  if (!changing) {
-    state.total_votes += 1;
-  }
+  // `total_votes` is not touched here: the host adds one for a first vote in
+  // the same transaction as the ballot (civic-hub: cast_ballot), so two
+  // voters at once cannot both read N and write N+1. A change is the voter
+  // presenting their own receipt and is not counted again; a change to the
+  // same choice is recognised by the database, which then writes nothing.
 
   await emitVoteSubmitted(ctx, actor, changing);
 

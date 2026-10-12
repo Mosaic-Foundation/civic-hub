@@ -13,7 +13,7 @@
 // emails are stored hashed. Since Audit 2 (2026-10-11) they go through the
 // platform's one limiter (src/db/rateLimit.ts, rate_limit_take), which counts
 // and records in one transaction; start_attempts, which counted and then
-// inserted from here, is retired.
+// inserted from here, was dropped by Audit 3.
 
 import { getDb } from "../db/client.js";
 import { HOUR_MS, rateLimitBucket, takeRateLimit } from "../db/rateLimit.js";

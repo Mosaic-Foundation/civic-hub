@@ -46,7 +46,6 @@ export const NOT_HUB_SCOPED: Readonly<Record<string, string>> = {
     "each use of an entitlement (who, which hub), across hubs; service role (src/control/) only",
   start_codes: "the start page's emailed sign-in codes, hashed; platform, not hub, data; service role (src/control/) only",
   start_sessions: "start-page sessions, by token hash; platform, not hub, data; service role (src/control/) only",
-  start_attempts: "RETIRED 2026-10-11 (Audit 2), unused until dropped: the start page's old rate-limit counters; platform data; service role only",
   // Audit 2 (20261011100000, Adam 2026-10-11): one table for every rate limit
   // on the platform, so per-IP limits hold across hubs.
   rate_limit_hits:
