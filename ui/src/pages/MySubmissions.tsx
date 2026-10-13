@@ -52,16 +52,29 @@ export default function MySubmissions() {
   const [detail, setDetail] = useState<ReviewDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const arrived = location.state as { submitted?: boolean; flagged?: boolean; checkUnavailable?: boolean } | null;
-  const [actionMessage, setActionMessage] = useState<string | null>(
-    arrived?.submitted !== true
-      ? null
-      : arrived.flagged
-        ? "Sent to the admins, with what the Code of Conduct check flagged and your note. An admin will read it and decide."
-        : arrived.checkUnavailable
-          ? "Submitted. The automated Code of Conduct check couldn't run, so an admin will read it before it goes live."
-          : "Submitted! An admin will review your submission shortly.",
-  );
+  // Arriving straight from a submit: say what just happened, once. It is not
+  // the page's action result: it never hides the actions, it shows only while
+  // the review is still waiting (an admin may have acted since), and the
+  // history entry's state is cleared, because a browser keeps it across
+  // reloads. Kept, it hid "Edit & resubmit" on a review whose changes were
+  // requested later, for as long as the resident stayed on that tab (seen on
+  // dev 2026-10-12; the gate dates from June).
+  const [arrival] = useState<string | null>(() => {
+    const arrived = location.state as { submitted?: boolean; flagged?: boolean; checkUnavailable?: boolean } | null;
+    if (arrived?.submitted !== true) return null;
+    return arrived.flagged
+      ? "Sent to the admins, with what the Code of Conduct check flagged and your note. An admin will read it and decide."
+      : arrived.checkUnavailable
+        ? "Submitted. The automated Code of Conduct check couldn't run, so an admin will read it before it goes live."
+        : "Submitted! An admin will review your submission shortly.";
+  });
+  useEffect(() => {
+    if (location.state) navigate(location.pathname, { replace: true, state: null });
+    // Once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  /** The result of an action taken on this page (revise, withdraw). */
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   // Revise form
   const [showRevise, setShowRevise] = useState(false);
@@ -203,9 +216,9 @@ export default function MySubmissions() {
 
         {loading && <p>Loading…</p>}
         {error && <p className="error-text">{error}</p>}
-        {actionMessage && (
-          <p style={{ color: "var(--success-color, #2e7d32)" }}>
-            {actionMessage}
+        {(actionMessage ?? (detail?.review.status === "pending_review" ? arrival : null)) && (
+          <p style={{ color: "var(--success-color, #2e7d32)" }} role="status">
+            {actionMessage ?? arrival}
           </p>
         )}
 

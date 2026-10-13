@@ -115,3 +115,47 @@ describe("Submit runs the Code of Conduct check", () => {
     expect(res.body.response.suggestions).toHaveLength(1);
   });
 });
+
+// On a beta hub, a vote and a project, sent in flagged or the ordinary way:
+// after the admin asks for changes, the resident can reopen the draft and
+// resubmit; it comes back as the same review, and the flag follows the text.
+// (The page side, "Edit & resubmit" after a reload, is reviewResubmit.spec.ts.)
+describe("changes requested, then resubmitted, on a beta hub", () => {
+  const KINDS = [
+    { name: "vote", path: "/votes/drafts", create: {} },
+    { name: "project", path: "/projects/drafts", create: {} },
+  ];
+  for (const kind of KINDS) {
+    for (const flagged of [true, false]) {
+      it(`${kind.name}, ${flagged ? "sent in flagged" : "submitted the ordinary way"}`, async () => {
+        const made = await call("POST", kind.path, FLOYD, kind.create, resident);
+        expect(made.status, JSON.stringify(made.body)).toBe(201);
+        const id = made.body.id as string;
+        await call("PATCH", `${kind.path}/${id}`, FLOYD, {
+          title: `Resubmit ${kind.name} ${flagged} ${tag}`,
+          description: flagged ? `Text ${COC_FLAG}` : "Plain text.",
+        }, resident);
+        const first = flagged
+          ? await call("POST", `${kind.path}/${id}/submit`, FLOYD, { tell_admins: true, note: "Misread." }, resident)
+          : await call("POST", `${kind.path}/${id}/submit`, FLOYD, {}, resident);
+        expect(first.status, JSON.stringify(first.body)).toBe(201);
+        const reviewId = first.body.review_id as string;
+
+        expect((await call("POST", `/admin/reviews/${reviewId}/request-changes`, FLOYD, { note: "Say who runs it." }, admin)).status).toBe(200);
+        const mine = await call("GET", `/reviews/${reviewId}`, FLOYD, undefined, resident);
+        expect(JSON.stringify(mine.body)).toContain("changes_requested");
+        const reopened = await call("POST", `/reviews/${reviewId}/reopen`, FLOYD, {}, resident);
+        expect(reopened.status, JSON.stringify(reopened.body)).toBe(200);
+        expect(reopened.body.draft_path).toContain(`review=${reviewId}`);
+
+        await call("PATCH", `${kind.path}/${id}`, FLOYD, { description: "Reworded, run by volunteers." }, resident);
+        const again = await call("POST", `${kind.path}/${id}/submit`, FLOYD, { review_id: reviewId }, resident);
+        expect(again.status, JSON.stringify(again.body)).toBe(201);
+        expect(again.body.review_id).toBe(reviewId);
+        const seen = await call("GET", `/admin/reviews/${reviewId}`, FLOYD, undefined, admin);
+        expect(JSON.stringify(seen.body)).toMatch(/"status":"pending_review"/);
+        expect(JSON.stringify(seen.body)).toMatch(/"coc_flags":null/);
+      });
+    }
+  }
+});

@@ -4,6 +4,34 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## "Edit & resubmit" missing after a reload on My submissions — 2026-10-12
+
+Found on dev: a flagged project ("Tell the admins") with changes requested showed no Edit & resubmit.
+- **Cause:** My submissions hides every action while it shows a message. Arriving straight from a submit seeds that
+  message ("Sent to the admins…", "Submitted!…") from the history entry's state, which a browser keeps across reloads
+  and re-entering the address. A resident who stayed on that tab never saw Edit & resubmit or Withdraw again.
+  - Every submission reached that way was affected, flagged or not, vote or project. Opened from the list, it was
+    fine.
+  - The gate dates from June (`b226a59`); "Tell the admins" lands the resident there, which is how it surfaced.
+- **Fix** (`MySubmissions.tsx`): the arrival note is separate from the action result.
+  - It never hides the actions, and shows only while the review is still waiting.
+  - The history state is cleared on arrival.
+- **Server side** was already right; now tested on Floyd (beta) for a vote and a project, both paths
+  (`submitRunsCheck.test.ts`). Resubmitting runs the check, keeps the same review, and clears the flag when the text
+  passes.
+- **Playwright** `reviewResubmit.spec.ts`: on a project and a vote, flagged and ordinary, the resident stays on the
+  tab and reloads after changes are requested.
+  - Both paths: Edit & resubmit and Withdraw show, and the page has the same shape.
+  - The flagged ones: edit, resubmit, and the same item is back in the queue, unflagged.
+
+  All four fail on the old page.
+- **Dev checklist:** as a resident on a beta hub, send a flagged project through "Tell the admins".
+  1. Stay on that tab while an admin requests changes, then reload. "Edit & resubmit" and "Withdraw" show.
+  2. Edit & resubmit with clean text. The admin queue has the same item back, no longer marked flagged.
+  3. Repeat with an ordinary vote.
+
+---
+
 ## Phone drafting layout, and the nav on iOS — 2026-10-12 (after Submit and save)
 
 From the management session, after the Submit and save release; not pushed. Two commits: `39416b5` (nav) and the
