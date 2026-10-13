@@ -65,11 +65,23 @@ async function newResident(n: string): Promise<string> {
   return token;
 }
 
-/** Write a vote and press Submit, then the preview's Submit. Resolves to the submit response. */
-async function writeVoteAndSubmit(page: Page, title: string, description: string) {
+/**
+ * Write a vote and press Submit, then the preview's Submit. Resolves to the
+ * submit response. With `options`, an approval vote with those options and
+ * one more "+ Add option" left empty, which must not block Submit.
+ */
+async function writeVoteAndSubmit(page: Page, title: string, description: string, options?: string[]) {
   await page.goto("/votes/new");
+  if (options) await page.getByRole("button", { name: "Approval (pick from options)" }).click();
   await page.locator("#draft-title").fill(title);
   await page.locator("#draft-description").fill(description);
+  if (options) {
+    for (const [i, o] of options.entries()) await page.getByRole("textbox", { name: `Option ${i + 1}` }).fill(o);
+    await page.getByRole("button", { name: "+ Add option" }).click();
+    await expect(page.getByRole("textbox", { name: `Option ${options.length + 1}` })).toHaveValue("");
+    await page.getByRole("textbox", { name: `Option ${options.length + 1}` }).blur();
+    await expect(page.getByRole("button", { name: "Submit vote" }).last()).toBeEnabled();
+  }
   await page.getByRole("button", { name: "Submit vote" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Submit your vote" })).toBeVisible();
@@ -148,11 +160,11 @@ test("a resident and an admin are signed in", async ({ browser }) => {
   await a.close();
 });
 
-test("a clean vote on a beta hub waits in the admins' queue", async ({ browser }) => {
+test("a clean vote on a beta hub waits in the admins' queue; an empty extra option doesn't block Submit", async ({ browser }) => {
   const page = await open(browser);
   await visitAs(page, resident);
   const title = `Smoke vote ${run}`;
-  const res = await writeVoteAndSubmit(page, title, CLEAN);
+  const res = await writeVoteAndSubmit(page, title, CLEAN, ["Keep them by the library", "Move them to the park"]);
   expect(res.status(), await res.text()).toBe(201);
   const body = await res.json();
   expect(body.auto_approved).toBe(false);
@@ -299,5 +311,55 @@ test("Edit & resubmit after an admin requests changes: the same item, back in th
   const body = await (await resubmitted).json();
   expect(body.review_id).toBe(reviewId);
   await expect(page).toHaveURL(new RegExp(`/my-submissions/${reviewId}`));
+  await page.close();
+});
+
+test("voting on a phone: the page holds still, the share banner goes by itself, the receipt is one compact box", async ({ browser, request }) => {
+  // An open vote an admin made: residents' votes on the smoke hub may need
+  // endorsements first. Archived by afterAll.
+  const made = await request.post(`${apiBase()}/process`, {
+    headers: auth(admin),
+    data: {
+      definition: { type: "civic.vote", version: "0.1" },
+      title: `Smoke ballot ${run}`,
+      description: "A vote the smoke suite casts a ballot on.",
+      state: { options: ["Yes", "No"], voting_duration_ms: 86_400_000, activation_mode: "direct" },
+    },
+  });
+  expect(made.status(), await made.text()).toBe(201);
+  const voteId = (await made.json()).id as string;
+  liveProcesses.push(voteId);
+  const opened = await request.post(`${apiBase()}/process/${voteId}/action`, {
+    headers: auth(admin),
+    data: { type: "process.activate", payload: {} },
+  });
+  expect(opened.ok(), await opened.text()).toBeTruthy();
+
+  const page = await open(browser, { viewport: { width: 375, height: 640 } });
+  await visitAs(page, await newResident("v"));
+  await page.goto(`/process/${voteId}`);
+  const no = page.getByRole("button", { name: "No", exact: true });
+  await no.evaluate((b) => b.scrollIntoView({ block: "start" }));
+  const ballot = page.locator(".vote-buttons");
+  const before = (await ballot.boundingBox())!.y;
+  await no.click();
+
+  // Where the voter was: the ballot hasn't moved; the banner shows and goes.
+  await expect(page.locator(".vote-receipt-box")).toBeVisible();
+  expect(Math.abs((await ballot.boundingBox())!.y - before)).toBeLessThanOrEqual(2);
+  const nudge = page.locator(".share-banner, .share-callout");
+  await expect(nudge).toContainText("share this");
+  await expect(nudge).toHaveCount(0, { timeout: 8_000 });
+  expect(Math.abs((await ballot.boundingBox())!.y - before)).toBeLessThanOrEqual(2);
+
+  // The receipt: the download button with the code beside it, Check it below.
+  const box = page.locator(".vote-receipt-box");
+  const button = (await box.getByRole("button", { name: /Download\s+receipt \(PDF\)/ }).boundingBox())!;
+  const code = (await box.locator(".vote-receipt-id code").boundingBox())!;
+  const check = (await box.getByRole("link", { name: "Check it" }).boundingBox())!;
+  expect(code.x).toBeGreaterThanOrEqual(button.x + button.width);
+  expect(code.y).toBeLessThan(button.y + button.height);
+  expect(check.y).toBeGreaterThanOrEqual(Math.max(button.y + button.height, code.y + code.height) - 1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.close();
 });
