@@ -60,11 +60,29 @@ export interface Created {
   message: string | null;
 }
 
+/** The browser's time zone, so "Try again after 4:10 PM" reads in local time. */
+function browserTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return "";
+  }
+}
+
+export interface LegalSummary {
+  title: string;
+  path: string;
+  summary: string;
+}
+
 export const startApi = {
   session: () => request<StartSessionView>("GET", "/session"),
   invite: (code: string) => request<{ step: Step }>("POST", "/invite", { code }),
-  requestCode: (email: string) => request<{ message: string }>("POST", "/request-code", { email }),
-  verify: (email: string, code: string) => request<{ step: Step; email: string }>("POST", "/verify", { email, code }),
+  requestCode: (email: string) => request<{ message: string }>("POST", "/request-code", { email, tz: browserTimeZone() }),
+  verify: (email: string, code: string) =>
+    request<{ step: Step; email: string }>("POST", "/verify", { email, code, tz: browserTimeZone() }),
+  legal: (kind: string, place: string) =>
+    request<{ version: string; summaries: LegalSummary[] }>("GET", `/legal?${new URLSearchParams({ kind, place }).toString()}`),
   leave: () => request<{ ok: true }>("POST", "/leave"),
   config: () => request<StartConfig>("GET", "/config"),
   suggestSlug: (name: string, type?: string | null, state?: string | null) =>

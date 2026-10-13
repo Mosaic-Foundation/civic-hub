@@ -15,3 +15,17 @@
 @media (max-width: 560px) {
   .st-page .cx-two { grid-template-columns: 1fr; }
 }
+/* The notice beside "Create my hub" and its summaries (sign-in slice, 2026-10-14). */
+.st-terms { margin: 12px 0 0; font-size: 0.9rem; line-height: 1.5; }
+.st-terms-notice { margin: 0; text-align: center; color: var(--cx-muted); }
+.st-terms-link { font-size: inherit; padding: 0; text-decoration: underline; }
+.st-terms-panel {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--cx-radius);
+  background: var(--cx-surface-2);
+}
+.st-terms-heading { margin: 0 0 6px; font-weight: 600; }
+.st-terms-summary ul { margin: 4px 0 8px; padding-left: 1.2em; }
+.st-terms-summary p { margin: 6px 0 2px; }
+.st-terms-after { margin: 8px 0 0; color: var(--cx-muted); }

@@ -532,8 +532,15 @@ function isHandoffToken(token: string): boolean {
  * Returns the token. The start page proved the address with its own emailed
  * code, so the handoff, and the session it becomes, are 'code' sessions.
  */
-export async function createHandoffSession(email: string): Promise<string> {
+export async function createHandoffSession(
+  email: string,
+  // The legal version the creator agreed to on the start page, by pressing
+  // Create beside the notice (sign-in slice, 2026-10-14): recorded here so
+  // they aren't asked again as a member of the hub they made.
+  agreedLegalVersion?: string,
+): Promise<string> {
   const user = await findOrCreateVerifiedUser(email.trim().toLowerCase());
+  if (agreedLegalVersion) await acceptLegalTerms(user.id, agreedLegalVersion);
   return insertSession(db(), user.id, "code", HANDOFF_TTL_MS, `${HANDOFF_PREFIX}_${randomToken()}`);
 }
 

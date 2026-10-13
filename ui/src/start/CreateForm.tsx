@@ -15,6 +15,7 @@ import type { SlugSuggestion } from "../console/api";
 import { JurisdictionPicker, type JurisdictionChoice } from "../console/JurisdictionPicker";
 import { SuggestInput } from "../console/SuggestInput";
 import { TimeZoneSelect } from "../console/TimeZoneSelect";
+import { TermsAtCreate } from "./TermsAtCreate";
 import {
   JURISDICTION_TYPES,
   defaultGoverningBody,
@@ -370,6 +371,7 @@ export default function CreateForm({
         <button className="cx-btn cx-btn-primary cx-block" disabled={busy || !ready}>
           {busy ? "Creating your hub… this takes a few seconds" : "Create my hub"}
         </button>
+        <TermsAtCreate kind={hubKind} place={isPlace ? form.jurisdiction_name : ""} />
       </form>
       <p className="st-leave">
         <button type="button" className="cx-linkbtn" onClick={onLeave}>

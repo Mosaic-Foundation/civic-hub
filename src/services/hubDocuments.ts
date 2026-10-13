@@ -303,6 +303,28 @@ export function applySubstitutions(
   );
 }
 
+/** The documents a person agrees to, with their titles as the notice names them. */
+const AGREED_DOCUMENTS: ReadonlyArray<{ key: string; title: string; path: string }> = [
+  { key: KEYS.LEGAL_CODE_OF_CONDUCT, title: "Code of Conduct", path: "/code-of-conduct" },
+  { key: KEYS.LEGAL_PRIVACY, title: "Privacy Notice", path: "/privacy" },
+  { key: KEYS.LEGAL_TERMS, title: "Terms", path: "/terms" },
+];
+
+/**
+ * The "In short" section of each shared document (sign-in slice,
+ * 2026-10-14), substituted with `values`. For the start page, where the hub
+ * a person is agreeing to join doesn't exist yet. A `{PLACE}` it can't fill
+ * is left for the hub's own pages: its `{{#place}}` lines are kept or dropped
+ * by values.HUB_KIND as everywhere.
+ */
+export function legalSummaries(values: Readonly<Record<string, string>>): Array<{ title: string; path: string; summary: string }> {
+  return AGREED_DOCUMENTS.map(({ key, title, path }) => {
+    const template = documentTemplate(key) ?? "";
+    const section = /^## In short\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(template)?.[1] ?? "";
+    return { title, path, summary: applySubstitutions(section, values).trim() };
+  });
+}
+
 /**
  * Every document for a hub: its own overrides where it has them, the shared
  * templates everywhere else.

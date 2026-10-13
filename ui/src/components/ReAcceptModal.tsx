@@ -6,7 +6,7 @@
 // app until the user accepts the new bundle or signs out. Already-
 // accepted users see no modal.
 //
-// The "Decline and sign out" button calls AuthContext.logout() — a
+// The "Sign out instead" button calls AuthContext.logout() — a
 // clean exit, no penalty, the user can come back any time. Accepting
 // stamps the new version via /auth/accept-tos and dismisses the modal
 // so the rest of the page becomes interactive.
@@ -22,6 +22,7 @@ import {
   CURRENT_LEGAL_LAST_UPDATED,
 } from "../config/legal";
 import Modal from "./Modal";
+import TermsNotice from "./TermsNotice";
 
 /**
  * True when the user must be prompted to accept the current legal
@@ -91,32 +92,12 @@ export default function ReAcceptModal() {
       describedBy="re-accept-body"
     >
     <p id="re-accept-body" className="auth-description">
-      To keep using the {hub.name}, please review our Terms of
-      Service, Privacy Policy, and Code of Conduct. These protect
-      you and help us run the Hub fairly.
+      {isFirstAcceptance
+        ? `Before you go on in ${hub.name}, here is what taking part means.`
+        : `We've updated the policies for ${hub.name}. Each one starts with a short summary.`}
     </p>
 
-    <ul className="re-accept-links">
-      <li>
-        <a href="/terms" target="_blank" rel="noopener noreferrer">
-          Terms of Service
-        </a>
-      </li>
-      <li>
-        <a href="/privacy" target="_blank" rel="noopener noreferrer">
-          Privacy Policy
-        </a>
-      </li>
-      <li>
-        <a
-          href="/code-of-conduct"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Code of Conduct
-        </a>
-      </li>
-    </ul>
+    <TermsNotice verb="continuing" />
 
     <p className="re-accept-version">
       Version {CURRENT_LEGAL_VERSION} · Last updated{" "}
@@ -132,7 +113,7 @@ export default function ReAcceptModal() {
         onClick={handleAccept}
         disabled={submitting}
       >
-        {submitting ? "Recording…" : "Review and accept"}
+        {submitting ? "Saving…" : "Continue"}
       </button>
       <button
         type="button"
@@ -140,7 +121,7 @@ export default function ReAcceptModal() {
         onClick={handleDecline}
         disabled={submitting}
       >
-        Decline and sign out
+        Sign out instead
       </button>
     </div>
     </Modal>

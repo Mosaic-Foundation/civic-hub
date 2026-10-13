@@ -199,13 +199,22 @@ export interface HubExport {
   format_version: number;
 }
 
+/** The browser's time zone, so "Try again after 4:10 PM" reads in local time (sign-in slice). */
+function browserTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return "";
+  }
+}
+
 export const api = {
   session: () =>
     request<{ email: string | null; operator_configured: boolean; console_hostname: string | null }>("GET", "/session"),
-  requestCode: (email: string) => request<{ message: string }>("POST", "/auth/request-code", { email }),
-  verify: (email: string, code: string) => request<{ email: string }>("POST", "/auth/verify", { email, code }),
+  requestCode: (email: string) => request<{ message: string }>("POST", "/auth/request-code", { email, tz: browserTimeZone() }),
+  verify: (email: string, code: string) => request<{ email: string }>("POST", "/auth/verify", { email, code, tz: browserTimeZone() }),
   logout: () => request<{ ok: true }>("POST", "/auth/logout"),
-  requestStepUp: () => request<{ message: string }>("POST", "/auth/step-up/request-code"),
+  requestStepUp: () => request<{ message: string }>("POST", "/auth/step-up/request-code", { tz: browserTimeZone() }),
 
   config: () => request<ConsoleConfig>("GET", "/config"),
   invites: () => request<InviteList>("GET", "/invites"),

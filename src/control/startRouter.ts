@@ -26,6 +26,9 @@
 // the X-Civic-Start header, which a cross-site form cannot send.
 
 import { env } from "../config/env.js";
+import { CURRENT_LEGAL_VERSION } from "../shared/legal.js";
+import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
+import { legalSummaries } from "../services/hubDocuments.js";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { recordAudit } from "./audit.js";
 import { CivicError } from "../errors/index.js";
@@ -288,6 +291,20 @@ export function startRouter(): Router {
     res.json({ hub_domain: startHubDomain(), sample_kinds: kindsWithSamples() });
   }));
 
+  // The plain-language summaries of what pressing Create agrees to. The full
+  // documents live on the hub, which doesn't exist yet.
+  r.get("/start/legal", route(async (req, res) => {
+    await signedIn(req);
+    const str = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 200) : "");
+    const summaries = legalSummaries({
+      HUB_KIND: str(req.query.kind),
+      // The place the form has chosen, or words that stand for it until then.
+      PLACE: str(req.query.place) || "the place your hub serves",
+      CONTACT_EMAIL: PLATFORM_CONTACT_EMAIL,
+    });
+    res.json({ version: CURRENT_LEGAL_VERSION, summaries });
+  }));
+
   r.get("/start/jurisdictions/states", route(async (req, res) => {
     await signedIn(req);
     res.json({ states: await listStates() });
@@ -337,7 +354,16 @@ export function startRouter(): Router {
 
     const entitlement = { entitlement_id: spent.id, code_hint: spent.code_hint, note: spent.note };
     await audited({ actor: s.email, action: "invite.redeem", hubId: hub.id, before: null, after: entitlement });
-    await audited({ actor: s.email, action: "hub.create", hubId: hub.id, before: null, after: { hub, settings, via: "start", ...entitlement } });
+    // Pressing "Create my hub" beside the notice is the creator's agreement to
+    // the Code of Conduct, Privacy Notice and Terms (sign-in slice, Adam
+    // 2026-10-13): recorded here and on their account, so it is asked once.
+    await audited({
+      actor: s.email,
+      action: "hub.create",
+      hubId: hub.id,
+      before: null,
+      after: { hub, settings, via: "start", terms_version: CURRENT_LEGAL_VERSION, ...entitlement },
+    });
 
     let sample: unknown = null;
     if (input.sampleContent) {
@@ -352,7 +378,7 @@ export function startRouter(): Router {
     }
     const invites = await inviteAdmins(hub.id, [s.email]);
     await notifyOperator(hub, s.email, spent.note, spent.code_hint);
-    const redirect = await handoffUrl(hub.id, s.email);
+    const redirect = await handoffUrl(hub.id, s.email, CURRENT_LEGAL_VERSION);
     res.status(201).json({
       hub: { id: hub.id, name: hub.name, hostname: hub.hostname },
       redirect,

@@ -3,6 +3,8 @@
 *Last updated: 2026-09-07*
 *Version: 1.2*
 
+The Floyd Civic Hub is a place for residents of Floyd County to engage with each other and with local government. For that to work, everyone needs to be able to participate without being harassed, attacked, or drowned out. This Code of Conduct describes how we keep the Hub civil — and, just as important, how we avoid the far worse problem of silencing opinions we happen to disagree with.
+
 ## In short
 
 - Argue with ideas, not people. Disagree as sharply as you like, without insults.
@@ -10,8 +12,6 @@
 - Don't share anyone's private information, or repost private things about people from other sites.
 - No spam, and don't pretend to be someone else.
 - Opinions are never removed for being unpopular. Admins remove posts that break these rules, log every removal, and tell you why when they can. You can appeal at contact@civic.social.
-
-The Floyd Civic Hub is a place for residents of Floyd County to engage with each other and with local government. For that to work, everyone needs to be able to participate without being harassed, attacked, or drowned out. This Code of Conduct describes how we keep the Hub civil — and, just as important, how we avoid the far worse problem of silencing opinions we happen to disagree with.
 
 ## Our north star: decorum, not opinion
 
