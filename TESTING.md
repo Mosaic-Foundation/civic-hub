@@ -58,6 +58,77 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Actions show right away (2026-10-13)
+
+**Before running anything against an existing local stack, apply the new migration:**
+
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && supabase migration up --local
+```
+
+Without it, `/health` names `vote_drafts.check_mode` and every vote draft fails.
+
+- **API:**
+  - `accountIds.test.ts`: no answer to a resident or a visitor carries another person's account id. It covers every
+    resident action of every type, and every read of the process: state, row, list, comments, events, feed, the type's
+    own page and list, and search. A failure names the JSON path.
+  - `hubCreatedReads.test.ts`: briefs, meeting summaries and vote results are 404 until published. A published brief
+    carries no recipients or emails.
+  - `closeEarly.test.ts`:
+    - an admin's early close without a note, or with only spaces, is refused 400 `note_required`;
+    - after the deadline no note is needed;
+    - residents can't close.
+  - `briefRegenerate.test.ts`, on a published brief:
+    - the new version is staged and the page is unchanged;
+    - publishing replaces it in place, updates its one feed card and sends no email;
+    - history is kept, and the audit rows are written;
+    - publish or discard with nothing waiting answers 409;
+    - residents are refused.
+  - `voteOptions.test.ts`: 80 characters taken and 81 refused at create; a draft is refused at Submit and kept.
+  - `checkMode.test.ts`:
+    - before close, the check says only that the vote is open;
+    - after close, the log and the verify answer reveal the choice in one mode and nothing in the other;
+    - an older vote shows the choice;
+    - the draft's default follows the hub setting, the queue shows the mode, and the vote keeps it.
+  - `submitRunsCheck.test.ts`: approval votes submit, and a flagged option is refused. The old check route is gone
+    (404).
+  - `aiLimits.test.ts` and `pluginToggles.test.ts` now prove the check through Submit.
+- **Conformance** (`tests/conformance/`):
+  - step 4: every action's answer carries `view`, equal to a fresh read by the same caller, and no foreign account id;
+    so does the read after the walk;
+  - step 5b, for every type with a deadline: close early is refused without a note; with one, the note is on `view`,
+    on each close event, in the brief, and in one admin-log row; the brief is then regenerated.
+- **Unit:** `closedEarly.test.ts` (the line, in the hub's time zone), `receiptPdf.test.ts` (a well-formed PDF, both
+  modes' lines, wrapping, the file name). `processDescriptors.test.ts` now also requires a note on every deadline
+  action.
+- **Playwright** (`tests/e2e/actors.ts` holds the shared session and live-process helpers):
+  - `actions.spec.ts`: two presses cast one ballot and the tally comes from the answer; supporting and commenting
+    update without a reload or a second read.
+  - `yourVote.spec.ts`: the mark after voting, a reload and close, and not in another browser; labels above their bars;
+    a long option in 3 lines with the rest on a tap; tab refresh (`page.clock`).
+  - `closeEarly.spec.ts`: a vote and a proposal; the confirm is disabled without a note; the line and the note show;
+    a resident has no button.
+  - `regenerateSummary.spec.ts`: unpublished, then published (staged, public page unchanged, published, "updated").
+  - `receipts.spec.ts`: both modes; the download (name, code, address, private line, no choice) and the check page
+    before and after close.
+
+  Every spec runs at 1280 and 375 px.
+- **The test runner's cron secret:** against a server whose `CRON_SECRET` isn't the `.env` one, set
+  `CIVIC_TEST_CRON_SECRET` to it, or the job tests answer 401.
+
+**Counts (2026-10-13, local):**
+- `npm test` (lint, unit and API, service role): 184 files, 2,190 passed, 10 skipped, 1 todo.
+- API with minted hub tokens: 56 files, 703 passed, 10 skipped, 1 todo.
+- Unit: 128 files, 1,487 passed.
+- The conformance suite: 93 passed, 3 skipped (hub-created types), 1 todo (tier 2).
+- Playwright: 86 passed, 2 skipped.
+- **Flake:** in about 1 of 5 full runs of the suite, one of step 4b's five simultaneous writes answered 500. The one
+  caught in the log was PostgREST's "invalid response from the upstream server" (its pool reset after the suite's own
+  DDL, as recorded since Audit 3). Eight runs of steps 4 and 4b without step 3's trigger passed, and five full runs in a
+  row passed. Rerun the file if it shows.
+
+---
+
 ## Submit and save (2026-10-12)
 
 Submit runs the Code of Conduct check; sticky Save; one Modal; zoom allowed;

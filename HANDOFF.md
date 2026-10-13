@@ -4,6 +4,79 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Actions show right away; Close early; Regenerate; receipt file and check modes — 2026-10-13
+
+Eleven commits on `multi-tenant` (`77a2925`..`f452edc`), not pushed. **One migration, additive:**
+`20261013100000_vote_check_mode.sql`, which goes first, on dev and production. No new database functions. Report and
+dev checklist: `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Actions-Session-Report-2026-10-13.md`.
+
+**Fixes that can ship alone, ahead of the rest:**
+- **`77a2925` Account ids.** `POST /process/:id/action` answered with the raw process row since the first commit
+  (2026-03-27):
+  - the creator's id on every action;
+  - a vote's `state.supporters`, every endorser's account id, since `e4a6b2c` (2026-04-03).
+
+  Two reads leaked one id each: an announcement's `author_id` on `/process/:id(/state)`, and `created_by` on
+  `/wordcloud/:id`. Tested by `accountIds.test.ts` and conformance step 4, on every action of every type.
+- **`46dfcb0` Hub-made records.** `/process/:id(/state)` served the admin read model of briefs, meeting summaries and
+  vote results to anyone. That meant unpublished text, and for briefs the recipients' email addresses (`recipients`,
+  `delivered_to`, `held_back`). This dates from each type's first commit (Apr 21, 24 and 27). They now serve the
+  public model, which is 404 until published (`hubCreatedReads.test.ts`).
+- **`f0a0d8b` Approval votes.** Since Submit and Save, Submit checked the raw drafts row, which has no `options`.
+  Every approval vote with options was refused "changed while it was being checked", and the check never read the
+  options.
+
+**Built:**
+- **Actions show right away.**
+  - Every action answers `{ result, view }`, where `view` is exactly the caller's `GET /process/:id/state`
+    (conformance checks it on every action).
+  - One read model per type: `/proposals/:id`, `/projects/:id` and `/deliberations/:id` go through `getProcessState`
+    (`readAsPage`). `is_owner` is universal.
+  - UI: `hooks/useAction.ts` (ref lock, busy, error); pages set state from `view`; posted comments go straight into
+    the panel (`services/inputEvents.ts`).
+  - The dead `ProposalPanel` is gone; `/process/:id` for a proposal redirects to `/proposal/:id`.
+- **"✓ Your vote" on the results**, from the browser's receipt; results labels above their bars, long old ones clamped
+  to 3 lines; vote options at most 80 characters (`option_too_long`); `hooks/useRefreshOnVisible.ts` (15 s, not the
+  feed).
+- **Close early** (`services/closeEarly.ts`, in `attemptAction`).
+  - An admin calling a type's `deadline.action` before the deadline needs `payload.note`, 1 to 1,000 characters
+    (`note_required` / `note_too_long`).
+  - It records `state.closed_early` in the same write and on the close's events, and `process.close_early` in the hub
+    admin audit log.
+  - Every read model serves `closed_early` (with its line) and `early_close` (the offer). Briefs carry it, and so do
+    the email and the pages.
+  - `DEADLINE_CLOSE_INPUT` is required on deadline actions by `descriptorCheck`.
+- **Regenerate** (`services/briefRegenerate.ts`, `/admin/briefs/:id/regenerate`, `/revision/publish|discard`).
+  - Unpublished: the new version replaces the text. Published: it is staged, then published in place.
+  - The feed card is updated through `feedMeta` and reads "Updated <date>". Nobody is emailed again.
+  - Replaced versions are kept in `history`. The audit log records `brief.regenerate` and
+    `brief.revision_published`.
+  - `ProcessHandler.regenerateBrief`: conversations ask Polis for the summary again.
+- **Receipt check modes** (`src/shared/checkMode.ts`): `show_choice` (default) or `counted_only`.
+  - Set on the vote draft (`vote_drafts.check_mode`), default from `plugin.vote.default_check_mode`, shown in the
+    review queue, and fixed at approval.
+  - The log and verify carry a choice only in show mode. The check page (`VoteLog.tsx`) uses Adam's wording.
+- **Receipt file**: `src/shared/receiptPdf.ts` (a hand-written PDF) plus `ui/src/services/receiptFile.ts`
+  (`qrcode-generator` 2.0.4, pinned, lazy).
+  - The QR code points to `/votes/:id/log#receipt=<code>`.
+  - No choice is printed on the file; the date is kept with the local receipt (`voted_on`).
+- **Dropped** `POST /assistant/:type/drafts/:id/review`. **`/health`** already probes `process_reviews.coc_flags`;
+  the count is tables plus functions, not columns.
+
+**Tests (local):**
+- `npm test`: 184 files, 2,190 passed.
+- Hub tokens: 56 files, 703 passed.
+- The suite: 93 passed, 3 skipped, 1 todo.
+- Playwright: 86 passed, 2 skipped.
+- The suite's step 4b showed one 500 in about 1 of 5 full runs. The one traced was the PostgREST pool-reset flake
+  (TESTING.md). Rerun the file if it shows.
+
+**Open / for Adam:**
+- Regenerating a conversation's brief leaves the conversation's own `state.summary` as it closed.
+- Proposals and conversations still close only when a read notices the deadline (the hourly job closes votes only).
+
+---
+
 ## "Edit & resubmit" missing after a reload on My submissions — 2026-10-12
 
 Found on dev: a flagged project ("Tell the admins") with changes requested showed no Edit & resubmit.

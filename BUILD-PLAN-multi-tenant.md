@@ -830,7 +830,7 @@ code's copy is `src/shared/hubSettingsSections.ts`, and the settings endpoint
 | Legal | `legal.terms`, `.privacy`, `.code_of_conduct`, `.proposal_best_practices`, `.operator_name`, `.contact_email`, `.who_runs_this` | A document saved identical to its shared template is stored as `""`, so the hub keeps following the template ("restore default"). |
 | Email | `email.from_name`, `email.postal_address` | `email.from_address` is shown read-only: the sending domain is the platform's. The three digest keys it held moved to Plugins in Phase 2c. |
 | Theme | `identity.theme` | Its own section since 2026-09-24: a theme object (preset, primary, accent, background, one hue per process type), stored as canonical JSON; a bare `#rrggbb` still reads as the primary. Model: `src/shared/theme.ts`. |
-| Plugins | `plugin.<id>.enabled` for all 14 ids; `plugin.vote.min_duration_days`, `.max_duration_days`, `.default_duration_days`; `plugin.conversation.polis_url`; `plugin.wordcloud.onboarding_id` (kind `process`, added 2026-10-06); `plugin.meeting_summary.connector_id`, `.source_url`, `.youtube_channel_id`, `.title_filter`, `.type_exclude`, `.cutoff_date`, `.auto_publish`, `.extraction_instructions`; `plugin.news_sync.connector`, `.source_url`; `plugin.digest.send_hour` | Added in Phase 2c (Adam, 2026-09-24; per-plugin settings decided 2026-09-22). One card per plugin: the switch, and beneath it that plugin's settings. Keys another section owns are shown read-only with a link, never repeated (one writer per key): announcement authors and brief recipients → Officials; `plugin.vote.support_threshold` and `moderation.comment_identity_mode` → Participation. `youtube_channel_id` is beyond Adam's list: the YouTube connector is one of the choices and needs it. |
+| Plugins | `plugin.<id>.enabled` for all 14 ids; `plugin.vote.min_duration_days`, `.max_duration_days`, `.default_duration_days`, `.default_check_mode` (kind `choice`, `show_choice` | `counted_only`, unset = show_choice; added 2026-10-13, Actions slice); `plugin.conversation.polis_url`; `plugin.wordcloud.onboarding_id` (kind `process`, added 2026-10-06); `plugin.meeting_summary.connector_id`, `.source_url`, `.youtube_channel_id`, `.title_filter`, `.type_exclude`, `.cutoff_date`, `.auto_publish`, `.extraction_instructions`; `plugin.news_sync.connector`, `.source_url`; `plugin.digest.send_hour` | Added in Phase 2c (Adam, 2026-09-24; per-plugin settings decided 2026-09-22). One card per plugin: the switch, and beneath it that plugin's settings. Keys another section owns are shown read-only with a link, never repeated (one writer per key): announcement authors and brief recipients → Officials; `plugin.vote.support_threshold` and `moderation.comment_identity_mode` → Participation. `youtube_channel_id` is beyond Adam's list: the YouTube connector is one of the choices and needs it. |
 | Mode | `hubs.mode` (beta / live) | Its own endpoint with the emailed-code step-up; a demo hub shows "set by the platform". |
 | Admins & board | `people.admin_emails`, `people.board_emails` | Existing `POST /admin/hub/people`, step-up. |
 | Officials | officials roster + `people.brief_recipients` | Existing `PATCH /admin/settings`. |
@@ -1748,6 +1748,28 @@ again. (Reference …)".
   numbers), the method, the **route pattern** (`/process/:id/action`, never the URL), the status,
   the database code and the reference.
 - A refusal (4xx) is not reported.
+
+### What an action answers (Actions slice, 2026-10-13, Adam)
+
+**Every process action answers `{ result, view }`.** `result` is the handler's own result. `view` is exactly what
+`GET /process/:id/state` gives the same caller next, or null when they may no longer read the process. A page sets its
+state to `view`; it does not read the process again.
+
+- The type routes answer `view` too: `/proposals/:id/support`, `/projects/:id/sentiment` and `/complete`, and the
+  conversation's admin routes. Their pages read the same model: `/proposals/:id`, `/projects/:id` and
+  `/deliberations/:id` answer through `getProcessState`, so a type has one read model.
+- The raw process row is never sent. It carries account ids. An account id goes only to its owner and the hub's
+  admins (`tests/api/accountIds.test.ts`, conformance step 4).
+- **What a type's `getReadModel` serves is public.** A record the hub makes and publishes later (a brief, a meeting
+  summary) answers its public model, or null (404) until published. The admin model is read only through `/admin`
+  routes.
+- The conformance suite checks, for every action of every type, that `view` equals a fresh read by the same caller.
+
+**New refusal codes:**
+- `note_required`, `note_too_long`: an admin's close before the deadline needs a note;
+- `option_too_long`: a vote option over 80 characters;
+- `invalid_check_mode`;
+- `source_not_closed`, `brief_not_regenerated`, `no_pending_revision`: Regenerate.
 
 ### Sign-in and abuse limits (Audit 2, 2026-10-11, Adam)
 

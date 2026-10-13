@@ -54,6 +54,11 @@ numbers below, or just grep the heading.
 | Code of Conduct check standing (fields, hash, verdict) | `src/services/codeOfConduct.ts` |
 | Submit runs the check; running it; "tell the admins"; the fake check for tests | `src/controllers/draftController.ts` (`submit`), `src/services/codeOfConductCheck.ts`, `process_reviews.coc_flags` (`20261013000000`), `src/debug/fakeCodeOfConduct.ts` (`CIVIC_COC_FAKE=on`); UI `ui/src/pages/draft/DraftPage.tsx`, `ui/src/components/{DraftFooter,CocFindings}.tsx` |
 | The one modal | `ui/src/components/Modal.tsx` (every dialog in the hub and the console) |
+| Running an action in the UI (one at a time, busy, error) and applying the answer's `view` | `ui/src/hooks/useAction.ts`; `viewFor` / `readAsPage` in `src/controllers/processController.ts`; a posted comment into the panel `ui/src/services/inputEvents.ts`; tab refresh `ui/src/hooks/useRefreshOnVisible.ts` |
+| Close early (note, record, audit) and its line | `src/services/closeEarly.ts` (called in `attemptAction`), `src/shared/closedEarly.ts`, `DEADLINE_CLOSE_INPUT` in `src/processes/descriptor.ts`; UI `ui/src/components/CloseEarly.tsx` |
+| Regenerate a brief (staged once published, history, feed card) | `src/services/briefRegenerate.ts`, `ProcessHandler.regenerateBrief`, `brief` in `src/services/feedMeta.ts`; UI `ui/src/components/BriefRegenerate.tsx` |
+| Receipt check modes, the receipt file, "Your vote" | `src/shared/checkMode.ts`, `src/controllers/voteLogController.ts`, `src/shared/receiptPdf.ts`, `ui/src/services/receiptFile.ts`, `ui/src/components/ResultLabel.tsx`, `isMine` in `ui/src/services/voteReceipts.ts`; option limit `src/shared/voteOptions.ts` |
+| Hub audit log actions | `HubAdminAuditAction` in `src/services/hubAdminAudit.ts` (now also `process.close_early`, `brief.regenerate`, `brief.revision_published`) |
 | Drafts, every kind: store, kinds, controller/router factories, UI page | `src/modules/civic.drafts/`, `src/processes/draftKinds.ts`, `src/controllers/draftController.ts`, `src/routes/draftRoutes.ts`; `ui/src/pages/draft/` |
 | Process writes under concurrency (version check, held events, retry-safe actions, deadline-close claim) | `src/services/processService.ts` (`executeAction`, `closeAtDeadline`), `src/services/actionScope.ts` |
 | Atomic DB functions | `transition_process` (`20260924080000`; expected status/version + action events since `20261011200000`), `cast_ballot` (open-and-before-deadline since `20261011200000`), `reshuffle_ballots`, `claim_vote_key`, `ballot_by_receipt` (`20261010000000`; `cast_vote` retired), called via `src/db/atomic.ts` |
@@ -80,6 +85,10 @@ numbers below, or just grep the heading.
 - Pluggable voting methods + approval voting — 7420–7484
 
 ### Security, identity, anonymity
+- **Actions slice (2026-10-13)**: account ids out of action answers and reads (`accountIds.test.ts`), hub-made
+  records public only once published (`hubCreatedReads.test.ts`), every action answers `{ result, view }`, Close
+  early, Regenerate, receipt check modes and the receipt file, approval votes submit again — top of HANDOFF (grep
+  the heading)
 - **Plugin conformance (2026-10-12)**: descriptors on every type (Stage 1 checks in `executeAction` and the
   emitter), one suite for every type (`tests/conformance/`), proposals and projects on `executeAction`, approval
   as one write (no stray `created`), `POST /proposals` + `POST /projects` removed, fake Polis + Tier 3 findings —
