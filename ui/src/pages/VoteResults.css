@@ -4,7 +4,7 @@
  * Layout follows Slice 8.5 §5: Heading → Delivery indicator → About
  * this vote → Results → What residents said → Notes → Provenance.
  *
- * .brief-bars / .brief-bar-* / .brief-comments-list / .brief-admin-notes
+ * .brief-comments-list / .brief-admin-notes
  * are kept under their old names because the AdminVoteResults page
  * also reuses them. They're presentational primitives, not concept
  * names — renaming them would balloon this slice without UI benefit.
@@ -166,50 +166,6 @@
 }
 
 /* --- Shared chart + list primitives (kept under brief-* names) --- */
-
-.brief-bars {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.brief-bar-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.brief-bar-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--space-md);
-  font-size: var(--font-size-base);
-}
-
-.brief-bar-count {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  white-space: nowrap;
-}
-
-.brief-bar-track {
-  height: 12px;
-  background: var(--color-surface-muted);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.brief-bar-fill {
-  height: 100%;
-  background: var(--color-primary);
-  border-radius: var(--radius-sm);
-  transition: width 0.3s ease;
-  min-width: 2px;
-}
 
 .brief-comments-list {
   padding-left: 1.25rem;

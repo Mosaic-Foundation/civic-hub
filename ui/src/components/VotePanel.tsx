@@ -19,7 +19,7 @@ import { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
 import { useAction } from "../hooks/useAction";
 import { announceInput } from "../services/inputEvents";
 import AuthModal from "./AuthModal";
-import ResultLabel from "./ResultLabel";
+import ResultBars from "./ResultBars";
 import ReceiptCode from "./ReceiptCode";
 import hub from "../config/hub";
 
@@ -578,29 +578,20 @@ export default function VotePanel({ process, actor, onView }: Props) {
           )}
           {canSeeResults ? (
             <>
-              {process.options.map((option) => {
-                const count = process.tally![option] ?? 0;
-                const total = process.total_votes ?? 0;
-                const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-                // This browser's own ballot, from its receipt (open or closed).
-                const mine = isMine(justVoted ?? held?.choice, option);
-                return (
-                  <div key={option} className={`tally-row${mine ? " tally-row-mine" : ""}`}>
-                    <ResultLabel option={option} mine={mine} />
-                    <div className="tally-bar-line">
-                      <div className="tally-bar-track">
-                        <div
-                          className="tally-bar-fill"
-                          style={{ width: `${Math.min(pct, 100)}%` }}
-                        />
-                      </div>
-                      <span className="tally-count">
-                        {count} ({pct}%)
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+              <ResultBars
+                rows={process.options.map((option) => {
+                  const count = process.tally![option] ?? 0;
+                  const total = process.total_votes ?? 0;
+                  return {
+                    key: option,
+                    label: option,
+                    count,
+                    pct: total > 0 ? Math.round((count / total) * 100) : 0,
+                    // This browser's own ballot, from its receipt (open or closed).
+                    mine: isMine(justVoted ?? held?.choice, option),
+                  };
+                })}
+              />
               <p className="tally-total">{process.total_votes} total votes</p>
             </>
           ) : (

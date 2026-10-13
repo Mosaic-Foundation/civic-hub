@@ -8,6 +8,7 @@ import hub from "../config/hub";
 import ShareButton from "../components/ShareButton";
 import { useAuth } from "../context/AuthContext";
 import { getHeldReceipt, isMine } from "../services/voteReceipts";
+import ResultBars from "../components/ResultBars";
 import "./VoteResults.css";
 
 const URL_RE = /\bhttps?:\/\/\S+/gi;
@@ -235,36 +236,16 @@ export default function VoteResultsPage() {
           {hub.noun(results.participation_count)} voted
           {ctx?.method === "approval" ? " (approval voting — each voter could approve multiple options)" : ""}.
         </p>
-        <ul className="brief-bars">
-          {results.position_breakdown.map((p) => (
-            <li
-              key={p.option_id}
-              className={`brief-bar-row${isMine(heldChoice, p.option_id) ? " brief-bar-row-mine" : ""}`}
-            >
-              <div className="brief-bar-label">
-                <span>
-                  {p.option_label}
-                  {/* This browser's own ballot, from its receipt. */}
-                  {isMine(heldChoice, p.option_id) && (
-                    <span className="result-mine">
-                      {" "}
-                      <span aria-hidden="true">✓ </span>Your vote
-                    </span>
-                  )}
-                </span>
-                <span className="brief-bar-count">
-                  {p.count} ({p.percentage}%)
-                </span>
-              </div>
-              <div className="brief-bar-track">
-                <div
-                  className="brief-bar-fill"
-                  style={{ width: `${Math.min(p.percentage, 100)}%` }}
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
+        <ResultBars
+          rows={results.position_breakdown.map((p) => ({
+            key: p.option_id,
+            label: p.option_label,
+            count: p.count,
+            pct: p.percentage,
+            // This browser's own ballot, from its receipt.
+            mine: isMine(heldChoice, p.option_id),
+          }))}
+        />
       </section>
 
       {results.comments.length > 0 && (

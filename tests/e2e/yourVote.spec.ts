@@ -6,7 +6,9 @@
  *   from the receipt their browser holds (the server keeps no link from a
  *   person to a ballot): after voting, after a reload, and after the vote
  *   closes. Another resident's browser marks nothing.
- * - Labels sit above their bars at full width; a label longer than the
+ * - Labels sit above their bars at full width, the count beside the label,
+ *   in the same layout as the closed results (components/ResultBars.tsx),
+ *   on the live panel too; a label longer than the
  *   option limit (an older vote) shows three lines and the rest on a tap.
  * - A page read again when its tab comes back into view: a vote cast in
  *   another tab shows up in the tally without a reload.
@@ -16,7 +18,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { localRest } from "../fixtures/adminSession.js";
 import { adminEmailFor, closeAsAdmin, hubId, liveVote, run, session, visitAs } from "./actors";
 
-const row = (page: Page, option: string) => page.locator(".tally-row", { has: page.locator(".tally-label-text", { hasText: option }) });
+const row = (page: Page, option: string) => page.locator(".result-bar-row", { has: page.locator(".tally-label-text", { hasText: option }) });
 
 for (const width of [1280, 375]) {
   test.describe(`Your vote at ${width}px`, () => {
@@ -41,8 +43,10 @@ for (const width of [1280, 375]) {
       await expect(row(page, "Yes").locator(".result-mine")).toHaveCount(0);
       // The label is above its bar, as wide as the bar.
       const label = await row(page, "No").locator(".tally-label").boundingBox();
-      const track = await row(page, "No").locator(".tally-bar-track").boundingBox();
+      const track = await row(page, "No").locator(".result-bar-track").boundingBox();
       expect(label!.y + label!.height).toBeLessThanOrEqual(track!.y + 1);
+      // No narrow label column (2026-10-13): the label takes the row but its count.
+      expect(label!.width).toBeGreaterThan(track!.width * 0.6);
 
       await page.reload();
       await expect(row(page, "No").locator(".result-mine")).toBeVisible();

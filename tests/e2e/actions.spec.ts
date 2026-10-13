@@ -61,7 +61,7 @@ for (const width of [1280, 375]) {
         b.click();
       });
       await expect(page.getByText("Your vote has been recorded")).toBeVisible();
-      await expect(page.locator(".tally-row", { hasText: "Yes" })).toContainText("1 (100%)");
+      await expect(page.locator(".result-bar-row", { hasText: "Yes" })).toContainText("1 (100%)");
 
       expect(requests.filter((r) => r === `POST /api/process/${voteId}/action` || r === `POST /process/${voteId}/action`)).toHaveLength(1);
       // The tally came from the answer, not from reading the vote again.

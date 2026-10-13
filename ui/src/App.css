@@ -1180,12 +1180,9 @@
 
 /* --- Tally --- */
 
-/* Each option: its label above, full width, then the bar and the count. A
-   label in a narrow column wrapped to five or six lines (Adam, Oct 10). */
-.tally-row {
-  margin-bottom: 0.75rem;
-}
-
+/* Each option's row is components/ResultBars (its own CSS): label and count
+   above, the bar below, full width. A label in a narrow column wrapped to
+   five or six lines (Adam, Oct 10). */
 .tally-label {
   display: flex;
   flex-wrap: wrap;
@@ -1231,39 +1228,6 @@
   font-weight: 600;
   color: var(--color-success, inherit);
   white-space: nowrap;
-}
-
-.tally-row-mine .tally-label-text {
-  font-weight: 600;
-}
-
-.tally-bar-line {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.tally-bar-track {
-  flex: 1;
-  height: 20px;
-  background: var(--bar-track);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.tally-bar-fill {
-  height: 100%;
-  background: var(--bar-color);
-  border-radius: 4px;
-  transition: width 0.3s ease;
-  min-width: 2px;
-}
-
-.tally-count {
-  font-size: 0.85rem;
-  color: var(--muted-text);
-  width: 5rem;
-  text-align: right;
 }
 
 .tally-total {
