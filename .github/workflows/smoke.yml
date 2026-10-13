@@ -1,0 +1,143 @@
+name: Smoke
+
+# After Vercel reports a deploy, check the live deployment (release tooling
+# slice, 2026-10-13). The run shows as a check on the deployed commit.
+#
+#   dev:        the smoke suite (tests/smoke) on the dedicated smoke hub, as a
+#               resident and an admin; it cleans up what it makes.
+#   production: read-only. /api/health (ok, no schema gaps, this commit) and
+#               an unknown POST answering JSON 404. No sign-in, no writes.
+#
+# Vercel posts a GitHub deployment per project; its environment names which
+# project built it ("Production – civic-hub-dev" is dev, "Production –
+# civic-hub" is production). Repository variables can override both.
+#
+# Configuration (Settings → Secrets and variables → Actions). A job whose
+# configuration is missing skips with a notice saying what to add.
+#   Variables: CIVIC_SMOKE_BASE_URL, CIVIC_SMOKE_HUB, CIVIC_SMOKE_SUPABASE_URL,
+#              CIVIC_PROD_HUB_URL
+#   Secrets:   CIVIC_SMOKE_SERVICE_ROLE_KEY (the DEV project's, never
+#              production's), CIVIC_SMOKE_ADMIN_EMAIL
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  dev:
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == (vars.CIVIC_SMOKE_DEV_ENVIRONMENT || 'Production – civic-hub-dev')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # One run at a time, never cancelled: a cancelled run would skip its cleanup.
+    concurrency:
+      group: smoke-dev
+      cancel-in-progress: false
+    env:
+      CIVIC_SMOKE_BASE_URL: ${{ vars.CIVIC_SMOKE_BASE_URL }}
+      CIVIC_SMOKE_HUB: ${{ vars.CIVIC_SMOKE_HUB }}
+      CIVIC_SMOKE_SUPABASE_URL: ${{ vars.CIVIC_SMOKE_SUPABASE_URL }}
+      CIVIC_SMOKE_SERVICE_ROLE_KEY: ${{ secrets.CIVIC_SMOKE_SERVICE_ROLE_KEY }}
+      CIVIC_SMOKE_ADMIN_EMAIL: ${{ secrets.CIVIC_SMOKE_ADMIN_EMAIL }}
+      CIVIC_SMOKE_EXPECT_COMMIT: ${{ github.event.deployment.sha }}
+    steps:
+      - name: Configuration
+        id: config
+        run: |
+          missing=""
+          for name in CIVIC_SMOKE_BASE_URL CIVIC_SMOKE_HUB CIVIC_SMOKE_SUPABASE_URL CIVIC_SMOKE_SERVICE_ROLE_KEY CIVIC_SMOKE_ADMIN_EMAIL; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            msg="Smoke suite skipped: add${missing} under Settings → Secrets and variables → Actions (see .github/workflows/smoke.yml)."
+            echo "::notice::$msg"
+            echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        if: steps.config.outputs.skip != 'true'
+        with:
+          ref: ${{ github.event.deployment.sha }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: steps.config.outputs.skip != 'true'
+        with:
+          node-version: "24"
+
+      - name: npm 12
+        if: steps.config.outputs.skip != 'true'
+        run: npm install -g npm@12.2.0
+
+      - name: Install
+        if: steps.config.outputs.skip != 'true'
+        run: npm ci --include=dev
+
+      - name: Playwright browser
+        if: steps.config.outputs.skip != 'true'
+        run: npx playwright install --with-deps chromium
+
+      # Vercel reports success when the build is ready; the hub's domain can
+      # take a moment to point at it.
+      - name: Wait for the hub to serve this commit
+        if: steps.config.outputs.skip != 'true'
+        run: |
+          for i in $(seq 1 18); do
+            commit=$(curl -s -m 15 "$CIVIC_SMOKE_BASE_URL/api/health" | jq -r '.commit // empty' || true)
+            [ "$commit" = "$CIVIC_SMOKE_EXPECT_COMMIT" ] && { echo "Serving $commit"; exit 0; }
+            echo "Serving ${commit:-nothing readable}, waiting for $CIVIC_SMOKE_EXPECT_COMMIT"
+            sleep 10
+          done
+          echo "::error::The smoke hub never served $CIVIC_SMOKE_EXPECT_COMMIT. A newer deploy may have replaced it."
+          exit 1
+
+      - name: Smoke suite
+        if: steps.config.outputs.skip != 'true'
+        run: npm run test:smoke
+        env:
+          CI: "true"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: smoke-results
+          path: test-results/
+          retention-days: 7
+
+  production:
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == (vars.CIVIC_SMOKE_PROD_ENVIRONMENT || 'Production – civic-hub')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HUB_URL: ${{ vars.CIVIC_PROD_HUB_URL }}
+      EXPECT_COMMIT: ${{ github.event.deployment.sha }}
+    steps:
+      # Read-only: two kinds of request, a handful of times. Nothing here signs
+      # in, writes, or needs a secret.
+      - name: Health and the JSON 404 (read-only)
+        run: |
+          if [ -z "$HUB_URL" ]; then
+            msg="Production check skipped: add the CIVIC_PROD_HUB_URL variable under Settings → Secrets and variables → Actions."
+            echo "::notice::$msg"; echo "$msg" >> "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          for i in $(seq 1 18); do
+            body=$(curl -s -m 15 "$HUB_URL/api/health" || true)
+            commit=$(echo "$body" | jq -r '.commit // empty' 2>/dev/null || true)
+            [ "$commit" = "$EXPECT_COMMIT" ] && break
+            echo "Serving ${commit:-nothing readable}, waiting for $EXPECT_COMMIT"
+            sleep 10
+          done
+          echo "$body" | jq '{status, commit, schema}' || { echo "::error::/api/health did not answer JSON (blocked by the Vercel firewall?): $body"; exit 1; }
+          echo "$body" | jq -e --arg c "$EXPECT_COMMIT" '.status == "ok" and .schema.gaps == [] and .commit == $c' >/dev/null \
+            || { echo "::error::Production /api/health is not ok on $EXPECT_COMMIT."; exit 1; }
+
+          code=$(curl -s -m 15 -X POST -o /tmp/404.json -D /tmp/404.h -w '%{http_code}' "$HUB_URL/api/smoke-check-no-such-route")
+          grep -qi '^content-type: application/json' /tmp/404.h && [ "$code" = "404" ] && jq -e '.code == "not_found"' /tmp/404.json >/dev/null \
+            || { echo "::error::An unknown POST did not answer the JSON 404 (HTTP $code)."; cat /tmp/404.json; exit 1; }
+          echo "Production $EXPECT_COMMIT: health ok, no schema gaps, JSON 404." | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Now search the production Vercel logs for [civic-error:descriptor." >> "$GITHUB_STEP_SUMMARY"
