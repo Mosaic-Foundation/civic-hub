@@ -26,44 +26,51 @@
   display: block;
 }
 
-.post-featured-image-dialog {
-  border: none;
+/* The lightbox, on the one Modal (components/Modal.tsx): a bare frame that
+   shrinks to the image, over a darker backdrop. */
+.modal.post-featured-image-dialog {
+  width: auto;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100dvh - 2rem);
+}
+.modal.post-featured-image-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.modal-body.post-featured-image-body {
   background: transparent;
   padding: 0;
-  max-width: 95vw;
-  max-height: 95vh;
-}
-.post-featured-image-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.85);
+  box-shadow: none;
+  overflow: visible;
 }
 
 .post-featured-image-dialog-img {
   display: block;
-  max-width: 95vw;
-  max-height: 95vh;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100dvh - 2rem);
   width: auto;
   height: auto;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-popover);
 }
 
-.post-featured-image-dialog-close {
-  position: fixed;
+/* The × sits on the image as a light disc, as before. */
+.post-featured-image-body .modal-close {
   top: 16px;
   right: 16px;
   width: 40px;
   height: 40px;
+  min-width: 0;
+  min-height: 0;
   border-radius: 50%;
-  border: none;
   background: rgba(255, 255, 255, 0.9);
   color: #1a1a1a;
   font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.post-featured-image-dialog-close:hover {
+.post-featured-image-body .modal-close:hover:not(:disabled) {
   background: #ffffff;
+  color: #1a1a1a;
 }

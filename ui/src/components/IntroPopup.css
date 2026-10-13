@@ -1,39 +1,19 @@
-/* Slice 10 — first-visit welcome popup, rebuilt as a native <dialog>.
- * Uses Slice 8 design tokens; doesn't share styles with the older
- * .intro-overlay/.intro-modal pair (those are still used by AuthModal). */
+/* Slice 10 — first-visit welcome popup (and the "hub is ready" dialog), on the
+ * one Modal (components/Modal.tsx): the frame, backdrop and close button are
+ * its; this is the content and the panel's look. Uses Slice 8 design tokens. */
 
 .intro-popup {
-  border: none;
-  padding: 0;
-  background: transparent;
   max-width: 480px;
-  width: calc(100% - var(--space-xl) * 2);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-popover);
-  /* Explicitly center in the viewport. A modal <dialog> is meant to
-     self-center via `margin: auto`, but a global reset defeats it and
-     drops it top-left — so we position it directly, matching the
-     centered AuthModal (.intro-overlay/.intro-modal). */
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  margin: 0;
 }
 
-.intro-popup::backdrop {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(2px);
-}
-
-.intro-popup-body {
+.modal-body.intro-popup-body {
   background: var(--color-surface);
   color: var(--color-text);
   padding: var(--space-xl);
   border-radius: var(--radius-md);
 }
 
-.intro-popup-title {
+.modal-title.intro-popup-title {
   font-family: var(--font-heading);
   font-size: var(--font-size-2xl);
   font-weight: 600;

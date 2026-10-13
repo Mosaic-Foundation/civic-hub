@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import Modal from "../components/Modal";
 import { api } from "./api";
 
 export default function StepUpDialog({ what, onDone }: { what: string; onDone: (code: string | null) => void }) {
@@ -6,19 +7,25 @@ export default function StepUpDialog({ what, onDone }: { what: string; onDone: (
   const [resent, setResent] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
+  // Escape closes it as Cancel does; the × is left out (Cancel is there) and
+  // so is the backdrop click, as before.
   return (
-    <div className="cx-overlay" role="presentation">
+    <Modal
+      title="Confirm with a fresh code"
+      titleClassName="cx-dialog-title"
+      className="cx-dialog"
+      bodyClassName="cx-dialog-body"
+      onClose={() => onDone(null)}
+      closeOnBackdrop={false}
+      showClose={false}
+      initialFocus={input}
+    >
       <form
-        className="cx-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="stepup-title"
         onSubmit={(e) => {
           e.preventDefault();
           if (/^\d{6}$/.test(code.trim())) onDone(code.trim());
         }}
       >
-        <h2 id="stepup-title">Confirm with a fresh code</h2>
         <p className="cx-muted">
           {what} needs a second check. A six-digit code is on its way to your email.
         </p>
@@ -56,6 +63,6 @@ export default function StepUpDialog({ what, onDone }: { what: string; onDone: (
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }

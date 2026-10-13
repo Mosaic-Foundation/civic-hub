@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { theName } from "../../../src/shared/hubCopy";
+import { useState } from "react";
 import hub from "../config/hub";
 import { pluginEnabled } from "../config/plugins";
 import AuthModal from "./AuthModal";
+import Modal from "./Modal";
 import WaitlistForm from "./WaitlistForm";
 import { enterPreview } from "../hooks/usePreviewMode";
 import "./BetaWelcomeDialog.css";
@@ -39,65 +39,41 @@ export default function BetaWelcomeDialog() {
 }
 
 function WelcomeDialog({ onSignIn }: { onSignIn: () => void }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const d = dialogRef.current;
-    if (d && !d.open) d.showModal();
-  }, []);
-
-  function handleBackdropClick(e: React.MouseEvent<HTMLDialogElement>) {
-    if (e.target === e.currentTarget) enterPreview();
-  }
-
   return (
-    <dialog
-      ref={dialogRef}
+    <Modal
+      title={hub.name}
+      titleClassName="beta-welcome-title"
       className="beta-welcome"
-      aria-label={`Welcome to ${theName(hub.name)}`}
+      bodyClassName="beta-welcome-body"
       onClose={enterPreview}
-      onClick={handleBackdropClick}
+      closeLabel="Close and browse the site"
     >
-      <div className="beta-welcome-body">
-        <button
-          type="button"
-          className="beta-welcome-close"
-          onClick={enterPreview}
-          aria-label="Close and browse the site"
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
+      <p className="beta-welcome-tagline">{hub.tagline}</p>
+
+      <p className="beta-welcome-note">
+        This hub is currently in private beta. If you've been invited, sign
+        in to get started — or take a look around first.
+      </p>
+      <div className="beta-welcome-actions">
+        <button type="button" className="beta-welcome-signin" onClick={onSignIn}>
+          Sign in
         </button>
-
-        <h1 className="beta-welcome-title">{hub.name}</h1>
-        <p className="beta-welcome-tagline">{hub.tagline}</p>
-
-        <p className="beta-welcome-note">
-          This hub is currently in private beta. If you've been invited, sign
-          in to get started — or take a look around first.
-        </p>
-        <div className="beta-welcome-actions">
-          <button type="button" className="beta-welcome-signin" onClick={onSignIn}>
-            Sign in
-          </button>
-          <button type="button" className="beta-welcome-browse" onClick={enterPreview}>
-            Browse the site &rarr;
-          </button>
-        </div>
-        {/* The button is the Feedback plugin's; without it, no pointer. */}
-        {pluginEnabled("feedback") && (
-          <p className="beta-welcome-feedback-note">
-            Have a look around and tell us what you think — use the{" "}
-            <strong>Feedback</strong> button at the top of any page.
-          </p>
-        )}
-
-        <WaitlistForm
-          heading="Join the waitlist"
-          description="Interested in participating? Leave your email and we'll let you know when the hub opens up."
-        />
+        <button type="button" className="beta-welcome-browse" onClick={enterPreview}>
+          Browse the site &rarr;
+        </button>
       </div>
-    </dialog>
+      {/* The button is the Feedback plugin's; without it, no pointer. */}
+      {pluginEnabled("feedback") && (
+        <p className="beta-welcome-feedback-note">
+          Have a look around and tell us what you think — use the{" "}
+          <strong>Feedback</strong> button at the top of any page.
+        </p>
+      )}
+
+      <WaitlistForm
+        heading="Join the waitlist"
+        description="Interested in participating? Leave your email and we'll let you know when the hub opens up."
+      />
+    </Modal>
   );
 }

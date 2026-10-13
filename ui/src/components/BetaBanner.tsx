@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import hub from "../config/hub";
 import { useAuth } from "../context/AuthContext";
+import Modal from "./Modal";
 import WaitlistForm from "./WaitlistForm";
 import "./BetaBanner.css";
 
@@ -56,41 +57,20 @@ export default function BetaBanner() {
 }
 
 function WaitlistDialog({ onDismiss }: { onDismiss: () => void }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const d = dialogRef.current;
-    if (d && !d.open) d.showModal();
-  }, []);
-
-  function handleBackdropClick(e: React.MouseEvent<HTMLDialogElement>) {
-    if (e.target === e.currentTarget) onDismiss();
-  }
-
+  // WaitlistForm shows its own "Join the waitlist" heading, so the Modal's
+  // title (which labels the dialog) is for screen readers only.
   return (
-    <dialog
-      ref={dialogRef}
+    <Modal
+      title="Join the waitlist"
+      hideTitle
       className="beta-waitlist-dialog"
-      aria-label="Join the waitlist"
+      bodyClassName="beta-waitlist-dialog-body"
       onClose={onDismiss}
-      onClick={handleBackdropClick}
     >
-      <div className="beta-waitlist-dialog-body">
-        <button
-          type="button"
-          className="beta-waitlist-dialog-close"
-          onClick={onDismiss}
-          aria-label="Close"
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
-        <WaitlistForm
-          heading="Join the waitlist"
-          description="Interested in participating? Leave your email and we'll let you know when the hub opens up."
-        />
-      </div>
-    </dialog>
+      <WaitlistForm
+        heading="Join the waitlist"
+        description="Interested in participating? Leave your email and we'll let you know when the hub opens up."
+      />
+    </Modal>
   );
 }

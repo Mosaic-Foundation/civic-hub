@@ -195,15 +195,12 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--c
 .cx-mode-live { background: var(--cx-ok-bg); color: var(--cx-ok); }
 
 /* Step-up dialog */
-.cx-overlay {
-  position: fixed; inset: 0; background: rgb(0 0 0 / 0.45);
-  display: grid; place-items: center; padding: 16px; z-index: 10;
-}
-.cx-dialog {
-  width: 100%; max-width: 420px; background: var(--cx-surface); color: var(--cx-text);
+.modal.cx-dialog { max-width: 420px; }
+.modal-body.cx-dialog-body {
+  background: var(--cx-surface); color: var(--cx-text);
   border-radius: var(--cx-radius); padding: 24px; box-shadow: 0 20px 60px rgb(0 0 0 / 0.3);
 }
-.cx-dialog h2 { margin: 0 0 8px; font-size: 1.15rem; }
+.modal-title.cx-dialog-title { margin: 0 0 8px; font-family: inherit; font-size: 1.15rem; padding-right: 0; }
 
 @media (max-width: 640px) {
   .cx-header { padding: 12px 16px; gap: 12px; }

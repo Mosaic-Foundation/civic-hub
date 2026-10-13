@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { theName } from "../../../src/shared/hubCopy";
 import hub from "../config/hub";
+import Modal from "./Modal";
 import "./IntroPopup.css";
 
 const STORAGE_KEY = "seen_intro_popup";
@@ -41,22 +41,14 @@ export function clearIntroSeen(): void {
 }
 
 /**
- * Slice 10 — first-visit welcome popup. Native <dialog> element gives
- * us focus trapping, escape-key handling, and backdrop click for free.
+ * Slice 10 — first-visit welcome popup, on the one Modal (focus trap,
+ * Escape, ×, backdrop click). Every way out marks the intro seen.
  *
  * Copy is intentionally short (3 sentences max) and Floyd-specific.
  * No sign-in ask — that happens when a resident tries to participate.
  */
 export default function IntroPopup({ onDismiss }: Props) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const navigate = useNavigate();
-
-  // Open the dialog imperatively on mount via showModal() so we get
-  // the native modal behavior (focus trap, backdrop, ESC handling).
-  useEffect(() => {
-    const d = dialogRef.current;
-    if (d && !d.open) d.showModal();
-  }, []);
 
   function handleDismiss() {
     markIntroSeen();
@@ -68,45 +60,33 @@ export default function IntroPopup({ onDismiss }: Props) {
     navigate(hub.has_welcome ? "/welcome" : "/about");
   }
 
-  // Backdrop click dismisses. Native <dialog> reports the click target
-  // as the dialog itself when the user clicks the backdrop area.
-  function handleClick(e: React.MouseEvent<HTMLDialogElement>) {
-    if (e.target === e.currentTarget) handleDismiss();
-  }
-
   return (
-    <dialog
-      ref={dialogRef}
+    <Modal
+      title={<>Welcome to {theName(hub.name)}.</>}
+      titleClassName="intro-popup-title"
       className="intro-popup"
-      aria-labelledby="intro-popup-title"
-      onClick={handleClick}
+      bodyClassName="intro-popup-body"
       onClose={handleDismiss}
     >
-      <div className="intro-popup-body">
-        <h2 id="intro-popup-title" className="intro-popup-title">
-          Welcome to {theName(hub.name)}.
-        </h2>
+      <p className="intro-popup-text">{hub.intro_body}</p>
 
-        <p className="intro-popup-text">{hub.intro_body}</p>
-
-        <div className="intro-popup-actions">
-          <button
-            type="button"
-            className="intro-popup-primary"
-            onClick={handleDismiss}
-            autoFocus
-          >
-            Got it
-          </button>
-          <button
-            type="button"
-            className="intro-popup-secondary"
-            onClick={handleLearnMore}
-          >
-            Learn more
-          </button>
-        </div>
+      <div className="intro-popup-actions">
+        <button
+          type="button"
+          className="intro-popup-primary"
+          onClick={handleDismiss}
+          autoFocus
+        >
+          Got it
+        </button>
+        <button
+          type="button"
+          className="intro-popup-secondary"
+          onClick={handleLearnMore}
+        >
+          Learn more
+        </button>
       </div>
-    </dialog>
+    </Modal>
   );
 }

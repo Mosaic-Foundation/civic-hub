@@ -1,68 +1,16 @@
 /* BetaWelcomeDialog — the private-beta front door, floating over the
-   browsable app. Same <dialog> conventions as ProcessPicker: explicit
-   centering (a global reset defeats `margin: auto`), top-anchored,
-   scrollable on short viewports. Action buttons keep the old
-   BetaLanding treatment (solid Sign in, outlined Browse). */
+   browsable app. The frame, backdrop, close button and title are the one
+   Modal (components/Modal.tsx); this is its content. Action buttons keep
+   the old BetaLanding treatment (solid Sign in, outlined Browse). */
 
-.beta-welcome {
-  border: none;
-  padding: 0;
-  background: transparent;
-  max-width: 520px;
-  width: calc(100% - var(--space-xl) * 2);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-popover);
-  position: fixed;
-  top: 6vh;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  max-height: 88vh;
-  overflow-y: auto;
-}
-
-.beta-welcome::backdrop {
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(2px);
-}
-
-.beta-welcome-body {
-  position: relative;
+.modal-body.beta-welcome-body {
   background: var(--color-surface);
   color: var(--color-text);
   padding: var(--space-xl);
   border-radius: var(--radius-lg);
 }
 
-.beta-welcome-close {
-  position: absolute;
-  top: var(--space-md);
-  right: var(--space-md);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.beta-welcome-close:hover {
-  background: var(--color-surface-alt);
-  color: var(--color-text);
-}
-
-.beta-welcome-close:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
-}
-
-.beta-welcome-title {
+.modal-title.beta-welcome-title {
   font-family: var(--font-heading);
   font-size: var(--font-size-2xl);
   font-weight: 600;
@@ -148,11 +96,7 @@
 }
 
 @media (max-width: 600px) {
-  .beta-welcome {
-    top: 4vh;
-    max-height: 92vh;
-  }
-  .beta-welcome-body {
+  .modal-body.beta-welcome-body {
     padding: var(--space-lg);
   }
 }

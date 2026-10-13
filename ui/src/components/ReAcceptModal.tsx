@@ -21,6 +21,7 @@ import {
   CURRENT_LEGAL_VERSION,
   CURRENT_LEGAL_LAST_UPDATED,
 } from "../config/legal";
+import Modal from "./Modal";
 
 /**
  * True when the user must be prompted to accept the current legal
@@ -77,74 +78,71 @@ export default function ReAcceptModal() {
     logout();
   }
 
+  // Must be answered: no ×, and Escape and the backdrop do nothing. The only
+  // ways out are accepting or signing out.
   return (
-    <div className="intro-overlay" role="presentation">
-      <div
-        className="intro-modal re-accept-modal"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="re-accept-title"
-        aria-describedby="re-accept-body"
+    <Modal
+      title={isFirstAcceptance ? "Before you continue…" : "We've updated our Terms"}
+      titleClassName="auth-title"
+      onClose={() => {}}
+      dismissible={false}
+      showClose={false}
+      role="alertdialog"
+      describedBy="re-accept-body"
+    >
+    <p id="re-accept-body" className="auth-description">
+      To keep using the {hub.name}, please review our Terms of
+      Service, Privacy Policy, and Code of Conduct. These protect
+      you and help us run the Hub fairly.
+    </p>
+
+    <ul className="re-accept-links">
+      <li>
+        <a href="/terms" target="_blank" rel="noopener noreferrer">
+          Terms of Service
+        </a>
+      </li>
+      <li>
+        <a href="/privacy" target="_blank" rel="noopener noreferrer">
+          Privacy Policy
+        </a>
+      </li>
+      <li>
+        <a
+          href="/code-of-conduct"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Code of Conduct
+        </a>
+      </li>
+    </ul>
+
+    <p className="re-accept-version">
+      Version {CURRENT_LEGAL_VERSION} · Last updated{" "}
+      {CURRENT_LEGAL_LAST_UPDATED}
+    </p>
+
+    {error && <p className="form-error">{error}</p>}
+
+    <div className="re-accept-actions">
+      <button
+        type="button"
+        className="auth-continue-button"
+        onClick={handleAccept}
+        disabled={submitting}
       >
-        <h2 id="re-accept-title" className="auth-title">
-          {isFirstAcceptance
-            ? "Before you continue…"
-            : "We've updated our Terms"}
-        </h2>
-        <p id="re-accept-body" className="auth-description">
-          To keep using the {hub.name}, please review our Terms of
-          Service, Privacy Policy, and Code of Conduct. These protect
-          you and help us run the Hub fairly.
-        </p>
-
-        <ul className="re-accept-links">
-          <li>
-            <a href="/terms" target="_blank" rel="noopener noreferrer">
-              Terms of Service
-            </a>
-          </li>
-          <li>
-            <a href="/privacy" target="_blank" rel="noopener noreferrer">
-              Privacy Policy
-            </a>
-          </li>
-          <li>
-            <a
-              href="/code-of-conduct"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Code of Conduct
-            </a>
-          </li>
-        </ul>
-
-        <p className="re-accept-version">
-          Version {CURRENT_LEGAL_VERSION} · Last updated{" "}
-          {CURRENT_LEGAL_LAST_UPDATED}
-        </p>
-
-        {error && <p className="form-error">{error}</p>}
-
-        <div className="re-accept-actions">
-          <button
-            type="button"
-            className="auth-continue-button"
-            onClick={handleAccept}
-            disabled={submitting}
-          >
-            {submitting ? "Recording…" : "Review and accept"}
-          </button>
-          <button
-            type="button"
-            className="auth-back-link"
-            onClick={handleDecline}
-            disabled={submitting}
-          >
-            Decline and sign out
-          </button>
-        </div>
-      </div>
+        {submitting ? "Recording…" : "Review and accept"}
+      </button>
+      <button
+        type="button"
+        className="auth-back-link"
+        onClick={handleDecline}
+        disabled={submitting}
+      >
+        Decline and sign out
+      </button>
     </div>
+    </Modal>
   );
 }

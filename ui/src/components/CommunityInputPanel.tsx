@@ -15,6 +15,7 @@ import { Link } from "react-router-dom";
 import type { CommentPhase, CommunityInput, CommunityInputConfig } from "../services/api";
 import Creator from "./Creator";
 import RichText from "./RichText";
+import Modal from "./Modal";
 import {
   adminHideComment,
   adminRestoreComment,
@@ -239,19 +240,14 @@ export default function CommunityInputPanel({ processId, config }: Props) {
       </div>
 
       {hideModalFor && (
-        <div
-          className="intro-overlay"
-          onClick={() => !submitting && setHideModalFor(null)}
+        <Modal
+          title="Hide this comment?"
+          titleClassName="auth-title"
+          className="moderation-modal"
+          onClose={() => setHideModalFor(null)}
+          dismissible={!submitting}
         >
-          <form
-            className="intro-modal moderation-modal"
-            onSubmit={handleHideSubmit}
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Hide this comment"
-          >
-            <h2 className="auth-title">Hide this comment?</h2>
+          <form onSubmit={handleHideSubmit}>
             <p className="auth-description">
               The reason is stored in the moderation audit log and is
               not shown to the public. Everyone else sees a tombstone linking
@@ -306,7 +302,7 @@ export default function CommunityInputPanel({ processId, config }: Props) {
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
     </div>
   );

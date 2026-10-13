@@ -1,46 +1,18 @@
+/* The process picker, on the one Modal (components/Modal.tsx): the frame,
+   backdrop and close button are its; this is the panel's look and content. */
+
 .picker {
-  border: none;
-  padding: 0;
-  background: transparent;
   max-width: 540px;
-  width: calc(100% - var(--space-xl) * 2);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-popover);
-  /* A modal <dialog> should self-center via `margin: auto`, but a global
-     reset defeats it and drops it top-left. Position it directly: centered
-     horizontally, anchored near the top (upper-center) so the header stays
-     put and the taller content grows downward. max-height + scroll keeps it
-     fully on-screen on short/mobile viewports. */
-  position: fixed;
-  top: 5vh;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  max-height: 90vh;
-  overflow-y: auto;
 }
 
-.picker::backdrop {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(2px);
-}
-
-.picker-body {
+.modal-body.picker-body {
   background: var(--color-surface);
   color: var(--color-text);
   padding: var(--space-xl);
   border-radius: var(--radius-lg);
 }
 
-.picker-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-md);
-  margin-bottom: var(--space-lg);
-}
-
-.picker-title {
+.modal-title.picker-title {
   font-family: var(--font-heading);
   font-size: var(--font-size-2xl);
   font-weight: 600;
@@ -54,33 +26,7 @@
   font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
   color: var(--color-text-muted);
-  margin: var(--space-xs) 0 0;
-}
-
-.picker-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.picker-close:hover {
-  background: var(--color-surface-alt);
-  color: var(--color-text);
-}
-
-.picker-close:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
+  margin: var(--space-xs) 0 var(--space-lg);
 }
 
 .picker-cards {
@@ -184,18 +130,20 @@
 
 /* Mobile: full-screen sheet */
 @media (max-width: 767px) {
-  .picker {
+  .modal.picker {
     max-width: none;
     width: 100%;
     height: 100%;
     max-height: none;
     margin: 0;
-    border-radius: 0;
+    overflow-y: auto;
   }
 
-  .picker-body {
+  .modal-body.picker-body {
     border-radius: 0;
     min-height: 100%;
+    max-height: none;
+    overflow-y: visible;
     display: flex;
     flex-direction: column;
   }

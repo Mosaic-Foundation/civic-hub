@@ -16,6 +16,7 @@ import AdminArchiveButton from "../components/AdminArchiveButton";
 import "./Announcement.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import SampleBadge from "../components/SampleBadge";
+import Modal from "../components/Modal";
 
 const URL_RE = /\bhttps?:\/\/\S+/gi;
 
@@ -302,24 +303,19 @@ export default function AnnouncementPage() {
         </>
       )}
 
-      {/* Slice 11 — Remove-announcement modal. Reuses the intro-overlay
-          shell + the chip pattern from the comment-hide modal. The
+      {/* Slice 11 — Remove-announcement modal. The one Modal, with the
+          chip pattern from the comment-hide modal. The
           reason is internal-audit only and stamps the moderation
           event's data.moderation.reason. */}
       {showRemoveModal && (
-        <div
-          className="intro-overlay"
-          onClick={() => !submitting && setShowRemoveModal(false)}
+        <Modal
+          title="Remove this announcement?"
+          titleClassName="auth-title"
+          className="moderation-modal"
+          onClose={() => setShowRemoveModal(false)}
+          dismissible={!submitting}
         >
-          <form
-            className="intro-modal moderation-modal"
-            onSubmit={handleRemoveSubmit}
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Remove this announcement"
-          >
-            <h2 className="auth-title">Remove this announcement?</h2>
+          <form onSubmit={handleRemoveSubmit}>
             <p className="auth-description">
               The announcement will be replaced with a tombstone for
               everyone. The reason is stored in the moderation audit
@@ -376,7 +372,7 @@ export default function AnnouncementPage() {
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
 
       {/* Read-only. A process may link TO this post, and the counter-link

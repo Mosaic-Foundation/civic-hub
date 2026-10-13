@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { pluginEnabled } from "../config/plugins";
@@ -14,6 +14,7 @@ import {
 } from "../services/auth";
 import { CURRENT_LEGAL_VERSION } from "../config/legal";
 import hub from "../config/hub";
+import Modal from "./Modal";
 import WaitlistForm from "./WaitlistForm";
 import { affiliationClause, pluralNoun } from "../../../src/shared/hubKind";
 
@@ -91,7 +92,6 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
   // beta and the address isn't on the allow-list. Instead of a dead-end
   // error we swap the email form for a waitlist capture.
   const [betaBlocked, setBetaBlocked] = useState(false);
-  const closeRef = useRef<HTMLButtonElement>(null);
 
   // If user is already fully authenticated + resident + named, just complete
   useEffect(() => {
@@ -99,20 +99,6 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
       onComplete();
     }
   }, [user, onComplete]);
-
-  // Focus management
-  useEffect(() => {
-    closeRef.current?.focus();
-  }, []);
-
-  // Escape key
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onDismiss();
-    }
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onDismiss]);
 
   async function handleRequestCode(e: React.FormEvent) {
     e.preventDefault();
@@ -335,268 +321,263 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
     }
   }
 
+  // Each step names itself; the Modal labels the dialog with it.
+  const title =
+    step === "email"
+      ? betaBlocked
+        ? "We're in private beta"
+        : "Sign in or create an account"
+      : step === "code"
+        ? noEmail
+          ? "Enter any six digits"
+          : "Check your email"
+        : needsResidency
+          ? "One last thing"
+          : "Add your name";
+
   return (
-    // Slice 13.9: clicking the overlay does NOT dismiss the modal.
+    // Slice 13.9: clicking the backdrop does NOT dismiss the modal.
     // Users must use the X close button (or Escape) so accidental
-    // outside-clicks don't lose form state mid-sign-up. The modal
-    // itself doesn't need stopPropagation now that the overlay has
-    // no click handler.
-    <div className="intro-overlay">
-      <div
-        className="intro-modal auth-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Sign in or create an account"
-      >
+    // outside-clicks don't lose form state mid-sign-up.
+    <Modal
+      title={title}
+      titleClassName="auth-title"
+      className="auth-modal"
+      onClose={onDismiss}
+      closeOnBackdrop={false}
+    >
+    {/* Private-beta fallback: the entered email isn't on the allow-list.
+        Offer the waitlist instead of a dead-end error. */}
+    {step === "email" && betaBlocked && (
+      <div className="auth-beta-blocked">
+        <p className="auth-description">
+          {hub.name} isn't open for general sign-ups yet. Join the waitlist
+          and we'll email you the moment access opens up.
+        </p>
+        <WaitlistForm initialEmail={email} />
         <button
-          ref={closeRef}
-          className="intro-close"
-          onClick={onDismiss}
-          aria-label="Close"
+          type="button"
+          className="auth-back-link"
+          onClick={() => { setBetaBlocked(false); setError(null); }}
         >
-          &times;
+          Back to sign in
+        </button>
+      </div>
+    )}
+
+    {/* Step 1: Email */}
+    {step === "email" && !betaBlocked && (
+      <form onSubmit={handleRequestCode}>
+        {/* One passwordless flow serves returning and new users alike
+            (the server only learns which after the code verifies), so
+            the title names both. The supporting copy is beta-aware:
+            during the private beta it speaks to invited testers and
+            points everyone else at the waitlist; when beta_mode flips
+            off the same step reads as plain sign-in / sign-up. */}
+        <p className="auth-description">
+          {hub.beta_mode
+            ? "Beta testers: enter the email address you were invited with and we'll send you a one-time code."
+            : hub.demo_mode
+              ? "Enter your email to try this demo hub. No password needed."
+              : "Enter your email and we'll send you a one-time code. No password needed."}
+        </p>
+
+        <div className="form-field">
+          <label htmlFor="auth-email" className="form-label">Email</label>
+          <input
+            id="auth-email"
+            type="email"
+            className="form-input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoFocus
+            disabled={loading}
+          />
+        </div>
+
+        {error && <p className="form-error">{error}</p>}
+
+        <button
+          type="submit"
+          className="auth-continue-button"
+          disabled={loading || !email.trim()}
+        >
+          {loading ? "Sending..." : "Continue"}
         </button>
 
-        {/* Private-beta fallback: the entered email isn't on the allow-list.
-            Offer the waitlist instead of a dead-end error. */}
-        {step === "email" && betaBlocked && (
-          <div className="auth-beta-blocked">
-            <h2 className="auth-title">We're in private beta</h2>
-            <p className="auth-description">
-              {hub.name} isn't open for general sign-ups yet. Join the waitlist
-              and we'll email you the moment access opens up.
-            </p>
-            <WaitlistForm initialEmail={email} />
+        {hub.beta_mode ? (
+          <p className="auth-footnote">
+            Not on the beta list yet?{" "}
             <button
               type="button"
-              className="auth-back-link"
-              onClick={() => { setBetaBlocked(false); setError(null); }}
+              className="auth-inline-link"
+              onClick={() => { setBetaBlocked(true); setError(null); }}
+              disabled={loading}
             >
-              Back to sign in
+              Join the waitlist
             </button>
+          </p>
+        ) : (
+          <p className="auth-footnote">
+            New here? Same step — your account is created when you verify
+            the code.
+          </p>
+        )}
+      </form>
+    )}
+
+    {/* Step 2: Verify code */}
+    {step === "code" && (
+      <form onSubmit={handleVerifyCode}>
+        {noEmail ? (
+          <>
+            <p className="auth-description">
+              On a live hub you would get a six-digit code by email. This is
+              a demo, so <strong>no email is sent: any six digits work</strong>.
+              We've filled some in. Press Verify to sign in as {email}.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="auth-description">
+              We sent a 6-digit code to <strong>{email}</strong>
+            </p>
+          </>
+        )}
+
+        <div className="form-field">
+          <label htmlFor="auth-code" className="form-label">Verification code</label>
+          <input
+            id="auth-code"
+            type="text"
+            className="form-input auth-code-input"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="------"
+            maxLength={6}
+            autoFocus={!noEmail}
+            disabled={loading}
+          />
+        </div>
+
+        {error && <p className="form-error">{error}</p>}
+        {notice && <p className="auth-hint">{notice}</p>}
+
+        <button
+          type="submit"
+          className="auth-continue-button"
+          disabled={loading || !code.trim()}
+          // On a demo hub the code is already there: Verify is the next step.
+          autoFocus={noEmail}
+        >
+          {loading ? "Verifying..." : "Verify"}
+        </button>
+
+        {!noEmail && (
+          <button
+            type="button"
+            className="auth-back-link"
+            onClick={handleResendCode}
+            disabled={loading}
+          >
+            Resend code
+          </button>
+        )}
+        <button
+          type="button"
+          className="auth-back-link"
+          onClick={() => { setStep("email"); setCode(""); setNoEmail(false); setError(null); setNotice(null); }}
+          disabled={loading}
+        >
+          Use a different email
+        </button>
+      </form>
+    )}
+
+    {/* Step 3: Combined residency + legal acceptance gate
+        (Slice 13.9 — new users only; returning residents skip
+        this step automatically per handleVerifyCode). */}
+    {step === "residency" && (
+      <form onSubmit={handleResidency}>
+        <p className="auth-description">
+          {needsResidency
+            ? gateIsAdmin
+              ? "Please review the policies below."
+              : hub.residency_intro
+            : `${pluralNoun(hub.person_label)} now take part under their real name. Your name appears on comments you post (unless you choose to comment anonymously) — votes are always anonymous.`}
+        </p>
+
+        {needsName && (
+          <div className="form-field">
+            <label htmlFor="auth-full-name" className="form-label">
+              Full name
+            </label>
+            <input
+              id="auth-full-name"
+              type="text"
+              className="form-input"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Jane Doe"
+              maxLength={100}
+              autoComplete="name"
+              autoFocus={!needsResidency}
+              disabled={loading}
+            />
+            <p className="auth-hint">
+              Please use your real name. It appears next to proposals,
+              votes, and comments you create on {hub.name}.
+            </p>
           </div>
         )}
 
-        {/* Step 1: Email */}
-        {step === "email" && !betaBlocked && (
-          <form onSubmit={handleRequestCode}>
-            {/* One passwordless flow serves returning and new users alike
-                (the server only learns which after the code verifies), so
-                the title names both. The supporting copy is beta-aware:
-                during the private beta it speaks to invited testers and
-                points everyone else at the waitlist; when beta_mode flips
-                off the same step reads as plain sign-in / sign-up. */}
-            <h2 className="auth-title">Sign in or create an account</h2>
-            <p className="auth-description">
-              {hub.beta_mode
-                ? "Beta testers: enter the email address you were invited with and we'll send you a one-time code."
-                : hub.demo_mode
-                  ? "Enter your email to try this demo hub. No password needed."
-                  : "Enter your email and we'll send you a one-time code. No password needed."}
-            </p>
-
-            <div className="form-field">
-              <label htmlFor="auth-email" className="form-label">Email</label>
-              <input
-                id="auth-email"
-                type="email"
-                className="form-input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoFocus
-                disabled={loading}
-              />
-            </div>
-
-            {error && <p className="form-error">{error}</p>}
-
-            <button
-              type="submit"
-              className="auth-continue-button"
-              disabled={loading || !email.trim()}
-            >
-              {loading ? "Sending..." : "Continue"}
-            </button>
-
-            {hub.beta_mode ? (
-              <p className="auth-footnote">
-                Not on the beta list yet?{" "}
-                <button
-                  type="button"
-                  className="auth-inline-link"
-                  onClick={() => { setBetaBlocked(true); setError(null); }}
-                  disabled={loading}
-                >
-                  Join the waitlist
-                </button>
-              </p>
-            ) : (
-              <p className="auth-footnote">
-                New here? Same step — your account is created when you verify
-                the code.
-              </p>
-            )}
-          </form>
-        )}
-
-        {/* Step 2: Verify code */}
-        {step === "code" && (
-          <form onSubmit={handleVerifyCode}>
-            {noEmail ? (
-              <>
-                <h2 className="auth-title">Enter any six digits</h2>
-                <p className="auth-description">
-                  On a live hub you would get a six-digit code by email. This is
-                  a demo, so <strong>no email is sent: any six digits work</strong>.
-                  We've filled some in. Press Verify to sign in as {email}.
-                </p>
-              </>
-            ) : (
-              <>
-                <h2 className="auth-title">Check your email</h2>
-                <p className="auth-description">
-                  We sent a 6-digit code to <strong>{email}</strong>
-                </p>
-              </>
-            )}
-
-            <div className="form-field">
-              <label htmlFor="auth-code" className="form-label">Verification code</label>
-              <input
-                id="auth-code"
-                type="text"
-                className="form-input auth-code-input"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="------"
-                maxLength={6}
-                autoFocus={!noEmail}
-                disabled={loading}
-              />
-            </div>
-
-            {error && <p className="form-error">{error}</p>}
-            {notice && <p className="auth-hint">{notice}</p>}
-
-            <button
-              type="submit"
-              className="auth-continue-button"
-              disabled={loading || !code.trim()}
-              // On a demo hub the code is already there: Verify is the next step.
-              autoFocus={noEmail}
-            >
-              {loading ? "Verifying..." : "Verify"}
-            </button>
-
-            {!noEmail && (
-              <button
-                type="button"
-                className="auth-back-link"
-                onClick={handleResendCode}
-                disabled={loading}
-              >
-                Resend code
-              </button>
-            )}
-            <button
-              type="button"
-              className="auth-back-link"
-              onClick={() => { setStep("email"); setCode(""); setNoEmail(false); setError(null); setNotice(null); }}
+        {needsResidency && (
+          <label className="auth-checkbox-label auth-legal-checkbox">
+            <input
+              type="checkbox"
+              checked={gateChecked}
+              onChange={(e) => setGateChecked(e.target.checked)}
               disabled={loading}
-            >
-              Use a different email
-            </button>
-          </form>
+            />
+            <span>
+              {affirmation ? <>{affirmation}, and I</> : "I"}{" "}
+              have read and agree to the{" "}
+              <a href="/terms" target="_blank" rel="noopener noreferrer">
+                Terms of Service
+              </a>
+              ,{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer">
+                Privacy Policy
+              </a>
+              , and{" "}
+              <a
+                href="/code-of-conduct"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Code of Conduct
+              </a>
+              .
+            </span>
+          </label>
         )}
 
-        {/* Step 3: Combined residency + legal acceptance gate
-            (Slice 13.9 — new users only; returning residents skip
-            this step automatically per handleVerifyCode). */}
-        {step === "residency" && (
-          <form onSubmit={handleResidency}>
-            <h2 className="auth-title">
-              {needsResidency ? "One last thing" : "Add your name"}
-            </h2>
-            <p className="auth-description">
-              {needsResidency
-                ? gateIsAdmin
-                  ? "Please review the policies below."
-                  : hub.residency_intro
-                : `${pluralNoun(hub.person_label)} now take part under their real name. Your name appears on comments you post (unless you choose to comment anonymously) — votes are always anonymous.`}
-            </p>
+        {error && <p className="form-error">{error}</p>}
 
-            {needsName && (
-              <div className="form-field">
-                <label htmlFor="auth-full-name" className="form-label">
-                  Full name
-                </label>
-                <input
-                  id="auth-full-name"
-                  type="text"
-                  className="form-input"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Jane Doe"
-                  maxLength={100}
-                  autoComplete="name"
-                  autoFocus={!needsResidency}
-                  disabled={loading}
-                />
-                <p className="auth-hint">
-                  Please use your real name. It appears next to proposals,
-                  votes, and comments you create on {hub.name}.
-                </p>
-              </div>
-            )}
-
-            {needsResidency && (
-              <label className="auth-checkbox-label auth-legal-checkbox">
-                <input
-                  type="checkbox"
-                  checked={gateChecked}
-                  onChange={(e) => setGateChecked(e.target.checked)}
-                  disabled={loading}
-                />
-                <span>
-                  {affirmation ? <>{affirmation}, and I</> : "I"}{" "}
-                  have read and agree to the{" "}
-                  <a href="/terms" target="_blank" rel="noopener noreferrer">
-                    Terms of Service
-                  </a>
-                  ,{" "}
-                  <a href="/privacy" target="_blank" rel="noopener noreferrer">
-                    Privacy Policy
-                  </a>
-                  , and{" "}
-                  <a
-                    href="/code-of-conduct"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Code of Conduct
-                  </a>
-                  .
-                </span>
-              </label>
-            )}
-
-            {error && <p className="form-error">{error}</p>}
-
-            <button
-              type="submit"
-              className="auth-continue-button"
-              disabled={
-                loading ||
-                (needsResidency && !gateChecked) ||
-                (needsName && fullName.trim().length < 2)
-              }
-            >
-              {loading ? "Confirming..." : "Continue"}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
+        <button
+          type="submit"
+          className="auth-continue-button"
+          disabled={
+            loading ||
+            (needsResidency && !gateChecked) ||
+            (needsName && fullName.trim().length < 2)
+          }
+        >
+          {loading ? "Confirming..." : "Continue"}
+        </button>
+      </form>
+    )}
+    </Modal>
   );
 }

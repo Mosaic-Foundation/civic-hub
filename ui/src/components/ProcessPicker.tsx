@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useHubConfig } from "../config/HubConfigContext";
 import { pluginEnabled } from "../config/plugins";
+import Modal from "./Modal";
 import "./ProcessPicker.css";
 
 export type PickerContext = "conversation" | "proposal" | "vote" | "project" | null;
@@ -84,7 +85,6 @@ const INTENTS = [
 ];
 
 export default function ProcessPicker({ onDismiss, context = null }: Props) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const navigate = useNavigate();
 
   // Hidden when the hub switched the plugin off (config/plugins.tsx) — each
@@ -101,79 +101,51 @@ export default function ProcessPicker({ onDismiss, context = null }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [context, hubConfig]);
 
-  useEffect(() => {
-    const d = dialogRef.current;
-    if (d && !d.open) d.showModal();
-  }, []);
-
   function handlePick(route: string) {
     onDismiss();
     navigate(route);
   }
 
-  function handleClick(e: React.MouseEvent<HTMLDialogElement>) {
-    if (e.target === e.currentTarget) onDismiss();
-  }
-
   return (
-    <dialog
-      ref={dialogRef}
+    <Modal
+      title="What would you like to start?"
+      titleClassName="picker-title"
       className="picker"
-      aria-labelledby="picker-title"
-      onClick={handleClick}
+      bodyClassName="picker-body"
       onClose={onDismiss}
     >
-      <div className="picker-body">
-        <div className="picker-header">
-          <div>
-            <h2 id="picker-title" className="picker-title">
-              What would you like to start?
-            </h2>
-            <p className="picker-subtitle">
-              Start your topic with one tool, you can move it to another later.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="picker-close"
-            aria-label="Close"
-            onClick={onDismiss}
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M5 5L15 15M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
+      <p className="picker-subtitle">
+        Start your topic with one tool, you can move it to another later.
+      </p>
 
-        <div className="picker-cards">
-          {orderedIntents.map((intent) => (
-            <button
-              key={intent.key}
-              type="button"
-              className="picker-card"
-              onClick={() => handlePick(intent.route)}
-            >
-              <div className="picker-card-head">
-                <span className="picker-card-icon">
-                  {ICONS[intent.key]}
-                </span>
-                <span className="picker-card-label">{intent.label}</span>
-                {intent.badge && (
-                  <span className="picker-card-badge">{intent.badge}</span>
-                )}
-              </div>
-              <span className="picker-card-desc">{intent.description}</span>
-              {intent.guidance && (
-                <span
-                  className={`picker-card-guidance picker-card-guidance--${intent.guidanceWeight}`}
-                >
-                  {intent.guidance}
-                </span>
+      <div className="picker-cards">
+        {orderedIntents.map((intent) => (
+          <button
+            key={intent.key}
+            type="button"
+            className="picker-card"
+            onClick={() => handlePick(intent.route)}
+          >
+            <div className="picker-card-head">
+              <span className="picker-card-icon">
+                {ICONS[intent.key]}
+              </span>
+              <span className="picker-card-label">{intent.label}</span>
+              {intent.badge && (
+                <span className="picker-card-badge">{intent.badge}</span>
               )}
-            </button>
-          ))}
-        </div>
+            </div>
+            <span className="picker-card-desc">{intent.description}</span>
+            {intent.guidance && (
+              <span
+                className={`picker-card-guidance picker-card-guidance--${intent.guidanceWeight}`}
+              >
+                {intent.guidance}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
-    </dialog>
+    </Modal>
   );
 }

@@ -422,12 +422,6 @@
   text-decoration: underline;
 }
 
-.re-accept-modal {
-  /* Re-acceptance is blocking — drop the close affordance the
-     standard intro modal uses by hiding it inside this variant. */
-  position: relative;
-}
-
 .re-accept-links {
   list-style: none;
   padding: 0;
@@ -525,7 +519,7 @@
   cursor: pointer;
 }
 
-.moderation-modal {
+.modal.moderation-modal {
   max-width: 480px;
 }
 
@@ -1877,61 +1871,6 @@
 
 /* --- Intro popup --- */
 
-.intro-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-
-.intro-modal {
-  background: var(--card-background);
-  border-radius: 12px;
-  padding: 2rem;
-  max-width: 520px;
-  width: 100%;
-  max-height: calc(100vh - 2rem);
-  overflow-y: auto;
-  position: relative;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  animation: intro-fade-in 0.2s ease-out;
-}
-
-@keyframes intro-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.intro-close {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: var(--light-text);
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  line-height: 1;
-  border-radius: 4px;
-  transition: color 0.15s, background 0.15s;
-}
-
-.intro-close:hover {
-  color: var(--text-color);
-  background: var(--page-background);
-}
-
 .intro-title {
   font-size: 1.25rem;
   margin: 0 0 1rem;
@@ -1983,10 +1922,11 @@
 
 /* --- Auth modal --- */
 
-.auth-modal {
+.modal.auth-modal {
   max-width: 440px;
 }
 
+.modal-title.auth-title,
 .auth-title {
   font-size: 1.25rem;
   margin: 0 0 0.5rem;

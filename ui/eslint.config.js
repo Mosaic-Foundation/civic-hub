@@ -57,9 +57,11 @@ export default defineConfig([
     files: ['src/console/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': ['error', {
-        // src/shared/ is the one exception: pure code written to be shared by
-        // the server and the console (jurisdiction types and names).
-        patterns: [{ regex: '^\\.\\./(?!\\.\\./\\.\\./src/shared/)', message: 'The console stands alone: it imports nothing from the hub app (src/shared/ excepted).' }],
+        // src/shared/ is one exception: pure code written to be shared by the
+        // server and the console (jurisdiction types and names). The other is
+        // the one Modal (components/Modal), which holds no hub state, so every
+        // dialog in the hub and the console behaves alike (Submit and Save).
+        patterns: [{ regex: '^\\.\\./(?!\\.\\./\\.\\./src/shared/|components/Modal$)', message: 'The console stands alone: it imports nothing from the hub app (src/shared/ and components/Modal excepted).' }],
       }],
     },
   },
