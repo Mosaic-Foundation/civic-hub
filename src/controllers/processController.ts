@@ -79,8 +79,11 @@ export const handleProcessAction = route(async (req, res) => {
 
   if (!type) throw new ValidationError("Missing required field: type");
 
-  const { process, result } = await actOnProcess(res, id, type, payload ?? {});
-  res.json({ process, result });
+  // Only the action's result. The raw row went out here until 2026-10-13: it
+  // carries account ids (the creator, a vote's `supporters` map) that only
+  // their owner and the hub's admins may see.
+  const { result } = await actOnProcess(res, id, type, payload ?? {});
+  res.json({ result });
 });
 
 /**

@@ -113,10 +113,14 @@ const announcementProcess: ProcessHandler = {
 
   getReadModel(process: Process): Record<string, unknown> {
     const state = getState(process);
-    return getPublicReadModel(state, {
+    // GET /process/:id/state serves this to anyone: no author_id. An account
+    // id is for its owner and the hub's admins; the announcement page
+    // (/announcement/:id) resolves the byline from it and then removes it.
+    const { author_id: _authorId, ...model } = getPublicReadModel(state, {
       id: process.id,
       createdAt: process.createdAt,
     });
+    return model;
   },
 
   getSummary(process: Process): Record<string, unknown> {

@@ -300,8 +300,8 @@ export function getProcessState(id: string): Promise<ProcessState> {
 
 // --- Actions (internal control surface) ---
 
+/** What POST /process/:id/action answers: the action's own result. */
 export interface ActionResult {
-  process: unknown;
   result: Record<string, unknown>;
 }
 

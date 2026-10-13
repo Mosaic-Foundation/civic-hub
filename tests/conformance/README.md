@@ -36,6 +36,9 @@ both API passes (service role, minted hub tokens).
      refused to one (403 `admin_required`).
    - Every result is a status the action declares; outside production, the hub
      itself refuses anything else.
+   - No answer to a resident carries another person's account id, and neither
+     does the process as a resident or a visitor reads it afterwards. Account
+     ids are for their owner and the hub's admins.
    - **4b.** An action declared `once_per_participant` lets one person's
      simultaneous calls through once, and refuses the rest with 409.
 5. **The deadline:**

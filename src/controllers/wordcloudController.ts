@@ -141,7 +141,6 @@ export const handleGetWordcloud = route(async (req, res) => {
     clouds,
     jurisdiction: process.jurisdiction,
     created_at: process.createdAt,
-    created_by: process.createdBy,
     has_submitted: hasSubmitted,
     ...(process.isSample ? { is_sample: true } : {}),
   });

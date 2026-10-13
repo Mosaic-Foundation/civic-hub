@@ -33,6 +33,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
+import { accountIdOf, foreignIds } from "../fixtures/accountIds.js";
 import {
   HOST_EVENT_TYPES,
   allowedTargets,
@@ -311,6 +312,13 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
         }
       }
       for (const s of walked.paths.keys()) expect([...d.states, "pending_review"]).toContain(s);
+      // After every action, the process as a resident and a visitor read it
+      // carries no one's account id (the actors of the walk are all in it).
+      const reader = (await resident(BETA)).token;
+      for (const [token, own] of [[reader, await accountIdOf(BETA.host, reader)], [undefined, null]] as const) {
+        const read = await call("GET", `/process/${id}/state`, BETA.host, undefined, token);
+        expect(foreignIds(read.body, own), `${d.type} read by a ${token ? "resident" : "visitor"}`).toEqual([]);
+      }
     }, 120_000);
   });
 
@@ -326,6 +334,8 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
           const { token } = await resident(BETA);
           const payload = examplePayload(d, a.name, await processRow(id));
           const results = await Promise.all(Array.from({ length: 5 }, () => act(BETA, id, a.name, payload, token)));
+          const own = await accountIdOf(BETA.host, token);
+          for (const r of results) expect(foreignIds(r.body, own), `${a.name}: another person's account id`).toEqual([]);
           const statuses = results.map((r) => r.status).sort();
           expect(statuses, JSON.stringify(results.map((r) => r.body))).toEqual([200, 409, 409, 409, 409]);
           const events = (await eventsOf(id)).filter((e) => a.emits.includes(e.event_type));
@@ -519,9 +529,14 @@ async function advance(
     const moves = allowedTargets(a, status).some((t) => t !== status);
     const limit = as === "resident" && moves ? MAX_THRESHOLD : 1;
     for (let times = 1; times <= limit; times++) {
-      const res = await act(hub, id, a.name, examplePayload(d, a.name, await processRow(id)), await tokenFor(as, hub, creatorToken));
+      const token = await tokenFor(as, hub, creatorToken);
+      const res = await act(hub, id, a.name, examplePayload(d, a.name, await processRow(id)), token);
       expect(res.status, `${d.type} ${a.name} from ${status} as ${as}: ${JSON.stringify(res.body)}`).toBeLessThan(500);
-      if (as !== "admin") expect(res.body.code, `${d.type} ${a.name} refused to a ${as}`).not.toBe("admin_required");
+      if (as !== "admin") {
+        expect(res.body.code, `${d.type} ${a.name} refused to a ${as}`).not.toBe("admin_required");
+        // An account id goes only to its owner and the hub's admins.
+        expect(foreignIds(res.body, await accountIdOf(hub.host, token)), `${d.type} ${a.name}: another person's account id`).toEqual([]);
+      }
       const now = (await processRow(id)).status as ProcessStatus;
       if (res.status < 300) expect([...allowedTargets(a, status)]).toContain(now);
       if (now !== status) {
