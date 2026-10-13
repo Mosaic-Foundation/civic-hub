@@ -4,6 +4,46 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Release tooling: one-command release, dev smoke job — 2026-10-13
+
+Seven commits on `multi-tenant` (`0e35057`..this entry), not pushed. **No migrations, nothing in `src/` or `ui/src/`.**
+Report: `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Release-Tooling-Session-Report-2026-10-13.md`.
+
+**Built:**
+- **`scripts/release.sh dev|prod [--dry-run]`** with `scripts/release.config` (the hub URLs and refs; env overrides).
+  It runs migrations first, then code, and stops at the first mismatch: the CLI link, a clean tree not behind origin,
+  `db-push.sh --dry-run` and one y/N, the migration, `/api/health` (ok, no gaps) on the old code, the push, a wait for
+  Vercel to serve HEAD (10 min), health and the JSON 404 on the new code, then a summary.
+  - `prod` refuses without `CONFIRM_PRODUCTION_PUSH`. It releases exactly `origin/multi-tenant` (and `origin/main` must
+    be its ancestor), links to production only for the migrations, and goes back to dev straight after and on any exit
+    (a trap). It pushes `origin/multi-tenant:main`, then reminds you about `[civic-error:descriptor.` in the Vercel logs.
+  - The dev `--dry-run` was run against dev: all checks pass. `prod` has never been run; only its refusal was tested.
+- **`tests/smoke/`, the dev checklist as Playwright** (8 tests, 8.7 s locally), `playwright.smoke.config.ts`,
+  `npm run test:smoke`. It runs on a dedicated beta smoke hub only, and sessions are minted in the dev database
+  (`devStack.ts`, which guards against production, other hubs and non-beta hubs). The Code of Conduct check is the
+  real one on dev. Cleanup declines, archives and deletes what the run made.
+- **`.github/workflows/smoke.yml`**, on `deployment_status`. Dev (`Production – civic-hub-dev`) runs the suite as a
+  check on the deployed commit. Production (`Production – civic-hub`) is read-only: health and the JSON 404. Either job
+  skips with a notice when its configuration is missing.
+- **`.claude/settings.json`** (reviewed by Adam): allows tests, `npm run`, `release.sh dev`, `db-push.sh` and `git push
+  origin multi-tenant`. It denies `release.sh prod`, `CONFIRM_PRODUCTION_PUSH`, linking to the production ref, and any
+  push naming `main`.
+- RUNBOOK-release.md is now the two commands, with what to do when each stops; the old steps are its appendix.
+  TESTING.md → Smoke suite.
+
+**Adam's decisions (2026-10-13):** a new dedicated smoke hub on dev; sessions minted in the dev DB (no test-only
+sign-in route); a read-only production check after a `main` deploy; the real AI check on dev.
+
+**Incomplete, for Adam:**
+- Create the smoke hub on dev and set the GitHub variables and secrets (RUNBOOK-release.md → One-time setup). Until
+  then the Smoke jobs skip with a notice. The suite has run against a local smoke hub only, never against dev.
+- `smoke.yml` takes effect once it is on the deployed commit, so the first dev deploy after the push is its first run.
+
+**Open:** each dev run sends the smoke admin about four review emails (filter the `+smoke` address). If the AI check
+ever passes the flagged text, that test fails, and the message says so.
+
+---
+
 ## Actions show right away; Close early; Regenerate; receipt file and check modes — 2026-10-13
 
 Eleven commits on `multi-tenant` (`77a2925`..`f452edc`), not pushed. **One migration, additive:**
