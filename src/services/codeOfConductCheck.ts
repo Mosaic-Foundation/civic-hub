@@ -44,7 +44,12 @@ export async function runCodeOfConductCheck(
   const store = getProcessHandler(processType)?.getAssistantConfig?.().draftStore;
   if (!store) throw new Error(`No draft store for ${processType}`);
 
-  const fields = codeOfConductFields(toDraftState(draft));
+  // The text as the type's store reads it: the same reading the submit's
+  // hash comparison uses (currentCodeOfConductHash). A caller's raw drafts row
+  // lacks fields the store derives (a vote's `options` from custom_options),
+  // and checking it would hash, and check, something else.
+  const current = (await store.get(draft.id)) ?? draft;
+  const fields = codeOfConductFields(toDraftState(current));
   const checkedHash = codeOfConductHash(fields);
   let suggestions: Suggestion[] = [];
   let unavailable = false;

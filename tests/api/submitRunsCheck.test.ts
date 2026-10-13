@@ -120,6 +120,41 @@ describe("Submit runs the Code of Conduct check", () => {
 // after the admin asks for changes, the resident can reopen the draft and
 // resubmit; it comes back as the same review, and the flag follows the text.
 // (The page side, "Edit & resubmit" after a reload, is reviewResubmit.spec.ts.)
+// Found 2026-10-13 (Actions slice): Submit checked the raw drafts row, which
+// has a vote's custom_options but not the `options` its store derives, so
+// the check's hash never matched and every approval vote with options was
+// refused "changed while it was being checked". The check also never saw the
+// option text.
+describe("Submit on an approval vote checks its options", () => {
+  async function approvalDraft(token: string, options: string[]): Promise<string> {
+    const made = await call("POST", "/votes/drafts", FLOYD, {}, token);
+    expect(made.status).toBe(201);
+    const filled = await call("PATCH", `/votes/drafts/${made.body.id}`, FLOYD, {
+      title: `Approval check ${tag} ${options.length}`,
+      description: "Which of these should come first?",
+      method: "approval",
+      custom_options: options,
+    }, token);
+    expect(filled.status, JSON.stringify(filled.body)).toBe(200);
+    return made.body.id as string;
+  }
+
+  it("options the check passes: submitted", async () => {
+    const token = await mintSession("floyd", `approval-pass-${tag}@example.test`);
+    const id = await approvalDraft(token, ["A new playground", "Longer library hours"]);
+    const res = await call("POST", `/votes/drafts/${id}/submit`, FLOYD, {}, token);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+  });
+
+  it("an option the check flags: refused with its findings, and kept", async () => {
+    const token = await mintSession("floyd", `approval-flag-${tag}@example.test`);
+    const id = await approvalDraft(token, ["A new playground", `Rude option ${COC_FLAG}`]);
+    const res = await call("POST", `/votes/drafts/${id}/submit`, FLOYD, {}, token);
+    expect(res.status, JSON.stringify(res.body)).toBe(400);
+    expect(res.body.code).toBe("code_of_conduct_flagged");
+  });
+});
+
 describe("changes requested, then resubmitted, on a beta hub", () => {
   const KINDS = [
     { name: "vote", path: "/votes/drafts", create: {} },
