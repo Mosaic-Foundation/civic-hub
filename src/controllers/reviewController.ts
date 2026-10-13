@@ -20,6 +20,7 @@ import {
 } from "../modules/civic.review/index.js";
 import { processDetailPath } from "../processes/registry.js";
 import { forHub } from "../db/forHub.js";
+import { inChunks } from "../db/inChunks.js";
 import { currentHubId } from "../config/hubContext.js";
 
 function db() {
@@ -27,16 +28,25 @@ function db() {
 }
 
 /** The process row backing a review (type/title/description only), for list views. */
-async function getProcessSummary(
-  processId: string,
-): Promise<{ type: string; title: string; description: string } | null> {
-  return db()
-    .from("processes")
-    .select<{ type: string; title: string; description: string }>(
-      "type, title, description",
-    )
-    .eq("id", processId)
-    .single();
+/**
+ * Each review with its process's type and title, read in chunks (one query
+ * per 200), not one query per review at once: a long queue made hundreds of
+ * simultaneous reads and the list failed ("fetch failed"; Submit and Save,
+ * 2026-10-12).
+ */
+async function withProcessSummaries<R extends { process_id: string }>(
+  reviews: R[],
+): Promise<Array<R & { process_type: string | null; process_title: string | null }>> {
+  const ids = [...new Set(reviews.map((r) => r.process_id))];
+  const rows = await inChunks(ids, (chunk) =>
+    db().from("processes").select<{ id: string; type: string; title: string }>("id, type, title").in("id", chunk),
+  );
+  const byId = new Map(rows.map((p) => [p.id, p]));
+  return reviews.map((review) => ({
+    ...review,
+    process_type: byId.get(review.process_id)?.type ?? null,
+    process_title: byId.get(review.process_id)?.title ?? null,
+  }));
 }
 
 /** The full process row backing a review, for detail views. */
@@ -165,18 +175,7 @@ export const handleGetMyReviews = route(async (req, res) => {
   const user = getAuthUser(res);
   const reviews = await listCreatorReviews(user.id);
 
-  const enriched = await Promise.all(
-    reviews.map(async (review) => {
-      const proc = await getProcessSummary(review.process_id);
-      return {
-        ...review,
-        process_type: proc?.type ?? null,
-        process_title: proc?.title ?? null,
-      };
-    }),
-  );
-
-  res.json(enriched);
+  res.json(await withProcessSummaries(reviews));
 });
 
 export const handleGetReview = route(async (req, res) => {
@@ -204,18 +203,7 @@ export const handleAdminListReviews = route(async (req, res) => {
   const status = req.query.status as string | undefined;
   const reviews = await listReviews(status);
 
-  const enriched = await Promise.all(
-    reviews.map(async (review) => {
-      const proc = await getProcessSummary(review.process_id);
-      return {
-        ...review,
-        process_type: proc?.type ?? null,
-        process_title: proc?.title ?? null,
-      };
-    }),
-  );
-
-  res.json(enriched);
+  res.json(await withProcessSummaries(reviews));
 });
 
 export const handleAdminGetReview = route(async (req, res) => {
