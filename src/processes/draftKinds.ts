@@ -6,7 +6,7 @@
 // drafting type declares a DraftKind here and mounts draftRouter(kind).
 
 import { CHECK_MODES, isCheckMode, type CheckMode } from "../shared/checkMode.js";
-import { overlongOption, VOTE_OPTION_MAX } from "../shared/voteOptions.js";
+import { filledOptions, overlongOption, VOTE_OPTION_MAX } from "../shared/voteOptions.js";
 import { ValidationError } from "../errors/index.js";
 import type { DraftSpec, Draft, BaseDraft } from "../modules/civic.drafts/index.js";
 import { voteDurationLimitsSync, getSupportThreshold, defaultCheckModeSync } from "../services/hubSettings.js";
@@ -198,7 +198,13 @@ export const voteDraftKind: DraftKind<VoteDraft> = {
       check_mode: defaultCheckModeSync(),
     }),
   },
-  missing: (d) => (d.title.trim() ? null : "Title is required"),
+  // Blank option fields don't count and never block Submit; two filled ones do.
+  missing: (d) =>
+    !d.title.trim()
+      ? "Title is required"
+      : d.method === "approval" && filledOptions(d.custom_options ?? []).length < 2
+        ? "An approval vote needs at least two options."
+        : null,
   async build(d) {
     const method = d.method ?? "yes_no_unsure";
     // The hub's endorsement threshold is read here, once, and snapshotted onto
@@ -215,7 +221,7 @@ export const voteDraftKind: DraftKind<VoteDraft> = {
     if (method === "approval" && Array.isArray(d.custom_options)) {
       const long = overlongOption(d.custom_options);
       if (long) throw new ValidationError(`Each option can be at most ${VOTE_OPTION_MAX} characters. Shorten "${long.slice(0, 40)}…".`, "option_too_long");
-      state.options = d.custom_options;
+      state.options = filledOptions(d.custom_options);
     }
     const sources = lines(d.sources);
     // Parsed, not the raw line on both fields: storing the whole

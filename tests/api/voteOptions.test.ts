@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
-import { admin, BETA, resident } from "../conformance/driver.js";
+import { admin, approve, BETA, resident } from "../conformance/driver.js";
 import { VOTE_OPTION_MAX } from "../../src/shared/voteOptions.js";
 import { FAKE_COC_DOWN } from "../../src/debug/fakeCodeOfConduct.js";
 
@@ -46,5 +46,47 @@ describe("vote option limit", () => {
     expect(submitted.body.code).toBe("option_too_long");
     const kept = await call("GET", `/votes/drafts/${draft.body.id}`, BETA.host, undefined, token);
     expect(kept.body.custom_options[0]).toHaveLength(VOTE_OPTION_MAX + 5);
+  });
+
+  // Blank option fields are ignored, never refused (2026-10-13): an extra
+  // "+ Add option" left empty must not block Submit.
+  it("blank options are dropped at Submit, and the vote gets only the filled ones", async () => {
+    const { token } = await resident(BETA);
+    const draft = await call("POST", "/votes/drafts", BETA.host, {}, token);
+    const filled = await call("PATCH", `/votes/drafts/${draft.body.id}`, BETA.host, {
+      title: `Blank options ${Date.now()}`,
+      description: "A draft with an empty option field.",
+      method: "approval",
+      custom_options: ["One", "", "Two", "   "],
+    }, token);
+    expect(filled.status, JSON.stringify(filled.body)).toBe(200);
+    const submitted = await call("POST", `/votes/drafts/${draft.body.id}/submit`, BETA.host, {}, token);
+    expect(submitted.status, JSON.stringify(submitted.body)).toBe(201);
+    const approved = await approve(BETA, await admin(BETA), submitted.body.review_id);
+    expect(approved.status, JSON.stringify(approved.body)).toBe(200);
+    const state = await call("GET", `/process/${submitted.body.process_id}/state`, BETA.host, undefined, token);
+    expect(state.body.options).toEqual(["One", "Two"]);
+  });
+
+  it("a draft with fewer than two filled options is refused at Submit, and kept", async () => {
+    const { token } = await resident(BETA);
+    const draft = await call("POST", "/votes/drafts", BETA.host, {}, token);
+    await call("PATCH", `/votes/drafts/${draft.body.id}`, BETA.host, {
+      title: `One option ${Date.now()}`,
+      description: "A draft with one filled option.",
+      method: "approval",
+      custom_options: ["Only", ""],
+    }, token);
+    const submitted = await call("POST", `/votes/drafts/${draft.body.id}/submit`, BETA.host, {}, token);
+    expect(submitted.status, JSON.stringify(submitted.body)).toBe(400);
+    expect(submitted.body.error).toContain("at least two options");
+    const kept = await call("GET", `/votes/drafts/${draft.body.id}`, BETA.host, undefined, token);
+    expect(kept.body.status).toBe("drafting");
+  });
+
+  it("an admin's create drops blank options", async () => {
+    const res = await create(["One", "", "Two"], await admin(BETA));
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body.state?.options ?? res.body.options).toEqual(["One", "Two"]);
   });
 });

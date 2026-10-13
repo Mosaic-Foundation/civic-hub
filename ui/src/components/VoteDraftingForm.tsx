@@ -9,7 +9,7 @@ import { useDebouncedFields } from "../hooks/useDebouncedFields";
 import SuggestFooterButton from "./SuggestFooterButton";
 import TitleField from "./TitleField";
 import GrowingLineInput from "./GrowingLineInput";
-import { VOTE_OPTION_MAX } from "../../../src/shared/voteOptions";
+import { filledOptions, VOTE_OPTION_MAX } from "../../../src/shared/voteOptions";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink, VoteDurationLimits } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
@@ -100,10 +100,11 @@ const CHECK_MODE_CHOICES = [
 function missingReason(draft: VoteDraft): string | null {
   if (!draft.title.trim()) return "Add a vote question to submit.";
   if (draft.method === "approval") {
-    const opts = draft.custom_options ?? [];
+    // Blank fields are ignored at Submit (an extra "+ Add option" left empty
+    // never blocks it); two filled ones are needed.
+    const opts = filledOptions(draft.custom_options ?? []);
     if (opts.length < 2) return "Approval voting needs at least 2 options.";
-    if (opts.some((o) => !o.trim())) return "Every option needs text.";
-    if (opts.some((o) => o.trim().length > VOTE_OPTION_MAX)) return `Shorten each option to ${VOTE_OPTION_MAX} characters or fewer.`;
+    if (opts.some((o) => o.length > VOTE_OPTION_MAX)) return `Shorten each option to ${VOTE_OPTION_MAX} characters or fewer.`;
   }
   return null;
 }

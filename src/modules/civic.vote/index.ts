@@ -12,7 +12,7 @@
 // hub awaits the DB write before the action completes.
 
 import { CHECK_MODES, DEFAULT_CHECK_MODE, checkModeOf, isCheckMode } from "../../shared/checkMode.js";
-import { overlongOption, VOTE_OPTION_MAX } from "../../shared/voteOptions.js";
+import { filledOptions, overlongOption, VOTE_OPTION_MAX } from "../../shared/voteOptions.js";
 import { ConflictError, ValidationError } from "../../errors/index.js";
 import type {
   VoteConfig,
@@ -90,7 +90,8 @@ export function createVoteState(
   const methodKey = (input.method as string | undefined) ?? DEFAULT_METHOD;
   const method = getVotingMethod(methodKey);
 
-  const inputOptions = input.options as string[] | undefined;
+  // Blank options are dropped, not refused: an empty field is an accident.
+  const inputOptions = Array.isArray(input.options) ? filledOptions(input.options) : undefined;
   const options = inputOptions ?? method.defaultOptions ?? [];
 
   // Options made now are at most VOTE_OPTION_MAX characters (votes made
