@@ -6,7 +6,8 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Vote pages fixes: no scroll, receipt box, results bars, check page, five small bugs — 2026-10-13
 
-Twelve commits on `multi-tenant` (`d581b02`..this entry). **No migrations, no new database functions, no new env
+Thirteen commits on `multi-tenant` (`d581b02`..`7838351`, plus this note), **live on dev** since `release.sh dev` (CI,
+E2E and Smoke green; smoke 9 of 9 in 1.2 min on live dev). **No migrations, no new database functions, no new env
 vars.** Report: `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Vote-Pages-Fixes-Session-Report-2026-10-13.md`.
 
 **Built (Adam's dev walk of the Actions slice):**
@@ -33,6 +34,12 @@ vars.** Report: `~/Documents/Civic Social/Mosaic Foundation Management/Civic Soc
 - **A conversation takes its regenerated summary once the new brief is published** (or approved, if it was
   regenerated before). `regenerateBrief` returns `{ content, source_state }`. The old values are kept in
   `brief_revisions`, and the conversation emits `civic.process.updated`.
+
+**Review fixes (`7838351`, from a second model's read of the diff):**
+- the banner's link is known on mount;
+- the voter's own scroll ends the ballot hold;
+- the conversation's summary is written before the brief's pending state is cleared (a retry finishes the job);
+- non-list `options` are refused.
 
 **Adam's decisions (2026-10-13):** the honest "Addressed to" line; existing hubs keep their threshold; write the
 summary back; a 5-second banner that is not baked into plugins.
