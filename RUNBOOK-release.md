@@ -34,7 +34,11 @@ The dry run checks everything except the migration and the push, and checks the 
 4. asks once: "Apply N migrations and push? y/N" (`--yes` answers it, for a session that can't type at the
    prompt; dev only, and the script refuses `--yes` with `prod`);
 5. applies them;
-6. checks `/api/health` on the old code;
+6. checks `/api/health` on the old code; then, if `config/jurisdictions/us-jurisdictions.sha256` differs from the
+   live commit's, loads the jurisdiction list with `scripts/load-jurisdictions.ts` and the env file named in
+   `release.config` (`RELEASE_DEV_DB_ENV`, `RELEASE_PROD_DB_ENV`: paths to a file holding
+   `CIVIC_TARGET_DATABASE_URL`, never the value). Without that file it prints the exact command and goes on: the
+   code works with either list. A dry run runs the loader's own dry run;
 7. pushes `multi-tenant`;
 8. waits up to 10 minutes for Vercel to serve the new commit;
 9. checks `/api/health` and the JSON 404 again;
@@ -59,6 +63,7 @@ It stops at the first mismatch, says which step, and changes nothing after that 
 | "You said no" | Nothing was applied or pushed | Nothing to undo |
 | Migrations, apply | A migration failed. The code was **not** pushed | Run `./scripts/db-push.sh --dry-run` to see what went in. Fix the migration or the database before pushing code that needs it |
 | Health on the old code | A migration broke the live code, or a schema gap remains | The message names the gap. If it names something the migration adds, run `NOTIFY pgrst, 'reload schema';` in the SQL editor and run the command again. Otherwise fix the database or roll the change back; don't deploy on top of it |
+| The jurisdiction list | The loader failed after the list changed. The code was **not** pushed | Run the command it prints by hand, read its output, then run the release again |
 | The push | `git push` failed | The migrations are in, the code is not. Fix the push (network, auth) and run the command again: it finds no migrations and pushes |
 | Waiting for Vercel | After 10 minutes dev still serves the old commit | Look at civic-hub-dev's Deployments page first: a failed build is not a missed push. If no build started, run the empty-commit command it prints, then run the command again |
 | Health on the new code | The new code needs something the database doesn't have | As for "Health on the old code". The new code is live, so this is urgent |

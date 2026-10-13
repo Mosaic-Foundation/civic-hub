@@ -12,6 +12,8 @@
 #   4. one question: apply them and push?
 #   5. db-push.sh;
 #   6. /api/health on the old code: status ok, no schema gaps;
+#      then, when us-jurisdictions.sha256 differs from the live commit's, the
+#      jurisdiction list is loaded (RELEASE_*_DB_ENV in release.config);
 #   7. git push;
 #   8. wait for Vercel to serve the new commit (up to RELEASE_DEPLOY_TIMEOUT);
 #   9. /api/health on the new code, and an unknown POST answers JSON 404;
@@ -317,6 +319,44 @@ LIVE_COMMIT=""
 require_healthy 90
 BEFORE_COMMIT="$LIVE_COMMIT"
 
+# --- 6b. the jurisdiction list ---------------------------------------------------
+#
+# config/jurisdictions/us-jurisdictions.csv is data the database must hold, not
+# code: a release that changes it loads it (sign-in slice, 2026-10-14), after
+# the migrations (a new type needs its constraint) and before the code. The
+# loader is idempotent: it skips a list whose checksum is already loaded.
+
+step "The jurisdiction list"
+SUMFILE="config/jurisdictions/us-jurisdictions.sha256"
+if [[ "$TARGET" == "prod" ]]; then DB_ENV="$RELEASE_PROD_DB_ENV"; else DB_ENV="$RELEASE_DEV_DB_ENV"; fi
+LOAD_CMD="cd $(pwd) && node --env-file=$DB_ENV --import tsx scripts/load-jurisdictions.ts"
+LIST_CHANGED=1
+if [[ "$BEFORE_COMMIT" != "unknown" ]] && git cat-file -e "${BEFORE_COMMIT}^{commit}" 2>/dev/null; then
+  git diff --quiet "$BEFORE_COMMIT" "$HEAD_SHA" -- "$SUMFILE" && LIST_CHANGED=0
+else
+  note "Can't tell which list the live code shipped (live commit ${BEFORE_COMMIT:0:7} isn't in this clone): loading checks."
+fi
+if (( LIST_CHANGED == 0 )); then
+  ok "unchanged since ${BEFORE_COMMIT:0:7}; nothing to load"
+  LIST_RESULT="unchanged"
+elif [[ ! -f "$DB_ENV" ]]; then
+  note "The list changed, and there is no env file at $DB_ENV to load it with."
+  note "Load it before relying on the new places (the code works either way):"
+  note "  $LOAD_CMD"
+  LIST_RESULT="CHANGED, NOT LOADED: run  $LOAD_CMD"
+elif (( DRY_RUN )); then
+  node --env-file="$DB_ENV" --import tsx scripts/load-jurisdictions.ts --dry-run 2>&1 | sed 's/^/      /' ||
+    stop "The jurisdiction loader's dry run failed (output above)."
+  ok "the list changed; the dry run above shows what loading it would do"
+  LIST_RESULT="changed, not loaded (dry run)"
+else
+  node --env-file="$DB_ENV" --import tsx scripts/load-jurisdictions.ts 2>&1 | sed 's/^/      /' ||
+    stop "Loading the jurisdiction list failed (output above). The code was not pushed." \
+      "Run it by hand, then this command again:" "  $LOAD_CMD"
+  ok "the list changed, and is loaded"
+  LIST_RESULT="loaded ($(cut -c1-8 "$SUMFILE")…)"
+fi
+
 # --- 7–9. push, wait, check ----------------------------------------------------
 
 if (( DRY_RUN )); then
@@ -375,6 +415,7 @@ printf '\n\033[1m%s release %s\033[0m  (%dm%02ds)\n' "$LABEL" "$( (( DRY_RUN )) 
 printf '  Hub:         %s\n' "$HUB_URL"
 printf '  Release:     %s  %s\n' "${HEAD_SHA:0:7}" "$(git log -1 --format=%s "$HEAD_SHA")"
 printf '  Migrations:  %s\n' "$( (( COUNT == 0 )) && echo none || { (( DRY_RUN )) && echo "$COUNT pending, not applied" || echo "$COUNT applied"; })"
+printf '  Places list: %s\n' "$LIST_RESULT"
 printf '  Pushed:      %s\n' "$PUSHED"
 printf '  Live commit: %s (was %s)\n' "${LIVE_COMMIT:0:7}" "${BEFORE_COMMIT:0:7}"
 printf '  Health:      ok, no schema gaps\n'
