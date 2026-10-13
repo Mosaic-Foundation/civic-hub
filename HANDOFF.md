@@ -7,7 +7,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 ## Submit and save: Submit runs the check, sticky Save, one Modal — 2026-10-12
 
 Reports: `Submit-And-Save-Session-Report-2026-10-12.md` and `Submit-And-Save-Handoff-to-Management-2026-10-12.md`
-in Mosaic Foundation Management. Eleven commits on `multi-tenant`, `1627627`..`36ce9ea`; not pushed.
+in Mosaic Foundation Management. Fourteen commits on `multi-tenant`, `1627627`..(this docs update); not pushed.
 **One migration, first:** `20261013000000_review_coc_flags.sql` (additive: `process_reviews.coc_flags jsonb`).
 
 **Adam's decisions:**
@@ -35,7 +35,8 @@ in Mosaic Foundation Management. Eleven commits on `multi-tenant`, `1627627`..`3
   `[coc-down]`), refused in production. It is on in CI's API and E2E hubs.
 - **The forms:**
   - No check button. One `DraftFooter`: slim, outlined secondaries, Submit in the theme's dark primary
-    (`primary-800`). On a phone it still flows at the end (Adam, 2026-09-05).
+    (`primary-800`). Pinned on phones too now that it is slim (Adam, 2026-10-12; it flowed at the end from
+    2026-09-05).
   - Submit flushes debounced typing and waits for saves (`useDebouncedFields`, `flow.settle()`).
   - Findings show under their field (`CocFindings`) and in a list that takes focus, with "Think this is wrong?
     Tell the admins".
@@ -56,11 +57,12 @@ in Mosaic Foundation Management. Eleven commits on `multi-tenant`, `1627627`..`3
 **Tests:** see TESTING.md "Submit and save". `npm test` 176 files (2,151 passed); API in hub-token mode 50 files
 (673); the suite 90 passed (was 78); Playwright 55 passed, 2 skipped. CI not yet run (unpushed).
 
-**Open:**
-- Pin the now-slim bar on phones too (it was unpinned for being a quarter of the screen)?
-- Drop the old `/review` route next release.
+**Adam's answers after the build:**
+- Pin the bar on phones (done, its own commit).
+- Drop the old `/assistant/:type/drafts/:id/review` route **next release**.
+- Leave the browser Back button uncaught by the unsaved-changes guard until the app moves to a data router for
+  another reason.
 - Participation, Admins & board and Mode settings keep their own inline saves.
-- The browser Back button is not caught by the unsaved-changes guard (BrowserRouter has no blocker).
 
 ---
 
