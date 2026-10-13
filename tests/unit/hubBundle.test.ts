@@ -34,6 +34,7 @@ describe("what leaves", () => {
       "link_previews",
       "pending_verifications",
       "sessions",
+      "sign_in_codes",
     ]);
     for (const o of omitted) expect(o.reason.length).toBeGreaterThan(10);
   });

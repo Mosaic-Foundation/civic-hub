@@ -44,6 +44,7 @@ const AUTHENTICATED = [
   "search_processes",
   "search_processes_count",
   "take_code_attempt",
+  "take_sign_in_attempt",
   "transition_process",
 ];
 
@@ -52,8 +53,10 @@ const SERVICE_ROLE = [
   ...AUTHENTICATED,
   "cast_vote",
   "function_catalog",
+  "rate_limit_retry_at",
   "rate_limit_take",
   "take_control_code_attempt",
+  "take_platform_sign_in_attempt",
   "take_start_code_attempt",
   "tenancy_catalog",
 ].sort();

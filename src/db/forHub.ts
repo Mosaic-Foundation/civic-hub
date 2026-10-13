@@ -82,6 +82,7 @@ export const HUB_TABLES = [
   "proposals",
   "review_turns",
   "sessions",
+  "sign_in_codes",
   "users",
   "vote_drafts",
   "vote_participation",

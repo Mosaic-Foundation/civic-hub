@@ -59,6 +59,7 @@ export const NOT_PROCESS_CONTENT: Readonly<Record<string, string>> = {
   pending_verifications: "sign-in codes",
   project_drafts: "a resident's unsubmitted draft; the seed writes none",
   proposal_drafts: "a resident's unsubmitted draft; the seed writes none",
+  sign_in_codes: "sign-in codes",
   sessions: "credentials; a sample user's sessions go with the user (ON DELETE CASCADE)",
   vote_drafts: "a resident's unsubmitted draft; the seed writes none",
   waitlist: "people asking to join",

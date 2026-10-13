@@ -45,6 +45,10 @@ export const NOT_HUB_SCOPED: Readonly<Record<string, string>> = {
   entitlement_redemptions:
     "each use of an entitlement (who, which hub), across hubs; service role (src/control/) only",
   start_codes: "the start page's emailed sign-in codes, hashed; platform, not hub, data; service role (src/control/) only",
+  // The sign-in slice (20261014000000, Adam 2026-10-13): one row per code,
+  // up to three live per address; replaces control_codes and start_codes.
+  platform_sign_in_codes:
+    "the console's and the start page's emailed codes, hashed, one row per code; platform, not hub, data; service role (src/control/) only",
   start_sessions: "start-page sessions, by token hash; platform, not hub, data; service role (src/control/) only",
   // Audit 2 (20261011100000, Adam 2026-10-11): one table for every rate limit
   // on the platform, so per-IP limits hold across hubs.

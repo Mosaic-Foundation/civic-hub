@@ -150,7 +150,7 @@ const HUB_TABLES_FOR_SNAPSHOT = [
   "hub_settings", "job_runs", "link_previews", "pending_verifications", "process_links",
   "process_reviews", "processes", "project_comments", "project_drafts",
   "project_sentiments", "project_updates", "projects", "proposal_drafts",
-  "proposal_supports", "proposals", "review_turns", "sessions", "users",
+  "proposal_supports", "proposals", "review_turns", "sessions", "sign_in_codes", "users",
   "vote_drafts", "vote_participation", "vote_records", "waitlist",
   "wordcloud_submissions",
 ];

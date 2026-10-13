@@ -170,6 +170,7 @@ export const EXPORT_MANIFEST: readonly ExportManifestEntry[] = [
   { table: "proposals", rows: "export" },
   { table: "review_turns", rows: "export" },
   { table: "sessions", rows: "omit", reason: "bearer credentials; residents sign in again on the new host" },
+  { table: "sign_in_codes", rows: "omit", reason: "live sign-in codes" },
   { table: "users", rows: "export" },
   { table: "vote_drafts", rows: "export" },
   { table: "vote_participation", rows: "export" },

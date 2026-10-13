@@ -381,7 +381,7 @@ Sample content (rows seeded to demonstrate a hub, not written by its people)
 is left out once such rows are marked; the counts are per table above.
 
 Sign-in secrets live only in the tables above that are omitted (\`sessions\`,
-\`pending_verifications\`). Platform credentials (API keys, signing keys) are
+\`pending_verifications\`, \`sign_in_codes\`). Platform credentials (API keys, signing keys) are
 environment variables of the deployment and were never in the database.
 
 ## Images
