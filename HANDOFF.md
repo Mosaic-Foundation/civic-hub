@@ -6,7 +6,8 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Sign-in slice: lock the code, the email link, Keep me signed in, terms without a checkbox, city-counties — 2026-10-14
 
-Commits on `multi-tenant` from `ac3b009`, one item each. Report:
+Commits on `multi-tenant` `ac3b009`..`eadb61f`, one item each, **live on dev** since `release.sh dev --yes` (both
+migrations and the place list in; CI, E2E 101 and Smoke 10 of 10 in 52 s green on `eadb61f`). Report:
 `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Sign-In-Session-Report-2026-10-14.md`.
 
 **Release needs:**
