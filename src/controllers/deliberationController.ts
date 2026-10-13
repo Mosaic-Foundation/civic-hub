@@ -1,7 +1,7 @@
 import { ConflictError, NotFoundError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { AiLimitError, admitAiCall } from "../services/aiBudget.js";
-import { getAuthUser, resolveCallerId } from "../middleware/auth.js";
+import { getAuthUser } from "../middleware/auth.js";
 import { getPolisAdapter } from "../processes/deliberationBoot.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
@@ -16,6 +16,7 @@ import {
   addMockStatement,
 } from "../debug/seedDeliberationMocks.js";
 import { submitAsCreator } from "../modules/civic.review/index.js";
+import { readAsPage, viewFor } from "./processController.js";
 import { checkTextAgainstCoC, getHubConfig } from "../modules/civic.assistant/index.js";
 import { assertPassesWordlist } from "../shared/wordlist/index.js";
 import { personFallbackName } from "../services/creatorDisplay.js";
@@ -76,20 +77,6 @@ async function getVotedStatementIds(
     .eq("process_id", processId)
     .eq("user_id", userId);
   return new Set(votes.map((v) => v.statement_id));
-}
-
-/** Whether this user has submitted a statement in this conversation. */
-async function hasSubmittedStatement(
-  processId: string,
-  userId: string,
-): Promise<boolean> {
-  const data = await db()
-    .from("deliberation_submissions")
-    .select<{ user_id: string }>("user_id")
-    .eq("process_id", processId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  return !!data;
 }
 
 async function getConversationId(processId: string): Promise<string> {
@@ -316,6 +303,7 @@ export const handleCreateDeliberation = route(async (req, res) => {
   res.status(201).json(result);
 });
 
+// Admin actions answer like every action: { result, view } (never the raw row).
 export const handleStartDeliberation = route(async (req, res) => {
   const user = getAuthUser(res);
   const processId = req.params.processId as string;
@@ -326,7 +314,7 @@ export const handleStartDeliberation = route(async (req, res) => {
     payload: {},
   }, "admin");
 
-  res.json(result);
+  res.json({ result: result.result, view: await viewFor(res, processId) });
 });
 
 export const closeDeliberation = route(async (req, res) => {
@@ -339,7 +327,7 @@ export const closeDeliberation = route(async (req, res) => {
     payload: {},
   }, "admin");
 
-  res.json(result);
+  res.json({ result: result.result, view: await viewFor(res, processId) });
 });
 
 export const regenerateSummary = route(async (req, res) => {
@@ -352,7 +340,7 @@ export const regenerateSummary = route(async (req, res) => {
     payload: {},
   }, "admin");
 
-  res.json(result);
+  res.json({ result: result.result, view: await viewFor(res, processId) });
 });
 
 export const listDeliberations = route(async (_req, res) => {
@@ -376,28 +364,7 @@ export const listDeliberations = route(async (_req, res) => {
 });
 
 export const getDeliberation = route(async (req, res) => {
-  const processId = req.params.processId as string;
-  const process = await processService.getProcess(processId);
-  if (!process || process.definition.type !== "civic.polis_deliberation") {
-    throw new NotFoundError("Conversation not found");
-  }
-  const handler = (await import("../processes/registry.js")).getProcessHandler(
-    "civic.polis_deliberation",
-  );
-  if (!handler) {
-    throw new NotFoundError("Conversation not found");
-  }
-  // Caller identity comes from the session token, never from ?actor= (which
-  // let anyone read another resident's participation state by passing their
-  // id). Anonymous callers get the public read model.
-  const actor = await resolveCallerId(req);
-  const readModel = handler.getReadModel(process, actor);
-
-  const has_submitted = actor ? await hasSubmittedStatement(processId, actor) : false;
-
-  res.json({
-    ...readModel,
-    has_submitted,
-    ...(process.isSample ? { is_sample: true } : {}),
-  });
+  // The shared read path (visibility, bylines, sample badge), with the
+  // conversation's own fields from its handler, has_submitted included.
+  res.json(await readAsPage(req, req.params.processId as string, "civic.polis_deliberation", "Conversation not found"));
 });

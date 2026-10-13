@@ -24,6 +24,7 @@ import {
   listProjectUpdates,
   setProjectSentiment,
   markProjectCompleted,
+  getProjectReadModel,
   type SentimentValue,
 } from "../modules/civic.projects/index.js";
 import { emitProjectCompleted, emitProjectUpdated } from "../modules/civic.projects/events.js";
@@ -248,16 +249,16 @@ const projectAdapter: ProcessHandler = {
     }
   },
 
-  getReadModel(process: Process): Record<string, unknown> {
-    return {
-      id: process.id,
-      type: process.definition.type,
-      title: process.title,
-      description: process.description,
-      status: process.status,
-      created_at: process.createdAt,
-      created_by: process.createdBy,
-    };
+  // The project page's own shape (GET /projects/:id reads it here too), so
+  // an action's `view` is what the page shows. The owner is `created_by`,
+  // which the service resolves to a byline and removes.
+  async getReadModel(process: Process, actor?: string): Promise<Record<string, unknown>> {
+    const model = await getProjectReadModel(process.id, actor);
+    if (!model) {
+      return { id: process.id, type: process.definition.type, title: process.title, status: process.status, created_by: process.createdBy };
+    }
+    const { user_id, ...rest } = model as Record<string, unknown>;
+    return { ...rest, type: process.definition.type, created_by: (user_id as string | undefined) ?? process.createdBy };
   },
 
   getSummary(process: Process): Record<string, unknown> {

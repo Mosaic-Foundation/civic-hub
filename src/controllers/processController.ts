@@ -18,7 +18,7 @@ import {
 import { isPubliclyFetchable } from "../services/processLifecycle.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import { getDescriptor } from "../processes/registry.js";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import type { Process } from "../models/process.js";
 
 export const handleCreateProcess = route(async (req, res) => {
@@ -83,8 +83,36 @@ export const handleProcessAction = route(async (req, res) => {
   // carries account ids (the creator, a vote's `supporters` map) that only
   // their owner and the hub's admins may see.
   const { result } = await actOnProcess(res, id, type, payload ?? {});
-  res.json({ result });
+  res.json({ result, view: await viewFor(res, id) });
 });
+
+/**
+ * The process as the caller's page reads it after an action: exactly what
+ * `GET /process/:id/state` answers them, so the page replaces its state with
+ * it and shows the result without a reload. Every action answers with it
+ * (`view`); the conformance suite checks it equals a fresh read. Null when
+ * the process is no longer one the caller may read.
+ */
+export async function viewFor(res: Response, id: string): Promise<Record<string, unknown> | null> {
+  const user = getAuthUser(res);
+  return (await getProcessState(id, { actor: user.id, audience: "member" })) ?? null;
+}
+
+/**
+ * One process as GET /process/:id/state reads it, for a type's own page
+ * (`/proposals/:id`, `/projects/:id`): one read model per type, so the page
+ * and an action's `view` are the same shape. 404 for another type's id.
+ */
+export async function readAsPage(req: Request, id: string, type: string, notFound: string): Promise<Record<string, unknown>> {
+  const caller = await resolveCallerUser(req);
+  const state = await getProcessState(id, {
+    actor: caller?.id,
+    audience: caller ? "member" : "public",
+    anonNumbers: caller ? undefined : await buildProcessAnonNumbers(id),
+  });
+  if (!state || state.type !== type) throw new NotFoundError(notFound);
+  return state;
+}
 
 /**
  * Run one action as the signed-in person, through executeAction: the one

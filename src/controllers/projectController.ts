@@ -1,15 +1,13 @@
-import { NotFoundError, ValidationError } from "../errors/index.js";
+import { ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { resolveCallerUser } from "../middleware/auth.js";
-import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import {
   listProjects,
-  getProjectReadModel,
   getProjectSummary,
 } from "../modules/civic.projects/index.js";
-import { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
+import { enrichCreators } from "../services/creatorDisplay.js";
 import { getSampleProcessIds } from "../services/processService.js";
-import { actOnProcess } from "./processController.js";
+import { actOnProcess, readAsPage, viewFor } from "./processController.js";
 
 /**
  * POST /projects/:id/complete — mark a project complete (its creator or an
@@ -17,10 +15,12 @@ import { actOnProcess } from "./processController.js";
  * and the universal seam in executeAction spawns its Civic Brief for review.
  */
 export const handleCompleteProject = route(async (req, res) => {
-  await actOnProcess(res, req.params.id as string, "process.complete", {}, "civic.project");
+  const id = req.params.id as string;
+  await actOnProcess(res, id, "process.complete", {}, "civic.project");
   res.json({
     ok: true,
     message: "Project marked complete. A brief was created for admin review.",
+    view: await viewFor(res, id),
   });
 });
 
@@ -54,38 +54,17 @@ export const handleListProjects = route(async (req, res) => {
 });
 
 export const handleGetProject = route(async (req, res) => {
-  const id = req.params.id as string;
-  // Caller identity comes from the session token, never from ?actor= (which
-  // let anyone read another user's sentiment by passing their id). Anonymous
-  // callers get the public read model with no per-actor fields.
-  const caller = await resolveCallerUser(req);
-  const callerId = caller?.id;
-
-  const readModel = await getProjectReadModel(id, callerId);
-  if (!readModel) {
-    throw new NotFoundError("Project not found");
-  }
-  // Owner edit-affordance is a server-computed boolean, so the raw user_id
-  // never leaves the API. enrichCreator redacts user_id (keepRawId omitted).
-  const isOwner =
-    !!callerId && (readModel as { user_id?: string }).user_id === callerId;
-  const enriched = await enrichCreator(readModel, {
-    rawIdField: "user_id",
-    audience: caller ? "member" : "public",
-    anonNumbers: caller ? undefined : await buildProcessAnonNumbers(id),
-  });
-  enriched.is_owner = isOwner;
-  // Sample content (Phase 7): project id === its canonical processes row id.
-  if ((await getSampleProcessIds()).has(id)) {
-    (enriched as Record<string, unknown>).is_sample = true;
-  }
-  res.json(enriched);
+  // The project's read model through the shared read path (its adapter
+  // builds the page's shape): bylines, "Resident N" for visitors, sample
+  // badge, the caller's own sentiment, and is_owner (never the raw id).
+  res.json(await readAsPage(req, req.params.id as string, "civic.project", "Project not found"));
 });
 
 
 /** POST /projects/:id/sentiment — process.sentiment through the one action path. */
 export const handleSetSentiment = route(async (req, res) => {
   const { sentiment } = req.body ?? {};
-  const { result } = await actOnProcess(res, req.params.id as string, "process.sentiment", { sentiment }, "civic.project");
-  res.json(result);
+  const id = req.params.id as string;
+  const { result } = await actOnProcess(res, id, "process.sentiment", { sentiment }, "civic.project");
+  res.json({ ...result, view: await viewFor(res, id) });
 });

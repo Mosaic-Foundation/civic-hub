@@ -532,6 +532,12 @@ async function advance(
       const token = await tokenFor(as, hub, creatorToken);
       const res = await act(hub, id, a.name, examplePayload(d, a.name, await processRow(id)), token);
       expect(res.status, `${d.type} ${a.name} from ${status} as ${as}: ${JSON.stringify(res.body)}`).toBeLessThan(500);
+      if (res.status < 300) {
+        // The answer carries what the page needs to show the result at once:
+        // the process exactly as the caller's next read of it.
+        const fresh = await call("GET", `/process/${id}/state`, hub.host, undefined, token);
+        expect(res.body.view, `${d.type} ${a.name}: the answer's view`).toEqual(fresh.status === 200 ? fresh.body : null);
+      }
       if (as !== "admin") {
         expect(res.body.code, `${d.type} ${a.name} refused to a ${as}`).not.toBe("admin_required");
         // An account id goes only to its owner and the hub's admins.

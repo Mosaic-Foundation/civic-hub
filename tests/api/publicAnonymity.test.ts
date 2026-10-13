@@ -66,7 +66,10 @@ describe("public anonymity — proposal detail + comments", () => {
     expect(status).toBe(200);
     expect(body.creator_name).toBe("Resident 1");
     expect(body.creator_is_admin).toBe(false);
-    expect(body.submitted_by).toBe("");
+    // One read model per type (Actions slice): the creator is created_by,
+    // blanked, as on every type's page; no submitted_by.
+    expect((body as Record<string, unknown>).created_by).toBe("");
+    expect(body.submitted_by).toBeUndefined();
     expect(JSON.stringify(body)).not.toContain(AUTHOR_NAME);
   });
 

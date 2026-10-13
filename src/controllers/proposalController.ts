@@ -5,17 +5,15 @@
 // direct create route was removed 2026-10-12 (it skipped review).
 // Admin operations are in adminController.ts.
 
-import { NotFoundError, ValidationError } from "../errors/index.js";
+import { ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import {
   listProposals,
-  getProposalReadModel,
   getProposalSummary,
 } from "../modules/civic.proposals/index.js";
 import { resolveCallerUser } from "../middleware/auth.js";
-import { actOnProcess } from "./processController.js";
-import { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
-import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
+import { actOnProcess, readAsPage, viewFor } from "./processController.js";
+import { enrichCreators } from "../services/creatorDisplay.js";
 import { getSampleProcessIds } from "../services/processService.js";
 
 /**
@@ -55,29 +53,10 @@ export const handleListProposals = route(async (req, res) => {
  * GET /proposals/:id — get proposal detail
  */
 export const handleGetProposal = route(async (req, res) => {
-  const id = req.params.id as string;
-  // Caller identity comes from the session token, never from ?actor= (which
-  // let anyone read another resident's support state by passing their id).
-  // Anonymous callers get the public read model with no per-actor fields —
-  // and, on this detail surface, per-process "Resident N" bylines that
-  // stay consistent with the comment thread (same numbering map).
-  const caller = await resolveCallerUser(req);
-
-  const readModel = await getProposalReadModel(id, caller?.id);
-  if (!readModel) {
-    throw new NotFoundError("Proposal not found");
-  }
-  // Attach creator name + admin flag; redact the raw submitted_by id.
-  const enriched = await enrichCreator(readModel, {
-    rawIdField: "submitted_by",
-    audience: caller ? "member" : "public",
-    anonNumbers: caller ? undefined : await buildProcessAnonNumbers(id),
-  });
-  // Sample content (Phase 7): proposal id === its canonical processes row id.
-  if ((await getSampleProcessIds()).has(id)) {
-    (enriched as Record<string, unknown>).is_sample = true;
-  }
-  res.json(enriched);
+  // The proposal's read model through the shared read path (its adapter
+  // builds the page's shape): bylines, "Resident N" for visitors, sample
+  // badge and the per-caller has_supported, as every type's page gets them.
+  res.json(await readAsPage(req, req.params.id as string, "civic.proposal", "Proposal not found"));
 });
 
 /**
@@ -86,11 +65,13 @@ export const handleGetProposal = route(async (req, res) => {
  * the one action path (src/controllers/processController.ts, actOnProcess).
  */
 export const handleSupportProposal = route(async (req, res) => {
-  const { result } = await actOnProcess(res, req.params.id as string, "process.support", {}, "civic.proposal");
-  res.json({ support_count: result.support_count, status: result.status });
+  const id = req.params.id as string;
+  const { result } = await actOnProcess(res, id, "process.support", {}, "civic.proposal");
+  res.json({ support_count: result.support_count, status: result.status, view: await viewFor(res, id) });
 });
 
 export const handleUnsupportProposal = route(async (req, res) => {
-  const { result } = await actOnProcess(res, req.params.id as string, "process.unsupport", {}, "civic.proposal");
-  res.json({ support_count: result.support_count, status: result.status });
+  const id = req.params.id as string;
+  const { result } = await actOnProcess(res, id, "process.unsupport", {}, "civic.proposal");
+  res.json({ support_count: result.support_count, status: result.status, view: await viewFor(res, id) });
 });

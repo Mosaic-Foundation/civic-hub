@@ -698,7 +698,11 @@ export async function getProcessState(
   // public read model. Read models expose the creator id under `created_by`
   // (vote, project, proposal, generic) — types that use a different field
   // (announcement → author_id) enrich inside their own read model instead.
+  // Whether the caller made it, worked out before the id is removed: a
+  // page's owner controls (a project's edits) key on this, never on an id.
+  const isOwner = !!actor && typeof model.created_by === "string" && model.created_by === actor;
   const enriched = await enrichProcessCreator(model, opts);
+  enriched.is_owner = isOwner;
   // Universal: every type's page shows the Sample badge (Phase 7).
   if (process.isSample) enriched.is_sample = true;
   return enriched;

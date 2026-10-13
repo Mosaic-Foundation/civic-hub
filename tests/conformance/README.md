@@ -36,6 +36,10 @@ both API passes (service role, minted hub tokens).
      refused to one (403 `admin_required`).
    - Every result is a status the action declares; outside production, the hub
      itself refuses anything else.
+   - Every answer carries `view`: the process exactly as the caller's next
+     `GET /process/:id/state` reads it, so a page shows the result at once.
+     The hub builds it from the type's `getReadModel`; a type whose page
+     reads its own route answers that route from the same read model.
    - No answer to a resident carries another person's account id, and neither
      does the process as a resident or a visitor reads it afterwards. Account
      ids are for their owner and the hub's admins.

@@ -27,6 +27,7 @@ import {
   supportProposal,
   withdrawProposalSupport,
   markProposalClosed,
+  getProposalReadModel,
 } from "../modules/civic.proposals/index.js";
 import { emitProposalClosed } from "../modules/civic.proposals/events.js";
 import { closeThroughDispatcher } from "./registry.js";
@@ -184,16 +185,16 @@ const proposalAdapter: ProcessHandler = {
     }
   },
 
-  getReadModel(process: Process): Record<string, unknown> {
-    return {
-      id: process.id,
-      type: process.definition.type,
-      title: process.title,
-      description: process.description,
-      status: process.status,
-      created_at: process.createdAt,
-      created_by: process.createdBy,
-    };
+  // The proposal page's own shape (GET /proposals/:id reads it here too), so
+  // an action's `view` is what the page shows. The submitter is `created_by`,
+  // which the service resolves to a byline and removes.
+  async getReadModel(process: Process, actor?: string): Promise<Record<string, unknown>> {
+    const model = await getProposalReadModel(process.id, actor);
+    if (!model) {
+      return { id: process.id, type: process.definition.type, title: process.title, status: process.status, created_by: process.createdBy };
+    }
+    const { submitted_by, ...rest } = model;
+    return { ...rest, type: process.definition.type, created_by: submitted_by ?? process.createdBy };
   },
 
   getSummary(process: Process): Record<string, unknown> {

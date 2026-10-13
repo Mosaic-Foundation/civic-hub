@@ -7,6 +7,8 @@ import { describeSubmissionFields } from "../shared/submissionPreview.js";
 import { setDraftStatus } from "../modules/civic.drafts/index.js";
 import { deliberationDraftKind } from "./draftKinds.js";
 import { generateId } from "../utils/id.js";
+import { forHub } from "../db/forHub.js";
+import { currentHubId } from "../config/hubContext.js";
 import { guardedFetch } from "../utils/ssrfGuard.js";
 import { callClaude, DEFAULT_MODEL } from "../utils/anthropic.js";
 import { closeThroughDispatcher } from "./registry.js";
@@ -232,6 +234,16 @@ export function bootDeliberation(): ProcessHandler {
   const handler = shared as unknown as ProcessHandler;
   handler.descriptor = POLIS_DELIBERATION_DESCRIPTOR;
 
+  // The conversation page's whole shape, so GET /deliberations/:id and an
+  // action's `view` are the same read: the shared read model plus whether
+  // the caller has put a statement in (that table is the hub's, so it is
+  // read here, not in the portable shared handler).
+  const sharedReadModel = shared.getReadModel.bind(shared);
+  handler.getReadModel = async (process: Process, actor?: string) => ({
+    ...(await sharedReadModel(process as never, actor)),
+    has_submitted: actor ? await hasSubmittedStatement(process.id, actor) : false,
+  });
+
   // Storage this process type owns. Declared on the boot side rather than in
   // the portable shared handler, for the same reason closeIfExpired is: the
   // shared module stays free of hub-specific imports. A hub that doesn't
@@ -375,4 +387,15 @@ export function bootDeliberation(): ProcessHandler {
   };
 
   return handler;
+}
+
+/** Whether this person has put a statement into this conversation. */
+async function hasSubmittedStatement(processId: string, userId: string): Promise<boolean> {
+  const row = await forHub(currentHubId())
+    .from("deliberation_submissions")
+    .select<{ user_id: string }>("user_id")
+    .eq("process_id", processId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return !!row;
 }
