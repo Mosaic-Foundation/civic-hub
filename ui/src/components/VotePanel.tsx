@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import ShareMoment from "./ShareMoment";
 import type { ActionResult, HeldReceiptPayload, ProcessState, VoteState } from "../services/api";
@@ -58,6 +58,11 @@ function collectEarlyReceipt(actor: string, processId: string, approval: boolean
     claimsInFlight.set(key, p);
   }
   return p;
+}
+
+/** Where an element sits on the screen now, held for the next two seconds. */
+function holdPlace(el: HTMLElement): { top: number; until: number } {
+  return { top: el.getBoundingClientRect().top, until: Date.now() + 2000 };
 }
 
 interface Props {
@@ -196,6 +201,25 @@ export default function VotePanel({ process, actor, onView }: Props) {
     }
   }
 
+  // Voting never moves the page (2026-10-13). A vote folds the comment field
+  // above the ballot away and adds the receipt below it; Chrome's scroll
+  // anchoring hides that only sometimes, and Safari's not at all. So the
+  // ballot's place on the screen is noted when a vote is cast and put back
+  // after each render for a moment.
+  const ballotRef = useRef<HTMLDivElement>(null);
+  const ballotHold = useRef<{ top: number; until: number } | null>(null);
+  useLayoutEffect(() => {
+    const hold = ballotHold.current;
+    const el = ballotRef.current;
+    if (!hold || !el) return;
+    if (Date.now() > hold.until) {
+      ballotHold.current = null;
+      return;
+    }
+    const drift = el.getBoundingClientRect().top - hold.top;
+    if (Math.abs(drift) > 1) window.scrollBy(0, drift);
+  });
+
   /**
    * Cast a ballot, or change it with the receipt this browser holds, and
    * keep the receipt. `send` makes the request for one method's ballot.
@@ -205,6 +229,7 @@ export default function VotePanel({ process, actor, onView }: Props) {
     send: (receipt: HeldReceiptPayload | null) => Promise<ActionResult>,
   ) {
     setCommentWarning(null);
+    if (ballotRef.current) ballotHold.current = holdPlace(ballotRef.current);
     await action.run(
       async () => {
         let current = held;
@@ -452,7 +477,7 @@ export default function VotePanel({ process, actor, onView }: Props) {
 
           {/* Yes/No/Unsure — original button-per-option */}
           {!isApproval && (
-            <div className="vote-buttons">
+            <div className="vote-buttons" ref={ballotRef}>
               {process.options.map((option) => (
                 <button
                   key={option}
@@ -468,7 +493,7 @@ export default function VotePanel({ process, actor, onView }: Props) {
 
           {/* Approval — checkboxes + submit */}
           {isApproval && (
-            <div className="approval-ballot">
+            <div className="approval-ballot" ref={ballotRef}>
               <p className="approval-instruction">Select all options you approve of:</p>
               <div className="approval-choices">
                 {process.options.map((option) => {

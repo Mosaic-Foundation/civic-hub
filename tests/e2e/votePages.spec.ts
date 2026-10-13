@@ -36,6 +36,8 @@ for (const width of [1280, 375]) {
       // A short window, so the ballot sits below the share bar at both widths.
       await page.setViewportSize({ width, height: 560 });
       await page.goto(`/process/${voteId}`);
+      // As Safari may: no scroll anchoring, so the page itself must hold still.
+      await page.addStyleTag({ content: "* { overflow-anchor: none !important; }" });
       const no = page.getByRole("button", { name: "No", exact: true });
       await no.evaluate((b) => b.scrollIntoView({ block: "start" }));
       // What the voter sees: where the ballot sits on the screen. (The
