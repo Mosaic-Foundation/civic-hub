@@ -34,10 +34,10 @@ Report: `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Rele
 **Adam's decisions (2026-10-13):** a new dedicated smoke hub on dev; sessions minted in the dev DB (no test-only
 sign-in route); a read-only production check after a `main` deploy; the real AI check on dev.
 
-**Incomplete, for Adam:**
-- Create the smoke hub on dev and set the GitHub variables and secrets (RUNBOOK-release.md → One-time setup). Until
-  then the Smoke jobs skip with a notice. The suite has run against a local smoke hub only, never against dev.
-- `smoke.yml` takes effect once it is on the deployed commit, so the first dev deploy after the push is its first run.
+**Live (same day):** Adam pushed, created the `smoke` hub on dev (admin `adam+smoke@civic.social`; the
+`*.dev.civic.social` wildcard already reaches it) and set the GitHub configuration. The first real run (38434395815, on
+`36ea87a`) passed 8 of 8 in 52 s, and its cleanup left no open review or session. A first try failed 401 on a mis-pasted
+key: set the secret by piping from `.env` (RUNBOOK-release.md → One-time setup).
 
 **Open:** each dev run sends the smoke admin about four review emails (filter the `+smoke` address). If the AI check
 ever passes the flagged text, that test fails, and the message says so.

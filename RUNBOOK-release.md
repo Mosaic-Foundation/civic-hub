@@ -123,9 +123,16 @@ job skips with a notice naming what is missing.
 | `CIVIC_SMOKE_BASE_URL` | Variable | `https://smoke.dev.civic.social` |
 | `CIVIC_SMOKE_HUB` | Variable | `smoke` |
 | `CIVIC_SMOKE_SUPABASE_URL` | Variable | the dev project's URL, `https://urfmvqhzmamigssqwsya.supabase.co` |
-| `CIVIC_SMOKE_SERVICE_ROLE_KEY` | Secret | the **dev** project's service-role key (Supabase → dev project → Settings → API). Never production's |
+| `CIVIC_SMOKE_SERVICE_ROLE_KEY` | Secret | the **dev** project's service-role key. Never production's. Set it straight from `.env` (below), not by pasting |
 | `CIVIC_SMOKE_ADMIN_EMAIL` | Secret | the admin address `create-hub.ts` printed |
 | `CIVIC_PROD_HUB_URL` | Variable | a production hub's address, for the read-only production check |
+
+The service-role key, piped from `.env` (which points at dev) so it never shows on screen. A hand paste failed
+with 401 "Invalid API key" on 2026-10-13:
+
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && grep -E '^SUPABASE_SERVICE_ROLE_KEY=' .env | cut -d= -f2- | tr -d "\"' \r" | gh secret set CIVIC_SMOKE_SERVICE_ROLE_KEY
+```
 
 **Where the hubs are, for the script:** `scripts/release.config` (the dev and production hub URLs and project refs).
 Any value can be overridden by an environment variable of the same name.

@@ -110,8 +110,8 @@ Start an API with `CIVIC_DEV_HUB=smoke` and `CIVIC_COC_FAKE=on` (so bare `localh
 cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && CIVIC_SMOKE_BASE_URL=http://localhost:4173 CIVIC_SMOKE_HUB=smoke CIVIC_SMOKE_ADMIN_EMAIL=admin+smoke@example.test CIVIC_SMOKE_SUPABASE_URL=http://127.0.0.1:54321 CIVIC_SMOKE_SERVICE_ROLE_KEY=<the local stack's service-role key> npm run test:smoke
 ```
 
-Green: **8 of 8 (2026-10-13)**, local stack, 8.7 s. Not yet run against dev: that needs the smoke hub and the
-GitHub configuration (RUNBOOK-release.md → One-time setup).
+Green: **8 of 8 (2026-10-13)**: local stack, 8.7 s; and **live dev, 52 s** (Smoke run 38434395815 on `36ea87a`),
+the real Code of Conduct check flagging the test text, and cleanup leaving no open review or session.
 
 ---
 
