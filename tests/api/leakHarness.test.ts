@@ -604,7 +604,6 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "POST /votes/:id/claim-receipt": { body: {} },
   "POST /process/:id/input": { body: { body: X.body } },
   "POST /assistant/:processType/drafts/:id/message": { body: { message: "hello" } },
-  "POST /assistant/:processType/drafts/:id/review": { body: {} },
   "POST /assistant/:processType/drafts/:id/suggest": { body: {} },
   "PATCH /proposals/drafts/:id": { body: { title: X.title } },
   "POST /proposals/drafts/:id/submit": { body: {} },

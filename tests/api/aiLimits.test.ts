@@ -118,8 +118,12 @@ describe("the hub enforces them", () => {
     expect(res.status).toBe(429);
     expect(res.body.code).toBe("ai_budget_spent");
 
-    const review = await call("POST", `/assistant/civic.vote/drafts/${draft}/review`, HOST, {}, token);
-    expect(review.status, JSON.stringify(review.body)).toBe(200);
-    expect(review.body.review_unavailable).toBe(true);
+    // Submit runs the check; with the budget spent it can't, and the
+    // submission goes to an admin instead (fail open to human review).
+    await call("PATCH", `/votes/drafts/${draft}`, HOST, { title: `Budget spent ${run}`, description: "Checked at Submit." }, token);
+    const submitted = await call("POST", `/votes/drafts/${draft}/submit`, HOST, {}, token);
+    expect(submitted.status, JSON.stringify(submitted.body)).toBe(201);
+    const [review] = (await localRest(`process_reviews?select=status&id=eq.${submitted.body.review_id}`)) as Array<{ status: string }>;
+    expect(review.status).toBe("pending_review");
   });
 });

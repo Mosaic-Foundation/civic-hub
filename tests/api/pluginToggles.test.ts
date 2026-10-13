@@ -17,7 +17,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
-import { pendingProposalReview } from "../fixtures/codeOfConduct.js";
+import { COC_FLAG, pendingProposalReview } from "../fixtures/codeOfConduct.js";
 import { liveProposal } from "../fixtures/liveProcess.js";
 import { localRest, mintSession, storedSetting } from "../fixtures/adminSession.js";
 
@@ -610,10 +610,11 @@ describe("the Code of Conduct check with the Writing assistant off", () => {
     await localRest("hub_settings?hub_id=eq.athens&key=eq.plugin.assistant.enabled", { method: "DELETE" });
   });
 
-  it("the review route answers (not 404)", async () => {
-    const res = await call("POST", `/assistant/civic.vote/drafts/${draftId}/review`, ATHENS, {}, athensAdmin);
-    expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.draft?.id).toBe(draftId);
+  it("Submit still runs the check: flagged text is refused", async () => {
+    await call("PATCH", `/votes/drafts/${draftId}`, ATHENS, { title: `Assistant off ${Date.now()}`, description: `Rude words ${COC_FLAG}` }, athensAdmin);
+    const res = await call("POST", `/votes/drafts/${draftId}/submit`, ATHENS, {}, athensAdmin);
+    expect(res.status, JSON.stringify(res.body)).toBe(400);
+    expect(res.body.code).toBe("code_of_conduct_flagged");
   });
 
   it("the chat and the suggestions answer 404", async () => {

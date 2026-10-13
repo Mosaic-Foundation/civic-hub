@@ -1,6 +1,6 @@
 // Running the Code of Conduct check on a stored draft: one place, used by
-// Submit (draftController) and by the older on-demand route
-// (POST /assistant/:type/drafts/:id/review, kept for pages already open).
+// Submit (draftController). The older on-demand route
+// (POST /assistant/:type/drafts/:id/review) was removed 2026-10-13.
 //
 // The check is the Code of Conduct check and nothing else (Adam,
 // 2026-09-03): hard blocks only; no best-practices advice, no fact-checking,

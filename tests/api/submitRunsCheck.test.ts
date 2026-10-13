@@ -108,11 +108,11 @@ describe("Submit runs the Code of Conduct check", () => {
     expect(JSON.stringify(after.body)).toMatch(/"coc_flags":null/);
   });
 
-  it("the older on-demand check route still answers", async () => {
-    const id = await draftWith(resident, `Checked on demand ${COC_FLAG}`);
+  it("the older on-demand check route is gone (removed a release after Submit took it over)", async () => {
+    const id = await draftWith(resident, "Checked on demand");
     const res = await call("POST", `/assistant/civic.proposal/drafts/${id}/review`, FLOYD, {}, resident);
-    expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.response.suggestions).toHaveLength(1);
+    expect(res.status).toBe(404);
+    expect(res.body.code).toBe("not_found");
   });
 });
 

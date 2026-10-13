@@ -5,12 +5,10 @@
 //
 //   GET  /assistant/:processType/config            — affordance + guidance for the UI
 //   POST /assistant/:processType/drafts/:id/message — conversation turn
-//   POST /assistant/:processType/drafts/:id/review  — Code of Conduct check
 
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { AiLimitError, admitAiCall, currentAiLimits } from "../services/aiBudget.js";
-import { runCodeOfConductCheck } from "../services/codeOfConductCheck.js";
 import type { Suggestion } from "../modules/civic.assistant/models.js";
 import type { Request, Response } from "express";
 import { getAuthUser } from "../middleware/auth.js";
@@ -21,7 +19,6 @@ import { toDraftState } from "../services/codeOfConduct.js";
 import {
   callAssistant,
   getHubConfig,
-  AUTOMATED_REVIEW_UNAVAILABLE_NOTICE,
   CHECK_UNAVAILABLE_RESULT,
   type AssistantTypeConfig,
   type AssistantDraft,
@@ -172,36 +169,6 @@ export const handleAssistantMessage = route(async (req, res) => {
   res.json({ response, draft: updatedDraft });
 });
 
-/** POST /assistant/:processType/drafts/:id/review — the always-on CoC check. */
-export const handleAssistantReview = route(async (req, res) => {
-  const processType = req.params.processType as string;
-
-  const config = lookupConfig(processType);
-  if (!config) throw new NotFoundError("No drafting assistant for this process type", "no_assistant");
-
-  const draft = await loadDraftForUser(req, res, config);
-
-  // Submit runs the check itself now (Submit and Save, 2026-10-12); this
-  // route stays for a release so a drafting page already open still works.
-  const { suggestions, unavailable, draft: updated } = await runCodeOfConductCheck(
-    processType,
-    draft,
-    getAuthUser(res).id,
-  );
-  res.json({
-    response: {
-      message: unavailable
-        ? AUTOMATED_REVIEW_UNAVAILABLE_NOTICE
-        : suggestions.length
-          ? "The Code of Conduct check found something that must be fixed first."
-          : "No Code of Conduct issues found.",
-      suggestions,
-    },
-    draft: updated,
-    ...(unavailable ? { review_unavailable: true } : {}),
-  });
-  return;
-});
 
 
 /**
