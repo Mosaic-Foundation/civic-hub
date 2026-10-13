@@ -3,6 +3,27 @@
 *Last updated: 2026-04-24*
 *Version: 1.2*
 
+## In short
+
+**What we keep**
+- Your email address, to sign you in and, if you choose, to send you a digest.
+- Your name. Members who are signed in see it on what you post; anyone who isn't signed in sees a plain label instead.
+- What you post, and the fact that you took part in a vote.
+
+**What we never keep**
+- A password. There isn't one: you sign in with a code we email you.
+- Your sign-in codes or the key that keeps you signed in, in a form anyone could use. We keep only a scrambled fingerprint of each.
+- Anything that joins your account to how you voted.
+- Your network (IP) address, except as a scrambled counter, kept for about two days, that stops anyone flooding the sign-in form.
+
+**How anonymity works**
+- **Your vote.** We record that you voted, and, separately, the ballot. Nothing links the two. Ballots carry no time and are shuffled.
+- **Your receipt.** After voting you get a receipt code that lets you check your ballot was counted. Keep it private: depending on how the vote was set up, anyone holding the code may see the choice it recorded.
+- **Anonymous comments.** Where a resident chooses to comment anonymously, other people don't see their name. The hub's admins can still see who wrote it, so they can act on reports under the Code of Conduct.
+- **The automatic check.** When you submit something, its text (never your name or email) is checked by an AI model against the Code of Conduct.
+
+The full policy below has the details. Questions: contact@civic.social.
+
 ## Who runs this site
 
 The Floyd Civic Hub ("the Hub," "we," "us") is operated by Adam Lake. The Hub is an independent civic participation platform — **we are not affiliated with or operated by the Floyd County government or the Board of Supervisors** — and it exists to help residents take part in local civic life.

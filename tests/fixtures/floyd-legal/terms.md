@@ -3,6 +3,14 @@
 *Last updated: 2026-08-10*
 *Version: 1.2*
 
+## In short
+
+- Follow the Code of Conduct, use one account, and only for yourself.
+- Join only if you live in Floyd County. We take your word for it.
+- What you post stays yours. It stays on the record of the hub's work, even if you close your account, unless it is removed under the Code of Conduct or at your request.
+- We try to keep the hub running and accurate, without promises we can't keep, and we tell you before these Terms change.
+- An account can be closed for breaking these Terms or the Code of Conduct.
+
 ## Agreement
 
 By using the Floyd Civic Hub ("the Hub") at floyd.civic.social, you agree to these Terms of Service ("Terms"). If you don't agree, please don't use the Hub.

@@ -5,6 +5,14 @@
 
 {{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US consumer law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US consumer law{{/place}} before {THE_HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.{{/draft}}
 
+## In short
+
+- Follow the Code of Conduct, use one account, and only for yourself.
+{{#place}}- Join only if you live in {PLACE}. We take your word for it.
+{{/place}}- What you post stays yours. It stays on the record of the hub's work, even if you close your account, unless it is removed under the Code of Conduct or at your request.
+- We try to keep the hub running and accurate, without promises we can't keep, and we tell you before these Terms change.
+- An account can be closed for breaking these Terms or the Code of Conduct.
+
 ## Agreement
 
 By using {THE_HUB_NAME} ("the Hub") at {HOSTNAME}, you agree to these Terms of Service ("Terms"). If you don't agree, please don't use the Hub.
