@@ -75,8 +75,9 @@ function sectionLabel(el: HTMLTextAreaElement) {
  * keyboard's height, read from the visual viewport. A spacer keeps the
  * field where it was.
  */
-function useKeyboardDock(focused: boolean): { docked: boolean; bottom: number } {
+function useKeyboardDock(focused: boolean): { docked: boolean; bottom: number; moving: boolean } {
   const [bottom, setBottom] = useState(0);
+  const [moving, setMoving] = useState(false);
   const [phone, setPhone] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches);
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 768px)");
@@ -88,15 +89,31 @@ function useKeyboardDock(focused: boolean): { docked: boolean; bottom: number } 
     const vv = window.visualViewport;
     if (!focused || !phone || !vv) return;
     const place = () => setBottom(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    // iOS reports the keyboard's edge late while the page moves, so a
+    // toolbar placed on every event lagged and jumped. Hide it while things
+    // move; place it once they have been still for a moment.
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const onMove = () => {
+      setMoving(true);
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        place();
+        setMoving(false);
+      }, 150);
+    };
     place();
-    vv.addEventListener("resize", place);
-    vv.addEventListener("scroll", place);
+    vv.addEventListener("resize", onMove);
+    vv.addEventListener("scroll", onMove);
+    window.addEventListener("scroll", onMove, { passive: true });
     return () => {
-      vv.removeEventListener("resize", place);
-      vv.removeEventListener("scroll", place);
+      clearTimeout(settle);
+      setMoving(false);
+      vv.removeEventListener("resize", onMove);
+      vv.removeEventListener("scroll", onMove);
+      window.removeEventListener("scroll", onMove);
     };
   }, [focused, phone]);
-  return { docked: focused && phone, bottom };
+  return { docked: focused && phone, bottom, moving };
 }
 
 export default function MarkdownTextarea(props: Props) {
@@ -106,7 +123,7 @@ export default function MarkdownTextarea(props: Props) {
   const [previewText, setPreviewText] = useState("");
   const [focused, setFocused] = useState(false);
   const [toolbarHeight, setToolbarHeight] = useState(0);
-  const { docked, bottom } = useKeyboardDock(focused);
+  const { docked, bottom, moving } = useKeyboardDock(focused);
 
   const act = (fn: (el: HTMLTextAreaElement) => void) => () => {
     const el = ref.current;
@@ -120,11 +137,11 @@ export default function MarkdownTextarea(props: Props) {
   }
 
   return (
-    <div className="md-editor">
+    <div className={`md-editor${preview ? " md-editor--preview" : ""}`}>
       {docked && <div className="md-toolbar-spacer" style={{ height: toolbarHeight }} aria-hidden="true" />}
       <div
         ref={toolbarRef}
-        className={`md-toolbar${docked ? " md-toolbar--docked" : ""}`}
+        className={`md-toolbar${docked ? ` md-toolbar--docked${moving ? " is-moving" : ""}` : ""}`}
         style={docked ? { bottom } : undefined}
         role="toolbar"
         aria-label="Formatting"

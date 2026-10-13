@@ -44,9 +44,14 @@ body {
 
 /* No double-tap zoom; pinch zoom stays (WCAG 1.4.4). Since zoom was allowed
    (97da197), a double-tap left a phone slightly zoomed in, and a zoomed page
-   carries the sticky nav off the top as it scrolls (Adam, 2026-10-12). */
+   carries the sticky nav off the top as it scrolls (Adam, 2026-10-12).
+   overflow-x: clip on html too: iOS lets the page slide sideways otherwise
+   (the zoom lock used to hide that). clip, never hidden, so neither html nor
+   body becomes a scroll container and sticky headers keep working; a browser
+   without clip just ignores the line. */
 html {
   touch-action: manipulation;
+  overflow-x: clip;
 }
 
 body {

@@ -78,18 +78,43 @@
   color: var(--color-text-muted, #5b6470);
 }
 
-/* A phone: the toolbar is one row (it scrolls sideways if it must), and
-   while the field has focus it docks directly above the keyboard
-   (MarkdownTextarea, useKeyboardDock), one row, not a second bar. */
+/* A phone: the toolbar shows only while its field is being edited, docked
+   as one row the width of the screen directly above the keyboard (in the
+   form's column the tools didn't fit and were cut off); in Preview it stays
+   in place so "Edit" is reachable. It fits the screen (the tools shrink;
+   nothing scrolls sideways, so no scroll indicator). It docks
+   (MarkdownTextarea, useKeyboardDock), one row, not a second bar. While the
+   page is moving it fades out rather than chase the keyboard's edge, which
+   iOS reports late (it jittered), and comes back in place when it stops. */
 @media (max-width: 768px) {
-  .md-toolbar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
+  .md-toolbar:not(.md-toolbar--docked) {
+    display: none;
   }
 
-  .md-toolbar::-webkit-scrollbar {
-    display: none;
+  .md-editor--preview .md-toolbar {
+    display: flex;
+  }
+
+  .md-toolbar {
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+    overflow: hidden;
+  }
+
+  .md-tool {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 36px;
+    padding: 0.2rem 0.35rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .md-tool--bold,
+  .md-tool--italic {
+    flex: 0 0 2.25rem;
   }
 
   .md-toolbar--docked {
@@ -102,10 +127,12 @@
     background: var(--color-surface);
     border-top: 1px solid var(--color-border);
     box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+    transition: opacity 0.12s ease;
   }
 
-  .md-tool {
-    flex-shrink: 0;
-    min-height: 36px;
+  .md-toolbar--docked.is-moving {
+    opacity: 0;
+    pointer-events: none;
+    transition: none;
   }
 }

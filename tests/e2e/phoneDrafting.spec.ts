@@ -66,12 +66,21 @@ test.describe("Drafting on a phone", () => {
       await expect(submit).toBeHidden();
       await expect(page.getByRole("status").filter({ hasText: "Draft saved" })).toBeVisible();
 
-      // The formatting toolbar docks while its field has focus.
+      // Nothing slides sideways: the page is no wider than the screen.
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+      // The formatting toolbar shows only while its field has focus, docked
+      // as one row that fits: no tool cut off, nothing to scroll sideways.
+      await expect(page.locator(".md-toolbar").first()).toBeHidden();
       await page.locator("#draft-description").click();
-      await expect(page.locator(".md-toolbar--docked")).toBeInViewport();
+      const docked = page.locator(".md-toolbar--docked");
+      await expect(docked).toBeInViewport();
+      expect(
+        await docked.evaluate((t) => t.scrollWidth <= t.clientWidth && [...t.children].every((b) => b.scrollWidth <= b.clientWidth)),
+      ).toBe(true);
       await expect(submit).toBeHidden();
 
-      // Focus leaves: the bar is back, the toolbar in its place.
+      // Focus leaves: the bar is back, the toolbar out of the way.
       await page.locator("#draft-description").blur();
       await expect(submit).toBeVisible();
       await expect(submit).toBeInViewport();
