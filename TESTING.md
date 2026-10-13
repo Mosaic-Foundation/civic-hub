@@ -39,6 +39,10 @@ npm run test:e2e:headed
 # E2E with Playwright UI mode (interactive)
 npm run test:e2e:ui
 
+# Smoke suite against the live dev hub (needs the CIVIC_SMOKE_* variables;
+# see "Smoke suite" below). CI runs it after each dev deploy.
+npm run test:smoke
+
 # Watch mode for API tests during development
 npm run test:watch
 
@@ -55,6 +59,59 @@ keys to use for `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; everything
 else can stay as it is in `.env.example`. As of 2026-09-22 all 8 API test
 files (68 tests) pass against a stack brought up this way, which is the
 first time that layer has been runnable from a clean checkout.
+
+---
+
+## Smoke suite (2026-10-13)
+
+A fourth layer: `tests/smoke/`, Playwright against the **live dev deployment**, after every dev deploy. It replaces
+the browser half of the dev checklist Adam ran by hand after each release (RUNBOOK-release.md → Dev).
+
+- **What it checks** (`dev.smoke.spec.ts`, one serial group, 8 tests):
+  - `/api/health` is ok with no schema gaps, on the deployed commit; an unknown `POST /api/…` answers JSON 404;
+  - a resident and an admin are signed in;
+  - a clean vote on a beta hub waits in the admins' queue;
+  - a flagged draft is refused with the draft kept, and "Tell the admins" reaches the queue marked "Flagged by the
+    check";
+  - approve and decline each land on the list with their confirmation;
+  - the Save bar in admin Settings → Copy stays in view, and leaving asks first (nothing is saved);
+  - a drafting form at 375px: the slim header, and the bar steps aside while a field has focus;
+  - Edit & resubmit after an admin requests changes brings back the same review item.
+- **Where it runs:** only on the dedicated smoke hub, which must be in beta and have a slug starting with `smoke`. Sessions are
+  minted straight into the dev database with its service-role key (Adam's decision, 2026-10-13: no test-only
+  sign-in route in `src/`). `tests/smoke/devStack.ts` refuses the production project, any other hub, a deployment
+  serving another hub, and a hub not in beta, before writing anything.
+- **The Code of Conduct check is the real one on dev** (Vercel refuses `CIVIC_COC_FAKE`): the flagged text is an
+  unmistakable personal attack on a made-up neighbour, and it ends with the fake's `[coc-flag]` marker so a local
+  run flags it too. About four AI checks per run.
+- **Cleanup** (`afterAll`): pending reviews declined, the approved vote archived, the run's residents' accounts
+  deleted (their drafts and sessions go with them), the admin's minted sessions ended. Events and review turns are
+  append-only, so their history stays on the smoke hub, which is why it is its own hub. Residents are
+  `smoke-<run>-…@example.test`; the beta mail guard holds back every email to them.
+- **When it runs:** `.github/workflows/smoke.yml`, on `deployment_status` success for `Production – civic-hub-dev`.
+  It waits for the hub to serve the deployed commit, runs `npm run test:smoke`, and shows as the **Smoke / dev**
+  check on that commit. Runs never cancel each other, so cleanup always runs. The same workflow's **production** job
+  runs on `Production – civic-hub`: health and the JSON 404 only, read-only, no secrets.
+- **Configuration:** the variables and secrets are listed in RUNBOOK-release.md → One-time setup. A job with any of
+  them missing skips with a notice naming them.
+- **Budget:** under 3 minutes (`globalTimeout` 170 s in `playwright.smoke.config.ts`); 9 s locally. No retries: the
+  steps build on each other, and a retry would submit everything again.
+
+**Running it locally**, against a local `smoke` hub on the local stack (the guard allows the local stack):
+
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_SERVICE_ROLE_KEY=<the local stack's service-role key> CIVIC_ADMIN_EMAILS=admin@example.test npx tsx scripts/create-hub.ts --id smoke --hostname smoke.localhost --name "Smoke Test Hub" --kind other --mode beta
+```
+
+Start an API with `CIVIC_DEV_HUB=smoke` and `CIVIC_COC_FAKE=on` (so bare `localhost` is the smoke hub), and a
+`vite preview` in front of it (as in `e2e.yml`). Then:
+
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && CIVIC_SMOKE_BASE_URL=http://localhost:4173 CIVIC_SMOKE_HUB=smoke CIVIC_SMOKE_ADMIN_EMAIL=admin+smoke@example.test CIVIC_SMOKE_SUPABASE_URL=http://127.0.0.1:54321 CIVIC_SMOKE_SERVICE_ROLE_KEY=<the local stack's service-role key> npm run test:smoke
+```
+
+Green: **8 of 8 (2026-10-13)**, local stack, 8.7 s. Not yet run against dev: that needs the smoke hub and the
+GitHub configuration (RUNBOOK-release.md → One-time setup).
 
 ---
 
@@ -1720,10 +1777,15 @@ collide and make CI flaky; and it puts a full-access key in CI secrets.
 
 **Do NOT point CI at the dev Supabase project.** Runs would collide with
 hands-on use and leave permanent residue in a database that gets browsed.
+*One exception, by Adam's decision (2026-10-13):* the smoke job
+(`.github/workflows/smoke.yml`) writes to dev, but only on its own smoke hub,
+one run at a time, and it cleans up after itself. That answers both
+objections. It checks the deployment, not the code, so it does not replace
+the local-stack jobs.
 
 ---
 
-*Last updated: 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,
