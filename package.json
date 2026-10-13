@@ -15,6 +15,7 @@
     "test:e2e": "npx playwright test",
     "test:e2e:ui": "npx playwright test --ui",
     "test:e2e:headed": "npx playwright test --headed",
+    "test:smoke": "npx playwright test -c playwright.smoke.config.ts",
     "test:flow": "tsx scripts/testFlow.ts",
     "jobs:crontab": "tsx scripts/jobs-crontab.ts",
     "check:tenancy": "tsx scripts/check-tenancy.ts",
