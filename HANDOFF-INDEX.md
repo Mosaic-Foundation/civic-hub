@@ -22,7 +22,9 @@ numbers below, or just grep the heading.
 | Releasing a change with migrations: the order (migrations, schema reload, code, `/health`), pre-checks, the guard | `RUNBOOK-release.md` |
 | Dev deployment runbook + Preview env checklist; dev domain `*.dev.civic.social` (§9) | `DEPLOY-dev.md` |
 | Guards: production db push, deploy env safety | `scripts/db-push.sh`, `scripts/check-deploy-env.ts` |
-| Auth, sessions, admin/board resolution | `src/middleware/auth.ts`, `src/modules/civic.auth/` (limits: `limits.ts`) |
+| Auth, sessions, admin/board resolution | `src/middleware/auth.ts`, `src/modules/civic.auth/` (per-IP caps: `limits.ts`) |
+| Sign-in codes: the rules (three live codes, tries burn the code, never the address), the email and its link, Keep me signed in; the console's and start page's store | `src/modules/civic.auth/codeRules.ts`, `otp.ts` (`renderCodeEmail`), `verifyLink` in `civic.auth/index.ts`, `src/control/platformCodes.ts`; tables `sign_in_codes`, `platform_sign_in_codes` (`20261014000000`); UI `ui/src/components/AuthModal.tsx`, `ui/src/pages/SignInLink.tsx` |
+| Terms: the notice beside Join, the creator's agreement at creation, the legal version | `ui/src/components/TermsNotice.tsx`, `ui/src/start/TermsAtCreate.tsx`, `src/shared/legal.ts`, "In short" at the top of `config/legal/{code-of-conduct,privacy,terms}.md`, `legalSummaries` in `src/services/hubDocuments.ts` |
 | Rate limits (sign-in, assistant), AI limits and budget | `src/db/rateLimit.ts`, `src/shared/aiLimits.ts`, `src/services/aiBudget.ts` |
 | Server-side fetches of URLs others chose (SSRF guard) | `src/utils/ssrfGuard.ts` (`guardedFetch`), `src/utils/http.ts` |
 | Security headers (API, vercel.json, vite preview) | `src/shared/securityHeaders.ts` |
@@ -37,7 +39,7 @@ numbers below, or just grep the heading.
 | DB client (service role, the thing tenancy replaces) | `src/db/client.ts`; only `src/db/`, `scripts/`, `tests/` may import it (`eslint.config.js`, `civic/raw-client`) |
 | Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |
 | Local Supabase stack (ports, auth, seed) | `supabase/config.toml`, `supabase/seed.sql` |
-| Migrations (81 files, 43 tables; `20261011200000` drops `start_attempts`, Adam approved; non-additive: `20260926005000`, and `20260927010000` which drops the audit log's hub FK; `20261010000000` nulls ballot times and reshuffles ballots, Adam approved; `20261011000000` rebuilds search_doc and scrubs anonymous moderation events, Adam approved; `20261011100000` deletes every session and pending code, Adam approved) | `supabase/migrations/` |
+| Migrations (83 files, 45 tables; `20261014000000` sign-in codes, `20261014010000` widens the jurisdiction type check; `20261011200000` drops `start_attempts`, Adam approved; non-additive: `20260926005000`, and `20260927010000` which drops the audit log's hub FK; `20261010000000` nulls ballot times and reshuffles ballots, Adam approved; `20261011000000` rebuilds search_doc and scrubs anonymous moderation events, Adam approved; `20261011100000` deletes every session and pending code, Adam approved) | `supabase/migrations/` |
 | Scheduled jobs | `src/jobs/registry.ts` (the one list; `vercel.json` checked against it, `npm run jobs:crontab`), runners `src/jobs/runners.ts`, per-hub loop `src/jobs/runJob.ts` + `src/services/cronHubs.ts`, routes `src/routes/jobRoutes.ts` |
 | Scheduled-job run log: what each outcome means, recording, last-run route, admin digest section | `src/jobs/describe.ts`, `src/services/jobRuns.ts` (table `job_runs`, `20260929000000`), `GET /admin/hub/jobs/runs`, `src/modules/civic.admin_digest/service.ts` |
 | Meeting-summary readiness (when a meeting may be summarized) and quality flags | `src/modules/civic.meeting_summary/readiness.ts`, `effectiveQualityFlag` in `service.ts` |
@@ -45,7 +47,7 @@ numbers below, or just grep the heading.
 | A hub's public URLs | `src/utils/baseUrl.ts` (from `hubs.hostname`) |
 | Operator scripts' hub | `scripts/lib/hubScope.ts` (`--hub <slug>`, required) |
 | Hub tokens, the RLS switch | `src/db/hubToken.ts`, `hubTokensEnabled()` / `getHubTokenDb()` in `src/db/client.ts`; policies `20260925000000`, catalog `tenancy_catalog()` `20260925010000` |
-| Jurisdiction reference list: sources, build, load; console picker; purge | `config/jurisdictions/SOURCES.md`, `scripts/{fetch-jurisdiction-sources.sh,build-jurisdictions.ts,load-jurisdictions.ts}`, `src/control/jurisdictions.ts`, `ui/src/console/JurisdictionPicker.tsx`, `scripts/purge-hub.ts`, `scripts/lib/hubPurge.ts` |
+| Jurisdiction reference list: sources, build, load (by `release.sh` when its checksum changes); consolidated city-counties (`consolidated.csv`, type `city_county`); console picker; purge | `config/jurisdictions/SOURCES.md`, `config/jurisdictions/consolidated.csv`, `scripts/{fetch-jurisdiction-sources.sh,build-jurisdictions.ts,load-jurisdictions.ts}`, `src/control/jurisdictions.ts`, `ui/src/console/JurisdictionPicker.tsx`, `scripts/purge-hub.ts`, `scripts/lib/hubPurge.ts` |
 | Backups: schedule, identities, bucket, watchdog (private repo `Mosaic-Foundation/civic-hub-backups`, local `../civic-hub-backups`); restore from them; image-backup gap | `../civic-hub-backups/README.md`, `RUNBOOK-restore-database.md`, BUILD-PLAN "Backups"; HANDOFF "Encrypted backups outside Supabase" (2026-10-05) |
 | Release-1 sitting runbook (cleanup, seven migrations, code, console, wildcard, final check) — **done 2026-10-02**, see HANDOFF "Release 1 is live" | `RUNBOOK-release-1.md`; cleanup `supabase/migrations/20260926005000_post_cutover_cleanup.sql`; local branch `release-1-cleanup` |
 | No-hub / paused pages (server and static shell) | `src/shared/deadEnd.ts`, `src/middleware/hub.ts`, `ui/src/main.tsx` |
@@ -90,6 +92,9 @@ numbers below, or just grep the heading.
 - Pluggable voting methods + approval voting — 7420–7484
 
 ### Security, identity, anonymity
+- **Sign-in slice (2026-10-14)**: lock the code not the person, three live codes, plain "Try again after" times, the
+  email's Sign in link, Keep me signed in, terms without a checkbox, city-counties, `release.sh dev --yes` — top of
+  HANDOFF (grep the heading)
 - **Actions slice (2026-10-13)**: account ids out of action answers and reads (`accountIds.test.ts`), hub-made
   records public only once published (`hubCreatedReads.test.ts`), every action answers `{ result, view }`, Close
   early, Regenerate, receipt check modes and the receipt file, approval votes submit again — top of HANDOFF (grep

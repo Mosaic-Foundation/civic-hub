@@ -4,6 +4,66 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Sign-in slice: lock the code, the email link, Keep me signed in, terms without a checkbox, city-counties — 2026-10-14
+
+Commits on `multi-tenant` from `ac3b009`, one item each. Report:
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Sign-In-Session-Report-2026-10-14.md`.
+
+**Release needs:**
+- **Two migrations, both additive in effect:**
+  - `20261014000000_sign_in_codes`: two tables and three functions, each granted by name;
+  - `20261014010000_jurisdiction_city_county`: widens a CHECK constraint, dropped and re-added under the same name.
+- **Then the place list.** `release.sh` loads it (its checksum changed), using the env file `release.config` names.
+- **No pre-checks and no new env vars. Nobody is signed out.**
+- **One small effect:** a code requested before the code deploy and typed after it is not found, and the person asks
+  again.
+
+**Built (Adam's decisions in BUILD-PLAN → "Sign-in: lock the code, not the person"):**
+1. **Lock the code, not the person** (`civic.auth/codeRules.ts`), for hubs, the console and the start page:
+   - up to three live codes per address, five tries burn a code, and nothing locks an address;
+   - one email a minute and ten new codes an hour per address;
+   - five wrong tries per IP per address an hour;
+   - one row per code: `sign_in_codes` and `platform_sign_in_codes`, through `take_sign_in_attempt` and
+     `take_platform_sign_in_attempt`.
+2. **Plain messages with a time** ("Try again after 4:10 PM"), in the hub's zone. `rate_limit_retry_at` says when a
+   bucket has room.
+3. **Autofill:** `autocomplete="one-time-code"`, a number pad and digits only. The email has the code on its own line
+   and a plain-text part.
+4. **The email's Sign in link:**
+   - `/sign-in#t=…`, one Confirm, then the join step for someone new;
+   - `POST /auth/verify-link`;
+   - the link's hash sits beside the code's, with the same attempt function and rules.
+5. **Keep me signed in:** 7 days, or 90 days ticked, remembered per browser.
+6. **Terms without a checkbox:**
+   - the residency box only, with the notice beside Join (`TermsNotice.tsx`);
+   - "In short" at the top of the three shared documents;
+   - the re-acceptance dialog reads as the same notice;
+   - the creator agrees beside "Create my hub" (`GET /start/legal`, the version stamped at the handoff). The legal
+     version now lives in `src/shared/legal.ts`.
+7. **Consolidated city-counties:**
+   - 28 governments in `config/jurisdictions/consolidated.csv`, with the evidence for each;
+   - type `city_county`, on the county's OCD id;
+   - found under City and County too.
+8. **The admin invite** has the setup guide in its first paragraph.
+9. **`release.sh dev --yes`**; `prod` refuses it. `release.sh` also loads the place list when its checksum changes.
+10. **`start_attempts`** was already dropped by `20261011200000` (Audit 3), and nothing reads it. No migration; one
+    stale BUILD-PLAN line was fixed.
+
+**Tests:** TESTING.md → "Sign-in: lock the code…". All green locally in both API modes, conformance, Playwright 102,
+and smoke 10 of 10 (16 s), except a pre-existing failure on long-used stacks: `/admin/queue-counts` is unpaged past
+1,000 reviews, flagged as its own task.
+
+**Open:**
+- **Adam reads the "In short" summaries before production.** The full Privacy policy's body is older than ballot
+  secrecy: it says votes are "linked to your account", and that sessions last "30 days of inactivity". It needs its
+  own revision, which means bumping the legal version, and that re-asks everyone.
+- **Drop `pending_verifications`, `control_codes` and `start_codes`** in a later migration. They are unread from
+  this release on.
+- **A hub with its own legal documents shows no summary.** None in production; the local Athens has one from a test.
+- **Many machines can still hold one address**, by burning all ten codes an hour. One machine cannot.
+
+---
+
 ## Vote pages fixes: no scroll, receipt box, results bars, check page, five small bugs — 2026-10-13
 
 Thirteen commits on `multi-tenant` (`d581b02`..`7838351`, plus this note), **live on dev** since `release.sh dev` (CI,

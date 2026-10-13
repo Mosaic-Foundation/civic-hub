@@ -1598,12 +1598,14 @@ the code is an **entitlement, not a password**.
 - **Safety.**
   - One answer for every code that cannot be used (wrong, malformed, used,
     expired, revoked).
-  - Rate limits per hour, kept in the database (`start_attempts`, hashed
-    buckets) so they hold across serverless instances: 10 invite codes per
+  - Rate limits per hour, kept in the database so they hold across
+    serverless instances (hashed buckets; `start_attempts` then, which Audit 2
+    replaced with `rate_limit_hits` and Audit 3 dropped): 10 invite codes per
     IP; 6 sign-in code requests per IP and 5 per address; 20 sign-in
     attempts per IP; 10 creates per IP. The sign-in code also keeps the
-    hub's own rules (30 s throttle, 5 wrong guesses lock the address for 15
-    minutes).
+    hub's own rules (as built: 30 s throttle, 5 wrong guesses lock the
+    address for 15 minutes; since 2026-10-14, the hub's code rules, which
+    lock the code instead and replace the per-address limit).
   - Audit rows `invite.redeem`, `hub.create` (`via: "start"`) and
     `hub.sample_seed`, all with the creator as the actor.
   - The creator gets the session-4 admin invite. The operator
@@ -1771,6 +1773,49 @@ state to `view`; it does not read the process again.
 - `invalid_check_mode`;
 - `source_not_closed`, `brief_not_regenerated`, `no_pending_revision`: Regenerate.
 
+### Sign-in: lock the code, not the person (sign-in slice, 2026-10-13/14, Adam)
+
+Decided by Adam before the build. HANDOFF "Sign-in slice" has what was built; the rules are
+`src/modules/civic.auth/codeRules.ts`, one implementation for a hub's sign-in and step-up, the console and the start
+page.
+
+- **Nothing locks an address.** A code is six digits and works for 10 minutes. Five tries burn it: it stops working
+  and the owner asks for a new one.
+- **Up to three live codes per address** (Adam's choice over re-sending one code, which would have needed a server
+  secret):
+  - asking again sends a new code, and the earlier ones keep working;
+  - a fourth request while three are live is refused with a time, never by dropping one, since every code we sent
+    is already in the owner's inbox;
+  - a typed code is checked against every live code and costs a try on each.
+- **Per address:** one email a minute, ten new codes an hour.
+- **Per IP:**
+  - the realm's caps on requests and checks, as above;
+  - five wrong tries per IP per address an hour, refused before a try is spent.
+
+  The result: one machine can burn at most one round of a person's codes an hour, and many machines face at most
+  50 tries at an address an hour.
+- **Refusals say when, plainly:** "Too many attempts. Try again after 4:10 PM". The time is in the hub's time zone
+  (`identity.timezone`, "UTC" when unset); the console and the start page use the browser's. The code stays in the
+  API error.
+- **The email's Sign in link** is the same code presented another way:
+  - its token's hash (`link_hash`) sits beside `code_hash`, checked through the same attempt function, with the same
+    expiry, tries and single use;
+  - it opens `/sign-in#t=<token>`, the token after `#` and out of the address bar at once;
+  - one Confirm, so mail scanners can't spend it;
+  - hubs only.
+- **Keep me signed in:** sessions last 7 days, or 90 days ticked. Default off, remembered per browser. Sessions from
+  before keep their 30 days.
+- **Terms without a checkbox:**
+  - joining keeps the residency checkbox only;
+  - "By joining you agree to the Code of Conduct, Privacy Notice and Terms" sits beside Join, and each document
+    starts with "In short";
+  - the hub's creator agrees once, beside "Create my hub" on the start page, which records the legal version on
+    their account and in the `hub.create` audit row.
+- **Consolidated city-counties** are data (`config/jurisdictions/consolidated.csv`), one `city_county` row each, on
+  the county's OCD id. A release that changes the list loads it (`release.sh`).
+- **Codes moved to one row per code:** `sign_in_codes` (hub) and `platform_sign_in_codes` (console, start page).
+  `pending_verifications`, `control_codes` and `start_codes` are unread from 2026-10-14 and dropped later.
+
 ### Sign-in and abuse limits (Audit 2, 2026-10-11, Adam)
 
 Decided by Adam in the Audit 2 session. HANDOFF "Audit 2: sign-in and abuse" has what was built.
@@ -1780,8 +1825,8 @@ Decided by Adam in the Audit 2 session. HANDOFF "Audit 2: sign-in and abuse" has
 - **Every session has an assurance level**, `code` or `demo`. A demo session is never privileged and ends when the
   hub leaves demo; leaving demo ends **only** demo sessions (Adam), so the admin making the switch stays signed in.
 - **Sign-in limits per IP per hour, platform-wide** (one atomic limiter, `rate_limit_take`): hub 20 code requests
-  per IP and 5 per address, 40 code checks per IP; console 5 and 10; start page as in session 4b. Sized for a
-  public meeting on shared Wi-Fi.
+  and 40 code checks per IP; console 5 and 10; start page 6 and 20. Sized for a public meeting on shared Wi-Fi. (The
+  per-address request limit of 5 an hour was replaced on 2026-10-14; see below.)
 - **AI limits** (`src/shared/aiLimits.ts`): 20 assistant turns per person per hour and 60 per day, 200 per hub per
   hour, 30 Code of Conduct checks per person per hour, 1.5M tokens per hub per day (demo 300k), 4,000-character
   messages, the last 12 messages sent, no web search on demo hubs. **The operator changes them per hub in the

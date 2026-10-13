@@ -62,14 +62,88 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Sign-in: lock the code, the link, Keep me signed in, terms without a checkbox, city-counties (2026-10-14)
+
+**Two migrations to apply to an existing local stack first:** `supabase migration up --local`
+(`20261014000000_sign_in_codes`, `20261014010000_jurisdiction_city_county`), then reload the place list:
+`CIVIC_TARGET_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres node --import tsx scripts/load-jurisdictions.ts`.
+
+- **Unit:**
+  - `codeRules.test.ts`: the rules in `civic.auth/codeRules.ts`, against an in-memory store that behaves like
+    `take_sign_in_attempt`, with a clock the test moves.
+    - A code works once and for ten minutes, and five wrong tries burn it, never the address.
+    - **Nuisance attacker:** asking for codes never stops the owner's code. A fourth request while three are live
+      is refused with a time. One email a minute, ten new codes an hour.
+    - **Guesser:**
+      - one machine gets five wrong tries at an address an hour, refused before a try is spent;
+      - each guess spends a try on every live code;
+      - many machines face at most 10 × 5 tries an hour.
+    - The link works once and dies with its code.
+    - Times are in the hub's zone, or "UTC" when it has none.
+  - `codeEmail.test.ts`: the code on a line of its own after "Your code is:"; the Sign in button and link; none on
+    step-up, console and start-page codes.
+  - `jurisdictions.test.ts`: `searchTypesFor`, the code kept from the county, `consolidated.csv` well-formed.
+  - **Updated:**
+    - `hubDocuments.test.ts`: Floyd's golden legal copies regenerated for "In short";
+    - `forHub`, `exportManifest`, `hubBundle`: `sign_in_codes`, `platform_sign_in_codes`;
+    - `demoPrivilegedSignIn`, `hubWording`: the email now returns `{ html, text }`;
+    - `handover`: the setup guide is in the invite's first paragraph.
+- **API:**
+  - `auditSignIn.test.ts`, rewritten for the new rules:
+    - twenty wrong guesses at once spend exactly five tries and burn the code, then a new code works;
+    - one email a minute and three live codes, with nothing dropped;
+    - one network's five wrong tries at an address leave the owner's next code untouched;
+    - the "Try again after" sentence;
+    - the console and start-page attempt function is atomic.
+  - `signInLink.test.ts`:
+    - the link signs in once, as a `code` session, and dies with an expired or burned code;
+    - it works only on its own hub;
+    - sessions last 7 days, or 90 days with `keep_signed_in: true`.
+  - `startPage.test.ts`:
+    - the creator's account has the legal version after Create, and so does the audit row;
+    - `GET /start/legal`;
+    - the per-address and lockout tests are rewritten.
+  - `loginHardening.test.ts`: a code burned after five wrong tries, with no lockout.
+  - `control.test.ts`: a wrong or spent console code is 400 (`invalid_code`, `no_live_code`), not 401.
+  - `jurisdictions.test.ts`: a city-county is found under City, under County and under its own type.
+  - `functionGrants.test.ts`: the three new functions.
+- **Playwright, `signIn.spec.ts`** (375 px):
+  - the code field's `autocomplete="one-time-code"`, `inputmode="numeric"` and digits-only paste;
+  - the throttle and burned-code sentences;
+  - Keep me signed in (90 days, remembered);
+  - the join step with one checkbox and the notice, with "In short" on the Privacy and Terms pages;
+  - the link: Confirm, the token gone from the address bar, Join, and a spent link's sentence.
+- **Playwright, updated:**
+  - `signupWording.spec.ts`: the demo box reads "I'm trying this demo." and the notice is beside Join;
+  - `startPage.spec.ts`: the notice and a summary beside "Create my hub", and no terms prompt on the new hub.
+- **Smoke** (10 tests): a new resident signs in on the smoke hub **through the email's link** at 375 px, sees the
+  notice beside Join, and joins. Its account is deleted in afterAll. The code is planted in the dev database as a
+  request would store it (`plantSignInLink`), because the suite can't read email.
+
+**A hub's own documents replace the shared ones, summary included.** On a long-used local stack, Athens has a Code of
+Conduct some test wrote, so its page has no "In short". `signIn.spec.ts` checks the Privacy and Terms pages.
+
+**Counts (2026-10-14, local):**
+- Unit: 130 files, 1,510 passed.
+- API: 57 files, 720 passed, 10 skipped and 1 todo, in each mode. The one failure in each is `hubIsolationControllers >
+  admin queue counts`: on a long-used stack Floyd has more than 1,000 review rows, and `/admin/queue-counts` reads them
+  unpaged. CI's fresh database passes it. It is flagged as its own task.
+- Conformance: 96 passed, 3 skipped, 1 todo.
+- Playwright (preview build): 102 passed, 2 skipped.
+- Smoke (local smoke hub): 10 of 10 in 16 s.
+
+---
+
 ## Smoke suite (2026-10-13)
 
 A fourth layer: `tests/smoke/`, Playwright against the **live dev deployment**, after every dev deploy. It replaces
 the browser half of the dev checklist Adam ran by hand after each release (RUNBOOK-release.md → Dev).
 
-- **What it checks** (`dev.smoke.spec.ts`, one serial group, 9 tests):
+- **What it checks** (`dev.smoke.spec.ts`, one serial group, 10 tests):
   - `/api/health` is ok with no schema gaps, on the deployed commit; an unknown `POST /api/…` answers JSON 404;
   - a resident and an admin are signed in;
+  - a new resident signs in through the email's link at 375 px and joins beside the terms notice (since 2026-10-14,
+    sign-in slice: the one sign-in that is not a minted session);
   - a clean vote on a beta hub waits in the admins' queue (an approval vote with an empty extra option, which must
     not block Submit);
   - a flagged draft is refused with the draft kept, and "Tell the admins" reaches the queue marked "Flagged by the
@@ -1833,7 +1907,7 @@ the local-stack jobs.
 
 ---
 
-*Last updated: 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,
