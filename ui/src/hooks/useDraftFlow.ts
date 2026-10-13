@@ -204,6 +204,11 @@ export function useDraftFlow<D extends BaseDraft>({
   const commitDraft = useCallback((d: D) => {
     draftRef.current = d;
     setDraft(d);
+    // The saved draft now shows what was typed; until it did, the buffered
+    // fields did. Clearing them earlier (when the buffer was taken, before
+    // the save came back) left the form a moment with neither, so Submit
+    // flickered back to "Add a title" while the first save was in flight.
+    setPendingFields({});
   }, []);
 
   // Revision flow: the draft already exists — load it up front so the form
@@ -251,7 +256,6 @@ export function useDraftFlow<D extends BaseDraft>({
     const buf = buffer.current;
     if (Object.keys(buf.fields).length === 0) return null;
     buffer.current = { fields: {}, assistantApplied: false };
-    setPendingFields({});
     return buf;
   }
 
