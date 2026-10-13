@@ -214,6 +214,8 @@ export type ProcessSummary = VoteSummary | ProposalSummary | PublishedVoteResult
 /** Vote detail state */
 export interface VoteState {
   id: string;
+  /** How a receipt check answers once the vote closes. */
+  check_mode?: "show_choice" | "counted_only";
   /** Closed before its deadline: the line and the admin's note. */
   closed_early?: ClosedEarly | null;
   /** An admin could close it early now, by this action. */
@@ -683,6 +685,8 @@ export interface VoteDraft {
    *  assistant layer (chips, Apply, "has content") treats options like any
    *  other field. Set by ProposeDraftVote's withOptions(). */
   options?: string;
+  /** How the receipt check answers after close (null: the hub default at submit). */
+  check_mode: "show_choice" | "counted_only" | null;
   conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
   last_review_result: DraftSuggestion[] | null;
   draft_modified_since_review: boolean;
@@ -896,13 +900,19 @@ export function submitInput(
 
 export interface VoteLogEntry {
   receipt_id: string;
-  choice: string;
+  /** Absent when the vote shows only that ballots were counted. */
+  choice?: string;
 }
+
+export type CheckMode = "show_choice" | "counted_only";
 
 export interface VoteLogResponse {
   process_id: string;
+  title?: string;
   status: string;
   available: boolean;
+  /** How this vote's receipt check answers (once it is available). */
+  check_mode?: CheckMode;
   message?: string;
   total_votes?: number;
   log: VoteLogEntry[];
@@ -911,6 +921,10 @@ export interface VoteLogResponse {
 export interface ReceiptVerifyResponse {
   found: boolean;
   receipt_id?: string;
+  /** The vote's title, for "counted in <vote>". */
+  title?: string;
+  check_mode?: CheckMode;
+  /** Only when the vote shows the choice. */
   choice?: string;
   message?: string;
 }

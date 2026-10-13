@@ -154,6 +154,7 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "plugin.vote.min_duration_days", kind: "number", min: 1, max: 365 },
     { key: "plugin.vote.max_duration_days", kind: "number", min: 1, max: 365 },
     { key: "plugin.vote.default_duration_days", kind: "number", min: 1, max: 365 },
+    { key: "plugin.vote.default_check_mode", kind: "choice", options: ["show_choice", "counted_only"] },
     { key: "plugin.conversation.polis_url", kind: "url" },
     { key: "plugin.wordcloud.onboarding_id", kind: "process", processType: "civic.wordcloud" },
     { key: "plugin.meeting_summary.connector_id", kind: "choice", options: MEETING_CONNECTOR_OPTIONS },

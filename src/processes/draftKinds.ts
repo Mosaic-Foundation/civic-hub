@@ -5,10 +5,11 @@
 // (src/controllers/draftController.ts, src/routes/draftRoutes.ts). A new
 // drafting type declares a DraftKind here and mounts draftRouter(kind).
 
+import { CHECK_MODES, isCheckMode, type CheckMode } from "../shared/checkMode.js";
 import { overlongOption, VOTE_OPTION_MAX } from "../shared/voteOptions.js";
 import { ValidationError } from "../errors/index.js";
 import type { DraftSpec, Draft, BaseDraft } from "../modules/civic.drafts/index.js";
-import { voteDurationLimitsSync, getSupportThreshold } from "../services/hubSettings.js";
+import { voteDurationLimitsSync, getSupportThreshold, defaultCheckModeSync } from "../services/hubSettings.js";
 import { supportPhaseConfig } from "../modules/civic.vote/index.js";
 import { currentHubId } from "../config/hubContext.js";
 import { sourceLineToContentLink } from "../shared/sourceLine.js";
@@ -140,6 +141,7 @@ export type VoteDraft = Draft<{
   voting_duration_ms: number;
   method: string;
   custom_options: string[] | null;
+  check_mode: CheckMode | null;
 }>;
 
 export const voteDraftKind: DraftKind<VoteDraft> = {
@@ -171,6 +173,15 @@ export const voteDraftKind: DraftKind<VoteDraft> = {
         },
         checked: true,
       },
+      // How the receipt check answers after close (src/shared/checkMode.ts).
+      check_mode: {
+        read: (v) => (isCheckMode(v) ? v : null),
+        write: (v) => {
+          if (v !== null && !isCheckMode(v)) throw new ValidationError(`check_mode must be one of: ${CHECK_MODES.join(", ")}`);
+          return v;
+        },
+        checked: true,
+      },
       custom_options: {
         read: (v) => (Array.isArray(v) ? (v as string[]) : null),
         write: (v) => {
@@ -182,7 +193,10 @@ export const voteDraftKind: DraftKind<VoteDraft> = {
         checked: true,
       },
     },
-    createDefaults: () => ({ voting_duration_ms: voteDurationLimitsSync().defaultDays * DAY_MS }),
+    createDefaults: () => ({
+      voting_duration_ms: voteDurationLimitsSync().defaultDays * DAY_MS,
+      check_mode: defaultCheckModeSync(),
+    }),
   },
   missing: (d) => (d.title.trim() ? null : "Title is required"),
   async build(d) {
@@ -194,6 +208,8 @@ export const voteDraftKind: DraftKind<VoteDraft> = {
     const state: Record<string, unknown> = {
       method,
       voting_duration_ms: d.voting_duration_ms,
+      // Fixed from approval on: the vote has no edit path once live.
+      check_mode: d.check_mode ?? defaultCheckModeSync(),
       ...supportPhaseConfig(await getSupportThreshold(currentHubId())),
     };
     if (method === "approval" && Array.isArray(d.custom_options)) {

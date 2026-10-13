@@ -2325,6 +2325,29 @@
   background: #e8f5e9;
 }
 
+/* Counted only: the log lists the codes, one column. */
+.vote-log-table-codes .vote-log-header,
+.vote-log-table-codes .vote-log-row {
+  grid-template-columns: 1fr;
+}
+
+.vote-log-receipt {
+  overflow-wrap: anywhere;
+}
+
+/* Read by screen readers, not shown. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .vote-log-receipt {
   font-family: monospace;
   font-size: 0.8rem;

@@ -9,6 +9,7 @@
 //     receipt in the body, so no request log pairs it with an address
 //     (2026-10-10)
 
+import { checkModeOf } from "../shared/checkMode.js";
 import { NotFoundError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { claimVoteKey, getVoteLog, verifyReceipt } from "../modules/civic.receipts/index.js";
@@ -46,13 +47,18 @@ export const handleGetVoteLog = route(async (req, res) => {
   }
 
   const log = await getVoteLog(id);
+  // Counted only: the log lists the codes and nothing that says how any
+  // ballot was cast; the totals are on the vote's results (checkMode.ts).
+  const mode = checkModeOf(process.state);
 
   res.json({
     process_id: id,
+    title: process.title,
     status,
     available: true,
+    check_mode: mode,
     total_votes: log.length,
-    log,
+    log: mode === "counted_only" ? log.map((entry) => ({ receipt_id: entry.receipt_id })) : log,
   });
 });
 
@@ -91,10 +97,15 @@ export const handleVerifyReceipt = route(async (req, res) => {
   const result = await verifyReceipt(receiptId, id);
 
   if (result) {
+    // Show the choice: "counted in <vote>, for <option>". Counted only:
+    // "counted in <vote>", and nothing more.
+    const mode = checkModeOf(process.state);
     res.json({
       found: true,
       receipt_id: result.receipt_id,
-      choice: result.choice,
+      title: process.title,
+      check_mode: mode,
+      ...(mode === "show_choice" ? { choice: result.choice } : {}),
     });
   } else {
     res.json({

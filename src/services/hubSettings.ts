@@ -27,6 +27,7 @@
 //
 // Both go through the same resolution order, so they cannot disagree.
 
+import { DEFAULT_CHECK_MODE, isCheckMode, type CheckMode } from "../shared/checkMode.js";
 import { envVar, processEnv } from "../config/env.js";
 import { ValidationError } from "../errors/index.js";
 import {
@@ -748,3 +749,9 @@ export interface WaitlistEntry {
 }
 
 export { getWaitlist } from "../db/waitlistStore.js";
+
+/** The receipt check mode a new vote's draft starts with (src/shared/checkMode.ts). */
+export function defaultCheckModeSync(): CheckMode {
+  const v = getSettingSync(KEYS.PLUGIN_VOTE_DEFAULT_CHECK_MODE);
+  return isCheckMode(v) ? v : DEFAULT_CHECK_MODE;
+}

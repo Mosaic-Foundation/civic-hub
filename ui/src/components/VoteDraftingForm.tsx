@@ -83,6 +83,20 @@ const PLACEHOLDERS = {
 };
 
 /** Why the draft can't be submitted yet, or null. */
+/** The two receipt-check modes, as a vote's creator chooses (src/shared/checkMode.ts). */
+const CHECK_MODE_CHOICES = [
+  {
+    key: "show_choice",
+    title: "Show the choice",
+    hint: "Anyone with a receipt code can check that the ballot was counted, and for which option. Voters are told to keep their code private.",
+  },
+  {
+    key: "counted_only",
+    title: "Counted only",
+    hint: "A receipt code shows only that the ballot was counted, never how it was cast.",
+  },
+] as const;
+
 function missingReason(draft: VoteDraft): string | null {
   if (!draft.title.trim()) return "Add a vote question to submit.";
   if (draft.method === "approval") {
@@ -306,6 +320,28 @@ export default function VoteDraftingForm({
             ))}
           </select>
         </div>
+
+        {/* How a receipt check answers once the vote closes (Actions slice). */}
+        <fieldset className="form-field check-mode-field">
+          <legend className="form-label">After the vote closes, what does a receipt code show?</legend>
+          {CHECK_MODE_CHOICES.map((m) => (
+            <label key={m.key} className="check-mode-choice">
+              <input
+                type="radio"
+                name="check-mode"
+                value={m.key}
+                checked={(draft.check_mode ?? "show_choice") === m.key}
+                onChange={() => onFieldChange("check_mode", m.key)}
+                disabled={disabled}
+              />
+              <span>
+                <span className="check-mode-title">{m.title}</span>
+                <span className="form-hint check-mode-hint">{m.hint}</span>
+              </span>
+            </label>
+          ))}
+          <p className="form-hint">This can't be changed once the vote is approved.</p>
+        </fieldset>
 
         <ProcessLinkField
           value={links}

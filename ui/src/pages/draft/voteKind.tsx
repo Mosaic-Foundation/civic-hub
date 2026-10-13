@@ -19,6 +19,7 @@ export const voteKind: DraftKindConfig<VoteDraft> = {
     voting_duration_ms: 42 * DAY_MS,
     method: "yes_no_unsure",
     custom_options: null,
+    check_mode: null,
     conversation_history: [],
     last_review_result: null,
     draft_modified_since_review: false,
@@ -61,6 +62,12 @@ export const voteKind: DraftKindConfig<VoteDraft> = {
         <p className="confirm-duration">
           Voting method: {d.method === "approval" ? "Approval" : "Yes / No / Unsure"}.
           Voting will stay open for {durationLabel(d.voting_duration_ms)}.
+        </p>
+        <p className="confirm-duration">
+          Receipt check after the vote closes:{" "}
+          {d.check_mode === "counted_only"
+            ? "counted only. A receipt code shows only that the ballot was counted."
+            : "show the choice. A receipt code shows how that ballot was cast."}
         </p>
       </>
     ),

@@ -70,6 +70,9 @@ const LABELS: Record<string, string> = {
   seed_statements: "Seed statements",
   options: "Options on the ballot",
   method: "Voting method",
+  // The admin sees it in the queue and can ask for the other in a
+  // request-changes note (Actions slice).
+  check_mode: "Receipt check after the vote closes",
   category: "Category",
   proposal_duration_ms: "Open for",
   voting_duration_ms: "Voting window",
@@ -99,6 +102,7 @@ export function humanizeKey(key: string): string {
 // Value helpers
 // ---------------------------------------------------------------------------
 
+import { CHECK_MODE_LABELS, isCheckMode } from "./checkMode.js";
 import { URL_IN_LINE, normalizeUrl } from "./sourceLine.js";
 
 // Scheme-less domains count too — the same rule as shared/sourceLine.ts.
@@ -222,6 +226,17 @@ export function fieldFor(
   if (typeof value === "string") {
     if (key === "method") {
       return { key, label, kind: "text", value: METHOD_LABELS[value] ?? value };
+    }
+    if (key === "check_mode" && isCheckMode(value)) {
+      return {
+        key,
+        label,
+        kind: "text",
+        value:
+          value === "show_choice"
+            ? `${CHECK_MODE_LABELS[value]}: a receipt code shows how that ballot was cast`
+            : `${CHECK_MODE_LABELS[value]}: a receipt code shows only that the ballot was counted`,
+      };
     }
     if (isUrlish(value) && !value.includes("\n")) {
       const parsed = parseLinkLine(value);

@@ -302,6 +302,17 @@ function settingsPanel(f: FormApi, id: PluginId): React.ReactNode | null {
           <NumberField f={f} k="plugin.vote.min_duration_days" label="Shortest voting window" unit="days" placeholder="14" />
           <NumberField f={f} k="plugin.vote.max_duration_days" label="Longest voting window" unit="days" placeholder="90" />
           <NumberField f={f} k="plugin.vote.default_duration_days" label="Default voting window" unit="days" placeholder="42" />
+          <ChoiceField
+            f={f}
+            k="plugin.vote.default_check_mode"
+            label="Receipt check, for new votes"
+            hint="After a vote closes, anyone with a receipt code can check it. The person drafting a vote can choose the other; it is fixed once the vote is approved."
+            labels={{
+              show_choice: "Show the choice: a code shows how that ballot was cast",
+              counted_only: "Counted only: a code shows only that the ballot was counted",
+            }}
+            emptyLabel="Show the choice (the default)"
+          />
           <ParticipationValues show="threshold" />
           <ParticipationValues show="anonymity" />
         </>

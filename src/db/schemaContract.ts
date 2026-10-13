@@ -109,7 +109,7 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   // 2026-09-06 (migration 20260906120000); dropped in a later migration.
   { table: "project_sentiments", owner: "civic.projects" },
   { table: "project_drafts", columns: ["links"], owner: "civic.drafts" },
-  { table: "vote_drafts", columns: ["method", "custom_options", "links"], owner: "civic.drafts" },
+  { table: "vote_drafts", columns: ["method", "custom_options", "links", "check_mode"], owner: "civic.drafts" },
   { table: "deliberation_drafts", columns: ["sources", "links"], owner: "civic.drafts" },
   { table: "link_previews", owner: "civic.link_preview" },
   // Universal: linking is a property of every process, not of any one handler,

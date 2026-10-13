@@ -129,6 +129,10 @@ export const KEYS = {
   PLUGIN_VOTE_MIN_DURATION_DAYS: "plugin.vote.min_duration_days",
   PLUGIN_VOTE_MAX_DURATION_DAYS: "plugin.vote.max_duration_days",
   PLUGIN_VOTE_DEFAULT_DURATION_DAYS: "plugin.vote.default_duration_days",
+  // How a new vote's receipt check answers, unless its creator picks the
+  // other: "show_choice" (unset) or "counted_only". Added 2026-10-13
+  // (Actions slice, Adam). See src/shared/checkMode.ts.
+  PLUGIN_VOTE_DEFAULT_CHECK_MODE: "plugin.vote.default_check_mode",
   PLUGIN_CONVERSATION_POLIS_URL: "plugin.conversation.polis_url",
   PLUGIN_WORDCLOUD_ONBOARDING_ID: "plugin.wordcloud.onboarding_id",
   PLUGIN_FEEDBACK_RECIPIENTS: "plugin.feedback.recipients",

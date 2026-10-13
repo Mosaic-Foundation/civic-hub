@@ -11,6 +11,7 @@
 // Action functions are async because event emission is durable — the host
 // hub awaits the DB write before the action completes.
 
+import { CHECK_MODES, DEFAULT_CHECK_MODE, checkModeOf, isCheckMode } from "../../shared/checkMode.js";
 import { overlongOption, VOTE_OPTION_MAX } from "../../shared/voteOptions.js";
 import { ConflictError, ValidationError } from "../../errors/index.js";
 import type {
@@ -103,8 +104,13 @@ export function createVoteState(
     );
   }
 
+  if (input.check_mode !== undefined && !isCheckMode(input.check_mode)) {
+    throw new ValidationError(`check_mode must be one of: ${CHECK_MODES.join(", ")}`, "invalid_check_mode");
+  }
+
   return {
     type: "civic.vote",
+    check_mode: isCheckMode(input.check_mode) ? input.check_mode : DEFAULT_CHECK_MODE,
     method: methodKey,
     status: "draft",
     options,
@@ -432,6 +438,8 @@ export function getReadModel(
     voting_closes_at: state.voting_closes_at,
     closes_at: state.voting_closes_at, // backward compat alias
     result: state.status === "finalized" ? state.result : null,
+    // How a receipt check answers once it closes.
+    check_mode: checkModeOf(state),
     created_at: processMeta.createdAt,
     created_by: processMeta.createdBy,
   };

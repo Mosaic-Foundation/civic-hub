@@ -43,6 +43,12 @@ export interface VoteProcessState {
   voting_opens_at: string | null;
   voting_closes_at: string | null;
   result: VoteResult | null;
+  /**
+   * How the receipt check answers after close (src/shared/checkMode.ts).
+   * Set at creation, fixed from then; absent on votes made before modes,
+   * which read as show_choice (what their log always did).
+   */
+  check_mode?: "show_choice" | "counted_only";
 }
 
 /**

@@ -280,7 +280,7 @@ const voteProcess: ProcessHandler = {
   // generic content walk with those keys so the review previews show the
   // whole ballot as submitted.
   describeSubmission: (source) =>
-    describeSubmissionFields(source, ["method", "options", "config.voting_duration_ms"]),
+    describeSubmissionFields(source, ["method", "options", "config.voting_duration_ms", "check_mode"]),
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     return createVoteState(input) as unknown as Record<string, unknown>;
