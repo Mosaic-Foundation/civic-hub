@@ -69,7 +69,7 @@ export function errorResponse(
   ref: string = newRef(),
 ): { status: number; body: ErrorBody; retryAfterSeconds?: number; unexpected: boolean } {
   if (err instanceof CivicError) {
-    const body: ErrorBody = { error: err.message, code: err.code };
+    const body: ErrorBody = { ...err.extra, error: err.message, code: err.code };
     if (err.status >= 500) body.ref = ref;
     return { status: err.status, body, retryAfterSeconds: err.retryAfterSeconds, unexpected: false };
   }

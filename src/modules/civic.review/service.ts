@@ -147,6 +147,7 @@ export async function submitForReview(
     creator_name: input.creator_name,
     creator_email: input.creator_email,
     status: "pending_review" as ReviewStatus,
+    ...(input.coc_flags?.length ? { coc_flags: input.coc_flags } : {}),
   };
 
   const reviewData = await db()
@@ -170,7 +171,7 @@ export async function submitForReview(
     actor: input.creator_id,
     actor_role: "creator",
     action: "submit",
-    note: null,
+    note: input.note?.trim() || null,
     process_snapshot: takeSnapshot({
       title: input.title,
       description: input.description,
@@ -188,6 +189,7 @@ export async function submitForReview(
     data: {
       process_type: input.process_type,
       title: input.title,
+      ...(input.coc_flags?.length ? { coc_flagged: true } : {}),
     },
   });
 
@@ -252,7 +254,10 @@ export async function submitAsCreator(
   // passed the check goes live at once, so the evaluator sees what a
   // published one looks like. Beta and live hubs always review.
   const demoPublish = !isAdmin && opts.cocPassed === true && isDemoVisitor(creatorEmail);
-  const autoApprove = isAdmin || demoPublish;
+  // Text the check flagged, sent to the admins anyway, always waits for one:
+  // an admin's own included, and on a demo hub too (Adam, 2026-10-12).
+  const flagged = (input.coc_flags?.length ?? 0) > 0;
+  const autoApprove = !flagged && (isAdmin || demoPublish);
   const { review, process_id } = await submitForReview(input, {
     notify: !autoApprove,
   });
@@ -746,7 +751,10 @@ export async function reviseAndResubmit(
   // Update review status back to pending_review
   const updatedReview = await db()
     .from("process_reviews")
-    .update({ status: "pending_review" as ReviewStatus })
+    .update({
+      status: "pending_review" as ReviewStatus,
+      ...(input.coc_flags !== undefined ? { coc_flags: input.coc_flags?.length ? input.coc_flags : null } : {}),
+    })
     .eq("id", reviewId)
     .select()
     .single();

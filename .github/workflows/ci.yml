@@ -217,6 +217,9 @@ jobs:
           # (src/debug/fakePolis.ts): the plugin conformance suite walks them,
           # and makes Polis down, slow or erroring, with no network.
           CIVIC_POLIS_FAKE: "on"
+          # The Code of Conduct check as a fixed rule (src/debug/fakeCodeOfConduct.ts):
+          # Submit runs the check, and the suites make it flag text or be down.
+          CIVIC_COC_FAKE: "on"
 
       - name: API tests (service role)
         run: npx vitest run tests/api

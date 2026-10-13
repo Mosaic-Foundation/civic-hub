@@ -21,6 +21,12 @@ export interface CivicErrorOptions {
   retryAfterSeconds?: number;
   /** The underlying error, for the log. Never sent to the client. */
   cause?: unknown;
+  /**
+   * Fields sent beside `error` and `code` where a caller needs them (BUILD-PLAN
+   * "Error responses"): a flagged submission's `findings`. Never a value from
+   * the database the person did not write; never `error`, `code` or `ref`.
+   */
+  extra?: Record<string, unknown>;
 }
 
 /** The base: a refusal or failure whose message is safe to show a person. */
@@ -28,6 +34,7 @@ export class CivicError extends Error {
   readonly status: number;
   readonly code: string;
   readonly retryAfterSeconds: number | undefined;
+  readonly extra: Record<string, unknown> | undefined;
 
   constructor(status: number, code: string, message: string, opts: CivicErrorOptions = {}) {
     super(message, opts.cause === undefined ? undefined : { cause: opts.cause });
@@ -35,6 +42,7 @@ export class CivicError extends Error {
     this.status = status;
     this.code = code;
     this.retryAfterSeconds = opts.retryAfterSeconds;
+    this.extra = opts.extra;
   }
 }
 
@@ -107,6 +115,8 @@ export interface ErrorBody {
   error: string;
   code: string;
   ref?: string;
+  /** A typed error's `extra` fields. */
+  [field: string]: unknown;
 }
 
 /** What a person reads when something failed that we did not expect. */

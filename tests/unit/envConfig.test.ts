@@ -3,7 +3,8 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { env, envVar, isProductionEnv } from "../../src/config/env.js";
-import { privateFetchAllowed, rateLimitsEnabled, seedAllowed } from "../../src/config/devFlags.js";
+import { cocFakeEnabled, privateFetchAllowed, rateLimitsEnabled, seedAllowed } from "../../src/config/devFlags.js";
+import { FAKE_COC_DOWN, FAKE_COC_FLAG, fakeCodeOfConductCheck } from "../../src/debug/fakeCodeOfConduct.js";
 
 const saved = { ...process.env };
 afterEach(() => {
@@ -31,5 +32,28 @@ describe("env", () => {
     process.env.NODE_ENV = "production";
     expect(isProductionEnv()).toBe(true);
     expect([seedAllowed(), rateLimitsEnabled(), privateFetchAllowed()]).toEqual([false, true, false]);
+  });
+});
+
+describe("the fake Code of Conduct check (CIVIC_COC_FAKE=on)", () => {
+  it("is refused in production", () => {
+    process.env.CIVIC_COC_FAKE = "on";
+    process.env.NODE_ENV = "development";
+    expect(cocFakeEnabled()).toBe(true);
+    process.env.NODE_ENV = "production";
+    expect(cocFakeEnabled()).toBe(false);
+  });
+
+  it("flags the marked field, is down on its marker, and passes the rest", () => {
+    const fields = (description: string) => [
+      { label: "Title", text: "A bench" },
+      { label: "Description", text: description },
+      { label: "Seed statements", text: "" },
+    ];
+    expect(fakeCodeOfConductCheck(fields("Fine."))).toEqual([]);
+    expect(fakeCodeOfConductCheck(fields(`Rude ${FAKE_COC_FLAG}`))).toEqual([
+      expect.objectContaining({ severity: "hard", field: "description", quoted_text: FAKE_COC_FLAG }),
+    ]);
+    expect(() => fakeCodeOfConductCheck(fields(FAKE_COC_DOWN))).toThrow();
   });
 });

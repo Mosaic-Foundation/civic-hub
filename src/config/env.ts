@@ -12,7 +12,7 @@
 // as unset.
 //
 // Development-only switches (CIVIC_ALLOW_SEED, CIVIC_RATE_LIMITS,
-// CIVIC_SSRF_ALLOW_PRIVATE, CIVIC_POLIS_FAKE) are read here but decided in src/config/devFlags.ts,
+// CIVIC_SSRF_ALLOW_PRIVATE, CIVIC_POLIS_FAKE, CIVIC_COC_FAKE) are read here but decided in src/config/devFlags.ts,
 // which refuses them in production (Audit 2).
 
 function read(name: string): string | undefined {
@@ -109,6 +109,7 @@ export const env = {
   get CIVIC_RATE_LIMITS() { return read("CIVIC_RATE_LIMITS"); },
   get CIVIC_SSRF_ALLOW_PRIVATE() { return read("CIVIC_SSRF_ALLOW_PRIVATE"); },
   get CIVIC_POLIS_FAKE() { return read("CIVIC_POLIS_FAKE"); },
+  get CIVIC_COC_FAKE() { return read("CIVIC_COC_FAKE"); },
 
   // --- What is deployed ------------------------------------------------------
   get VERCEL_GIT_COMMIT_SHA() { return read("VERCEL_GIT_COMMIT_SHA"); },

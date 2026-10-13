@@ -13,7 +13,7 @@ import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { call, type HostResponse } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { codeOfConductFields, codeOfConductHash, toDraftState } from "../../src/services/codeOfConduct.js";
+import { COC_DOWN, COC_FLAG } from "../fixtures/codeOfConduct.js";
 import type { ProcessTypeDescriptor } from "../../src/processes/descriptor.js";
 import type { HostFacts } from "../../src/processes/descriptorCheck.js";
 
@@ -72,35 +72,43 @@ export interface Submitted {
 }
 
 /**
- * A resident's draft of this type, checked and submitted: the draft is made
- * at the descriptor's drafts path, filled from its example, given a Code of
- * Conduct result on exactly its text (passed, or unavailable), and submitted.
+ * The fake Code of Conduct check's markers (the hub runs CIVIC_COC_FAKE=on;
+ * src/debug/fakeCodeOfConduct.ts): flagged, or the check down.
+ */
+const MARKER = { passed: "", flagged: COC_FLAG, unavailable: COC_DOWN } as const;
+
+/**
+ * A resident's draft of this type, submitted the way a resident submits it:
+ * the draft is made at the descriptor's drafts path, filled from its example,
+ * and Submit runs the Code of Conduct check on it (Submit and Save,
+ * 2026-10-12). `check` picks what the check finds, by a marker the fake check
+ * answers to in the draft's description: nothing, something to fix, or that
+ * it can't run. `tellAdmins` sends flagged text to the admins.
  */
 export async function submitDraft(
   d: ProcessTypeDescriptor,
   host: HostFacts,
   hub: Hub,
   token: string,
-  opts: { check: "passed" | "unavailable"; title?: string; fields?: Record<string, unknown> },
+  opts: {
+    check: "passed" | "flagged" | "unavailable";
+    title?: string;
+    fields?: Record<string, unknown>;
+    tellAdmins?: { note?: string };
+  },
 ): Promise<Submitted> {
   const path = d.creation.resident!.drafts;
-  const table = host.draftKinds.find((k) => k.processType === d.type)!.table;
   const title = opts.title ?? uniqueTitle(String(d.examples.draft!.title ?? d.type));
   const made = await call("POST", path, hub.host, {}, token);
   if (made.status !== 201) throw new Error(`${d.type}: new draft at ${path} answered ${made.status} ${JSON.stringify(made.body)}`);
   const draftId = made.body.id as string;
-  const filled = await call("PATCH", `${path}/${draftId}`, hub.host, { ...withTitle(d.examples.draft!, title), ...opts.fields }, token);
+  const fields = { ...withTitle(d.examples.draft!, title), ...opts.fields };
+  // The marker goes on last, so a caller's own description keeps it.
+  const description = `${String(fields.description ?? "")} ${MARKER[opts.check]}`.trim();
+  const filled = await call("PATCH", `${path}/${draftId}`, hub.host, { ...fields, description }, token);
   if (filled.status !== 200) throw new Error(`${d.type}: filling the draft answered ${filled.status} ${JSON.stringify(filled.body)}`);
-  await localRest(`${table}?id=eq.${draftId}`, {
-    method: "PATCH",
-    body: JSON.stringify({
-      last_review_result:
-        opts.check === "passed" ? [] : [{ severity: "soft", check_unavailable: true, message: "could not run" }],
-      draft_modified_since_review: false,
-      coc_checked_hash: codeOfConductHash(codeOfConductFields(toDraftState(filled.body))),
-    }),
-  });
-  const res = await call("POST", `${path}/${draftId}/submit`, hub.host, {}, token);
+  const body = opts.tellAdmins ? { tell_admins: true, ...(opts.tellAdmins.note ? { note: opts.tellAdmins.note } : {}) } : {};
+  const res = await call("POST", `${path}/${draftId}/submit`, hub.host, body, token);
   return {
     status: res.status,
     body: res.body,
@@ -109,6 +117,37 @@ export async function submitDraft(
     draftId,
     title,
   };
+}
+
+/** Submit a draft again, sending what the check flagged to the admins. */
+export function tellAdmins(
+  d: ProcessTypeDescriptor,
+  hub: Hub,
+  token: string,
+  draftId: string,
+  note?: string,
+): Promise<HostResponse> {
+  return call("POST", `${d.creation.resident!.drafts}/${draftId}/submit`, hub.host, { tell_admins: true, ...(note ? { note } : {}) }, token);
+}
+
+/** A draft as its owner reads it. */
+export function draftOf(d: ProcessTypeDescriptor, hub: Hub, token: string, draftId: string): Promise<HostResponse> {
+  return call("GET", `${d.creation.resident!.drafts}/${draftId}`, hub.host, undefined, token);
+}
+
+/** The reviews made from a draft, with their flag and their first turn's note. */
+export async function reviewsOfDraft(
+  draftId: string,
+): Promise<{ id: string; status: string; process_id: string; coc_flags: unknown[] | null; note: string | null }[]> {
+  const reviews = (await localRest(
+    `process_reviews?select=id,status,process_id,coc_flags&draft_id=eq.${draftId}`,
+  )) as { id: string; status: string; process_id: string; coc_flags: unknown[] | null }[];
+  return Promise.all(
+    reviews.map(async (r) => {
+      const turns = (await localRest(`review_turns?select=note&review_id=eq.${r.id}&turn_number=eq.1`)) as { note: string | null }[];
+      return { ...r, note: turns[0]?.note ?? null };
+    }),
+  );
 }
 
 /** Approve a review as the hub's admin. */

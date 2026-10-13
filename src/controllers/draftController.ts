@@ -21,6 +21,9 @@ import {
 } from "../modules/civic.drafts/index.js";
 import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
 import { codeOfConductStanding } from "../services/codeOfConduct.js";
+import { runCodeOfConductCheck } from "../services/codeOfConductCheck.js";
+import type { AssistantDraft } from "../modules/civic.assistant/index.js";
+import type { CocFlag } from "../modules/civic.review/models.js";
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { personFallbackName } from "../services/creatorDisplay.js";
 import { HubDbError } from "../db/forHub.js";
@@ -34,6 +37,16 @@ export interface DraftHandlers {
   get: RequestHandler;
   update: RequestHandler;
   submit: RequestHandler;
+}
+
+/** The longest note a resident can send with a flagged submission. */
+const NOTE_MAX = 2000;
+
+/** The check's hard findings on a draft, as the resident and the review see them. */
+function hardFindings(draft: BaseDraft): CocFlag[] {
+  return (draft.last_review_result ?? [])
+    .filter((s) => s.severity === "hard" && !s.check_unavailable)
+    .map((s) => ({ field: s.field, quoted_text: s.quoted_text, message: s.message }));
 }
 
 /** A second submit, whether the first has finished or is still running. */
@@ -84,37 +97,68 @@ export function draftController<D extends BaseDraft>(kind: DraftKind<D>): DraftH
 
     submit: route(async (req, res) => {
       const user = getAuthUser(res);
-      const draft = await ownDraft(req, res, "Not authorized");
+      let draft = await ownDraft(req, res, "Not authorized");
       if (draft.status !== "drafting") throw ALREADY_SUBMITTED();
       const missing = kind.missing(draft);
       if (missing) throw new ValidationError(missing);
 
-      // The Code of Conduct check must have run on exactly this text
-      // (services/codeOfConduct.ts); the client cannot say it did.
-      const coc = await codeOfConductStanding(spec.processType, draft);
-      if (coc.refusal) throw new ValidationError(coc.refusal, "code_of_conduct");
-
-      const submission = await kind.build(draft);
-      const editProcessId = typeof req.body?.edit_process_id === "string" ? req.body.edit_process_id : undefined;
-      const reviewId = typeof req.body?.review_id === "string" ? req.body.review_id : undefined;
-
-      // A live edit has no reviewer, so the check must have PASSED on this
-      // text: an unavailable check, which lets a new submission through to
-      // an admin, does not let an edit go live.
-      if (editProcessId && kind.applyLiveEdit && !coc.passed) {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const editProcessId = typeof body.edit_process_id === "string" ? body.edit_process_id : undefined;
+      const reviewId = typeof body.review_id === "string" ? body.review_id : undefined;
+      // "Think this is wrong? Tell the admins": send text the check flagged
+      // to the review queue anyway, marked as flagged, with an optional note.
+      const tellAdmins = body.tell_admins === true;
+      const note = typeof body.note === "string" ? body.note.trim().slice(0, NOTE_MAX) : "";
+      const liveEdit = Boolean(editProcessId && kind.applyLiveEdit);
+      if (tellAdmins && liveEdit) {
         throw new ValidationError(
-          "The Code of Conduct check couldn't run, so these edits can't go live yet. Run the check again in a moment.",
-          "code_of_conduct_unavailable",
+          "Edits to a live item go live without a review, so they can't be sent to the admins. Change the text the check flagged.",
+          "tell_admins_unavailable",
         );
       }
 
-      // Claim the draft BEFORE creating anything: a concurrent or repeated
-      // submit (a double click, two tabs) finds it claimed and creates
-      // nothing. If the work fails, the claim is released so the person can
-      // try again.
+      // Claim the draft BEFORE checking or creating anything: a concurrent or
+      // repeated submit (a double click, two tabs) finds it claimed, and
+      // neither runs the check twice nor creates twice. Every refusal below
+      // releases it, so the draft is kept and the person can try again.
       if (!(await claimDraftForSubmission(spec, draft.id))) throw ALREADY_SUBMITTED();
 
       try {
+        // Submit runs the Code of Conduct check (Submit and Save, 2026-10-12)
+        // unless it already ran on exactly this text. The client cannot say
+        // it did (services/codeOfConduct.ts).
+        let coc = await codeOfConductStanding(spec.processType, draft);
+        if (coc.status === "unchecked") {
+          await runCodeOfConductCheck(spec.processType, draft as unknown as AssistantDraft, user.id);
+          draft = (await getDraft<D>(spec, draft.id)) as D;
+          coc = await codeOfConductStanding(spec.processType, draft, { justRan: true });
+          if (coc.status === "unchecked") {
+            throw new ConflictError("Your draft changed while it was being checked. Press Submit again.", "draft_changed");
+          }
+        }
+
+        const findings = coc.status === "flagged" ? hardFindings(draft) : [];
+        if (coc.status === "flagged" && !tellAdmins) {
+          throw new ValidationError(
+            "The Code of Conduct check found something to change before this can be submitted. Your draft is saved.",
+            "code_of_conduct_flagged",
+            { extra: { findings } },
+          );
+        }
+
+        // A live edit has no reviewer, so the check must have PASSED on this
+        // text: an unavailable check, which lets a new submission through to
+        // an admin, does not let an edit go live.
+        if (liveEdit && !coc.passed) {
+          throw new ValidationError(
+            "The Code of Conduct check couldn't run, so these edits can't go live yet. Press Submit again in a moment.",
+            "code_of_conduct_unavailable",
+          );
+        }
+
+        const submission = await kind.build(draft);
+        const cocFlags = findings.length > 0 ? findings : undefined;
+
         if (editProcessId && kind.applyLiveEdit) {
           res.status(200).json(await kind.applyLiveEdit(draft, editProcessId, { id: user.id, email: user.email }, submission));
           return;
@@ -122,7 +166,7 @@ export function draftController<D extends BaseDraft>(kind: DraftKind<D>): DraftH
 
         // Revision of an existing submission (an admin asked for changes):
         // update the process in place and put it back in the queue, never a
-        // second one.
+        // second one. Its flag follows the revised text.
         if (reviewId) {
           const review = await reviseAndResubmit(reviewId, user.id, {
             title: submission.title,
@@ -130,8 +174,16 @@ export function draftController<D extends BaseDraft>(kind: DraftKind<D>): DraftH
             content: submission.revise ? submission.revise.content : submission.content,
             state: submission.revise ? submission.revise.state : submission.state,
             links: draft.links,
+            coc_flags: cocFlags ?? null,
+            ...(cocFlags && note ? { note } : {}),
           });
-          res.status(201).json({ review_id: review.id, process_id: review.process_id, auto_approved: false });
+          res.status(201).json({
+            review_id: review.id,
+            process_id: review.process_id,
+            auto_approved: false,
+            ...(cocFlags ? { flagged: true } : {}),
+            ...(coc.status === "unavailable" ? { check_unavailable: true } : {}),
+          });
           return;
         }
 
@@ -149,16 +201,22 @@ export function draftController<D extends BaseDraft>(kind: DraftKind<D>): DraftH
             creator_email: user.email,
             content: submission.content,
             state: submission.state,
+            ...(cocFlags ? { coc_flags: cocFlags, ...(note ? { note } : {}) } : {}),
           },
           user.email,
           { cocPassed: coc.passed },
         );
-        res.status(201).json(result);
+        res.status(201).json({
+          ...result,
+          ...(cocFlags ? { flagged: true } : {}),
+          ...(coc.status === "unavailable" ? { check_unavailable: true } : {}),
+        });
       } catch (workErr) {
         // The review queue already holds this draft
         // (process_reviews_one_per_draft): it stays submitted.
         if (workErr instanceof HubDbError && workErr.code === "23505") throw ALREADY_SUBMITTED();
-        // Nothing was created: release the draft for another try.
+        // Nothing was created (a refusal above, or a failure): release the
+        // draft, so it is kept and the person can fix it and try again.
         await setDraftStatus(spec, draft.id, "drafting").catch(() => {});
         throw workErr;
       }

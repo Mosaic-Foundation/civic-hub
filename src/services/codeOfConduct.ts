@@ -69,47 +69,54 @@ interface CheckedDraft {
   coc_checked_hash: string | null;
 }
 
+/**
+ * Where the check stands on a draft's current text (Submit and Save, 2026-10-12:
+ * Submit runs the check itself, so "not checked" is no longer a refusal):
+ *   - `unchecked`: it never ran, ran on other text, or last time it could not
+ *     run. Submit runs it now.
+ *   - `passed`: it ran on exactly this text and found nothing hard.
+ *   - `flagged`: it ran on exactly this text and found something hard.
+ *     Nothing is submitted, unless the resident sends it to the admins.
+ *   - `unavailable`: it could not run on this text, just now. Submitting goes
+ *     ahead to an admin (fail open, Adam), never published at once.
+ */
+export type CodeOfConductStatus = "unchecked" | "passed" | "flagged" | "unavailable";
+
 export interface CodeOfConductStanding {
-  /** Why the draft may not be submitted, or null when it may. */
-  refusal: string | null;
+  status: CodeOfConductStatus;
   /** The check ran on this exact text, was available, and found nothing hard. */
   passed: boolean;
 }
 
 /**
- * Whether a draft may be submitted, and whether it passed, given the hash of
- * its checked fields as they are now. Submitting is allowed when the check
- * ran on the current text and found no hard block; a check that was
- * unavailable still allows it (the submission goes to an admin), but does
- * not count as passed. Pure, so the rule is tested on its own.
+ * The standing of a draft, given the hash of its checked fields as they are
+ * now. A stored "unavailable" reads as unchecked, so the next Submit tries the
+ * check again rather than waving the text through on an old outage; the
+ * caller that just ran it reads it with `justRan`. Pure, so the rule is
+ * tested on its own.
  */
 export function codeOfConductVerdict(
   draft: Omit<CheckedDraft, "id">,
   currentHash: string | null,
+  opts: { justRan?: boolean } = {},
 ): CodeOfConductStanding {
   const result = draft.last_review_result;
-  if (!Array.isArray(result)) {
-    return { refusal: "Run the Code of Conduct check before submitting.", passed: false };
-  }
-  if (result.some((s) => s.severity === "hard")) {
-    return {
-      refusal: "Cannot submit: unresolved Code of Conduct concerns. Review your draft.",
-      passed: false,
-    };
-  }
-  if (!draft.coc_checked_hash || draft.coc_checked_hash !== currentHash) {
-    return {
-      refusal: "Draft has been modified since last review. Please review again before submitting.",
-      passed: false,
-    };
-  }
-  return { refusal: null, passed: !result.some((s) => s.check_unavailable === true) };
+  const status: CodeOfConductStatus =
+    !Array.isArray(result) || !draft.coc_checked_hash || draft.coc_checked_hash !== currentHash
+      ? "unchecked"
+      : result.some((s) => s.check_unavailable === true)
+        ? opts.justRan ? "unavailable" : "unchecked"
+        : result.some((s) => s.severity === "hard")
+          ? "flagged"
+          : "passed";
+  return { status, passed: status === "passed" };
 }
 
 /** codeOfConductVerdict for a stored draft, its current text read through its type's store. */
 export async function codeOfConductStanding(
   processType: string,
   draft: CheckedDraft,
+  opts: { justRan?: boolean } = {},
 ): Promise<CodeOfConductStanding> {
-  return codeOfConductVerdict(draft, await currentCodeOfConductHash(processType, draft.id));
+  return codeOfConductVerdict(draft, await currentCodeOfConductHash(processType, draft.id), opts);
 }

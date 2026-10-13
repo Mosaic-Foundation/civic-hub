@@ -10,18 +10,14 @@
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { AiLimitError, admitAiCall, currentAiLimits } from "../services/aiBudget.js";
-import { checkTextAgainstCoC } from "../modules/civic.assistant/service.js";
+import { runCodeOfConductCheck } from "../services/codeOfConductCheck.js";
 import type { Suggestion } from "../modules/civic.assistant/models.js";
 import type { Request, Response } from "express";
 import { getAuthUser } from "../middleware/auth.js";
 import { getProcessHandler } from "../processes/registry.js";
 import { currentHub } from "../config/hubContext.js";
 import { hubDocument } from "../services/hubDocuments.js";
-import {
-  codeOfConductFields,
-  codeOfConductHash,
-  toDraftState,
-} from "../services/codeOfConduct.js";
+import { toDraftState } from "../services/codeOfConduct.js";
 import {
   callAssistant,
   getHubConfig,
@@ -185,38 +181,13 @@ export const handleAssistantReview = route(async (req, res) => {
 
   const draft = await loadDraftForUser(req, res, config);
 
-  // The check is the Code of Conduct check and nothing else (Adam,
-  // 2026-09-03: "it should suggest changes only based on code of conduct
-  // violations… the writing assistant should be a different thing").
-  // Hard blocks only; no best-practices advice, no fact-checking, no web
-  // search, no chat turn. Writing help lives in the assistant panel, where
-  // the person asks for it. Same for creation and for edits.
-  // The hash is of exactly the text the check reads, so a submit can
-  // tell whether this result covers the draft as it then stands.
-  const fields = codeOfConductFields(toDraftState(draft));
-  const checkedHash = codeOfConductHash(fields);
-  let suggestions: Suggestion[] = [];
-  let unavailable = false;
-  try {
-    // A person over their hourly count is told so (429, below). A hub
-    // whose budget is spent is not a reason to block a submission: the
-    // check is "unavailable" and the draft goes to an admin, as when the
-    // model itself is down.
-    await admitAiCall("review", getAuthUser(res).id);
-    suggestions = await checkTextAgainstCoC(fields, await getHubConfig());
-  } catch (err) {
-    if (err instanceof AiLimitError && !err.budget) throw err;
-    console.error(`[assistant-review:${processType}] CoC check unavailable, failing open to human review:`, err instanceof Error ? err.message : err);
-    unavailable = true;
-  }
-  // An unavailable check is stored as such (submitting stays allowed), so
-  // a demo hub never publishes the draft as if it had passed.
-  await config.draftStore.saveReviewResult(
-    draft.id,
-    unavailable ? [{ ...CHECK_UNAVAILABLE_RESULT }] : suggestions,
-    checkedHash,
+  // Submit runs the check itself now (Submit and Save, 2026-10-12); this
+  // route stays for a release so a drafting page already open still works.
+  const { suggestions, unavailable, draft: updated } = await runCodeOfConductCheck(
+    processType,
+    draft,
+    getAuthUser(res).id,
   );
-  const updated = await config.draftStore.get(draft.id);
   res.json({
     response: {
       message: unavailable

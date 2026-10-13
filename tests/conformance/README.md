@@ -21,9 +21,13 @@ both API passes (service role, minted hub tokens).
    - its creation, deadline, brief and approval;
    - its tier, and any outside service.
 2. **Creation.**
-   - A type residents draft: an unchecked draft is refused, and submits that
-     arrive together make one review. A beta hub queues the submission for an
-     admin; a demo hub publishes a passed check at once.
+   - A type residents draft: Submit runs the Code of Conduct check. Flagged
+     text is refused with what to fix (`findings`) and the draft is kept;
+     "tell the admins" (`tell_admins: true`, an optional `note`) queues it
+     once, flagged, never live at once, on a beta and a demo hub; a check
+     that can't run sends the submission to an admin. Submits that arrive
+     together make one review. A beta hub queues a clean submission for an
+     admin; a demo hub publishes it at once.
    - A type an admin creates: the admin can create one, and a resident can't.
 3. **A failed approval** leaves the submission waiting with nothing in the
    public log, and the retry writes one `created`.
@@ -120,7 +124,10 @@ A process type is a `ProcessHandler` (`src/processes/types.ts`) with a
 
 Today a plugin runs inside a hub build:
 1. Register its handler in `src/processes/registry.ts`.
-2. Start the hub with `CIVIC_POLIS_FAKE=on` against the local stack.
+2. Start the hub with `CIVIC_POLIS_FAKE=on` and `CIVIC_COC_FAKE=on` against
+   the local stack. The fake check flags text containing `[coc-flag]` and is
+   down on `[coc-down]`; the suite puts them in the example draft's
+   `description`, so a drafted type needs one.
 3. Run:
 
 ```bash

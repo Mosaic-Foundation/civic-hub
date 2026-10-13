@@ -9,9 +9,13 @@
 //                             the real adapter (src/debug/fakePolis.ts), so the
 //                             conformance suite can walk them without the
 //                             network, and make Polis down, slow or erroring
+//   CIVIC_COC_FAKE=on       — the Code of Conduct check is a fixed rule, not
+//                             the AI (src/debug/fakeCodeOfConduct.ts), so tests
+//                             can make a submission pass, be flagged, or find
+//                             the check down
 //
 // With NODE_ENV=production (every Vercel deployment, dev and production) all
-// four are refused: the flag reads as unset, and the boot check reports it, once,
+// five are refused: the flag reads as unset, and the boot check reports it, once,
 // as an error operators see. Refused rather than fatal on purpose: a stray env
 // var should not take every hub on the deployment offline, and ignoring it is
 // already the safe outcome.
@@ -43,6 +47,11 @@ export function polisFakeEnabled(): boolean {
   return env.CIVIC_POLIS_FAKE === "on" && !isProduction();
 }
 
+/** Is the Code of Conduct check the fixed test rule? Never in production. */
+export function cocFakeEnabled(): boolean {
+  return env.CIVIC_COC_FAKE === "on" && !isProduction();
+}
+
 let checked = false;
 
 /** Report, once per process, a development flag set where it is refused. */
@@ -58,6 +67,9 @@ export function checkDevFlags(): void {
   }
   if (env.CIVIC_POLIS_FAKE === "on") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_POLIS_FAKE=on is set in production and is ignored. Remove it from this deployment.", {});
+  }
+  if (env.CIVIC_COC_FAKE === "on") {
+    reportError("CIVIC_DEV_FLAG", "CIVIC_COC_FAKE=on is set in production and is ignored. Remove it from this deployment.", {});
   }
   if (env.CIVIC_RATE_LIMITS === "off") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_RATE_LIMITS=off is set in production and is ignored. Remove it from this deployment.", {});

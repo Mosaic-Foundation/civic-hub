@@ -18,6 +18,8 @@ export interface ProcessReview {
    *  column or types without drafts). Lets "Edit & resubmit" reopen the
    *  creator's real drafting form. */
   draft_id?: string | null;
+  /** The check's findings when the resident sent flagged text to the admins; null otherwise. */
+  coc_flags?: CocFlag[] | null;
 }
 
 export type ReviewTurnAction =
@@ -76,6 +78,21 @@ export interface SubmitForReviewInput {
    * process is not. Admins can append to or remove them during review.
    */
   links?: Array<{ to_id: string; relation: string }>;
+  /**
+   * The Code of Conduct check flagged this text and the resident sent it to
+   * the admins anyway ("Think this is wrong? Tell the admins"): the check's
+   * findings, stored on the review. Never approved at once.
+   */
+  coc_flags?: CocFlag[];
+  /** The resident's note with a flagged submission, on the first turn. */
+  note?: string;
+}
+
+/** One Code of Conduct finding, as the review keeps it. */
+export interface CocFlag {
+  field: string | null;
+  quoted_text: string | null;
+  message: string;
 }
 
 export interface ReviseInput {
@@ -89,4 +106,6 @@ export interface ReviseInput {
   /** The creator's related processes, replacing the ones on the process. */
   links?: Array<{ to_id: string; relation: string }>;
   note?: string;
+  /** As on a first submission; a revision the check passed clears them (null). */
+  coc_flags?: CocFlag[] | null;
 }

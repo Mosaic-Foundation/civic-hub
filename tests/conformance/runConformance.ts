@@ -6,9 +6,11 @@
 //
 // For each type it walks what its descriptor says applies:
 //   1. the static checks (src/processes/descriptorCheck.ts);
-//   2. creation: a draft, the Code of Conduct check, submit (one review per
-//      draft); approval on a beta hub (review queue) and on a demo hub
-//      (immediate); or an admin's create;
+//   2. creation: a draft and Submit, which runs the Code of Conduct check
+//      (flagged text refused and the draft kept; "tell the admins" queues it
+//      once, flagged, never live at once; a check that can't run goes to an
+//      admin); one review per draft; approval on a beta hub (review queue)
+//      and on a demo hub (immediate); or an admin's create;
 //   3. a failed approval leaves the submission waiting and writes no
 //      `created` event;
 //   4. its actions, walked from where approval leaves it: each resident
@@ -25,8 +27,8 @@
 //      one adapter, with the service down, slow or erroring (fake Polis).
 // Tier 2 (sandboxed) has a slot and no runtime yet.
 //
-// Needs the local stack and a hub server started with CIVIC_POLIS_FAKE=on
-// (CIVIC_API_BASE). tests/conformance/README.md says what a plugin author
+// Needs the local stack and a hub server started with CIVIC_POLIS_FAKE=on and
+// CIVIC_COC_FAKE=on (CIVIC_API_BASE). tests/conformance/README.md says what a plugin author
 // needs to make it pass.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -49,6 +51,9 @@ import {
   adminCreate,
   approve,
   briefsOf,
+  draftOf,
+  reviewsOfDraft,
+  tellAdmins,
   eventsOf,
   examplePayload,
   expireDeadline,
@@ -146,15 +151,54 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
 
   if (d.creation.resident) {
     describe("2. creation through a draft", () => {
-      it("a draft that never had the Code of Conduct check is refused", async () => {
+      // Submit runs the Code of Conduct check (Submit and Save, 2026-10-12),
+      // through the one drafts path every type shares. The hub runs the fake
+      // check (CIVIC_COC_FAKE=on), which answers to a marker in the text.
+      it("Submit runs the check: flagged text is refused, says what to fix, and the draft is kept", async () => {
         const { token } = await resident(BETA);
-        const path = d.creation.resident!.drafts;
-        const made = await call("POST", path, BETA.host, {}, token);
-        expect(made.status).toBe(201);
-        await call("PATCH", `${path}/${made.body.id}`, BETA.host, { ...d.examples.draft, title: uniqueTitle("Unchecked") }, token);
-        const refused = await call("POST", `${path}/${made.body.id}/submit`, BETA.host, {}, token);
-        expect(refused.status).toBe(400);
-        expect(refused.body.code).toBe("code_of_conduct");
+        const s = await submitDraft(d, facts, BETA, token, { check: "flagged" });
+        expect(s.status, `${JSON.stringify(s.body)} (is the hub running CIVIC_COC_FAKE=on?)`).toBe(400);
+        expect(s.body.code).toBe("code_of_conduct_flagged");
+        const findings = s.body.findings as Array<{ field: string | null; message: string }>;
+        expect(findings.length).toBeGreaterThan(0);
+        expect(findings[0].field).toBe("description");
+        expect(findings[0].message).toBeTruthy();
+        const kept = await draftOf(d, BETA, token, s.draftId);
+        expect(kept.body.status).toBe("drafting");
+        expect(await reviewsOfDraft(s.draftId)).toHaveLength(0);
+      });
+
+      for (const hub of [BETA, DEMO]) {
+        it(`"tell the admins" on a ${hub === BETA ? "beta" : "demo"} hub reaches the queue once, flagged, with the note`, async () => {
+          const { token } = await resident(hub);
+          const s = await submitDraft(d, facts, hub, token, { check: "flagged" });
+          expect(s.status).toBe(400);
+          const note = "I think the check misread this.";
+          const told = await Promise.all([0, 1, 2].map(() => tellAdmins(d, hub, token, s.draftId, note)));
+          const ok = told.filter((r) => r.status === 201);
+          expect(ok, JSON.stringify(told.map((r) => [r.status, r.body]))).toHaveLength(1);
+          for (const r of told.filter((x) => x.status !== 201)) expect(r.status).toBe(409);
+          // Never published at once, not even on a demo hub.
+          expect(ok[0].body.auto_approved).toBe(false);
+          expect(ok[0].body.flagged).toBe(true);
+          const reviews = await reviewsOfDraft(s.draftId);
+          expect(reviews).toHaveLength(1);
+          expect(reviews[0].status).toBe("pending_review");
+          expect(reviews[0].coc_flags?.length).toBeGreaterThan(0);
+          expect(reviews[0].note).toBe(note);
+          expect((await processRow(reviews[0].process_id)).status).toBe("pending_review");
+          touched.push({ id: reviews[0].process_id, hub });
+        });
+      }
+
+      it("when the check can't run, the submission goes to an admin, never live at once", async () => {
+        const { token } = await resident(DEMO);
+        const s = await submitDraft(d, facts, DEMO, token, { check: "unavailable" });
+        expect(s.status, JSON.stringify(s.body)).toBe(201);
+        expect(s.body.auto_approved).toBe(false);
+        expect(s.body.check_unavailable).toBe(true);
+        expect((await processRow(s.processId)).status).toBe("pending_review");
+        touched.push({ id: s.processId, hub: DEMO });
       });
 
       it("one review per draft, however many submits arrive at once", async () => {

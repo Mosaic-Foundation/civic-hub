@@ -140,10 +140,17 @@ describe("the Code of Conduct gate for demo publishing", () => {
     expect(passed({ last_review_result: [{ severity: "soft" }], coc_checked_hash: H })).toBe(true);
   });
 
-  it("refuses submitting without a check on this text, allows it when the checker was down", () => {
-    expect(codeOfConductVerdict({ last_review_result: null, coc_checked_hash: null }, H).refusal).toMatch(/Run the Code of Conduct check/);
-    expect(codeOfConductVerdict({ last_review_result: [], coc_checked_hash: H }, "edited").refusal).toMatch(/modified since last review/);
-    expect(codeOfConductVerdict({ last_review_result: [{ severity: "hard" }], coc_checked_hash: H }, H).refusal).toMatch(/unresolved/);
-    expect(codeOfConductVerdict({ last_review_result: [{ ...CHECK_UNAVAILABLE_RESULT }], coc_checked_hash: H }, H).refusal).toBeNull();
+  it("says where the check stands, so Submit knows whether to run it", () => {
+    const status = (d: Parameters<typeof codeOfConductVerdict>[0], now: string | null = H, justRan = false) =>
+      codeOfConductVerdict(d, now, { justRan }).status;
+    // Never run, run on other text, or run before the hash existed: Submit runs it.
+    expect(status({ last_review_result: null, coc_checked_hash: null })).toBe("unchecked");
+    expect(status({ last_review_result: [], coc_checked_hash: H }, "edited")).toBe("unchecked");
+    expect(status({ last_review_result: [], coc_checked_hash: null })).toBe("unchecked");
+    expect(status({ last_review_result: [{ severity: "hard" }], coc_checked_hash: H })).toBe("flagged");
+    expect(status({ last_review_result: [], coc_checked_hash: H })).toBe("passed");
+    // An old outage is tried again; the run that just found it down fails open.
+    expect(status({ last_review_result: [{ ...CHECK_UNAVAILABLE_RESULT }], coc_checked_hash: H })).toBe("unchecked");
+    expect(status({ last_review_result: [{ ...CHECK_UNAVAILABLE_RESULT }], coc_checked_hash: H }, H, true)).toBe("unavailable");
   });
 });

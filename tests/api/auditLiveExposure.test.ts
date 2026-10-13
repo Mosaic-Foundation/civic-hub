@@ -23,7 +23,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomBytes } from "node:crypto";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { checkedHashFor } from "../fixtures/codeOfConduct.js";
+import { checkedHashFor, COC_DOWN, COC_FLAG } from "../fixtures/codeOfConduct.js";
 import { getRegisteredTypes } from "../../src/processes/registry.js";
 
 const HUB = "athens";
@@ -212,29 +212,37 @@ describe("A4: the Code of Conduct check cannot be skipped", () => {
     });
   const submit = (id: string) => call("POST", `/proposals/drafts/${id}/submit`, HOST, {}, resident);
 
-  it("a brand-new draft is refused until the check has run", async () => {
-    const id = await proposalDraft();
-    await call("PATCH", `/proposals/drafts/${id}`, HOST, fields, resident);
+  // Submit runs the check itself now (Submit and Save, 2026-10-12), so
+  // "cannot be skipped" means: whatever the stored result says, text the
+  // check has not read is read at Submit. The hub runs the fake check
+  // (CIVIC_COC_FAKE=on), which flags COC_FLAG and is down on COC_DOWN.
+  const flaggedSubmit = async (id: string) => {
     const res = await submit(id);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/Run the Code of Conduct check/);
+    expect(res.status, JSON.stringify(res.body)).toBe(400);
+    expect(res.body.code).toBe("code_of_conduct_flagged");
+    const kept = await call("GET", `/proposals/drafts/${id}`, HOST, undefined, resident);
+    expect(kept.body.status).toBe("drafting");
+  };
+
+  it("a brand-new draft is checked at Submit", async () => {
+    const id = await proposalDraft();
+    await call("PATCH", `/proposals/drafts/${id}`, HOST, { ...fields, description: `Rude ${COC_FLAG}` }, resident);
+    await flaggedSubmit(id);
   });
 
-  it("skip_modified_flag from the client is ignored: an edited draft needs the check again", async () => {
+  it("skip_modified_flag from the client is ignored: an edited draft is checked again", async () => {
     const id = await proposalDraft();
     await fakePass(id);
     const patch = await call(
       "PATCH",
       `/proposals/drafts/${id}`,
       HOST,
-      { description: "Something the check never read.", skip_modified_flag: true },
+      { description: `Something the check never read. ${COC_FLAG}`, skip_modified_flag: true },
       resident,
     );
     expect(patch.status).toBe(200);
     expect(patch.body.draft_modified_since_review).toBe(true);
-    const res = await submit(id);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/modified since last review/);
+    await flaggedSubmit(id);
   });
 
   it("a text change written behind the flag's back is still caught by the hash", async () => {
@@ -243,9 +251,9 @@ describe("A4: the Code of Conduct check cannot be skipped", () => {
     // As if an autosave landed while the check ran: the flag says clean.
     await localRest(`proposal_drafts?id=eq.${id}`, {
       method: "PATCH",
-      body: JSON.stringify({ description: "Changed mid-check.", draft_modified_since_review: false }),
+      body: JSON.stringify({ description: `Changed mid-check. ${COC_FLAG}`, draft_modified_since_review: false }),
     });
-    expect((await submit(id)).status).toBe(400);
+    await flaggedSubmit(id);
   });
 
   it("a links-only edit leaves a passed check standing", async () => {
@@ -260,16 +268,7 @@ describe("A4: the Code of Conduct check cannot be skipped", () => {
   it("a live edit needs a check that PASSED, not one that was unavailable", async () => {
     const draft = await call("POST", "/projects/drafts", HOST, {}, resident);
     expect(draft.status, JSON.stringify(draft.body)).toBe(201);
-    const project = { title: `Garden ${run}`, description: "A community garden." };
-    await localRest(`project_drafts?id=eq.${draft.body.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        ...project,
-        last_review_result: [{ severity: "soft", check_unavailable: true, message: "could not run" }],
-        draft_modified_since_review: false,
-        coc_checked_hash: checkedHashFor(project),
-      }),
-    });
+    await call("PATCH", `/projects/drafts/${draft.body.id}`, HOST, { title: `Garden ${run}`, description: `A garden. ${COC_DOWN}` }, resident);
     const live = await insertProcess({ type: "civic.project", status: "active", created_by: residentId });
     const res = await call(
       "POST",
@@ -280,6 +279,16 @@ describe("A4: the Code of Conduct check cannot be skipped", () => {
     );
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/couldn't run/);
+    // And it can't be sent to the admins instead: a live edit has no review.
+    const told = await call(
+      "POST",
+      `/projects/drafts/${draft.body.id}/submit`,
+      HOST,
+      { edit_process_id: live, tell_admins: true },
+      resident,
+    );
+    expect(told.status).toBe(400);
+    expect(told.body.code).toBe("tell_admins_unavailable");
   });
 });
 

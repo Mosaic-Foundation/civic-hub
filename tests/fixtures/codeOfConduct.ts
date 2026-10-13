@@ -33,10 +33,18 @@ export function checkedHashFor(fields: {
 }
 
 /**
+ * Markers the fake Code of Conduct check (CIVIC_COC_FAKE=on on the hub under
+ * test; src/debug/fakeCodeOfConduct.ts) answers to: flagged, and down.
+ */
+import { FAKE_COC_DOWN, FAKE_COC_FLAG } from "../../src/debug/fakeCodeOfConduct.js";
+export const COC_FLAG = FAKE_COC_FLAG;
+export const COC_DOWN = FAKE_COC_DOWN;
+
+/**
  * A resident's proposal waiting in the review queue, made the way a resident
- * makes one: a draft, a Code of Conduct check that could not run (so even a
- * demo hub sends it to an admin), and a submit. For tests that need "a
- * pending review"; the generic POST /reviews/submit they used is gone.
+ * makes one: a draft, and a Submit whose Code of Conduct check could not run
+ * (so even a demo hub sends it to an admin). For tests that need "a pending
+ * review"; the generic POST /reviews/submit they used is gone.
  */
 export async function pendingProposalReview(
   host: string,
@@ -44,19 +52,9 @@ export async function pendingProposalReview(
   title: string,
 ): Promise<{ review_id: string; process_id: string }> {
   const { call } = await import("./hostCall.js");
-  const { localRest } = await import("./adminSession.js");
   const draft = await call("POST", "/proposals/drafts", host, { category: "idea" }, token);
   if (draft.status !== 201) throw new Error(`draft: ${draft.status} ${JSON.stringify(draft.body)}`);
-  const fields = { title, description: "Waiting for an admin." };
-  await localRest(`proposal_drafts?id=eq.${draft.body.id}`, {
-    method: "PATCH",
-    body: JSON.stringify({
-      ...fields,
-      last_review_result: [{ severity: "soft", check_unavailable: true, message: "could not run" }],
-      draft_modified_since_review: false,
-      coc_checked_hash: checkedHashFor(fields),
-    }),
-  });
+  await call("PATCH", `/proposals/drafts/${draft.body.id}`, host, { title, description: `Waiting for an admin. ${COC_DOWN}` }, token);
   const res = await call("POST", `/proposals/drafts/${draft.body.id}/submit`, host, {}, token);
   if (res.status !== 201 || res.body.auto_approved) {
     throw new Error(`submit: ${res.status} ${JSON.stringify(res.body)}`);

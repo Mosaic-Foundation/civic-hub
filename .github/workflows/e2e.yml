@@ -98,6 +98,9 @@ jobs:
           CIVIC_CONSOLE_HOSTNAME: console.localhost
           CIVIC_CONSOLE_ADMIN_EMAIL: operator@example.test
           CIVIC_START_HOSTNAME: start.localhost
+          # Submit runs the Code of Conduct check; the specs make it flag text
+          # with the fixed test rule (src/debug/fakeCodeOfConduct.ts).
+          CIVIC_COC_FAKE: "on"
           # The start page hands a new hub's admin to the UI here.
           CIVIC_UI_BASE_URL: http://localhost:4173
           CIVIC_ANON_SECRET: ci-only-anon-secret

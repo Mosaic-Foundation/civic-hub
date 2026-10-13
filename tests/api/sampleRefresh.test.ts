@@ -12,7 +12,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
-import { checkedHashFor } from "../fixtures/codeOfConduct.js";
+import { checkedHashFor, COC_DOWN, COC_FLAG } from "../fixtures/codeOfConduct.js";
 import { api } from "../fixtures/helpers.js";
 import { localRest, mintSession, plantHubCode } from "../fixtures/adminSession.js";
 import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
@@ -277,11 +277,16 @@ describe("the console's Refresh samples", () => {
 
 describe("a visitor's submission", () => {
   /** Draft a proposal that passed the Code of Conduct check, and submit it. */
-  async function submitProposal(slug: string, email: string, coc: unknown[] | null = []): Promise<Row> {
+  async function submitProposal(
+    slug: string,
+    email: string,
+    coc: unknown[] | null = [],
+    description = "Put a bench by the bus stop.",
+  ): Promise<Row> {
     const token = await mintSession(slug, email);
     const draft = await call("POST", "/proposals/drafts", host(slug), { category: "idea" }, token);
     expect(draft.status, JSON.stringify(draft.body)).toBe(201);
-    const fields = { title: `A visitor's idea ${run}`, description: "Put a bench by the bus stop." };
+    const fields = { title: `A visitor's idea ${run}`, description };
     await localRest(`proposal_drafts?id=eq.${draft.body.id}`, {
       method: "PATCH",
       body: JSON.stringify({
@@ -314,26 +319,21 @@ describe("a visitor's submission", () => {
     expect(wire.every((e) => e.is_sample === true)).toBe(true);
   });
 
-  it("is refused on a demo hub when the check never ran (audit A4)", async () => {
+  it("is checked at Submit on a demo hub when the check never ran, and refused if flagged (audit A4)", async () => {
     const token = await mintSession(DEMO, `visitor-e-${run}@example.test`);
     const draft = await call("POST", "/proposals/drafts", host(DEMO), { category: "idea" }, token);
-    await call("PATCH", `/proposals/drafts/${draft.body.id}`, host(DEMO), { title: `Unchecked ${run}`, description: "x" }, token);
+    await call("PATCH", `/proposals/drafts/${draft.body.id}`, host(DEMO), { title: `Unchecked ${run}`, description: `x ${COC_FLAG}` }, token);
     const res = await call("POST", `/proposals/drafts/${draft.body.id}/submit`, host(DEMO), {}, token);
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/Run the Code of Conduct check/);
+    expect(res.body.code).toBe("code_of_conduct_flagged");
   });
 
   it("still waits for review on a demo hub when the check was unavailable", async () => {
-    const unavailable = {
-      severity: "soft",
-      quoted_text: null,
-      field: null,
-      message: "The automated Code of Conduct check could not run.",
-      suggested_revision: null,
-      check_unavailable: true,
-    };
-    const result = await submitProposal(DEMO, `visitor-b-${run}@example.test`, [unavailable]);
+    // Submit runs the check (the fake, down on COC_DOWN): unavailable fails
+    // open to an admin, never published at once.
+    const result = await submitProposal(DEMO, `visitor-b-${run}@example.test`, null, `Put a bench by the bus stop. ${COC_DOWN}`);
     expect(result.auto_approved).toBe(false);
+    expect(result.check_unavailable).toBe(true);
     expect((await processRow(result.process_id))?.status).toBe("pending_review");
   });
 

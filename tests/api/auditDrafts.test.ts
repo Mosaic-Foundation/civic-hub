@@ -4,8 +4,9 @@
 //
 //   - create, read, edit and list its own drafts as a resident; another
 //     resident cannot read or edit them, and signing out shuts every route;
-//   - the Code of Conduct gate is the same one place: a never-checked draft is
-//     refused, an edit to checked text after the check is refused;
+//   - the Code of Conduct gate is the same one place: Submit checks a
+//     never-checked draft, and text edited after a check, and refuses what
+//     it flags;
 //   - submits at the same moment (a double click, two tabs) create exactly one
 //     review: one 201, the rest 409, and one process_reviews row;
 //   - a submission that fails releases the draft for another try.
@@ -20,7 +21,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import pg from "pg";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
-import { checkedHashFor } from "../fixtures/codeOfConduct.js";
+import { checkedHashFor, COC_FLAG } from "../fixtures/codeOfConduct.js";
 
 const DB_URL = process.env.CIVIC_TEST_DATABASE_URL?.trim() || "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
 {
@@ -113,19 +114,22 @@ describe.each(KINDS)("$name drafts", (kind) => {
   });
 
   it("go through the one Code of Conduct gate", async () => {
+    // Submit runs the check itself (Submit and Save): a never-checked draft
+    // is read at Submit, and so is text edited after a check. The hub runs
+    // the fake check (CIVIC_COC_FAKE=on), which flags COC_FLAG.
     const created = await call("POST", kind.path, FLOYD, {}, owner);
     const id = created.body.id as string;
-    await call("PATCH", `${kind.path}/${id}`, FLOYD, { title: "Never checked", description: "Text." }, owner);
+    await call("PATCH", `${kind.path}/${id}`, FLOYD, { title: "Never checked", description: `Text. ${COC_FLAG}` }, owner);
     const refused = await call("POST", `${kind.path}/${id}/submit`, FLOYD, {}, owner);
     expect(refused.status).toBe(400);
-    expect(refused.body.error).toMatch(/Run the Code of Conduct check/);
+    expect(refused.body.code).toBe("code_of_conduct_flagged");
 
     const checked = await checkedDraft(kind, `Changed after ${tag}`);
-    const edit = await call("PATCH", `${kind.path}/${checked}`, FLOYD, { description: "New text." }, owner);
+    const edit = await call("PATCH", `${kind.path}/${checked}`, FLOYD, { description: `New text. ${COC_FLAG}` }, owner);
     expect(edit.body.draft_modified_since_review).toBe(true);
     const stale = await call("POST", `${kind.path}/${checked}/submit`, FLOYD, {}, owner);
     expect(stale.status).toBe(400);
-    expect(stale.body.error).toMatch(/modified since last review/);
+    expect(stale.body.code).toBe("code_of_conduct_flagged");
   });
 
   it("submitted from two tabs at once make one review", async () => {

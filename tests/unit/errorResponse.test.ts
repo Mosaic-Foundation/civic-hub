@@ -83,6 +83,17 @@ describe("status comes from the error's type", () => {
     expect(out.unexpected).toBe(true);
   });
 
+  it("extra fields ride beside error and code, and can't replace them", () => {
+    const err = new ValidationError("Change this first.", "code_of_conduct_flagged", {
+      extra: { findings: [{ field: "title" }], error: "overridden?", code: "nope" },
+    });
+    expect(errorResponse(err, "abcd1234").body).toEqual({
+      error: "Change this first.",
+      code: "code_of_conduct_flagged",
+      findings: [{ field: "title" }],
+    });
+  });
+
   it("a 503 carries the reference; a 4xx does not", () => {
     expect(errorResponse(new UnavailableError(), "abcd1234").body.ref).toBe("abcd1234");
     expect(errorResponse(new ValidationError("x"), "abcd1234").body.ref).toBeUndefined();

@@ -99,7 +99,7 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "waitlist", columns: ["email", "name", "wants_test_user"], owner: "core/waitlist" },
   { table: "feedback_submissions", columns: ["screenshot_url"], owner: "civic.feedback" },
   { table: "community_inputs", columns: ["is_anonymous", "author_name"], owner: "civic.input" },
-  { table: "process_reviews", owner: "civic.review" },
+  { table: "process_reviews", columns: ["coc_flags"], owner: "civic.review" },
   { table: "review_turns", owner: "civic.review" },
   { table: "proposals", owner: "civic.proposals" },
   { table: "proposal_supports", owner: "civic.proposals" },
