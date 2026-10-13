@@ -376,10 +376,21 @@ export interface ProcessHandler {
    * Optional: a fresh brief for a closed process, for an admin's Regenerate
    * (Actions slice, 2026-10-13). Omit it and Regenerate runs generateBrief
    * again. A type whose brief rests on work done at close (a conversation's
-   * AI summary) redoes that work here, without changing the process itself:
-   * the brief keeps the history.
+   * AI summary) redoes that work here, without changing the process itself.
+   *
+   * `source_state`: what the process's own state takes once this version of
+   * the brief is published (a conversation's new summary), so the process
+   * and its brief show one summary (2026-10-13). Keys are merged into the
+   * process's state then; the values they replace are kept on the process
+   * (`brief_revisions`), and the process emits civic.process.updated.
    */
-  regenerateBrief?(process: Process): Promise<BriefContent | null>;
+  regenerateBrief?(process: Process): Promise<RegeneratedBrief | null>;
+}
+
+/** A regenerated brief, and what its process takes when it is published. */
+export interface RegeneratedBrief {
+  content: BriefContent;
+  source_state?: Record<string, unknown>;
 }
 
 /**

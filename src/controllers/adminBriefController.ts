@@ -8,7 +8,7 @@
 // list is NOT fatal (a conversation/project brief can publish to the feed
 // without an official email list).
 
-import { discardBriefRevision, publishBriefRevision, regenerateBrief } from "../services/briefRegenerate.js";
+import { applyOnApproval, discardBriefRevision, publishBriefRevision, regenerateBrief } from "../services/briefRegenerate.js";
 import { ConflictError, NotFoundError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { emitEvent } from "../events/eventEmitter.js";
@@ -198,6 +198,8 @@ export const handleApproveBrief = route(async (req, res) => {
   // A published brief is terminal.
   record.status = "finalized";
   await saveProcessState(record);
+  // Regenerated before it was public: its source takes the new summary now.
+  await applyOnApproval(record, actor);
 
   const model = await enrichCreator(
     getAdminReadModel(state, {

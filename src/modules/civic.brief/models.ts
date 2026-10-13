@@ -145,7 +145,12 @@ export interface BriefProcessState {
    * Regenerate (Actions slice, 2026-10-13). A published brief's regenerated
    * version waits here until an admin publishes it (or discards it).
    */
-  pending_revision?: { content: BriefContent; generated_at: string } | null;
+  pending_revision?: { content: BriefContent; generated_at: string; source_state?: Record<string, unknown> } | null;
+  /**
+   * A not-yet-published brief that was regenerated: what its source process
+   * takes when the brief is published (ProcessHandler.regenerateBrief).
+   */
+  source_state_on_publish?: Record<string, unknown> | null;
   /** Earlier versions, oldest first: what was replaced, and when. */
   history?: Array<{ content: BriefContent; generated_at: string; replaced_at: string }>;
   /** When a regenerated version last replaced the published one. */

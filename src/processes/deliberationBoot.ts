@@ -14,7 +14,7 @@ import { callClaude, DEFAULT_MODEL } from "../utils/anthropic.js";
 import { closeThroughDispatcher } from "./registry.js";
 import { isPastDeadline } from "../utils/deadline.js";
 import type { Process } from "../models/process.js";
-import type { ProcessHandler } from "./types.js";
+import type { ProcessHandler, RegeneratedBrief } from "./types.js";
 import type { ProcessTypeDescriptor } from "./descriptor.js";
 import { DEADLINE_CLOSE_INPUT } from "./descriptor.js";
 import type { PolisHostInterface } from "../shared/polis_deliberation/hostInterface.js";
@@ -333,9 +333,10 @@ export function bootDeliberation(): ProcessHandler {
   // brief rather than an empty one. Wired on the hub side so the portable
   // shared handler stays free of the brief module.
   // Regenerate (Actions slice): ask for the summary again and build the brief
-  // from it. The conversation itself is left as it closed; the brief keeps
-  // the versions it replaces.
-  handler.regenerateBrief = async (process: Process): Promise<BriefContent | null> => {
+  // from it. The conversation takes the new summary once that version of the
+  // brief is published (src/services/briefRegenerate.ts), so the page and the
+  // brief show one summary; the brief keeps the versions it replaces.
+  handler.regenerateBrief = async (process: Process): Promise<RegeneratedBrief | null> => {
     const state = process.state as unknown as PolisDeliberationState;
     if (!state.polis_conversation_id || !_adapter) return null;
     let summary: PolisDeliberationState["summary"];
@@ -345,10 +346,11 @@ export function bootDeliberation(): ProcessHandler {
       console.warn(`[deliberation] regenerating the summary for ${process.id} failed:`, err instanceof Error ? err.message : err);
       return null;
     }
-    return handler.generateBrief!({
+    const content = handler.generateBrief!({
       ...process,
       state: { ...(process.state as Record<string, unknown>), summary, summary_status: "complete" },
     }) as BriefContent | null;
+    return content ? { content, source_state: { summary, summary_status: "complete" } } : null;
   };
 
   handler.generateBrief = (process: Process): BriefContent | null => {
