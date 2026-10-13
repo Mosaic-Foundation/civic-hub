@@ -1,5 +1,8 @@
-// One Settings section as one form: the fields, a Save button at the bottom,
-// an unsaved-changes guard, and "last changed by X on <date>".
+// One Settings section as one form: the fields, a Save bar, an
+// unsaved-changes guard, and "last changed by X on <date>". While there are
+// unsaved changes (and while saving, and with the result), the Save bar
+// floats at the bottom of the screen, so a long page never sends the admin
+// hunting for the button (Submit and Save, 2026-10-12).
 //
 // Saving sends ONLY this section's keys, and of those only the ones the admin
 // changed — so a key nobody touched keeps its own "last changed" record.
@@ -196,32 +199,39 @@ export default function SectionForm({
       >
         {children(api)}
 
-        <div className="settings-form-footer">
-          <div className="admin-settings-actions">
-            <button
-              type="submit"
-              className="admin-convert-button"
-              disabled={!isDirty || saving}
-            >
-              {saving ? "Saving…" : "Save"}
+        {/* A direct child of the form: sticky moves only within its parent,
+            and the form is the tall box the bar must float over. */}
+        <div
+          className={`admin-settings-actions settings-savebar${isDirty || saving || message ? " is-floating" : ""}`}
+          role="group"
+          aria-label="Save this section"
+        >
+          <button
+            type="submit"
+            className="admin-convert-button settings-save-button"
+            disabled={!isDirty || saving}
+            aria-busy={saving}
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+          {isDirty && !saving && (
+            <button type="button" className="admin-remove-section" onClick={onDiscard}>
+              Discard changes
             </button>
-            {isDirty && !saving && (
-              <button type="button" className="admin-remove-section" onClick={onDiscard}>
-                Discard changes
-              </button>
-            )}
-            {isDirty && !message && (
-              <span className="settings-unsaved">Unsaved changes</span>
-            )}
-            {message && (
-              <span
-                className={message.error ? "form-error" : "admin-settings-message"}
-                role={message.error ? "alert" : "status"}
-              >
-                {message.text}
-              </span>
-            )}
-          </div>
+          )}
+          {isDirty && !message && (
+            <span className="settings-unsaved">You have unsaved changes.</span>
+          )}
+          {message && (
+            <span
+              className={message.error ? "form-error" : "admin-settings-message"}
+              role={message.error ? "alert" : "status"}
+            >
+              {message.text}
+            </span>
+          )}
+        </div>
+        <div className="settings-form-footer">
           <LastChanged data={data} keys={keys} />
         </div>
       </form>

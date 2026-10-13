@@ -332,15 +332,63 @@
   font-size: 0.9rem;
 }
 
-.settings-form-footer {
+.settings-savebar {
   margin-top: var(--space-lg);
   padding-top: var(--space-md);
   border-top: 1px solid var(--color-border);
 }
 
+.settings-form-footer {
+  margin-top: var(--space-xs);
+}
+
 .settings-unsaved {
-  color: var(--color-text-muted);
+  color: var(--color-text);
   font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* The Save bar: in place at the end of the form when there is nothing to
+   save; floating at the bottom of the screen while there is (SectionForm). */
+.settings-savebar.is-floating {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  margin: var(--space-sm) calc(-1 * var(--space-md)) 0;
+  padding: var(--space-sm) var(--space-md);
+  padding-bottom: calc(var(--space-sm) + env(safe-area-inset-bottom, 0px));
+  background: var(--color-surface);
+  border-top: 2px solid var(--ds-color-primary-800, #1e3a5f);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.settings-savebar .settings-save-button:not(:disabled) {
+  background: var(--ds-color-primary-800, #1e3a5f);
+  color: #fff;
+}
+
+.settings-savebar .admin-remove-section {
+  font-size: var(--font-size-sm);
+}
+
+/* A phone: one row of buttons, the note above it, small. */
+@media (max-width: 640px) {
+  .settings-savebar.is-floating {
+    gap: var(--space-xs) var(--space-sm);
+  }
+
+  .settings-savebar.is-floating .settings-unsaved,
+  .settings-savebar.is-floating .admin-settings-message,
+  .settings-savebar.is-floating .form-error {
+    order: -1;
+    flex-basis: 100%;
+    margin: 0;
+    font-size: var(--font-size-xs);
+  }
+
+  .settings-savebar.is-floating .settings-save-button {
+    flex: 1 1 auto;
+  }
 }
 
 .settings-last-changed {
