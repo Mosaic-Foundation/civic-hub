@@ -18,7 +18,8 @@
 //      every action's result is one its descriptor allows (the hub refuses
 //      anything else outside production);
 //   5. its deadline: exactly one close, one result, one brief where it makes
-//      one, however many readers notice at once;
+//      one, however many readers notice at once; and the hourly job closes it
+//      when nobody reads it at all;
 //   6. archive and restore;
 //   7. its plugin switched off (refused everywhere) and on (back);
 //   8. every event it wrote is declared by its descriptor and mapped to the
@@ -45,6 +46,7 @@ import { checkDescriptor, type HostFacts } from "../../src/processes/descriptorC
 import type { ProcessHandler } from "../../src/processes/types.js";
 import type { ProcessStatus } from "../../src/models/process.js";
 import { hostFacts } from "./hostFacts.js";
+import { JOBS, JOBS_MOUNT } from "../../src/jobs/registry.js";
 import {
   BETA,
   DEMO,
@@ -371,6 +373,23 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
           expect(after.filter((e) => e.event_type === type), `${type} after the deadline`).toHaveLength(1);
         }
         expect(await briefsOf(id)).toHaveLength(d.brief ? 1 : 0);
+      }, 60_000);
+
+      // Every type with a deadline, not only votes (2026-10-13): before, a
+      // proposal or conversation nobody opened stayed open past it.
+      it("the hourly job closes it with nobody reading it", async () => {
+        const creator = await resident(BETA);
+        const id = await liveAs(d, facts, BETA, creator.token);
+        touched.push({ id, hub: BETA });
+        const close = d.actions.find((a) => a.name === d.deadline!.action)!;
+        await reachOneOf(d, walked, BETA, id, close.from, creator.token);
+        await expireDeadline(d, id);
+        const job = JOBS.find((j) => j.id === "vote_close")!;
+        const cron = process.env.CIVIC_TEST_CRON_SECRET?.trim() || "ci-only-cron-secret";
+        const res = await call("GET", `${JOBS_MOUNT}${job.path}?hub=${BETA.slug}`, BETA.host, undefined, cron);
+        expect(res.status, JSON.stringify(res.body)).toBe(200);
+        expect(res.body.hubs[BETA.slug].closed).toContain(id);
+        expect([...allowedTargets(close, close.from[0])]).toContain((await processRow(id)).status);
       }, 60_000);
     });
 

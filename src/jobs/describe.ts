@@ -168,9 +168,9 @@ function describeVoteClose(b: Body): JobRunDescription | null {
   const reshuffleError = typeof b.reshuffle_error === "string" ? b.reshuffle_error : null;
   // The hourly ballot reshuffle is routine: recorded only when it fails.
   if (closed === 0 && failedRows.length === 0 && !reshuffleError) return null;
-  const failed = failedRows.map((f) => `Could not close ${f.id ?? "a vote"}: ${f.error ?? "unknown error"}`);
+  const failed = failedRows.map((f) => `Could not close ${f.id ?? "a process"}: ${f.error ?? "unknown error"}`);
   if (reshuffleError) failed.push(`Could not reshuffle open votes' ballots: ${reshuffleError}`);
-  return { status: status(failed, []), summary: `${plural(closed, "vote", "votes")} closed`, problems: failed };
+  return { status: status(failed, []), summary: `${plural(closed, "process", "processes")} closed at the deadline`, problems: failed };
 }
 
 /**

@@ -234,7 +234,7 @@ export const JOB_NAMES: Readonly<Record<string, string>> = {
   news_sync: "News sync",
   digest: "Email digest",
   admin_digest: "Admin digest",
-  vote_close: "Closing votes",
+  vote_close: "Closing at deadlines",
   sample_refresh: "Sample refresh",
   job_runs: "Job run log",
 };

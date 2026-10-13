@@ -9,7 +9,8 @@ import { runAdminDigestForHub } from "../controllers/adminDigestController.js";
 import { runNewsSyncForHub } from "../controllers/newsSyncController.js";
 import { RunSink, runMeetingSummaryForHub } from "../controllers/meetingSummaryController.js";
 import { sweepHubExports } from "../db/hubExportsBucket.js";
-import { closeExpiredProcesses } from "../services/processService.js";
+import { closeAllExpired } from "../services/processService.js";
+import { isPluginEnabledSync } from "../services/hubSettings.js";
 import { refreshSamples } from "../services/sampleRefresh.js";
 import { reshuffleOpenBallots } from "../modules/civic.receipts/index.js";
 
@@ -23,17 +24,20 @@ export const JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
   digest: (input) => runDigestForHub(input),
   admin_digest: () => runAdminDigestForHub(),
   vote_close: async ({ now }) => {
-    const r = await closeExpiredProcesses("civic.vote");
+    // Every type with a deadline whose plugin is on (2026-10-13), not only votes.
+    const r = await closeAllExpired();
     // Then rewrite the ballots of every open vote in random order (ballot
     // secrecy, 2026-10-10): this runs at :05, about 12 minutes before each
     // 6-hourly backup, so a backup lines no ballot up with its voter by row
-    // order except those cast in the minutes between.
+    // order except those cast in the minutes between. Only where Votes is on.
     let reshuffled: { processes: number; ballots: number } | null = null;
     let reshuffleError: string | null = null;
-    try {
-      reshuffled = await reshuffleOpenBallots(now);
-    } catch (err) {
-      reshuffleError = (err as Error).message;
+    if (isPluginEnabledSync("vote")) {
+      try {
+        reshuffled = await reshuffleOpenBallots(now);
+      } catch (err) {
+        reshuffleError = (err as Error).message;
+      }
     }
     const failed = r.failed.length > 0 || reshuffleError !== null;
     return { status: failed ? 500 : 200, body: { ...r, reshuffled, reshuffle_error: reshuffleError } };

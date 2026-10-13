@@ -256,7 +256,8 @@ describe("a vote in progress when its plugin goes off", () => {
 
 // Phase 5 part two, fix 6: the hourly close. A vote past its deadline that
 // nobody reads is closed by the `vote_close` job within the hour, stamped with
-// the deadline; the job skips a hub whose Votes plugin is off (the vote then
+// the deadline. Since 2026-10-13 the job closes every type with a deadline and
+// runs on every hub; a type whose plugin is off is left alone (the vote then
 // stays open, as above, until the plugin is back on).
 describe("the hourly vote close (job vote_close)", () => {
   const CRON = process.env.CIVIC_TEST_CRON_SECRET?.trim() || "ci-only-cron-secret";
@@ -271,7 +272,7 @@ describe("the hourly vote close (job vote_close)", () => {
     await localRest("hub_settings?hub_id=eq.athens&key=eq.plugin.vote.enabled", { method: "DELETE" });
   });
 
-  it("skips the hub while Votes is off, and closes the vote once it is on", async () => {
+  it("leaves the vote open while Votes is off, and closes it once it is on", async () => {
     const created = await call(
       "POST",
       "/process",
@@ -296,7 +297,8 @@ describe("the hourly vote close (job vote_close)", () => {
     await setAthens({ "plugin.vote.enabled": "false" });
     const off = await runJob();
     expect(off.status, JSON.stringify(off.body)).toBe(200);
-    expect(off.body.hubs.athens.skipped).toBe(true);
+    expect(off.body.hubs.athens.types).not.toContain("civic.vote");
+    expect(off.body.hubs.athens.closed).not.toContain(voteId);
     const [still] = (await localRest(`processes?id=eq.${voteId}&select=status`)) as Array<{ status: string }>;
     expect(still.status).toBe("active");
 

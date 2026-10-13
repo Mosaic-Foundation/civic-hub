@@ -28,9 +28,9 @@ describe("job registry", () => {
     );
   });
 
-  it("the vote close is a Votes job that runs hourly", () => {
+  it("the deadline close (vote_close) runs hourly on every hub; each type's own plugin decides", () => {
     const job = JOBS.find((j) => j.id === "vote_close")!;
-    expect(!isPlatformJob(job) && job.plugin).toBe("vote");
+    expect(!isPlatformJob(job) && job.plugin).toBeNull();
     expect(job.schedule.split(" ").slice(1).join(" ")).toBe("* * * *");
   });
 

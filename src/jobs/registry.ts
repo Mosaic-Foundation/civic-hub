@@ -111,17 +111,21 @@ export const JOBS: readonly JobSpec[] = [
     description: "Admin review-queue digest, per hub",
   },
   {
+    // The id and path stay "vote_close" (the cron entry and the run log keep
+    // their history), but since 2026-10-13 it closes every type with a
+    // deadline: each type's own plugin switch decides, so the job is no
+    // single plugin's.
     id: "vote_close",
-    plugin: "vote",
+    plugin: null,
     path: "/vote-close/run",
-    // Hourly, so a vote closes within the hour of its deadline on every hub,
-    // read or not, and its close — stamped with the deadline — is recorded in
-    // time for the digest. The close on read stays as the fallback.
+    // Hourly, so a process closes within the hour of its deadline on every
+    // hub, read or not, and its close is recorded in time for the digest. The
+    // close on read stays as the fallback.
     // It also reshuffles open votes' ballots (ballot secrecy): keep it a few
     // minutes BEFORE the backups' :17 (civic-hub-backups dump.yml), so each
     // dump sees freshly shuffled ballots.
     schedule: "5 * * * *",
-    description: "Close votes past their deadline, per hub with Votes on (stamped with the deadline); reshuffle open votes' ballots",
+    description: "Close every process past its deadline (votes, proposals, conversations), per type whose plugin is on; reshuffle open votes' ballots",
   },
   {
     id: "sample_refresh",

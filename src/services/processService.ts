@@ -37,6 +37,7 @@ import type { CivicEvent } from "../models/event.js";
 import { generateId } from "../utils/id.js";
 import {
   getProcessHandler,
+  getRegisteredTypes,
   setProcessFactory,
   setActionDispatcher,
   setDeadlineCloser,
@@ -576,7 +577,7 @@ async function closeAtDeadline(process: Process, action: ProcessAction): Promise
 }
 
 /**
- * The hourly deadline close (job `vote_close`): every active process of
+ * The hourly deadline close (job `vote_close`, closeAllExpired below): every active process of
  * `type` in the hub in scope whose deadline has passed is closed now, through
  * its handler's closeIfExpired — the same close a read would run, stamped
  * with the deadline. Unlike the read path, a failure is reported, not
@@ -599,6 +600,31 @@ export async function closeExpiredProcesses(
     }
   }
   return { checked: active.length, closed, failed };
+}
+
+/**
+ * Every type with a deadline, closed at it (Vote pages fixes, 2026-10-13):
+ * each registered type whose handler closes at a deadline and whose plugin is
+ * on for the hub in scope. Before, the job closed votes only, and a proposal
+ * or conversation stayed open past its deadline until someone opened it.
+ */
+export async function closeAllExpired(): Promise<{
+  checked: number;
+  closed: string[];
+  failed: Array<{ id: string; error: string }>;
+  types: string[];
+}> {
+  const types = getRegisteredTypes().filter(
+    (t) => typeof getProcessHandler(t)?.closeIfExpired === "function" && isProcessTypeEnabled(t),
+  );
+  const out = { checked: 0, closed: [] as string[], failed: [] as Array<{ id: string; error: string }>, types };
+  for (const type of types) {
+    const r = await closeExpiredProcesses(type);
+    out.checked += r.checked;
+    out.closed.push(...r.closed);
+    out.failed.push(...r.failed);
+  }
+  return out;
 }
 
 // --- UI read layer ---------------------------------------------------------
