@@ -21,7 +21,17 @@
  */
 
 import { test, expect, type Browser, type Page } from "@playwright/test";
-import { adminEmail, apiBase, assertSmokeHub, baseUrl, devRest, endMintedSessions, mintSession, missingSmokeEnv } from "./devStack";
+import {
+  adminEmail,
+  apiBase,
+  assertSmokeHub,
+  baseUrl,
+  devRest,
+  endMintedSessions,
+  mintSession,
+  missingSmokeEnv,
+  plantSignInLink,
+} from "./devStack";
 
 const run = Date.now().toString(36);
 const CLEAN = "A routine check after a deploy: should the benches by the library stay where they are?";
@@ -158,6 +168,38 @@ test("a resident and an admin are signed in", async ({ browser }) => {
   await a.goto("/admin/reviews");
   await expect(a.getByRole("heading", { name: "Process reviews" })).toBeVisible();
   await a.close();
+});
+
+test("a new resident signs in with the email's link at phone width, and joins beside the terms notice", async ({ browser }) => {
+  // The link path, not a minted session (sign-in slice, 2026-10-14).
+  const email = `smoke-${run}-link@example.test`;
+  const token = await plantSignInLink(email);
+  const page = await open(browser, { viewport: { width: 375, height: 812 } });
+  await page.addInitScript(() => {
+    localStorage.setItem("seen_intro_popup", "true");
+    localStorage.setItem("welcome-banner-dismissed-v2", "true");
+    sessionStorage.setItem("civic_preview", "1");
+  });
+  await page.goto(`/sign-in#t=${token}`);
+  await expect(page.getByRole("heading", { name: /^Sign in to / })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => location.hash)).toBe("");
+  await page.getByRole("button", { name: "Confirm", exact: true }).click();
+
+  // The join step: the policies are one line beside Join, not a checkbox.
+  const join = page.getByRole("button", { name: "Join", exact: true });
+  await expect(join).toBeVisible();
+  const notice = page.locator(".auth-terms-notice");
+  await expect(notice).toHaveText("By joining you agree to the Code of Conduct, Privacy Notice and Terms.");
+  await expect(notice.getByRole("link", { name: "Privacy Notice" })).toHaveAttribute("href", "/privacy");
+  await page.getByPlaceholder("Jane Doe").fill("Smoke Link");
+  const residency = page.locator(".auth-legal-checkbox input[type=checkbox]");
+  if (await residency.count()) await residency.check();
+  await join.click();
+  await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible();
+  const session = await page.evaluate(() => localStorage.getItem("civic_auth_token"));
+  expect(session).toBeTruthy();
+  residents.push(session!); // its account is deleted in afterAll
+  await page.close();
 });
 
 test("a clean vote on a beta hub waits in the admins' queue; an empty extra option doesn't block Submit", async ({ browser }) => {

@@ -161,3 +161,26 @@ export async function endMintedSessions(): Promise<void> {
     await devRest(`sessions?token=eq.${hash}`, { method: "DELETE" }).catch(() => undefined);
   }
 }
+
+/**
+ * A sign-in code with its link, on the smoke hub, as a request would store it
+ * and email it (sign-in slice, 2026-10-14). Returns the link's token: the
+ * suite signs in through the email's link page, not only by minting a
+ * session. Spent by the sign-in, or expired in ten minutes.
+ */
+export async function plantSignInLink(email: string): Promise<string> {
+  const token = randomBytes(32).toString("base64url");
+  await devRest("sign_in_codes", {
+    method: "POST",
+    body: JSON.stringify({
+      hub_id: smokeHub(),
+      email: email.trim().toLowerCase(),
+      // A code nobody knows: this run signs in by the link only.
+      code_hash: sha256(randomBytes(16).toString("hex")),
+      link_hash: sha256(token),
+      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    }),
+  });
+  return token;
+}
+
