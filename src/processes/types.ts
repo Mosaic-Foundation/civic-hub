@@ -275,7 +275,7 @@ export interface ProcessHandler {
   getReadModel(
     process: Process,
     actor?: string,
-  ): Record<string, unknown> | Promise<Record<string, unknown>>;
+  ): Record<string, unknown> | null | Promise<Record<string, unknown> | null>;
 
   /** Produce a summary for list views */
   getSummary(process: Process): Record<string, unknown>;

@@ -695,9 +695,11 @@ export async function getProcessState(
   process = await autoCloseIfExpired(process);
 
   const handler = getProcessHandler(process.definition.type);
-  const model = handler
-    ? await handler.getReadModel(process, actor)
-    : {
+  // GET /process/:id/state is public: a handler answers with what anyone
+  // may read, or null when there is nothing public yet (an unpublished brief).
+  const readable = handler ? await handler.getReadModel(process, actor) : undefined;
+  if (handler && !readable) return undefined;
+  const model = readable ?? {
         id: process.id,
         type: process.definition.type,
         title: process.title,

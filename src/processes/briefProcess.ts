@@ -12,7 +12,7 @@ import { ProcessHandler } from "./types.js";
 import type { ProcessTypeDescriptor } from "./descriptor.js";
 import {
   createBriefState,
-  getAdminReadModel,
+  getPublicReadModel,
   getAdminSummary,
   type BriefContent,
   type BriefProcessState,
@@ -102,12 +102,15 @@ const briefProcess: ProcessHandler = {
     );
   },
 
-  getReadModel(process: Process): Record<string, unknown> {
-    return getAdminReadModel(getState(process), {
+  // GET /process/:id/state is public: the published record only (null until
+  // then, so it is not found). It served the admin read model until
+  // 2026-10-13: unpublished text, and for briefs the recipients' emails.
+  // Admin pages read the admin model through their own routes.
+  getReadModel(process: Process): Record<string, unknown> | null {
+    return getPublicReadModel(getState(process), {
       id: process.id,
       title: process.title,
       createdAt: process.createdAt,
-      createdBy: process.createdBy,
     });
   },
 
