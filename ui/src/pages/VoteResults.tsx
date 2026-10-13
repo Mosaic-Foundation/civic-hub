@@ -6,6 +6,8 @@ import PostFeaturedImage from "../components/PostFeaturedImage";
 import LinkPreviewCard from "../components/LinkPreviewCard";
 import hub from "../config/hub";
 import ShareButton from "../components/ShareButton";
+import { useAuth } from "../context/AuthContext";
+import { getHeldReceipt, isMine } from "../services/voteReceipts";
 import "./VoteResults.css";
 
 const URL_RE = /\bhttps?:\/\/\S+/gi;
@@ -28,6 +30,7 @@ const URL_RE = /\bhttps?:\/\/\S+/gi;
 export default function VoteResultsPage() {
   const { id } = useParams<{ id: string }>();
   const [results, setResults] = useState<PublicVoteResults | null>(null);
+  const { actorId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,6 +99,9 @@ export default function VoteResultsPage() {
     }
     return `Delivered to the ${deliveredTo}.`;
   })();
+
+  // The voter's own choice, if this browser holds their receipt for the vote.
+  const heldChoice = actorId ? getHeldReceipt(actorId, results.source_process_id)?.choice ?? null : null;
 
   return (
     <article className="page vote-results-page">
@@ -231,9 +237,21 @@ export default function VoteResultsPage() {
         </p>
         <ul className="brief-bars">
           {results.position_breakdown.map((p) => (
-            <li key={p.option_id} className="brief-bar-row">
+            <li
+              key={p.option_id}
+              className={`brief-bar-row${isMine(heldChoice, p.option_id) ? " brief-bar-row-mine" : ""}`}
+            >
               <div className="brief-bar-label">
-                <span>{p.option_label}</span>
+                <span>
+                  {p.option_label}
+                  {/* This browser's own ballot, from its receipt. */}
+                  {isMine(heldChoice, p.option_id) && (
+                    <span className="result-mine">
+                      {" "}
+                      <span aria-hidden="true">✓ </span>Your vote
+                    </span>
+                  )}
+                </span>
                 <span className="brief-bar-count">
                   {p.count} ({p.percentage}%)
                 </span>

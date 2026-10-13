@@ -9,6 +9,7 @@ import { useDebouncedFields } from "../hooks/useDebouncedFields";
 import SuggestFooterButton from "./SuggestFooterButton";
 import TitleField from "./TitleField";
 import GrowingLineInput from "./GrowingLineInput";
+import { VOTE_OPTION_MAX } from "../../../src/shared/voteOptions";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink, VoteDurationLimits } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
@@ -88,6 +89,7 @@ function missingReason(draft: VoteDraft): string | null {
     const opts = draft.custom_options ?? [];
     if (opts.length < 2) return "Approval voting needs at least 2 options.";
     if (opts.some((o) => !o.trim())) return "Every option needs text.";
+    if (opts.some((o) => o.trim().length > VOTE_OPTION_MAX)) return `Shorten each option to ${VOTE_OPTION_MAX} characters or fewer.`;
   }
   return null;
 }
@@ -204,7 +206,7 @@ export default function VoteDraftingForm({
           <div className="form-field">
             <label className="form-label">
               Options <span className="required">*</span>
-              <span className="form-label-note"> (at least 2)</span>
+              <span className="form-label-note"> (at least 2, up to {VOTE_OPTION_MAX} characters each)</span>
             </label>
             <div className="approval-options-editor">
               {localOptions.map((opt, i) => (
@@ -214,10 +216,19 @@ export default function VoteDraftingForm({
                     value={opt}
                     onChange={(v) => handleOptionChange(i, v)}
                     placeholder={`Option ${i + 1}`}
-                    maxLength={200}
+                    maxLength={VOTE_OPTION_MAX}
                     disabled={disabled}
                     aria-label={`Option ${i + 1}`}
                   />
+                  {/* Near the limit, say how near; an older draft over it says to shorten. */}
+                  {opt.length >= VOTE_OPTION_MAX - 15 && (
+                    <span
+                      className={`approval-option-counter${opt.length > VOTE_OPTION_MAX ? " is-over" : ""}`}
+                      aria-live="polite"
+                    >
+                      {opt.length} / {VOTE_OPTION_MAX}
+                    </span>
+                  )}
                   {localOptions.length > 2 && (
                     <button
                       type="button"

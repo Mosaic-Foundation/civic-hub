@@ -160,3 +160,17 @@
 .approval-option-remove {
   margin-top: 0.3rem;
 }
+
+/* "64 / 80": shown near an option's limit (Actions slice). */
+.approval-option-counter {
+  flex: none;
+  align-self: center;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.approval-option-counter.is-over {
+  color: var(--color-danger, #b00020);
+  font-weight: 600;
+}

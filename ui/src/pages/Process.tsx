@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
 import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { getProcessState, type ProcessState, type VoteState } from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -63,6 +64,8 @@ export default function Process() {
   useEffect(() => {
     fetchState();
   }, [fetchState]);
+  // Back in view after a while: read it again (a second tab catches up).
+  useRefreshOnVisible(() => fetchState(0));
 
   if (loading) return <p className="detail-page">Loading...</p>;
   if (error) return (

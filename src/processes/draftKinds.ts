@@ -5,6 +5,7 @@
 // (src/controllers/draftController.ts, src/routes/draftRoutes.ts). A new
 // drafting type declares a DraftKind here and mounts draftRouter(kind).
 
+import { overlongOption, VOTE_OPTION_MAX } from "../shared/voteOptions.js";
 import { ValidationError } from "../errors/index.js";
 import type { DraftSpec, Draft, BaseDraft } from "../modules/civic.drafts/index.js";
 import { voteDurationLimitsSync, getSupportThreshold } from "../services/hubSettings.js";
@@ -195,7 +196,11 @@ export const voteDraftKind: DraftKind<VoteDraft> = {
       voting_duration_ms: d.voting_duration_ms,
       ...supportPhaseConfig(await getSupportThreshold(currentHubId())),
     };
-    if (method === "approval" && Array.isArray(d.custom_options)) state.options = d.custom_options;
+    if (method === "approval" && Array.isArray(d.custom_options)) {
+      const long = overlongOption(d.custom_options);
+      if (long) throw new ValidationError(`Each option can be at most ${VOTE_OPTION_MAX} characters. Shorten "${long.slice(0, 40)}…".`, "option_too_long");
+      state.options = d.custom_options;
+    }
     const sources = lines(d.sources);
     // Parsed, not the raw line on both fields: storing the whole
     // "Title: https://…" line as the url made the href a relative path.

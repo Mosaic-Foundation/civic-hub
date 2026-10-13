@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
 import { useParams, useNavigate } from "react-router-dom";
 import { getCivicProposal, supportCivicProposal, unsupportCivicProposal, type CivicProposalDetail } from "../services/api";
 import { useAction } from "../hooks/useAction";
@@ -65,6 +66,8 @@ export default function ProposalDetail() {
   useEffect(() => {
     fetchProposal();
   }, [fetchProposal]);
+  // Back in view after a while: read it again (a second tab catches up).
+  useRefreshOnVisible(fetchProposal);
 
   function doSupport() {
     if (!id || !actorId) return;

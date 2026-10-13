@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import {
   getWordcloud,
@@ -546,6 +547,8 @@ export default function WordCloud() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+  // Back in view after a while: read it again (a second tab catches up).
+  useRefreshOnVisible(fetchData);
 
   if (loading) return <p className="wordcloud-page">Loading...</p>;
   if (error)

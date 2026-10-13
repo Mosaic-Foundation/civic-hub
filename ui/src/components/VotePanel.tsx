@@ -11,13 +11,14 @@ import {
   submitInput,
 } from "../services/api";
 import { ApiError } from "../utils/httpError";
-import { dropHeldReceipt, getHeldReceipt, saveHeldReceipt, type HeldReceipt } from "../services/voteReceipts";
+import { dropHeldReceipt, getHeldReceipt, isMine, saveHeldReceipt, type HeldReceipt } from "../services/voteReceipts";
 import { getMe, getStoredToken } from "../services/auth";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
 import { useAction } from "../hooks/useAction";
 import { announceInput } from "../services/inputEvents";
 import AuthModal from "./AuthModal";
+import ResultLabel from "./ResultLabel";
 import hub from "../config/hub";
 
 const COMMENT_MAX = 500;
@@ -532,18 +533,22 @@ export default function VotePanel({ process, actor, onView }: Props) {
                 const count = process.tally![option] ?? 0;
                 const total = process.total_votes ?? 0;
                 const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                // This browser's own ballot, from its receipt (open or closed).
+                const mine = isMine(justVoted ?? held?.choice, option);
                 return (
-                  <div key={option} className="tally-row">
-                    <span className="tally-label">{option}</span>
-                    <div className="tally-bar-track">
-                      <div
-                        className="tally-bar-fill"
-                        style={{ width: `${Math.min(pct, 100)}%` }}
-                      />
+                  <div key={option} className={`tally-row${mine ? " tally-row-mine" : ""}`}>
+                    <ResultLabel option={option} mine={mine} />
+                    <div className="tally-bar-line">
+                      <div className="tally-bar-track">
+                        <div
+                          className="tally-bar-fill"
+                          style={{ width: `${Math.min(pct, 100)}%` }}
+                        />
+                      </div>
+                      <span className="tally-count">
+                        {count} ({pct}%)
+                      </span>
                     </div>
-                    <span className="tally-count">
-                      {count} ({pct}%)
-                    </span>
                   </div>
                 );
               })}

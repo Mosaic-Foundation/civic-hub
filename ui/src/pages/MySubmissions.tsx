@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
 import { useAction } from "../hooks/useAction";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -122,6 +123,14 @@ export default function MySubmissions() {
         .finally(() => setLoading(false));
     }
   }, [routeId]);
+  // Back in view after a while: read it again (a second tab catches up).
+  // Quietly: the list, or this review's status (an admin may have acted),
+  // leaving a revision being written alone.
+  useRefreshOnVisible(() => {
+    if (!user) return;
+    if (view === "list") getMyReviews().then(setReviews).catch(() => {});
+    else if (routeId) getReviewDetail(routeId).then(setDetail).catch(() => {});
+  });
 
   if (!user) {
     return (

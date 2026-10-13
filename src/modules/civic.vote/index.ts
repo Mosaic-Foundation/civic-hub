@@ -11,6 +11,7 @@
 // Action functions are async because event emission is durable — the host
 // hub awaits the DB write before the action completes.
 
+import { overlongOption, VOTE_OPTION_MAX } from "../../shared/voteOptions.js";
 import { ConflictError, ValidationError } from "../../errors/index.js";
 import type {
   VoteConfig,
@@ -90,6 +91,11 @@ export function createVoteState(
 
   const inputOptions = input.options as string[] | undefined;
   const options = inputOptions ?? method.defaultOptions ?? [];
+
+  // Options made now are at most VOTE_OPTION_MAX characters (votes made
+  // before the limit keep theirs; this runs only when one is made).
+  const long = overlongOption(inputOptions ?? []);
+  if (long) throw new ValidationError(`Each option can be at most ${VOTE_OPTION_MAX} characters. Shorten "${long.slice(0, 40)}…".`, "option_too_long");
 
   if (options.length < method.minOptions) {
     throw new ValidationError(

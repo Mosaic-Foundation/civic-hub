@@ -1,4 +1,5 @@
 import { ApiError } from "../utils/httpError";
+import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
 import { useEffect, useMemo, useState } from "react";
 import { useAction } from "../hooks/useAction";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -88,6 +89,13 @@ export default function AdminReviews() {
   // One runner for approve / request changes / decline: only one may run.
   const action = useAction("That didn't go through. Please try again.");
   const acting = action.busy;
+
+  // Back in view after a while: read the queue, or this review, again,
+  // quietly (another admin may have acted on it).
+  useRefreshOnVisible(() => {
+    if (view === "list") adminListReviews().then(setReviews).catch(() => {});
+    else if (routeId) adminGetReview(routeId).then(setDetail).catch(() => {});
+  });
 
   function loadList() {
     setLoading(true);

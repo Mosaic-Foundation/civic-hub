@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/AuthContext";
@@ -114,6 +115,8 @@ export default function ProjectDetail() {
   useEffect(() => {
     loadProject();
   }, [loadProject]);
+  // Back in view after a while: read it again (a second tab catches up).
+  useRefreshOnVisible(loadProject);
 
   function handleSentiment(next: SentimentValue | "neutral") {
     if (!id) return;

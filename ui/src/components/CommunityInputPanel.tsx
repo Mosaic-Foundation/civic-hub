@@ -10,6 +10,7 @@
 // Admins continue to see the original body alongside the tombstone so
 // they can audit / reverse the decision.
 
+import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { CommentPhase, CommunityInput, CommunityInputConfig } from "../services/api";
@@ -73,6 +74,8 @@ export default function CommunityInputPanel({ processId, config }: Props) {
   useEffect(() => {
     fetchInputs();
   }, [fetchInputs]);
+  // Back in view after a while: read it again (a second tab catches up).
+  useRefreshOnVisible(fetchInputs);
 
   // A comment posted on this page shows at once, from the server's answer.
   useEffect(

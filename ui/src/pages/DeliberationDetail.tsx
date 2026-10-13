@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/AuthContext";
@@ -61,6 +62,8 @@ export default function DeliberationDetail() {
   useEffect(() => {
     load();
   }, [load]);
+  // Back in view after a while: read it again (a second tab catches up).
+  useRefreshOnVisible(load);
 
   if (loading) return <div className="section">Loading...</div>;
   if (error) return <div className="section error">Error: {error}</div>;

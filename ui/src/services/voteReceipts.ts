@@ -65,3 +65,9 @@ export function dropHeldReceipt(userId: string, processId: string): void {
     // Nothing to do: storage is unavailable, so nothing was held either.
   }
 }
+
+/** Whether `option` is (one of) the choice(s) this browser's receipt holds. */
+export function isMine(choice: string | string[] | null | undefined, option: string): boolean {
+  if (choice == null) return false;
+  return Array.isArray(choice) ? choice.includes(option) : choice === option;
+}

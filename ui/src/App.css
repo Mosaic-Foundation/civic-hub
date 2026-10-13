@@ -1180,17 +1180,67 @@
 
 /* --- Tally --- */
 
+/* Each option: its label above, full width, then the bar and the count. A
+   label in a narrow column wrapped to five or six lines (Adam, Oct 10). */
 .tally-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .tally-label {
-  width: 6rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
   font-size: 0.9rem;
+  margin-bottom: 0.25rem;
   /* No text-transform: an option reads as its author wrote it (review R26). */
+}
+
+.tally-label-text {
+  overflow-wrap: anywhere;
+}
+
+/* An option longer than today's limit (votes made before it): three lines,
+   a tap for the rest. */
+.tally-label-long {
+  all: unset;
+  cursor: pointer;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+.tally-label-long.is-open {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+.tally-label-long:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* "✓ Your vote": from this browser's receipt. */
+.result-mine {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-success, inherit);
+  white-space: nowrap;
+}
+
+.tally-row-mine .tally-label-text {
+  font-weight: 600;
+}
+
+.tally-bar-line {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .tally-bar-track {
