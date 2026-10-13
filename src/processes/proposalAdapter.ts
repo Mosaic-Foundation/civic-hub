@@ -18,6 +18,7 @@ import { ValidationError } from "../errors/index.js";
 import { Process, ProcessAction } from "../models/process.js";
 import { ProcessHandler } from "./types.js";
 import type { ProcessTypeDescriptor } from "./descriptor.js";
+import { DEADLINE_CLOSE_INPUT } from "./descriptor.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { emitEvent } from "../events/eventEmitter.js";
@@ -98,6 +99,7 @@ export const PROPOSAL_DESCRIPTOR: ProcessTypeDescriptor = {
       from: ["active"],
       to: "closed",
       emits: ["civic.proposal.closed"],
+      input_schema: DEADLINE_CLOSE_INPUT,
       // Its only other effect, the proposals row's copy of the status, is
       // written after the process row commits.
       retry_safe: true,

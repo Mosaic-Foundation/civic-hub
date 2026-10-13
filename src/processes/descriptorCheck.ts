@@ -134,6 +134,9 @@ export function checkDescriptor(handler: ProcessHandler, host: HostFacts): strin
     const close = d.actions.find((a) => a.name === d.deadline!.action);
     if (!close) add(`its deadline runs ${d.deadline.action}, which is not one of its actions`);
     else if (!close.callers.includes("system")) add(`its deadline action ${close.name} is not callable by the hub (system)`);
+    else if (close.callers.includes("admin") && !(close.input_schema?.properties as Record<string, unknown> | undefined)?.note) {
+      add(`its deadline action ${close.name} takes no note: an admin closing early must give one (DEADLINE_CLOSE_INPUT)`);
+    }
     if (!handler.closeIfExpired) add(`declares a deadline but the handler has no closeIfExpired`);
   } else if (handler.closeIfExpired) {
     add(`the handler closes at a deadline (closeIfExpired) but the descriptor declares none`);

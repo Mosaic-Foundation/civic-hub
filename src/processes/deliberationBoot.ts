@@ -16,6 +16,7 @@ import { isPastDeadline } from "../utils/deadline.js";
 import type { Process } from "../models/process.js";
 import type { ProcessHandler } from "./types.js";
 import type { ProcessTypeDescriptor } from "./descriptor.js";
+import { DEADLINE_CLOSE_INPUT } from "./descriptor.js";
 import type { PolisHostInterface } from "../shared/polis_deliberation/hostInterface.js";
 import type { PolisAdapter } from "../shared/polis_deliberation/adapter/types.js";
 import type { PolisDeliberationState } from "../shared/polis_deliberation/types.js";
@@ -76,6 +77,7 @@ export const POLIS_DELIBERATION_DESCRIPTOR: ProcessTypeDescriptor = {
       from: ["active"],
       to: "closed",
       emits: ["civic.process.ended"],
+      input_schema: DEADLINE_CLOSE_INPUT,
     },
     {
       name: "poll_state",

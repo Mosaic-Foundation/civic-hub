@@ -12,6 +12,7 @@ import CommunityInputPanel from "../components/CommunityInputPanel";
 import ProposalCommentForm from "../components/ProposalCommentForm";
 import RelatedProcesses from "../components/RelatedProcesses";
 import DetailActions from "../components/DetailActions";
+import { CloseEarlyButton, ClosedEarlyNote } from "../components/CloseEarly";
 import { BriefPointer } from "../components/BriefPointer";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
@@ -128,9 +129,12 @@ export default function ProposalDetail() {
           <span>Open until {formatDate(proposal.closes_at)}</span>
         )}
         {proposal.closes_at && proposal.status === "closed" && (
-          <span>Closed {formatDate(proposal.closes_at)}</span>
+          <span>Closed {formatDate(proposal.closed_early?.at ?? proposal.closes_at)}</span>
         )}
       </div>
+
+      {/* Closed before its deadline: the line and the admin's note. */}
+      <ClosedEarlyNote closedEarly={proposal.closed_early} />
 
       {proposal.assistant_helped && (
         <p className="assistant-helped-label">Drafted with assistant help</p>
@@ -248,6 +252,12 @@ export default function ProposalDetail() {
 
       {/* Admin-only soft-remove, last thing on the page. */}
       <DetailActions>
+        <CloseEarlyButton<CivicProposalDetail>
+          processId={proposal.id}
+          offer={proposal.early_close}
+          noun="proposal"
+          onView={(view) => (view ? setProposal(view) : fetchProposal())}
+        />
         <AdminArchiveButton
           processId={proposal.id}
           itemLabel="proposal"

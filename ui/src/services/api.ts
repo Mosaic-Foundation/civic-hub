@@ -214,6 +214,10 @@ export type ProcessSummary = VoteSummary | ProposalSummary | PublishedVoteResult
 /** Vote detail state */
 export interface VoteState {
   id: string;
+  /** Closed before its deadline: the line and the admin's note. */
+  closed_early?: ClosedEarly | null;
+  /** An admin could close it early now, by this action. */
+  early_close?: EarlyCloseOffer | null;
   type: "civic.vote";
   method: string; // "yes_no_unsure" | "approval"
   title: string;
@@ -317,6 +321,25 @@ export interface HeldReceiptPayload {
   change_key: string;
 }
 
+/** Close early (an admin, before the deadline): what a page's read model offers. */
+export interface EarlyCloseOffer {
+  action: string;
+  deadline: string;
+}
+
+/** A process closed before its deadline: the line pages show, and the admin's note. */
+export interface ClosedEarly {
+  at: string;
+  original_deadline: string;
+  note: string;
+  line: string;
+}
+
+/** Close a process early, with the admin's note (required). */
+export function closeEarly<V = ProcessState>(processId: string, action: string, note: string): Promise<ActionResult<V>> {
+  return request("POST", `/process/${processId}/action`, { type: action, payload: { note } });
+}
+
 export function submitVote(
   processId: string,
   actor: string,
@@ -402,6 +425,10 @@ export interface CivicProposalSummary {
 /** Proposal detail (from GET /proposals/:id) */
 export interface CivicProposalDetail {
   id: string;
+  /** Closed before its deadline: the line and the admin's note. */
+  closed_early?: ClosedEarly | null;
+  /** An admin could close it early now, by this action. */
+  early_close?: EarlyCloseOffer | null;
   title: string;
   description: string;
   optional_links: string[];
@@ -1146,6 +1173,8 @@ export interface BriefContent {
   admin_notes: string;
   image_url?: string | null;
   image_alt?: string | null;
+  /** The source closed before its deadline: the line and the admin's note. */
+  closed_early?: { line: string; note: string } | null;
 }
 
 export interface BriefSummary {
@@ -1204,6 +1233,8 @@ export interface PublicBrief {
   admin_notes: string;
   image_url?: string | null;
   image_alt?: string | null;
+  /** The source closed before its deadline: the line and the admin's note. */
+  closed_early?: { line: string; note: string } | null;
   delivered_recipient_count: number;
   /** Public-safe recipient labels ("Jane Doe, Board of Supervisors") and
    *  the actual send time — the "Sent to … on …" receipt. Empty/null on
@@ -2178,6 +2209,10 @@ export interface DeliberationSummary {
 }
 
 export interface DeliberationReadModel {
+  /** Closed before its deadline: the line and the admin's note. */
+  closed_early?: ClosedEarly | null;
+  /** An admin could close it early now, by this action. */
+  early_close?: EarlyCloseOffer | null;
   process_id: string;
   type: string;
   lifecycle: string;

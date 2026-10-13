@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ClosedEarlyNote } from "../components/CloseEarly";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   getPublicBrief,
@@ -148,6 +149,9 @@ export default function BriefPage() {
       <BriefSourcePointer processId={id!} />
 
       <p className="vote-results-headline">{brief.headline}</p>
+
+      {/* Its source closed before the deadline: the line and the admin's note. */}
+      <ClosedEarlyNote closedEarly={brief.closed_early} />
 
       {/* Delivery receipt. Briefs whose review selected named recipients
           show WHO (their public display labels — never emails) and WHEN

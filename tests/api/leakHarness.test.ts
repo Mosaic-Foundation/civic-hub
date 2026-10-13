@@ -619,7 +619,7 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "POST /deliberations/:processId/participate/vote": { body: { tid: 0, vote: 1 } },
   "POST /deliberations/:processId/participate/statement": { body: { text: X.body } },
   "POST /deliberations/:processId/start": { body: {} },
-  "POST /deliberations/:processId/close": { body: {} },
+  "POST /deliberations/:processId/close": { body: { note: "Closed early by a test." } },
   "POST /deliberations/:processId/regenerate": { body: {} },
   "POST /proposals/:id/support": { body: {} },
   "DELETE /proposals/:id/support": {},

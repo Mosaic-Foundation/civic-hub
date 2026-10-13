@@ -322,7 +322,7 @@ describe("through the app", () => {
   it("a lifecycle change through the app writes its process.updated event", async () => {
     const admin = await mintSession("floyd", "admin@example.test");
     const id = await createActiveVote(admin, `Atomic app close ${run}`);
-    const closed = await call("POST", `/process/${id}/action`, FLOYD, { type: "process.close", payload: {} }, admin);
+    const closed = await call("POST", `/process/${id}/action`, FLOYD, { type: "process.close", payload: { note: "Closed early by a test." } }, admin);
     expect(closed.status, JSON.stringify(closed.body)).toBe(200);
     const updated = await rows(`events?process_id=eq.${id}&event_type=eq.civic.process.updated&order=created_at.desc&limit=1`);
     // A vote finishes when it closes (2026-10-07): one transition, active →

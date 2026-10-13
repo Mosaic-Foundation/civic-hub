@@ -17,6 +17,8 @@
 // runs again on a fresh read; any other is refused with a 409. So two writes
 // never overwrite each other, and a close that loses a race writes nothing.
 
+
+import { auditEarlyClose, closedEarlyView, earlyCloseOffer, earlyCloseOf, stampEarlyClose } from "./closeEarly.js";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../errors/index.js";
 import { transitionProcess, ProcessChangedError } from "../db/atomic.js";
 import { runInActionScope } from "./actionScope.js";
@@ -365,6 +367,9 @@ async function attemptAction(
     throw new ConflictError("This is finished and can't take any more actions.", "process_finalized");
   }
 
+  // An admin closing before the deadline must say why (src/services/closeEarly.ts).
+  const early = await earlyCloseOf(handler, process, action, caller);
+
   const previousStatus = process.status;
   const before = rowImage(process);
 
@@ -384,6 +389,13 @@ async function attemptAction(
   // reaches the caller first; before the write, so a disagreement outside
   // production writes nothing.
   if (declared) checkAgainstDescriptor(handler.type, declared, previousStatus, process.status, events);
+
+  // Closed early: the record goes into this same write and onto the close's
+  // events, and the admin log says who, once the close has committed.
+  if (early && process.status !== previousStatus) {
+    const record = stampEarlyClose(process, events, early);
+    afterCommit.push(() => auditEarlyClose(process, action.actor, record));
+  }
 
   if (rowImage(process) !== before) {
     // One transaction: the new status and state, the handler's events, and a
@@ -703,6 +715,11 @@ export async function getProcessState(
   const isOwner = !!actor && typeof model.created_by === "string" && model.created_by === actor;
   const enriched = await enrichProcessCreator(model, opts);
   enriched.is_owner = isOwner;
+  // Closed early (any type with a deadline): the record and the line the
+  // page shows, in the hub's time zone.
+  enriched.closed_early = closedEarlyView(process.state);
+  // Whether an admin could close it early now, and by which action.
+  enriched.early_close = await earlyCloseOffer(handler, process);
   // Universal: every type's page shows the Sample badge (Phase 7).
   if (process.isSample) enriched.is_sample = true;
   return enriched;
@@ -1121,3 +1138,4 @@ export async function getArchivedProcesses(types?: string[]): Promise<Process[]>
 export async function clearProcesses(): Promise<void> {
   await db().from("processes").delete().neq("id", "");
 }
+

@@ -67,6 +67,11 @@ export interface BriefContent {
   /** Optional featured image (public Supabase Storage URL). */
   image_url?: string | null;
   image_alt?: string | null;
+  /**
+   * The source was closed before its deadline (Close early): the line the
+   * brief shows, and the admin's note, verbatim. Set when the brief is made.
+   */
+  closed_early?: { line: string; note: string } | null;
 }
 
 /**

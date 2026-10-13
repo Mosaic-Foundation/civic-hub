@@ -71,7 +71,7 @@ test.describe("Vote receipts held by the voter", () => {
     if (!voteId) return;
     await request.post(`${API}/process/${voteId}/action`, {
       headers: { Authorization: `Bearer ${admin}` },
-      data: { type: "process.close", payload: {} },
+      data: { type: "process.close", payload: { note: "Closed early by a test." } },
     });
   });
 

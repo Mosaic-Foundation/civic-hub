@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ClosedEarlyNote } from "../components/CloseEarly";
 import { HeldBackNote } from "../components/HeldBackNote";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -236,6 +237,9 @@ export default function AdminBriefs() {
 
           {actionMessage && <p className="admin-action-message">{actionMessage}</p>}
           {error && <p className="form-error">{error}</p>}
+
+          {/* Closed before its deadline: the brief carries this as written. */}
+          <ClosedEarlyNote closedEarly={selected.content.closed_early} />
 
           <section className="admin-detail-section">
             <h3>Headline</h3>

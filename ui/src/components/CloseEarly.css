@@ -1,0 +1,77 @@
+.close-early-open-btn {
+  background: none;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--color-text, inherit);
+  cursor: pointer;
+}
+
+.close-early-open-btn:hover {
+  background: var(--color-surface-muted, #f4f4f4);
+}
+
+.close-early-help {
+  margin: 0 0 0.75rem;
+}
+
+.close-early-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.close-early-required {
+  font-weight: 400;
+  color: var(--color-text-muted, #666);
+}
+
+.close-early-note {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  /* 16px or more, so iOS doesn't zoom in on focus. */
+  font-size: max(1rem, 16px);
+  padding: 0.5rem;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 6px;
+  resize: vertical;
+}
+
+.close-early-counter {
+  display: block;
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #666);
+  margin: 0.25rem 0 0.5rem;
+}
+
+/* The closed-early line on a process page and a brief. */
+.closed-early-note {
+  border-left: 3px solid var(--color-border-strong);
+  background: var(--color-surface-muted, #f6f6f6);
+  padding: 0.6rem 0.8rem;
+  margin: 0.75rem 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.closed-early-note p {
+  margin: 0;
+}
+
+.closed-early-line {
+  font-weight: 600;
+}
+
+.closed-early-admin-note {
+  margin-top: 0.3rem !important;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.closed-early-admin-label {
+  font-weight: 600;
+}

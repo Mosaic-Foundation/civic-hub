@@ -321,10 +321,12 @@ export const closeDeliberation = route(async (req, res) => {
   const user = getAuthUser(res);
   const processId = req.params.processId as string;
 
+  // Before its deadline, the close needs the admin's note (Close early).
+  const note = typeof req.body?.note === "string" ? req.body.note : undefined;
   const result = await processService.executeAction(processId, {
     type: "close",
     actor: user.id,
-    payload: {},
+    payload: note === undefined ? {} : { note },
   }, "admin");
 
   res.json({ result: result.result, view: await viewFor(res, processId) });

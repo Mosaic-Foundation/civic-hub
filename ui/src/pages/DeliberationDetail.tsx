@@ -16,6 +16,7 @@ import ShareMoment from "../components/ShareMoment";
 import SourceLinks from "../components/SourceLinks";
 import RelatedProcesses from "../components/RelatedProcesses";
 import DetailActions from "../components/DetailActions";
+import { CloseEarlyButton, ClosedEarlyNote } from "../components/CloseEarly";
 import { BriefPointer } from "../components/BriefPointer";
 import "./DeliberationDetail.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
@@ -94,6 +95,9 @@ export default function DeliberationDetail() {
 
       <BriefPointer processId={process.process_id} />
 
+      {/* Closed before its deadline: the line and the admin's note. */}
+      <ClosedEarlyNote closedEarly={process.closed_early} />
+
       {process.assistant_helped && (
         <p className="assistant-helped-label">Drafted with assistant help</p>
       )}
@@ -153,6 +157,12 @@ export default function DeliberationDetail() {
 
       {/* Admin-only soft-remove, last thing on the page. */}
       <DetailActions>
+        <CloseEarlyButton<DeliberationReadModel>
+          processId={process.process_id}
+          offer={process.early_close}
+          noun="conversation"
+          onView={(view) => (view ? setProcess(view) : load())}
+        />
         <AdminArchiveButton
           processId={process.process_id}
           itemLabel="conversation"

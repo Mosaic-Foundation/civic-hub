@@ -175,7 +175,7 @@ describe("held back is not failed (#34)", () => {
 
   it("publishing vote results to the hub's brief recipients publishes, records them held back, no 500", async () => {
     const vote = await createActiveVote(`Held back vote ${run}`);
-    ok(await call("POST", `/process/${vote}/action`, ATHENS, { type: "process.close", payload: {} }, admin));
+    ok(await call("POST", `/process/${vote}/action`, ATHENS, { type: "process.close", payload: { note: "Closed early by a test." } }, admin));
     const id = `proc_heldback_vr_${run}`;
     await insertProcess(id, "civic.vote_results", "active", {
       type: "civic.vote_results",
@@ -218,7 +218,7 @@ describe("a vote finishes on its own; its brief is separate (docs session #4)", 
     try {
       const id = await createActiveVote(`No-brief vote ${run}`);
       ok(await call("POST", `/process/${id}/action`, ATHENS, { type: "process.vote", payload: { option: "Yes" } }, resident));
-      const closed = await call("POST", `/process/${id}/action`, ATHENS, { type: "process.close", payload: {} }, admin);
+      const closed = await call("POST", `/process/${id}/action`, ATHENS, { type: "process.close", payload: { note: "Closed early by a test." } }, admin);
       ok(closed);
 
       const [row] = (await localRest(`processes?select=status,state&id=eq.${id}`)) as Array<{
@@ -242,7 +242,7 @@ describe("a vote finishes on its own; its brief is separate (docs session #4)", 
 
   it("with Briefs on: close finishes the vote too, and its brief waits for approval apart", async () => {
     const id = await createActiveVote(`Brief vote ${run}`);
-    ok(await call("POST", `/process/${id}/action`, ATHENS, { type: "process.close", payload: {} }, admin));
+    ok(await call("POST", `/process/${id}/action`, ATHENS, { type: "process.close", payload: { note: "Closed early by a test." } }, admin));
     const [row] = (await localRest(`processes?select=status&id=eq.${id}`)) as Array<{ status: string }>;
     expect(row.status).toBe("finalized");
     expect((await resultEvents(id)).map((e) => e.data.results_at_close)).toEqual([true]);

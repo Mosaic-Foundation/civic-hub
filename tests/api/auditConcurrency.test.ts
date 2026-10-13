@@ -110,7 +110,7 @@ describe("a vote past its deadline closes once", () => {
       ...Array.from({ length: 12 }, () => call("GET", `/process/${id}/state`, FLOYD)),
       call("GET", "/process?type=civic.vote", FLOYD),
       call("GET", "/process?type=civic.vote", FLOYD),
-      act(id, "process.close", admin),
+      act(id, "process.close", admin, { note: "Closed early by a test." }),
     ]);
     for (const r of reads.slice(0, 14)) expect(r.status).toBe(200);
 
@@ -142,7 +142,7 @@ describe("a vote past its deadline closes once", () => {
   it("two admins closing an open vote at once: one wins, the other is refused, one set of events", async () => {
     const id = await createVote("Manual close", { activation_mode: "direct" });
     expect((await act(id, "process.activate", admin)).status).toBe(200);
-    const results = await Promise.all([act(id, "process.close", admin), act(id, "process.close", admin)]);
+    const results = await Promise.all([act(id, "process.close", admin, { note: "Closed early by a test." }), act(id, "process.close", admin, { note: "Closed early by a test." })]);
     expect(results.filter((r) => r.status === 200)).toHaveLength(1);
     const counts = await eventCounts(id);
     expect(counts["civic.process.result_published"]).toBe(1);

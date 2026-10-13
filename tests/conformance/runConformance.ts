@@ -34,6 +34,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { accountIdOf, foreignIds } from "../fixtures/accountIds.js";
+import { localRest } from "../fixtures/adminSession.js";
 import {
   HOST_EVENT_TYPES,
   allowedTargets,
@@ -372,6 +373,54 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
         expect(await briefsOf(id)).toHaveLength(d.brief ? 1 : 0);
       }, 60_000);
     });
+
+    describe("5b. close early", () => {
+      it("an admin closing before the deadline must give a note; the close records it on the page, the brief and the admin log", async () => {
+        const creator = await resident(BETA);
+        const id = await liveAs(d, facts, BETA, creator.token);
+        touched.push({ id, hub: BETA });
+        const close = d.actions.find((a) => a.name === d.deadline!.action)!;
+        await reachOneOf(d, walked, BETA, id, close.from, creator.token);
+        const adminToken = await admin(BETA);
+        const from = (await processRow(id)).status;
+        const eventsBefore = (await eventsOf(id)).length;
+
+        // No note, or an overlong one: refused, and nothing happens.
+        const bare = await act(BETA, id, close.name, {}, adminToken);
+        expect(bare.status, JSON.stringify(bare.body)).toBe(400);
+        expect(bare.body.code).toBe("note_required");
+        const long = await act(BETA, id, close.name, { note: "x".repeat(1001) }, adminToken);
+        expect(long.body.code).toBe("note_too_long");
+        expect((await processRow(id)).status).toBe(from);
+        expect((await eventsOf(id)).length).toBe(eventsBefore);
+
+        // With a note: the same close as the deadline's, recorded.
+        const note = `Closed early by the conformance suite, ${uniqueTitle("note")}.`;
+        const closed = await act(BETA, id, close.name, { note }, adminToken);
+        expect(closed.status, JSON.stringify(closed.body)).toBe(200);
+        expect([...allowedTargets(close, from as ProcessStatus)]).toContain((await processRow(id)).status);
+        const early = closed.body.view?.closed_early;
+        expect(early?.note).toBe(note);
+        expect(early?.line).toMatch(/^Closed early on .+(before the original date of .+|earlier on the original closing day)\.$/);
+        for (const type of close.emits) {
+          const ev = (await eventRows(id)).filter((e) => e.event_type === type);
+          expect(ev, `${type} once`).toHaveLength(1);
+          expect((ev[0].data as Record<string, any>).closed_early?.note, `${type} carries the note`).toBe(note);
+        }
+        const briefs = await briefsOf(id);
+        expect(briefs).toHaveLength(d.brief ? 1 : 0);
+        if (d.brief) {
+          const [brief] = (await localRest(`processes?select=state&id=eq.${briefs[0].id}`)) as Array<{ state: any }>;
+          expect(brief.state.content.closed_early).toEqual({ line: early.line, note });
+        }
+        const log = (await localRest(
+          `hub_admin_audit_log?select=actor_email,after&hub_id=eq.${BETA.slug}&action=eq.process.close_early&after->>process_id=eq.${id}`,
+        )) as Array<{ actor_email: string; after: { note: string } }>;
+        expect(log).toHaveLength(1);
+        expect(log[0].actor_email).toBe(BETA.adminEmail);
+        expect(log[0].after.note).toBe(note);
+      }, 60_000);
+    });
   }
 
   describe("6. archive and restore", () => {
@@ -645,7 +694,7 @@ function tierThree(
       const outsider = await resident(DEMO);
       for (const r of await participate(id, outsider.token, DEMO)) expect(r.status).toBe(404);
       const close = d.actions.find((x) => x.name === d.deadline?.action)!;
-      expect((await act(BETA, id, close.name, {}, await admin(BETA))).status).toBeLessThan(300);
+      expect((await act(BETA, id, close.name, examplePayload(d, close.name, await processRow(id)), await admin(BETA))).status).toBeLessThan(300);
       await fakePolis(BETA, { clear_calls: true });
       const late = await resident(BETA);
       for (const r of await participate(id, late.token)) expect(r.status).toBe(409);
@@ -664,7 +713,7 @@ function tierThree(
             await expireDeadline(d, id);
             await Promise.all(Array.from({ length: 4 }, () => call("GET", `/process/${id}/state`, BETA.host)));
           } else {
-            const res = await act(BETA, id, close.name, {}, await admin(BETA));
+            const res = await act(BETA, id, close.name, examplePayload(d, close.name, await processRow(id)), await admin(BETA));
             expect(res.status, JSON.stringify(res.body)).toBeLessThan(300);
           }
         } finally {
@@ -678,4 +727,9 @@ function tierThree(
       }, 60_000);
     }
   });
+}
+
+/** A process's events with their data (eventsOf leaves data out). */
+async function eventRows(processId: string): Promise<Array<{ event_type: string; data: unknown }>> {
+  return (await localRest(`events?select=event_type,data&process_id=eq.${processId}`)) as Array<{ event_type: string; data: unknown }>;
 }

@@ -18,7 +18,9 @@ export type HubAdminAuditAction =
   | "sample_content.remove"
   | "hub.mode"
   | "people.admins"
-  | "people.board";
+  | "people.board"
+  // An admin closed a process before its deadline, with a note (Actions slice).
+  | "process.close_early";
 
 export interface HubAdminAuditEntry {
   actor: string;

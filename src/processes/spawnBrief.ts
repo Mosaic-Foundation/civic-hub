@@ -7,6 +7,7 @@
 // generateBrief (or returns null) simply closes without a brief — the
 // call is a no-op, so wiring it into a close path is always safe.
 
+import { closedEarlyView } from "../services/closeEarly.js";
 import { isPluginEnabledSync } from "../services/hubSettings.js";
 import { Process } from "../models/process.js";
 import { getProcessFactory, getProcessHandler } from "./registry.js";
@@ -40,6 +41,10 @@ export async function spawnBriefFromClosedProcess(
 
   const content = await handler.generateBrief(source);
   if (!content) return null;
+  // Closed early: every brief carries the line and the admin's note, whatever
+  // its type (src/services/closeEarly.ts).
+  const early = closedEarlyView(source.state);
+  if (early) content.closed_early = { line: early.line, note: early.note };
 
   const factory = getProcessFactory();
   // Insert-or-skip: a source has at most one brief, enforced by a unique

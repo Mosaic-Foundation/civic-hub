@@ -291,3 +291,21 @@ export function descriptorViolation(code: string, message: string, context: Erro
   }
   throw new DescriptorViolationError(code, message);
 }
+
+/**
+ * The input of a type's deadline action (Close early, 2026-10-13). An admin
+ * who calls it before the deadline must give a note, which the process page,
+ * the brief and the admin log carry (src/services/closeEarly.ts). Every type
+ * with a deadline declares it on that action; descriptorCheck says so.
+ */
+export const DEADLINE_CLOSE_INPUT = {
+  type: "object",
+  properties: {
+    note: {
+      type: "string",
+      maxLength: 1000,
+      description: "Why it is closing early. Required when an admin closes it before its deadline.",
+    },
+  },
+  examples: [{ note: "Closed early by the conformance suite." }],
+} as const;

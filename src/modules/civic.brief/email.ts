@@ -70,8 +70,16 @@ export function formatBriefEmail(
     "public response on the brief page, where it appears alongside the " +
     "brief as part of the permanent public record.";
 
+  // Closed early: the line, then the admin's note verbatim, before the rest.
+  const early = c.closed_early ?? null;
+  const earlyHtml = early
+    ? `<p style="margin:8px 0;">${esc(early.line)}<br>Admin note: <span style="white-space:pre-wrap;">${esc(early.note)}</span></p>`
+    : "";
+  const earlyText = early ? `\n\n${early.line}\nAdmin note: ${early.note}` : "";
+
   const html = `
     <p><strong>${esc(c.headline)}</strong></p>
+    ${earlyHtml}
     <p style="white-space:pre-wrap;">${esc(c.summary)}</p>
     ${participation ? `<p><em>${esc(participation)}</em></p>` : ""}
     ${sectionsHtml}
@@ -95,7 +103,7 @@ export function formatBriefEmail(
     ? `\n\nNotes from the ${deps.hubLabel}:\n${c.admin_notes}`
     : "";
 
-  const text = `${c.headline}\n\n${c.summary}${participation ? `\n\n${participation}` : ""}${sectionsText}${notesText}${commentsText}\n\n${respondText}\n\nView the full brief and respond: ${deps.publicUrl}`;
+  const text = `${c.headline}${earlyText}\n\n${c.summary}${participation ? `\n\n${participation}` : ""}${sectionsText}${notesText}${commentsText}\n\n${respondText}\n\nView the full brief and respond: ${deps.publicUrl}`;
 
   return { subject, html, text };
 }

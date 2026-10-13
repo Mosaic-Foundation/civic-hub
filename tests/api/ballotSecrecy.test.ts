@@ -196,7 +196,7 @@ describe("votes and changes, with the receipt the voter holds", () => {
   });
 
   it("the vote closes and the tally is every voter's final choice", async () => {
-    const closed = await call("POST", `/process/${voteId}/action`, FLOYD, { type: "process.close", payload: {} }, admin);
+    const closed = await call("POST", `/process/${voteId}/action`, FLOYD, { type: "process.close", payload: { note: "Closed early by a test." } }, admin);
     expect(closed.status, JSON.stringify(closed.body)).toBe(200);
     const state = await call("GET", `/process/${voteId}/state`, FLOYD, undefined, admin);
     expect(state.status).toBe(200);

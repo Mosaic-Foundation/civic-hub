@@ -12,6 +12,7 @@ import AuthModal from "../components/AuthModal";
 import ShareButton from "../components/ShareButton";
 import RelatedProcesses from "../components/RelatedProcesses";
 import DetailActions from "../components/DetailActions";
+import { CloseEarlyButton, ClosedEarlyNote } from "../components/CloseEarly";
 import { BriefPointer } from "../components/BriefPointer";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import { statusDisplay } from "../components/statusDisplay";
@@ -128,6 +129,9 @@ export default function Process() {
         {isVote && process.status === "finalized" && <span>Voting finalized</span>}
       </div>
 
+      {/* Closed before its deadline: the line and the admin's note. */}
+      <ClosedEarlyNote closedEarly={voteState?.closed_early} />
+
       {/* Share — visible while the surface is gathering attention.
           Active votes (turn out the vote) + the proposal "gathering
           support" states. Suppressed once voting closes / a proposal
@@ -190,6 +194,12 @@ export default function Process() {
           admin Archived view). Renders nothing for non-admins. */}
       {id && (
         <DetailActions>
+          <CloseEarlyButton<ProcessState>
+            processId={id}
+            offer={voteState?.early_close}
+            noun="vote"
+            onView={(view) => (view ? setProcess(view) : fetchState())}
+          />
           <AdminArchiveButton
             processId={id}
             itemLabel="item"

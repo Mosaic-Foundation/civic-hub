@@ -10,6 +10,7 @@ import { buildEvent, emitEvent } from "../events/eventEmitter.js";
 import type { CivicEvent } from "../models/event.js";
 import { ProcessHandler } from "./types.js";
 import type { ProcessTypeDescriptor } from "./descriptor.js";
+import { DEADLINE_CLOSE_INPUT } from "./descriptor.js";
 import { voteAssistantConfig } from "./voteAssistantConfig.js";
 import {
   createVoteState,
@@ -166,6 +167,7 @@ export const VOTE_DESCRIPTOR: ProcessTypeDescriptor = {
         "civic.process.result_published",
       ],
       retry_safe: true,
+      input_schema: DEADLINE_CLOSE_INPUT,
     },
   ],
   emits: [

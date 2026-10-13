@@ -219,7 +219,7 @@ async function run(): Promise<void> {
   const close = await request<{ result: { tally: Record<string, number>; total_votes: number; brief_process_id?: string } }>(
     "POST",
     `/process/${voteId}/action`,
-    { type: "process.close", actor: admin.userId, payload: {} },
+    { type: "process.close", actor: admin.userId, payload: { note: "Closed early by the brief flow script." } },
     admin.token,
   );
   assert(close.status === 200, "Close succeeds", close);

@@ -64,6 +64,10 @@ function normalizeContent(content: BriefContent): BriefContent {
     admin_notes: content.admin_notes ?? "",
     image_url: content.image_url ?? null,
     image_alt: content.image_alt ?? null,
+    closed_early:
+      content.closed_early && typeof content.closed_early.line === "string" && typeof content.closed_early.note === "string"
+        ? { line: content.closed_early.line, note: content.closed_early.note }
+        : null,
   };
 }
 
@@ -423,6 +427,7 @@ export function getPublicReadModel(
     participation_count: state.content.participation_count,
     comments: state.content.comments,
     admin_notes: state.content.admin_notes,
+    closed_early: state.content.closed_early ?? null,
     image_url: state.content.image_url ?? null,
     image_alt: state.content.image_alt ?? null,
     delivered_recipient_count: state.delivered_to.length,
