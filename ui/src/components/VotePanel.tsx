@@ -11,7 +11,8 @@ import {
   submitInput,
 } from "../services/api";
 import { ApiError } from "../utils/httpError";
-import { dropHeldReceipt, getHeldReceipt, isMine, saveHeldReceipt, type HeldReceipt } from "../services/voteReceipts";
+import { dropHeldReceipt, getHeldReceipt, isMine, localDay, saveHeldReceipt, type HeldReceipt } from "../services/voteReceipts";
+import { downloadReceipt } from "../services/receiptFile";
 import { getMe, getStoredToken } from "../services/auth";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
@@ -71,6 +72,45 @@ export default function VotePanel({ process, actor, onView }: Props) {
   const action = useAction("Your vote didn't go through. Please try again.");
   const loading = action.busy;
   const error = action.error;
+  // The receipt file: written here, in the browser (services/receiptFile.ts).
+  const download = useAction("The receipt couldn't be made. Please try again.");
+  const checkMode = process.check_mode ?? "show_choice";
+
+  function saveReceiptFile(receipt: HeldReceipt) {
+    return download.run(() =>
+      downloadReceipt({
+        hubName: hub.name,
+        voteTitle: process.title,
+        votedOn: receipt.voted_on ?? localDay(),
+        code: receipt.receipt_id,
+        checkUrl: `${window.location.origin}/votes/${process.id}/log#receipt=${encodeURIComponent(receipt.receipt_id)}`,
+        mode: checkMode,
+      }),
+    );
+  }
+
+  /** The download button and its error, for a receipt this browser holds. */
+  function receiptDownload(receipt: HeldReceipt) {
+    return (
+      <div className="vote-receipt-download">
+        <button
+          type="button"
+          className="vote-receipt-download-btn"
+          onClick={() => saveReceiptFile(receipt)}
+          disabled={download.busy}
+          aria-busy={download.busy}
+        >
+          {download.busy ? "Preparing…" : "Download receipt (PDF)"}
+        </button>
+        <span className="form-hint">
+          {checkMode === "show_choice"
+            ? "Keep it private: after the vote closes, anyone with the code can see how this ballot was cast."
+            : "After the vote closes, the code shows only that your ballot was counted."}
+        </span>
+        {download.error && <p className="error">{download.error}</p>}
+      </div>
+    );
+  }
   const [justVoted, setJustVoted] = useState<string | string[] | null>(null);
   const [voteWasUpdated, setVoteWasUpdated] = useState(false);
   // The receipt this browser holds for this vote, if any. The hub cannot
@@ -170,7 +210,7 @@ export default function VotePanel({ process, actor, onView }: Props) {
         setJustVoted(choice);
         setVoteWasUpdated(payload?.vote_updated === true);
         if (receiptId && changeKey) {
-          const next: HeldReceipt = { receipt_id: receiptId, change_key: changeKey, choice };
+          const next: HeldReceipt = { receipt_id: receiptId, change_key: changeKey, choice, voted_on: localDay() };
           // Kept before it is shown, so a re-read of storage finds it.
           setReceiptNotKept(!saveHeldReceipt(await keeperId(), process.id, next));
           setHeld(next);
@@ -482,6 +522,7 @@ export default function VotePanel({ process, actor, onView }: Props) {
                   >
                     Verify my vote
                   </Link>
+                  {receiptDownload(held)}
                 </>
               )}
               {/* The share moment lives HERE, inside the receipt, not up
@@ -506,6 +547,22 @@ export default function VotePanel({ process, actor, onView }: Props) {
       {isDone && (
         <div className="vote-options">
           <h4>{process.status === "finalized" ? "Voting finalized" : "Voting closed"}</h4>
+          {/* The receipt this browser holds: check it now, or keep the file. */}
+          {held && (
+            <div className="vote-receipt">
+              <p className="vote-receipt-title">Your receipt</p>
+              <p className="vote-receipt-id">
+                <code>{held.receipt_id}</code>
+              </p>
+              <Link
+                to={`/votes/${process.id}/log#receipt=${encodeURIComponent(held.receipt_id)}`}
+                className="vote-receipt-verify-link"
+              >
+                Check it
+              </Link>
+              {receiptDownload(held)}
+            </div>
+          )}
         </div>
       )}
 

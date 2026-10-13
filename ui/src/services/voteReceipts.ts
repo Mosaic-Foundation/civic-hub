@@ -19,6 +19,14 @@ export interface HeldReceipt {
   change_key: string;
   /** The choice the receipt carries, as last cast from this browser. */
   choice: string | string[];
+  /** The day it was last cast from this browser (YYYY-MM-DD, local), for the receipt file. */
+  voted_on?: string;
+}
+
+/** Today's date here, as YYYY-MM-DD. */
+export function localDay(now = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
 }
 
 const PREFIX = "civic.voteReceipt.v1";
