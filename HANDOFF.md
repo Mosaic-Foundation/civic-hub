@@ -4,6 +4,66 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Submit and save: Submit runs the check, sticky Save, one Modal — 2026-10-12
+
+Reports: `Submit-And-Save-Session-Report-2026-10-12.md` and `Submit-And-Save-Handoff-to-Management-2026-10-12.md`
+in Mosaic Foundation Management. Eleven commits on `multi-tenant`, `1627627`..`36ce9ea`; not pushed.
+**One migration, first:** `20261013000000_review_coc_flags.sql` (additive: `process_reviews.coc_flags jsonb`).
+
+**Adam's decisions:**
+- **When the check can't run** (AI down, the hub's AI budget spent), Submit still goes through, to an admin, never
+  live at once. A person over their own hourly limit is still refused.
+- **"Tell the admins" on a demo hub** goes to that hub's review queue, flagged, and is never published at once.
+- **The flag gets a column** (the migration above). The resident's note goes in the first review turn's `note`.
+- **The preview box stays.** Its Submit runs the check and submits in one request.
+- **Small commits**, one per piece.
+
+**What changed:**
+- **Submit runs the Code of Conduct check** (`draftController.submit`, the one drafts path, so every drafted
+  type).
+  - It claims the draft, then runs the check unless it already ran on exactly this text
+    (`services/codeOfConductCheck.ts`, shared with the old `/assistant/:type/drafts/:id/review`, kept a release
+    for pages already open).
+  - Flagged: 400 `code_of_conduct_flagged` with `findings`, the draft released and kept.
+  - Unavailable: submitted to an admin, answered with `check_unavailable: true`.
+  - `tell_admins: true` (+ `note`) sends flagged text to the queue once, with `coc_flags`. It is never approved at
+    once, not even an admin's own; a revision's flag follows its text. A live edit can't use it
+    (`tell_admins_unavailable`).
+- **Typed errors carry `extra` fields** beside `error`/`code` (BUILD-PLAN "Error responses"). New codes:
+  `code_of_conduct_flagged`, `tell_admins_unavailable`, `draft_changed`.
+- **`CIVIC_COC_FAKE=on`:** the check as a fixed rule for tests (`src/debug/fakeCodeOfConduct.ts`: `[coc-flag]`,
+  `[coc-down]`), refused in production. It is on in CI's API and E2E hubs.
+- **The forms:**
+  - No check button. One `DraftFooter`: slim, outlined secondaries, Submit in the theme's dark primary
+    (`primary-800`). On a phone it still flows at the end (Adam, 2026-09-05).
+  - Submit flushes debounced typing and waits for saves (`useDebouncedFields`, `flow.settle()`).
+  - Findings show under their field (`CocFindings`) and in a list that takes focus, with "Think this is wrong?
+    Tell the admins".
+  - The admin queue marks flagged reviews and lists the findings.
+- **Sticky Save** (`SectionForm`): the Save bar floats while there are unsaved changes; the existing guard warns on
+  leaving.
+- **Back to the list** after Approve or Decline, with a confirmation.
+- **Announcement and meeting-summary pages** are full width and left-aligned.
+- **One Modal** (`components/Modal`, a native `<dialog>`). Every dialog in the hub and the console uses it; the
+  console's lint rule allows that one import.
+- **Zoom allowed:** no `maximum-scale`/`user-scalable=no`, no pinch-blocking script. Fields are 16px on phones.
+- **Unknown API routes** answer 404 `{ error, code: "not_found" }`, not Express's HTML (one catch-all in `app.ts`).
+- **Found on the way:**
+  - Submit could flicker to disabled during a new draft's first save, and a press made while the session was
+    still loading was lost (`useDraftFlow`, `useRequireAuth`).
+  - The review lists read one process per review at once and 500'd on a long queue (now `inChunks`).
+
+**Tests:** see TESTING.md "Submit and save". `npm test` 176 files (2,151 passed); API in hub-token mode 50 files
+(673); the suite 90 passed (was 78); Playwright 55 passed, 2 skipped. CI not yet run (unpushed).
+
+**Open:**
+- Pin the now-slim bar on phones too (it was unpinned for being a quarter of the screen)?
+- Drop the old `/review` route next release.
+- Participation, Admins & board and Mode settings keep their own inline saves.
+- The browser Back button is not caught by the unsaved-changes guard (BrowserRouter has no blocker).
+
+---
+
 ## Plugin conformance: one descriptor per type, one suite, one action path — 2026-10-12
 
 Parts 1 and 2 of the conformance slice, in one session. Reports: `Plugin-Conformance-Session-Report-2026-10-12.md`

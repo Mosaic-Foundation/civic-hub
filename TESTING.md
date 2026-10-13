@@ -47,11 +47,70 @@ supabase stop
 ```
 
 Point the dev server at the local stack rather than at a hosted project
-before running the API or E2E layers. `supabase start` prints the URL and
+before running the API or E2E layers, and start it with `CIVIC_COC_FAKE=on`
+and `CIVIC_POLIS_FAKE=on` (both refused in production): Submit runs the Code
+of Conduct check, and the API, conformance and Playwright layers make it flag
+text (`[coc-flag]`) or be down (`[coc-down]`) through the fake. `supabase start` prints the URL and
 keys to use for `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; everything
 else can stay as it is in `.env.example`. As of 2026-09-22 all 8 API test
 files (68 tests) pass against a stack brought up this way, which is the
 first time that layer has been runnable from a clean checkout.
+
+---
+
+## Submit and save (2026-10-12)
+
+Submit runs the Code of Conduct check; sticky Save; one Modal; zoom allowed;
+unknown API routes answer JSON.
+
+- **The fake check** (`CIVIC_COC_FAKE=on`, `src/debug/fakeCodeOfConduct.ts`)
+  stands in for the AI call only. The hash, the stored result, the submit gate
+  and "tell the admins" are the real ones. Without it, Submit calls the real
+  check (or finds it unavailable with no key), and the flag tests fail with
+  201 where they expect 400.
+  - Tests import the markers from `tests/fixtures/codeOfConduct.ts`.
+  - Playwright specs import them from `src/debug/fakeCodeOfConduct.ts`
+    directly: Playwright's transpiler can't load the fixture's `src/` imports.
+- **The conformance driver submits through the real check.**
+  - `submitDraft(..., { check: "passed" | "flagged" | "unavailable", tellAdmins })`
+    puts the marker in the draft's description. It no longer writes a check
+    result into the row.
+  - The new step-2 tests, per drafted type:
+    - flagged text is refused, and the draft is kept;
+    - "tell the admins" reaches the queue once, flagged, with the note, on a
+      beta and a demo hub;
+    - a check that can't run goes to an admin.
+- **API:**
+  - `tests/api/submitRunsCheck.test.ts`:
+    - an admin's flagged text waits for review;
+    - a clean `tell_admins` is unflagged;
+    - a second press is refused the same way;
+    - a revision's flag is set, then cleared;
+    - the old route still answers.
+  - `tests/api/unknownRoutes.test.ts`: JSON 404 for every method; a real route
+    still answers.
+  - The A4 (`auditLiveExposure`), drafts and sample-refresh tests now prove
+    "checked at Submit" instead of "refused until checked".
+- **Playwright:**
+  - `codeOfConductCheck.spec.ts`:
+    - flagged Submit: refused, kept, shown by the field, then fixed;
+    - "tell the admins";
+    - Escape closes the box and returns focus.
+  - `reviewQueue.spec.ts`: approve and decline land on the list.
+  - `settingsSave.spec.ts`: Save stays in view; leaving asks; Discard.
+  - `ux-polish.spec.ts` "Zoom".
+- **Running the console specs locally** (`handover`, `startPage`,
+  `assistantLimits`): set `CIVIC_API_BASE` to the hub server too. The console
+  helpers default to :3000. The API also needs `CIVIC_UI_BASE_URL` = the UI's
+  origin.
+- **Servers without `--watch`** (the `hub-local-*` / `hub-coc-*` launch
+  configs) run the code they started with. Restart them after a server change.
+
+**Counts (2026-10-12, local):**
+- `npm test` (service role): 176 files, 2,151 passed, 10 skipped, 1 todo.
+- API in hub-token mode: 50 files, 673 passed.
+- The suite: 90 passed, 3 skipped, 1 todo.
+- Playwright: 55 passed, 2 skipped.
 
 ---
 
@@ -88,7 +147,8 @@ what a plugin author needs are in `tests/conformance/README.md`.
   - **The evidence:** in a full run on 2026-10-12, both 502s fell in minutes with pool resets. The settles remove
     two sources, not all of them, so a lone 502 under concurrent writes still means "rerun the file".
   - **Production:** nothing runs DDL there while residents act, so it is not a production risk.
-- **Fixtures for a live proposal or project:** `tests/fixtures/liveProcess.ts` (draft, check, submit, approve).
+- **Fixtures for a live proposal or project:** `tests/fixtures/liveProcess.ts` (draft, submit with the check
+  down so it waits for an admin, approve).
   `POST /proposals` and `POST /projects` are gone.
 - **E2E locally the CI way** needs `CIVIC_E2E_UI_ORIGIN=http://localhost:4173` as well as `CIVIC_E2E_BASE_URL`;
   without it, the console and start-page specs go to :5173.

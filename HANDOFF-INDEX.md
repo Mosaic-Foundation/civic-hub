@@ -52,6 +52,8 @@ numbers below, or just grep the heading.
 | Cutover runbook, dev refresh from a prod dump, pre-switch check | `RUNBOOK-cutover.md`, `scripts/dev-refresh-from-dump.sh`, `scripts/dev-refresh-reseed.ts`, `scripts/check-tenancy.ts` |
 | Leak harness, RLS catalog test | `tests/api/leakHarness.test.ts`, `leakHarnessDb.test.ts`, `rlsCatalog.test.ts`, rules in `tests/fixtures/tenancyCatalog.ts` |
 | Code of Conduct check standing (fields, hash, verdict) | `src/services/codeOfConduct.ts` |
+| Submit runs the check; running it; "tell the admins"; the fake check for tests | `src/controllers/draftController.ts` (`submit`), `src/services/codeOfConductCheck.ts`, `process_reviews.coc_flags` (`20261013000000`), `src/debug/fakeCodeOfConduct.ts` (`CIVIC_COC_FAKE=on`); UI `ui/src/pages/draft/DraftPage.tsx`, `ui/src/components/{DraftFooter,CocFindings}.tsx` |
+| The one modal | `ui/src/components/Modal.tsx` (every dialog in the hub and the console) |
 | Drafts, every kind: store, kinds, controller/router factories, UI page | `src/modules/civic.drafts/`, `src/processes/draftKinds.ts`, `src/controllers/draftController.ts`, `src/routes/draftRoutes.ts`; `ui/src/pages/draft/` |
 | Process writes under concurrency (version check, held events, retry-safe actions, deadline-close claim) | `src/services/processService.ts` (`executeAction`, `closeAtDeadline`), `src/services/actionScope.ts` |
 | Atomic DB functions | `transition_process` (`20260924080000`; expected status/version + action events since `20261011200000`), `cast_ballot` (open-and-before-deadline since `20261011200000`), `reshuffle_ballots`, `claim_vote_key`, `ballot_by_receipt` (`20261010000000`; `cast_vote` retired), called via `src/db/atomic.ts` |

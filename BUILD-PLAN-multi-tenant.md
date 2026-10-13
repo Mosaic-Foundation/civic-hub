@@ -1708,8 +1708,11 @@ show right away, the plugin conformance suite) builds its messages on it.
 - **`ref`** appears on an unexpected error (500) and on 503. The same reference is on the log
   line, so a person can quote it.
 - **Extra fields** are allowed beside these where a caller needs them (`location` on `hub_moved`,
-  `needs_confirmation` on a flagged summary). 429 and 503 send `Retry-After` when the thrower
-  knows it.
+  `needs_confirmation` on a flagged summary, `findings` on `code_of_conduct_flagged`). A typed
+  error carries them as `extra` (Submit and Save, 2026-10-12); they can't replace `error`, `code`
+  or `ref`. 429 and 503 send `Retry-After` when the thrower knows it.
+- **An unmatched API route** answers 404 `{ error, code: "not_found" }` through the same wrapper
+  (one catch-all after every route in `src/app.ts`), not Express's HTML page.
 
 **Status comes from the error's type, never from its text.** The typed errors are in
 `src/errors/index.ts`:
