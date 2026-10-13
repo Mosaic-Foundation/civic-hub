@@ -26,12 +26,15 @@ const OCD = {
   town: `ocd-division/country:us/state:zz/place:${BASE}`,
   county: `ocd-division/country:us/state:zz/county:${BASE}`,
   north: `ocd-division/country:us/state:zz/place:north_${BASE}`,
+  consolidated: `ocd-division/country:us/state:zz/county:metro_${BASE}`,
 };
 const ROWS = [
   [OCD.state, "99", "zz", "state", "Zedland", "Zedland"],
   [OCD.town, `99${tag}1`, "zz", "town", `${Name} town`, `Town of ${Name}, Zedland`],
   [OCD.county, `99${tag}2`, "zz", "county", `${Name} County`, `${Name} County, Zedland`],
   [OCD.north, `99${tag}3`, "zz", "town", `North ${Name} town`, `Town of North ${Name}, Zedland`],
+  // A consolidated city-county (sign-in slice): the county's row, retyped.
+  [OCD.consolidated, `99${tag}4`, "zz", "city_county", `Metro-${Name}`, `City and County of Metro-${Name}, Zedland`],
 ];
 
 let db: pg.Client;
@@ -94,8 +97,20 @@ describe("the reference list in the console", () => {
     expect(ids).toEqual([OCD.town, OCD.north]);
     expect(prefix.body.matches[0]).toMatchObject({ display_name: `Town of ${Name}, Zedland`, census_geoid: `99${tag}1`, hubs: [] });
 
-    const counties = await consoleCall("GET", `/control/jurisdictions?state=zz&type=county&q=${Name}`, { cookie });
+    const counties = await consoleCall("GET", `/control/jurisdictions?state=zz&type=county&q=${Name} County`, { cookie });
     expect(counties.body.matches.map((m: { ocd_id: string }) => m.ocd_id)).toEqual([OCD.county]);
+
+    // A consolidated city-county is a city as well as a county, and has a type of its own.
+    for (const type of ["city", "city_county"]) {
+      const found = await consoleCall("GET", `/control/jurisdictions?state=zz&type=${type}&q=Metro`, { cookie });
+      expect(found.body.matches.map((m: { ocd_id: string }) => m.ocd_id), type).toEqual([OCD.consolidated]);
+      expect(found.body.matches[0].type).toBe("city_county");
+    }
+
+    // The two counties: the plain one, and the consolidated city-county, which
+    // is a county too. Found by a word after the hyphen as well.
+    const metro = await consoleCall("GET", `/control/jurisdictions?state=zz&type=county&q=${Name}`, { cookie });
+    expect(metro.body.matches.map((m: { ocd_id: string }) => m.ocd_id).sort()).toEqual([OCD.county, OCD.consolidated].sort());
 
     const bad = await consoleCall("GET", "/control/jurisdictions?state=zz&type=parish&q=x", { cookie });
     expect(bad.status).toBe(400);

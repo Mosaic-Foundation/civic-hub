@@ -13,6 +13,7 @@ import { hubSlugRejectionReason } from "../models/hub.js";
 import {
   REFERENCE_JURISDICTION_TYPES,
   isReferenceJurisdictionType,
+  searchTypesFor,
   type ReferenceJurisdictionType,
 } from "../shared/jurisdictionType.js";
 import { baseName, slugCandidates } from "../shared/jurisdictionNames.js";
@@ -96,10 +97,11 @@ export async function searchJurisdictions(params: {
   }
   const q = params.q.trim().replace(/[(),]/g, " ").replace(/\s+/g, " ").slice(0, 80);
   const limit = Math.min(Math.max(params.limit ?? 20, 1), 50);
-  let query = getDb().from("jurisdictions").select(COLUMNS).eq("state", state).eq("type", params.type);
+  let query = getDb().from("jurisdictions").select(COLUMNS).eq("state", state).in("type", searchTypesFor(params.type));
   if (q) {
     const lit = likeLiteral(q);
-    query = query.or(`official_name.ilike.${lit}%,official_name.ilike.% ${lit}%`);
+    // A word anywhere it starts: "Davidson" finds "Nashville-Davidson".
+    query = query.or(`official_name.ilike.${lit}%,official_name.ilike.% ${lit}%,official_name.ilike.%-${lit}%`);
   }
   const { data, error } = await query.order("official_name", { ascending: true }).limit(q ? 200 : limit);
   if (error) throw new Error(`jurisdictions read failed: ${error.message}`);

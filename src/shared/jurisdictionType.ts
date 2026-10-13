@@ -39,11 +39,16 @@ export type ReferenceJurisdictionType =
   | "village"
   | "borough"
   | "cdp"
-  | "school_district";
+  | "school_district"
+  // A consolidated city-county government (sign-in slice, 2026-10-14): one
+  // row for the one government. Which places are consolidated is data
+  // (config/jurisdictions/consolidated.csv), never code.
+  | "city_county";
 
 export const REFERENCE_JURISDICTION_TYPES: ReadonlyArray<{ id: ReferenceJurisdictionType; label: string }> = [
   { id: "county", label: "County" },
   { id: "city", label: "City" },
+  { id: "city_county", label: "City-county (consolidated)" },
   { id: "town", label: "Town" },
   { id: "village", label: "Village" },
   { id: "borough", label: "Borough" },
@@ -58,7 +63,20 @@ export function isReferenceJurisdictionType(value: unknown): value is ReferenceJ
 
 /** A reference row's type as a hub's `identity.jurisdiction_type`. */
 export function hubTypeFor(type: ReferenceJurisdictionType): JurisdictionType {
-  return type === "cdp" || type === "state" ? "other" : type;
+  if (type === "cdp" || type === "state") return "other";
+  // Most consolidated governments are led by a council; the operator or the
+  // creator corrects the pre-filled name where it is a Board of Supervisors.
+  if (type === "city_county") return "city";
+  return type;
+}
+
+/**
+ * The reference types a search for `type` also covers: a consolidated
+ * city-county is both a city and a county, so someone looking for either
+ * finds it.
+ */
+export function searchTypesFor(type: ReferenceJurisdictionType): ReferenceJurisdictionType[] {
+  return type === "city" || type === "county" ? [type, "city_county"] : [type];
 }
 
 /** `ocd-division/country:us/state:va/...` → "va"; null when there is no state segment. */

@@ -10,6 +10,7 @@ import {
   defaultGoverningBody,
   hubTypeFor,
   isReferenceJurisdictionType,
+  searchTypesFor,
   stateOfOcdId,
 } from "../../src/shared/jurisdictionType.js";
 import { postalAddressFrom } from "../../src/services/hubSettings.js";
@@ -226,6 +227,35 @@ describe("the shared documents, by hub kind", () => {
         .replace(/\{\{#(issue|organization|other)\}\}[\s\S]*?\{\{\/\1\}\}/g, "")
         .replace(/\{\{[#^]?\/?(place|issue|organization|other)\}\}/g, "");
       expect(out, f).toBe(markersOnly);
+    }
+  });
+});
+
+describe("consolidated city-counties (sign-in slice, 2026-10-14)", () => {
+  it("are found as cities and as counties, and have a type of their own", () => {
+    expect(searchTypesFor("city")).toEqual(["city", "city_county"]);
+    expect(searchTypesFor("county")).toEqual(["county", "city_county"]);
+    expect(searchTypesFor("city_county")).toEqual(["city_county"]);
+    expect(searchTypesFor("town")).toEqual(["town"]);
+    expect(isReferenceJurisdictionType("city_county")).toBe(true);
+  });
+
+  it("keep the county's code, so a hub already on the county publishes the same one", () => {
+    const ocd_id = "ocd-division/country:us/state:zz/county:metro";
+    expect(jurisdictionCodeFor({ ocd_id, type: "city_county" })).toBe(jurisdictionCodeFor({ ocd_id, type: "county" }));
+  });
+
+  it("make a city hub by default", () => {
+    expect(hubTypeFor("city_county")).toBe("city");
+  });
+
+  it("are listed in data, one row per county GEOID, each with its evidence", () => {
+    const rows = parseCsvObjects(readFileSync(join(import.meta.dirname, "../../config/jurisdictions/consolidated.csv"), "utf8"));
+    expect(rows.length).toBeGreaterThan(20);
+    expect(new Set(rows.map((r) => r.county_geoid)).size).toBe(rows.length);
+    for (const r of rows) {
+      expect(r.county_geoid).toMatch(/^\d{5}$/);
+      expect(r.government_name && r.official_name && r.evidence, r.county_geoid).toBeTruthy();
     }
   });
 });

@@ -43,13 +43,17 @@ f1297a1d2dbe1f1b691a9ebeb0cff3808228a466d95b3d13336a4e55a9f53388  country-us.csv
 ## The built list
 
 `us-jurisdictions.csv`: **38,858 rows**, sha256
-`d9e1d109eb91458cddfbb5b758b6078e77fa717088c280ff9abe8ae32a15a9ff`
-(in `us-jurisdictions.sha256`; the loader refuses any other file).
+`4e607b8b1ddd559e0aef4993d76d92ba2568e0a6bb6b14c1d7647de0cb4f0fab`
+(in `us-jurisdictions.sha256`; the loader refuses any other file). Rebuilt
+2026-10-14 (sign-in slice) from the same source files, adding the
+consolidated city-counties below; the build before that, `d9e1d109…`, is
+reproduced exactly by the build without `consolidated.csv`.
 
 | type | rows |
 |---|---|
 | state (50 + DC) | 51 |
-| county (counties, parishes) | 3,062 |
+| county (counties, parishes) | 3,034 |
+| city_county (consolidated city-county governments, below) | 28 |
 | borough (Alaska's, and PA/NJ borough places) | 1,231 |
 | city | 10,158 |
 | town (places, and New England / NY / WI town subdivisions) | 7,650 |
@@ -79,3 +83,39 @@ build would bring it in; Puerto Rico's municipios; Alaska's census areas,
 Connecticut's planning regions and the independent cities' county-file rows
 (their place rows are in); county subdivisions that are not active towns;
 inactive, fictitious and "(balance)" places.
+
+## Consolidated city-counties (2026-10-14)
+
+`consolidated.csv` (committed, hand-checked) lists the consolidated city-county
+governments the picker offers as one place: San Francisco, Philadelphia,
+Denver, Honolulu, Nashville-Davidson, Louisville-Jefferson,
+Indianapolis-Marion and 21 more. The build turns each county's row into a
+`city_county` row named as the government names itself; the county's OCD id
+and GEOID are kept, so a hub already linked to the county is unchanged and its
+jurisdiction code stays the same. The picker finds these under City and under
+County, and under their own type.
+
+Each row says why it is there (the `evidence` column), from the two source
+files above:
+- the OCD list marks the city's id as an alias (`sameAs`) of the county's, with
+  a note "coterminous and consolidated gov" (San Francisco, Denver, Broomfield,
+  Honolulu, Columbus-Muscogee, Lexington-Fayette, New Orleans, Nantucket,
+  Anaconda-Deer Lodge, Lynchburg-Moore);
+- the Census place file lists the consolidated government itself: a
+  "(balance)" row (Nashville-Davidson, Louisville-Jefferson, Indianapolis,
+  Athens-Clarke, Augusta-Richmond, Butte-Silver Bow, Greeley County), a
+  unified or metropolitan government LSAD (the three small Georgia unified
+  governments, Macon-Bibb, Hartsville-Trousdale), or a city with no
+  government of its own or one partly consolidated (Houma, Baton Rouge,
+  Lafayette);
+- three are **hand-added**, flagged by neither file: Philadelphia (1854),
+  Jacksonville-Duval (1968) and Kansas City-Wyandotte (1997).
+
+Left out on purpose: New York City (five counties, not one), Alaska's city-
+boroughs (already single `borough` rows), Virginia's and others' independent
+cities (already `city` rows), and Echols County-Statenville, GA, which neither
+file confirms.
+
+After a change to the list, the release loads it: `scripts/release.sh` sees the
+checksum differ from the one live and runs the loader (RUNBOOK-release.md).
+

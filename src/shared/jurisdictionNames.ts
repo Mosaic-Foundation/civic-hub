@@ -15,6 +15,8 @@ const TYPE_SUFFIX: Record<ReferenceJurisdictionType, RegExp> = {
   borough: /\s+(city and borough|borough|municipality)$/i,
   cdp: /\s+cdp$/i,
   school_district: /$^/,
+  // Named from config/jurisdictions/consolidated.csv, without a type word.
+  city_county: /$^/,
 };
 
 /** The word a type adds to a slug: floyd-town, floyd-county. */
@@ -27,6 +29,7 @@ const TYPE_WORD: Record<ReferenceJurisdictionType, string> = {
   borough: "borough",
   cdp: "cdp",
   school_district: "schools",
+  city_county: "city",
 };
 
 export function slugify(s: string): string {

@@ -38,6 +38,8 @@
  *   town             county subdivisions named "… town", status A (New
  *                    England, New York and Wisconsin towns are governments)
  *   school_district  unified, elementary and secondary school districts
+ *   city_county      a consolidated city-county government: the county's row,
+ *                    retyped and renamed from config/jurisdictions/consolidated.csv
  * OUT: census areas, independent cities in the counties file (their place
  * row covers them), consolidated/metro governments' "(balance)" rows,
  * townships, territories, and anything inactive or fictitious.
@@ -58,11 +60,12 @@ const ROOT = resolve(import.meta.dirname, "..");
 const SRC = resolve(ROOT, "config/jurisdictions/sources");
 const OUT = resolve(ROOT, "config/jurisdictions/us-jurisdictions.csv");
 const SUM = resolve(ROOT, "config/jurisdictions/us-jurisdictions.sha256");
+const CONSOLIDATED = resolve(ROOT, "config/jurisdictions/consolidated.csv");
 const YEAR = "2026";
 const REPORT = process.argv.includes("--report");
 
 type Kind = "state" | "county" | "place" | "cousub" | "school_district";
-type RefType = "state" | "county" | "city" | "town" | "village" | "borough" | "cdp" | "school_district";
+type RefType = "state" | "county" | "city" | "town" | "village" | "borough" | "cdp" | "school_district" | "city_county";
 
 interface Out {
   ocd_id: string;
@@ -247,6 +250,20 @@ function main(): void {
   for (const o of out) {
     if (seen.has(o.ocd_id)) dupes++;
     else seen.set(o.ocd_id, o);
+  }
+  // Consolidated city-counties (sign-in slice, Adam 2026-10-13): one row for
+  // the one government, chosen as a single place. The county's row becomes
+  // it (its OCD id kept, so a hub already linked to the county is unchanged),
+  // named as the government names itself. The list and the evidence for each
+  // entry are data: config/jurisdictions/consolidated.csv.
+  const consolidated = parseCsvObjects(readFileSync(CONSOLIDATED, "utf8"));
+  const byGeoid = new Map([...seen.values()].filter((o) => o.type === "county").map((o) => [o.census_geoid, o]));
+  for (const c of consolidated) {
+    const row = byGeoid.get(c.county_geoid);
+    if (!row) throw new Error(`consolidated.csv: no county row with GEOID ${c.county_geoid} (${c.government_name})`);
+    row.type = "city_county";
+    row.official_name = c.official_name;
+    row.display_name = `${c.government_name}, ${STATE_NAMES.get(row.state)}`;
   }
   const rows = [...seen.values()].sort((a, b) => a.ocd_id.localeCompare(b.ocd_id));
   const bad = rows.filter((r) => /�/.test(r.official_name));

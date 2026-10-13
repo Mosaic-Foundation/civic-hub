@@ -32,7 +32,7 @@ const ROOT = resolve(import.meta.dirname, "..");
 const FILE = resolve(ROOT, "config/jurisdictions/us-jurisdictions.csv");
 const SUM = resolve(ROOT, "config/jurisdictions/us-jurisdictions.sha256");
 const COLUMNS = ["ocd_id", "census_geoid", "state", "type", "official_name", "display_name"] as const;
-const TYPES = new Set(["state", "county", "city", "town", "village", "borough", "cdp", "school_district"]);
+const TYPES = new Set(["state", "county", "city", "town", "village", "borough", "cdp", "school_district", "city_county"]);
 
 const argv = process.argv.slice(2);
 const DRY = argv.includes("--dry-run");
