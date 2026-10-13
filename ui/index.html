@@ -3,15 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Slice 11 follow-up: keep maximum-scale=1 + user-scalable=no
-         even though iOS often ignores them; the JS zoom block in
-         main.tsx is the real load-bearing piece. viewport-fit=cover
-         was tried and didn't address the iOS whitespace gap, so it's
-         removed pending Web Inspector diagnostics. -->
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
-    />
+    <!-- People may zoom (WCAG 1.4.4; Submit and Save, 2026-10-12): no
+         maximum-scale, no user-scalable=no, and no script that cancels a
+         pinch. Form fields are at least 16px on a phone (index.css), which
+         is what keeps iOS from zooming in on focus. viewport-fit=cover was
+         tried and didn't address the iOS whitespace gap. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#fafaf7" />
     <!-- Slice 11 follow-up: pre-CSS reset that loads before any
          component stylesheet. Belt-and-braces against user-agent

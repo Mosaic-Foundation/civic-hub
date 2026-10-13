@@ -69,3 +69,13 @@ a {
     scroll-behavior: auto !important;
   }
 }
+
+/* iOS zooms into a focused field whose text is under 16px. Pinch zoom stays
+   allowed (index.html); this keeps a tap on a field from zooming the page. */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}

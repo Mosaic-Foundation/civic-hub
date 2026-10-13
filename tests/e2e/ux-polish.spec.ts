@@ -126,3 +126,19 @@ test.describe("Hub config strings", () => {
     expect(title).toMatch(/^Welcome · .+$/);
   });
 });
+
+test.describe("Zoom", () => {
+  // WCAG 1.4.4 (Submit and Save, 2026-10-12): nothing stops a pinch zoom.
+  test("the viewport allows zoom, and a pinch is not cancelled", async ({ page }) => {
+    const viewport = await page.locator('meta[name="viewport"]').getAttribute("content");
+    expect(viewport).not.toMatch(/maximum-scale|user-scalable\s*=\s*no/i);
+    // A two-finger touchmove is not prevented by the page.
+    const prevented = await page.evaluate(() => {
+      const e = new Event("touchmove", { cancelable: true, bubbles: true });
+      Object.defineProperty(e, "touches", { value: [{}, {}] });
+      document.body.dispatchEvent(e);
+      return e.defaultPrevented;
+    });
+    expect(prevented).toBe(false);
+  });
+});
