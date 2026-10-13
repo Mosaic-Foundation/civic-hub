@@ -138,6 +138,13 @@ describe("the admin invite (R38)", () => {
     expect(invite.html).toContain(`href="${PLATFORM_SETUP_GUIDE_URL}"`);
   });
 
+  it("puts the setup guide in the first paragraph, not at the end", () => {
+    const firstParagraph = invite.html.split("\n").find((l) => l.startsWith("<p>You've been made"))!;
+    expect(firstParagraph).toContain(`href="${PLATFORM_SETUP_GUIDE_URL}"`);
+    expect(invite.text.split("\n\n")[1]).toContain(PLATFORM_SETUP_GUIDE_URL);
+    expect(invite.html.split(PLATFORM_SETUP_GUIDE_URL).length - 1).toBe(1);
+  });
+
   it("says what the mode means", () => {
     expect(invite.text).toContain("demo");
     expect(renderAdminInvite({ hubName: "H", hubUrl: "https://h", mode: "live" }).text).toContain("anyone can sign in");

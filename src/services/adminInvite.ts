@@ -52,21 +52,19 @@ export function renderAdminInvite(input: AdminInviteInput): { subject: string; t
   const text = [
     "Hello,",
     "",
-    `You've been made an admin of ${hubName}, at ${hubUrl}.`,
+    `You've been made an admin of ${hubName}, at ${hubUrl}. The guide "Set up your hub" walks through each step: ${PLATFORM_SETUP_GUIDE_URL}`,
     "",
     "Your first steps:",
     ...steps.map((s, i) => `${i + 1}. ${s}`),
     "",
     MODE_LINE[input.mode],
     "",
-    `The guide "Set up your hub" walks through each step: ${PLATFORM_SETUP_GUIDE_URL}`,
-    "",
     `Questions? Write to ${PLATFORM_CONTACT_EMAIL}.`,
   ].join("\n");
   const link = (href: string, label = href) => `<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>`;
   const html = [
     `<p>Hello,</p>`,
-    `<p>You've been made an admin of <strong>${escapeHtml(hubName)}</strong>, at ${link(hubUrl)}.</p>`,
+    `<p>You've been made an admin of <strong>${escapeHtml(hubName)}</strong>, at ${link(hubUrl)}. The guide ${link(PLATFORM_SETUP_GUIDE_URL, "Set up your hub")} walks through each step.</p>`,
     `<p>Your first steps:</p>`,
     `<ol>`,
     `<li>Go to ${link(hubUrl)} and sign in with this email address. A code comes to you by email.</li>`,
@@ -74,7 +72,6 @@ export function renderAdminInvite(input: AdminInviteInput): { subject: string; t
     `<li>Under Admins &amp; board, add anyone who will run the hub with you. They get an email like this one.</li>`,
     `</ol>`,
     `<p>${escapeHtml(MODE_LINE[input.mode])}</p>`,
-    `<p>The guide ${link(PLATFORM_SETUP_GUIDE_URL, "Set up your hub")} walks through each step.</p>`,
     `<p>Questions? Write to ${link(`mailto:${PLATFORM_CONTACT_EMAIL}`, PLATFORM_CONTACT_EMAIL)}.</p>`,
   ].join("\n");
   return { subject, text, html };
