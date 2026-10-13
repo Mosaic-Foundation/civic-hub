@@ -14,8 +14,12 @@
 const KEY_PREFIX = "civic:share-prompt:";
 
 /** How the bar reveals the callout.
- *  - "scroll": bring the bar into view now and show it — the person just
- *    acted once (voted, endorsed, backed) and is done.
+ *  - "scroll" (the name is historical): show it now. The bar in view shows
+ *    its callout; a bar off screen hands the moment to the share banner,
+ *    which appears at the bottom of the screen for 5 seconds. The page never
+ *    moves on its own (Adam, 2026-10-13: voting jumped the page to the top,
+ *    away from the results and the receipt). For a person who just acted
+ *    once (voted, endorsed, backed) and is done.
  *  - "when-visible": arm it, and show it the next time the bar scrolls into
  *    view on its own. For conversations, where people vote on statement
  *    after statement: yanking them up to the bar after the third vote would
@@ -79,5 +83,34 @@ export function subscribeShareMoments(processId: string, listener: Listener): ()
   return () => {
     set?.delete(listener);
     if (set && set.size === 0) listeners.delete(processId);
+  };
+}
+
+// --- The share banner (2026-10-13) ------------------------------------------
+//
+// One banner for the whole hub, mounted once in the app shell
+// (components/ShareBanner.tsx), not inside any process type's UI: a page
+// announces a moment from its own engagement action, and when that page's
+// share bar is off screen the bar hands the moment here instead of
+// scrolling to it.
+
+export interface ShareBannerRequest {
+  text: string;
+  /** What the banner's Share button shares. */
+  title: string;
+  url: string;
+}
+
+type BannerListener = (req: ShareBannerRequest) => void;
+const bannerListeners = new Set<BannerListener>();
+
+export function showShareBanner(req: ShareBannerRequest): void {
+  bannerListeners.forEach((l) => l(req));
+}
+
+export function subscribeShareBanner(listener: BannerListener): () => void {
+  bannerListeners.add(listener);
+  return () => {
+    bannerListeners.delete(listener);
   };
 }

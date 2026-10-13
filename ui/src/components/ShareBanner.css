@@ -1,0 +1,70 @@
+/* The share banner: fixed to the bottom of the screen, so it never pushes
+   or moves the page. Small, one line where it fits. */
+.share-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--space-md, 1rem) + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm, 0.5rem);
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 0.55rem 0.5rem 0.55rem 0.9rem;
+  border-radius: var(--radius-md, 10px);
+  background: var(--pill-vote-fg, #1e3a5f);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  font-size: var(--font-size-sm, 0.9rem);
+  line-height: 1.35;
+  animation: share-banner-in 0.2s ease-out;
+}
+
+.share-banner-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.share-banner-btn {
+  flex: none;
+  border: none;
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  background: #fff;
+  color: var(--pill-vote-fg, #1e3a5f);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.share-banner-close {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.share-banner-btn:focus-visible,
+.share-banner-close:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+@keyframes share-banner-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 0.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-banner {
+    animation: none;
+  }
+}

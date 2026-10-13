@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from "react
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import hub from "./config/hub";
 import { pluginEnabled, whenPlugin } from "./config/plugins";
+import ShareBanner from "./components/ShareBanner";
 import { useHubConfig } from "./config/HubConfigContext";
 import { BETA_PUBLIC_PATHS } from "./config/betaPublicPaths";
 import Nav from "./components/Nav";
@@ -155,6 +156,9 @@ function AppContent() {
       {pluginEnabled("wordcloud") && <WordcloudTeaser />}
       <BannerSlot />
       <FeedVotesTabs />
+
+      {/* One share banner for the hub: a page's share moment, when its bar is off screen. */}
+      <ShareBanner />
 
       <main className="page-shell">
         <Routes>

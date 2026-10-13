@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   retireShareMoment,
   shareMomentRetired,
+  showShareBanner,
   subscribeShareMoments,
   type ShareMoment,
 } from "./shareMomentBus";
@@ -44,13 +45,17 @@ export default function ShareButton({ title, url, nudge, processId }: ShareButto
   const [callout, setCallout] = useState<string | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<number | undefined>(undefined);
+  // What the banner shares, read when a moment fires (after the first render).
+  const titleRef = useRef(title);
+  const urlRef = useRef("");
 
   // The callout: subscribed by process id for moments announced later (a
   // vote cast, a proposal endorsed), and shown at once for a nudge passed on
   // mount. Either way it is retired the moment it shows, so it is once per
   // process per browser; and if the bar is off screen — the vote page's bar
-  // is several screens above the ballot — the bar is brought into view
-  // first, because a bubble pointing at nothing is noise.
+  // is several screens above the ballot — the moment goes to the share
+  // banner at the bottom of the screen instead, because a bubble pointing at
+  // nothing is noise and the page must never move on its own (2026-10-13).
   const momentId = processId ?? nudge?.processId;
   const nudgeText = nudge?.processId === momentId ? nudge?.text : undefined;
   useEffect(() => {
@@ -91,9 +96,8 @@ export default function ShareButton({ title, url, nudge, processId }: ShareButto
         observer.observe(el);
         return;
       }
-      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
-      present(text);
+      retireShareMoment(momentId);
+      showShareBanner({ text, title: titleRef.current, url: urlRef.current });
     };
     const unsubscribe = subscribeShareMoments(momentId, show);
     if (nudgeText) show({ text: nudgeText, reveal: "scroll" });
@@ -111,6 +115,10 @@ export default function ShareButton({ title, url, nudge, processId }: ShareButto
     (typeof window !== "undefined"
       ? `${window.location.origin}${window.location.pathname}${window.location.search}`
       : "");
+  useEffect(() => {
+    titleRef.current = title;
+    urlRef.current = fullUrl;
+  }, [title, fullUrl]);
 
   const hasNativeShare =
     typeof navigator !== "undefined" &&
