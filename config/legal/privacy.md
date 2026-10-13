@@ -1,7 +1,7 @@
 # Privacy Policy
 
-*Last updated: 2026-04-24*
-*Version: 1.2*
+*Last updated: 2026-10-14*
+*Version: 1.3*
 
 {{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US privacy law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US privacy law{{/place}} before {THE_HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.{{/draft}}
 
@@ -43,9 +43,14 @@ We try to collect only what's needed to run the Hub. Specifically:
 {{#place}}- Your self-affirmed claim of {PLACE} residency. We do not verify this against external records.
 {{/place}}{{^place}}{{/place}}
 **When you participate:**
-- Your votes on open civic issues, linked to your account.
+- That you took part in a vote, and when, linked to your account, so that each person votes once.
+- Your ballot, kept apart from your account: your choice and a receipt code. The receipt code is stored with the ballot, never with you, so no record links you or your email address to a choice. Ballots carry no time and are kept in shuffled order, so they can't be matched to voters by when or in what order they were cast.
 - Any comments you submit, linked to your account.
 - The timestamp of each action you take.
+
+**On your device, when you vote:**
+- Your browser keeps your receipt code, a key that lets you change your vote while it is open, the choice you made and the day, for each vote, under your account on that browser. This stays on your device; we never see the choice from it. Signing out keeps it, so you can still change your vote after signing back in on the same browser. Clearing your browser's data removes it: your vote still counts, but it can no longer be changed from there.
+- If you download your receipt, the file has the code, the vote's name and the date, never your choice.
 
 **When you browse the Hub:**
 - Standard server logs — IP address, browser type, pages requested, referrer, timestamp. Logs are retained for 90 days, then deleted.
@@ -81,6 +86,7 @@ We do not use your information for any other purpose without first telling you a
 
 **Public (visible to anyone, with or without an account):**
 - The *aggregate* totals of votes you participate in. Example: "89 {{#place}}residents{{/place}}{{^place}}participants{{/place}} voted; 52 in favor, 37 opposed."
+- The vote log of a closed vote: every ballot's receipt code, with no names. On a vote set to "Show the choice", each code is listed with the choice it recorded, so anyone holding your code can see how that ballot was cast; keep your code private. On a vote set to "Counted only", the log lists the codes alone, and a code shows only that its ballot was counted.
 - Comments you submit, displayed alongside the civic process they belong to. Comments are publicly attributed to the name you choose on your profile, or pseudonymously when the process is configured for pseudonymous participation. We will document which mode is in use on each vote's page.
 - Vote results and meeting summaries that an admin has reviewed and approved.
 
@@ -105,10 +111,11 @@ If the Hub is ever acquired, transferred, or wound down, we'll notify you by ema
 ## How long we keep your data
 
 - **Account data (email, residency claim)** — as long as your account is active, plus one year after deletion to honor account-recovery requests and to comply with legal obligations.
-- **Votes and comments** — retained indefinitely as part of the public civic record. Deleting your account removes your name from these entries but does not remove the entries themselves (they become attributed to "former participant"). If you want your vote or comment fully removed, contact us and we'll evaluate the request.
+- **Ballots** — retained indefinitely as part of the count. A ballot never carries your name, so deleting your account does not change it. The record that you took part in a vote stays after you delete your account, without your name.
+- **Comments** — retained indefinitely as part of the public civic record. Deleting your account removes your name from these entries but does not remove the entries themselves (they become attributed to "former participant"). If you want your comment fully removed, contact us and we'll evaluate the request.
 - **Server logs** — 90 days, then deleted.
-- **Email verification codes** — less than 24 hours.
-- **Session tokens** — deleted when you log out or after 30 days of inactivity.
+- **Email verification codes** — stored only as a scrambled fingerprint. Each works once, for ten minutes, and is deleted when used.
+- **Session tokens** — stored only as a scrambled fingerprint, and deleted when you log out. Otherwise a session ends after 7 days, or 90 days if you chose "Keep me signed in".
 
 ## Your rights
 
