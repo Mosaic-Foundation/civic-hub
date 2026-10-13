@@ -4,6 +4,49 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Vote pages fixes: no scroll, receipt box, results bars, check page, five small bugs — 2026-10-13
+
+Twelve commits on `multi-tenant` (`d581b02`..this entry). **No migrations, no new database functions, no new env
+vars.** Report: `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Vote-Pages-Fixes-Session-Report-2026-10-13.md`.
+
+**Built (Adam's dev walk of the Actions slice):**
+- **Voting never moves the page.** The share bar no longer scrolls itself into view. If the bar is off screen, a
+  moment goes to one **share banner** for the whole hub: `ShareBanner.tsx`, in the app shell, shown for 5 s with
+  Share and ×. Each page still fires the moment from its own engagement action. The vote panel also holds the
+  ballot's place on the screen for 2 s after a vote, because the comment field above it folds away and Safari may not
+  anchor.
+- **The receipt box:** "Download receipt (PDF)" with the code beside it, "Check it" below, the privacy line last; the
+  same box open and closed. Codes wrap at hyphens (`ReceiptCode.tsx`).
+- **One results layout** (`ResultBars.tsx`) for the live panel and the results page. Dev's CSS already had labels above
+  the bars (`ce44157`), so Adam's narrow column was most likely a page loaded before that deploy.
+- **The check page:** a code column as wide as a code; on a phone, the code over the vote. Check is grey after a check
+  until the code changes.
+- **Blank option fields are dropped** (`filledOptions`), at Submit and at an admin's create. A vote needs two filled
+  options; "Every option needs text" is gone.
+- **The public brief's delivery line.** It was not lost in `46dfcb0`: `/brief/:id` has carried `sent_to` since
+  `181bf3f`. Athens is a demo hub, so the email was held back. The public model now adds `addressed_to` and
+  `not_sent_because`: "Addressed to Test BoS on … (not emailed: this hub is in demo mode)." Never an address.
+- **New hubs: endorsement threshold 0.** `createHub()` writes it. The code's fallback stays 5, so existing hubs are
+  unchanged. Today's default was 5.
+- **The hourly close covers every type with a deadline.** It is `closeAllExpired`, run per type whose plugin is on.
+  The job id and path stay `vote_close`, now with `plugin: null`; reshuffling still needs Votes on.
+- **A conversation takes its regenerated summary once the new brief is published** (or approved, if it was
+  regenerated before). `regenerateBrief` returns `{ content, source_state }`. The old values are kept in
+  `brief_revisions`, and the conversation emits `civic.process.updated`.
+
+**Adam's decisions (2026-10-13):** the honest "Addressed to" line; existing hubs keep their threshold; write the
+summary back; a 5-second banner that is not baked into plugins.
+
+**Tests:** TESTING.md → Vote pages fixes. Local runs are green: `npm test`, API in both modes (one known PostgREST
+flake, green on rerun), conformance 96, Playwright 96, smoke 9 of 9.
+
+**Open:**
+- Check on a real iPhone: voting doesn't jump, and the receipt row.
+- The smoke hub was made before this slice, so its threshold is 5. The smoke vote test uses an admin's vote for that
+  reason.
+
+---
+
 ## Release tooling: one-command release, dev smoke job — 2026-10-13
 
 Seven commits on `multi-tenant` (`0e35057`..this entry), not pushed. **No migrations, nothing in `src/` or `ui/src/`.**

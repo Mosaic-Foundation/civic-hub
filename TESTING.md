@@ -67,16 +67,19 @@ first time that layer has been runnable from a clean checkout.
 A fourth layer: `tests/smoke/`, Playwright against the **live dev deployment**, after every dev deploy. It replaces
 the browser half of the dev checklist Adam ran by hand after each release (RUNBOOK-release.md → Dev).
 
-- **What it checks** (`dev.smoke.spec.ts`, one serial group, 8 tests):
+- **What it checks** (`dev.smoke.spec.ts`, one serial group, 9 tests):
   - `/api/health` is ok with no schema gaps, on the deployed commit; an unknown `POST /api/…` answers JSON 404;
   - a resident and an admin are signed in;
-  - a clean vote on a beta hub waits in the admins' queue;
+  - a clean vote on a beta hub waits in the admins' queue (an approval vote with an empty extra option, which must
+    not block Submit);
   - a flagged draft is refused with the draft kept, and "Tell the admins" reaches the queue marked "Flagged by the
     check";
   - approve and decline each land on the list with their confirmation;
   - the Save bar in admin Settings → Copy stays in view, and leaving asks first (nothing is saved);
   - a drafting form at 375px: the slim header, and the bar steps aside while a field has focus;
-  - Edit & resubmit after an admin requests changes brings back the same review item.
+  - Edit & resubmit after an admin requests changes brings back the same review item;
+  - a ballot cast at 375 px on an open vote an admin made: the page holds still, the share banner goes by itself, the
+    receipt box has the code beside the download button (since 2026-10-13, vote pages fixes).
 - **Where it runs:** only on the dedicated smoke hub, which must be in beta and have a slug starting with `smoke`. Sessions are
   minted straight into the dev database with its service-role key (Adam's decision, 2026-10-13: no test-only
   sign-in route in `src/`). `tests/smoke/devStack.ts` refuses the production project, any other hub, a deployment
@@ -112,6 +115,51 @@ cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && CIVIC_SMOKE_BASE_URL
 
 Green: **8 of 8 (2026-10-13)**: local stack, 8.7 s; and **live dev, 52 s** (Smoke run 38434395815 on `36ea87a`),
 the real Code of Conduct check flagging the test text, and cleanup leaving no open review or session.
+
+---
+
+## Vote pages fixes (2026-10-13)
+
+No migration. Locally, run Playwright against a **preview build** (as CI does): the Vite dev server calls the API
+cross-origin, and the specs' `X-Forwarded-For` header fails CORS there, so every page looks signed out. Build the UI,
+serve it with `CIVIC_PREVIEW_API=http://localhost:3000 npx vite preview --port 4173` in `ui/`, then run with
+`CIVIC_E2E_BASE_URL=http://localhost:4173 CIVIC_E2E_UI_ORIGIN=http://localhost:4173`. Rebuild after each UI change.
+
+- **Playwright, `votePages.spec.ts`** (each at 1280 and 375 px):
+  - voting doesn't move the page: the ballot stays where it was on the screen, with scroll anchoring off as Safari
+    may have it; the share nudge (banner or the bar's callout) shows and goes by itself;
+  - the receipt box, open and closed: the code to the right of the download button on its row, Check it below, the
+    privacy line last, at most three lines of code;
+  - the check page: codes at most two lines and wider than 120 px, stacked over the vote on a phone, beside it on a
+    desktop; Check grey after a check, live for another code;
+  - a blank third option doesn't block Submit; one filled option says two are needed.
+- **Playwright, updated:** `yourVote.spec.ts` (the label takes the row but its count; `.result-bar-*` classes),
+  `actions.spec.ts` (class names), `voteReceipt.spec.ts` (the link is "Check it").
+- **API:**
+  - `voteOptions.test.ts`: blank options dropped at Submit and at an admin's create; one filled option refused at
+    Submit and the draft kept;
+  - `hubCreatedReads.test.ts`: the public brief carries the recipients' names, the sent and approved dates, the
+    held-back names and reason, and nothing shaped like an email address;
+  - `heldBackAndQueues.test.ts`: an approval on the demo hub publishes `addressed_to` and the reason;
+  - `briefRegenerate.test.ts`: a conversation takes its regenerated summary when the new brief is published (or, if
+    regenerated before, when it is approved), keeps the old one, and emits one `civic.process.updated`;
+  - `control.test.ts`: a new hub starts with `plugin.vote.support_threshold` = 0;
+  - `pluginToggles.test.ts`: the hourly close leaves a switched-off type open instead of skipping the hub.
+- **Conformance:** step 5 adds "the hourly job closes it with nobody reading it" for every type with a deadline.
+- **Unit:** `jobRegistry.test.ts` (the deadline close belongs to no plugin).
+- **Smoke** (9 tests): the clean vote is an approval vote with an empty extra option; a new test votes at 375 px on an
+  admin's open vote (the page holds still, the banner goes, the receipt box layout). Local: 9 of 9 in 15.5 s.
+
+**Counts (2026-10-13, local):**
+- `npm test` (lint, unit and API, service role): 184 files, 2,199 passed, 10 skipped, 1 todo.
+- API with minted hub tokens: 56 files, 711 passed on the full run with one 500 in `auditConcurrency.test.ts`
+  (PostgREST's "invalid response from the upstream server", the pool-reset flake noted below); the file then passed
+  10 of 10.
+- Unit: 128 files, 1,487 passed.
+- The conformance suite: 96 passed, 3 skipped, 1 todo (93 before, plus the hourly close for each of the three types
+  with a deadline).
+- Playwright (preview build): 96 passed, 2 skipped. `startPage.spec.ts` needs the API's `CIVIC_UI_BASE_URL` to be
+  the preview's address, as in `e2e.yml`.
 
 ---
 
@@ -1785,7 +1833,7 @@ the local-stack jobs.
 
 ---
 
-*Last updated: 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,
