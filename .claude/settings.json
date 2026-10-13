@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test)",
+      "Bash(npm test *)",
+      "Bash(npm run *)",
+      "Bash(npx playwright *)",
+      "Bash(npx vitest *)",
+      "Bash(./scripts/release.sh dev)",
+      "Bash(./scripts/release.sh dev *)",
+      "Bash(./scripts/db-push.sh)",
+      "Bash(./scripts/db-push.sh *)",
+      "Bash(git push origin multi-tenant)",
+      "Read(~/Documents/Civic Social/Mosaic Foundation Management/**)"
+    ],
+    "deny": [
+      "Bash(*release.sh prod*)",
+      "Bash(*CONFIRM_PRODUCTION_PUSH*)",
+      "Bash(*supabase link*nfhyypwoporfggqcerli*)",
+      "Bash(*git push*main*)"
+    ]
+  }
+}
