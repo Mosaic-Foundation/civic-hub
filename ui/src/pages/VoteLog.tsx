@@ -9,6 +9,7 @@ import {
   type ProcessState,
 } from "../services/api";
 import { useAction } from "../hooks/useAction";
+import ReceiptCode from "../components/ReceiptCode";
 
 function formatChoice(raw: string): string {
   if (raw.startsWith("[")) {
@@ -74,6 +75,9 @@ export default function VoteLog() {
   // The check
   const [searchInput, setSearchInput] = useState(initialReceipt);
   const [searchResult, setSearchResult] = useState<ReceiptVerifyResponse | null>(null);
+  // The code the shown result is for. Check stays grey until the box holds
+  // another code, so it's clear which code the answer belongs to (2026-10-13).
+  const [checkedCode, setCheckedCode] = useState<string | null>(null);
   const check = useAction("The check didn't go through. Please try again.");
 
   useEffect(() => {
@@ -94,7 +98,10 @@ export default function VoteLog() {
     // The answer replaces the last one when it arrives (and a refusal clears it).
     const result = await check.run(() => verifyReceipt(id, receipt));
     setSearchResult(result ?? null);
+    // A refusal leaves Check live, to try again.
+    setCheckedCode(result ? receipt : null);
   }
+  const alreadyChecked = checkedCode !== null && searchInput.trim() === checkedCode;
 
   // A code from the link: check it once the log is available.
   useEffect(() => {
@@ -141,7 +148,7 @@ export default function VoteLog() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSearch();
+                  if (e.key === "Enter" && !alreadyChecked) handleSearch();
                 }}
                 autoComplete="off"
                 spellCheck={false}
@@ -149,7 +156,7 @@ export default function VoteLog() {
               <button
                 className="receipt-search-button"
                 onClick={() => handleSearch()}
-                disabled={check.busy || !searchInput.trim()}
+                disabled={check.busy || !searchInput.trim() || alreadyChecked}
                 aria-busy={check.busy}
               >
                 {check.busy ? "Checking…" : "Check"}
@@ -206,7 +213,7 @@ export default function VoteLog() {
                       : ""
                   }`}
                 >
-                  <span className="vote-log-receipt">{entry.receipt_id}</span>
+                  <ReceiptCode code={entry.receipt_id} className="vote-log-receipt" />
                   {!countedOnly && entry.choice !== undefined && (
                     <span className="vote-log-choice">{formatChoice(entry.choice)}</span>
                   )}

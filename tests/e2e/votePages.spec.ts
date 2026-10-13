@@ -7,12 +7,16 @@
  *   screen (or the bar's own callout when the bar is in view);
  * - the receipt is one compact box, the same open and closed: the download
  *   button with the code beside it, "Check it" below, the privacy line last;
+ * - the check page (vote log): codes wrap at their hyphens in a column wide
+ *   enough, stacked over the vote on a phone, and after a check the Check
+ *   button is grey until the code in the box changes;
  * - a blank option field never blocks Submit: empty fields are dropped, and
  *   two filled options are enough.
  */
 
 import { test, expect } from "@playwright/test";
 import { adminEmailFor, closeAsAdmin, hubId, liveVote, run, session, visitAs } from "./actors";
+import { E2E_API_BASE as API } from "./hubApi";
 
 for (const width of [1280, 375]) {
   test.describe(`Vote pages at ${width}px`, () => {
@@ -83,6 +87,51 @@ for (const width of [1280, 375]) {
       await page.reload();
       await expect(page.locator(".vote-receipt-title", { hasText: "Your receipt" })).toBeVisible();
       await checkLayout();
+    });
+
+    test("the check page: codes never break a character per line; Check is grey until the code changes", async ({ page, request }) => {
+      const options = ["Repave the main road and add a crossing near the school", "Build a new playground in the park", "No change"];
+      const voteId = await liveVote(request, admin, `Vote log ${width} ${run}`, { method: "approval", options });
+      const codes: string[] = [];
+      for (const n of [1, 2]) {
+        const voter = await session(hub, `vote-log-${width}-${n}-${run}@example.test`);
+        const cast = await request.post(`${API}/process/${voteId}/action`, {
+          headers: { Authorization: `Bearer ${voter.token}` },
+          data: { type: "process.vote", payload: { selections: options.slice(0, 2) } },
+        });
+        expect(cast.ok(), await cast.text()).toBeTruthy();
+        codes.push((await cast.json()).result.receipt_id);
+      }
+      await closeAsAdmin(request, admin, voteId);
+
+      await visitAs(page, (await session(hub, `vote-log-reader-${width}-${run}@example.test`)).token);
+      await page.goto(`/votes/${voteId}/log#receipt=${codes[0]}`);
+      await expect(page.locator(".receipt-result")).toBeVisible();
+      for (const code of await page.locator(".vote-log-row .vote-log-receipt").all()) {
+        const box = (await code.boundingBox())!;
+        expect(box.width).toBeGreaterThan(120);
+        expect(box.height).toBeLessThanOrEqual(2 * 24);
+      }
+      // On a phone each entry stacks: the vote under its code.
+      const row = page.locator(".vote-log-row").first();
+      const code = (await row.locator(".vote-log-receipt").boundingBox())!;
+      const vote = (await row.locator(".vote-log-choice").boundingBox())!;
+      if (width < 520) expect(vote.y).toBeGreaterThanOrEqual(code.y + code.height - 1);
+      else expect(vote.x).toBeGreaterThan(code.x + code.width);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+
+      // Checked: grey until the box holds another code.
+      const box = page.getByRole("textbox", { name: "Receipt code" });
+      const button = page.getByRole("button", { name: "Check" });
+      await expect(box).toHaveValue(codes[0]);
+      await expect(button).toBeDisabled();
+      await box.fill(codes[1]);
+      await expect(button).toBeEnabled();
+      await button.click();
+      await expect(page.locator(".vote-log-row-highlight .vote-log-receipt")).toHaveText(codes[1]);
+      await expect(button).toBeDisabled();
+      await box.fill(codes[0]);
+      await expect(button).toBeEnabled();
     });
 
     test("an empty extra option field doesn't block Submit, and the vote gets the filled ones", async ({ page }) => {
