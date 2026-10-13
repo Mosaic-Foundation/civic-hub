@@ -4,6 +4,50 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Phone drafting layout, and the nav on iOS — 2026-10-12 (after Submit and save)
+
+From the management session, after the Submit and save release; not pushed. Two commits: `39416b5` (nav) and the
+phone layout.
+- **The nav on iOS** (Adam saw it on dev): once a phone was zoomed in, which a double-tap could do since zoom was
+  allowed, the sticky nav scrolled away. Now `touch-action: manipulation` (no double-tap zoom; pinch stays) and
+  `body { overflow-x: clip }`.
+- **The focused drafting layout at phone width** (desktop unchanged), for every drafting kind, through the shared
+  pieces (`DraftPage`, `DraftShell`, `DraftFooter`, `MarkdownTextarea`), so a new process type's form gets it too
+  (the contract is in `ui/src/pages/draft/types.ts`):
+  - **One slim row** replaces the hub header, section tabs, word-cloud strip, hub banner and beta/demo bar
+    (`html.drafting-focus`):
+    - back, which goes where Cancel went and warns only when typing hasn't reached the server;
+    - "New proposal" / "Revise your vote" / "Edit project";
+    - the autosave note (`flow.saveState`).
+  - The form / Assistant tabs stay and stick under that row.
+  - **The pinned bar** is one row (Get suggestions as a link, Submit), with no "Submitting runs a quick check" hint
+    (the preview box says it). It steps aside while a text field has focus and comes back on blur or a scroll of
+    80px.
+  - **The formatting toolbar** is one row and docks just above the keyboard while its field has focus (offset from
+    `visualViewport`). A spacer keeps the field in place, and a tap on a tool keeps the focus.
+  - **The form name** comes from each drafting kind's `confirm.noun`, not the server descriptor, which has no display
+    name. The note said "from the type's descriptor"; add one when plugins ship their own UI.
+  - **The Edit & resubmit fix** the note mentions is not in the repo; only the 2026-09-02 one is. The layout was
+    built without it.
+- **Tests:** `tests/e2e/phoneDrafting.spec.ts` covers all four kinds at 375px:
+  - the slim row, with the hub chrome hidden;
+  - the bar hidden while a field has focus and back after blur;
+  - the toolbar docked;
+  - desktop unchanged.
+
+  The drafting specs pass (31), and the phone spec passed 3 runs in a row. No browser here opens a software
+  keyboard, so a real phone is the check for "keyboard open" (the dev checklist line below).
+- **Dev checklist:** on a phone, open each of New proposal, vote, project and conversation.
+  - **Keyboard closed:** the slim row, the form tabs, and the one-row bar at the bottom.
+  - **Tap a field:** the bar goes and the field has the room.
+  - **Tap the description:** B / I / Section / lists sit in one row just above the keyboard. Tap B and the keyboard
+    stays up.
+  - **Tap outside:** the bar comes back.
+  - **Back** returns to the list with nothing lost.
+  - **Pinch zoom** still works, and double-tap doesn't zoom.
+
+---
+
 ## Submit and save: Submit runs the check, sticky Save, one Modal — 2026-10-12
 
 Reports: `Submit-And-Save-Session-Report-2026-10-12.md` and `Submit-And-Save-Handoff-to-Management-2026-10-12.md`

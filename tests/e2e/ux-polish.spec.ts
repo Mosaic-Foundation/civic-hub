@@ -142,16 +142,3 @@ test.describe("Zoom", () => {
     expect(prevented).toBe(false);
   });
 });
-
-test.describe("Drafting bar on a phone", () => {
-  // Pinned on phones too (Adam, 2026-10-12): Submit stays in reach while the
-  // fields scroll under it.
-  test("Submit stays at the bottom of the screen while the form scrolls", async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/votes/new");
-    const submit = page.getByRole("button", { name: "Submit vote" });
-    await expect(submit).toBeInViewport();
-    await page.evaluate(() => window.scrollTo(0, 400));
-    await expect(submit).toBeInViewport();
-  });
-});

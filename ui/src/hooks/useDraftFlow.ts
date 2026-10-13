@@ -200,6 +200,13 @@ export function useDraftFlow<D extends BaseDraft>({
   const assistantSeeded = useRef(false);
   /** The saves in flight, chained: settle() waits for the last of them. */
   const saving = useRef<Promise<void>>(Promise.resolve());
+  /**
+   * Where the autosave stands, for the phone header's note ("Draft saved")
+   * and the back arrow, which warns only when something typed has not
+   * reached the server (Submit and Save, phone layout).
+   */
+  const [saveState, setSaveState] = useState<"none" | "saving" | "saved" | "failed">("none");
+  const inFlight = useRef(0);
 
   const commitDraft = useCallback((d: D) => {
     draftRef.current = d;
@@ -302,6 +309,8 @@ export function useDraftFlow<D extends BaseDraft>({
 
       if (!draftRef.current && !canParticipate) return;
       const save = (async () => {
+        inFlight.current += 1;
+        setSaveState("saving");
         try {
           const d = await ensureDraft();
           const flush = takeBuffer();
@@ -309,8 +318,12 @@ export function useDraftFlow<D extends BaseDraft>({
             const updated = await updateDraft(d.id, bufferPayload(flush));
             commitDraft(updated);
           }
+          inFlight.current -= 1;
+          if (inFlight.current === 0) setSaveState("saved");
         } catch {
-          // best-effort — the edit stays in the form and in the buffer
+          // best-effort — the edit stays in the form; the note says so
+          inFlight.current -= 1;
+          setSaveState("failed");
         }
       })();
       saving.current = saving.current.then(() => save);
@@ -649,6 +662,7 @@ export function useDraftFlow<D extends BaseDraft>({
     queuePatch,
     ensureDraft,
     settle,
+    saveState,
     /** Replace the draft on screen with one read back from the server. */
     replaceDraft: commitDraft,
     handleApplySuggestion,

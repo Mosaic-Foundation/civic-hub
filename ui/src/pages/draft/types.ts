@@ -2,6 +2,20 @@
 // shape, its form, its shell's wording, what its confirmation says and where
 // a submission lands. Everything else (the lazy draft, the assistant, links,
 // the confirmation, submitting) is DraftPage's, once.
+//
+// The layout is DraftPage's too, so a new process type's form looks and
+// behaves like the others on every screen (Submit and Save, 2026-10-12):
+//   - a phone gets the focused drafting layout: one slim row (back, "New
+//     <confirm.noun>", the saved note) instead of the hub header and section
+//     tabs; the bar pinned at the bottom, one row, stepping aside while a
+//     text field has focus;
+//   - Submit runs the Code of Conduct check and shows findings under the
+//     field they name.
+// For a form to get all of it, build it from the shared pieces: put its
+// fields inside `.drafting-form`, give each a FieldGuide (the hint and any
+// finding), use MarkdownTextarea for long text (its toolbar docks above the
+// keyboard), and end with DraftFooter. pages/draft/forms/ has four examples;
+// tests/e2e/phoneDrafting.spec.ts lists the kinds it checks.
 
 import type { ComponentType, ReactNode } from "react";
 import type { BaseDraft, useDraftFlow } from "../../hooks/useDraftFlow";

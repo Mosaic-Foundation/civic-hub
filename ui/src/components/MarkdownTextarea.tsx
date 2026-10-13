@@ -1,4 +1,4 @@
-import { useRef, useState, type TextareaHTMLAttributes } from "react";
+import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import RichText from "./RichText";
 import "./MarkdownTextarea.css";
 
@@ -68,10 +68,45 @@ function sectionLabel(el: HTMLTextAreaElement) {
   el.setSelectionRange(start, start + selected.length);
 }
 
+/**
+ * At phone width, while the textarea has focus, the toolbar docks as one row
+ * directly above the keyboard (Submit and Save, phone layout), instead of
+ * scrolling away above the field. Its offset from the bottom is the
+ * keyboard's height, read from the visual viewport. A spacer keeps the
+ * field where it was.
+ */
+function useKeyboardDock(focused: boolean): { docked: boolean; bottom: number } {
+  const [bottom, setBottom] = useState(0);
+  const [phone, setPhone] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const onChange = () => setPhone(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!focused || !phone || !vv) return;
+    const place = () => setBottom(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    place();
+    vv.addEventListener("resize", place);
+    vv.addEventListener("scroll", place);
+    return () => {
+      vv.removeEventListener("resize", place);
+      vv.removeEventListener("scroll", place);
+    };
+  }, [focused, phone]);
+  return { docked: focused && phone, bottom };
+}
+
 export default function MarkdownTextarea(props: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState(false);
   const [previewText, setPreviewText] = useState("");
+  const [focused, setFocused] = useState(false);
+  const [toolbarHeight, setToolbarHeight] = useState(0);
+  const { docked, bottom } = useKeyboardDock(focused);
 
   const act = (fn: (el: HTMLTextAreaElement) => void) => () => {
     const el = ref.current;
@@ -86,7 +121,17 @@ export default function MarkdownTextarea(props: Props) {
 
   return (
     <div className="md-editor">
-      <div className="md-toolbar" role="toolbar" aria-label="Formatting">
+      {docked && <div className="md-toolbar-spacer" style={{ height: toolbarHeight }} aria-hidden="true" />}
+      <div
+        ref={toolbarRef}
+        className={`md-toolbar${docked ? " md-toolbar--docked" : ""}`}
+        style={docked ? { bottom } : undefined}
+        role="toolbar"
+        aria-label="Formatting"
+        // A tap on a tool must not take focus from the field: the keyboard
+        // would close and the toolbar would undock under the finger.
+        onMouseDown={(e) => e.preventDefault()}
+      >
         <button type="button" className="md-tool md-tool--bold" title="Bold" aria-label="Bold" onClick={act((el) => wrapSelection(el, "**", "**", "bold text"))}>B</button>
         <button type="button" className="md-tool md-tool--italic" title="Italic" aria-label="Italic" onClick={act((el) => wrapSelection(el, "*", "*", "italic text"))}>I</button>
         <button type="button" className="md-tool" title="Section label on its own line" onClick={act(sectionLabel)}>Section</button>
@@ -110,6 +155,15 @@ export default function MarkdownTextarea(props: Props) {
         onInput={(e) => {
           if (preview) setPreviewText((e.target as HTMLTextAreaElement).value);
           props.onInput?.(e);
+        }}
+        onFocus={(e) => {
+          setToolbarHeight(toolbarRef.current?.offsetHeight ?? 0);
+          setFocused(true);
+          props.onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          props.onBlur?.(e);
         }}
       />
 

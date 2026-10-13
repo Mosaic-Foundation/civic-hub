@@ -160,24 +160,57 @@
   }
 }
 
-@media (max-width: 640px) {
+/* A phone (Submit and Save, phone layout): one row, Get suggestions as a
+   link and Submit as the button. The "Submitting runs a quick check" hint is
+   left to the preview box; a missing field or a flag still shows, in place
+   of the link. Cancel is the back arrow in the slim header. While a text
+   field has focus the bar steps aside (DraftFooter), so the keyboard leaves
+   room for the field. */
+@media (max-width: 768px) {
   .drafting-form-footer {
-    flex-wrap: wrap;
-    padding-left: var(--space-md);
-    padding-right: var(--space-md);
+    flex-wrap: nowrap;
+    gap: var(--space-sm);
+    padding: var(--space-xs) var(--space-md);
+    padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .drafting-form-footer.is-typing {
+    display: none;
+  }
+
+  .draft-status--hint {
+    display: none;
   }
 
   .draft-status {
-    flex-basis: 100%;
+    font-size: var(--font-size-xs);
   }
 
-  .draft-actions {
+  .drafting-form-footer:not(.has-status) .draft-actions {
     flex: 1;
+    justify-content: space-between;
   }
 
-  .draft-actions .draft-submit-btn {
-    flex: 1;
-    min-width: 0;
+  .drafting-form-footer.has-status .draft-suggest-btn {
+    display: none;
+  }
+
+  .drafting-form-footer .draft-suggest-btn {
+    min-height: 44px;
+    padding: 0 var(--space-xs);
+    border: none;
+    background: none;
+    color: var(--color-link, var(--color-primary));
+    text-decoration: underline;
+    font-weight: 600;
+  }
+
+  html.drafting-focus .drafting-form-footer .draft-cancel-btn {
+    display: none;
+  }
+
+  .drafting-form-footer .draft-submit-btn {
+    min-width: 8.5rem;
   }
 }
 
@@ -315,5 +348,78 @@
 
 .field-finding-quote {
   font-style: italic;
+  color: var(--color-text-muted);
+}
+
+/* --- Focused drafting layout at phone width (Submit and Save) --- */
+/* DraftPage marks the page; the hub header, the section tabs, the word-cloud
+   strip, the hub banner and the beta/demo bar give way to DraftShell's one
+   slim row. Desktop is unchanged. */
+@media (max-width: 768px) {
+  html.drafting-focus .civic-nav,
+  html.drafting-focus .wc-teaser,
+  html.drafting-focus .hub-banner,
+  html.drafting-focus .feed-votes-tabs,
+  html.drafting-focus .beta-banner {
+    display: none;
+  }
+
+  /* The form / Assistant tabs stick under the slim row, not under the hub
+     header and section tabs that are hidden here. */
+  html.drafting-focus .propose-draft-mobile .draft-view-switch {
+    top: var(--draft-phone-bar-h);
+  }
+}
+
+:root {
+  --draft-phone-bar-h: 48px;
+}
+
+.draft-phone-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--draft-phone-bar-h);
+  margin: calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg)) var(--space-sm);
+  padding: 0 var(--space-md) 0 var(--space-xs);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.draft-phone-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: 1.35rem;
+  text-decoration: none;
+}
+
+.draft-phone-back:focus-visible {
+  outline: 2px solid var(--color-focus, var(--ds-color-primary-500, #2563eb));
+  outline-offset: 1px;
+}
+
+.draft-phone-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.draft-phone-saved {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }

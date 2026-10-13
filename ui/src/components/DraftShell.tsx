@@ -60,6 +60,15 @@ interface Props {
   checkedTextChanged?: boolean;
   /** "Think this is wrong? Tell the admins". Absent where there is no review (a live edit). */
   onTellAdmins?: () => void;
+  /**
+   * The phone's focused drafting row (the hub header and section tabs are
+   * hidden on a drafting page at phone width): the form's name ("New
+   * proposal") and the autosave note ("Draft saved").
+   */
+  phoneTitle?: string;
+  saveNote?: string | null;
+  /** Whether leaving now would lose typing that hasn't reached the server. */
+  hasUnsaved?: () => boolean;
   /** Applies assistant-produced text into the form (marks assistant_helped).
    *  Used by both the inline results block and the panel's cards. */
   onApplySuggestion?: (s: DraftSuggestion) => void | Promise<boolean>;
@@ -95,6 +104,9 @@ export default function DraftShell({
   flaggedPanelId,
   checkedTextChanged = false,
   onTellAdmins,
+  phoneTitle,
+  saveNote,
+  hasUnsaved,
   onApplySuggestion,
   canApplySuggestion,
   layout = "full",
@@ -282,6 +294,32 @@ export default function DraftShell({
     </>
   );
 
+  // At phone width, one slim row instead of the hub header, the section tabs
+  // and this page's own header: back (where Cancel went), the form's name,
+  // and whether the draft is saved. No menu (Submit and Save, phone layout).
+  const phoneHeader = (
+    <div className="draft-phone-bar">
+      <Link
+        to={backTo}
+        className="draft-phone-back"
+        aria-label={`Back to ${backLabel}`}
+        onClick={(e) => {
+          if (hasUnsaved?.() && !window.confirm("Your last changes haven't been saved yet. Leave anyway?")) {
+            e.preventDefault();
+          }
+        }}
+      >
+        <span aria-hidden="true">&larr;</span>
+      </Link>
+      <h1 className="draft-phone-title">{phoneTitle ?? title}</h1>
+      {saveNote && (
+        <span className="draft-phone-saved" role="status">
+          {saveNote}
+        </span>
+      )}
+    </div>
+  );
+
   const notices = (
     <>
       {error && <p className="form-error">{error}</p>}
@@ -291,7 +329,7 @@ export default function DraftShell({
   if (layout === "page") {
     return (
       <div className="page detail-page">
-        <div className="draft-shell-page-header">{header}</div>
+        {isMobile ? phoneHeader : <div className="draft-shell-page-header">{header}</div>}
         {notices}
         {!isMobile && affordance}
         {inlineResults}
@@ -306,7 +344,7 @@ export default function DraftShell({
       <div className="propose-draft-page">
         <div className="propose-draft-mobile">
           <div className="page detail-page">
-            <div className="draft-shell-page-header">{header}</div>
+            {phoneHeader}
             {switcher}
             {notices}
             {/* Same collapsed card as desktop — explains what the assistant

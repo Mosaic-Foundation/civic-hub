@@ -77,3 +77,35 @@
   font-size: var(--font-size-xs, 0.75rem);
   color: var(--color-text-muted, #5b6470);
 }
+
+/* A phone: the toolbar is one row (it scrolls sideways if it must), and
+   while the field has focus it docks directly above the keyboard
+   (MarkdownTextarea, useKeyboardDock), one row, not a second bar. */
+@media (max-width: 768px) {
+  .md-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .md-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .md-toolbar--docked {
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    margin: 0;
+    padding: 0.35rem var(--space-sm);
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .md-tool {
+    flex-shrink: 0;
+    min-height: 36px;
+  }
+}

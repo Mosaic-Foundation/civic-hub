@@ -99,6 +99,8 @@ unknown API routes answer JSON.
   - `reviewQueue.spec.ts`: approve and decline land on the list.
   - `settingsSave.spec.ts`: Save stays in view; leaving asks; Discard.
   - `ux-polish.spec.ts` "Zoom".
+  - `phoneDrafting.spec.ts` (after the release): the focused phone layout for every drafting kind at 375px. No
+    browser opens a software keyboard, so "keyboard open" is the field's focus there; check a real phone by hand.
 - **Running the console specs locally** (`handover`, `startPage`,
   `assistantLimits`): set `CIVIC_API_BASE` to the hub server too. The console
   helpers default to :3000. The API also needs `CIVIC_UI_BASE_URL` = the UI's

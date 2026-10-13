@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import RichText from "../../components/RichText";
 import AuthModal from "../../components/AuthModal";
@@ -162,6 +162,30 @@ export default function DraftPage<D extends BaseDraft & { assistant_helped: bool
 
   const findings = hardFindings(draft?.last_review_result);
 
+  // A drafting page is a focused screen at phone width: the hub header and
+  // the section tabs give way to one slim row (DraftShell), so a phone with
+  // the keyboard open still shows the form. The CSS keys off this class.
+  useEffect(() => {
+    document.documentElement.classList.add("drafting-focus");
+    return () => document.documentElement.classList.remove("drafting-focus");
+  }, []);
+
+  // "New proposal", "Revise your vote"…: the kind's own noun, no place names.
+  const { noun } = config.confirm;
+  const phoneTitle = ctx.editProcessId ? `Edit ${noun}` : ctx.reviseReviewId ? `Revise ${noun}` : `New ${noun}`;
+  const saveNote =
+    flow.saveState === "saving"
+      ? "Saving…"
+      : flow.saveState === "saved"
+        ? "Draft saved"
+        : flow.saveState === "failed"
+          ? "Not saved"
+          : null;
+  // Typing a signed-out visitor did before signing in lives only here, and a
+  // save in flight or failed hasn't reached the server.
+  const hasUnsaved = () =>
+    flow.saveState === "saving" || flow.saveState === "failed" || (!draft && Object.keys(flow.pendingFields).length > 0);
+
   const shell = config.shell(ctx);
   const Form = config.Form;
   const { confirm } = config;
@@ -186,6 +210,9 @@ export default function DraftPage<D extends BaseDraft & { assistant_helped: bool
         flaggedPanelId={FLAGGED_PANEL_ID}
         checkedTextChanged={draft?.draft_modified_since_review === true}
         onTellAdmins={ctx.editProcessId ? undefined : () => setTelling("open")}
+        phoneTitle={phoneTitle}
+        saveNote={saveNote}
+        hasUnsaved={hasUnsaved}
         onApplySuggestion={flow.handleApplySuggestion}
         canApplySuggestion={flow.canApplySuggestion}
       >
