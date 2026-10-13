@@ -1,6 +1,6 @@
 import { ApiError } from "../utils/httpError";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   adminListReviews,
   adminGetReview,
@@ -60,7 +60,11 @@ function formatDate(iso: string): string {
 
 export default function AdminReviews() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { reviewId: routeId } = useParams<{ reviewId?: string }>();
+  // After an approval or a decline the admin lands back on the list, with a
+  // short confirmation of what just happened (Submit and Save, 2026-10-12).
+  const flash = (location.state as { flash?: string } | null)?.flash ?? null;
   const view: "list" | "detail" = routeId ? "detail" : "list";
 
   const [reviews, setReviews] = useState<ProcessReviewSummary[]>([]);
@@ -154,15 +158,29 @@ export default function AdminReviews() {
     navigate("/admin/reviews");
   }
 
+  /** The title of the review on screen, for a confirmation. */
+  function reviewTitle(): string {
+    const title = (detail?.process as { title?: unknown } | undefined)?.title;
+    return typeof title === "string" && title.trim() ? title.trim() : "Untitled";
+  }
+
+  /** Back to the queue, saying what was just done there. */
+  function backToListWith(message: string) {
+    setShowChangesForm(false);
+    setShowDeclineForm(false);
+    setNoteText("");
+    setActionMessage(null);
+    setError(null);
+    navigate("/admin/reviews", { state: { flash: message } });
+  }
+
   async function handleApprove() {
     if (!routeId || acting) return;
     setActing(true);
     setError(null);
     try {
       await adminApproveReview(routeId);
-      setActionMessage("✓ Approved — it's now live (find it under its tab, e.g. Proposals/Votes).");
-      const refreshed = await adminGetReview(routeId);
-      setDetail(refreshed);
+      backToListWith(`Approved: “${reviewTitle()}” is live.`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Approve failed";
       const code = err instanceof ApiError ? err.code : null;
@@ -208,11 +226,7 @@ export default function AdminReviews() {
     setError(null);
     try {
       await adminDeclineReview(routeId, noteText.trim());
-      setActionMessage("Declined — creator has been notified.");
-      setShowDeclineForm(false);
-      setNoteText("");
-      const refreshed = await adminGetReview(routeId);
-      setDetail(refreshed);
+      backToListWith(`Declined: “${reviewTitle()}”. ${detail?.review.creator_name ?? "The creator"} has been told why.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Decline failed");
     } finally {
@@ -452,6 +466,11 @@ export default function AdminReviews() {
         <p style={{ color: "var(--color-text-muted)" }}>
           Submissions waiting for review before going live.
         </p>
+        {flash && (
+          <p className="admin-review-flash" role="status">
+            {flash}
+          </p>
+        )}
 
         <div className="admin-review-filters">
           {STATUS_FILTERS.map((f) => (
