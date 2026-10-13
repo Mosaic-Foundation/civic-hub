@@ -344,6 +344,11 @@ elif [[ ! -f "$DB_ENV" ]]; then
   note "Load it before relying on the new places (the code works either way):"
   note "  $LOAD_CMD"
   LIST_RESULT="CHANGED, NOT LOADED: run  $LOAD_CMD"
+elif (( DRY_RUN && COUNT > 0 )); then
+  # The loader's dry run writes in a transaction it rolls back, so it would
+  # meet the database as it is now, before the pending migrations.
+  ok "the list changed; the real run loads it after the $COUNT pending migration(s)"
+  LIST_RESULT="changed, not loaded (dry run; loads after the migrations)"
 elif (( DRY_RUN )); then
   node --env-file="$DB_ENV" --import tsx scripts/load-jurisdictions.ts --dry-run 2>&1 | sed 's/^/      /' ||
     stop "The jurisdiction loader's dry run failed (output above)."
