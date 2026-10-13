@@ -263,6 +263,28 @@ export default function AdminReviews() {
                 </p>
               </ProcessHeader>
 
+              {/* Sent to the admins with what the Code of Conduct check
+                  flagged ("Think this is wrong? Tell the admins"). The
+                  resident's note, if any, is the first turn below. */}
+              {detail.review.coc_flags && detail.review.coc_flags.length > 0 && (
+                <section className="review-coc-flags" aria-labelledby="review-coc-flags-title">
+                  <h2 id="review-coc-flags-title">Flagged by the Code of Conduct check</h2>
+                  <p>
+                    The check flagged this text, and {detail.review.creator_name} sent it to the admins anyway. Read it
+                    and decide; approving publishes it as written.
+                  </p>
+                  <ul>
+                    {detail.review.coc_flags.map((f, i) => (
+                      <li key={i}>
+                        {f.field && <strong>{fieldLabel(f.field)}: </strong>}
+                        {f.message}
+                        {f.quoted_text && <span className="review-coc-quote"> “{f.quoted_text}”</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
               {/* Process content preview — everything the creator submitted,
                   rendered the way the live page will show it, for every
                   process type (registry-driven; see SubmissionPreview). */}
@@ -481,8 +503,13 @@ export default function AdminReviews() {
                 <TypePill type={r.process_type} />{" "}
                 <strong>{r.process_title || "Untitled"}</strong>
               </div>
-              <span className={`status-chip review-status-${r.status}`}>
-                {STATUS_LABELS[r.status] ?? r.status}
+              <span className="review-chips">
+                {r.coc_flags && r.coc_flags.length > 0 && (
+                  <span className="status-chip review-flagged-chip">Flagged by the check</span>
+                )}
+                <span className={`status-chip review-status-${r.status}`}>
+                  {STATUS_LABELS[r.status] ?? r.status}
+                </span>
               </span>
             </div>
             <p style={{ margin: "var(--space-xs) 0 0", color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)" }}>
@@ -493,4 +520,10 @@ export default function AdminReviews() {
       </div>
     </div>
   );
+}
+
+/** "seed_statements" → "Seed statements". */
+function fieldLabel(field: string): string {
+  const words = field.replace(/_/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }

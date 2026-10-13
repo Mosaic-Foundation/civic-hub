@@ -5,12 +5,15 @@
 // targets). Seed statements, duration, and the participant goal are plain
 // form fields outside the assistant's reach.
 
-import { useCallback, useRef } from "react";
-import type { AssistantFieldGuidance, DeliberationDraft, DraftSuggestion, ProposedLink } from "../services/api";
+import { useCallback } from "react";
+import type { AssistantFieldGuidance, DeliberationDraft, ProposedLink } from "../services/api";
 import ProcessLinkField from "./ProcessLinkField";
 import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
+import { hardFindings } from "./CocFindings";
+import DraftFooter from "./DraftFooter";
+import { useDebouncedFields } from "../hooks/useDebouncedFields";
 import SuggestFooterButton from "./SuggestFooterButton";
 import TitleField from "./TitleField";
 import MarkdownTextarea from "./MarkdownTextarea";
@@ -29,15 +32,12 @@ interface Props {
   onFieldChange: (field: string, value: string) => void;
   onDurationChange: (ms: number) => void;
   onThresholdChange: (n: number | null) => void;
-  onReview: () => void;
   onSubmit: () => void;
   /** shellAssistant.onSuggest — a footer echo of the top affordance's Get
    *  suggestions, so a mobile creator who scrolls to the bottom still finds it. */
   onGetSuggestions?: () => void;
   suggesting?: boolean;
   disabled: boolean;
-  reviewLoading?: boolean;
-  reviewFailed?: boolean;
   /** Per-field inline guidance served by the assistant config endpoint. */
   fieldGuidance?: AssistantFieldGuidance[];
 }
@@ -62,39 +62,11 @@ const PLACEHOLDERS = {
     "e.g. I'd use a bike lane on Main Street if it existed",
 };
 
-function getStatusText(draft: DeliberationDraft, reviewFailed?: boolean): string {
-  if (!draft.title.trim() || !draft.description.trim()) {
-    const missing = [!draft.title.trim(), !draft.description.trim()].filter(Boolean).length;
-    return `Status: ${missing} required field${missing > 1 ? "s" : ""} missing`;
-  }
-  if (draft.last_review_result === null && reviewFailed) {
-    return "Status: Check failed — tap Run Code of Conduct check to try again";
-  }
-  if (draft.last_review_result === null) {
-    return "Status: Run the Code of Conduct check to prepare for submission";
-  }
-  if (draft.draft_modified_since_review) {
-    return "Status: Draft changed — run the Code of Conduct check again before submitting";
-  }
-  const hardBlocks = (draft.last_review_result ?? []).filter(
-    (s: DraftSuggestion) => s.severity === "hard",
-  );
-  if (hardBlocks.length > 0) {
-    return `Status: ${hardBlocks.length} Code of Conduct concern${hardBlocks.length > 1 ? "s" : ""} to resolve`;
-  }
-  return "Status: Ready to submit";
-}
-
-function getStatusClass(draft: DeliberationDraft, reviewFailed?: boolean): string {
-  if (!draft.title.trim() || !draft.description.trim()) return "status-missing";
-  if (draft.last_review_result === null && reviewFailed) return "status-error";
-  if (draft.last_review_result === null) return "status-pending";
-  if (draft.draft_modified_since_review) return "status-modified";
-  const hasHard = (draft.last_review_result ?? []).some(
-    (s: DraftSuggestion) => s.severity === "hard",
-  );
-  if (hasHard) return "status-blocked";
-  return "status-ready";
+/** Why the draft can't be submitted yet, or null. */
+function missingReason(draft: DeliberationDraft): string | null {
+  if (!draft.title.trim()) return "Add a topic to submit.";
+  if (!draft.description.trim()) return "Add the framing to submit.";
+  return null;
 }
 
 export default function DeliberationDraftingForm({
@@ -107,51 +79,20 @@ export default function DeliberationDraftingForm({
   onFieldChange,
   onDurationChange,
   onThresholdChange,
-  onReview,
   onSubmit,
   onGetSuggestions,
   suggesting,
   disabled,
-  reviewLoading,
-  reviewFailed,
   fieldGuidance,
 }: Props) {
-  // Per-FIELD debounce timers: a single shared timer silently dropped a
-  // field's save when the user moved to another field within 800ms —
-  // the form kept the text but the server never received it.
-  const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-
-  const queueField = useCallback(
-    (field: string, value: string) => {
-      if (debounceRef.current[field]) clearTimeout(debounceRef.current[field]);
-      debounceRef.current[field] = setTimeout(() => {
-        onFieldChange(field, value);
-      }, 800);
-    },
-    [onFieldChange],
-  );
-
-  const handleChange = useCallback(
-    (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      queueField(field, e.target.value);
-    },
-    [queueField],
-  );
+  const { handleChange, schedule, flush } = useDebouncedFields(onFieldChange);
 
   // Seed statements arrive as a value, not an event: the rows component owns
   // its inputs and hands up the joined string.
   const handleSeedChange = useCallback(
-    (value: string) => queueField("seed_statements", value),
-    [queueField],
+    (value: string) => schedule("seed_statements", () => onFieldChange("seed_statements", value)),
+    [schedule, onFieldChange],
   );
-
-  const canSubmit =
-    draft.title.trim() &&
-    draft.description.trim() &&
-    draft.last_review_result !== null &&
-    !draft.draft_modified_since_review &&
-    !(draft.last_review_result ?? []).some((s: DraftSuggestion) => s.severity === "hard") &&
-    !disabled;
 
   return (
     <div className="drafting-form">
@@ -276,13 +217,10 @@ export default function DeliberationDraftingForm({
             placeholder="e.g. 50"
             onChange={(e) => {
               const raw = e.target.value;
-              if (debounceRef.current["threshold"]) {
-                clearTimeout(debounceRef.current["threshold"]);
-              }
-              debounceRef.current["threshold"] = setTimeout(() => {
+              schedule("threshold", () => {
                 const n = parseInt(raw, 10);
                 onThresholdChange(Number.isInteger(n) && n > 0 ? n : null);
-              }, 800);
+              });
             }}
             disabled={disabled}
           />
@@ -292,38 +230,19 @@ export default function DeliberationDraftingForm({
         </div>
       </div>
 
-      <div className="drafting-form-footer">
-        <SuggestFooterButton
-          onGetSuggestions={onGetSuggestions}
-          suggesting={suggesting}
-          disabled={disabled}
-        />
-        <div className={`draft-status ${getStatusClass(draft, reviewFailed)}`}>
-          {getStatusText(draft, reviewFailed)}
-        </div>
-
-        <div className="draft-actions">
-          {draft.title.trim() && draft.description.trim() &&
-            (draft.last_review_result === null || draft.draft_modified_since_review) && (
-            <button
-              type="button"
-              className="draft-review-btn"
-              onClick={onReview}
-              disabled={disabled || reviewLoading}
-            >
-              {reviewLoading ? "Checking..." : "Run Code of Conduct check"}
-            </button>
-          )}
-          <button
-            type="button"
-            className="draft-submit-btn"
-            onClick={onSubmit}
-            disabled={!canSubmit}
-          >
-            Submit conversation
-          </button>
-        </div>
-      </div>
+      <DraftFooter
+        missing={missingReason(draft)}
+        flagged={hardFindings(draft.last_review_result).length}
+        onSubmit={() => {
+          flush();
+          onSubmit();
+        }}
+        submitLabel="Submit conversation"
+        disabled={disabled}
+        secondary={
+          <SuggestFooterButton onGetSuggestions={onGetSuggestions} suggesting={suggesting} disabled={disabled} />
+        }
+      />
     </div>
   );
 }

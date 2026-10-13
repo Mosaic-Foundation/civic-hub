@@ -470,9 +470,11 @@ export type DraftPhase = "brainstorm" | "review" | "free_form";
 export interface DraftSuggestion {
   severity: "soft" | "hard";
   quoted_text: string | null;
-  field: "title" | "description" | "sources" | "considerations" | "seed_statements" | null;
+  field: "title" | "description" | "sources" | "considerations" | "seed_statements" | "options" | null;
   message: string;
   suggested_revision: string | null;
+  /** Stored when the Code of Conduct check could not run. */
+  check_unavailable?: true;
 }
 
 export interface AssistantFieldGuidance {
@@ -518,14 +520,6 @@ export function suggestForDraft<D>(
   return request("POST", `/assistant/${processType}/drafts/${draftId}/suggest`);
 }
 
-/** The always-on automated Code of Conduct check for a draft of any type. */
-export function reviewDraftCoC<D>(
-  processType: string,
-  draftId: string,
-): Promise<{ response: AssistantResponse; draft: D; review_unavailable?: boolean }> {
-  return request("POST", `/assistant/${processType}/drafts/${draftId}/review`);
-}
-
 // --- Proposal Drafts ---
 
 export interface ProposalDraft {
@@ -569,6 +563,10 @@ export interface CreateProcessResult {
   review_id: string;
   process_id: string;
   auto_approved: boolean;
+  /** Sent to the admins with what the Code of Conduct check flagged. */
+  flagged?: boolean;
+  /** The check couldn't run, so an admin reads it first. */
+  check_unavailable?: boolean;
 }
 
 /** Passing `review_id` turns a submit into a revision of that review (after
@@ -578,6 +576,10 @@ export interface SubmitDraftOptions {
   review_id?: string;
   /** Edit of a LIVE process (from "Edit project"): apply in place, record, notify. */
   edit_process_id?: string;
+  /** "Think this is wrong? Tell the admins": send text the check flagged to the review queue. */
+  tell_admins?: boolean;
+  /** The resident's note to the admins with a flagged submission. */
+  note?: string;
 }
 
 /** The drafting kinds, each at its own path on the server (one router, src/routes/draftRoutes.ts). */
@@ -2511,6 +2513,8 @@ export interface ProcessReviewSummary {
   process_title: string | null;
   /** The draft this submission came from; null for older reviews. */
   draft_id?: string | null;
+  /** The resident sent text the Code of Conduct check flagged: its findings. Null when not flagged. */
+  coc_flags?: Array<{ field: string | null; quoted_text: string | null; message: string }> | null;
 }
 
 export interface ReviewTurn {

@@ -251,3 +251,46 @@
   margin-right: var(--space-xs);
   vertical-align: middle;
 }
+
+/* A submission the Code of Conduct check flagged, sent to the admins. */
+.review-coc-flags {
+  margin: var(--space-md) 0;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-error);
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  background: var(--color-error-bg);
+}
+
+.review-coc-flags h2 {
+  font-size: var(--font-size-base);
+  margin: 0 0 var(--space-xs);
+  color: var(--color-error);
+}
+
+.review-coc-flags p,
+.review-coc-flags li {
+  font-size: var(--font-size-sm);
+}
+
+.review-coc-flags ul {
+  margin: var(--space-xs) 0 0;
+  padding-left: 1.25rem;
+}
+
+.review-coc-quote {
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+.review-flagged-chip {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.review-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+}

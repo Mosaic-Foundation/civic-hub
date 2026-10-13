@@ -1,8 +1,11 @@
-import { useCallback, useRef, useState, useEffect } from "react";
-import type { AssistantFieldGuidance, VoteDraft, DraftSuggestion } from "../services/api";
+import { useState, useEffect } from "react";
+import type { AssistantFieldGuidance, VoteDraft } from "../services/api";
 import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
+import { FieldFinding, hardFindings } from "./CocFindings";
+import DraftFooter from "./DraftFooter";
+import { useDebouncedFields } from "../hooks/useDebouncedFields";
 import SuggestFooterButton from "./SuggestFooterButton";
 import TitleField from "./TitleField";
 import GrowingLineInput from "./GrowingLineInput";
@@ -25,7 +28,6 @@ interface Props {
   onFieldChange: (field: string, value: string) => void;
   onDurationChange: (ms: number) => void;
   onMethodChange: (method: string, options: string[] | null) => void;
-  onReview: () => void;
   onSubmit: () => void;
   /** shellAssistant.onSuggest — a footer echo of the top affordance's Get
    *  suggestions, so a mobile creator who scrolls to the bottom still finds it. */
@@ -34,8 +36,6 @@ interface Props {
   /** Per-field inline guidance served by the assistant config endpoint. */
   fieldGuidance?: AssistantFieldGuidance[];
   disabled: boolean;
-  reviewLoading?: boolean;
-  reviewFailed?: boolean;
 }
 
 // The unified duration picker — the same five choices on every
@@ -81,57 +81,15 @@ const PLACEHOLDERS = {
   sources: "Links to relevant information, one per line (optional)",
 };
 
-function getStatusText(draft: VoteDraft, reviewFailed?: boolean): string {
-  if (!draft.title.trim()) {
-    return "Status: Title is required";
-  }
-
+/** Why the draft can't be submitted yet, or null. */
+function missingReason(draft: VoteDraft): string | null {
+  if (!draft.title.trim()) return "Add a vote question to submit.";
   if (draft.method === "approval") {
     const opts = draft.custom_options ?? [];
-    if (opts.length < 2) {
-      return "Status: At least 2 options are required for approval voting";
-    }
-    if (opts.some((o) => !o.trim())) {
-      return "Status: All options must have text";
-    }
+    if (opts.length < 2) return "Approval voting needs at least 2 options.";
+    if (opts.some((o) => !o.trim())) return "Every option needs text.";
   }
-
-  if (draft.last_review_result === null && reviewFailed) {
-    return "Status: Check failed — tap Run Code of Conduct check to try again";
-  }
-
-  if (draft.last_review_result === null) {
-    return "Status: Run the Code of Conduct check to prepare for submission";
-  }
-
-  if (draft.draft_modified_since_review) {
-    return "Status: Draft changed — run the Code of Conduct check again before submitting";
-  }
-
-  const hardBlocks = (draft.last_review_result ?? []).filter(
-    (s: DraftSuggestion) => s.severity === "hard",
-  );
-  if (hardBlocks.length > 0) {
-    return `Status: ${hardBlocks.length} Code of Conduct concern${hardBlocks.length > 1 ? "s" : ""} to resolve`;
-  }
-
-  return "Status: Ready to submit";
-}
-
-function getStatusClass(draft: VoteDraft, reviewFailed?: boolean): string {
-  if (!draft.title.trim()) return "status-missing";
-  if (draft.method === "approval") {
-    const opts = draft.custom_options ?? [];
-    if (opts.length < 2 || opts.some((o) => !o.trim())) return "status-missing";
-  }
-  if (draft.last_review_result === null && reviewFailed) return "status-error";
-  if (draft.last_review_result === null) return "status-pending";
-  if (draft.draft_modified_since_review) return "status-modified";
-  const hasHard = (draft.last_review_result ?? []).some(
-    (s: DraftSuggestion) => s.severity === "hard",
-  );
-  if (hasHard) return "status-blocked";
-  return "status-ready";
+  return null;
 }
 
 export default function VoteDraftingForm({
@@ -145,19 +103,13 @@ export default function VoteDraftingForm({
   onFieldChange,
   onDurationChange,
   onMethodChange,
-  onReview,
   onSubmit,
   onGetSuggestions,
   suggesting,
   disabled,
-  reviewLoading,
-  reviewFailed,
   fieldGuidance,
 }: Props) {
-  // Per-FIELD debounce timers: a single shared timer silently dropped a
-  // field's save when the user moved to another field within 800ms —
-  // the form kept the text but the server never received it.
-  const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const { handleChange, schedule, flush } = useDebouncedFields(onFieldChange);
   const [localOptions, setLocalOptions] = useState<string[]>(
     draft.custom_options ?? ["", ""],
   );
@@ -174,17 +126,6 @@ export default function VoteDraftingForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.custom_options]);
 
-  const handleChange = useCallback(
-    (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const value = e.target.value;
-      if (debounceRef.current[field]) clearTimeout(debounceRef.current[field]);
-      debounceRef.current[field] = setTimeout(() => {
-        onFieldChange(field, value);
-      }, 800);
-    },
-    [onFieldChange],
-  );
-
   function handleMethodSelect(method: string) {
     if (method === "approval") {
       const opts = localOptions.length >= 2 ? localOptions : ["", ""];
@@ -199,12 +140,7 @@ export default function VoteDraftingForm({
     const updated = [...localOptions];
     updated[index] = value;
     setLocalOptions(updated);
-    if (debounceRef.current["custom_options"]) {
-      clearTimeout(debounceRef.current["custom_options"]);
-    }
-    debounceRef.current["custom_options"] = setTimeout(() => {
-      onMethodChange(draft.method, updated);
-    }, 800);
+    schedule("custom_options", () => onMethodChange(draft.method, updated));
   }
 
   function addOption() {
@@ -219,18 +155,6 @@ export default function VoteDraftingForm({
     setLocalOptions(updated);
     onMethodChange(draft.method, updated);
   }
-
-  const approvalOptionsValid = draft.method !== "approval" ||
-    ((draft.custom_options ?? []).length >= 2 &&
-      (draft.custom_options ?? []).every((o) => o.trim()));
-
-  const canSubmit =
-    draft.title.trim() &&
-    approvalOptionsValid &&
-    draft.last_review_result !== null &&
-    !draft.draft_modified_since_review &&
-    !(draft.last_review_result ?? []).some((s: DraftSuggestion) => s.severity === "hard") &&
-    !disabled;
 
   return (
     <div className="drafting-form">
@@ -316,6 +240,7 @@ export default function VoteDraftingForm({
                 + Add option
               </button>
             </div>
+            <FieldFinding field="options" />
           </div>
         )}
 
@@ -384,37 +309,19 @@ export default function VoteDraftingForm({
         />
       </div>
 
-      <div className="drafting-form-footer">
-        <SuggestFooterButton
-          onGetSuggestions={onGetSuggestions}
-          suggesting={suggesting}
-          disabled={disabled}
-        />
-        <div className={`draft-status ${getStatusClass(draft, reviewFailed)}`}>
-          {getStatusText(draft, reviewFailed)}
-        </div>
-
-        <div className="draft-actions">
-          {draft.title.trim() && (draft.last_review_result === null || draft.draft_modified_since_review) && (
-            <button
-              type="button"
-              className="draft-review-btn"
-              onClick={onReview}
-              disabled={disabled || reviewLoading}
-            >
-              {reviewLoading ? "Checking..." : "Run Code of Conduct check"}
-            </button>
-          )}
-          <button
-            type="button"
-            className="draft-submit-btn"
-            onClick={onSubmit}
-            disabled={!canSubmit}
-          >
-            Submit vote
-          </button>
-        </div>
-      </div>
+      <DraftFooter
+        missing={missingReason(draft)}
+        flagged={hardFindings(draft.last_review_result).length}
+        onSubmit={() => {
+          flush();
+          onSubmit();
+        }}
+        submitLabel="Submit vote"
+        disabled={disabled}
+        secondary={
+          <SuggestFooterButton onGetSuggestions={onGetSuggestions} suggesting={suggesting} disabled={disabled} />
+        }
+      />
     </div>
   );
 }

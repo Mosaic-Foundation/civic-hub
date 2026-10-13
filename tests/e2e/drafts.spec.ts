@@ -54,8 +54,8 @@ for (const [n, kind] of KINDS.entries()) {
     await page.locator("#draft-title").fill(title);
     await page.locator("#draft-description").fill(`What this ${kind.api} draft is about.`);
 
-    await page.getByRole("button", { name: "Run Code of Conduct check" }).click();
-    await expect(page.getByText("Status: Ready to submit")).toBeVisible();
+    // No separate check: Submit runs it (Submit and Save, 2026-10-12).
+    await expect(page.getByText("Submitting runs a quick Code of Conduct check.")).toBeVisible();
 
     await page.getByRole("button", { name: /Submit/ }).last().click();
     const dialog = page.getByRole("dialog");

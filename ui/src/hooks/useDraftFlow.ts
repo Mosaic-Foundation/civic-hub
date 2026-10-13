@@ -17,7 +17,6 @@ import { ApiError } from "../utils/httpError";
 import {
   getAssistantUiConfig,
   sendAssistantMessage,
-  reviewDraftCoC,
   suggestForDraft,
   type AssistantUiConfig,
   type AssistantResponse,
@@ -35,6 +34,8 @@ export interface BaseDraft {
   sources?: string;
   conversation_history: Array<{ role: "user" | "assistant"; content: string }>;
   last_review_result: DraftSuggestion[] | null;
+  /** Checked text changed since the Code of Conduct check last read it. */
+  draft_modified_since_review?: boolean;
 }
 
 interface PatchOptions {
@@ -167,7 +168,6 @@ export function useDraftFlow<D extends BaseDraft>({
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantOpening, setAssistantOpening] = useState(false);
   const [assistantLoading, setAssistantLoading] = useState(false);
-  const [reviewing, setReviewing] = useState(false);
 
   // One automatic retry when a request dies mid-flight (see isNetworkDrop).
   // The retry itself runs when the tab is foregrounded again — a suspended
@@ -187,8 +187,6 @@ export function useDraftFlow<D extends BaseDraft>({
       }
     }
   }, []);
-  const [reviewFailed, setReviewFailed] = useState(false);
-  const [reviewNotice, setReviewNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** Reactive mirror of buffered (pre-draft) edits, so the form's status
    *  bar sees a signed-out visitor's typing. */
@@ -200,6 +198,8 @@ export function useDraftFlow<D extends BaseDraft>({
   const draftPromise = useRef<Promise<D> | null>(null);
   const buffer = useRef<EditBuffer>({ fields: {}, assistantApplied: false });
   const assistantSeeded = useRef(false);
+  /** The saves in flight, chained: settle() waits for the last of them. */
+  const saving = useRef<Promise<void>>(Promise.resolve());
 
   const commitDraft = useCallback((d: D) => {
     draftRef.current = d;
@@ -297,19 +297,36 @@ export function useDraftFlow<D extends BaseDraft>({
       setPendingFields({ ...buf.fields });
 
       if (!draftRef.current && !canParticipate) return;
-      try {
-        const d = await ensureDraft();
-        const flush = takeBuffer();
-        if (flush) {
-          const updated = await updateDraft(d.id, bufferPayload(flush));
-          commitDraft(updated);
+      const save = (async () => {
+        try {
+          const d = await ensureDraft();
+          const flush = takeBuffer();
+          if (flush) {
+            const updated = await updateDraft(d.id, bufferPayload(flush));
+            commitDraft(updated);
+          }
+        } catch {
+          // best-effort — the edit stays in the form and in the buffer
         }
-      } catch {
-        // best-effort — the edit stays in the form and in the buffer
-      }
+      })();
+      saving.current = saving.current.then(() => save);
+      await save;
     },
     [canParticipate, ensureDraft, updateDraft, commitDraft],
   );
+
+  /**
+   * Everything typed is saved, and the draft as saved: Submit waits for this,
+   * so the check reads the text on screen, not the last autosave. Creates the
+   * draft (and flushes a signed-out visitor's buffer) when there is none yet.
+   */
+  const settle = useCallback(async (): Promise<D> => {
+    const d = await ensureDraft();
+    const flush = takeBuffer();
+    if (flush) commitDraft(await updateDraft(d.id, bufferPayload(flush)));
+    await saving.current;
+    return draftRef.current ?? d;
+  }, [ensureDraft, updateDraft, commitDraft]);
 
   const pushAssistantResponse = useCallback((response: AssistantResponse) => {
     setMessages((prev) => [
@@ -448,33 +465,6 @@ export function useDraftFlow<D extends BaseDraft>({
       void openAssistantAuthed();
     });
   }, [requireAuth, openAssistantAuthed]);
-
-  /** The always-on automated Code of Conduct check. */
-  const handleReview = useCallback(() => {
-    requireAuth(async () => {
-      setAssistantLoading(true);
-      setReviewing(true);
-      setReviewFailed(false);
-      setReviewNotice(null);
-      setError(null);
-      try {
-        const d = await ensureDraft();
-        const result = await withNetworkRetry(() => reviewDraftCoC<D>(processType, d.id));
-        commitDraft(result.draft);
-        setReviewNotice(result.review_unavailable ? result.response.message : null);
-        pushAssistantResponse(result.response);
-      } catch (err) {
-        setReviewFailed(true);
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: friendlyError(err) },
-        ]);
-      } finally {
-        setAssistantLoading(false);
-        setReviewing(false);
-      }
-    });
-  }, [requireAuth, ensureDraft, processType, commitDraft, pushAssistantResponse]);
 
   /**
    * Whether a suggestion can actually land in this type's form. Cards
@@ -618,7 +608,7 @@ export function useDraftFlow<D extends BaseDraft>({
   // Every AI affordance hangs off this: the panel, Get suggestions (top and
   // the footer echo), per-field help. Null when the type has no assistant or
   // the hub switched the Writing assistant off. The Code of Conduct check is
-  // not part of it and runs either way (handleReview; Adam, 2026-10-07).
+  // not part of it: Submit runs it, either way (Adam, 2026-10-07; Submit and Save).
   const shellAssistant: DraftShellAssistant | null = config?.available && pluginEnabled("assistant")
     ? {
         open: assistantOpen,
@@ -628,8 +618,6 @@ export function useDraftFlow<D extends BaseDraft>({
         phase: phase as "brainstorm" | "free_form" | "review",
         loadingLabel: reconnecting
           ? "Connection dropped — trying again"
-          : reviewing
-          ? "Running Code of Conduct check"
           : suggesting
             ? "Reviewing your draft"
             : "Thinking",
@@ -652,14 +640,13 @@ export function useDraftFlow<D extends BaseDraft>({
     pendingFields,
     error,
     setError,
-    reviewNotice,
-    reviewing,
-    reviewFailed,
     assistantOpen,
     shellAssistant,
     queuePatch,
     ensureDraft,
-    handleReview,
+    settle,
+    /** Replace the draft on screen with one read back from the server. */
+    replaceDraft: commitDraft,
     handleApplySuggestion,
     canApplySuggestion,
     // auth modal wiring for the page

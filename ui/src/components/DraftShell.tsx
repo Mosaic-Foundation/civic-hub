@@ -47,13 +47,19 @@ interface Props {
   backAsButton?: boolean;
   title: string;
   error?: string | null;
-  reviewNotice?: string | null;
   /** null → no assistant affordance at all. The shell additionally hides
    *  it when the signed-in user has hide_ai_drafting_help set. */
   assistant: DraftShellAssistant | null;
-  /** Latest CoC-check results — rendered inline while the assistant panel
-   *  is closed, so the manual path can see and resolve them. */
+  /** What the Code of Conduct check flagged on the draft (hard findings) —
+   *  listed above the form while the assistant panel is closed, so the
+   *  manual path can see and resolve them. */
   reviewSuggestions?: DraftSuggestion[] | null;
+  /** The list's id, so a flagged Submit can move focus to it. */
+  flaggedPanelId?: string;
+  /** The text changed since the check flagged it: Submit checks it again. */
+  checkedTextChanged?: boolean;
+  /** "Think this is wrong? Tell the admins". Absent where there is no review (a live edit). */
+  onTellAdmins?: () => void;
   /** Applies assistant-produced text into the form (marks assistant_helped).
    *  Used by both the inline results block and the panel's cards. */
   onApplySuggestion?: (s: DraftSuggestion) => void | Promise<boolean>;
@@ -84,9 +90,11 @@ export default function DraftShell({
   backAsButton = false,
   title,
   error,
-  reviewNotice,
   assistant,
   reviewSuggestions,
+  flaggedPanelId,
+  checkedTextChanged = false,
+  onTellAdmins,
   onApplySuggestion,
   canApplySuggestion,
   layout = "full",
@@ -217,13 +225,32 @@ export default function DraftShell({
     />
   );
 
-  // Inline CoC results for the manual path — hidden while the panel is
-  // open (the same suggestions render as chat cards there).
+  // What the check flagged, for the manual path — hidden while the panel is
+  // open (the same suggestions render as chat cards there). Each finding
+  // also shows under its own field (CocFindings).
   const inlineResults = !open &&
     reviewSuggestions &&
     reviewSuggestions.length > 0 && (
-      <div className="coc-results">
-        <h3 className="coc-results-title">Code of Conduct check</h3>
+      <section className="coc-results" id={flaggedPanelId} tabIndex={-1} aria-labelledby="coc-results-title">
+        <h3 className="coc-results-title" id="coc-results-title">
+          Change this before submitting
+        </h3>
+        <p className="coc-results-intro">
+          {checkedTextChanged
+            ? "You've edited your draft since the Code of Conduct check flagged it. Press Submit to check it again."
+            : "The Code of Conduct check flagged the text below. Nothing was submitted, and your draft is saved. Change it and press Submit again."}
+          {onTellAdmins && (
+            <>
+              {" "}
+              <span className="coc-results-dispute">
+                Think this is wrong?{" "}
+                <button type="button" className="link-button" onClick={onTellAdmins}>
+                  Tell the admins
+                </button>
+              </span>
+            </>
+          )}
+        </p>
         {reviewSuggestions.map((s, i) => (
           <SuggestionCard
             key={i}
@@ -242,7 +269,7 @@ export default function DraftShell({
             }
           />
         ))}
-      </div>
+      </section>
     );
 
   const header = (
@@ -258,7 +285,6 @@ export default function DraftShell({
   const notices = (
     <>
       {error && <p className="form-error">{error}</p>}
-      {reviewNotice && <p className="form-hint">{reviewNotice}</p>}
     </>
   );
 

@@ -51,67 +51,63 @@
 }
 
 /* --- Footer --- */
+/* The floating bar (DraftFooter, Submit and Save 2026-10-12): one slim row,
+   a short status on the left, quiet outlined secondaries, and Submit as the
+   one solid button, in the theme's dark primary. Stacks on a phone. */
 
 .drafting-form-footer {
+  --submit-bg: var(--ds-color-primary-800, #1e3a5f);
+  --submit-bg-hover: var(--ds-color-primary-900, #14304f);
   border-top: 1px solid var(--color-border);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-xs) var(--space-lg);
+  padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
   display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
   background: var(--color-surface);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
   position: sticky;
   bottom: 0;
   z-index: 10;
 }
 
 .draft-status {
-  font-size: var(--font-size-sm);
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-sm);
-  text-align: center;
-}
-
-.status-missing {
-  background: var(--color-surface-alt);
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
   color: var(--color-text-muted);
 }
 
-.status-pending {
-  background: var(--color-surface-alt);
+.draft-status--missing {
   color: var(--color-text-muted);
 }
 
-.status-modified {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-}
-
-.status-error {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-}
-
-.status-blocked {
-  background: var(--color-error-bg);
+.draft-status--blocked {
   color: var(--color-error);
-}
-
-.status-ready {
-  background: var(--color-success-bg);
-  color: var(--color-success);
+  font-weight: 600;
 }
 
 .draft-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-sm);
+  flex-shrink: 0;
 }
 
+/* The one primary action: solid, dark, the widest button in the bar. */
 .draft-submit-btn {
-  flex: 1;
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-primary);
-  color: var(--color-primary-text);
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 40px;
+  min-width: 9rem;
+  padding: 0.45rem 1.1rem;
+  background: var(--submit-bg, var(--ds-color-primary-800, #1e3a5f));
+  color: #fff;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   font-weight: 600;
@@ -120,37 +116,69 @@
 }
 
 .draft-submit-btn:hover:not(:disabled) {
-  background: var(--color-primary-hover);
+  background: var(--submit-bg-hover, var(--ds-color-primary-900, #14304f));
+}
+
+.draft-submit-btn:focus-visible,
+.draft-secondary-btn:focus-visible,
+.draft-suggest-btn:focus-visible,
+.draft-cancel-btn:focus-visible {
+  outline: 2px solid var(--color-focus, var(--ds-color-primary-500, #2563eb));
+  outline-offset: 2px;
 }
 
 .draft-submit-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-
-/* --- Review button --- */
-
-.draft-review-btn {
-  flex: 1;
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-primary);
-  color: var(--color-primary-text);
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
+.draft-submit-btn[aria-busy="true"] {
+  opacity: 0.85;
+  cursor: progress;
 }
 
-.draft-review-btn:hover:not(:disabled) {
-  background: var(--color-primary-hover);
+/* A turning ring inside a busy button. */
+.btn-spinner {
+  width: 0.95em;
+  height: 0.95em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 0.8s linear infinite;
+  flex-shrink: 0;
 }
 
-.draft-review-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+@media (max-width: 640px) {
+  .drafting-form-footer {
+    flex-wrap: wrap;
+    padding-left: var(--space-md);
+    padding-right: var(--space-md);
+  }
+
+  .draft-status {
+    flex-basis: 100%;
+  }
+
+  .draft-actions {
+    flex: 1;
+  }
+
+  .draft-actions .draft-submit-btn {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 /* --- Inline field guidance (FieldGuide) --- */
@@ -171,7 +199,8 @@
 
 /* Edit mode: Cancel beside Save — outlined, never the emphasized action. */
 .draft-cancel-btn {
-  padding: var(--space-sm) var(--space-md);
+  min-height: 40px;
+  padding: 0.45rem 0.9rem;
   background: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
@@ -207,13 +236,13 @@
    scrolls to the bottom to submit still finds it. Quiet/secondary — the
    primary footer action is Submit. Sits above the status line. */
 .draft-suggest-btn {
-  align-self: stretch;
-  padding: var(--space-sm) var(--space-md);
+  min-height: 40px;
+  padding: 0.45rem 0.9rem;
   font-size: var(--font-size-sm);
   font-weight: 500;
-  color: var(--color-primary);
-  background: none;
-  border: 1px solid var(--color-primary);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong, var(--color-border));
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.15s ease;
@@ -237,9 +266,9 @@
   font-family: inherit;
 }
 
-/* "Go back to draft" beside the submit button in the confirm step: it had
-   no rule and rendered as bare text (2026-10-07). The neutral partner of
-   .draft-submit-btn. */
+/* The quiet partner of .draft-submit-btn: "Go back to draft" in the confirm
+   step, and other secondary actions in a modal. Outlined, never solid. */
+.draft-secondary-btn,
 .draft-dispute-btn {
   flex: 1;
   padding: var(--space-sm) var(--space-md);
@@ -253,11 +282,38 @@
   transition: background 0.15s ease;
 }
 
+.draft-secondary-btn:hover:not(:disabled),
 .draft-dispute-btn:hover:not(:disabled) {
   background: var(--color-surface-alt, var(--color-surface));
 }
 
+.draft-secondary-btn:disabled,
 .draft-dispute-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* --- What the Code of Conduct check flagged, under its field --- */
+.field-finding {
+  margin: var(--space-xs) 0 0;
+  padding: var(--space-xs) var(--space-sm);
+  border-left: 3px solid var(--color-error);
+  background: var(--color-error-bg);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.field-finding-text {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
+.field-finding-text + .field-finding-text {
+  margin-top: var(--space-xs);
+}
+
+.field-finding-quote {
+  font-style: italic;
+  color: var(--color-text-muted);
 }

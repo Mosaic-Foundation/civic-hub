@@ -1,9 +1,11 @@
-import { useCallback, useRef } from "react";
-import type { AssistantFieldGuidance, ProjectDraft, DraftSuggestion } from "../services/api";
+import type { AssistantFieldGuidance, ProjectDraft } from "../services/api";
 import { uploadProjectImage } from "../services/api";
 import PostImagePicker from "./PostImagePicker";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
+import { hardFindings } from "./CocFindings";
+import DraftFooter from "./DraftFooter";
+import { useDebouncedFields } from "../hooks/useDebouncedFields";
 import SuggestFooterButton from "./SuggestFooterButton";
 import TitleField from "./TitleField";
 import ProcessLinkField from "./ProcessLinkField";
@@ -23,14 +25,12 @@ interface Props {
   draft: ProjectDraft;
   onFieldChange: (field: string, value: string) => void;
   onImageChange: (next: { image_url: string | null; image_alt: string | null }) => void;
-  onReview: () => void;
   onSubmit: () => void;
   /** shellAssistant.onSuggest — a footer echo of the top affordance's Get
    *  suggestions, so a mobile creator who scrolls to the bottom still finds it. */
   onGetSuggestions?: () => void;
   suggesting?: boolean;
   disabled: boolean;
-  reviewLoading?: boolean;
   /** Per-field inline guidance served by the assistant config endpoint. */
   fieldGuidance?: AssistantFieldGuidance[];
   /** Fields the edit policy locks (a supported project's title). */
@@ -50,38 +50,9 @@ const PLACEHOLDERS = {
   sources: "Links to relevant information, examples, or resources (one per line, optional)",
 };
 
-function getStatusText(draft: ProjectDraft): string {
-  if (!draft.title.trim()) {
-    return "Status: Title is required";
-  }
-
-  if (draft.last_review_result === null) {
-    return "Status: Run the Code of Conduct check to prepare for submission";
-  }
-
-  if (draft.draft_modified_since_review) {
-    return "Status: Draft changed — run the Code of Conduct check again before submitting";
-  }
-
-  const hardBlocks = (draft.last_review_result ?? []).filter(
-    (s: DraftSuggestion) => s.severity === "hard",
-  );
-  if (hardBlocks.length > 0) {
-    return `Status: ${hardBlocks.length} Code of Conduct concern${hardBlocks.length > 1 ? "s" : ""} to resolve`;
-  }
-
-  return "Status: Ready to submit";
-}
-
-function getStatusClass(draft: ProjectDraft): string {
-  if (!draft.title.trim()) return "status-missing";
-  if (draft.last_review_result === null) return "status-pending";
-  if (draft.draft_modified_since_review) return "status-modified";
-  const hasHard = (draft.last_review_result ?? []).some(
-    (s: DraftSuggestion) => s.severity === "hard",
-  );
-  if (hasHard) return "status-blocked";
-  return "status-ready";
+/** Why the draft can't be submitted yet, or null. */
+function missingReason(draft: ProjectDraft): string | null {
+  return draft.title.trim() ? null : "Add a project name to submit.";
 }
 
 export default function ProjectDraftingForm({
@@ -93,12 +64,10 @@ export default function ProjectDraftingForm({
   onLinkTitlesChange,
   onFieldChange,
   onImageChange,
-  onReview,
   onSubmit,
   onGetSuggestions,
   suggesting,
   disabled,
-  reviewLoading,
   fieldGuidance,
   lockedFields = [],
   lockedValues,
@@ -106,28 +75,7 @@ export default function ProjectDraftingForm({
   submitLabel = "Submit project",
 }: Props) {
   const titleLocked = lockedFields.includes("title");
-  // Per-FIELD debounce timers: a single shared timer silently dropped a
-  // field's save when the user moved to another field within 800ms —
-  // the form kept the text but the server never received it.
-  const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-
-  const handleChange = useCallback(
-    (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const value = e.target.value;
-      if (debounceRef.current[field]) clearTimeout(debounceRef.current[field]);
-      debounceRef.current[field] = setTimeout(() => {
-        onFieldChange(field, value);
-      }, 800);
-    },
-    [onFieldChange],
-  );
-
-  const canSubmit =
-    draft.title.trim() &&
-    draft.last_review_result !== null &&
-    !draft.draft_modified_since_review &&
-    !(draft.last_review_result ?? []).some((s: DraftSuggestion) => s.severity === "hard") &&
-    !disabled;
+  const { handleChange, flush } = useDebouncedFields(onFieldChange);
 
   return (
     <div className="drafting-form">
@@ -223,48 +171,32 @@ export default function ProjectDraftingForm({
         />
       </div>
 
-      <div className="drafting-form-footer">
-        <SuggestFooterButton
-          onGetSuggestions={onGetSuggestions}
-          suggesting={suggesting}
-          disabled={disabled}
-        />
-        <div className={`draft-status ${getStatusClass(draft)}`}>
-          {getStatusText(draft)}
-        </div>
-
-        <div className="draft-actions">
-          {draft.title.trim() && (draft.last_review_result === null || draft.draft_modified_since_review) && (
-            <button
-              type="button"
-              className="draft-review-btn"
-              onClick={onReview}
-              disabled={disabled || reviewLoading}
-            >
-              {reviewLoading ? "Checking..." : "Run Code of Conduct check"}
-            </button>
-          )}
-          {onCancel && (
-            <button
-              type="button"
-              className="draft-cancel-btn"
-              onClick={onCancel}
-              disabled={disabled}
-              title="Leave without saving. The project keeps its current text."
-            >
-              Cancel
-            </button>
-          )}
-          <button
-            type="button"
-            className="draft-submit-btn"
-            onClick={onSubmit}
-            disabled={!canSubmit}
-          >
-            {submitLabel}
-          </button>
-        </div>
-      </div>
+      <DraftFooter
+        missing={missingReason(draft)}
+        flagged={hardFindings(draft.last_review_result).length}
+        onSubmit={() => {
+          flush();
+          onSubmit();
+        }}
+        submitLabel={submitLabel}
+        disabled={disabled}
+        secondary={
+          <>
+            <SuggestFooterButton onGetSuggestions={onGetSuggestions} suggesting={suggesting} disabled={disabled} />
+            {onCancel && (
+              <button
+                type="button"
+                className="draft-cancel-btn"
+                onClick={onCancel}
+                disabled={disabled}
+                title="Leave without saving. The project keeps its current text."
+              >
+                Cancel
+              </button>
+            )}
+          </>
+        }
+      />
     </div>
   );
 }

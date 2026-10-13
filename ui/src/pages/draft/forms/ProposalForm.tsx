@@ -16,11 +16,8 @@ export default function ProposalForm({ draft, flow, links, onLinksChange, linkTi
       onLinkTitlesChange={onLinkTitlesChange}
       onFieldChange={onFieldChange}
       onDurationChange={onDurationChange}
-      onReview={flow.handleReview}
       onSubmit={onSubmit}
       disabled={disabled}
-      reviewLoading={flow.reviewing}
-      reviewFailed={flow.reviewFailed}
       fieldGuidance={flow.config?.field_guidance}
       onGetSuggestions={flow.shellAssistant?.onSuggest}
       suggesting={flow.shellAssistant?.suggesting}

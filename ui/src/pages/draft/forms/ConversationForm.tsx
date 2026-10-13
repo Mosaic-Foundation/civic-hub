@@ -19,11 +19,8 @@ export default function ConversationForm({ draft, flow, links, onLinksChange, li
       onFieldChange={onFieldChange}
       onDurationChange={onDurationChange}
       onThresholdChange={onThresholdChange}
-      onReview={flow.handleReview}
       onSubmit={onSubmit}
       disabled={disabled}
-      reviewLoading={flow.reviewing}
-      reviewFailed={flow.reviewFailed}
       fieldGuidance={flow.config?.field_guidance}
       onGetSuggestions={flow.shellAssistant?.onSuggest}
       suggesting={flow.shellAssistant?.suggesting}

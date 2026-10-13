@@ -52,9 +52,15 @@ export default function MySubmissions() {
   const [detail, setDetail] = useState<ReviewDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const justSubmitted = (location.state as { submitted?: boolean })?.submitted === true;
+  const arrived = location.state as { submitted?: boolean; flagged?: boolean; checkUnavailable?: boolean } | null;
   const [actionMessage, setActionMessage] = useState<string | null>(
-    justSubmitted ? "Submitted! An admin will review your submission shortly." : null,
+    arrived?.submitted !== true
+      ? null
+      : arrived.flagged
+        ? "Sent to the admins, with what the Code of Conduct check flagged and your note. An admin will read it and decide."
+        : arrived.checkUnavailable
+          ? "Submitted. The automated Code of Conduct check couldn't run, so an admin will read it before it goes live."
+          : "Submitted! An admin will review your submission shortly.",
   );
 
   // Revise form

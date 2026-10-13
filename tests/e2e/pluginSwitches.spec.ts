@@ -141,13 +141,16 @@ test.describe("Plugin switches", () => {
     await visitAs(page, token);
     await page.goto("/votes/new");
     await page.getByPlaceholder(/Should we add sidewalks/).fill("Should the library open on Sundays?");
-    const check = page.getByRole("button", { name: "Run Code of Conduct check" });
-    await expect(check).toBeVisible();
     await expect(page.getByRole("button", { name: "Get suggestions" })).toHaveCount(0);
 
-    await check.click();
-    await expect(page.getByText("Status: Ready to submit")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Submit vote" })).toBeEnabled();
+    // The check is part of Submit (Submit and Save), so it runs either way.
+    await expect(page.getByText("Submitting runs a quick Code of Conduct check.")).toBeVisible();
+    const submit = page.getByRole("button", { name: "Submit vote" });
+    await expect(submit).toBeEnabled();
+    await submit.click();
+    const answered = page.waitForResponse((r) => /\/votes\/drafts\/[^/]+\/submit$/.test(r.url()));
+    await page.getByRole("dialog").getByRole("button", { name: /^Submit/ }).click();
+    expect((await answered).status()).toBe(201);
   });
 
   test("a new sign-up with Word clouds off lands on the home page", async ({ page, request }) => {

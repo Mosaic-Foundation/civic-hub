@@ -169,16 +169,27 @@
   border-radius: var(--radius-sm);
 }
 
-.confirm-soft-note {
+.confirm-check-note {
   font-size: var(--font-size-xs);
   color: var(--color-text-subtle);
   margin: 0 0 var(--space-md);
 }
 
+.tell-admins-text {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed, 1.5);
+  margin: 0 0 var(--space-md);
+}
+
 .confirm-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
   margin-top: var(--space-md);
+}
+
+.confirm-actions > button {
+  flex: 1 1 10rem;
 }
 
 /* Edit mode: the "your edits go live right away" callout in the project

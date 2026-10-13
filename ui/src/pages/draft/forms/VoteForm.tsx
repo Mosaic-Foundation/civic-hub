@@ -51,11 +51,8 @@ export default function VoteForm({
       onFieldChange={onFieldChange}
       onDurationChange={onDurationChange}
       onMethodChange={onMethodChange}
-      onReview={flow.handleReview}
       onSubmit={onSubmit}
       disabled={disabled}
-      reviewLoading={flow.reviewing}
-      reviewFailed={flow.reviewFailed}
       fieldGuidance={flow.config?.field_guidance}
       onGetSuggestions={flow.shellAssistant?.onSuggest}
       suggesting={flow.shellAssistant?.suggesting}

@@ -1,16 +1,17 @@
 import type { ReactNode } from "react";
+import Modal from "./Modal";
 
 /**
- * A confirmation modal: a heading, what is being confirmed, and two buttons.
- * One component for what the four drafting pages each had a copy of (the
- * submit confirmation, Audit 3); the classes are theirs (ProposeDraft.css,
- * the intro modal's layout), so it looks as it did.
+ * A confirmation: a heading, what is being confirmed, and two buttons, on
+ * the one Modal. One component for what the four drafting pages each had a
+ * copy of (the submit confirmation, Audit 3). While `busy`, it can't be
+ * closed and the confirm button says what is happening (`busyLabel`).
  */
 export default function ConfirmDialog({
   title,
   children,
   confirmLabel,
-  busyLabel = "Submitting...",
+  busyLabel = "Submitting…",
   busy = false,
   cancelLabel = "Go back to draft",
   onConfirm,
@@ -26,24 +27,23 @@ export default function ConfirmDialog({
   onClose: () => void;
 }) {
   return (
-    <div className="intro-overlay" onClick={onClose}>
-      <div className="intro-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <button className="intro-close" onClick={onClose}>
-          &times;
+    <Modal title={title} onClose={onClose} dismissible={!busy}>
+      {children}
+      <div className="confirm-actions">
+        <button
+          type="button"
+          className="draft-submit-btn"
+          onClick={onConfirm}
+          disabled={busy}
+          aria-busy={busy}
+        >
+          {busy && <span className="btn-spinner" aria-hidden="true" />}
+          {busy ? busyLabel : confirmLabel}
         </button>
-        <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "var(--font-size-xl)", marginBottom: "var(--space-md)" }}>
-          {title}
-        </h2>
-        {children}
-        <div className="confirm-actions">
-          <button type="button" className="draft-submit-btn" onClick={onConfirm} disabled={busy}>
-            {busy ? busyLabel : confirmLabel}
-          </button>
-          <button type="button" className="draft-dispute-btn" onClick={onClose} disabled={busy}>
-            {cancelLabel}
-          </button>
-        </div>
+        <button type="button" className="draft-secondary-btn" onClick={onClose} disabled={busy}>
+          {cancelLabel}
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }

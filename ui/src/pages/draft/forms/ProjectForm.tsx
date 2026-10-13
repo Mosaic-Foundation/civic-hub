@@ -37,14 +37,12 @@ export default function ProjectForm({ draft, flow, ctx, links, onLinksChange, li
       onLinkTitlesChange={onLinkTitlesChange}
       onFieldChange={onFieldChange}
       onImageChange={onImageChange}
-      onReview={flow.handleReview}
       onSubmit={onSubmit}
       lockedFields={lockedFields}
       lockedValues={lockedValues}
       onCancel={editProcessId ? () => navigate(`/project/${editProcessId}`) : undefined}
       submitLabel={editProcessId ? "Submit edits" : undefined}
       disabled={disabled}
-      reviewLoading={flow.reviewing}
       fieldGuidance={flow.config?.field_guidance}
       onGetSuggestions={editProcessId ? undefined : flow.shellAssistant?.onSuggest}
       suggesting={flow.shellAssistant?.suggesting}

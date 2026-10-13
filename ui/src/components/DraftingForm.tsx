@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import type { AssistantFieldGuidance, DraftCategory, ProposalDraft } from "../services/api";
 import "./DraftingForm.css";
 import ProcessLinkField from "./ProcessLinkField";
@@ -6,9 +6,13 @@ import type { ProposedLink } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
 import SuggestFooterButton from "./SuggestFooterButton";
 import TitleField from "./TitleField";
+import { FieldFinding, hardFindings } from "./CocFindings";
+import DraftFooter from "./DraftFooter";
+import { useDebouncedFields } from "../hooks/useDebouncedFields";
 
-/** Inline hint + example under a field — the same best-practices content
- *  the assistant works from, so manual drafters get the quality lift too. */
+/** Under a field: what the Code of Conduct check flagged in it, if anything,
+ *  then the inline hint + example — the same best-practices content the
+ *  assistant works from, so manual drafters get the quality lift too. */
 export function FieldGuide({
   guidance,
   field,
@@ -17,7 +21,15 @@ export function FieldGuide({
   field: string;
 }) {
   const entry = guidance?.find((g) => g.field === field);
-  if (!entry) return null;
+  return (
+    <>
+      <FieldFinding field={field} />
+      {entry && <FieldHint entry={entry} />}
+    </>
+  );
+}
+
+function FieldHint({ entry }: { entry: AssistantFieldGuidance }) {
   return (
     <p className="field-guide">
       {entry.hint}
@@ -43,15 +55,12 @@ interface Props {
   draft: ProposalDraft;
   onFieldChange: (field: string, value: string) => void;
   onDurationChange: (ms: number) => void;
-  onReview: () => void;
   onSubmit: () => void;
   /** shellAssistant.onSuggest — a footer echo of the top affordance's Get
    *  suggestions, so a mobile creator who scrolls to the bottom still finds it. */
   onGetSuggestions?: () => void;
   suggesting?: boolean;
   disabled: boolean;
-  reviewLoading?: boolean;
-  reviewFailed?: boolean;
   /** Per-field inline guidance served by the assistant config endpoint. */
   fieldGuidance?: AssistantFieldGuidance[];
 }
@@ -86,43 +95,9 @@ function getPlaceholder(category: string | null, field: string): string {
   return PLACEHOLDERS[cat]?.[field] ?? PLACEHOLDERS["idea"]?.[field] ?? "";
 }
 
-function getStatusText(draft: ProposalDraft, reviewFailed?: boolean): string {
-  if (!draft.title.trim()) {
-    return "Status: 1 required field missing";
-  }
-
-  if (draft.last_review_result === null && reviewFailed) {
-    return "Status: Check failed — tap Run Code of Conduct check to try again";
-  }
-
-  if (draft.last_review_result === null) {
-    return "Status: Run the Code of Conduct check to prepare for submission";
-  }
-
-  if (draft.draft_modified_since_review) {
-    return "Status: Draft changed — run the Code of Conduct check again before submitting";
-  }
-
-  const hardBlocks = (draft.last_review_result ?? []).filter(
-    (s) => s.severity === "hard",
-  );
-  if (hardBlocks.length > 0) {
-    return `Status: ${hardBlocks.length} Code of Conduct concern${hardBlocks.length > 1 ? "s" : ""} to resolve`;
-  }
-
-  return "Status: Ready to submit";
-}
-
-function getStatusClass(draft: ProposalDraft, reviewFailed?: boolean): string {
-  if (!draft.title.trim()) return "status-missing";
-  if (draft.last_review_result === null && reviewFailed) return "status-error";
-  if (draft.last_review_result === null) return "status-pending";
-  if (draft.draft_modified_since_review) return "status-modified";
-  const hasHard = (draft.last_review_result ?? []).some(
-    (s) => s.severity === "hard",
-  );
-  if (hasHard) return "status-blocked";
-  return "status-ready";
+/** Why the draft can't be submitted yet, or null. */
+function missingReason(draft: ProposalDraft): string | null {
+  return draft.title.trim() ? null : "Add a title to submit.";
 }
 
 export default function DraftingForm({
@@ -134,30 +109,13 @@ export default function DraftingForm({
   onLinkTitlesChange,
   onFieldChange,
   onDurationChange,
-  onReview,
   onSubmit,
   onGetSuggestions,
   suggesting,
   disabled,
-  reviewLoading,
-  reviewFailed,
   fieldGuidance,
 }: Props) {
-  // Per-FIELD debounce timers: a single shared timer silently dropped a
-  // field's save when the user moved to another field within 800ms —
-  // the form kept the text but the server never received it.
-  const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-
-  const handleChange = useCallback(
-    (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const value = e.target.value;
-      if (debounceRef.current[field]) clearTimeout(debounceRef.current[field]);
-      debounceRef.current[field] = setTimeout(() => {
-        onFieldChange(field, value);
-      }, 800);
-    },
-    [onFieldChange],
-  );
+  const { handleChange, flush } = useDebouncedFields(onFieldChange);
 
   const handleSubTypeChange = useCallback(
     (cat: DraftCategory) => {
@@ -167,13 +125,6 @@ export default function DraftingForm({
   );
 
   const subType = draft.category ?? "idea";
-
-  const canSubmit =
-    draft.title.trim() &&
-    draft.last_review_result !== null &&
-    !draft.draft_modified_since_review &&
-    !(draft.last_review_result ?? []).some((s) => s.severity === "hard") &&
-    !disabled;
 
   return (
     <div className="drafting-form">
@@ -277,37 +228,19 @@ export default function DraftingForm({
         />
       </div>
 
-      <div className="drafting-form-footer">
-        <SuggestFooterButton
-          onGetSuggestions={onGetSuggestions}
-          suggesting={suggesting}
-          disabled={disabled}
-        />
-        <div className={`draft-status ${getStatusClass(draft, reviewFailed)}`}>
-          {getStatusText(draft, reviewFailed)}
-        </div>
-
-        <div className="draft-actions">
-          {draft.title.trim() && (draft.last_review_result === null || draft.draft_modified_since_review) && (
-            <button
-              type="button"
-              className="draft-review-btn"
-              onClick={onReview}
-              disabled={disabled || reviewLoading}
-            >
-              {reviewLoading ? "Checking..." : "Run Code of Conduct check"}
-            </button>
-          )}
-          <button
-            type="button"
-            className="draft-submit-btn"
-            onClick={onSubmit}
-            disabled={!canSubmit}
-          >
-            Submit proposal
-          </button>
-        </div>
-      </div>
+      <DraftFooter
+        missing={missingReason(draft)}
+        flagged={hardFindings(draft.last_review_result).length}
+        onSubmit={() => {
+          flush();
+          onSubmit();
+        }}
+        submitLabel="Submit proposal"
+        disabled={disabled}
+        secondary={
+          <SuggestFooterButton onGetSuggestions={onGetSuggestions} suggesting={suggesting} disabled={disabled} />
+        }
+      />
     </div>
   );
 }

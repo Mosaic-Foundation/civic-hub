@@ -89,5 +89,8 @@ export interface DraftKindConfig<D extends BaseDraft> {
 export function reviewDestination(result: CreateProcessResult, liveUrl: (id: string) => string): DraftDestination {
   return result.auto_approved
     ? { to: liveUrl(result.process_id) }
-    : { to: `/my-submissions/${result.review_id}`, state: { submitted: true } };
+    : {
+        to: `/my-submissions/${result.review_id}`,
+        state: { submitted: true, flagged: result.flagged === true, checkUnavailable: result.check_unavailable === true },
+      };
 }
