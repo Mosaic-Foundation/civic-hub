@@ -34,8 +34,19 @@
   box-sizing: border-box;
 }
 
+/* clip, not hidden: hidden makes body a scroll container, and on iOS a
+   sticky header (the nav, the section tabs) then scrolls away with the page
+   (the 66b0cc2 fix moved this off html for the same reason). */
 body {
   overflow-x: hidden;
+  overflow-x: clip;
+}
+
+/* No double-tap zoom; pinch zoom stays (WCAG 1.4.4). Since zoom was allowed
+   (97da197), a double-tap left a phone slightly zoomed in, and a zoomed page
+   carries the sticky nav off the top as it scrolls (Adam, 2026-10-12). */
+html {
+  touch-action: manipulation;
 }
 
 body {
