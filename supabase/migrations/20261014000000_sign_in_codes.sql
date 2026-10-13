@@ -149,9 +149,9 @@ COMMENT ON FUNCTION public.rate_limit_retry_at(text, integer, integer) IS
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
-    GRANT SELECT, INSERT, DELETE ON sign_in_codes TO authenticated, service_role;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON sign_in_codes TO authenticated, service_role;
     REVOKE ALL ON platform_sign_in_codes FROM authenticated;
-    GRANT SELECT, INSERT, DELETE ON platform_sign_in_codes TO service_role;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON platform_sign_in_codes TO service_role;
     GRANT EXECUTE ON FUNCTION public.take_sign_in_attempt(text, text, text, integer) TO authenticated, service_role;
     GRANT EXECUTE ON FUNCTION public.take_platform_sign_in_attempt(text, text, text, text, integer) TO service_role;
     GRANT EXECUTE ON FUNCTION public.rate_limit_retry_at(text, integer, integer) TO service_role;
