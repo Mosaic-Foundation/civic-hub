@@ -13,6 +13,7 @@
 import { createHash } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
+import { CURRENT_LEGAL_VERSION } from "../../src/shared/legal.js";
 import { localRest } from "../fixtures/adminSession.js";
 import { OPERATOR, auditFor, consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
 import { START_HOST, cookieFrom, freshIp, plantStartCode, signedInStart, startCall } from "../fixtures/startCall.js";
@@ -320,7 +321,7 @@ describe("creating a hub", () => {
     expect(audit.map((a) => a.action)).toEqual(expect.arrayContaining(["invite.redeem", "hub.create", "hub.sample_seed"]));
     const create = audit.find((a) => a.action === "hub.create")!;
     expect(create.actor_email).toBe(email);
-    expect(create.after).toMatchObject({ via: "start", entitlement_id: id });
+    expect(create.after).toMatchObject({ via: "start", entitlement_id: id, terms_version: CURRENT_LEGAL_VERSION });
     expect(audit.find((a) => a.action === "invite.redeem")!.actor_email).toBe(email);
 
     // The handoff: swapped once for a session in which the creator is admin.
@@ -333,7 +334,24 @@ describe("creating a hub", () => {
     const me = await call("GET", "/auth/me", `${slug}.localhost`, undefined, swapped.body.token);
     expect(me.status).toBe(200);
     expect(me.body.role).toBe("admin");
+    // Pressing Create beside the notice was the creator's agreement: they
+    // aren't asked again as a member (sign-in slice).
+    expect(me.body.user.tos_version_accepted).toBe(CURRENT_LEGAL_VERSION);
     expect((await call("POST", "/auth/handoff", `${slug}.localhost`, { handoff })).status).toBe(401);
+  });
+
+  it("serves the plain-language summaries of what Create agrees to, for the place being made", async () => {
+    const { code } = await mint();
+    const cookie = await signedInStart(code, `legal-${run}@example.test`);
+    const res = await startCall("GET", "/start/legal?kind=place&place=Exampleville", { cookie });
+    expect(res.status).toBe(200);
+    expect(res.body.version).toBe(CURRENT_LEGAL_VERSION);
+    expect(res.body.summaries.map((s: { title: string }) => s.title)).toEqual(["Code of Conduct", "Privacy Notice", "Terms"]);
+    const terms = res.body.summaries[2].summary as string;
+    expect(terms).toContain("Join only if you live in Exampleville.");
+    for (const s of res.body.summaries) expect(s.summary).not.toMatch(/\{[A-Z_]+\}|\{\{/);
+    // Signed out, nothing.
+    expect((await startCall("GET", "/start/legal")).status).toBe(401);
   });
 
   it("a handoff works only on its own hub, and only for two minutes", async () => {
