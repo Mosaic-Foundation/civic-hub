@@ -38,6 +38,7 @@ import Terms from "./pages/Terms";
 import CodeOfConduct from "./pages/CodeOfConduct";
 import Feedback from "./pages/Feedback";
 import Welcome from "./pages/Welcome";
+import SignInLink from "./pages/SignInLink";
 import Projects from "./pages/Projects";
 import Outcomes from "./pages/Outcomes";
 import Deliberations from "./pages/Deliberations";
@@ -234,6 +235,7 @@ function AppContent() {
               and signed-in users; submissions persist to the
               feedback_submissions table and best-effort email the operator. */}
           <Route path="/welcome" element={<Welcome />} />
+          <Route path="/sign-in" element={<SignInLink />} />
           <Route path="/feedback" element={whenPlugin("feedback", <Feedback />)} />
           {/* Slice 11 — admin moderation log. Read-only list of every
               moderation action, gated server-side via requireAdmin

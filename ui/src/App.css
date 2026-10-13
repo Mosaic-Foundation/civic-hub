@@ -422,6 +422,38 @@
   text-decoration: underline;
 }
 
+/* Sign-in slice (2026-10-14): the line beside Join that replaced the terms
+   checkbox, and "Keep me signed in". */
+.auth-terms-notice {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin: var(--space-sm) 0 0;
+  text-align: center;
+}
+
+.auth-terms-notice a {
+  color: var(--color-link, #1e3a5f);
+  text-decoration: underline;
+}
+
+.auth-keep-signed-in {
+  font-size: var(--font-size-sm);
+}
+
+.sign-in-link-page {
+  padding: 0 16px;
+}
+
+.sign-in-link-card {
+  max-width: 420px;
+  margin: var(--space-xl, 2rem) auto;
+  padding: var(--space-lg, 1.5rem);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--card-background);
+}
+
 .re-accept-links {
   list-style: none;
   padding: 0;

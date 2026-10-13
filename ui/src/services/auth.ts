@@ -9,7 +9,7 @@ const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
 
 class AuthError extends Error {
   status: number;
-  /** The server's error code (`beta_closed`, `locked_out`…), when it sent one. */
+  /** The server's error code (`beta_closed`, `code_burned`…), when it sent one. */
   code: string | null;
   constructor(message: string, status: number, code: string | null = null) {
     super(message);
@@ -124,18 +124,46 @@ export function requestCode(email: string): Promise<{ message: string; no_email?
   return request("POST", "/auth/request-code", { email });
 }
 
-export function verifyCode(
-  email: string,
-  code: string
-): Promise<{
+export interface SignedIn {
   token: string;
   user: AuthUser;
   role: AuthRole;
   author_label: string | null;
   official_type: string | null;
   official_title: string | null;
-}> {
-  return request("POST", "/auth/verify", { email, code });
+}
+
+export function verifyCode(email: string, code: string, keepSignedIn = false): Promise<SignedIn> {
+  return request("POST", "/auth/verify", { email, code, keep_signed_in: keepSignedIn });
+}
+
+/** The code email's "Sign in" link: its token, after one Confirm (sign-in slice). */
+export function verifyLink(token: string, keepSignedIn = false): Promise<SignedIn> {
+  return request("POST", "/auth/verify-link", { token, keep_signed_in: keepSignedIn });
+}
+
+// --- "Keep me signed in", remembered per browser ---
+//
+// Default off: whether a device is shared or public can't be detected, so a
+// person ticks it on their own phone once and this browser remembers.
+
+const KEEP_KEY = "civic_keep_signed_in";
+
+export function rememberedKeepSignedIn(): boolean {
+  try {
+    return localStorage.getItem(KEEP_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function rememberKeepSignedIn(keep: boolean): void {
+  try {
+    if (keep) localStorage.setItem(KEEP_KEY, "1");
+    else localStorage.removeItem(KEEP_KEY);
+  } catch {
+    // Not remembered; the box starts unticked next time.
+  }
 }
 
 /**

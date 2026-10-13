@@ -16,6 +16,8 @@ export const BETA_PUBLIC_PATHS: ReadonlySet<string> = new Set([
   "/code-of-conduct",
   "/privacy",
   "/terms",
+  // The code email's sign-in link (sign-in slice, 2026-10-14).
+  "/sign-in",
 ]);
 
 /**

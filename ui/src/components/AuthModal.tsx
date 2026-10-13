@@ -6,6 +6,8 @@ import { onboardingTarget } from "../config/pluginRules";
 import {
   requestCode,
   verifyCode,
+  rememberedKeepSignedIn,
+  rememberKeepSignedIn,
   affirmResidency,
   updateFullName,
   acceptTos,
@@ -15,6 +17,7 @@ import {
 import { CURRENT_LEGAL_VERSION } from "../config/legal";
 import hub from "../config/hub";
 import Modal from "./Modal";
+import TermsNotice from "./TermsNotice";
 import WaitlistForm from "./WaitlistForm";
 import { affiliationClause, pluralNoun } from "../../../src/shared/hubKind";
 
@@ -23,7 +26,7 @@ import { affiliationClause, pluralNoun } from "../../../src/shared/hubKind";
  * passes. Prevents users from ending up with a partial session if
  * they close the modal between code verification and the gate.
  */
-interface PendingAuth {
+export interface PendingAuth {
   token: string;
   user: AuthUser;
   role: AuthRole;
@@ -36,7 +39,7 @@ interface PendingAuth {
  * shape AuthContext holds. Both must be present — a type with no title
  * has nothing to render (the same both-or-neither rule the DB enforces).
  */
-function officialFrom(result: {
+export function officialFrom(result: {
   official_type: string | null;
   official_title: string | null;
 }): { type: string; title: string } | null {
@@ -52,16 +55,21 @@ interface Props {
   onComplete: () => void;
   /** Called when the user dismisses the modal */
   onDismiss: () => void;
+  /**
+   * Already verified, not yet joined: the email's sign-in link page hands
+   * its answer here, and the modal opens at the join step (sign-in slice).
+   */
+  pending?: PendingAuth;
 }
 
-export default function AuthModal({ onComplete, onDismiss }: Props) {
+export default function AuthModal({ onComplete, onDismiss, pending }: Props) {
   const { user, token, login, updateUser, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(() => {
     // Any verified user lands on the gate step — it renders only the
     // pieces they're missing (residency checkbox and/or name field),
     // and auto-completes when nothing is missing.
-    if (user && user.email_verified) return "residency";
+    if (pending || (user && user.email_verified)) return "residency";
     return "email";
   });
   const [email, setEmail] = useState("");
@@ -72,13 +80,14 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
   // Slice 13.10 — verifyCode result is held here UNTIL the residency
   // gate passes. We do not call login() at the verify step anymore so
   // dismissing the modal at the gate leaves no session behind.
-  const [pendingAuth, setPendingAuth] = useState<PendingAuth | null>(null);
-  // Slice 13.9 — single combined gate checkbox for new users: residency
-  // affirmation + legal-doc acceptance in one click. Returning residents
-  // (is_resident=true) skip this step entirely. The app-root
-  // ReAcceptModal still catches returning users whose tos_version is
-  // stale, so this single gate is sufficient at sign-up.
+  const [pendingAuth, setPendingAuth] = useState<PendingAuth | null>(pending ?? null);
+  // The residency checkbox (Slice 13.9). The policies are no longer a
+  // checkbox (sign-in slice, Adam 2026-10-13): a one-line notice beside Join
+  // says that joining agrees to them. Returning residents skip this step;
+  // the app-root ReAcceptModal catches a stale legal version.
   const [gateChecked, setGateChecked] = useState(false);
+  // "Keep me signed in": off unless this browser remembers it ticked.
+  const [keepSignedIn, setKeepSignedIn] = useState(rememberedKeepSignedIn);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -145,10 +154,10 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
     try {
       await requestCode(email.trim());
       setCode("");
-      setNotice("A new code has been sent to your email.");
+      setNotice("We sent another code. Any code we sent in the last ten minutes works.");
     } catch (err) {
-      // Backend enforces a 30s resend throttle and the lockout window; surface
-      // whatever message it returns ("Please wait…", "Too many attempts…").
+      // The server says when to try again, in the hub's time ("We just sent
+      // you a code. You can ask for another after 4:10 PM.").
       setError(err instanceof Error ? err.message : "Failed to resend code");
     } finally {
       setLoading(false);
@@ -166,7 +175,8 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
 
     setLoading(true);
     try {
-      const result = await verifyCode(email.trim(), code.trim());
+      rememberKeepSignedIn(keepSignedIn);
+      const result = await verifyCode(email.trim(), code.trim(), keepSignedIn);
 
       if (result.user.is_resident && result.user.full_name) {
         // Returning resident with a name on file — fully signed up
@@ -217,6 +227,9 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
       ? "I'm trying this demo"
       : affiliationClause(hub.kind, { place: hub.jurisdiction, hub: hub.name });
   const needsName = !gateUser?.full_name;
+  // The policies notice shows to anyone who hasn't agreed to this version: a
+  // hub's creator agreed once, at creation, and doesn't see it again.
+  const needsTerms = gateUser?.tos_version_accepted !== CURRENT_LEGAL_VERSION;
 
   async function handleResidency(e: React.FormEvent) {
     e.preventDefault();
@@ -226,12 +239,8 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
       setError("Please enter your full name.");
       return;
     }
-    if (needsResidency && !gateChecked) {
-      setError(
-        affirmation
-          ? "Please tick the box to confirm and accept the policies."
-          : "Please tick the box to accept the policies.",
-      );
+    if (needsResidency && affirmation && !gateChecked) {
+      setError("Please tick the box to confirm.");
       return;
     }
 
@@ -254,25 +263,25 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
     try {
       let nextUser: AuthUser;
       if (needsResidency) {
-        // Combined gate: affirm residency (+ name) + record legal-doc
-        // acceptance. Both calls happen here so a network blip on
-        // either surfaces an error the user can retry on this same
-        // step rather than getting half-completed sign-ups. acceptTos
-        // failure is non-fatal — the re-acceptance modal will catch
-        // them on next page load.
+        // Join: affirm residency (+ name), and record that joining agreed
+        // to the policies the notice beside the button names. acceptTos
+        // failure is non-fatal — the re-acceptance modal will catch them
+        // on next page load.
         const residencyResult = await affirmResidency(
           tokenToUse,
           needsName ? fullName.trim() : undefined,
         );
         nextUser = residencyResult.user;
-        try {
-          const accepted = await acceptTos(tokenToUse, CURRENT_LEGAL_VERSION);
-          nextUser = accepted.user;
-        } catch (acceptErr) {
-          console.warn(
-            "[auth] accept-tos failed during sign-up; re-acceptance modal will retry.",
-            acceptErr,
-          );
+        if (needsTerms) {
+          try {
+            const accepted = await acceptTos(tokenToUse, CURRENT_LEGAL_VERSION);
+            nextUser = accepted.user;
+          } catch (acceptErr) {
+            console.warn(
+              "[auth] accept-tos failed during sign-up; re-acceptance modal will retry.",
+              acceptErr,
+            );
+          }
         }
       } else {
         // Already a resident — this is the required-name re-gate for an
@@ -387,6 +396,8 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
           <input
             id="auth-email"
             type="email"
+            inputMode="email"
+            autoComplete="email"
             className="form-input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -448,18 +459,34 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
 
         <div className="form-field">
           <label htmlFor="auth-code" className="form-label">Verification code</label>
+          {/* What iOS and Android need to offer the code from the email or
+              a text above the keyboard: one-time-code, and a number pad. */}
           <input
             id="auth-code"
+            name="one-time-code"
             type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            autoComplete="one-time-code"
             className="form-input auth-code-input"
             value={code}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
             placeholder="------"
             maxLength={6}
             autoFocus={!noEmail}
             disabled={loading}
           />
         </div>
+
+        <label className="auth-checkbox-label auth-keep-signed-in">
+          <input
+            type="checkbox"
+            checked={keepSignedIn}
+            onChange={(e) => setKeepSignedIn(e.target.checked)}
+            disabled={loading}
+          />
+          <span>Keep me signed in on this device</span>
+        </label>
 
         {error && <p className="form-error">{error}</p>}
         {notice && <p className="auth-hint">{notice}</p>}
@@ -532,7 +559,7 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
           </div>
         )}
 
-        {needsResidency && (
+        {needsResidency && affirmation && (
           <label className="auth-checkbox-label auth-legal-checkbox">
             <input
               type="checkbox"
@@ -540,26 +567,7 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
               onChange={(e) => setGateChecked(e.target.checked)}
               disabled={loading}
             />
-            <span>
-              {affirmation ? <>{affirmation}, and I</> : "I"}{" "}
-              have read and agree to the{" "}
-              <a href="/terms" target="_blank" rel="noopener noreferrer">
-                Terms of Service
-              </a>
-              ,{" "}
-              <a href="/privacy" target="_blank" rel="noopener noreferrer">
-                Privacy Policy
-              </a>
-              , and{" "}
-              <a
-                href="/code-of-conduct"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Code of Conduct
-              </a>
-              .
-            </span>
+            <span>{affirmation}.</span>
           </label>
         )}
 
@@ -570,12 +578,13 @@ export default function AuthModal({ onComplete, onDismiss }: Props) {
           className="auth-continue-button"
           disabled={
             loading ||
-            (needsResidency && !gateChecked) ||
+            (needsResidency && !!affirmation && !gateChecked) ||
             (needsName && fullName.trim().length < 2)
           }
         >
-          {loading ? "Confirming..." : "Continue"}
+          {loading ? (needsResidency ? "Joining..." : "Saving...") : needsResidency ? "Join" : "Continue"}
         </button>
+        {needsResidency && needsTerms && <TermsNotice verb="joining" />}
       </form>
     )}
     </Modal>
