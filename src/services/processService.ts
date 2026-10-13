@@ -508,7 +508,7 @@ function checkAgainstDescriptor(
 
 /** A process is terminal once closed or finalized — the moment its brief
  *  should be generated. */
-function isTerminalStatus(status: string): boolean {
+export function isTerminalStatus(status: string): boolean {
   return status === "closed" || status === "finalized";
 }
 

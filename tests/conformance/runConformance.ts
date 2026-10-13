@@ -419,6 +419,16 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
         expect(log).toHaveLength(1);
         expect(log[0].actor_email).toBe(BETA.adminEmail);
         expect(log[0].after.note).toBe(note);
+
+        // Regenerate: the unpublished brief is made again; the text it
+        // replaced is kept, and the early close is still on it.
+        if (d.brief) {
+          const again = await call("POST", `/admin/briefs/${briefs[0].id}/regenerate`, BETA.host, {}, adminToken);
+          expect(again.status, JSON.stringify(again.body)).toBe(200);
+          expect(again.body.staged).toBe(false);
+          expect(again.body.brief.history).toHaveLength(1);
+          expect(again.body.brief.content.closed_early).toEqual({ line: early.line, note });
+        }
       }, 60_000);
     });
   }

@@ -21,6 +21,9 @@ import {
   handleAdminGetBrief,
   handlePatchBrief,
   handleApproveBrief,
+  handleRegenerateBrief,
+  handlePublishBriefRevision,
+  handleDiscardBriefRevision,
 } from "../controllers/adminBriefController.js";
 import {
   handleAdminGetMeetingSummary,
@@ -113,6 +116,10 @@ router.get("/briefs", handleAdminListBriefs);
 router.get("/briefs/:id", handleAdminGetBrief);
 router.patch("/briefs/:id", handlePatchBrief);
 router.post("/briefs/:id/approve", handleApproveBrief);
+// Regenerate (Actions slice): make it again; publish or discard the new version.
+router.post("/briefs/:id/regenerate", handleRegenerateBrief);
+router.post("/briefs/:id/revision/publish", handlePublishBriefRevision);
+router.post("/briefs/:id/revision/discard", handleDiscardBriefRevision);
 
 // Meeting Summaries (batch routes before /:id to avoid Express treating them as an id)
 router.post("/meeting-summaries/batch-approve", handleBatchApproveMeetingSummaries);

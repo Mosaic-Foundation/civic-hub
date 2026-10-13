@@ -141,6 +141,15 @@ export interface BriefProcessState {
   held_back?: HeldBackRecipient[];
   /** Display labels of the held-back recipients, for the admin's message. */
   held_back_labels?: string[];
+  /**
+   * Regenerate (Actions slice, 2026-10-13). A published brief's regenerated
+   * version waits here until an admin publishes it (or discards it).
+   */
+  pending_revision?: { content: BriefContent; generated_at: string } | null;
+  /** Earlier versions, oldest first: what was replaced, and when. */
+  history?: Array<{ content: BriefContent; generated_at: string; replaced_at: string }>;
+  /** When a regenerated version last replaced the published one. */
+  revised_at?: string | null;
 }
 
 /**

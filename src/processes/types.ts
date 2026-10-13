@@ -371,6 +371,15 @@ export interface ProcessHandler {
    * 2026-08-25 linking slice.
    */
   generateBrief?(process: Process): BriefContent | null | Promise<BriefContent | null>;
+
+  /**
+   * Optional: a fresh brief for a closed process, for an admin's Regenerate
+   * (Actions slice, 2026-10-13). Omit it and Regenerate runs generateBrief
+   * again. A type whose brief rests on work done at close (a conversation's
+   * AI summary) redoes that work here, without changing the process itself:
+   * the brief keeps the history.
+   */
+  regenerateBrief?(process: Process): Promise<BriefContent | null>;
 }
 
 /**

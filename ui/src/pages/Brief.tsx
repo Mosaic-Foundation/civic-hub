@@ -268,6 +268,15 @@ export default function BriefPage() {
             day: "numeric",
           })}
         </time>
+        {/* Regenerated after publishing: the same brief, a new version. */}
+        {brief.revised_at && (
+          <>
+            {", updated "}
+            <time dateTime={brief.revised_at} title={absoluteTime(brief.revised_at)}>
+              {new Date(brief.revised_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+            </time>
+          </>
+        )}
         .
       </p>
 

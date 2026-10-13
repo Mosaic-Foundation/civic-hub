@@ -1216,6 +1216,12 @@ export interface BriefDetail extends BriefSummary {
   held_back?: HeldBackRecipient[];
   held_back_labels?: string[];
   created_by: string;
+  /** Regenerate: a new version waiting to be published (published briefs). */
+  pending_revision?: { content: BriefContent; generated_at: string } | null;
+  /** Versions it replaced, oldest first. */
+  history?: Array<{ content: BriefContent; generated_at: string; replaced_at: string }>;
+  /** When a regenerated version last replaced the published one. */
+  revised_at?: string | null;
 }
 
 export interface PublicBrief {
@@ -1235,6 +1241,8 @@ export interface PublicBrief {
   image_alt?: string | null;
   /** The source closed before its deadline: the line and the admin's note. */
   closed_early?: { line: string; note: string } | null;
+  /** A regenerated version replaced the published one on this date. */
+  revised_at?: string | null;
   delivered_recipient_count: number;
   /** Public-safe recipient labels ("Jane Doe, Board of Supervisors") and
    *  the actual send time — the "Sent to … on …" receipt. Empty/null on
@@ -1302,6 +1310,21 @@ export function adminApproveBrief(
   id: string,
 ): Promise<{ message: string; brief: BriefDetail }> {
   return request("POST", `/admin/briefs/${id}/approve`);
+}
+
+/** Make a closed process's brief again: replaces an unpublished one, stages a published one's. */
+export function adminRegenerateBrief(id: string): Promise<{ staged: boolean; brief: BriefDetail }> {
+  return request("POST", `/admin/briefs/${id}/regenerate`);
+}
+
+/** The staged version replaces the published brief, in place. Nobody is emailed. */
+export function adminPublishBriefRevision(id: string): Promise<{ brief: BriefDetail }> {
+  return request("POST", `/admin/briefs/${id}/revision/publish`);
+}
+
+/** Drop the staged version. */
+export function adminDiscardBriefRevision(id: string): Promise<{ brief: BriefDetail }> {
+  return request("POST", `/admin/briefs/${id}/revision/discard`);
 }
 
 export function getPublicBrief(id: string): Promise<PublicBrief> {

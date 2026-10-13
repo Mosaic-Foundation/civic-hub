@@ -424,6 +424,9 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
       const meta = processMeta[ev.process_id];
       out.push({
         ...post,
+        // A brief regenerated after it was published: the card is the same
+        // one, showing the current headline (Actions slice).
+        ...(kind === "brief" && meta?.description ? { summary: meta.description } : {}),
         imageUrl: meta?.imageUrl ?? null,
         imageAlt: meta?.imageAlt ?? null,
         // An event-derived line from eventToPost (e.g. the official-response
@@ -575,6 +578,10 @@ function buildEngagement(
       }
       return parts.join(" · ");
     }
+    case "brief":
+      return meta.lastEditedAt
+        ? `Updated ${new Date(meta.lastEditedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+        : null;
     case "announcement":
     case "announcement-author": {
       const c = meta.editCount ?? 0;
@@ -604,7 +611,6 @@ function buildEngagement(
     case "project-updated":
     case "conversation":
     case "conversation-results":
-    case "brief":
     case "brief-response":
       return null;
   }

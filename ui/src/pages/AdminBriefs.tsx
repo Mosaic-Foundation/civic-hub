@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import BriefRegenerate from "../components/BriefRegenerate";
 import { ClosedEarlyNote } from "../components/CloseEarly";
 import { HeldBackNote } from "../components/HeldBackNote";
 import { useNavigate, useParams } from "react-router-dom";
@@ -240,6 +241,22 @@ export default function AdminBriefs() {
 
           {/* Closed before its deadline: the brief carries this as written. */}
           <ClosedEarlyNote closedEarly={selected.content.closed_early} />
+
+          {/* Make it again; publish or discard a published brief's new version. */}
+          <BriefRegenerate
+            brief={selected}
+            onBrief={(brief, message) => {
+              setSelected(brief);
+              setHeadline(brief.content.headline);
+              setSummary(brief.content.summary);
+              setCommentsText(brief.content.comments.join("\n"));
+              setAdminNotes(brief.content.admin_notes);
+              setImageUrl(brief.content.image_url ?? null);
+              setImageAlt(brief.content.image_alt ?? null);
+              setError(null);
+              setActionMessage(message);
+            }}
+          />
 
           <section className="admin-detail-section">
             <h3>Headline</h3>

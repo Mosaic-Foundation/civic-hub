@@ -402,6 +402,11 @@ export function getAdminReadModel(
     delivered_at: state.delivered_at ?? null,
     delivered_to_labels: state.delivered_to_labels ?? [],
     held_back: state.held_back ?? [],
+    // Regenerate: a new version waiting to be published, the versions it
+    // replaced, and when one last replaced the published brief.
+    pending_revision: state.pending_revision ?? null,
+    history: state.history ?? [],
+    revised_at: state.revised_at ?? null,
     held_back_labels: state.held_back_labels ?? [],
     created_at: processMeta.createdAt,
     created_by: processMeta.createdBy,
@@ -439,6 +444,8 @@ export function getPublicReadModel(
     approved_at: state.approved_at,
     generated_at: state.generated_at,
     published_at: state.published_at,
+    // A regenerated version replaced the published one on this date.
+    revised_at: state.revised_at ?? null,
   };
 }
 

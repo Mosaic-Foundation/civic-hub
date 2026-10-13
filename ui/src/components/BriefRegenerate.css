@@ -1,0 +1,39 @@
+/* Regenerate on the admin's brief page (Actions slice). */
+.brief-revision {
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-top: 0.75rem;
+  background: var(--color-surface-muted);
+}
+
+.brief-revision h4 {
+  margin: 0 0 0.5rem;
+}
+
+.brief-version-headline {
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+}
+
+.brief-version-summary,
+.brief-version-section {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0 0 0.5rem;
+}
+
+.brief-history {
+  margin-top: 0.75rem;
+}
+
+.brief-history summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.brief-history-item {
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+}

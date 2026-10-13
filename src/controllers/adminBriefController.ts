@@ -8,6 +8,7 @@
 // list is NOT fatal (a conversation/project brief can publish to the feed
 // without an official email list).
 
+import { discardBriefRevision, publishBriefRevision, regenerateBrief } from "../services/briefRegenerate.js";
 import { ConflictError, NotFoundError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { emitEvent } from "../events/eventEmitter.js";
@@ -221,4 +222,36 @@ export const handleApproveBrief = route(async (req, res) => {
     },
   );
   res.json({ message, brief: model });
+});
+
+// --- Regenerate (Actions slice, 2026-10-13; src/services/briefRegenerate.ts) ---
+
+async function adminModel(record: { id: string; title: string; createdAt: string; createdBy: string }, state: BriefProcessState) {
+  return enrichCreator(
+    getAdminReadModel(state, { id: record.id, title: record.title, createdAt: record.createdAt, createdBy: record.createdBy }),
+    { keepRawId: true, audience: "member" },
+  );
+}
+
+function adminOf(res: Parameters<typeof getAuthUser>[0]) {
+  const user = getAuthUser(res);
+  return { id: user.id, email: user.email };
+}
+
+/** POST /admin/briefs/:id/regenerate — make it again: replaced if unpublished, staged if published. */
+export const handleRegenerateBrief = route(async (req, res) => {
+  const { staged, state, record } = await regenerateBrief(req.params.id as string, adminOf(res));
+  res.json({ staged, brief: await adminModel(record, state) });
+});
+
+/** POST /admin/briefs/:id/revision/publish — the staged version replaces the published one. */
+export const handlePublishBriefRevision = route(async (req, res) => {
+  const { state, record } = await publishBriefRevision(req.params.id as string, adminOf(res));
+  res.json({ brief: await adminModel(record, state) });
+});
+
+/** POST /admin/briefs/:id/revision/discard — drop the staged version. */
+export const handleDiscardBriefRevision = route(async (req, res) => {
+  const { state, record } = await discardBriefRevision(req.params.id as string, adminOf(res));
+  res.json({ brief: await adminModel(record, state) });
 });

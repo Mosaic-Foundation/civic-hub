@@ -63,6 +63,9 @@ const META_KINDS: ReadonlySet<ActivityKind> = new Set([
   "conversation-results",
   "announcement",
   "announcement-author",
+  // A brief's card is its publish event; a regenerated version replaces its
+  // headline in place, marked "Updated <date>" (Actions slice).
+  "brief",
 ] as ActivityKind[]);
 
 export async function buildFeedProcessMeta(
@@ -171,6 +174,16 @@ function mapModelToMeta(
         maxStartSeconds: starts.length > 0 ? Math.max(...starts) : null,
       };
     }
+
+    case "civic.brief":
+      // The published brief (public read model): its current headline, and
+      // when a regenerated version replaced it.
+      return {
+        title: str(model.title),
+        description: str(model.headline),
+        lastEditedAt: str(model.revised_at) ?? null,
+        editCount: str(model.revised_at) ? 1 : 0,
+      };
 
     case "civic.wordcloud":
       // totalVotes (submission count) filled by the caller's count query.

@@ -332,6 +332,25 @@ export function bootDeliberation(): ProcessHandler {
   // isn't complete (e.g. summarization failed) — the close then produces no
   // brief rather than an empty one. Wired on the hub side so the portable
   // shared handler stays free of the brief module.
+  // Regenerate (Actions slice): ask for the summary again and build the brief
+  // from it. The conversation itself is left as it closed; the brief keeps
+  // the versions it replaces.
+  handler.regenerateBrief = async (process: Process): Promise<BriefContent | null> => {
+    const state = process.state as unknown as PolisDeliberationState;
+    if (!state.polis_conversation_id || !_adapter) return null;
+    let summary: PolisDeliberationState["summary"];
+    try {
+      summary = await summarize(state.polis_conversation_id, _adapter, state.topic);
+    } catch (err) {
+      console.warn(`[deliberation] regenerating the summary for ${process.id} failed:`, err instanceof Error ? err.message : err);
+      return null;
+    }
+    return handler.generateBrief!({
+      ...process,
+      state: { ...(process.state as Record<string, unknown>), summary, summary_status: "complete" },
+    }) as BriefContent | null;
+  };
+
   handler.generateBrief = (process: Process): BriefContent | null => {
     const state = process.state as unknown as PolisDeliberationState;
     const summary = state.summary;

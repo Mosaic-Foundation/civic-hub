@@ -20,7 +20,10 @@ export type HubAdminAuditAction =
   | "people.admins"
   | "people.board"
   // An admin closed a process before its deadline, with a note (Actions slice).
-  | "process.close_early";
+  | "process.close_early"
+  // Regenerate: an admin made a brief again, or published its new version.
+  | "brief.regenerate"
+  | "brief.revision_published";
 
 export interface HubAdminAuditEntry {
   actor: string;
