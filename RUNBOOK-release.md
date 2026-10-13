@@ -31,7 +31,8 @@ The dry run checks everything except the migration and the push, and checks the 
 1. links the Supabase CLI to dev if it isn't;
 2. checks the tree is clean, on `multi-tenant`, and not behind origin;
 3. shows the migrations `db-push.sh --dry-run` would apply;
-4. asks once: "Apply N migrations and push? y/N";
+4. asks once: "Apply N migrations and push? y/N" (`--yes` answers it, for a session that can't type at the
+   prompt; dev only, and the script refuses `--yes` with `prod`);
 5. applies them;
 6. checks `/api/health` on the old code;
 7. pushes `multi-tenant`;

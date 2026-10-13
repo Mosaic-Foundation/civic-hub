@@ -2,7 +2,7 @@
 #
 # One-command release: migrations first, then code, checked at every step.
 #
-#   ./scripts/release.sh dev [--dry-run]
+#   ./scripts/release.sh dev [--dry-run] [--yes]
 #   CONFIRM_PRODUCTION_PUSH=<production ref> ./scripts/release.sh prod [--dry-run]
 #
 # DEV, in order, stopping at the first mismatch:
@@ -18,6 +18,8 @@
 #  10. a summary.
 # --dry-run does all of it except the migration and the push, and checks the
 # code that is live now.
+# --yes answers step 4's question for you. Dev only: prod refuses it, so a
+# production release always has a person saying yes (2026-10-13, sign-in slice).
 #
 # PROD is the same, except:
 #   - it refuses unless CONFIRM_PRODUCTION_PUSH is the production ref;
@@ -56,7 +58,7 @@ stop() {
 usage() {
   cat >&2 <<'USAGE'
 Usage:
-  ./scripts/release.sh dev [--dry-run]
+  ./scripts/release.sh dev [--dry-run] [--yes]
   CONFIRM_PRODUCTION_PUSH=<production ref> ./scripts/release.sh prod [--dry-run]
 USAGE
   exit 2
@@ -68,12 +70,18 @@ TARGET="${1:-}"
 [[ "$TARGET" == "dev" || "$TARGET" == "prod" ]] || usage
 shift
 DRY_RUN=0
+ASSUME_YES=0
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=1 ;;
+    --yes) ASSUME_YES=1 ;;
     *) usage ;;
   esac
 done
+if [[ "$TARGET" == "prod" && "$ASSUME_YES" == 1 ]]; then
+  echo "REFUSED: --yes is for dev only. A production release is always answered by a person." >&2
+  exit 2
+fi
 
 for tool in git node curl supabase; do
   command -v "$tool" >/dev/null || { echo "This needs '$tool' on the PATH." >&2; exit 1; }
@@ -133,6 +141,10 @@ MSG
 
 ask() {
   local answer=""
+  if [[ "$ASSUME_YES" == 1 && "$TARGET" == "dev" ]]; then
+    printf '   %s [y/N] y (--yes)\n' "$1"
+    return 0
+  fi
   read -r -p "   $1 [y/N] " answer </dev/tty || true
   [[ "$answer" == "y" || "$answer" == "Y" || "$answer" == "yes" ]]
 }
