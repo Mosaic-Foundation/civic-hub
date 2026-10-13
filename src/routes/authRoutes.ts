@@ -13,6 +13,7 @@ import { Router } from "express";
 import {
   handleRequestCode,
   handleVerify,
+  handleVerifyLink,
   handleHandoff,
   handleAffirmResidency,
   handleAcceptTos,
@@ -26,6 +27,7 @@ const router = Router();
 
 router.post("/request-code", handleRequestCode);
 router.post("/verify", handleVerify);
+router.post("/verify-link", handleVerifyLink);
 router.post("/handoff", handleHandoff);
 router.post("/residency", handleAffirmResidency);
 router.post("/accept-tos", handleAcceptTos);

@@ -78,16 +78,18 @@ const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 
 /** Put a known sign-in code in place for `email`, as if it had been emailed. */
 export async function plantStartCode(email: string, code: string): Promise<void> {
-  await localRest("start_codes?on_conflict=email", {
+  await localRest(`platform_sign_in_codes?realm=eq.start&email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
+  await localRest("platform_sign_in_codes", {
     method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    headers: { Prefer: "return=minimal" },
     body: JSON.stringify({
+      realm: "start",
+      purpose: "sign_in",
       email,
       code_hash: sha256(code),
       expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       created_at: new Date(Date.now() - 60 * 1000).toISOString(),
       attempts: 0,
-      locked_until: null,
     }),
   });
 }

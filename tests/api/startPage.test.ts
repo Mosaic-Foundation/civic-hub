@@ -212,20 +212,16 @@ describe("rate limits", () => {
     expect((await startCall("POST", "/start/invite", { body: { code }, ip: freshIp() })).status).toBe(200);
   });
 
-  it("five sign-in codes an hour for one address, from anywhere", async () => {
+  it("one email a minute to an address, from anywhere, with the time to ask again", async () => {
     const { code } = await mint();
     const invite = await startCall("POST", "/start/invite", { body: { code }, ip: freshIp() });
     const cookie = cookieFrom(invite.setCookie);
     const email = `limited-${run}@example.test`;
-    const statuses: number[] = [];
-    for (let i = 0; i < 5; i++) {
-      // The first sends; the next four meet the 30-second throttle, and count.
-      statuses.push((await startCall("POST", "/start/request-code", { cookie, ip: freshIp(), body: { email } })).status);
-    }
-    expect(statuses[0]).toBe(200);
-    const sixth = await startCall("POST", "/start/request-code", { cookie, ip: freshIp(), body: { email } });
-    expect(sixth.status).toBe(429);
-    expect(sixth.body.error).toMatch(/Too many codes for that address/);
+    expect((await startCall("POST", "/start/request-code", { cookie, ip: freshIp(), body: { email } })).status).toBe(200);
+    const second = await startCall("POST", "/start/request-code", { cookie, ip: freshIp(), body: { email, tz: "America/Chicago" } });
+    expect(second.status).toBe(429);
+    expect(second.body.code).toBe("code_throttled");
+    expect(second.body.error).toMatch(/^We just sent you a code\. You can ask for another after \d{1,2}:\d\d [AP]M\.$/);
   });
 
   it("six sign-in code requests an hour from one address, whatever the email", async () => {
@@ -239,7 +235,7 @@ describe("rate limits", () => {
     }
     const seventh = await startCall("POST", "/start/request-code", { cookie, ip, body: { email: `many-7-${run}@example.test` } });
     expect(seventh.status).toBe(429);
-    expect(seventh.body.error).toMatch(/Too many tries/);
+    expect(seventh.body.error).toMatch(/^Too many attempts\. Try again after /);
   });
 
   it("stores hashed buckets: no address or email in the clear", async () => {
@@ -248,12 +244,12 @@ describe("rate limits", () => {
     const rows = (await localRest(`rate_limit_hits?select=bucket&bucket=like.start.*&order=at.desc&limit=50`)) as Array<{ bucket: string }>;
     expect(rows.length).toBeGreaterThan(0);
     for (const r of rows) {
-      expect(r.bucket).toMatch(/^start\.[a-z_]+:(ip|email):[0-9a-f]{64}$/);
+      expect(r.bucket).toMatch(/^start\.[a-z_]+:(ip|email|ip_email):[0-9a-f]{64}$/);
       expect(r.bucket).not.toContain(ip);
     }
   });
 
-  it("a wrong sign-in code five times locks the address", async () => {
+  it("a wrong sign-in code five times burns the code, not the address", async () => {
     const { code } = await mint();
     const ip = freshIp();
     const invite = await startCall("POST", "/start/invite", { body: { code }, ip });
@@ -264,9 +260,12 @@ describe("rate limits", () => {
     for (let i = 0; i < 5; i++) {
       statuses.push((await startCall("POST", "/start/verify", { cookie, ip, body: { email, code: "000000" } })).status);
     }
-    expect(statuses).toEqual([401, 401, 401, 401, 429]);
-    const right = await startCall("POST", "/start/verify", { cookie, ip, body: { email, code: "445566" } });
-    expect(right.status).toBe(429);
+    expect(statuses).toEqual([400, 400, 400, 400, 400]);
+    const right = await startCall("POST", "/start/verify", { cookie, ip: freshIp(), body: { email, code: "445566" } });
+    expect(right.body.code).toBe("no_live_code");
+    // A fresh code works, from another network.
+    await plantStartCode(email, "445567");
+    expect((await startCall("POST", "/start/verify", { cookie, ip: freshIp(), body: { email, code: "445567" } })).status).toBe(200);
   });
 });
 
@@ -282,7 +281,7 @@ describe("creating a hub", () => {
 
     const sent = await startCall("POST", "/start/request-code", { cookie, ip, body: { email } });
     expect(sent.status, JSON.stringify(sent.body)).toBe(200);
-    const stored = (await localRest(`start_codes?email=eq.${encodeURIComponent(email)}&select=code_hash`)) as Array<{ code_hash: string }>;
+    const stored = (await localRest(`platform_sign_in_codes?realm=eq.start&email=eq.${encodeURIComponent(email)}&select=code_hash`)) as Array<{ code_hash: string }>;
     expect(stored[0]!.code_hash).toMatch(/^[0-9a-f]{64}$/);
     await plantStartCode(email, "778899");
     const verified = await startCall("POST", "/start/verify", { cookie, ip, body: { email: email.toUpperCase(), code: "778899" } });

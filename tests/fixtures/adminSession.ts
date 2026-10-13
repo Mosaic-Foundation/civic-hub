@@ -38,26 +38,30 @@ async function insertSession(hubId: string, userId: string, assurance: "code" | 
 
 /**
  * Put a known sign-in code in place on a hub, as if it had been emailed
- * (stored hashed, as the server stores it). `createdAgoMs` backdates it past
- * the 30-second request throttle.
+ * (stored hashed, as the server stores it), in place of any codes the address
+ * already has unless `keepOthers`. `linkToken` gives it a sign-in link too.
  */
 export async function plantHubCode(
   hubId: string,
   email: string,
   code: string,
-  opts: { attempts?: number; expiresInMs?: number; createdAgoMs?: number } = {},
+  opts: { attempts?: number; expiresInMs?: number; createdAgoMs?: number; linkToken?: string; keepOthers?: boolean } = {},
 ): Promise<void> {
-  await rest("pending_verifications?on_conflict=hub_id,email", {
+  const address = email.trim().toLowerCase();
+  if (!opts.keepOthers) {
+    await rest(`sign_in_codes?hub_id=eq.${encodeURIComponent(hubId)}&email=eq.${encodeURIComponent(address)}`, { method: "DELETE" });
+  }
+  await rest("sign_in_codes", {
     method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    headers: { Prefer: "return=minimal" },
     body: JSON.stringify({
       hub_id: hubId,
-      email: email.trim().toLowerCase(),
+      email: address,
       code_hash: sha256(code),
+      link_hash: opts.linkToken ? sha256(opts.linkToken) : null,
       expires_at: new Date(Date.now() + (opts.expiresInMs ?? 10 * 60_000)).toISOString(),
       created_at: new Date(Date.now() - (opts.createdAgoMs ?? 60_000)).toISOString(),
       attempts: opts.attempts ?? 0,
-      locked_until: null,
     }),
   });
 }

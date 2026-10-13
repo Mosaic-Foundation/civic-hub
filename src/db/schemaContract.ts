@@ -65,7 +65,7 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "hubs", columns: ["id", "protocol_hub_id", "hostname", "name", "space_did", "status"], owner: "core/hubRegistry" },
   // The super admin (src/control/, 20260926010000).
   { table: "hubs", columns: ["archived_at"], owner: "control" },
-  { table: "control_codes", columns: ["email", "purpose", "code_hash", "attempts", "locked_until"], owner: "control" },
+  { table: "platform_sign_in_codes", columns: ["realm", "purpose", "email", "code_hash", "link_hash", "attempts", "expires_at"], owner: "control" },
   { table: "control_sessions", columns: ["token_hash", "email", "expires_at", "revoked_at"], owner: "control" },
   { table: "control_audit_log", columns: ["actor_email", "action", "target_hub_id", "before", "after"], owner: "control" },
   // Jurisdictions (20260927000000): the reference list and the hub's link to it.
@@ -92,7 +92,7 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "job_runs", columns: ["hub_id", "job_id", "started_at", "finished_at", "status", "summary", "problems", "details"], owner: "core/jobRuns" },
   { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at", "edits_seen_at", "feedback_seen_at", "briefs_seen_at", "meeting_summaries_seen_at"], owner: "civic.auth" },
   { table: "sessions", columns: ["token", "assurance"], owner: "civic.auth" },
-  { table: "pending_verifications", columns: ["code_hash", "attempts", "locked_until"], owner: "civic.auth" },
+  { table: "sign_in_codes", columns: ["email", "code_hash", "link_hash", "attempts", "expires_at"], owner: "civic.auth" },
   { table: "rate_limit_hits", columns: ["bucket", "at"], owner: "core/rateLimit" },
   { table: "ai_usage", columns: ["hub_id", "purpose", "model", "input_tokens", "output_tokens", "web_searches", "at"], owner: "civic.assistant" },
   { table: "hub_settings", columns: ["key", "value"], owner: "core/hubSettings" },

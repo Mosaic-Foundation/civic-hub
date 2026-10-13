@@ -85,17 +85,20 @@ export async function mintConsoleSession(email = OPERATOR): Promise<string> {
 
 /** Put a known code in place, as if it had been emailed. */
 export async function plantCode(purpose: "sign_in" | "step_up", code: string, email = OPERATOR): Promise<void> {
-  await localRest("control_codes?on_conflict=email,purpose", {
+  // In place of any codes the address already has (one row per code since
+  // the sign-in slice, 2026-10-14).
+  await localRest(`platform_sign_in_codes?realm=eq.console&purpose=eq.${purpose}&email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
+  await localRest("platform_sign_in_codes", {
     method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    headers: { Prefer: "return=minimal" },
     body: JSON.stringify({
+      realm: "console",
       email,
       purpose,
       code_hash: sha256(code),
       expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       created_at: new Date(Date.now() - 60 * 1000).toISOString(),
       attempts: 0,
-      locked_until: null,
     }),
   });
 }

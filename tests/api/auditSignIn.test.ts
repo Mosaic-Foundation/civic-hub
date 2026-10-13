@@ -13,6 +13,7 @@ import { call } from "../fixtures/hostCall.js";
 import { localRest, mintDemoSession, mintSession, plantHubCode } from "../fixtures/adminSession.js";
 import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
 import { freshTestIp } from "../fixtures/helpers.js";
+import { rateLimitBucket } from "../../src/db/rateLimit.js";
 
 const run = Date.now().toString(36);
 const DEMO = `a2d-${run}`;
@@ -39,11 +40,15 @@ async function createHub(slug: string, host: string, admin: string, mode: "demo"
   expect(res.status, JSON.stringify(res.body)).toBe(201);
 }
 
-async function pendingRow(hub: string, email: string): Promise<{ code: string | null; code_hash: string; attempts: number; locked_until: string | null } | undefined> {
-  const rows = (await localRest(
-    `pending_verifications?select=code,code_hash,attempts,locked_until&hub_id=eq.${hub}&email=eq.${encodeURIComponent(email)}`,
-  )) as Array<{ code: string | null; code_hash: string; attempts: number; locked_until: string | null }>;
-  return rows[0];
+async function codeRows(hub: string, email: string): Promise<Array<{ code_hash: string; link_hash: string | null; attempts: number }>> {
+  return (await localRest(
+    `sign_in_codes?select=code_hash,link_hash,attempts&hub_id=eq.${hub}&email=eq.${encodeURIComponent(email)}&order=created_at.asc`,
+  )) as Array<{ code_hash: string; link_hash: string | null; attempts: number }>;
+}
+
+/** As if the minute between emails to this address had passed. */
+async function minutePasses(hub: string, email: string): Promise<void> {
+  await localRest(`rate_limit_hits?bucket=eq.${encodeURIComponent(rateLimitBucket("hub.code_email", "email", `${hub}:${email}`))}`, { method: "DELETE" });
 }
 
 async function sessionRows(hub: string, tokenHash: string): Promise<Array<{ assurance: string }>> {
@@ -87,9 +92,10 @@ describe("codes and sessions are stored only as hashes", () => {
     // on the demo hub for its (privileged) admin.
     const requested = await call("POST", "/auth/request-code", DEMO_HOST, { email: DEMO_ADMIN });
     expect(requested.status, JSON.stringify(requested.body)).toBe(200);
-    const stored = await pendingRow(DEMO, DEMO_ADMIN);
-    expect(stored?.code).toBeNull();
+    const [stored] = await codeRows(DEMO, DEMO_ADMIN);
+    expect(Object.keys(stored!).sort()).toEqual(["attempts", "code_hash", "link_hash"]);
     expect(stored?.code_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(stored?.link_hash).toMatch(/^[0-9a-f]{64}$/);
 
     await plantHubCode(BETA, email, "482913");
     const res = await call("POST", "/auth/verify", BETA_HOST, { email, code: "482913" });
@@ -102,26 +108,28 @@ describe("codes and sessions are stored only as hashes", () => {
   });
 });
 
-describe("the wrong-code counter is atomic", () => {
-  it("twenty wrong guesses at once spend exactly five attempts, then the address is locked", async () => {
-    const email = `race-${run}@example.test`;
+describe("the try counter is atomic, and burns the code, not the address", () => {
+  it("twenty wrong guesses at once spend exactly five tries; the code is burned and the owner signs in with a new one", async () => {
+    const email = BETA_ADMIN;
     await plantHubCode(BETA, email, "735102");
+    // Each from its own network (call() sends a fresh X-Forwarded-For).
     const results = await Promise.all(
       Array.from({ length: 20 }, () => call("POST", "/auth/verify", BETA_HOST, { email, code: "000001" })),
     );
-    // A wrong guess is 400; once locked, 429 locked_out (Audit 4).
-    for (const r of results) expect([400, 429]).toContain(r.status);
-    expect(results.filter((r) => r.status === 429).every((r) => r.body.code === "locked_out")).toBe(true);
-    const row = await pendingRow(BETA, email);
-    expect(row?.attempts).toBe(5);
-    expect(row?.locked_until && Date.parse(row.locked_until) > Date.now()).toBe(true);
-    expect(results.filter((r) => r.body.error === "Invalid verification code")).toHaveLength(4);
+    for (const r of results) expect(r.status).toBe(400);
+    const codes = results.map((r) => r.body.code as string);
+    expect(codes.filter((c) => c === "invalid_code")).toHaveLength(4);
+    expect(codes.filter((c) => c === "code_burned")).toHaveLength(1);
+    expect(codes.filter((c) => c === "no_live_code")).toHaveLength(15);
+    expect((await codeRows(BETA, email)).map((r) => r.attempts)).toEqual([5]);
 
-    // The right code is refused now, and a fresh code can't be requested.
+    // The burned code no longer works...
     const right = await call("POST", "/auth/verify", BETA_HOST, { email, code: "735102" });
-    expect(right.status).toBe(429);
-    expect(right.body.code).toBe("locked_out");
-    expect(String(right.body.error)).toMatch(/too many/i);
+    expect(right.body.code).toBe("no_live_code");
+    // ...but nothing locked the address: a new code is sent at once, and works.
+    expect((await call("POST", "/auth/request-code", BETA_HOST, { email })).status).toBe(200);
+    await plantHubCode(BETA, email, "735103");
+    expect((await call("POST", "/auth/verify", BETA_HOST, { email, code: "735103" })).status).toBe(200);
   });
 
   it("of six requests with the right code at once, one signs in", async () => {
@@ -134,7 +142,7 @@ describe("the wrong-code counter is atomic", () => {
   });
 });
 
-describe("per-IP and per-address limits", () => {
+describe("per-IP and per-address limits (lock the code, not the person)", () => {
   it("an IP may ask for 20 codes an hour", async () => {
     const ip = freshTestIp();
     for (let i = 0; i < 20; i++) {
@@ -164,20 +172,48 @@ describe("per-IP and per-address limits", () => {
     }
     const refused = await call("POST", "/auth/verify", BETA_HOST, { email: `ipver-x-${run}@example.test`, code: "111111" }, undefined, ip);
     expect(refused.status).toBe(429);
-    expect(String(refused.body.error)).toMatch(/too many sign-in attempts/i);
+    expect(String(refused.body.error)).toMatch(/^Too many attempts\. Try again after \d{1,2}:\d\d [AP]M( UTC)?\.$/);
+    expect(refused.body.retry_at).toBeTruthy();
   });
 
-  it("an address may be sent five codes an hour, from anywhere", async () => {
-    // On the beta hub this address is on no list: each request answers 403
-    // beta_closed ("private beta"; 400 before Audit 4) and still counts, so the
-    // sixth is refused for the address, whichever network it comes from.
-    const email = `addr-${run}@example.test`;
-    for (let i = 0; i < 5; i++) {
-      expect((await call("POST", "/auth/request-code", BETA_HOST, { email })).status).toBe(403);
+  it("an address gets one email a minute and up to three live codes, and asking again never stops an earlier code", async () => {
+    const email = DEMO_ADMIN; // privileged, so the demo hub sends it real codes
+    await localRest(`sign_in_codes?hub_id=eq.${DEMO}&email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
+    await minutePasses(DEMO, email);
+    expect((await call("POST", "/auth/request-code", DEMO_HOST, { email })).status).toBe(200);
+    const again = await call("POST", "/auth/request-code", DEMO_HOST, { email });
+    expect(again.status).toBe(429);
+    expect(again.body.code).toBe("code_throttled");
+    expect(String(again.body.error)).toMatch(/^We just sent you a code\. You can ask for another after /);
+
+    for (let i = 0; i < 2; i++) {
+      await minutePasses(DEMO, email);
+      expect((await call("POST", "/auth/request-code", DEMO_HOST, { email })).status).toBe(200);
     }
-    const refused = await call("POST", "/auth/request-code", BETA_HOST, { email });
+    expect(await codeRows(DEMO, email)).toHaveLength(3);
+    await minutePasses(DEMO, email);
+    const fourth = await call("POST", "/auth/request-code", DEMO_HOST, { email });
+    expect(fourth.status).toBe(429);
+    expect(fourth.body.code).toBe("codes_waiting");
+    expect(String(fourth.body.error)).toMatch(/^We've sent you three codes that still work\./);
+    // Nothing was dropped: all three are still there and live.
+    expect((await codeRows(DEMO, email)).map((r) => r.attempts)).toEqual([0, 0, 0]);
+  });
+
+  it("one network gets five wrong tries at an address an hour; the owner's code is untouched after that", async () => {
+    const email = `perip-${run}@example.test`;
+    const ip = freshTestIp();
+    await plantHubCode(BETA, email, "551177");
+    for (let i = 0; i < 4; i++) {
+      expect((await call("POST", "/auth/verify", BETA_HOST, { email, code: String(100000 + i) }, undefined, ip)).body.code).toBe("invalid_code");
+    }
+    // The fifth burns this code; plant the owner's next one.
+    expect((await call("POST", "/auth/verify", BETA_HOST, { email, code: "100009" }, undefined, ip)).body.code).toBe("code_burned");
+    await plantHubCode(BETA, email, "551178");
+    const refused = await call("POST", "/auth/verify", BETA_HOST, { email, code: "100010" }, undefined, ip);
     expect(refused.status).toBe(429);
-    expect(String(refused.body.error)).toMatch(/this address/i);
+    expect((await codeRows(BETA, email)).map((r) => r.attempts)).toEqual([0]);
+    expect((await call("POST", "/auth/verify", BETA_HOST, { email, code: "551178" })).status).toBe(200);
   });
 
   it("the console allows five code requests per IP an hour", async () => {
@@ -190,40 +226,31 @@ describe("per-IP and per-address limits", () => {
     expect(refused.status).toBe(429);
   });
 
-  it("the console's and the start page's code checks are atomic too", async () => {
-    // Straight at the functions, on rows of this test's own, so the operator's
-    // real sign-in (used by other files running alongside) is never locked.
+  it("the console's and the start page's code checks are atomic too, a try on every live code", async () => {
+    // Straight at the function, on rows of this test's own, so the operator's
+    // real sign-in (used by other files running alongside) is never touched.
     const email = `atomic-${run}@example.test`;
-    const hash = sha256("193846");
     const expires = new Date(Date.now() + 600_000).toISOString();
-    await localRest("control_codes", {
-      method: "POST",
-      body: JSON.stringify({ email, purpose: "sign_in", code_hash: hash, expires_at: expires, attempts: 0 }),
-    });
-    await localRest("start_codes", {
-      method: "POST",
-      body: JSON.stringify({ email, code_hash: hash, expires_at: expires, attempts: 0 }),
-    });
-    const control = await Promise.all(
-      Array.from({ length: 12 }, () =>
-        localRest("rpc/take_control_code_attempt", {
+    for (const realm of ["console", "start"]) {
+      for (const code of ["193846", "193847"]) {
+        await localRest("platform_sign_in_codes", {
           method: "POST",
-          body: JSON.stringify({ p_email: email, p_purpose: "sign_in", p_max: 5, p_lock_seconds: 900 }),
-        }) as Promise<unknown[]>,
-      ),
-    );
-    const start = await Promise.all(
-      Array.from({ length: 12 }, () =>
-        localRest("rpc/take_start_code_attempt", {
-          method: "POST",
-          body: JSON.stringify({ p_email: email, p_max: 5, p_lock_seconds: 900 }),
-        }) as Promise<unknown[]>,
-      ),
-    );
-    expect(control.filter((rows) => rows.length === 1)).toHaveLength(5);
-    expect(start.filter((rows) => rows.length === 1)).toHaveLength(5);
-    await localRest(`control_codes?email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
-    await localRest(`start_codes?email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
+          body: JSON.stringify({ realm, purpose: "sign_in", email, code_hash: sha256(code), expires_at: expires }),
+        });
+      }
+      const taken = await Promise.all(
+        Array.from({ length: 12 }, () =>
+          localRest("rpc/take_platform_sign_in_attempt", {
+            method: "POST",
+            body: JSON.stringify({ p_realm: realm, p_purpose: "sign_in", p_email: email, p_link_hash: null, p_max: 5 }),
+          }) as Promise<unknown[]>,
+        ),
+      );
+      // Two codes, five tries each, however many arrive at once.
+      expect(taken.reduce((n, rows) => n + rows.length, 0)).toBe(10);
+      expect(taken.filter((rows) => rows.length === 2)).toHaveLength(5);
+    }
+    await localRest(`platform_sign_in_codes?email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
   });
 });
 

@@ -10,10 +10,11 @@
 
 import { UnauthorizedError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
-import type { Request } from "express";
+import type { Request, Response } from "express";
 import {
   requestVerification,
   verifyCode,
+  verifyLink,
   exchangeHandoff,
   affirmResidency,
   acceptLegalTerms,
@@ -42,14 +43,33 @@ export const handleRequestCode = route(async (req, res) => {
 
 /**
  * POST /auth/verify
- * Body: { email: string, code: string }
+ * Body: { email: string, code: string, keep_signed_in?: boolean }
  */
 export const handleVerify = route(async (req, res) => {
-  const { email, code } = req.body ?? {};
+  const { email, code, keep_signed_in } = req.body ?? {};
 
   if (!email || !code) throw new ValidationError("Missing required fields: email, code");
 
-  const result = await verifyCode(String(email), String(code), clientIp(req));
+  const result = await verifyCode(String(email), String(code), clientIp(req), keep_signed_in === true);
+  await answerSignedIn(res, result);
+});
+
+/**
+ * POST /auth/verify-link
+ * Body: { token: string, keep_signed_in?: boolean }
+ *
+ * The code email's "Sign in" link opens /sign-in with the token after `#`;
+ * that page posts it here after one Confirm (sign-in slice, 2026-10-14).
+ * Same answer shape as /auth/verify.
+ */
+export const handleVerifyLink = route(async (req, res) => {
+  const { token, keep_signed_in } = (req.body ?? {}) as { token?: unknown; keep_signed_in?: unknown };
+  const result = await verifyLink(typeof token === "string" ? token : "", clientIp(req), keep_signed_in === true);
+  await answerSignedIn(res, result);
+});
+
+/** The token and user, with role + author_label + office. */
+async function answerSignedIn(res: Response, result: { token: string; user: { email: string } }): Promise<void> {
   // Include role + author_label + office alongside the token + user so
   // the UI gets the posting-privilege bit and the byline pill without a
   // follow-up /auth/me call.
@@ -61,7 +81,7 @@ export const handleVerify = route(async (req, res) => {
     official_type: authorship?.official?.type ?? null,
     official_title: authorship?.official?.title ?? null,
   });
-});
+}
 
 /**
  * POST /auth/handoff

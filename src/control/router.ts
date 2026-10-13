@@ -194,7 +194,7 @@ async function stepUp(req: Request, res: Response): Promise<boolean> {
     res.status(403).json({ error: "step_up_required", message: "This change needs a fresh code." });
     return false;
   }
-  await consumeCode(actor(res), "step_up", code, clientIp(req));
+  await consumeCode(actor(res), "step_up", code, clientIp(req), (req.body as { tz?: unknown })?.tz);
   return true;
 }
 
@@ -266,13 +266,14 @@ export function controlRouter(): Router {
   }));
 
   r.post("/control/auth/request-code", route(async (req, res) => {
-    const message = await requestCode((req.body as { email?: unknown })?.email, "sign_in", clientIp(req));
+    const body = req.body as { email?: unknown; tz?: unknown };
+    const message = await requestCode(body?.email, "sign_in", clientIp(req), body?.tz);
     res.json({ message });
   }));
 
   r.post("/control/auth/verify", route(async (req, res) => {
-    const body = req.body as { email?: unknown; code?: unknown };
-    const email = await consumeCode(body.email, "sign_in", body.code, clientIp(req));
+    const body = req.body as { email?: unknown; code?: unknown; tz?: unknown };
+    const email = await consumeCode(body.email, "sign_in", body.code, clientIp(req), body.tz);
     const { token } = await createSession(email);
     res.locals.controlSession = { email, expires_at: "" };
     await audited(res, { actor: email, action: "console.sign_in" });
@@ -295,7 +296,7 @@ export function controlRouter(): Router {
   });
 
   r.post("/control/auth/step-up/request-code", route(async (req, res) => {
-    await requestCode(actor(res), "step_up", clientIp(req));
+    await requestCode(actor(res), "step_up", clientIp(req), (req.body as { tz?: unknown })?.tz);
     res.json({ message: CODE_SENT });
   }));
 

@@ -90,7 +90,7 @@ describe("sign-in", () => {
     const stranger = `stranger-${run}@example.test`;
     const res = await consoleCall("POST", "/control/auth/request-code", { body: { email: stranger } });
     expect(res.status).toBe(200);
-    const rows = (await localRest(`control_codes?email=eq.${encodeURIComponent(stranger)}`)) as unknown[];
+    const rows = (await localRest(`platform_sign_in_codes?email=eq.${encodeURIComponent(stranger)}`)) as unknown[];
     expect(rows).toHaveLength(0);
   });
 
@@ -102,13 +102,16 @@ describe("sign-in", () => {
     expect(res.setCookie).toContain("HttpOnly");
     expect(res.setCookie).toContain("SameSite=Strict");
     const again = await consoleCall("POST", "/control/auth/verify", { body: { email: OPERATOR, code: "246810" } });
-    expect(again.status).toBe(401);
+    // A spent code is a code that doesn't work any more (400 since the sign-in slice).
+    expect(again.status).toBe(400);
+    expect(again.body.code).toBe("no_live_code");
   });
 
   it("a wrong code is refused", async () => {
     await plantCode("sign_in", "135791");
     const res = await consoleCall("POST", "/control/auth/verify", { body: { email: OPERATOR, code: "000000" } });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("invalid_code");
   });
 
   it("refuses writes without the console header, and reads without a session", async () => {
@@ -273,7 +276,7 @@ describe("edit a hub", () => {
       body: { hostname: "Not A Host", step_up_code: code },
     });
     expect(bad.status).toBe(409);
-    const rows = (await localRest(`control_codes?email=eq.${encodeURIComponent(OPERATOR)}&purpose=eq.step_up`)) as unknown[];
+    const rows = (await localRest(`platform_sign_in_codes?realm=eq.console&email=eq.${encodeURIComponent(OPERATOR)}&purpose=eq.step_up`)) as unknown[];
     expect(rows).toHaveLength(1);
   });
 });

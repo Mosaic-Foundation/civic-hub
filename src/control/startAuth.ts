@@ -19,17 +19,11 @@ import { env } from "../config/env.js";
 import { CivicError, codeForStatus } from "../errors/index.js";
 import { getDb } from "../db/client.js";
 import { HOUR_MS, rateLimitBucket, takeRateLimit } from "../db/rateLimit.js";
-import { randomToken, sameHexHash, sha256Hex } from "../utils/hash.js";
+import { randomToken, sha256Hex } from "../utils/hash.js";
 import { sendEmail } from "../utils/email.js";
-import {
-  LOCKOUT_MS,
-  MAX_VERIFY_ATTEMPTS,
-  OTP_TTL_MS,
-  REQUEST_THROTTLE_MS,
-  generateOTP,
-  lockoutMessage,
-  renderCodeEmail,
-} from "../modules/civic.auth/otp.js";
+import { renderCodeEmail } from "../modules/civic.auth/otp.js";
+import { checkCode, issueCode } from "../modules/civic.auth/codeRules.js";
+import { platformCodeStore, platformRealm } from "./platformCodes.js";
 
 /** Long enough to fill in the form; the hub is the point, not this page. */
 export const START_SESSION_TTL_MS = 2 * 60 * 60 * 1000;
@@ -55,20 +49,20 @@ export function normalizeStartEmail(raw: unknown): string {
 // --- Rate limits ---------------------------------------------------------------
 
 /**
- * Per hour. `invite` counts every invite code typed (right or wrong);
- * `request_code` every emailed code asked for, by IP and by address;
- * `verify` every emailed code typed; `create` every create submitted.
+ * Per IP per hour. `invite` counts every invite code typed (right or wrong);
+ * `request_code` every emailed code asked for; `verify` every emailed code
+ * typed; `create` every create submitted. The per-address rules for emailed
+ * codes are codeRules.ts's (since the sign-in slice, 2026-10-14).
  */
 export const START_LIMITS = {
   invite: { ip: 10 },
-  request_code: { ip: 6, email: 5 },
+  request_code: { ip: 6 },
   verify: { ip: 20 },
   create: { ip: 10 },
 } as const;
 export type StartStep = keyof typeof START_LIMITS;
 
 export const TOO_MANY = "Too many tries from here. Wait an hour and try again.";
-const TOO_MANY_FOR_ADDRESS = "Too many codes for that address. Wait an hour and try again.";
 
 export { clientIp } from "../utils/clientIp.js";
 
@@ -88,7 +82,7 @@ export async function rateLimit(step: StartStep, ip: string, email?: string): Pr
     checks.push({ scope: `start.${step}`, by: "email", value: email, limit: limits.email, windowMs: HOUR_MS });
   }
   const refused = await takeRateLimit(checks);
-  if (refused) throw new StartError(refused.by === "ip" ? TOO_MANY : TOO_MANY_FOR_ADDRESS, 429);
+  if (refused) throw new StartError(TOO_MANY, 429);
 }
 
 // --- Sessions ------------------------------------------------------------------
@@ -139,52 +133,23 @@ export async function endStartSession(session: StartSession): Promise<void> {
 
 // --- The emailed code ------------------------------------------------------------
 
-interface CodeRow {
-  code_hash: string;
-  expires_at: string;
-  created_at: string;
-  attempts: number;
-  locked_until: string | null;
+function startRealm(timeZone: unknown) {
+  return platformRealm("start", { request: START_LIMITS.request_code.ip, verify: START_LIMITS.verify.ip }, timeZone);
 }
 
-async function readCode(email: string): Promise<CodeRow | null> {
-  const { data, error } = await getDb()
-    .from("start_codes")
-    .select("code_hash, expires_at, created_at, attempts, locked_until")
-    .eq("email", email)
-    .maybeSingle();
-  if (error) throw new Error(`start_codes read failed: ${error.message}`);
-  return (data as CodeRow | null) ?? null;
-}
-
-/** Email a sign-in code. The platform sends it (RESEND_FROM), not any hub. */
-export async function requestStartCode(email: string): Promise<string> {
-  const recent = await readCode(email);
-  if (recent?.locked_until && Date.now() < Date.parse(recent.locked_until)) {
-    throw new StartError(lockoutMessage(recent.locked_until), 429);
-  }
-  if (recent && Date.now() - Date.parse(recent.created_at) < REQUEST_THROTTLE_MS) {
-    throw new StartError("Please wait a moment before asking for another code.", 429);
-  }
-  const code = generateOTP();
-  const now = Date.now();
-  const { error } = await getDb().from("start_codes").upsert(
-    {
-      email,
-      code_hash: sha256(code),
-      expires_at: new Date(now + OTP_TTL_MS).toISOString(),
-      created_at: new Date(now).toISOString(),
-      attempts: 0,
-      locked_until: null,
-    },
-    { onConflict: "email" },
-  );
-  if (error) throw new Error(`start_codes write failed: ${error.message}`);
-
+/**
+ * Email a sign-in code. The platform sends it (RESEND_FROM), not any hub.
+ * The rules are a hub's (codeRules.ts): the IP's requests, up to three live
+ * codes, one email a minute and ten new codes an hour per address.
+ */
+export async function requestStartCode(email: string, ip: string, timeZone?: unknown): Promise<string> {
+  const { code } = await issueCode(platformCodeStore("start", "sign_in"), startRealm(timeZone), ip, email);
+  const rendered = renderCodeEmail(code, "Civic Social", "start your hub");
   const result = await sendEmail({
     to: email,
     subject: "Your Civic Social code",
-    html: renderCodeEmail(code, "Civic Social", "start your hub"),
+    html: rendered.html,
+    text: rendered.text,
   });
   if (!result.sent) {
     console.warn(`[start] code email NOT sent (${result.error}).`);
@@ -198,40 +163,12 @@ export async function requestStartCode(email: string): Promise<string> {
 
 /**
  * Check the emailed code and spend it; the session is now this address's.
- * Same rules as a hub's consumePendingCode: lockout, expiry, the wrong-guess
- * cap, single use, and one attempt spent atomically before the compare.
+ * Same rules as a hub's (codeRules.ts): expiry, tries that burn the code,
+ * single use, and the IP's checks.
  */
-export async function verifyStartCode(session: StartSession, email: string, rawCode: unknown): Promise<void> {
+export async function verifyStartCode(session: StartSession, email: string, rawCode: unknown, ip: string, timeZone?: unknown): Promise<void> {
   const code = typeof rawCode === "string" ? rawCode.trim() : "";
   if (!/^\d{6}$/.test(code)) throw new StartError("Enter the six-digit code.");
-  const db = getDb();
-  const { data: taken, error } = await db.rpc("take_start_code_attempt", {
-    p_email: email,
-    p_max: MAX_VERIFY_ATTEMPTS,
-    p_lock_seconds: Math.round(LOCKOUT_MS / 1000),
-  });
-  if (error) throw new Error(`take_start_code_attempt failed: ${error.message}`);
-  const row = ((taken ?? []) as Array<{ code_hash: string; expires_at: string; attempts: number }>)[0];
-  if (!row) {
-    const current = await readCode(email);
-    if (!current) throw new StartError("No code is waiting for that address. Ask for a new one.", 401);
-    if (current.locked_until && Date.now() < Date.parse(current.locked_until)) {
-      throw new StartError(lockoutMessage(current.locked_until), 429);
-    }
-    throw new StartError("That code can no longer be used. Ask for a new one.", 401);
-  }
-  const spend = () => db.from("start_codes").delete().eq("email", email).eq("code_hash", row.code_hash).select("email");
-  if (Date.now() > Date.parse(row.expires_at)) {
-    await spend();
-    throw new StartError("That code has expired. Ask for a new one.", 401);
-  }
-  if (!sameHexHash(row.code_hash, sha256(code))) {
-    if (row.attempts >= MAX_VERIFY_ATTEMPTS) {
-      throw new StartError(lockoutMessage(new Date(Date.now() + LOCKOUT_MS).toISOString()), 429);
-    }
-    throw new StartError("That code is not right. Check the email and try again.", 401);
-  }
-  const { data: spent } = await spend(); // a code works once: the delete is the spend
-  if (!spent || spent.length === 0) throw new StartError("That code has already been used. Ask for a new one.", 401);
+  await checkCode(platformCodeStore("start", "sign_in"), startRealm(timeZone), ip, { email, code });
   await setSessionEmail(session, email);
 }

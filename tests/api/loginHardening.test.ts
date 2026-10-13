@@ -145,31 +145,26 @@ describe("one-time codes", () => {
     }
   });
 
-  it("locks an email out after repeated wrong guesses", async () => {
-    // The lockout is the anti-brute-force defence. Athens's admin is a
-    // privileged account, so the real code path applies even though the hub
-    // is a demo — which is exactly the case worth locking.
+  it("burns a code after five wrong guesses, and never locks the address (sign-in slice, 2026-10-14)", async () => {
+    // Too many wrong guesses burn that one code; the owner asks for a new
+    // one. Athens's admin is a privileged account, so the real code path
+    // applies even though the hub is a demo.
     const email = ATHENS_ADMIN;
     // Planted rather than requested: this address is asked for by several
-    // files, and its five codes an hour (Audit 2) would leave none to lock.
+    // files, and it gets one email a minute.
     await plantHubCode("athens", email, "918273");
 
-    let sawLockout = false;
-    for (let i = 0; i < 8; i++) {
-      const { status, body } = await call("POST", "/auth/verify", ATHENS, {
-        email,
-        code: "000001",
-      });
-      // A wrong guess is 400; the lockout is a limit, 429 locked_out (Audit 4).
-      if (status === 429) {
-        expect(body.code).toBe("locked_out");
-        expect(String(body.error)).toMatch(/too many|locked|try again/i);
-        sawLockout = true;
-        break;
-      }
+    const answers: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const { status, body } = await call("POST", "/auth/verify", ATHENS, { email, code: "000001" });
       expect(status).toBe(400);
+      answers.push(body.code as string);
     }
-    expect(sawLockout, "expected a lockout message after repeated guesses").toBe(true);
+    expect(answers).toEqual(["invalid_code", "invalid_code", "invalid_code", "invalid_code", "code_burned"]);
+    // The right code is dead now; a new one works at once.
+    expect((await call("POST", "/auth/verify", ATHENS, { email, code: "918273" })).body.code).toBe("no_live_code");
+    await plantHubCode("athens", email, "918274");
+    expect((await call("POST", "/auth/verify", ATHENS, { email, code: "918274" })).status).toBe(200);
   });
 });
 

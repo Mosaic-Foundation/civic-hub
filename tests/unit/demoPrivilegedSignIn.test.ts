@@ -37,13 +37,14 @@ vi.mock("../../src/db/rateLimit.js", async (orig) => ({
   takeRateLimit: async () => null,
 }));
 
-// pending_verifications: nothing recent, the upsert succeeds.
+// sign_in_codes: no live codes, the insert succeeds.
 vi.mock("../../src/db/forHub.js", async (orig) => {
   const real = await orig<typeof import("../../src/db/forHub.js")>();
   const builder: Record<string, unknown> = {};
   for (const m of ["select", "eq"]) builder[m] = () => builder;
   builder.maybeSingle = async () => null;
-  builder.upsert = async () => [];
+  builder.gt = async () => [];
+  builder.insert = async () => null;
   // hub_settings: no stored rows (a failed read is now an error, not {}).
   builder.not = async () => [];
   return { ...real, forHub: () => ({ from: () => builder }) };

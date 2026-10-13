@@ -50,5 +50,20 @@ export async function takeRateLimit(checks: readonly RateLimitCheck[]): Promise<
   return index > 0 ? checks[index - 1]! : null;
 }
 
+/**
+ * When a full bucket has room again (rate_limit_retry_at), or null when it has
+ * room now or limits are off. For "Try again after 4:10 PM".
+ */
+export async function retryAt(check: RateLimitCheck): Promise<Date | null> {
+  if (!rateLimitsEnabled()) return null;
+  const { data, error } = await getDb().rpc("rate_limit_retry_at", {
+    p_bucket: rateLimitBucket(check.scope, check.by, check.value),
+    p_limit: check.limit,
+    p_window_seconds: Math.ceil(check.windowMs / 1000),
+  });
+  if (error) throw new Error(`rate_limit_retry_at failed: ${error.message}`);
+  return typeof data === "string" ? new Date(data) : null;
+}
+
 /** Thrown by a limit; the HTTP layer answers 429 with its message (src/errors/). */
 export { RateLimitedError } from "../errors/index.js";

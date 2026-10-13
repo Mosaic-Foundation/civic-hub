@@ -2,34 +2,29 @@
 // The super admin's sign-in: an emailed code to the one allowed address, a
 // session, and step-up — a second, fresh code — before anything destructive.
 //
-// The code's rules (lifetime, throttle, wrong-guess cap, lockout, the email
-// itself) are a hub's, from src/modules/civic.auth/otp.ts. What differs is
-// where things are kept: `control_codes` and `control_sessions`, platform
-// tables with deny-all RLS, and codes and session tokens are stored only as
-// SHA-256 hashes.
+// The code's rules (lifetime, live codes, tries, the email itself) are a
+// hub's, from src/modules/civic.auth/codeRules.ts and otp.ts. What differs is
+// where things are kept: `platform_sign_in_codes` and `control_sessions`,
+// platform tables with deny-all RLS, and codes and session tokens are stored
+// only as SHA-256 hashes.
 //
 // Only CIVIC_CONSOLE_ADMIN_EMAIL is ever sent a code. Anyone else who asks
 // gets the same answer and nothing is sent or stored, so the form does not
 // say who the operator is.
 
 import { env } from "../config/env.js";
-import { CivicError, codeForStatus } from "../errors/index.js";
+import { CivicError, RateLimitedError, codeForStatus } from "../errors/index.js";
 import { getDb } from "../db/client.js";
-import { HOUR_MS, takeRateLimit } from "../db/rateLimit.js";
-import { randomToken, sameHexHash, sha256Hex } from "../utils/hash.js";
+import { HOUR_MS, retryAt, takeRateLimit } from "../db/rateLimit.js";
+import { randomToken, sha256Hex } from "../utils/hash.js";
 import { sendEmail } from "../utils/email.js";
-import {
-  LOCKOUT_MS,
-  MAX_VERIFY_ATTEMPTS,
-  OTP_TTL_MS,
-  REQUEST_THROTTLE_MS,
-  generateOTP,
-  lockoutMessage,
-  renderCodeEmail,
-} from "../modules/civic.auth/otp.js";
+import { renderCodeEmail } from "../modules/civic.auth/otp.js";
+import { WRONG_CODE, checkCode, issueCode, tooManyMessage } from "../modules/civic.auth/codeRules.js";
+import { platformCodeStore, platformRealm } from "./platformCodes.js";
 import { consoleAdminEmail } from "./config.js";
 
-export type CodePurpose = "sign_in" | "step_up";
+export type { CodePurpose } from "./platformCodes.js";
+import type { CodePurpose } from "./platformCodes.js";
 
 /** A console session lasts a working day, not a month. */
 export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
@@ -51,13 +46,16 @@ const sha256 = sha256Hex;
  * the operator or to guess at the code.
  */
 export const CONSOLE_LIMITS = { request_code: { ip: 5 }, verify: { ip: 10 } } as const;
-const TOO_MANY = "Too many tries from here. Wait an hour and try again.";
+function consoleRealm(timeZone: unknown) {
+  return platformRealm("console", { request: CONSOLE_LIMITS.request_code.ip, verify: CONSOLE_LIMITS.verify.ip }, timeZone);
+}
 
-async function limit(step: keyof typeof CONSOLE_LIMITS, ip: string): Promise<void> {
-  const refused = await takeRateLimit([
-    { scope: `console.${step}`, by: "ip", value: ip, limit: CONSOLE_LIMITS[step].ip, windowMs: HOUR_MS },
-  ]);
-  if (refused) throw new ControlAuthError(TOO_MANY, 429);
+/** Count one step against the IP, or refuse with the time it can try again. */
+async function limit(step: keyof typeof CONSOLE_LIMITS, ip: string, timeZone: string): Promise<void> {
+  const check = { scope: `console.${step}`, by: "ip", value: ip, limit: CONSOLE_LIMITS[step].ip, windowMs: HOUR_MS };
+  if (!(await takeRateLimit([check]))) return;
+  const at = (await retryAt(check)) ?? new Date(Date.now() + HOUR_MS);
+  throw new RateLimitedError(tooManyMessage(at, timeZone), "rate_limited", { extra: { retry_at: at.toISOString() } });
 }
 
 function normalizeEmail(raw: unknown): string {
@@ -70,33 +68,20 @@ export function isConsoleAdmin(email: string): boolean {
   return config.ok && config.email === normalizeEmail(email);
 }
 
-interface CodeRow {
-  code_hash: string;
-  expires_at: string;
-  created_at: string;
-  attempts: number;
-  locked_until: string | null;
-}
-
-async function readCode(email: string, purpose: CodePurpose): Promise<CodeRow | null> {
-  const { data, error } = await getDb()
-    .from("control_codes")
-    .select("code_hash, expires_at, created_at, attempts, locked_until")
-    .eq("email", email)
-    .eq("purpose", purpose)
-    .maybeSingle();
-  if (error) throw new Error(`control_codes read failed: ${error.message}`);
-  return (data as CodeRow | null) ?? null;
-}
-
 /**
  * Email a code for `purpose`. For anyone but the allowed address, does
- * nothing and says the same thing.
+ * nothing and says the same thing. The code's rules are a hub's
+ * (codeRules.ts): up to three live codes, one email a minute, ten an hour,
+ * and wrong tries burn the code rather than lock the address, which matters
+ * most here: the console has exactly one address to lock.
  */
-export async function requestCode(rawEmail: unknown, purpose: CodePurpose, ip: string): Promise<string> {
+export async function requestCode(rawEmail: unknown, purpose: CodePurpose, ip: string, timeZone?: unknown): Promise<string> {
   const email = normalizeEmail(rawEmail);
   if (!email.includes("@")) throw new ControlAuthError("Enter an email address.");
-  await limit("request_code", ip);
+  const realm = consoleRealm(timeZone);
+  // Counted first, for any address, so the form can't be used to mail-bomb
+  // the operator or to learn who it is.
+  await limit("request_code", ip, realm.timeZone);
 
   const config = consoleAdminEmail();
   if (!config.ok) {
@@ -108,35 +93,16 @@ export async function requestCode(rawEmail: unknown, purpose: CodePurpose, ip: s
     return CODE_SENT;
   }
 
-  const recent = await readCode(email, purpose);
-  if (recent?.locked_until && Date.now() < Date.parse(recent.locked_until)) {
-    throw new ControlAuthError(lockoutMessage(recent.locked_until), 429);
-  }
-  if (recent && Date.now() - Date.parse(recent.created_at) < REQUEST_THROTTLE_MS) {
-    throw new ControlAuthError("Please wait a moment before requesting another code.", 429);
-  }
-
-  const code = generateOTP();
-  const now = Date.now();
-  const { error } = await getDb().from("control_codes").upsert(
-    {
-      email,
-      purpose,
-      code_hash: sha256(code),
-      expires_at: new Date(now + OTP_TTL_MS).toISOString(),
-      created_at: new Date(now).toISOString(),
-      attempts: 0,
-      locked_until: null,
-    },
-    { onConflict: "email,purpose" },
-  );
-  if (error) throw new Error(`control_codes write failed: ${error.message}`);
+  // The IP was counted above, so issueCode doesn't count it again.
+  const { code } = await issueCode(platformCodeStore("console", purpose), { ...realm, ipLimits: { ...realm.ipLimits, request: null } }, ip, email);
 
   const action = purpose === "sign_in" ? "finish signing in" : "confirm this change";
+  const rendered = renderCodeEmail(code, "Civic Social console", action);
   const result = await sendEmail({
     to: email,
     subject: purpose === "sign_in" ? "Your Civic Social console code" : "Confirm a Civic Social console change",
-    html: renderCodeEmail(code, "Civic Social console", action),
+    html: rendered.html,
+    text: rendered.text,
   });
   if (!result.sent) {
     console.warn(`[control] code email NOT sent (${result.error}).`);
@@ -149,50 +115,20 @@ export async function requestCode(rawEmail: unknown, purpose: CodePurpose, ip: s
   return CODE_SENT;
 }
 
-/**
- * Check a code and spend it. Same rules as a hub's consumePendingCode:
- * lockout, expiry, the wrong-guess cap, single use; and, like it, one attempt
- * is spent atomically (take_control_code_attempt) before the code is compared.
- */
-export async function consumeCode(rawEmail: unknown, purpose: CodePurpose, rawCode: unknown, ip: string): Promise<string> {
+/** Check a code and spend it, by the shared rules (codeRules.ts). */
+export async function consumeCode(rawEmail: unknown, purpose: CodePurpose, rawCode: unknown, ip: string, timeZone?: unknown): Promise<string> {
   const email = normalizeEmail(rawEmail);
   const code = typeof rawCode === "string" ? rawCode.trim() : "";
-  await limit("verify", ip);
-  if (!/^\d{6}$/.test(code)) throw new ControlAuthError("Enter the six-digit code.");
-  if (!isConsoleAdmin(email)) throw new ControlAuthError("Invalid code.", 401);
-
-  const db = getDb();
-  const { data: taken, error } = await db.rpc("take_control_code_attempt", {
-    p_email: email,
-    p_purpose: purpose,
-    p_max: MAX_VERIFY_ATTEMPTS,
-    p_lock_seconds: Math.round(LOCKOUT_MS / 1000),
-  });
-  if (error) throw new Error(`take_control_code_attempt failed: ${error.message}`);
-  const row = ((taken ?? []) as Array<{ code_hash: string; expires_at: string; attempts: number }>)[0];
-  if (!row) {
-    const current = await readCode(email, purpose);
-    if (!current) throw new ControlAuthError("No code is waiting. Request a new one.", 401);
-    if (current.locked_until && Date.now() < Date.parse(current.locked_until)) {
-      throw new ControlAuthError(lockoutMessage(current.locked_until), 429);
-    }
-    throw new ControlAuthError("That code can no longer be used. Request a new one.", 401);
+  const realm = consoleRealm(timeZone);
+  if (!/^\d{6}$/.test(code)) {
+    await limit("verify", ip, realm.timeZone);
+    throw new ControlAuthError("Enter the six-digit code.");
   }
-  const spend = () =>
-    db.from("control_codes").delete().eq("email", email).eq("purpose", purpose).eq("code_hash", row.code_hash).select("email");
-  if (Date.now() > Date.parse(row.expires_at)) {
-    await spend();
-    throw new ControlAuthError("That code has expired. Request a new one.", 401);
+  if (!isConsoleAdmin(email)) {
+    await limit("verify", ip, realm.timeZone);
+    throw new ControlAuthError(WRONG_CODE, 401);
   }
-  if (!sameHexHash(row.code_hash, sha256(code))) {
-    if (row.attempts >= MAX_VERIFY_ATTEMPTS) {
-      throw new ControlAuthError(lockoutMessage(new Date(Date.now() + LOCKOUT_MS).toISOString()), 429);
-    }
-    throw new ControlAuthError("Invalid code.", 401);
-  }
-  // A code works once: the delete is the spend.
-  const { data: spent } = await spend();
-  if (!spent || spent.length === 0) throw new ControlAuthError("That code has already been used. Request a new one.", 401);
+  await checkCode(platformCodeStore("console", purpose), realm, ip, { email, code });
   return email;
 }
 

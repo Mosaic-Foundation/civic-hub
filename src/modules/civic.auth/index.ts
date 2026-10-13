@@ -5,7 +5,7 @@
 //   2. User verifies with code → account created/logged in
 //   3. User affirms residency → is_resident = true
 //
-// Storage: Postgres via Supabase (tables: users, sessions, pending_verifications)
+// Storage: Postgres via Supabase (tables: users, sessions, sign_in_codes)
 // Identity: DID-compatible — user.id is a text field, replaceable with a DID later.
 //
 // Per hub since Phase 2a: accounts, sessions and sign-in codes all carry
@@ -27,23 +27,21 @@ import { ConflictError, ForbiddenError, NotFoundError, RateLimitedError, Unautho
 import { forHub, HubDbError, type HubDb, type Row } from "../../db/forHub.js";
 import { generateId } from "../../utils/id.js";
 import { randomToken, sameHexHash, sha256Hex } from "../../utils/hash.js";
-import {
-  OTP_TTL_MS,
-  MAX_VERIFY_ATTEMPTS,
-  REQUEST_THROTTLE_MS,
-  LOCKOUT_MS,
-  generateOTP,
-  lockoutMessage,
-  renderCodeEmail,
-} from "./otp.js";
+import { renderCodeEmail } from "./otp.js";
+import { CODE_RULES, checkCode, issueCode, tooManyMessage, type CodeRow, type CodeStore, type Realm } from "./codeRules.js";
 import { sendEmail } from "../../utils/email.js";
-import { limitCodeCheck, limitCodeRequest } from "./limits.js";
+import { HUB_SIGN_IN_LIMITS } from "./limits.js";
+import { HOUR_MS, retryAt, takeRateLimit } from "../../db/rateLimit.js";
+import { KEYS } from "../../models/hubSettings.js";
+import { resolveTimeZone } from "../../utils/hubTime.js";
+import { uiBaseUrl } from "../../utils/baseUrl.js";
 import {
   getAdminEmailsSync,
   isBetaEnabledSync,
   isDemoHubSync,
   isEmailOnBetaAllowlist,
   hubDisplayNameSync,
+  getSettingSync,
 } from "../../services/hubSettings.js";
 import { isPrivilegedEmail, isPrivilegedEmailNow } from "../../services/privilegedAccounts.js";
 import { lookupOfficialByEmail } from "../../services/officials.js";
@@ -55,11 +53,14 @@ export type { User, PendingVerification, Session, SessionAssurance } from "./mod
 
 // --- Constants ---
 
-// A "keep me signed in" option, when it comes, is a longer expires_at on the
-// same row; nothing else about a session changes.
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-// The code's rules (TTL, attempts, throttle, lockout) live in ./otp.ts,
-// shared with the super admin's sign-in.
+/**
+ * How long a session lasts (Adam, 2026-10-13): a week, or 90 days when "Keep
+ * me signed in" is ticked. Sessions from before keep the 30 days they were
+ * given. The code's rules live in ./codeRules.ts, shared with the console and
+ * the start page.
+ */
+export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const KEEP_SIGNED_IN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 /** The hub in scope. Everything here runs inside a request for one hub. */
 function db(): HubDb {
@@ -149,6 +150,63 @@ export function normalizeFullName(raw: unknown): string {
 
 // --- Auth flow ---
 
+/** This hub's codes (sign_in_codes, 20261014000000), for ./codeRules.ts. */
+function hubCodeStore(hubDb: HubDb): CodeStore {
+  return {
+    async live(email) {
+      const rows = await hubDb
+        .from("sign_in_codes")
+        .select<{ expires_at: string; attempts: number }>("expires_at, attempts")
+        .eq("email", email)
+        .gt("expires_at", new Date().toISOString());
+      return rows.filter((r) => r.attempts < CODE_RULES.maxTries).map((r) => r.expires_at);
+    },
+    async insert(row) {
+      await hubDb.from("sign_in_codes").insert(row);
+    },
+    async take(by, maxTries) {
+      const rows = await hubDb.rpc<CodeRow[]>("take_sign_in_attempt", {
+        p_email: "email" in by ? by.email : null,
+        p_link_hash: "linkHash" in by ? by.linkHash : null,
+        p_max: maxTries,
+      });
+      return Array.isArray(rows) ? rows : [];
+    },
+    async spend(id) {
+      const spent = await hubDb.from("sign_in_codes").delete().eq("id", id).select<{ id: string }>("id");
+      return spent.length > 0;
+    },
+    async clear(email) {
+      await hubDb.from("sign_in_codes").delete().eq("email", email);
+    },
+  };
+}
+
+/** A hub's realm: its per-IP caps (./limits.ts), its time zone, and links. */
+function hubRealm(): Realm {
+  const hubId = currentHubId();
+  return {
+    scope: "hub",
+    addressKey: (email) => `${hubId}:${email}`,
+    ipLimits: { request: HUB_SIGN_IN_LIMITS.request_code.ip, verify: HUB_SIGN_IN_LIMITS.verify.ip },
+    timeZone: resolveTimeZone(getSettingSync(KEYS.IDENTITY_TIMEZONE)),
+    links: true,
+  };
+}
+
+/** Count one step against the IP's hourly cap, or refuse with the time it can try again. */
+async function limitIp(step: keyof typeof HUB_SIGN_IN_LIMITS, ip: string, timeZone: string): Promise<void> {
+  const check = { scope: `hub.${step}`, by: "ip", value: ip, limit: HUB_SIGN_IN_LIMITS[step].ip, windowMs: HOUR_MS };
+  if (!(await takeRateLimit([check]))) return;
+  const at = (await retryAt(check)) ?? new Date(Date.now() + HOUR_MS);
+  throw new RateLimitedError(tooManyMessage(at, timeZone), "rate_limited", { extra: { retry_at: at.toISOString() } });
+}
+
+/** Where the email's "Sign in" link goes: the hub's page, the token after `#`. */
+export function signInLink(linkToken: string): string {
+  return `${uiBaseUrl()}/sign-in#t=${linkToken}`;
+}
+
 /**
  * Step 1: Request a verification code for an email.
  * If user exists, they'll be logged in on verify.
@@ -171,42 +229,29 @@ export async function requestVerification(
   }
 
   // Counted first, before anything is looked up or sent: a request refused
-  // here costs nothing, and a demo hub's requests count too (Audit 2).
-  await limitCodeRequest(ip, currentHubId(), normalizedEmail);
+  // here costs nothing, and a demo hub's requests and a beta hub's refusals
+  // count too, so the form can't be used to probe who is on the list.
+  const realm = hubRealm();
+  await limitIp("request_code", ip, realm.timeZone);
 
   // A demo hub does not email sign-in codes. Any visitor can look around, so
-  // the OTP generation, the pending_verifications insert and the Resend send
-  // are all skipped: a demo signup should not mail a throwaway address, burn
-  // Resend quota, or confuse someone who was not expecting an email.
+  // no code is made, stored or sent: a demo signup should not mail a
+  // throwaway address, burn Resend quota, or confuse someone who was not
+  // expecting an email. It still counts against the IP (Audit 2).
   //
-  // WHAT CHANGED, AND WHY IT MATTERS (Phase 1 part two).
+  // The test is per hub (Phase 1 part two): one deployment serves every hub,
+  // so NODE_ENV says nothing, and `beta.demo_mode` is an admin-only settings
+  // row that a live hub simply does not have. A demo hub accepts any six
+  // digits, so there is no code to display, compile in or leak.
   //
-  // This used to key off `NODE_ENV !== "production"`, which was the right
-  // guard when a demo was its own deployment: production could not be
-  // bypassed even if the env var leaked onto it. One deployment now serves
-  // every hub, so NODE_ENV is "production" for the demo hub too — that guard
-  // would have switched the demo OFF rather than protected Floyd. The test is
-  // now per hub, and the protection is that `beta.demo_mode` is an admin-only
-  // settings row that Floyd's hub simply does not have.
-  //
-  // There is also no longer a code to leak. A demo hub accepts any six
-  // digits, so nothing is displayed to the visitor, nothing is compiled into
-  // the bundle and nothing is served by the config endpoint. A shared static
-  // code printed on the sign-in screen was never a secret; this removes the
-  // pretence and the thing that could be exfiltrated at the same time.
-  // A demo hub does not email sign-in codes to ordinary visitors — that is
-  // what makes it a demo — but a PRIVILEGED account gets the real flow even
-  // here. An admin or an official can moderate, publish, and change what the
-  // hub is; "any six digits" for those accounts would mean anyone who knows
-  // an admin's email address can be that admin. The relaxation is for people
-  // looking around, never for the people running the place.
+  // A PRIVILEGED account gets the real flow even here. An admin or an
+  // official can moderate, publish, and change what the hub is; "any six
+  // digits" for those accounts would mean anyone who knows an admin's email
+  // address can be that admin.
   if (isDemoHubSync() && !(await isPrivilegedEmailNow(normalizedEmail))) {
-    console.log(
-      `[auth] Demo hub signin for ${normalizedEmail} — no code emailed.`,
-    );
+    console.log(`[auth] Demo hub signin for ${normalizedEmail} — no code emailed.`);
     // `no_email` tells the sign-in screen not to say "Check your email"
-    // (review R22): nothing was sent. An admin on the same demo hub gets the
-    // ordinary answer and a real code.
+    // (review R22): nothing was sent.
     return {
       message: "No email is sent on a demo hub. Enter any six digits to sign in.",
       no_email: true,
@@ -230,72 +275,26 @@ export async function requestVerification(
     }
   }
 
-  // A failed read throws rather than skipping the checks below: before
-  // Phase 2a an error here was ignored, which failed OPEN on the lockout.
-  const recent = await db()
-    .from("pending_verifications")
-    .select<{ created_at: string | null; locked_until: string | null }>(
-      "created_at, locked_until",
-    )
-    .eq("email", normalizedEmail)
-    .maybeSingle();
-  // Lockout: if this email is in its post-brute-force cooldown, refuse to issue
-  // a new code (otherwise the lockout is trivially escaped by re-requesting).
-  if (recent?.locked_until && Date.now() < new Date(recent.locked_until).getTime()) {
-    throw new RateLimitedError(lockoutMessage(recent.locked_until), "locked_out");
-  }
-  // Throttle: reject a fresh code if one was requested for this email very
-  // recently. Without this an attacker could reset the wrong-guess cap by
-  // simply re-requesting a new code each time.
-  if (
-    recent?.created_at &&
-    Date.now() - new Date(recent.created_at).getTime() < REQUEST_THROTTLE_MS
-  ) {
-    throw new RateLimitedError("Please wait a moment before requesting another code.", "code_throttled");
-  }
-
-  const code = generateOTP();
-  const now = new Date();
-  const expires = new Date(now.getTime() + OTP_TTL_MS);
-
-  try {
-    await db()
-    .from("pending_verifications")
-    .upsert(
-      {
-        email: normalizedEmail,
-        // Only the hash is kept (constraint pending_verifications_no_plain_code).
-        // A later "Sign in" link in the email adds its own hash beside this
-        // one and is checked through the same attempt counter.
-        code_hash: sha256Hex(code),
-        expires_at: expires.toISOString(),
-        created_at: now.toISOString(),
-        attempts: 0, // fresh code, reset the wrong-guess counter
-        locked_until: null, // and clear any expired lockout
-      },
-      { onConflict: "hub_id,email" },
-    );
-  } catch (err) {
-    // 23505 on (hub_id, email) cannot happen — that is the conflict target —
-    // so it is a global primary key (email), which only a database without
-    // the post-cutover cleanup has: a pending code on another hub.
-    if (err instanceof HubDbError && err.code === "23505") {
-      console.warn(`[auth] ${normalizedEmail} has a pending code on another hub (global key)`);
-      throw new ConflictError(ADDRESS_IN_USE_ELSEWHERE, "address_in_use_elsewhere");
-    }
-    throw new Error(`Auth: failed to store verification: ${(err as Error).message}`);
-  }
+  // Three live codes, the IP's requests, one email a minute and ten new codes
+  // an hour for the address; then a new code beside any earlier ones, which
+  // keep working (./codeRules.ts). Nothing here can lock the address.
+  // The IP was counted above, so issueCode doesn't count it again.
+  const issued = await issueCode(hubCodeStore(db()), { ...realm, ipLimits: { ...realm.ipLimits, request: null } }, ip, normalizedEmail);
+  const code = issued.code;
 
   // Send the OTP via email. If Resend is not configured (dev), fall back
   // to logging so local development still works.
   const hubDisplayName = hubDisplayNameSync();
+  const link = purpose === "sign_in" && issued.linkToken ? signInLink(issued.linkToken) : null;
+  const rendered = renderOtpEmail(code, hubDisplayName, purpose, link);
   const result = await sendEmail({
     to: normalizedEmail,
     subject:
       purpose === "step_up"
         ? `${hubDisplayName}: your code to confirm a change`
         : `Your ${hubDisplayName} sign-in code`,
-    html: renderOtpEmail(code, hubDisplayName, purpose),
+    html: rendered.html,
+    text: rendered.text,
     // Through the mode guard on every mode: it goes only to the address that
     // asked (mailGuard.ts). This is what lets an official sign in on a demo.
     purpose: "sign_in_code",
@@ -327,6 +326,7 @@ export async function requestVerification(
     // waiting on an email that will not arrive.
     if (!env.RESEND_API_KEY) {
       console.log(`\n[auth] Verification code for ${normalizedEmail}: ${code}\n`);
+      if (link) console.log(`[auth] Sign-in link for ${normalizedEmail}: ${link}\n`);
     } else {
       console.warn(
         `[auth] The code was NOT logged: a mailer is configured, so this is a ` +
@@ -338,10 +338,10 @@ export async function requestVerification(
   return { message: "Verification code sent" };
 }
 
-function renderOtpEmail(code: string, rawHubName: string, purpose: "sign_in" | "step_up"): string {
+function renderOtpEmail(code: string, rawHubName: string, purpose: "sign_in" | "step_up", link: string | null) {
   return purpose === "step_up"
     ? renderCodeEmail(code, rawHubName, "confirm your change", "Your code to confirm a change")
-    : renderCodeEmail(code, rawHubName);
+    : renderCodeEmail(code, rawHubName, undefined, undefined, link);
 }
 
 /**
@@ -349,84 +349,23 @@ function renderOtpEmail(code: string, rawHubName: string, purpose: "sign_in" | "
  *
  * Extracted from verifyCode so that anything else needing proof of the
  * mailbox — changing a hub's mode, for one — enforces the SAME rules rather
- * than growing its own weaker copy. Lockout, expiry, the wrong-guess counter
- * and single use all live here, once.
+ * than growing its own weaker copy. The tries, expiry, burning and single
+ * use all live in ./codeRules.ts, once.
  *
  * Throws on every failure, with the message the caller shows. On success the
- * pending row is deleted, which is what makes a code single-use: a second
- * attempt finds no row and is refused.
- *
- * ATOMIC (Audit 2, 2026-10-11). take_code_attempt spends one attempt in one
- * conditional UPDATE and returns the code's hash only while attempts are under
- * the limit and no lock is running; the attempt that reaches the limit sets
- * the lock in the same statement. The code is compared only when a row comes
- * back. Before this the count was read, compared and written back from here,
- * so N concurrent guesses advanced it by about one.
+ * code's row is deleted, which is what makes it single-use.
  */
 export async function consumePendingCode(
   email: string,
   code: string,
-  // The caller's IP, for the per-IP limit on codes typed in.
+  // The caller's IP, for the per-IP limits on codes typed in.
   ip: string,
 ): Promise<void> {
-  const hubDb = db();
-  const normalizedEmail = email.trim().toLowerCase();
+  await checkCode(hubCodeStore(db()), hubRealm(), ip, { email: email.trim().toLowerCase(), code: String(code) });
+}
 
-  await limitCodeCheck(ip);
-
-  const taken = await hubDb.rpc<Array<{ code_hash: string; expires_at: string; attempts: number }>>(
-    "take_code_attempt",
-    {
-      p_email: normalizedEmail,
-      p_max: MAX_VERIFY_ATTEMPTS,
-      p_lock_seconds: Math.round(LOCKOUT_MS / 1000),
-    },
-  );
-  const row = Array.isArray(taken) ? taken[0] : undefined;
-
-  if (!row) {
-    // No attempt was left to spend. Say why.
-    const current = await hubDb
-      .from("pending_verifications")
-      .select<{ locked_until: string | null }>("locked_until")
-      .eq("email", normalizedEmail)
-      .maybeSingle();
-    if (!current) {
-      throw new ValidationError("No pending verification for this email. Request a new code.", "no_pending_code");
-    }
-    if (current.locked_until && Date.now() < Date.parse(current.locked_until)) {
-      throw new RateLimitedError(lockoutMessage(current.locked_until), "locked_out");
-    }
-    // The lock has passed, but this code used up its tries; it is dead.
-    throw new ValidationError("That code can no longer be used. Request a new code.", "code_unusable");
-  }
-  if (Date.now() > Date.parse(row.expires_at)) {
-    await hubDb
-      .from("pending_verifications")
-      .delete()
-      .eq("email", normalizedEmail)
-      .eq("code_hash", row.code_hash);
-    throw new ValidationError("Verification code expired. Request a new code.", "code_expired");
-  }
-  if (!sameHexHash(row.code_hash, sha256Hex(String(code).trim()))) {
-    if (row.attempts >= MAX_VERIFY_ATTEMPTS) {
-      // This attempt reached the limit; the database locked the address.
-      throw new RateLimitedError(lockoutMessage(new Date(Date.now() + LOCKOUT_MS).toISOString()), "locked_out");
-    }
-    throw new ValidationError("Invalid verification code", "invalid_code");
-  }
-  // Spend it: the delete is the spend, so of two requests with the right
-  // code, one gets the row. Only this code's row, so a newer code requested
-  // in the meantime is left alone.
-  const spent = await hubDb
-    .from("pending_verifications")
-    .delete()
-    .eq("email", normalizedEmail)
-    .eq("code_hash", row.code_hash)
-    .select<{ email: string }>("email");
-  if (spent.length === 0) {
-    throw new ValidationError("That code has already been used. Request a new code.", "code_used");
-  }
+function sessionTtl(keepSignedIn: boolean): number {
+  return keepSignedIn ? KEEP_SIGNED_IN_TTL_MS : SESSION_TTL_MS;
 }
 
 /**
@@ -438,6 +377,7 @@ export async function verifyCode(
   code: string,
   // The caller's IP, for the per-IP limit on codes typed in.
   ip: string,
+  keepSignedIn = false,
 ): Promise<{ token: string; user: User }> {
   const normalizedEmail = email.trim().toLowerCase();
   const hubDb = db();
@@ -462,11 +402,8 @@ export async function verifyCode(
     /^\d{6}$/.test(code.trim()) &&
     !(await isPrivilegedEmailNow(normalizedEmail))
   ) {
-    await limitCodeCheck(ip);
-    await hubDb
-      .from("pending_verifications")
-      .delete()
-      .eq("email", normalizedEmail);
+    await limitIp("verify", ip, hubRealm().timeZone);
+    await hubCodeStore(hubDb).clear?.(normalizedEmail);
     assurance = "demo";
   } else {
     await consumePendingCode(normalizedEmail, code, ip);
@@ -474,7 +411,25 @@ export async function verifyCode(
   }
 
   const user = await findOrCreateVerifiedUser(normalizedEmail);
-  const token = await insertSession(hubDb, user.id, assurance);
+  const token = await insertSession(hubDb, user.id, assurance, sessionTtl(keepSignedIn));
+  return { token, user };
+}
+
+/**
+ * The email's "Sign in" link: the page posts its token here after one
+ * Confirm. Same code, same rules: checked through the same attempt function,
+ * with the same expiry, tries and single use as typing the code. A link is
+ * always a real code, so even on a demo hub it makes a "code" session.
+ */
+export async function verifyLink(
+  linkToken: string,
+  ip: string,
+  keepSignedIn = false,
+): Promise<{ token: string; user: User }> {
+  const hubDb = db();
+  const { email } = await checkCode(hubCodeStore(hubDb), hubRealm(), ip, { linkToken });
+  const user = await findOrCreateVerifiedUser(email);
+  const token = await insertSession(hubDb, user.id, "code", sessionTtl(keepSignedIn));
   return { token, user };
 }
 
@@ -813,10 +768,10 @@ export async function deleteAccount(
     throw new Error("Auth: deleteAccount requires both userId and email.");
   }
   const hubDb = db();
-  // pending_verifications first so a stale code can't be used to
-  // race a fresh signup against the in-flight delete. This hub's only: the
-  // same person's account on another hub is theirs to delete there.
-  await hubDb.from("pending_verifications").delete().eq("email", email.toLowerCase());
+  // The codes first so a stale code can't be used to race a fresh signup
+  // against the in-flight delete. This hub's only: the same person's account
+  // on another hub is theirs to delete there.
+  await hubDb.from("sign_in_codes").delete().eq("email", email.toLowerCase());
   await hubDb.from("users").delete().eq("id", userId);
 }
 
@@ -925,7 +880,7 @@ export async function clearAuth(): Promise<void> {
   // Supabase requires a filter on DELETE to avoid accidental full-table wipes.
   // neq("<col>", "") matches every row since our IDs/emails are non-empty;
   // forHub confines it to this hub.
-  await hubDb.from("pending_verifications").delete().neq("email", "");
+  await hubDb.from("sign_in_codes").delete().neq("email", "");
   await hubDb.from("sessions").delete().neq("token", "");
   await hubDb.from("users").delete().neq("id", "");
 }

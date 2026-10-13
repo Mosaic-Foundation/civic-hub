@@ -146,10 +146,10 @@ describe("the place's article (review R19, R40)", () => {
   });
 
   it("the sign-in email does not put 'the' before every hub name", () => {
-    const plain = renderCodeEmail("123456", "We The People Exampleville");
+    const plain = renderCodeEmail("123456", "We The People Exampleville").html;
     expect(plain).toContain("Enter this code in We The People Exampleville to");
     expect(plain).toContain("— We The People Exampleville");
-    const hub = renderCodeEmail("123456", "Example County Civic Hub");
+    const hub = renderCodeEmail("123456", "Example County Civic Hub").html;
     expect(hub).toContain("Enter this code in the Example County Civic Hub to");
     expect(hub).toContain("— The Example County Civic Hub");
   });

@@ -261,17 +261,16 @@ export function startRouter(): Router {
 
   r.post("/start/request-code", route(async (req, res) => {
     await session(req);
-    const email = normalizeStartEmail((req.body as { email?: unknown })?.email);
-    await rateLimit("request_code", clientIp(req), email);
-    res.json({ message: await requestStartCode(email) });
+    const body = (req.body ?? {}) as { email?: unknown; tz?: unknown };
+    const email = normalizeStartEmail(body.email);
+    res.json({ message: await requestStartCode(email, clientIp(req), body.tz) });
   }));
 
   r.post("/start/verify", route(async (req, res) => {
     const s = await session(req);
-    const body = (req.body ?? {}) as { email?: unknown; code?: unknown };
+    const body = (req.body ?? {}) as { email?: unknown; code?: unknown; tz?: unknown };
     const email = normalizeStartEmail(body.email);
-    await rateLimit("verify", clientIp(req));
-    await verifyStartCode(s, email, body.code);
+    await verifyStartCode(s, email, body.code, clientIp(req), body.tz);
     res.json({ step: "form", email });
   }));
 
