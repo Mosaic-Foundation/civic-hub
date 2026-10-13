@@ -91,6 +91,9 @@ export function createVoteState(
   const method = getVotingMethod(methodKey);
 
   // Blank options are dropped, not refused: an empty field is an accident.
+  if (input.options !== undefined && !Array.isArray(input.options)) {
+    throw new ValidationError("options must be a list of option texts");
+  }
   const inputOptions = Array.isArray(input.options) ? filledOptions(input.options) : undefined;
   const options = inputOptions ?? method.defaultOptions ?? [];
 

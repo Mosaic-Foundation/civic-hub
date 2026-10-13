@@ -47,7 +47,8 @@ export default function ShareButton({ title, url, nudge, processId }: ShareButto
   const hideTimer = useRef<number | undefined>(undefined);
   // What the banner shares, read when a moment fires (after the first render).
   const titleRef = useRef(title);
-  const urlRef = useRef("");
+  // The page's address from the start, so a nudge shown on mount has it.
+  const urlRef = useRef(url ?? (typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}${window.location.search}` : ""));
 
   // The callout: subscribed by process id for moments announced later (a
   // vote cast, a proposal endorsed), and shown at once for a nudge passed on

@@ -75,6 +75,8 @@ async function applySourceState(
   const source = await getProcess(sourceId);
   if (!source) return;
   const state = source.state as Record<string, unknown>;
+  // Already in place (a retry after the brief's own write failed): nothing to do.
+  if (Object.entries(sourceState).every(([k, v]) => JSON.stringify(state[k]) === JSON.stringify(v))) return;
   const previous = Object.fromEntries(Object.keys(sourceState).map((k) => [k, state[k] ?? null]));
   const kept = Array.isArray(state.brief_revisions) ? (state.brief_revisions as unknown[]) : [];
   source.state = { ...state, ...sourceState, brief_revisions: [...kept, { brief_id: brief.id, replaced_at: now, previous }] };
@@ -98,9 +100,11 @@ export async function applyOnApproval(record: Process, actor: string): Promise<v
   const state = record.state as unknown as BriefProcessState;
   const pending = state.source_state_on_publish;
   if (!pending || state.publication_status !== "published") return;
+  // The source first: if its write fails, the pending state is still here
+  // to apply again (applySourceState skips what is already in place).
+  await applySourceState(state.source_process_id, pending, record, actor, new Date().toISOString());
   state.source_state_on_publish = null;
   await saveProcessState(record);
-  await applySourceState(state.source_process_id, pending, record, actor, new Date().toISOString());
 }
 
 function ctx(record: Process) {
@@ -166,11 +170,13 @@ export async function publishBriefRevision(
   keep(state, now);
   state.content = revision.content;
   state.generated_at = revision.generated_at;
+  // The source first: if its write fails, the version is still waiting and
+  // Publish can be pressed again (applySourceState skips what is in place).
+  await applySourceState(state.source_process_id, revision.source_state, record, admin.id, now);
   state.pending_revision = null;
   state.revised_at = now;
   await emitBriefUpdated(ctx(record), admin.id, state);
   await saveProcessState(record);
-  await applySourceState(state.source_process_id, revision.source_state, record, admin.id, now);
   await recordHubAdminAudit({
     actor: admin.email,
     action: "brief.revision_published",

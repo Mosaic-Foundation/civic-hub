@@ -208,6 +208,23 @@ export default function VotePanel({ process, actor, onView }: Props) {
   // after each render for a moment.
   const ballotRef = useRef<HTMLDivElement>(null);
   const ballotHold = useRef<{ top: number; until: number } | null>(null);
+  // The voter's own scrolling ends the hold at once: it never pulls them back.
+  useEffect(() => {
+    const release = () => {
+      ballotHold.current = null;
+    };
+    const keys = (e: KeyboardEvent) => {
+      if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(e.key)) release();
+    };
+    window.addEventListener("wheel", release, { passive: true });
+    window.addEventListener("touchmove", release, { passive: true });
+    window.addEventListener("keydown", keys);
+    return () => {
+      window.removeEventListener("wheel", release);
+      window.removeEventListener("touchmove", release);
+      window.removeEventListener("keydown", keys);
+    };
+  }, []);
   useLayoutEffect(() => {
     const hold = ballotHold.current;
     const el = ballotRef.current;
