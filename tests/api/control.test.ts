@@ -192,6 +192,8 @@ describe("create hub", () => {
     expect(audit[0]).toMatchObject({ action: "hub.create", actor_email: OPERATOR, before: null });
     expect(audit[0].after.hub.id).toBe(SLUG);
     expect(audit[0].after.settings["people.admin_emails"]).toContain(`first-admin-${run}@example.test`);
+    // A new hub's resident-created votes need no endorsements (2026-10-13).
+    expect(audit[0].after.settings["plugin.vote.support_threshold"]).toBe("0");
   });
 
   it("refuses a slug or hostname that is taken", async () => {

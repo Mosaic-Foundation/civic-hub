@@ -539,6 +539,10 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
   for (const id of PLUGIN_IDS) {
     settings[`plugin.${id}.enabled`] = input.plugins?.[id] === false ? "false" : "true";
   }
+  // A new hub's resident-created votes open without endorsements (Adam,
+  // 2026-10-13); admins raise it in Settings → Participation. Written here,
+  // not as the code's fallback, so hubs made before keep what they had.
+  settings[KEYS.PLUGIN_VOTE_SUPPORT_THRESHOLD] = "0";
 
   return { row, settings };
 }
