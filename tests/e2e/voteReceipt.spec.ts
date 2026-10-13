@@ -87,7 +87,7 @@ test.describe("Vote receipts held by the voter", () => {
     const receipt = (await page.locator(".vote-receipt-id code").textContent())?.trim() ?? "";
     expect(receipt).toMatch(/^[0-9a-f-]{36}$/);
 
-    const verify = page.getByRole("link", { name: "Verify my vote" });
+    const verify = page.getByRole("link", { name: "Check it" });
     const href = (await verify.getAttribute("href")) ?? "";
     expect(href).toContain(`#receipt=${receipt}`);
     expect(href).not.toContain("?receipt=");

@@ -2158,42 +2158,66 @@
   line-height: 1.5;
 }
 
+/* The receipt box (2026-10-13): one row, the download button with the code
+   beside it; "Check it" below; the privacy line last. The same box on the
+   open and the closed vote. */
+.vote-receipt-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.vote-receipt-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.6rem;
+  width: 100%;
+}
+
 .vote-receipt-id {
-  margin: 0 0 0.5rem;
-  font-size: 0.95rem;
+  /* Beside the button even on a phone: the code wraps at its hyphens. */
+  flex: 1 1 6rem;
+  min-width: 0;
+  margin: 0;
+  line-height: 1.5;
   color: var(--text-color);
 }
 
-.vote-receipt-id code {
-  background: var(--background-color, #f0f0f0);
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+/* A receipt code wraps at its hyphens (components/ReceiptCode.tsx). */
+.receipt-code {
   font-size: 0.85rem;
-  word-break: break-all;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.vote-receipt-id .receipt-code {
+  font-size: 0.8rem;
+  background: var(--background-color, #f0f0f0);
+  padding: 0.15rem 0.25rem;
+  border-radius: 4px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .vote-receipt-verify-link {
-  display: inline-block;
-  margin-top: 0.25rem;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--accent-color, #2a7d4f);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-/* "Download receipt (PDF)" (Actions slice): the file this browser writes. */
-.vote-receipt-download {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.35rem;
-  margin-top: 0.75rem;
+.vote-receipt-privacy {
+  margin: 0;
 }
 
+/* "Download receipt (PDF)" (Actions slice): the file this browser writes. */
 .vote-receipt-download-btn {
+  flex: none;
   font: inherit;
-  font-size: 0.9rem;
-  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.65rem;
   min-height: 44px;
   border: 1px solid var(--color-border-strong);
   border-radius: 6px;
@@ -2206,8 +2230,14 @@
   background: var(--color-surface-muted);
 }
 
-.vote-receipt-id code {
-  overflow-wrap: anywhere;
+/* On a phone the button's label takes two lines, so the code fits beside it
+   in two lines rather than four. */
+@media (max-width: 480px) {
+  .vote-receipt-download-btn {
+    max-width: 8rem;
+    line-height: 1.25;
+    text-align: left;
+  }
 }
 
 /* --- View Vote Log button --- */

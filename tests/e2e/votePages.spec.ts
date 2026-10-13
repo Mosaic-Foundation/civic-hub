@@ -5,6 +5,8 @@
  * - voting never moves the page: the voter stays on the results and the
  *   receipt, and the share nudge is a 5-second banner at the bottom of the
  *   screen (or the bar's own callout when the bar is in view);
+ * - the receipt is one compact box, the same open and closed: the download
+ *   button with the code beside it, "Check it" below, the privacy line last;
  * - a blank option field never blocks Submit: empty fields are dropped, and
  *   two filled options are enough.
  */
@@ -48,6 +50,39 @@ for (const width of [1280, 375]) {
       await expect(nudge).toHaveCount(0, { timeout: 8_000 });
       expect(Math.abs((await onScreen()) - before)).toBeLessThanOrEqual(2);
       await closeAsAdmin(request, admin, voteId);
+    });
+
+    test("the receipt box: button and code on one row, Check it below, the privacy line last; open and closed", async ({ page, request }) => {
+      const voteId = await liveVote(request, admin, `Receipt box ${width} ${run}`);
+      await visitAs(page, (await session(hub, `receipt-box-${width}-${run}@example.test`)).token);
+      await page.goto(`/process/${voteId}`);
+      await page.getByRole("button", { name: "Yes", exact: true }).click();
+
+      const checkLayout = async () => {
+        const box = page.locator(".vote-receipt-box");
+        const button = (await box.getByRole("button", { name: /Download\s+receipt \(PDF\)/ }).boundingBox())!;
+        const code = (await box.locator(".vote-receipt-id code").boundingBox())!;
+        const check = (await box.getByRole("link", { name: "Check it" }).boundingBox())!;
+        const privacy = (await box.locator(".vote-receipt-privacy").boundingBox())!;
+        // One row: the code to the right of the button, overlapping it vertically.
+        expect(code.x).toBeGreaterThanOrEqual(button.x + button.width);
+        expect(code.y).toBeLessThan(button.y + button.height);
+        expect(code.y + code.height).toBeGreaterThan(button.y);
+        // Check it below the row; the privacy line last.
+        expect(check.y).toBeGreaterThanOrEqual(Math.max(button.y + button.height, code.y + code.height) - 1);
+        expect(privacy.y).toBeGreaterThan(check.y);
+        await expect(box.locator(".vote-receipt-privacy")).toContainText("Keep it private");
+        // The code wraps at its hyphens, never a character per line.
+        expect(code.height).toBeLessThanOrEqual(3 * 24);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      };
+      await expect(page.locator(".vote-receipt-box")).toBeVisible();
+      await checkLayout();
+
+      await closeAsAdmin(request, admin, voteId);
+      await page.reload();
+      await expect(page.locator(".vote-receipt-title", { hasText: "Your receipt" })).toBeVisible();
+      await checkLayout();
     });
 
     test("an empty extra option field doesn't block Submit, and the vote gets the filled ones", async ({ page }) => {

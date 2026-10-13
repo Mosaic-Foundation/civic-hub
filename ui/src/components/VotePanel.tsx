@@ -20,6 +20,7 @@ import { useAction } from "../hooks/useAction";
 import { announceInput } from "../services/inputEvents";
 import AuthModal from "./AuthModal";
 import ResultLabel from "./ResultLabel";
+import ReceiptCode from "./ReceiptCode";
 import hub from "../config/hub";
 
 const COMMENT_MAX = 500;
@@ -89,25 +90,43 @@ export default function VotePanel({ process, actor, onView }: Props) {
     );
   }
 
-  /** The download button and its error, for a receipt this browser holds. */
-  function receiptDownload(receipt: HeldReceipt) {
+  /**
+   * The receipt this browser holds, in one compact box, the same on the open
+   * and the closed vote (Adam, 2026-10-13): the download button with the
+   * code beside it, "Check it" below, the privacy line last.
+   */
+  function receiptBox(receipt: HeldReceipt) {
     return (
-      <div className="vote-receipt-download">
-        <button
-          type="button"
-          className="vote-receipt-download-btn"
-          onClick={() => saveReceiptFile(receipt)}
-          disabled={download.busy}
-          aria-busy={download.busy}
-        >
-          {download.busy ? "Preparing…" : "Download receipt (PDF)"}
-        </button>
-        <span className="form-hint">
-          {checkMode === "show_choice"
-            ? "Keep it private: after the vote closes, anyone with the code can see how this ballot was cast."
-            : "After the vote closes, the code shows only that your ballot was counted."}
-        </span>
+      <div className="vote-receipt-box">
+        <div className="vote-receipt-row">
+          <button
+            type="button"
+            className="vote-receipt-download-btn"
+            onClick={() => saveReceiptFile(receipt)}
+            disabled={download.busy}
+            aria-busy={download.busy}
+          >
+            {download.busy ? "Preparing…" : "Download receipt (PDF)"}
+          </button>
+          <p className="vote-receipt-id">
+            <span className="visually-hidden">Your receipt: </span>
+            <ReceiptCode code={receipt.receipt_id} />
+          </p>
+        </div>
         {download.error && <p className="error">{download.error}</p>}
+        {/* The receipt rides in the fragment, which the browser never sends
+            to a server, so no request log records it. */}
+        <Link
+          to={`/votes/${process.id}/log#receipt=${encodeURIComponent(receipt.receipt_id)}`}
+          className="vote-receipt-verify-link"
+        >
+          Check it
+        </Link>
+        <p className="vote-receipt-privacy form-hint">
+          {checkMode === "show_choice"
+            ? "Nothing links you to this code. Keep it private: after the vote closes, anyone with it can see how this ballot was cast."
+            : "Nothing links you to this code. After the vote closes, it shows only that your ballot was counted."}
+        </p>
       </div>
     );
   }
@@ -499,11 +518,6 @@ export default function VotePanel({ process, actor, onView }: Props) {
                   You approved: {formatCurrentVote(currentVote)}
                 </p>
               )}
-              <p className="vote-receipt-explanation">
-                This is your anonymous vote receipt. This browser keeps it, so you
-                can change your vote here until voting closes, and check afterwards
-                that it was counted. We keep no record that links you to it.
-              </p>
               {receiptNotKept && (
                 <p className="vote-comment-warning">
                   This browser won't keep your receipt, so you won't be able to change
@@ -511,20 +525,7 @@ export default function VotePanel({ process, actor, onView }: Props) {
                   check it after voting closes.
                 </p>
               )}
-              {held && (
-                <>
-                  <p className="vote-receipt-id">Your receipt: <code>{held.receipt_id}</code></p>
-                  {/* The receipt rides in the fragment, which the browser never
-                      sends to a server, so no request log records it. */}
-                  <Link
-                    to={`/votes/${process.id}/log#receipt=${encodeURIComponent(held.receipt_id)}`}
-                    className="vote-receipt-verify-link"
-                  >
-                    Verify my vote
-                  </Link>
-                  {receiptDownload(held)}
-                </>
-              )}
+              {held && receiptBox(held)}
               {/* The share moment lives HERE, inside the receipt, not up
                   beside the share icons at the top of the page. On a long
                   issue page those icons are several screens above where the
@@ -551,16 +552,7 @@ export default function VotePanel({ process, actor, onView }: Props) {
           {held && (
             <div className="vote-receipt">
               <p className="vote-receipt-title">Your receipt</p>
-              <p className="vote-receipt-id">
-                <code>{held.receipt_id}</code>
-              </p>
-              <Link
-                to={`/votes/${process.id}/log#receipt=${encodeURIComponent(held.receipt_id)}`}
-                className="vote-receipt-verify-link"
-              >
-                Check it
-              </Link>
-              {receiptDownload(held)}
+              {receiptBox(held)}
             </div>
           )}
         </div>
