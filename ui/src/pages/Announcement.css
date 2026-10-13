@@ -1,7 +1,7 @@
+/* Full width and left-aligned, like every other process page (.detail-page;
+   Submit and Save, 2026-10-12): it was a centered 720px column. */
 .announcement-page {
-  padding: var(--space-lg);
-  max-width: 720px;
-  margin: 0 auto;
+  padding: 1.5rem;
 }
 
 
