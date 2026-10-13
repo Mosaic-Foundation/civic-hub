@@ -21,6 +21,7 @@ import { authorBadges } from "../../../src/shared/officialTypes";
 import "./VoteResults.css";
 import "./Brief.css";
 import RelatedProcesses from "../components/RelatedProcesses";
+import { heldBackLine, joinNames } from "../services/briefDelivery";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 
 const SOURCE_NOUN: Record<string, string> = {
@@ -30,12 +31,6 @@ const SOURCE_NOUN: Record<string, string> = {
   "civic.project": "project",
 };
 
-/** "A" / "A and B" / "A, B, and C" — the receipt reads as a sentence. */
-function joinNames(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? "";
-  if (names.length === 2) return `${names[0]} and ${names[1]}`;
-  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
-}
 
 /**
  * Public Brief page — the permanent public record of a completed process.
@@ -178,6 +173,8 @@ export default function BriefPage() {
           .
         </p>
       ) : null}
+      {/* Addressed, but the hub held the email back (demo or beta, sample). */}
+      {heldBackLine(brief) && <p className="vote-results-delivery">{heldBackLine(brief)}</p>}
 
       {/* Response status as a single prominent affordance. It names no
           responder — any official may respond, not only the recipients,

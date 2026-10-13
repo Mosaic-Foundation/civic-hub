@@ -166,10 +166,13 @@ describe("held back is not failed (#34)", () => {
     expect(res.body.brief.delivered_to).toEqual([]);
     expect(res.body.brief.held_back).toEqual([{ email: OFFICIAL, reason: "this hub is in demo mode" }]);
 
-    // Public: published, and no "Sent to" receipt, because nothing was sent.
+    // Public: published, no "Sent to" (nothing was sent), and the honest
+    // line instead: addressed to whom, and why it wasn't emailed.
     const pub = await call("GET", `/brief/${id}`, ATHENS);
     ok(pub);
     expect(pub.body.sent_to).toEqual([]);
+    expect(pub.body.addressed_to).toEqual(["Board of Supervisors"]);
+    expect(pub.body.not_sent_because).toBe("this hub is in demo mode");
     expect(JSON.stringify(pub.body)).not.toContain(OFFICIAL);
   });
 

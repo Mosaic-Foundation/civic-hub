@@ -1263,6 +1263,11 @@ export interface PublicBrief {
    *  legacy deliveries, which render the governing-body wording. */
   sent_to: string[];
   delivered_at: string | null;
+  /** Addressed to these (public labels), but the hub held the email back
+   *  (a demo or beta hub, sample content): `not_sent_because` says why.
+   *  Absent on briefs read from an older server. */
+  addressed_to?: string[];
+  not_sent_because?: string | null;
   approved_at: string | null;
   generated_at: string;
   published_at: string;

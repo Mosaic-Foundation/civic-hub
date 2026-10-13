@@ -10,6 +10,7 @@ import { friendlyType } from "./ProcessLinkPicker";
 import { absoluteDate } from "../utils/dates";
 import "./BriefPointer.css";
 import hub from "../config/hub";
+import { heldBackLine, joinNames } from "../services/briefDelivery";
 
 /**
  * The brief ↔ source pairing, surfaced where a reader actually looks.
@@ -68,13 +69,6 @@ function useBriefPair(processId: string): {
   return { brief, source, loaded };
 }
 
-/** "A" / "A and B" / "A, B, and C". */
-function joinNames(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? "";
-  if (names.length === 2) return `${names[0]} and ${names[1]}`;
-  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
-}
-
 function deliveryLine(brief: PublicBrief): string {
   if (brief.sent_to.length > 0 && brief.delivered_at) {
     return `Sent to ${joinNames(brief.sent_to)} on ${absoluteDate(brief.delivered_at)}.`;
@@ -82,6 +76,8 @@ function deliveryLine(brief: PublicBrief): string {
   if (brief.delivered_recipient_count > 0) {
     return `Sent to ${hub.governing_body_ref}.`;
   }
+  const held = heldBackLine(brief);
+  if (held) return held;
   return `Published ${absoluteDate(brief.published_at)}.`;
 }
 

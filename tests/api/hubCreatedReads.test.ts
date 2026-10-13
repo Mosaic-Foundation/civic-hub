@@ -97,4 +97,35 @@ describe("what the hub makes is public only once published", () => {
       expect(JSON.stringify(res.body)).not.toContain(EMAIL);
     }
   });
+
+  // Every published brief says publicly whom it went to and when, by name and
+  // title, never an address (Adam, 2026-10-13); and whom it was addressed to
+  // but held back from, with why.
+  it("the public brief carries recipients' names and dates, and no email address", async () => {
+    const OTHER = `held-${run}@example.test`;
+    const sentAt = "2026-10-13T15:00:00.000Z";
+    const approvedAt = "2026-10-13T14:59:00.000Z";
+    const id = await insert("civic.brief", "finalized", brief("published", {
+      approved_at: approvedAt,
+      recipients: [{ email: EMAIL, label: "Jane Doe, Chair" }, { email: OTHER, label: "Test BoS" }],
+      delivered_to: [EMAIL],
+      delivered_at: sentAt,
+      delivered_to_labels: ["Jane Doe, Chair"],
+      held_back: [{ email: OTHER, reason: "this hub is in demo mode" }],
+      held_back_labels: ["Test BoS"],
+    }));
+    for (const token of [undefined, resident]) {
+      const res = await call("GET", `/brief/${id}`, HOST, undefined, token);
+      expect(res.status).toBe(200);
+      expect(res.body.sent_to).toEqual(["Jane Doe, Chair"]);
+      expect(res.body.delivered_at).toBe(sentAt);
+      expect(res.body.addressed_to).toEqual(["Test BoS"]);
+      expect(res.body.not_sent_because).toBe("this hub is in demo mode");
+      expect(res.body.approved_at).toBe(approvedAt);
+      const text = JSON.stringify(res.body);
+      expect(text).not.toContain(EMAIL);
+      expect(text).not.toContain(OTHER);
+      expect(text).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
+    }
+  });
 });

@@ -441,6 +441,12 @@ export function getPublicReadModel(
     // deliveries (no labels recorded) keep the governing-body wording.
     sent_to: state.delivered_to_labels ?? [],
     delivered_at: state.delivered_at ?? null,
+    // Whom the admin addressed it to but the hub held the email back from (a
+    // demo or beta hub, sample content), and why, said honestly on the page
+    // rather than left out (Adam, 2026-10-13). Labels and reasons only:
+    // `held_back` keeps the addresses, and stays out of this model.
+    addressed_to: state.held_back_labels ?? [],
+    not_sent_because: [...new Set((state.held_back ?? []).map((h) => h.reason))].join(" and ") || null,
     approved_at: state.approved_at,
     generated_at: state.generated_at,
     published_at: state.published_at,
