@@ -87,11 +87,16 @@ a {
 }
 
 /* iOS zooms into a focused field whose text is under 16px. Pinch zoom stays
-   allowed (index.html); this keeps a tap on a field from zooming the page. */
-@media (max-width: 640px) {
-  input:not([type="checkbox"]):not([type="radio"]),
+   allowed (index.html); this keeps a tap on a field from zooming the page.
+   !important because the forms' own classes (.form-textarea and friends,
+   14-15px) outranked it, so a tap zoomed the page in: it then slid
+   sideways, showed a scroll line and cut off the edges (Adam's phone, dev,
+   2026-10-13). */
+@media (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
   textarea,
-  select {
-    font-size: max(16px, 1em);
+  select,
+  [contenteditable="true"] {
+    font-size: max(16px, 1em) !important;
   }
 }

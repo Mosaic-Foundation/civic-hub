@@ -66,6 +66,12 @@ test.describe("Drafting on a phone", () => {
       await expect(submit).toBeHidden();
       await expect(page.getByRole("status").filter({ hasText: "Draft saved" })).toBeVisible();
 
+      // Fields are at least 16px, so iOS doesn't zoom in when one is tapped
+      // (a zoomed page slides sideways and cuts off the edges).
+      for (const size of await page.locator("input:not([type=checkbox]):not([type=radio]):not([type=hidden]), textarea, select").evaluateAll((els) => els.map((e) => parseFloat(getComputedStyle(e).fontSize)))) {
+        expect(size).toBeGreaterThanOrEqual(16);
+      }
+
       // Nothing slides sideways: the page is no wider than the screen.
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
@@ -78,6 +84,16 @@ test.describe("Drafting on a phone", () => {
       expect(
         await docked.evaluate((t) => t.scrollWidth <= t.clientWidth && [...t.children].every((b) => b.scrollWidth <= b.clientWidth)),
       ).toBe(true);
+      await expect(submit).toBeHidden();
+
+      // Scrolled away from the field, cursor still in it: the toolbar goes and
+      // the bar, with Submit, is back. Scrolled back: the toolbar again.
+      await page.mouse.wheel(0, 2000);
+      await expect(submit).toBeInViewport();
+      await expect(docked).toHaveClass(/is-moving/);
+      await expect(page.locator("#draft-description")).toBeFocused();
+      await page.locator("#draft-description").evaluate((el) => el.scrollIntoView({ block: "center" }));
+      await expect(docked).not.toHaveClass(/is-moving/);
       await expect(submit).toBeHidden();
 
       // Focus leaves: the bar is back, the toolbar out of the way.

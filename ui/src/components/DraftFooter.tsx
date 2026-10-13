@@ -1,45 +1,38 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { editingInView, SETTLE_MS } from "../utils/editingInView";
 
-/** A field the keyboard opens for (not a checkbox, button or select). */
-const TYPING_FIELDS =
-  'input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), textarea, [contenteditable="true"]';
 const PHONE = "(max-width: 768px)";
-/** How far the page must scroll, with a field focused, before the bar comes back. */
-const SCROLL_TO_SHOW_PX = 80;
 
 /**
- * At phone width, whether a text field of the drafting form has focus: the
- * pinned bar steps aside then, so the keyboard leaves room for the field. It
- * comes back when focus leaves, or when the person scrolls away from it.
+ * At phone width, whether the drafting form's focused text field is on
+ * screen: the pinned bar steps aside then, so the keyboard leaves room for
+ * the field. Scroll the field away (cursor still in it) or leave it, and the
+ * bar is back, once the page is still.
  */
 function useTypingOnPhone(): boolean {
   const [typing, setTyping] = useState(false);
   useEffect(() => {
     const phone = window.matchMedia(PHONE);
-    let startY = 0;
-    function onFocusIn(e: FocusEvent) {
-      const el = e.target as Element | null;
-      if (!phone.matches || !el?.matches?.(TYPING_FIELDS) || !el.closest(".drafting-form")) return;
-      startY = window.scrollY;
-      setTyping(true);
-    }
-    function onFocusOut() {
-      // Moving to the next field fires focusout then focusin; decide after both.
-      setTimeout(() => {
-        const el = document.activeElement;
-        if (!el?.matches?.(TYPING_FIELDS) || !el.closest(".drafting-form")) setTyping(false);
-      }, 0);
-    }
-    function onScroll() {
-      if (Math.abs(window.scrollY - startY) > SCROLL_TO_SHOW_PX) setTyping(false);
-    }
-    document.addEventListener("focusin", onFocusIn);
-    document.addEventListener("focusout", onFocusOut);
-    window.addEventListener("scroll", onScroll, { passive: true });
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const decide = () => setTyping(phone.matches && editingInView() !== null);
+    const later = () => {
+      clearTimeout(settle);
+      settle = setTimeout(decide, SETTLE_MS);
+    };
+    // Focus moving between fields fires focusout then focusin; decide after both.
+    const soon = () => setTimeout(decide, 0);
+    document.addEventListener("focusin", soon);
+    document.addEventListener("focusout", soon);
+    window.addEventListener("scroll", later, { passive: true });
+    window.visualViewport?.addEventListener("scroll", later);
+    window.visualViewport?.addEventListener("resize", later);
     return () => {
-      document.removeEventListener("focusin", onFocusIn);
-      document.removeEventListener("focusout", onFocusOut);
-      window.removeEventListener("scroll", onScroll);
+      clearTimeout(settle);
+      document.removeEventListener("focusin", soon);
+      document.removeEventListener("focusout", soon);
+      window.removeEventListener("scroll", later);
+      window.visualViewport?.removeEventListener("scroll", later);
+      window.visualViewport?.removeEventListener("resize", later);
     };
   }, []);
   return typing;
@@ -54,7 +47,7 @@ function useTypingOnPhone(): boolean {
  *
  * At phone width it is one row (Get suggestions as a link, Submit), the
  * "Submitting runs a quick check" hint is left to the preview box, and it
- * steps aside while a text field has focus.
+ * steps aside while the field being typed in is on screen.
  */
 export default function DraftFooter({
   missing,

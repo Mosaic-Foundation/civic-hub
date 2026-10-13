@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import RichText from "./RichText";
+import { onScreen, SETTLE_MS } from "../utils/editingInView";
 import "./MarkdownTextarea.css";
 
 /**
@@ -69,15 +70,20 @@ function sectionLabel(el: HTMLTextAreaElement) {
 }
 
 /**
- * At phone width, while the textarea has focus, the toolbar docks as one row
- * directly above the keyboard (Submit and Save, phone layout), instead of
- * scrolling away above the field. Its offset from the bottom is the
- * keyboard's height, read from the visual viewport. A spacer keeps the
- * field where it was.
+ * At phone width, while the textarea has focus and is on screen, the toolbar
+ * docks as one row directly above the keyboard (Submit and Save, phone
+ * layout). Its offset from the bottom is the keyboard's height, read from the
+ * visual viewport. iOS reports that late while the page moves, so the toolbar
+ * hides while anything moves and is placed once it is still; scrolled away
+ * from its field (cursor still in it) it stays hidden and the pinned bar,
+ * with Submit, is back (Adam, 2026-10-13).
  */
-function useKeyboardDock(focused: boolean): { docked: boolean; bottom: number; moving: boolean } {
+function useKeyboardDock(
+  focused: boolean,
+  field: React.RefObject<HTMLTextAreaElement | null>,
+): { docked: boolean; bottom: number; shown: boolean } {
   const [bottom, setBottom] = useState(0);
-  const [moving, setMoving] = useState(false);
+  const [shown, setShown] = useState(false);
   const [phone, setPhone] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches);
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 768px)");
@@ -87,33 +93,30 @@ function useKeyboardDock(focused: boolean): { docked: boolean; bottom: number; m
   }, []);
   useEffect(() => {
     const vv = window.visualViewport;
+    // `shown` only matters while docked; it is decided afresh on every dock.
     if (!focused || !phone || !vv) return;
-    const place = () => setBottom(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
-    // iOS reports the keyboard's edge late while the page moves, so a
-    // toolbar placed on every event lagged and jumped. Hide it while things
-    // move; place it once they have been still for a moment.
+    const settleNow = () => {
+      setBottom(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+      setShown(field.current ? onScreen(field.current) : false);
+    };
     let settle: ReturnType<typeof setTimeout> | undefined;
     const onMove = () => {
-      setMoving(true);
+      setShown(false);
       clearTimeout(settle);
-      settle = setTimeout(() => {
-        place();
-        setMoving(false);
-      }, 150);
+      settle = setTimeout(settleNow, SETTLE_MS);
     };
-    place();
+    settleNow();
     vv.addEventListener("resize", onMove);
     vv.addEventListener("scroll", onMove);
     window.addEventListener("scroll", onMove, { passive: true });
     return () => {
       clearTimeout(settle);
-      setMoving(false);
       vv.removeEventListener("resize", onMove);
       vv.removeEventListener("scroll", onMove);
       window.removeEventListener("scroll", onMove);
     };
-  }, [focused, phone]);
-  return { docked: focused && phone, bottom, moving };
+  }, [focused, phone, field]);
+  return { docked: focused && phone, bottom, shown };
 }
 
 export default function MarkdownTextarea(props: Props) {
@@ -123,7 +126,7 @@ export default function MarkdownTextarea(props: Props) {
   const [previewText, setPreviewText] = useState("");
   const [focused, setFocused] = useState(false);
   const [toolbarHeight, setToolbarHeight] = useState(0);
-  const { docked, bottom, moving } = useKeyboardDock(focused);
+  const { docked, bottom, shown } = useKeyboardDock(focused, ref);
 
   const act = (fn: (el: HTMLTextAreaElement) => void) => () => {
     const el = ref.current;
@@ -141,7 +144,7 @@ export default function MarkdownTextarea(props: Props) {
       {docked && <div className="md-toolbar-spacer" style={{ height: toolbarHeight }} aria-hidden="true" />}
       <div
         ref={toolbarRef}
-        className={`md-toolbar${docked ? ` md-toolbar--docked${moving ? " is-moving" : ""}` : ""}`}
+        className={`md-toolbar${docked ? ` md-toolbar--docked${shown ? "" : " is-moving"}` : ""}`}
         style={docked ? { bottom } : undefined}
         role="toolbar"
         aria-label="Formatting"
