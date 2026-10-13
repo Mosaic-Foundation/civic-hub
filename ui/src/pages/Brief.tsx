@@ -13,6 +13,7 @@ import DetailActions from "../components/DetailActions";
 import { BriefSourcePointer } from "../components/BriefPointer";
 import ShareButton from "../components/ShareButton";
 import hub from "../config/hub";
+import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/AuthContext";
 import { authorBadges } from "../../../src/shared/officialTypes";
 // Reuse the vote-results public styling — same page language.
@@ -49,14 +50,13 @@ export default function BriefPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [responseDraft, setResponseDraft] = useState("");
-  const [posting, setPosting] = useState(false);
-  const [postError, setPostError] = useState<string | null>(null);
+  const post = useAction("Could not post the response.");
+  const posting = post.busy;
+  const postError = post.error;
 
   async function submitResponse() {
-    if (!id || posting) return;
-    setPosting(true);
-    setPostError(null);
-    try {
+    if (!id) return;
+    await post.run(async () => {
       const result = await postBriefResponse(id, responseDraft);
       setResponseDraft("");
       setBrief((prev) =>
@@ -69,16 +69,13 @@ export default function BriefPage() {
             }
           : prev,
       );
-    } catch (err) {
-      setPostError(err instanceof Error ? err.message : "Could not post the response.");
-    } finally {
-      setPosting(false);
-    }
+    });
   }
 
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
     setLoading(true);
     getPublicBrief(id)
       .then((b) => {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAction } from "../../hooks/useAction";
 import "./StatementSubmission.css";
 
 interface Props {
@@ -9,30 +10,28 @@ const MAX_CHARS = 280;
 
 export default function StatementSubmission({ onSubmit }: Props) {
   const [text, setText] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   // The server's refusal, shown under the box. A statement can be refused
   // by the word list (a slur, a swear) or by Polis; before this the failure
   // was silent — try/finally with no catch — so the text just sat there
   // (Adam, 2026-09-06: "no error letting the user know that the seed
   // statement wasn't submitted like on the other processes").
-  const [error, setError] = useState<string | null>(null);
+  const action = useAction("Couldn't submit your statement.");
+  const submitting = action.busy;
+  const error = action.error;
 
   const remaining = MAX_CHARS - text.length;
 
   async function handleSubmit() {
-    if (!text.trim() || submitting) return;
-    setSubmitting(true);
-    setError(null);
-    try {
+    if (!text.trim()) return;
+    const done = await action.run(async () => {
       await onSubmit(text.trim());
+      return true;
+    });
+    if (done) {
       setText("");
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't submit your statement.");
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -44,7 +43,7 @@ export default function StatementSubmission({ onSubmit }: Props) {
         value={text}
         onChange={(e) => {
           setText(e.target.value.slice(0, MAX_CHARS));
-          if (error) setError(null);
+          if (error) action.setError(null);
         }}
         placeholder="Write a short statement for others to vote on..."
         rows={3}
@@ -58,6 +57,7 @@ export default function StatementSubmission({ onSubmit }: Props) {
           className="statement-submit-btn"
           onClick={handleSubmit}
           disabled={!text.trim() || submitting}
+          aria-busy={submitting}
         >
           {submitting ? "Submitting..." : "Submit Statement"}
         </button>

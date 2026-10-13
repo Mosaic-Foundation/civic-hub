@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAction } from "../../hooks/useAction";
 import type { StatementRecord, VoteDirection } from "../../services/api";
 import VoteControls from "./VoteControls";
 import "./StatementCard.css";
@@ -10,16 +11,15 @@ interface Props {
 
 export default function StatementCard({ statement, onVote }: Props) {
   const [voted, setVoted] = useState(false);
-  const [voting, setVoting] = useState(false);
+  const action = useAction("Your vote didn't go through. Please try again.");
+  const voting = action.busy;
 
   async function handleVote(direction: VoteDirection) {
-    setVoting(true);
-    try {
+    const done = await action.run(async () => {
       await onVote(statement.id, direction);
-      setVoted(true);
-    } finally {
-      setVoting(false);
-    }
+      return true;
+    });
+    if (done) setVoted(true);
   }
 
   return (
@@ -27,6 +27,8 @@ export default function StatementCard({ statement, onVote }: Props) {
       {statement.is_seed && <span className="statement-seed-badge">Seed</span>}
       <p className="statement-text">{statement.text}</p>
       {!voted && <VoteControls onVote={handleVote} disabled={voting} />}
+      {voting && <p className="statement-voted-label" role="status">Recording your vote...</p>}
+      {action.error && <p className="statement-error-msg" role="alert">{action.error}</p>}
       {voted && <p className="statement-voted-label">Vote recorded</p>}
     </div>
   );

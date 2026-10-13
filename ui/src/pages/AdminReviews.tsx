@@ -1,5 +1,6 @@
 import { ApiError } from "../utils/httpError";
 import { useEffect, useMemo, useState } from "react";
+import { useAction } from "../hooks/useAction";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   adminListReviews,
@@ -84,7 +85,9 @@ export default function AdminReviews() {
   const [showChangesForm, setShowChangesForm] = useState(false);
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [noteText, setNoteText] = useState("");
-  const [acting, setActing] = useState(false);
+  // One runner for approve / request changes / decline: only one may run.
+  const action = useAction("That didn't go through. Please try again.");
+  const acting = action.busy;
 
   function loadList() {
     setLoading(true);
@@ -97,6 +100,7 @@ export default function AdminReviews() {
 
   useEffect(() => {
     if (view === "list") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
       loadList();
     }
   }, [view]);
@@ -117,6 +121,7 @@ export default function AdminReviews() {
       // the "buttons missing until I refresh" report (Adam, 2026-09-05): a
       // hard refresh remounted the page and cleared it. Clearing `detail` too
       // stops another review's content showing while this one loads.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
       setDetail(null);
       setActionMessage(null);
       setShowChangesForm(false);
@@ -175,63 +180,62 @@ export default function AdminReviews() {
   }
 
   async function handleApprove() {
-    if (!routeId || acting) return;
-    setActing(true);
+    if (!routeId) return;
     setError(null);
-    try {
-      await adminApproveReview(routeId);
-      backToListWith(`Approved: “${reviewTitle()}” is live.`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Approve failed";
-      const code = err instanceof ApiError ? err.code : null;
-      // Already decided (a duplicate click, or another admin got there
-      // first): don't show a scary error, refresh to show where it stands.
-      if (code === "already_approved" || code === "review_not_pending") {
-        setActionMessage(
-          code === "already_approved"
-            ? "This submission was already approved and posted."
-            : "This submission has already been decided. Showing where it stands now.",
-        );
-        const refreshed = await adminGetReview(routeId).catch(() => null);
-        if (refreshed) setDetail(refreshed);
-      } else {
-        setError(msg);
-      }
-    } finally {
-      setActing(false);
-    }
+    await action.run(
+      async () => {
+        await adminApproveReview(routeId);
+        backToListWith(`Approved: “${reviewTitle()}” is live.`);
+      },
+      {
+        onError: (err) => {
+          const code = err instanceof ApiError ? err.code : null;
+          // Already decided (a duplicate click, or another admin got there
+          // first): don't show a scary error, refresh to show where it stands.
+          if (code === "already_approved" || code === "review_not_pending") {
+            setActionMessage(
+              code === "already_approved"
+                ? "This submission was already approved and posted."
+                : "This submission has already been decided. Showing where it stands now.",
+            );
+            adminGetReview(routeId)
+              .then(setDetail)
+              .catch(() => {});
+            return null;
+          }
+          return err instanceof Error && err.message ? undefined : "Approve failed";
+        },
+      },
+    );
   }
 
   async function handleRequestChanges() {
-    if (!routeId || acting || !noteText.trim()) return;
-    setActing(true);
+    if (!routeId || !noteText.trim()) return;
     setError(null);
-    try {
-      await adminRequestChanges(routeId, noteText.trim());
-      setActionMessage("Changes requested — creator has been notified.");
-      setShowChangesForm(false);
-      setNoteText("");
-      const refreshed = await adminGetReview(routeId);
-      setDetail(refreshed);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Request changes failed");
-    } finally {
-      setActing(false);
-    }
+    await action.run(
+      async () => {
+        await adminRequestChanges(routeId, noteText.trim());
+        setActionMessage("Changes requested — creator has been notified.");
+        setShowChangesForm(false);
+        setNoteText("");
+        // The answer is the review's summary, not the detail with its
+        // turns: read the detail again.
+        setDetail(await adminGetReview(routeId));
+      },
+      { onError: (err) => (err instanceof Error && err.message ? undefined : "Request changes failed") },
+    );
   }
 
   async function handleDecline() {
-    if (!routeId || acting || !noteText.trim()) return;
-    setActing(true);
+    if (!routeId || !noteText.trim()) return;
     setError(null);
-    try {
-      await adminDeclineReview(routeId, noteText.trim());
-      backToListWith(`Declined: “${reviewTitle()}”. ${detail?.review.creator_name ?? "The creator"} has been told why.`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Decline failed");
-    } finally {
-      setActing(false);
-    }
+    await action.run(
+      async () => {
+        await adminDeclineReview(routeId, noteText.trim());
+        backToListWith(`Declined: “${reviewTitle()}”. ${detail?.review.creator_name ?? "The creator"} has been told why.`);
+      },
+      { onError: (err) => (err instanceof Error && err.message ? undefined : "Decline failed") },
+    );
   }
 
   // --- Detail view ---
@@ -250,6 +254,7 @@ export default function AdminReviews() {
 
           {loading && <p>Loading…</p>}
           {error && <p className="error-text">{error}</p>}
+          {action.error && <p className="error-text" role="alert">{action.error}</p>}
           {actionMessage && (
             <p style={{ color: "var(--success-color, #2e7d32)" }}>
               {actionMessage}
@@ -355,6 +360,7 @@ export default function AdminReviews() {
                         className="review-action-btn review-action-btn--approve"
                         onClick={handleApprove}
                         disabled={acting}
+                        aria-busy={acting}
                       >
                         {acting ? "Approving…" : "Approve & post"}
                       </button>
@@ -366,6 +372,7 @@ export default function AdminReviews() {
                           setNoteText("");
                         }}
                         disabled={acting}
+                        aria-busy={acting}
                       >
                         Request changes
                       </button>
@@ -377,6 +384,7 @@ export default function AdminReviews() {
                           setNoteText("");
                         }}
                         disabled={acting}
+                        aria-busy={acting}
                       >
                         Decline
                       </button>
@@ -400,6 +408,7 @@ export default function AdminReviews() {
                           className="review-action-btn review-action-btn--changes"
                           onClick={handleRequestChanges}
                           disabled={acting || !noteText.trim()}
+                          aria-busy={acting}
                         >
                           {acting ? "Sending…" : "Send to creator"}
                         </button>
@@ -432,6 +441,7 @@ export default function AdminReviews() {
                           className="review-action-btn review-action-btn--decline"
                           onClick={handleDecline}
                           disabled={acting || !noteText.trim()}
+                          aria-busy={acting}
                         >
                           {acting ? "Declining…" : "Decline"}
                         </button>

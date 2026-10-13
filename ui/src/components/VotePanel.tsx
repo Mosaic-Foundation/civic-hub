@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import ShareMoment from "./ShareMoment";
-import type { ActionResult, HeldReceiptPayload, VoteState } from "../services/api";
+import type { ActionResult, HeldReceiptPayload, ProcessState, VoteState } from "../services/api";
 import {
   claimVoteReceipt,
   submitVote,
@@ -15,6 +15,8 @@ import { dropHeldReceipt, getHeldReceipt, saveHeldReceipt, type HeldReceipt } fr
 import { getMe, getStoredToken } from "../services/auth";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
+import { useAction } from "../hooks/useAction";
+import { announceInput } from "../services/inputEvents";
 import AuthModal from "./AuthModal";
 import hub from "../config/hub";
 
@@ -58,12 +60,16 @@ function collectEarlyReceipt(actor: string, processId: string, approval: boolean
 interface Props {
   process: VoteState;
   actor: string;
-  onVoted: () => void;
+  /** The process as the action's answer has it (null: read it again). */
+  onView: (view: ProcessState | null) => void;
 }
 
-export default function VotePanel({ process, actor, onVoted }: Props) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export default function VotePanel({ process, actor, onView }: Props) {
+  // Every action here runs through one runner: one at a time, "…ing" while
+  // it runs, the page updated from the answer's view.
+  const action = useAction("Your vote didn't go through. Please try again.");
+  const loading = action.busy;
+  const error = action.error;
   const [justVoted, setJustVoted] = useState<string | string[] | null>(null);
   const [voteWasUpdated, setVoteWasUpdated] = useState(false);
   // The receipt this browser holds for this vote, if any. The hub cannot
@@ -77,7 +83,9 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
   // runs from a callback made before sign-in, when `actor` was still
   // "anonymous": read the latest value, and ask the server if it is not in yet.
   const actorRef = useRef(actor);
-  actorRef.current = actor;
+  useEffect(() => {
+    actorRef.current = actor;
+  }, [actor]);
   const [comment, setComment] = useState("");
   const [commentAnonymous, setCommentAnonymous] = useState(false);
   const [commentSubmitted, setCommentSubmitted] = useState(false);
@@ -95,6 +103,7 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
 
   // A different account or vote: read what this browser holds for it.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- re-reads this browser's receipt when the account or vote changes
     setHeld(getHeldReceipt(actor, process.id));
     setVotedElsewhere(false);
   }, [actor, process.id]);
@@ -135,51 +144,52 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
     choice: string | string[],
     send: (receipt: HeldReceiptPayload | null) => Promise<ActionResult>,
   ) {
-    setLoading(true);
-    setError(null);
     setCommentWarning(null);
-    let current = held;
-    try {
-      let result: ActionResult;
-      try {
-        result = await send(current ? { receipt_id: current.receipt_id, change_key: current.change_key } : null);
-      } catch (err) {
-        if (err instanceof ApiError && err.code === "receipt_without_vote") {
-          // A receipt on this browser that is not this account's ballot:
-          // forget it and vote without it.
-          dropHeldReceipt(actor, process.id);
-          current = null;
-          setHeld(null);
-          result = await send(null);
-        } else {
-          throw err;
+    await action.run(
+      async () => {
+        let current = held;
+        let result: ActionResult;
+        try {
+          result = await send(current ? { receipt_id: current.receipt_id, change_key: current.change_key } : null);
+        } catch (err) {
+          if (err instanceof ApiError && err.code === "receipt_without_vote") {
+            // A receipt on this browser that is not this account's ballot:
+            // forget it and vote without it.
+            dropHeldReceipt(actor, process.id);
+            current = null;
+            setHeld(null);
+            result = await send(null);
+          } else {
+            throw err;
+          }
         }
-      }
-      const payload = result.result as Record<string, unknown>;
-      const receiptId = typeof payload?.receipt_id === "string" ? payload.receipt_id : null;
-      const changeKey = typeof payload?.change_key === "string" ? payload.change_key : current?.change_key ?? null;
-      setJustVoted(choice);
-      setVoteWasUpdated(payload?.vote_updated === true);
-      if (receiptId && changeKey) {
-        const next: HeldReceipt = { receipt_id: receiptId, change_key: changeKey, choice };
-        // Kept before it is shown, so a re-read of storage finds it.
-        setReceiptNotKept(!saveHeldReceipt(await keeperId(), process.id, next));
-        setHeld(next);
-      }
-      await submitCommentIfPresent();
-      onVoted();
-    } catch (err) {
-      if (err instanceof ApiError && (err.code === "already_voted" || err.code === "receipt_not_accepted")) {
-        if (err.code === "receipt_not_accepted") {
-          dropHeldReceipt(actor, process.id);
-          setHeld(null);
+        const payload = result.result as Record<string, unknown>;
+        const receiptId = typeof payload?.receipt_id === "string" ? payload.receipt_id : null;
+        const changeKey = typeof payload?.change_key === "string" ? payload.change_key : current?.change_key ?? null;
+        setJustVoted(choice);
+        setVoteWasUpdated(payload?.vote_updated === true);
+        if (receiptId && changeKey) {
+          const next: HeldReceipt = { receipt_id: receiptId, change_key: changeKey, choice };
+          // Kept before it is shown, so a re-read of storage finds it.
+          setReceiptNotKept(!saveHeldReceipt(await keeperId(), process.id, next));
+          setHeld(next);
         }
-        setVotedElsewhere(true);
-      }
-      setError(err instanceof Error ? err.message : "Vote failed");
-    } finally {
-      setLoading(false);
-    }
+        // The tally and "has voted" from the answer, before the comment.
+        onView(result.view);
+        await submitCommentIfPresent();
+      },
+      {
+        onError: (err) => {
+          if (err instanceof ApiError && (err.code === "already_voted" || err.code === "receipt_not_accepted")) {
+            if (err.code === "receipt_not_accepted") {
+              dropHeldReceipt(actor, process.id);
+              setHeld(null);
+            }
+            setVotedElsewhere(true);
+          }
+        },
+      },
+    );
   }
 
   function doVote(option: string) {
@@ -189,7 +199,7 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
   async function doApprovalVote() {
     const selections = Array.from(approvalSelections);
     if (selections.length === 0) {
-      setError("Select at least one option");
+      action.setError("Select at least one option");
       return;
     }
     await castBallot(selections, (receipt) => submitApprovalVote(process.id, actor, selections, receipt));
@@ -199,11 +209,12 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
     const trimmed = comment.trim();
     if (trimmed.length > 0) {
       try {
-        await submitInput(
+        const input = await submitInput(
           process.id,
           trimmed,
           commentIdentityMode === "anonymous_only" || commentAnonymous,
         );
+        announceInput(process.id, input);
         setCommentSubmitted(true);
         setComment("");
       } catch (commentErr) {
@@ -232,34 +243,16 @@ export default function VotePanel({ process, actor, onVoted }: Props) {
     });
   }
 
-  async function doSupport() {
-    setLoading(true);
-    setError(null);
-    try {
-      await supportVote(process.id, actor);
-      onVoted();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Support failed");
-    } finally {
-      setLoading(false);
-    }
+  function doSupport() {
+    return action.run(async () => onView((await supportVote(process.id, actor)).view));
   }
 
   function handleSupport() {
     requireAuth(() => doSupport());
   }
 
-  async function handleUnsupport() {
-    setLoading(true);
-    setError(null);
-    try {
-      await unsupportVote(process.id, actor);
-      onVoted();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove endorsement");
-    } finally {
-      setLoading(false);
-    }
+  function handleUnsupport() {
+    return action.run(async () => onView((await unsupportVote(process.id, actor)).view));
   }
 
   function formatCurrentVote(vote: string | string[] | null): string | null {

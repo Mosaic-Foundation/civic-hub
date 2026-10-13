@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { submitInput } from "../services/api";
+import { submitInput, type CommunityInput } from "../services/api";
+import { announceInput } from "../services/inputEvents";
+import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
@@ -16,7 +18,8 @@ const UPDATE_MAX = 4000;
 interface Props {
   /** The process being commented on — a proposal, vote, project, conversation. */
   proposalId: string;
-  onCommentAdded: () => void;
+  /** Called with the posted comment (the comment panel shows it by itself). */
+  onCommentAdded?: (input: CommunityInput) => void;
   phase?: "update";
   heading?: string;
   placeholder?: string;
@@ -37,31 +40,29 @@ export default function ProposalCommentForm({
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } = useRequireAuth();
   const [body, setBody] = useState("");
   const [anonymous, setAnonymous] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const action = useAction("Your comment didn't go through. Please try again.");
+  const submitting = action.busy;
+  const error = action.error;
   const [success, setSuccess] = useState(false);
   const identityMode = useCommentIdentityMode();
 
   async function doSubmit() {
     if (!actorId || body.trim().length === 0) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await submitInput(
+    const input = await action.run(() =>
+      submitInput(
         proposalId,
         body.trim(),
         !isUpdate && (identityMode === "anonymous_only" || anonymous),
         phase,
-      );
-      setBody("");
-      setSuccess(true);
-      onCommentAdded();
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit comment");
-    } finally {
-      setSubmitting(false);
-    }
+      ),
+    );
+    if (!input) return;
+    // The server's answer goes straight onto the page.
+    announceInput(proposalId, input);
+    setBody("");
+    setSuccess(true);
+    onCommentAdded?.(input);
+    setTimeout(() => setSuccess(false), 3000);
   }
 
   function handleSubmit(e: React.FormEvent) {

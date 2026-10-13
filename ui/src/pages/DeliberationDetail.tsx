@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/AuthContext";
 import {
   getDeliberation,
@@ -29,25 +30,19 @@ export default function DeliberationDetail() {
   const [process, setProcess] = useState<DeliberationReadModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [starting, setStarting] = useState(false);
-  const [startError, setStartError] = useState<string | null>(null);
+  const start = useAction("Could not start the conversation. Please try again.");
+  const starting = start.busy;
+  const startError = start.error;
 
   // Manual Start — the fallback when auto-start at approval couldn't reach
   // Polis (dev without a token, or an outage). Admin-only, draft-only.
-  async function handleStart() {
-    if (!id || starting) return;
-    setStarting(true);
-    setStartError(null);
-    try {
-      await startDeliberation(id);
-      await load();
-    } catch (err) {
-      setStartError(
-        err instanceof Error ? err.message : "Could not start the conversation",
-      );
-    } finally {
-      setStarting(false);
-    }
+  function handleStart() {
+    if (!id) return;
+    return start.run(async () => {
+      const answer = await startDeliberation(id);
+      if (answer.view) setProcess(answer.view);
+      else await load();
+    });
   }
 
   const load = useCallback(async () => {
@@ -140,6 +135,7 @@ export default function DeliberationDetail() {
                 className="home-start-btn"
                 onClick={handleStart}
                 disabled={starting}
+                aria-busy={starting}
               >
                 {starting ? "Starting…" : "Start conversation"}
               </button>

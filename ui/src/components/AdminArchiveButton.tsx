@@ -10,6 +10,7 @@
 // or refetch) run after a successful archive.
 
 import { useState } from "react";
+import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/AuthContext";
 import { adminArchiveProcess } from "../services/api";
 import "./AdminArchiveButton.css";
@@ -29,8 +30,10 @@ export default function AdminArchiveButton({
   const { isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const action = useAction("Could not archive");
+  const submitting = action.busy;
+  const error = action.error;
+  const setError = action.setError;
 
   if (!isAdmin) return null;
 
@@ -39,17 +42,14 @@ export default function AdminArchiveButton({
       setError("Please enter a reason.");
       return;
     }
-    setError(null);
-    setSubmitting(true);
-    try {
+    const done = await action.run(async () => {
       await adminArchiveProcess(processId, reason.trim());
+      return true;
+    });
+    if (done) {
       setOpen(false);
       setReason("");
       onArchived?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not archive");
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -76,6 +76,7 @@ export default function AdminArchiveButton({
               className="admin-archive-confirm-btn"
               onClick={handleArchive}
               disabled={submitting}
+              aria-busy={submitting}
             >
               {submitting ? "Archiving…" : "Yes, archive"}
             </button>

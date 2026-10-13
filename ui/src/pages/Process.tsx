@@ -1,10 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { getProcessState, type ProcessState, type VoteState, type ProposalState } from "../services/api";
+import { useParams, useNavigate, Navigate } from "react-router-dom";
+import { getProcessState, type ProcessState, type VoteState } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import VotePanel from "../components/VotePanel";
-import ProposalPanel from "../components/ProposalPanel";
 import Creator from "../components/Creator";
 import IssueContent from "../components/IssueContent";
 import CommunityInputPanel from "../components/CommunityInputPanel";
@@ -36,7 +35,6 @@ export default function Process() {
   const [process, setProcess] = useState<ProcessState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [commentRefresh, setCommentRefresh] = useState(0);
 
   const currentActor = actorId ?? "anonymous";
 
@@ -80,8 +78,11 @@ export default function Process() {
     </div>
   );
 
+  // A proposal's page is /proposal/:id; this generic page once had an
+  // endorsement panel for an older proposal shape that no longer exists.
+  if (process.type === "civic.proposal") return <Navigate to={`/proposal/${process.id}`} replace />;
+
   const isVote = process.type === "civic.vote";
-  const isProposal = process.type === "civic.proposal";
   const voteState = isVote ? (process as VoteState) : null;
   const hasContent = isVote && voteState?.content;
 
@@ -94,13 +95,7 @@ export default function Process() {
       <ProcessHeader
         type={process.type}
         title={process.title}
-        status={statusDisplay(
-          // A civic.proposal's "closed" means it was promoted to a vote —
-          // pre-translate before the shared vocabulary renders it.
-          isProposal && process.status === "closed" ? "promoted" :
-          isProposal && process.status !== "closed" ? "gathering" :
-          process.status,
-        )}
+        status={statusDisplay(process.status)}
         sample={Boolean(process.is_sample)}
         // The jurisdiction code ("us-xx-example") is protocol data, not
         // something a visitor reads; its badge is gone (review R26).
@@ -139,20 +134,15 @@ export default function Process() {
           archives — at that point sharing the URL no longer drives
           action. The link itself still works; users who really want
           to share can copy from the address bar. */}
-      {((isVote &&
+      {isVote &&
         (process.status === "active" ||
           process.status === "proposed" ||
-          process.status === "threshold_met")) ||
-        (isProposal && process.status !== "closed")) && (
+          process.status === "threshold_met") && (
         <div className="process-share-row">
           <ShareButton
             title={process.title}
             processId={process.id}
-            shareText={
-              isProposal
-                ? `Endorse this proposal: ${process.title}`
-                : `Vote on: ${process.title}`
-            }
+            shareText={`Vote on: ${process.title}`}
           />
         </div>
       )}
@@ -168,30 +158,18 @@ export default function Process() {
         <VotePanel
           process={process as VoteState}
           actor={currentActor}
-          onVoted={fetchState}
-        />
-      )}
-
-      {isProposal && (
-        <ProposalPanel
-          proposal={process as ProposalState}
-          actor={currentActor}
-          onEndorsed={fetchState}
+          onView={(view) => (view ? setProcess(view) : fetchState())}
         />
       )}
 
       {/* Comment form for proposed processes (gathering support phase) */}
       {isVote && id && (process.status === "proposed" || process.status === "threshold_met") && (
-        <ProposalCommentForm
-          proposalId={id}
-          onCommentAdded={() => setCommentRefresh((n) => n + 1)}
-        />
+        <ProposalCommentForm proposalId={id} />
       )}
 
       {/* Community comments */}
       {isVote && id && (
         <CommunityInputPanel
-          key={commentRefresh}
           processId={id}
           config={voteState?.content?.community_input}
         />

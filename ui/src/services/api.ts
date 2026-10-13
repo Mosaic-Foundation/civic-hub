@@ -300,9 +300,15 @@ export function getProcessState(id: string): Promise<ProcessState> {
 
 // --- Actions (internal control surface) ---
 
-/** What POST /process/:id/action answers: the action's own result. */
-export interface ActionResult {
+/**
+ * What every process action answers: its own result, and `view`, the process
+ * exactly as this caller's next GET /process/:id/state reads it (null when
+ * they may no longer read it). A page sets its state to `view`, so the result
+ * shows at once, with no reload.
+ */
+export interface ActionResult<V = ProcessState> {
   result: Record<string, unknown>;
+  view: V | null;
 }
 
 /** The receipt and change key a voter's browser holds, sent to change a vote. */
@@ -334,14 +340,6 @@ export function submitApprovalVote(
     type: "process.vote",
     actor,
     payload: receipt ? { selections, receipt } : { selections },
-  });
-}
-
-export function endorseProposal(processId: string, actor: string): Promise<ActionResult> {
-  return request("POST", `/process/${processId}/action`, {
-    type: "proposal.support",
-    actor,
-    payload: {},
   });
 }
 
@@ -447,14 +445,14 @@ export function getCivicProposal(id: string): Promise<CivicProposalDetail> {
 export function supportCivicProposal(
   proposalId: string,
   userId: string
-): Promise<{ support_count: number; status: string }> {
+): Promise<{ support_count: number; status: string; view: CivicProposalDetail | null }> {
   return request("POST", `/proposals/${proposalId}/support`, { user_id: userId });
 }
 
 /** Withdraw support from a proposal — allowed while it is still open. */
 export function unsupportCivicProposal(
   proposalId: string,
-): Promise<{ support_count: number; status: string }> {
+): Promise<{ support_count: number; status: string; view: CivicProposalDetail | null }> {
   return request("DELETE", `/proposals/${proposalId}/support`);
 }
 
@@ -762,14 +760,14 @@ export function getProjectDetail(id: string): Promise<ProjectDetail> {
 
 export function completeProject(
   id: string,
-): Promise<{ ok: boolean; message: string }> {
+): Promise<{ ok: boolean; message: string; view: ProjectDetail | null }> {
   return request("POST", `/projects/${id}/complete`);
 }
 
 export function setProjectSentiment(
   id: string,
   sentiment: SentimentValue | "neutral",
-): Promise<{ support_count: number; oppose_count: number; user_sentiment: SentimentValue | null }> {
+): Promise<{ support_count: number; oppose_count: number; user_sentiment: SentimentValue | null; view: ProjectDetail | null }> {
   return request("POST", `/projects/${id}/sentiment`, { sentiment });
 }
 
@@ -2303,7 +2301,7 @@ export interface DeliberationDraft {
   links: ProposedLink[];
 }
 
-export function startDeliberation(processId: string): Promise<unknown> {
+export function startDeliberation(processId: string): Promise<ActionResult<DeliberationReadModel>> {
   return request("POST", `/deliberations/${processId}/start`);
 }
 

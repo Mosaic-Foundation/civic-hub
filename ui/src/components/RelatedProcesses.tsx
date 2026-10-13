@@ -8,6 +8,7 @@ import {
   type ProposedLink,
   type RenderedLink,
 } from "../services/api";
+import { useAction } from "../hooks/useAction";
 import ProcessLinkPicker, { friendlyType } from "./ProcessLinkPicker";
 import "./RelatedProcesses.css";
 
@@ -55,8 +56,9 @@ export default function RelatedProcesses({
   const [links, setLinks] = useState<ProcessLinks>({ outgoing: [], incoming: [] });
   const [loading, setLoading] = useState(true);
   const [picking, setPicking] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const action = useAction("Could not save the link. Please try again.");
+  const busy = action.busy;
+  const error = action.error;
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -80,30 +82,24 @@ export default function RelatedProcesses({
   const canEdit = !readOnly && links.can_edit === true;
 
   async function handlePick(link: ProposedLink) {
-    setBusy(true);
-    setError(null);
-    try {
-      const next = await addProcessLink(processId, link);
-      setLinks({ outgoing: next.outgoing, incoming: next.incoming, can_edit: next.can_edit });
-      setPicking(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add the link.");
-    } finally {
-      setBusy(false);
-    }
+    await action.run(
+      async () => {
+        const next = await addProcessLink(processId, link);
+        setLinks({ outgoing: next.outgoing, incoming: next.incoming, can_edit: next.can_edit });
+        setPicking(false);
+      },
+      { onError: (err) => (err instanceof Error && err.message ? undefined : "Could not add the link.") },
+    );
   }
 
   async function handleRemove(linkId: string) {
-    setBusy(true);
-    setError(null);
-    try {
-      setLinks(await removeProcessLink(processId, linkId));
-      setConfirmRemove(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not remove the link.");
-    } finally {
-      setBusy(false);
-    }
+    await action.run(
+      async () => {
+        setLinks(await removeProcessLink(processId, linkId));
+        setConfirmRemove(null);
+      },
+      { onError: (err) => (err instanceof Error && err.message ? undefined : "Could not remove the link.") },
+    );
   }
 
   const all = [...links.outgoing, ...links.incoming];

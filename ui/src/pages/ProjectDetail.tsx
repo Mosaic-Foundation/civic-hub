@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/AuthContext";
 import {
   getProjectDetail,
@@ -61,12 +62,12 @@ export default function ProjectDetail() {
   const [error, setError] = useState<string | null>(null);
 
   // Updates and comments are the shared comment module (civic.input) —
-  // one word list, one admin hide, one audit trail for every type. These
-  // keys re-mount the lists after a post.
-  const [updatesRefresh, setUpdatesRefresh] = useState(0);
-  const [commentsRefresh, setCommentsRefresh] = useState(0);
-  const [sentimentLoading, setSentimentLoading] = useState(false);
-  const [completing, setCompleting] = useState(false);
+  // one word list, one admin hide, one audit trail for every type. A new
+  // post is announced to the panel, which adds it itself.
+  const sentiment = useAction("Your response didn't go through. Please try again.");
+  const complete = useAction("The project couldn't be marked complete. Please try again.");
+  const sentimentLoading = sentiment.busy;
+  const completing = complete.busy;
 
   // "Edit project" — the server decides (creator or admin, active, what is
   // locked); we only ask when the viewer could plausibly be allowed. Hooks
@@ -114,26 +115,25 @@ export default function ProjectDetail() {
     loadProject();
   }, [loadProject]);
 
-  async function handleSentiment(sentiment: SentimentValue | "neutral") {
-    if (!id || sentimentLoading) return;
-    setSentimentLoading(true);
-    try {
-      const result = await setProjectSentiment(id, sentiment);
-      setProject((prev) =>
-        prev
-          ? {
-              ...prev,
-              support_count: result.support_count,
-              oppose_count: result.oppose_count,
-              user_sentiment: result.user_sentiment,
-            }
-          : prev,
-      );
-    } catch {
-      // silently ignore — user can retry
-    } finally {
-      setSentimentLoading(false);
-    }
+  function handleSentiment(next: SentimentValue | "neutral") {
+    if (!id) return;
+    return sentiment.run(async () => {
+      const result = await setProjectSentiment(id, next);
+      if (result.view) {
+        setProject(result.view);
+      } else {
+        setProject((prev) =>
+          prev
+            ? {
+                ...prev,
+                support_count: result.support_count,
+                oppose_count: result.oppose_count,
+                user_sentiment: result.user_sentiment,
+              }
+            : prev,
+        );
+      }
+    });
   }
 
   function onSentimentClick(value: SentimentValue) {
@@ -162,16 +162,11 @@ export default function ProjectDetail() {
       )
     )
       return;
-    setCompleting(true);
-    setError(null);
-    try {
-      await completeProject(id);
-      await loadProject();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to complete project");
-    } finally {
-      setCompleting(false);
-    }
+    await complete.run(async () => {
+      const answer = await completeProject(id);
+      if (answer.view) setProject(answer.view);
+      else await loadProject();
+    });
   }
 
   return (
@@ -244,6 +239,7 @@ export default function ProjectDetail() {
             className={`sentiment-btn${project.user_sentiment === "support" ? " is-active-support" : ""}`}
             onClick={() => onSentimentClick("support")}
             disabled={!user || sentimentLoading}
+            aria-busy={sentimentLoading}
           >
             Support {project.support_count > 0 && `(${project.support_count})`}
           </button>
@@ -252,12 +248,14 @@ export default function ProjectDetail() {
             className={`sentiment-btn${project.user_sentiment === "oppose" ? " is-active-oppose" : ""}`}
             onClick={() => onSentimentClick("oppose")}
             disabled={!user || sentimentLoading}
+            aria-busy={sentimentLoading}
           >
             Oppose {project.oppose_count > 0 && `(${project.oppose_count})`}
           </button>
           {!user && (
             <span className="sentiment-counts">Sign in to show your support</span>
           )}
+          {sentiment.error && <p className="form-error" role="alert">{sentiment.error}</p>}
         </div>
       )}
 
@@ -295,11 +293,9 @@ export default function ProjectDetail() {
             heading="Post an update"
             placeholder="Share an update on your project..."
             submitLabel="Post update"
-            onCommentAdded={() => setUpdatesRefresh((n) => n + 1)}
           />
         )}
         <CommunityInputPanel
-          key={`updates-${updatesRefresh}`}
           processId={project.id}
           config={{
             label: "",
@@ -318,11 +314,9 @@ export default function ProjectDetail() {
           <ProposalCommentForm
             proposalId={project.id}
             placeholder="Add a comment..."
-            onCommentAdded={() => setCommentsRefresh((n) => n + 1)}
           />
         )}
         <CommunityInputPanel
-          key={`comments-${commentsRefresh}`}
           processId={project.id}
           config={{
             label: "",
@@ -348,10 +342,12 @@ export default function ProjectDetail() {
             className="project-complete-btn"
             onClick={handleComplete}
             disabled={completing}
+            aria-busy={completing}
           >
             {completing ? "Completing…" : "Mark complete"}
           </button>
         )}
+        {complete.error && <p className="form-error" role="alert">{complete.error}</p>}
         <AdminArchiveButton
           processId={project.id}
           itemLabel="project"

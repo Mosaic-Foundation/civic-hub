@@ -22,6 +22,8 @@ import {
   getInputs,
 } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { useAction } from "../hooks/useAction";
+import { onInputAdded } from "../services/inputEvents";
 import hub from "../config/hub";
 
 interface Props {
@@ -54,8 +56,11 @@ export default function CommunityInputPanel({ processId, config }: Props) {
   // The hide modal is keyed off comment ID — null means "no modal open".
   const [hideModalFor, setHideModalFor] = useState<string | null>(null);
   const [hideReason, setHideReason] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Hide and restore share one runner: only one moderation call at a time.
+  const action = useAction("That didn't go through. Please try again.");
+  const submitting = action.busy;
+  const error = action.error;
+  const setError = action.setError;
 
   const fetchInputs = useCallback(() => {
     getInputs(processId)
@@ -68,6 +73,15 @@ export default function CommunityInputPanel({ processId, config }: Props) {
   useEffect(() => {
     fetchInputs();
   }, [fetchInputs]);
+
+  // A comment posted on this page shows at once, from the server's answer.
+  useEffect(
+    () =>
+      onInputAdded(processId, (input) =>
+        setInputs((prev) => (prev.some((c) => c.id === input.id) ? prev.map((c) => (c.id === input.id ? input : c)) : [...prev, input])),
+      ),
+    [processId],
+  );
 
   // Which phases this panel shows. Default: everything but creator updates,
   // which a page lists in its own section (projects) — so a plain comments
@@ -103,32 +117,25 @@ export default function CommunityInputPanel({ processId, config }: Props) {
       setError("Please choose or enter a reason.");
       return;
     }
-    setError(null);
-    setSubmitting(true);
-    try {
-      const updated = await adminHideComment(hideModalFor, hideReason.trim());
-      setInputs((prev) =>
-        prev.map((c) => (c.id === updated.id ? updated : c)),
-      );
-      setHideModalFor(null);
-      setHideReason("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not hide comment");
-    } finally {
-      setSubmitting(false);
-    }
+    await action.run(
+      async () => {
+        const updated = await adminHideComment(hideModalFor, hideReason.trim());
+        setInputs((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+        setHideModalFor(null);
+        setHideReason("");
+      },
+      { onError: (err) => (err instanceof Error && err.message ? undefined : "Could not hide comment") },
+    );
   }
 
   async function handleRestore(commentId: string) {
-    setError(null);
-    try {
-      const updated = await adminRestoreComment(commentId);
-      setInputs((prev) =>
-        prev.map((c) => (c.id === updated.id ? updated : c)),
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not restore");
-    }
+    await action.run(
+      async () => {
+        const updated = await adminRestoreComment(commentId);
+        setInputs((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      },
+      { onError: (err) => (err instanceof Error && err.message ? undefined : "Could not restore") },
+    );
   }
 
   return (
@@ -186,8 +193,10 @@ export default function CommunityInputPanel({ processId, config }: Props) {
                     type="button"
                     className="input-admin-button"
                     onClick={() => handleRestore(input.id)}
+                    disabled={submitting}
+                    aria-busy={submitting}
                   >
-                    Restore
+                    {submitting ? "Restoring…" : "Restore"}
                   </button>
                 </div>
               )}
@@ -289,6 +298,7 @@ export default function CommunityInputPanel({ processId, config }: Props) {
                 type="submit"
                 className="auth-continue-button"
                 disabled={submitting || hideReason.trim().length === 0}
+                aria-busy={submitting}
               >
                 {submitting ? "Hiding…" : "Hide comment"}
               </button>

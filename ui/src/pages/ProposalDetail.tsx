@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getCivicProposal, supportCivicProposal, unsupportCivicProposal, type CivicProposalDetail } from "../services/api";
+import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/AuthContext";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import AuthModal from "../components/AuthModal";
@@ -37,8 +38,8 @@ export default function ProposalDetail() {
   const [proposal, setProposal] = useState<CivicProposalDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [supporting, setSupporting] = useState(false);
-  const [commentRefresh, setCommentRefresh] = useState(0);
+  const action = useAction("Your support didn't go through. Please try again.");
+  const supporting = action.busy;
 
   const currentActor = actorId ?? "anonymous";
 
@@ -64,32 +65,22 @@ export default function ProposalDetail() {
     fetchProposal();
   }, [fetchProposal]);
 
-  async function doSupport() {
+  function doSupport() {
     if (!id || !actorId) return;
-    setSupporting(true);
-    setError(null);
-    try {
-      await supportCivicProposal(id, actorId);
-      fetchProposal();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to support");
-    } finally {
-      setSupporting(false);
-    }
+    return action.run(async () => {
+      const answer = await supportCivicProposal(id, actorId);
+      if (answer.view) setProposal(answer.view);
+      else fetchProposal();
+    });
   }
 
-  async function doUnsupport() {
+  function doUnsupport() {
     if (!id) return;
-    setSupporting(true);
-    setError(null);
-    try {
-      await unsupportCivicProposal(id);
-      fetchProposal();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove support");
-    } finally {
-      setSupporting(false);
-    }
+    return action.run(async () => {
+      const answer = await unsupportCivicProposal(id);
+      if (answer.view) setProposal(answer.view);
+      else fetchProposal();
+    });
   }
 
   function handleSupport() {
@@ -167,7 +158,7 @@ export default function ProposalDetail() {
           )}
 
           <div className="proposal-action">
-            {error && <p className="form-error">{error}</p>}
+            {(action.error || error) && <p className="form-error">{action.error ?? error}</p>}
             {proposal.has_supported ? (
               <>
                 <p className="endorse-confirmation">You have supported this proposal.</p>
@@ -180,6 +171,7 @@ export default function ProposalDetail() {
                   className="unendorse-button"
                   onClick={doUnsupport}
                   disabled={supporting}
+                  aria-busy={supporting}
                 >
                   {supporting ? "Removing..." : "Remove my support"}
                 </button>
@@ -193,6 +185,7 @@ export default function ProposalDetail() {
                 className="endorse-button"
                 onClick={handleSupport}
                 disabled={supporting}
+                aria-busy={supporting}
               >
                 {supporting ? "Supporting..." : "Support this proposal"}
               </button>
@@ -246,13 +239,9 @@ export default function ProposalDetail() {
 
       {/* Comments — form only for active proposals; read-only list always shown */}
       {(proposal.status === "submitted" || proposal.status === "endorsed") && (
-        <ProposalCommentForm
-          proposalId={proposal.id}
-          onCommentAdded={() => setCommentRefresh((n) => n + 1)}
-        />
+        <ProposalCommentForm proposalId={proposal.id} />
       )}
       <CommunityInputPanel
-        key={commentRefresh}
         processId={proposal.id}
         config={{ label: "Community discussion on this proposal." }}
       />

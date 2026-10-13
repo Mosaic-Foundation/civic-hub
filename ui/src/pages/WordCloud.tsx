@@ -13,6 +13,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
+import { useAction } from "../hooks/useAction";
 import hub from "../config/hub";
 import { safeReturnPath } from "../config/pluginRules";
 import { theName } from "../../../src/shared/hubCopy";
@@ -271,9 +272,10 @@ function SubmitForm({
   const { showAuthModal, closeAuthModal, handleAuthComplete, requireAuth } =
     useRequireAuth();
   const [text, setText] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const action = useAction("Failed to submit");
+  const submitting = action.busy;
+  const error = action.error;
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -284,19 +286,15 @@ function SubmitForm({
       return;
     }
 
-    setSubmitting(true);
-    setError(null);
-
-    try {
+    const done = await action.run(async () => {
       await submitWordcloudResponse(processId, promptId, text.trim());
+      return true;
+    });
+    if (done) {
       setSubmitted(true);
       setText("");
       onSubmitted();
       onRevealed();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit");
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -335,6 +333,7 @@ function SubmitForm({
           type="submit"
           className="wordcloud-submit-btn"
           disabled={submitting || !text.trim() || text.length > maxLength}
+          aria-busy={submitting}
         >
           {submitting ? "..." : "Submit"}
         </button>

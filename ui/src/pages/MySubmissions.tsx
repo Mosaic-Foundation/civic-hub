@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAction } from "../hooks/useAction";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -81,7 +82,9 @@ export default function MySubmissions() {
   const [revTitle, setRevTitle] = useState("");
   const [revDescription, setRevDescription] = useState("");
   const [revNote, setRevNote] = useState("");
-  const [acting, setActing] = useState(false);
+  // One runner for reopen / revise / withdraw: only one may run at a time.
+  const action = useAction("That didn't go through. Please try again.");
+  const acting = action.busy;
 
   // Withdraw confirmation
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
@@ -135,60 +138,53 @@ export default function MySubmissions() {
    * fall back to the inline title/description form.
    */
   async function handleEditAndResubmit() {
-    if (!routeId || acting) return;
-    setActing(true);
+    if (!routeId) return;
     setError(null);
-    try {
-      const target = await reopenReview(routeId);
-      if (target.draft_path) {
-        navigate(target.draft_path);
-        return;
-      }
-      setShowRevise(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not reopen your draft");
-    } finally {
-      setActing(false);
-    }
+    await action.run(
+      async () => {
+        const target = await reopenReview(routeId);
+        if (target.draft_path) {
+          navigate(target.draft_path);
+          return;
+        }
+        setShowRevise(true);
+      },
+      { onError: (err) => (err instanceof Error && err.message ? undefined : "Could not reopen your draft") },
+    );
   }
 
   async function handleRevise() {
-    if (!routeId || acting) return;
-    setActing(true);
+    if (!routeId) return;
     setError(null);
-    try {
-      await reviseReview(routeId, {
-        title: revTitle,
-        description: revDescription,
-        note: revNote || undefined,
-      });
-      setActionMessage("Revised and resubmitted for review.");
-      setShowRevise(false);
-      setRevNote("");
-      const refreshed = await getReviewDetail(routeId);
-      setDetail(refreshed);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Revision failed");
-    } finally {
-      setActing(false);
-    }
+    await action.run(
+      async () => {
+        await reviseReview(routeId, {
+          title: revTitle,
+          description: revDescription,
+          note: revNote || undefined,
+        });
+        setActionMessage("Revised and resubmitted for review.");
+        setShowRevise(false);
+        setRevNote("");
+        // The answer is the review's summary; the detail carries the turns.
+        setDetail(await getReviewDetail(routeId));
+      },
+      { onError: (err) => (err instanceof Error && err.message ? undefined : "Revision failed") },
+    );
   }
 
   async function handleWithdraw() {
-    if (!routeId || acting) return;
-    setActing(true);
+    if (!routeId) return;
     setError(null);
-    try {
-      await withdrawReview(routeId);
-      setActionMessage("Withdrawn.");
-      setConfirmWithdraw(false);
-      const refreshed = await getReviewDetail(routeId);
-      setDetail(refreshed);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Withdraw failed");
-    } finally {
-      setActing(false);
-    }
+    await action.run(
+      async () => {
+        await withdrawReview(routeId);
+        setActionMessage("Withdrawn.");
+        setConfirmWithdraw(false);
+        setDetail(await getReviewDetail(routeId));
+      },
+      { onError: (err) => (err instanceof Error && err.message ? undefined : "Withdraw failed") },
+    );
   }
 
   function backToList() {
@@ -315,6 +311,7 @@ export default function MySubmissions() {
                       className="review-action-btn review-action-btn--approve"
                       onClick={handleEditAndResubmit}
                       disabled={acting}
+                      aria-busy={acting}
                     >
                       {acting ? "Opening…" : "Edit & resubmit"}
                     </button>
@@ -366,6 +363,7 @@ export default function MySubmissions() {
                         className="review-action-btn review-action-btn--approve"
                         onClick={handleRevise}
                         disabled={acting || !revTitle.trim() || !revDescription.trim()}
+                        aria-busy={acting}
                       >
                         {acting ? "Submitting…" : "Resubmit"}
                       </button>
@@ -390,6 +388,7 @@ export default function MySubmissions() {
                         className="review-action-btn review-action-btn--decline"
                         onClick={handleWithdraw}
                         disabled={acting}
+                      aria-busy={acting}
                       >
                         {acting ? "Withdrawing…" : "Yes, withdraw"}
                       </button>
@@ -421,6 +420,7 @@ export default function MySubmissions() {
 
       {loading && <p>Loading…</p>}
       {error && <p className="error-text">{error}</p>}
+      {action.error && <p className="error-text" role="alert">{action.error}</p>}
 
       {!loading && reviews.length === 0 && (
         <p style={{ color: "var(--color-text-muted)" }}>
