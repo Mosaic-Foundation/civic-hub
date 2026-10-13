@@ -13,6 +13,7 @@
  * (TESTING.md has the command). The sign-in code is planted, as no mail is sent.
  */
 
+import { CURRENT_LEGAL_VERSION } from "../../ui/src/config/legal.js";
 import { test, expect } from "@playwright/test";
 import { localRest } from "../fixtures/adminSession.js";
 import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
@@ -99,6 +100,12 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   await expect(page.getByText(".localhost")).toBeVisible();
   await page.getByLabel("Time zone").selectOption("America/Chicago");
   await page.getByLabel("Operated by").fill(`The ${run} Group`);
+  // Beside Create: what creating agrees to, each with its summary in place
+  // (sign-in slice, 2026-10-14). No checkbox.
+  await expect(page.getByText("By creating your hub you agree to the")).toBeVisible();
+  await page.getByRole("button", { name: "Privacy Notice" }).click();
+  const summary = page.getByRole("region", { name: "Privacy Notice, in short" });
+  await expect(summary).toContainText("Anything that joins your account to how you voted.");
   await page.getByRole("button", { name: "Create my hub" }).click();
 
   // --- Lands on the new hub, signed in, as its admin ---
@@ -114,7 +121,7 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   expect(me.user.email).toBe(email);
 
   // "Your hub is ready: check your email", once, instead of the visitor's
-  // popup; the terms prompt waits until it is closed (2026-10-08).
+  // popup (2026-10-08).
   const ready = page.getByRole("dialog", { name: /is ready/ });
   await expect(ready).toBeVisible();
   await expect(ready).toContainText("Check your email");
@@ -123,7 +130,9 @@ test("Adam mints a code; his colleague makes a hub with it and lands in it as ad
   if (process.env.CIVIC_E2E_SHOT) await page.screenshot({ path: process.env.CIVIC_E2E_SHOT });
   await ready.getByRole("button", { name: "Look around first" }).click();
   await expect(ready).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Before you continue…" })).toBeVisible();
+  // The creator agreed at creation, so no terms prompt follows (sign-in slice).
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  expect(me.user.tos_version_accepted).toBe(CURRENT_LEGAL_VERSION);
   await page.reload();
   await expect(page.getByRole("dialog", { name: /is ready/ })).toHaveCount(0);
   const settings = (await localRest(`hub_settings?hub_id=eq.${slug}&key=eq.legal.operator_name&select=value`)) as Array<{ value: string }>;

@@ -89,8 +89,10 @@ test.describe("Demo sign-in and sign-up", () => {
     await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
     await signUpToGate(page);
     const box = page.locator(".auth-legal-checkbox");
-    await expect(box).toContainText("I'm trying this demo, and I have read and agree to the");
+    // The box confirms only that; the policies are a line beside Join (sign-in slice).
+    await expect(box).toHaveText("I'm trying this demo.");
     await expect(box).not.toContainText("resident of");
+    await expect(page.locator(".auth-terms-notice")).toContainText("By joining you agree to the");
   });
 
   test("signing up from a vote casts it, and the word cloud's Skip returns to it", async ({ page, request }) => {

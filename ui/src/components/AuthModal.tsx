@@ -472,7 +472,6 @@ export default function AuthModal({ onComplete, onDismiss, pending }: Props) {
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
             placeholder="------"
-            maxLength={6}
             autoFocus={!noEmail}
             disabled={loading}
           />
