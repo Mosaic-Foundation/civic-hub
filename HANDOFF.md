@@ -7,7 +7,9 @@ Updated after every Claude Code session. Records what was built, what's incomple
 ## Admin menu slice: one small menu, a "?" on every setting, samples one at a time, a starter word cloud — 2026-10-13
 
 Commits on `multi-tenant` `afd98d3`..`e35a141`, one item each; the docs repo's side on `civic-hub-docs` branch
-`help-anchors` (`75e18d0`..`7ad2494`), not pushed. Report and handoff:
+`help-anchors` (`75e18d0`..`7ad2494`), merged and live on docs.civic.social. **Live on dev at `2ee0711`**
+(`release.sh dev --yes`, 2026-10-13): CI (with the help-links step, 80 keys), E2E and Smoke 13 of 13 in 1.1 min green.
+Report and handoff:
 `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Admin-Menu-Session-Report-2026-10-13.md`.
 
 **Release needs:**
