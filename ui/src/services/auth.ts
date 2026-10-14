@@ -67,6 +67,8 @@ export interface AuthUser {
    * every submission regardless.
    */
   hide_ai_drafting_help: boolean;
+  /** Left off the Members page and the home page's avatar stack (still counted). */
+  hidden_from_members?: boolean;
   display_name: string | null;
   /**
    * The user's real name — required for participation. null on
@@ -140,6 +142,11 @@ export function verifyCode(email: string, code: string, keepSignedIn = false): P
 /** The code email's "Sign in" link: its token, after one Confirm (sign-in slice). */
 export function verifyLink(token: string, keepSignedIn = false): Promise<SignedIn> {
   return request("POST", "/auth/verify-link", { token, keep_signed_in: keepSignedIn });
+}
+
+/** A member's invite link (/sign-in#invite=…), after Confirm. */
+export function verifyInvite(token: string, keepSignedIn = false): Promise<SignedIn> {
+  return request("POST", "/auth/verify-invite", { token, keep_signed_in: keepSignedIn });
 }
 
 // --- "Keep me signed in", remembered per browser ---
@@ -232,6 +239,11 @@ export function setHideAiDraftingHelp(
   hide: boolean,
 ): Promise<{ user: AuthUser }> {
   return request("PATCH", "/auth/me", { hide_ai_drafting_help: hide }, token);
+}
+
+/** Show or hide oneself on the Members page and the avatar stack. */
+export function setHiddenFromMembers(token: string, hidden: boolean): Promise<{ user: AuthUser }> {
+  return request("PATCH", "/auth/me", { hidden_from_members: hidden }, token);
 }
 
 export function getMe(

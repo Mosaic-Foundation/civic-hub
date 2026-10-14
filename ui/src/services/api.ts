@@ -2965,3 +2965,49 @@ export function getOutcomes(params: {
   const q = qs.toString();
   return request("GET", `/brief${q ? `?${q}` : ""}`);
 }
+
+// --- Members and "Share this hub" (members and invites slice, 2026-10-14) ---
+
+export interface MemberSummary {
+  /** Every member, those who hid themselves included. */
+  count: number;
+  /** Avatar seeds of the most recent visible members. */
+  stack: string[];
+}
+
+export interface Member {
+  avatar: string;
+  name: string;
+  is_admin: boolean;
+}
+
+export interface MembersPage {
+  members: Member[];
+  count: number;
+  next: number | null;
+  you_are_hidden: boolean;
+}
+
+export interface InviteResult {
+  outcome: "emailed" | "waitlisted";
+  done: number;
+  over_limit: string[];
+  failed: number;
+  limit: number;
+}
+
+export function getMemberSummary(): Promise<MemberSummary> {
+  return request("GET", "/members/summary");
+}
+
+export function getMembers(offset = 0): Promise<MembersPage> {
+  return request("GET", `/members?offset=${offset}`);
+}
+
+export function sendInvites(emails: string, message: string): Promise<InviteResult> {
+  return request("POST", "/members/invites", { emails, message });
+}
+
+export function adminGetHiddenMembers(): Promise<{ hidden: Array<Member & { joined_at: string }>; count: number }> {
+  return request("GET", "/admin/hub/members");
+}
