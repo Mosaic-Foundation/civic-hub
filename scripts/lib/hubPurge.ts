@@ -109,6 +109,8 @@ export interface PurgePlan {
   /** Columns nulled first to break a foreign-key cycle (restore does the same). */
   deferred: Array<{ table: string; columns: string[] }>;
   counts: Record<string, number>;
+  /** Civic.Social's copies of the hub's feedback (platform_feedback, keyed by source_hub_id). */
+  platformFeedback: number;
 }
 
 /** Which tables hold the hub's rows, how many, and the order to delete them in. */
@@ -122,7 +124,11 @@ export async function planPurge(client: pg.Client, hubId: string): Promise<Purge
     const r = await client.query<{ n: number }>(`select count(*)::int as n from ${ident(t)} where hub_id = $1`, [hubId]);
     counts[t] = r.rows[0].n;
   }
-  return { order: [...order].reverse(), deferred, counts };
+  const pf = await client.query<{ n: number }>(
+    "select count(*)::int as n from platform_feedback where source_hub_id = $1",
+    [hubId],
+  );
+  return { order: [...order].reverse(), deferred, counts, platformFeedback: pf.rows[0].n };
 }
 
 export interface PurgeResult {
@@ -167,6 +173,9 @@ export async function applyPurge(
       if (appendOnly) await client.query("set local session_replication_role = origin");
       deleted[t] = r.rowCount ?? 0;
     }
+    // Civic.Social's copies point at the hub (feedback routing): they go with it.
+    const pf = await client.query("delete from platform_feedback where source_hub_id = $1", [hubId]);
+    deleted.platform_feedback = pf.rowCount ?? 0;
     const h = await client.query("delete from hubs where id = $1", [hubId]);
     if (h.rowCount !== 1) throw new Error("the hubs row was not deleted");
 

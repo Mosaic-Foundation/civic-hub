@@ -97,7 +97,8 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
     REVOKE ALL ON platform_feedback FROM authenticated;
-    GRANT SELECT, INSERT, UPDATE ON platform_feedback TO service_role;
+    -- DELETE for the smoke suite's cleanup on its own hub and a hub's purge.
+    GRANT SELECT, INSERT, UPDATE, DELETE ON platform_feedback TO service_role;
   END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
     REVOKE ALL ON platform_feedback FROM anon;

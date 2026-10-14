@@ -101,6 +101,9 @@ async function main(): Promise<void> {
     const keys = objects ? await ownedObjectKeys(objects, hubId) : [];
     console.log("\n  Would delete, child-first:");
     for (const t of plan.order) if (plan.counts[t]) console.log(`    ${t.padEnd(26)} ${plan.counts[t]}`);
+    if (plan.platformFeedback) {
+      console.log(`    ${"platform_feedback".padEnd(26)} ${plan.platformFeedback} (Civic.Social's copies of its feedback)`);
+    }
     console.log(`    ${"hubs".padEnd(26)} 1 (this hub's row: its slug and hostname become free)`);
     console.log(`    ${"stored images".padEnd(26)} ${objects ? keys.length : "(--no-storage)"}`);
     const auditRows = plan.counts.hub_admin_audit_log ?? 0;

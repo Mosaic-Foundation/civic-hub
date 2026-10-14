@@ -151,6 +151,11 @@ describe("purge-hub.ts", () => {
       "insert into hub_admin_audit_log (hub_id, actor_email, action, before, after) values ($1, $2, 'hub.mode', '{\"mode\":\"demo\"}', '{\"mode\":\"beta\"}')",
       [SAMPLE, ADMIN],
     );
+    // An admin's message to Civic.Social (feedback routing) points at the hub.
+    await db.query(
+      "insert into platform_feedback (id, source_hub_id, stream, origin, message, contact_ok, contact_email) values ($1, $2, 'admin', 'admin', 'hello', true, $3)",
+      [`pf_purge_${SAMPLE}`, SAMPLE, ADMIN],
+    );
     const hubRow = (await db.query("select to_jsonb(h) as r from hubs h where id = $1", [SAMPLE])).rows[0].r;
     const samples = await db.query("select count(*)::int as n from processes where hub_id = $1 and is_sample", [SAMPLE]);
     expect(samples.rows[0].n).toBeGreaterThan(0);
@@ -175,6 +180,7 @@ describe("purge-hub.ts", () => {
     // Everything gone.
     expect((await db.query("select 1 from hubs where id = $1", [SAMPLE])).rowCount).toBe(0);
     expect(await hubIdRows(SAMPLE)).toBe(0);
+    expect((await db.query("select 1 from platform_feedback where source_hub_id = $1", [SAMPLE])).rowCount).toBe(0);
 
     // The bundle, written first, holds the admin audit row.
     const path = /exported → (\S+\.tar\.gz)/.exec(r.out)?.[1];
