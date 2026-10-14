@@ -34,6 +34,9 @@ import { isProductionEnv } from "../config/env.js";
 import { reportError, type ErrorDetails } from "../utils/reportError.js";
 import type { ProcessStatus } from "../models/process.js";
 import type { PluginId } from "../models/hubSettings.js";
+import type { TypeDisplay } from "../shared/typeDisplay.js";
+
+export type { TypeDisplay, TypeSection } from "../shared/typeDisplay.js";
 
 /**
  * Who may call an action through executeAction.
@@ -201,41 +204,6 @@ export interface ProcessTypeDescriptor {
   };
   /** How the hub's pages name and place it (navigation slice, 2026-10-14). */
   display: TypeDisplay;
-}
-
-/**
- * What a resident reads for a type: the feed item's pill, and the section of
- * the hub's navigation it has, if any. Served to the UI in the hub config
- * (`process_types`), so a plugin's type gets its pill and its section with no
- * UI change. No place names: a type is the same thing on every hub.
- */
-export interface TypeDisplay {
-  /** One of them, as the feed's pill says it: "Vote". */
-  label: string;
-  /** More than one: "Votes". */
-  plural: string;
-  /**
-   * The type's icon in the UI's icon set (ui/src/components/navIcons.tsx).
-   * A key the UI doesn't know draws the generic icon.
-   */
-  icon: string;
-  /** A list page of its own in the hub's navigation; absent for types read only in the feed. */
-  section?: TypeSection;
-}
-
-export interface TypeSection {
-  /** Stable id, stored in the hub's section order (`nav.section_order`). */
-  id: string;
-  /** The section's name in the sidebar, the tabs and the More sheet. */
-  label: string;
-  /** One word for the phone's bottom bar, where five must fit: "Talk". Default: label. */
-  short?: string;
-  /** The UI route of its list. */
-  path: string;
-  /** Routes of its detail pages: the section stays highlighted on them. */
-  detail_paths: readonly string[];
-  /** Its place in the default section order (lower first). */
-  order: number;
 }
 
 /** The parts of a descriptor that are served publicly (GET /.well-known/civic.json). */

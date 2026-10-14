@@ -13,8 +13,10 @@ import {
   type ActionDescriptor,
   type ProcessTypeDescriptor,
   type PublicProcessType,
-  type TypeDisplay,
 } from "./descriptor.js";
+import type { ProcessTypeDisplay } from "../shared/typeDisplay.js";
+
+export type { ProcessTypeDisplay };
 import type { Process } from "../models/process.js";
 import type { PluginId } from "../models/hubSettings.js";
 import voteProcess from "./voteProcess.js";
@@ -112,12 +114,6 @@ export function publicProcessTypes(include: (type: string) => boolean): PublicPr
   return Object.values(processRegistry)
     .filter((h) => include(h.type))
     .map((h) => publicDescriptor(h.descriptor));
-}
-
-/** One type as the hub's pages name it: its plugin and its display (hub config `process_types`). */
-export interface ProcessTypeDisplay extends TypeDisplay {
-  type: string;
-  plugin: PluginId;
 }
 
 /**
