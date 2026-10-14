@@ -1,8 +1,10 @@
 /**
  * Members and invites (2026-10-14), at phone width and on a desktop.
  *
- * 1. "N members" and the avatar stack on the home page, for everyone; signed
- *    in, the count opens the Members page.
+ * 1. "N members" and the avatar stack on the home page, for everyone, above
+ *    Raise something on a phone; signed in, the count opens the Members page,
+ *    and the account menu has Share this hub but not Members. The word cloud
+ *    strip says only "Community word cloud".
  * 2. The Members page: names and pattern-avatars, admins marked, no
  *    addresses; a hidden member is absent; signed out, it asks to sign in.
  *    Hiding oneself in Settings takes one switch.
@@ -108,6 +110,12 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     await expect(stack.locator(".pattern-avatar")).toHaveCount(5);
     await expect(stack.getByRole("link")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Share this hub" })).toHaveCount(0);
+    // Under the tagline, above Raise something (Adam, 2026-10-14).
+    const stackBox = (await stack.boundingBox())!;
+    const raiseBox = (await page.getByRole("button", { name: "Raise something" }).boundingBox())!;
+    if (name === "phone") expect(stackBox.y).toBeLessThan(raiseBox.y);
+    // The word cloud strip is its label only; the prompt is on the word cloud's page.
+    await expect(page.getByRole("link", { name: "View the community word cloud" })).toHaveText(/^✦\s*Community word cloud\s*→$/);
     await noSidewaysScroll(page);
     await shot(page, `home-signed-out-${name}`);
 
@@ -116,6 +124,11 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     await signedIn.setViewportSize(viewport);
     await visit(signedIn, memberToken);
     await signedIn.goto(`${HUB}/`);
+    // The account menu offers Share this hub, not Members (Adam, 2026-10-14).
+    await signedIn.getByRole("button", { name: "Account menu" }).click();
+    await expect(signedIn.getByRole("menuitem", { name: "Share this hub" })).toBeVisible();
+    await expect(signedIn.getByRole("menuitem", { name: "Members" })).toHaveCount(0);
+    await signedIn.keyboard.press("Escape");
     await signedIn.getByTestId("member-stack").getByRole("link", { name: "6 members" }).click();
     await expect(signedIn).toHaveURL(/\/members$/);
     await signedInContext.close();
