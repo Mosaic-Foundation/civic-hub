@@ -470,6 +470,35 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
       expect(restored.status, JSON.stringify(restored.body)).toBe(200);
       expect((await processRow(id)).status).toBe(before);
     });
+
+    // An archived one whose window passed still finishes (2026-10-14): on
+    // production two archived votes kept their pre-2026-10-10 bridge rows,
+    // which link voters to receipts, because archiving skips the close. The
+    // hourly job clears them and the process stays archived.
+    if (d.deadline && d.tables.includes("active_vote_keys")) {
+      it("an expired, archived one ends with no key rows and stays archived", async () => {
+        const id = await liveProcess(d, facts, BETA);
+        touched.push({ id, hub: BETA });
+        const voter = await resident(BETA);
+        const [user] = (await localRest(`users?select=id&hub_id=eq.${BETA.slug}&email=eq.${encodeURIComponent(voter.email)}`)) as Array<{ id: string }>;
+        await localRest("active_vote_keys", {
+          method: "POST",
+          body: JSON.stringify({ user_id: user.id, process_id: id, receipt_id: `legacy-${uniqueTitle("r")}`, hub_id: BETA.slug }),
+        });
+        const adminToken = await admin(BETA);
+        const archived = await call("POST", `/admin/processes/${id}/archive`, BETA.host, { reason: "Conformance" }, adminToken);
+        expect(archived.status, JSON.stringify(archived.body)).toBe(200);
+        await expireDeadline(d, id);
+
+        const job = JOBS.find((j) => j.id === "vote_close")!;
+        const cron = process.env.CIVIC_TEST_CRON_SECRET?.trim() || "ci-only-cron-secret";
+        const res = await call("GET", `${JOBS_MOUNT}${job.path}?hub=${BETA.slug}`, BETA.host, undefined, cron);
+        expect(res.status, JSON.stringify(res.body)).toBe(200);
+        expect(res.body.hubs[BETA.slug].archived_finished).toContain(id);
+        expect(await localRest(`active_vote_keys?process_id=eq.${id}`)).toEqual([]);
+        expect((await processRow(id)).status).toBe("archived");
+      }, 60_000);
+    }
   });
 
   describe("7. the plugin switch", () => {

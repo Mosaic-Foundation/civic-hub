@@ -194,6 +194,41 @@ export async function clearActiveVoteKeysForProcess(
 }
 
 /**
+ * Archived votes whose voting window has passed, cleaned up as a close would
+ * (2026-10-14, from the production check). Archiving skips the close, so an
+ * archived vote never ran its close's last step: its bridge rows from before
+ * 2026-10-10 stayed, linking voters to receipts. The hourly job now runs that
+ * step for them, clearing the rows and shuffling the ballots, and nothing
+ * else: the vote stays archived, publishes nothing, and is never re-closed.
+ * Its ballots are already counted in vote_records. A restored vote closes as
+ * usual. Only votes that still had bridge rows are shuffled, so once the
+ * legacy rows are gone this does nothing but read the archived votes.
+ */
+export async function clearEndedArchivedVoteKeys(now: Date = new Date()): Promise<string[]> {
+  // Started from the votes, never by reading the bridge (ballotSecrecyRules).
+  const archived = await readAll((from, to) =>
+    db()
+      .from("processes")
+      .select<{ id: string; state: { voting_closes_at?: string | null } | null }>("id, state")
+      .eq("type", "civic.vote")
+      .eq("status", "archived")
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
+  const finished: string[] = [];
+  for (const v of archived) {
+    const closes = v.state?.voting_closes_at;
+    if (closes == null || Date.parse(closes) > now.getTime()) continue;
+    // The delete is the check: only a vote that still had rows is shuffled.
+    const cleared = await db().from("active_vote_keys").delete().eq("process_id", v.id).select<{ process_id: string }>("process_id");
+    if (cleared.length === 0) continue;
+    await reshuffleBallotsForProcess(v.id);
+    finished.push(v.id);
+  }
+  return finished;
+}
+
+/**
  * Look up a single receipt by exact ID, through ballot_by_receipt so the
  * receipt travels in a call body, never in a logged URL.
  * Returns { receipt_id, choice } if found, null if not.

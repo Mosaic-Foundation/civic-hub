@@ -120,6 +120,11 @@ first time that layer has been runnable from a clean checkout.
   notice beside Join, and joins. Its account is deleted in afterAll. The code is planted in the dev database as a
   request would store it (`plantSignInLink`), because the suite can't read email.
 
+- **Conformance, step 6** (2026-10-14, from the production check): an expired, archived vote ends with no
+  `active_vote_keys` rows and stays archived. The hourly `vote_close` job runs a close's last step (bridge rows
+  cleared, ballots shuffled) for archived votes past their window, and answers `archived_finished`. It applies to any
+  type whose descriptor lists `active_vote_keys`. Conformance: 97 passed.
+
 **A hub's own documents replace the shared ones, summary included.** On a long-used local stack, Athens has a Code of
 Conduct some test wrote, so its page has no "In short". `signIn.spec.ts` checks the Privacy and Terms pages.
 

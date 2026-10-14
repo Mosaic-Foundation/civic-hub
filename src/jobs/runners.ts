@@ -12,7 +12,7 @@ import { sweepHubExports } from "../db/hubExportsBucket.js";
 import { closeAllExpired } from "../services/processService.js";
 import { isPluginEnabledSync } from "../services/hubSettings.js";
 import { refreshSamples } from "../services/sampleRefresh.js";
-import { reshuffleOpenBallots } from "../modules/civic.receipts/index.js";
+import { clearEndedArchivedVoteKeys, reshuffleOpenBallots } from "../modules/civic.receipts/index.js";
 
 export const JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
   meeting_summary: async () => {
@@ -39,8 +39,21 @@ export const JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
         reshuffleError = (err as Error).message;
       }
     }
-    const failed = r.failed.length > 0 || reshuffleError !== null;
-    return { status: failed ? 500 : 200, body: { ...r, reshuffled, reshuffle_error: reshuffleError } };
+    // Archived votes past their window get the close's last step (bridge rows
+    // cleared, ballots shuffled) and stay archived (2026-10-14). Whatever the
+    // plugin switch says: these rows link voters to receipts.
+    let archivedFinished: string[] = [];
+    let archivedError: string | null = null;
+    try {
+      archivedFinished = await clearEndedArchivedVoteKeys(now);
+    } catch (err) {
+      archivedError = (err as Error).message;
+    }
+    const failed = r.failed.length > 0 || reshuffleError !== null || archivedError !== null;
+    return {
+      status: failed ? 500 : 200,
+      body: { ...r, reshuffled, reshuffle_error: reshuffleError, archived_finished: archivedFinished, archived_error: archivedError },
+    };
   },
   sample_refresh: async ({ now }) => {
     const r = await refreshSamples({ now });
