@@ -6,7 +6,9 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Feedback routing: the hub keeps its feedback, software reports reach Civic.Social, the loop closes — 2026-10-13
 
-Commits on `multi-tenant` `c37375c`..(this entry), one item each. Report and handoff:
+Commits on `multi-tenant` `c37375c`..`ce8482b`, one item each. **Live on dev at `ce8482b`** (`release.sh dev --yes`,
+migration applied, health ok with no schema gaps). The first push (`aef6956`) had CI and Smoke green and E2E red. The
+cause was a digest link that didn't scroll to its row on CI's slower machine, fixed in `ce8482b`. **CI, E2E and Smoke (15 tests) green on `ce8482b`.** Report and handoff:
 `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Feedback-Routing-Session-Report-2026-10-13.md`.
 
 **Release needs:**
