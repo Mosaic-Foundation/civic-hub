@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   FEEDBACK_CATEGORIES,
+  SOFTWARE_STREAM,
   FeedbackValidationError,
   submitFeedback,
 } from "../../src/modules/civic.feedback/index.js";
@@ -50,13 +51,14 @@ function uiUnionCategories(): string[] {
 }
 
 /** The pills the form actually renders, in order. */
-function formPills(): Array<{ value: string; label: string }> {
+function formPills(): Array<{ value: string; side: string; label: string }> {
   const src = readFileSync(join(ROOT, "ui/src/pages/Feedback.tsx"), "utf8");
   const decl = src.match(/const CATEGORIES:[\s\S]*?\n\];/);
   expect(decl, "could not find CATEGORIES in ui/src/pages/Feedback.tsx").not.toBeNull();
+  // Each pill names its side of the form's first question (feedback routing).
   return [
-    ...decl![0].matchAll(/value:\s*"([^"]+)",\s*\n?\s*label:\s*"([^"]+)"/g),
-  ].map((m) => ({ value: m[1], label: m[2] }));
+    ...decl![0].matchAll(/value:\s*"([^"]+)",\s*\n?\s*side:\s*"([^"]+)",\s*\n?\s*label:\s*"([^"]+)"/g),
+  ].map((m) => ({ value: m[1], side: m[2], label: m[3] }));
 }
 
 describe("feedback categories — one set, four definitions", () => {
@@ -76,6 +78,11 @@ describe("feedback categories — one set, four definitions", () => {
     const pills = formPills();
     expect(pills.map((p) => p.value).sort()).toEqual([...FEEDBACK_CATEGORIES].sort());
     expect(pills.find((p) => p.value === "topic")?.label).toBe("Suggest a topic");
+    // The form's "How the site works" pills are exactly what the server copies to Civic.Social.
+    expect(pills.filter((p) => p.side === "software").map((p) => p.value).sort()).toEqual(
+      Object.keys(SOFTWARE_STREAM).sort(),
+    );
+    expect(pills.filter((p) => p.side !== "software").every((p) => p.side === "hub")).toBe(true);
   });
 });
 
