@@ -66,6 +66,14 @@ jobs:
         # tests/unit only — tests/api and tests/e2e need a live Supabase/dev
         # server and are not runnable in CI. `npm test` would run everything.
         run: npx vitest run tests/unit
+      # Every "?" in the admin panel links to an anchor the docs site
+      # publishes: its list at https://docs.civic.social/help-anchors.json,
+      # written by the docs build. A key not marked `pending` whose anchor is
+      # gone fails here; pending keys the docs now cover are listed.
+      # src/shared/helpRegistry.ts says how the three stay in step. Added
+      # 2026-10-13 (admin menu slice).
+      - name: Help links reach the docs
+        run: npx tsx scripts/check-help-anchors.ts
 
       # --- UI: install, lint, real typecheck + build (tsc -b && vite build) ---
       - name: UI install

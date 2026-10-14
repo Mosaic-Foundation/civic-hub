@@ -51,7 +51,8 @@ const SCAN_DIRS = ["src", "ui/src", "api"];
 // every hub renders them, so a place written into one is a place on every
 // hub's terms page. Markdown and JSON have no comments to exempt.
 const SCAN_DOC_DIRS = ["config/legal"];
-const SCAN_FILES = ["ui/.env", "ui/index.html"];
+// The help registry's notes show in every hub's admin panel (2026-10-13).
+const SCAN_FILES = ["ui/.env", "ui/index.html", "src/shared/helpRegistry.json"];
 const ALLOWLIST = resolve(ROOT, "scripts/place-name-allowlist.txt");
 
 /**

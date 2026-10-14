@@ -1,0 +1,410 @@
+{
+  "settings.identity": {
+    "text": "What this hub is called and how it looks: the header, the browser tab and the card a shared link shows.",
+    "page": "/reference/settings/identity",
+    "anchor": "settings-identity"
+  },
+  "settings.theme": {
+    "text": "The colours of the whole site. Pick a preset, then adjust base colours or one colour per kind of process. Colours that would be hard to read are adjusted for you.",
+    "page": "/reference/settings/theme",
+    "anchor": "settings-theme"
+  },
+  "settings.copy": {
+    "text": "The words people meet on the way in, the Welcome and About pages, and what this hub calls its local government.",
+    "page": "/reference/settings/copy",
+    "anchor": "settings-copy"
+  },
+  "settings.legal": {
+    "text": "The documents people agree to. Every hub starts from shared text with its own names filled in, including the operator and contact address set here.",
+    "page": "/reference/settings/legal",
+    "anchor": "settings-legal"
+  },
+  "settings.email": {
+    "text": "The sender name and postal address on every email this hub sends.",
+    "page": "/reference/settings/email",
+    "anchor": "settings-email"
+  },
+  "settings.mode": {
+    "text": "Who may sign in. Beta lets in only admins, officials and the allowlist; Live lets in anyone with an emailed code. Changing it needs a fresh code sent to you.",
+    "page": "/reference/modes",
+    "anchor": "settings-mode"
+  },
+  "settings.sample": {
+    "text": "Illustrative content a new hub starts with, each marked Sample. It never reaches the public feed, the export or digests. Removing it cannot be undone and needs a fresh code.",
+    "page": "/reference/settings/sample-content",
+    "anchor": "settings-sample"
+  },
+  "settings.admin-log": {
+    "text": "A read-only list of what this hub's admins did that the hub records, newest first, last 100. Comment hides are in the Moderation log instead.",
+    "page": "/reference/settings/",
+    "anchor": "settings-admin-log",
+    "pending": true
+  },
+  "settings.people": {
+    "text": "Who administers the hub and who sits on its board. Admins reach the admin pages; board members can post announcements. Changing either list needs a fresh code.",
+    "page": "/reference/settings/",
+    "anchor": "settings-people",
+    "pending": true
+  },
+  "settings.officials": {
+    "text": "People with a public title, shown as a pill beside their name. Officials can post announcements, and those marked Receives briefs get each published brief by email.",
+    "page": "/reference/settings/",
+    "anchor": "settings-officials",
+    "pending": true
+  },
+  "settings.participation": {
+    "text": "How much support a proposed vote needs before it opens, and how names appear on comments. Each setting has its own save button.",
+    "page": "/reference/settings/participation",
+    "anchor": "settings-participation"
+  },
+  "settings.plugins": {
+    "text": "Each of the hub's tools is a plugin. Switching one off hides its pages and stops its job; nothing is deleted, and switching it back on restores everything.",
+    "page": "/reference/plugins",
+    "anchor": "settings-plugins"
+  },
+  "plugins.vote": {
+    "text": "Advisory votes people propose and cast. Off hides the Votes pages and stops new votes. While off, nothing closes at its deadline until the plugin is back on.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-vote"
+  },
+  "plugins.proposal": {
+    "text": "Ideas people float for discussion and support. Off hides the Proposals pages and stops new ones. While off, nothing closes at its deadline.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-proposal"
+  },
+  "plugins.project": {
+    "text": "Community projects with updates, comments and support or opposition. Off hides the Projects pages and stops new projects. Nothing is deleted.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-project"
+  },
+  "plugins.conversation": {
+    "text": "Group conversations that show where people agree. They run on a Polis server. Off hides the pages, stops new ones and pauses deadlines.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-conversation"
+  },
+  "plugins.wordcloud": {
+    "text": "One-word answers gathered into a cloud. Only admins create them. You can show one in the strip at the top of every page.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-wordcloud"
+  },
+  "plugins.brief": {
+    "text": "The published record of what people decided, sent to officials. The hub drafts each brief and an admin approves it before it is published and emailed.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-brief"
+  },
+  "plugins.announcement": {
+    "text": "Posts from admins and officials on the feed. People can read them but not reply. Who may post is set under Officials.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-announcement"
+  },
+  "plugins.meeting_summary": {
+    "text": "Plain-language summaries of public meetings, drafted by AI once a day for admin review. A hub with no meeting source set is skipped.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-meeting-summary"
+  },
+  "plugins.news_sync": {
+    "text": "Copies posts from your government's own news feed into the feed as announcements. It needs a feed address, and Announcements must be on too.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-news-sync"
+  },
+  "plugins.assistant": {
+    "text": "AI help while drafting a vote, proposal, project or conversation. People can hide it for themselves. The Code of Conduct check on submissions is separate.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-assistant"
+  },
+  "plugins.search": {
+    "text": "A search box in the header and a results page. Anyone can search the titles and descriptions of what is open or closed on the hub.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-search"
+  },
+  "plugins.feedback": {
+    "text": "A form where anyone can report a problem or suggest a change. Moderation reports are emailed straight away; the rest wait in the Feedback tab and the admin digest.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-feedback"
+  },
+  "plugins.digest": {
+    "text": "A summary email of new activity to each person who has not unsubscribed. Nothing is sent when there is nothing new. In demo and beta it reaches only admins and the allowlist.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-digest"
+  },
+  "plugins.admin_digest": {
+    "text": "A daily email to every admin listing what is waiting: problems, submissions, briefs, summaries and feedback. An empty digest is not sent.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-admin-digest"
+  },
+  "participation.threshold": {
+    "text": "How many endorsements a proposed vote needs before it opens for ballots. Set it to 0 to skip this stage. Votes already gathering support keep their old number.",
+    "page": "/reference/settings/participation",
+    "anchor": "participation-threshold"
+  },
+  "participation.anonymity": {
+    "text": "How names appear on comments: real name required, real name by default with anonymity optional, or anonymous only. The hub still records who wrote each comment.",
+    "page": "/reference/settings/participation",
+    "anchor": "participation-anonymity"
+  },
+  "mode.allowlist": {
+    "text": "The email addresses allowed to sign in while the hub is in beta, one per line. Admins can always sign in. Hub email goes only to admins and this list.",
+    "page": "/reference/modes",
+    "anchor": "mode-allowlist"
+  },
+  "mode.waitlist": {
+    "text": "People who asked for access from the beta landing page. This list is read-only, with a button to copy all the emails.",
+    "page": "/reference/modes",
+    "anchor": "mode-waitlist"
+  },
+  "people.admins": {
+    "text": "Email addresses of this hub's admins. They reach every admin page and can post announcements. A new admin gets an email. Changing the list needs a fresh code.",
+    "page": "/reference/settings/",
+    "anchor": "people-admins",
+    "pending": true
+  },
+  "people.board": {
+    "text": "Email addresses of board members. They can post announcements and be chosen as brief recipients, but cannot open admin pages. Changing the list needs a fresh code.",
+    "page": "/reference/settings/",
+    "anchor": "people-board",
+    "pending": true
+  },
+  "officials.extra_recipients": {
+    "text": "Standing addresses, such as a clerk or a shared board inbox, that also receive each published brief although they are not a person's office.",
+    "page": "/reference/settings/",
+    "anchor": "officials-extra-recipients",
+    "pending": true
+  },
+  "identity.name": {
+    "text": "What the hub calls itself on every page and in the legal documents. Left empty, it uses the name the hub was created with. Its address and its email sender name stay as they are.",
+    "page": "/reference/settings/identity",
+    "anchor": "identity-name"
+  },
+  "identity.label": {
+    "text": "The small line above the tagline. Left empty, it says \"Civic Hub\".",
+    "page": "/reference/settings/identity",
+    "anchor": "identity-label"
+  },
+  "identity.tagline": {
+    "text": "The sentence under the hub's name on every page with a header. Say what the hub is for. Left empty, it uses a sentence worded for the kind of hub.",
+    "page": "/reference/settings/identity",
+    "anchor": "identity-tagline"
+  },
+  "identity.page_title": {
+    "text": "What the browser tab and a shared link's card say. Left empty, it uses the hub's name.",
+    "page": "/reference/settings/identity",
+    "anchor": "identity-page-title"
+  },
+  "identity.description": {
+    "text": "One or two sentences that search engines and link cards show under the title. Left empty, it uses the tagline.",
+    "page": "/reference/settings/identity",
+    "anchor": "identity-description"
+  },
+  "identity.banner_url": {
+    "text": "The wide photograph across the top of the home page and on a shared link's card. Add alt text for people who cannot see it. With no banner, the strip is left out.",
+    "page": "/reference/settings/identity",
+    "anchor": "identity-banner-url"
+  },
+  "identity.logo_url": {
+    "text": "The icon in the browser tab and on a phone's home screen, and a mark on the home page. Use a square PNG, at least 256 by 256 pixels. Left empty, there is none.",
+    "page": "/reference/settings/identity",
+    "anchor": "identity-logo-url"
+  },
+  "identity.timezone": {
+    "text": "The hub's own clock. Times the hub chooses, such as the hour the digest goes out, use this zone. Not set means UTC.",
+    "page": "/reference/settings/identity",
+    "anchor": "identity-timezone"
+  },
+  "copy.intro_body": {
+    "text": "The paragraph in the welcome pop-up a first-time visitor sees. Left empty, it is worded for the kind of hub. Plain text.",
+    "page": "/reference/settings/copy",
+    "anchor": "copy-intro-body"
+  },
+  "copy.residency_intro": {
+    "text": "The line at the top of the sign-up step where someone new confirms they belong here. Left empty, a standard line naming the hub is used.",
+    "page": "/reference/settings/copy",
+    "anchor": "copy-residency-intro"
+  },
+  "copy.welcome": {
+    "text": "The Welcome page: who started this hub and why, in your own words. There is no shared version. Until you write one, visitors are told none is published.",
+    "page": "/reference/settings/copy",
+    "anchor": "copy-welcome"
+  },
+  "copy.about": {
+    "text": "The About page: what a Civic Hub is and how this one works. It starts from shared text with your names filled in, and follows updates until you change it.",
+    "page": "/reference/settings/copy",
+    "anchor": "copy-about"
+  },
+  "copy.welcome_strip": {
+    "text": "The paragraph under the welcome heading at the top of the home page. Left empty, it is worded for the kind of hub. Plain text.",
+    "page": "/reference/settings/copy",
+    "anchor": "copy-welcome-strip"
+  },
+  "copy.welcome_strip_hidden": {
+    "text": "Hides the welcome strip for everyone while this is on. Visitors can also dismiss it for themselves.",
+    "page": "/reference/settings/copy",
+    "anchor": "copy-welcome-strip-hidden"
+  },
+  "copy.beta_banner": {
+    "text": "The bar across every page while the hub is in beta. Left empty, it says the hub is in beta and, while samples remain, that Sample content is not real. Plain text.",
+    "page": "/reference/settings/copy",
+    "anchor": "copy-beta-banner"
+  },
+  "copy.resident_noun": {
+    "text": "One singular word for the people taking part, such as \"neighbor\". Left empty, it is resident, member or participant, depending on the kind of hub.",
+    "page": "/reference/settings/copy",
+    "anchor": "copy-resident-noun"
+  },
+  "copy.governing_body_name": {
+    "text": "The full name of the local government people are addressing. Briefs, announcements and the legal documents use it. Left empty, \"local government\" is used.",
+    "page": "/reference/settings/copy",
+    "anchor": "copy-governing-body-name"
+  },
+  "copy.governing_body_short": {
+    "text": "The governing body's short name, used in labels and running text such as meeting summaries. Left empty, it comes from the full name.",
+    "page": "/reference/settings/copy",
+    "anchor": "copy-governing-body-short"
+  },
+  "legal.terms": {
+    "text": "The Terms of Service people agree to by using this hub. It starts from shared text with your names filled in. Review it before launch.",
+    "page": "/reference/settings/legal",
+    "anchor": "legal-terms"
+  },
+  "legal.privacy": {
+    "text": "The Privacy Policy: what this hub collects and what it does with it. It starts from shared text. Review it before launch.",
+    "page": "/reference/settings/legal",
+    "anchor": "legal-privacy"
+  },
+  "legal.code_of_conduct": {
+    "text": "The hub's rules for taking part. The drafting check tests new submissions against it. It starts from shared text with your names filled in.",
+    "page": "/reference/settings/legal",
+    "anchor": "legal-code-of-conduct"
+  },
+  "legal.proposal_best_practices": {
+    "text": "What makes a proposal worth submitting. It has no page of its own; the drafting check reads this text when new submissions come in.",
+    "page": "/reference/settings/legal",
+    "anchor": "legal-proposal-best-practices"
+  },
+  "legal.operator_name": {
+    "text": "Whoever is answerable for this hub: a person, a group or an office. It is printed as written in the Terms and Privacy Policy.",
+    "page": "/reference/settings/legal",
+    "anchor": "legal-operator-name"
+  },
+  "legal.contact_email": {
+    "text": "Where the legal documents tell people to write with a question, an appeal or a data request. A shared inbox is fine. Left empty, the platform's address is used.",
+    "page": "/reference/settings/legal",
+    "anchor": "legal-contact-email"
+  },
+  "legal.governing_state": {
+    "text": "For a hub that is not a place, the state whose law governs its Terms. A place hub uses its own state. Left empty, the platform default applies.",
+    "page": "/reference/settings/legal",
+    "anchor": "legal-governing-state"
+  },
+  "legal.who_runs_this": {
+    "text": "The paragraph that opens the Privacy Policy and the Terms. The shared text says local government does not run the hub, so rewrite it if that is untrue for you.",
+    "page": "/reference/settings/legal",
+    "anchor": "legal-who-runs-this"
+  },
+  "email.from_name": {
+    "text": "What recipients see as the sender of this hub's emails, such as the hub's name. The sending address itself is set by the platform.",
+    "page": "/reference/settings/email",
+    "anchor": "email-from-name"
+  },
+  "email.postal_address": {
+    "text": "Printed in the footer of digests, because anti-spam law asks for one. Left empty, the platform's address is used.",
+    "page": "/reference/settings/email",
+    "anchor": "email-postal-address"
+  },
+  "identity.theme": {
+    "text": "The site's colours: a preset, then your own picks for base colours and each kind of process. Colours that would be hard to read are adjusted just enough.",
+    "page": "/reference/settings/theme",
+    "anchor": "identity-theme"
+  },
+  "plugin.vote.min_duration_days": {
+    "text": "The shortest voting window a drafter may pick for a vote, in days (1 to 365). Left empty, it is 14.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-vote-min-duration-days"
+  },
+  "plugin.vote.max_duration_days": {
+    "text": "The longest voting window a drafter may pick for a vote, in days (1 to 365). Left empty, it is 90.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-vote-max-duration-days"
+  },
+  "plugin.vote.default_duration_days": {
+    "text": "The voting window a new draft starts with, in days (1 to 365). The drafter can change it within the shortest and longest. Left empty, it is 42.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-vote-default-duration-days"
+  },
+  "plugin.vote.default_check_mode": {
+    "text": "What a receipt code shows after a vote closes: how that ballot was cast, or only that it was counted. The drafter can choose the other; it is fixed once approved.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-vote-default-check-mode",
+    "pending": true
+  },
+  "plugin.conversation.polis_url": {
+    "text": "The address of the Polis server this hub's conversations run on. Left empty, the platform's server is used.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-conversation-polis-url"
+  },
+  "plugin.wordcloud.onboarding_id": {
+    "text": "Pick a word cloud to show in the strip at the top of every page, and where a new account lands after signing up. Left empty, the strip is hidden.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-wordcloud-onboarding-id"
+  },
+  "plugin.meeting_summary.connector_id": {
+    "text": "Where the hub looks for meetings: automatic (the default), or one source such as a site collection, an agendas and minutes page or a YouTube channel.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-meeting-summary-connector-id"
+  },
+  "plugin.meeting_summary.source_url": {
+    "text": "Your government's agendas and minutes page, used to find meetings. Without a source, this hub's meetings are not summarized.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-meeting-summary-source-url"
+  },
+  "plugin.meeting_summary.youtube_channel_id": {
+    "text": "For meetings published as videos: the channel's ID, which starts with UC. Used when the source is a YouTube channel.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-meeting-summary-youtube-channel-id"
+  },
+  "plugin.meeting_summary.title_filter": {
+    "text": "Comma-separated words a meeting's title must contain to be summarized. Left empty, every meeting found is taken.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-meeting-summary-title-filter"
+  },
+  "plugin.meeting_summary.type_exclude": {
+    "text": "Comma-separated words that skip a meeting when its title contains one, such as a board this hub does not cover. Left empty, none are skipped.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-meeting-summary-type-exclude"
+  },
+  "plugin.meeting_summary.cutoff_date": {
+    "text": "Meetings before this date are ignored. Left empty, every meeting found is summarized.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-meeting-summary-cutoff-date"
+  },
+  "plugin.meeting_summary.auto_publish": {
+    "text": "When on, summaries publish without waiting for an admin, though one the hub flags for a problem still waits. Off by default: each summary waits for review.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-meeting-summary-auto-publish"
+  },
+  "plugin.meeting_summary.extraction_instructions": {
+    "text": "Optional extra instructions for the summarizer, such as which topics people care about most. They are added to the standard instructions.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-meeting-summary-extraction-instructions"
+  },
+  "plugin.news_sync.connector": {
+    "text": "The kind of news feed to copy from. Today the only choice is a Wix blog feed. Both this and the feed address must be set for news sync to run.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-news-sync-connector"
+  },
+  "plugin.news_sync.source_url": {
+    "text": "The address of your government's news feed. Items are copied in as announcements, so Announcements must be on too. Left empty, news sync does nothing.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-news-sync-source-url"
+  },
+  "plugin.digest.send_hour": {
+    "text": "The hour the digest goes out, in the hub's time zone (set under Identity). Left empty, it goes out at 13:00.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-digest-send-hour"
+  },
+  "plugin.feedback.contact_email": {
+    "text": "Where the Feedback page tells people to write if they prefer email. Left empty, it shows the Legal contact address, or the platform's if that is empty too.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-feedback-contact-email",
+    "pending": true
+  }
+}
