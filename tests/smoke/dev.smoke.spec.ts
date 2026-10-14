@@ -15,7 +15,9 @@
  * and afterAll can put away everything the run made:
  *   - pending reviews are declined, the approved vote is archived;
  *   - the run's residents delete their accounts (their drafts and sessions go
- *     with them), and the admin's minted sessions are ended.
+ *     with them), and the admin's minted sessions are ended;
+ *   - the run's copies in Civic.Social's inbox are deleted (the smoke hub's
+ *     feedback items stay, like its events).
  * Events and review turns are append-only by design, so their history stays
  * on the smoke hub; that is why it is its own hub.
  */
@@ -28,11 +30,15 @@ import {
   baseUrl,
   devRest,
   endMintedSessions,
+  feedbackByMessage,
   mintSession,
+  mosaicCopyOf,
   missingSmokeEnv,
   plantSample,
   plantSignInLink,
+  removeMosaicCopies,
   removeSample,
+  setMosaicStatus,
 } from "./devStack";
 
 const run = Date.now().toString(36);
@@ -53,6 +59,7 @@ const residents: string[] = [];
 const pendingReviews = new Set<string>();
 const liveProcesses: string[] = [];
 const plantedSamples: string[] = [];
+const mosaicCopies: string[] = [];
 let cleanReview = { id: "", title: "" };
 let flaggedReview = { id: "", title: "" };
 
@@ -136,6 +143,7 @@ test.afterAll(async ({ playwright }) => {
     if (!r.ok()) errors.push(`archive ${id}: ${r.status()}`);
   }
   for (const id of plantedSamples) await removeSample(id);
+  await removeMosaicCopies(mosaicCopies);
   for (const token of residents) {
     const r = await request.delete(`${apiBase()}/auth/me`, { headers: auth(token) });
     if (!r.ok()) errors.push(`delete account: ${r.status()}`);
@@ -429,6 +437,7 @@ test("the Admin menu opens at phone width with its counts; the review icon says 
     "Moderation",
     "Settings",
     "Plugins",
+    "Contact Civic.Social",
   ]);
   await menu.getByRole("menuitem", { name: "Plugins" }).click();
   await expect(page).toHaveURL(/\/admin\/settings\/plugins$/);
@@ -464,5 +473,70 @@ test("an admin deletes one sample from Settings, and Next: set up your hub follo
   await expect(page.getByRole("status").filter({ hasText: `Deleted “${title}”.` })).toBeVisible();
   await expect(page.getByRole("link", { name: title })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Next: set up your hub" })).toBeVisible();
+  await page.close();
+});
+
+// --- Feedback routing (2026-10-15) ------------------------------------------
+
+const SOFTWARE_REPORT = `Smoke: the About page jumps while it loads ${run}`;
+const HUB_REPORT = `Smoke: a question for this hub's admins ${run}`;
+
+test("a software report lands with the hub and in Civic.Social's inbox; a hub report with the hub only", async ({ browser }) => {
+  const page = await open(browser, { viewport: { width: 375, height: 812 } });
+  await visitAs(page, resident);
+
+  await page.goto("/about");
+  await page.getByRole("contentinfo").getByRole("link", { name: "Send feedback" }).click();
+  await page.getByText("How the site works", { exact: true }).click();
+  await expect(
+    page.getByText("Reports about how the site works are also shared with Civic.Social, which maintains the software."),
+  ).toBeVisible();
+  await page.getByLabel(/^Message/).fill(SOFTWARE_REPORT);
+  await page.getByLabel("Civic.Social may contact me about this").check();
+  await page.getByRole("button", { name: "Send feedback" }).click();
+  await expect(page.getByTestId("feedback-shared")).toBeVisible();
+
+  const software = await feedbackByMessage(SOFTWARE_REPORT);
+  expect(software).toBeDefined();
+  const copy = await mosaicCopyOf(software!.id);
+  expect(copy).toMatchObject({ stream: "bug", origin: "resident", page_path: "/about", contact_ok: true });
+  expect(copy!.contact_email).toMatch(/^smoke-.*@example\.test$/);
+  mosaicCopies.push(copy!.id);
+
+  await page.goto("/feedback");
+  await page.getByText("This hub", { exact: true }).click();
+  await page.getByRole("radiogroup", { name: "What kind?" }).getByText("General").click();
+  await page.getByLabel(/^Message/).fill(HUB_REPORT);
+  await page.getByRole("button", { name: "Send feedback" }).click();
+  await expect(page.getByRole("heading", { name: "Thanks for the feedback" })).toBeVisible();
+  await expect(page.getByTestId("feedback-shared")).toHaveCount(0);
+  const hubOnly = await feedbackByMessage(HUB_REPORT);
+  expect(hubOnly).toBeDefined();
+  expect(await mosaicCopyOf(hubOnly!.id)).toBeUndefined();
+  await page.close();
+});
+
+test("an admin sends a misfiled item to Civic.Social, and the badge shows Civic.Social's status", async ({ browser }) => {
+  const item = await feedbackByMessage(HUB_REPORT);
+  test.skip(!item, "needs the hub report above");
+  const page = await open(browser, { viewport: { width: 375, height: 812 } });
+  await visitAs(page, admin);
+  await page.goto(`/admin/feedback#${item!.id}`);
+  const row = page.locator(`[id="${item!.id}"]`);
+  await expect(row).toBeInViewport();
+  await row.getByRole("button", { name: "Send to Civic.Social", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Send to Civic.Social?" });
+  await dialog.getByLabel("Something broken (a bug)").check();
+  await dialog.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(row.getByTestId("mosaic-badge")).toContainText("Received");
+
+  const copy = await mosaicCopyOf(item!.id);
+  expect(copy).toMatchObject({ origin: "forwarded", contact_ok: false, contact_email: null });
+  mosaicCopies.push(copy!.id);
+
+  // Civic.Social marks it planned; the hub's badge follows.
+  await setMosaicStatus(copy!.id, item!.id, "planned");
+  await page.reload();
+  await expect(page.locator(`[id="${item!.id}"]`).getByTestId("mosaic-badge")).toContainText("Planned");
   await page.close();
 });

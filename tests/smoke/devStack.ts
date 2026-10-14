@@ -220,3 +220,60 @@ export async function removeSample(id: string): Promise<void> {
     method: "DELETE",
   }).catch(() => undefined);
 }
+
+// --- Feedback routing (2026-10-15) ------------------------------------------
+//
+// The suite has no console session: minting one would put the operator's
+// rights in CI. It reads Civic.Social's inbox rows straight from the dev
+// database, only the smoke hub's, and sets a status the way the console does
+// (the copy, then the hub row's mirror). The console's own path is covered
+// by tests/e2e/feedbackRouting.spec.ts and tests/api/feedbackRouting.test.ts.
+
+export interface SmokeMosaicCopy {
+  id: string;
+  stream: string;
+  origin: string;
+  contact_ok: boolean;
+  contact_email: string | null;
+  page_path: string | null;
+  status: string;
+}
+
+/** Civic.Social's copy of one of the smoke hub's feedback items, if it has one. */
+export async function mosaicCopyOf(feedbackId: string): Promise<SmokeMosaicCopy | undefined> {
+  const rows = (await devRest(
+    `platform_feedback?select=id,stream,origin,contact_ok,contact_email,page_path,status&source_hub_id=eq.${encodeURIComponent(smokeHub())}&source_feedback_id=eq.${encodeURIComponent(feedbackId)}`,
+  )) as SmokeMosaicCopy[];
+  return rows[0];
+}
+
+/** The smoke hub's feedback item with this exact message. */
+export async function feedbackByMessage(message: string): Promise<{ id: string; mosaic_status: string | null } | undefined> {
+  const rows = (await devRest(
+    `feedback_submissions?select=id,mosaic_status&hub_id=eq.${encodeURIComponent(smokeHub())}&message=eq.${encodeURIComponent(message)}`,
+  )) as Array<{ id: string; mosaic_status: string | null }>;
+  return rows[0];
+}
+
+/** Set Civic.Social's status on a smoke hub copy, as the console does. */
+export async function setMosaicStatus(copyId: string, feedbackId: string, status: "received" | "planned" | "fixed"): Promise<void> {
+  const hub = encodeURIComponent(smokeHub());
+  await devRest(`platform_feedback?id=eq.${encodeURIComponent(copyId)}&source_hub_id=eq.${hub}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, status_changed_at: new Date().toISOString() }),
+  });
+  await devRest(`feedback_submissions?id=eq.${encodeURIComponent(feedbackId)}&hub_id=eq.${hub}`, {
+    method: "PATCH",
+    body: JSON.stringify({ mosaic_status: status }),
+  });
+}
+
+/** Take this run's copies out of Civic.Social's dev inbox (the smoke hub's only). */
+export async function removeMosaicCopies(ids: readonly string[]): Promise<void> {
+  const hub = encodeURIComponent(smokeHub());
+  for (const id of ids) {
+    await devRest(`platform_feedback?id=eq.${encodeURIComponent(id)}&source_hub_id=eq.${hub}`, { method: "DELETE" }).catch(
+      () => undefined,
+    );
+  }
+}
