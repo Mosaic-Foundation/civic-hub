@@ -6,7 +6,10 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Members and invites: a hub is a group of people, and any member can bring a neighbour in — 2026-10-14
 
-Commits on `multi-tenant` `9585d80`..(this entry), one item each. Report and handoff:
+Commits on `multi-tenant` `9585d80`..`585503a`, one item each, plus this closing entry. **Live on dev at `585503a`**
+(`release.sh dev --yes`, migration applied, health ok with no schema gaps). **CI, E2E and Smoke green on `585503a`:**
+API 766 passed in both modes, unit 1,546, Playwright 130 passed (2 skipped), help links 85 keys; Smoke 18 of 18 on
+live dev in 1.6 min. Report and handoff:
 `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Members-Invites-Session-Report-2026-10-14.md`.
 
 **Release needs:**
