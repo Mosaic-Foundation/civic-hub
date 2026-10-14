@@ -1,0 +1,99 @@
+/* "Share this hub" (members and invites slice). */
+
+.share-panel-section + .share-panel-section {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.share-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-md, 1rem);
+}
+
+.share-panel-note {
+  margin: 0 0 var(--space-sm);
+}
+
+.share-panel-label {
+  display: block;
+  margin: var(--space-sm) 0 var(--space-xs);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.share-panel-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 16px; /* no zoom on focus on iOS */
+  resize: vertical;
+}
+
+.share-panel-send {
+  margin-top: var(--space-sm);
+  min-height: 40px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--color-primary);
+  color: var(--color-on-primary, #fff);
+  font-family: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.share-panel-send:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.share-panel-result {
+  margin: var(--space-sm) 0 0;
+}
+
+.share-panel-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.share-panel-target {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.share-panel .share-panel-target,
+.share-panel .share-panel-target:hover {
+  text-decoration: none;
+}
+
+.share-panel-target:hover {
+  border-color: var(--color-border-hover);
+}
+
+.share-panel-target:focus-visible,
+.share-panel-send:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
