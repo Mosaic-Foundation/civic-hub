@@ -7,6 +7,7 @@
 //   /admin/settings/participation#threshold → that section, scrolled to the setting
 //   /admin/settings#feedback              → Settings → Plugins, the Feedback panel open
 //   /admin/settings/plugins#feedback      → the same
+//   /admin#contact-civic-social           → Contact Civic.Social (an admin page, not a tab)
 //
 // Anchors are lower-case words joined by hyphens. Plugin ids keep their
 // underscores in settings keys; their anchors use hyphens (meeting-summary).
@@ -25,6 +26,11 @@ export const ADMIN_TABS = [
   { anchor: "edits", path: "/admin/edits" },
   { anchor: "archived", path: "/admin/archived" },
   { anchor: "settings", path: "/admin/settings" },
+] as const;
+
+/** Admin pages that are not tabs (feedback routing, 2026-10-15). */
+export const ADMIN_PAGES = [
+  { anchor: "contact-civic-social", path: "/admin/contact-civic-social" },
 ] as const;
 
 /** Settings' sections, in the order of its menu. Each is /admin/settings/<id>. */
@@ -71,7 +77,7 @@ export function adminAnchorPath(anchor: string, on: "admin" | "settings"): strin
   const a = anchor.replace(/^#/, "").toLowerCase();
   if (!a) return null;
   if (on === "admin") {
-    const tab = ADMIN_TABS.find((t) => t.anchor === a);
+    const tab = ADMIN_TABS.find((t) => t.anchor === a) ?? ADMIN_PAGES.find((p) => p.anchor === a);
     if (tab) return tab.path;
   }
   if (isSettingsNavId(a)) return `/admin/settings/${a}`;

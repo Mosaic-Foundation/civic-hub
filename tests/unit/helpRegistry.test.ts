@@ -13,6 +13,10 @@ const PARTS = [
   "people.admins",
   "people.board",
   "officials.extra_recipients",
+  // Admin → Feedback's Send to Civic.Social, and the Contact Civic.Social
+  // page (feedback routing, 2026-10-15).
+  "admin.feedback_forward",
+  "admin.contact_civic_social",
 ];
 
 // Settings with no field of their own: each plugin's switch sits under its

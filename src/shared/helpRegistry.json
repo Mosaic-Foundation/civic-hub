@@ -406,5 +406,17 @@
     "page": "/reference/plugins",
     "anchor": "plugin-feedback-contact-email",
     "pending": true
+  },
+  "admin.feedback_forward": {
+    "text": "Shares this item with Civic.Social, which maintains the software, as a bug or an idea. The sender's name and address stay here. Their status then shows on the item.",
+    "page": "/reference/plugins",
+    "anchor": "admin-feedback-forward",
+    "pending": true
+  },
+  "admin.contact_civic_social": {
+    "text": "Write to Civic.Social yourself, apart from residents' feedback: a question about running the hub, a problem or a request. Your address goes with it so they can reply.",
+    "page": "/reference/plugins",
+    "anchor": "admin-contact-civic-social",
+    "pending": true
   }
 }
