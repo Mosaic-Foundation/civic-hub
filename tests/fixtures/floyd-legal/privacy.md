@@ -46,6 +46,7 @@ We try to collect only what's needed to run the Hub. Specifically:
 - That you took part in a vote, and when, linked to your account, so that each person votes once.
 - Your ballot, kept apart from your account: your choice and a receipt code. The receipt code is stored with the ballot, never with you, so no record links you or your email address to a choice. Ballots carry no time and are kept in shuffled order, so they can't be matched to voters by when or in what order they were cast.
 - Backups made on or before 11 October 2026, when ballots were separated from accounts, may still hold the earlier records that linked a voter to a receipt, until those backups age out. Our backups are kept for 7 days (hourly copies) or 90 days (daily copies), so the last of these is deleted by mid-January 2027.
+- If you voted before 11 October 2026 in a vote that is still open, a record linking your account to your receipt is kept until you next open that vote while signed in or it closes, whichever comes first, and is deleted then.
 - Any comments you submit, linked to your account.
 - The timestamp of each action you take.
 
