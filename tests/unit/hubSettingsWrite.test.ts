@@ -224,7 +224,7 @@ describe("navigation settings (navigation slice, 2026-10-14)", () => {
     expect(normalizeValue(order, '["projects"]')).toBe('["projects"]');
     expect(normalizeValue(order, "")).toBe("");
     expect(normalizeValue(order, [])).toBe("");
-    // An id the hub does not have today is kept: a plugin switched off keeps its place.
+    // An id the hub does not have today is kept; drawing the order skips it.
     expect(normalizeValue(order, ["some_plugin_section"])).toBe('["some_plugin_section"]');
     expect(normalizeValue(order, ["votes", "votes"])).toEqual({ error: "nav.section_order lists votes twice." });
     expect(normalizeValue(order, ["feed", "votes"])).toHaveProperty("error");

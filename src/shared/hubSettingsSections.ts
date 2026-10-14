@@ -59,8 +59,9 @@ export type SettingFieldKind =
   /**
    * The order of the hub's navigation sections (navigation slice,
    * 2026-10-14): a JSON array of distinct section ids. Feed is fixed first
-   * and never listed. An id the hub no longer has is kept harmlessly, so
-   * switching a plugin off and on does not lose its place.
+   * and never listed. Switching a plugin off takes its section out
+   * (hubSettingsController), so it comes back at the end; any other id the
+   * hub doesn't have is skipped when the order is drawn.
    */
   | "section_order";
 

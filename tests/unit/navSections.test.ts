@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { processTypeDisplays } from "../../src/processes/registry.js";
 import {
   barSections,
+  orderAfterSwitchingOff,
   orderedSections,
   parseSectionOrder,
   sectionForPath,
@@ -98,5 +99,28 @@ describe("the hub's sections", () => {
     expect(sectionForPath("/vote-results/abc", sections)).toBe("outcomes");
     expect(sectionForPath("/members", sections)).toBe("members");
     expect(sectionForPath("/admin/settings", sections)).toBeNull();
+  });
+});
+
+describe("switching a plugin off (Adam, 2026-10-14: a newly enabled section goes to the end)", () => {
+  it("takes its section out of the stored order", () => {
+    expect(
+      orderAfterSwitchingOff({ stored: '["votes","conversations","proposals"]', switchedOff: ["conversation"], types }),
+    ).toBe('["votes","proposals"]');
+  });
+
+  it("so switching it on again puts it at the end", () => {
+    const order = parseSectionOrder('["votes","proposals"]');
+    expect(ids(order)).toEqual(["feed", "votes", "proposals", "conversations", "projects", "outcomes", "members"]);
+  });
+
+  it("changes nothing with no order stored, or no listed section off", () => {
+    expect(orderAfterSwitchingOff({ stored: undefined, switchedOff: ["conversation"], types })).toBeNull();
+    expect(orderAfterSwitchingOff({ stored: '["votes"]', switchedOff: ["wordcloud"], types })).toBeNull();
+    expect(orderAfterSwitchingOff({ stored: '["votes"]', switchedOff: [], types })).toBeNull();
+  });
+
+  it("clears an order that held only switched-off sections", () => {
+    expect(orderAfterSwitchingOff({ stored: '["votes"]', switchedOff: ["vote"], types })).toBe("");
   });
 });

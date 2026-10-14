@@ -114,3 +114,24 @@ export function sectionForPath(pathname: string, sections: readonly NavSection[]
   }
   return null;
 }
+
+/**
+ * The stored Section order after a plugins save: the sections of every plugin
+ * switched off leave it, so switching one on again puts its section at the
+ * end, as a newly enabled section goes (Adam, 2026-10-14). Null when nothing
+ * changes (no order stored, or no listed section switched off).
+ */
+export function orderAfterSwitchingOff(input: {
+  stored: string | undefined;
+  switchedOff: readonly string[];
+  types: readonly ProcessTypeDisplay[];
+}): string | null {
+  const order = parseSectionOrder(input.stored);
+  if (order.length === 0 || input.switchedOff.length === 0) return null;
+  const gone = new Set(
+    input.types.filter((t) => t.section && input.switchedOff.includes(t.plugin)).map((t) => t.section!.id),
+  );
+  const kept = order.filter((id) => !gone.has(id));
+  if (kept.length === order.length) return null;
+  return kept.length === 0 ? "" : JSON.stringify(kept);
+}

@@ -43,6 +43,8 @@ import {
 import { documentSettingDefault, documentTemplate } from "../services/hubDocuments.js";
 import { getUser } from "../modules/civic.auth/index.js";
 import { renameHub } from "../db/hubs.js";
+import { processTypeDisplays } from "../processes/registry.js";
+import { orderAfterSwitchingOff } from "../shared/navSections.js";
 import { RENAME_FOLLOWERS, SETTING_LABELS, consoleOwnsHandoverKeys, renameFollowers } from "../shared/settingOwners.js";
 
 export interface HubSettingsResponse {
@@ -216,7 +218,18 @@ export const handlePutHubSettings = route(async (req, res) => {
   // A new hub name carries to the operator, the email sender name and the
   // registry name where they still read the old one (review R11).
   const followOn = await renameFollowOn(hubId, entries);
-  await setSettings(hubId, [...entries, ...followOn.settings], actor.id);
+  // A plugin switched off leaves the Section order, so it comes back at the
+  // end when switched on again (navigation slice, Adam, 2026-10-14).
+  const switchedOff = entries
+    .filter((e) => /^plugin\.[a-z_]+\.enabled$/.test(e.key) && e.value === "false")
+    .map((e) => e.key.split(".")[1]);
+  const order = orderAfterSwitchingOff({
+    stored: await getSetting(hubId, KEYS.NAV_SECTION_ORDER),
+    switchedOff,
+    types: processTypeDisplays(),
+  });
+  const navFollowOn = order === null ? [] : [{ key: KEYS.NAV_SECTION_ORDER, value: order }];
+  await setSettings(hubId, [...entries, ...followOn.settings, ...navFollowOn], actor.id);
   if (followOn.registryName) await renameHub(hubId, followOn.registryName);
 
   // One line per save, naming who and which keys — never the values, which
