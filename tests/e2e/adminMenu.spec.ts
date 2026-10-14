@@ -2,7 +2,7 @@
  * The admin menu slice (2026-10-13), at phone width and on a desktop.
  *
  * 1. The Admin pill's menu (Reviews with its count, Moderation, Settings,
- *    Plugins), the review icon, the personal account menu, "Processes".
+ *    Plugins, and since feedback routing Contact Civic.Social), the review icon, the personal account menu, "Processes".
  * 2. Anchors open the right tab, section or plugin panel; panels start closed.
  * 3. The "?" beside a setting opens its note with the docs link.
  * 4. One sample deleted; "Remove samples" goes with the last; Next steps.
@@ -99,7 +99,9 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     const menu = page.getByRole("menu", { name: "Admin" });
     const items = menu.getByRole("menuitem");
     await expect(items).toHaveText(
-      reviews > 0 ? [`Reviews${reviews}`, "Moderation", "Settings", "Plugins"] : ["Reviews", "Moderation", "Settings", "Plugins"],
+      reviews > 0
+        ? [`Reviews${reviews}`, "Moderation", "Settings", "Plugins", "Contact Civic.Social"]
+        : ["Reviews", "Moderation", "Settings", "Plugins", "Contact Civic.Social"],
     );
     expect(await items.count()).toBeLessThanOrEqual(5);
     // The menu fits on a phone's screen.
