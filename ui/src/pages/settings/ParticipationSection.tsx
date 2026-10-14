@@ -1,6 +1,7 @@
 // Participation — the proposal endorsement threshold and how residents
 // appear on comments. Two sub-blocks, each with its own Save button.
 
+import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
 import { refreshHubConfig } from "../../config/hubConfig";
 import {
@@ -94,11 +95,17 @@ export default function ParticipationSection() {
   return (
     <>
       <section className="settings-section">
-        <h2 className="settings-section-title">Participation</h2>
+        <h2 className="settings-section-title">
+          Participation
+          <HelpButton k="settings.participation" label="Participation" />
+        </h2>
 
         {error && <p className="form-error">{error}</p>}
 
-        <h3 className="settings-subsection-title" id="threshold" data-anchor="">Proposal endorsement threshold</h3>
+        <h3 className="settings-subsection-title" id="threshold" data-anchor="">
+          Proposal endorsement threshold
+          <HelpButton k="participation.threshold" label="Proposal endorsement threshold" />
+        </h3>
         <label className="form-label" htmlFor="support-threshold">
           Endorsements needed
         </label>
@@ -136,7 +143,10 @@ export default function ParticipationSection() {
       </section>
 
       <section className="settings-section settings-section--follow">
-        <h3 className="settings-subsection-title" id="anonymity" data-anchor="">Comments & anonymity</h3>
+        <h3 className="settings-subsection-title" id="anonymity" data-anchor="">
+          Comments & anonymity
+          <HelpButton k="participation.anonymity" label="Comments & anonymity" />
+        </h3>
         <p className="form-hint">
           Votes are always anonymous (ballot secrecy) and creating a
           process always carries the creator's real name — those are

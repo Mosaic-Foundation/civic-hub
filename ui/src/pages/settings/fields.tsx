@@ -7,6 +7,7 @@
 
 import { useEffect, useId, useState } from "react";
 import MarkdownTextarea from "../../components/MarkdownTextarea";
+import HelpButton from "../../components/HelpButton";
 import PostImagePicker from "../../components/PostImagePicker";
 import { fieldSpec, DOCUMENT_PLACEHOLDERS } from "../../../../src/shared/hubSettingsSections";
 import { listProcesses, uploadHubImage, type ProcessSummary } from "../../services/api";
@@ -23,12 +24,16 @@ interface Common {
   placeholder?: string;
 }
 
-function Label({ id, label, hint }: { id: string; label: string; hint?: React.ReactNode }) {
+/** A field's label, its "?" (when the help registry has the key) and its hint. */
+function Label({ id, k, label, hint }: { id: string; k: string; label: string; hint?: React.ReactNode }) {
   return (
     <>
-      <label className="form-label settings-field-label" htmlFor={id}>
-        {label}
-      </label>
+      <div className="settings-field-label-row">
+        <label className="form-label settings-field-label" htmlFor={id}>
+          {label}
+        </label>
+        <HelpButton k={k} label={label} />
+      </div>
       {hint && <p className="form-hint">{hint}</p>}
     </>
   );
@@ -47,7 +52,7 @@ export function TextField({ f, k, label, hint, placeholder, width = 420 }: Commo
   const id = useId();
   return (
     <div className="settings-field">
-      <Label id={id} label={label} hint={hint} />
+      <Label id={id} k={k} label={label} hint={hint} />
       <input
         id={id}
         className="form-input"
@@ -67,7 +72,7 @@ export function EmailField({ f, k, label, hint, placeholder }: Common) {
   const id = useId();
   return (
     <div className="settings-field">
-      <Label id={id} label={label} hint={hint} />
+      <Label id={id} k={k} label={label} hint={hint} />
       <input
         id={id}
         className="form-input"
@@ -86,7 +91,7 @@ export function TextAreaField({ f, k, label, hint, placeholder, rows = 3 }: Comm
   const id = useId();
   return (
     <div className="settings-field">
-      <Label id={id} label={label} hint={hint} />
+      <Label id={id} k={k} label={label} hint={hint} />
       <textarea
         id={id}
         className="form-textarea"
@@ -106,7 +111,7 @@ export function MarkdownField({ f, k, label, hint, placeholder, rows = 5 }: Comm
   const id = useId();
   return (
     <div className="settings-field">
-      <Label id={id} label={label} hint={hint} />
+      <Label id={id} k={k} label={label} hint={hint} />
       <MarkdownTextarea
         id={id}
         className="form-textarea"
@@ -141,7 +146,7 @@ export function DocumentField({
 
   return (
     <div className="settings-field settings-document">
-      <Label id={id} label={label} hint={hint} />
+      <Label id={id} k={k} label={label} hint={hint} />
       <MarkdownTextarea
         id={id}
         className="form-textarea settings-document-editor"
@@ -210,7 +215,10 @@ export function ImageField({
   const url = f.value(k);
   return (
     <div className="settings-field">
-      <span className="form-label settings-field-label">{label}</span>
+      <div className="settings-field-label-row">
+        <span className="form-label settings-field-label">{label}</span>
+        <HelpButton k={k} label={label} />
+      </div>
       {hint && <p className="form-hint">{hint}</p>}
       <div className={`settings-image settings-image--${kind}`}>
         <PostImagePicker
@@ -251,6 +259,8 @@ export function BooleanField({ f, k, label, hint }: Common) {
         />
         <span className="settings-boolean-label">{label}</span>
       </label>
+      {/* Outside the label: a click on the "?" must not tick the box. */}
+      <HelpButton k={k} label={label} />
       {hint && <p className="form-hint">{hint}</p>}
     </div>
   );
@@ -268,7 +278,7 @@ export function HourField({ f, k, label, hint }: Common) {
   const zone = validZone(f.data.values["identity.timezone"]) ?? "UTC";
   return (
     <div className="settings-field">
-      <Label id={id} label={label} hint={hint} />
+      <Label id={id} k={k} label={label} hint={hint} />
       <select
         id={id}
         className="form-input"
@@ -328,7 +338,7 @@ export function TimeZoneField({ f, k, label, hint }: Common) {
   const value = f.value(k);
   return (
     <div className="settings-field">
-      <Label id={id} label={label} hint={hint} />
+      <Label id={id} k={k} label={label} hint={hint} />
       <select
         id={id}
         className="form-input"
@@ -353,7 +363,7 @@ export function UrlField({ f, k, label, hint, placeholder }: Common) {
   const id = useId();
   return (
     <div className="settings-field">
-      <Label id={id} label={label} hint={hint} />
+      <Label id={id} k={k} label={label} hint={hint} />
       <input
         id={id}
         type="url"
@@ -381,7 +391,7 @@ export function ChoiceField({
   const options = fieldSpec(k)?.options ?? [];
   return (
     <div className="settings-field">
-      <Label id={id} label={label} hint={hint} />
+      <Label id={id} k={k} label={label} hint={hint} />
       <select
         id={id}
         className="form-input"
@@ -420,7 +430,7 @@ export function ProcessField({ f, k, label, hint, emptyLabel = "None" }: Common 
   const missing = value !== "" && items !== null && !items.some((p) => p.id === value);
   return (
     <div className="settings-field">
-      <Label id={id} label={label} hint={hint} />
+      <Label id={id} k={k} label={label} hint={hint} />
       <select
         id={id}
         className="form-input"
@@ -447,7 +457,7 @@ export function DateField({ f, k, label, hint }: Common) {
   const id = useId();
   return (
     <div className="settings-field">
-      <Label id={id} label={label} hint={hint} />
+      <Label id={id} k={k} label={label} hint={hint} />
       <input
         id={id}
         type="date"
@@ -467,7 +477,7 @@ export function NumberField({ f, k, label, hint, placeholder, unit }: Common & {
   const spec = fieldSpec(k);
   return (
     <div className="settings-field">
-      <Label id={id} label={label} hint={hint} />
+      <Label id={id} k={k} label={label} hint={hint} />
       <span className="settings-number-row">
         <input
           id={id}

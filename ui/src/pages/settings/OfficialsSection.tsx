@@ -6,6 +6,7 @@
 // standing addresses without an account (a clerk, a shared inbox). The
 // review page still lets the admin adjust the list per brief.
 
+import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
 import {
   adminGetSettings,
@@ -143,7 +144,10 @@ export default function OfficialsSection() {
 
   return (
     <section className="settings-section">
-      <h2 className="settings-section-title">Officials & brief recipients</h2>
+      <h2 className="settings-section-title">
+        Officials & brief recipients
+        <HelpButton k="settings.officials" label="Officials & brief recipients" />
+      </h2>
 
       {error && <p className="form-error">{error}</p>}
 
@@ -273,12 +277,15 @@ export default function OfficialsSection() {
       </button>
 
       <div className="official-extra-recipients">
-        <label className="form-label" htmlFor="extra-brief-recipients">
-          Also send briefs to{" "}
-          <span className="official-col-note">
-            (standing addresses that aren't a person's office — a clerk, a shared board inbox)
-          </span>
-        </label>
+        <div className="settings-field-label-row">
+          <label className="form-label" htmlFor="extra-brief-recipients">
+            Also send briefs to{" "}
+            <span className="official-col-note">
+              (standing addresses that aren't a person's office — a clerk, a shared board inbox)
+            </span>
+          </label>
+          <HelpButton k="officials.extra_recipients" label="Also send briefs to" />
+        </div>
         <input
           id="extra-brief-recipients"
           className="form-input"

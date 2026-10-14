@@ -8,6 +8,7 @@
 // changed — so a key nobody touched keeps its own "last changed" record.
 // The server refuses any key outside the section anyway.
 
+import HelpButton from "../../components/HelpButton";
 import { useEffect, useMemo, useState } from "react";
 import {
   PLUGIN_SECTION_ORDER,
@@ -166,7 +167,10 @@ export default function SectionForm({
   if (!data || !initial) {
     return (
       <section className="settings-section">
-        <h2 className="settings-section-title">{title}</h2>
+        <h2 className="settings-section-title">
+        {title}
+        <HelpButton k={`settings.${section}`} label={title} />
+      </h2>
         <p className="form-hint">Loading…</p>
       </section>
     );
@@ -186,7 +190,10 @@ export default function SectionForm({
 
   return (
     <section className="settings-section">
-      <h2 className="settings-section-title">{title}</h2>
+      <h2 className="settings-section-title">
+        {title}
+        <HelpButton k={`settings.${section}`} label={title} />
+      </h2>
       {intro && <div className="settings-section-intro">{intro}</div>}
       <SharedWithConsole data={data} keys={keys} />
 

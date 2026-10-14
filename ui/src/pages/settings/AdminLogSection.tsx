@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import HelpButton from "../../components/HelpButton";
 import { Link } from "react-router-dom";
 import { adminGetHubAdminLog, type HubAdminLogEntry } from "../../services/api";
 
@@ -21,7 +22,10 @@ export default function AdminLogSection() {
 
   return (
     <section className="settings-section">
-      <h2 className="settings-section-title">Admin log</h2>
+      <h2 className="settings-section-title">
+        Admin log
+        <HelpButton k="settings.admin-log" label="Admin log" />
+      </h2>
       <p className="settings-section-intro">
         What admins of this hub have done that the hub keeps a record of, newest first. Hiding a comment or removing an
         announcement is in the <Link to="/admin/moderation">Moderation</Link> log instead.

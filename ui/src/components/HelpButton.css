@@ -1,0 +1,71 @@
+/* The "?" beside a setting or section, and its note (HelpButton.tsx). */
+
+.help {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+/* A 22px circle with a 44px touch target around it. */
+.help-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong, var(--color-border));
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.help-button::after {
+  content: "";
+  position: absolute;
+  inset: -11px;
+}
+
+.help-button:hover,
+.help-button[aria-expanded="true"] {
+  color: var(--color-primary-ink);
+  border-color: var(--color-primary-ink);
+}
+
+.help-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.help-note {
+  position: absolute;
+  top: calc(100% + 8px);
+  z-index: 150;
+  width: min(300px, calc(100vw - 32px));
+  padding: 10px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: normal;
+}
+
+.help-note-link {
+  font-weight: 600;
+  white-space: nowrap;
+}

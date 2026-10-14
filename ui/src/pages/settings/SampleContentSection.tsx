@@ -7,6 +7,7 @@
 // be undone and may take real people's input with it; it is recorded in the
 // hub's own admin log.
 
+import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
 import {
   adminGetSampleContent,
@@ -71,7 +72,10 @@ export default function SampleContentSection() {
 
   return (
     <section className="settings-section">
-      <h2 className="settings-section-title">Sample content</h2>
+      <h2 className="settings-section-title">
+        Sample content
+        <HelpButton k="settings.sample" label="Sample content" />
+      </h2>
       {!summary ? (
         <p className="form-hint">Loading…</p>
       ) : summary.processes + (summary.added_in_demo ?? 0) === 0 ? (

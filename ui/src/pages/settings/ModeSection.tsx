@@ -10,6 +10,7 @@
 // platform, so demo is never offered as a choice, and the page says the move
 // cannot be undone before the code is requested.
 
+import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
 import {
   adminGetSampleContent,
@@ -114,7 +115,10 @@ export default function ModeSection() {
   return (
     <>
       <section className="settings-section">
-        <h2 className="settings-section-title">Mode</h2>
+        <h2 className="settings-section-title">
+          Mode
+          <HelpButton k="settings.mode" label="Mode" />
+        </h2>
 
         {!data ? (
           <p className="form-hint">Loading…</p>
@@ -354,7 +358,10 @@ function AllowlistAndWaitlist() {
         onToggle={(e) => setAllowOpen(e.currentTarget.open)}
       >
         <summary className="settings-collapsible-summary">
-          <h3 className="settings-subsection-title">Beta allowlist</h3>
+          <h3 className="settings-subsection-title">
+            Beta allowlist
+            <HelpButton k="mode.allowlist" label="Beta allowlist" />
+          </h3>
           <span className="settings-collapsible-count">
             {loaded ? `${allowCount} ${allowCount === 1 ? "address" : "addresses"}` : "…"}
             {dirty && " · unsaved"}
@@ -403,7 +410,10 @@ function AllowlistAndWaitlist() {
         onToggle={(e) => setWaitOpen(e.currentTarget.open)}
       >
         <summary className="settings-collapsible-summary">
-          <h3 className="settings-subsection-title">Waitlist</h3>
+          <h3 className="settings-subsection-title">
+            Waitlist
+            <HelpButton k="mode.waitlist" label="Waitlist" />
+          </h3>
           <span className="settings-collapsible-count">
             {loaded ? `${waitlist.length} ${waitlist.length === 1 ? "person" : "people"}` : "…"}
           </span>

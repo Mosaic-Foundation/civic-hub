@@ -3,6 +3,7 @@
 // machine: edit the lists, ask for a code, type it in, save. See
 // src/controllers/adminStepUp.ts.
 
+import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
 import {
   adminGetHubPeople,
@@ -89,7 +90,10 @@ export default function PeopleSection() {
 
   return (
     <section className="settings-section">
-      <h2 className="settings-section-title">Admins & board</h2>
+      <h2 className="settings-section-title">
+        Admins & board
+        <HelpButton k="settings.people" label="Admins & board" />
+      </h2>
 
       <p className="form-hint">
         Admins reach every page under /admin and can post announcements.
@@ -105,6 +109,7 @@ export default function PeopleSection() {
 
       <EmailListEditor
         label="Admins"
+        helpKey="people.admins"
         addLabel="+ Add admin"
         emails={adminEmails}
         onChange={setAdminEmails}
@@ -115,6 +120,7 @@ export default function PeopleSection() {
 
       <EmailListEditor
         label="Board members"
+        helpKey="people.board"
         addLabel="+ Add board member"
         emails={boardEmails}
         onChange={setBoardEmails}
@@ -195,8 +201,10 @@ function EmailListEditor({
   disabled,
   minimum = 0,
   minimumHint,
+  helpKey,
 }: {
   label: string;
+  helpKey: string;
   addLabel: string;
   emails: string[];
   onChange: (next: string[]) => void;
@@ -207,7 +215,10 @@ function EmailListEditor({
   const atMinimum = emails.length <= minimum;
   return (
     <div style={{ marginTop: "var(--space-md)" }}>
-      <label className="form-label">{label}</label>
+      <div className="settings-field-label-row">
+        <label className="form-label">{label}</label>
+        <HelpButton k={helpKey} label={label} />
+      </div>
       {emails.length === 0 && (
         <p className="empty-state-inline" style={{ margin: "var(--space-sm) 0" }}>
           None.

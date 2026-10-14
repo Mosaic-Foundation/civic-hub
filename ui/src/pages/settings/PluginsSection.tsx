@@ -42,6 +42,7 @@ import { feedbackContactEmail } from "../../../../src/shared/platform";
 import { pluginSetup } from "../../config/plugins";
 import { pluginAnchor } from "../../../../src/shared/adminAnchors";
 import { useAnchoredOpen } from "../../hooks/useAnchor";
+import HelpButton from "../../components/HelpButton";
 import {
   adminGetJobRuns,
   adminGetPluginLiveCounts,
@@ -177,6 +178,7 @@ function PluginCard({
       className={`plugin-card${on ? "" : " plugin-card-off"}${open ? " is-open" : ""}`}
       aria-label={PLUGINS[id].name}
     >
+      <div className="plugin-card-top">
       <button
         type="button"
         className="plugin-card-head"
@@ -194,6 +196,10 @@ function PluginCard({
           <path d="M3.5 5.5L7 9L10.5 5.5" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" />
         </svg>
       </button>
+      <span className="plugin-card-help">
+        <HelpButton k={`plugins.${id}`} label={PLUGINS[id].name} />
+      </span>
+      </div>
       {open && (
         <div id={bodyId} className="plugin-card-body">
           <BooleanField f={f} k={`plugin.${id}.enabled`} label={`${PLUGINS[id].name} on`} />
