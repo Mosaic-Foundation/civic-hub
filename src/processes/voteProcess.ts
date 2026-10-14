@@ -195,6 +195,12 @@ export const VOTE_DESCRIPTOR: ProcessTypeDescriptor = {
       },
     },
   },
+  display: {
+    label: "Vote",
+    plural: "Votes",
+    icon: "vote",
+    section: { id: "votes", label: "Votes", path: "/votes", detail_paths: ["/process/", "/votes/"], order: 30 },
+  },
 };
 
 // --- Handler implementation ---

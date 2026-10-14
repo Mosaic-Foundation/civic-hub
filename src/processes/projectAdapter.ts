@@ -99,6 +99,12 @@ export const PROJECT_DESCRIPTOR: ProcessTypeDescriptor = {
   examples: {
     draft: { title: "Conformance project", description: "Something residents are doing." },
   },
+  display: {
+    label: "Project",
+    plural: "Projects",
+    icon: "project",
+    section: { id: "projects", label: "Projects", path: "/projects", detail_paths: ["/project/"], order: 40 },
+  },
 };
 
 const projectAdapter: ProcessHandler = {

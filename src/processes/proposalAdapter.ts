@@ -119,6 +119,12 @@ export const PROPOSAL_DESCRIPTOR: ProcessTypeDescriptor = {
   examples: {
     draft: { title: "Conformance proposal", description: "An idea to gauge interest in.", category: "idea" },
   },
+  display: {
+    label: "Proposal",
+    plural: "Proposals",
+    icon: "proposal",
+    section: { id: "proposals", label: "Proposals", path: "/propose", detail_paths: ["/proposal/"], order: 20 },
+  },
 };
 
 const proposalAdapter: ProcessHandler = {

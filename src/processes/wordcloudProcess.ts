@@ -133,6 +133,7 @@ export const WORDCLOUD_DESCRIPTOR: ProcessTypeDescriptor = {
       },
     },
   },
+  display: { label: "Word cloud", plural: "Word clouds", icon: "wordcloud" },
 };
 
 const wordcloudProcess: ProcessHandler = {

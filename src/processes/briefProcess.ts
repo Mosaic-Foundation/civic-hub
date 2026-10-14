@@ -53,6 +53,20 @@ export const BRIEF_DESCRIPTOR: ProcessTypeDescriptor = {
   tables: ["brief_responses"],
   outside_services: [],
   examples: {},
+  // A brief is what a finished process produced: residents meet it as an
+  // Outcome, and the Outcomes section lists them.
+  display: {
+    label: "Outcome",
+    plural: "Outcomes",
+    icon: "outcome",
+    section: {
+      id: "outcomes",
+      label: "Outcomes",
+      path: "/outcomes",
+      detail_paths: ["/brief/", "/vote-results/"],
+      order: 50,
+    },
+  },
 };
 
 const briefProcess: ProcessHandler = {

@@ -52,6 +52,7 @@ export const ANNOUNCEMENT_DESCRIPTOR: ProcessTypeDescriptor = {
   examples: {
     create: { path: "/announcement", body: { title: "Conformance announcement", body: "A notice." } },
   },
+  display: { label: "Announcement", plural: "Announcements", icon: "announcement" },
 };
 
 const announcementProcess: ProcessHandler = {

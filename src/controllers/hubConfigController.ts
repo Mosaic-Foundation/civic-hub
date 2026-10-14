@@ -29,6 +29,7 @@ import { hubDocumentsWithNotes } from "../services/hubDocuments.js";
 import type { Hub, HubMode } from "../models/hub.js";
 import { hubModeFor } from "../services/hubSettings.js";
 import { hubContentFlags } from "../services/sampleContent.js";
+import { processTypeDisplays, type ProcessTypeDisplay } from "../processes/registry.js";
 
 /** The hub fields the contract makes public. */
 interface PublicHub {
@@ -60,6 +61,13 @@ export interface HubConfigResponse {
    * Welcome page of its own. The beta bar and the /welcome links read them.
    */
   content: { samples: boolean; welcome: boolean };
+  /**
+   * Every registered process type as residents read it (navigation slice,
+   * 2026-10-14): the feed pill's label, the icon, and the section it has in
+   * the hub's navigation. From the registry, so a plugin's type needs no UI
+   * change. Whether each is on is in `settings` (`plugin.<id>.enabled`).
+   */
+  process_types: ProcessTypeDisplay[];
 }
 
 function publicHub(hub: Hub): PublicHub {
@@ -92,7 +100,13 @@ export const handleGetHubConfig = route(async (req, res) => {
   // edits these values from the Settings page and expects the next reload to
   // show them. Express's ETag makes the revalidation a 304 with no body.
   res.set("Cache-Control", "private, no-cache");
-  const body: HubConfigResponse = { hub: publicHub(hub), settings, plugin_setup: pluginSetup, content };
+  const body: HubConfigResponse = {
+    hub: publicHub(hub),
+    settings,
+    plugin_setup: pluginSetup,
+    content,
+    process_types: processTypeDisplays(),
+  };
   res.json(body);
 });
 

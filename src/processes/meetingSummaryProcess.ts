@@ -55,6 +55,7 @@ export const MEETING_SUMMARY_DESCRIPTOR: ProcessTypeDescriptor = {
   tables: [],
   outside_services: [],
   examples: {},
+  display: { label: "Meeting summary", plural: "Meeting summaries", icon: "meeting" },
 };
 
 const meetingSummaryProcess: ProcessHandler = {

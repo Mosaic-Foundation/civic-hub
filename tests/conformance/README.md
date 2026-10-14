@@ -122,7 +122,18 @@ A process type is a `ProcessHandler` (`src/processes/types.ts`) with a
      fake in front of it;
    - an outage must never block a close: catch the service's failure and
      close anyway.
-7. **Tier 2 (sandboxed) can't run yet:** no sandbox runtime exists, and the
+7. **Say how residents read it** (`display`, navigation slice 2026-10-14):
+   - `label` and `plural`: the feed item's pill ("Vote") and the plural;
+   - `icon`: a key in the UI's icon set (`ui/src/components/navIcons.tsx`); an
+     unknown key draws the generic icon;
+   - `section`, only if the type has a list page: its `id` (stored in the
+     hub's section order), `label`, a one-word `short` for the phone's bar when
+     the label is longer, its `path`, the `detail_paths` that keep it
+     highlighted, and its place in the default `order`.
+
+   The hub serves it as `process_types` in `GET /hub-config`, so the pill and
+   the section appear with no UI change. The page at `path` is still UI code.
+8. **Tier 2 (sandboxed) can't run yet:** no sandbox runtime exists, and the
    static checks refuse tier 2. Until one does, third-party code enters
    production only as Tier 3 or after first-party vetting as Tier 1 (plugin
    architecture §5a).

@@ -129,6 +129,18 @@ export function checkDescriptor(handler: ProcessHandler, host: HostFacts): strin
     add(`nothing creates it: creation is resident null, admin false, system false`);
   }
 
+  // Display: what residents read (navigation slice, 2026-10-14).
+  const shown = d.display;
+  if (!shown?.label?.trim() || !shown.plural?.trim()) add(`display has no label and plural (the feed's pill)`);
+  else if (shown.label.length > 24) add(`display.label "${shown.label}" is longer than 24 characters; the pill must stay small`);
+  if (!shown?.icon?.trim()) add(`display has no icon key (unknown keys draw the generic icon)`);
+  if (shown?.section) {
+    const sec = shown.section;
+    if (!/^[a-z][a-z0-9_-]*$/.test(sec.id)) add(`display.section.id ${sec.id} must be lowercase letters, digits, - or _`);
+    if (!sec.path.startsWith("/")) add(`display.section.path ${sec.path} must start with /`);
+    if ((sec.short ?? sec.label).includes(" ")) add(`display.section's bar label "${sec.short ?? sec.label}" must be one word (set short)`);
+  }
+
   // Deadline, brief, approval: the descriptor and the handler say the same.
   if (d.deadline) {
     const close = d.actions.find((a) => a.name === d.deadline!.action);

@@ -13,6 +13,7 @@ import {
   type ActionDescriptor,
   type ProcessTypeDescriptor,
   type PublicProcessType,
+  type TypeDisplay,
 } from "./descriptor.js";
 import type { Process } from "../models/process.js";
 import type { PluginId } from "../models/hubSettings.js";
@@ -111,6 +112,25 @@ export function publicProcessTypes(include: (type: string) => boolean): PublicPr
   return Object.values(processRegistry)
     .filter((h) => include(h.type))
     .map((h) => publicDescriptor(h.descriptor));
+}
+
+/** One type as the hub's pages name it: its plugin and its display (hub config `process_types`). */
+export interface ProcessTypeDisplay extends TypeDisplay {
+  type: string;
+  plugin: PluginId;
+}
+
+/**
+ * Every registered type's display, switched on or not: the UI decides what to
+ * draw from the hub's plugin switches, and labels are not secret. The order is
+ * the registry's; sections carry their own default order.
+ */
+export function processTypeDisplays(): ProcessTypeDisplay[] {
+  return Object.values(processRegistry).map((h) => ({
+    type: h.type,
+    plugin: h.descriptor.plugin,
+    ...h.descriptor.display,
+  }));
 }
 
 /** Every registered process type, for checks that must cover all of them. */

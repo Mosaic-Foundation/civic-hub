@@ -124,6 +124,20 @@ export const POLIS_DELIBERATION_DESCRIPTOR: ProcessTypeDescriptor = {
       body: { title: "Conformance conversation", topic: "Conformance conversation", framing: "What should the hub know?" },
     },
   },
+  // "Talk" on the phone's bar, where five labels must fit (Adam, 2026-10-14).
+  display: {
+    label: "Conversation",
+    plural: "Conversations",
+    icon: "conversation",
+    section: {
+      id: "conversations",
+      label: "Conversations",
+      short: "Talk",
+      path: "/deliberations",
+      detail_paths: ["/deliberation/"],
+      order: 10,
+    },
+  },
 };
 
 let _adapter: PolisAdapter | null = null;

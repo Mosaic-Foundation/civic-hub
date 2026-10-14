@@ -59,6 +59,9 @@ export const VOTE_RESULTS_DESCRIPTOR: ProcessTypeDescriptor = {
   tables: [],
   outside_services: [],
   examples: {},
+  // The pre-brief results record: an Outcome too, listed under Outcomes
+  // (the brief's section, whose detail paths include /vote-results/).
+  display: { label: "Outcome", plural: "Outcomes", icon: "outcome" },
 };
 
 const voteResultsProcess: ProcessHandler = {
