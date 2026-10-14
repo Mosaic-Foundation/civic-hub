@@ -247,7 +247,10 @@ describe("the daily sample refresh", () => {
 describe("the console's Refresh samples", () => {
   it("adds every missing template to a demo hub, and gives an old sample summary its minutes", async () => {
     await createHub(EMPTY, { ...placeHub("Refresh Empty Civic Hub"), sample_content: false });
-    expect((await localRest(`processes?select=id&hub_id=eq.${EMPTY}`)) as Row[]).toHaveLength(0);
+    // Only the starter word cloud every new hub gets (2026-10-13), which is real content.
+    expect((await localRest(`processes?select=type,is_sample&hub_id=eq.${EMPTY}`)) as Row[]).toEqual([
+      { type: "civic.wordcloud", is_sample: false },
+    ]);
     const res = await consoleCall("POST", `/control/hubs/${EMPTY}/samples/refresh`, { cookie, body: {} });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body.refresh.added).toHaveLength(11);
@@ -271,7 +274,7 @@ describe("the console's Refresh samples", () => {
     const res = await consoleCall("POST", `/control/hubs/${LIVE}/samples/refresh`, { cookie, body: {} });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/demo hubs only/);
-    expect((await localRest(`processes?select=id&hub_id=eq.${LIVE}`)) as Row[]).toHaveLength(0);
+    expect((await localRest(`processes?select=id&hub_id=eq.${LIVE}&is_sample=eq.true`)) as Row[]).toHaveLength(0);
   });
 });
 
@@ -371,12 +374,15 @@ describe("removal counts everything it deletes (R46)", () => {
     await plantHubCode(DEMO, ADMIN, code);
     const res = await call("POST", "/admin/hub/sample-content/remove", host(DEMO), { code }, admin);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    // Everything, the visitors' items and their reviews included.
-    expect((await localRest(`processes?select=id&hub_id=eq.${DEMO}`)) as Row[]).toHaveLength(0);
+    // Everything, the visitors' items and their reviews included. What stays
+    // is the starter word cloud that took the sample one's place in the strip
+    // (2026-10-13): real content, with its own events.
+    const left = (await localRest(`processes?select=id,type,is_sample&hub_id=eq.${DEMO}`)) as Row[];
+    expect(left.map(({ type, is_sample }) => ({ type, is_sample }))).toEqual([{ type: "civic.wordcloud", is_sample: false }]);
     expect((await localRest(`process_reviews?select=id&hub_id=eq.${DEMO}`)) as Row[]).toHaveLength(0);
     expect((await localRest(`review_turns?select=id&hub_id=eq.${DEMO}`)) as Row[]).toHaveLength(0);
     expect((await localRest(`project_comments?select=id&hub_id=eq.${DEMO}`)) as Row[]).toHaveLength(0);
-    expect((await localRest(`events?select=id&hub_id=eq.${DEMO}`)) as Row[]).toHaveLength(0);
+    expect((await localRest(`events?select=id&hub_id=eq.${DEMO}&process_id=neq.${left[0].id}`)) as Row[]).toHaveLength(0);
     // The visitor's own account stays.
     expect((await localRest(`users?select=id&id=eq.${visitor}`)) as Row[]).toHaveLength(1);
   });

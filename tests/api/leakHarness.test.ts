@@ -421,6 +421,8 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /admin/queue-counts": {},
   "GET /admin/hub/people": {},
   "GET /admin/hub/sample-content": {},
+  // Settings → Admin log (admin menu slice, 2026-10-13).
+  "GET /admin/hub/admin-log": {},
   "GET /admin/hub/settings": {},
   "GET /admin/hub/settings/template/:key": {},
   "GET /admin/hub/plugins/live": {},
@@ -622,6 +624,8 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "POST /deliberations/:processId/regenerate": { body: {} },
   "POST /proposals/:id/support": { body: {} },
   "DELETE /proposals/:id/support": {},
+  // One sample at a time (admin menu slice): Floyd's ids are never Athens's samples.
+  "DELETE /admin/hub/sample-content/:id": {},
   "POST /reviews/:reviewId/revise": { body: { title: X.title, description: X.description } },
   "POST /reviews/:reviewId/withdraw": { body: {} },
   "POST /reviews/:reviewId/reopen": { body: {} },

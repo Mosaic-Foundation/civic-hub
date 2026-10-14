@@ -177,24 +177,30 @@ describe("a county hub created with sample content", () => {
 
     const res = await call("POST", "/admin/hub/sample-content/remove", host(COUNTY), { code }, admin);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect((await localRest(`processes?select=id&hub_id=eq.${COUNTY}`)) as Row[]).toHaveLength(0);
-    expect((await localRest(`events?select=id&hub_id=eq.${COUNTY}`)) as Row[]).toHaveLength(0);
+    // What stays is the starter word cloud that took the sample one's place
+    // (admin menu slice, 2026-10-13): real content, with its own events.
+    const left = (await localRest(`processes?select=id,type,is_sample&hub_id=eq.${COUNTY}`)) as Row[];
+    expect(left.map(({ type, is_sample }) => ({ type, is_sample }))).toEqual([{ type: "civic.wordcloud", is_sample: false }]);
+    const starter = left[0].id as string;
+    expect((await localRest(`events?select=id&hub_id=eq.${COUNTY}&process_id=neq.${starter}`)) as Row[]).toHaveLength(0);
     expect((await localRest(`vote_records?select=receipt_id&hub_id=eq.${COUNTY}`)) as Row[]).toHaveLength(0);
     expect((await localRest(`community_inputs?select=id&hub_id=eq.${COUNTY}`)) as Row[]).toHaveLength(0);
     expect((await localRest(`users?select=id&hub_id=eq.${COUNTY}&is_sample=is.true`)) as Row[]).toHaveLength(0);
     expect((await localRest(`wordcloud_submissions?select=id&hub_id=eq.${COUNTY}`)) as Row[]).toHaveLength(0);
-    // The hub's word cloud pointed at the sample; it points at nothing now.
-    const [cleared] = (await localRest(`hub_settings?select=value&hub_id=eq.${COUNTY}&key=eq.plugin.wordcloud.onboarding_id`)) as Row[];
-    expect(cleared?.value ?? "").toBe("");
+    // The hub's word cloud pointed at the sample; it points at the starter now.
+    const [chosen] = (await localRest(`hub_settings?select=value&hub_id=eq.${COUNTY}&key=eq.plugin.wordcloud.onboarding_id`)) as Row[];
+    expect(chosen?.value).toBe(starter);
 
     const feed = await call("GET", "/api/feed", host(COUNTY));
     expect(feed.status).toBe(200);
-    expect(feed.body.events).toHaveLength(0);
+    expect(feed.body.events.every((e: Row) => e.process_id === starter)).toBe(true);
     expect((await call("GET", "/process", host(COUNTY))).status).toBe(200);
 
     const log = await consoleCall("GET", `/control/hubs/${COUNTY}/admin-audit`, { cookie });
     expect(log.status).toBe(200);
-    expect(log.body.entries[0]).toMatchObject({ action: "sample_content.remove", actor_email: ADMIN });
+    // Newest first: the starter word cloud, then the removal that made way for it.
+    expect(log.body.entries.slice(0, 2).map((e: Row) => e.action)).toEqual(["wordcloud.starter", "sample_content.remove"]);
+    expect(log.body.entries[1]).toMatchObject({ action: "sample_content.remove", actor_email: ADMIN });
   });
 });
 
@@ -305,7 +311,7 @@ describe("a hub created with Conversations off", () => {
     await plantHubCode(NOCONV, ADMIN, code);
     const res = await call("POST", "/admin/hub/sample-content/remove", host(NOCONV), { code }, admin);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect((await localRest(`processes?select=id&hub_id=eq.${NOCONV}`)) as Row[]).toHaveLength(0);
-    expect((await localRest(`events?select=id&hub_id=eq.${NOCONV}`)) as Row[]).toHaveLength(0);
+    expect((await localRest(`processes?select=id&hub_id=eq.${NOCONV}&is_sample=eq.true`)) as Row[]).toHaveLength(0);
+    expect((await localRest(`events?select=id&hub_id=eq.${NOCONV}&is_sample=eq.true`)) as Row[]).toHaveLength(0);
   });
 });
