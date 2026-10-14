@@ -31,17 +31,13 @@ test.describe("Nav order", () => {
     const drawer = page.locator(".civic-nav-drawer");
     await expect(drawer).toBeVisible();
 
+    // Since the navigation slice (2026-10-14) the drawer is the hub's
+    // sections in its one Section order, named as the strip names them.
     const links = await drawer.locator("a").allTextContents();
     const coreLinks = links.filter((l) =>
-      ["Feed", "Conversations", "Propose", "Votes", "Projects"].includes(l),
+      ["Feed", "Conversations", "Proposals", "Votes", "Projects", "Outcomes", "Members"].includes(l),
     );
-    expect(coreLinks).toEqual([
-      "Feed",
-      "Conversations",
-      "Propose",
-      "Votes",
-      "Projects",
-    ]);
+    expect(coreLinks).toEqual(["Feed", "Conversations", "Proposals", "Votes", "Projects", "Outcomes", "Members"]);
   });
 
   // Fixed 2026-09-26: the strip now reads "Proposals" (not "Propose") and

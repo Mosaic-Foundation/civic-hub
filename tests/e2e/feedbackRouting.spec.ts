@@ -8,7 +8,7 @@
  *    inbox; a hub report lands with the hub only.
  * 3. Admin → Feedback: the badge and Civic.Social's status; "Send to
  *    Civic.Social" for a misfiled item; a digest link lands on its row.
- * 4. Contact Civic.Social from the Admin menu.
+ * 4. Contact Civic.Social from the Admin group (More on a phone, the sidebar on a desktop).
  * 5. The console's inbox: likely duplicates together, the consent flag,
  *    a status that reaches the hub's badge, the GitHub issue link.
  *
@@ -191,7 +191,7 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     await page.goto(`${HUB}/admin/feedback#${id}`);
     const item = page.locator(`[id="${id}"]`);
     await expect(item).toBeInViewport();
-    await expect(page.getByRole("link", { name: "Contact Civic.Social" })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("link", { name: "Contact Civic.Social" })).toBeVisible();
 
     // Shared bugs carry the badge with Civic.Social's status.
     await expect(page.getByTestId("mosaic-badge").first()).toContainText("Sent to Civic.Social");
@@ -214,8 +214,14 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     await page.setViewportSize(viewport);
     await visit(page, adminToken);
     await page.goto(`${HUB}/`);
-    await page.getByRole("button", { name: "Admin", exact: true }).click();
-    await page.getByRole("menu", { name: "Admin" }).getByRole("menuitem", { name: "Contact Civic.Social" }).click();
+    if (name === "phone") {
+      // Phones: More's Admin group (navigation slice, 2026-10-14).
+      await page.getByRole("navigation", { name: "Sections", exact: true }).locator('[data-nav-id="more"]').click();
+      await page.getByTestId("more-sheet").getByRole("link", { name: "Contact Civic.Social" }).click();
+    } else {
+      // A new hub's desktop: the sidebar's Admin group.
+      await page.getByRole("navigation", { name: "Hub", exact: true }).getByRole("link", { name: "Contact Civic.Social" }).click();
+    }
     await expect(page).toHaveURL(/\/admin\/contact-civic-social$/);
     await expect(page.getByText(ADMIN)).toBeVisible();
 

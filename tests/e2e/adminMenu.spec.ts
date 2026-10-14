@@ -1,8 +1,9 @@
 /**
  * The admin menu slice (2026-10-13), at phone width and on a desktop.
  *
- * 1. The Admin pill's menu (Reviews with its count, Moderation, Settings,
- *    Plugins, and since feedback routing Contact Civic.Social), the review icon, the personal account menu, "Processes".
+ * 1. The Admin pill's menu (Reviews with its count, Moderation, Hub settings,
+ *    Plugins, and since feedback routing Contact Civic.Social), the review icon, the personal account menu, "Processes";
+ *    since the navigation slice the pill is the desktop Top tabs' only, and More and the sidebar hold the Admin group.
  * 2. Anchors open the right tab, section or plugin panel; panels start closed.
  * 3. The "?" beside a setting opens its note with the docs link.
  * 4. One sample deleted; "Remove samples" goes with the last; Next steps.
@@ -81,14 +82,27 @@ test.afterAll(async () => {
   await consoleCall("POST", `/control/hubs/${SLUG}/archive`, { cookie: consoleCookie, body: { step_up_code: code } });
 });
 
-for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const) {
-  test(`1. the Admin menu and the review icon (${name})`, async ({ page }) => {
-    await page.setViewportSize(viewport);
+async function reviewCount(page: Page): Promise<number> {
+  const counts = await (
+    await page.request.get(`${HUB}/api/admin/queue-counts`, { headers: { Authorization: `Bearer ${adminToken}` } })
+  ).json();
+  return counts.reviews + counts.briefs + counts.meeting_summaries;
+}
+
+const ADMIN_ITEMS = ["Reviews", "Moderation", "Hub settings", "Plugins", "Contact Civic.Social"];
+
+// Since the navigation slice (2026-10-14) the Admin pill and the review icon
+// are in the header only on a desktop with Top tabs; a phone has More's Admin
+// group, and a desktop with the sidebar (a new hub's default) the sidebar's.
+test("1. the Admin menu and the review icon (desktop, Top tabs)", async ({ page }) => {
+  await page.request.put(`${HUB}/api/admin/hub/settings`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    data: { section: "theme", values: { "nav.layout": "top_tabs" } },
+  });
+  try {
+    await page.setViewportSize(DESKTOP);
     await signedIn(page, adminToken);
-    const counts = await (
-      await page.request.get(`${HUB}/api/admin/queue-counts`, { headers: { Authorization: `Bearer ${adminToken}` } })
-    ).json();
-    const reviews = counts.reviews + counts.briefs + counts.meeting_summaries;
+    const reviews = await reviewCount(page);
 
     await page.goto(`${HUB}/`);
     const icon = page.getByTestId("admin-review-icon");
@@ -98,16 +112,7 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     await page.getByRole("button", { name: "Admin", exact: true }).click();
     const menu = page.getByRole("menu", { name: "Admin" });
     const items = menu.getByRole("menuitem");
-    await expect(items).toHaveText(
-      reviews > 0
-        ? [`Reviews${reviews}`, "Moderation", "Hub settings", "Plugins", "Contact Civic.Social"]
-        : ["Reviews", "Moderation", "Hub settings", "Plugins", "Contact Civic.Social"],
-    );
-    expect(await items.count()).toBeLessThanOrEqual(5);
-    // The menu fits on a phone's screen.
-    const box = (await menu.boundingBox())!;
-    expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    await expect(items).toHaveText(reviews > 0 ? [`Reviews${reviews}`, ...ADMIN_ITEMS.slice(1)] : ADMIN_ITEMS);
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
 
@@ -115,6 +120,7 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     await page.getByRole("button", { name: `Account menu for ${ADMIN}` }).click();
     const account = page.getByRole("menu", { name: "Account menu" });
     await expect(account.getByRole("menuitem", { name: "My submissions" })).toBeVisible();
+    await expect(account.getByRole("menuitem", { name: "Your settings" })).toBeVisible();
     await expect(account.getByRole("menuitem", { name: /Admin panel/ })).toHaveCount(0);
     await page.keyboard.press("Escape");
 
@@ -125,16 +131,51 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     await menu.getByRole("menuitem", { name: /^Reviews/ }).click();
     await expect(page).toHaveURL(/\/admin\/(reviews|briefs|meeting-summaries)$/);
     await expect(page.getByRole("navigation", { name: "Admin sections" }).getByRole("link", { name: /^Processes/ })).toBeVisible();
-  });
-}
+  } finally {
+    await page.request.put(`${HUB}/api/admin/hub/settings`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+      data: { section: "theme", values: { "nav.layout": "sidebar" } },
+    });
+  }
+});
 
-test("1. a resident has no Admin pill and no review icon", async ({ page }) => {
+test("1. the Admin group in More (phone) and in the sidebar (desktop), Reviews with the same count", async ({ page }) => {
+  await signedIn(page, adminToken);
+  const reviews = await reviewCount(page);
+
+  await page.setViewportSize(PHONE);
+  await page.goto(`${HUB}/`);
+  await expect(page.getByTestId("admin-review-icon")).toBeHidden();
+  await page.getByRole("navigation", { name: "Sections", exact: true }).locator('[data-nav-id="more"]').click();
+  const sheet = page.getByTestId("more-sheet");
+  for (const label of ADMIN_ITEMS) await expect(sheet.locator(".nav-item", { hasText: label })).toBeVisible();
+  if (reviews > 0) await expect(sheet.locator('[data-nav-id="reviews"] .nav-item-count')).toHaveText(String(reviews));
+  await sheet.getByRole("link", { name: "Plugins" }).click();
+  await expect(page).toHaveURL(/\/admin\/settings\/plugins$/);
+
+  // A new hub is created with the sidebar.
+  await page.setViewportSize(DESKTOP);
+  await page.goto(`${HUB}/`);
+  const side = page.getByRole("navigation", { name: "Hub", exact: true });
+  await expect(side).toBeVisible();
+  for (const label of ADMIN_ITEMS) await expect(side.locator(".nav-item", { hasText: label })).toBeVisible();
+  await side.locator('[data-nav-id="reviews"]').click();
+  await expect(page).toHaveURL(/\/admin\/(reviews|briefs|meeting-summaries)$/);
+  await expect(side.locator('[data-nav-id="reviews"]')).toHaveAttribute("aria-current", "page");
+});
+
+test("1. a resident has no Admin pill, no review icon and no Admin group", async ({ page }) => {
   await page.setViewportSize(PHONE);
   await signedIn(page, await sessionFor(`menu-resident-${run}@example.test`));
   await page.goto(`${HUB}/`);
   await expect(page.getByRole("button", { name: /^Account menu/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Admin", exact: true })).toHaveCount(0);
   await expect(page.getByTestId("admin-review-icon")).toHaveCount(0);
+  await page.getByRole("navigation", { name: "Sections", exact: true }).locator('[data-nav-id="more"]').click();
+  await expect(page.getByTestId("more-sheet").locator('[data-nav-id="reviews"]')).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await page.setViewportSize(DESKTOP);
+  await expect(page.getByRole("navigation", { name: "Hub", exact: true }).locator('[data-nav-id="reviews"]')).toHaveCount(0);
 });
 
 test("2. anchors open the right tab, section or plugin panel; panels start closed", async ({ page }) => {
