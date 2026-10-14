@@ -184,3 +184,39 @@ export async function plantSignInLink(email: string): Promise<string> {
   return token;
 }
 
+
+/**
+ * One sample process on the smoke hub, as the sample seed would mark it
+ * (admin menu slice, 2026-10-13), so the suite can delete a sample the way an
+ * admin does. The smoke hub is in beta and has none of its own. An
+ * announcement, the plainest kind; the suite deletes it, and afterAll deletes
+ * what a failed run left (sample rows are the only process rows anyone may
+ * delete).
+ */
+export async function plantSample(title: string): Promise<string> {
+  const id = `proc_sample_smoke_${randomBytes(6).toString("hex")}`;
+  await devRest("processes", {
+    method: "POST",
+    body: JSON.stringify({
+      id,
+      hub_id: smokeHub(),
+      type: "civic.announcement",
+      process_version: "0.1",
+      title,
+      description: "A sample the smoke suite plants and deletes.",
+      status: "active",
+      state: { status: "active", body: "A sample the smoke suite plants and deletes." },
+      created_by: "smoke",
+      is_sample: true,
+    }),
+  });
+  return id;
+}
+
+/** Delete a sample this run planted, if a failed run left it. */
+export async function removeSample(id: string): Promise<void> {
+  if (!id.startsWith("proc_sample_smoke_")) throw new Error(`smoke: refusing to delete ${id}`);
+  await devRest(`processes?id=eq.${id}&hub_id=eq.${encodeURIComponent(smokeHub())}&is_sample=eq.true`, {
+    method: "DELETE",
+  }).catch(() => undefined);
+}

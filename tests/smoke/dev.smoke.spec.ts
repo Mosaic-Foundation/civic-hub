@@ -30,7 +30,9 @@ import {
   endMintedSessions,
   mintSession,
   missingSmokeEnv,
+  plantSample,
   plantSignInLink,
+  removeSample,
 } from "./devStack";
 
 const run = Date.now().toString(36);
@@ -50,6 +52,7 @@ let resident = "";
 const residents: string[] = [];
 const pendingReviews = new Set<string>();
 const liveProcesses: string[] = [];
+const plantedSamples: string[] = [];
 let cleanReview = { id: "", title: "" };
 let flaggedReview = { id: "", title: "" };
 
@@ -132,6 +135,7 @@ test.afterAll(async ({ playwright }) => {
     });
     if (!r.ok()) errors.push(`archive ${id}: ${r.status()}`);
   }
+  for (const id of plantedSamples) await removeSample(id);
   for (const token of residents) {
     const r = await request.delete(`${apiBase()}/auth/me`, { headers: auth(token) });
     if (!r.ok()) errors.push(`delete account: ${r.status()}`);
@@ -403,5 +407,62 @@ test("voting on a phone: the page holds still, the share banner goes by itself, 
   expect(code.y).toBeLessThan(button.y + button.height);
   expect(check.y).toBeGreaterThanOrEqual(Math.max(button.y + button.height, code.y + code.height) - 1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.close();
+});
+
+// --- Admin menu slice (2026-10-13) ------------------------------------------
+
+test("the Admin menu opens at phone width with its counts; the review icon says the same", async ({ browser, request }) => {
+  const counts = await (await request.get(`${apiBase()}/admin/queue-counts`, { headers: auth(admin) })).json();
+  const reviews = counts.reviews + counts.briefs + counts.meeting_summaries;
+  const page = await open(browser, { viewport: { width: 375, height: 812 } });
+  await visitAs(page, admin);
+  await page.goto("/");
+  await expect(page.getByTestId("admin-review-icon")).toHaveAttribute(
+    "aria-label",
+    reviews > 0 ? `Reviews: ${reviews} new` : "Reviews: nothing new",
+  );
+  await page.getByRole("button", { name: "Admin", exact: true }).click();
+  const menu = page.getByRole("menu", { name: "Admin" });
+  await expect(menu.getByRole("menuitem")).toHaveText([
+    reviews > 0 ? `Reviews${reviews}` : "Reviews",
+    "Moderation",
+    "Settings",
+    "Plugins",
+  ]);
+  await menu.getByRole("menuitem", { name: "Plugins" }).click();
+  await expect(page).toHaveURL(/\/admin\/settings\/plugins$/);
+  await page.close();
+});
+
+test("a \"?\" beside a setting opens its note, with a link to the docs", async ({ browser }) => {
+  const page = await open(browser, { viewport: { width: 375, height: 812 } });
+  await visitAs(page, admin);
+  await page.goto("/admin/settings/identity");
+  await page.getByRole("button", { name: "About Hub name" }).click();
+  const note = page.getByRole("note");
+  await expect(note).toBeVisible();
+  await expect(note.getByRole("link", { name: "More in the docs" })).toHaveAttribute(
+    "href",
+    /^https:\/\/docs\.civic\.social\/reference\/settings\/identity#identity-name$/,
+  );
+  await page.keyboard.press("Escape");
+  await expect(note).toBeHidden();
+  await page.close();
+});
+
+test("an admin deletes one sample from Settings, and Next: set up your hub follows the last", async ({ browser }) => {
+  const title = `Smoke sample ${run}`;
+  plantedSamples.push(await plantSample(title));
+  const page = await open(browser, { viewport: { width: 375, height: 812 } });
+  await visitAs(page, admin);
+  await page.goto("/admin/settings/sample");
+  await page.getByRole("button", { name: `Delete sample: ${title}` }).click();
+  const dialog = page.getByRole("dialog", { name: "Delete this sample?" });
+  await dialog.getByRole("button", { name: "Delete sample" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("status").filter({ hasText: `Deleted “${title}”.` })).toBeVisible();
+  await expect(page.getByRole("link", { name: title })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Next: set up your hub" })).toBeVisible();
   await page.close();
 });
