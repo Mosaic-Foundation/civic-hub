@@ -262,6 +262,15 @@ export const api = {
     request<HubExport>("POST", `/hubs/${encodeURIComponent(id)}/export`, extra),
   hubAdminAudit: (id: string) =>
     request<{ entries: HubAdminAuditEntry[] }>("GET", `/hubs/${encodeURIComponent(id)}/admin-audit`),
+  feedback: (filter: { stream?: string; status?: string } = {}) =>
+    request<FeedbackInbox>("GET", `/feedback?${new URLSearchParams(filter).toString()}`),
+  feedbackCount: () => request<{ received: number }>("GET", "/feedback/count"),
+  updateFeedback: (id: string, patch: { status?: FeedbackStatus; github_issue_url?: string | null }) =>
+    request<{ item: FeedbackItem; sender_told?: { sent: boolean; reason?: string } }>(
+      "PATCH",
+      `/feedback/${encodeURIComponent(id)}`,
+      patch,
+    ),
   audit: (hubId?: string) =>
     request<{ entries: AuditEntry[] }>("GET", `/audit${hubId ? `?hub=${encodeURIComponent(hubId)}` : ""}`),
 };
@@ -274,4 +283,36 @@ export interface HubAdminAuditEntry {
   action: string;
   before: unknown;
   after: unknown;
+}
+
+/** Civic.Social's feedback inbox (feedback routing): src/control/platformFeedback.ts. */
+export type FeedbackStatus = "received" | "planned" | "fixed";
+export type FeedbackStream = "bug" | "feature" | "admin";
+
+export interface FeedbackItem {
+  id: string;
+  created_at: string;
+  source_hub_id: string;
+  hub_name: string;
+  source_feedback_id: string | null;
+  stream: FeedbackStream;
+  origin: "resident" | "forwarded" | "admin";
+  message: string;
+  page_path: string | null;
+  user_agent: string | null;
+  software_version: string | null;
+  screenshot_url: string | null;
+  contact_ok: boolean;
+  /** Only when the sender consented. */
+  contact_email: string | null;
+  status: FeedbackStatus;
+  status_changed_at: string | null;
+  github_issue_url: string | null;
+  fixed_notified_at: string | null;
+}
+
+export interface FeedbackInbox {
+  /** Likely duplicates together; the newest group first. */
+  groups: FeedbackItem[][];
+  received: number;
 }

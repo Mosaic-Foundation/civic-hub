@@ -7,6 +7,7 @@ import CreateHub from "./CreateHub";
 import HubDetailPage from "./HubDetail";
 import AuditLog from "./AuditLog";
 import Invites from "./Invites";
+import FeedbackInbox from "./FeedbackInbox";
 
 type Session = { email: string | null; operator_configured: boolean };
 
@@ -14,6 +15,8 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const route = useRoute();
+  // Items Civic.Social hasn't looked at yet, beside Feedback in the nav.
+  const [received, setReceived] = useState<number | null>(null);
 
   const load = useCallback(() => {
     api
@@ -26,6 +29,9 @@ export default function App() {
   }, []);
 
   useEffect(load, [load]);
+  useEffect(() => {
+    if (session?.email) api.feedbackCount().then((r) => setReceived(r.received)).catch(() => undefined);
+  }, [session?.email, route.name]);
 
   if (failed) {
     return (
@@ -53,6 +59,14 @@ export default function App() {
           <a href={href({ name: "invites" })} aria-current={route.name === "invites" ? "page" : undefined}>
             Invite codes
           </a>
+          <a href={href({ name: "feedback" })} aria-current={route.name === "feedback" ? "page" : undefined}>
+            Feedback
+            {received ? (
+              <span className="cx-count" aria-label={`${received} received`}>
+                {received}
+              </span>
+            ) : null}
+          </a>
           <a href={href({ name: "audit" })} aria-current={route.name === "audit" ? "page" : undefined}>
             Audit log
           </a>
@@ -77,6 +91,7 @@ export default function App() {
         {route.name === "hub" && <HubDetailPage id={route.id} />}
         {route.name === "audit" && <AuditLog />}
         {route.name === "invites" && <Invites />}
+        {route.name === "feedback" && <FeedbackInbox onCountChange={setReceived} />}
       </main>
     </div>
   );

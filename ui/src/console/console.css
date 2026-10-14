@@ -257,3 +257,31 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--c
 .cx-invite-card { max-width: 680px; margin-bottom: 16px; }
 .cx-minted-code { font-size: 1.5rem; letter-spacing: 0.12em; margin: 6px 0 8px; user-select: all; }
 .cx-block-text { display: block; }
+
+/* Feedback inbox (feedback routing, 2026-10-15). */
+.cx-count {
+  display: inline-block; min-width: 1.4em; margin-left: 6px; padding: 0 6px; border-radius: 999px;
+  background: var(--cx-accent); color: var(--cx-accent-text); font-size: 0.75rem; line-height: 1.5; text-align: center;
+}
+.cx-fb-filters { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 16px 0; }
+.cx-fb-filter { display: flex; flex-wrap: wrap; gap: 6px; }
+.cx-fb-status-filter, .cx-fb-control { display: flex; flex-direction: column; gap: 4px; }
+.cx-fb-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.cx-fb-group { display: flex; flex-direction: column; gap: 0; }
+.cx-fb-group.is-dupes { border-left: 3px solid var(--cx-accent); }
+.cx-fb-dupes { margin: 0 0 8px; font-size: 0.85rem; font-weight: 600; color: var(--cx-accent); }
+.cx-fb-item + .cx-fb-item { border-top: 1px solid var(--cx-border); margin-top: 12px; padding-top: 12px; }
+.cx-fb-message { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cx-fb-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; margin: 0 0 10px; font-size: 0.88rem; }
+.cx-fb-facts dt { color: var(--cx-muted); }
+.cx-fb-facts dd { margin: 0; min-width: 0; }
+.cx-fb-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.cx-fb-issue { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 8px; flex: 1 1 280px; }
+.cx-fb-issue .cx-fb-control { flex: 1 1 220px; }
+.cx-fb-controls select, .cx-fb-controls input, .cx-fb-status-filter select { min-height: 40px; }
+.cx-fb-stream-bug { background: var(--cx-danger-bg); color: var(--cx-danger); }
+.cx-fb-stream-feature { background: color-mix(in srgb, var(--cx-accent) 18%, transparent); color: var(--cx-accent); }
+.cx-fb-stream-admin { background: var(--cx-surface-2); color: var(--cx-text); }
+@media (max-width: 600px) {
+  .cx-nav { flex-wrap: wrap; }
+}

@@ -7,9 +7,8 @@
 // nothing leaves the console: the one email is to a sender who consented,
 // when their report is fixed, sent from their hub.
 
-import { ControlInputError } from "./hubs.js";
+import { ControlInputError, listHubs } from "./hubs.js";
 import { inHubScope } from "./inHub.js";
-import { listActiveHubs } from "../db/hubs.js";
 import {
   MOSAIC_STATUSES,
   claimFixedNotice,
@@ -45,7 +44,8 @@ export async function feedbackInbox(filter: { stream?: unknown; status?: unknown
   const status = MOSAIC_STATUSES.includes(filter.status as MosaicStatus) ? (filter.status as MosaicStatus) : undefined;
   const [items, hubs, received] = await Promise.all([
     listMosaicItems({ stream, status }),
-    listActiveHubs(),
+    // Every hub, archived ones too: an archived hub's reports keep its name.
+    listHubs(),
     countReceived(),
   ]);
   const names = new Map(hubs.map((h) => [h.id, h.name]));

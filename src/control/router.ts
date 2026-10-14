@@ -30,6 +30,7 @@ import { sampleNames } from "../services/sampleNames.js";
 import { describeInvites } from "../services/adminInvite.js";
 import { addStarterWordcloud, inviteAdmins, seedSampleInHub } from "./inHub.js";
 import { feedbackInbox, updateFeedbackItem } from "./platformFeedback.js";
+import { countReceived } from "../db/platformFeedback.js";
 import {
   CODE_SENT,
   ControlAuthError,
@@ -609,6 +610,11 @@ export function controlRouter(): Router {
   // reports and hub admins' messages, grouped by likely duplicates.
   r.get("/control/feedback", route(async (req, res) => {
     res.json(await feedbackInbox({ stream: req.query.stream, status: req.query.status }));
+  }));
+
+  // The nav's count: items Civic.Social has not looked at yet.
+  r.get("/control/feedback/count", route(async (_req, res) => {
+    res.json({ received: await countReceived() });
   }));
 
   // Status (flows back to the hub's badge) and the GitHub issue link. Fixed,
