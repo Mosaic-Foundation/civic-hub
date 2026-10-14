@@ -17,6 +17,11 @@ const PARTS = [
   // page (feedback routing, 2026-10-13).
   "admin.feedback_forward",
   "admin.contact_civic_social",
+  // Members and invites (2026-10-14): Settings → People's hidden members, the
+  // share panel's email invites, and the person's own Members page switch.
+  "people.hidden_members",
+  "share.invites",
+  "members.visibility",
 ];
 
 // Settings with no field of their own: each plugin's switch sits under its

@@ -418,5 +418,23 @@
     "page": "/reference/plugins",
     "anchor": "admin-contact-civic-social",
     "pending": true
+  },
+  "people.hidden_members": {
+    "text": "Members who chose not to appear on the Members page or the home page's pictures. Only admins see them, here. They are still counted as members.",
+    "page": "/reference/settings/",
+    "anchor": "people-hidden-members",
+    "pending": true
+  },
+  "share.invites": {
+    "text": "Invite people by email: ten addresses a day, fifty for an admin, never twice to one address. On a beta hub a member's invites go on the waitlist; an admin's let the address in.",
+    "page": "/reference/modes",
+    "anchor": "share-invites",
+    "pending": true
+  },
+  "members.visibility": {
+    "text": "Whether other members see your name and pattern picture on the Members page and the home page. Never your email address. You are counted either way.",
+    "page": "/start/what-is-a-hub",
+    "anchor": "members-visibility",
+    "pending": true
   }
 }
