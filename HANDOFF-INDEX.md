@@ -39,7 +39,7 @@ numbers below, or just grep the heading.
 | DB client (service role, the thing tenancy replaces) | `src/db/client.ts`; only `src/db/`, `scripts/`, `tests/` may import it (`eslint.config.js`, `civic/raw-client`) |
 | Hub registry, resolver, request-scoped hub | `src/db/hubs.ts`, `src/middleware/hub.ts`, `src/config/hubContext.ts` |
 | Local Supabase stack (ports, auth, seed) | `supabase/config.toml`, `supabase/seed.sql` |
-| Migrations (83 files, 45 tables; `20261014000000` sign-in codes, `20261014010000` widens the jurisdiction type check; `20261011200000` drops `start_attempts`, Adam approved; non-additive: `20260926005000`, and `20260927010000` which drops the audit log's hub FK; `20261010000000` nulls ballot times and reshuffles ballots, Adam approved; `20261011000000` rebuilds search_doc and scrubs anonymous moderation events, Adam approved; `20261011100000` deletes every session and pending code, Adam approved) | `supabase/migrations/` |
+| Migrations (88 files, 46 tables; `20261015000000` feedback routing (platform_feedback); `20261014000000` sign-in codes, `20261014010000` widens the jurisdiction type check; `20261011200000` drops `start_attempts`, Adam approved; non-additive: `20260926005000`, and `20260927010000` which drops the audit log's hub FK; `20261010000000` nulls ballot times and reshuffles ballots, Adam approved; `20261011000000` rebuilds search_doc and scrubs anonymous moderation events, Adam approved; `20261011100000` deletes every session and pending code, Adam approved) | `supabase/migrations/` |
 | Scheduled jobs | `src/jobs/registry.ts` (the one list; `vercel.json` checked against it, `npm run jobs:crontab`), runners `src/jobs/runners.ts`, per-hub loop `src/jobs/runJob.ts` + `src/services/cronHubs.ts`, routes `src/routes/jobRoutes.ts` |
 | Scheduled-job run log: what each outcome means, recording, last-run route, admin digest section | `src/jobs/describe.ts`, `src/services/jobRuns.ts` (table `job_runs`, `20260929000000`), `GET /admin/hub/jobs/runs`, `src/modules/civic.admin_digest/service.ts` |
 | Meeting-summary readiness (when a meeting may be summarized) and quality flags | `src/modules/civic.meeting_summary/readiness.ts`, `effectiveQualityFlag` in `service.ts` |
@@ -78,6 +78,8 @@ numbers below, or just grep the heading.
 | Sample content: templates, seed, removal, the row classification, the daily refresh | `src/services/sampleTemplates.ts`, `src/services/sampleSeed.ts`, `src/services/sampleContent.ts`, `src/services/sampleRefresh.ts`, `src/models/sampleContent.ts`, `scripts/seed-sample-content.ts` |
 | Hub admin audit log (fresh-code actions) | `src/services/hubAdminAudit.ts`; console reader `listHubAdminAudit` in `src/control/audit.ts` |
 | Place-name CI check + allow-list | `scripts/check-place-names.ts`, `scripts/place-name-allowlist.txt` |
+| Feedback routing: the form's question and consent, the copy to Civic.Social, Send to Civic.Social, Contact Civic.Social, the digest's mark | `ui/src/pages/Feedback.tsx`, `ui/src/services/lastPage.ts`, `src/modules/civic.feedback/service.ts` (`forwardToMosaic`, `contactMosaic`), `src/db/platformFeedback.ts` (table `platform_feedback`, `20261015000000`), `ui/src/components/ForwardToCivicSocial.tsx`, `ui/src/pages/ContactCivicSocial.tsx`, `feedbackDigestTitle` in `src/modules/civic.admin_digest/service.ts` |
+| Civic.Social's feedback inbox in the console: duplicates, status back to the hub's badge, the fixed email, the issue link | `src/control/platformFeedback.ts`, `src/shared/feedbackDuplicates.ts`, `ui/src/console/FeedbackInbox.tsx`; routes `/control/feedback`, `/control/feedback/count`, `PATCH /control/feedback/:id` |
 | A hub's seed values (read only by the seed script) | `config/hubs/<hub>/settings.json` |
 | Ideas backlog incl. multi-tenancy section | `IDEAS.md` (lines ~137–240) |
 | Multi-tenant contracts and phase checklists | `BUILD-PLAN-multi-tenant.md` |
@@ -287,7 +289,7 @@ numbers below, or just grep the heading.
 - Word cloud — 7631–7700, 7598–7630, 7582–7597; density measured — 1949–2009
 - Conversations (Polis) join the flow — 3847–3929; sources + seed statements — 3793–3846
 - Assistant (all process types): one creation flow — 3930–4049; tool-call validation — 1074–1121; suggestion cards — 1122–1185
-- Search — 9219–9264; Feedback — 8665–8724, 107–146; Share — 8617–8664, 1509–1578
+- Search — 9219–9264; Feedback — 8665–8724, 107–146, and "Feedback routing" (2026-10-13, top of the file); Share — 8617–8664, 1509–1578
 - Light process-linking — 5002–5665
 
 ### Operations

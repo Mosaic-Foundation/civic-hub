@@ -62,6 +62,57 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Feedback routing: the hub keeps it, software reports reach Civic.Social, the loop closes (2026-10-13)
+
+**One migration to apply to an existing local stack first:** `supabase migration up --local`
+(`20261015000000_feedback_routing.sql`, additive). The Playwright and smoke layers need a UI build that includes the
+slice (`cd ui && npm run build`) when they run against `vite preview`.
+
+- **Unit:**
+  - `feedbackDuplicates.test.ts`: likely duplicates are the same stream, the same page and similar words; no page
+    never groups; chains join; groups keep the newest first.
+  - `feedbackInbox.test.ts`: the console's status and GitHub-link changes (three statuses; github.com only, so no
+    `javascript:` link), the one "fixed" email (names the hub, quotes and escapes the report, says why it came), and
+    the page path (no query or fragment, nothing off the hub).
+  - Updated: `adminFeedbackDigest.test.ts` (a line says "also sent to Civic.Social" only for shared items, and links
+    to the item's row), `helpRegistry.test.ts` (two keys), `adminAnchors.test.ts` (`/admin#contact-civic-social`),
+    `exportManifest.test.ts` (46 tables).
+- **API, `feedbackRouting.test.ts`** (two hubs made by the console's Create hub, archived after; passes in both modes):
+  - a software report lands with the hub (page, version, consent, the copy's status) and in the console's inbox (the
+    hub's name from data, the browser, the consenting sender's address);
+  - **an item without consent reaches the console with no email address** (anonymous with an address typed, signed
+    in without ticking, ticked with no address), and the database refuses an address without consent;
+  - Suggest a topic, Moderation and General stay with the hub;
+  - Admin → Feedback shows the badge; Send to Civic.Social once (409 after), never with the sender's address, in the
+    admin log; refused for a resident (403), a bad stream (400) and another hub's item (404); a hub host answers 404
+    for `/control/feedback`;
+  - the console's planned reaches the hub's badge without the issue link; fixed tells a consenting sender once and is
+    audited without their address; bad statuses and non-GitHub links are refused;
+  - Contact Civic.Social reaches the inbox with the admin's address, not the hub's tab, and works with Feedback off.
+  - Updated: `leakHarness.test.ts` walks `POST /admin/feedback/:id/forward` with Floyd's ids; `hubPurge.test.ts`
+    purges a hub with a copy in the inbox.
+- **Playwright, `feedbackRouting.spec.ts`** (10 tests, each at 375 px and 1280 px; one beta hub through the console,
+  visited on `<slug>.localhost`): the form's question and each side's pills, the notice, consent only with an
+  address, the page it came from (opened from the footer on `/about`); the hub report staying with the hub; a digest
+  link landing on its row, the badge, Send to Civic.Social; Contact Civic.Social from the Admin menu with its "?";
+  the console's duplicates, consent, status back to the hub's badge, and issue link; no sideways scroll.
+  Updated: `adminMenu.spec.ts` (five items).
+- **Smoke** (15 tests): a software report from the form at 375 px lands with the hub and in the inbox; a hub report
+  with the hub only; an admin sends it to Civic.Social from its row and the badge follows Civic.Social's status. The
+  suite has no console session (that would put the operator's rights in CI): it reads the smoke hub's inbox rows
+  from the dev database and sets a status as the console does, and `afterAll` deletes the run's copies.
+
+**Counts (2026-10-13, local):**
+- `npm test` (lint, unit, API in service-role mode with the conformance suite): 193 files, 2,283 passed, 10 skipped,
+  1 todo. Token mode (`tests/api`): 59 files, 746 passed. The one failure in each is still `hubIsolationControllers >
+  admin queue counts` (long-used stack, over 1,000 review rows; flagged before).
+- Playwright (preview build): 119 passed, 2 skipped, in 2.7 min.
+- Smoke (local smoke hub): 15 of 15 in 19 s.
+- Don't edit `src/` while the API layer runs against a `--watch` server: the restart drops requests ("socket hang
+  up"), which is what failed `ballotSecrecy` once here.
+
+---
+
 ## Admin menu slice: the menu, anchors, help notes, one sample deleted, the starter word cloud (2026-10-13)
 
 No migrations. **CI gains a step**, "Help links reach the docs" (`scripts/check-help-anchors.ts`): it fetches
@@ -197,7 +248,7 @@ Conduct some test wrote, so its page has no "In short". `signIn.spec.ts` checks 
 A fourth layer: `tests/smoke/`, Playwright against the **live dev deployment**, after every dev deploy. It replaces
 the browser half of the dev checklist Adam ran by hand after each release (RUNBOOK-release.md → Dev).
 
-- **What it checks** (`dev.smoke.spec.ts`, one serial group, 13 tests):
+- **What it checks** (`dev.smoke.spec.ts`, one serial group, 15 tests):
   - `/api/health` is ok with no schema gaps, on the deployed commit; an unknown `POST /api/…` answers JSON 404;
   - a resident and an admin are signed in;
   - a new resident signs in through the email's link at 375 px and joins beside the terms notice (since 2026-10-14,
@@ -215,6 +266,10 @@ the browser half of the dev checklist Adam ran by hand after each release (RUNBO
   - the Admin menu at 375 px with its four items and its count, which the review icon says too; a "?" opens its note
     with the docs link; an admin deletes a sample (planted on the smoke hub) and Next: set up your hub follows
     (since 2026-10-13, admin menu slice).
+  - a software report from the form at 375 px lands with the hub and in Civic.Social's inbox (page and consent with
+    it); a hub report stays with the hub; an admin sends it to Civic.Social from its row and the badge follows
+    Civic.Social's status (since 2026-10-13, feedback routing; inbox rows read from the dev database, copies deleted
+    in `afterAll`).
 - **Where it runs:** only on the dedicated smoke hub, which must be in beta and have a slug starting with `smoke`. Sessions are
   minted straight into the dev database with its service-role key (Adam's decision, 2026-10-13: no test-only
   sign-in route in `src/`). `tests/smoke/devStack.ts` refuses the production project, any other hub, a deployment
@@ -1968,7 +2023,7 @@ the local-stack jobs.
 
 ---
 
-*Last updated: 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,

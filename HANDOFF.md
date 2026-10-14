@@ -4,6 +4,62 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Feedback routing: the hub keeps its feedback, software reports reach Civic.Social, the loop closes — 2026-10-13
+
+Commits on `multi-tenant` `c37375c`..(this entry), one item each. Report and handoff:
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Feedback-Routing-Session-Report-2026-10-13.md`.
+
+**Release needs:**
+- **One migration, additive:** `20261015000000_feedback_routing`. It adds eight columns to `feedback_submissions`
+  (defaults only, no rows rewritten) and a new platform table, `platform_feedback`. That table has deny-all RLS and
+  is used by the service role only. It has no database functions, so it needs no function grants.
+  - A CHECK refuses an address without consent.
+  - It must go in before the code: `/health` names the new columns.
+- **No pre-checks, no env vars, nobody signed out.** Help keys: two new ones, both `pending`.
+
+**Built (Adam's design, 2026-10-08; his answers, 2026-10-13):**
+1. **The form** (`ui/src/pages/Feedback.tsx`) asks "What is this about?" first: "This hub" or "How the site works".
+   - Only that side's pills show: Bug and Idea for the site; Suggest a topic, Moderation and General for the hub.
+   - A software report says it is also shared with Civic.Social. The consent box ("Civic.Social may contact me about
+     this") shows only when there is an address to share.
+   - The page the person came from (`ui/src/services/lastPage.ts`) goes with every report. The server stamps the
+     version (the deployed commit), and the browser is the user agent.
+2. **Routing** (`src/modules/civic.feedback/service.ts`, `src/db/platformFeedback.ts`):
+   - Everything stays with the hub.
+   - Bug and Idea are copied to `platform_feedback` as streams `bug` and `feature`. The address goes only with
+     consent.
+   - The copy is best-effort: a failure is reported (`feedback.mosaic_copy`), and the hub keeps the item.
+3. **Admin → Feedback:**
+   - A shared item shows "Sent to Civic.Social" with Civic.Social's status (Received, Planned, Fixed).
+   - Any other item has **Send to Civic.Social** (`POST /admin/feedback/:id/forward`). It works once per item, asks
+     Bug or Idea, never sends the sender's address, and is logged as `feedback.forward`.
+   - The daily digest marks shared items "(also sent to Civic.Social)". Each line links to the item's row, which the
+     page scrolls to.
+4. **Contact Civic.Social** (`/admin/contact-civic-social`, `POST /admin/contact-civic-social`):
+   - It goes to stream `admin`, with the admin's address.
+   - It doesn't appear on the hub's tab and works with Feedback off.
+   - It is the fifth item in the Admin menu, with its "?" and the anchor `/admin#contact-civic-social`.
+5. **The console's inbox** (`#/feedback`, `src/control/platformFeedback.ts`, `ui/src/console/FeedbackInbox.tsx`):
+   - It covers every hub, with likely duplicates grouped (`src/shared/feedbackDuplicates.ts`: same stream and page,
+     word overlap ≥ 0.5). The nav shows the count still received.
+   - Each item shows its hub (the name, from data), its origin and, only with consent, the sender's address.
+   - The status select mirrors to the hub's badge. **Fixed emails a consenting sender once**, from their hub, and
+     the hub's mail rules apply (held back on a beta hub). This was Adam's answer on 2026-10-13.
+   - There is a GitHub issue field; issues are written by hand. Changes are audited as `feedback.update`, without
+     the address.
+6. **Privacy:** hub admins never reach the inbox (a hub host answers 404). The address reaches the console only with
+   consent; an API test proves an item without consent arrives with no address.
+7. **Purge:** a purged hub's copies go with it (`scripts/lib/hubPurge.ts`).
+
+**Tests:** TESTING.md → "Feedback routing". **Open:**
+- The docs sections for `admin.feedback_forward` and `admin.contact_civic_social`.
+- Mosaic gets no email when items arrive (the nav count only).
+- Items sent before this slice are not copied; their admins can forward them.
+- The smoke suite sets a status through the database rather than the console. This is on purpose: no operator
+  session in CI.
+
+---
+
 ## Admin menu slice: one small menu, a "?" on every setting, samples one at a time, a starter word cloud — 2026-10-13
 
 Commits on `multi-tenant` `afd98d3`..`e35a141`, one item each; the docs repo's side on `civic-hub-docs` branch
