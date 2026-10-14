@@ -372,25 +372,17 @@ export default function Nav() {
                         ))}
                       </div>
                     )}
+                    {/* The Members page is reached from the home page's count, not
+                        from here (Adam, 2026-10-14). */}
                     {user.is_resident && (
-                      <>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="civic-nav-menu-item"
-                          onClick={() => selectMenuItem(() => navigate("/members"))}
-                        >
-                          Members
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="civic-nav-menu-item"
-                          onClick={() => selectMenuItem(() => setSharing(true))}
-                        >
-                          Share this hub
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="civic-nav-menu-item"
+                        onClick={() => selectMenuItem(() => setSharing(true))}
+                      >
+                        Share this hub
+                      </button>
                     )}
                     <button
                       type="button"
