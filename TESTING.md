@@ -62,6 +62,55 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Navigation: type pills, the phone's bar and More, the desktop sidebar, one Section order (2026-10-14)
+
+**No migration.** The Playwright and smoke layers need a UI build that includes the slice (`cd ui && npm run
+build`) when they run against `vite preview`. **New hubs are created with the sidebar** (`nav.layout` =
+`sidebar`): a spec that makes its hub through the console's Create hub and looks at a desktop header (the Admin
+pill, the account menu) must set `nav.layout` to `top_tabs` first, as `adminMenu.spec.ts` does. The seeded Floyd
+and Athens read unset as Top tabs. **At phone width the Admin pill, the review icon, the drawer and the strip are
+gone**: reach Admin items through More (`navigation "Sections"` → `[data-nav-id="more"]` → `more-sheet`). Look the
+two navigations up with `exact: true`: "Sections" and "Hub" also match "Hub settings sections".
+
+- **Unit:**
+  - `navSections.test.ts`: the default order (today's strip), the bar's four (Feed, Talk, Proposals, Votes), the
+    hub's order applied to the bar, a switched-off section dropped, a section the order doesn't name appended, a
+    plugin's type getting its section from the registry, an unreadable order ignored, the section a detail page
+    belongs to, and the switch-off rule (`orderAfterSwitchingOff`).
+  - `processDescriptors.test.ts`: every type has a pill label; section ids and default places are distinct; a
+    display a resident could not read is named.
+  - `hubSettingsWrite.test.ts`: both keys in Theme and public; Navigation's two values; Section order stored as a
+    JSON list of distinct ids without Feed.
+- **API, `navigation.test.ts`** (both modes): `process_types` in `GET /hub-config` (labels, icons, sections; no
+  tables, settings or adapters); the Theme keys admin-only to write and public once written; a bad layout, Feed in
+  the order and a duplicate refused; a plugin switched off leaves the stored order in the same save, other saves
+  leave it alone.
+- **Playwright, `hubNavigation.spec.ts`** (11 tests, on the hub `localhost` resolves to, every setting put back):
+  - the feed pill from the registry in the meta line, the title full width;
+  - the bar's five tabs and the current one, kept on a vote's page;
+  - More: every section, You, no Admin for a resident; closes on Escape (focus back on More), on a tap outside and
+    on a swipe down;
+  - an admin's Admin group (Hub settings opens);
+  - a drafting form hides the bar, typing included;
+  - unset Navigation is Top tabs;
+  - Hub settings → Theme: Sidebar and a new order take effect at once (the sidebar, Hub settings current, the bar
+    following the order), and Move up keeps focus on the row;
+  - a resident's sidebar (no Admin, the Members count, "Signed in as");
+  - a plugin switched off leaves the chooser, the bar, More and the sidebar, and comes back at the end.
+  - Updated: `adminMenu.spec.ts` (the pill on a Top tabs desktop; the Admin group in More and the sidebar; a
+    resident has neither), `feedbackRouting.spec.ts` (Contact Civic.Social from the Admin group),
+    `membersInvites.spec.ts` (the sidebar's Members count and Share this hub), `ux-polish.spec.ts` (the drawer names
+    sections as the strip does).
+- **Smoke** (19 tests; the phone Admin menu test is replaced):
+  - a feed item's type pill; the phone's bar and More as a resident (no Hub settings) and as an admin (the Admin
+    group, Reviews with the queues' count, Plugins opens);
+  - at desktop width with Navigation set to Sidebar, the sidebar instead of the header. The test sets the smoke
+    hub's `nav.layout` and `afterAll` puts it back.
+
+**Counts (2026-10-14, local):** see the Navigation session report (filled in below when the runs finish).
+
+---
+
 ## Members and invites: the count, the Members page, hiding oneself, Share this hub (2026-10-14)
 
 **One migration to apply to an existing local stack first:** `supabase migration up --local`
@@ -308,7 +357,7 @@ Conduct some test wrote, so its page has no "In short". `signIn.spec.ts` checks 
 A fourth layer: `tests/smoke/`, Playwright against the **live dev deployment**, after every dev deploy. It replaces
 the browser half of the dev checklist Adam ran by hand after each release (RUNBOOK-release.md → Dev).
 
-- **What it checks** (`dev.smoke.spec.ts`, one serial group, 18 tests):
+- **What it checks** (`dev.smoke.spec.ts`, one serial group, 19 tests):
   - `/api/health` is ok with no schema gaps, on the deployed commit; an unknown `POST /api/…` answers JSON 404;
   - a resident and an admin are signed in;
   - a new resident signs in through the email's link at 375 px and joins beside the terms notice (since 2026-10-14,
@@ -323,9 +372,11 @@ the browser half of the dev checklist Adam ran by hand after each release (RUNBO
   - Edit & resubmit after an admin requests changes brings back the same review item;
   - a ballot cast at 375 px on an open vote an admin made: the page holds still, the share banner goes by itself, the
     receipt box has the code beside the download button (since 2026-10-13, vote pages fixes);
-  - the Admin menu at 375 px with its four items and its count, which the review icon says too; a "?" opens its note
-    with the docs link; an admin deletes a sample (planted on the smoke hub) and Next: set up your hub follows
-    (since 2026-10-13, admin menu slice).
+  - a "?" opens its note with the docs link; an admin deletes a sample (planted on the smoke hub) and Next: set up
+    your hub follows (since 2026-10-13, admin menu slice).
+  - a feed item's type pill; the phone's bottom bar and More at 375 px, as a resident (no Admin) and as an admin (the
+    Admin group, Reviews with the queues' count); the sidebar at 1280 px with Navigation set to Sidebar, put back in
+    `afterAll` (since 2026-10-14, navigation slice; these replace the phone Admin menu test).
   - a software report from the form at 375 px lands with the hub and in Civic.Social's inbox (page and consent with
     it); a hub report stays with the hub; an admin sends it to Civic.Social from its row and the badge follows
     Civic.Social's status (since 2026-10-13, feedback routing; inbox rows read from the dev database, copies deleted
@@ -2087,7 +2138,7 @@ the local-stack jobs.
 
 ---
 
-*Last updated: 2026-10-14 — members and invites (`memberInvites.test.ts`, `membersInvites.test.ts`, `membersInvites.spec.ts`, three smoke tests, the leak harness's member routes). Before that, 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-14 — navigation (`navSections.test.ts`, `navigation.test.ts`, `hubNavigation.spec.ts`, two smoke tests replacing the phone Admin menu one, the console-made hubs' sidebar). Before that, 2026-10-14 — members and invites (`memberInvites.test.ts`, `membersInvites.test.ts`, `membersInvites.spec.ts`, three smoke tests, the leak harness's member routes). Before that, 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,

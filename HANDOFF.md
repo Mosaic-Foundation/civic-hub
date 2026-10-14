@@ -4,6 +4,69 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Navigation: every feed item says what it is; the sections one tap away on a phone, always in view on a desktop — 2026-10-14
+
+Commits on `multi-tenant` `3af6355`..`8ceb4aa`, one item each, plus this closing entry. Adam's answers:
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Prompt-Navigation-Answers-2026-10-14.md`. Report
+and handoff: `Navigation-Session-Report-2026-10-14.md`, `Navigation-Handoff-to-Management-2026-10-14.md`, same folder.
+
+**Release needs:** no migration, no env vars, no pre-checks, nobody signed out. Two new public settings,
+`nav.layout` and `nav.section_order` (Theme section), and two `pending` help keys. **Existing hubs are unchanged on a
+desktop** (unset Navigation = Top tabs, default order = today's strip); **every hub's phones change** (the bottom bar
+replaces the strip and the drawer). New hubs are created with Sidebar.
+
+**Adam's decisions (2026-10-14):** design A (the pill in the meta line); the activity wording stays only where the
+type doesn't say it (Update, Official response, Results); no top bar in Sidebar mode, search under the hub name,
+Feedback an item in the sidebar and More (not under You); the bar hidden the whole time on drafting forms; **one
+Section order** (Feed fixed first, Move up / Move down) drives the top tabs, the sidebar, More and the phone's bar
+(its first four); the default order is today's strip (Conversations, Proposals, Votes, Projects, Outcomes, Members);
+a newly enabled section goes at the end. Mine, not objected to: Moderation stays in the Admin group; the drawer's
+About, Welcome and Send feedback join the hub's links; the strip leaves Members out (as today).
+
+**Built:**
+1. **The registry says how residents read a type** (`display` on the descriptor: label, plural, icon, and a section
+   with id, label, a one-word `short` ("Talk"), path, detail paths, default order; `src/shared/typeDisplay.ts`).
+   `descriptorCheck` names a display residents couldn't read; the conformance README tells plugin authors.
+   `GET /hub-config` serves every type's display as `process_types`.
+2. **The feed pill** (design A): the type's registry label leads the meta line with the note, author and date; the
+   title keeps the full width (`FeedPost.tsx`).
+3. **One section list** (`src/shared/navSections.ts`): Feed, then the enabled types' sections and Members in
+   `nav.section_order`, the unnamed ones after in default order. A plugins save that switches a plugin off takes its
+   section out of the stored order in the same write (`hubSettingsController`).
+4. **Phones**: a bar fixed to the bottom above the safe-area inset (`viewport-fit=cover` is back; `.app` pads the
+   side insets) with the first four sections and More; More is the shared Modal as a sheet (every section, the hub's
+   links, Admin for admins, You), closing on Escape, a tap outside or a swipe down, focus trapped and restored. The
+   strip, drawer, Admin pill and review icon leave the phone's header; the share banner, toasts and the Hub settings
+   Save bar sit above the bar (`--bottom-bar-space`). Drafting forms hide it.
+5. **Desktop with Sidebar** (`Sidebar.tsx`): hub name, search, sections with counts, Admin after a divider, the hub's
+   links, You under "Signed in as <name>"; the header and strip are hidden, and the hub's bars head the content
+   column. Top tabs is today's layout, its strip and drawer following the order.
+6. **Hub settings → Theme**: Navigation (Sidebar / Top tabs) and Section order (Move up / Move down, the bar's four
+   marked, a preview of the bar, Use the default order); saving refreshes the config. Help keys `nav.layout`,
+   `nav.section_order` (pending).
+7. **Names**: the admin's Settings is **Hub settings** and the personal page **Your settings** everywhere a person
+   reads them (headings, admin tab, menus, console, start page, emails, unsubscribe pages); "Log out" is Sign out.
+8. **Accessibility**: the bar is `nav "Sections"`, the sidebar `nav "Hub"`; the current item has
+   `aria-current="page"` and a shape and weight, not colour alone; More announces what needs attention.
+9. Counts are read once for every place (`NavDataContext`): members, the admins' review queues, your submissions,
+   edited projects you support.
+
+**Tests:** unit 136 files (navSections, descriptors, settings writes); API `navigation.test.ts` (both modes);
+Playwright `hubNavigation.spec.ts` (11) plus four updated specs, full run 139 passed, 2 skipped; smoke 19 of 19
+locally in 35 s. The local API layer's remaining failures are this stack's data and timeouts (see TESTING.md).
+
+**Not done / follow-ups:**
+- **The hub has no dark mode.** "Light and dark" was checked as the OS setting (the hub ignores it) and a darker
+  preset. A real dark theme is its own slice.
+- The legal documents still say "the Settings page" (Terms, Privacy): they are compared byte for byte with the golden
+  copies; changing them is a legal-text change for Adam.
+- Docs: two pending help sections (`nav.layout`, `nav.section_order`) and the "Settings" → "Hub settings" / "Your
+  settings" wording on docs.civic.social.
+- A plugin's own list page is still UI code: its section appears in the navigation from the registry, its page
+  does not.
+
+---
+
 ## Members and invites: a hub is a group of people, and any member can bring a neighbour in — 2026-10-14
 
 Commits on `multi-tenant` `9585d80`..`585503a`, one item each, plus this closing entry. **Live on dev at `585503a`**
