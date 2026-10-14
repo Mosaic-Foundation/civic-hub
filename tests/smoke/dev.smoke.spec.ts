@@ -65,6 +65,10 @@ const pendingReviews = new Set<string>();
 const liveProcesses: string[] = [];
 const plantedSamples: string[] = [];
 const mosaicCopies: string[] = [];
+/** The smoke hub's Navigation before the sidebar test set it; put back in afterAll. */
+let navLayoutBefore: string | null = null;
+/** The vote the phone ballot test made: its feed card carries the type pill. */
+let smokeVoteTitle = "";
 let cleanReview = { id: "", title: "" };
 let flaggedReview = { id: "", title: "" };
 
@@ -146,6 +150,13 @@ test.afterAll(async ({ playwright }) => {
       data: { reason: "Smoke test cleanup." },
     });
     if (!r.ok()) errors.push(`archive ${id}: ${r.status()}`);
+  }
+  if (navLayoutBefore !== null) {
+    const r = await request.put(`${apiBase()}/admin/hub/settings`, {
+      headers: auth(admin),
+      data: { section: "theme", values: { "nav.layout": navLayoutBefore } },
+    });
+    if (!r.ok()) errors.push(`nav.layout back: ${r.status()}`);
   }
   for (const id of plantedSamples) await removeSample(id);
   await removeMosaicCopies(mosaicCopies);
@@ -389,6 +400,7 @@ test("voting on a phone: the page holds still, the share banner goes by itself, 
   expect(made.status(), await made.text()).toBe(201);
   const voteId = (await made.json()).id as string;
   liveProcesses.push(voteId);
+  smokeVoteTitle = `Smoke ballot ${run}`;
   const opened = await request.post(`${apiBase()}/process/${voteId}/action`, {
     headers: auth(admin),
     data: { type: "process.activate", payload: {} },
@@ -426,27 +438,68 @@ test("voting on a phone: the page holds still, the share banner goes by itself, 
 
 // --- Admin menu slice (2026-10-13) ------------------------------------------
 
-test("the Admin menu opens at phone width with its counts; the review icon says the same", async ({ browser, request }) => {
+test("a feed item carries its type's pill; the phone's bar and More, with Admin and its count for an admin only", async ({ browser, request }) => {
   const counts = await (await request.get(`${apiBase()}/admin/queue-counts`, { headers: auth(admin) })).json();
   const reviews = counts.reviews + counts.briefs + counts.meeting_summaries;
+
+  // A resident at phone width: the pill, the bar, More without Admin.
+  const r = await open(browser, { viewport: { width: 375, height: 812 } });
+  await visitAs(r, resident);
+  await r.goto("/");
+  if (smokeVoteTitle) {
+    const card = r.locator("article.feed-post", { hasText: smokeVoteTitle });
+    await expect(card.getByTestId("feed-type-pill")).toHaveText("Vote");
+  } else {
+    await expect(r.getByTestId("feed-type-pill").first()).toBeVisible();
+  }
+  const bar = r.getByRole("navigation", { name: "Sections", exact: true });
+  await expect(bar.locator(".bottom-bar-label").last()).toHaveText("More");
+  await expect(bar.locator(".bottom-bar-label")).toHaveCount(5);
+  await expect(bar.locator('[aria-current="page"]')).toHaveText("Feed");
+  await bar.locator('[data-nav-id="more"]').click();
+  const rs = r.getByTestId("more-sheet");
+  await expect(rs.getByRole("link", { name: "Votes", exact: true })).toBeVisible();
+  await expect(rs.getByRole("link", { name: "Your settings" })).toBeVisible();
+  await expect(rs.getByRole("link", { name: "Hub settings" })).toHaveCount(0);
+  await r.keyboard.press("Escape");
+  await expect(rs).toBeHidden();
+  await r.close();
+
+  // An admin at phone width: More's Admin group, Reviews with the queues' count.
   const page = await open(browser, { viewport: { width: 375, height: 812 } });
   await visitAs(page, admin);
   await page.goto("/");
-  await expect(page.getByTestId("admin-review-icon")).toHaveAttribute(
-    "aria-label",
-    reviews > 0 ? `Reviews: ${reviews} new` : "Reviews: nothing new",
-  );
-  await page.getByRole("button", { name: "Admin", exact: true }).click();
-  const menu = page.getByRole("menu", { name: "Admin" });
-  await expect(menu.getByRole("menuitem")).toHaveText([
-    reviews > 0 ? `Reviews${reviews}` : "Reviews",
-    "Moderation",
-    "Hub settings",
-    "Plugins",
-    "Contact Civic.Social",
-  ]);
-  await menu.getByRole("menuitem", { name: "Plugins" }).click();
+  await page.getByRole("navigation", { name: "Sections", exact: true }).locator('[data-nav-id="more"]').click();
+  const sheet = page.getByTestId("more-sheet");
+  const reviewsRow = sheet.locator('[data-nav-id="reviews"]');
+  await expect(reviewsRow).toBeVisible();
+  if (reviews > 0) await expect(reviewsRow.locator(".nav-item-count")).toHaveText(reviews.toLocaleString());
+  for (const label of ["Moderation", "Hub settings", "Plugins", "Contact Civic.Social"]) {
+    await expect(sheet.locator(".nav-item", { hasText: label })).toBeVisible();
+  }
+  await sheet.getByRole("link", { name: "Plugins" }).click();
   await expect(page).toHaveURL(/\/admin\/settings\/plugins$/);
+  await page.close();
+});
+
+test("at desktop width with Navigation set to Sidebar, the sidebar replaces the header and tabs", async ({ browser, request }) => {
+  const config = await (await request.get(`${apiBase()}/hub-config`)).json();
+  navLayoutBefore = (config.settings?.["nav.layout"] as string | undefined) ?? "";
+  const set = await request.put(`${apiBase()}/admin/hub/settings`, {
+    headers: auth(admin),
+    data: { section: "theme", values: { "nav.layout": "sidebar" } },
+  });
+  expect(set.ok(), await set.text()).toBeTruthy();
+
+  const page = await open(browser, { viewport: { width: 1280, height: 860 } });
+  await visitAs(page, admin);
+  await page.goto("/votes");
+  const side = page.getByRole("navigation", { name: "Hub", exact: true });
+  await expect(side).toBeVisible();
+  await expect(page.locator(".civic-nav")).toBeHidden();
+  await expect(side.locator('[aria-current="page"]')).toContainText("Votes");
+  await expect(side.getByText("Admin", { exact: true })).toBeVisible();
+  await expect(side.getByText(/Signed in as/)).toBeVisible();
   await page.close();
 });
 
