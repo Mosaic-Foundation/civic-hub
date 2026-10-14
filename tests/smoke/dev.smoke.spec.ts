@@ -17,7 +17,8 @@
  *   - the run's residents delete their accounts (their drafts and sessions go
  *     with them), and the admin's minted sessions are ended;
  *   - the run's copies in Civic.Social's inbox are deleted (the smoke hub's
- *     feedback items stay, like its events).
+ *     feedback items stay, like its events);
+ *   - the run's invites and the waitlist entries they made are deleted.
  * Events and review turns are append-only by design, so their history stays
  * on the smoke hub; that is why it is its own hub.
  */
@@ -25,6 +26,7 @@
 import { test, expect, type Browser, type Page } from "@playwright/test";
 import {
   adminEmail,
+  avatarSeedFor,
   apiBase,
   assertSmokeHub,
   baseUrl,
@@ -34,11 +36,14 @@ import {
   mintSession,
   mosaicCopyOf,
   missingSmokeEnv,
+  nameMember,
   plantSample,
   plantSignInLink,
+  removeInvites,
   removeMosaicCopies,
   removeSample,
   setMosaicStatus,
+  smokeHub,
 } from "./devStack";
 
 const run = Date.now().toString(36);
@@ -144,6 +149,7 @@ test.afterAll(async ({ playwright }) => {
   }
   for (const id of plantedSamples) await removeSample(id);
   await removeMosaicCopies(mosaicCopies);
+  await removeInvites(`smoke-${run}-`);
   for (const token of residents) {
     const r = await request.delete(`${apiBase()}/auth/me`, { headers: auth(token) });
     if (!r.ok()) errors.push(`delete account: ${r.status()}`);
@@ -538,5 +544,62 @@ test("an admin sends a misfiled item to Civic.Social, and the badge shows Civic.
   await setMosaicStatus(copy!.id, item!.id, "planned");
   await page.reload();
   await expect(page.locator(`[id="${item!.id}"]`).getByTestId("mosaic-badge")).toContainText("Planned");
+  await page.close();
+});
+
+// --- Members and invites (2026-10-14) ---------------------------------------
+
+test("the home page shows the member count and stack; a member opens the Members page at phone width", async ({ browser }) => {
+  const { token, userId } = await mintSession(`smoke-${run}-shown@example.test`);
+  residents.push(token);
+  await nameMember(userId, `Smoke Shown ${run}`);
+  const page = await open(browser, { viewport: { width: 375, height: 812 } });
+  await visitAs(page, token);
+  await page.goto("/");
+  const stack = page.getByTestId("member-stack");
+  await expect(stack).toContainText(/\d+ members?/);
+  await expect(stack.locator(".pattern-avatar").first()).toBeVisible();
+  await stack.getByRole("link", { name: /members?$/ }).click();
+  const list = page.getByRole("list", { name: "Members" });
+  await expect(list).toContainText(`Smoke Shown ${run}`);
+  await expect(list.getByRole("listitem").filter({ hasText: "Admin" }).first()).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("@example.test");
+  await page.close();
+});
+
+test("a member hides themselves in Settings, and leaves the Members page and the stack", async ({ browser, request }) => {
+  const { token, userId } = await mintSession(`smoke-${run}-hider@example.test`);
+  residents.push(token);
+  await nameMember(userId, `Smoke Hider ${run}`);
+  const page = await open(browser, { viewport: { width: 375, height: 812 } });
+  await visitAs(page, token);
+  await page.goto("/members");
+  await expect(page.getByRole("list", { name: "Members" })).toContainText(`Smoke Hider ${run}`);
+  await page.goto("/settings#members");
+  await page.getByLabel("Show me on the Members page").uncheck();
+  await expect(page.getByText(/Saved\. You're off the Members page/)).toBeVisible();
+  await page.goto("/members");
+  await expect(page.getByText("You're hidden from this page and the home page.")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Members" })).not.toContainText(`Smoke Hider ${run}`);
+  const summary = await (await request.get(`${apiBase()}/members/summary`)).json();
+  expect(summary.stack).not.toContain(avatarSeedFor(userId));
+  await page.close();
+});
+
+test("a member sends an invite from Share this hub; on the beta smoke hub it goes on the waitlist", async ({ browser }) => {
+  const page = await open(browser, { viewport: { width: 375, height: 812 } });
+  await visitAs(page, resident);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Share this hub" }).click();
+  const panel = page.getByRole("dialog", { name: "Share this hub" });
+  await expect(panel.getByText("This hub is in private beta.")).toBeVisible();
+  await panel.getByLabel("Email addresses").fill(`smoke-${run}-invitee@example.test`);
+  await panel.getByRole("button", { name: "Add to the waitlist" }).click();
+  await expect(panel.getByRole("status")).toHaveText("Done: 1 address on the waitlist. An admin can let them in.");
+  await expect(panel.getByRole("button", { name: "Copy link" })).toBeVisible();
+  const [entry] = (await devRest(
+    `waitlist?select=email,invited_by&hub_id=eq.${encodeURIComponent(smokeHub())}&email=eq.${encodeURIComponent(`smoke-${run}-invitee@example.test`)}`,
+  )) as Array<{ email: string; invited_by: string | null }>;
+  expect(entry?.invited_by).toBeTruthy();
   await page.close();
 });

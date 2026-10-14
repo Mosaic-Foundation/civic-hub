@@ -277,3 +277,28 @@ export async function removeMosaicCopies(ids: readonly string[]): Promise<void> 
     );
   }
 }
+
+/** A member's pattern-avatar seed, as src/services/members.ts makes it. */
+export function avatarSeedFor(userId: string): string {
+  return sha256(`civic-avatar:${smokeHub()}:${userId}`).slice(0, 16);
+}
+
+/** Give a run's resident a name of its own, so the Members page can find it. */
+export async function nameMember(userId: string, fullName: string): Promise<void> {
+  await devRest(`users?id=eq.${encodeURIComponent(userId)}&hub_id=eq.${encodeURIComponent(smokeHub())}`, {
+    method: "PATCH",
+    body: JSON.stringify({ full_name: fullName }),
+  });
+}
+
+/**
+ * Take this run's invites off the smoke hub (members and invites slice): the
+ * invite records and the waitlist entries they made, by the run's address
+ * prefix. The admin log keeps its lines, like the hub's events.
+ */
+export async function removeInvites(addressPrefix: string): Promise<void> {
+  const hub = encodeURIComponent(smokeHub());
+  const like = encodeURIComponent(`${addressPrefix}*`);
+  await devRest(`hub_invites?hub_id=eq.${hub}&email=like.${like}`, { method: "DELETE" }).catch(() => undefined);
+  await devRest(`waitlist?hub_id=eq.${hub}&email=like.${like}`, { method: "DELETE" }).catch(() => undefined);
+}
