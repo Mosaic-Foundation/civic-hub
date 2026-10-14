@@ -43,10 +43,6 @@
   animation: wc-word-in 0.45s ease;
 }
 
-.wc-teaser-empty {
-  opacity: 0.85;
-}
-
 .wc-teaser-cta {
   font-weight: 700;
   transition: transform 0.15s ease;

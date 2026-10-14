@@ -68,13 +68,13 @@ function loadCloud(id: string): Promise<CloudResponse> {
 
 // A slim, always-near-the-top affordance pointing at the community word cloud.
 // Shows the actual submitted words rotating through; when the cloud is empty it
-// invites the visitor to be the first. Hidden entirely when no word cloud is
+// says only "Community word cloud": the prompt is on the word cloud's own page,
+// not in the strip (Adam, 2026-10-14: the note took too much room). Hidden entirely when no word cloud is
 // configured (VITE_HUB_ONBOARDING_WORDCLOUD_ID) or the fetch fails, so it never
 // renders a broken/empty bar.
 export default function WordcloudTeaser() {
   const id = hub.onboarding_wordcloud_id;
   const [words, setWords] = useState<string[]>([]);
-  const [prompt, setPrompt] = useState<string>("");
   const [hidden, setHidden] = useState(false);
   const [idx, setIdx] = useState(0);
 
@@ -93,7 +93,6 @@ export default function WordcloudTeaser() {
           setHidden(true);
           return;
         }
-        setPrompt(cloud.prompt_text || "");
         const top = [...(cloud.entries || [])]
           .sort((a, b) => b.count - a.count)
           .slice(0, 20)
@@ -126,17 +125,15 @@ export default function WordcloudTeaser() {
     >
       <span className="wc-teaser-icon" aria-hidden="true">✦</span>
       <span className="wc-teaser-label">Community word cloud</span>
-      <span className="wc-teaser-sep" aria-hidden="true">·</span>
-      {hasWords ? (
-        <span className="wc-teaser-rotator">
-          <span key={idx} className="wc-teaser-word">
-            {current}
+      {hasWords && (
+        <>
+          <span className="wc-teaser-sep" aria-hidden="true">·</span>
+          <span className="wc-teaser-rotator">
+            <span key={idx} className="wc-teaser-word">
+              {current}
+            </span>
           </span>
-        </span>
-      ) : (
-        <span className="wc-teaser-empty">
-          {prompt ? `${prompt} ` : ""}Be the first to add a word
-        </span>
+        </>
       )}
       <span className="wc-teaser-cta" aria-hidden="true">→</span>
     </Link>

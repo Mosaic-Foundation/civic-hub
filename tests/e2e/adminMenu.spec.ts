@@ -214,8 +214,11 @@ test("4 and 5. delete one sample; the starter takes the word cloud's place; the 
   await expect(page.getByRole("status").filter({ hasText: `Deleted “${cloudTitle}”.` })).toBeVisible();
   await expect(list.getByRole("link", { name: cloudTitle })).toHaveCount(0);
 
-  // The strip now shows the starter word cloud: real content, no place named.
+  // The strip now leads to the starter word cloud: real content, no place
+  // named. The strip says only its label; the prompt is on the cloud's page
+  // (Adam, 2026-10-14).
   await page.goto(`${HUB}/`);
+  await page.getByRole("link", { name: "View the community word cloud" }).click();
   await expect(page.getByText("In one word, what matters most to you about this community?")).toBeVisible();
 
   // A sample's own page offers Delete sample beside Archive.
