@@ -369,6 +369,9 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /hub-config": {},
   "GET /hub-config/documents": { query: ["", "?key=copy.about", "?keys=copy.about"] },
   "GET /auth/me": {},
+  // "N members", the stack and the Members page (members and invites slice).
+  "GET /members/summary": {},
+  "GET /members/": { query: ["", "?offset=60"] },
   "GET /process/": {},
   "GET /process/link-candidates": { query: ["", `?q=${MARKER_B}`, "?q=Vote"] },
   "GET /process/:id/links": {},
@@ -420,6 +423,8 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /admin/feedback": {},
   "GET /admin/queue-counts": {},
   "GET /admin/hub/people": {},
+  // Settings → People's hidden members (members and invites slice, 2026-10-14).
+  "GET /admin/hub/members": {},
   "GET /admin/hub/sample-content": {},
   // Settings → Admin log (admin menu slice, 2026-10-13).
   "GET /admin/hub/admin-log": {},
