@@ -1,5 +1,5 @@
 // Likely duplicates in Civic.Social's feedback inbox (feedback routing,
-// 2026-10-15): items in the same stream, about the same page, whose words
+// 2026-10-13): items in the same stream, about the same page, whose words
 // mostly overlap. A plain rule on purpose: it suggests, Civic.Social decides,
 // and nothing about it needs a model or leaves the console.
 //

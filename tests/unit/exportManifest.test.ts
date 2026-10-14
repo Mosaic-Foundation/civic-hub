@@ -85,7 +85,7 @@ describe("export manifest", () => {
     // (Audit 2): ai_usage (hub data, omitted) and rate_limit_hits (platform).
     // 43 since 2026-10-11 (Audit 3): start_attempts dropped. 45 since
     // 2026-10-14 (sign-in slice): sign_in_codes (hub data, omitted) and
-    // platform_sign_in_codes (platform). 46 since 2026-10-15 (feedback
+    // platform_sign_in_codes (platform). 46 since 2026-10-13 (feedback
     // routing): platform_feedback (platform, not in a hub's export).
     expect(schema.tables.size).toBe(46);
     expect(schema.withHubId.size).toBe(34);

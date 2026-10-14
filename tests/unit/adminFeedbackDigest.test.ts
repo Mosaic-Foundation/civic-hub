@@ -178,7 +178,7 @@ describe("admin digest — items also sent to Civic.Social (feedback routing)", 
     expect(
       feedbackDigestTitle({
         ...base,
-        mosaic: { stream: "bug", status: "received", sent_at: "2026-10-15T09:00:00.000Z", sent_by: "sender" },
+        mosaic: { stream: "bug", status: "received", sent_at: "2026-10-13T09:00:00.000Z", sent_by: "sender" },
       }),
     ).toBe("bug — The vote page scrolls sideways (also sent to Civic.Social)");
     expect(feedbackDigestTitle({ ...base, category: "general" as never, mosaic: null })).toBe(

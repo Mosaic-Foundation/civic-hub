@@ -476,7 +476,7 @@ test("an admin deletes one sample from Settings, and Next: set up your hub follo
   await page.close();
 });
 
-// --- Feedback routing (2026-10-15) ------------------------------------------
+// --- Feedback routing (2026-10-13) ------------------------------------------
 
 const SOFTWARE_REPORT = `Smoke: the About page jumps while it loads ${run}`;
 const HUB_REPORT = `Smoke: a question for this hub's admins ${run}`;

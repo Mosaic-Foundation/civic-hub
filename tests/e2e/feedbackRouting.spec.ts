@@ -1,5 +1,5 @@
 /**
- * Feedback routing (2026-10-15), at phone width and on a desktop.
+ * Feedback routing (2026-10-13), at phone width and on a desktop.
  *
  * 1. The form asks what it is about first, then shows that side's pills; a
  *    software report says it is shared with Civic.Social, offers consent when

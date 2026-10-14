@@ -1,5 +1,5 @@
 // The page a person was on before they opened a form that asks about it
-// (feedback routing, 2026-10-15): a bug report carries the page it is about,
+// (feedback routing, 2026-10-13): a bug report carries the page it is about,
 // whichever link brought the person to the form. App records every
 // navigation; the form pages are left out, so they read the page before.
 

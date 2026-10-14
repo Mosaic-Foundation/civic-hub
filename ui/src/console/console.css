@@ -258,7 +258,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--c
 .cx-minted-code { font-size: 1.5rem; letter-spacing: 0.12em; margin: 6px 0 8px; user-select: all; }
 .cx-block-text { display: block; }
 
-/* Feedback inbox (feedback routing, 2026-10-15). */
+/* Feedback inbox (feedback routing, 2026-10-13). */
 .cx-count {
   display: inline-block; min-width: 1.4em; margin-left: 6px; padding: 0 6px; border-radius: 999px;
   background: var(--cx-accent); color: var(--cx-accent-text); font-size: 0.75rem; line-height: 1.5; text-align: center;

@@ -1,4 +1,4 @@
-// Feedback routing (2026-10-15): feedback about a hub's community stays with
+// Feedback routing (2026-10-13): feedback about a hub's community stays with
 // the hub; feedback about the software also reaches Civic.Social, the sender
 // told so, and the loop closes.
 //

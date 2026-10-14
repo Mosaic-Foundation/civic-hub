@@ -1,4 +1,4 @@
-// Civic.Social's feedback inbox in the console (feedback routing, 2026-10-15).
+// Civic.Social's feedback inbox in the console (feedback routing, 2026-10-13).
 //
 // Every hub's software reports (streams bug and feature) and hub admins'
 // messages (stream admin), grouped by likely duplicates. Civic.Social sets a

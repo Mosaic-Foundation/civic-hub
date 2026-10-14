@@ -6,7 +6,7 @@ import { groupLikelyDuplicates, similarity } from "../../src/shared/feedbackDupl
 
 const item = (id: string, page: string | null, message: string, stream = "bug") => ({
   id,
-  created_at: "2026-10-15T09:00:00.000Z",
+  created_at: "2026-10-13T09:00:00.000Z",
   stream,
   page_path: page,
   message,

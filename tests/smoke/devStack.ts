@@ -221,7 +221,7 @@ export async function removeSample(id: string): Promise<void> {
   }).catch(() => undefined);
 }
 
-// --- Feedback routing (2026-10-15) ------------------------------------------
+// --- Feedback routing (2026-10-13) ------------------------------------------
 //
 // The suite has no console session: minting one would put the operator's
 // rights in CI. It reads Civic.Social's inbox rows straight from the dev

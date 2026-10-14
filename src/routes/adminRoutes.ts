@@ -167,7 +167,7 @@ router.post("/processes/:id/restore", handleRestoreProcess);
 // feedback form, newest first, optionally filtered to one category.
 // Read-only on purpose — see adminFeedbackController.
 router.get("/feedback", handleAdminListFeedback);
-// "Send to Civic.Social" for one item (feedback routing, 2026-10-15).
+// "Send to Civic.Social" for one item (feedback routing, 2026-10-13).
 router.post("/feedback/:id/forward", handleForwardFeedback);
 // An admin's own message to Civic.Social. Not behind the Feedback plugin.
 router.post("/contact-civic-social", handleContactCivicSocial);

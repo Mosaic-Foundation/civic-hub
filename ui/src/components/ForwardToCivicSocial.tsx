@@ -1,4 +1,4 @@
-// Admin → Feedback, one item (feedback routing, 2026-10-15): the badge an
+// Admin → Feedback, one item (feedback routing, 2026-10-13): the badge an
 // item shared with Civic.Social carries, with Civic.Social's status, and the
 // "Send to Civic.Social" button for one that wasn't (a misfiled report).
 

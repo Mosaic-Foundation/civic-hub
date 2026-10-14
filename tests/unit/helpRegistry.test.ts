@@ -14,7 +14,7 @@ const PARTS = [
   "people.board",
   "officials.extra_recipients",
   // Admin → Feedback's Send to Civic.Social, and the Contact Civic.Social
-  // page (feedback routing, 2026-10-15).
+  // page (feedback routing, 2026-10-13).
   "admin.feedback_forward",
   "admin.contact_civic_social",
 ];

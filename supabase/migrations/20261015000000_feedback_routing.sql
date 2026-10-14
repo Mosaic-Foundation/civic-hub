@@ -35,7 +35,7 @@ ALTER TABLE feedback_submissions ADD CONSTRAINT feedback_submissions_mosaic_sent
   CHECK (mosaic_sent_by IS NULL OR mosaic_sent_by IN ('sender', 'admin'));
 
 COMMENT ON COLUMN feedback_submissions.page_path IS
-  'The path the sender was on when they opened the form (no query string). Null before 2026-10-15.';
+  'The path the sender was on when they opened the form (no query string). Null before 2026-10-13.';
 COMMENT ON COLUMN feedback_submissions.software_version IS
   'The deployed commit that received the item, stamped by the server.';
 COMMENT ON COLUMN feedback_submissions.contact_ok IS

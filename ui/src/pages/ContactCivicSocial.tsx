@@ -1,4 +1,4 @@
-// Contact Civic.Social (feedback routing, 2026-10-15): a hub admin writes to
+// Contact Civic.Social (feedback routing, 2026-10-13): a hub admin writes to
 // Civic.Social, which maintains the software, directly. Apart from
 // residents' feedback: it never shows on the hub's Feedback tab, and it is
 // here whether or not the Feedback plugin is on. The admin's address goes

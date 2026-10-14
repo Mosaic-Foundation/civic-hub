@@ -35,7 +35,7 @@ export interface FeedbackSubmission {
   user_agent: string | null;
   /** Optional screenshot on a bug report — public URL in the image bucket. */
   screenshot_url: string | null;
-  /** The path the sender came from (no query string); null before 2026-10-15. */
+  /** The path the sender came from (no query string); null before 2026-10-13. */
   page_path: string | null;
   /** The deployed commit that received it, stamped by the server. */
   software_version: string | null;

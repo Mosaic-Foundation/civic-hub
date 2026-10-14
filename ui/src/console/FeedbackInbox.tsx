@@ -1,4 +1,4 @@
-// Civic.Social's feedback inbox (feedback routing, 2026-10-15): every hub's
+// Civic.Social's feedback inbox (feedback routing, 2026-10-13): every hub's
 // software reports and hub admins' messages, likely duplicates together.
 // Civic.Social sets a status, which shows on the hub's badge, and pastes the
 // GitHub issue it wrote by hand. Nothing here talks to GitHub; a sender's

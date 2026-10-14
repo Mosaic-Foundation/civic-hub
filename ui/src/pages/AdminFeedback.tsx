@@ -8,7 +8,7 @@
 //
 // Read-only by design: no approve, edit, or delete. An archive you can
 // edit is a worse record than one you cannot. The one write is "Send to
-// Civic.Social" (feedback routing, 2026-10-15), which shares an item and
+// Civic.Social" (feedback routing, 2026-10-13), which shares an item and
 // changes nothing anyone said; a shared item carries Civic.Social's status. Gated client-side via
 // AuthContext.isAdmin and server-side by requireAdmin on /admin/feedback.
 //

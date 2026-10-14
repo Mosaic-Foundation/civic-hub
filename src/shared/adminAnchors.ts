@@ -28,7 +28,7 @@ export const ADMIN_TABS = [
   { anchor: "settings", path: "/admin/settings" },
 ] as const;
 
-/** Admin pages that are not tabs (feedback routing, 2026-10-15). */
+/** Admin pages that are not tabs (feedback routing, 2026-10-13). */
 export const ADMIN_PAGES = [
   { anchor: "contact-civic-social", path: "/admin/contact-civic-social" },
 ] as const;
