@@ -86,9 +86,28 @@ function describe(e: HubAdminLogEntry): string {
       return field(e.after, "stream") === "feature"
         ? "Sent a feedback item to Civic.Social as an idea"
         : "Sent a feedback item to Civic.Social as a bug";
+    case "member.invite":
+      return describeInvite(e.after);
     default:
       return e.action;
   }
+}
+
+/** "Invited 2 people by email (a@x.org, b@y.org)" — the addresses only, never the message. */
+function describeInvite(after: unknown): string {
+  const list = (key: string): string[] => {
+    const v = after && typeof after === "object" ? (after as Record<string, unknown>)[key] : null;
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  };
+  const invited = list("invited");
+  const skipped = list("already_invited_or_member");
+  const over = list("over_limit");
+  const how = field(after, "outcome") === "waitlisted" ? "to the waitlist" : "by email";
+  const people = (n: number) => (n === 1 ? "1 person" : `${n} people`);
+  const parts = [`Invited ${people(invited.length)} ${how}${invited.length ? ` (${invited.join(", ")})` : ""}`];
+  if (skipped.length) parts.push(`skipped ${skipped.length} already invited or here (${skipped.join(", ")})`);
+  if (over.length) parts.push(`${over.length} over the daily limit`);
+  return parts.join("; ");
 }
 
 function formatTime(iso: string): string {

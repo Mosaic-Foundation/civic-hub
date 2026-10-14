@@ -45,6 +45,7 @@ import {
   setOfficials,
 } from "../services/officials.js";
 import { getAuthUser } from "../middleware/auth.js";
+import { resolveCreators } from "../services/creatorDisplay.js";
 import { currentHub, currentHubId } from "../config/hubContext.js";
 
 interface SettingsResponse {
@@ -66,9 +67,15 @@ interface SettingsResponse {
   /** @deprecated superseded by `officials`; read-only. */
   announcement_authors: AnnouncementAuthor[];
   beta_allowlist: string[];
-  waitlist: WaitlistEntry[];
+  waitlist: Array<WaitlistEntry & { invited_by_name: string | null }>;
   support_threshold: number;
   comment_identity_mode: CommentIdentityMode;
+}
+
+/** "Invited by Jordan P." on a beta hub's waitlist: the inviter's name, never their address. */
+async function withInviterNames(entries: WaitlistEntry[]): Promise<Array<WaitlistEntry & { invited_by_name: string | null }>> {
+  const names = await resolveCreators(entries.map((e) => e.invited_by).filter((id): id is string => !!id));
+  return entries.map((e) => ({ ...e, invited_by_name: e.invited_by ? (names.get(e.invited_by)?.name ?? null) : null }));
 }
 
 async function loadSettings(): Promise<SettingsResponse> {
@@ -79,7 +86,7 @@ async function loadSettings(): Promise<SettingsResponse> {
     officials: await listOfficialsWithLegacy(),
     announcement_authors: await getAnnouncementAuthors(hubId),
     beta_allowlist: await getBetaAllowlist(hubId),
-    waitlist: await getWaitlist(hubId),
+    waitlist: await withInviterNames(await getWaitlist(hubId)),
     support_threshold: await getSupportThreshold(hubId),
     comment_identity_mode: await getCommentIdentityMode(hubId),
   };

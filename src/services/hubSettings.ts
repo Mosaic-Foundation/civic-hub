@@ -740,15 +740,7 @@ export async function setSupportThreshold(
 // Not a setting — a table — but it has always lived behind this module's
 // front door and the admin surface reads it alongside the settings.
 
-export interface WaitlistEntry {
-  email: string;
-  created_at: string;
-  name: string | null;
-  notes: string | null;
-  wants_test_user: boolean;
-}
-
-export { getWaitlist } from "../db/waitlistStore.js";
+export { getWaitlist, type WaitlistEntry } from "../db/waitlistStore.js";
 
 /** The receipt check mode a new vote's draft starts with (src/shared/checkMode.ts). */
 export function defaultCheckModeSync(): CheckMode {

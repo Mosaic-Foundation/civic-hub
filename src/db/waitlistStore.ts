@@ -16,6 +16,8 @@ export interface WaitlistEntry {
   notes: string | null;
   /** Opted in to "I'd like to be a test user" on the waitlist form. */
   wants_test_user: boolean;
+  /** The member whose invite put this address here (members and invites slice); null when the person asked. */
+  invited_by: string | null;
 }
 
 export async function getWaitlist(hubId: string): Promise<WaitlistEntry[]> {
@@ -23,7 +25,7 @@ export async function getWaitlist(hubId: string): Promise<WaitlistEntry[]> {
   return readAll((from, to) =>
     forHub(hubId)
       .from("waitlist")
-      .select<WaitlistEntry>("email, created_at, name, notes, wants_test_user")
+      .select<WaitlistEntry>("email, created_at, name, notes, wants_test_user, invited_by")
       .order("created_at", { ascending: false })
       .order("email", { ascending: true })
       .range(from, to),

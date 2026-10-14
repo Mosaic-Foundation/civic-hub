@@ -1744,6 +1744,8 @@ export interface WaitlistEntry {
   notes: string | null;
   /** Opted in to "I'd like to be a test user" on the waitlist form. */
   wants_test_user: boolean;
+  /** The member whose invite put this address here; null when the person asked (members and invites slice). */
+  invited_by_name?: string | null;
 }
 
 /**
