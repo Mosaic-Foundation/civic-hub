@@ -65,6 +65,7 @@ export const HUB_TABLES = [
   "events",
   "feedback_submissions",
   "hub_admin_audit_log",
+  "hub_invites",
   "hub_settings",
   "job_runs",
   "link_previews",

@@ -46,6 +46,7 @@ export const TABLE_KEYS: Readonly<Record<string, readonly string[]>> = {
   events: ["id"],
   feedback_submissions: ["id"],
   hub_admin_audit_log: ["id"],
+  hub_invites: ["id"],
   hub_settings: ["hub_id", "key"],
   process_links: ["id"],
   process_reviews: ["id"],

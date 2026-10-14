@@ -147,7 +147,7 @@ async function pool<T>(items: T[], size: number, fn: (t: T) => Promise<void>) {
 const HUB_TABLES_FOR_SNAPSHOT = [
   "active_vote_keys", "brief_responses", "community_inputs", "deliberation_drafts",
   "deliberation_submissions", "deliberation_votes", "events", "feedback_submissions",
-  "hub_settings", "job_runs", "link_previews", "pending_verifications", "process_links",
+  "hub_invites", "hub_settings", "job_runs", "link_previews", "pending_verifications", "process_links",
   "process_reviews", "processes", "project_comments", "project_drafts",
   "project_sentiments", "project_updates", "projects", "proposal_drafts",
   "proposal_supports", "proposals", "review_turns", "sessions", "sign_in_codes", "users",

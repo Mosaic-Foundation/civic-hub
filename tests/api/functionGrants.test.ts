@@ -44,6 +44,7 @@ const AUTHENTICATED = [
   "search_processes",
   "search_processes_count",
   "take_code_attempt",
+  "take_member_invites",
   "take_sign_in_attempt",
   "transition_process",
 ];

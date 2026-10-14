@@ -51,6 +51,13 @@ export const FUNCTION_CONTRACT: readonly FunctionRequirement[] = [
     args: "p_realm text, p_purpose text, p_email text, p_link_hash text, p_max integer",
     owner: "control/platformCodes",
   },
+  {
+    name: "take_member_invites",
+    args:
+      "p_hub_id text, p_user_id text, p_emails text[], p_link_hashes text[], p_outcome text, " +
+      "p_expires_at timestamp with time zone, p_limit integer, p_window_seconds integer",
+    owner: "services/hubInvites",
+  },
   { name: "ai_tokens_since", args: "p_hub_id text, p_since timestamp with time zone, p_purposes text[]", owner: "services/aiBudget" },
   {
     name: "search_processes",

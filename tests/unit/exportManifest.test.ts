@@ -87,8 +87,9 @@ describe("export manifest", () => {
     // 2026-10-14 (sign-in slice): sign_in_codes (hub data, omitted) and
     // platform_sign_in_codes (platform). 46 since 2026-10-13 (feedback
     // routing): platform_feedback (platform, not in a hub's export).
-    expect(schema.tables.size).toBe(46);
-    expect(schema.withHubId.size).toBe(34);
+    // 47 since 2026-10-14 (members and invites): hub_invites (hub data, exported).
+    expect(schema.tables.size).toBe(47);
+    expect(schema.withHubId.size).toBe(35);
     expect(schema.tables.has("hubs")).toBe(true);
     expect(schema.withHubId.has("hubs")).toBe(false);
   });
