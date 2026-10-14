@@ -98,6 +98,9 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "hub_settings", columns: ["key", "value"], owner: "core/hubSettings" },
   { table: "waitlist", columns: ["email", "name", "wants_test_user"], owner: "core/waitlist" },
   { table: "feedback_submissions", columns: ["screenshot_url"], owner: "civic.feedback" },
+  // Feedback routing (20261015000000): what the form captures, and the copy's status for the badge.
+  { table: "feedback_submissions", columns: ["page_path", "software_version", "contact_ok", "mosaic_item_id", "mosaic_stream", "mosaic_status", "mosaic_sent_at", "mosaic_sent_by"], owner: "civic.feedback" },
+  { table: "platform_feedback", columns: ["source_hub_id", "source_feedback_id", "stream", "origin", "message", "contact_ok", "contact_email", "status", "github_issue_url", "fixed_notified_at"], owner: "civic.feedback" },
   { table: "community_inputs", columns: ["is_anonymous", "author_name"], owner: "civic.input" },
   { table: "process_reviews", columns: ["coc_flags"], owner: "civic.review" },
   { table: "review_turns", owner: "civic.review" },

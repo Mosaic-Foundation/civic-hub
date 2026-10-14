@@ -54,6 +54,11 @@ export const NOT_HUB_SCOPED: Readonly<Record<string, string>> = {
   // on the platform, so per-IP limits hold across hubs.
   rate_limit_hits:
     "rate-limit counters for hub sign-in, the console, the start page and assistant calls (hashed IPs, addresses, account ids); platform data, shared by every hub on purpose; service role (src/db/rateLimit.ts) only",
+  // Feedback routing (20261015000000, Adam 2026-10-13): Civic.Social's copies
+  // of software feedback and hub admins' messages, across hubs. A hub must
+  // never read it; source_hub_id names the hub the copy came from.
+  platform_feedback:
+    "Civic.Social's inbox of software feedback and admins' messages, across hubs; email only with consent; service role (src/db/platformFeedback.ts, src/control/) only",
   // Reference data (20260927000000, Adam 2026-09-27): the same list of US
   // jurisdictions for every hub. Deny-all RLS, no policy; the service role
   // (the console) may only SELECT; the loader writes as the owner.
