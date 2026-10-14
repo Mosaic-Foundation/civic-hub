@@ -135,3 +135,86 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
 }
+
+/* Feedback routing: the contact link, the page, the badge and the forward button. */
+.admin-feedback-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-size-sm);
+}
+
+.admin-feedback-page {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.admin-feedback-share {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+
+.admin-feedback-mosaic {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-pill, 999px);
+  font-size: var(--font-size-sm);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.admin-feedback-mosaic.mosaic-planned {
+  border-color: var(--ds-color-primary-600, #2a4e84);
+}
+
+.admin-feedback-mosaic.mosaic-fixed {
+  background: var(--color-success-bg, #e8f5ec);
+  border-color: var(--color-success, #2f7d4a);
+}
+
+.admin-feedback-forward {
+  min-height: 44px;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.admin-feedback-forward:hover {
+  border-color: var(--ds-color-primary-600, #2a4e84);
+}
+
+.admin-feedback-stream {
+  border: 0;
+  padding: 0;
+  margin: var(--space-sm) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.admin-feedback-stream legend {
+  font-weight: 600;
+  margin-bottom: var(--space-xs);
+}
+
+.admin-feedback-stream label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 44px;
+}

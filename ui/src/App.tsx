@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import hub from "./config/hub";
@@ -49,6 +49,8 @@ import AdminModeration from "./pages/AdminModeration";
 import AdminArchived from "./pages/AdminArchived";
 import AdminEdits from "./pages/AdminEdits";
 import AdminFeedback from "./pages/AdminFeedback";
+import ContactCivicSocial from "./pages/ContactCivicSocial";
+import { recordPage } from "./services/lastPage";
 import AdminReviews from "./pages/AdminReviews";
 import MySubmissions from "./pages/MySubmissions";
 import WordCloud from "./pages/WordCloud";
@@ -121,6 +123,8 @@ function AppContent() {
   const showReady = Boolean(user) && !readyClosed && hubJustCreated();
   const preview = usePreviewMode();
   const { pathname } = useLocation();
+  // The page a bug report is about, whichever link opened the form.
+  useEffect(() => recordPage(pathname), [pathname]);
 
   // Private-beta front door. A logged-out first-time visitor lands on the
   // real app with BetaWelcomeDialog floating over it (sign in / waitlist /
@@ -254,6 +258,9 @@ function AppContent() {
           <Route path="/admin/edits" element={<AdminGuard><AdminEdits /></AdminGuard>} />
           {/* Read-only archive of resident feedback, incl. topic suggestions. */}
           <Route path="/admin/feedback" element={whenPlugin("feedback", <AdminGuard><AdminFeedback /></AdminGuard>)} />
+          {/* An admin writes to Civic.Social directly (feedback routing).
+              Not behind the Feedback plugin. */}
+          <Route path="/admin/contact-civic-social" element={<AdminGuard><ContactCivicSocial /></AdminGuard>} />
         </Routes>
       </main>
 

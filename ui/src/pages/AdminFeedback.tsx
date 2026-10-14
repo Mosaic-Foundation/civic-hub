@@ -7,7 +7,9 @@
 // when choosing what to launch with.
 //
 // Read-only by design: no approve, edit, or delete. An archive you can
-// edit is a worse record than one you cannot. Gated client-side via
+// edit is a worse record than one you cannot. The one write is "Send to
+// Civic.Social" (feedback routing, 2026-10-15), which shares an item and
+// changes nothing anyone said; a shared item carries Civic.Social's status. Gated client-side via
 // AuthContext.isAdmin and server-side by requireAdmin on /admin/feedback.
 //
 // Rows carry name/email. This page is one of only two places that PII is
@@ -15,10 +17,13 @@
 // not linked from any non-admin surface.
 
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminListFeedback, adminMarkQueueSeen, notifyAdminQueuesChanged } from "../services/api";
 import type { FeedbackCategory, FeedbackSubmission } from "../services/api";
 import AdminTabs from "../components/AdminTabs";
+import HelpButton from "../components/HelpButton";
+import { ForwardButton, MosaicBadge } from "../components/ForwardToCivicSocial";
 import "./AdminFeedback.css";
 
 type Filter = FeedbackCategory | "all";
@@ -83,6 +88,11 @@ export default function AdminFeedback() {
     adminListFeedback(filter)
       .then((res) => {
         if (!cancelled) setItems(res.items);
+        // A digest link names a row (#fb_…): it arrives after the fetch.
+        const target = window.location.hash.slice(1);
+        if (!cancelled && target) {
+          requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ block: "center" }));
+        }
         // Seen: everything up to now. Clears the tab's "new since you
         // looked" count; the tabs refetch on the event.
         return adminMarkQueueSeen("feedback").then(notifyAdminQueuesChanged).catch(() => {});
@@ -116,9 +126,14 @@ export default function AdminFeedback() {
       <p className="admin-page-description">
         Everything people have sent through the feedback form, newest
         first. Topic suggestions are people nominating subjects the Hub
-        should take up — filter to them when you're deciding what to launch
-        with. This archive is read-only; nothing here can be edited or
-        removed.
+        should take up: filter to them when you're deciding what to launch
+        with. Bugs and ideas also went to Civic.Social, which maintains the
+        software, and show its status. This archive is read-only; nothing
+        here can be edited or removed.
+      </p>
+      <p className="admin-feedback-contact">
+        <Link to="/admin/contact-civic-social">Contact Civic.Social</Link> yourself, apart from residents' feedback.
+        <HelpButton k="admin.contact_civic_social" label="Contact Civic.Social" />
       </p>
 
       <div
@@ -174,6 +189,20 @@ export default function AdminFeedback() {
                   </span>
                 </div>
                 <p className="admin-feedback-message">{item.message}</p>
+                {item.page_path && <p className="admin-feedback-page">Page: {item.page_path}</p>}
+                <div className="admin-feedback-share" id={`${item.id}-share`}>
+                  {item.mosaic ? (
+                    <MosaicBadge copy={item.mosaic} />
+                  ) : (
+                    <>
+                      <ForwardButton
+                        item={item}
+                        onForwarded={(next) => setItems((all) => all.map((i) => (i.id === next.id ? next : i)))}
+                      />
+                      <HelpButton k="admin.feedback_forward" label="Send to Civic.Social" />
+                    </>
+                  )}
+                </div>
                 {item.screenshot_url && (
                   <a
                     className="admin-feedback-screenshot"

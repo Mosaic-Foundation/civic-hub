@@ -6,8 +6,8 @@ import "./AdminMenu.css";
 
 /**
  * The admin's way into everything (admin menu slice, 2026-10-13): a review
- * icon with a count, and the Admin pill, whose dropdown has at most five
- * items. The account menu beside it holds only personal things.
+ * icon with a count, and the Admin pill, whose dropdown has five items, the
+ * last one Contact Civic.Social (feedback routing, 2026-10-15). The account menu beside it holds only personal things.
  *
  * The review count is what is NEW since this admin last opened each review
  * queue (processes, briefs, meeting summaries), the same numbers the admin
@@ -89,6 +89,7 @@ export default function AdminMenu() {
             <MenuItem label="Moderation" onClick={() => choose(() => navigate("/admin/moderation"))} />
             <MenuItem label="Settings" onClick={() => choose(() => navigate("/admin/settings"))} />
             <MenuItem label="Plugins" onClick={() => choose(() => navigate("/admin/settings/plugins"))} />
+            <MenuItem label="Contact Civic.Social" onClick={() => choose(() => navigate("/admin/contact-civic-social"))} />
           </div>
         )}
       </div>

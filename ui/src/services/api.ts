@@ -2435,11 +2435,15 @@ export interface SubmitFeedbackInput {
   website?: string;
   /** Signed-in only; the form offers the picker only when signed in. */
   screenshot_url?: string | null;
+  /** The page the person came from (services/lastPage.ts). */
+  page_path?: string | null;
+  /** "Civic.Social may contact me about this". */
+  contact_ok?: boolean;
 }
 
 export function submitFeedback(
   input: SubmitFeedbackInput,
-): Promise<{ message: string; submission_id?: string }> {
+): Promise<{ message: string; submission_id?: string; shared_with_civic_social?: boolean }> {
   return request("POST", "/feedback", input);
 }
 
@@ -2475,6 +2479,31 @@ export interface FeedbackSubmission {
   user_agent: string | null;
   /** Optional screenshot on a bug report. */
   screenshot_url: string | null;
+  page_path: string | null;
+  software_version: string | null;
+  contact_ok: boolean;
+  /** Civic.Social's copy and its status, when the item was shared. */
+  mosaic: MosaicCopy | null;
+}
+
+/** Mirrors MosaicCopy in src/modules/civic.feedback/models.ts. */
+export type MosaicStatus = "received" | "planned" | "fixed";
+export type MosaicStream = "bug" | "feature";
+export interface MosaicCopy {
+  stream: MosaicStream;
+  status: MosaicStatus;
+  sent_at: string;
+  sent_by: "sender" | "admin";
+}
+
+/** "Send to Civic.Social": once per item, in the stream the admin picks. */
+export function adminForwardFeedback(id: string, stream: MosaicStream): Promise<{ item: FeedbackSubmission }> {
+  return request("POST", `/admin/feedback/${encodeURIComponent(id)}/forward`, { stream });
+}
+
+/** An admin's own message to Civic.Social; their address goes with it. */
+export function contactCivicSocial(input: { message: string; page_path?: string | null }): Promise<{ id: string; message: string }> {
+  return request("POST", "/admin/contact-civic-social", input);
 }
 
 /**

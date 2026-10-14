@@ -82,6 +82,10 @@ function describe(e: HubAdminLogEntry): string {
       return "Made a brief again";
     case "brief.revision_published":
       return "Published a brief's new version";
+    case "feedback.forward":
+      return field(e.after, "stream") === "feature"
+        ? "Sent a feedback item to Civic.Social as an idea"
+        : "Sent a feedback item to Civic.Social as a bug";
     default:
       return e.action;
   }

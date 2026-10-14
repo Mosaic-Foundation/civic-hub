@@ -130,3 +130,119 @@
   overflow: hidden;
   opacity: 0;
 }
+
+/* The first question: this hub, or how the site works (feedback routing). */
+.feedback-side {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.feedback-side-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+
+@media (max-width: 520px) {
+  .feedback-side-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.feedback-side-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-sm) var(--space-md);
+  min-height: 44px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.feedback-side-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.feedback-side-card:hover {
+  background: var(--color-surface-alt);
+}
+
+.feedback-side-card:focus-within {
+  outline: 2px solid var(--pill-vote-fg, #1e3a5f);
+  outline-offset: 2px;
+}
+
+.feedback-side-card.is-selected {
+  background: var(--pill-vote-bg, #e7eef7);
+  border-color: var(--pill-vote-fg, #1e3a5f);
+}
+
+.feedback-side-label {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.feedback-side-hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-base);
+}
+
+.feedback-shared {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface-alt);
+  border-radius: 8px;
+}
+
+.feedback-shared-notice {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.feedback-shared .form-hint {
+  margin: 0;
+}
+
+.feedback-consent {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.feedback-consent input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.feedback-again {
+  background: none;
+  border: 0;
+  padding: var(--space-xs) 0;
+  min-height: 44px;
+  color: var(--color-link, var(--pill-vote-fg, #1e3a5f));
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.contact-civic-social-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
