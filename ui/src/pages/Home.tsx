@@ -1,6 +1,7 @@
 import { useState } from "react";
 import HubInfo from "../components/HubInfo";
 import WelcomeBanner from "../components/WelcomeBanner";
+import MemberStack from "../components/MemberStack";
 import ProcessPicker from "../components/ProcessPicker";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
@@ -32,6 +33,7 @@ export default function Home() {
             Raise something
           </button>
       </div>
+      <MemberStack />
       <WelcomeBanner />
 
       {showAuthModal && (

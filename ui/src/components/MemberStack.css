@@ -1,0 +1,72 @@
+/* "N members" and the avatar stack on the home page (members and invites slice). */
+
+.member-stack-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin: 0 var(--space-md) var(--space-md);
+}
+
+.member-stack {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.member-stack-avatars {
+  display: inline-flex;
+}
+
+.member-stack-avatars .pattern-avatar {
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--color-bg);
+}
+
+.member-stack-avatars .pattern-avatar + .pattern-avatar {
+  margin-left: -8px;
+}
+
+.member-stack-count {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+a.member-stack-count {
+  text-decoration: none;
+}
+
+a.member-stack-count:hover,
+a.member-stack-count:focus-visible {
+  text-decoration: underline;
+}
+
+.member-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.member-share-btn:hover {
+  border-color: var(--color-border-hover);
+}
+
+.member-share-btn:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
