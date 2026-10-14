@@ -5,10 +5,14 @@
 
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useHubConfig } from "../config/HubConfigContext";
 import "./BetaBanner.css";
 
 export default function DemoBanner() {
   const { isAdmin } = useAuth();
+  // Gone once no sample is left (admin menu slice, 2026-10-13); Settings
+  // refreshes the config after each delete, so it goes without a reload.
+  const samplesLeft = useHubConfig()?.content?.samples ?? true;
   return (
     <div className="beta-banner demo-banner" role="region" aria-label="Demo notice">
       {/* Two lines at most on a phone (session 4; it ran to four). "Reset"
@@ -17,7 +21,7 @@ export default function DemoBanner() {
       <span className="beta-banner-text">
         A demo hub: items marked Sample aren't real, and are reset from time to time.
       </span>
-      {isAdmin && (
+      {isAdmin && samplesLeft && (
         <Link className="beta-banner-cta" to="/admin/settings/sample">
           Remove samples
         </Link>
