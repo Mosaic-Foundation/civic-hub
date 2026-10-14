@@ -18,6 +18,8 @@ export type HubAdminAuditAction =
   | "sample_content.remove"
   // One sample deleted from Settings → Sample content (admin menu slice).
   | "sample_content.delete_one"
+  // The starter word cloud was added and chosen (src/services/starterWordcloud.ts).
+  | "wordcloud.starter"
   | "hub.mode"
   | "people.admins"
   | "people.board"

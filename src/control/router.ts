@@ -28,7 +28,7 @@ import { recordJobRun } from "../services/jobRuns.js";
 import { kindsWithSamples, samplePreviews, sampleTemplateTitles } from "../services/sampleTemplates.js";
 import { sampleNames } from "../services/sampleNames.js";
 import { describeInvites } from "../services/adminInvite.js";
-import { inviteAdmins, seedSampleInHub } from "./inHub.js";
+import { addStarterWordcloud, inviteAdmins, seedSampleInHub } from "./inHub.js";
 import {
   CODE_SENT,
   ControlAuthError,
@@ -376,9 +376,16 @@ export function controlRouter(): Router {
         sample = { error: err instanceof Error ? err.message : String(err) };
       }
     }
+    const starter = await addStarterWordcloud(hub.id, `console:${actor(res)}`);
     // The first admin hears about it (review R38).
     const invites = await inviteAdmins(hub.id, input.admins);
-    res.status(201).json({ ...(await hubDetail(hub)), sample_content: sample, invites, message: describeInvites(invites) });
+    res.status(201).json({
+      ...(await hubDetail(hub)),
+      sample_content: sample,
+      starter_wordcloud: starter,
+      invites,
+      message: describeInvites(invites),
+    });
   }));
 
   r.get("/control/hubs/:id", route(async (req, res) => {

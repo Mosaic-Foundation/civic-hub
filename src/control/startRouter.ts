@@ -44,7 +44,7 @@ import {
   releaseClaim,
 } from "./entitlements.js";
 import { ControlInputError, createHub, parseCreateInput, type ControlHub } from "./hubs.js";
-import { handoffUrl, inviteAdmins, seedSampleInHub } from "./inHub.js";
+import { addStarterWordcloud, handoffUrl, inviteAdmins, seedSampleInHub } from "./inHub.js";
 import { listStates, searchJurisdictions, suggestSlug } from "./jurisdictions.js";
 import {
   START_SESSION_TTL_MS,
@@ -376,6 +376,7 @@ export function startRouter(): Router {
         sample = { error: "The sample content could not be added." };
       }
     }
+    await addStarterWordcloud(hub.id, `start:${s.email}`);
     const invites = await inviteAdmins(hub.id, [s.email]);
     await notifyOperator(hub, s.email, spent.note, spent.code_hint);
     const redirect = await handoffUrl(hub.id, s.email, CURRENT_LEGAL_VERSION);

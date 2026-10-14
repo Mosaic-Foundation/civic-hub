@@ -35,6 +35,7 @@
  */
 
 import { createHub, planCreateHub, ControlInputError } from "../src/control/hubs.js";
+import { addStarterWordcloud } from "../src/control/inHub.js";
 import { isHubMode, type HubMode } from "../src/models/hub.js";
 
 /** This script's policy: never demo (the console may), never production. */
@@ -127,6 +128,9 @@ async function main(): Promise<void> {
   }
 
   await createHub(input, { allowedModes: SCRIPT_MODES, updatedBy: "create-hub" });
+  // Every hub starts with an open word cloud in its strip (2026-10-13).
+  const starter = await addStarterWordcloud(id, "create-hub");
+  console.log(`starter word cloud: ${JSON.stringify(starter)}`);
 
   console.log(`\nCreated "${id}" in ${mode} mode at ${hostname}.`);
   console.log(`Admin: ${admins.join(", ")}`);

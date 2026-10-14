@@ -7,6 +7,7 @@ import { getHubBySlug } from "../db/hubs.js";
 import { fetchHubSettings } from "../db/hubSettingsStore.js";
 import { withHubScope } from "../config/hubContext.js";
 import { seedSampleContent, type SampleSeedReport } from "../services/sampleSeed.js";
+import { ensureStarterWordcloud, type StarterOutcome } from "../services/starterWordcloud.js";
 import { sendAdminInvites, type InviteReport } from "../services/adminInvite.js";
 import { createHandoffSession } from "../modules/civic.auth/index.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
@@ -22,6 +23,22 @@ export async function inHubScope<T>(hubId: string, fn: () => Promise<T>): Promis
 /** Seed the sample content inside the hub's own scope. */
 export async function seedSampleInHub(hubId: string): Promise<SampleSeedReport> {
   return inHubScope(hubId, () => seedSampleContent());
+}
+
+/**
+ * Every new hub starts with an open word cloud in its strip (admin menu
+ * slice, 2026-10-13): after the samples, so a hub whose samples include one
+ * keeps that and gets the starter only when the sample goes. The hub exists
+ * either way; a failure is reported, and scripts/add-starter-wordcloud.ts adds
+ * it later.
+ */
+export async function addStarterWordcloud(hubId: string, by: string): Promise<StarterOutcome | { error: string }> {
+  try {
+    return await inHubScope(hubId, () => ensureStarterWordcloud(by));
+  } catch (err) {
+    console.error(`[control] starter word cloud for ${hubId} failed`, err);
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 /** Email the admin invite from inside the hub's scope (sender, link and mode are the hub's). */
