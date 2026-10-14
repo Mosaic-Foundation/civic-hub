@@ -34,6 +34,8 @@ export type SettingsWriteResult =
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COLOR_SHAPE = /^#[0-9a-f]{6}$/i;
+/** A section id (TypeSection.id in src/processes/descriptor.ts). */
+const SECTION_ID_SHAPE = /^[a-z][a-z0-9_-]{0,39}$/;
 
 /**
  * Check a write of `values` to `section`.
@@ -145,6 +147,30 @@ export function normalizeValue(
         return { error: `${key} must be a time zone name such as America/New_York.` };
       }
       return v;
+    }
+
+    case "section_order": {
+      // An array or its JSON; stored as a JSON array, "" for the default order.
+      let list: unknown = raw;
+      if (typeof raw === "string") {
+        if (raw.trim() === "") return "";
+        try {
+          list = JSON.parse(raw);
+        } catch {
+          return { error: `${key} must be a list of section ids.` };
+        }
+      }
+      if (!Array.isArray(list) || list.length > 40) return { error: `${key} must be a list of section ids.` };
+      const ids: string[] = [];
+      for (const id of list) {
+        if (typeof id !== "string" || !SECTION_ID_SHAPE.test(id)) {
+          return { error: `${key} must be a list of section ids.` };
+        }
+        if (id === "feed") return { error: `${key}: Feed is always first; leave it out of the list.` };
+        if (ids.includes(id)) return { error: `${key} lists ${id} twice.` };
+        ids.push(id);
+      }
+      return ids.length === 0 ? "" : JSON.stringify(ids);
     }
 
     case "theme": {

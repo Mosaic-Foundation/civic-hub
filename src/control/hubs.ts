@@ -518,6 +518,9 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
     // one to make their own.
     [KEYS.IDENTITY_BANNER_URL]: DEFAULT_HUB_BANNER.url,
     [KEYS.IDENTITY_BANNER_ALT]: DEFAULT_HUB_BANNER.alt,
+    // New hubs get the left sidebar; a hub made before it reads unset as top
+    // tabs, unchanged until its admin chooses (navigation slice, Adam, 2026-10-14).
+    [KEYS.NAV_LAYOUT]: "sidebar",
   };
   // A place hub is titled by its place; any other kind by its own name (the default).
   if (jurisdictionName && kind === "place") settings[KEYS.IDENTITY_PAGE_TITLE] = `${jurisdictionName} — Civic Hub`;

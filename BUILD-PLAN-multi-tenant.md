@@ -118,6 +118,7 @@ Key naming is dotted, lowercase, and namespaced. The canonical keys:
 | Namespace | Keys |
 |---|---|
 | `identity.` | `identity.name`, `identity.label`, `identity.tagline`, `identity.page_title`, `identity.description`, `identity.banner_url`, `identity.banner_alt`, `identity.theme`, `identity.logo_url` (added 2026-09-24, Adam), `identity.timezone` (added 2026-09-24, Phase 2c), `identity.jurisdiction_type` (added 2026-09-26, Phase 7; place hubs only; public since 2026-10-07, Adam: the welcome strip and tagline say "town government"), `identity.hub_kind` (added 2026-09-27: `place` / `issue` / `organization` / `other`, unset = place; public) |
+| `nav.` | `nav.layout` (`sidebar` / `top_tabs`; unset = top_tabs, new hubs are created with `sidebar`) and `nav.section_order` (JSON array of section ids, Feed fixed first and never listed; unset = the registry's default order). Added 2026-10-14, navigation slice (Adam); both public |
 | `copy.` | `copy.intro_body`, `copy.residency_intro`, `copy.welcome`, `copy.about`, `copy.resident_noun` (read since 2026-10-07: overrides the kind's noun), `copy.governing_body_name`, `copy.governing_body_short`, `copy.welcome_strip`, `copy.welcome_strip_hidden` (boolean), `copy.beta_banner` (the last three added 2026-10-07, Adam; public) |
 | `legal.` | `legal.terms`, `legal.privacy`, `legal.code_of_conduct`, `legal.proposal_best_practices`, `legal.governing_state` (added 2026-09-27: the state whose law governs a non-place hub's documents; admin-editable; unset = `config/legal/defaults.json`, "Virginia"; public, as it is printed in them) |
 | `people.` | `people.admin_emails`, `people.board_emails`, `people.brief_recipients`, `people.announcement_authors` |
@@ -142,7 +143,7 @@ are the strings `true` / `false`; numbers are decimal strings. A settings
 reader (`src/services/hubSettings.ts`) owns parsing; callers never parse
 `value` themselves.
 
-**Public subset.** Only `identity.*`, `copy.*`, `legal.*`, `beta.enabled`,
+**Public subset.** Only `identity.*`, `nav.layout`, `nav.section_order` (2026-10-14), `copy.*`, `legal.*`, `beta.enabled`,
 `beta.waitlist_enabled`, `moderation.comment_identity_mode`,
 `plugin.<id>.enabled`, `plugin.conversation.polis_url`,
 `plugin.wordcloud.onboarding_id` and `plugin.feedback.contact_email` (2026-10-08)
@@ -829,7 +830,7 @@ code's copy is `src/shared/hubSettingsSections.ts`, and the settings endpoint
 | Copy & pages | `copy.intro_body`, `.residency_intro`, `.welcome`, `.about`, `.resident_noun`, `.governing_body_name`, `.governing_body_short` | `copy.welcome` and `copy.about` are documents. |
 | Legal | `legal.terms`, `.privacy`, `.code_of_conduct`, `.proposal_best_practices`, `.operator_name`, `.contact_email`, `.who_runs_this` | A document saved identical to its shared template is stored as `""`, so the hub keeps following the template ("restore default"). |
 | Email | `email.from_name`, `email.postal_address` | `email.from_address` is shown read-only: the sending domain is the platform's. The three digest keys it held moved to Plugins in Phase 2c. |
-| Theme | `identity.theme` | Its own section since 2026-09-24: a theme object (preset, primary, accent, background, one hue per process type), stored as canonical JSON; a bare `#rrggbb` still reads as the primary. Model: `src/shared/theme.ts`. |
+| Theme | `identity.theme`, `nav.layout`, `nav.section_order` | Its own section since 2026-09-24: a theme object (preset, primary, accent, background, one hue per process type), stored as canonical JSON; a bare `#rrggbb` still reads as the primary. Model: `src/shared/theme.ts`. Navigation (Sidebar / Top tabs, kind `choice`) and Section order (kind `section_order`, Move up / Move down) joined it 2026-10-14: one order drives the top tabs, the sidebar, the More sheet and the phone's bar (its first four). |
 | Plugins | `plugin.<id>.enabled` for all 14 ids; `plugin.vote.min_duration_days`, `.max_duration_days`, `.default_duration_days`, `.default_check_mode` (kind `choice`, `show_choice` | `counted_only`, unset = show_choice; added 2026-10-13, Actions slice); `plugin.conversation.polis_url`; `plugin.wordcloud.onboarding_id` (kind `process`, added 2026-10-06); `plugin.meeting_summary.connector_id`, `.source_url`, `.youtube_channel_id`, `.title_filter`, `.type_exclude`, `.cutoff_date`, `.auto_publish`, `.extraction_instructions`; `plugin.news_sync.connector`, `.source_url`; `plugin.digest.send_hour` | Added in Phase 2c (Adam, 2026-09-24; per-plugin settings decided 2026-09-22). One card per plugin: the switch, and beneath it that plugin's settings. Keys another section owns are shown read-only with a link, never repeated (one writer per key): announcement authors and brief recipients → Officials; `plugin.vote.support_threshold` and `moderation.comment_identity_mode` → Participation. `youtube_channel_id` is beyond Adam's list: the YouTube connector is one of the choices and needs it. |
 | Mode | `hubs.mode` (beta / live) | Its own endpoint with the emailed-code step-up; a demo hub shows "set by the platform". |
 | Admins & board | `people.admin_emails`, `people.board_emails` | Existing `POST /admin/hub/people`, step-up. |

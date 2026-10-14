@@ -315,6 +315,18 @@
     "page": "/reference/settings/theme",
     "anchor": "identity-theme"
   },
+  "nav.layout": {
+    "text": "Where the hub's sections are drawn on a computer: a sidebar on the left, or tabs along the top. Phones always get a bar at the bottom of the screen.",
+    "page": "/reference/settings/theme",
+    "anchor": "nav-layout",
+    "pending": true
+  },
+  "nav.section_order": {
+    "text": "The order of the hub's sections everywhere they appear. Feed is always first; the first four are the tabs on a phone's bottom bar, and the rest are under More.",
+    "page": "/reference/settings/theme",
+    "anchor": "nav-section-order",
+    "pending": true
+  },
   "plugin.vote.min_duration_days": {
     "text": "The shortest voting window a drafter may pick for a vote, in days (1 to 365). Left empty, it is 14.",
     "page": "/reference/plugins",

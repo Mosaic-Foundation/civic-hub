@@ -55,7 +55,14 @@ export type SettingFieldKind =
    * (2026-10-06: the word cloud the banner shows). The server checks that the
    * process exists on this hub and is of that type.
    */
-  | "process";
+  | "process"
+  /**
+   * The order of the hub's navigation sections (navigation slice,
+   * 2026-10-14): a JSON array of distinct section ids. Feed is fixed first
+   * and never listed. An id the hub no longer has is kept harmlessly, so
+   * switching a plugin off and on does not lose its place.
+   */
+  | "section_order";
 
 export interface SettingFieldSpec {
   key: string;
@@ -144,7 +151,13 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "email.postal_address", kind: "textarea", maxLength: 300 },
   ],
   // Its own section since 2026-09-24: a theme is a palette, not one colour.
-  theme: [{ key: "identity.theme", kind: "theme" }],
+  // Navigation joined it on 2026-10-14 (Adam): where the sections are drawn,
+  // and their one order.
+  theme: [
+    { key: "identity.theme", kind: "theme" },
+    { key: "nav.layout", kind: "choice", options: ["sidebar", "top_tabs"] },
+    { key: "nav.section_order", kind: "section_order" },
+  ],
   // Since Phase 2c (Adam, 2026-09-24): every plugin's on/off, and beneath it
   // the settings that plugin has. Settings another section already owns
   // (announcement authors, brief recipients, the support threshold, comment

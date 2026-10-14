@@ -202,3 +202,34 @@ describe("normalizeValue by kind", () => {
     expect(normalizeValue(spec("legal.terms"), null)).toHaveProperty("error");
   });
 });
+
+describe("navigation settings (navigation slice, 2026-10-14)", () => {
+  it("are in the Theme section and public: every visitor's page draws them", () => {
+    const theme = SETTINGS_SECTIONS.theme.map((f) => f.key);
+    expect(theme).toEqual(expect.arrayContaining([KEYS.NAV_LAYOUT, KEYS.NAV_SECTION_ORDER]));
+    expect(isPublicKey(KEYS.NAV_LAYOUT)).toBe(true);
+    expect(isPublicKey(KEYS.NAV_SECTION_ORDER)).toBe(true);
+  });
+
+  it("Navigation is Sidebar or Top tabs, or unset", () => {
+    expect(validateSettingsWrite("theme", { "nav.layout": "sidebar" })).toMatchObject({ ok: true });
+    expect(validateSettingsWrite("theme", { "nav.layout": "top_tabs" })).toMatchObject({ ok: true });
+    expect(validateSettingsWrite("theme", { "nav.layout": "" })).toMatchObject({ ok: true });
+    expect(validateSettingsWrite("theme", { "nav.layout": "bottom" })).toMatchObject({ ok: false });
+  });
+
+  it("Section order is stored as a JSON list of distinct ids, without Feed", () => {
+    const order = fieldSpec("nav.section_order")!;
+    expect(normalizeValue(order, ["votes", "conversations", "members"])).toBe('["votes","conversations","members"]');
+    expect(normalizeValue(order, '["projects"]')).toBe('["projects"]');
+    expect(normalizeValue(order, "")).toBe("");
+    expect(normalizeValue(order, [])).toBe("");
+    // An id the hub does not have today is kept: a plugin switched off keeps its place.
+    expect(normalizeValue(order, ["some_plugin_section"])).toBe('["some_plugin_section"]');
+    expect(normalizeValue(order, ["votes", "votes"])).toEqual({ error: "nav.section_order lists votes twice." });
+    expect(normalizeValue(order, ["feed", "votes"])).toHaveProperty("error");
+    expect(normalizeValue(order, ["Not An Id"])).toHaveProperty("error");
+    expect(normalizeValue(order, "not json")).toHaveProperty("error");
+    expect(normalizeValue(order, { votes: 1 })).toHaveProperty("error");
+  });
+});

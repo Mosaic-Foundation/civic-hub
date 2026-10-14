@@ -48,6 +48,17 @@ export const KEYS = {
   // applies to place hubs only.
   IDENTITY_HUB_KIND: "identity.hub_kind",
 
+  // Where the hub's sections are drawn, and in what order (navigation slice,
+  // 2026-10-14, Adam). `nav.layout` is "sidebar" or "top_tabs"; unset is
+  // top_tabs, so a hub made before the slice is unchanged until its admin
+  // chooses, and a new hub is created with "sidebar"
+  // (src/control/hubs.ts). Phones get the bottom bar under either.
+  // `nav.section_order` is a JSON array of section ids (Feed is always
+  // first and never listed); unset is the registry's default order. One
+  // order drives every layout. Both public: every visitor's page draws them.
+  NAV_LAYOUT: "nav.layout",
+  NAV_SECTION_ORDER: "nav.section_order",
+
   COPY_INTRO_BODY: "copy.intro_body",
   COPY_RESIDENCY_INTRO: "copy.residency_intro",
   COPY_WELCOME: "copy.welcome",
@@ -294,6 +305,9 @@ export const PUBLIC_KEY_LIST: readonly string[] = [
   KEYS.IDENTITY_LOGO_URL,
   KEYS.IDENTITY_HUB_KIND,
   KEYS.IDENTITY_JURISDICTION_TYPE,
+
+  KEYS.NAV_LAYOUT,
+  KEYS.NAV_SECTION_ORDER,
 
   KEYS.COPY_INTRO_BODY,
   KEYS.COPY_RESIDENCY_INTRO,
