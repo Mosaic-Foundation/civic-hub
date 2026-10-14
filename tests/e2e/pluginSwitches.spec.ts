@@ -101,14 +101,14 @@ test.describe("Plugin switches", () => {
 
     {
       await visitAs(page, token);
-      await page.goto("/admin/settings/plugins");
+      await page.goto("/admin/settings/plugins#project");
       const card = page.getByRole("region", { name: "Projects", exact: true });
-      await expect(card.getByLabel("Projects", { exact: true })).toBeChecked();
+      await expect(card.getByLabel("Projects on", { exact: true })).toBeChecked();
 
       // Marks this document: a reload would lose it.
       await page.evaluate(() => ((window as unknown as { __sameDocument: boolean }).__sameDocument = true));
 
-      await card.getByLabel("Projects", { exact: true }).uncheck();
+      await card.getByLabel("Projects on", { exact: true }).uncheck();
       await page.getByRole("button", { name: "Save", exact: true }).click();
       await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
       // The save message no longer tells the admin to reload.
@@ -121,9 +121,9 @@ test.describe("Plugin switches", () => {
       expect(await page.evaluate(() => (window as unknown as { __sameDocument?: boolean }).__sameDocument)).toBe(true);
 
       // Switched back on, it returns the same way.
-      await page.goto("/admin/settings/plugins");
+      await page.goto("/admin/settings/plugins#project");
       await page.evaluate(() => ((window as unknown as { __sameDocument: boolean }).__sameDocument = true));
-      await card.getByLabel("Projects", { exact: true }).check();
+      await card.getByLabel("Projects on", { exact: true }).check();
       await page.getByRole("button", { name: "Save", exact: true }).click();
       await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
       await tabs.getByRole("link", { name: "Feed", exact: true }).click();

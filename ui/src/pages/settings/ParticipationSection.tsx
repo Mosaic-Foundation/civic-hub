@@ -98,7 +98,7 @@ export default function ParticipationSection() {
 
         {error && <p className="form-error">{error}</p>}
 
-        <h3 className="settings-subsection-title">Proposal endorsement threshold</h3>
+        <h3 className="settings-subsection-title" id="threshold" data-anchor="">Proposal endorsement threshold</h3>
         <label className="form-label" htmlFor="support-threshold">
           Endorsements needed
         </label>
@@ -136,7 +136,7 @@ export default function ParticipationSection() {
       </section>
 
       <section className="settings-section settings-section--follow">
-        <h3 className="settings-subsection-title">Comments & anonymity</h3>
+        <h3 className="settings-subsection-title" id="anonymity" data-anchor="">Comments & anonymity</h3>
         <p className="form-hint">
           Votes are always anonymous (ballot secrecy) and creating a
           process always carries the creator's real name — those are

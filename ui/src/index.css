@@ -100,3 +100,9 @@ a {
     font-size: max(16px, 1em) !important;
   }
 }
+
+/* A place a link can point at (#anchor): land below the sticky header,
+   not under it (admin menu slice, 2026-10-13; ui/src/hooks/useAnchor.ts). */
+[data-anchor] {
+  scroll-margin-top: 96px;
+}

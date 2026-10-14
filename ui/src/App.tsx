@@ -26,6 +26,7 @@ import AdminVoteResults from "./pages/AdminVoteResults";
 import AdminBriefs from "./pages/AdminBriefs";
 import AdminMeetingSummaries from "./pages/AdminMeetingSummaries";
 import AdminSettings from "./pages/AdminSettings";
+import { adminAnchorPath } from "../../src/shared/adminAnchors";
 import VoteResults from "./pages/VoteResults";
 import BriefPage from "./pages/Brief";
 import MeetingSummary from "./pages/MeetingSummary";
@@ -67,6 +68,12 @@ import "./App.css";
 // (/process/:id, /propose, etc.) stay compact so task-focused flows are
 // not pushed down by 200px of imagery.
 const BANNER_ROUTES = new Set(["/", "/votes", "/propose", "/projects", "/deliberations", "/outcomes"]);
+
+/** /admin#<anchor>: a tab, a Settings section or a plugin's panel (src/shared/adminAnchors.ts). */
+function AdminAnchor() {
+  const { hash } = useLocation();
+  return <Navigate to={adminAnchorPath(hash, "admin") ?? "/admin/reviews"} replace />;
+}
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth();
@@ -181,6 +188,7 @@ function AppContent() {
           <Route path="/votes/:id/log" element={whenPlugin("vote", <VoteLog />)} />
           <Route path="/my-submissions" element={<MySubmissions />} />
           <Route path="/my-submissions/:reviewId" element={<MySubmissions />} />
+          <Route path="/admin" element={<AdminGuard><AdminAnchor /></AdminGuard>} />
           <Route path="/admin/reviews" element={<AdminGuard><AdminReviews /></AdminGuard>} />
           <Route path="/admin/reviews/:reviewId" element={<AdminGuard><AdminReviews /></AdminGuard>} />
           {/* Legacy vote-results admin (existing published vote briefs keep

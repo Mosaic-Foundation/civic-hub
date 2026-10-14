@@ -21,6 +21,7 @@ import {
   type WaitlistEntry,
 } from "../../services/api";
 import { useHubSettings, useUnsavedChangesGuard } from "./HubSettingsContext";
+import { useAnchoredOpen } from "../../hooks/useAnchor";
 import { SampleRemovalWarning } from "./sampleWarning";
 
 const MODES: ReadonlyArray<{ id: "beta" | "live"; title: string; body: string }> = [
@@ -285,6 +286,9 @@ function AllowlistAndWaitlist() {
   const [saved, setSaved] = useState("");
   const [text, setText] = useState("");
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
+  // Closed until clicked, or until a link names them (#allowlist, #waitlist).
+  const [allowOpen, setAllowOpen] = useAnchoredOpen("allowlist");
+  const [waitOpen, setWaitOpen] = useAnchoredOpen("waitlist");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -342,7 +346,13 @@ function AllowlistAndWaitlist() {
 
   return (
     <>
-      <details className="settings-section settings-section--follow settings-collapsible">
+      <details
+        id="allowlist"
+        data-anchor=""
+        className="settings-section settings-section--follow settings-collapsible"
+        open={allowOpen}
+        onToggle={(e) => setAllowOpen(e.currentTarget.open)}
+      >
         <summary className="settings-collapsible-summary">
           <h3 className="settings-subsection-title">Beta allowlist</h3>
           <span className="settings-collapsible-count">
@@ -385,7 +395,13 @@ function AllowlistAndWaitlist() {
         </div>
       </details>
 
-      <details className="settings-section settings-section--follow settings-collapsible">
+      <details
+        id="waitlist"
+        data-anchor=""
+        className="settings-section settings-section--follow settings-collapsible"
+        open={waitOpen}
+        onToggle={(e) => setWaitOpen(e.currentTarget.open)}
+      >
         <summary className="settings-collapsible-summary">
           <h3 className="settings-subsection-title">Waitlist</h3>
           <span className="settings-collapsible-count">

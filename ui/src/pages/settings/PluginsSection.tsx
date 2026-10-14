@@ -40,6 +40,8 @@ import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections
 import hub from "../../config/hub";
 import { feedbackContactEmail } from "../../../../src/shared/platform";
 import { pluginSetup } from "../../config/plugins";
+import { pluginAnchor } from "../../../../src/shared/adminAnchors";
+import { useAnchoredOpen } from "../../hooks/useAnchor";
 import {
   adminGetJobRuns,
   adminGetPluginLiveCounts,
@@ -163,17 +165,48 @@ function PluginCard({
   // From the served config, so it describes what is saved; refreshed after
   // every save (src/shared/pluginSetup.ts holds the rule).
   const setup = pluginSetup(id);
+  // Collapsed until clicked, or until a link names it
+  // (/admin/settings/plugins#feedback; admin menu slice, 2026-10-13).
+  const anchor = pluginAnchor(id);
+  const [open, setOpen] = useAnchoredOpen(anchor);
+  const bodyId = `plugin-${anchor}-body`;
   return (
-    <section className={`plugin-card${on ? "" : " plugin-card-off"}`} aria-label={PLUGINS[id].name}>
-      <BooleanField f={f} k={`plugin.${id}.enabled`} label={PLUGINS[id].name} hint={PLUGINS[id].what} />
-      {on && setup && <NeedsSetup missing={setup.missing} shown={setup.shown} />}
-      {on && <JobRunLines jobs={jobs} plugin={id} />}
-      {!on && live > 0 && <LiveItemsWarning id={id} live={live} />}
-      {panel && on && <div className="plugin-settings">{panel}</div>}
-      {panel && !on && (
-        <p className="form-hint plugin-off-note">
-          Off. Its settings are kept and apply again when it is switched back on.
-        </p>
+    <section
+      id={anchor}
+      data-anchor=""
+      className={`plugin-card${on ? "" : " plugin-card-off"}${open ? " is-open" : ""}`}
+      aria-label={PLUGINS[id].name}
+    >
+      <button
+        type="button"
+        className="plugin-card-head"
+        aria-expanded={open}
+        aria-controls={bodyId}
+        onClick={() => setOpen(!open)}
+      >
+        <span className="plugin-card-title">
+          <span className="plugin-card-name">{PLUGINS[id].name}</span>
+          <span className={`plugin-card-state${on ? " is-on" : ""}`}>{on ? "On" : "Off"}</span>
+          {on && setup && <span className="plugin-needs-setup-chip">Needs setup</span>}
+        </span>
+        <span className="plugin-card-what">{PLUGINS[id].what}</span>
+        <svg className="plugin-card-chevron" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+          <path d="M3.5 5.5L7 9L10.5 5.5" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+        </svg>
+      </button>
+      {open && (
+        <div id={bodyId} className="plugin-card-body">
+          <BooleanField f={f} k={`plugin.${id}.enabled`} label={`${PLUGINS[id].name} on`} />
+          {on && setup && <NeedsSetup missing={setup.missing} shown={setup.shown} />}
+          {on && <JobRunLines jobs={jobs} plugin={id} />}
+          {!on && live > 0 && <LiveItemsWarning id={id} live={live} />}
+          {panel && on && <div className="plugin-settings">{panel}</div>}
+          {panel && !on && (
+            <p className="form-hint plugin-off-note">
+              Off. Its settings are kept and apply again when it is switched back on.
+            </p>
+          )}
+        </div>
       )}
     </section>
   );

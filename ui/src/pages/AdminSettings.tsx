@@ -6,7 +6,9 @@
 // point at one, and the browser's back button moves between them. Switching
 // away from a section with unsaved edits asks first.
 
-import { Navigate, useNavigate, useParams, Link } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams, Link } from "react-router-dom";
+import { adminAnchorPath, SETTINGS_NAV, type SettingsNavId } from "../../../src/shared/adminAnchors";
+import { useScrollToHash } from "../hooks/useAnchor";
 import AdminTabs from "../components/AdminTabs";
 import {
   HubSettingsProvider,
@@ -35,20 +37,24 @@ interface SectionEntry {
   comingNote?: string;
 }
 
-const SECTIONS: readonly SectionEntry[] = [
-  { id: "identity", label: "Identity", render: () => <IdentitySection /> },
-  { id: "theme", label: "Theme", render: () => <ThemeSection /> },
-  { id: "copy", label: "Copy & pages", render: () => <CopySection /> },
-  { id: "legal", label: "Legal", render: () => <LegalSection /> },
-  { id: "email", label: "Email", render: () => <EmailSection /> },
-  { id: "mode", label: "Mode", render: () => <ModeSection /> },
-  { id: "sample", label: "Sample content", render: () => <SampleContentSection /> },
-  { id: "admin-log", label: "Admin log", render: () => <AdminLogSection /> },
-  { id: "people", label: "Admins & board", render: () => <PeopleSection /> },
-  { id: "officials", label: "Officials", render: () => <OfficialsSection /> },
-  { id: "participation", label: "Participation", render: () => <ParticipationSection /> },
-  { id: "plugins", label: "Plugins", render: () => <PluginsSection /> },
-];
+// The ids, labels and order are shared with the anchors and the help
+// registry (src/shared/adminAnchors.ts); each id's form is here.
+const RENDER: Record<SettingsNavId, () => React.ReactNode> = {
+  identity: () => <IdentitySection />,
+  theme: () => <ThemeSection />,
+  copy: () => <CopySection />,
+  legal: () => <LegalSection />,
+  email: () => <EmailSection />,
+  mode: () => <ModeSection />,
+  sample: () => <SampleContentSection />,
+  "admin-log": () => <AdminLogSection />,
+  people: () => <PeopleSection />,
+  officials: () => <OfficialsSection />,
+  participation: () => <ParticipationSection />,
+  plugins: () => <PluginsSection />,
+};
+
+const SECTIONS: readonly SectionEntry[] = SETTINGS_NAV.map((s) => ({ ...s, render: RENDER[s.id] }));
 
 const FIRST = SECTIONS[0]!.id;
 
@@ -62,11 +68,17 @@ export default function AdminSettings() {
 
 function SettingsPage() {
   const { section } = useParams<{ section?: string }>();
+  const { hash } = useLocation();
   const navigate = useNavigate();
   const { dirty } = useHubSettings();
+  useScrollToHash();
 
   const current = SECTIONS.find((s) => s.id === section && s.render);
-  if (!current) return <Navigate to={`/admin/settings/${FIRST}`} replace />;
+  if (!current) {
+    // /admin/settings#participation, #feedback (a plugin's panel), #threshold.
+    const to = !section && hash ? adminAnchorPath(hash, "settings") : null;
+    return <Navigate to={to ?? `/admin/settings/${FIRST}`} replace />;
+  }
 
   function go(e: React.MouseEvent, id: string) {
     e.preventDefault();
@@ -116,7 +128,9 @@ function SettingsPage() {
             </ul>
           </nav>
 
-          <div className="settings-content">{current.render!()}</div>
+          <div className="settings-content" id={current.id} data-anchor="">
+            {current.render!()}
+          </div>
         </div>
       </div>
     </div>
