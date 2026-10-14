@@ -61,6 +61,10 @@ function describe(e: HubAdminLogEntry): string {
   switch (e.action) {
     case "sample_content.remove":
       return "Removed the sample content";
+    case "sample_content.delete_one": {
+      const title = field(e.before, "title");
+      return title ? `Deleted a sample: “${title}”` : "Deleted a sample";
+    }
     case "hub.mode": {
       const from = field(e.before, "mode");
       const to = field(e.after, "mode");

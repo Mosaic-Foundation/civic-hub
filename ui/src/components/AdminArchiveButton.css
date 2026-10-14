@@ -65,3 +65,8 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* "Delete sample" beside "Archive" on a sample's page (admin menu slice). */
+.admin-archive-open-btn + .admin-archive-open-btn {
+  margin-left: var(--space-sm);
+}

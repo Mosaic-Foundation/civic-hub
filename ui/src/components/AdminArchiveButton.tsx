@@ -13,6 +13,8 @@ import { useState } from "react";
 import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/AuthContext";
 import { adminArchiveProcess } from "../services/api";
+import DeleteSampleButton, { useIsDeletableSample } from "./DeleteSampleButton";
+import { useNavigate } from "react-router-dom";
 import "./AdminArchiveButton.css";
 
 interface Props {
@@ -28,6 +30,9 @@ export default function AdminArchiveButton({
   onArchived,
 }: Props) {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
+  // A sample can also be deleted outright (admin menu slice, 2026-10-13).
+  const sample = useIsDeletableSample(processId, isAdmin);
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const action = useAction("Could not archive");
@@ -95,6 +100,15 @@ export default function AdminArchiveButton({
           {error && <p className="form-error">{error}</p>}
         </div>
       ) : (
+        <>
+        {sample && (
+          <DeleteSampleButton
+            processId={processId}
+            what={`This sample ${itemLabel}`}
+            className="admin-archive-open-btn"
+            onDeleted={() => navigate("/admin/settings/sample")}
+          />
+        )}
         <button
           type="button"
           className="admin-archive-open-btn"
@@ -106,6 +120,7 @@ export default function AdminArchiveButton({
         >
           Archive {itemLabel}
         </button>
+        </>
       )}
     </div>
   );

@@ -1966,6 +1966,22 @@ export interface SampleContentSummary {
   real_input_total: number;
   /** Processes that are not sample: what the hub keeps. */
   other_processes: number;
+  /** Each sample an admin can delete on its own, with its page. */
+  items: SampleItem[];
+}
+
+export interface SampleItem {
+  id: string;
+  type: string;
+  title: string;
+  /** A visitor's own item while the hub was a demo. */
+  added_in_demo: boolean;
+  path: string;
+}
+
+/** Delete one sample and what was made from it. No code. */
+export function adminDeleteSample(id: string): Promise<{ deleted: SampleItem; summary: SampleContentSummary }> {
+  return request("DELETE", `/admin/hub/sample-content/${encodeURIComponent(id)}`);
 }
 
 export function adminGetSampleContent(): Promise<SampleContentSummary> {

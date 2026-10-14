@@ -6,9 +6,17 @@
 // mode or roster change (src/controllers/adminStepUp.ts), because it cannot
 // be undone and may take real people's input with it; it is recorded in the
 // hub's own admin log.
+//
+// One sample at a time (admin menu slice, 2026-10-13): each is listed with a
+// Delete button, no code, recorded in the admin log too. When the last seeded
+// sample goes, "Next: set up your hub" takes the list's place.
 
 import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import DeleteSampleButton from "../../components/DeleteSampleButton";
+import { friendlyType } from "../../components/ProcessLinkPicker";
+import { PLATFORM_SETUP_GUIDE_URL } from "../../../../src/shared/platform";
 import {
   adminGetSampleContent,
   adminRemoveSampleContent,
@@ -86,6 +94,7 @@ export default function SampleContentSection() {
               {message.text}
             </p>
           )}
+          <NextSteps />
         </>
       ) : (
         <>
@@ -101,6 +110,30 @@ export default function SampleContentSection() {
               </>
             )}
           </p>
+
+          <ul className="sample-items" aria-label="Samples">
+            {summary.items.map((item) => (
+              <li key={item.id} className="sample-item">
+                <span className="sample-item-what">
+                  <Link to={item.path}>{item.title}</Link>
+                  <span className="sample-item-type">
+                    {friendlyType(item.type)}
+                    {item.added_in_demo && " · added by a visitor"}
+                  </span>
+                </span>
+                <DeleteSampleButton
+                  processId={item.id}
+                  what={`“${item.title}”`}
+                  label={`Delete sample: ${item.title}`}
+                  onDeleted={(after) => {
+                    setSummary(after);
+                    setMessage({ text: `Deleted “${item.title}”.`, error: false });
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
+          {summary.processes === 0 && <NextSteps />}
 
           {confirming && <SampleRemovalWarning summary={summary} />}
 
@@ -158,5 +191,42 @@ export default function SampleContentSection() {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * What to do once the samples are gone: the first stages of the setup guide
+ * (docs: Set up your hub), each a link to where it is done.
+ */
+function NextSteps() {
+  return (
+    <div className="next-steps" role="region" aria-label="Next: set up your hub">
+      <h3 className="next-steps-title">Next: set up your hub</h3>
+      <ol className="next-steps-list">
+        <li>
+          <Link to="/admin/settings/identity">Name it and add a banner</Link>
+          <span className="form-hint"> in Identity, then pick its colours in Theme.</span>
+        </li>
+        <li>
+          <Link to="/admin/settings/copy">Write your Welcome and About pages</Link>
+          <span className="form-hint"> in Copy &amp; pages.</span>
+        </li>
+        <li>
+          <Link to="/admin/settings/plugins">Choose the tools your hub offers</Link>
+          <span className="form-hint"> in Plugins.</span>
+        </li>
+        <li>
+          <Link to="/admin/settings/mode#allowlist">Invite your first people</Link>
+          <span className="form-hint"> on the beta allowlist, then switch to beta in Mode.</span>
+        </li>
+      </ol>
+      <p className="form-hint">
+        Every step is in the guide:{" "}
+        <a href={PLATFORM_SETUP_GUIDE_URL} target="_blank" rel="noopener">
+          Set up your hub
+        </a>
+        .
+      </p>
+    </div>
   );
 }
