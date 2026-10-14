@@ -246,7 +246,7 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     const page2 = `The projects map tiles stay blank (${name}) ${run}`;
     for (const message of [page1, page2]) {
       const res = await page.request.post(`${HUB}/api/feedback`, {
-        data: { category: "bug", message, page_path: `/projects/map-${name}` },
+        data: { category: "bug", message, page_path: `/projects/map-${name}-${run}` },
       });
       expect(res.ok()).toBe(true);
     }
