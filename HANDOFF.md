@@ -6,7 +6,9 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Navigation: every feed item says what it is; the sections one tap away on a phone, always in view on a desktop — 2026-10-14
 
-Commits on `multi-tenant` `3af6355`..`8ceb4aa`, one item each, plus this closing entry. Adam's answers:
+Commits on `multi-tenant` `3af6355`..`85b5674`, one item each, plus this closing entry. **Live on dev at `85b5674`**
+(`release.sh dev --yes`, no migrations, health ok). **CI, E2E and Smoke green on `85b5674`:** API 770 passed in both
+modes, unit 1,563, Playwright 140 passed (2 skipped), help links 87 keys; Smoke 19 of 19 on live dev in 1.6 min. Adam's answers:
 `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Prompt-Navigation-Answers-2026-10-14.md`. Report
 and handoff: `Navigation-Session-Report-2026-10-14.md`, `Navigation-Handoff-to-Management-2026-10-14.md`, same folder.
 
@@ -52,8 +54,8 @@ About, Welcome and Send feedback join the hub's links; the strip leaves Members 
    edited projects you support.
 
 **Tests:** unit 136 files (navSections, descriptors, settings writes); API `navigation.test.ts` (both modes);
-Playwright `hubNavigation.spec.ts` (11) plus four updated specs, full run 139 passed, 2 skipped; smoke 19 of 19
-locally in 35 s. The local API layer's remaining failures are this stack's data and timeouts (see TESTING.md).
+Playwright `hubNavigation.spec.ts` (11) plus four updated specs; smoke 19 tests. **Restore settings in tests through
+`PUT /admin/hub/settings`, never by deleting rows**: the API caches settings (CI's first run here failed on it).
 
 **Not done / follow-ups:**
 - **The hub has no dark mode.** "Light and dark" was checked as the OS setting (the hub ignores it) and a darker

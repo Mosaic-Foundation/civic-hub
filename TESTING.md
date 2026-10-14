@@ -110,7 +110,12 @@ clears them, so a row deleted behind its back is still served to the next spec (
   - at desktop width with Navigation set to Sidebar, the sidebar instead of the header. The test sets the smoke
     hub's `nav.layout` and `afterAll` puts it back.
 
-**Counts (2026-10-14, local):** see the Navigation session report (filled in below when the runs finish).
+**Counts (2026-10-14):**
+- CI on `85b5674`: unit 136 files, 1,563 passed; API 770 passed in both modes (10 skipped); Playwright 140 passed,
+  2 skipped (3.0 min); help links 87 keys.
+- Smoke on live dev: 19 of 19 in 1.6 min; locally 19 of 19 in 35 s.
+- Local API layer: `navigation.test.ts` green in both modes; the rest showed this stack's known data failures and
+  moving 15 s timeouts, none on CI's fresh stack.
 
 ---
 
