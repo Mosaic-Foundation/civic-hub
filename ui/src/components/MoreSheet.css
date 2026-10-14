@@ -1,0 +1,74 @@
+/* "More" (MoreSheet.tsx): the shared Modal, drawn as a sheet from the bottom
+   of the screen (navigation slice, 2026-10-14). */
+
+.modal.more-sheet {
+  width: 100%;
+  max-width: 560px;
+  margin: auto auto 0;
+  max-height: 88dvh;
+}
+
+.more-sheet .more-sheet-body {
+  padding: var(--space-sm) var(--space-md) calc(var(--space-lg) + env(safe-area-inset-bottom, 0px));
+  border-radius: 16px 16px 0 0;
+  max-height: 88dvh;
+  transition: transform 0.15s ease-out;
+  animation: more-sheet-in 0.2s ease-out;
+}
+
+@keyframes more-sheet-in {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .more-sheet .more-sheet-body {
+    animation: none;
+    transition: none;
+  }
+}
+
+.more-sheet-grab {
+  width: 40px;
+  height: 4px;
+  margin: 2px auto var(--space-sm);
+  border-radius: 2px;
+  background: var(--color-border-strong);
+}
+
+.more-sheet-heading {
+  margin: var(--space-md) 0 var(--space-xs);
+  padding: 0 var(--space-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.more-sheet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.more-sheet-list--links {
+  margin-top: var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--color-border);
+}
+
+.more-sheet-signed-in {
+  margin: 0 0 var(--space-xs);
+  padding: 0 var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}

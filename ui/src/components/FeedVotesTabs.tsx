@@ -14,40 +14,21 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { pluginEnabled, type PluginId } from "../config/plugins";
+import { navSections } from "../config/navigation";
+import { sectionForPath } from "../../../src/shared/navSections";
 import "./FeedVotesTabs.css";
 
-// Hidden when the hub switched the plugin off (config/plugins.tsx).
-const SCROLLABLE_TABS: ReadonlyArray<{ to: string; label: string; plugin: PluginId }> = [
-  { to: "/deliberations", label: "Conversations", plugin: "conversation" },
-  { to: "/propose", label: "Proposals", plugin: "proposal" },
-  { to: "/votes", label: "Votes", plugin: "vote" },
-  { to: "/projects", label: "Projects", plugin: "project" },
-  // Last: the archive of what has finished, after the surfaces where things
-  // are still happening.
-  { to: "/outcomes", label: "Outcomes", plugin: "brief" },
-];
-
-/**
- * A detail page belongs to a section even though its URL does not start
- * with the section's path (/proposal/:id lives under Proposals, /process/:id
- * under Votes, /brief/:id under Outcomes). Without this the tab bar went
- * quiet the moment you opened anything — on a phone, the only hint of what
- * kind of process you were reading (Adam, 2026-09-02).
- */
-const DETAIL_SECTIONS: ReadonlyArray<{ prefix: string; tab: string }> = [
-  { prefix: "/proposal/", tab: "/propose" },
-  { prefix: "/process/", tab: "/votes" },
-  { prefix: "/votes/", tab: "/votes" },
-  { prefix: "/project/", tab: "/projects" },
-  { prefix: "/deliberation/", tab: "/deliberations" },
-  { prefix: "/brief/", tab: "/outcomes" },
-  { prefix: "/vote-results/", tab: "/outcomes" },
-];
-
-function sectionFor(pathname: string): string | null {
-  return DETAIL_SECTIONS.find((d) => pathname.startsWith(d.prefix))?.tab ?? null;
-}
+// The tabs are the hub's sections in its one Section order, from the
+// registry (config/navigation.ts; navigation slice, 2026-10-14): a switched-off
+// plugin's section is gone, a plugin's type gets its tab with no change here.
+// Members stays out of the strip, which keeps today's layout; Feed is pinned.
+//
+// A detail page belongs to its section even though its URL does not start
+// with the section's path (/proposal/:id under Proposals, /process/:id under
+// Votes, /brief/:id under Outcomes): each section declares its detail paths.
+// Without this the strip went quiet the moment you opened anything — on a
+// phone, the only hint of what kind of process you were reading (Adam,
+// 2026-09-02).
 
 function prefersReducedMotion(): boolean {
   return (
@@ -92,8 +73,11 @@ function easeInOut(t: number): number {
 
 export default function FeedVotesTabs() {
   const { pathname } = useLocation();
-  const detailSection = sectionFor(pathname);
-  const visibleTabs = SCROLLABLE_TABS.filter((t) => pluginEnabled(t.plugin));
+  const sections = navSections();
+  const currentSection = sectionForPath(pathname, sections);
+  const visibleTabs = sections
+    .filter((s) => s.kind === "type")
+    .map((s) => ({ id: s.id, to: s.path, label: s.label }));
 
   const listRef = useRef<HTMLUListElement>(null);
   // Which directions still have tabs hidden off the edge. Drives both the
@@ -304,13 +288,13 @@ export default function FeedVotesTabs() {
       <div className="feed-votes-tabs-scroller">
         <ul className="feed-votes-tabs-list" ref={listRef}>
           {visibleTabs.map((t) => (
-            <li key={t.to}>
+            <li key={t.id}>
               <NavLink
                 to={t.to}
                 className={({ isActive }) =>
-                  `feed-votes-tab${isActive || detailSection === t.to ? " is-active" : ""}`
+                  `feed-votes-tab${isActive || currentSection === t.id ? " is-active" : ""}`
                 }
-                aria-current={detailSection === t.to ? "page" : undefined}
+                aria-current={currentSection === t.id ? "page" : undefined}
               >
                 {t.label}
               </NavLink>

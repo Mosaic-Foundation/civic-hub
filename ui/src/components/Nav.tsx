@@ -1,47 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import {
-  getReviewNotificationCount,
-  getEditNotifications,
-  markEditsSeen,
-  type EditNotification,
-} from "../services/api";
+import { useNavData } from "../context/NavDataContext";
+import { navSections } from "../config/navigation";
 import AuthModal from "./AuthModal";
 import AdminMenu from "./AdminMenu";
 import SharePanel from "./SharePanel";
 import SearchBar from "./SearchBar";
 import hub from "../config/hub";
-import { pluginEnabled, type PluginId } from "../config/plugins";
+import { pluginEnabled } from "../config/plugins";
 import "./Nav.css";
 
 // Top nav stays minimal: wordmark + search + sign-in. All primary
 // navigation lives in the always-visible hamburger drawer below.
 const TOP_LINKS: ReadonlyArray<{ to: string; label: string; end?: boolean }> = [];
 
-// Primary drawer links. Legal docs are grouped after a divider so the
-// civic surfaces stay visually distinct from the policy footer pages.
-// Some entries carry the plugin id that gates them (config/plugins.tsx);
-// entries with none are always shown.
-const DRAWER_LINKS: ReadonlyArray<{
-  to: string;
-  label: string;
-  end?: boolean;
-  plugin?: PluginId;
-  /** Shown only when this is true at render time (a getter on `hub`). */
-  when?: () => boolean;
-}> = [
-  { to: "/", label: "Feed", end: true },
-  { to: "/deliberations", label: "Conversations", plugin: "conversation" },
-  { to: "/propose", label: "Propose", plugin: "proposal" },
-  { to: "/votes", label: "Votes", plugin: "vote" },
-  { to: "/projects", label: "Projects", plugin: "project" },
-  { to: "/outcomes", label: "Outcomes", plugin: "brief" },
-  // Only when the hub has written one (review R27): an empty Welcome page
-  // was the first dead end an evaluator met.
-  { to: "/welcome", label: "Welcome", when: () => hub.has_welcome },
-  { to: "/about", label: "About" },
-];
+// The drawer (Top tabs, desktop width): the hub's sections in its one
+// Section order (config/navigation.ts; navigation slice, 2026-10-14), then
+// Welcome (only when the hub has written one, review R27) and About. Phones
+// have the bottom bar and More instead, so the drawer is desktop only.
+function drawerLinks(): ReadonlyArray<{ to: string; label: string; end?: boolean }> {
+  return [
+    ...navSections().map((s) => ({ to: s.path, label: s.label, end: s.kind === "feed" })),
+    ...(hub.has_welcome ? [{ to: "/welcome", label: "Welcome" }] : []),
+    { to: "/about", label: "About" },
+  ];
+}
 
 // Secondary drawer link — active-input affordance; styled like the
 // primary links (full-weight, regular size), not the muted legal
@@ -84,10 +68,10 @@ export default function Nav() {
   // "Share this hub" from the account menu (members and invites slice).
   const [sharing, setSharing] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
-  const [notifCount, setNotifCount] = useState(0);
-  // Supporter's badge: projects this user supports that were edited since
-  // they last looked (Adam, 2026-09-03 — for people not on the digest).
-  const [editNotifs, setEditNotifs] = useState<EditNotification[]>([]);
+  // Your submissions needing attention, and projects you support that were
+  // edited since you last looked (Adam, 2026-09-03), read once for every
+  // place that shows them (context/NavDataContext.tsx).
+  const { mySubmissions: notifCount, editNotifs, openEdited } = useNavData();
   const avatarRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -174,48 +158,9 @@ export default function Nav() {
   const location = useLocation();
   const onFeedbackPage = location.pathname === "/feedback";
 
-  // Hidden when the hub switched the plugin off (config/plugins.tsx).
-  const drawerLinks = DRAWER_LINKS.filter((l) => (!l.plugin || pluginEnabled(l.plugin)) && (!l.when || l.when()));
+  const links = drawerLinks();
   const searchEnabled = pluginEnabled("search");
   const feedbackEnabled = pluginEnabled("feedback");
-
-  // Review attention badge. Poll on mount, on navigation (so it clears right
-  // after the user views My submissions, which stamps reviews_seen_at), and
-  // every 60s while the tab is open.
-  useEffect(() => {
-    if (!user) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
-      setNotifCount(0);
-      return;
-    }
-    let active = true;
-    const fetchCount = () => {
-      // The dot is personal for everyone: your own submissions need
-      // attention. An admin's queue counts are on the review icon and the
-      // Admin menu (AdminMenu.tsx; admin menu slice, 2026-10-13).
-      getReviewNotificationCount()
-        .then((r) => r.count)
-        .then((n) => {
-          if (active) setNotifCount(n);
-        })
-        .catch(() => {
-          /* best-effort — a failed poll shouldn't disrupt the nav */
-        });
-      getEditNotifications()
-        .then((r) => {
-          if (active) setEditNotifs(r.items);
-        })
-        .catch(() => {
-          /* same: best-effort */
-        });
-    };
-    fetchCount();
-    const interval = setInterval(fetchCount, 60_000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, [user, location.pathname]);
 
   const attention = notifCount + editNotifs.length;
 
@@ -350,19 +295,7 @@ export default function Nav() {
                             type="button"
                             role="menuitem"
                             className="civic-nav-menu-item civic-nav-menu-item--sub"
-                            onClick={() =>
-                              selectMenuItem(() => {
-                                // Opening any of them clears the badge — the
-                                // page carries the full history from there.
-                                // Stamp BEFORE navigating: the route change
-                                // re-polls, and a poll that raced the stamp
-                                // would bring the dot straight back.
-                                setEditNotifs([]);
-                                markEditsSeen()
-                                  .catch(() => {})
-                                  .finally(() => navigate(n.href));
-                              })
-                            }
+                            onClick={() => selectMenuItem(() => openEdited(n.href, navigate))}
                           >
                             {n.title}
                             <span className="civic-nav-menu-sub-note">
@@ -390,7 +323,7 @@ export default function Nav() {
                       className="civic-nav-menu-item"
                       onClick={() => selectMenuItem(() => navigate("/settings"))}
                     >
-                      Settings
+                      Your settings
                     </button>
                     {canPostAnnouncements && pluginEnabled("announcement") && (
                       <button
@@ -411,7 +344,7 @@ export default function Nav() {
                       className="civic-nav-menu-item civic-nav-menu-item-danger"
                       onClick={() => selectMenuItem(handleLogout)}
                     >
-                      Log out
+                      Sign out
                     </button>
                   </div>
                 )}
@@ -451,7 +384,7 @@ export default function Nav() {
               {/* The same links for everyone. Reading is public in beta
                * (the tab strip in FeedVotesTabs never gated them); what
                * beta restricts is participation, enforced on the server. */}
-              {drawerLinks.map((l) => (
+              {links.map((l) => (
                 <li key={l.to}>
                   <NavLink
                     to={l.to}

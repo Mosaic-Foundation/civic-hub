@@ -7,8 +7,12 @@
          maximum-scale, no user-scalable=no, and no script that cancels a
          pinch. Form fields are at least 16px on a phone (index.css), which
          is what keeps iOS from zooming in on focus. viewport-fit=cover was
-         tried and didn't address the iOS whitespace gap. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+         tried and didn't address the iOS whitespace gap; it is back since
+         the navigation slice (2026-10-14) for the phone's bottom bar, which
+         sits above the home indicator through env(safe-area-inset-bottom)
+         (BottomBar.css). The page keeps clear of the side insets in
+         App.css (.app). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#fafaf7" />
     <!-- Slice 11 follow-up: pre-CSS reset that loads before any
          component stylesheet. Belt-and-braces against user-agent

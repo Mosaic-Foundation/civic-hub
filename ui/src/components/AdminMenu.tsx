@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { adminQueueCounts, ADMIN_QUEUES_CHANGED, type AdminQueueCounts } from "../services/api";
+import { Link, useNavigate } from "react-router-dom";
+import { useNavData } from "../context/NavDataContext";
 import { useDropdownMenu } from "../hooks/useDropdownMenu";
 import "./AdminMenu.css";
 
@@ -14,41 +13,18 @@ import "./AdminMenu.css";
  * tabs show. Feedback and edits keep their counts on their own tabs.
  * Moderation is a log of what admins did, so it has no count (Adam,
  * 2026-10-13).
+ *
+ * At phone width the More sheet's Admin group replaces this menu, and in the
+ * sidebar layout the sidebar does (navigation slice, 2026-10-14).
  */
 
-const REVIEW_QUEUES = [
-  { key: "reviews", to: "/admin/reviews" },
-  { key: "briefs", to: "/admin/briefs" },
-  { key: "meeting_summaries", to: "/admin/meeting-summaries" },
-] as const;
-
 export default function AdminMenu() {
-  const location = useLocation();
   const navigate = useNavigate();
   const { open, setOpen, buttonRef, menuRef, onMenuKey, choose } = useDropdownMenu();
-  const [counts, setCounts] = useState<AdminQueueCounts | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const refetch = () => {
-      adminQueueCounts()
-        .then((c) => { if (active) setCounts(c); })
-        .catch(() => { /* best-effort: a failed poll shows no count */ });
-    };
-    refetch();
-    const interval = setInterval(refetch, 60_000);
-    window.addEventListener(ADMIN_QUEUES_CHANGED, refetch);
-    return () => {
-      active = false;
-      clearInterval(interval);
-      window.removeEventListener(ADMIN_QUEUES_CHANGED, refetch);
-    };
-  }, [location.pathname]);
-
-  const reviews = counts ? REVIEW_QUEUES.reduce((n, q) => n + counts[q.key], 0) : 0;
+  // The counts are read once for the whole navigation (context/NavDataContext.tsx).
   // The icon opens the first queue with something new, so the click clears
   // what the number counted; with nothing new it opens Processes.
-  const reviewsTo = REVIEW_QUEUES.find((q) => (counts?.[q.key] ?? 0) > 0)?.to ?? "/admin/reviews";
+  const { reviews, reviewsTo } = useNavData();
   const reviewsLabel = reviews > 0 ? `Reviews: ${reviews} new` : "Reviews: nothing new";
 
   return (
@@ -87,7 +63,7 @@ export default function AdminMenu() {
           >
             <MenuItem label="Reviews" count={reviews} onClick={() => choose(() => navigate(reviewsTo))} />
             <MenuItem label="Moderation" onClick={() => choose(() => navigate("/admin/moderation"))} />
-            <MenuItem label="Settings" onClick={() => choose(() => navigate("/admin/settings"))} />
+            <MenuItem label="Hub settings" onClick={() => choose(() => navigate("/admin/settings"))} />
             <MenuItem label="Plugins" onClick={() => choose(() => navigate("/admin/settings/plugins"))} />
             <MenuItem label="Contact Civic.Social" onClick={() => choose(() => navigate("/admin/contact-civic-social"))} />
           </div>

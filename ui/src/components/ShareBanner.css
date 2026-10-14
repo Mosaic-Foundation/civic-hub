@@ -3,7 +3,8 @@
 .share-banner {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--space-md, 1rem) + env(safe-area-inset-bottom, 0px));
+  /* Above the phone's bottom bar when there is one (BottomBar.css). */
+  bottom: calc(var(--space-md, 1rem) + max(var(--bottom-bar-space, 0px), env(safe-area-inset-bottom, 0px)));
   transform: translateX(-50%);
   z-index: 950;
   display: flex;

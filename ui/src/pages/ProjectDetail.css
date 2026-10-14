@@ -302,7 +302,7 @@
 .project-edited-toast {
   position: fixed;
   left: 50%;
-  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(1.5rem + max(var(--bottom-bar-space, 0px), env(safe-area-inset-bottom, 0px)));
   transform: translateX(-50%);
   z-index: 50;
   padding: 0.7rem 1.1rem;

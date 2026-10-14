@@ -47,19 +47,15 @@
   flex: 0 0 auto;
 }
 
-/* Slice 10.5 — desktop search affordance lives in the right cluster.
- * Hidden on the mobile breakpoint where the drawer surfaces it
- * instead. The .civic-nav-search wrapper exists so the breakpoint
- * rule lives on Nav rather than SearchBar. */
+/* Slice 10.5 — the search affordance lives in the right cluster. The
+ * .civic-nav-search wrapper keeps any breakpoint rule on Nav rather than
+ * SearchBar. */
 .civic-nav-search {
   display: flex;
   align-items: center;
 }
-@media (max-width: 767px) {
-  .civic-nav-search {
-    display: none;
-  }
-}
+/* Shown on phones too since the drawer left them (navigation slice,
+   2026-10-14): the icon sits in the header and expands over it. */
 
 .civic-nav-drawer-search {
   padding: var(--space-md);
@@ -449,6 +445,16 @@
 
 @media (max-width: 768px) {
   .civic-nav-links {
+    display: none;
+  }
+
+  /* Phones have the bottom bar and More (navigation slice, 2026-10-14):
+     More lists every section, the Admin group with its review count, and
+     You, so the menu drawer and the Admin pill and review icon go here. */
+  .civic-nav-hamburger,
+  .civic-nav-drawer,
+  .civic-nav .admin-review-icon,
+  .civic-nav .admin-menu-wrap {
     display: none;
   }
 

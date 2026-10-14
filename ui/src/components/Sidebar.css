@@ -1,0 +1,99 @@
+/* The left sidebar (Sidebar.tsx; navigation slice, 2026-10-14). Desktop only,
+   and only when the hub's Navigation setting is Sidebar: the layout rules
+   that hide the header and the top tabs are in App.css (.app--nav-sidebar). */
+
+.hub-sidebar {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .app--nav-sidebar .hub-sidebar {
+    display: block;
+    flex: 0 0 248px;
+    width: 248px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    background: var(--color-surface);
+    border-right: 1px solid var(--color-border);
+  }
+}
+
+.hub-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: var(--space-md) var(--space-sm) var(--space-md);
+  box-sizing: border-box;
+}
+
+.hub-sidebar-brand {
+  display: block;
+  padding: var(--space-xs) var(--space-sm) var(--space-sm);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.hub-sidebar-brand:hover {
+  text-decoration: none;
+  color: var(--color-primary);
+}
+
+.hub-sidebar-search {
+  padding: 0 var(--space-xs) var(--space-sm);
+}
+
+.hub-sidebar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.hub-sidebar-list .nav-item {
+  min-height: 38px;
+  font-size: var(--font-size-sm);
+}
+
+.hub-sidebar-divider {
+  height: 1px;
+  margin: var(--space-sm) var(--space-xs);
+  border: 0;
+  background: var(--color-border);
+}
+
+.hub-sidebar-heading {
+  margin: 0 0 var(--space-xs);
+  padding: 0 var(--space-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* You sits at the bottom when the sidebar is taller than its contents. */
+.hub-sidebar-you {
+  margin-top: auto;
+}
+
+.hub-sidebar-signed-in {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+.hub-sidebar-name {
+  font-weight: 700;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}

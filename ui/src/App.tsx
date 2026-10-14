@@ -7,6 +7,10 @@ import ShareBanner from "./components/ShareBanner";
 import { useHubConfig } from "./config/HubConfigContext";
 import { BETA_PUBLIC_PATHS } from "./config/betaPublicPaths";
 import Nav from "./components/Nav";
+import Sidebar from "./components/Sidebar";
+import BottomBar from "./components/BottomBar";
+import { NavDataProvider } from "./context/NavDataContext";
+import { navLayout } from "./config/navigation";
 import HubBanner from "./components/HubBanner";
 import WordcloudTeaser from "./components/WordcloudTeaser";
 import FeedVotesTabs from "./components/FeedVotesTabs";
@@ -64,6 +68,7 @@ import BetaBanner from "./components/BetaBanner";
 import DemoBanner from "./components/DemoBanner";
 import BetaWelcomeDialog from "./components/BetaWelcomeDialog";
 import { usePreviewMode } from "./hooks/usePreviewMode";
+import { useIsWideViewport } from "./hooks/useIsWideViewport";
 import AuthModal from "./components/AuthModal";
 import "./App.css";
 
@@ -124,6 +129,7 @@ function AppContent() {
   const showReady = Boolean(user) && !readyClosed && hubJustCreated();
   const preview = usePreviewMode();
   const { pathname } = useLocation();
+  const wide = useIsWideViewport();
   // The page a bug report is about, whichever link opened the form.
   useEffect(() => recordPage(pathname), [pathname]);
 
@@ -146,13 +152,15 @@ function AppContent() {
   // two overlays on top of the read-only experience.
   const inBetaPreview = hub.beta_mode && !user;
 
-  return (
-    <div className="app">
-      {showIntro && !inBetaPreview && !showReady && (
-        <IntroPopup onDismiss={() => setShowIntro(false)} />
-      )}
-      {showReady && <HubReadyDialog email={user?.email ?? ""} onDismiss={() => setReadyClosed(true)} />}
-
+  // Where the sections are drawn at desktop width (Hub settings → Theme →
+  // Navigation); phones get the bottom bar under either (navigation slice,
+  // 2026-10-14). The layout rules are in App.css.
+  const layout = navLayout();
+  // Beside the sidebar, the hub's bars head the content column, so the
+  // sidebar starts at the top of the screen and its foot is never pushed off.
+  const bannersInColumn = layout === "sidebar" && wide;
+  const hubBanners = (
+    <>
       {/* One always-on beta bar for everyone — signed-in testers and
           signed-out preview browsers get the same demo-data reminder
           (the waitlist CTA inside it is signed-out-only). Gone entirely
@@ -161,112 +169,131 @@ function AppContent() {
       {/* Demo hubs (Phase 7): explains the Sample badge; admins get the
           link to remove the sample content. */}
       {hub.demo_mode && <DemoBanner />}
+    </>
+  );
+
+  return (
+    <div className={`app app--nav-${layout === "sidebar" ? "sidebar" : "tabs"}`}>
+      {showIntro && !inBetaPreview && !showReady && (
+        <IntroPopup onDismiss={() => setShowIntro(false)} />
+      )}
+      {showReady && <HubReadyDialog email={user?.email ?? ""} onDismiss={() => setReadyClosed(true)} />}
+
+      {!bannersInColumn && hubBanners}
 
       {showWelcomeDialog && <BetaWelcomeDialog />}
 
       <Nav />
-      {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
-      {pluginEnabled("wordcloud") && <WordcloudTeaser />}
-      <BannerSlot />
-      <FeedVotesTabs />
+      <div className="app-frame">
+        {layout === "sidebar" && <Sidebar />}
+        <div className="app-column">
+          {bannersInColumn && hubBanners}
+          {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
+          {pluginEnabled("wordcloud") && <WordcloudTeaser />}
+          <BannerSlot />
+          <FeedVotesTabs />
 
-      {/* One share banner for the hub: a page's share moment, when its bar is off screen. */}
-      <ShareBanner />
+          {/* One share banner for the hub: a page's share moment, when its bar is off screen. */}
+          <ShareBanner />
 
-      <main className="page-shell">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/votes" element={whenPlugin("vote", <Votes />)} />
-          <Route path="/process/:id" element={whenPlugin("vote", <Process />)} />
-          <Route path="/propose" element={whenPlugin("proposal", <Propose />)} />
-          <Route path="/propose/new" element={whenPlugin("proposal", <DraftPage config={proposalKind} />)} />
-          <Route path="/votes/new" element={whenPlugin("vote", <DraftPage config={voteKind} />)} />
-          <Route path="/proposal/:id" element={whenPlugin("proposal", <ProposalDetail />)} />
-          <Route path="/projects" element={whenPlugin("project", <Projects />)} />
-          <Route path="/projects/new" element={whenPlugin("project", <DraftPage config={projectKind} />)} />
-          <Route path="/project/:id" element={whenPlugin("project", <ProjectDetail />)} />
-          <Route path="/deliberations" element={whenPlugin("conversation", <Deliberations />)} />
-          <Route path="/deliberations/new" element={whenPlugin("conversation", <DraftPage config={conversationKind} />)} />
-          <Route path="/deliberation/:id" element={whenPlugin("conversation", <DeliberationDetail />)} />
-          <Route path="/wordcloud/new" element={whenPlugin("wordcloud", <CreateWordCloud />)} />
-          <Route path="/wordcloud/:id" element={whenPlugin("wordcloud", <WordCloud />)} />
-          <Route path="/votes/:id/log" element={whenPlugin("vote", <VoteLog />)} />
-          <Route path="/my-submissions" element={<MySubmissions />} />
-          <Route path="/my-submissions/:reviewId" element={<MySubmissions />} />
-          <Route path="/admin" element={<AdminGuard><AdminAnchor /></AdminGuard>} />
-          <Route path="/admin/reviews" element={<AdminGuard><AdminReviews /></AdminGuard>} />
-          <Route path="/admin/reviews/:reviewId" element={<AdminGuard><AdminReviews /></AdminGuard>} />
-          {/* Legacy vote-results admin (existing published vote briefs keep
-              their review screen); the Briefs tab now points at /admin/briefs. */}
-          <Route
-            path="/admin/vote-results"
-            element={whenPlugin("vote", <AdminGuard><AdminVoteResults /></AdminGuard>)}
-          />
-          <Route
-            path="/admin/vote-results/:id"
-            element={whenPlugin("vote", <AdminGuard><AdminVoteResults /></AdminGuard>)}
-          />
-          {/* Unified Briefs queue — the universal admin results surface. */}
-          <Route
-            path="/admin/briefs"
-            element={whenPlugin("brief", <AdminGuard><AdminBriefs /></AdminGuard>)}
-          />
-          <Route
-            path="/admin/briefs/:id"
-            element={whenPlugin("brief", <AdminGuard><AdminBriefs /></AdminGuard>)}
-          />
-          <Route
-            path="/admin/meeting-summaries"
-            element={whenPlugin("meeting_summary", <AdminGuard><AdminMeetingSummaries /></AdminGuard>)}
-          />
-          <Route
-            path="/admin/meeting-summaries/:id"
-            element={whenPlugin("meeting_summary", <AdminGuard><AdminMeetingSummaries /></AdminGuard>)}
-          />
-          <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
-          <Route path="/admin/settings/:section" element={<AdminGuard><AdminSettings /></AdminGuard>} />
-          <Route path="/vote-results/:id" element={whenPlugin("vote", <VoteResults />)} />
-          {/* Public brief page — the permanent record of a completed process
-              (the /brief path is reclaimed from the old Slice 8.5 redirect;
-              existing published vote-results stay at /vote-results/:id). */}
-          <Route path="/outcomes" element={whenPlugin("brief", <Outcomes />)} />
-          <Route path="/brief/:id" element={whenPlugin("brief", <BriefPage />)} />
-          <Route path="/meeting-summary/:id" element={whenPlugin("meeting_summary", <MeetingSummary />)} />
-          <Route path="/announcement/new" element={whenPlugin("announcement", <PostAnnouncement />)} />
-          <Route path="/announcement/:id/edit" element={whenPlugin("announcement", <PostAnnouncement />)} />
-          <Route path="/announcement/:id" element={whenPlugin("announcement", <AnnouncementPage />)} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/members" element={<Members />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/search" element={whenPlugin("search", <SearchPage />)} />
-          {/* Slice 11 — legal pages. Routes resolve via React Router so
-              cross-document links (Terms → Privacy etc.) don't trigger
-              full-page reloads. */}
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/code-of-conduct" element={<CodeOfConduct />} />
-          {/* Slice 14 — operator-facing feedback form. Open to anonymous
-              and signed-in users; submissions persist to the
-              feedback_submissions table and best-effort email the operator. */}
-          <Route path="/welcome" element={<Welcome />} />
-          <Route path="/sign-in" element={<SignInLink />} />
-          <Route path="/feedback" element={whenPlugin("feedback", <Feedback />)} />
-          {/* Slice 11 — admin moderation log. Read-only list of every
-              moderation action, gated server-side via requireAdmin
-              and client-side via the AuthContext.isAdmin flag inside
-              the page. */}
-          <Route path="/admin/moderation" element={<AdminGuard><AdminModeration /></AdminGuard>} />
-          <Route path="/admin/archived" element={<AdminGuard><AdminArchived /></AdminGuard>} />
-          <Route path="/admin/edits" element={<AdminGuard><AdminEdits /></AdminGuard>} />
-          {/* Read-only archive of resident feedback, incl. topic suggestions. */}
-          <Route path="/admin/feedback" element={whenPlugin("feedback", <AdminGuard><AdminFeedback /></AdminGuard>)} />
-          {/* An admin writes to Civic.Social directly (feedback routing).
-              Not behind the Feedback plugin. */}
-          <Route path="/admin/contact-civic-social" element={<AdminGuard><ContactCivicSocial /></AdminGuard>} />
-        </Routes>
-      </main>
+          <main className="page-shell">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/votes" element={whenPlugin("vote", <Votes />)} />
+              <Route path="/process/:id" element={whenPlugin("vote", <Process />)} />
+              <Route path="/propose" element={whenPlugin("proposal", <Propose />)} />
+              <Route path="/propose/new" element={whenPlugin("proposal", <DraftPage config={proposalKind} />)} />
+              <Route path="/votes/new" element={whenPlugin("vote", <DraftPage config={voteKind} />)} />
+              <Route path="/proposal/:id" element={whenPlugin("proposal", <ProposalDetail />)} />
+              <Route path="/projects" element={whenPlugin("project", <Projects />)} />
+              <Route path="/projects/new" element={whenPlugin("project", <DraftPage config={projectKind} />)} />
+              <Route path="/project/:id" element={whenPlugin("project", <ProjectDetail />)} />
+              <Route path="/deliberations" element={whenPlugin("conversation", <Deliberations />)} />
+              <Route path="/deliberations/new" element={whenPlugin("conversation", <DraftPage config={conversationKind} />)} />
+              <Route path="/deliberation/:id" element={whenPlugin("conversation", <DeliberationDetail />)} />
+              <Route path="/wordcloud/new" element={whenPlugin("wordcloud", <CreateWordCloud />)} />
+              <Route path="/wordcloud/:id" element={whenPlugin("wordcloud", <WordCloud />)} />
+              <Route path="/votes/:id/log" element={whenPlugin("vote", <VoteLog />)} />
+              <Route path="/my-submissions" element={<MySubmissions />} />
+              <Route path="/my-submissions/:reviewId" element={<MySubmissions />} />
+              <Route path="/admin" element={<AdminGuard><AdminAnchor /></AdminGuard>} />
+              <Route path="/admin/reviews" element={<AdminGuard><AdminReviews /></AdminGuard>} />
+              <Route path="/admin/reviews/:reviewId" element={<AdminGuard><AdminReviews /></AdminGuard>} />
+              {/* Legacy vote-results admin (existing published vote briefs keep
+                  their review screen); the Briefs tab now points at /admin/briefs. */}
+              <Route
+                path="/admin/vote-results"
+                element={whenPlugin("vote", <AdminGuard><AdminVoteResults /></AdminGuard>)}
+              />
+              <Route
+                path="/admin/vote-results/:id"
+                element={whenPlugin("vote", <AdminGuard><AdminVoteResults /></AdminGuard>)}
+              />
+              {/* Unified Briefs queue — the universal admin results surface. */}
+              <Route
+                path="/admin/briefs"
+                element={whenPlugin("brief", <AdminGuard><AdminBriefs /></AdminGuard>)}
+              />
+              <Route
+                path="/admin/briefs/:id"
+                element={whenPlugin("brief", <AdminGuard><AdminBriefs /></AdminGuard>)}
+              />
+              <Route
+                path="/admin/meeting-summaries"
+                element={whenPlugin("meeting_summary", <AdminGuard><AdminMeetingSummaries /></AdminGuard>)}
+              />
+              <Route
+                path="/admin/meeting-summaries/:id"
+                element={whenPlugin("meeting_summary", <AdminGuard><AdminMeetingSummaries /></AdminGuard>)}
+              />
+              <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
+              <Route path="/admin/settings/:section" element={<AdminGuard><AdminSettings /></AdminGuard>} />
+              <Route path="/vote-results/:id" element={whenPlugin("vote", <VoteResults />)} />
+              {/* Public brief page — the permanent record of a completed process
+                  (the /brief path is reclaimed from the old Slice 8.5 redirect;
+                  existing published vote-results stay at /vote-results/:id). */}
+              <Route path="/outcomes" element={whenPlugin("brief", <Outcomes />)} />
+              <Route path="/brief/:id" element={whenPlugin("brief", <BriefPage />)} />
+              <Route path="/meeting-summary/:id" element={whenPlugin("meeting_summary", <MeetingSummary />)} />
+              <Route path="/announcement/new" element={whenPlugin("announcement", <PostAnnouncement />)} />
+              <Route path="/announcement/:id/edit" element={whenPlugin("announcement", <PostAnnouncement />)} />
+              <Route path="/announcement/:id" element={whenPlugin("announcement", <AnnouncementPage />)} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/members" element={<Members />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/search" element={whenPlugin("search", <SearchPage />)} />
+              {/* Slice 11 — legal pages. Routes resolve via React Router so
+                  cross-document links (Terms → Privacy etc.) don't trigger
+                  full-page reloads. */}
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/code-of-conduct" element={<CodeOfConduct />} />
+              {/* Slice 14 — operator-facing feedback form. Open to anonymous
+                  and signed-in users; submissions persist to the
+                  feedback_submissions table and best-effort email the operator. */}
+              <Route path="/welcome" element={<Welcome />} />
+              <Route path="/sign-in" element={<SignInLink />} />
+              <Route path="/feedback" element={whenPlugin("feedback", <Feedback />)} />
+              {/* Slice 11 — admin moderation log. Read-only list of every
+                  moderation action, gated server-side via requireAdmin
+                  and client-side via the AuthContext.isAdmin flag inside
+                  the page. */}
+              <Route path="/admin/moderation" element={<AdminGuard><AdminModeration /></AdminGuard>} />
+              <Route path="/admin/archived" element={<AdminGuard><AdminArchived /></AdminGuard>} />
+              <Route path="/admin/edits" element={<AdminGuard><AdminEdits /></AdminGuard>} />
+              {/* Read-only archive of resident feedback, incl. topic suggestions. */}
+              <Route path="/admin/feedback" element={whenPlugin("feedback", <AdminGuard><AdminFeedback /></AdminGuard>)} />
+              {/* An admin writes to Civic.Social directly (feedback routing).
+                  Not behind the Feedback plugin. */}
+              <Route path="/admin/contact-civic-social" element={<AdminGuard><ContactCivicSocial /></AdminGuard>} />
+            </Routes>
+          </main>
 
-      <SiteFooter />
+          <SiteFooter />
+        </div>
+      </div>
+
+      <BottomBar />
 
       {/* Slice 11 — re-acceptance modal. Self-mounts when the signed-in
           user's stored legal version is null or older than the current
@@ -323,7 +350,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppContent />
+        <NavDataProvider>
+          <AppContent />
+        </NavDataProvider>
       </AuthProvider>
     </BrowserRouter>
   );

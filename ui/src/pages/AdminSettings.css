@@ -379,7 +379,8 @@
    save; floating at the bottom of the screen while there is (SectionForm). */
 .settings-savebar.is-floating {
   position: sticky;
-  bottom: 0;
+  /* Above the phone's bottom bar (BottomBar.css); 0 at desktop width. */
+  bottom: var(--bottom-bar-space, 0px);
   z-index: 20;
   margin: var(--space-sm) calc(-1 * var(--space-md)) 0;
   padding: var(--space-sm) var(--space-md);
@@ -1157,3 +1158,4 @@
 .settings-process-create {
   margin-top: var(--space-xs);
 }
+
