@@ -27,7 +27,9 @@ export type HubAdminAuditAction =
   | "process.close_early"
   // Regenerate: an admin made a brief again, or published its new version.
   | "brief.regenerate"
-  | "brief.revision_published";
+  | "brief.revision_published"
+  // An admin sent a feedback item to Civic.Social (feedback routing).
+  | "feedback.forward";
 
 export interface HubAdminAuditEntry {
   actor: string;

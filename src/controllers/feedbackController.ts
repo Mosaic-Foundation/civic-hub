@@ -63,9 +63,13 @@ export const handleSubmitFeedback = route(async (req, res) => {
     user_id: userId,
     user_agent: userAgent,
     screenshot_url: screenshotUrl,
+    page_path: typeof body.page_path === "string" ? body.page_path : null,
+    contact_ok: body.contact_ok === true,
   });
   res.json({
     message: "Thanks for the feedback.",
     submission_id: submission.id,
+    // Whether Civic.Social has a copy, so the confirmation can say so.
+    shared_with_civic_social: submission.mosaic !== null,
   });
 });

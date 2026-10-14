@@ -66,7 +66,11 @@ import {
   handleRestoreProcess,
   handleListArchivedProcesses,
 } from "../controllers/adminArchiveController.js";
-import { handleAdminListFeedback } from "../controllers/adminFeedbackController.js";
+import {
+  handleAdminListFeedback,
+  handleContactCivicSocial,
+  handleForwardFeedback,
+} from "../controllers/adminFeedbackController.js";
 import { requireAdmin } from "../middleware/auth.js";
 import {
   handleRequestModeChangeCode,
@@ -163,6 +167,10 @@ router.post("/processes/:id/restore", handleRestoreProcess);
 // feedback form, newest first, optionally filtered to one category.
 // Read-only on purpose — see adminFeedbackController.
 router.get("/feedback", handleAdminListFeedback);
+// "Send to Civic.Social" for one item (feedback routing, 2026-10-15).
+router.post("/feedback/:id/forward", handleForwardFeedback);
+// An admin's own message to Civic.Social. Not behind the Feedback plugin.
+router.post("/contact-civic-social", handleContactCivicSocial);
 
 // The numbers on the admin tabs and the account-menu dot: what is new in
 // each queue since this admin last opened that tab. Opening a tab stamps

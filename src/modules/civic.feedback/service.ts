@@ -9,15 +9,21 @@
 // listFeedback() is the admin read path (/admin/feedback). It is the only
 // reader: feedback never flows through emitEvent() and is never public.
 
-import { ValidationError } from "../../errors/index.js";
+import { ConflictError, NotFoundError, ValidationError } from "../../errors/index.js";
 import { forHub, type HubDb } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { sendEmail, unsentReason } from "../../utils/email.js";
 import { generateId } from "../../utils/id.js";
 import { getAdminEmailsSync, hubDisplayNameSync, getSettingSync } from "../../services/hubSettings.js";
 import { KEYS, asEmailList } from "../../models/hubSettings.js";
+import { deploymentCommit } from "../../config/deployment.js";
+import { copyToMosaic, type MosaicOrigin } from "../../db/platformFeedback.js";
+import { reportError } from "../../utils/reportError.js";
 import {
   FEEDBACK_CATEGORIES,
+  SOFTWARE_STREAM,
+  type MosaicCopy,
+  type MosaicHubStream,
   type FeedbackCategory,
   type FeedbackSubmission,
   type SubmitFeedbackInput,
@@ -33,6 +39,7 @@ const MAX_LIST_LIMIT = 500;
 const NAME_MAX_LEN = 200;
 const EMAIL_MAX_LEN = 320;
 const UA_MAX_LEN = 500;
+const PAGE_PATH_MAX_LEN = 300;
 
 /**
  * Categories that still trigger an immediate, per-submission email.
@@ -77,7 +84,31 @@ function rowToSubmission(row: Record<string, unknown>): FeedbackSubmission {
     user_id: row.user_id ? String(row.user_id) : null,
     user_agent: row.user_agent ? String(row.user_agent) : null,
     screenshot_url: row.screenshot_url ? String(row.screenshot_url) : null,
+    page_path: row.page_path ? String(row.page_path) : null,
+    software_version: row.software_version ? String(row.software_version) : null,
+    contact_ok: row.contact_ok === true,
+    mosaic: row.mosaic_item_id
+      ? {
+          stream: row.mosaic_stream as MosaicHubStream,
+          status: (row.mosaic_status ?? "received") as MosaicCopy["status"],
+          sent_at: String(row.mosaic_sent_at ?? row.created_at),
+          sent_by: (row.mosaic_sent_by ?? "sender") as MosaicCopy["sent_by"],
+        }
+      : null,
   };
+}
+
+/**
+ * The page a report is about: a path on this hub, with no query string or
+ * fragment (they can carry a code or an address), capped. Anything that is
+ * not a plain path is dropped rather than refused: the report still matters.
+ */
+export function normalizePagePath(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const path = raw.trim().split(/[?#]/)[0];
+  if (!path.startsWith("/") || path.startsWith("//")) return null;
+  if (!/^\/[A-Za-z0-9\-._~/%]*$/.test(path)) return null;
+  return path.slice(0, PAGE_PATH_MAX_LEN);
 }
 
 /** Screenshot URLs may only be https, short, and — since the upload route
@@ -140,6 +171,10 @@ export async function submitFeedback(
     user_id: input.user_id ?? null,
     user_agent: userAgent,
     screenshot_url: screenshotUrl,
+    page_path: normalizePagePath(input.page_path),
+    software_version: deploymentCommit(),
+    // Consent only means something with an address to share.
+    contact_ok: input.contact_ok === true && email !== null,
   };
 
   const data = await db()
@@ -148,7 +183,23 @@ export async function submitFeedback(
     .select()
     .single();
 
-  const submission = rowToSubmission(data);
+  let submission = rowToSubmission(data);
+
+  // Bug and Idea are about how the site works: Civic.Social gets a copy
+  // (the form told the sender so). Best-effort: the hub has the item either
+  // way, and an admin can still send it with "Send to Civic.Social".
+  const stream = SOFTWARE_STREAM[submission.category];
+  if (stream) {
+    try {
+      submission = await shareWithMosaic(submission, stream, "resident", "sender");
+    } catch (err) {
+      reportError("feedback.mosaic_copy", "Civic.Social copy failed; the hub has the item", {
+        hub: currentHubId(),
+        id: submission.id,
+        reason: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
   // Operator notification, for the categories that still get one. When it
   // does send it MUST be awaited: on serverless (Vercel) the function is
@@ -173,6 +224,93 @@ export async function submitFeedback(
   }
 
   return submission;
+}
+
+/** Write Civic.Social's copy of a hub item and record it on the hub's row. */
+async function shareWithMosaic(
+  s: FeedbackSubmission,
+  stream: MosaicHubStream,
+  origin: MosaicOrigin,
+  sentBy: MosaicCopy["sent_by"],
+): Promise<FeedbackSubmission> {
+  const copy = await copyToMosaic({
+    hubId: currentHubId(),
+    sourceFeedbackId: s.id,
+    stream,
+    origin,
+    message: s.message,
+    pagePath: s.page_path,
+    userAgent: s.user_agent,
+    softwareVersion: s.software_version,
+    screenshotUrl: s.screenshot_url,
+    // A forwarded item never carries the address: the sender agreed to the
+    // hub, not to Civic.Social.
+    contactOk: sentBy === "sender" && s.contact_ok,
+    contactEmail: sentBy === "sender" && s.contact_ok ? s.email : null,
+  });
+  const updated = await db()
+    .from("feedback_submissions")
+    .update({
+      mosaic_item_id: copy.id,
+      mosaic_stream: stream,
+      mosaic_status: copy.status,
+      mosaic_sent_at: new Date().toISOString(),
+      mosaic_sent_by: sentBy,
+    })
+    .eq("id", s.id)
+    .select()
+    .single();
+  return rowToSubmission(updated);
+}
+
+/**
+ * "Send to Civic.Social": an admin forwards an item, usually a misfiled one,
+ * to a stream they choose. Once per item; the sender's address never goes.
+ */
+export async function forwardToMosaic(
+  id: string,
+  stream: MosaicHubStream,
+): Promise<FeedbackSubmission> {
+  if (stream !== "bug" && stream !== "feature") {
+    throw new FeedbackValidationError("stream must be bug or feature");
+  }
+  const rows = await db().from("feedback_submissions").select("*").eq("id", id).limit(1);
+  const row = rows[0] as Record<string, unknown> | undefined;
+  if (!row) throw new NotFoundError("No such feedback item.");
+  const s = rowToSubmission(row);
+  if (s.mosaic) throw new ConflictError("This item was already sent to Civic.Social.");
+  return shareWithMosaic(s, stream, "forwarded", "admin");
+}
+
+/**
+ * "Contact Civic.Social": a hub admin writes to Civic.Social directly, apart
+ * from residents' feedback. The admin's address goes with it (the form says
+ * so), and nothing is stored on the hub's Feedback tab.
+ */
+export async function contactMosaic(input: {
+  message: unknown;
+  adminEmail: string;
+  pagePath?: unknown;
+  userAgent?: string | null;
+}): Promise<{ id: string }> {
+  const message = typeof input.message === "string" ? input.message.trim() : "";
+  if (!message) throw new FeedbackValidationError("message is required");
+  if (message.length > MESSAGE_MAX_LEN) {
+    throw new FeedbackValidationError(`message must be ${MESSAGE_MAX_LEN} characters or fewer`);
+  }
+  const copy = await copyToMosaic({
+    hubId: currentHubId(),
+    sourceFeedbackId: null,
+    stream: "admin",
+    origin: "admin",
+    message,
+    pagePath: normalizePagePath(input.pagePath),
+    userAgent: input.userAgent?.slice(0, UA_MAX_LEN) ?? null,
+    softwareVersion: deploymentCommit(),
+    contactOk: true,
+    contactEmail: input.adminEmail,
+  });
+  return { id: copy.id };
 }
 
 export interface ListFeedbackOptions {
