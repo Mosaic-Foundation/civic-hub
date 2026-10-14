@@ -480,7 +480,7 @@ export default function AdminReviews() {
     <div className="admin-reviews-page">
       <AdminTabs />
       <div className="admin-reviews-body">
-        <h1>Process reviews</h1>
+        <h1>Processes</h1>
         <p style={{ color: "var(--color-text-muted)" }}>
           Submissions waiting for review before going live.
         </p>

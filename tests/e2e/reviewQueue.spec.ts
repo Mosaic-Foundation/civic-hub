@@ -70,7 +70,7 @@ test("approving lands back on the list, with a confirmation", async ({ page, req
   await page.getByRole("button", { name: "Approve & post" }).click();
 
   await expect(page).toHaveURL(/\/admin\/reviews$/);
-  await expect(page.getByRole("heading", { name: "Process reviews" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Processes", exact: true })).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: `Approved: “${title}” is live.` })).toBeVisible();
 });
 

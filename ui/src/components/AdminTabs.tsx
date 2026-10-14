@@ -12,7 +12,7 @@ import "./AdminTabs.css";
  * Shared tab navigation for admin pages. Sits at the top of every admin
  * surface so the admin can jump between surfaces without leaving the admin
  * context. Ordered by function: the publication/approval queues first
- * (Process reviews, Briefs, Meeting summaries), then oversight
+ * (Processes, Briefs, Meeting summaries), then oversight
  * (Moderation, Feedback, Archived), then configuration (Settings).
  *
  * Each tab is a NavLink so React Router assigns `aria-current="page"`
@@ -63,7 +63,7 @@ export default function AdminTabs() {
       <div className="admin-tabs-eyebrow">Admin</div>
       <nav className="admin-tabs" aria-label="Admin sections">
       <NavLink to="/admin/reviews" className={tabClass}>
-        Process reviews
+        Processes
         {badge(counts.reviews, "new since you last looked")}
       </NavLink>
       {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}

@@ -394,11 +394,11 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
   const sections = [
     renderJobProblemsSection(jobs),
     renderQueueSection(
-      "Submissions waiting in Process reviews",
+      "Submissions waiting under Processes",
       { singular: "submission", plural: "submissions" },
       `${ui}/admin/reviews`,
       p.reviews,
-      { panelLabel: "Process reviews" },
+      { panelLabel: "Processes" },
     ),
     renderQueueSection(
       "Briefs awaiting approval",
@@ -469,7 +469,7 @@ export function renderAdminDigestEmail(p: AdminDigestPayload): {
     textParts.push(`  ${jobs.panel_url}`);
     textParts.push("");
   }
-  appendQueueText("Submissions waiting in Process reviews", p.reviews);
+  appendQueueText("Submissions waiting under Processes", p.reviews);
   appendQueueText("Briefs awaiting approval", p.briefs);
   appendQueueText("Open proposals", p.proposals);
   appendQueueText("Meeting summaries awaiting review", p.meeting_summaries);

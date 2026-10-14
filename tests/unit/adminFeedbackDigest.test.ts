@@ -156,9 +156,9 @@ describe("admin digest — Process reviews and briefs", () => {
   it("names both queues in the subject and links each item to its page", () => {
     const { subject, html, text } = renderAdminDigestEmail(payload({ reviews, briefs, empty: false }));
     expect(subject).toBe("[Floyd Civic Hub] Admin queue: 1 submission to review, 2 briefs to approve");
-    expect(html).toContain("Submissions waiting in Process reviews — 1 submission");
+    expect(html).toContain("Submissions waiting under Processes — 1 submission");
     expect(html).toContain("/admin/reviews/rev_1");
-    expect(html).toContain("Open Process reviews panel");
+    expect(html).toContain("Open Processes panel");
     expect(html).toContain("Briefs awaiting approval — 2 briefs");
     expect(html).toContain("/admin/briefs/proc_b1");
     expect(text).toContain("Briefs awaiting approval: 2");

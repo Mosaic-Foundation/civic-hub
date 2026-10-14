@@ -102,7 +102,7 @@ async function writeVoteAndSubmit(page: Page, title: string, description: string
 
 async function reviewCard(page: Page, title: string) {
   await page.goto("/admin/reviews");
-  await expect(page.getByRole("heading", { name: "Process reviews" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Processes", exact: true })).toBeVisible();
   return page.locator(".process-card").filter({ hasText: title });
 }
 
@@ -166,7 +166,7 @@ test("a resident and an admin are signed in", async ({ browser }) => {
   const a = await open(browser);
   await visitAs(a, admin);
   await a.goto("/admin/reviews");
-  await expect(a.getByRole("heading", { name: "Process reviews" })).toBeVisible();
+  await expect(a.getByRole("heading", { name: "Processes", exact: true })).toBeVisible();
   await a.close();
 });
 
