@@ -50,7 +50,7 @@ export default function WelcomeBanner() {
                 {" "}It's early and still evolving
                 {pluginEnabled("feedback") ? (
                   <>
-                    {" "}— use the feedback button at the top anytime to report a
+                    {" "}— use Feedback anytime to report a
                     bug, suggest a feature, or share anything else.
                   </>
                 ) : (
