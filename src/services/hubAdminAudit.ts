@@ -16,6 +16,8 @@ import { currentHubId } from "../config/hubContext.js";
 
 export type HubAdminAuditAction =
   | "sample_content.remove"
+  // One sample deleted from Settings → Sample content (admin menu slice).
+  | "sample_content.delete_one"
   | "hub.mode"
   | "people.admins"
   | "people.board"

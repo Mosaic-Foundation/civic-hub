@@ -80,6 +80,7 @@ import {
 import {
   handleGetSampleContent,
   handleRemoveSampleContent,
+  handleDeleteOneSample,
   handleRequestSampleRemovalCode,
 } from "../controllers/hubSampleContentController.js";
 
@@ -188,6 +189,8 @@ router.post("/hub/people", handleSetHubPeople);
 router.get("/hub/sample-content", handleGetSampleContent);
 router.post("/hub/sample-content/request-code", handleRequestSampleRemovalCode);
 router.post("/hub/sample-content/remove", handleRemoveSampleContent);
+// One sample at a time, no code (Adam, 2026-10-13).
+router.delete("/hub/sample-content/:id", handleDeleteOneSample);
 
 // Settings → Admin log: what this hub's admins did with a fresh code, and
 // the other actions recordHubAdminAudit() keeps. Read-only.

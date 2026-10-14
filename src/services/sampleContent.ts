@@ -229,6 +229,88 @@ export async function removeSampleContent(actorEmail: string): Promise<SampleRem
   return { summary, deleted };
 }
 
+/** One sample, as Settings → Sample content lists it. */
+export interface SampleItem {
+  id: string;
+  type: string;
+  title: string;
+  /** A visitor's own item on a demo hub (no Sample badge), not a seeded one. */
+  added_in_demo: boolean;
+}
+
+interface SampleTreeRow extends SampleItem {
+  source_proposal_id: string | null;
+  state: { source_process_id?: unknown } | null;
+}
+
+async function sampleTree(): Promise<SampleTreeRow[]> {
+  return db()
+    .from("processes")
+    .select<SampleTreeRow>("id, type, title, added_in_demo, source_proposal_id, state")
+    .eq("is_sample", true);
+}
+
+/** What a sample process was made from: a vote's brief names its vote. */
+function sourceOf(row: SampleTreeRow): string | null {
+  const fromState = row.state?.source_process_id;
+  return typeof fromState === "string" && fromState ? fromState : row.source_proposal_id;
+}
+
+/**
+ * The samples an admin can delete one at a time (admin menu slice,
+ * 2026-10-13): every sample process except those made from another sample
+ * (a closed sample vote's brief), which go with the one they came from.
+ */
+export async function listSampleItems(): Promise<SampleItem[]> {
+  const rows = await sampleTree();
+  const ids = new Set(rows.map((r) => r.id));
+  return rows
+    .filter((r) => {
+      const source = sourceOf(r);
+      return !source || !ids.has(source);
+    })
+    .map(({ id, type, title, added_in_demo }) => ({ id, type, title, added_in_demo }))
+    .sort((a, b) => Number(a.added_in_demo) - Number(b.added_in_demo) || a.title.localeCompare(b.title));
+}
+
+/**
+ * Delete one sample, with what was made from it (its brief, a vote converted
+ * from it) and everything people added to them, and record who did it. No
+ * fresh code: one sample is not the whole hub's (Adam, 2026-10-13). Returns
+ * null for an id that is not sample content, so a real process can never go
+ * this way. When the sample was the hub's word cloud, the setting is cleared.
+ */
+export async function deleteOneSample(
+  id: string,
+  actorEmail: string,
+): Promise<{ item: SampleItem; deleted: Record<string, number>; cleared: string[] } | null> {
+  const rows = await sampleTree();
+  const root = rows.find((r) => r.id === id);
+  if (!root) return null;
+  const ids = [id];
+  // Made from it, and made from those, however deep (a vote's brief's revision).
+  for (let i = 0; i < ids.length; i++) {
+    for (const r of rows) if (sourceOf(r) === ids[i] && !ids.includes(r.id)) ids.push(r.id);
+  }
+  const deleted = await deleteSampleProcesses(ids);
+
+  const cleared: string[] = [];
+  const chosen = await getSetting(currentHubId(), KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID);
+  if (chosen && ids.includes(chosen)) {
+    await setSetting(currentHubId(), KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID, "", actorEmail);
+    cleared.push(KEYS.PLUGIN_WORDCLOUD_ONBOARDING_ID);
+  }
+
+  const item: SampleItem = { id: root.id, type: root.type, title: root.title, added_in_demo: root.added_in_demo };
+  await recordHubAdminAudit({
+    actor: actorEmail,
+    action: "sample_content.delete_one",
+    before: { ...item, with: ids.slice(1) },
+    after: cleared.length ? { deleted, cleared } : { deleted },
+  });
+  return { item, deleted, cleared };
+}
+
 /**
  * The mailer for a sample process's brief or results (Phase 7): nothing goes
  * out. A sample vote closes on schedule and spawns a sample brief like any
