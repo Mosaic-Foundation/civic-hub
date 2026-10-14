@@ -60,6 +60,7 @@ import {
   handleRestoreAnnouncement,
   handleRestoreComment,
 } from "../controllers/moderationController.js";
+import { handleGetHubAdminLog } from "../controllers/hubAdminLogController.js";
 import {
   handleArchiveProcess,
   handleRestoreProcess,
@@ -187,6 +188,10 @@ router.post("/hub/people", handleSetHubPeople);
 router.get("/hub/sample-content", handleGetSampleContent);
 router.post("/hub/sample-content/request-code", handleRequestSampleRemovalCode);
 router.post("/hub/sample-content/remove", handleRemoveSampleContent);
+
+// Settings → Admin log: what this hub's admins did with a fresh code, and
+// the other actions recordHubAdminAudit() keeps. Read-only.
+router.get("/hub/admin-log", handleGetHubAdminLog);
 
 // What the hub is called, what its pages say, its legal documents and its
 // mail — every key checked against the build plan's list. See

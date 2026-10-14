@@ -20,6 +20,7 @@ import LegalSection from "./settings/LegalSection";
 import EmailSection from "./settings/EmailSection";
 import ModeSection from "./settings/ModeSection";
 import SampleContentSection from "./settings/SampleContentSection";
+import AdminLogSection from "./settings/AdminLogSection";
 import PeopleSection from "./settings/PeopleSection";
 import OfficialsSection from "./settings/OfficialsSection";
 import ParticipationSection from "./settings/ParticipationSection";
@@ -42,6 +43,7 @@ const SECTIONS: readonly SectionEntry[] = [
   { id: "email", label: "Email", render: () => <EmailSection /> },
   { id: "mode", label: "Mode", render: () => <ModeSection /> },
   { id: "sample", label: "Sample content", render: () => <SampleContentSection /> },
+  { id: "admin-log", label: "Admin log", render: () => <AdminLogSection /> },
   { id: "people", label: "Admins & board", render: () => <PeopleSection /> },
   { id: "officials", label: "Officials", render: () => <OfficialsSection /> },
   { id: "participation", label: "Participation", render: () => <ParticipationSection /> },

@@ -2170,6 +2170,20 @@ export function adminRestoreAnnouncement(
   );
 }
 
+/** One row of Settings → Admin log (hub_admin_audit_log), newest first. */
+export interface HubAdminLogEntry {
+  id: string;
+  at: string;
+  actor_email: string;
+  action: string;
+  before: unknown;
+  after: unknown;
+}
+
+export function adminGetHubAdminLog(): Promise<{ entries: HubAdminLogEntry[] }> {
+  return request("GET", "/admin/hub/admin-log");
+}
+
 /** Newest-first list of every moderation action. Admin-only. */
 export function adminGetModerationLog(): Promise<ModerationLogResponse> {
   return request("GET", "/admin/moderation/log");

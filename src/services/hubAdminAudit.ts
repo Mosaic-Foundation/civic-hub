@@ -42,3 +42,28 @@ export async function recordHubAdminAudit(entry: HubAdminAuditEntry): Promise<vo
       after: entry.after ?? null,
     });
 }
+
+export interface HubAdminLogRow {
+  id: string;
+  at: string;
+  actor_email: string;
+  action: HubAdminAuditAction;
+  before: unknown;
+  after: unknown;
+}
+
+/** How many rows Settings → Admin log shows. */
+export const HUB_ADMIN_LOG_SHOWN = 100;
+
+/**
+ * The hub's own admins read their log in Settings → Admin log (admin menu
+ * slice, 2026-10-13), newest first. The console reads the same rows through
+ * the control plane (listHubAdminAudit).
+ */
+export async function listHubAdminLog(): Promise<HubAdminLogRow[]> {
+  return forHub(currentHubId())
+    .from("hub_admin_audit_log")
+    .select<HubAdminLogRow>("id, at, actor_email, action, before, after")
+    .order("at", { ascending: false })
+    .limit(HUB_ADMIN_LOG_SHOWN);
+}
