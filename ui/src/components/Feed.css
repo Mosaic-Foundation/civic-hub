@@ -132,28 +132,7 @@
   border-radius: var(--radius-md);
 }
 
-/* --- Title row with side pill ---
- *
- * Title and pill share a flex row with `align-items: flex-start`.
- * The pill keeps its intrinsic width and never pushes the title into
- * ellipsis. On narrow viewports the row wraps and the pill drops below
- * the title, right-aligned via the `margin-left: auto` on the pill.
- */
-.feed-post-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  /* Never wrap on desktop: with wrap, a long title took its full intrinsic
-     width and pushed the pill onto a second line, right-aligned — which read
-     as a blank line under the title (Adam, 2026-09-06). The title column
-     shrinks and wraps instead; the pill stays top-right like every other
-     card. Phones stack the two (media query below). */
-  flex-wrap: nowrap;
-  margin: 0 0 var(--space-sm);
-}
-
-.feed-post-head .feed-post-title {
+.feed-post-title {
   min-width: 0;
 }
 
@@ -183,12 +162,41 @@
   min-width: 0;
 }
 
-.feed-post-author {
-  margin: 0 0 var(--space-xs);
+/* --- Meta line: the type pill, what happened, the author, the date ---
+ *
+ * Design A (navigation slice, Adam, 2026-10-14): the pill moved out of the
+ * title row so the title keeps the full width. The pieces wrap as a group;
+ * a dot separates the text ones (never the pill). */
+.feed-post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-sm);
+  margin: var(--space-xs) 0 var(--space-sm);
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
-  font-weight: 500;
   color: var(--color-text-muted);
+}
+
+.feed-post-meta .feed-pill {
+  margin-left: 0;
+}
+
+.feed-post-note,
+.feed-post-author {
+  font-weight: 500;
+}
+
+.feed-post-note + .feed-post-author::before,
+.feed-post-note + .feed-post-time::before,
+.feed-post-author + .feed-post-time::before {
+  content: "·";
+  margin-right: var(--space-sm);
+  color: var(--color-text-subtle);
+}
+
+.feed-post-meta .feed-post-time {
+  font-size: var(--font-size-sm);
 }
 
 .feed-post-summary {
@@ -214,7 +222,7 @@
 }
 
 .feed-post-time {
-  display: block;
+  display: inline;
   font-family: var(--font-body);
   font-size: var(--font-size-xs);
   color: var(--color-text-subtle);

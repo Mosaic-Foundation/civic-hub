@@ -22,6 +22,7 @@ import {
 } from "../../../src/shared/feedActivity";
 import { processTypeEnabled } from "../config/plugins";
 import FeedPost, {
+  eventProcessType,
   eventToPost,
   relativeTime,
   type FeedPillKind,
@@ -35,21 +36,6 @@ import "./Feed.css";
  * "Load more" button is left for the reader.
  */
 const EMPTY_PAGE_RETRIES = 5;
-
-// Mirrors feedActivity.ts's own `processTypeOf` (not exported): the
-// discriminator an emitter stamps via emitEvent, with the legacy flat
-// fallback. This is where a switched-off plugin leaves the feed: the feed
-// reads /events, the hub's published record, which the server deliberately
-// does not filter by plugin (src/services/pluginGate.ts). An event with no
-// discriminator (legacy) is left alone rather than hidden.
-function eventProcessType(event: CivicEvent): string | undefined {
-  const data = (event.data ?? {}) as Record<string, unknown>;
-  const nested = (data.process as { type?: unknown } | undefined)?.type;
-  if (typeof nested === "string") return nested;
-  const flat = (data as { process_type?: unknown }).process_type;
-  if (typeof flat === "string") return flat;
-  return undefined;
-}
 
 interface Props {
   /**
@@ -228,6 +214,10 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
       events.filter(
         (e) =>
           classifyActivity(e) !== null &&
+          // A switched-off plugin leaves the feed here: /events is the hub's
+          // published record, which the server deliberately does not filter
+          // by plugin (src/services/pluginGate.ts). A legacy event with no
+          // type is left alone rather than hidden.
           (processTypeEnabled(eventProcessType(e) ?? "")),
       ),
     // hubConfig: processTypeEnabled() reads it from the module, so the lint

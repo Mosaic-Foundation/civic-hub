@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 import type { CivicEvent } from "../services/api";
 import { useIsWideViewport } from "../hooks/useIsWideViewport";
-import hub, { meetingSummaryLabel } from "../config/hub";
+import hub from "../config/hub";
 import SampleBadge from "./SampleBadge";
-import { briefPillFor } from "../../../src/shared/hubCopy";
+import { typeDisplay } from "../config/navigation";
 import {
   briefResponseContext,
   classifyActivity,
@@ -36,7 +36,13 @@ export type FeedPillKind = ActivityKind;
 export interface FeedPostView {
   id: string;
   title: string;
+  /** The item's type, from the registry ("Vote"); the classifier's wording when the type is unknown. */
   pillLabel: string;
+  /**
+   * What happened, where the type alone doesn't say it: "Update", "Official
+   * response", "Results" (Adam, 2026-10-14). Muted text after the pill.
+   */
+  note?: string | null;
   pillKind: FeedPillKind;
   /** Process-type color key — selects the feed-pill--type-<color> class.
    *  See ActivityColor in feedActivity.ts: one color per process type,
@@ -63,6 +69,32 @@ export interface FeedPostView {
 
 interface Props {
   post: FeedPostView;
+}
+
+/**
+ * The few moments the type pill doesn't say by itself (Adam, 2026-10-14). A
+ * new vote, proposal or project needs no word: the pill and the date say it.
+ */
+const ACTIVITY_NOTES: Partial<Record<ActivityKind, string>> = {
+  "project-updated": "Update",
+  "brief-response": "Official response",
+  "vote-closed": "Results",
+  "proposal-closed": "Results",
+  "conversation-results": "Results",
+};
+
+/**
+ * The process type an event is about: the `data.process.type` discriminator
+ * an emitter stamps via emitEvent, with the legacy flat fallback. Undefined
+ * for a legacy event with neither.
+ */
+export function eventProcessType(event: CivicEvent): string | undefined {
+  const data = (event.data ?? {}) as Record<string, unknown>;
+  const nested = (data.process as { type?: unknown } | undefined)?.type;
+  if (typeof nested === "string") return nested;
+  const flat = (data as { process_type?: unknown }).process_type;
+  if (typeof flat === "string") return flat;
+  return undefined;
 }
 
 /**
@@ -94,16 +126,11 @@ export function eventToPost(
     id: event.id,
     title,
     engagement: engagement ?? null,
-    // The classifier's pill label is canonical/hub-agnostic ("Meeting
-    // summary"), which the email digest uses. On the feed card we prefix the
-    // governing body so the card pill matches the feed's filter pill
-    // (meetingSummaryLabel in config/hub.ts).
-    pillLabel:
-      activity.kind === "meeting"
-        ? meetingSummaryLabel(false)
-        : activity.kind === "brief"
-          ? briefPillFor(activity.briefSource, hub.governing_body_short, activity.pill)
-          : activity.pill,
+    // The type's own label (design A, navigation slice 2026-10-14): one
+    // word per kind of thing, from the registry, so a plugin's type gets its
+    // pill with no change here.
+    pillLabel: typeDisplay(eventProcessType(event))?.label ?? activity.pill,
+    note: ACTIVITY_NOTES[activity.kind] ?? null,
     pillKind: activity.kind,
     pillColor: activity.color,
     summary,
@@ -391,14 +418,24 @@ export default function FeedPost({ post }: Props) {
   const inner = (
     <>
       <div className="feed-post-body">
-        <div className="feed-post-head">
-          <h2 className="feed-post-title">{post.title}</h2>
-          <span className={pillClass}>{post.pillLabel}</span>
+        <h2 className="feed-post-title">{post.title}</h2>
+        {/* Design A (Adam, 2026-10-14): the type's pill leads the meta line,
+            beside what happened, the author and the date; the title keeps
+            the full width. The label says the type, so nothing rests on the
+            pill's colour. */}
+        <p className="feed-post-meta">
+          <span className={pillClass} data-testid="feed-type-pill">{post.pillLabel}</span>
           {post.sample && <SampleBadge />}
-        </div>
-        {post.authorName && (
-          <p className="feed-post-author">{post.authorName}</p>
-        )}
+          {post.note && <span className="feed-post-note">{post.note}</span>}
+          {post.authorName && <span className="feed-post-author">{post.authorName}</span>}
+          <time
+            className="feed-post-time"
+            dateTime={post.timestamp}
+            title={absoluteTime(post.timestamp)}
+          >
+            {relativeTime(post.timestamp)}
+          </time>
+        </p>
         {post.summary && <p className="feed-post-summary">{post.summary}</p>}
         {post.engagement && (
           <p
@@ -411,13 +448,6 @@ export default function FeedPost({ post }: Props) {
             {post.engagement}
           </p>
         )}
-        <time
-          className="feed-post-time"
-          dateTime={post.timestamp}
-          title={absoluteTime(post.timestamp)}
-        >
-          {relativeTime(post.timestamp)}
-        </time>
       </div>
       {hasImage && (
         <span className="feed-post-image">

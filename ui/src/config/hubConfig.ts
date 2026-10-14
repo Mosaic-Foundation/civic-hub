@@ -16,6 +16,7 @@
  * the key names, "4. Request flow" item 5 for the response shape.
  */
 
+import type { ProcessTypeDisplay } from "../../../src/shared/typeDisplay";
 import { parseTheme, resolveTheme } from "../../../src/shared/theme";
 import type { DeadEndCode } from "../../../src/shared/deadEnd";
 import type { PluginSetupStatus } from "../../../src/shared/pluginSetup";
@@ -46,6 +47,12 @@ export interface HubConfig {
   plugin_setup?: Record<string, PluginSetupStatus>;
   /** Sample content left, a Welcome page written (2026-10-07). Optional, like plugin_setup. */
   content?: { samples: boolean; welcome: boolean };
+  /**
+   * Every registered process type as residents read it: the feed's pill, the
+   * icon, its section (navigation slice, 2026-10-14). From the registry, so
+   * a plugin's type needs no UI change. Optional, like plugin_setup.
+   */
+  process_types?: ProcessTypeDisplay[];
 }
 
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
