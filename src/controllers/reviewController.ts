@@ -85,11 +85,15 @@ function submissionFor(proc: unknown): SubmissionField[] | null {
   });
 }
 
-export const handleGetReviewNotifications = route(async (_req, res) => {
+// `?scope=mine` counts only the caller's own submissions, for an admin too:
+// the account menu is personal, and an admin's queue counts are in the Admin
+// menu (admin menu slice, 2026-10-13).
+export const handleGetReviewNotifications = route(async (req, res) => {
   const user = getAuthUser(res);
+  const mine = req.query.scope === "mine";
   const count = await countReviewNotifications(
     user.id,
-    isAdminEmail(user.email),
+    !mine && isAdminEmail(user.email),
   );
   res.json({ count });
 });

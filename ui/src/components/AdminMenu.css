@@ -1,0 +1,87 @@
+/* The admin's review icon and Admin pill in the header (AdminMenu.tsx).
+   Both keep their size; the wordmark is the only thing that gives (Nav.css,
+   the header layout rule). */
+
+.admin-review-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  color: var(--color-primary-ink);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  text-decoration: none;
+}
+
+.admin-review-icon:hover {
+  background: var(--color-surface-alt);
+}
+
+.admin-review-icon:focus-visible,
+.admin-pill:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.admin-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #e02424;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.admin-count--icon {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  border: 2px solid var(--color-bg);
+  box-sizing: content-box;
+}
+
+.admin-menu-wrap {
+  position: relative;
+}
+
+.admin-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-primary-ink);
+  border-radius: var(--radius-pill, 999px);
+  background: transparent;
+  color: var(--color-primary-ink);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-pill:hover,
+.admin-pill.is-open {
+  background: var(--color-surface-alt);
+}
+
+.admin-menu {
+  min-width: 200px;
+}
+
+@media (max-width: 767px) {
+  .admin-pill {
+    padding: 5px 10px;
+    gap: 4px;
+    font-size: 12px;
+  }
+}

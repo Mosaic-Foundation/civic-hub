@@ -2630,8 +2630,9 @@ export function getMyReviews(): Promise<ProcessReviewSummary[]> {
   return request("GET", "/reviews/mine");
 }
 
+/** Your own submissions that need you (admins too: the account menu is personal). */
 export function getReviewNotificationCount(): Promise<{ count: number }> {
-  return request("GET", "/notifications/reviews/count");
+  return request("GET", "/notifications/reviews/count?scope=mine");
 }
 
 export function markReviewsSeen(): Promise<{ ok: boolean }> {

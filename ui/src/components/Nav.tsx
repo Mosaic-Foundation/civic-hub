@@ -5,10 +5,10 @@ import {
   getReviewNotificationCount,
   getEditNotifications,
   markEditsSeen,
-  adminQueueCounts,
   type EditNotification,
 } from "../services/api";
 import AuthModal from "./AuthModal";
+import AdminMenu from "./AdminMenu";
 import SearchBar from "./SearchBar";
 import hub from "../config/hub";
 import { pluginEnabled, type PluginId } from "../config/plugins";
@@ -187,10 +187,11 @@ export default function Nav() {
     }
     let active = true;
     const fetchCount = () => {
-      // An admin's dot is the sum of the admin tabs' counts — what is new in
-      // each queue since that tab was last opened (Adam, 2026-09-06). A
-      // resident's dot is still "your submissions need attention".
-      (isAdmin ? adminQueueCounts().then((c) => c.total) : getReviewNotificationCount().then((r) => r.count))
+      // The dot is personal for everyone: your own submissions need
+      // attention. An admin's queue counts are on the review icon and the
+      // Admin menu (AdminMenu.tsx; admin menu slice, 2026-10-13).
+      getReviewNotificationCount()
+        .then((r) => r.count)
         .then((n) => {
           if (active) setNotifCount(n);
         })
@@ -211,11 +212,9 @@ export default function Nav() {
       active = false;
       clearInterval(interval);
     };
-  }, [user, isAdmin, location.pathname]);
+  }, [user, location.pathname]);
 
-  // The queue total already counts an admin's edits; only residents add
-  // their edit notifications on top of the review count.
-  const attention = isAdmin ? notifCount : notifCount + editNotifs.length;
+  const attention = notifCount + editNotifs.length;
 
   const initial = user?.email?.[0]?.toUpperCase() ?? "?";
   const bg = user ? avatarColor(user.email) : AVATAR_COLORS[0];
@@ -291,6 +290,7 @@ export default function Nav() {
 
             {user ? (
               <>
+                {isAdmin && <AdminMenu />}
                 <button
                   ref={avatarRef}
                   type="button"
@@ -331,7 +331,7 @@ export default function Nav() {
                       onClick={() => selectMenuItem(() => navigate("/my-submissions"))}
                     >
                       My submissions
-                      {!isAdmin && notifCount > 0 && (
+                      {notifCount > 0 && (
                         <span className="civic-nav-menu-badge">{notifCount}</span>
                       )}
                     </button>
@@ -387,21 +387,6 @@ export default function Nav() {
                         }
                       >
                         Post announcement
-                      </button>
-                    )}
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="civic-nav-menu-item"
-                        onClick={() =>
-                          selectMenuItem(() => navigate("/admin/reviews"))
-                        }
-                      >
-                        Admin panel
-                        {isAdmin && notifCount > 0 && (
-                          <span className="civic-nav-menu-badge">{notifCount}</span>
-                        )}
                       </button>
                     )}
                     <div className="civic-nav-menu-divider" role="separator" />
