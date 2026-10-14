@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AuthModal, { officialFrom, type PendingAuth } from "../components/AuthModal";
-import { rememberKeepSignedIn, rememberedKeepSignedIn, verifyLink } from "../services/auth";
+import { rememberKeepSignedIn, rememberedKeepSignedIn, verifyInvite, verifyLink } from "../services/auth";
 import hub from "../config/hub";
 
 /**
@@ -14,11 +14,17 @@ import hub from "../config/hub";
  * in emails, and a link that signed in on opening would be spent by them.
  * The token is the same code as the six digits, checked by the same rules.
  */
-function takeLinkToken(): string | null {
-  const match = /^#t=([A-Za-z0-9_-]+)$/.exec(window.location.hash);
+interface LinkToken {
+  /** A code's "Sign in" link (#t=), or a member's invite (#invite=, members and invites slice). */
+  kind: "code" | "invite";
+  value: string;
+}
+
+function takeLinkToken(): LinkToken | null {
+  const match = /^#(t|invite)=([A-Za-z0-9_-]+)$/.exec(window.location.hash);
   if (!match) return null;
   history.replaceState(null, "", window.location.pathname + window.location.search);
-  return match[1];
+  return { kind: match[1] === "invite" ? "invite" : "code", value: match[2]! };
 }
 
 export default function SignInLink() {
@@ -55,7 +61,8 @@ export default function SignInLink() {
     setError(null);
     try {
       rememberKeepSignedIn(keepSignedIn);
-      const result = await verifyLink(token, keepSignedIn);
+      const result =
+        token.kind === "invite" ? await verifyInvite(token.value, keepSignedIn) : await verifyLink(token.value, keepSignedIn);
       if (result.user.is_resident && result.user.full_name) {
         login(result.token, result.user, result.role, result.author_label, officialFrom(result));
         navigate("/", { replace: true });
@@ -69,7 +76,13 @@ export default function SignInLink() {
         });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "This sign-in link didn't work. Ask for a new code.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : token.kind === "invite"
+            ? "This invite link didn't work. You can still sign in with your email address."
+            : "This sign-in link didn't work. Ask for a new code.",
+      );
     } finally {
       setBusy(false);
     }
@@ -78,10 +91,14 @@ export default function SignInLink() {
   return (
     <article className="page sign-in-link-page">
       <div className="sign-in-link-card">
-        <h1 className="auth-title">Sign in to {hub.name}</h1>
+        <h1 className="auth-title">{token?.kind === "invite" ? `Join ${hub.name}` : `Sign in to ${hub.name}`}</h1>
         {token ? (
           <>
-            <p className="auth-description">You opened the sign-in link from your email. Press Confirm to sign in.</p>
+            <p className="auth-description">
+              {token.kind === "invite"
+                ? "You opened the invite from your email. Press Confirm to come in, then add your name to join."
+                : "You opened the sign-in link from your email. Press Confirm to sign in."}
+            </p>
             <label className="auth-checkbox-label auth-keep-signed-in">
               <input
                 type="checkbox"
