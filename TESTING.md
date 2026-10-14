@@ -70,7 +70,10 @@ build`) when they run against `vite preview`. **New hubs are created with the si
 pill, the account menu) must set `nav.layout` to `top_tabs` first, as `adminMenu.spec.ts` does. The seeded Floyd
 and Athens read unset as Top tabs. **At phone width the Admin pill, the review icon, the drawer and the strip are
 gone**: reach Admin items through More (`navigation "Sections"` → `[data-nav-id="more"]` → `more-sheet`). Look the
-two navigations up with `exact: true`: "Sections" and "Hub" also match "Hub settings sections".
+two navigations up with `exact: true`: "Sections" and "Hub" also match "Hub settings sections". **Put a setting back
+through `PUT /admin/hub/settings`, not by deleting its row**: the API caches a hub's settings and only its own save
+clears them, so a row deleted behind its back is still served to the next spec (CI's first run of this slice failed
+`navigation.spec.ts` that way). An empty value reads as unset.
 
 - **Unit:**
   - `navSections.test.ts`: the default order (today's strip), the bar's four (Feed, Talk, Proposals, Votes), the

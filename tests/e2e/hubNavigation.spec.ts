@@ -68,11 +68,15 @@ test.beforeAll(async ({ request }) => {
   voteId = await liveVote(request, adminToken, voteTitle);
 });
 
+// Put back through the API, never by writing the table: the API caches a
+// hub's settings, and only its own save clears that, so a row deleted behind
+// its back left the next spec looking at the sidebar. An empty value reads as
+// unset; a plugin's switch has no unset, and on is its default.
 test.afterAll(async ({ request }) => {
   if (voteId) await closeAsAdmin(request, adminToken, voteId);
   for (const [k, v] of restore) {
-    if (v === undefined) await localRest(`hub_settings?hub_id=eq.${hub}&key=eq.${k}`, { method: "DELETE" });
-    else await put(request, k.startsWith("plugin.") ? "plugins" : "theme", { [k]: v });
+    const plugin = k.startsWith("plugin.");
+    await put(request, plugin ? "plugins" : "theme", { [k]: v ?? (plugin ? "true" : "") });
   }
 });
 
@@ -183,7 +187,7 @@ test("phones: a drafting form hides the bar, before and while typing", async ({ 
 });
 
 test("desktop: unset Navigation is Top tabs, as before the slice", async ({ page, request }) => {
-  await localRest(`hub_settings?hub_id=eq.${hub}&key=eq.nav.layout`, { method: "DELETE" });
+  await put(request, "theme", { "nav.layout": "" });
   await page.setViewportSize(DESKTOP);
   await visitAs(page, residentToken);
   await page.goto("/");

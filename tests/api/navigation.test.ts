@@ -9,7 +9,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
-import { localRest, mintSession, storedSetting } from "../fixtures/adminSession.js";
+import { mintSession, storedSetting } from "../fixtures/adminSession.js";
 
 const ATHENS = "athens.localhost";
 const KEYS = ["nav.layout", "nav.section_order", "plugin.conversation.enabled"];
@@ -28,10 +28,13 @@ beforeAll(async () => {
   before = await Promise.all(KEYS.map(async (k) => [k, await storedSetting("athens", k)] as [string, string | undefined]));
 });
 
+// Through the API, which clears its settings cache; a row deleted behind its
+// back would be served for a while yet. Empty reads as unset; a plugin's
+// switch defaults to on.
 afterAll(async () => {
   for (const [k, v] of before) {
-    if (v === undefined) await localRest(`hub_settings?hub_id=eq.athens&key=eq.${k}`, { method: "DELETE" });
-    else await put(k.startsWith("plugin.") ? "plugins" : "theme", { [k]: v });
+    const plugin = k.startsWith("plugin.");
+    await put(plugin ? "plugins" : "theme", { [k]: v ?? (plugin ? "true" : "") });
   }
 });
 
