@@ -47,6 +47,10 @@ in the account menu; admins see hidden members in Settings → People.
 5. **Privacy:** hidden members appear only in Settings → People (`GET /admin/hub/members`, hidden members only, no
    addresses). Admin → Settings → Mode's waitlist has an "Invited by" column (the inviter's name).
 
+**After Adam's phone check (2026-10-14):** the word cloud strip says only "Community word cloud" (the prompt is on
+the word cloud's page); the member count and Share this hub sit under the tagline, above Raise something; the account
+menu has Share this hub but no Members item. Removing oneself from the Members page works on his phone.
+
 **Tests:** TESTING.md → "Members and invites". **Open:**
 - The docs sections for `people.hidden_members`, `share.invites`, `members.visibility` (the weekly job drafts them).
 - The invite message is not run through the Code of Conduct check; the limit, the 1,000-character cap and escaping
