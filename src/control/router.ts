@@ -29,6 +29,7 @@ import { kindsWithSamples, samplePreviews, sampleTemplateTitles } from "../servi
 import { sampleNames } from "../services/sampleNames.js";
 import { describeInvites } from "../services/adminInvite.js";
 import { addStarterWordcloud, inviteAdmins, seedSampleInHub } from "./inHub.js";
+import { feedbackInbox, updateFeedbackItem } from "./platformFeedback.js";
 import {
   CODE_SENT,
   ControlAuthError,
@@ -602,6 +603,36 @@ export function controlRouter(): Router {
   r.get("/control/hubs/:id/admin-audit", route(async (req, res) => {
     const hub = await loadHub(req, res);
     if (hub) res.json({ entries: await listHubAdminAudit(hub.id, Number(req.query.limit) || 100) });
+  }));
+
+  // Civic.Social's feedback inbox, across hubs (feedback routing): software
+  // reports and hub admins' messages, grouped by likely duplicates.
+  r.get("/control/feedback", route(async (req, res) => {
+    res.json(await feedbackInbox({ stream: req.query.stream, status: req.query.status }));
+  }));
+
+  // Status (flows back to the hub's badge) and the GitHub issue link. Fixed,
+  // for a consenting sender, emails them once. The audit row carries the
+  // status and link only, never the sender's address.
+  r.patch("/control/feedback/:id", route(async (req, res) => {
+    const result = await updateFeedbackItem(String(req.params.id), req.body);
+    if (!result) {
+      res.status(404).json({ error: "not_found", message: "No such feedback item." });
+      return;
+    }
+    await audited(res, {
+      actor: actor(res),
+      action: "feedback.update",
+      hubId: result.item.source_hub_id,
+      before: { id: result.before.id, status: result.before.status, github_issue_url: result.before.github_issue_url },
+      after: {
+        id: result.item.id,
+        status: result.item.status,
+        github_issue_url: result.item.github_issue_url,
+        ...(result.sender_told ? { sender_told: result.sender_told.sent } : {}),
+      },
+    });
+    res.json(result);
   }));
 
   // Anything else on the console host is not a hub page.
