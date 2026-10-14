@@ -21,6 +21,7 @@ export function call(
   body?: unknown,
   token?: string,
   ip: string = freshTestIp(),
+  headers: Record<string, string> = {},
 ): Promise<HostResponse> {
   const url = new URL(`${API_BASE}${path}`);
   const payload = body === undefined ? undefined : JSON.stringify(body);
@@ -38,6 +39,7 @@ export function call(
           "X-Forwarded-For": ip,
           ...(payload ? { "Content-Length": Buffer.byteLength(payload) } : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...headers,
         },
       },
       (res) => {

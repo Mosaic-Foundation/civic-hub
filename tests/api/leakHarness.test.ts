@@ -626,6 +626,8 @@ const WRITE_PLAN: Record<string, WritePlan> = {
   "DELETE /proposals/:id/support": {},
   // One sample at a time (admin menu slice): Floyd's ids are never Athens's samples.
   "DELETE /admin/hub/sample-content/:id": {},
+  // Send to Civic.Social (feedback routing): Floyd's feedback is never Athens's to forward.
+  "POST /admin/feedback/:id/forward": { body: { stream: "bug" } },
   "POST /reviews/:reviewId/revise": { body: { title: X.title, description: X.description } },
   "POST /reviews/:reviewId/withdraw": { body: {} },
   "POST /reviews/:reviewId/reopen": { body: {} },
