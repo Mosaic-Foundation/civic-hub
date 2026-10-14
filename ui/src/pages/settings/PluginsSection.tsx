@@ -374,6 +374,11 @@ function settingsPanel(f: FormApi, id: PluginId): React.ReactNode | null {
           k="plugin.wordcloud.onboarding_id"
           label="The hub's word cloud"
           hint="Shown in the strip at the top of every page, and where a new account lands after signing up. None hides the strip."
+          create={{
+            to: "/wordcloud/new",
+            label: "Create a word cloud",
+            none: "This hub has no word cloud yet, so the strip is hidden.",
+          }}
         />
       );
     case "brief":

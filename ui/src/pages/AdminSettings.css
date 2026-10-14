@@ -1139,3 +1139,21 @@
 .next-steps-list a {
   font-weight: 600;
 }
+
+/* A process picker with nothing to pick (fields.tsx → ProcessField). */
+.settings-process-none {
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px dashed var(--color-border-strong, var(--color-border));
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+}
+
+.settings-process-none a,
+.settings-process-create a {
+  font-weight: 600;
+}
+
+.settings-process-create {
+  margin-top: var(--space-xs);
+}

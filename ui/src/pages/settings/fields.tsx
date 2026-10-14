@@ -6,6 +6,7 @@
 // same limits, so these are a courtesy, not the rule.
 
 import { useEffect, useId, useState } from "react";
+import { Link } from "react-router-dom";
 import MarkdownTextarea from "../../components/MarkdownTextarea";
 import HelpButton from "../../components/HelpButton";
 import PostImagePicker from "../../components/PostImagePicker";
@@ -416,7 +417,18 @@ export function ChoiceField({
  * A value that no longer names a listed process (removed, or another hub's)
  * shows as such rather than silently as "None".
  */
-export function ProcessField({ f, k, label, hint, emptyLabel = "None" }: Common & { emptyLabel?: string }) {
+export function ProcessField({
+  f,
+  k,
+  label,
+  hint,
+  emptyLabel = "None",
+  create,
+}: Common & {
+  emptyLabel?: string;
+  /** Where to make one: shown under the picker, and in its place when the hub has none. */
+  create?: { to: string; label: string; none: string };
+}) {
   const id = useId();
   const type = fieldSpec(k)?.processType;
   const [items, setItems] = useState<ProcessSummary[] | null>(null);
@@ -428,6 +440,18 @@ export function ProcessField({ f, k, label, hint, emptyLabel = "None" }: Common 
   }, [type]);
   const value = f.value(k);
   const missing = value !== "" && items !== null && !items.some((p) => p.id === value);
+  // Nothing to choose but None: say so, and where to make one, instead of a
+  // one-option picker (admin menu slice, 2026-10-13).
+  if (create && items !== null && items.length === 0 && !missing) {
+    return (
+      <div className="settings-field">
+        <Label id={id} k={k} label={label} hint={hint} />
+        <p className="settings-process-none" role="status">
+          {create.none} <Link to={create.to}>{create.label}</Link>
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="settings-field">
       <Label id={id} k={k} label={label} hint={hint} />
@@ -448,6 +472,11 @@ export function ProcessField({ f, k, label, hint, emptyLabel = "None" }: Common 
           </option>
         ))}
       </select>
+      {create && (
+        <p className="form-hint settings-process-create">
+          <Link to={create.to}>{create.label}</Link>
+        </p>
+      )}
     </div>
   );
 }
