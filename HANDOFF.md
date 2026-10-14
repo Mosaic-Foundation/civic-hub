@@ -4,6 +4,48 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Admin menu slice: one small menu, a "?" on every setting, samples one at a time, a starter word cloud — 2026-10-13
+
+Commits on `multi-tenant` `afd98d3`..(this entry), one item each; the docs repo's side on `civic-hub-docs` branch
+`help-anchors` (`75e18d0`..`7ad2494`), not pushed. Report and handoff:
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Admin-Menu-Session-Report-2026-10-13.md`.
+
+**Release needs:**
+- **No migrations, no new env vars, nobody signed out.**
+- **The docs first.** CI's new step (`scripts/check-help-anchors.ts`) reads `https://docs.civic.social/help-anchors.json`,
+  which only the `help-anchors` branch of civic-hub-docs builds. Merge and deploy it before pushing civic-hub, or CI
+  goes red on that step (it answers 404 today).
+- **After the code, existing hubs' word clouds** (Adam, 2026-10-13): `scripts/add-starter-wordcloud.ts --hub <slug>`
+  (`--dry-run` first). It skips a hub with a word cloud chosen, one whose admin chose None, one with Word clouds off,
+  and a demo hub with samples (use Refresh samples there).
+
+**Built (Adam's decisions, 2026-10-13):**
+1. **Admin menu** (`AdminMenu.tsx`): a review icon with the count of new processes, briefs and meeting summaries (it
+   opens the first queue with something new), and the Admin pill's dropdown: Reviews (that count), Moderation (no
+   count: it is a log), Settings, Plugins. The account menu holds only personal things; its dot and My submissions
+   count use `GET /notifications/reviews/count?scope=mine`. The tab "Process reviews" is "Processes", in the digest
+   too. **Settings → Admin log** reads `hub_admin_audit_log` (`GET /admin/hub/admin-log`, last 100).
+2. **Anchors** (`src/shared/adminAnchors.ts`, `ui/src/hooks/useAnchor.ts`): `/admin#moderation`,
+   `/admin/settings#participation`, `/admin/settings#threshold`, `/admin/settings#feedback` (the plugin's panel)
+   open the place and scroll to it under the sticky header. Plugin cards start closed (name, On/Off, what it does).
+3. **Help** (`src/shared/helpRegistry.json` + `.ts`, `HelpButton.tsx`): 80 keys, one per Settings section, plugin
+   panel, part and setting, each with a short note, a docs page and the key's own anchor. 8 are `pending` (no docs
+   section yet; the link opens the page). CI fails when a key not pending points at an anchor the docs don't publish.
+   The docs repo publishes `/help-anchors.json`, gives every key's place a stable `{#id}` or `<a id>`, and its weekly
+   job drafts sections for pending keys and lists dropped ids in its pull request.
+4. **Samples:** `DELETE /admin/hub/sample-content/:id` (no code; a sample vote's brief goes with it; audited as
+   `sample_content.delete_one`); Settings lists each sample with Delete, and a sample's page offers Delete sample
+   beside Archive. "Remove samples" leaves the demo bar when none remain; "Next: set up your hub" follows the last.
+5. **Starter word cloud** (`src/services/starterWordcloud.ts`): every new hub (console, start page, `create-hub.ts`)
+   gets an open, real word cloud ("In one word, what matters most to you about this community?") in its strip,
+   unless its samples include one; when the sample word cloud goes, alone or with all samples, the starter takes its
+   place. Audited as `wordcloud.starter`. The picker says when there is none and links to `/wordcloud/new`.
+
+**Tests:** TESTING.md → "Admin menu slice". **Open:** the docs push; the production word cloud check (query in the
+report); the 8 pending docs sections, which the weekly job drafts once this reaches `main`.
+
+---
+
 ## Sign-in slice: lock the code, the email link, Keep me signed in, terms without a checkbox, city-counties — 2026-10-14
 
 Commits on `multi-tenant` `ac3b009`..`eadb61f`, one item each, **live on dev** since `release.sh dev --yes` (both

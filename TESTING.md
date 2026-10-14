@@ -62,6 +62,59 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Admin menu slice: the menu, anchors, help notes, one sample deleted, the starter word cloud (2026-10-13)
+
+No migrations. **CI gains a step**, "Help links reach the docs" (`scripts/check-help-anchors.ts`): it fetches
+`https://docs.civic.social/help-anchors.json` and fails when a help key not marked `pending` points at an anchor the
+docs don't publish. Locally, point it at a docs build: `CIVIC_HELP_ANCHORS=../civic-hub-docs/docs/.vitepress/dist/help-anchors.json`.
+
+- **Unit:**
+  - `helpRegistry.test.ts`: a note for every Settings section, plugin panel, part and setting, and none for anything
+    that doesn't show; each note 20–240 characters with no em dash; each anchor its key's own (`anchorForKey`); a
+    pending key links to its page's top; the check fails on a dropped anchor and treats `/page` and `/page/` as one.
+  - `adminAnchors.test.ts`: where `/admin#…` and `/admin/settings#…` lead (a tab wins on `/admin`), and no two places
+    share an anchor except the Feedback tab and plugin.
+  - Updated: `adminFeedbackDigest.test.ts` ("Processes").
+- **API, `adminMenuSlice.test.ts`** (hubs made by the console's Create hub, archived after):
+  - a hub made without samples starts with an open, real word cloud in its strip, its prompt naming no place, with
+    its created and started events and a `wordcloud.starter` admin log row; a hub with samples shows the sample one;
+    Word clouds off, none;
+  - one sample deleted without a code, its brief with it, its events gone, recorded as `sample_content.delete_one`
+    (read through `GET /admin/hub/admin-log`); a real process answers 404 and stays; residents get 403;
+  - deleting the sample word cloud puts the starter in the strip; removing every sample keeps it;
+  - `/notifications/reviews/count?scope=mine` leaves out an admin's queue.
+  - Updated: `sampleSeed.test.ts` and `sampleRefresh.test.ts` expect the starter where a hub has no samples, and in
+    the sample one's place after removal; `leakHarness.test.ts` walks `GET /admin/hub/admin-log` and
+    `DELETE /admin/hub/sample-content/:id` with Floyd's ids.
+- **Playwright, `adminMenu.spec.ts`** (8 tests; one demo hub with samples made through the console, visited on
+  `<slug>.localhost`):
+  - the Admin menu and review icon at 375 px and 1280 px (four items, the count, on screen, Escape closes; the
+    account menu without Admin panel; Plugins and Reviews go where they say; "Processes"); a resident has neither;
+  - anchors: `/admin#moderation`, `/admin/settings#feedback` (that panel open and in view, the others closed until
+    clicked), `/admin/settings#threshold`;
+  - a "?" at both widths: the registry's note, the docs link with its anchor, on screen, Escape returns focus; a
+    plugin panel's "?" doesn't open the panel;
+  - one sample deleted from the list and one from its own page; the strip's starter prompt; "Remove samples" gone and
+    Next: set up your hub after the last;
+  - the word cloud picker's empty state (the list answers empty), linking to `/wordcloud/new`.
+  - Updated: `pluginSwitches.spec.ts` opens the Projects card through its anchor; `reviewQueue.spec.ts`
+    ("Processes").
+- **Smoke** (13 tests): the Admin menu at 375 px with its counts and the review icon's; a "?" note with the docs link;
+  a sample planted on the smoke hub (`plantSample`, removed in afterAll if a run fails) deleted from Settings, then
+  Next: set up your hub.
+
+**Counts (2026-10-13, local):**
+- Unit: 132 files, 1,523 passed.
+- API: 58 files, 731 passed, 10 skipped and 1 todo, in each mode. The one failure in each is still `hubIsolationControllers >
+  admin queue counts` (long-used stack, over 1,000 review rows; flagged before).
+- Conformance: 97 passed, 3 skipped, 1 todo. Under load (Playwright running at the same time) the hourly-close
+  step timed out once in token mode, and passed when run again on its own.
+- Playwright (preview build): 107 passed, 2 skipped. `securityHeaders` lost one database connection while two suites
+  ran at once, and passed run again alone.
+- Smoke (local smoke hub): 13 of 13 in 19 s.
+
+---
+
 ## Sign-in: lock the code, the link, Keep me signed in, terms without a checkbox, city-counties (2026-10-14)
 
 **Two migrations to apply to an existing local stack first:** `supabase migration up --local`
@@ -144,7 +197,7 @@ Conduct some test wrote, so its page has no "In short". `signIn.spec.ts` checks 
 A fourth layer: `tests/smoke/`, Playwright against the **live dev deployment**, after every dev deploy. It replaces
 the browser half of the dev checklist Adam ran by hand after each release (RUNBOOK-release.md → Dev).
 
-- **What it checks** (`dev.smoke.spec.ts`, one serial group, 10 tests):
+- **What it checks** (`dev.smoke.spec.ts`, one serial group, 13 tests):
   - `/api/health` is ok with no schema gaps, on the deployed commit; an unknown `POST /api/…` answers JSON 404;
   - a resident and an admin are signed in;
   - a new resident signs in through the email's link at 375 px and joins beside the terms notice (since 2026-10-14,
@@ -158,7 +211,10 @@ the browser half of the dev checklist Adam ran by hand after each release (RUNBO
   - a drafting form at 375px: the slim header, and the bar steps aside while a field has focus;
   - Edit & resubmit after an admin requests changes brings back the same review item;
   - a ballot cast at 375 px on an open vote an admin made: the page holds still, the share banner goes by itself, the
-    receipt box has the code beside the download button (since 2026-10-13, vote pages fixes).
+    receipt box has the code beside the download button (since 2026-10-13, vote pages fixes);
+  - the Admin menu at 375 px with its four items and its count, which the review icon says too; a "?" opens its note
+    with the docs link; an admin deletes a sample (planted on the smoke hub) and Next: set up your hub follows
+    (since 2026-10-13, admin menu slice).
 - **Where it runs:** only on the dedicated smoke hub, which must be in beta and have a slug starting with `smoke`. Sessions are
   minted straight into the dev database with its service-role key (Adam's decision, 2026-10-13: no test-only
   sign-in route in `src/`). `tests/smoke/devStack.ts` refuses the production project, any other hub, a deployment
@@ -1912,7 +1968,7 @@ the local-stack jobs.
 
 ---
 
-*Last updated: 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,
