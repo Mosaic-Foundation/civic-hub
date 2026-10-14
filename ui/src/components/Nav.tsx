@@ -9,6 +9,7 @@ import {
 } from "../services/api";
 import AuthModal from "./AuthModal";
 import AdminMenu from "./AdminMenu";
+import SharePanel from "./SharePanel";
 import SearchBar from "./SearchBar";
 import hub from "../config/hub";
 import { pluginEnabled, type PluginId } from "../config/plugins";
@@ -80,6 +81,8 @@ export default function Nav() {
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // "Share this hub" from the account menu (members and invites slice).
+  const [sharing, setSharing] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
   // Supporter's badge: projects this user supports that were edited since
@@ -369,6 +372,26 @@ export default function Nav() {
                         ))}
                       </div>
                     )}
+                    {user.is_resident && (
+                      <>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="civic-nav-menu-item"
+                          onClick={() => selectMenuItem(() => navigate("/members"))}
+                        >
+                          Members
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="civic-nav-menu-item"
+                          onClick={() => selectMenuItem(() => setSharing(true))}
+                        >
+                          Share this hub
+                        </button>
+                      </>
+                    )}
                     <button
                       type="button"
                       role="menuitem"
@@ -488,7 +511,7 @@ export default function Nav() {
           onDismiss={() => setShowAuth(false)}
         />
       )}
-
+      {sharing && <SharePanel onClose={() => setSharing(false)} />}
     </>
   );
 }

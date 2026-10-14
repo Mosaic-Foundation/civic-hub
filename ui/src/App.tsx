@@ -34,6 +34,7 @@ import VoteLog from "./pages/VoteLog";
 import PostAnnouncement from "./pages/PostAnnouncement";
 import AnnouncementPage from "./pages/Announcement";
 import Settings from "./pages/Settings";
+import Members from "./pages/Members";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import CodeOfConduct from "./pages/CodeOfConduct";
@@ -235,6 +236,7 @@ function AppContent() {
           <Route path="/announcement/:id/edit" element={whenPlugin("announcement", <PostAnnouncement />)} />
           <Route path="/announcement/:id" element={whenPlugin("announcement", <AnnouncementPage />)} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/members" element={<Members />} />
           <Route path="/about" element={<About />} />
           <Route path="/search" element={whenPlugin("search", <SearchPage />)} />
           {/* Slice 11 — legal pages. Routes resolve via React Router so

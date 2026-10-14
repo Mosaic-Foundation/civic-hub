@@ -237,3 +237,10 @@
   width: auto;
   padding: 0.6rem 1.5rem;
 }
+
+/* A panel heading with its "?" (members and invites slice). */
+.settings-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
