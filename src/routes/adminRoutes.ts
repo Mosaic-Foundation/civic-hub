@@ -87,6 +87,7 @@ import {
   handleDeleteOneSample,
   handleRequestSampleRemovalCode,
 } from "../controllers/hubSampleContentController.js";
+import { handleAdminListMembers } from "../controllers/membersController.js";
 
 const router = Router();
 
@@ -188,6 +189,7 @@ router.post("/hub/mode", handleSetHubMode);
 // src/controllers/hubPeopleController.ts. Same step-up as a mode change:
 // adding an admin makes access permanent, removing them makes it exclusive.
 router.get("/hub/people", handleGetHubPeople);
+router.get("/hub/members", handleAdminListMembers);
 router.post("/hub/people/request-code", handleRequestStepUpCode);
 router.post("/hub/people", handleSetHubPeople);
 

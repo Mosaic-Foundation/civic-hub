@@ -45,6 +45,7 @@ import feedbackRoutes from "./routes/feedbackRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import waitlistRoutes from "./routes/waitlistRoutes.js";
+import memberRoutes from "./routes/memberRoutes.js";
 import {
   digestUnsubscribeRouter,
   userSettingsRouter,
@@ -253,6 +254,9 @@ app.use("/feedback", requirePlugin("feedback"), feedbackRoutes);
 
 // Beta waitlist — public endpoint for people to request access.
 app.use("/waitlist", waitlistRoutes);
+
+// Members and "Share this hub" (members and invites slice)
+app.use("/members", memberRoutes);
 
 // Meeting summaries (Slice 6):
 //   /meeting-summary/:id    — public read of published summaries

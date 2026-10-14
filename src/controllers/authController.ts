@@ -15,6 +15,7 @@ import {
   requestVerification,
   verifyCode,
   verifyLink,
+  verifyInviteLink,
   exchangeHandoff,
   affirmResidency,
   acceptLegalTerms,
@@ -27,6 +28,7 @@ import {
 } from "../modules/civic.auth/index.js";
 import { resolveAuthorship } from "../middleware/auth.js";
 import { clientIp } from "../utils/clientIp.js";
+import { setHiddenFromMembers } from "../services/members.js";
 
 /**
  * POST /auth/request-code
@@ -65,6 +67,19 @@ export const handleVerify = route(async (req, res) => {
 export const handleVerifyLink = route(async (req, res) => {
   const { token, keep_signed_in } = (req.body ?? {}) as { token?: unknown; keep_signed_in?: unknown };
   const result = await verifyLink(typeof token === "string" ? token : "", clientIp(req), keep_signed_in === true);
+  await answerSignedIn(res, result);
+});
+
+/**
+ * POST /auth/verify-invite
+ * Body: { token: string, keep_signed_in?: boolean }
+ *
+ * A member's invite link (/sign-in#invite=<token>), after the one Confirm.
+ * Same answer shape as /auth/verify; a new neighbour goes on to the join step.
+ */
+export const handleVerifyInvite = route(async (req, res) => {
+  const { token, keep_signed_in } = (req.body ?? {}) as { token?: unknown; keep_signed_in?: unknown };
+  const result = await verifyInviteLink(typeof token === "string" ? token : "", clientIp(req), keep_signed_in === true);
   await answerSignedIn(res, result);
 });
 
@@ -215,16 +230,21 @@ export const handleUpdateProfile = route(async (req, res) => {
   if (!user) {
     throw new UnauthorizedError("Invalid or expired session");
   }
-  const { display_name, full_name, hide_ai_drafting_help } = (req.body ?? {}) as {
+  const { display_name, full_name, hide_ai_drafting_help, hidden_from_members } = (req.body ?? {}) as {
     display_name?: unknown;
     full_name?: unknown;
     hide_ai_drafting_help?: unknown;
+    hidden_from_members?: unknown;
   };
   const hasDisplayName = display_name !== undefined;
   const hasFullName = full_name !== undefined;
   const hasHideDraftingHelp = hide_ai_drafting_help !== undefined;
-  if (!hasDisplayName && !hasFullName && !hasHideDraftingHelp) {
+  const hasHidden = hidden_from_members !== undefined;
+  if (!hasDisplayName && !hasFullName && !hasHideDraftingHelp && !hasHidden) {
     throw new ValidationError("Nothing to update");
+  }
+  if (hasHidden && typeof hidden_from_members !== "boolean") {
+    throw new ValidationError("hidden_from_members must be a boolean");
   }
   if (hasDisplayName && display_name !== null && typeof display_name !== "string") {
     throw new ValidationError("display_name must be a string or null");
@@ -250,6 +270,11 @@ export const handleUpdateProfile = route(async (req, res) => {
       user.id,
       hide_ai_drafting_help as boolean,
     );
+  }
+  if (hasHidden) {
+    // Members page and avatar stack (members and invites slice).
+    await setHiddenFromMembers(user.id, hidden_from_members as boolean);
+    updated = { ...updated, hidden_from_members: hidden_from_members as boolean };
   }
   res.json({ user: updated });
 });

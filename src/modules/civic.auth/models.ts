@@ -41,6 +41,11 @@ export interface User {
    * Conduct check, which runs on every submission regardless.
    */
   hide_ai_drafting_help: boolean;
+  /**
+   * Left off the Members page and the home page's avatar stack, by the
+   * person's own choice (members and invites slice). Still counted.
+   */
+  hidden_from_members: boolean;
   display_name: string | null;
   /**
    * The user's real name, required for participation (votes, comments,

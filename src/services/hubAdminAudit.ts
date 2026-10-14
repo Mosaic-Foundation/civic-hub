@@ -29,7 +29,10 @@ export type HubAdminAuditAction =
   | "brief.regenerate"
   | "brief.revision_published"
   // An admin sent a feedback item to Civic.Social (feedback routing).
-  | "feedback.forward";
+  | "feedback.forward"
+  // A member's email invites (members and invites slice): the addresses and
+  // what became of them, never the message.
+  | "member.invite";
 
 export interface HubAdminAuditEntry {
   actor: string;

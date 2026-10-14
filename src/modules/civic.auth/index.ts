@@ -131,6 +131,7 @@ function rowToUser(row: Record<string, unknown>): User {
       : null,
     // Defaults false for rows (or databases) that pre-date the migration.
     hide_ai_drafting_help: Boolean(row.hide_ai_drafting_help),
+    hidden_from_members: Boolean(row.hidden_from_members),
     display_name: row.display_name ? String(row.display_name) : null,
     full_name: row.full_name ? String(row.full_name) : null,
   };
@@ -202,6 +203,25 @@ async function limitIp(step: keyof typeof HUB_SIGN_IN_LIMITS, ip: string, timeZo
   throw new RateLimitedError(tooManyMessage(at, timeZone), "rate_limited", { extra: { retry_at: at.toISOString() } });
 }
 
+/**
+ * A beta hub admits its admin roster, its allow list, and its officials
+ * (Adam, 2026-10-07): anyone an admin entered in the officials list is
+ * treated as if on the allow list for signing in. Only for signing in: the
+ * mail guard still holds notifications to officials on a demo or beta hub
+ * (mailGuard.ts), and their sign-in code passes it as every code does.
+ * Checked when a code is asked for, and when an invite link is used.
+ */
+async function assertMayEnterBeta(normalizedEmail: string): Promise<void> {
+  if (!isBetaEnabledSync()) return;
+  if (getAdminEmailsSync().includes(normalizedEmail)) return;
+  const allowed =
+    (await isEmailOnBetaAllowlist(currentHubId(), normalizedEmail)) ||
+    (await lookupOfficialByEmail(normalizedEmail)) !== null;
+  if (!allowed) {
+    throw new ForbiddenError("This hub is currently in private beta.", "beta_closed");
+  }
+}
+
 /** Where the email's "Sign in" link goes: the hub's page, the token after `#`. */
 export function signInLink(linkToken: string): string {
   return `${uiBaseUrl()}/sign-in#t=${linkToken}`;
@@ -263,17 +283,7 @@ export async function requestVerification(
   // treated as if on the allow list for signing in. Only for signing in: the
   // mail guard still holds notifications to officials on a demo or beta hub
   // (mailGuard.ts), and their sign-in code passes it as every code does.
-  if (isBetaEnabledSync()) {
-    const adminEmails = getAdminEmailsSync();
-    if (!adminEmails.includes(normalizedEmail)) {
-      const allowed =
-        (await isEmailOnBetaAllowlist(currentHubId(), normalizedEmail)) ||
-        (await lookupOfficialByEmail(normalizedEmail)) !== null;
-      if (!allowed) {
-        throw new ForbiddenError("This hub is currently in private beta.", "beta_closed");
-      }
-    }
-  }
+  await assertMayEnterBeta(normalizedEmail);
 
   // Three live codes, the IP's requests, one email a minute and ten new codes
   // an hour for the address; then a new code beside any earlier ones, which
@@ -428,6 +438,55 @@ export async function verifyLink(
 ): Promise<{ token: string; user: User }> {
   const hubDb = db();
   const { email } = await checkCode(hubCodeStore(hubDb), hubRealm(), ip, { linkToken });
+  const user = await findOrCreateVerifiedUser(email);
+  const token = await insertSession(hubDb, user.id, "code", sessionTtl(keepSignedIn));
+  return { token, user };
+}
+
+/**
+ * A member's invite link (members and invites slice, 2026-10-14): the invite
+ * email's "Join" button lands on /sign-in#invite=<token>, the same page as a
+ * code's link, with the same one Confirm. The token proves the address the
+ * way a code does, since only that mailbox received it. It lasts 14 days and
+ * works once (hub_invites.used_at); a used, expired or unknown token is one
+ * answer, so the page can't be used to learn which. A beta hub's gate applies
+ * as for a code: an address an admin later took off the allow list doesn't
+ * get in through an old link.
+ */
+export async function verifyInviteLink(
+  inviteToken: string,
+  ip: string,
+  keepSignedIn = false,
+): Promise<{ token: string; user: User }> {
+  await limitIp("verify", ip, hubRealm().timeZone);
+  const invalid = new ValidationError(
+    "This invite link has expired or has already been used. You can still sign in with your email address.",
+    "invite_unusable",
+  );
+  if (!/^[A-Za-z0-9_-]{20,128}$/.test(inviteToken)) throw invalid;
+  const hubDb = db();
+  const now = new Date().toISOString();
+  const linkHash = sha256Hex(inviteToken);
+  const live = await hubDb
+    .from("hub_invites")
+    .select<{ email: string }>("email")
+    .eq("link_hash", linkHash)
+    .is("used_at", null)
+    .gt("expires_at", now)
+    .maybeSingle();
+  if (!live) throw invalid;
+  // Before the link is spent, so a refusal here leaves it working for when
+  // an admin lets the address in.
+  await assertMayEnterBeta(live.email);
+  // The spend: one statement, so two taps can't both use it.
+  const spent = await hubDb
+    .from("hub_invites")
+    .update({ used_at: now })
+    .eq("link_hash", linkHash)
+    .is("used_at", null)
+    .select<{ email: string }>("email");
+  const email = spent[0]?.email;
+  if (!email) throw invalid;
   const user = await findOrCreateVerifiedUser(email);
   const token = await insertSession(hubDb, user.id, "code", sessionTtl(keepSignedIn));
   return { token, user };

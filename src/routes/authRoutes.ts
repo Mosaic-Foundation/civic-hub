@@ -2,6 +2,7 @@
 //
 // POST   /auth/request-code  — request verification code
 // POST   /auth/verify        — verify code and get session
+// POST   /auth/verify-invite — a member's invite link → a session
 // POST   /auth/handoff       — the start page's handoff → a session (session 4b)
 // POST   /auth/residency     — affirm Floyd County residency
 // POST   /auth/accept-tos    — record legal acceptance
@@ -14,6 +15,7 @@ import {
   handleRequestCode,
   handleVerify,
   handleVerifyLink,
+  handleVerifyInvite,
   handleHandoff,
   handleAffirmResidency,
   handleAcceptTos,
@@ -28,6 +30,7 @@ const router = Router();
 router.post("/request-code", handleRequestCode);
 router.post("/verify", handleVerify);
 router.post("/verify-link", handleVerifyLink);
+router.post("/verify-invite", handleVerifyInvite);
 router.post("/handoff", handleHandoff);
 router.post("/residency", handleAffirmResidency);
 router.post("/accept-tos", handleAcceptTos);

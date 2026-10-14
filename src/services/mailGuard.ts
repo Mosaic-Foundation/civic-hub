@@ -70,7 +70,7 @@ export interface MailDecision {
  * What a message is, where that changes who may receive it. A sign-in code
  * and an admin invite do; everything else is held to the mode rule.
  */
-export type MailPurpose = "sign_in_code" | "admin_invite";
+export type MailPurpose = "sign_in_code" | "admin_invite" | "member_invite";
 
 /**
  * The addresses a non-live hub may write to: the people who run it, and the
@@ -101,6 +101,12 @@ export function mailDecision(recipient: string, purpose?: MailPurpose): MailDeci
   // request's settings snapshot was read before that write, so it is not on
   // the list here yet (2026-10-08).
   if (purpose === "admin_invite") return { send: true };
+  // A member's invite (src/services/hubInvites.ts) is emailed on a live hub,
+  // and on a beta hub only when an admin sent it, after the address was put
+  // on the allow list in the same request (the snapshot predates that write,
+  // as for admin_invite). A member's invite on a beta hub is never emailed:
+  // it goes on the waitlist. Never on a demo hub.
+  if (purpose === "member_invite" && mode !== "demo") return { send: true };
 
   const to = recipient.trim().toLowerCase();
   if (allowedRecipients().has(to)) return { send: true };
