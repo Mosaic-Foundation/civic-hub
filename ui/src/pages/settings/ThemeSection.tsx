@@ -7,7 +7,7 @@
 // variables the page would get, re-declared inside the box, so what it shows
 // is the real stylesheet under the draft theme — not a picture of it.
 
-import { useId, useMemo } from "react";
+import { useId, useMemo, useRef } from "react";
 import {
   DEFAULT_THEME_COLORS,
   THEME_PRESETS,
@@ -20,7 +20,10 @@ import {
   type HubTheme,
   type ThemeTypeKey,
 } from "../../../../src/shared/theme";
-import { applyTheme } from "../../config/hubConfig";
+import { applyTheme, refreshHubConfig } from "../../config/hubConfig";
+import { navSections, type NavSection } from "../../config/navigation";
+import { BAR_SECTION_COUNT, parseSectionOrder } from "../../../../src/shared/navSections";
+import HelpButton from "../../components/HelpButton";
 import SectionForm, { type FormApi } from "./SectionForm";
 
 const KEY = "identity.theme";
@@ -39,9 +42,18 @@ export default function ThemeSection() {
         </p>
       }
       savedMessage="Saved. The site wears it now; visitors see it on their next page load."
-      onSaved={(fresh) => applyTheme(fresh.values[KEY])}
+      onSaved={(fresh) => {
+        applyTheme(fresh.values[KEY]);
+        // The navigation redraws at once for the admin who saved it.
+        void refreshHubConfig();
+      }}
     >
-      {(f) => <ThemeEditor f={f} />}
+      {(f) => (
+        <>
+          <ThemeEditor f={f} />
+          <NavigationFields f={f} />
+        </>
+      )}
     </SectionForm>
   );
 }
@@ -272,5 +284,173 @@ function ThemePreview({ theme }: { theme: HubTheme }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// --- Navigation (navigation slice, 2026-10-14) -------------------------------
+
+const LAYOUT_KEY = "nav.layout";
+const ORDER_KEY = "nav.section_order";
+
+const LAYOUTS: ReadonlyArray<{ id: "sidebar" | "top_tabs"; title: string; body: string }> = [
+  {
+    id: "sidebar",
+    title: "Sidebar",
+    body: "The hub's sections in a column on the left of the screen, always in view. New hubs start with this.",
+  },
+  {
+    id: "top_tabs",
+    title: "Top tabs",
+    body: "The hub's name and menu along the top, and the sections as tabs under the banner.",
+  },
+];
+
+/**
+ * Where the sections are drawn on a computer, and their one order. Phones get
+ * the bottom bar under either choice; its four tabs are the first four of the
+ * order (Adam, 2026-10-14).
+ */
+function NavigationFields({ f }: { f: FormApi }) {
+  // Unset is Top tabs: a hub made before the choice existed is unchanged.
+  const layout = f.value(LAYOUT_KEY) === "sidebar" ? "sidebar" : "top_tabs";
+  const stored = f.value(ORDER_KEY);
+  const sections = navSections(parseSectionOrder(stored));
+  const movable = sections.filter((s) => s.kind !== "feed");
+  const buttons = useRef(new Map<string, HTMLButtonElement | null>());
+
+  function move(id: string, by: -1 | 1) {
+    const ids = movable.map((s) => s.id);
+    const at = ids.indexOf(id);
+    const to = at + by;
+    if (at < 0 || to < 0 || to >= ids.length) return;
+    [ids[at], ids[to]] = [ids[to], ids[at]];
+    // Only the sections the hub has now: one switched off later drops out,
+    // and comes back at the end when it is switched on again.
+    f.set(ORDER_KEY, JSON.stringify(ids));
+    // Keep the keyboard on the row that moved; at an end, on its other button.
+    requestAnimationFrame(() => {
+      const same = buttons.current.get(`${id}:${by}`);
+      const other = buttons.current.get(`${id}:${-by}`);
+      (same && !same.disabled ? same : other)?.focus();
+    });
+  }
+
+  const bar = sections.slice(0, BAR_SECTION_COUNT);
+
+  return (
+    <>
+      <div className="settings-field" id="nav-layout">
+        <div className="settings-field-label-row">
+          <span className="form-label settings-field-label">Navigation</span>
+          <HelpButton k="nav.layout" label="Navigation" />
+        </div>
+        <p className="form-hint">How the hub&apos;s sections are shown on a computer. Phones always get a bar at the bottom of the screen.</p>
+        <fieldset className="settings-mode-choices" disabled={f.disabled}>
+          <legend className="visually-hidden">Navigation</legend>
+          {LAYOUTS.map((l) => (
+            <label key={l.id} className={`settings-mode-choice${layout === l.id ? " is-selected" : ""}`}>
+              <input
+                type="radio"
+                name="nav-layout"
+                value={l.id}
+                checked={layout === l.id}
+                onChange={() => f.set(LAYOUT_KEY, l.id)}
+              />
+              <span>
+                <span className="settings-mode-title">{l.title}</span>
+                <span className="settings-mode-body">{l.body}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      </div>
+
+      <div className="settings-field" id="nav-section-order">
+        <div className="settings-field-label-row">
+          <span className="form-label settings-field-label" id="nav-order-label">
+            Section order
+          </span>
+          <HelpButton k="nav.section_order" label="Section order" />
+        </div>
+        <p className="form-hint">
+          The order of the sections everywhere they appear: the sidebar, the tabs and More. Feed is always first. On a
+          phone, the first four are the tabs on the bar at the bottom; the rest are under More.
+        </p>
+        <ol className="nav-order" aria-labelledby="nav-order-label">
+          {sections.map((s, i) => (
+            <li key={s.id} className="nav-order-row" data-section={s.id}>
+              <span className="nav-order-place" aria-hidden="true">
+                {i + 1}
+              </span>
+              <span className="nav-order-label">
+                {s.label}
+                {i < BAR_SECTION_COUNT && <span className="nav-order-bar">On the phone&apos;s bar</span>}
+                {s.kind === "feed" && <span className="nav-order-fixed">Always first</span>}
+              </span>
+              {s.kind !== "feed" && (
+                <span className="nav-order-moves">
+                  <MoveButton
+                    section={s}
+                    by={-1}
+                    disabled={f.disabled || i <= 1}
+                    onMove={move}
+                    refFor={(el) => buttons.current.set(`${s.id}:-1`, el)}
+                  />
+                  <MoveButton
+                    section={s}
+                    by={1}
+                    disabled={f.disabled || i === sections.length - 1}
+                    onMove={move}
+                    refFor={(el) => buttons.current.set(`${s.id}:1`, el)}
+                  />
+                </span>
+              )}
+            </li>
+          ))}
+        </ol>
+        <p className="nav-order-preview">
+          <span className="form-hint">The phone&apos;s bar: </span>
+          {bar.map((s) => s.short).join(" · ")} · More
+        </p>
+        {stored && (
+          <button
+            type="button"
+            className="admin-remove-section"
+            onClick={() => f.set(ORDER_KEY, "")}
+            disabled={f.disabled}
+          >
+            Use the default order
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
+function MoveButton({
+  section,
+  by,
+  disabled,
+  onMove,
+  refFor,
+}: {
+  section: NavSection;
+  by: -1 | 1;
+  disabled: boolean;
+  onMove: (id: string, by: -1 | 1) => void;
+  refFor: (el: HTMLButtonElement | null) => void;
+}) {
+  const word = by < 0 ? "up" : "down";
+  return (
+    <button
+      ref={refFor}
+      type="button"
+      className="nav-order-move"
+      aria-label={`Move ${section.label} ${word}`}
+      disabled={disabled}
+      onClick={() => onMove(section.id, by)}
+    >
+      Move {word}
+    </button>
   );
 }
