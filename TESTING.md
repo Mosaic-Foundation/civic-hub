@@ -62,6 +62,66 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Members and invites: the count, the Members page, hiding oneself, Share this hub (2026-10-14)
+
+**One migration to apply to an existing local stack first:** `supabase migration up --local`
+(`20261016000000_members_invites.sql`, additive). The Playwright and smoke layers need a UI build that includes the
+slice (`cd ui && npm run build`) when they run against `vite preview`.
+
+- **Unit, `memberInvites.test.ts`:** the addresses a member types (separators, case, each once, a bad one refuses the
+  request and is named, at least one, at most 50); the message (trimmed, 1,000 characters); the invite email (who
+  invited, the message, the one-tap `/sign-in#invite=` link, "won't send you another invite", the member's text
+  escaped); the avatar seed (stable per hub and account, different per hub). Updated: `helpRegistry.test.ts` (three
+  keys), `exportManifest.test.ts` (47 tables, 35 with hub_id), `forHub.test.ts` (35 hub tables).
+- **API, `membersInvites.test.ts`** (a live, a beta and a demo hub through the console's Create hub, archived after;
+  passes in both modes):
+  - **a hidden member is absent from the stack and the Members page, and counted**; admins see them in
+    `GET /admin/hub/members`, members get 403 there; showing oneself again puts them back;
+  - the Members page is for signed-in members (401), marks admins, and **no answer carries an email address**
+    (every member is exactly `avatar`, `name`, `is_admin`);
+  - a demo hub counts its sample members; a beta hub never does;
+  - an invite is emailed once with a 14-day link and **recorded in the admin log without the message** (nor in
+    `hub_invites`);
+  - **no repeat invite**: a second invite to the same address, and an invite to an existing member's address, are
+    recorded as `skipped` and answered the same as a sent one;
+  - **the daily limit**: 10 for a member, every address counts (an already-invited one too), the rest come back in
+    `over_limit`, and a later request that day is refused per address;
+  - a bad address refuses the request and sends nothing; signed out is 401;
+  - beta: a member's invite goes on the waitlist with `invited_by` (and the admin's settings name the inviter), no
+    email; an admin's invite adds the address to the allow list and is emailed (limit 50); demo: 403
+    `invite_demo_hub`;
+  - the link: signs a new address in once as a `code` session with `is_resident` false (the join step); dead when
+    expired, used, or on another hub (`invite_unusable`); on a beta hub an address not let in gets `beta_closed`
+    and the link is not spent.
+  - Updated: `leakHarness.test.ts` walks `GET /members/summary`, `GET /members/` (with `?offset=60`) and
+    `GET /admin/hub/members`; `functionGrants.test.ts` lists `take_member_invites` (authenticated and service_role).
+- **Playwright, `membersInvites.spec.ts`** (11 tests, items 1 to 4 each at 375 px and 1280 px; one live hub through
+  the console, visited on `<slug>.localhost`): "6 members" and five avatars signed out (no link, no Share button),
+  the count opening the Members page signed in; the Members page (five listed, the hidden one left out, the admin
+  marked, "1 member prefers not to be listed.", no address on the page); the hidden member told so, and the Settings
+  switch putting them back and taking them off again; signed out, the page asks to sign in; Share this hub (the
+  message from the hub's intro, Nextdoor, WhatsApp, Copy link, Facebook on a desktop, "Done: invites sent to 2
+  addresses."); the invite link (Join <hub>, the token gone from the address bar, Confirm, the join step); admins'
+  hidden members in Settings → People. No sideways scroll. `CIVIC_E2E_SHOTS=<dir>` saves a screenshot of each page.
+- **Smoke** (18 tests): the member count and stack, then the Members page as a member at 375 px; a member hides
+  themselves in Settings and leaves the page and the stack; a member's invite from Share this hub goes on the beta
+  smoke hub's waitlist marked with who invited. `afterAll` deletes the run's `hub_invites` and waitlist rows.
+
+**Counts (2026-10-14, local):**
+- Unit: 135 files, 1,546 passed.
+- API: service role 777 tests, 760 passed; token mode 763 passed. The failures are this long-used stack's data,
+  not the slice: `hubIsolationControllers > admin queue counts` (Floyd has 4,350 reviews, over the 1,000-row read
+  flagged before), `hubSettings > settings are scoped by hub` (two tests: Floyd's banner and About text were
+  overwritten by an earlier run's leak strings), and once each `auditConcurrency` and the leak harness's GET walk,
+  which passed on every rerun. CI's fresh stack is the judge.
+- Playwright (preview build): 128 passed, 2 skipped, in 3.0 min.
+- Smoke (local smoke hub): 18 of 18 in 20 s.
+- **Another session's servers may hold the usual ports** (3000, 3001, 4173, 4175 here). A smoke run against a
+  preview someone else started goes through their API and their build: check `lsof -iTCP:<port> -sTCP:LISTEN`
+  before using a port, and pick a free one.
+
+---
+
 ## Feedback routing: the hub keeps it, software reports reach Civic.Social, the loop closes (2026-10-13)
 
 **One migration to apply to an existing local stack first:** `supabase migration up --local`
@@ -248,7 +308,7 @@ Conduct some test wrote, so its page has no "In short". `signIn.spec.ts` checks 
 A fourth layer: `tests/smoke/`, Playwright against the **live dev deployment**, after every dev deploy. It replaces
 the browser half of the dev checklist Adam ran by hand after each release (RUNBOOK-release.md → Dev).
 
-- **What it checks** (`dev.smoke.spec.ts`, one serial group, 15 tests):
+- **What it checks** (`dev.smoke.spec.ts`, one serial group, 18 tests):
   - `/api/health` is ok with no schema gaps, on the deployed commit; an unknown `POST /api/…` answers JSON 404;
   - a resident and an admin are signed in;
   - a new resident signs in through the email's link at 375 px and joins beside the terms notice (since 2026-10-14,
@@ -270,6 +330,10 @@ the browser half of the dev checklist Adam ran by hand after each release (RUNBO
     it); a hub report stays with the hub; an admin sends it to Civic.Social from its row and the badge follows
     Civic.Social's status (since 2026-10-13, feedback routing; inbox rows read from the dev database, copies deleted
     in `afterAll`).
+  - the member count and avatar stack, and the Members page as a member at 375 px; a member hides themselves in
+    Settings and leaves the page and the stack; a member's invite from Share this hub goes on the beta hub's
+    waitlist marked with who invited (since 2026-10-14, members and invites; the run's invites and waitlist rows
+    deleted in `afterAll`).
 - **Where it runs:** only on the dedicated smoke hub, which must be in beta and have a slug starting with `smoke`. Sessions are
   minted straight into the dev database with its service-role key (Adam's decision, 2026-10-13: no test-only
   sign-in route in `src/`). `tests/smoke/devStack.ts` refuses the production project, any other hub, a deployment
@@ -2023,7 +2087,7 @@ the local-stack jobs.
 
 ---
 
-*Last updated: 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-14 — members and invites (`memberInvites.test.ts`, `membersInvites.test.ts`, `membersInvites.spec.ts`, three smoke tests, the leak harness's member routes). Before that, 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,

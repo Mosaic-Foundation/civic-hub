@@ -4,6 +4,57 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Members and invites: a hub is a group of people, and any member can bring a neighbour in — 2026-10-14
+
+Commits on `multi-tenant` `9585d80`..(this entry), one item each. Report and handoff:
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Members-Invites-Session-Report-2026-10-14.md`.
+
+**Release needs:**
+- **One migration, additive:** `20261016000000_members_invites`. It adds `users.hidden_from_members` (default false)
+  and `waitlist.invited_by` (nullable FK to users), a hub table `hub_invites` (hub policy, exported), and one
+  function, `take_member_invites`, granted to authenticated and service_role and revoked from anon and PUBLIC. It
+  never raises 40001. `/health` names the new columns, table and function, so it goes in before the code.
+- **No pre-checks, no env vars, nobody signed out.** Help keys: three new ones, all `pending`.
+
+**Adam's decisions (2026-10-14):** 10 invites a day per member, 50 for an admin; demo hubs count and show their
+sample members, beta and live never do; share targets Copy link, Facebook (desktop), Nextdoor, WhatsApp, Text
+message (phones), and the share sheet; **on a beta hub a member's invite sends no email**: the address goes on the
+waitlist marked "invited by <member>", and an admin's invite adds the address to the allow list and is emailed.
+Mine, not objected to: the invite link lasts 14 days and works once; Share this hub sits beside the member count and
+in the account menu; admins see hidden members in Settings → People.
+
+**Built:**
+1. **"N members" and the avatar stack** on the home page, for everyone (`GET /members/summary`,
+   `ui/src/components/MemberStack.tsx`). The count includes hidden members; the stack is the five newest visible
+   members. Avatars are a 5×5 pattern and a hue from a seed, `sha256(hub:user)` (`src/services/members.ts`,
+   `ui/src/components/PatternAvatar.tsx`): no photo, no initials.
+2. **The Members page** (`/members`, `GET /members`, joined members only), 60 a page by name, admins marked, no
+   addresses, "N members prefer not to be listed". **The switch** "Show me on the Members page" in Settings
+   (`PATCH /auth/me` `hidden_from_members`; `/settings#members`).
+3. **Share this hub** (`ui/src/components/SharePanel.tsx`, `POST /members/invites`, `src/services/hubInvites.ts`):
+   several addresses, a message prefilled from the hub's intro; the limit and the no-repeat rule are one database
+   call under a lock per inviter. Already-invited and already-a-member addresses are recorded as `skipped`, count
+   toward the limit and are answered as "Done" like a sent one, so the form never tells a member who belongs. Each
+   request goes in the admin log as `member.invite` (addresses and outcome, never the message; the message is not
+   stored). A failed send deletes its record so the address can be tried again. Demo hubs: link sharing only.
+4. **The invite email's link** goes through the sign-in link page: `/sign-in#invite=<token>`, "Join <hub>", one
+   Confirm, then the join step (`verifyInviteLink` in `src/modules/civic.auth/index.ts`, `POST /auth/verify-invite`).
+   The beta gate is checked before the link is spent. Mail guard: purpose `member_invite`, sent unless the hub is a
+   demo (members' beta invites never reach the mailer).
+5. **Privacy:** hidden members appear only in Settings → People (`GET /admin/hub/members`, hidden members only, no
+   addresses). Admin → Settings → Mode's waitlist has an "Invited by" column (the inviter's name).
+
+**Tests:** TESTING.md → "Members and invites". **Open:**
+- The docs sections for `people.hidden_members`, `share.invites`, `members.visibility` (the weekly job drafts them).
+- The invite message is not run through the Code of Conduct check; the limit, the 1,000-character cap and escaping
+  are the guard. Worth a look if invites are misused.
+- The daily limit is a rolling 24 hours, not the hub's calendar day.
+- An admin's invites on a beta hub write the allow list read-modify-write, like Settings → Mode does.
+- `ui/dist` is shared by every session in this checkout: building it changes what another session's `vite preview`
+  serves.
+
+---
+
 ## Feedback routing: the hub keeps its feedback, software reports reach Civic.Social, the loop closes — 2026-10-13
 
 Commits on `multi-tenant` `c37375c`..`ce8482b`, one item each. **Live on dev at `ce8482b`** (`release.sh dev --yes`,
