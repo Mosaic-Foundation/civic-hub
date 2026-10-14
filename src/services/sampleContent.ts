@@ -34,6 +34,7 @@ import {
 import { recordHubAdminAudit } from "./hubAdminAudit.js";
 import { getSetting, setSetting } from "./hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
+import { ensureStarterWordcloud } from "./starterWordcloud.js";
 
 function db(): HubDb {
   return forHub(currentHubId());
@@ -221,6 +222,9 @@ export async function removeSampleContent(actorEmail: string): Promise<SampleRem
     before: summary,
     after: cleared.length ? { deleted, cleared } : { deleted },
   });
+  // The strip showed the sample word cloud: the starter takes its place
+  // (Adam, 2026-10-13), real content now that the samples are gone.
+  if (cleared.length) await ensureStarterWordcloud(actorEmail);
   console.log(
     `[hub] sample content removed on ${currentHubId()} by ${actorEmail}: ` +
       `${summary.processes} processes, ${summary.added_in_demo} added in demo, ` +
@@ -278,7 +282,8 @@ export async function listSampleItems(): Promise<SampleItem[]> {
  * from it) and everything people added to them, and record who did it. No
  * fresh code: one sample is not the whole hub's (Adam, 2026-10-13). Returns
  * null for an id that is not sample content, so a real process can never go
- * this way. When the sample was the hub's word cloud, the setting is cleared.
+ * this way. When the sample was the hub's word cloud, the starter word cloud
+ * takes its place (src/services/starterWordcloud.ts).
  */
 export async function deleteOneSample(
   id: string,
@@ -308,6 +313,8 @@ export async function deleteOneSample(
     before: { ...item, with: ids.slice(1) },
     after: cleared.length ? { deleted, cleared } : { deleted },
   });
+  // As for removing them all: the starter replaces the sample word cloud.
+  if (cleared.length) await ensureStarterWordcloud(actorEmail);
   return { item, deleted, cleared };
 }
 
