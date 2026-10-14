@@ -2986,7 +2986,7 @@
   margin-right: var(--space-md);
 }
 
-.home-hero-row .hub-info {
+.home-hero-row .home-hero-main {
   flex: 1;
   min-width: 0;
 }

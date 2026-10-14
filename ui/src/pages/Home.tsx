@@ -21,7 +21,12 @@ export default function Home() {
   return (
     <div className="page page-home">
       <div className="home-hero-row">
-        <HubInfo />
+        {/* The member count and Share this hub sit under the tagline, above
+            Raise something on a phone (Adam, 2026-10-14). */}
+        <div className="home-hero-main">
+          <HubInfo />
+          <MemberStack />
+        </div>
         <button
             type="button"
             className="home-start-btn"
@@ -33,7 +38,6 @@ export default function Home() {
             Raise something
           </button>
       </div>
-      <MemberStack />
       <WelcomeBanner />
 
       {showAuthModal && (
