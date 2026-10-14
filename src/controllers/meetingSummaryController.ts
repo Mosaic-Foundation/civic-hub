@@ -364,7 +364,7 @@ async function notifyCronOutcome(outcome: CronOutcome): Promise<void> {
        Skipped existing: ${outcome.skippedExisting} |
        Failed: ${outcome.failed} |
        Duration: ${outcome.duration_ms}ms</p>
-    <p>You can check the source address under Settings, Plugins, Meeting summaries.
+    <p>You can check the source address under Hub settings, Plugins, Meeting summaries.
        If it still fails after that, reply to ${PLATFORM_CONTACT_EMAIL}.</p>
   `;
 

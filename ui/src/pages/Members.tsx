@@ -88,7 +88,7 @@ export default function Members() {
 
       {youAreHidden && (
         <p className="members-note" role="status">
-          You're hidden from this page and the home page. <Link to="/settings#members">Change this in Settings</Link>.
+          You're hidden from this page and the home page. <Link to="/settings#members">Change this in Your settings</Link>.
         </p>
       )}
 

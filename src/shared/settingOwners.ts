@@ -50,15 +50,15 @@ export function consoleOwnsHandoverKeys(mode: string | null | undefined): boolea
 
 /** Said wherever the console refuses, or shows read-only, a handed-over value. */
 export const HANDED_OVER_NOTE =
-  "This hub has left demo, so what residents see is its admins' to change, in the hub's own Settings.";
+  "This hub has left demo, so what residents see is its admins' to change, in Hub settings.";
 
 /** Said wherever the console shows the mode read-only. */
 export const MODE_OWNER_NOTE =
-  "The hub's admins change its mode in the hub's Settings → Mode (demo → beta → live). A hub never goes back to demo.";
+  "The hub's admins change its mode in Hub settings → Mode (demo → beta → live). A hub never goes back to demo.";
 
 /** Said wherever the console shows the plugin switches read-only. */
 export const PLUGINS_OWNER_NOTE =
-  "The hub's admins switch plugins on and off in the hub's Settings → Plugins. The create form sets where they start.";
+  "The hub's admins switch plugins on and off in Hub settings → Plugins. The create form sets where they start.";
 
 /** A hub's Settings page, from the console: `https://<hostname>/admin/settings/<section>`. */
 export function hubSettingsUrl(hostname: string, section: string): string {

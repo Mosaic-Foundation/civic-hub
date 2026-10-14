@@ -459,7 +459,7 @@ export default function CreateHub() {
               <span>Time zone</span>
               <TimeZoneSelect value={form.timezone} suggestion={suggest.timezone} onChange={(v) => set("timezone", v)} />
               <small className="cx-muted">
-                Dates and the daily digest's send hour. The hub's admin can change it in Settings → Identity.
+                Dates and the daily digest's send hour. The hub's admin can change it in Hub settings → Identity.
                 {listed && SPLIT_STATES.has(listed.state) && " This state spans more than one time zone: check it."}
               </small>
             </label>
@@ -492,7 +492,7 @@ export default function CreateHub() {
             <legend>Who runs it</legend>
             <p className="cx-muted cx-small">
               What residents see about who answers for the hub. You can change these on the hub's page until its admins
-              move it out of demo; after that they are theirs, in the hub's Settings.
+              move it out of demo; after that they are theirs, in Hub settings.
             </p>
             <div className="cx-two">
               <label className="cx-field">
@@ -570,7 +570,7 @@ export default function CreateHub() {
               />
               <small className="cx-muted">
                 Their email. They get an email saying they are the admin, with a link and the first steps. They sign
-                in with a real code, even on a demo hub, and run the hub's Settings.
+                in with a real code, even on a demo hub, and open Hub settings.
               </small>
             </label>
             <div className="cx-field" role="radiogroup" aria-label="Who can join">
@@ -597,7 +597,7 @@ export default function CreateHub() {
                 <strong>Start with sample content</strong>
                 <small className="cx-muted">
                   {samplesAvailable
-                    ? "Up to eleven illustrative processes, marked Sample, so the hub never opens empty. Its admin can remove them in one step from Settings."
+                    ? "Up to eleven illustrative processes, marked Sample, so the hub never opens empty. Its admin can remove them in one step from Hub settings."
                     : "No sample content is available for this kind of hub yet."}
                 </small>
               </span>

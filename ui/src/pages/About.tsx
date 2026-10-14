@@ -47,10 +47,10 @@ export default function About() {
           {isAdmin ? (
             <>
               You can rewrite it for this hub in{" "}
-              <Link to="/admin/settings/copy">Settings → Copy &amp; pages → About</Link>.
+              <Link to="/admin/settings/copy">Hub settings → Copy &amp; pages → About</Link>.
             </>
           ) : (
-            <>The hub's admins can rewrite it in Settings → Copy &amp; pages → About.</>
+            <>The hub's admins can rewrite it in Hub settings → Copy &amp; pages → About.</>
           )}
         </p>
       )}

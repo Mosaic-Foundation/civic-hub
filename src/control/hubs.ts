@@ -757,7 +757,7 @@ export function describeFollowOn(f: FollowOn): string | null {
 }
 
 const RENAME_NOT_CARRIED =
-  "Only the registry name changed. This hub has left demo, so the name residents see, the operator and the email sender name are its admins' to change, in the hub's Settings → Identity.";
+  "Only the registry name changed. This hub has left demo, so the name residents see, the operator and the email sender name are its admins' to change, in Hub settings → Identity.";
 
 export async function updateHubConfig(
   hub: ControlHub,

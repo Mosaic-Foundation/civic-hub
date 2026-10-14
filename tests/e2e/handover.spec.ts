@@ -129,12 +129,12 @@ test.describe("the console's Handover panel", () => {
     await expect(page.getByRole("form", { name: "Handover" }).getByLabel("Email from name")).toHaveValue("E2E Renamed Hub");
 
     // Mode and plugins are the hub's admins': shown, with a link to their Settings.
-    await expect(page.getByRole("link", { name: "Open Settings → Mode" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Open Hub settings → Mode" })).toHaveAttribute(
       "href",
       `http://${slug}.localhost/admin/settings/mode`,
     );
     const plugins = page.getByRole("region", { name: "Plugins" });
     await expect(plugins.getByRole("checkbox")).toHaveCount(0);
-    await expect(plugins.getByRole("link", { name: "Open Settings → Plugins" })).toBeVisible();
+    await expect(plugins.getByRole("link", { name: "Open Hub settings → Plugins" })).toBeVisible();
   });
 });

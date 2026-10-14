@@ -188,7 +188,7 @@ export default function ModeSection() {
                   <span>
                     <span className="settings-mode-title">Keep them for now</span>
                     <span className="settings-mode-body">
-                      They stay marked Sample. You can remove them any time from Settings → Sample content.
+                      They stay marked Sample. You can remove them any time from Hub settings → Sample content.
                     </span>
                   </span>
                 </label>

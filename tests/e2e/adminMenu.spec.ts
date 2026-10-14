@@ -100,8 +100,8 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     const items = menu.getByRole("menuitem");
     await expect(items).toHaveText(
       reviews > 0
-        ? [`Reviews${reviews}`, "Moderation", "Settings", "Plugins", "Contact Civic.Social"]
-        : ["Reviews", "Moderation", "Settings", "Plugins", "Contact Civic.Social"],
+        ? [`Reviews${reviews}`, "Moderation", "Hub settings", "Plugins", "Contact Civic.Social"]
+        : ["Reviews", "Moderation", "Hub settings", "Plugins", "Contact Civic.Social"],
     );
     expect(await items.count()).toBeLessThanOrEqual(5);
     // The menu fits on a phone's screen.

@@ -264,7 +264,7 @@ describe("edit a hub", () => {
     for (const mode of ["beta", "demo"]) {
       const res = await consoleCall("PATCH", `/control/hubs/${SLUG}`, { cookie, body: { mode, step_up_code: await stepCode() } });
       expect(res.status).toBe(409);
-      expect(res.body.error).toContain("Settings → Mode");
+      expect(res.body.error).toContain("Hub settings → Mode");
     }
     expect((await consoleCall("GET", `/control/hubs/${SLUG}`, { cookie })).body.hub.mode).toBe("demo");
   });
@@ -285,7 +285,7 @@ describe("plugins and admins", () => {
   it("shows plugins read-only: after create they are the hub's admins' (review R10)", async () => {
     const res = await consoleCall("PUT", `/control/hubs/${SLUG}/plugins`, { cookie, body: { plugins: { wordcloud: false } } });
     expect(res.status).toBe(409);
-    expect(res.body.error).toContain("Settings → Plugins");
+    expect(res.body.error).toContain("Hub settings → Plugins");
     const detail = (await consoleCall("GET", `/control/hubs/${SLUG}`, { cookie })).body;
     expect(detail.plugins.find((p: { id: string }) => p.id === "wordcloud")).toMatchObject({ enabled: true });
   });

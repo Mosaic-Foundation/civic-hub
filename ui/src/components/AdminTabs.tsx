@@ -96,7 +96,7 @@ export default function AdminTabs() {
         Archived
       </NavLink>
       <NavLink to="/admin/settings" className={tabClass}>
-        Settings
+        Hub settings
       </NavLink>
       </nav>
     </>

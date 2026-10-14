@@ -91,14 +91,14 @@ function SettingsPage() {
     <div className="page admin-settings-page">
       <AdminTabs />
       <div className="admin-settings-body">
-        <h1>Settings</h1>
+        <h1>Hub settings</h1>
         <p className="admin-subtitle">
           Everything about this hub that you can change. Saved changes take
           effect straight away; there is nothing to redeploy.
         </p>
 
         <div className="settings-layout">
-          <nav className="settings-nav" aria-label="Settings sections">
+          <nav className="settings-nav" aria-label="Hub settings sections">
             <ul role="list">
               {SECTIONS.map((s) => (
                 <li key={s.id}>

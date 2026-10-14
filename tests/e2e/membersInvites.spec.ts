@@ -156,7 +156,7 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     await visit(hider, hiderToken);
     await hider.goto(`${HUB}/members`);
     await expect(hider.getByText("You're hidden from this page and the home page.")).toBeVisible();
-    await hider.getByRole("link", { name: "Change this in Settings" }).click();
+    await hider.getByRole("link", { name: "Change this in Your settings" }).click();
     const toggle = hider.getByLabel("Show me on the Members page");
     await expect(toggle).not.toBeChecked();
     await noSidewaysScroll(hider);

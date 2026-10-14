@@ -182,7 +182,7 @@ export default function CreateForm({
         <h1 className="cx-title">Create your hub</h1>
         <p className="cx-muted">
           Signed in as <strong>{email}</strong>. Grey text in a field is a suggestion: it is used as it is unless you type
-          over it. You can change all of this later in your hub's Settings.
+          over it. You can change all of this later in Hub settings.
         </p>
       </header>
 
@@ -360,7 +360,7 @@ export default function CreateForm({
         <div className="st-demo-note">
           <strong>Your hub starts as a demo.</strong> Sample content shows what it can do, visitors can sign in with any
           six digits, and no email goes to them. When you're ready, remove the samples and move it to beta in its
-          Settings.
+          Hub settings.
         </div>
 
         {error && (

@@ -515,7 +515,7 @@ export const handleUnsubscribeDigest = route(async (req, res) => {
         heading: "This link is invalid",
         body:
           "This unsubscribe link is invalid or was signed by a key that's no longer valid. " +
-          `Sign in and visit <a href="${escapeHtml(uiBaseUrl())}/settings">Settings</a> to manage your subscription.`,
+          `Sign in and visit <a href="${escapeHtml(uiBaseUrl())}/settings">Your settings</a> to manage your subscription.`,
         error: true,
       }),
     );
@@ -555,7 +555,7 @@ export const handleUnsubscribeDigest = route(async (req, res) => {
         title: "Unsubscribe failed",
         heading: "Something went wrong",
         body:
-          "We couldn't process your unsubscribe just now. Please try again in a few minutes, or sign in and visit Settings.",
+          "We couldn't process your unsubscribe just now. Please try again in a few minutes, or sign in and visit Your settings.",
         error: true,
       }),
     );

@@ -91,7 +91,7 @@ export function renderWaitlistNotification(signup: WaitlistSignup): {
       ${testUserRow}
       ${notesHtml}
       <p style="margin:20px 0 0;color:#6b7280;font-size:12px;">
-        Approve testers by adding them to the beta allowlist in Admin → Settings.
+        Approve testers by adding them to the beta allowlist in Admin → Hub settings.
       </p>
     </div>
   `;

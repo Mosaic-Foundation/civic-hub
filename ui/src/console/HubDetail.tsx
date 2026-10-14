@@ -258,7 +258,7 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
         <small className="cx-muted">
           {detail.handover.editable
             ? "The registry name. Renaming here also renames the hub where residents see it, and its operator and email sender name, wherever they still read the old name."
-            : "The registry name. This hub has left demo, so the name residents see is its admins' (Settings → Identity); renaming here does not change it."}
+            : "The registry name. This hub has left demo, so the name residents see is its admins' (Hub settings → Identity); renaming here does not change it."}
         </small>
       </label>
       <label className="cx-field">
@@ -344,7 +344,7 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
           <small className="cx-muted">
             {MODE_OWNER_NOTE}{" "}
             <a href={hubSettingsUrl(detail.hub.hostname, "mode")} target="_blank" rel="noreferrer">
-              Open Settings → Mode
+              Open Hub settings → Mode
             </a>
           </small>
         </div>
@@ -439,7 +439,7 @@ function HandoverSection({ detail, onSaved }: { detail: HubDetail; onSaved: (res
         const last = h.changed[f.key];
         const settingsLink = (
           <a href={hubSettingsUrl(detail.hub.hostname, f.section)} target="_blank" rel="noreferrer">
-            Settings
+            Hub settings
           </a>
         );
         return (
@@ -569,7 +569,7 @@ function PluginsSection({ detail }: { detail: HubDetail }) {
       <p className="cx-muted cx-small">
         {PLUGINS_OWNER_NOTE}{" "}
         <a href={hubSettingsUrl(detail.hub.hostname, "plugins")} target="_blank" rel="noreferrer">
-          Open Settings → Plugins
+          Open Hub settings → Plugins
         </a>
       </p>
       <ul className="cx-toggles">
@@ -595,7 +595,7 @@ function AdminsSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
     <section className="cx-card cx-form">
       <h2 className="cx-h2">Admins</h2>
       <p className="cx-muted cx-small">
-        Who administers this hub from its own Settings. Adding or removing someone needs a fresh code, as on the
+        Who administers this hub from Hub settings. Adding or removing someone needs a fresh code, as on the
         hub's own Admins &amp; board page, where its admins can change this list too. Someone added gets an email
         with a link and the first steps.
       </p>

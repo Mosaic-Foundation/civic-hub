@@ -441,7 +441,7 @@ test("the Admin menu opens at phone width with its counts; the review icon says 
   await expect(menu.getByRole("menuitem")).toHaveText([
     reviews > 0 ? `Reviews${reviews}` : "Reviews",
     "Moderation",
-    "Settings",
+    "Hub settings",
     "Plugins",
     "Contact Civic.Social",
   ]);

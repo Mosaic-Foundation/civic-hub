@@ -30,7 +30,7 @@ export interface AdminInviteInput {
 /** What each mode means for a new admin, in a sentence. */
 const MODE_LINE: Readonly<Record<AdminInviteInput["mode"], string>> = {
   demo:
-    "The hub is a demo for now: anyone can look around, and items marked Sample are not real. When it is ready, Settings → Mode moves it to beta.",
+    "The hub is a demo for now: anyone can look around, and items marked Sample are not real. When it is ready, Hub settings → Mode moves it to beta.",
   beta: "The hub is in beta: only its admins and the people on its allow list can sign in.",
   live: "The hub is live: anyone can sign in and take part.",
 };
@@ -45,7 +45,7 @@ export function renderAdminInvite(input: AdminInviteInput): { subject: string; t
   const settingsUrl = `${hubUrl}/admin/settings`;
   const steps = [
     `Go to ${hubUrl} and sign in with this email address. A code comes to you by email.`,
-    `Open Settings (${settingsUrl}). Work through Identity, Copy & pages, Legal and Email, so the hub speaks for your community.`,
+    `Open Hub settings (${settingsUrl}). Work through Identity, Copy & pages, Legal and Email, so the hub speaks for your community.`,
     "Under Admins & board, add anyone who will run the hub with you. They get an email like this one.",
   ];
   const subject = `You're now an admin of ${hubName}`;
@@ -68,7 +68,7 @@ export function renderAdminInvite(input: AdminInviteInput): { subject: string; t
     `<p>Your first steps:</p>`,
     `<ol>`,
     `<li>Go to ${link(hubUrl)} and sign in with this email address. A code comes to you by email.</li>`,
-    `<li>Open ${link(settingsUrl, "Settings")}. Work through Identity, Copy &amp; pages, Legal and Email, so the hub speaks for your community.</li>`,
+    `<li>Open ${link(settingsUrl, "Hub settings")}. Work through Identity, Copy &amp; pages, Legal and Email, so the hub speaks for your community.</li>`,
     `<li>Under Admins &amp; board, add anyone who will run the hub with you. They get an email like this one.</li>`,
     `</ol>`,
     `<p>${escapeHtml(MODE_LINE[input.mode])}</p>`,

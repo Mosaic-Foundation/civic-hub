@@ -219,7 +219,7 @@ export default function Settings() {
   if (!user) {
     return (
       <div className="page settings-page">
-        <h1>Settings</h1>
+        <h1>Your settings</h1>
         {cameFromUnsubscribe && (
           <p className="settings-message settings-unsubscribed" role="status">
             You're unsubscribed from the email digest. Sign in to pick a
@@ -247,7 +247,7 @@ export default function Settings() {
   return (
     <div className="page settings-page">
       <div className="settings-body">
-        <h1>Settings</h1>
+        <h1>Your settings</h1>
         <p className="settings-subtitle">
           Manage how you hear from {hub.name}.
         </p>

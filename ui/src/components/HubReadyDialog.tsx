@@ -35,12 +35,12 @@ export default function HubReadyDialog({ email, onDismiss }: { email: string; on
         a short guide to setting it up, with your first steps and how to add others to run it with you.
       </p>
       <p className="intro-popup-text">
-        It's a demo for now, filled with sample content so you can see how it works. Start in Settings to make it
+        It's a demo for now, filled with sample content so you can see how it works. Start in Hub settings to make it
         yours, or look around first.
       </p>
       <div className="intro-popup-actions">
         <button type="button" className="intro-popup-primary" onClick={() => close("/admin/settings")} autoFocus>
-          Open Settings
+          Open Hub settings
         </button>
         <button type="button" className="intro-popup-secondary" onClick={() => close()}>
           Look around first
