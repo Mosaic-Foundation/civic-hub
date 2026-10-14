@@ -16,7 +16,7 @@
 // rendered (the other is the moderation-flag email), so it is deliberately
 // not linked from any non-admin surface.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminListFeedback, adminMarkQueueSeen, notifyAdminQueuesChanged } from "../services/api";
@@ -88,11 +88,6 @@ export default function AdminFeedback() {
     adminListFeedback(filter)
       .then((res) => {
         if (!cancelled) setItems(res.items);
-        // A digest link names a row (#fb_…): it arrives after the fetch.
-        const target = window.location.hash.slice(1);
-        if (!cancelled && target) {
-          requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ block: "center" }));
-        }
         // Seen: everything up to now. Clears the tab's "new since you
         // looked" count; the tabs refetch on the event.
         return adminMarkQueueSeen("feedback").then(notifyAdminQueuesChanged).catch(() => {});
@@ -107,6 +102,18 @@ export default function AdminFeedback() {
       cancelled = true;
     };
   }, [isAdmin, authLoading, filter]);
+
+  // A digest link names a row (#fb_…). The rows render only after the fetch,
+  // so scroll once they are on the page, once per address.
+  const scrolledTo = useRef<string | null>(null);
+  useEffect(() => {
+    const target = window.location.hash.slice(1);
+    if (loading || !target || scrolledTo.current === target) return;
+    const row = document.getElementById(target);
+    if (!row) return;
+    scrolledTo.current = target;
+    row.scrollIntoView({ block: "center" });
+  }, [loading, items]);
 
   if (!authLoading && !isAdmin) {
     return (
