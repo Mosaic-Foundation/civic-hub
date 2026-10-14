@@ -7,6 +7,7 @@ export type {
 } from "./models.js";
 export {
   buildAdminDigest,
+  feedbackDigestTitle,
   jobProblemsSnapshot,
   JOB_NAMES,
   renderAdminDigestEmail,

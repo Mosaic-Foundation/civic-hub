@@ -17,7 +17,7 @@ import {
 } from "../civic.proposals/index.js";
 import { getAllProcesses, getProcess, getSampleProcessIds } from "../../services/processService.js";
 import { listReviews } from "../civic.review/index.js";
-import { listFeedback } from "../civic.feedback/index.js";
+import { listFeedback, type FeedbackSubmission } from "../civic.feedback/index.js";
 import { effectiveQualityFlag } from "../civic.meeting_summary/index.js";
 import { sendEmail } from "../../utils/email.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
@@ -166,7 +166,7 @@ export async function buildAdminDigest(): Promise<AdminDigestPayload> {
     try {
       feedbackItems = (await listFeedback({ since })).map((f) => ({
         id: f.id,
-        title: `${f.category} — ${excerpt(f.message)}${f.screenshot_url ? " [screenshot attached]" : ""}`,
+        title: feedbackDigestTitle(f),
         created_at: f.created_at,
       }));
     } catch (err) {
@@ -258,6 +258,19 @@ export function jobProblemsSnapshot(
 }
 
 // --- Email rendering ---------------------------------------------------------
+
+/**
+ * A feedback item's digest line. It links to the item's row in Admin →
+ * Feedback, where an item not yet shared has its "Send to Civic.Social"
+ * button; a shared one says so here.
+ */
+export function feedbackDigestTitle(
+  f: Pick<FeedbackSubmission, "category" | "message" | "screenshot_url" | "mosaic">,
+): string {
+  return `${f.category} — ${excerpt(f.message)}${f.screenshot_url ? " [screenshot attached]" : ""}${
+    f.mosaic ? " (also sent to Civic.Social)" : ""
+  }`;
+}
 
 /** One-line preview of a feedback message — newlines collapsed, capped. */
 function excerpt(message: string): string {

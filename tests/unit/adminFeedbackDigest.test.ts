@@ -11,7 +11,7 @@
 
 import { describe, it, expect } from "vitest";
 import { sendsImmediateEmail } from "../../src/modules/civic.feedback/index.js";
-import { renderAdminDigestEmail } from "../../src/modules/civic.admin_digest/index.js";
+import { feedbackDigestTitle, renderAdminDigestEmail } from "../../src/modules/civic.admin_digest/index.js";
 import type {
   AdminDigestPayload,
   QueueSnapshot,
@@ -168,5 +168,26 @@ describe("admin digest — Process reviews and briefs", () => {
     const { html, text } = renderAdminDigestEmail(payload({ reviews, briefs, empty: false }));
     expect(html).not.toMatch(/Vote results/i);
     expect(text).not.toMatch(/Vote results/i);
+  });
+});
+
+describe("admin digest — items also sent to Civic.Social (feedback routing)", () => {
+  const base = { category: "bug" as const, message: "The vote page scrolls sideways", screenshot_url: null };
+
+  it("says which items were also sent, and only those", () => {
+    expect(
+      feedbackDigestTitle({
+        ...base,
+        mosaic: { stream: "bug", status: "received", sent_at: "2026-10-15T09:00:00.000Z", sent_by: "sender" },
+      }),
+    ).toBe("bug — The vote page scrolls sideways (also sent to Civic.Social)");
+    expect(feedbackDigestTitle({ ...base, category: "general" as never, mosaic: null })).toBe(
+      "general — The vote page scrolls sideways",
+    );
+  });
+
+  it("links each item to its row, where the Send to Civic.Social button sits", () => {
+    const { html } = renderAdminDigestEmail(payload({ feedback: feedbackQueue, empty: false }));
+    expect(html).toContain("/admin/feedback#fb_def456");
   });
 });
