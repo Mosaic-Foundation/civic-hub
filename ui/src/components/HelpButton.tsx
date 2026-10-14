@@ -45,7 +45,6 @@ export default function HelpButton({ k, label }: { k: string; label: string }) {
     const left = buttonRef.current.getBoundingClientRect().left;
     const width = Math.min(300, window.innerWidth - 32);
     const wanted = Math.min(Math.max(16, left - 8), window.innerWidth - width - 16);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- measured after layout, before paint
     setShift(wanted - left);
   }, [open]);
 
