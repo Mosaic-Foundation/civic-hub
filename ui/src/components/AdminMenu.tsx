@@ -25,7 +25,7 @@ const REVIEW_QUEUES = [
 export default function AdminMenu() {
   const location = useLocation();
   const navigate = useNavigate();
-  const menu = useDropdownMenu();
+  const { open, setOpen, buttonRef, menuRef, onMenuKey, choose } = useDropdownMenu();
   const [counts, setCounts] = useState<AdminQueueCounts | null>(null);
 
   useEffect(() => {
@@ -63,32 +63,32 @@ export default function AdminMenu() {
 
       <div className="admin-menu-wrap">
         <button
-          ref={menu.buttonRef}
+          ref={buttonRef}
           type="button"
-          className={`admin-pill${menu.open ? " is-open" : ""}`}
+          className={`admin-pill${open ? " is-open" : ""}`}
           aria-haspopup="menu"
-          aria-expanded={menu.open}
+          aria-expanded={open}
           aria-controls="admin-menu"
-          onClick={() => menu.setOpen((v) => !v)}
+          onClick={() => setOpen((v) => !v)}
         >
           Admin
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
             <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
           </svg>
         </button>
-        {menu.open && (
+        {open && (
           <div
-            ref={menu.menuRef}
+            ref={menuRef}
             id="admin-menu"
             className="civic-nav-menu admin-menu"
             role="menu"
             aria-label="Admin"
-            onKeyDown={menu.onMenuKey}
+            onKeyDown={onMenuKey}
           >
-            <MenuItem label="Reviews" count={reviews} onClick={() => menu.choose(() => navigate(reviewsTo))} />
-            <MenuItem label="Moderation" onClick={() => menu.choose(() => navigate("/admin/moderation"))} />
-            <MenuItem label="Settings" onClick={() => menu.choose(() => navigate("/admin/settings"))} />
-            <MenuItem label="Plugins" onClick={() => menu.choose(() => navigate("/admin/settings/plugins"))} />
+            <MenuItem label="Reviews" count={reviews} onClick={() => choose(() => navigate(reviewsTo))} />
+            <MenuItem label="Moderation" onClick={() => choose(() => navigate("/admin/moderation"))} />
+            <MenuItem label="Settings" onClick={() => choose(() => navigate("/admin/settings"))} />
+            <MenuItem label="Plugins" onClick={() => choose(() => navigate("/admin/settings/plugins"))} />
           </div>
         )}
       </div>
