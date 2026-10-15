@@ -56,6 +56,7 @@ import { reportError } from "../utils/reportError.js";
  */
 export const HUB_TABLES = [
   "active_vote_keys",
+  "admin_digest_marks",
   "ai_usage",
   "brief_responses",
   "community_inputs",

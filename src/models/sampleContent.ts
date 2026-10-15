@@ -49,6 +49,7 @@ export const PROCESS_CHILD_COLUMNS: Readonly<Record<string, readonly string[]>> 
  * table here is a decision; the test refuses a table in neither list.
  */
 export const NOT_PROCESS_CONTENT: Readonly<Record<string, string>> = {
+  admin_digest_marks: "where the last admin digest stopped; never seeded",
   ai_usage: "a record of paid model calls, for the daily budget",
   deliberation_drafts: "a resident's unsubmitted draft; the seed writes none",
   feedback_submissions: "product feedback to the hub, not about a process",

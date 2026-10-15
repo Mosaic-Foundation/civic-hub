@@ -99,6 +99,9 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "waitlist", columns: ["email", "name", "wants_test_user"], owner: "core/waitlist" },
   // Members and invites (20261016000000).
   { table: "users", columns: ["hidden_from_members"], owner: "services/members" },
+  { table: "users", columns: ["demo_only"], owner: "civic.auth" },
+  { table: "waitlist", columns: ["told_open_at"], owner: "services/waitlistOpen" },
+  { table: "admin_digest_marks", columns: ["hub_id", "covered_until", "updated_at"], owner: "civic.admin_digest" },
   { table: "waitlist", columns: ["invited_by"], owner: "services/hubInvites" },
   { table: "hub_invites", columns: ["hub_id", "email", "invited_by", "outcome", "link_hash", "created_at", "expires_at", "used_at"], owner: "services/hubInvites" },
   { table: "feedback_submissions", columns: ["screenshot_url"], owner: "civic.feedback" },
@@ -151,6 +154,7 @@ export interface ExportManifestEntry {
 
 export const EXPORT_MANIFEST: readonly ExportManifestEntry[] = [
   { table: "active_vote_keys", rows: "export" },
+  { table: "admin_digest_marks", rows: "omit", reason: "where this host's last admin digest stopped; the next host starts its own" },
   { table: "ai_usage", rows: "omit", reason: "an operational record of paid model calls, for this host's daily budget" },
   { table: "brief_responses", rows: "export" },
   { table: "community_inputs", rows: "export" },

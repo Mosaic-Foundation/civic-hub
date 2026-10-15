@@ -29,6 +29,7 @@ describe("what leaves", () => {
   it("leaves the credentials, the cache and the job run log behind, each with a reason", () => {
     const omitted = omittedTables();
     expect(omitted.map((o) => o.table).sort()).toEqual([
+      "admin_digest_marks",
       "ai_usage",
       "job_runs",
       "link_previews",
