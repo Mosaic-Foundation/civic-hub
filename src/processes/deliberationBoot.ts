@@ -124,7 +124,8 @@ export const POLIS_DELIBERATION_DESCRIPTOR: ProcessTypeDescriptor = {
       body: { title: "Conformance conversation", topic: "Conformance conversation", framing: "What should the hub know?" },
     },
   },
-  // "Talk" on the phone's bar, where five labels must fit (Adam, 2026-10-14).
+  // "Discuss" on the phone's bar, where five labels must fit (Adam, 2026-10-14;
+  // "Talk" until the navigation polish). Everywhere else says Conversations.
   display: {
     label: "Conversation",
     plural: "Conversations",
@@ -132,7 +133,7 @@ export const POLIS_DELIBERATION_DESCRIPTOR: ProcessTypeDescriptor = {
     section: {
       id: "conversations",
       label: "Conversations",
-      short: "Talk",
+      short: "Discuss",
       path: "/deliberations",
       detail_paths: ["/deliberation/"],
       order: 10,

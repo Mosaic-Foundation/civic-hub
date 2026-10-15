@@ -52,7 +52,7 @@ describe("GET /hub-config: process_types", () => {
     const vote = types.find((t) => t.type === "civic.vote")!;
     expect(vote).toMatchObject({ plugin: "vote", label: "Vote", icon: "vote", section: { id: "votes", path: "/votes" } });
     const conversation = types.find((t) => t.type === "civic.polis_deliberation")!;
-    expect(conversation.section).toMatchObject({ label: "Conversations", short: "Talk" });
+    expect(conversation.section).toMatchObject({ label: "Conversations", short: "Discuss" });
     expect(types.find((t) => t.type === "civic.brief")!.label).toBe("Outcome");
     // Only what a page draws: no tables, settings or adapters.
     const served = JSON.stringify(types);

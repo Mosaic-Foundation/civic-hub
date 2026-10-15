@@ -22,9 +22,9 @@ describe("the hub's sections", () => {
     expect(ids([])).toEqual(["feed", "conversations", "proposals", "votes", "projects", "outcomes", "members"]);
   });
 
-  it("put Feed, Talk, Proposals and Votes on the phone's bar by default", () => {
+  it("put Feed, Discuss, Proposals and Votes on the phone's bar by default", () => {
     const bar = barSections(orderedSections({ types, enabled: all, order: [] }));
-    expect(bar.map((s) => s.short)).toEqual(["Feed", "Talk", "Proposals", "Votes"]);
+    expect(bar.map((s) => s.short)).toEqual(["Feed", "Discuss", "Proposals", "Votes"]);
   });
 
   it("follow the hub's order, and the bar follows it too", () => {

@@ -26,7 +26,7 @@ export interface TypeSection {
   id: string;
   /** The section's name in the sidebar, the tabs and the More sheet. */
   label: string;
-  /** One word for the phone's bottom bar, where five must fit: "Talk". Default: label. */
+  /** One word for the phone's bottom bar, where five must fit: "Discuss". Default: label. */
   short?: string;
   /** The UI route of its list. */
   path: string;
