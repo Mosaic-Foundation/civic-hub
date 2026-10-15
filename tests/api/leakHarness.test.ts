@@ -426,6 +426,8 @@ const GET_PLAN: Record<string, Plan> = {
   // Settings → People's hidden members (members and invites slice, 2026-10-14).
   "GET /admin/hub/members": {},
   "GET /admin/hub/sample-content": {},
+  // Mode's readiness list (leaving-demo slice, 2026-10-15).
+  "GET /admin/hub/mode/readiness": { query: ["?to=beta", "?to=live"] },
   // Settings → Admin log (admin menu slice, 2026-10-13).
   "GET /admin/hub/admin-log": {},
   "GET /admin/hub/settings": {},

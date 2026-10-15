@@ -339,15 +339,16 @@ interface PluginCase {
   job?: string;
   /** Its process types: creation, search and links are checked for each. */
   types?: string[];
-  /** The admin digest section it owns (AdminDigestRunResult.counts). */
-  // Briefs' section ("briefs") is walked in adminDigestQueues.test.ts: its
-  // fixture here is a published brief, which search needs.
-  digest?: "proposals" | "meeting_summaries" | "feedback";
+  /** The admin digest line it owns (AdminDigestRunResult.counts). */
+  // Briefs' line ("briefs") is walked in heldBackAndQueues.test.ts: its
+  // fixture here is a published brief, which search needs. Proposals have no
+  // line since the tally (2026-10-15): live ideas are not an admin queue.
+  digest?: "meeting_summaries" | "feedback";
 }
 
 const PLUGIN_CASES: PluginCase[] = [
   { id: "vote", route: { method: "GET", path: () => "/votes/drafts/duration-limits", admin: true }, types: ["civic.vote", "civic.vote_results"] },
-  { id: "proposal", route: { method: "GET", path: () => "/proposals" }, types: ["civic.proposal"], digest: "proposals" },
+  { id: "proposal", route: { method: "GET", path: () => "/proposals" }, types: ["civic.proposal"] },
   { id: "project", route: { method: "GET", path: () => "/projects" }, types: ["civic.project"] },
   { id: "announcement", route: { method: "GET", path: () => "/announcements" }, types: ["civic.announcement"] },
   { id: "brief", route: { method: "GET", path: () => "/brief" }, types: ["civic.brief"] },
@@ -441,10 +442,17 @@ async function candidatesFor(word: string): Promise<string[]> {
   return (res.body.candidates as Array<{ id: string }>).map((c) => c.id);
 }
 
+/**
+ * Which digest lines the hub has: 1 when the line is there, 0 when its plugin
+ * left it out. Presence, not a count: since the tally (2026-10-15) a line's
+ * "new" depends on which run saw the item first, and each run here moves the
+ * mark.
+ */
 async function digestCounts(): Promise<Record<string, number>> {
   const res = await call("GET", "/internal/admin-digest/run?hub=athens&force=true", ATHENS, undefined, CRON_SECRET);
   expect(res.status, JSON.stringify(res.body)).toBe(200);
-  return res.body.hubs.athens.counts;
+  const counts = (res.body.hubs.athens.counts ?? {}) as Record<string, unknown>;
+  return { meeting_summaries: counts.meeting_summaries ? 1 : 0, feedback: counts.feedback ? 1 : 0 };
 }
 
 async function routeStatus(c: PluginCase): Promise<number> {

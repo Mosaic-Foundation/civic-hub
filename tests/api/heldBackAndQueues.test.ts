@@ -269,7 +269,9 @@ describe("a vote finishes on its own; its brief is separate (docs session #4)", 
 });
 
 describe("the admin digest covers the queues admins need (docs session #5)", () => {
-  async function digest(): Promise<{ counts: Record<string, number> }> {
+  // Counts per line since the tally (2026-10-15): new, and what is waiting.
+  type Line = { new: number; waiting: number | null; flagged: number };
+  async function digest(): Promise<{ counts: Record<string, Line | undefined> }> {
     const res = await call("GET", "/internal/admin-digest/run?hub=athens&force=true", ATHENS, undefined, CRON_SECRET);
     ok(res);
     return res.body.hubs.athens;
@@ -294,15 +296,16 @@ describe("the admin digest covers the queues admins need (docs session #5)", () 
     await insertProcess(`proc_heldback_pending_brief_${run}`, "civic.brief", "active", pendingBriefState(reviewed));
 
     const on = await digest();
-    expect(on.counts.reviews).toBeGreaterThanOrEqual(1);
-    expect(on.counts.briefs).toBeGreaterThanOrEqual(1);
+    expect(on.counts.reviews!.waiting).toBeGreaterThanOrEqual(1);
+    expect(on.counts.briefs!.waiting).toBeGreaterThanOrEqual(1);
     expect(on.counts).not.toHaveProperty("vote_results");
+    expect(on.counts).not.toHaveProperty("proposals");
 
     await setPlugin("brief", false);
     try {
       const off = await digest();
-      expect(off.counts.briefs).toBe(0);
-      expect(off.counts.reviews).toBe(on.counts.reviews);
+      expect(off.counts.briefs).toBeUndefined();
+      expect(off.counts.reviews!.waiting).toBe(on.counts.reviews!.waiting);
     } finally {
       await setPlugin("brief", true);
     }
