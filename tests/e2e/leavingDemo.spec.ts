@@ -268,6 +268,20 @@ test.describe("Switching a hub through the UI", () => {
     expect((await call("GET", "/hub-config", hostOf(slug))).body.hub.mode).toBe("live");
     await contentIsStillThere(page, slug);
   });
+
+  test("the admin log names what was accepted for each switch, and who marked the Terms and Privacy reviewed", async ({ page }) => {
+    const slug = slugs.b;
+    await putSettings(slug, "legal", { "legal.reviewed": "true" });
+    await adminPage(page, slug);
+    await page.goto(`${originOf(slug)}/admin/settings/admin-log`);
+    const entries = page.locator(".admin-log-entry");
+    await expect(entries.first()).toContainText("Marked the Terms and Privacy Policy as reviewed");
+    await expect(entries.first()).toContainText(adminEmail(slug));
+    // The UI switch ticked every box the list offered, the samples kept.
+    const toBeta = entries.filter({ hasText: "Changed the mode from demo to beta" });
+    await expect(toBeta).toContainText("accepting: the name and place as they are");
+    await expect(toBeta).toContainText("the sample content kept for now");
+  });
 });
 
 test.describe("A hub's visitors and new admin after the changes", () => {

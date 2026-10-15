@@ -5,8 +5,9 @@ import { adminGetHubAdminLog, type HubAdminLogEntry } from "../../services/api";
 
 /**
  * Settings → Admin log (admin menu slice, 2026-10-13): what this hub's admins
- * did that the hub keeps a record of: removing samples, changing the mode or
- * the admins and board, closing a process early, making a brief again.
+ * did that the hub keeps a record of: removing samples, changing the mode
+ * (with what was accepted for the switch) or the admins and board, marking the
+ * Terms and Privacy reviewed, closing a process early, making a brief again.
  * Newest first, the last 100. A list rather than a table, so it reads on a
  * phone. The console shows the same rows to the operator.
  */
@@ -68,8 +69,14 @@ function describe(e: HubAdminLogEntry): string {
     case "hub.mode": {
       const from = field(e.before, "mode");
       const to = field(e.after, "mode");
-      return from && to ? `Changed the mode from ${from} to ${to}` : "Changed the mode";
+      const changed = from && to ? `Changed the mode from ${from} to ${to}` : "Changed the mode";
+      const accepted = acceptedItems(e.after);
+      return accepted.length ? `${changed}, accepting: ${accepted.join("; ")}` : changed;
     }
+    case "legal.reviewed":
+      return (e.after as { reviewed?: unknown } | null)?.reviewed === true
+        ? "Marked the Terms and Privacy Policy as reviewed"
+        : "Marked the Terms and Privacy Policy as not reviewed";
     case "people.admins":
       return "Changed the admins";
     case "people.board":
@@ -91,6 +98,24 @@ function describe(e: HubAdminLogEntry): string {
     default:
       return e.action;
   }
+}
+
+/**
+ * What the admin accepted as it was for a mode switch (the readiness items'
+ * ids, src/services/modeReadiness.ts), in the words of the box they ticked.
+ */
+const ACCEPTED: Record<string, string> = {
+  name_and_place: "the name and place as they are",
+  contact_email: "the platform's contact address for now",
+  second_admin: "just one admin for now",
+  legal_reviewed: "the Terms and Privacy Policy not yet reviewed",
+  samples: "the sample content kept for now",
+};
+
+function acceptedItems(after: unknown): string[] {
+  const v = (after as Record<string, unknown> | null)?.accepted;
+  if (!Array.isArray(v)) return [];
+  return v.filter((x): x is string => typeof x === "string").map((id) => ACCEPTED[id] ?? id);
 }
 
 /** "Invited 2 people by email (a@x.org, b@y.org)" — the addresses only, never the message. */
