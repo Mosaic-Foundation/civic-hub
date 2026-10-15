@@ -62,6 +62,33 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Operations shell: health for monitors, error tracking, heartbeats (2026-10-15)
+
+- **Unit:**
+  - `health.test.ts`: `healthVerdict()` is 200 only when the database, the hub's database check and the schema pass
+    with no gaps; 503 for each failure, including a gap in a report that says ok.
+  - `errorTracking.test.ts`: the scrubber removes email addresses, JSON bodies, cookies, bearer tokens and query
+    strings. An error with an email and a request body in its message, and in a tag, reaches the (fake) network
+    through `reportError()` with neither. The envelope's shape and DSN parsing are checked. The same error goes once
+    a minute; a collector that is down or hangs never throws and is given up on.
+  - `clientErrors.test.ts`: a browser's report keeps only its fields, scrubbed (no body, cookie or query), groups by
+    message, and is capped at 10 a minute per address and 120 per instance.
+  - `heartbeat.test.ts` (fetch and `runJobAcrossHubs` mocked): the ping URL, off without a key, never throws, never
+    logs the key. Through the job route: success, `/fail` on a hub failure and on a throw, none for `?hub=` or a bad
+    cron credential.
+- **API, `health.test.ts`** (both modes): `/health` answers 200 ok with no gaps and `Cache-Control: no-store` on a
+  hub's host and on `console.localhost`. `POST /client-errors` answers 204 for a report, for nonsense and for an
+  oversized body, on a hub's host and on the console's.
+- **API, `leavingDemo.test.ts`** (+1): ticking, saving again unchanged, and unticking "Terms and Privacy reviewed"
+  writes exactly two `legal.reviewed` admin log entries, newest first, with the admin and a time.
+- **Playwright, `leavingDemo.spec.ts`** (+1): Settings → Admin log shows "Marked the Terms and Privacy Policy as
+  reviewed" with the admin's address, and the demo → beta entry lists what was accepted ("accepting: the name and
+  place as they are; …; the sample content kept for now").
+- **Smoke** (read-only, in the existing health test): `hub_db.ok`, `Cache-Control: no-store`, and the console beside the
+  smoke hub (`console.<parent domain>`) answering 200 ok.
+- **Not tested here:** a real send to Sentry or Healthchecks.io. Both are checked once on dev after Adam sets the keys
+  (RUNBOOK-operations.md → Setup), and Better Stack is checked from its own dashboard.
+
 ## Leaving demo: the readiness check, the switch's consequences, the digest's tally (2026-10-15)
 
 - **Unit:** `adminFeedbackDigest.test.ts` rewritten for the tally: the line text ("3 new process reviews (8 waiting,
