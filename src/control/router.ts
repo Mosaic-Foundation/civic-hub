@@ -13,6 +13,7 @@ import express, { type NextFunction, type Request, type Response, type Router } 
 import { clientIp } from "../utils/clientIp.js";
 import { CivicError } from "../errors/index.js";
 import { logUnexpected, newRef } from "../http/route.js";
+import { flushErrors } from "../utils/errorTracking.js";
 import { RESERVED_HUB_SLUG_PURPOSES, type HubMode } from "../models/hub.js";
 import { PLUGINS_OWNER_NOTE } from "../shared/settingOwners.js";
 import { PLUGIN_IDS } from "../models/hubSettings.js";
@@ -136,7 +137,7 @@ function clearSessionCookie(req: Request, res: Response): void {
  * A refusal answers its own status; anything else is logged in full with a
  * reference (logUnexpected) and answered in words, with that reference.
  */
-function fail(req: Request, res: Response, err: unknown): void {
+async function fail(req: Request, res: Response, err: unknown): Promise<void> {
   if (err instanceof CivicError && err.status < 500) {
     res.status(err.status).json({ error: err.message, code: err.code });
     return;
@@ -144,6 +145,8 @@ function fail(req: Request, res: Response, err: unknown): void {
   const ref = newRef();
   const status = err instanceof CivicError ? err.status : 500;
   logUnexpected(req, err, status, ref, !(err instanceof CivicError));
+  // Wait for error tracking's send (at most 2 s): see sendError() in src/http/route.ts.
+  await flushErrors();
   res.status(status).json({
     error: `Something went wrong on the server, and the change may not have been made. Reload the page to see what was saved. (Reference ${ref})`,
     code: err instanceof CivicError ? err.code : "internal_error",

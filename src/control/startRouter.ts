@@ -33,6 +33,7 @@ import express, { type NextFunction, type Request, type Response, type Router } 
 import { recordAudit } from "./audit.js";
 import { CivicError } from "../errors/index.js";
 import { logUnexpected, newRef } from "../http/route.js";
+import { flushErrors } from "../utils/errorTracking.js";
 import { consoleAdminEmail, consoleHostname, isStartHost, startHubDomain } from "./config.js";
 import {
   EntitlementError,
@@ -107,7 +108,7 @@ function clearSessionCookie(req: Request, res: Response): void {
 }
 
 /** The start page's error answer, in the hub's shape (see src/control/router.ts). */
-function fail(req: Request, res: Response, err: unknown): void {
+async function fail(req: Request, res: Response, err: unknown): Promise<void> {
   if (err instanceof CivicError && err.status < 500) {
     res.status(err.status).json({ error: err.message, code: err.code });
     return;
@@ -115,6 +116,8 @@ function fail(req: Request, res: Response, err: unknown): void {
   const ref = newRef();
   const status = err instanceof CivicError ? err.status : 500;
   logUnexpected(req, err, status, ref, !(err instanceof CivicError));
+  // Wait for error tracking's send (at most 2 s): see sendError() in src/http/route.ts.
+  await flushErrors();
   res.status(status).json({
     error: `Something went wrong on our side, and your hub may not have been made. Wait a minute and try again; your code still works if it wasn't. (Reference ${ref})`,
     code: err instanceof CivicError ? err.code : "internal_error",

@@ -111,6 +111,14 @@ export const env = {
   get CIVIC_POLIS_FAKE() { return read("CIVIC_POLIS_FAKE"); },
   get CIVIC_COC_FAKE() { return read("CIVIC_COC_FAKE"); },
 
+  // --- Operations (operations shell, ADR-006) --------------------------------
+  /** Sentry DSN. Unset: errors go to the log only (src/utils/errorTracking.ts). */
+  get CIVIC_ERROR_DSN() { return read("CIVIC_ERROR_DSN"); },
+  /** "production" or "dev": the environment tag on every error. */
+  get CIVIC_ERROR_ENVIRONMENT() { return read("CIVIC_ERROR_ENVIRONMENT"); },
+  /** Healthchecks.io ping key. Unset: scheduled jobs ping no heartbeat (src/utils/heartbeat.ts). */
+  get CIVIC_HEARTBEAT_PING_KEY() { return read("CIVIC_HEARTBEAT_PING_KEY"); },
+
   // --- What is deployed ------------------------------------------------------
   get VERCEL_GIT_COMMIT_SHA() { return read("VERCEL_GIT_COMMIT_SHA"); },
   get GIT_COMMIT_SHA() { return read("GIT_COMMIT_SHA"); },

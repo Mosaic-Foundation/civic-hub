@@ -18,6 +18,7 @@ import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { CivicError, unexpectedMessage, type ErrorBody } from "../errors/index.js";
 import { reportError } from "../utils/reportError.js";
 import { redactValues } from "../utils/redact.js";
+import { flushErrors, hasPendingErrors } from "../utils/errorTracking.js";
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => unknown;
 
@@ -37,7 +38,7 @@ export function route(fn: AsyncHandler): RequestHandler {
         );
       }
     } catch (err) {
-      sendError(req, res, err);
+      return sendError(req, res, err);
     }
     return Promise.resolve();
   };
@@ -105,15 +106,27 @@ export function logUnexpected(req: Request, err: unknown, status: number, ref: s
     route: routePattern(req),
     status,
     db_code: typeof dbCode === "string" ? dbCode : undefined,
-  });
+  }, err);
 }
 
-/** Answer an error. The one place the hub turns an error into a response. */
-export function sendError(req: Request, res: Response, err: unknown): void {
+/**
+ * Answer an error. The one place the hub turns an error into a response.
+ *
+ * When the error went to error tracking, the answer waits for that send
+ * (at most two seconds): a serverless function can be frozen as soon as its
+ * response is out, and the report would be lost. With nothing to send it
+ * answers at once, and the returned promise is already settled.
+ */
+export function sendError(req: Request, res: Response, err: unknown): Promise<void> {
   const ref = newRef();
   const answer = errorResponse(err, ref);
   if (answer.unexpected || answer.status >= 500) logUnexpected(req, err, answer.status, ref, answer.unexpected);
+  if (hasPendingErrors()) return flushErrors().then(() => answerError(res, answer));
+  answerError(res, answer);
+  return Promise.resolve();
+}
 
+function answerError(res: Response, answer: ReturnType<typeof errorResponse>): void {
   if (res.headersSent) {
     // A stream already started: the status is sent, so end it.
     res.end();
@@ -128,5 +141,5 @@ export { newRef };
 
 /** The terminal error handler (app.ts): errors passed to next(err) and thrown by middleware. */
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction): void {
-  sendError(req, res, err);
+  void sendError(req, res, err);
 }
