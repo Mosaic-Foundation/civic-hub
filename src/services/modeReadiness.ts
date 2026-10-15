@@ -24,6 +24,7 @@
 
 import { currentHub } from "../config/hubContext.js";
 import { forHub } from "../db/forHub.js";
+import { readAll } from "../db/readAll.js";
 import { currentHubId } from "../config/hubContext.js";
 import { KEYS, asBoolean, asEmailList } from "../models/hubSettings.js";
 import type { HubMode } from "../models/hub.js";
@@ -207,12 +208,17 @@ async function readinessItems(from: HubMode): Promise<ReadinessItem[]> {
 
 /** Members who joined, not samples and not demo-only accounts (they can't sign in once demo ends). */
 async function realMembers(): Promise<Array<{ email: string; digest_frequency_days: number | null }>> {
-  return forHub(currentHubId())
-    .from("users")
-    .select<{ email: string; digest_frequency_days: number | null }>("email, digest_frequency_days")
-    .eq("is_resident", true)
-    .eq("is_sample", false)
-    .eq("demo_only", false);
+  // Paged: a hub can have more than 1,000 members (PostgREST's cap).
+  return readAll((from, to) =>
+    forHub(currentHubId())
+      .from("users")
+      .select<{ email: string; digest_frequency_days: number | null }>("email, digest_frequency_days")
+      .eq("is_resident", true)
+      .eq("is_sample", false)
+      .eq("demo_only", false)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
 }
 
 async function demoOnlyCount(): Promise<number> {

@@ -13,12 +13,18 @@ function db() {
 
 export /** Each pending review's latest submission (submit or resubmit), from the append-only turns. */
 async function latestSubmissions(reviewIds: readonly string[]): Promise<Map<string, string>> {
+  // Chunked by id, and each chunk paged: a chunk's reviews can have more than
+  // 1,000 turns between them (PostgREST's cap).
   const rows = await inChunks([...reviewIds], (chunk) =>
-    db()
-      .from("review_turns")
-      .select<{ review_id: string; created_at: string }>("review_id, created_at")
-      .in("review_id", chunk)
-      .in("action", ["submit", "revise_resubmit"]),
+    readAll((from, to) =>
+      db()
+        .from("review_turns")
+        .select<{ review_id: string; created_at: string }>("review_id, created_at")
+        .in("review_id", chunk)
+        .in("action", ["submit", "revise_resubmit"])
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
   );
   const latest = new Map<string, string>();
   for (const r of rows) {
