@@ -14,4 +14,5 @@ export const PLUGIN_NAMES: Record<string, string> = {
   feedback: "Feedback",
   digest: "Email digest",
   admin_digest: "Admin digest",
+  members: "Members",
 };
