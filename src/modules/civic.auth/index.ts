@@ -426,7 +426,7 @@ export async function verifyCode(
     assurance = "code";
   }
 
-  const user = await findOrCreateVerifiedUser(normalizedEmail);
+  const user = await findOrCreateVerifiedUser(normalizedEmail, assurance === "demo");
   const token = await insertSession(hubDb, user.id, assurance, sessionTtl(keepSignedIn));
   return { token, user };
 }
@@ -503,8 +503,13 @@ export async function verifyInviteLink(
  * verified), or created. Race-safe: unique (hub_id, email) rejects a second
  * insert, and the loser reads the winner's row. Used by sign-in and by the
  * start page's handoff (createHandoffSession).
+ *
+ * `demoOnly` (leaving-demo slice, 2026-10-15): a demo hub's "any six digits"
+ * proves nothing about the mailbox. An account made that way is marked
+ * users.demo_only, and stops counting as a member once the hub leaves demo
+ * (services/members.ts); a real code later clears the mark.
  */
-async function findOrCreateVerifiedUser(normalizedEmail: string): Promise<User> {
+async function findOrCreateVerifiedUser(normalizedEmail: string, demoOnly = false): Promise<User> {
   const hubDb = db();
   const existing = await hubDb
     .from("users")
@@ -515,6 +520,10 @@ async function findOrCreateVerifiedUser(normalizedEmail: string): Promise<User> 
   let user: User;
 
   if (existing) {
+    // A real code proves the mailbox: the account counts from now on.
+    if (!demoOnly && existing.demo_only === true) {
+      await hubDb.from("users").update({ demo_only: false }).eq("id", existing.id);
+    }
     // Mark email_verified if it wasn't already
     if (!existing.email_verified) {
       const updated = await hubDb
@@ -538,6 +547,7 @@ async function findOrCreateVerifiedUser(normalizedEmail: string): Promise<User> 
       email_verified: true,
       is_resident: false,
       digest_frequency_days: 1,
+      demo_only: demoOnly,
     };
 
     let inserted: Row | null = null;

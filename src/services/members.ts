@@ -73,7 +73,9 @@ export function avatarSeed(hubId: string, userId: string): string {
 /** Members of the hub in scope: joined accounts, and samples only on a demo hub. */
 function members<Q extends { eq(column: string, value: unknown): Q }>(q: Q): Q {
   const joined = q.eq("is_resident", true);
-  return isDemoHubSync() ? joined : joined.eq("is_sample", false);
+  // Once the hub leaves demo, accounts made only with demo's "any six digits"
+  // stop counting too (users.demo_only, 2026-10-15); what they added stays.
+  return isDemoHubSync() ? joined : joined.eq("is_sample", false).eq("demo_only", false);
 }
 
 /** What residents may see of the hub's members now (the Members plugin's rule). */
