@@ -32,7 +32,8 @@ import {
   type PluginId,
 } from "../models/hubSettings.js";
 import { consoleHostname, isProductionDatabase, platformDomain } from "./config.js";
-import { defaultGoverningBody, defaultGoverningBodyShort, isJurisdictionType, type JurisdictionType } from "../shared/jurisdictionType.js";
+import { defaultGoverningBody, defaultGoverningBodyShort, isJurisdictionType, stateOfOcdId, type JurisdictionType } from "../shared/jurisdictionType.js";
+import { suggestedTimeZone } from "../shared/stateTimeZones.js";
 import { getJurisdiction, type Jurisdiction } from "./jurisdictions.js";
 import { DEFAULT_HUB_KIND, hubKindOf, isHubKind, type HubKind } from "../shared/hubKind.js";
 import { jurisdictionCodeFor } from "../shared/jurisdictionNames.js";
@@ -540,7 +541,14 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
   // summaries"): what the operator typed, else derived from the name.
   const governingBodyShort = governingBody ? (input.governingBodyShort ?? defaultGoverningBodyShort(governingBody)) : "";
   if (governingBodyShort) settings[KEYS.COPY_GOVERNING_BODY_SHORT] = governingBodyShort;
-  if (input.timezone) settings[KEYS.IDENTITY_TIMEZONE] = input.timezone;
+  // A listed place's time zone is its state's when the caller sent none
+  // (leaving-demo slice, 2026-10-15: a hub on UTC sends its digests at the
+  // wrong hour forever). The console and start page suggest the same zone; this
+  // covers a caller that left it out. A state spanning two zones gets its main
+  // one, which the admin can correct; Mode's readiness check blocks leaving
+  // demo until a zone is set either way.
+  const timezone = input.timezone || suggestedTimeZone(stateOfOcdId(input.jurisdictionOcdId)) || "";
+  if (timezone) settings[KEYS.IDENTITY_TIMEZONE] = timezone;
   // Every plugin gets its own row: what the operator ticked, on by default.
   for (const id of PLUGIN_IDS) {
     settings[`plugin.${id}.enabled`] = input.plugins?.[id] === false ? "false" : "true";
