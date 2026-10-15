@@ -35,6 +35,10 @@ mode changes; "Discuss" on the bar; the sheet's first group is the hub's name.
 5. **"Discuss"**: the registry's existing short bar label (`TypeDisplay.section.short`, served in `process_types`)
    is "Discuss" for Conversations; everywhere else says Conversations.
 
+6. **After Adam's dev check (2026-10-14):** the masthead's text keeps the left edge, tagline full width, and a
+   hub's logo sits at the right edge across from the place name (`0d9a4f2`, a grid in `.hub-info--with-logo`); the
+   Proposals icon is a whole light bulb (`993d5f4`). Checked on Utopia on dev at phone and desktop width.
+
 **Tests:** Playwright 143 passed, 2 skipped; smoke 19 of 19 locally; unit 1,563. See TESTING.md.
 
 **Settings reach every visitor within a minute, not at once:** each serverless instance caches a hub's settings
