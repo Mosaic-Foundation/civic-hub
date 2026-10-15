@@ -6,9 +6,9 @@
 // waitlist live here too — they only mean anything in beta.
 //
 // A demo hub may graduate to beta or live from here (Adam, 2026-09-24,
-// matching the build plan): only moving a hub INTO demo is reserved for the
-// platform, so demo is never offered as a choice, and the page says the move
-// cannot be undone before the code is requested.
+// matching the build plan). Demo is never offered as a choice, and the page
+// says the move cannot be undone: a trigger on `hubs` refuses any move back
+// into demo, for the platform as well as the hub's admins.
 
 import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
@@ -134,8 +134,9 @@ export default function ModeSection() {
                   code, so anyone can look around without an inbox. You can
                   move it to beta or live below, which turns real email
                   verification on for everyone.{" "}
-                  <strong>Only the platform can put a hub back into demo</strong>,
-                  so this cannot be undone from here.
+                  <strong>No one can put a hub back into demo</strong>, not
+                  this hub's admins and not the platform, so this cannot be
+                  undone.
                 </p>
               </>
             ) : (
