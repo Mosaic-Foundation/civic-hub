@@ -272,7 +272,7 @@ async function consequences(from: HubMode, to: HubMode): Promise<ModeConsequence
   } else {
     lines.push("Anyone can sign in with a code sent to their email." + (from === "beta" ? " The allowlist no longer matters." : ""));
     const parts: string[] = [];
-    if (digestOn) parts.push(`the participant digest to ${plural(subscribers, "member", "members")} who get it`);
+    if (digestOn) parts.push(`the participant digest to ${plural(subscribers, "member who gets", "members who get")} it`);
     if (isPluginEnabledSync("brief")) parts.push(`published briefs to ${plural(briefTo.length, "recipient", "recipients")} under Officials`);
     lines.push(
       parts.length > 0

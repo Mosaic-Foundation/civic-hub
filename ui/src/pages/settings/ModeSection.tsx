@@ -48,6 +48,14 @@ const MODES: ReadonlyArray<{ id: "beta" | "live"; title: string; body: string }>
   },
 ];
 
+/**
+ * Each server keeps a hub's settings for up to a minute (the settings cache),
+ * so for that minute some visitors still get the old mode. The dev walk
+ * (2026-10-15) saw it: the page said "Switched to live" while a sign-in was
+ * still refused as beta. Said, so it surprises no one.
+ */
+const REACHES_EVERYONE = "It reaches every visitor within a minute.";
+
 export default function ModeSection() {
   const { data, error, reload, setDirty } = useHubSettings();
   const mode = data?.hub.mode ?? "";
@@ -146,10 +154,10 @@ export default function ModeSection() {
       setMessage({
         text:
           saved.mode === "beta"
-            ? "Switched to beta. Only admins, officials, board members and the allowlist can sign in now; everyone else is offered the waitlist."
+            ? `Switched to beta. Only admins, officials, board members and the allowlist can sign in now; everyone else is offered the waitlist. ${REACHES_EVERYONE}`
             : `Switched to live. Anyone can sign in, and the ${from === "demo" ? "demo" : "beta"} notice is gone.${
                 told > 0 ? ` ${told} ${told === 1 ? "person" : "people"} on the waitlist ${told === 1 ? "was" : "were"} told the hub is open.` : ""
-              }`,
+              } ${REACHES_EVERYONE}`,
         error: false,
       });
     } catch (err) {
