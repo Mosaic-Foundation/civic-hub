@@ -6,7 +6,7 @@
  * 2. The sections come from the registry and the hub's one Section order:
  *    switching a plugin off removes its section from the bar's chooser (Hub
  *    settings → Theme → Section order), the More sheet and the sidebar.
- * 3. Phones: the bottom bar (Feed, Talk, Proposals, Votes, More) under either
+ * 3. Phones: the bottom bar (Feed, Discuss, Proposals, Votes, More) under either
  *    Navigation setting; More's sheet lists every section, Admin for admins
  *    only and You; it closes on Escape (focus back on More), a tap outside and
  *    a swipe down. A drafting form hides the bar, typing included.
@@ -14,6 +14,11 @@
  *    with counts, "Signed in as", and the current page marked.
  * 5. Hub settings → Theme: unset Navigation is Top tabs; Sidebar and a new
  *    order take effect at once, and the first four of the order are the bar.
+ * 6. Polish (2026-10-14): a section page opens at its own header with no
+ *    masthead, which is on Feed and About; the mode notice closes to a thin
+ *    bar and stays so on reload; More opens and closes from the bar; the
+ *    sheet's first group is the hub's name; "Discuss" on the bar,
+ *    "Conversations" in the sheet.
  *
  * Acts on whichever hub `localhost` resolves to (CIVIC_DEV_HUB; Athens on the
  * local stack with CI's env) as its admin and as a resident, with sessions
@@ -100,7 +105,7 @@ test("phones: the bar's five tabs, the current one marked, kept on a vote's page
   await visitAs(page, residentToken);
   await page.goto("/");
   const tabs = bar(page).locator(".bottom-bar-label");
-  await expect(tabs).toHaveText(["Feed", "Talk", "Proposals", "Votes", "More"]);
+  await expect(tabs).toHaveText(["Feed", "Discuss", "Proposals", "Votes", "More"]);
   await expect(bar(page).locator('[aria-current="page"]')).toHaveText("Feed");
   // The old strip and the drawer's button are gone at phone width.
   await expect(page.locator(".feed-votes-tabs")).toBeHidden();
@@ -131,8 +136,8 @@ test("phones: More lists every section and You, no Admin for a resident, and clo
   await expect(s.getByRole("link", { name: "Hub settings" })).toHaveCount(0);
   await expect(s.getByText("Signed in as Nav Resident")).toBeVisible();
   await expect(s.getByRole("link", { name: "Your settings" })).toBeVisible();
-  // Focus is inside the sheet, and goes back to More when it closes.
-  await expect(s.getByRole("link", { name: "Feed", exact: true })).toBeFocused();
+  // Focus is inside the sheet (on its ×), and goes back to More when it closes.
+  await expect(s.getByRole("button", { name: "Close", exact: true })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(sheet(page)).toBeHidden();
   await expect(bar(page).locator('[data-nav-id="more"]')).toBeFocused();
@@ -214,7 +219,7 @@ test("Hub settings → Theme: Sidebar and a new order take effect at once, every
     "Conversations",
     "Proposals",
   ]);
-  await expect(page.locator(".nav-order-preview")).toContainText("Feed · Votes · Talk · Proposals · More");
+  await expect(page.locator(".nav-order-preview")).toContainText("Feed · Votes · Discuss · Proposals · More");
   await page.getByRole("button", { name: /^Save/ }).click();
   await expect(page.getByText(/^Saved\./)).toBeVisible();
 
@@ -232,7 +237,7 @@ test("Hub settings → Theme: Sidebar and a new order take effect at once, every
   // The phone's bar follows the same order.
   await page.setViewportSize(PHONE);
   await page.goto("/");
-  await expect(bar(page).locator(".bottom-bar-label")).toHaveText(["Feed", "Votes", "Talk", "Proposals", "More"]);
+  await expect(bar(page).locator(".bottom-bar-label")).toHaveText(["Feed", "Votes", "Discuss", "Proposals", "More"]);
 });
 
 test("desktop: a resident's sidebar has no Admin group, counts beside Members, the current page marked", async ({ page }) => {
@@ -276,4 +281,69 @@ test("a plugin switched off leaves the chooser, the sheet and the sidebar", asyn
     "Members",
     "Conversations",
   ]);
+});
+
+test("a section page opens at its own header, with no masthead; Feed and About have it", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await visitAs(page, residentToken);
+  await page.goto("/propose");
+  const title = page.getByRole("heading", { name: "Community Proposals", level: 1 });
+  await expect(title).toBeVisible();
+  await expect(page.locator(".hub-info")).toHaveCount(0);
+  await expect(page.locator(".hub-banner")).toHaveCount(0);
+  // The header and the first item are on the first screen, with no scrolling.
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  const first = page.locator(".process-list-card, article").first();
+  if ((await first.count()) > 0) expect((await first.boundingBox())!.y).toBeLessThan(PHONE.height - 70);
+
+  for (const path of ["/", "/about"]) {
+    await page.goto(path);
+    await expect(page.locator(".hub-info")).toBeVisible();
+  }
+});
+
+test("the mode notice closes to a thin bar, and stays thin on reload", async ({ page, request }) => {
+  const mode = (await (await request.get(`${API}/hub-config`)).json()).hub.mode as string;
+  test.skip(mode === "live", "a live hub has no mode notice");
+  await page.setViewportSize(PHONE);
+  await visitAs(page, residentToken);
+  await page.goto("/");
+  const notice = page.getByTestId("mode-notice");
+  await expect(notice).toHaveAttribute("data-state", "full");
+  await notice.getByRole("button", { name: /^Close the/ }).click();
+  await expect(notice).toHaveAttribute("data-state", "thin");
+  const short = mode === "beta" ? "Beta hub" : "Demo hub";
+  await expect(notice.getByRole("button", { name: new RegExp(`^${short}`) })).toBeFocused();
+  await page.reload();
+  await expect(page.getByTestId("mode-notice")).toHaveAttribute("data-state", "thin");
+  // The short label opens the full message again.
+  await page.getByTestId("mode-notice").getByRole("button", { name: new RegExp(`^${short}`) }).click();
+  await expect(page.getByTestId("mode-notice")).toHaveAttribute("data-state", "full");
+});
+
+test("More opens and closes from the bar; the sheet's first group is the hub's name; Discuss on the bar", async ({ page, request }) => {
+  const config = await (await request.get(`${API}/hub-config`)).json();
+  const name = (config.settings["identity.name"] ?? config.hub.name) as string;
+  // The default order (an earlier test moved Conversations to the end).
+  await put(request, "theme", { "nav.section_order": "" });
+  await page.setViewportSize(PHONE);
+  await visitAs(page, residentToken);
+  await page.goto("/");
+  await expect(bar(page).getByRole("link", { name: "Discuss" })).toBeVisible();
+  await openMore(page);
+  const s = sheet(page);
+  await expect(s.getByRole("heading", { name })).toBeVisible();
+  await expect(s.getByRole("list", { name })).toContainText("Conversations");
+  await expect(s.getByText("Discuss")).toHaveCount(0);
+  // The bar under the sheet: More is current, expanded, a ×, and closes it.
+  const more = page.getByTestId("more-sheet-bar").locator('[data-nav-id="more"]');
+  await expect(more).toHaveAttribute("aria-expanded", "true");
+  await expect(more).toHaveClass(/is-current/);
+  await more.click();
+  await expect(sheet(page)).toBeHidden();
+  await expect(bar(page).locator('[data-nav-id="more"]')).toHaveAttribute("aria-expanded", "false");
+  // The × beside the hub's name closes it too.
+  await openMore(page);
+  await sheet(page).getByRole("button", { name: "Close", exact: true }).click();
+  await expect(sheet(page)).toBeHidden();
 });

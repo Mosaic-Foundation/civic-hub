@@ -438,7 +438,7 @@ test("voting on a phone: the page holds still, the share banner goes by itself, 
 
 // --- Admin menu slice (2026-10-13) ------------------------------------------
 
-test("a feed item carries its type's pill; the phone's bar and More, with Admin and its count for an admin only", async ({ browser, request }) => {
+test("a feed item carries its type's pill; the phone's bar and More (closing from the bar), a section page at its header, the notice closed thin; Admin for an admin only", async ({ browser, request }) => {
   const counts = await (await request.get(`${apiBase()}/admin/queue-counts`, { headers: auth(admin) })).json();
   const reviews = counts.reviews + counts.briefs + counts.meeting_summaries;
 
@@ -461,8 +461,27 @@ test("a feed item carries its type's pill; the phone's bar and More, with Admin 
   await expect(rs.getByRole("link", { name: "Votes", exact: true })).toBeVisible();
   await expect(rs.getByRole("link", { name: "Your settings" })).toBeVisible();
   await expect(rs.getByRole("link", { name: "Hub settings" })).toHaveCount(0);
-  await r.keyboard.press("Escape");
+  // The first group is named after the hub; More, in the bar under the sheet,
+  // closes it (navigation polish, 2026-10-14).
+  const hubName = (await r.locator(".civic-nav-wordmark").textContent())?.trim() ?? "";
+  await expect(rs.getByRole("heading", { name: hubName })).toBeVisible();
+  const sheetMore = r.getByTestId("more-sheet-bar").locator('[data-nav-id="more"]');
+  await expect(sheetMore).toHaveAttribute("aria-expanded", "true");
+  await sheetMore.click();
   await expect(rs).toBeHidden();
+
+  // A section page opens at its own header; the masthead is on Feed only.
+  await r.goto("/votes");
+  await expect(r.getByRole("heading", { name: "Community Votes", level: 1 })).toBeVisible();
+  await expect(r.locator(".hub-info")).toHaveCount(0);
+
+  // The beta notice closes to a thin "Beta hub" bar, and stays so on reload.
+  const notice = r.getByTestId("mode-notice");
+  await notice.getByRole("button", { name: /^Close the/ }).click();
+  await expect(notice).toHaveAttribute("data-state", "thin");
+  await r.reload();
+  await expect(r.getByTestId("mode-notice")).toHaveAttribute("data-state", "thin");
+  await expect(r.getByTestId("mode-notice").getByRole("button", { name: /^Beta hub/ })).toBeVisible();
   await r.close();
 
   // An admin at phone width: More's Admin group, Reviews with the queues' count.
