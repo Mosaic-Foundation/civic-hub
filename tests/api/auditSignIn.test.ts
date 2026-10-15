@@ -313,8 +313,13 @@ describe("leaving demo mode", () => {
     const visitor = await demoSignIn(`visitor-${run}@example.test`);
     const admin = await mintSession(DEMO, DEMO_ADMIN);
     await plantHubCode(DEMO, DEMO_ADMIN, "550931");
+    // Mode's readiness check (leaving-demo slice): the two items that block, and
+    // the rest accepted as they are.
+    await call("PUT", "/admin/hub/settings", DEMO_HOST, { section: "identity", values: { "identity.timezone": "America/New_York" } }, admin);
+    await call("PUT", "/admin/hub/settings", DEMO_HOST, { section: "email", values: { "email.postal_address": "1 Test Street" } }, admin);
+    const accepted = ["name_and_place", "contact_email", "second_admin", "legal_reviewed", "samples"];
 
-    const res = await call("POST", "/admin/hub/mode", DEMO_HOST, { mode: "beta", code: "550931" }, admin);
+    const res = await call("POST", "/admin/hub/mode", DEMO_HOST, { mode: "beta", code: "550931", accepted }, admin);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
 
     expect(await sessionRows(DEMO, sha256(visitor))).toEqual([]);
