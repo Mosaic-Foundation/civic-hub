@@ -88,6 +88,11 @@ export const KEYS = {
   // person — "Athens Moderator Group", "the Town of X", a named individual.
   LEGAL_OPERATOR_NAME: "legal.operator_name",
   LEGAL_CONTACT_EMAIL: "legal.contact_email",
+  // Leaving demo (2026-10-15): an admin ticked "Our Terms and Privacy Policy
+  // have been reviewed". Who and when are in the admin log. Until it is
+  // ticked, admins see the documents' draft notes and Mode's readiness list
+  // asks for it. Admin-only.
+  LEGAL_REVIEWED: "legal.reviewed",
   // The state whose law governs the documents of a hub that is not a place
   // (identity.hub_kind), and whose law the draft note says a lawyer should
   // know. Added 2026-09-27 (Adam). A place hub's documents use its own

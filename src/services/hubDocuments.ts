@@ -26,7 +26,7 @@ import { getSettingSync } from "./hubSettings.js";
 import { HUB_KINDS, hubKindOf } from "../shared/hubKind.js";
 import { PLATFORM_CONTACT_EMAIL } from "../shared/platform.js";
 import { theName } from "../shared/hubCopy.js";
-import { KEYS } from "../models/hubSettings.js";
+import { KEYS, asBoolean } from "../models/hubSettings.js";
 import type { Hub } from "../models/hub.js";
 
 /** Document key -> the shared template that backs it. */
@@ -345,6 +345,7 @@ export async function hubDocumentsWithNotes(
   // The documents served from the shared templates, not written by the hub
   // (2026-10-08, Adam): a demo hub's About page says it can be rewritten.
   const defaults: string[] = [];
+  const reviewed = asBoolean(getSettingSync(KEYS.LEGAL_REVIEWED), false);
 
   for (const [key, fileName] of Object.entries(TEMPLATES)) {
     // A hub's own document goes through substitution too. Whoever authored it
@@ -356,7 +357,9 @@ export async function hubDocumentsWithNotes(
     if (source !== null && source !== undefined) {
       const { body, notes: found } = splitDraftNotes(applySubstitutions(source, values));
       out[key] = body;
-      if (found.length) notes[key] = found;
+      // Once an admin has ticked "reviewed" under Legal (leaving-demo slice,
+      // 2026-10-15) the starter-text warnings have done their job.
+      if (found.length && !reviewed) notes[key] = found;
     }
   }
 

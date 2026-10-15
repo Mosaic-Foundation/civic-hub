@@ -1,5 +1,5 @@
 import SectionForm from "./SectionForm";
-import { DocumentField, EmailField, TextField } from "./fields";
+import { BooleanField, DocumentField, EmailField, TextField } from "./fields";
 
 export default function LegalSection() {
   return (
@@ -87,6 +87,12 @@ export default function LegalSection() {
             k="legal.proposal_best_practices"
             label="Proposal guide"
             hint="What makes a proposal worth submitting. There is no page of its own yet — the drafting assistant reads this text to check new submissions against it."
+          />
+          <BooleanField
+            f={f}
+            k="legal.reviewed"
+            label="Our Terms and Privacy Policy have been reviewed"
+            hint="Tick this once someone qualified has reviewed both. Until then admins see a draft note on them, and Hub settings → Mode asks for it before the hub leaves demo or goes live. Who ticked it, and when, is in the admin log."
           />
           {f.data.hub.hostname && (
             <p className="form-hint">

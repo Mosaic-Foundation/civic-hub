@@ -147,6 +147,7 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "legal.contact_email", kind: "email" },
     { key: "legal.governing_state", kind: "text", maxLength: 60 },
     { key: "legal.who_runs_this", kind: "markdown", maxLength: 3000 },
+    { key: "legal.reviewed", kind: "boolean" },
   ],
   email: [
     { key: "email.from_name", kind: "text", maxLength: 80 },
