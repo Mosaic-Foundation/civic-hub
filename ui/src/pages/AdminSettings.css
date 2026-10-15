@@ -1251,3 +1251,99 @@
   margin: 0 0 var(--space-sm);
   font-weight: 600;
 }
+
+/* Mode → before you switch, and what happens (leaving-demo slice, 2026-10-15). */
+.mode-readiness,
+.mode-consequences {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+
+.mode-readiness-list,
+.mode-consequences-list {
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mode-consequences-list {
+  padding-left: 1.2rem;
+  list-style: disc;
+}
+
+.mode-consequences-list li {
+  margin-bottom: var(--space-xs);
+  line-height: 1.45;
+}
+
+.mode-readiness-item {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  padding: var(--space-sm) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.mode-readiness-item:first-child {
+  border-top: 0;
+}
+
+.mode-readiness-mark {
+  flex: 0 0 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.mode-readiness-item.is-done .mode-readiness-mark {
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.mode-readiness-item.is-blocking .mode-readiness-mark {
+  border-color: var(--color-error);
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.mode-readiness-what {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mode-readiness-detail {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.mode-readiness-link {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.mode-readiness-accept {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: flex-start;
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.mode-readiness-accept input {
+  margin-top: 0.2rem;
+}

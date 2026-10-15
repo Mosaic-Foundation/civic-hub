@@ -1942,13 +1942,40 @@ export function adminRequestModeCode(): Promise<{ message: string }> {
 export function adminSetHubMode(
   mode: string,
   code: string,
-  opts: { removeSampleContent?: boolean } = {},
-): Promise<{ hub_id: string; mode: string }> {
+  opts: { removeSampleContent?: boolean; accepted?: string[]; tellWaitlist?: boolean } = {},
+): Promise<{ hub_id: string; mode: string; waitlist?: { told: number; failed: number } }> {
   return request("POST", "/admin/hub/mode", {
     mode,
     code,
     ...(opts.removeSampleContent ? { remove_sample_content: true } : {}),
+    ...(opts.accepted && opts.accepted.length > 0 ? { accepted: opts.accepted } : {}),
+    ...(opts.tellWaitlist === false ? { tell_waitlist: false } : {}),
   });
+}
+
+/** One thing that should be in place before a switch (src/services/modeReadiness.ts). */
+export interface ModeReadinessItem {
+  id: string;
+  title: string;
+  detail: string;
+  done: boolean;
+  /** Can't be accepted as it is. */
+  blocking: boolean;
+  accept_label?: string;
+  link: string;
+  link_label: string;
+}
+
+export interface ModeReadiness {
+  from: string;
+  to: string;
+  items: ModeReadinessItem[];
+  consequences: { lines: string[]; waitlist_to_tell: number };
+}
+
+/** What must be in place before switching to `to`, and what the switch will do. Never cached. */
+export function adminGetModeReadiness(to: string): Promise<ModeReadiness> {
+  return request("GET", `/admin/hub/mode/readiness?to=${encodeURIComponent(to)}`);
 }
 
 // --- Sample content (Phase 7) --------------------------------------------------

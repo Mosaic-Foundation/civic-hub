@@ -70,7 +70,7 @@ export interface MailDecision {
  * What a message is, where that changes who may receive it. A sign-in code
  * and an admin invite do; everything else is held to the mode rule.
  */
-export type MailPurpose = "sign_in_code" | "admin_invite" | "member_invite";
+export type MailPurpose = "sign_in_code" | "admin_invite" | "member_invite" | "hub_open";
 
 /**
  * The addresses a non-live hub may write to: the people who run it, and the
@@ -107,6 +107,11 @@ export function mailDecision(recipient: string, purpose?: MailPurpose): MailDeci
   // as for admin_invite). A member's invite on a beta hub is never emailed:
   // it goes on the waitlist. Never on a demo hub.
   if (purpose === "member_invite" && mode !== "demo") return { send: true };
+  // "The hub is open" to the waitlist (src/services/waitlistOpen.ts): sent
+  // only right after the switch to live was written, so the snapshot here
+  // still says beta (as for admin_invite). Never from a demo hub's snapshot:
+  // a demo hub has no business with its waitlist.
+  if (purpose === "hub_open" && mode !== "demo") return { send: true };
 
   const to = recipient.trim().toLowerCase();
   if (allowedRecipients().has(to)) return { send: true };

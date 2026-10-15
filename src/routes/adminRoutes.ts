@@ -73,6 +73,7 @@ import {
 } from "../controllers/adminFeedbackController.js";
 import { requireAdmin } from "../middleware/auth.js";
 import {
+  handleGetModeReadiness,
   handleRequestModeChangeCode,
   handleSetHubMode,
 } from "../controllers/hubModeController.js";
@@ -182,6 +183,7 @@ router.post("/queues/:queue/seen", handleMarkAdminQueueSeen);
 // Hub settings (admin-configurable; overrides env var fallbacks)
 // Changing what the hub IS takes a fresh code, not just an open admin tab.
 // See src/controllers/adminStepUp.ts for which acts and why.
+router.get("/hub/mode/readiness", handleGetModeReadiness);
 router.post("/hub/mode/request-code", handleRequestModeChangeCode);
 router.post("/hub/mode", handleSetHubMode);
 

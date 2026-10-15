@@ -9,15 +9,25 @@
 // matching the build plan). Demo is never offered as a choice, and the page
 // says the move cannot be undone: a trigger on `hubs` refuses any move back
 // into demo, for the platform as well as the hub's admins.
+//
+// Before the code (leaving-demo slice, 2026-10-15): every move up shows what
+// must be in place, each with a link to where it is set, and what the switch
+// will do, in plain words with real counts (src/services/modeReadiness.ts).
+// The time zone and postal address block; everything else may be accepted
+// as it is, for this switch. "Email me a code" stays off until then. Going
+// back from live to beta shows only what it does: who gets locked out.
 
 import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
+  adminGetModeReadiness,
   adminGetSampleContent,
   adminGetSettings,
   adminPatchSettings,
   adminRequestModeCode,
   adminSetHubMode,
+  type ModeReadiness,
   type SampleContentSummary,
   type WaitlistEntry,
 } from "../../services/api";
@@ -51,6 +61,12 @@ export default function ModeSection() {
   // content (Phase 7): keep the samples, or take them out with the move.
   const [sample, setSample] = useState<SampleContentSummary | null>(null);
   const [removeSample, setRemoveSample] = useState<boolean | null>(null);
+  // Leaving demo, and going live (2026-10-15): what must be in place, what
+  // the admin accepts as it is for this switch, and what the switch will do.
+  const [readiness, setReadiness] = useState<ModeReadiness | null>(null);
+  const [readinessError, setReadinessError] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState<ReadonlySet<string>>(new Set());
+  const [tellWaitlist, setTellWaitlist] = useState(true);
 
   useEffect(() => {
     if (mode) setPending(mode);
@@ -67,6 +83,37 @@ export default function ModeSection() {
   useEffect(() => () => setDirty("mode", false), [setDirty]);
   useUnsavedChangesGuard(changing);
 
+  // Read afresh for every choice: each item may have been set in another
+  // section since, and the counts in the consequences change.
+  useEffect(() => {
+    setReadiness(null);
+    setReadinessError(null);
+    if (!changing) return;
+    let live = true;
+    adminGetModeReadiness(pending)
+      .then((r) => live && setReadiness(r))
+      .catch((err: Error) => live && setReadinessError(err.message));
+    return () => {
+      live = false;
+    };
+  }, [changing, pending]);
+
+  const items = readiness?.items ?? [];
+  const blocked = items.filter((i) => i.blocking && !i.done);
+  const open = items.filter(
+    (i) => !i.done && !i.blocking && !(i.id === "samples" ? removeSample !== null : accepted.has(i.id)),
+  );
+  const ready = !!readiness && blocked.length === 0 && open.length === 0;
+
+  function toggleAccepted(id: string, on: boolean) {
+    setAccepted((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
   async function requestCode() {
     setMessage(null);
     try {
@@ -82,17 +129,27 @@ export default function ModeSection() {
     setSaving(true);
     setMessage(null);
     try {
+      const acceptedNow = [...accepted];
+      if (asksAboutSample && removeSample === false) acceptedNow.push("samples");
       const saved = await adminSetHubMode(pending, code.trim(), {
         removeSampleContent: asksAboutSample && removeSample === true,
+        accepted: acceptedNow,
+        tellWaitlist,
       });
+      const from = mode;
       await reload();
       setCode("");
       setCodeSent(false);
+      setAccepted(new Set());
+      setRemoveSample(null);
+      const told = saved.waitlist?.told ?? 0;
       setMessage({
         text:
           saved.mode === "beta"
-            ? "Saved. Only people on the allowlist can sign in now; everyone else is offered the waitlist."
-            : "Saved. Anyone can sign in, and the beta banner is gone.",
+            ? "Switched to beta. Only admins, officials, board members and the allowlist can sign in now; everyone else is offered the waitlist."
+            : `Switched to live. Anyone can sign in, and the ${from === "demo" ? "demo" : "beta"} notice is gone.${
+                told > 0 ? ` ${told} ${told === 1 ? "person" : "people"} on the waitlist ${told === 1 ? "was" : "were"} told the hub is open.` : ""
+              }`,
         error: false,
       });
     } catch (err) {
@@ -104,6 +161,8 @@ export default function ModeSection() {
 
   function cancel() {
     setRemoveSample(null);
+    setAccepted(new Set());
+    setTellWaitlist(true);
     setPending(mode);
     setCode("");
     setCodeSent(false);
@@ -160,6 +219,7 @@ export default function ModeSection() {
                     checked={pending === m.id}
                     onChange={() => {
                       setPending(m.id);
+                      setAccepted(new Set());
                       setMessage(null);
                     }}
                   />
@@ -173,6 +233,61 @@ export default function ModeSection() {
                 </label>
               ))}
             </fieldset>
+
+            {changing && readinessError && <p className="form-error">{readinessError}</p>}
+            {changing && !readiness && !readinessError && <p className="form-hint">Checking what this hub has in place…</p>}
+
+            {changing && readiness && items.length > 0 && (
+              <div className="mode-readiness" role="region" aria-label={`Before you switch to ${pending}`}>
+                <h3 className="settings-subsection-title">
+                  Before you switch to {pending}
+                  <HelpButton k="mode.readiness" label="Before you switch" />
+                </h3>
+                <p className="form-hint">
+                  {blocked.length > 0
+                    ? `${blocked.length === 1 ? "One thing has" : `${blocked.length} things have`} to be set first. Everything else you can finish now, or accept as it is for this switch.`
+                    : open.length > 0
+                      ? "Finish each item, or tick it to accept it as it is for this switch. What you accept is recorded in the admin log."
+                      : "Everything is in place or accepted."}
+                </p>
+                <ul className="mode-readiness-list">
+                  {items.map((item) => (
+                    <li
+                      key={item.id}
+                      className={`mode-readiness-item${item.done ? " is-done" : item.blocking ? " is-blocking" : ""}`}
+                      data-item={item.id}
+                    >
+                      <span className="mode-readiness-mark" aria-hidden="true">
+                        {item.done ? "✓" : item.blocking ? "!" : "○"}
+                      </span>
+                      <span className="mode-readiness-what">
+                        <strong>{item.title}</strong>
+                        <span className="visually-hidden">
+                          {item.done ? " (done)" : item.blocking ? " (must be set first)" : " (not done)"}
+                        </span>
+                        <span className="mode-readiness-detail">{item.detail}</span>
+                        {!item.done && item.id !== "samples" && (
+                          <Link to={item.link} className="mode-readiness-link">
+                            {item.blocking ? `Set it in ${item.link_label}` : `Open ${item.link_label}`}
+                          </Link>
+                        )}
+                        {!item.done && !item.blocking && item.id !== "samples" && item.accept_label && (
+                          <label className="mode-readiness-accept">
+                            <input
+                              type="checkbox"
+                              checked={accepted.has(item.id)}
+                              disabled={saving || codeSent}
+                              onChange={(e) => toggleAccepted(item.id, e.target.checked)}
+                            />
+                            {item.accept_label}
+                          </label>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {changing && asksAboutSample && sample && (
               <fieldset className="settings-mode-choices" disabled={saving || codeSent}>
@@ -209,6 +324,33 @@ export default function ModeSection() {
               </fieldset>
             )}
 
+            {changing && readiness && readiness.consequences.lines.length > 0 && (
+              <div className="mode-consequences" role="region" aria-label="What happens when you switch">
+                <h3 className="settings-subsection-title">
+                  What happens when you switch to {pending}
+                  <HelpButton k="mode.switch" label="What happens when you switch" />
+                </h3>
+                <ul className="mode-consequences-list">
+                  {readiness.consequences.lines.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+                {pending === "live" && readiness.consequences.waitlist_to_tell > 0 && (
+                  <label className="mode-readiness-accept">
+                    <input
+                      type="checkbox"
+                      checked={tellWaitlist}
+                      disabled={saving || codeSent}
+                      onChange={(e) => setTellWaitlist(e.target.checked)}
+                    />
+                    Email the {readiness.consequences.waitlist_to_tell}{" "}
+                    {readiness.consequences.waitlist_to_tell === 1 ? "person" : "people"} on the waitlist that the hub is
+                    open (they were promised it)
+                  </label>
+                )}
+              </div>
+            )}
+
             {(changing || codeSent || message) && (
             <div className="settings-form-footer">
               {changing && (
@@ -224,7 +366,7 @@ export default function ModeSection() {
                     type="button"
                     className="admin-convert-button"
                     onClick={requestCode}
-                    disabled={saving || (asksAboutSample && removeSample === null)}
+                    disabled={saving || !ready}
                   >
                     Email me a code
                   </button>
@@ -273,7 +415,7 @@ export default function ModeSection() {
         )}
       </section>
 
-      <AllowlistAndWaitlist />
+      <AllowlistAndWaitlist live={mode === "live"} />
     </>
   );
 }
@@ -285,7 +427,7 @@ export default function ModeSection() {
  * height when opened. The allowlist is edited one address per line (commas
  * are still accepted on save).
  */
-function AllowlistAndWaitlist() {
+function AllowlistAndWaitlist({ live }: { live: boolean }) {
   const { setDirty } = useHubSettings();
   const [loaded, setLoaded] = useState(false);
   const [saved, setSaved] = useState("");
@@ -370,7 +512,8 @@ function AllowlistAndWaitlist() {
         </summary>
         <p className="form-hint">
           Who may sign in while this hub is in beta, one address per line.
-          Admins can always sign in.
+          Admins, officials and board members can always sign in.
+          {live && <> This hub is live, so the list does nothing until it goes back to beta.</>}
         </p>
         <textarea
           className="form-textarea settings-list-textarea"
@@ -419,7 +562,12 @@ function AllowlistAndWaitlist() {
             {loaded ? `${waitlist.length} ${waitlist.length === 1 ? "person" : "people"}` : "…"}
           </span>
         </summary>
-        <p className="form-hint">People who asked for access from the beta landing page.</p>
+        <p className="form-hint">
+          People who asked for access while the hub was in beta.
+          {live
+            ? " This hub is live: anyone can sign in now, and the people here were emailed when it opened unless you chose not to."
+            : " When the hub goes live, you can email them that it is open."}
+        </p>
         {waitlist.length === 0 ? (
           <p className="empty-state-inline">No one on the waitlist yet.</p>
         ) : (
