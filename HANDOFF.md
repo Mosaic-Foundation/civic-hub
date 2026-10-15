@@ -4,6 +4,63 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Operations shell: uptime monitoring, error tracking, heartbeats, a status page — 2026-10-15
+
+Commits on `multi-tenant` `b870027`..`1694952`, one item each, plus this entry; ADR-006 at the mono-repo root
+(`8a926dc`). **The code is ready; the services are not live until Adam creates the three accounts and sets the keys**
+(RUNBOOK-operations.md → Setup). Every key is optional: unset, that piece is off.
+
+**What it does:**
+- **Uptime (Better Stack, no code):**
+  - monitors `/api/health` on floyd, demosville and longmont, the console, the docs and the dev smoke hub, every
+    3 min;
+  - alerts after two failures and again on recovery;
+  - status page at status.civic.social (a CNAME at GoDaddy).
+- **Health:** `/api/health` was already 503 on any failure. It's now one handler (`src/http/health.ts`):
+  - also 503 on a gap in a report that says ok;
+  - `Cache-Control: no-store`;
+  - answers on the console and start hostnames, where the console used to answer 404.
+- **Errors (Sentry):**
+  - `reportError()` sends through our own envelope sender, not the SDK (`src/utils/errorTracking.ts`);
+  - each error carries its type, stack, hub, route pattern, method, status, ref, release commit and environment;
+  - scrubbed of emails, JSON bodies, cookies, tokens, query strings and IPs;
+  - the same error at most once a minute per instance;
+  - error answers wait up to 2 s for the send.
+  - Browsers post uncaught errors to `/api/client-errors` (same origin, so the CSP is unchanged). Reports are capped
+    and scrubbed the same way, and grouped by message.
+- **Heartbeats (Healthchecks.io):**
+  - each job's run for every hub pings `hc-ping.com/<key>/<job>`, or `/fail`, before answering;
+  - production only (`CIVIC_HEARTBEAT_PING_KEY`);
+  - `npm run heartbeats:sync` makes the 8 checks (7 jobs and `backup-dump`) with schedules and grace periods;
+  - the backups repo needs a 3-line step, in the runbook and the report (not applied here).
+- **Carried from the docs session:**
+  - the three help keys are no longer pending;
+  - "Terms and Privacy reviewed" ticked or unticked writes a `legal.reviewed` admin log entry;
+  - the admin log's mode entry lists what was accepted.
+
+**Tests:**
+- Unit: 140 files.
+- API: both modes, the conformance suite included. On this machine's local database, 4 tests fail the same way on
+  `78b7c58`: `hubSettings` ×2, `hubIsolationControllers` ×1, and conformance's proposal deadline. That database's seeded
+  data was changed by earlier runs. Clean in CI.
+- Playwright: full run; see the report.
+- Smoke: the read-only health check now also requires `hub_db.ok`, `no-store`, and the console beside the smoke hub
+  answering 200 ok.
+
+**Release needs:**
+- No migrations, no pre-checks, nobody signed out.
+- Env vars, all optional:
+  - `CIVIC_ERROR_DSN` and `CIVIC_ERROR_ENVIRONMENT` on both Vercel projects;
+  - `CIVIC_HEARTBEAT_PING_KEY` on civic-hub Production only.
+- The Vercel firewall rule for `/api/health` before Better Stack's monitors start.
+
+**Open:**
+- UI source maps (need a Sentry token at build time);
+- a Sentry spike alert (one click, in the runbook);
+- whether Better Stack's free plan has the Webhook integration for ntfy (Adam to report).
+
+---
+
 ## Leaving demo: a readiness check, the switch's consequences, and an admin digest that never repeats — 2026-10-15
 
 Commits on `multi-tenant` `ed81976`..`2b670ad`, one item each, plus this closing entry. **Live on dev at `9af02fb`
