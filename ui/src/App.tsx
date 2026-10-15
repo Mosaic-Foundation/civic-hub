@@ -66,6 +66,8 @@ import HubReadyDialog from "./components/HubReadyDialog";
 import { arrivingFromStartPage, hubJustCreated } from "./utils/hubJustCreated";
 import BetaBanner from "./components/BetaBanner";
 import DemoBanner from "./components/DemoBanner";
+import { forgetClosedNoticeOnLive } from "./components/ModeNotice";
+import { getLoadedHubConfig } from "./config/hubConfig";
 import BetaWelcomeDialog from "./components/BetaWelcomeDialog";
 import { usePreviewMode } from "./hooks/usePreviewMode";
 import { useIsWideViewport } from "./hooks/useIsWideViewport";
@@ -160,6 +162,7 @@ function AppContent() {
   // Beside the sidebar, the hub's bars head the content column, so the
   // sidebar starts at the top of the screen and its foot is never pushed off.
   const bannersInColumn = layout === "sidebar" && wide;
+  forgetClosedNoticeOnLive(getLoadedHubConfig()?.hub.mode);
   const hubBanners = (
     <>
       {/* One always-on beta bar for everyone — signed-in testers and

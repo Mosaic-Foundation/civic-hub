@@ -5,7 +5,10 @@
 // Remove samples). Tapping the short label opens the full message again.
 //
 // Closed is remembered in this browser per mode, in localStorage: a hub that
-// moves from demo to beta shows its new message in full. Storage can be
+// moves from demo to beta shows its new message in full. A live hub shows no
+// notice, so it forgets what was closed (forgetClosedNoticeOnLive): a hub that
+// goes back from live to beta shows the beta message in full again
+// (leaving-demo slice, 2026-10-15). Storage can be
 // blocked (a private window, a site setting); then the full message shows, as
 // it always did.
 
@@ -31,6 +34,14 @@ function writeClosed(mode: string | null): void {
   } catch {
     /* storage blocked: the notice shows in full next time, as before */
   }
+}
+
+/**
+ * Called on every render of the hub's frame: on a live hub, forget which
+ * notice was closed, so the next notice this browser sees is shown in full.
+ */
+export function forgetClosedNoticeOnLive(mode: string | null | undefined): void {
+  if (mode === "live" && readClosed() !== null) writeClosed(null);
 }
 
 export default function ModeNotice({
