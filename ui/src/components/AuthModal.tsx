@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { pluginEnabled } from "../config/plugins";
 import { onboardingTarget } from "../config/pluginRules";
+import { NEXT_STEPS_PATH } from "../pages/settings/nextSteps";
 import {
   requestCode,
   verifyCode,
@@ -310,6 +311,15 @@ export default function AuthModal({ onComplete, onDismiss, pending }: Props) {
         // waiting action runs first (the vote is cast while this page still
         // holds it), then an in-app move to the cloud carries this page's
         // address, and Skip / Continue bring them back to it.
+        // A new ADMIN's first sign-in lands on "Next: set up your hub"
+        // (leaving-demo slice, 2026-10-15: the walk found a hub's new admin
+        // on the residents' sample word cloud). Admins already in a flow
+        // elsewhere in the admin pages stay where they are.
+        if (needsResidency && pendingAuth.role === "admin" && !window.location.pathname.startsWith("/admin")) {
+          onComplete();
+          navigate(NEXT_STEPS_PATH);
+          return;
+        }
         if (needsResidency) {
           const here = `${window.location.pathname}${window.location.search}`;
           const target = onboardingTarget(hub.onboarding_wordcloud_id, pluginEnabled("wordcloud"), here);

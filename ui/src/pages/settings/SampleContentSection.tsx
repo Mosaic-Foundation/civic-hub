@@ -9,14 +9,17 @@
 //
 // One sample at a time (admin menu slice, 2026-10-13): each is listed with a
 // Delete button, no code, recorded in the admin log too. When the last seeded
-// sample goes, "Next: set up your hub" takes the list's place.
+// sample goes, "Next: set up your hub" takes the list's place. Since the
+// leaving-demo slice (2026-10-15) it also heads the section while the hub is a
+// demo, samples or not, and a new admin's first sign-in lands on it.
 
 import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import DeleteSampleButton from "../../components/DeleteSampleButton";
 import { friendlyType } from "../../components/ProcessLinkPicker";
-import { PLATFORM_SETUP_GUIDE_URL } from "../../../../src/shared/platform";
+import { getLoadedHubConfig } from "../../config/hubConfig";
+import { NextSteps } from "./nextSteps";
 import {
   adminGetSampleContent,
   adminRemoveSampleContent,
@@ -78,12 +81,15 @@ export default function SampleContentSection() {
 
   if (loadError) return <p className="form-error">{loadError}</p>;
 
+  const demo = getLoadedHubConfig()?.hub.mode === "demo";
+
   return (
     <section className="settings-section">
       <h2 className="settings-section-title">
         Sample content
         <HelpButton k="settings.sample" label="Sample content" />
       </h2>
+      {demo && <NextSteps />}
       {!summary ? (
         <p className="form-hint">Loading…</p>
       ) : summary.processes + (summary.added_in_demo ?? 0) === 0 ? (
@@ -94,7 +100,7 @@ export default function SampleContentSection() {
               {message.text}
             </p>
           )}
-          <NextSteps />
+          {!demo && <NextSteps />}
         </>
       ) : (
         <>
@@ -133,7 +139,7 @@ export default function SampleContentSection() {
               </li>
             ))}
           </ul>
-          {summary.processes === 0 && <NextSteps />}
+          {summary.processes === 0 && !demo && <NextSteps />}
 
           {confirming && <SampleRemovalWarning summary={summary} />}
 
@@ -191,42 +197,5 @@ export default function SampleContentSection() {
         </>
       )}
     </section>
-  );
-}
-
-/**
- * What to do once the samples are gone: the first stages of the setup guide
- * (docs: Set up your hub), each a link to where it is done.
- */
-function NextSteps() {
-  return (
-    <div className="next-steps" role="region" aria-label="Next: set up your hub">
-      <h3 className="next-steps-title">Next: set up your hub</h3>
-      <ol className="next-steps-list">
-        <li>
-          <Link to="/admin/settings/identity">Name it and add a banner</Link>
-          <span className="form-hint"> in Identity, then pick its colours in Theme.</span>
-        </li>
-        <li>
-          <Link to="/admin/settings/copy">Write your Welcome and About pages</Link>
-          <span className="form-hint"> in Copy &amp; pages.</span>
-        </li>
-        <li>
-          <Link to="/admin/settings/plugins">Choose the tools your hub offers</Link>
-          <span className="form-hint"> in Plugins.</span>
-        </li>
-        <li>
-          <Link to="/admin/settings/mode#allowlist">Invite your first people</Link>
-          <span className="form-hint"> on the beta allowlist, then switch to beta in Mode.</span>
-        </li>
-      </ol>
-      <p className="form-hint">
-        Every step is in the guide:{" "}
-        <a href={PLATFORM_SETUP_GUIDE_URL} target="_blank" rel="noopener">
-          Set up your hub
-        </a>
-        .
-      </p>
-    </div>
   );
 }
