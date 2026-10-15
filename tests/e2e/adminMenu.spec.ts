@@ -284,8 +284,10 @@ test("4 and 5. delete one sample; the starter takes the word cloud's place; the 
   await page.getByRole("dialog", { name: "Delete this sample?" }).getByRole("button", { name: "Delete sample" }).click();
   const next = page.getByRole("region", { name: "Next: set up your hub" });
   await expect(next).toBeVisible();
-  await expect(next.getByRole("link", { name: "Name it and add a banner" })).toHaveAttribute("href", "/admin/settings/identity");
-  await expect(next.getByRole("link", { name: "Invite your first people" })).toHaveAttribute("href", "/admin/settings/mode#allowlist");
+  // Its steps since the leaving-demo slice (2026-10-15): every readiness item, ending at Mode.
+  await expect(next.getByRole("link", { name: "Name it, add a banner and set its time zone" })).toHaveAttribute("href", "/admin/settings/identity");
+  await expect(next.getByRole("link", { name: "Give a postal address for the hub's email" })).toHaveAttribute("href", "/admin/settings/email");
+  await expect(next.getByRole("link", { name: "Switch to beta" })).toHaveAttribute("href", "/admin/settings/mode");
   // The demo bar stays (the hub is still a demo) without "Remove samples".
   const bar = page.getByRole("region", { name: "Demo notice" });
   await expect(bar).toBeVisible();

@@ -717,3 +717,27 @@ test("below the Members threshold a resident gets no count from the server; the 
   }).toPass({ timeout: 20_000, intervals: [1_000] });
   await page.close();
 });
+
+// Leaving-demo slice (2026-10-15), read-only: the smoke hub stays in beta, so
+// this only opens the Mode page, picks Live to see what it would ask, and
+// cancels. Nothing is switched or saved, and no code is requested.
+test("the Mode page on the beta hub shows the readiness list and consequences for Live, and Cancel leaves Beta current", async ({ browser }) => {
+  const page = await open(browser, { viewport: { width: 375, height: 812 } });
+  await visitAs(page, admin);
+  await page.goto("/admin/settings/mode");
+  await expect(page.getByTestId("mode-notice")).toBeVisible();
+
+  const beta = page.locator("label.settings-mode-choice", { hasText: "Beta" });
+  await expect(beta.locator(".settings-mode-badge")).toHaveText("Current");
+
+  await page.locator("label.settings-mode-choice", { hasText: "Live" }).locator("input").check();
+  await expect(page.getByRole("region", { name: "Before you switch to live" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "What happens when you switch" })).toContainText("What happens when you switch to live");
+  await expect(page.getByRole("button", { name: "Email me a code" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Before you switch to live" })).toHaveCount(0);
+  await expect(beta.locator("input")).toBeChecked();
+  await expect(beta.locator(".settings-mode-badge")).toHaveText("Current");
+  await page.close();
+});
