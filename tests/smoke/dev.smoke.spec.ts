@@ -179,14 +179,24 @@ test.afterAll(async ({ playwright }) => {
   if (errors.length) throw new Error(`smoke cleanup left things behind: ${errors.join("; ")}`);
 });
 
-test("health is ok with no schema gaps, and an unknown API route answers JSON 404", async ({ request }) => {
+test("health is ok with no schema gaps on the hub and the console, never cached, and an unknown API route answers JSON 404", async ({ request }) => {
   const health = await request.get(`${apiBase()}/health`);
   expect(health.status()).toBe(200);
   const body = await health.json();
   expect(body.status).toBe("ok");
   expect(body.schema.gaps).toEqual([]);
+  // What uptime monitoring relies on (RUNBOOK-operations.md): the hub's own
+  // database check passes, and the answer is never a cached one.
+  expect(body.hub_db.ok).toBe(true);
+  expect(health.headers()["cache-control"]).toBe("no-store");
   const expected = process.env.CIVIC_SMOKE_EXPECT_COMMIT?.trim();
   if (expected) expect(body.commit).toBe(expected);
+
+  // The console beside the smoke hub (console.<the smoke hub's parent domain>) is monitored too.
+  const base = new URL(apiBase());
+  const consoleHealth = await request.get(`${base.protocol}//${base.host.replace(/^[^.]+\./, "console.")}/api/health`);
+  expect(consoleHealth.status()).toBe(200);
+  expect((await consoleHealth.json()).status).toBe("ok");
 
   const missingRoute = await request.post(`${apiBase()}/smoke-check-no-such-route`);
   expect(missingRoute.status()).toBe(404);
