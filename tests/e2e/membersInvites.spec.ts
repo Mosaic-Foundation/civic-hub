@@ -72,7 +72,7 @@ async function shot(page: Page, name: string): Promise<void> {
 
 test.describe.configure({ mode: "serial" });
 
-test.beforeAll(async () => {
+test.beforeAll(async ({ request }) => {
   consoleCookie = await mintConsoleSession();
   const res = await consoleCall("POST", "/control/hubs", {
     cookie: consoleCookie,
@@ -92,6 +92,13 @@ test.beforeAll(async () => {
   memberToken = await memberNamed(addr("avery"), "Avery Lane");
   for (const n of ["Blake Moss", "Casey Ford", "Devon Park"]) await memberNamed(addr(n.split(" ")[0]!.toLowerCase()), n);
   hiderToken = await memberNamed(addr("harper"), "Harper Vale", { hidden_from_members: true });
+  // A new hub shows its members from 10 (the Members plugin, 2026-10-14);
+  // this one has six, shown from the first.
+  const set = await request.put(`${HUB}/api/admin/hub/settings`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    data: { section: "plugins", values: { "plugin.members.min_count": "0" } },
+  });
+  expect(set.status(), await set.text()).toBe(200);
 });
 
 test.afterAll(async () => {
