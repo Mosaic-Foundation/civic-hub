@@ -96,16 +96,30 @@
   padding: var(--space-lg) var(--space-md) var(--space-md);
 }
 
-/* identity.logo_url, left of the place name. The text block keeps its own
-   layout, so a hub with no logo renders exactly as before. */
+/* identity.logo_url, at the right edge across from the place name; the
+   name, the label and the tagline keep the left edge (Adam, 2026-10-14). A
+   hub with no logo is one column, as before. */
 .hub-info--with-logo {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-md);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "text logo"
+    "tagline tagline";
+  column-gap: var(--space-md);
+  align-items: start;
+}
+
+.hub-info--with-logo .hub-info-text {
+  grid-area: text;
+}
+
+.hub-info--with-logo .hub-tagline {
+  grid-area: tagline;
 }
 
 .hub-info-logo {
-  flex: none;
+  grid-area: logo;
+  justify-self: end;
   width: 64px;
   height: 64px;
   object-fit: contain;
