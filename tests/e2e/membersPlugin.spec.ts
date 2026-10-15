@@ -93,7 +93,7 @@ test("2. below the threshold: a resident sees no count and no Members, and still
   await visitAs(admin, adminToken);
   await admin.goto("/");
   await expect(admin.getByTestId("member-stack")).toBeVisible();
-  await expect(admin.getByTestId("member-count-admin-only")).toContainText("Only admins see this until 100000 members");
+  await expect(admin.getByTestId("member-count-admin-only")).toContainText("Only admins see this until 100,000 members");
   await openMore(admin);
   await expect(admin.getByTestId("more-sheet").locator('[data-nav-id="members"]')).toBeVisible();
   await admin.close();

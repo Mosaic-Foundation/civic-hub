@@ -81,6 +81,7 @@ a.member-stack-count:focus-visible {
 /* An admin's note while the count is below the Members plugin's threshold. */
 .member-stack-note {
   flex-basis: 100%;
+  margin: 0;
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }

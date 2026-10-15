@@ -67,13 +67,13 @@ export default function MemberStack() {
           ) : (
             <span className="member-stack-count">{label}</span>
           )}
-          {adminOnly && (
-            <span className="member-stack-note" data-testid="member-count-admin-only">
-              Only admins see this until {summary!.threshold ?? 0} members.{" "}
-              <Link to="/admin/settings/plugins#members">Members plugin</Link>
-            </span>
-          )}
         </div>
+      )}
+      {adminOnly && (
+        <p className="member-stack-note" data-testid="member-count-admin-only">
+          Only admins see this until {(summary!.threshold ?? 0).toLocaleString()} members.{" "}
+          <Link to="/admin/settings/plugins#members">Members plugin</Link>
+        </p>
       )}
       {joined && (
         <button type="button" className="member-share-btn" onClick={() => setSharing(true)}>
