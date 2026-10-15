@@ -22,6 +22,7 @@ import hub from "../config/hub";
 import { clearIntroSeen } from "../components/IntroPopup";
 import { useHubDocument } from "../hooks/useHubDocument";
 import { useAuth } from "../context/AuthContext";
+import HubInfo from "../components/HubInfo";
 import "../components/LegalPage.css";
 
 export default function About() {
@@ -39,6 +40,8 @@ export default function About() {
 
   return (
     <div className="page about-page">
+      {/* The hub's masthead: here and on Feed only (navigation polish, 2026-10-14). */}
+      <HubInfo />
       <Link to="/" className="back-link">&larr; Home</Link>
 
       {standardOnDemo && (

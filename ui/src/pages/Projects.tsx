@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listProjects, type ProjectSummary } from "../services/api";
-import HubInfo from "../components/HubInfo";
 import ProcessPicker from "../components/ProcessPicker";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
@@ -49,7 +48,6 @@ export default function Projects() {
 
   return (
     <div className="page page-home">
-      <HubInfo />
       {showAuthModal && (
         <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
       )}
@@ -63,7 +61,7 @@ export default function Projects() {
           <section className="section">
             <div className="section-header-row">
               <div>
-                <h2 className="section-title">Community Projects</h2>
+                <h1 className="section-title">Community Projects</h1>
                 <p className="section-description">
                   Projects and initiatives organized by community members.
                 </p>

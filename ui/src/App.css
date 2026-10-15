@@ -718,6 +718,12 @@
   color: var(--text-color);
 }
 
+/* A section page's own title is its h1 since the hub's masthead moved to
+   Feed and About only (navigation polish, 2026-10-14): the page opens at it. */
+h1.section-title {
+  font-size: var(--font-size-2xl);
+}
+
 /* --- Pages --- */
 
 .page h1 {

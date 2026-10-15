@@ -7,7 +7,6 @@ import {
   type PublishedVoteResultsSummary,
   type VoteSummary,
 } from "../services/api";
-import HubInfo from "../components/HubInfo";
 import ProcessPicker from "../components/ProcessPicker";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
@@ -118,21 +117,15 @@ export default function Votes() {
 
   return (
     <div className="page page-home">
-      <HubInfo />
       {showAuthModal && (
         <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
       )}
       {showPicker && <ProcessPicker onDismiss={() => setShowPicker(false)} context="vote" />}
 
-      {/* Slice 12.1 — Feed | Votes tab strip. Sits below HubInfo so
-          site identity reads first, then the user picks what surface
-          they want. Same component on the Home page; the active
-          state comes from the URL via NavLink. */}
-
       <section className="section">
         <div className="section-header-row">
           <div>
-            <h2 className="section-title">Community Votes</h2>
+            <h1 className="section-title">Community Votes</h1>
             <p className="section-description">
               Official and proposed advisory votes for {hub.jurisdiction}.
             </p>

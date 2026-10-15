@@ -72,10 +72,11 @@ import { useIsWideViewport } from "./hooks/useIsWideViewport";
 import AuthModal from "./components/AuthModal";
 import "./App.css";
 
-// Routes that show the hub banner above the nav. Detail/action pages
-// (/process/:id, /propose, etc.) stay compact so task-focused flows are
-// not pushed down by 200px of imagery.
-const BANNER_ROUTES = new Set(["/", "/votes", "/propose", "/projects", "/deliberations", "/outcomes"]);
+// Routes that show the hub's banner photo: the masthead is on Feed and About
+// only (navigation polish, Adam, 2026-10-14), so a section page opens at its
+// own header with an item in view on a phone, and detail and drafting pages
+// stay compact.
+const BANNER_ROUTES = new Set(["/", "/about"]);
 
 /** /admin#<anchor>: a tab, a Settings section or a plugin's panel (src/shared/adminAnchors.ts). */
 function AdminAnchor() {

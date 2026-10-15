@@ -5,7 +5,6 @@ import type { DeliberationSummary } from "../services/api";
 import {
   listDeliberations,
 } from "../services/api";
-import HubInfo from "../components/HubInfo";
 import ProcessPicker from "../components/ProcessPicker";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
@@ -62,7 +61,6 @@ export default function Deliberations() {
 
   return (
     <div className="page page-home">
-      <HubInfo />
       {showAuthModal && (
         <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
       )}
@@ -71,7 +69,7 @@ export default function Deliberations() {
       <section className="section">
         <div className="section-header-row">
           <div>
-            <h2 className="section-title">Community Conversations</h2>
+            <h1 className="section-title">Community Conversations</h1>
             <p className="section-description">
               Vote on statements and see where the community stands.
             </p>

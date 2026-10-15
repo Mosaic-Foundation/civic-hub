@@ -4,7 +4,6 @@ import {
   listCivicProposals,
   type CivicProposalSummary,
 } from "../services/api";
-import HubInfo from "../components/HubInfo";
 import ProcessPicker from "../components/ProcessPicker";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
@@ -63,7 +62,6 @@ export default function Propose() {
 
   return (
     <div className="page page-home">
-      <HubInfo />
       {showAuthModal && (
         <AuthModal onComplete={handleAuthComplete} onDismiss={closeAuthModal} />
       )}
@@ -77,7 +75,7 @@ export default function Propose() {
           <section className="section">
             <div className="section-header-row">
               <div>
-                <h2 className="section-title">Community Proposals</h2>
+                <h1 className="section-title">Community Proposals</h1>
                 <p className="section-description">
                   Ideas and concerns raised by community members.
                 </p>
