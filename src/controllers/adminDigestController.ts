@@ -1,9 +1,10 @@
 // Admin digest — the "admin_digest" job (src/jobs/registry.ts).
 //
-// Runs once a day per active hub, inside that hub's scope: counts pending
-// items in each of that hub's admin-review queues and emails that hub's
-// admins (people.admin_emails, CIVIC_ADMIN_EMAILS as the bootstrap for a hub
-// with no row). Empty digests are skipped silently. The job runner has
+// Runs once a day per active hub, inside that hub's scope: counts what is new
+// in each of that hub's admin queues since the last digest that went out, with
+// what is waiting beside it, and emails that hub's admins (people.admin_emails,
+// CIVIC_ADMIN_EMAILS as the bootstrap for a hub with no row). Nothing new:
+// nothing sent (src/modules/civic.admin_digest/service.ts). The job runner has
 // already checked the cron credential and plugin.admin_digest.enabled (whose
 // env fallback is ADMIN_DIGEST_ENABLED).
 //

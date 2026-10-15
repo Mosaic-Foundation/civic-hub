@@ -1,82 +1,55 @@
-// civic.admin_digest — models for the admin-facing daily digest.
+// civic.admin_digest — models for the email to a hub's admins.
 //
-// Operator-side notification: counts of pending items in each
-// admin-review queue (process reviews, briefs, proposals, meeting summaries),
-// plus resident feedback received since the last digest, sent once a
-// day to every admin in CIVIC_ADMIN_EMAILS. NOT a civic event — does
-// not flow through emitEvent() / /events.
+// A TALLY OF WHAT IS NEW SINCE THE LAST ONE (leaving-demo slice, 2026-10-15).
+// One line per category, each a count and a link to that queue on the hub:
+//
+//   3 new process reviews (8 waiting, 1 flagged by the check)
+//   2 new meeting summaries (2 waiting)
+//   No new briefs (4 waiting)
+//
+// "New" means it arrived after the moment the last digest that went out
+// covered up to (admin_digest_marks), by a timestamp that never changes once
+// written, so no item is ever counted new twice and a missed day loses
+// nothing. New is what sends the email; nothing goes out when nothing is new,
+// and "waiting" is never a reason to send (Adam, 2026-10-15). Waiting is there
+// so an admin who let a queue pile up sees the pile.
+//
+// Operator-side: NOT a civic event, does not flow through emitEvent() / /events.
 
-export interface PendingItemSummary {
-  /** Process or proposal id used to deep-link to the admin detail page. */
-  id: string;
-  /**
-   * Display title — truncated by the renderer if too long. Feedback has
-   * no title, so it passes a one-line excerpt of the message here.
-   */
-  title: string;
-  /** ISO timestamp when the item entered the queue (created_at usually). */
-  created_at: string;
-}
+export type DigestLineId =
+  | "job_problems"
+  | "reviews"
+  | "briefs"
+  | "meeting_summaries"
+  | "feedback"
+  | "edits"
+  | "waitlist";
 
-export interface QueueSnapshot {
-  /** Total pending items in the queue (post-filter, pre-truncation). */
-  count: number;
-  /**
-   * Up to N most-recent items for display in the email body. Empty when
-   * count is zero. Capped to keep the email scannable; admins click
-   * through to the panel for the full list.
-   */
-  items: PendingItemSummary[];
-  /** Absolute URL to the admin index page for this queue. */
-  panel_url: string;
-}
-
-/**
- * One scheduled-job run that failed or was flagged since the last digest
- * (job_runs, src/services/jobRuns.ts).
- */
-export interface JobProblemItem {
-  /** The job's id in src/jobs/registry.ts. */
-  job_id: string;
-  /** Human name of the job, e.g. "Meeting summaries". */
-  job_name: string;
-  status: "failed" | "flagged";
-  /** ISO 8601. */
-  finished_at: string;
-  /** One admin-facing line per problem. */
-  problems: string[];
-}
-
-export interface JobProblemsSnapshot {
-  count: number;
-  items: JobProblemItem[];
-  /** Where the admin sees each job's last run. */
-  panel_url: string;
+export interface DigestLine {
+  id: DigestLineId;
+  /** The noun, singular and plural: "process review" / "process reviews". */
+  noun: { one: string; many: string };
+  /** Arrived since the last digest's mark. */
+  new_count: number;
+  /** Everything in the queue now, new or not; null for a category with no queue (feedback, edits, jobs). */
+  waiting: number | null;
+  /** Of the new ones, how many were flagged (the Code of Conduct check, a meeting summary's quality flag). */
+  flagged: number;
+  /** What "flagged" means on this line, when it can be non-zero. */
+  flagged_by?: string;
+  /** Absolute URL of the queue on the hub. */
+  url: string;
 }
 
 export interface AdminDigestPayload {
   hub_name: string;
-  generated_at: string;
-  proposals: QueueSnapshot;
-  /** Submissions waiting in Process reviews (pending_review); ids are review ids. */
-  reviews: QueueSnapshot;
-  /** Briefs awaiting approval (publication_status "pending"). */
-  briefs: QueueSnapshot;
-  meeting_summaries: QueueSnapshot;
-  /**
-   * Feedback received in the digest window (the last 24h), not a backlog
-   * of unhandled items. Feedback has no pending/resolved state — it is an
-   * archive, not a queue — so "count" here means "new since yesterday".
-   * That keeps the digest from re-reporting the same submissions daily
-   * forever, and needs no seen/handled column to do it.
-   */
-  feedback: QueueSnapshot;
-  /**
-   * Scheduled jobs that failed, or finished with something an admin must
-   * check, in the digest window. Like feedback, a window rather than a
-   * backlog. Enough on its own to send the digest.
-   */
-  job_problems: JobProblemsSnapshot;
-  /** True when every queue is empty — caller should skip the send. */
+  /** The window: after `since`, up to and including `until` (ISO 8601). */
+  since: string;
+  until: string;
+  /** Every category the hub has, in order; a switched-off plugin's is left out. */
+  lines: DigestLine[];
+  /** Sum of new_count over the lines. */
+  new_total: number;
+  /** Nothing new: the caller sends nothing. */
   empty: boolean;
 }

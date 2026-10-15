@@ -79,7 +79,10 @@ const PLUGINS: Record<PluginId, { name: string; what: string }> = {
       return `A summary email of new activity to each ${hub.noun(1)} who has not unsubscribed.`;
     },
   },
-  admin_digest: { name: "Admin digest", what: "A daily email to admins of what is waiting for review." },
+  admin_digest: {
+    name: "Admin digest",
+    what: "A daily email to admins counting what is new since the last one, with what is waiting beside it. Not sent when nothing is new.",
+  },
   members: {
     name: "Members",
     what: "The member count and faces on the home page, and the Members page. Share this hub stays either way.",

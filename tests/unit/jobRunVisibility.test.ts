@@ -163,6 +163,25 @@ vi.mock("../../src/modules/civic.feedback/index.js", () => ({
   listFeedback: async () => [],
 }));
 
+// The admin digest's database reads (src/modules/civic.admin_digest/store.ts):
+// nothing in the queues, and its mark in memory.
+let digestMark: string | null = null;
+vi.mock("../../src/modules/civic.admin_digest/store.js", () => ({
+  latestSubmissions: async () => new Map(),
+  countFeedback: async () => 0,
+  editEvents: async () => [],
+  waitlistRows: async () => [],
+  readMark: async () => digestMark,
+  moveMark: async (from: string | null, to: string) => {
+    if (digestMark !== from) return false;
+    digestMark = to;
+    return true;
+  },
+  releaseMark: async (_claimed: string, previous: string | null) => {
+    digestMark = previous;
+  },
+}));
+
 const { jobById } = await import("../../src/jobs/registry.js");
 const { JOB_RUNNERS } = await import("../../src/jobs/runners.js");
 const { runJobAcrossHubs } = await import("../../src/jobs/runJob.js");
@@ -194,6 +213,7 @@ beforeEach(() => {
     "plugin.meeting_summary.cutoff_date": "",
   };
   runLog.length = 0;
+  digestMark = null;
   created.length = 0;
   events.length = 0;
   saved.length = 0;
@@ -276,12 +296,14 @@ describe("a failed run shows in the admin digest", () => {
     mail.length = 0; // drop the run's own alert; the digest is what is under test
     await runJob("admin_digest");
 
-    const digest = mail.find((m) => m.subject.includes("Admin queue"));
+    // A tally since 2026-10-15: the line links to the jobs' last runs on
+    // Settings → Plugins, where the reason is shown.
+    const digest = mail.find((m) => m.subject.includes("new for admins"));
     expect(digest, "the admin digest is sent for a job failure alone").toBeDefined();
     expect([digest!.to].flat()).toEqual([FLOYD_ADMIN]);
-    expect(digest!.subject).toMatch(/1 scheduled job needs attention/);
-    expect(digest!.html).toMatch(/Meeting summaries/);
-    expect(digest!.html).toMatch(/ANTHROPIC_API_KEY must be set/);
+    expect(digest!.subject).toMatch(/1 new for admins: 1 scheduled job problem/);
+    expect(digest!.html).toMatch(/1 new scheduled job problem/);
+    expect(digest!.html).toMatch(/\/admin\/settings\/plugins/);
   });
 
   it("stays silent about jobs when every run was clean", async () => {
@@ -294,6 +316,6 @@ describe("a failed run shows in the admin digest", () => {
       finished_at: new Date().toISOString(),
     });
     await runJob("admin_digest");
-    expect(mail.filter((m) => m.subject.includes("Admin queue"))).toHaveLength(0);
+    expect(mail.filter((m) => m.subject.includes("new for admins"))).toHaveLength(0);
   });
 });

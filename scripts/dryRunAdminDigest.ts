@@ -17,7 +17,11 @@ import { withScriptHub } from "./lib/hubScope.js";
 
 async function main(_hub: Hub) {
   const useStub = process.argv.includes("--stub");
-  const payload = useStub ? buildStubAdminDigestPayload(new Date().toISOString()) : await buildAdminDigest();
+  // The live payload covers the last day; the real job counts from the mark
+  // the last digest left, and a dry run must not move it.
+  const until = new Date().toISOString();
+  const since = new Date(Date.now() - 86_400_000).toISOString();
+  const payload = useStub ? buildStubAdminDigestPayload(until) : await buildAdminDigest(since, until);
   console.log("--- payload ---");
   console.log(JSON.stringify(payload, null, 2));
   console.log("");

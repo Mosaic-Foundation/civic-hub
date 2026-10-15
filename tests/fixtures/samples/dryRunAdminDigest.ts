@@ -1,44 +1,27 @@
 // FIXTURE DATA — stub admin digest payload used by
 // scripts/dryRunAdminDigest.ts (--stub) to render the admin digest email
-// without hitting the live DB.
+// without hitting the live DB. The tally shape since 2026-10-15.
 
 import type { AdminDigestPayload } from "../../../src/modules/civic.admin_digest/index.js";
 
 export function buildStubAdminDigestPayload(now: string): AdminDigestPayload {
+  const ui = "https://example.civic.social";
+  const lines: AdminDigestPayload["lines"] = [
+    { id: "job_problems", noun: { one: "scheduled job problem", many: "scheduled job problems" }, new_count: 1, waiting: null, flagged: 0, url: `${ui}/admin/settings/plugins` },
+    { id: "reviews", noun: { one: "process review", many: "process reviews" }, new_count: 3, waiting: 8, flagged: 1, flagged_by: "the Code of Conduct check", url: `${ui}/admin/reviews` },
+    { id: "briefs", noun: { one: "brief to approve", many: "briefs to approve" }, new_count: 0, waiting: 2, flagged: 0, url: `${ui}/admin/briefs` },
+    { id: "meeting_summaries", noun: { one: "meeting summary", many: "meeting summaries" }, new_count: 6, waiting: 6, flagged: 0, flagged_by: "its quality check", url: `${ui}/admin/meeting-summaries` },
+    { id: "feedback", noun: { one: "feedback message", many: "feedback messages" }, new_count: 2, waiting: null, flagged: 0, url: `${ui}/admin/feedback` },
+    { id: "edits", noun: { one: "edit to a live process", many: "edits to live processes" }, new_count: 0, waiting: null, flagged: 0, url: `${ui}/admin/edits` },
+    { id: "waitlist", noun: { one: "person on the waitlist", many: "people on the waitlist" }, new_count: 1, waiting: 4, flagged: 0, url: `${ui}/admin/settings/mode#waitlist` },
+  ];
+  const new_total = lines.reduce((s, l) => s + l.new_count, 0);
   return {
-    hub_name: "Floyd Civic Hub",
-    generated_at: now,
-    proposals: {
-      count: 2,
-      items: [
-        { id: "prop_001", title: "Sidewalks on Main Street", created_at: now },
-        { id: "prop_002", title: "Dog park near the courthouse", created_at: now },
-      ],
-      panel_url: "https://example.civic.social/admin/proposals",
-    },
-    reviews: {
-      count: 1,
-      items: [{ id: "rev_001", title: "Should the library open on Sundays?", created_at: now }],
-      panel_url: "https://example.civic.social/admin/reviews",
-    },
-    briefs: {
-      count: 1,
-      items: [{ id: "brief_001", title: "Speed cameras (April)", created_at: now }],
-      panel_url: "https://example.civic.social/admin/briefs",
-    },
-    meeting_summaries: {
-      count: 7,
-      items: [
-        { id: "ms_001", title: "BOS Meeting — April 21", created_at: now },
-        { id: "ms_002", title: "BOS Meeting — April 14", created_at: now },
-        { id: "ms_003", title: "Planning Commission — April 18", created_at: now },
-        { id: "ms_004", title: "Budget Workshop — April 10", created_at: now },
-        { id: "ms_005", title: "BOS Meeting — April 7", created_at: now },
-      ],
-      panel_url: "https://example.civic.social/admin/meeting-summaries",
-    },
-    feedback: { count: 0, items: [], panel_url: "https://example.civic.social/admin/feedback" },
-    job_problems: { count: 0, items: [], panel_url: "https://example.civic.social/admin/settings/plugins" },
-    empty: false,
+    hub_name: "Example Civic Hub",
+    since: new Date(Date.parse(now) - 86_400_000).toISOString(),
+    until: now,
+    lines,
+    new_total,
+    empty: new_total === 0,
   };
 }

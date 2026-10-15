@@ -115,7 +115,7 @@
     "anchor": "plugins-search"
   },
   "plugins.feedback": {
-    "text": "A form where anyone can report a problem or suggest a change. Moderation reports are emailed straight away; the rest wait in the Feedback tab and the admin digest.",
+    "text": "A form where anyone can report a problem or suggest a change. Moderation reports are emailed straight away; the rest wait in the Feedback tab and are counted in the admin digest.",
     "page": "/reference/plugins",
     "anchor": "plugins-feedback"
   },
@@ -130,7 +130,7 @@
     "anchor": "plugins-digest"
   },
   "plugins.admin_digest": {
-    "text": "A daily email to every admin listing what is waiting: problems, submissions, briefs, summaries and feedback. An empty digest is not sent.",
+    "text": "A daily email to every admin, one line per queue: what is new since the last email and what is waiting, each a link to the queue. Nothing is sent when nothing is new. With it on, waitlist signups get no email each.",
     "page": "/reference/plugins",
     "anchor": "plugins-admin-digest"
   },

@@ -22,6 +22,9 @@ const PARTS = [
   "people.hidden_members",
   "share.invites",
   "members.visibility",
+  // Leaving demo (2026-10-15): Mode's readiness list and the switch's consequences.
+  "mode.readiness",
+  "mode.switch",
 ];
 
 // Settings with no field of their own: each plugin's switch sits under its
