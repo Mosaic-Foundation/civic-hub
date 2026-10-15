@@ -6,8 +6,10 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Members plugin: the member count and page wait for a threshold — 2026-10-14
 
-Commits on `multi-tenant` `699df2e`..`157f308`, plus this entry. **Held back locally until the navigation slice is
-on production** (Adam releases it; `release.sh prod` ships whatever is on the branch), then pushed to dev.
+Commits on `multi-tenant` `699df2e`..`712bc91`, plus this closing note. Held on a local branch until the navigation
+slice reached production (`release.sh prod` refuses while the local branch is ahead of origin), then released to dev.
+**Live on dev at `712bc91`; CI, E2E and Smoke green:** API 777 passed in both modes, unit 1,567, Playwright 146
+passed (2 skipped), help links 90 keys; Smoke 20 of 20 on live dev in 1.8 min. Production: Adam's, as usual.
 
 **Release needs:** no migration, no env vars, no pre-checks, nobody signed out. One new plugin id (`members`) and two
 settings (`plugin.members.min_count`, `plugin.members.page_before_threshold`), three pending help notes. Existing
