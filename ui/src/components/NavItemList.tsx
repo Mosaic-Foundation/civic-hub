@@ -13,6 +13,7 @@ export default function NavItemList({
   onPicked,
   className,
   label,
+  labelledBy,
 }: {
   items: readonly NavItem[];
   /** After a link is followed or an action runs: the sheet closes. */
@@ -20,9 +21,11 @@ export default function NavItemList({
   className: string;
   /** Names the list for a screen reader when its group has no visible heading. */
   label?: string;
+  /** Or the id of the visible heading that names it. */
+  labelledBy?: string;
 }) {
   return (
-    <ul className={className} aria-label={label}>
+    <ul className={className} aria-label={labelledBy ? undefined : label} aria-labelledby={labelledBy}>
       {items.map((item) => (
         <li key={item.id}>
           <Row item={item} onPicked={onPicked} />

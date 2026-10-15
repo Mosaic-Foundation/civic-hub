@@ -1,17 +1,40 @@
 /* "More" (MoreSheet.tsx): the shared Modal, drawn as a sheet from the bottom
-   of the screen (navigation slice, 2026-10-14). */
+   of the screen with the bar under it (navigation slice and polish,
+   2026-10-14). The Modal's body is only a frame here: the panel above holds
+   the lists and scrolls; the bar below stays put, where the page's bar is. */
 
 .modal.more-sheet {
   width: 100%;
-  max-width: 560px;
-  margin: auto auto 0;
-  max-height: 88dvh;
+  max-width: 100%;
+  margin: auto 0 0;
+  max-height: 100dvh;
 }
 
 .more-sheet .more-sheet-body {
-  padding: var(--space-sm) var(--space-md) calc(var(--space-lg) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  max-height: 100dvh;
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  animation: none;
+}
+
+.more-sheet-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(88dvh - var(--bottom-bar-h, 58px));
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+  background: var(--card-background, var(--color-surface));
   border-radius: 16px 16px 0 0;
-  max-height: 88dvh;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
   transition: transform 0.15s ease-out;
   animation: more-sheet-in 0.2s ease-out;
 }
@@ -28,18 +51,78 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .more-sheet .more-sheet-body {
+  .more-sheet-panel {
     animation: none;
     transition: none;
   }
 }
 
 .more-sheet-grab {
+  flex: none;
   width: 40px;
   height: 4px;
-  margin: 2px auto var(--space-sm);
+  margin: 2px auto 0;
   border-radius: 2px;
   background: var(--color-border-strong);
+}
+
+/* The hub's name and the ×, on their own row under the handle, clear of the
+   first item. A long name wraps to two lines, then ellipsizes; the × keeps
+   its place. */
+.more-sheet-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 48px;
+  margin: var(--space-sm) 0 var(--space-xs);
+  padding-left: var(--space-sm);
+}
+
+.more-sheet-hubname {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.more-sheet-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.more-sheet-close:hover {
+  background: var(--color-border);
+}
+
+.more-sheet-close:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.more-sheet-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .more-sheet-heading {
@@ -71,4 +154,13 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   overflow-wrap: anywhere;
+}
+
+/* The bar under the sheet: the page's bar, drawn again inside the dialog so
+   More can close it (the page behind a modal is inert). */
+.more-sheet-bar {
+  flex: none;
+  padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
 }

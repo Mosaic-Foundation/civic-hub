@@ -143,6 +143,7 @@ const PATHS: Record<string, ReactElement> = {
       <circle cx="19" cy="12" r="1.5" />
     </>
   ),
+  close: <path d="M6 6l12 12M18 6L6 18" />,
   generic: (
     <>
       <rect x="4" y="4" width="16" height="16" rx="3" />
