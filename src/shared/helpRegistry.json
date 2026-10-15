@@ -452,19 +452,16 @@
   "mode.readiness": {
     "text": "What must be in place before the hub leaves demo or goes live. The time zone and a postal address must be set; anything else you can accept as it is for this switch, and that is recorded in the admin log.",
     "page": "/reference/modes",
-    "anchor": "mode-readiness",
-    "pending": true
+    "anchor": "mode-readiness"
   },
   "mode.switch": {
     "text": "What the switch will do, in plain words: who can sign in, who the hub's email reaches, what happens to the notice, and that a hub can never go back to demo.",
     "page": "/reference/modes",
-    "anchor": "mode-switch",
-    "pending": true
+    "anchor": "mode-switch"
   },
   "legal.reviewed": {
     "text": "Tick this once someone qualified has reviewed your Terms and Privacy Policy. Until then admins see a draft note on both, and Mode asks for it before the hub leaves demo or goes live.",
     "page": "/reference/settings/legal",
-    "anchor": "legal-reviewed",
-    "pending": true
+    "anchor": "legal-reviewed"
   }
 }
