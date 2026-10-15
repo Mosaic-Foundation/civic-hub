@@ -37,20 +37,17 @@
   "settings.admin-log": {
     "text": "A read-only list of what this hub's admins did that the hub records, newest first, last 100. Comment hides are in the Moderation log instead.",
     "page": "/reference/settings/",
-    "anchor": "settings-admin-log",
-    "pending": true
+    "anchor": "settings-admin-log"
   },
   "settings.people": {
     "text": "Who administers the hub and who sits on its board. Admins reach the admin pages; board members can post announcements. Changing either list needs a fresh code.",
     "page": "/reference/settings/",
-    "anchor": "settings-people",
-    "pending": true
+    "anchor": "settings-people"
   },
   "settings.officials": {
     "text": "People with a public title, shown as a pill beside their name. Officials can post announcements, and those marked Receives briefs get each published brief by email.",
     "page": "/reference/settings/",
-    "anchor": "settings-officials",
-    "pending": true
+    "anchor": "settings-officials"
   },
   "settings.participation": {
     "text": "How much support a proposed vote needs before it opens, and how names appear on comments. Each setting has its own save button.",
@@ -161,20 +158,17 @@
   "people.admins": {
     "text": "Email addresses of this hub's admins. They reach every admin page and can post announcements. A new admin gets an email. Changing the list needs a fresh code.",
     "page": "/reference/settings/",
-    "anchor": "people-admins",
-    "pending": true
+    "anchor": "people-admins"
   },
   "people.board": {
     "text": "Email addresses of board members. They can post announcements and be chosen as brief recipients, but cannot open admin pages. Changing the list needs a fresh code.",
     "page": "/reference/settings/",
-    "anchor": "people-board",
-    "pending": true
+    "anchor": "people-board"
   },
   "officials.extra_recipients": {
     "text": "Standing addresses, such as a clerk or a shared board inbox, that also receive each published brief although they are not a person's office.",
     "page": "/reference/settings/",
-    "anchor": "officials-extra-recipients",
-    "pending": true
+    "anchor": "officials-extra-recipients"
   },
   "identity.name": {
     "text": "What the hub calls itself on every page and in the legal documents. Left empty, it uses the name the hub was created with. Its address and its email sender name stay as they are.",
@@ -324,14 +318,12 @@
   "nav.layout": {
     "text": "Where the hub's sections are drawn on a computer: a sidebar on the left, or tabs along the top. Phones always get a bar at the bottom of the screen.",
     "page": "/reference/settings/theme",
-    "anchor": "nav-layout",
-    "pending": true
+    "anchor": "nav-layout"
   },
   "nav.section_order": {
     "text": "The order of the hub's sections everywhere they appear. Feed is always first; the first four are the tabs on a phone's bottom bar, and the rest are under More.",
     "page": "/reference/settings/theme",
-    "anchor": "nav-section-order",
-    "pending": true
+    "anchor": "nav-section-order"
   },
   "plugin.vote.min_duration_days": {
     "text": "The shortest voting window a drafter may pick for a vote, in days (1 to 365). Left empty, it is 14.",
@@ -351,8 +343,7 @@
   "plugin.vote.default_check_mode": {
     "text": "What a receipt code shows after a vote closes: how that ballot was cast, or only that it was counted. The drafter can choose the other; it is fixed once approved.",
     "page": "/reference/plugins",
-    "anchor": "plugin-vote-default-check-mode",
-    "pending": true
+    "anchor": "plugin-vote-default-check-mode"
   },
   "plugin.conversation.polis_url": {
     "text": "The address of the Polis server this hub's conversations run on. Left empty, the platform's server is used.",
@@ -422,8 +413,7 @@
   "plugin.feedback.contact_email": {
     "text": "Where the Feedback page tells people to write if they prefer email. Left empty, it shows the Legal contact address, or the platform's if that is empty too.",
     "page": "/reference/plugins",
-    "anchor": "plugin-feedback-contact-email",
-    "pending": true
+    "anchor": "plugin-feedback-contact-email"
   },
   "plugin.members.min_count": {
     "text": "Until the hub has this many members, residents see no member count, no faces and no Members page. Admins always see them. Empty or 0 shows them from the first member.",
@@ -440,31 +430,26 @@
   "admin.feedback_forward": {
     "text": "Shares this item with Civic.Social, which maintains the software, as a bug or an idea. The sender's name and address stay here. Their status then shows on the item.",
     "page": "/reference/plugins",
-    "anchor": "admin-feedback-forward",
-    "pending": true
+    "anchor": "admin-feedback-forward"
   },
   "admin.contact_civic_social": {
     "text": "Write to Civic.Social yourself, apart from residents' feedback: a question about running the hub, a problem or a request. Your address goes with it so they can reply.",
     "page": "/reference/plugins",
-    "anchor": "admin-contact-civic-social",
-    "pending": true
+    "anchor": "admin-contact-civic-social"
   },
   "people.hidden_members": {
     "text": "Members who chose not to appear on the Members page or the home page's pictures. Only admins see them, here. They are still counted as members.",
     "page": "/reference/settings/",
-    "anchor": "people-hidden-members",
-    "pending": true
+    "anchor": "people-hidden-members"
   },
   "share.invites": {
     "text": "Invite people by email: ten addresses a day, fifty for an admin, never twice to one address. On a beta hub a member's invites go on the waitlist; an admin's let the address in.",
     "page": "/reference/modes",
-    "anchor": "share-invites",
-    "pending": true
+    "anchor": "share-invites"
   },
   "members.visibility": {
     "text": "Whether other members see your name and pattern picture on the Members page and the home page. Never your email address. You are counted either way.",
     "page": "/start/what-is-a-hub",
-    "anchor": "members-visibility",
-    "pending": true
+    "anchor": "members-visibility"
   }
 }
