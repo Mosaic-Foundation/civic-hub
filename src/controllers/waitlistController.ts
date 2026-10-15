@@ -3,6 +3,7 @@ import { route } from "../http/route.js";
 import { forHub, HubDbError } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { notifyAdminsOfWaitlistSignup } from "../services/waitlistNotify.js";
+import { isPluginEnabledSync } from "../services/hubSettings.js";
 
 const NAME_MAX_LEN = 200;
 
@@ -76,7 +77,11 @@ export const handleJoinWaitlist = route(async (req, res) => {
   // frozen the instant the response is flushed, so a fire-and-forget send
   // never leaves the box. Best-effort — a failed send is logged inside, and
   // the signup (already persisted) still reports success.
-  await notifyAdminsOfWaitlistSignup({
+  //
+  // Only when the hub has no admin digest (Adam, 2026-10-15): with it on, the
+  // digest counts new waitlist signups, and one email per signup was a second
+  // copy of the same news.
+  if (!isPluginEnabledSync("admin_digest")) await notifyAdminsOfWaitlistSignup({
     email,
     name,
     notes,
