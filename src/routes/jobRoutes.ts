@@ -14,6 +14,8 @@ import { JOB_RUNNERS, PLATFORM_JOB_RUNNERS } from "../jobs/runners.js";
 import { runJobAcrossHubs } from "../jobs/runJob.js";
 import { isCronAuthorized } from "../jobs/cronAuth.js";
 import { requestedHub } from "../services/cronHubs.js";
+import { pingHeartbeat } from "../utils/heartbeat.js";
+import { flushErrors } from "../utils/errorTracking.js";
 
 function handlerFor(job: JobSpec, calledAs: string) {
   return route(async (req, res) => {
@@ -26,23 +28,45 @@ function handlerFor(job: JobSpec, calledAs: string) {
       );
     }
     const force = req.query.force === "true" || req.query.force === "1";
-    if (isPlatformJob(job)) {
-      const run = PLATFORM_JOB_RUNNERS[job.id];
-      if (!run) throw new Error(`job "${job.id}" has no runner`);
-      const outcome = await run({ now: new Date(), force });
-      res.status(outcome.status).json({ job: job.id, platform: outcome.body });
-      return;
-    }
-    const onlyHub = requestedHub(req.query);
+    const onlyHub = isPlatformJob(job) ? null : requestedHub(req.query);
     if (onlyHub === undefined) {
       throw new ValidationError("hub must be a hub slug", "invalid_hub");
     }
-    const runner = JOB_RUNNERS[job.id];
-    if (!runner) throw new Error(`job "${job.id}" has no runner`);
-    const report = await runJobAcrossHubs(job, runner, { now: new Date(), force, onlyHub });
-    if ("error" in report) throw new NotFoundError(report.error, "hub_not_found");
-    res.status(report.status).json({ job: job.id, hubs: report.hubs });
+    // A run for every hub is the scheduled one, and pings its heartbeat:
+    // success, or /fail when any hub failed or the run threw. A run for one
+    // hub (?hub=) is someone checking by hand, and does not. The ping and any
+    // error report go out BEFORE the response: a serverless function may be
+    // frozen once its response is sent.
+    const beats = onlyHub === null;
+    let answer: { status: number; body: unknown };
+    try {
+      answer = await runOnce(job, force, onlyHub);
+    } catch (err) {
+      // sendError() (route()) flushes the error report on its way out.
+      if (beats) await pingHeartbeat(job.id, false);
+      throw err;
+    }
+    await Promise.all([beats ? pingHeartbeat(job.id, answer.status < 500) : undefined, flushErrors()]);
+    res.status(answer.status).json(answer.body);
   });
+}
+
+async function runOnce(
+  job: JobSpec,
+  force: boolean,
+  onlyHub: string | null,
+): Promise<{ status: number; body: unknown }> {
+  if (isPlatformJob(job)) {
+    const run = PLATFORM_JOB_RUNNERS[job.id];
+    if (!run) throw new Error(`job "${job.id}" has no runner`);
+    const outcome = await run({ now: new Date(), force });
+    return { status: outcome.status, body: { job: job.id, platform: outcome.body } };
+  }
+  const runner = JOB_RUNNERS[job.id];
+  if (!runner) throw new Error(`job "${job.id}" has no runner`);
+  const report = await runJobAcrossHubs(job, runner, { now: new Date(), force, onlyHub });
+  if ("error" in report) throw new NotFoundError(report.error, "hub_not_found");
+  return { status: report.status, body: { job: job.id, hubs: report.hubs } };
 }
 
 export const jobRouter = Router();
