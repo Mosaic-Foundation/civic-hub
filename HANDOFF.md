@@ -6,7 +6,9 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Navigation polish: a section opens at its own header, and More closes where it opened — 2026-10-14
 
-Commits on `multi-tenant` `06036e1`..(this entry), one item each, from Adam's phone test of the navigation slice.
+Commits on `multi-tenant` `06036e1`..`89ab64a`, one item each, plus this closing entry, from Adam's phone test of the
+navigation slice. **Live on dev; CI, E2E and Smoke green on `89ab64a`:** API 770 passed in both modes, unit 1,563,
+Playwright 143 passed (2 skipped); Smoke 19 of 19 on live dev in 1.6 min.
 It goes to production with that slice. Report and handoff: `Navigation-Polish-Session-Report-2026-10-14.md`,
 `Navigation-Polish-Handoff-to-Management-2026-10-14.md` (Mosaic Foundation Management/Civic Social).
 
@@ -34,6 +36,10 @@ mode changes; "Discuss" on the bar; the sheet's first group is the hub's name.
    is "Discuss" for Conversations; everywhere else says Conversations.
 
 **Tests:** Playwright 143 passed, 2 skipped; smoke 19 of 19 locally; unit 1,563. See TESTING.md.
+
+**Settings reach every visitor within a minute, not at once:** each serverless instance caches a hub's settings
+for 60 s (`src/db/hubSettingsStore.ts`) and a save clears only its own instance. Smoke's sidebar test failed once
+on it (`8972643`) and now reloads until the sidebar shows. Always so for every setting; a decision for later.
 
 **For the docs job:** the "Hub modes" page and any page describing the beta/demo bar should say it can be closed to
 a thin "Beta hub" / "Demo hub" bar; pages that show the masthead on section pages or the "Talk" tab need retaking.
