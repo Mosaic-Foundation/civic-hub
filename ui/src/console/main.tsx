@@ -3,7 +3,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { installErrorReporter } from "../services/errorReporter";
 import "./console.css";
+
+installErrorReporter("console");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

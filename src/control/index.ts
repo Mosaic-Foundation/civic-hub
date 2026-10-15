@@ -19,6 +19,7 @@ import express, { type Express } from "express";
 import { isConsoleHost, isStartHost } from "./config.js";
 import { controlRouter } from "./router.js";
 import { startRouter } from "./startRouter.js";
+import { clientErrorsRouter } from "../http/clientErrors.js";
 import { healthHandler } from "../http/health.js";
 
 export function withConsole(hubApp: Express): Express {
@@ -26,8 +27,10 @@ export function withConsole(hubApp: Express): Express {
   front.disable("x-powered-by");
   const control = controlRouter();
   const start = startRouter();
+  // Every hostname: a browser's error report (src/http/clientErrors.ts), and
   // /health for the console and the start page, which uptime monitoring
   // checks like any hub (the hub app serves its own).
+  front.use(clientErrorsRouter());
   front.get("/health", (req, res, next) => {
     if (isConsoleHost(req.headers.host) || isStartHost(req.headers.host)) return healthHandler(req, res, next);
     next();

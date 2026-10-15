@@ -10,6 +10,10 @@ import App from './App.tsx'
 import { loadHubConfig, applyHubHead, getHubDeadEnd, getHubMovedTo } from './config/hubConfig'
 import { DEAD_ENDS, DEAD_END_STYLE } from '../../src/shared/deadEnd'
 import { HubConfigProvider } from './config/HubConfigContext'
+import { installErrorReporter } from './services/errorReporter'
+
+// Uncaught errors go to the hub's /api/client-errors (operations shell).
+installErrorReporter('hub')
 
 // Which hub is this? Decided by the hostname, so it has to be fetched before
 // anything renders: a first paint with the wrong hub's name and banner, then

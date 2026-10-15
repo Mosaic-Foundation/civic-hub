@@ -4,8 +4,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { installErrorReporter } from "../services/errorReporter";
 import "../console/console.css";
 import "./start.css";
+
+installErrorReporter("start");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

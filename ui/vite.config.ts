@@ -6,6 +6,11 @@ import { UI_SECURITY_HEADERS } from '../src/shared/securityHeaders.ts'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // The commit this bundle was built from, for error reports
+  // (src/services/errorReporter.ts). Vercel sets it at build time.
+  define: {
+    __CIVIC_COMMIT__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA ?? ''),
+  },
   build: {
     rollupOptions: {
       // Three pages: the hub app, the super admin's console (src/console/,

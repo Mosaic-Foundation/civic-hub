@@ -49,7 +49,8 @@ export default defineConfig([
     files: ['src/start/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': ['error', {
-        patterns: [{ regex: '^\\.\\./(?!console/|\\.\\./\\.\\./src/shared/)', message: 'The start page imports only the console and src/shared/, nothing of the hub app.' }],
+        // services/errorReporter: the one error reporter, which holds no hub state.
+        patterns: [{ regex: '^\\.\\./(?!console/|\\.\\./\\.\\./src/shared/|services/errorReporter$)', message: 'The start page imports only the console, src/shared/ and the error reporter, nothing of the hub app.' }],
       }],
     },
   },
@@ -61,7 +62,9 @@ export default defineConfig([
         // server and the console (jurisdiction types and names). The other is
         // the one Modal (components/Modal), which holds no hub state, so every
         // dialog in the hub and the console behaves alike (Submit and Save).
-        patterns: [{ regex: '^\\.\\./(?!\\.\\./\\.\\./src/shared/|components/Modal$)', message: 'The console stands alone: it imports nothing from the hub app (src/shared/ and components/Modal excepted).' }],
+        // The third is the one error reporter (services/errorReporter), which
+        // holds no hub state either (operations shell).
+        patterns: [{ regex: '^\\.\\./(?!\\.\\./\\.\\./src/shared/|components/Modal$|services/errorReporter$)', message: 'The console stands alone: it imports nothing from the hub app (src/shared/, components/Modal and services/errorReporter excepted).' }],
       }],
     },
   },
