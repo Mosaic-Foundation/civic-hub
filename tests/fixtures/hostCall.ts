@@ -7,6 +7,7 @@ import { API_BASE, freshTestIp } from "./helpers.js";
 export interface HostResponse {
   status: number;
   body: any;
+  headers: import("node:http").IncomingHttpHeaders;
 }
 
 /**
@@ -48,9 +49,9 @@ export function call(
         res.on("data", (c) => (raw += c));
         res.on("end", () => {
           try {
-            resolve({ status: res.statusCode ?? 0, body: raw ? JSON.parse(raw) : {} });
+            resolve({ status: res.statusCode ?? 0, body: raw ? JSON.parse(raw) : {}, headers: res.headers });
           } catch {
-            resolve({ status: res.statusCode ?? 0, body: { raw } });
+            resolve({ status: res.statusCode ?? 0, body: { raw }, headers: res.headers });
           }
         });
       },

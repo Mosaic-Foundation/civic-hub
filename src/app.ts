@@ -56,7 +56,7 @@ import { assertSpaceIdentityConfigured } from "./config/hub.js";
 import { ensureSeeded } from "./debug/autoSeed.js";
 import { normalizeHostname, resolveHub, resolveHubForHostname } from "./middleware/hub.js";
 import hubConfigRoutes from "./routes/hubConfigRoutes.js";
-import { pingDb, pingHubDb } from "./db/health.js";
+import { healthHandler } from "./http/health.js";
 import { validateEmailConfig } from "./utils/email.js";
 import { validateSchemaAtStartup, getSchemaReport } from "./db/schemaCheck.js";
 import { checkDevFlags } from "./config/devFlags.js";
@@ -371,47 +371,9 @@ app.get("/", route((_req, res) => {
   });
 }));
 
-// Health check — includes a DB ping so you can verify Supabase connectivity
-app.get("/health", route(async (req, res) => {
-  const db = await pingDb();
-  // Phase 3: which role hub queries run as, and that a minted token for this
-  // host's hub verifies. /health is hub-exempt, so the host is looked up here;
-  // a host with no hub reports the mode only.
-  const healthHub = await resolveHubForHostname(normalizeHostname(req.headers.host ?? req.hostname)).catch(
-    () => null,
-  );
-  const hubDb = await pingHubDb(healthHub?.id ?? null);
-  // Connectivity is not correctness: the ping passed throughout the
-  // 2026-08-22 waitlist outage while every write to that table failed. The
-  // schema report is what makes "deployed code vs applied migrations" visible.
-  const schema = await getSchemaReport().catch((err) => ({
-    ok: true as const,
-    checked: 0,
-    gaps: [],
-    inconclusive: [{ table: "*", detail: err instanceof Error ? err.message : String(err) }],
-    duration_ms: 0,
-  }));
-  // The deployed commit, so "is the latest code actually live?" is answered
-  // in one request: compare it to `git rev-parse HEAD` locally. Vercel's
-  // variable or a generic one (src/config/deployment.ts).
-  const commit = deploymentCommit();
-  const healthy = db.ok && schema.ok && hubDb.ok;
-  res.status(healthy ? 200 : 503).json({
-    status: healthy ? "ok" : "degraded",
-    db,
-    hub_db: hubDb,
-    schema: {
-      ok: schema.ok,
-      checked: schema.checked,
-      // Only the gaps travel in the response — enough to name the missing
-      // column, not enough to enumerate the schema to an anonymous caller.
-      gaps: schema.gaps.map((g) => `${g.table}: ${g.detail}`),
-    },
-    commit,
-    deployed_at: deploymentId(),
-    timestamp: new Date().toISOString(),
-  });
-}));
+// Health check — includes a DB ping, the hub's own database check and the
+// schema report; 503 when any of them fails (src/http/health.ts).
+app.get("/health", healthHandler);
 
 // Auto-seed is triggered by the `ensureSeeded` middleware on first request,
 // and is gated behind CIVIC_ALLOW_SEED so it never runs in production.

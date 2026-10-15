@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from "vitest";
 import { apiJson } from "../fixtures/helpers.js";
+import { call } from "../fixtures/hostCall.js";
 
 describe("Health and Discovery", () => {
   it("GET /health returns ok status", async () => {
@@ -132,4 +133,19 @@ describe("Health checks the database functions", () => {
       await db.end();
     }
   });
+});
+
+// Operations shell: uptime monitoring reads the status code of /health on
+// every hub and on the console.
+describe("Health for monitors", () => {
+  it("answers on the console's hostname too, and is never cached", async () => {
+    for (const host of ["floyd.civic.social", "console.localhost"]) {
+      const res = await call("GET", "/health", host);
+      expect(res.status, host).toBe(200);
+      expect(res.body.status).toBe("ok");
+      expect(res.body.schema.gaps).toEqual([]);
+      expect(res.headers["cache-control"]).toBe("no-store");
+    }
+  });
+
 });
