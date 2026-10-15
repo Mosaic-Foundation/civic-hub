@@ -36,6 +36,7 @@ import { latestJobRuns } from "../services/jobRuns.js";
 import { JOBS, isPlatformJob, type HubJobSpec } from "../jobs/registry.js";
 import { JOB_NAMES } from "../modules/civic.admin_digest/index.js";
 import { validateSettingsWrite } from "../models/hubSettingsWrite.js";
+import { recordHubAdminAudit } from "../services/hubAdminAudit.js";
 import {
   EDITABLE_SETTING_KEYS,
   fieldSpec,
@@ -229,8 +230,21 @@ export const handlePutHubSettings = route(async (req, res) => {
     types: processTypeDisplays(),
   });
   const navFollowOn = order === null ? [] : [{ key: KEYS.NAV_SECTION_ORDER, value: order }];
+  // "Terms and Privacy reviewed" is a claim about the hub's legal footing:
+  // who ticked or unticked it, and when, goes in the admin log. The form
+  // sends every field of its section, so only a change is recorded.
+  const reviewed = entries.find((e) => e.key === KEYS.LEGAL_REVIEWED);
+  const reviewedBefore = reviewed ? (await getSetting(hubId, KEYS.LEGAL_REVIEWED)) === "true" : null;
   await setSettings(hubId, [...entries, ...followOn.settings, ...navFollowOn], actor.id);
   if (followOn.registryName) await renameHub(hubId, followOn.registryName);
+  if (reviewed && reviewedBefore !== null && (reviewed.value === "true") !== reviewedBefore) {
+    await recordHubAdminAudit({
+      actor: actor.email,
+      action: "legal.reviewed",
+      before: { reviewed: reviewedBefore },
+      after: { reviewed: reviewed.value === "true" },
+    });
+  }
 
   // One line per save, naming who and which keys — never the values, which
   // include whole documents.

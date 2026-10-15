@@ -275,3 +275,23 @@ describe("beta → live, and back", () => {
     expect(res.body.code).toBe("mode_change_rejected");
   });
 });
+
+describe("Terms and Privacy reviewed, in the admin log", () => {
+  const entries = async () => {
+    const log = await call("GET", "/admin/hub/admin-log", REMOVE_HOST, undefined, admin[REMOVE_HOST]);
+    expect(log.status).toBe(200);
+    return (log.body.entries as Array<Record<string, any>>).filter((e) => e.action === "legal.reviewed");
+  };
+
+  it("records who ticked it and who unticked it, and nothing for a save that leaves it alone", async () => {
+    expect(await entries()).toHaveLength(0);
+    await settings(REMOVE_HOST, "legal", { "legal.reviewed": "true" });
+    await settings(REMOVE_HOST, "legal", { "legal.reviewed": "true" });
+    await settings(REMOVE_HOST, "legal", { "legal.reviewed": "false" });
+    const log = await entries();
+    // Newest first.
+    expect(log.map((e) => e.after.reviewed)).toEqual([false, true]);
+    expect(log.map((e) => e.before.reviewed)).toEqual([true, false]);
+    expect(log.every((e) => e.actor_email === ADMIN && typeof e.at === "string")).toBe(true);
+  });
+});

@@ -1,6 +1,7 @@
 // The hub admin audit log (Phase 7): every hub-admin action that takes a
 // fresh emailed code — sample-content removal, a mode change, an admin or
-// board roster change — with who did it and the values before and after.
+// board roster change — and a few settings that are claims about the hub
+// (Terms and Privacy reviewed), with who did it and the values before and after.
 //
 // Hub data, unlike the console's control_audit_log: the table carries hub_id
 // under forced RLS, is written through forHub() like everything else the hub
@@ -32,7 +33,10 @@ export type HubAdminAuditAction =
   | "feedback.forward"
   // A member's email invites (members and invites slice): the addresses and
   // what became of them, never the message.
-  | "member.invite";
+  | "member.invite"
+  // "Terms and Privacy reviewed" ticked or unticked under Legal (operations
+  // shell): { reviewed: boolean } before and after.
+  | "legal.reviewed";
 
 export interface HubAdminAuditEntry {
   actor: string;
