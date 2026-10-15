@@ -10,11 +10,12 @@ import type { ReactElement } from "react";
 const PATHS: Record<string, ReactElement> = {
   feed: <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
   conversation: <path d="M4 5h16v10H9l-5 4z" />,
+  // A whole light bulb filling the grid, so it reads at the size of its
+  // neighbours (Adam, 2026-10-14: the small bulb with a dot looked tiny).
   proposal: (
     <>
-      <path d="M9 18h6M10 21h4" />
-      <path d="M8 14a4 4 0 1 1 8 0c0 1.5-1 2.5-1 4H9c0-1.5-1-2.5-1-4z" />
-      <path d="M12 3v2" />
+      <path d="M9 21h6M10 18h4" />
+      <path d="M12 2.5a6.5 6.5 0 0 0-3.8 11.8c.5.4.8.9.8 1.5V18h6v-2.2c0-.6.3-1.1.8-1.5A6.5 6.5 0 0 0 12 2.5z" />
     </>
   ),
   vote: (
