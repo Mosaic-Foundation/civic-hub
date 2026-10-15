@@ -514,7 +514,15 @@ test("at desktop width with Navigation set to Sidebar, the sidebar replaces the 
   await visitAs(page, admin);
   await page.goto("/votes");
   const side = page.getByRole("navigation", { name: "Hub", exact: true });
-  await expect(side).toBeVisible();
+  // Each serverless instance caches a hub's settings for a minute
+  // (src/db/hubSettingsStore.ts); the save clears only the instance that
+  // took it, so another may serve the old Navigation until its copy expires.
+  await expect(async () => {
+    if (!(await side.isVisible())) {
+      await page.reload();
+      await expect(side).toBeVisible({ timeout: 3_000 });
+    }
+  }).toPass({ timeout: 65_000, intervals: [2_000] });
   await expect(page.locator(".civic-nav")).toBeHidden();
   await expect(side.locator('[aria-current="page"]')).toContainText("Votes");
   await expect(side.getByText("Admin", { exact: true })).toBeVisible();
