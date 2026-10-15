@@ -4,6 +4,44 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Members plugin: the member count and page wait for a threshold — 2026-10-14
+
+Commits on `multi-tenant` `699df2e`..`157f308`, plus this entry. **Held back locally until the navigation slice is
+on production** (Adam releases it; `release.sh prod` ships whatever is on the branch), then pushed to dev.
+
+**Release needs:** no migration, no env vars, no pre-checks, nobody signed out. One new plugin id (`members`) and two
+settings (`plugin.members.min_count`, `plugin.members.page_before_threshold`), three pending help notes. Existing
+hubs are unchanged (unset threshold = 0); new hubs are created with 10.
+
+**Adam's decisions (2026-10-14):** Members is a plugin, switched in Hub settings → Plugins. Below its threshold
+residents see no count, no faces, no Members section and no Members page; a separate switch, "Show the Members page
+before then", brings back the page and its section (the count still waits). Admins always see the count. Invites
+("Share this hub") are the hub's own, outside the plugin. Demo hubs count their sample members; beta and live count
+real members only, hidden ones included. Switched off and on again, Members goes to the end of the Section order,
+like any plugin's section.
+
+**Built:**
+1. **The rule is the server's** (`memberVisibility`): below the threshold `GET /members/summary` gives a resident
+   `count: null` and no stack, `GET /members` answers 404 unless the page is shown anyway, and `GET /hub-config`
+   carries `members.page_shown`. An admin on a code-proved session (`resolveCallerIsAdmin`) gets the count, the
+   threshold and the page. Off, the plugin's routes answer 404 (`requirePlugin("members")`); invites are not gated.
+2. **The navigation**: Members is a plugin section in `src/shared/navSections.ts`; the UI shows it when the plugin
+   is on and the page is shown, or to an admin (`membersPageShown`); switching the plugin off drops it from the
+   stored order.
+3. **The home page** keeps Share this hub when the count is hidden; an admin sees the count with "Only admins see
+   this until N members. Members plugin" under it.
+4. **The plugin card**: "Show members from", "Show the Members page before then", and a line saying how many members
+   the hub has and whether residents see the count. The Members page, the Your settings switch and the admins' Hidden
+   members list follow the plugin.
+
+**Tests:** unit 1,567; API `membersPlugin` (both modes); Playwright `membersPlugin.spec.ts` (4), full run 147 passed;
+smoke 20 of 20 locally. See TESTING.md.
+
+**For the docs job:** the Members plugin (`plugins.members`, `plugin.members.min_count`,
+`plugin.members.page_before_threshold`, pending) and the home page's member count.
+
+---
+
 ## Navigation polish: a section opens at its own header, and More closes where it opened — 2026-10-14
 
 Commits on `multi-tenant` `06036e1`..`89ab64a`, one item each, plus this closing entry, from Adam's phone test of the
