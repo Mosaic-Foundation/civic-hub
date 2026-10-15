@@ -3,15 +3,17 @@ import hub from "../config/hub";
 import { useAuth } from "../context/AuthContext";
 import Modal from "./Modal";
 import WaitlistForm from "./WaitlistForm";
+import ModeNotice from "./ModeNotice";
 import "./BetaBanner.css";
 
 /**
- * Always-on beta bar, shown to EVERYONE in the full app whenever
- * hub.beta_mode is true — signed-in testers and signed-out preview
- * browsers alike. One message, editable per hub (`copy.beta_banner`):
- * this hub is in beta — and, while sample content is left, that the content
- * marked Sample is not real community input. Deliberately not dismissible — the
- * reminder must survive a tester three pages deep in a seeded process.
+ * The beta bar, shown to EVERYONE in the full app whenever hub.beta_mode is
+ * true — signed-in testers and signed-out preview browsers alike. One
+ * message, editable per hub (`copy.beta_banner`): this hub is in beta — and,
+ * while sample content is left, that the content marked Sample is not real
+ * community input. Closing it leaves a thin "Beta hub" bar (ModeNotice;
+ * navigation polish, 2026-10-14), so the reminder still survives a tester
+ * three pages deep in a seeded process.
  * Gone at public launch with zero code change when beta_mode flips off.
  *
  * The bar's text is identical in both auth states, so nothing visibly
@@ -32,22 +34,24 @@ export default function BetaBanner() {
 
   return (
     <>
-      <div className="beta-banner" role="region" aria-label="Beta notice">
-        <span className="beta-banner-text">
-          {/* The hub's own sentence, or the default, which mentions sample
-              content only while some is left (review R45). */}
-          {hub.beta_banner}
-        </span>
-        {showCta && (
-          <button
-            type="button"
-            className="beta-banner-cta"
-            onClick={() => setShowWaitlist(true)}
-          >
-            Join the waitlist
-          </button>
-        )}
-      </div>
+      {/* Closable since the navigation polish (Adam, 2026-10-14): closed, a
+          thin "Beta hub" bar stays, the waitlist button still on its right. */}
+      <ModeNotice
+        label="Beta notice"
+        short="Beta hub"
+        message={
+          // The hub's own sentence, or the default, which mentions sample
+          // content only while some is left (review R45).
+          hub.beta_banner
+        }
+        action={
+          showCta && (
+            <button type="button" className="beta-banner-cta" onClick={() => setShowWaitlist(true)}>
+              Join the waitlist
+            </button>
+          )
+        }
+      />
 
       {showWaitlist && (
         <WaitlistDialog onDismiss={() => setShowWaitlist(false)} />

@@ -77,3 +77,82 @@
   border: none;
   background: transparent;
 }
+
+/* --- Close, and the thin bar it leaves (ModeNotice.tsx; navigation polish,
+   2026-10-14) --- */
+
+.beta-banner {
+  position: relative;
+}
+
+.beta-banner-close {
+  position: absolute;
+  top: 50%;
+  right: var(--space-sm);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.beta-banner-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.beta-banner-close:focus-visible,
+.beta-banner-short:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* The full message keeps clear of the ×. */
+.beta-banner:not(.beta-banner--thin) {
+  padding-right: calc(var(--space-sm) + 44px);
+  padding-left: calc(var(--space-sm) + 44px);
+}
+
+.beta-banner--thin {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  min-height: 34px;
+  padding: 2px var(--space-md);
+  font-size: var(--font-size-sm);
+}
+
+.beta-banner-short {
+  min-height: 30px;
+  padding: 0 var(--space-xs);
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.45);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.beta-banner--thin .beta-banner-cta {
+  min-height: 28px;
+  padding: 2px var(--space-sm);
+  font-size: var(--font-size-xs);
+}
+
+@media (max-width: 600px) {
+  .beta-banner--thin {
+    flex-direction: row;
+  }
+}
