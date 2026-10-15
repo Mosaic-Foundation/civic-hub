@@ -37,6 +37,7 @@ import { resolveTimeZone } from "../../utils/hubTime.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
 import {
   getAdminEmailsSync,
+  getBoardEmailsSync,
   isBetaEnabledSync,
   isDemoHubSync,
   isEmailOnBetaAllowlist,
@@ -210,10 +211,15 @@ async function limitIp(step: keyof typeof HUB_SIGN_IN_LIMITS, ip: string, timeZo
  * mail guard still holds notifications to officials on a demo or beta hub
  * (mailGuard.ts), and their sign-in code passes it as every code does.
  * Checked when a code is asked for, and when an invite link is used.
+ *
+ * Board members too (Adam, 2026-10-15, leaving-demo slice): an admin who has
+ * just added someone under Admins & board should not find them turned away
+ * in beta. Sign-in only, like officials: the mail guard is unchanged.
  */
 async function assertMayEnterBeta(normalizedEmail: string): Promise<void> {
   if (!isBetaEnabledSync()) return;
   if (getAdminEmailsSync().includes(normalizedEmail)) return;
+  if (getBoardEmailsSync().includes(normalizedEmail)) return;
   const allowed =
     (await isEmailOnBetaAllowlist(currentHubId(), normalizedEmail)) ||
     (await lookupOfficialByEmail(normalizedEmail)) !== null;

@@ -101,8 +101,9 @@ export default function PeopleSection() {
 
       <p className="form-hint">
         Admins reach every page under /admin and can post announcements.
-        Board members can post announcements and are offered as brief
-        recipients; they cannot reach admin pages. Both lists belong to
+        Board members can sign in while the hub is in beta, and can post
+        announcements until an Officials list is saved (after that, list
+        them there too); they cannot reach admin pages. Both lists belong to
         this hub — an admin here is not an admin on any other hub.
       </p>
       <p className="form-hint">

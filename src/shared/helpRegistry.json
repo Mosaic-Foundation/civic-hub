@@ -160,7 +160,7 @@
     "anchor": "people-admins"
   },
   "people.board": {
-    "text": "Email addresses of board members. They can post announcements and be chosen as brief recipients, but cannot open admin pages. Changing the list needs a fresh code.",
+    "text": "Email addresses of board members. They can sign in while the hub is in beta and post announcements until an Officials list is saved, but cannot open admin pages. Changing the list needs a fresh code.",
     "page": "/reference/settings/",
     "anchor": "people-board"
   },
