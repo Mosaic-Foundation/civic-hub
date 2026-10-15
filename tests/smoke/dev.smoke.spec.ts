@@ -67,6 +67,8 @@ const plantedSamples: string[] = [];
 const mosaicCopies: string[] = [];
 /** The smoke hub's Navigation before the sidebar test set it; put back in afterAll. */
 let navLayoutBefore: string | null = null;
+/** The smoke hub's Members threshold before the sidebar test raised it; put back in afterAll. */
+let membersMinBefore: string | null = null;
 /** The vote the phone ballot test made: its feed card carries the type pill. */
 let smokeVoteTitle = "";
 let cleanReview = { id: "", title: "" };
@@ -157,6 +159,13 @@ test.afterAll(async ({ playwright }) => {
       data: { section: "theme", values: { "nav.layout": navLayoutBefore } },
     });
     if (!r.ok()) errors.push(`nav.layout back: ${r.status()}`);
+  }
+  if (membersMinBefore !== null) {
+    const r = await request.put(`${apiBase()}/admin/hub/settings`, {
+      headers: auth(admin),
+      data: { section: "plugins", values: { "plugin.members.min_count": membersMinBefore } },
+    });
+    if (!r.ok()) errors.push(`members threshold back: ${r.status()}`);
   }
   for (const id of plantedSamples) await removeSample(id);
   await removeMosaicCopies(mosaicCopies);
@@ -681,5 +690,30 @@ test("a member sends an invite from Share this hub; on the beta smoke hub it goe
     `waitlist?select=email,invited_by&hub_id=eq.${encodeURIComponent(smokeHub())}&email=eq.${encodeURIComponent(`smoke-${run}-invitee@example.test`)}`,
   )) as Array<{ email: string; invited_by: string | null }>;
   expect(entry?.invited_by).toBeTruthy();
+  await page.close();
+});
+
+// Last, because the member tests above need the count: the Members plugin's
+// threshold (2026-10-14), raised above any count and put back in afterAll.
+test("below the Members threshold a resident gets no count from the server; the admin sees it with a note", async ({ browser, request }) => {
+  const settings = await (await request.get(`${apiBase()}/admin/hub/settings`, { headers: auth(admin) })).json();
+  membersMinBefore = (settings.values?.["plugin.members.min_count"] as string | undefined) ?? "";
+  const raised = await request.put(`${apiBase()}/admin/hub/settings`, {
+    headers: auth(admin),
+    data: { section: "plugins", values: { "plugin.members.min_count": "100000" } },
+  });
+  expect(raised.ok(), await raised.text()).toBeTruthy();
+  // Another serverless instance may hold the old settings for up to a minute.
+  await expect(async () => {
+    const summary = await (await request.get(`${apiBase()}/members/summary`, { headers: auth(resident) })).json();
+    expect(summary.count).toBeNull();
+  }).toPass({ timeout: 65_000, intervals: [2_000] });
+
+  const page = await open(browser, { viewport: { width: 375, height: 812 } });
+  await visitAs(page, admin);
+  await expect(async () => {
+    await page.goto("/");
+    await expect(page.getByTestId("member-count-admin-only")).toBeVisible({ timeout: 3_000 });
+  }).toPass({ timeout: 20_000, intervals: [1_000] });
   await page.close();
 });
