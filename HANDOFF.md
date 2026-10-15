@@ -4,6 +4,80 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Leaving demo: a readiness check, the switch's consequences, and an admin digest that never repeats — 2026-10-15
+
+Commits on `multi-tenant` `ed81976`..`2b670ad`, one item each, plus this closing entry. **Live on dev at `9af02fb`
+(the slice); CI, E2E and Smoke green there:**
+- API: 64 of 64 files in both modes.
+- Unit: 136 files.
+- Help links: 93 keys.
+- Playwright: 158 passed.
+- Smoke: 21 of 21 in 1.8 min.
+
+The dev-walk fix `2b670ad` and this entry follow in the same release. Reports: `Leaving-Demo-Session-Report-2026-10-15.md`, `Leaving-Demo-Handoff-to-Management-2026-10-15.md`
+(Mosaic Foundation Management/Civic Social).
+
+**Release needs:**
+- **One additive migration, `20261017000000_leaving_demo.sql`:** `users.demo_only`, `waitlist.told_open_at`, and
+  table `admin_digest_marks` (hub policy, grants, no functions).
+- No pre-checks, no env vars, nobody signed out.
+- Existing users keep `demo_only = false`, so they keep counting.
+
+**Production note:** dev has no platform postal address (`CIVIC_PLATFORM_POSTAL_ADDRESS`), so there every hub must
+enter its own before leaving demo. Check production's before telling admins what to expect.
+
+**Adam's decisions (2026-10-15):**
+- **Readiness:** every move up gets the list (demo → beta, demo → live, beta → live). Live → beta shows only who it
+  would lock out.
+  - The time zone and a postal address **block**; the console defaults the time zone from the place.
+  - The name and place, contact address, a second admin ("Just me"), the legal review and the samples may be
+    accepted for that one switch, recorded in the admin log.
+- **Digest:** each line reads "3 new process reviews (8 waiting)"; only new sends, waiting never does.
+- **Waitlist:** told when the hub goes live, ticked by default. Per-signup emails to admins fold into the digest
+  when it's on.
+- **Board members** pass the beta gate.
+- **Demo-only accounts** stop counting as members; their content stays.
+- **A new admin** lands on "Next: set up your hub".
+
+**Built:**
+1. **Readiness and consequences:**
+   - `src/services/modeReadiness.ts`, `GET /admin/hub/mode/readiness?to=`, and Hub settings → Mode.
+   - "Email me a code" stays off until the list is clear or accepted.
+   - The server checks the same rule before the code is spent (`mode_not_ready`) and writes `accepted` into the
+     `hub.mode` admin log entry.
+   - Going live calls `tellWaitlistHubIsOpen` (`src/services/waitlistOpen.ts`, mail purpose `hub_open`, once per
+     person).
+   - The Mode text now says no one, the platform included, can put a hub back into demo (the trigger was always
+     right).
+2. **Legal:** the "Our Terms and Privacy Policy have been reviewed" box (`legal.reviewed`) also hides the draft notes.
+3. **Time zone:** `createHub` defaults it from the place's state when none is sent.
+4. **First sign-in:** a new admin's first sign-in goes to `/admin/settings/sample#next-steps`. The box
+   (`ui/src/pages/settings/nextSteps.tsx`) heads Sample content in demo and lists every readiness step.
+5. **Beta gate:** board members pass it (`assertMayEnterBeta`). Admins & board no longer claims they are offered as
+   brief recipients.
+6. **Members:** `users.demo_only` is set by demo's any-six-digits and cleared by a real code. Out of demo, member
+   counts skip it.
+7. **The mode notice:** a live hub forgets which notice was closed, so beta after live shows in full.
+8. **The admin digest** (`civic.admin_digest`, DB access in `store.ts`) is a tally:
+   - one line per category: process reviews (flagged by the check), briefs, meeting summaries (quality flag),
+     feedback, edits, the waitlist and scheduled job problems;
+   - new is counted from the mark the last delivered digest left (`admin_digest_marks`), by times that never
+     change, with a compare-and-set claim;
+   - open proposals and the item lists are gone.
+9. **The switch's message** says it reaches every visitor within a minute (the settings cache, seen on the dev walk).
+
+**The dev walk** (hub `leave1015`, Giles County VA, Adam typing the codes):
+- the first sign-in landed on the Next box, and the time zone came from the place;
+- the readiness list blocked on the postal address only;
+- the content was kept, and the demo visitor was marked demo-only;
+- the accepted items are in the admin log;
+- the waitlist was told on going live.
+
+**Not done:** the Docs pages ("Hub modes", "Set up your hub", Plugins → Admin digest). The report lists what the weekly job can infer and what
+must be written by hand. New help keys `mode.readiness`, `mode.switch` and `legal.reviewed` are pending.
+
+---
+
 ## Members plugin: the member count and page wait for a threshold — 2026-10-14
 
 Commits on `multi-tenant` `699df2e`..`712bc91`, plus this closing note. Held on a local branch until the navigation
