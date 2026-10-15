@@ -4,6 +4,42 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Navigation polish: a section opens at its own header, and More closes where it opened — 2026-10-14
+
+Commits on `multi-tenant` `06036e1`..(this entry), one item each, from Adam's phone test of the navigation slice.
+It goes to production with that slice. Report and handoff: `Navigation-Polish-Session-Report-2026-10-14.md`,
+`Navigation-Polish-Handoff-to-Management-2026-10-14.md` (Mosaic Foundation Management/Civic Social).
+
+**Release needs:** none beyond the navigation slice's (no migration, no env vars, no new setting or help key).
+
+**Adam's decisions (2026-10-14):** the masthead, banner photo included, on Feed and About only; **the mode notice is
+not removed when closed**: it shrinks to a very thin bar saying "Beta hub" / "Demo hub", with Join the waitlist
+still on its right (Remove samples for a demo hub's admin, by the same rule); it comes back in full when the hub's
+mode changes; "Discuss" on the bar; the sheet's first group is the hub's name.
+
+**Built:**
+1. **Masthead on Feed and About only** (`BANNER_ROUTES`, `HubInfo` out of the five section pages, into About). Each
+   section's own title is the page's h1, at a page-title size, so a phone opens with the header and an item in
+   view. No scroll-on-load.
+2. **The mode notice** (`ModeNotice.tsx`, used by `BetaBanner` and `DemoBanner`): a × closes it to the thin bar; the
+   short label reopens it; remembered per browser per mode in localStorage (`civic:mode-notice-closed`), full when
+   storage is blocked; focus moves to the control that undoes it. The sidebar layout keeps the bars at the head of
+   the content column, so nothing depends on their height.
+3. **More closes where it opened**: the sheet is still the shared Modal, so the page behind is inert; it draws the
+   bar under itself (`BarTabs`), More current, `aria-expanded`, a ×, closing it. A section tab there closes the
+   sheet and goes. The sheet's × is on its own row under the grab handle.
+4. **The hub's name** (`hub.name`, from the config) heads the first group and names its list; two lines, then an
+   ellipsis.
+5. **"Discuss"**: the registry's existing short bar label (`TypeDisplay.section.short`, served in `process_types`)
+   is "Discuss" for Conversations; everywhere else says Conversations.
+
+**Tests:** Playwright 143 passed, 2 skipped; smoke 19 of 19 locally; unit 1,563. See TESTING.md.
+
+**For the docs job:** the "Hub modes" page and any page describing the beta/demo bar should say it can be closed to
+a thin "Beta hub" / "Demo hub" bar; pages that show the masthead on section pages or the "Talk" tab need retaking.
+
+---
+
 ## Navigation: every feed item says what it is; the sections one tap away on a phone, always in view on a desktop — 2026-10-14
 
 Commits on `multi-tenant` `3af6355`..`85b5674`, one item each, plus this closing entry. **Live on dev at `85b5674`**
