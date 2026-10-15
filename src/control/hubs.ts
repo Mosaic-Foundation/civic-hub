@@ -521,6 +521,9 @@ export async function planCreateHub(input: CreateHubInput, allowedModes: readonl
     // New hubs get the left sidebar; a hub made before it reads unset as top
     // tabs, unchanged until its admin chooses (navigation slice, Adam, 2026-10-14).
     [KEYS.NAV_LAYOUT]: "sidebar",
+    // The member count, stack and page wait for 10 members on a new hub; a
+    // hub made before the Members plugin reads unset as 0 (Adam, 2026-10-14).
+    [KEYS.PLUGIN_MEMBERS_MIN_COUNT]: "10",
   };
   // A place hub is titled by its place; any other kind by its own name (the default).
   if (jurisdictionName && kind === "place") settings[KEYS.IDENTITY_PAGE_TITLE] = `${jurisdictionName} — Civic Hub`;

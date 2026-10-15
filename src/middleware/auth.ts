@@ -227,6 +227,23 @@ export async function resolveCallerUser(
 }
 
 /**
+ * Whether the caller is one of this hub's admins on a code-proved session, as
+ * requireAdmin decides, for a public route that shows an admin more. Never
+ * rejects and never gates the route.
+ */
+export async function resolveCallerIsAdmin(req: Request): Promise<boolean> {
+  const token = extractToken(req);
+  if (!token) return false;
+  try {
+    const session = await getSessionFromToken(token);
+    if (!session || session.assurance !== "code") return false;
+    return adminEmails().has(session.user.email.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The signed-in user, from the session token, or UnauthorizedError. Stores
  * the user and the session's assurance on res.locals for the handler.
  */

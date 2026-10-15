@@ -362,6 +362,7 @@ const PLUGIN_CASES: PluginCase[] = [
   { id: "search", route: { method: "GET", path: () => "/search?q=anything" } },
   { id: "feedback", route: { method: "GET", path: () => "/admin/feedback", admin: true }, digest: "feedback" },
   { id: "news_sync", job: "news-sync" },
+  { id: "members", route: { method: "GET", path: () => "/members/summary" } },
 ];
 
 const fixtureIds: string[] = [];
@@ -485,7 +486,7 @@ describe("every plugin, switched off on Athens", () => {
     // PLUGIN_IDS, src/models/hubSettings.ts; the contract's list.
     expect(PLUGIN_CASES.map((c) => c.id).sort()).toEqual(
       ["admin_digest", "announcement", "assistant", "brief", "conversation", "digest", "feedback",
-        "meeting_summary", "news_sync", "project", "proposal", "search", "vote", "wordcloud"],
+        "meeting_summary", "members", "news_sync", "project", "proposal", "search", "vote", "wordcloud"],
     );
   });
 

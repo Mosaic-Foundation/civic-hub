@@ -19,9 +19,9 @@ const TOP_LINKS: ReadonlyArray<{ to: string; label: string; end?: boolean }> = [
 // Section order (config/navigation.ts; navigation slice, 2026-10-14), then
 // Welcome (only when the hub has written one, review R27) and About. Phones
 // have the bottom bar and More instead, so the drawer is desktop only.
-function drawerLinks(): ReadonlyArray<{ to: string; label: string; end?: boolean }> {
+function drawerLinks(admin: boolean): ReadonlyArray<{ to: string; label: string; end?: boolean }> {
   return [
-    ...navSections().map((s) => ({ to: s.path, label: s.label, end: s.kind === "feed" })),
+    ...navSections({ admin }).map((s) => ({ to: s.path, label: s.label, end: s.kind === "feed" })),
     ...(hub.has_welcome ? [{ to: "/welcome", label: "Welcome" }] : []),
     { to: "/about", label: "About" },
   ];
@@ -158,7 +158,7 @@ export default function Nav() {
   const location = useLocation();
   const onFeedbackPage = location.pathname === "/feedback";
 
-  const links = drawerLinks();
+  const links = drawerLinks(isAdmin);
   const searchEnabled = pluginEnabled("search");
   const feedbackEnabled = pluginEnabled("feedback");
 

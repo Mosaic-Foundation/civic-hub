@@ -49,6 +49,11 @@ async function createHub(slug: string, body: Row): Promise<void> {
   });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   created.push(slug);
+  // A new hub shows its members from 10 (the Members plugin, 2026-10-14);
+  // these tests count a handful, so they show them from the first.
+  const admin = await mintSession(slug, ADMIN);
+  const set = await call("PUT", "/admin/hub/settings", host(slug), { section: "plugins", values: { "plugin.members.min_count": "0" } }, admin);
+  expect(set.status, JSON.stringify(set.body)).toBe(200);
 }
 
 /** A joined member with a name of this test's choosing; returns token and id. */

@@ -2969,10 +2969,19 @@ export function getOutcomes(params: {
 // --- Members and "Share this hub" (members and invites slice, 2026-10-14) ---
 
 export interface MemberSummary {
-  /** Every member, those who hid themselves included. */
-  count: number;
-  /** Avatar seeds of the most recent visible members. */
+  /**
+   * Every member, those who hid themselves included; null below the Members
+   * plugin's threshold, unless the caller is an admin.
+   */
+  count: number | null;
+  /** Avatar seeds of the most recent visible members (empty when the count is withheld). */
   stack: string[];
+  /** Whether residents see the count now. */
+  shown?: boolean;
+  /** Whether residents get the Members page now. */
+  page?: boolean;
+  /** The threshold, for an admin. */
+  threshold?: number;
 }
 
 export interface Member {

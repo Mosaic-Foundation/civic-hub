@@ -39,9 +39,13 @@ export const FEED_SECTION: NavSection = {
   kind: "feed",
 };
 
-/** The hub's own sections, beside the types'. Members comes after Outcomes by default. */
-const HUB_SECTIONS: ReadonlyArray<NavSection & { order: number }> = [
-  { id: "members", label: "Members", short: "Members", path: "/members", detailPaths: [], icon: "members", kind: "hub", order: 60 },
+/**
+ * The hub's own sections, beside the types'. Members comes after Outcomes by
+ * default; it is the Members plugin's (2026-10-14), so its switch, and its
+ * threshold through `enabled`, decide whether it is drawn.
+ */
+const HUB_SECTIONS: ReadonlyArray<NavSection & { order: number; plugin: string }> = [
+  { id: "members", label: "Members", short: "Members", path: "/members", detailPaths: [], icon: "members", kind: "hub", order: 60, plugin: "members" },
 ];
 
 /** How many sections the phone's bar shows before More (Feed is the first of them). */
@@ -61,7 +65,8 @@ export function parseSectionOrder(value: string | undefined): string[] {
 /**
  * Every section the hub has now, Feed first, in the hub's order.
  *
- * `enabled(plugin)` is the hub's plugin switch. A section the order names but
+ * `enabled(plugin)` is the hub's plugin switch (for Members, also whether the
+ * reader may see the page yet: the Members plugin's threshold). A section the order names but
  * the hub doesn't have is skipped; one it has but the order doesn't name (a
  * plugin just switched on) comes after the named ones, in default order.
  */
@@ -87,7 +92,7 @@ export function orderedSections(input: {
       order: s.order,
     });
   }
-  available.push(...HUB_SECTIONS);
+  for (const { plugin, ...section } of HUB_SECTIONS) if (input.enabled(plugin)) available.push(section);
   available.sort((a, b) => a.order - b.order);
 
   const named = input.order
@@ -128,9 +133,10 @@ export function orderAfterSwitchingOff(input: {
 }): string | null {
   const order = parseSectionOrder(input.stored);
   if (order.length === 0 || input.switchedOff.length === 0) return null;
-  const gone = new Set(
-    input.types.filter((t) => t.section && input.switchedOff.includes(t.plugin)).map((t) => t.section!.id),
-  );
+  const gone = new Set([
+    ...input.types.filter((t) => t.section && input.switchedOff.includes(t.plugin)).map((t) => t.section!.id),
+    ...HUB_SECTIONS.filter((h) => input.switchedOff.includes(h.plugin)).map((h) => h.id),
+  ]);
   const kept = order.filter((id) => !gone.has(id));
   if (kept.length === order.length) return null;
   return kept.length === 0 ? "" : JSON.stringify(kept);

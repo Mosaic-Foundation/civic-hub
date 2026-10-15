@@ -33,7 +33,8 @@ export type PluginId =
   | "admin_digest"
   | "search"
   | "feedback"
-  | "news_sync";
+  | "news_sync"
+  | "members";
 
 /** On unless the hub switched it off. A config that failed to load means on. */
 export function pluginEnabled(id: PluginId): boolean {

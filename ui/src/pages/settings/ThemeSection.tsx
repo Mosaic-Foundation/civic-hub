@@ -314,7 +314,8 @@ function NavigationFields({ f }: { f: FormApi }) {
   // Unset is Top tabs: a hub made before the choice existed is unchanged.
   const layout = f.value(LAYOUT_KEY) === "sidebar" ? "sidebar" : "top_tabs";
   const stored = f.value(ORDER_KEY);
-  const sections = navSections(parseSectionOrder(stored));
+  // An admin orders Members even before its threshold shows it to residents.
+  const sections = navSections({ order: parseSectionOrder(stored), admin: true });
   const movable = sections.filter((s) => s.kind !== "feed");
   const buttons = useRef(new Map<string, HTMLButtonElement | null>());
 

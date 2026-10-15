@@ -24,12 +24,12 @@ import { route } from "../http/route.js";
 import type { Request } from "express";
 import { pluginSetupFor } from "../services/pluginSetup.js";
 import type { PluginSetupStatus } from "../shared/pluginSetup.js";
-import { getPublicSettings } from "../services/hubSettings.js";
+import { getPublicSettings, hubModeFor, isPluginEnabledSync } from "../services/hubSettings.js";
 import { hubDocumentsWithNotes } from "../services/hubDocuments.js";
 import type { Hub, HubMode } from "../models/hub.js";
-import { hubModeFor } from "../services/hubSettings.js";
 import { hubContentFlags } from "../services/sampleContent.js";
 import { processTypeDisplays, type ProcessTypeDisplay } from "../processes/registry.js";
+import { memberVisibility } from "../services/members.js";
 
 /** The hub fields the contract makes public. */
 interface PublicHub {
@@ -68,6 +68,12 @@ export interface HubConfigResponse {
    * change. Whether each is on is in `settings` (`plugin.<id>.enabled`).
    */
   process_types: ProcessTypeDisplay[];
+  /**
+   * The Members plugin (2026-10-14): whether residents get the Members page
+   * and its section yet (the threshold, or the hub showing it anyway). Absent
+   * while the plugin is off. Admins see the page either way.
+   */
+  members?: { page_shown: boolean };
 }
 
 function publicHub(hub: Hub): PublicHub {
@@ -92,7 +98,11 @@ export const handleGetHubConfig = route(async (req, res) => {
   }
 
   const settings = await getPublicSettings(hub.id);
-  const [pluginSetup, content] = await Promise.all([pluginSetupFor(hub.id), hubContentFlags(hub.id)]);
+  const [pluginSetup, content, members] = await Promise.all([
+    pluginSetupFor(hub.id),
+    hubContentFlags(hub.id),
+    isPluginEnabledSync("members") ? memberVisibility() : Promise.resolve(null),
+  ]);
 
   // `private`, not `public`: this response differs per hostname, and a shared
   // cache that keyed it wrongly would serve one hub's identity on another's
@@ -106,6 +116,7 @@ export const handleGetHubConfig = route(async (req, res) => {
     plugin_setup: pluginSetup,
     content,
     process_types: processTypeDisplays(),
+    ...(members ? { members: { page_shown: members.pageShown } } : {}),
   };
   res.json(body);
 });

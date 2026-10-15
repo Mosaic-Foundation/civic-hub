@@ -53,6 +53,8 @@ export interface HubConfig {
    * a plugin's type needs no UI change. Optional, like plugin_setup.
    */
   process_types?: ProcessTypeDisplay[];
+  /** The Members plugin: whether residents get the Members page yet (absent while it is off). */
+  members?: { page_shown: boolean };
 }
 
 const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";

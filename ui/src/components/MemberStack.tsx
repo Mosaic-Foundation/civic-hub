@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import PatternAvatar from "./PatternAvatar";
 import SharePanel from "./SharePanel";
 import { useAuth } from "../context/AuthContext";
+import { membersPageShown } from "../config/navigation";
+import { pluginEnabled } from "../config/plugins";
 import { getMemberSummary, type MemberSummary } from "../services/api";
 import "./MemberStack.css";
 
@@ -13,13 +15,20 @@ import "./MemberStack.css";
  *
  * Signed in, the count links to the Members page and "Share this hub" opens
  * the share panel.
+ *
+ * The count and stack are the Members plugin's (2026-10-14): gone while it is
+ * off, and below its threshold residents get no number from the server, so
+ * none is drawn. An admin sees the number then, with a note that residents
+ * don't yet. "Share this hub" is the hub's own and stays either way.
  */
 export default function MemberStack() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [summary, setSummary] = useState<MemberSummary | null>(null);
   const [sharing, setSharing] = useState(false);
 
+  const membersOn = pluginEnabled("members");
   useEffect(() => {
+    if (!membersOn) return;
     let live = true;
     getMemberSummary()
       .then((s) => live && setSummary(s))
@@ -29,31 +38,43 @@ export default function MemberStack() {
     return () => {
       live = false;
     };
-  }, [user?.id]);
+  }, [user?.id, membersOn]);
 
-  if (!summary || summary.count === 0) return null;
-
-  const label = `${summary.count.toLocaleString()} ${summary.count === 1 ? "member" : "members"}`;
   const joined = !!user?.is_resident;
+  const count = membersOn ? (summary?.count ?? null) : null;
+  const showCount = count !== null && count > 0;
+  if (!showCount && !joined) return null;
+
+  const label = showCount ? `${count.toLocaleString()} ${count === 1 ? "member" : "members"}` : "";
+  // Before the threshold an admin sees the number; residents see nothing.
+  const adminOnly = showCount && summary?.shown === false;
 
   return (
     <div className="member-stack-row">
-      <div className="member-stack" data-testid="member-stack">
-        {summary.stack.length > 0 && (
-          <span className="member-stack-avatars" aria-hidden="true">
-            {summary.stack.map((seed) => (
-              <PatternAvatar key={seed} seed={seed} size={28} />
-            ))}
-          </span>
-        )}
-        {joined ? (
-          <Link to="/members" className="member-stack-count">
-            {label}
-          </Link>
-        ) : (
-          <span className="member-stack-count">{label}</span>
-        )}
-      </div>
+      {showCount && (
+        <div className="member-stack" data-testid="member-stack">
+          {summary!.stack.length > 0 && (
+            <span className="member-stack-avatars" aria-hidden="true">
+              {summary!.stack.map((seed) => (
+                <PatternAvatar key={seed} seed={seed} size={28} />
+              ))}
+            </span>
+          )}
+          {joined && membersPageShown(isAdmin) ? (
+            <Link to="/members" className="member-stack-count">
+              {label}
+            </Link>
+          ) : (
+            <span className="member-stack-count">{label}</span>
+          )}
+          {adminOnly && (
+            <span className="member-stack-note" data-testid="member-count-admin-only">
+              Only admins see this until {summary!.threshold ?? 0} members.{" "}
+              <Link to="/admin/settings/plugins#members">Members plugin</Link>
+            </span>
+          )}
+        </div>
+      )}
       {joined && (
         <button type="button" className="member-share-btn" onClick={() => setSharing(true)}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

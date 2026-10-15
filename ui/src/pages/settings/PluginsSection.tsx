@@ -48,6 +48,8 @@ import {
   adminGetPluginLiveCounts,
   adminGetSettings,
   type CommentIdentityMode,
+  type MemberSummary,
+  getMemberSummary,
   type JobRunRecord,
   type JobRunsEntry,
 } from "../../services/api";
@@ -78,6 +80,10 @@ const PLUGINS: Record<PluginId, { name: string; what: string }> = {
     },
   },
   admin_digest: { name: "Admin digest", what: "A daily email to admins of what is waiting for review." },
+  members: {
+    name: "Members",
+    what: "The member count and faces on the home page, and the Members page. Share this hub stays either way.",
+  },
 };
 
 const MEETING_CONNECTOR_LABELS: Record<string, string> = {
@@ -500,9 +506,49 @@ function settingsPanel(f: FormApi, id: PluginId): React.ReactNode | null {
           }
         />
       );
+    case "members":
+      return (
+        <>
+          <MemberCountLine saved={f.data.values["plugin.members.min_count"] ?? ""} />
+          <NumberField
+            f={f}
+            k="plugin.members.min_count"
+            label="Show members from"
+            unit="members"
+            placeholder="0"
+            hint="Until the hub has this many members, residents see no member count, no faces and no Members page. Admins always see them. Empty or 0 shows them from the first member."
+          />
+          <BooleanField
+            f={f}
+            k="plugin.members.page_before_threshold"
+            label="Show the Members page before then"
+            hint="The page and its place in the menus appear for members now; the count on the home page still waits."
+          />
+        </>
+      );
     default:
       return null;
   }
+}
+
+/**
+ * How many members the hub has now, which only admins see before the
+ * threshold. Read again when a save changes the threshold (`saved`).
+ */
+function MemberCountLine({ saved }: { saved: string }) {
+  const [summary, setSummary] = useState<MemberSummary | null>(null);
+  useEffect(() => {
+    getMemberSummary()
+      .then(setSummary)
+      .catch(() => setSummary(null));
+  }, [saved]);
+  if (!summary || summary.count === null) return null;
+  return (
+    <p className="form-hint" data-testid="members-now">
+      This hub has {summary.count.toLocaleString()} {summary.count === 1 ? "member" : "members"}
+      {summary.shown === false ? "; residents don't see the count yet." : "; residents see the count."}
+    </p>
+  );
 }
 
 /**

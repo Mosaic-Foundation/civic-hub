@@ -124,3 +124,16 @@ describe("switching a plugin off (Adam, 2026-10-14: a newly enabled section goes
     expect(orderAfterSwitchingOff({ stored: '["votes"]', switchedOff: ["vote"], types })).toBe("");
   });
 });
+
+describe("the Members plugin's section (2026-10-14)", () => {
+  it("is drawn only while its plugin says so (switched on, past its threshold or shown anyway, or an admin)", () => {
+    expect(ids([], (p) => p !== "members")).toEqual(["feed", "conversations", "proposals", "votes", "projects", "outcomes"]);
+    expect(ids([])).toContain("members");
+  });
+
+  it("leaves the stored order when the plugin is switched off, so it comes back at the end", () => {
+    expect(
+      orderAfterSwitchingOff({ stored: '["members","votes","proposals"]', switchedOff: ["members"], types }),
+    ).toBe('["votes","proposals"]');
+  });
+});

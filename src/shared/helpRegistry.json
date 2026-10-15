@@ -122,6 +122,12 @@
     "page": "/reference/plugins",
     "anchor": "plugins-feedback"
   },
+  "plugins.members": {
+    "text": "The member count and faces on the home page, and the Members page. You can hide them until the hub has enough members. Share this hub stays either way.",
+    "page": "/reference/plugins",
+    "anchor": "plugins-members",
+    "pending": true
+  },
   "plugins.digest": {
     "text": "A summary email of new activity to each person who has not unsubscribed. Nothing is sent when there is nothing new. In demo and beta it reaches only admins and the allowlist.",
     "page": "/reference/plugins",
@@ -417,6 +423,18 @@
     "text": "Where the Feedback page tells people to write if they prefer email. Left empty, it shows the Legal contact address, or the platform's if that is empty too.",
     "page": "/reference/plugins",
     "anchor": "plugin-feedback-contact-email",
+    "pending": true
+  },
+  "plugin.members.min_count": {
+    "text": "Until the hub has this many members, residents see no member count, no faces and no Members page. Admins always see them. Empty or 0 shows them from the first member.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-members-min-count",
+    "pending": true
+  },
+  "plugin.members.page_before_threshold": {
+    "text": "Shows the Members page, and its place in the menus, before the hub reaches the number above. The count on the home page still waits.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-members-page-before-threshold",
     "pending": true
   },
   "admin.feedback_forward": {

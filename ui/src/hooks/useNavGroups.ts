@@ -89,7 +89,7 @@ export function useNavGroups({ onShare }: { onShare: () => void }): NavGroups {
   const { pathname } = useLocation();
   const data = useNavData();
 
-  const ordered = navSections();
+  const ordered = navSections({ admin: isAdmin });
   const currentSection = sectionForPath(pathname, ordered);
   const sections: NavItem[] = ordered.map((s) => ({
     id: s.id,

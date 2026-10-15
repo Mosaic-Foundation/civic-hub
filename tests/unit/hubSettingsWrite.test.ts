@@ -233,3 +233,24 @@ describe("navigation settings (navigation slice, 2026-10-14)", () => {
     expect(normalizeValue(order, { votes: 1 })).toHaveProperty("error");
   });
 });
+
+describe("the Members plugin's settings (2026-10-14)", () => {
+  it("are in the Plugins section, admin-only, with the plugin's switch", () => {
+    const plugins = SETTINGS_SECTIONS.plugins.map((f) => f.key);
+    expect(plugins).toEqual(
+      expect.arrayContaining(["plugin.members.enabled", KEYS.PLUGIN_MEMBERS_MIN_COUNT, KEYS.PLUGIN_MEMBERS_PAGE_BEFORE_THRESHOLD]),
+    );
+    expect(PLUGIN_IDS).toContain("members");
+    expect(isPublicKey("plugin.members.enabled")).toBe(true);
+    expect(isPublicKey(KEYS.PLUGIN_MEMBERS_MIN_COUNT)).toBe(false);
+  });
+
+  it("the threshold is a whole number from 0, empty for unset; the override a boolean", () => {
+    const min = fieldSpec(KEYS.PLUGIN_MEMBERS_MIN_COUNT)!;
+    expect(normalizeValue(min, "10")).toBe("10");
+    expect(normalizeValue(min, "")).toBe("");
+    expect(normalizeValue(min, "-1")).toHaveProperty("error");
+    expect(normalizeValue(min, "2.5")).toHaveProperty("error");
+    expect(normalizeValue(fieldSpec(KEYS.PLUGIN_MEMBERS_PAGE_BEFORE_THRESHOLD)!, true)).toBe("true");
+  });
+});

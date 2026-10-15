@@ -7,18 +7,32 @@
 //
 // No answer here carries an email address.
 
+import { NotFoundError } from "../errors/index.js";
 import { route } from "../http/route.js";
-import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
+import { getAuthUser, isAdminEmail, resolveCallerIsAdmin } from "../middleware/auth.js";
 import type { SessionAssurance } from "../modules/civic.auth/models.js";
-import { listMembers, listMembersForAdmin, memberSummary } from "../services/members.js";
+import { listMembers, listMembersForAdmin, memberSummary, memberVisibility } from "../services/members.js";
 import { cleanMessage, parseAddresses, sendMemberInvites } from "../services/hubInvites.js";
 
-export const handleMemberSummary = route(async (_req, res) => {
-  res.json(await memberSummary());
+// Below the Members plugin's threshold a resident gets no number and no stack
+// (`count: null`), so the page cannot show what the server withheld; an admin
+// gets both, with the threshold, to see where the hub stands.
+export const handleMemberSummary = route(async (req, res) => {
+  const summary = await memberSummary();
+  const seen = await memberVisibility(summary.count);
+  const admin = await resolveCallerIsAdmin(req);
+  if (seen.countShown || admin) {
+    res.json({ ...summary, shown: seen.countShown, page: seen.pageShown, threshold: admin ? seen.threshold : undefined });
+    return;
+  }
+  res.json({ count: null, stack: [], shown: false, page: seen.pageShown });
 });
 
 export const handleListMembers = route(async (req, res) => {
   const user = getAuthUser(res);
+  // Before the threshold the page is not there for residents, unless the
+  // hub shows it anyway (page_before_threshold); an admin always sees it.
+  if (!(await memberVisibility()).pageShown && !isAdminEmail(user.email)) throw new NotFoundError("Not found");
   const offset = Number(req.query.offset ?? 0);
   res.json({
     ...(await listMembers(Number.isFinite(offset) ? offset : 0)),

@@ -180,6 +180,13 @@ export const KEYS = {
   PLUGIN_NEWS_SYNC_CONNECTOR: "plugin.news_sync.connector",
   PLUGIN_NEWS_SYNC_SOURCE_URL: "plugin.news_sync.source_url",
   PLUGIN_NEWS_SYNC_MAX_PER_RUN: "plugin.news_sync.max_per_run",
+  // The Members plugin (Adam, 2026-10-14). Below `min_count` members,
+  // residents see no count, no avatar stack and no Members page; admins always
+  // see the count. Unset is 0 (shown, as before the plugin); new hubs are
+  // created with 10 (src/control/hubs.ts). `page_before_threshold` "true"
+  // shows the page (and its section) anyway; the count still waits.
+  PLUGIN_MEMBERS_MIN_COUNT: "plugin.members.min_count",
+  PLUGIN_MEMBERS_PAGE_BEFORE_THRESHOLD: "plugin.members.page_before_threshold",
 } as const;
 
 export type SettingKey = (typeof KEYS)[keyof typeof KEYS] | string;
@@ -200,6 +207,9 @@ export const PLUGIN_IDS = [
   "search",
   "feedback",
   "news_sync",
+  // The member count, avatar stack and Members page (Adam, 2026-10-14).
+  // Share this hub's invites are the hub's own, not this plugin's.
+  "members",
 ] as const;
 
 export type PluginId = (typeof PLUGIN_IDS)[number];

@@ -38,16 +38,25 @@ export function navLayout(): NavLayout {
   return setting("nav.layout") === "sidebar" ? "sidebar" : "top_tabs";
 }
 
-/** Every section this hub has now, Feed first, in the hub's order. */
-export function navSections(order?: readonly string[]): NavSection[] {
+/**
+ * Whether the Members page is there for this reader: the Members plugin on,
+ * and either past its threshold (or shown anyway) or the reader an admin.
+ */
+export function membersPageShown(admin: boolean): boolean {
+  if (!pluginEnabled("members")) return false;
+  return admin || getLoadedHubConfig()?.members?.page_shown !== false;
+}
+
+/** Every section this hub has now, Feed first, in the hub's order. `admin` sees Members before its threshold. */
+export function navSections(opts: { order?: readonly string[]; admin?: boolean } = {}): NavSection[] {
   return orderedSections({
     types: processTypes(),
-    enabled: (plugin) => pluginEnabled(plugin as PluginId),
-    order: order ?? parseSectionOrder(setting("nav.section_order")),
+    enabled: (plugin) => (plugin === "members" ? membersPageShown(opts.admin ?? false) : pluginEnabled(plugin as PluginId)),
+    order: opts.order ?? parseSectionOrder(setting("nav.section_order")),
   });
 }
 
 /** The four sections on the phone's bar, before More. */
-export function navBarSections(): NavSection[] {
-  return barSections(navSections());
+export function navBarSections(admin = false): NavSection[] {
+  return barSections(navSections({ admin }));
 }

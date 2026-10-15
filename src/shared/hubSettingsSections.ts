@@ -102,6 +102,7 @@ export const PLUGIN_SECTION_ORDER = [
   "feedback",
   "digest",
   "admin_digest",
+  "members",
 ] as const;
 
 /** Meeting-summary connector ids (src/modules/civic.meeting_summary/connectors). */
@@ -184,6 +185,9 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "plugin.digest.send_hour", kind: "hour" },
     // The address the Feedback page shows (2026-10-08, Adam).
     { key: "plugin.feedback.contact_email", kind: "email" },
+    // The Members plugin (2026-10-14, Adam).
+    { key: "plugin.members.min_count", kind: "number", min: 0, max: 100000 },
+    { key: "plugin.members.page_before_threshold", kind: "boolean" },
   ],
 };
 

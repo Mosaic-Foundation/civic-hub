@@ -17,12 +17,20 @@
 // only on a demo hub, where they make the demo look lived-in (Adam,
 // 2026-10-14); on a beta or live hub they never do, even before the samples
 // are removed.
+//
+// The Members plugin (2026-10-14, Adam) decides what residents see:
+// memberVisibility(). Off, none of the above (its routes answer 404). On,
+// below `plugin.members.min_count` members, residents see no count, no stack
+// and no Members page, unless `page_before_threshold` shows the page anyway.
+// Admins always see all of it. The number itself is withheld by the server,
+// not just hidden by the page.
 
 import { forHub } from "../db/forHub.js";
 import { readAll } from "../db/readAll.js";
 import { currentHubId } from "../config/hubContext.js";
 import { sha256Hex } from "../utils/hash.js";
-import { isDemoHubSync } from "./hubSettings.js";
+import { getSettingSync, isDemoHubSync } from "./hubSettings.js";
+import { KEYS, asBoolean, asNumber } from "../models/hubSettings.js";
 import { rowToDisplay } from "./creatorDisplay.js";
 
 /** How many avatars the home page's stack shows. */
@@ -68,10 +76,35 @@ function members<Q extends { eq(column: string, value: unknown): Q }>(q: Q): Q {
   return isDemoHubSync() ? joined : joined.eq("is_sample", false);
 }
 
+/** What residents may see of the hub's members now (the Members plugin's rule). */
+export interface MemberVisibility {
+  /** Every member, hidden ones included. */
+  count: number;
+  /** `plugin.members.min_count`; 0 when unset. */
+  threshold: number;
+  /** The count and the avatar stack. */
+  countShown: boolean;
+  /** The Members page and its section in the navigation. */
+  pageShown: boolean;
+}
+
+/** The count, and what the threshold and the override show (residents; admins see everything). */
+export async function memberVisibility(knownCount?: number): Promise<MemberVisibility> {
+  const count = knownCount ?? (await memberCount());
+  const threshold = Math.max(0, asNumber(getSettingSync(KEYS.PLUGIN_MEMBERS_MIN_COUNT), 0));
+  const countShown = count >= threshold;
+  const pageShown = countShown || asBoolean(getSettingSync(KEYS.PLUGIN_MEMBERS_PAGE_BEFORE_THRESHOLD), false);
+  return { count, threshold, countShown, pageShown };
+}
+
+async function memberCount(): Promise<number> {
+  return members(forHub(currentHubId()).from("users").count());
+}
+
 export async function memberSummary(): Promise<MemberSummary> {
   const hubId = currentHubId();
   const hub = forHub(hubId);
-  const count = await members(hub.from("users").count());
+  const count = await memberCount();
   const recent = await members(hub.from("users").select<{ id: string }>("id"))
     .eq("hidden_from_members", false)
     .order("created_at", { ascending: false })
