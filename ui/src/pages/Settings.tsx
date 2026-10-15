@@ -342,29 +342,32 @@ export default function Settings() {
           {draftingHelpError && <p className="form-error">{draftingHelpError}</p>}
         </section>
 
-        <section className="settings-panel" id="members" data-anchor="">
-          <h3 className="settings-panel-heading">
-            Members page
-            <HelpButton k="members.visibility" label="Members page" />
-          </h3>
-          <p className="form-hint">
-            Members of {hub.name} can see each other's names and a pattern
-            picture on the Members page, and the home page shows a few of the
-            pictures. Never your email address. Turn this off to be left out of
-            both; you're still counted as a member.
-          </p>
-          <label className="settings-toggle-row">
-            <input
-              type="checkbox"
-              checked={!hiddenFromMembers}
-              onChange={(e) => onShowOnMembersChange(e.target.checked)}
-              disabled={savingHidden}
-            />
-            <span>Show me on the Members page</span>
-          </label>
-          {hiddenMessage && <p className="settings-message">{hiddenMessage}</p>}
-          {hiddenError && <p className="form-error">{hiddenError}</p>}
-        </section>
+        {/* Gone with the Members plugin (2026-10-14): no page to be hidden from. */}
+        {pluginEnabled("members") && (
+          <section className="settings-panel" id="members" data-anchor="">
+            <h3 className="settings-panel-heading">
+              Members page
+              <HelpButton k="members.visibility" label="Members page" />
+            </h3>
+            <p className="form-hint">
+              Members of {hub.name} can see each other's names and a pattern
+              picture on the Members page, and the home page shows a few of the
+              pictures. Never your email address. Turn this off to be left out of
+              both; you're still counted as a member.
+            </p>
+            <label className="settings-toggle-row">
+              <input
+                type="checkbox"
+                checked={!hiddenFromMembers}
+                onChange={(e) => onShowOnMembersChange(e.target.checked)}
+                disabled={savingHidden}
+              />
+              <span>Show me on the Members page</span>
+            </label>
+            {hiddenMessage && <p className="settings-message">{hiddenMessage}</p>}
+            {hiddenError && <p className="form-error">{hiddenError}</p>}
+          </section>
+        )}
 
         <p className="settings-signed-in">
           Signed in as <strong>{user.email}</strong>.

@@ -260,7 +260,7 @@ function AppContent() {
               <Route path="/announcement/:id/edit" element={whenPlugin("announcement", <PostAnnouncement />)} />
               <Route path="/announcement/:id" element={whenPlugin("announcement", <AnnouncementPage />)} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/members" element={<Members />} />
+              <Route path="/members" element={whenPlugin("members", <Members />)} />
               <Route path="/about" element={<About />} />
               <Route path="/search" element={whenPlugin("search", <SearchPage />)} />
               {/* Slice 11 — legal pages. Routes resolve via React Router so

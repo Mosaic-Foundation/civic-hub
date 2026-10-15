@@ -5,6 +5,7 @@ import AuthModal from "../components/AuthModal";
 import PatternAvatar from "../components/PatternAvatar";
 import SharePanel from "../components/SharePanel";
 import { getMembers, type Member } from "../services/api";
+import { membersPageShown } from "../config/navigation";
 import "./Members.css";
 
 /**
@@ -14,7 +15,7 @@ import "./Members.css";
  * includes them, as on the home page.
  */
 export default function Members() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [count, setCount] = useState<number | null>(null);
   const [next, setNext] = useState<number | null>(null);
@@ -40,16 +41,32 @@ export default function Members() {
     }
   }
 
+  // Before the Members plugin's threshold the page is not there for residents
+  // (the server answers 404 too), unless the hub shows it anyway.
+  const shown = membersPageShown(isAdmin);
+
   useEffect(() => {
-    if (loading || !user?.is_resident) return;
+    if (loading || !user?.is_resident || !shown) return;
     void load(0);
-  }, [loading, user?.id, user?.is_resident]);
+  }, [loading, user?.id, user?.is_resident, shown]);
 
   if (loading) {
     return (
       <div className="page members-page">
         <p className="settings-status">Loading…</p>
       </div>
+    );
+  }
+
+  if (!shown) {
+    return (
+      <main className="page members-page" style={{ textAlign: "center" }}>
+        <h1>Page not found</h1>
+        <p>This hub does not offer this.</p>
+        <p>
+          <Link to="/">Back to the home page</Link>
+        </p>
+      </main>
     );
   }
 

@@ -6,6 +6,7 @@
 import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
 import PatternAvatar from "../../components/PatternAvatar";
+import { pluginEnabled } from "../../config/plugins";
 import "../Members.css";
 import {
   adminGetHiddenMembers,
@@ -185,7 +186,8 @@ export default function PeopleSection() {
         )}
       </div>
 
-      <HiddenMembers />
+      {/* The Members plugin's (2026-10-14): gone while it is off. */}
+      {pluginEnabled("members") && <HiddenMembers />}
     </section>
   );
 }
