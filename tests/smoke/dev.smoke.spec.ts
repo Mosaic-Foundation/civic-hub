@@ -533,15 +533,9 @@ test("at desktop width with Navigation set to Sidebar, the sidebar replaces the 
   await visitAs(page, admin);
   await page.goto("/votes");
   const side = page.getByRole("navigation", { name: "Hub", exact: true });
-  // Each serverless instance caches a hub's settings for a minute
-  // (src/db/hubSettingsStore.ts); the save clears only the instance that
-  // took it, so another may serve the old Navigation until its copy expires.
-  await expect(async () => {
-    if (!(await side.isVisible())) {
-      await page.reload();
-      await expect(side).toBeVisible({ timeout: 3_000 });
-    }
-  }).toPass({ timeout: 65_000, intervals: [2_000] });
+  // No wait for other instances: a save bumps the hub's settings version and
+  // every instance reloads on its next request (20261018000000).
+  await expect(side).toBeVisible();
   await expect(page.locator(".civic-nav")).toBeHidden();
   await expect(side.locator('[aria-current="page"]')).toContainText("Votes");
   await expect(side.getByText("Admin", { exact: true })).toBeVisible();
@@ -713,11 +707,9 @@ test("below the Members threshold a resident gets no count from the server; the 
     data: { section: "plugins", values: { "plugin.members.min_count": "100000" } },
   });
   expect(raised.ok(), await raised.text()).toBeTruthy();
-  // Another serverless instance may hold the old settings for up to a minute.
-  await expect(async () => {
-    const summary = await (await request.get(`${apiBase()}/members/summary`, { headers: auth(resident) })).json();
-    expect(summary.count).toBeNull();
-  }).toPass({ timeout: 65_000, intervals: [2_000] });
+  // At once, on whichever instance answers (the settings version, 20261018000000).
+  const summary = await (await request.get(`${apiBase()}/members/summary`, { headers: auth(resident) })).json();
+  expect(summary.count).toBeNull();
 
   const page = await open(browser, { viewport: { width: 375, height: 812 } });
   await visitAs(page, admin);

@@ -3,8 +3,12 @@
 // Reads and writes go through forHub(hubId), so a settings row can only be
 // read from, or written to, the hub it names (Phase 2a).
 //
-// A hub's settings are loaded ONCE per request, as a whole, and cached for 60
-// seconds. Loading the whole set rather than one key at a time is what lets
+// A hub's settings are loaded ONCE per request, as a whole, and cached until
+// the hub's settings version moves (hubs.settings_version, bumped by trigger
+// on every write: 20261018000000). The resolver reads the hub row on every
+// request, so a save reaches every server instance on its next request. When
+// the version can't be known, the copy expires after 60 seconds as before.
+// Loading the whole set rather than one key at a time is what lets
 // the readers stay synchronous: `isAdminEmail()` is called from fourteen
 // places on hot paths and cannot become async without changing all of them,
 // and an admin check that does its own round trip is a round trip on every
@@ -12,6 +16,8 @@
 
 import { UnavailableError } from "../errors/index.js";
 import { forHub } from "./forHub.js";
+import { getHubSettingsVersion } from "./hubs.js";
+import { currentHub } from "../config/hubContext.js";
 import { DOCUMENT_KEYS } from "../models/hubSettings.js";
 
 const CACHE_TTL_MS = 60_000;
@@ -19,23 +25,44 @@ const CACHE_TTL_MS = 60_000;
 /** A hub's settings, as stored. Raw values — the service layer decodes. */
 export type SettingsMap = Readonly<Record<string, string>>;
 
-interface CacheEntry {
-  value: SettingsMap;
+interface CacheEntry<T> {
+  value: T;
+  /** The hub's settings version when this was read; null when unknown. */
+  version: number | null;
   expiresAt: number;
 }
 
-const cache = new Map<string, CacheEntry>();
+const cache = new Map<string, CacheEntry<SettingsMap>>();
 
 /** Documents are cached separately, keyed `<hubId>:<key>`. */
-const documentCache = new Map<string, { value: string | null; expiresAt: number }>();
+const documentCache = new Map<string, CacheEntry<string | null>>();
+
+/**
+ * The hub's settings version now: the caller's (the resolver's freshly read
+ * row), the request's own hub, or a read of the registry. Null when none of
+ * those can say, and the cache then goes by its 60-second expiry.
+ */
+async function versionNow(hubId: string, given: number | undefined): Promise<number | null> {
+  if (typeof given === "number") return given;
+  const inScope = currentHub();
+  if (inScope?.id === hubId && typeof inScope.settings_version === "number") return inScope.settings_version;
+  return getHubSettingsVersion(hubId);
+}
+
+/** Is this cached copy current? By version when known, else by its expiry. */
+function current<T>(entry: CacheEntry<T> | undefined, version: number | null): entry is CacheEntry<T> {
+  if (!entry) return false;
+  if (version !== null && entry.version !== null) return entry.version === version;
+  return entry.expiresAt > Date.now();
+}
 
 /** PostgREST `in` list for the document keys, so the snapshot can exclude them. */
 const DOCUMENT_KEY_LIST = `(${DOCUMENT_KEYS.join(",")})`;
 
 /**
- * Drop cached settings — for one hub, or all of them. Call after any write,
- * so an admin who changes a setting sees it on the next request rather than
- * within a minute.
+ * Drop cached settings — for one hub, or all of them. Writes call it so the
+ * instance that took the write reloads even where the version can't be read;
+ * every other instance sees the bumped version on its next request.
  */
 export function invalidateHubSettings(hubId?: string): void {
   if (hubId) {
@@ -69,9 +96,10 @@ export class HubSettingsUnavailableError extends UnavailableError {
  * says it is unavailable (the hub resolver's 503) rather than guess. Nothing
  * is cached on failure, so the next request tries again.
  */
-export async function fetchHubSettings(hubId: string): Promise<SettingsMap> {
+export async function fetchHubSettings(hubId: string, knownVersion?: number): Promise<SettingsMap> {
+  const version = await versionNow(hubId, knownVersion);
   const cached = cache.get(hubId);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  if (current(cached, version)) return cached.value;
 
   // Document-sized values are excluded: see DOCUMENT_KEYS. Every request pays
   // for this query on a cache miss, and no request should pay 30 KB of
@@ -92,7 +120,9 @@ export async function fetchHubSettings(hubId: string): Promise<SettingsMap> {
   for (const row of rows) {
     map[row.key] = row.value;
   }
-  cache.set(hubId, { value: map, expiresAt: Date.now() + CACHE_TTL_MS });
+  // Tagged with the version read BEFORE the rows: a write in between leaves
+  // the copy tagged older than it is, so the next request reloads it.
+  cache.set(hubId, { value: map, version, expiresAt: Date.now() + CACHE_TTL_MS });
   return map;
 }
 
@@ -140,7 +170,7 @@ export async function fetchHubSettingRows(hubId: string): Promise<
  * One document-sized value — a legal page, the About text.
  *
  * Separate from the snapshot on purpose (see DOCUMENT_KEYS): loaded only when
- * something renders it, cached for the same 60 seconds, and a miss returns
+ * something renders it, cached the same way (by settings version), and a miss returns
  * null rather than throwing so a page falls back to its bundled default
  * instead of failing.
  */
@@ -149,8 +179,9 @@ export async function fetchHubDocument(
   key: string,
 ): Promise<string | null> {
   const cacheKey = `${hubId}:${key}`;
+  const version = await versionNow(hubId, undefined);
   const cached = documentCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  if (current(cached, version)) return cached.value;
 
   let value: string | null;
   try {
@@ -166,7 +197,7 @@ export async function fetchHubDocument(
     );
     return null;
   }
-  documentCache.set(cacheKey, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+  documentCache.set(cacheKey, { value, version, expiresAt: Date.now() + CACHE_TTL_MS });
   return value;
 }
 

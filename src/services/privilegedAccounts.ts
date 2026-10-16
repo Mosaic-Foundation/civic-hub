@@ -65,9 +65,10 @@ const PRIVILEGE_KEYS = [
  * isPrivilegedEmail, read from the database now rather than from the
  * request's settings snapshot (Audit 2).
  *
- * The snapshot can be up to a minute old on a serverless instance, so an
- * address an admin has just added could still sign in on a demo hub's any
- * six digits there. Such a session could never pass an admin check (it is a
+ * The snapshot was up to a minute old on a serverless instance until the
+ * settings version (20261018000000), and still is where the version can't be
+ * read, so an address an admin has just added could sign in on a demo hub's
+ * any six digits there. Such a session could never pass an admin check (it is a
  * demo session), and it reads as signed out once the snapshot catches up; but
  * sign-in is rare enough to read the lists fresh, so the window does not
  * exist at all. Every address-shaped string in the rows counts, as in the

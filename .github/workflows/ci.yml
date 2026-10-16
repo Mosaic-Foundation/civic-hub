@@ -234,6 +234,9 @@ jobs:
         env:
           CIVIC_API_BASE: http://localhost:3000
           CIVIC_EXPECT_HUB_DB_MODE: service_role
+          # The other instance on the same stack: tests/api/settingsVersion.test.ts
+          # saves on one server and reads on the other.
+          CIVIC_OTHER_API_BASE: http://localhost:3001
           CIVIC_TEST_DIGEST_SECRET: ci-only-digest-unsubscribe-secret
 
       # The same layer with forced RLS live: every hub query runs as
@@ -246,6 +249,7 @@ jobs:
         env:
           CIVIC_API_BASE: http://localhost:3001
           CIVIC_EXPECT_HUB_DB_MODE: hub_token
+          CIVIC_OTHER_API_BASE: http://localhost:3000
           CIVIC_TEST_DIGEST_SECRET: ci-only-digest-unsubscribe-secret
           CIVIC_HUB_SIGNING_KEY: ${{ env.LOCAL_JWT_SECRET }}
           SUPABASE_PUBLISHABLE_KEY: ${{ env.LOCAL_PUBLISHABLE_KEY }}

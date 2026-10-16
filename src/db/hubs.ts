@@ -7,11 +7,17 @@
 // carries no hub_id and is never reachable through the hub-scoped client that
 // Phase 2 introduces.
 //
-// Every request resolves through here, so the reads are cached in memory for
-// 60 seconds. Serverless makes that cache per-instance and short-lived, which
-// is the right trade: a hub's name or status takes up to a minute to take
-// effect, and in exchange the hot path costs no round trip. The control plane
-// calls invalidateHubCache() after a write so its own changes are immediate.
+// Every request resolves through here. A hub that is found is read fresh on
+// every request (one indexed query): its row carries `settings_version`,
+// which every change to the hub's settings or to the row bumps (migration
+// 20261018000000), and the settings cache compares it with its own copy. So a
+// save, a mode switch or a rename reaches every server instance on its next
+// request, not within a minute.
+//
+// Only misses are cached, for 60 seconds, so an unknown hostname (a scanner, a
+// misdirected request) stays cheap. The control plane calls
+// invalidateHubCache() after creating or moving a hub, so its own instance
+// sees the new hostname at once.
 
 import { getDb } from "./client.js";
 import type { Hub } from "../models/hub.js";
@@ -29,21 +35,44 @@ const bySlug = new Map<string, CacheEntry<Hub | null>>();
 /** Keyed by an address a hub has moved from. Misses cached too: this runs only after a hostname miss. */
 const byPreviousHostname = new Map<string, CacheEntry<Hub | null>>();
 
-const COLUMNS =
+const BASE_COLUMNS =
   "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, space_did, space_type, status, mode, created_at, updated_at, redirect_to";
 
+/**
+ * Off once a read finds no `settings_version` column: code deployed ahead of
+ * migration 20261018000000 then still resolves every hub (its settings cache
+ * goes by the 60-second expiry), and /health names the gap.
+ */
+let versionColumn = true;
+
+type HubsRead = PromiseLike<{ data: unknown; error: { message: string } | null }>;
+
+/** Run a `hubs` read, falling back to the columns before the version column. */
+async function readHubs(build: (columns: string) => HubsRead): Promise<{ data: unknown; error: { message: string } | null }> {
+  const first = await build(versionColumn ? `${BASE_COLUMNS}, settings_version` : BASE_COLUMNS);
+  if (first.error && versionColumn && first.error.message.includes("settings_version")) {
+    versionColumn = false;
+    console.error("[hubs] no settings_version column; run migration 20261018000000");
+    return build(BASE_COLUMNS);
+  }
+  return first;
+}
+
+/** A cached miss still in date. Found hubs are never cached: see the header. */
 function fresh<T>(entry: CacheEntry<T> | undefined): entry is CacheEntry<T> {
   return entry !== undefined && entry.expiresAt > Date.now();
 }
 
-function remember<T>(map: Map<string, CacheEntry<T>>, key: string, value: T): T {
-  map.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+function remember<T>(map: Map<string, CacheEntry<T | null>>, key: string, value: T | null): T | null {
+  if (value === null) map.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+  else map.delete(key);
   return value;
 }
 
 /**
- * Drop every cached hub. Call after any write to `hubs` so an operator who
- * renames or suspends a hub sees it immediately rather than within a minute.
+ * Drop every cached miss. Call after creating a hub or changing a hostname,
+ * so this instance finds the new address at once. (Other changes need no
+ * call: a found hub is read fresh on every request.)
  */
 export function invalidateHubCache(): void {
   byHostname.clear();
@@ -63,19 +92,15 @@ export async function getHubByHostname(hostname: string): Promise<Hub | null> {
   const cached = byHostname.get(key);
   if (fresh(cached)) return cached.value;
 
-  const { data, error } = await getDb()
-    .from("hubs")
-    .select(COLUMNS)
-    .eq("hostname", key)
-    .maybeSingle();
+  const { data, error } = await readHubs((columns) =>
+    getDb().from("hubs").select(columns).eq("hostname", key).maybeSingle(),
+  );
 
   if (error) {
     console.error(`[hubs] lookup by hostname "${key}" failed: ${error.message}`);
     return null;
   }
-  const hub = (data as Hub | null) ?? null;
-  if (hub) remember(bySlug, hub.id, hub);
-  return remember(byHostname, key, hub);
+  return remember(byHostname, key, (data as Hub | null) ?? null);
 }
 
 /**
@@ -89,11 +114,9 @@ export async function getHubByPreviousHostname(hostname: string): Promise<Hub | 
   const cached = byPreviousHostname.get(key);
   if (fresh(cached)) return cached.value;
 
-  const { data, error } = await getDb()
-    .from("hubs")
-    .select(COLUMNS)
-    .contains("previous_hostnames", [key])
-    .limit(1);
+  const { data, error } = await readHubs((columns) =>
+    getDb().from("hubs").select(columns).contains("previous_hostnames", [key]).limit(1),
+  );
 
   if (error) {
     console.error(`[hubs] lookup by previous hostname "${key}" failed: ${error.message}`);
@@ -112,19 +135,15 @@ export async function getHubBySlug(slug: string): Promise<Hub | null> {
   const cached = bySlug.get(key);
   if (fresh(cached)) return cached.value;
 
-  const { data, error } = await getDb()
-    .from("hubs")
-    .select(COLUMNS)
-    .eq("id", key)
-    .maybeSingle();
+  const { data, error } = await readHubs((columns) =>
+    getDb().from("hubs").select(columns).eq("id", key).maybeSingle(),
+  );
 
   if (error) {
     console.error(`[hubs] lookup by slug "${key}" failed: ${error.message}`);
     return null;
   }
-  const hub = (data as Hub | null) ?? null;
-  if (hub) remember(byHostname, hub.hostname, hub);
-  return remember(bySlug, key, hub);
+  return remember(bySlug, key, (data as Hub | null) ?? null);
 }
 
 /**
@@ -132,11 +151,9 @@ export async function getHubBySlug(slug: string): Promise<Hub | null> {
  * each job once per hub; nothing else should need it.
  */
 export async function listActiveHubs(): Promise<Hub[]> {
-  const { data, error } = await getDb()
-    .from("hubs")
-    .select(COLUMNS)
-    .eq("status", "active")
-    .order("created_at", { ascending: true });
+  const { data, error } = await readHubs((columns) =>
+    getDb().from("hubs").select(columns).eq("status", "active").order("created_at", { ascending: true }),
+  );
 
   if (error) throw new Error(`hubs.listActive: ${error.message}`);
   return (data ?? []) as Hub[];
@@ -164,4 +181,26 @@ export async function renameHub(hubId: string, name: string): Promise<void> {
   const { error } = await getDb().from("hubs").update({ name }).eq("id", hubId);
   if (error) throw new Error(error.message);
   invalidateHubCache();
+}
+
+/**
+ * A hub's settings version, read fresh (20261018000000). For settings reads
+ * outside a request for that hub (crons, the console, scripts), which have no
+ * freshly read row to take it from. Null when it can't be read, and the
+ * settings cache then falls back to its 60-second expiry. Never throws: a
+ * settings read must not fail on the version alone.
+ */
+export async function getHubSettingsVersion(hubId: string): Promise<number | null> {
+  if (!versionColumn) return null;
+  let data: unknown;
+  try {
+    const read = await getDb().from("hubs").select("settings_version").eq("id", hubId).maybeSingle();
+    if (read.error) return null;
+    data = read.data;
+  } catch {
+    return null;
+  }
+  if (!data) return null;
+  const v = (data as { settings_version?: unknown }).settings_version;
+  return typeof v === "number" ? v : typeof v === "string" && /^\d+$/.test(v) ? Number(v) : null;
 }

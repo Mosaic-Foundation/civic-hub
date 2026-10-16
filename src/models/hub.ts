@@ -45,6 +45,13 @@ export interface Hub {
   mode: HubMode | null;
   created_at: string;
   updated_at: string;
+  /**
+   * Bumped by trigger on every change to this hub's settings or to this row
+   * (20261018000000). The settings cache reloads when it differs from the
+   * version its copy was read at. Optional: rows built by tests and scripts
+   * may leave it out, and those reads check the database instead.
+   */
+  settings_version?: number;
 }
 
 export type HubStatus = "active" | "suspended";

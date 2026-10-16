@@ -266,8 +266,9 @@ export async function resolveHub(
     // An address a hub moved away from still leads to it (review R47).
     // Checked before the local-development rules, which would otherwise
     // read "<old-slug>.localhost" as that hub and never redirect.
-    if (!(await getHubByHostname(hostname))) moved = await getHubByPreviousHostname(hostname);
-    hub = moved ? null : await resolveHubForHostname(hostname, queryHub);
+    const direct = await getHubByHostname(hostname);
+    if (!direct) moved = await getHubByPreviousHostname(hostname);
+    hub = direct ?? (moved ? null : await resolveHubForHostname(hostname, queryHub));
   } catch (e) {
     // A registry read that throws is an outage, not an unknown hostname.
     // Say so rather than telling the caller their address is wrong.
@@ -301,12 +302,14 @@ export async function resolveHub(
   }
 
   // Load the hub's settings once, here, and carry them with the hub for the
-  // rest of the request. Loading them per read would put a round trip inside
+  // rest of the request. The row just read carries the settings version, so a
+  // cached copy older than the last save is reloaded now (20261018000000).
+  // Loading them per read would put a round trip inside
   // isAdminEmail(), which runs on paths served to every visitor; loading them
   // here is what lets those readers stay synchronous.
   let settings: Awaited<ReturnType<typeof fetchHubSettings>>;
   try {
-    settings = await fetchHubSettings(hub.id);
+    settings = await fetchHubSettings(hub.id, hub.settings_version);
   } catch (err) {
     if (!(err instanceof HubSettingsUnavailableError)) throw err;
     // Without its settings the hub does not know its admins or its copy:

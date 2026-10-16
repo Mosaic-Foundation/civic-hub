@@ -73,6 +73,8 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "hubs", columns: ["jurisdiction_ocd_id", "jurisdiction_custom"], owner: "control" },
   // A moved hub's old addresses redirect (20261008000000, review R47).
   { table: "hubs", columns: ["previous_hostnames", "redirect_to"], owner: "core/hubRegistry" },
+  // Settings reach every instance at once: the version every change bumps (20261018000000).
+  { table: "hubs", columns: ["settings_version"], owner: "core/hubRegistry" },
   { table: "processes", columns: ["id", "hub_id", "type", "status", "state", "review_id"], owner: "core/processService" },
   // Audit 3: the write counter every version-checked write compares, and a
   // deadline close's claim (20261011200000).

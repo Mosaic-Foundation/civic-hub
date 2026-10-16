@@ -24,7 +24,21 @@ export function call(
   ip: string = freshTestIp(),
   headers: Record<string, string> = {},
 ): Promise<HostResponse> {
-  const url = new URL(`${API_BASE}${path}`);
+  return callAt(API_BASE, method, path, host, body, token, ip, headers);
+}
+
+/** `call`, to a server other than the one under test (a second instance). */
+export function callAt(
+  base: string,
+  method: string,
+  path: string,
+  host: string,
+  body?: unknown,
+  token?: string,
+  ip: string = freshTestIp(),
+  headers: Record<string, string> = {},
+): Promise<HostResponse> {
+  const url = new URL(`${base}${path}`);
   const payload = body === undefined ? undefined : JSON.stringify(body);
   return new Promise((resolve, reject) => {
     const req = request(

@@ -26,7 +26,7 @@ import { AuditTable } from "./AuditLog";
 import { PLUGIN_NAMES } from "./pluginNames";
 
 
-const PROPAGATION = "Saved. Other server instances pick it up within a minute.";
+const PROPAGATION = "Saved. Every server picks it up on its next request.";
 
 export default function HubDetailPage({ id }: { id: string }) {
   const [detail, setDetail] = useState<HubDetail | null>(null);
@@ -523,8 +523,7 @@ function AiLimitsSection({ detail, onSaved }: { detail: HubDetail; onSaved: (res
         How much this hub's people may use the drafting assistant and the Code of Conduct check. Leave a field empty for
         the default ({detail.hub.mode === "demo" ? "a demo hub's" : "a hub's"} default is shown). When the day's tokens
         are spent, the assistant pauses until the next day and Code of Conduct checks go to an admin. Opening the
-        assistant counts as a turn (it asks its first question), and so does "Get suggestions". Saved here, a change
-        reaches every server within a minute.
+        assistant counts as a turn (it asks its first question), and so does "Get suggestions".
       </p>
       {AI_LIMIT_FIELDS.map((f) => (
         <label className="cx-field" key={f.key}>
