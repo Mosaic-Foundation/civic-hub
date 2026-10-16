@@ -5,27 +5,30 @@ and none needs a card. Why these and what they may receive: `../decisions/006-ou
 
 | Service | Watches | Alerts by | Account |
 |---|---|---|---|
-| **Better Stack** (Uptime) | `/api/health` on each production hub and the console, the docs, the dev smoke hub; every 3 min | email; ntfy push if its webhook is set (see Setup, step 1) | free: 10 monitors, 1 status page |
-| **Healthchecks.io** | a ping from each scheduled job and from the backup dump | email and ntfy push | free (Hobbyist): 20 checks |
-| **Sentry** | errors thrown in the API and the UI, dev and production | email, on the **first** occurrence of a new error | free (Developer): 5,000 errors a month |
+| **Better Stack** (Uptime) | `/api/health` on each production hub and the console, the docs, the dev smoke hub; every 3 min | email only (push, SMS and calls are paid) | free: 10 monitors, 1 status page |
+| **Healthchecks.io** | a ping from each scheduled job and from the backup dump | email | free (Hobbyist): 20 checks |
+| **Sentry** | errors thrown in the API and the UI, dev and production | email, on the **first** occurrence of a new error and when a known one escalates | free (Developer): 5,000 errors a month; a 14-day Business trial at sign-up falls back to it |
 
-The public status page is **https://status.civic.social** (Better Stack). It lists the production hubs and the docs.
+All three accounts are under **adam@mosaic.social**. The public status page is **https://status.civic.social**
+(Better Stack, "Civic.Social"; fallback address civic-social.betteruptime.com). It lists the production hubs and the
+docs.
 
 ## What is monitored
 
-**Better Stack monitors.** Alerts after two failed checks in a row (3-minute confirmation period), and again on
-recovery.
+**Better Stack monitors.** "URL becomes unavailable", every 3 minutes, from all four regions, IPv4 only. They alert
+after a 3-minute confirmation period (a failure that is still there on the recheck), and again on recovery.
 
 | Monitor | URL |
 |---|---|
-| Floyd hub | `https://floyd.civic.social/api/health` |
-| Demosville hub | `https://demosville.civic.social/api/health` |
-| Longmont hub | `https://longmont.civic.social/api/health` |
-| Console | `https://console.civic.social/api/health` |
-| Docs | `https://docs.civic.social/` |
-| Dev smoke hub | `https://smoke.dev.civic.social/api/health` |
+| Floyd Hub | `https://floyd.civic.social/api/health` |
+| Demosville Hub | `https://demosville.civic.social/api/health` |
+| Longmont Hub | `https://longmont.civic.social/api/health` |
+| Console | `https://console.civic.social/api/health` (**not yet created**: add it after the release that serves it, see Setup) |
+| Civic Hub Docs | `https://docs.civic.social/` |
+| Smoke Test Hub | `https://smoke.dev.civic.social/api/health` (not on the status page) |
 
-That's 6 of the 10 free monitors. A seventh production hub is the last that fits without a paid plan.
+That's 6 of the 10 free monitors. A seventh production hub is the last that fits without a paid plan, or drop the
+Smoke Test Hub monitor (the smoke suite checks dev after every release) to make room.
 
 `/api/health` answers **503** unless the database answers, the host's hub passes its database check and the schema has
 no gaps; a monitor fails on any of them, not only on a dead server (`src/http/health.ts`). It is never cached.
@@ -62,11 +65,12 @@ The **release** is the deployed commit. Sent scrubbed: no email, body, cookie, q
 
 ## Where alerts go
 
-- **Your phone:** the ntfy app, subscribed to the topic you chose. Healthchecks.io always pushes there. Better Stack
-  pushes there only if its Webhook integration was available on the free plan (Setup, step 1); otherwise its alerts are
-  email only.
-- **Email** (creatinglake@gmail.com): all three services.
-- Sentry alerts once per new issue. A known error happening again does not alert; it is counted under its issue.
+- **Email** to adam@mosaic.social, from all three services. That's the only channel on the free plans.
+- **Your phone:** through the Gmail app on that account, with a Gmail filter that marks the three services' mail
+  important and notifications set to "High priority only" (Setup, step 5). Push straight from the services isn't free:
+  Better Stack's push, SMS and calls are paid, and ntfy didn't push on the iPhone (Open items).
+- Sentry alerts on each new issue, and when an existing issue escalates (Sentry marks it high priority). A known error
+  happening again at its usual rate does not alert; it is counted under its issue.
 
 ## When an alert comes
 
@@ -81,8 +85,13 @@ The **release** is the deployed commit. Sent scrubbed: no email, body, cookie, q
      `NOTIFY pgrst, 'reload schema';` in the SQL editor.
    - `hub_db.ok: false` on one hub: that hub's token or its RLS check failed. Look in Vercel's logs (civic-hub →
      Logs) for `[civic-error:` around the alert's time.
-3. **It answers 403 "request was blocked".** Vercel's firewall stopped the monitor. Check that the rule "Uptime health
-   checks" (path `/api/health` → Bypass) is still published (Setup, step 4).
+3. **It answers 403 "request was blocked".** Vercel's firewall stopped the monitor.
+   - Check that the custom rule "Uptime health checks" (path `/api/health` → Bypass) is still published (Setup,
+     step 4).
+   - That rule does **not** cover Vercel's system mitigations (its automatic DDoS protection). If the rule is in
+     place and checks are still blocked, add **system bypass rules** for Better Stack's published monitoring IP
+     addresses: Firewall → System Bypass. A check every 3 minutes per hub isn't expected to trigger this; it wasn't
+     set up on 2026-10-16.
 4. **It times out, or Vercel shows its own error page.** Check vercel-status.com and civic-hub's Deployments page. If
    the latest deployment is the cause: Deployments → the previous Production deployment → **⋯ → Instant Rollback**.
 5. **Every hub down at once** means the deployment or the database. **One hub down** means that hub (its row, its
@@ -102,9 +111,9 @@ The **release** is the deployed commit. Sent scrubbed: no email, body, cookie, q
    maps yet), so read the message, the `route` (page path) and the `surface` (hub, console, start).
 6. Resolve the issue in Sentry once fixed. If it comes back in a later release, Sentry alerts again.
 
-**A spike** (a known error suddenly frequent) does not alert on its own. To be told: Sentry → Alerts → Create Alert →
-Issues → "Number of events in an issue is more than 100 in one hour" → email. It's free on the Developer plan; not set
-up as of 2026-10-15.
+**A spike** (a known error suddenly frequent) alerts when Sentry marks the issue as escalating (high priority); the
+alert rule has that trigger as well as "A new issue is created". For a hard threshold instead: Sentry → Alerts →
+Create Alert → Issues → "Number of events in an issue is more than 100 in one hour" → email. Not set up.
 
 ### A job's heartbeat is late (Healthchecks.io: "is DOWN")
 
@@ -139,9 +148,10 @@ next scheduled run tries again. A fail at 3 am that is followed by a success nee
 
 ## Adding a hub
 
-One step: in Better Stack, **Uptime → Monitors → the Floyd hub monitor → ⋯ → Clone**. Change the URL to
-`https://<slug>.civic.social/api/health` and the name to the hub's. Then **Status pages → Civic Social → Resources →
-Add resource** → the new monitor.
+One step: in Better Stack, **Monitors → Floyd Hub → ⋯ → Clone**. Change the URL to
+`https://<slug>.civic.social/api/health` and the pronounceable name to the hub's; check that the confirmation period
+(3 minutes) and IP version (IPv4 only) carried over. Then **Status pages → status.civic.social → Structure → Search to
+add resources** → the new monitor → Save changes.
 
 Nothing else: heartbeats and errors cover every hub already. (Better Stack's API could do this from the console, but
 it needs a key on our side; not worth it at this size.)
@@ -153,10 +163,12 @@ quiet:
 1. **Before:** Better Stack → Uptime → Monitors → select the hub monitors and the console → **Pause**.
 2. **After** `release.sh prod` reports health ok: select them → **Resume**.
 
+Better Stack also has a per-monitor **Pause** on each monitor's page.
+
 Without migrations, there's no need: Vercel switches deployments without a gap. Heartbeats need nothing: a release
 doesn't stop the crons. Sentry needs nothing: a release's new errors are exactly what it is for.
 
-A long planned outage: Better Stack → Status pages → Civic Social → **Maintenance** → schedule it, so the status page
+A long planned outage: Better Stack → Status pages → status.civic.social → **Maintenance** → schedule it, so the status page
 says so.
 
 ## Rotating a key
@@ -169,36 +181,49 @@ Production → ⋯ → Redeploy), because a variable reaches only new deployment
 | Sentry DSN | Vercel civic-hub (Production) and civic-hub-dev: `CIVIC_ERROR_DSN` | Sentry → Project Settings → Client Keys → **Generate New Key**. Put it in both projects, redeploy both, then **Disable** the old key |
 | Healthchecks.io ping key | Vercel civic-hub (Production): `CIVIC_HEARTBEAT_PING_KEY`; GitHub civic-hub-backups secret `HEALTHCHECKS_PING_KEY` | Healthchecks.io → Settings → Ping key → **Revoke**, then **Create**. Update both places straight away and redeploy civic-hub, because every check goes late until they match |
 | Healthchecks.io API key | `~/civic-keys/healthchecks.env` (`HEALTHCHECKS_API_KEY`), used only by `npm run heartbeats:sync` | Settings → API Access → **Revoke**, create a new one, and replace the line in the file |
-| ntfy topic | the ntfy app; Healthchecks.io's ntfy integration; Better Stack's webhook | Subscribe to a new topic in the app, change it in both integrations, unsubscribe the old one |
 
 Better Stack holds no key of ours: it only fetches public URLs.
 
-## Setup (done once, 2026-10-15)
+## Setup (done 2026-10-16, as adam@mosaic.social)
 
-0. **ntfy:** install the app, and subscribe to a long random topic on ntfy.sh. The topic name is the only secret.
-1. **Better Stack** (betterstack.com, free):
-   - Monitors as in the table above: "URL becomes unavailable", 3 min, confirmation period 3 min, recovery alerts
-     on.
-   - Integrations → Webhook (if offered on free) → `https://ntfy.sh/<topic>?title=Civic%20uptime`.
-   - Status page "Civic Social" with custom domain `status.civic.social`, listing the three hubs and the docs.
-   - DNS at GoDaddy: CNAME `status` → the target Better Stack shows (usually `statuspage.betteruptime.com`).
-2. **Healthchecks.io** (Hobbyist):
-   - Integrations → ntfy, with the topic.
-   - Settings → Ping key → into Vercel civic-hub Production `CIVIC_HEARTBEAT_PING_KEY` (Sensitive) and GitHub
+1. **Vercel firewall** (civic-hub): Firewall → Configure → New Rule "Uptime health checks": Request Path equals
+   `/api/health` → Bypass → Save Rule → Publish. (Done. Vercel warns that it does not bypass system mitigations; see
+   "403" above.)
+2. **Better Stack** (betterstack.com, free; onboarding: Uptime monitoring and Status page, no integrations, no test
+   call):
+   - The five monitors in the table above. Each: E-mail only (Push, SMS and Call need a paid plan), confirmation
+     period 3 minutes, recovery period 3 minutes, check frequency 3 minutes, IPv4 only, all regions.
+   - **To do after the next production release:** the Console monitor (clone Floyd Hub, URL
+     `https://console.civic.social/api/health`). Before that release the console answers 404.
+   - Status page "Civic.Social", subdomain `civic-social`, custom domain `status.civic.social`, logo link
+     www.civic.social, Get in touch `mailto:contact@civic.social`, theme System. Resources: Floyd Hub, Demosville
+     Hub, Longmont Hub, Civic Hub Docs.
+   - DNS at GoDaddy: CNAME `status` → `statuspage.betteruptime.com` (resolving on 2026-10-16).
+   - Better Stack switched on an "AI SRE" integration by default; it isn't used.
+3. **Healthchecks.io** (Hobbyist):
+   - Settings → Ping key → Vercel civic-hub Production `CIVIC_HEARTBEAT_PING_KEY` (Sensitive) and GitHub
      civic-hub-backups secret `HEALTHCHECKS_PING_KEY`.
-   - Settings → API key → `~/civic-keys/healthchecks.env`.
-   - Then:
+   - Settings → API key (full access) → `~/civic-keys/healthchecks.env` as `HEALTHCHECKS_API_KEY=…`.
+   - `npm run heartbeats:sync` made the 8 checks (2026-10-16):
      ```bash
      cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && npm run heartbeats:sync
      ```
-   - Then add the heartbeat step to civic-hub-backups `dump.yml` (below).
-3. **Sentry** (Developer):
-   - Project `civic-hub`, platform Express, "alert on every new issue".
-   - Security & Privacy: Data Scrubber, default scrubbers, and Prevent Storing of IP Addresses all on.
-   - Client Keys → DSN into `CIVIC_ERROR_DSN` on both Vercel projects. `CIVIC_ERROR_ENVIRONMENT` is `production` on
-     civic-hub and `dev` on civic-hub-dev.
-4. **Vercel firewall** (civic-hub): Firewall → Configure → New Rule "Uptime health checks": Request Path equals
-   `/api/health` → Bypass → Save → Publish.
+   - The heartbeat step is in civic-hub-backups `dump.yml` (`0cf3a77`, below). Run #37 pinged `backup-dump`. The job
+     checks start when production runs the operations-shell code.
+4. **Sentry** (Developer, after a 14-day Business trial; organization `mosaic-foundation`):
+   - Set up manually, not with the coding-agent plugin (it would install the SDK, which ADR-006 avoids). Project
+     `civic-hub`, platform Express.
+   - Organization Security & Privacy: Require Data Scrubber, Require Using Default Scrubbers, Prevent Storing of IP
+     Addresses, all on.
+   - Alert rule (Monitors → Alerts → "Send a notification for high priority issues", edited): WHEN any of "A new
+     issue is created" or "Sentry marks an existing issue as high priority" → email.
+   - DSN into `CIVIC_ERROR_DSN` on both Vercel projects. `CIVIC_ERROR_ENVIRONMENT` is `production` on civic-hub
+     (Production) and `dev` on civic-hub-dev (all environments). Checked on dev 2026-10-16: a thrown error arrived as
+     CIVIC-HUB-2, environment dev, release 515e1c2, no user or IP.
+5. **Phone (Gmail):** on the Mac, Gmail (adam@mosaic.social) → search options → From:
+   `betterstack.com OR betteruptime.com OR healthchecks.io OR sentry.io OR getsentry.com` → Create filter → Always
+   mark it as important (and a label `Civic alerts`). On the iPhone, Gmail app → that account → Notifications → High
+   priority only. Turn off Sentry's weekly reports (User Settings → Notifications) so they don't buzz too.
 
 **The backup heartbeat step** (civic-hub-backups `.github/workflows/dump.yml`, after "Dump, encrypt, upload"):
 
@@ -210,8 +235,18 @@ Better Stack holds no key of ours: it only fetches public URLs.
 
 ## What this doesn't cover
 
-- **Text or phone-call alerts:** paid on all three services. Push through ntfy instead.
+- **Push, text or phone-call alerts straight from the services:** paid. The phone hears through Gmail (Setup, step 5).
 - **UI source maps:** browser stacks point at minified bundles. They'd need a Sentry token at build time; left for
   later.
 - **Dev:** not watched at 3 am. The smoke hub's monitor and dev's Sentry environment are there for daytime checks;
   dev's jobs ping no heartbeats.
+
+## Open items
+
+- **ntfy push on the iPhone.** On 2026-10-16 messages reached the ntfy app (visible after a refresh) but never raised a
+  notification, with notifications allowed: the app isn't getting Apple push. To try later: Background App Refresh
+  on, reinstall, re-subscribe with "Use another server" off. If it still doesn't push, use **Telegram** instead,
+  which Healthchecks.io integrates for free. Better Stack's webhook (for ntfy) wasn't checked: under Integrations →
+  Exporting data.
+- **The Console monitor**, after the next production release (Setup, step 2).
+- **The Gmail filter** (Setup, step 5), if not yet done.
