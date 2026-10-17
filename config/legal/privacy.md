@@ -1,9 +1,9 @@
 # Privacy Policy
 
-*Last updated: 2026-10-14*
-*Version: 1.3*
+*Last updated: 2026-10-17*
+*Version: 1.4*
 
-{{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US privacy law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US privacy law{{/place}} before {THE_HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.{{/draft}}
+{{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US privacy law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US privacy law{{/place}} before {THE_HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production.{{/draft}}
 
 ## In short
 
@@ -126,7 +126,7 @@ You have the right to:
 - **Access** — ask for a copy of the data we have about you.
 - **Correct** — tell us to fix inaccurate information.
 - **Delete** — close your account and have your personal account data deleted, subject to the civic-record retention note above.
-- **Opt out of the digest** — at any time, either through the Settings page or via the one-click unsubscribe link in every digest email.
+- **Opt out of the digest** — at any time: open your account menu, choose Your settings, and set Digest frequency to Unsubscribed; or use the one-click unsubscribe link in every digest email.
 - **Complain** — to us directly (we'll take it seriously) {{#place}}or to the {STATE} Attorney General's office.{{/place}}{{^place}}or to your state's Attorney General.{{/place}}
 
 To exercise any of these rights, email {CONTACT_EMAIL}. We'll respond within 30 days.

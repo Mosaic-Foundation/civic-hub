@@ -107,7 +107,8 @@ describe("shared legal documents", () => {
   });
 
   it("does not touch text that merely looks like a placeholder", () => {
-    // `{LIKE_THIS}` appears in the draft warning as an illustration.
+    // An unknown name in braces is left as written. (The draft warning used
+    // `{LIKE_THIS}` as an illustration until legal 1.4, 2026-10-17.)
     expect(applySubstitutions("marked `{LIKE_THIS}` should be", FLOYD)).toBe(
       "marked `{LIKE_THIS}` should be",
     );
@@ -201,8 +202,6 @@ describe("no shared template names a hub, a person or a domain", () => {
     const names = new Set(
       [...text.matchAll(/\{([A-Z_]+)\}/g)].map((m) => m[1]),
     );
-    // LIKE_THIS is the draft banner's illustration of a placeholder, not one.
-    names.delete("LIKE_THIS");
     for (const name of names) {
       expect(Object.keys(FLOYD)).toContain(name);
     }
@@ -228,9 +227,7 @@ describe("no shared template names a hub, a person or a domain", () => {
       expect(rendered, path).not.toMatch(/Adam Lake/i);
       expect(rendered, path).not.toMatch(/contact@civic\.social/i);
       // Every placeholder resolved — no `{OPERATOR}` left on a live page.
-      expect(rendered.replace(/`\{LIKE_THIS\}`/g, ""), path).not.toMatch(
-        /\{[A-Z_]+\}/,
-      );
+      expect(rendered, path).not.toMatch(/\{[A-Z_]+\}/);
     }
   });
 });

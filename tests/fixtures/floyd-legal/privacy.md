@@ -1,7 +1,7 @@
 # Privacy Policy
 
-*Last updated: 2026-10-14*
-*Version: 1.3*
+*Last updated: 2026-10-17*
+*Version: 1.4*
 
 ## In short
 
@@ -126,7 +126,7 @@ You have the right to:
 - **Access** — ask for a copy of the data we have about you.
 - **Correct** — tell us to fix inaccurate information.
 - **Delete** — close your account and have your personal account data deleted, subject to the civic-record retention note above.
-- **Opt out of the digest** — at any time, either through the Settings page or via the one-click unsubscribe link in every digest email.
+- **Opt out of the digest** — at any time: open your account menu, choose Your settings, and set Digest frequency to Unsubscribed; or use the one-click unsubscribe link in every digest email.
 - **Complain** — to us directly (we'll take it seriously) or to the Virginia Attorney General's office.
 
 To exercise any of these rights, email contact@civic.social. We'll respond within 30 days.

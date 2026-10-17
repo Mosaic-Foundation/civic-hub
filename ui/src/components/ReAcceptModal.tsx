@@ -20,6 +20,7 @@ import hub from "../config/hub";
 import {
   CURRENT_LEGAL_VERSION,
   CURRENT_LEGAL_LAST_UPDATED,
+  legalAcceptanceIsCurrent,
 } from "../config/legal";
 import Modal from "./Modal";
 import TermsNotice from "./TermsNotice";
@@ -28,16 +29,15 @@ import TermsNotice from "./TermsNotice";
  * True when the user must be prompted to accept the current legal
  * bundle. Null user / unauthenticated session => no prompt.
  *
- * Comparison is intentionally conservative: anything other than an
- * exact match to CURRENT_LEGAL_VERSION counts as out-of-date. We don't
- * try to compare semver — version bumps are coordinated with the
- * markdown-file bump, so equality is what we actually care about.
+ * Comparison is intentionally conservative: anything other than
+ * CURRENT_LEGAL_VERSION, or a version a non-material revision replaced
+ * (src/shared/legal.ts), counts as out-of-date. We don't try to compare
+ * semver.
  */
 function needsReAcceptance(
   storedVersion: string | null | undefined,
 ): boolean {
-  if (storedVersion == null) return true;
-  return storedVersion !== CURRENT_LEGAL_VERSION;
+  return !legalAcceptanceIsCurrent(storedVersion);
 }
 
 export default function ReAcceptModal() {

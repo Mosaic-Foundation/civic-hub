@@ -1,9 +1,9 @@
 # Terms of Service
 
-*Last updated: 2026-08-10*
-*Version: 1.2*
+*Last updated: 2026-10-17*
+*Version: 1.4*
 
-{{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US consumer law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US consumer law{{/place}} before {THE_HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production. Placeholder fields marked `{LIKE_THIS}` should be filled in or removed.{{/draft}}
+{{#draft}}> **Draft starter content — review before launch.** This document was drafted as a starting point and is not legal advice. Have it reviewed by a lawyer {{#place}}familiar with {STATE} and US consumer law{{/place}}{{^place}}familiar with {GOVERNING_STATE} and US consumer law{{/place}} before {THE_HUB_NAME} accepts its first {{#place}}resident {{/place}}sign-up in production.{{/draft}}
 
 ## In short
 
@@ -85,7 +85,7 @@ Some jurisdictions don't allow these limitations. In those jurisdictions, our li
 
 ## Termination
 
-You can stop using the Hub at any time and close your account through the Settings page.
+You can stop using the Hub at any time. To close your account, open your account menu, choose Your settings, and press Delete my account at the bottom of the page.
 
 We can suspend or close your account, remove your content, or restrict your access to the Hub if:
 - You violate these Terms or the Code of Conduct.

@@ -15,7 +15,7 @@ import {
   type AuthRole,
   type AuthUser,
 } from "../services/auth";
-import { CURRENT_LEGAL_VERSION } from "../config/legal";
+import { CURRENT_LEGAL_VERSION, legalAcceptanceIsCurrent } from "../config/legal";
 import hub from "../config/hub";
 import Modal from "./Modal";
 import TermsNotice from "./TermsNotice";
@@ -228,9 +228,10 @@ export default function AuthModal({ onComplete, onDismiss, pending }: Props) {
       ? "I'm trying this demo"
       : affiliationClause(hub.kind, { place: hub.jurisdiction, hub: hub.name });
   const needsName = !gateUser?.full_name;
-  // The policies notice shows to anyone who hasn't agreed to this version: a
-  // hub's creator agreed once, at creation, and doesn't see it again.
-  const needsTerms = gateUser?.tos_version_accepted !== CURRENT_LEGAL_VERSION;
+  // The policies notice shows to anyone who hasn't agreed to this version (or
+  // one a non-material revision replaced): a hub's creator agreed once, at
+  // creation, and doesn't see it again.
+  const needsTerms = !legalAcceptanceIsCurrent(gateUser?.tos_version_accepted);
 
   async function handleResidency(e: React.FormEvent) {
     e.preventDefault();
