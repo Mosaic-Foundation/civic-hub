@@ -15,6 +15,7 @@ import { runJobAcrossHubs } from "../jobs/runJob.js";
 import { isCronAuthorized } from "../jobs/cronAuth.js";
 import { requestedHub } from "../services/cronHubs.js";
 import { pingHeartbeat } from "../utils/heartbeat.js";
+import { recordJobLastRun } from "../db/jobLastRun.js";
 import { flushErrors } from "../utils/errorTracking.js";
 
 function handlerFor(job: JobSpec, calledAs: string) {
@@ -37,18 +38,40 @@ function handlerFor(job: JobSpec, calledAs: string) {
     // hub (?hub=) is someone checking by hand, and does not. The ping and any
     // error report go out BEFORE the response: a serverless function may be
     // frozen once its response is sent.
+    // The same run, and only it, is recorded as the job's last run
+    // (job_last_run), even when it did nothing: the console's Dashboard
+    // tells a late job from it.
     const beats = onlyHub === null;
+    const started = new Date();
     let answer: { status: number; body: unknown };
     try {
       answer = await runOnce(job, force, onlyHub);
     } catch (err) {
       // sendError() (route()) flushes the error report on its way out.
-      if (beats) await pingHeartbeat(job.id, false);
+      if (beats) {
+        const error = err instanceof Error ? err.message : String(err);
+        await Promise.all([
+          pingHeartbeat(job.id, false),
+          recordJobLastRun(job.id, started, { ok: false, hubsRun: 0, hubsFailed: 0, error }),
+        ]);
+      }
       throw err;
     }
-    await Promise.all([beats ? pingHeartbeat(job.id, answer.status < 500) : undefined, flushErrors()]);
+    await Promise.all([
+      beats ? pingHeartbeat(job.id, answer.status < 500) : undefined,
+      beats ? recordJobLastRun(job.id, started, { ok: answer.status < 500, ...hubCounts(answer.body) }) : undefined,
+      flushErrors(),
+    ]);
     res.status(answer.status).json(answer.body);
   });
+}
+
+/** How many hubs a run looked at, and how many of them failed. */
+function hubCounts(body: unknown): { hubsRun: number; hubsFailed: number } {
+  const hubs = (body as { hubs?: Record<string, Record<string, unknown>> } | null)?.hubs;
+  if (!hubs) return { hubsRun: 0, hubsFailed: 0 };
+  const results = Object.values(hubs);
+  return { hubsRun: results.length, hubsFailed: results.filter((r) => r && "error" in r).length };
 }
 
 async function runOnce(
