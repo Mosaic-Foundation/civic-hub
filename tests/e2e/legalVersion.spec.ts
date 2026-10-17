@@ -25,8 +25,9 @@ test("accepted 1.3: no 'We've updated our Terms' dialog under 1.4", async ({ pag
   const { token } = await withVersion(hub, "13", "1.3");
   await visitAs(page, token);
   await page.goto("/votes");
-  await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
-  await expect(page.getByRole("dialog", { name: "We've updated our Terms" })).toHaveCount(0);
+  // The account has loaded (the dialog decides from it), so "no dialog" means something.
+  await expect(page.getByRole("button", { name: /^Account menu/ })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("alertdialog", { name: "We've updated our Terms" })).toHaveCount(0);
 });
 
 test("accepted 1.2: the dialog asks, as for 1.3, and accepting records 1.4", async ({ page, request }) => {
@@ -34,8 +35,9 @@ test("accepted 1.2: the dialog asks, as for 1.3, and accepting records 1.4", asy
   const { token, email } = await withVersion(hub, "12", "1.2");
   await visitAs(page, token);
   await page.goto("/votes");
-  const dialog = page.getByRole("dialog", { name: "We've updated our Terms" });
-  await expect(dialog).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Account menu/ })).toBeVisible({ timeout: 15_000 });
+  const dialog = page.getByRole("alertdialog", { name: "We've updated our Terms" });
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
   await expect(dialog).toContainText("Version 1.4");
   await dialog.getByRole("button", { name: "Continue" }).click();
   await expect(dialog).toHaveCount(0);
