@@ -113,6 +113,10 @@ describe("buildSummarizationPrompt — coverage instructions", () => {
   it("still keeps the procedural-noise exclusion", () => {
     const p = buildSummarizationPrompt({ ...base, transcript_duration_seconds: 3600 });
     expect(p).toContain("Skip procedural micro-items");
+    // The opening (prayer, pledge, quorum) is procedural too (2026-10-17: the
+    // generic later-items wording had started giving it a block).
+    expect(p).toContain("an invocation or prayer, the Pledge of Allegiance, roll call or quorum");
+    expect(p).toContain("Do not give the meeting's opening its own block.");
   });
 });
 

@@ -204,7 +204,7 @@ COVER THE WHOLE MEETING. Work through the ${input.has_video ? "transcript" : "do
 
 Never omit a closed session (also called an executive session). If the body goes into one, produce a block for it recording the stated reason or legal basis, and record in action_taken any vote or certification the record shows on return.
 
-Skip procedural micro-items (call to order, roll call, adjournment, etc.) unless they contain substantive content.
+Skip procedural micro-items (call to order, an invocation or prayer, the Pledge of Allegiance, roll call or quorum, adjournment, etc.) unless they contain substantive content. Do not give the meeting's opening its own block.
 
 Return a JSON object of the form:
 {
