@@ -11,7 +11,9 @@ import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { guardedFetch } from "../utils/ssrfGuard.js";
 import { callClaude, DEFAULT_MODEL } from "../utils/anthropic.js";
-import { closeThroughDispatcher } from "./registry.js";
+import { closeThroughDispatcher, getActionDispatcher } from "./registry.js";
+import { afterActionCommits } from "../services/actionScope.js";
+import { UnavailableError } from "../errors/index.js";
 import { isPastDeadline } from "../utils/deadline.js";
 import type { Process } from "../models/process.js";
 import type { ProcessHandler, RegeneratedBrief } from "./types.js";
@@ -148,14 +150,49 @@ export function getPolisAdapter(): PolisAdapter {
   return _adapter;
 }
 
+/**
+ * Polis is down, slow or failing (a 5xx, a timeout, no answer): the request
+ * answers 503 and says to try again, not the generic 500 (Audit 4's open
+ * item, fixed in the cleanup slice, 2026-10-16). A 4xx is Polis refusing
+ * this request and stays as it was.
+ */
+export class PolisUnavailableError extends UnavailableError {
+  constructor(cause: string) {
+    super("Conversations can't reach Polis right now. Please try again in a moment.", "polis_unavailable", {
+      retryAfterSeconds: 30,
+      cause,
+    });
+  }
+}
+
+/** A Polis failure as the hub answers it. Exported for its unit test. */
+export function asHubError(err: unknown): unknown {
+  const status = (err as { status?: unknown } | null)?.status;
+  if (typeof status === "number" && status < 500) return err;
+  return new PolisUnavailableError(err instanceof Error ? err.message : String(err));
+}
+
+const ADAPTER_METHODS = [
+  "createDeliberation",
+  "submitStatement",
+  "recordVote",
+  "getNextStatement",
+  "pullClusterState",
+  "closeDeliberation",
+  "getStatements",
+] as const satisfies ReadonlyArray<keyof PolisAdapter>;
+
 export function bootDeliberation(): ProcessHandler {
   // CIVIC_POLIS_FAKE=on (development and tests, never production): the real
   // adapter talks to an in-memory Polis instead of the network, with short
   // timeouts, and summaries are made without a language model.
   const fake = polisFakeEnabled();
-  const polisBaseUrl = fake
-    ? FAKE_POLIS_BASE_URL
-    : getSettingSync(KEYS.PLUGIN_CONVERSATION_POLIS_URL) || DEFAULT_POLIS_URL;
+  // Read per call, for the hub in scope: the hub setting, or the default.
+  // Until 2026-10-16 it was read once, here, at boot, outside any hub, so
+  // every hub got the env's value and a hub's own setting never reached the
+  // server (the cleanup slice, Audit 3's Polis findings).
+  const polisBaseUrl = (): string =>
+    fake ? FAKE_POLIS_BASE_URL : getSettingSync(KEYS.PLUGIN_CONVERSATION_POLIS_URL) || DEFAULT_POLIS_URL;
   const polisAuthToken = env.POLIS_AUTH_TOKEN || (fake ? "fake-polis-service-token" : "");
 
   if (fake) {
@@ -166,14 +203,37 @@ export function bootDeliberation(): ProcessHandler {
     );
   }
 
-  _adapter = createPolisAdapter({
-    baseUrl: polisBaseUrl,
-    authToken: polisAuthToken,
-    // The Polis URL is a hub setting its admin chooses: guarded (Audit 2).
-    ...(fake
-      ? { fetch: fakePolisFetch, timeoutMs: FAKE_POLIS_TIMEOUT_MS, retryDelaysMs: FAKE_POLIS_RETRY_DELAYS_MS }
-      : { fetch: guardedFetch }),
-  });
+  // One real adapter per Polis address, made on first use; the hub's adapter
+  // picks the one for the hub in scope on every call, and turns an outage
+  // into a 503.
+  const byUrl = new Map<string, PolisAdapter>();
+  const adapterFor = (baseUrl: string): PolisAdapter => {
+    let adapter = byUrl.get(baseUrl);
+    if (!adapter) {
+      adapter = createPolisAdapter({
+        baseUrl,
+        authToken: polisAuthToken,
+        // The Polis URL is a hub setting its admin chooses: guarded (Audit 2).
+        ...(fake
+          ? { fetch: fakePolisFetch, timeoutMs: FAKE_POLIS_TIMEOUT_MS, retryDelaysMs: FAKE_POLIS_RETRY_DELAYS_MS }
+          : { fetch: guardedFetch }),
+      });
+      byUrl.set(baseUrl, adapter);
+    }
+    return adapter;
+  };
+  const hubAdapter = {} as Record<(typeof ADAPTER_METHODS)[number], (...args: unknown[]) => Promise<unknown>>;
+  for (const method of ADAPTER_METHODS) {
+    hubAdapter[method] = async (...args: unknown[]) => {
+      const adapter = adapterFor(polisBaseUrl()) as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>;
+      try {
+        return await adapter[method]!(...args);
+      } catch (err) {
+        throw asHubError(err);
+      }
+    };
+  }
+  _adapter = hubAdapter as unknown as PolisAdapter;
 
   const llmClient = {
     async complete(params: {
@@ -246,6 +306,20 @@ export function bootDeliberation(): ProcessHandler {
     summarize,
     host,
     polisBaseUrl,
+    // A close commits first; only the close that won then closes the
+    // conversation in Polis and summarizes it, as regenerate_summary through
+    // the action path (the cleanup slice: a losing close made both calls).
+    afterCommit: afterActionCommits,
+    async summarizeLater(processId: string) {
+      try {
+        await getActionDispatcher()(processId, { type: "regenerate_summary", actor: "system:conversation-close", payload: {} });
+      } catch (err) {
+        console.error(
+          `[deliberation] summarizing ${processId} after its close failed; an admin can regenerate it:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    },
   });
 
   const handler = shared as unknown as ProcessHandler;

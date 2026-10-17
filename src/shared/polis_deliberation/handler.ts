@@ -49,13 +49,26 @@ export interface PolisHandlerDeps {
     topic: string,
   ) => Promise<DeliberationSummary>;
   host: PolisHostInterface;
-  polisBaseUrl: string;
+  /** Polis's address, or how to read it for the hub in scope (a host serving several hubs). */
+  polisBaseUrl: string | (() => string);
+  /**
+   * A host that commits an action's writes after the handler returns passes
+   * both of these (the cleanup slice, 2026-10-16). `close` then commits the
+   * local close first, and only once that write has won does it close the
+   * conversation in Polis and summarize it (`summarizeLater` runs
+   * `regenerate_summary` through the host's own action path). A close that
+   * loses a race to another makes no Polis call and no paid summary. Without
+   * them, `close` does both inline, as before.
+   */
+  afterCommit?: (fn: () => Promise<void>) => Promise<void>;
+  summarizeLater?: (processId: string) => Promise<void>;
 }
 
 export function createPolisDeliberationHandler(
   deps: PolisHandlerDeps,
 ): ProcessHandlerShape {
-  const { adapter, summarize, host, polisBaseUrl } = deps;
+  const { adapter, summarize, host } = deps;
+  const polisBaseUrl = (): string => (typeof deps.polisBaseUrl === "function" ? deps.polisBaseUrl() : deps.polisBaseUrl);
 
   const handler: ProcessHandlerShape = {
     type: PROCESS_TYPE,
@@ -105,7 +118,7 @@ export function createPolisDeliberationHandler(
           });
 
           state.polis_conversation_id = conversation_id;
-          state.polis_base_url = `${polisBaseUrl}/${conversation_id}`;
+          state.polis_base_url = `${polisBaseUrl()}/${conversation_id}`;
           process.status = "active";
 
           // Duration-based deadline anchors at START: the participation
@@ -139,27 +152,41 @@ export function createPolisDeliberationHandler(
           // past-deadline conversation would stay "active" forever — so guard
           // the call and proceed to close locally regardless. (Fixing Polis is
           // a separate, dedicated track.)
-          try {
-            await adapter.closeDeliberation(state.polis_conversation_id);
-          } catch (err) {
-            console.warn(
-              `[polis-handler] closeDeliberation failed for "${state.polis_conversation_id}" — closing locally anyway:`,
-              err,
-            );
-          }
+          const conversationId = state.polis_conversation_id;
+          const closeInPolis = async () => {
+            try {
+              await adapter.closeDeliberation(conversationId);
+            } catch (err) {
+              console.warn(
+                `[polis-handler] closeDeliberation failed for "${conversationId}" — closing locally anyway:`,
+                err,
+              );
+            }
+          };
           process.status = "closed";
-
           state.summary_status = "generating";
-          try {
-            state.summary = await summarize(
-              state.polis_conversation_id,
-              adapter,
-              state.topic,
-            );
-            state.summary_status = "complete";
-          } catch (err) {
-            state.summary_status = "failed";
-            console.error("[polis-handler] Summarization failed:", err);
+
+          if (deps.afterCommit && deps.summarizeLater) {
+            // Only once the close has won: see PolisHandlerDeps.afterCommit.
+            const processId = process.id;
+            const summarizeLater = deps.summarizeLater;
+            await deps.afterCommit(async () => {
+              await closeInPolis();
+              await summarizeLater(processId);
+            });
+          } else {
+            await closeInPolis();
+            try {
+              state.summary = await summarize(
+                state.polis_conversation_id,
+                adapter,
+                state.topic,
+              );
+              state.summary_status = "complete";
+            } catch (err) {
+              state.summary_status = "failed";
+              console.error("[polis-handler] Summarization failed:", err);
+            }
           }
 
           await host.emitEvent({

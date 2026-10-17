@@ -454,7 +454,10 @@ async function attemptAction(
     try {
       const existing = await findExistingBriefId(process.id);
       if (!existing) {
-        await spawnBriefFromClosedProcess(process, action.actor);
+        // As stored after the after-commit work, which may have written to it
+        // (a conversation's summary is made there since 2026-10-16).
+        const latest = afterCommit.length > 0 ? ((await getProcess(process.id)) ?? process) : process;
+        await spawnBriefFromClosedProcess(latest, action.actor);
       }
     } catch (err) {
       console.warn(

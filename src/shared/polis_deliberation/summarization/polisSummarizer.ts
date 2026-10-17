@@ -19,11 +19,14 @@ const MAX_TOKENS = 4096;
 
 export interface PolisSummarizerConfig {
   llmClient: LlmClient;
-  polisBaseUrl: string;
+  /** Polis's address, or how to read it for the hub in scope. */
+  polisBaseUrl: string | (() => string);
 }
 
 export function createPolisSummarizer(config: PolisSummarizerConfig) {
-  const { llmClient, polisBaseUrl } = config;
+  const { llmClient } = config;
+  const polisBaseUrl = (): string =>
+    typeof config.polisBaseUrl === "function" ? config.polisBaseUrl() : config.polisBaseUrl;
 
   return async function summarize(
     conversationId: string,
@@ -67,7 +70,7 @@ export function createPolisSummarizer(config: PolisSummarizerConfig) {
         total_votes: 0,
         opinion_groups_formed: clusterState.groups.length,
       },
-      linked_polis_data_uri: `${polisBaseUrl}/${conversationId}`,
+      linked_polis_data_uri: `${polisBaseUrl()}/${conversationId}`,
       methodology: {
         prompt_version: PROMPT_VERSION,
         model_used: MODEL,
