@@ -8,6 +8,7 @@ import HubDetailPage from "./HubDetail";
 import AuditLog from "./AuditLog";
 import Invites from "./Invites";
 import FeedbackInbox from "./FeedbackInbox";
+import Dashboard from "./Dashboard";
 
 type Session = { email: string | null; operator_configured: boolean };
 
@@ -53,6 +54,9 @@ export default function App() {
           Civic Social <span>console</span>
         </a>
         <nav className="cx-nav" aria-label="Console">
+          <a href={href({ name: "dashboard" })} aria-current={route.name === "dashboard" ? "page" : undefined}>
+            Dashboard
+          </a>
           <a href={href({ name: "hubs" })} aria-current={route.name === "hubs" || route.name === "hub" ? "page" : undefined}>
             Hubs
           </a>
@@ -86,6 +90,7 @@ export default function App() {
         </div>
       </header>
       <main className="cx-main">
+        {route.name === "dashboard" && <Dashboard />}
         {route.name === "hubs" && <HubList />}
         {route.name === "new" && <CreateHub />}
         {route.name === "hub" && <HubDetailPage id={route.id} />}

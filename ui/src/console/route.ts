@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 export type Route =
   | { name: "hubs" }
+  | { name: "dashboard" }
   | { name: "new" }
   | { name: "hub"; id: string }
   | { name: "audit" }
@@ -13,6 +14,7 @@ export type Route =
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#\/?/, "");
   if (path === "hubs/new") return { name: "new" };
+  if (path === "dashboard") return { name: "dashboard" };
   if (path === "audit") return { name: "audit" };
   if (path === "invites") return { name: "invites" };
   if (path === "feedback") return { name: "feedback" };
@@ -25,6 +27,8 @@ export function href(route: Route): string {
   switch (route.name) {
     case "new":
       return "#/hubs/new";
+    case "dashboard":
+      return "#/dashboard";
     case "audit":
       return "#/audit";
     case "invites":

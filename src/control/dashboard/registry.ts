@@ -2,7 +2,7 @@
 //
 // A section is a name, a server-side loader and a renderer. The loader is
 // listed here; its renderer is listed under the same id in
-// ui/src/console/dashboard/sections.tsx. Adding a section is one entry in
+// ui/src/console/dashboardSections.tsx. Adding a section is one entry in
 // each list (HANDOFF.md, "Dashboard: adding a section").
 //
 // Every loader runs at once, each under its own timeout, so one slow source

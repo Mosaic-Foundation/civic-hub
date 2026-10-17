@@ -5,6 +5,7 @@ import type { ReferenceJurisdictionType } from "../../../src/shared/jurisdiction
 // request carries X-Civic-Console, which the server requires on writes.
 
 import type { AiLimits } from "../../../src/shared/aiLimits";
+import type { DashboardPayload } from "./dashboardTypes";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -217,6 +218,8 @@ export const api = {
   requestStepUp: () => request<{ message: string }>("POST", "/auth/step-up/request-code", { tz: browserTimeZone() }),
 
   config: () => request<ConsoleConfig>("GET", "/config"),
+  // fresh: the Refresh button, past the server's one-minute caches.
+  dashboard: (fresh = false) => request<DashboardPayload>("GET", fresh ? "/dashboard?fresh=1" : "/dashboard"),
   invites: () => request<InviteList>("GET", "/invites"),
   mintInvite: (note: string, days: number) =>
     request<{ code: string; invite: Invite; start_hostname: string | null }>("POST", "/invites", { note, days }),
