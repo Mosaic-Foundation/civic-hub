@@ -129,21 +129,33 @@ describe("the connector ladder names no hub", () => {
     expect(athens.test("https://www.floydcova.gov/_files/ugd/ab12_cd34.pdf")).toBe(false);
   });
 
-  it("accepts exactly the PDFs Floyd's hardcoded pattern accepted, on Floyd's origin", () => {
+  it("still accepts every PDF Floyd's old pattern accepted, and only on Floyd's origin", () => {
     // The pattern that shipped until 2026-09-24, kept here as the reference.
     const legacy = /^https:\/\/www\.floydcova\.gov\/_files\/ugd\/.+\.pdf$/i;
     const derived = sitePdfPattern(new URL(FLOYD_MEETINGS_URL).origin);
     for (const url of [
       "https://www.floydcova.gov/_files/ugd/db2c48_1e9a.pdf",
       "https://www.floydcova.gov/_files/ugd/49fff5_X.PDF",
-      "https://www.floydcova.gov/_files/ugd/.pdf",
-      "https://www.floydcova.gov/_files/other/db2c48.pdf",
+    ]) {
+      expect(legacy.test(url), url).toBe(true);
+      expect(derived.test(url), url).toBe(true);
+    }
+    for (const url of [
       "http://www.floydcova.gov/_files/ugd/db2c48.pdf",
       "https://floydcova.gov/_files/ugd/db2c48.pdf",
       "https://www.floydcovaXgov/_files/ugd/db2c48.pdf",
     ]) {
-      expect(derived.test(url), url).toBe(legacy.test(url));
+      expect(derived.test(url), url).toBe(false);
     }
+  });
+
+  it("accepts a PDF anywhere on the configured site, not only Wix's upload path (2026-10-16)", () => {
+    const athens = sitePdfPattern(new URL(ATHENS_MEETINGS_URL).origin);
+    expect(athens.test("https://www.athens.example/AgendaCenter/ViewFile/Minutes/_10132026-123.pdf")).toBe(true);
+    expect(athens.test("https://www.athens.example/files/minutes.pdf?v=2")).toBe(true);
+    expect(athens.test("https://www.athens.example/DocumentCenter/View/123")).toBe(false);
+    expect(athens.test("https://www.athens.example/minutes.pdf.html")).toBe(false);
+    expect(athens.test("https://elsewhere.example/minutes.pdf")).toBe(false);
   });
 
   it("writes the discovery example with the hub's governing body", () => {

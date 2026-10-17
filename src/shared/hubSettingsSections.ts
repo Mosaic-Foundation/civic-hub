@@ -46,6 +46,8 @@ export type SettingFieldKind =
   | "date"
   /** A whole number within the spec's `min`–`max`, or empty. */
   | "number"
+  /** Which Wix collection columns hold what (src/shared/wixFields.ts), or empty. */
+  | "wix_fields"
   /** #rrggbb. */
   | "color"
   /** A theme object (src/shared/theme.ts), stored as canonical JSON. */
@@ -181,6 +183,11 @@ export const SETTINGS_SECTIONS: Readonly<
     { key: "plugin.meeting_summary.cutoff_date", kind: "date" },
     { key: "plugin.meeting_summary.auto_publish", kind: "boolean" },
     { key: "plugin.meeting_summary.extraction_instructions", kind: "textarea", maxLength: 4000 },
+    // Generic meeting summaries (the cleanup slice, 2026-10-16). Empty reads as
+    // the defaults, which are what every hub had before.
+    { key: "plugin.meeting_summary.wix_fields", kind: "wix_fields", maxLength: 300 },
+    { key: "plugin.meeting_summary.record_grace_days", kind: "number", min: 1, max: 120 },
+    { key: "plugin.meeting_summary.source_quiet_days", kind: "number", min: 7, max: 365 },
     { key: "plugin.news_sync.connector", kind: "choice", options: NEWS_CONNECTOR_OPTIONS },
     { key: "plugin.news_sync.source_url", kind: "url" },
     { key: "plugin.digest.send_hour", kind: "hour" },

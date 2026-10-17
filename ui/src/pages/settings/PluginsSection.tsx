@@ -451,6 +451,28 @@ function settingsPanel(f: FormApi, id: PluginId): React.ReactNode | null {
             label="Publish summaries without review"
             hint="Off: each summary waits for an admin under Meeting summaries."
           />
+          <NumberField
+            f={f}
+            k="plugin.meeting_summary.record_grace_days"
+            label="Wait for a meeting's record"
+            unit="days"
+            placeholder="14"
+            hint="How long a listed meeting may wait for its minutes or transcript before the admins are told."
+          />
+          <NumberField
+            f={f}
+            k="plugin.meeting_summary.source_quiet_days"
+            label="Ask for a check after no new meeting for"
+            unit="days"
+            placeholder="45"
+            hint="Longer for a body that meets less than monthly."
+          />
+          <TextField
+            f={f}
+            k="plugin.meeting_summary.wix_fields"
+            label="Wix collection columns"
+            hint="Only for a Wix site whose columns differ, e.g. date=meetingDate, minutes=minutesPdf. Empty uses the usual ones."
+          />
           <TextAreaField
             f={f}
             k="plugin.meeting_summary.extraction_instructions"

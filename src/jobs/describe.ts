@@ -71,7 +71,7 @@ function describeMeetingSummary(b: Body): JobRunDescription {
     b.waiting,
   );
   for (const w of waiting) {
-    if (num(w.days_since_meeting) > RECORD_GRACE_DAYS) {
+    if (num(w.days_since_meeting) > (typeof b.record_grace_days === "number" ? b.record_grace_days : RECORD_GRACE_DAYS)) {
       flagged.push(
         `${w.meeting_date} ${w.meeting_title} has waited ${w.days_since_meeting} days: ${w.reason}`,
       );
@@ -100,7 +100,7 @@ function describeMeetingSummary(b: Body): JobRunDescription {
     const newest = typeof b.newest_meeting_date === "string" ? b.newest_meeting_date : null;
     if (newest === null) {
       flagged.push("The meeting source has not listed any meetings yet. Check that it is set up correctly.");
-    } else if (num(b.days_since_newest_meeting) > SOURCE_QUIET_DAYS) {
+    } else if (num(b.days_since_newest_meeting) > (typeof b.source_quiet_days === "number" ? b.source_quiet_days : SOURCE_QUIET_DAYS)) {
       flagged.push(
         `No new meetings found since ${newest} (${num(b.days_since_newest_meeting)} days). Check that the meeting source still works.`,
       );

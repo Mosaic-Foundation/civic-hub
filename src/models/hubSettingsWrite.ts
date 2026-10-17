@@ -18,6 +18,7 @@ import {
   type SettingsSectionId,
 } from "../shared/hubSettingsSections.js";
 import { validateThemeValue } from "../shared/theme.js";
+import { parseWixFields } from "../shared/wixFields.js";
 
 export type SettingsWriteResult =
   | {
@@ -189,6 +190,14 @@ export function normalizeValue(
     case "text": {
       const v = raw.trim();
       if (/[\r\n]/.test(v)) return { error: `${key} must be one line.` };
+      return withinLength(key, v, spec.maxLength ?? DEFAULT_TEXT_MAX_LENGTH);
+    }
+
+    case "wix_fields": {
+      const v = raw.trim();
+      if (/[\r\n]/.test(v)) return { error: `${key} must be one line.` };
+      const { errors } = parseWixFields(v);
+      if (errors.length > 0) return { error: `${key}: ${errors[0]}` };
       return withinLength(key, v, spec.maxLength ?? DEFAULT_TEXT_MAX_LENGTH);
     }
 

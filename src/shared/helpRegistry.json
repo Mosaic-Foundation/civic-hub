@@ -463,5 +463,23 @@
     "text": "Tick this once someone qualified has reviewed your Terms and Privacy Policy. Until then admins see a draft note on both, and Mode asks for it before the hub leaves demo or goes live.",
     "page": "/reference/settings/legal",
     "anchor": "legal-reviewed"
+  },
+  "plugin.meeting_summary.record_grace_days": {
+    "text": "How many days a listed meeting may wait for its minutes or transcript before the admins are told something may be wrong. Empty means 14.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-meeting-summary-record-grace-days",
+    "pending": true
+  },
+  "plugin.meeting_summary.source_quiet_days": {
+    "text": "How many days without a new meeting before the run asks an admin to check the source still works. Empty means 45; set it longer for a body that meets less often.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-meeting-summary-source-quiet-days",
+    "pending": true
+  },
+  "plugin.meeting_summary.wix_fields": {
+    "text": "For a Wix site only: which collection columns hold the date, type, agenda, minutes and recordings, as role=column pairs. Empty uses the usual columns.",
+    "page": "/reference/plugins",
+    "anchor": "plugin-meeting-summary-wix-fields",
+    "pending": true
   }
 }

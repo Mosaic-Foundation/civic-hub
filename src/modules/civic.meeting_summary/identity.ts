@@ -76,6 +76,18 @@ export function documentFingerprint(url: string | null | undefined): string | nu
 }
 
 /**
+ * A YouTube recording's link in its one canonical form,
+ * `https://www.youtube.com/watch?v=<id>`, from any of the forms a page may
+ * use (watch, m., /live/, /embed/, youtu.be). Null for anything that is not a
+ * YouTube video (the cleanup slice, 2026-10-16: the minutes-page connector
+ * accepted only the watch form).
+ */
+export function canonicalYouTubeUrl(url: string | null | undefined): string | null {
+  const fp = videoFingerprint(url);
+  return fp?.startsWith("yt:") ? `https://www.youtube.com/watch?v=${fp.slice(3)}` : null;
+}
+
+/**
  * Identify a recording by its video id, across watch / live / youtu.be forms.
  * Non-YouTube URLs fall back to host + path.
  */

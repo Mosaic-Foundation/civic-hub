@@ -66,6 +66,7 @@ export function resolveMeetingSummaryConfig(model: string): MeetingSummaryResolu
     title_filter: getSettingSync(KEYS.PLUGIN_MEETING_TITLE_FILTER)?.trim() ?? "",
     type_exclude: getSettingSync(KEYS.PLUGIN_MEETING_TYPE_EXCLUDE)?.trim() ?? "",
     collection_name: getSettingSync(KEYS.PLUGIN_MEETING_WIX_COLLECTION)?.trim() ?? "",
+    wix_fields: getSettingSync(KEYS.PLUGIN_MEETING_WIX_FIELDS)?.trim() ?? "",
     extraction_instructions: resolveEffectiveInstructions(
       getSettingSync(KEYS.PLUGIN_MEETING_EXTRACTION_INSTRUCTIONS) ?? "",
     ),

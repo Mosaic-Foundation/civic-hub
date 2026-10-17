@@ -36,6 +36,7 @@ import type {
 } from "../models.js";
 import { buildDiscoveryPrompt } from "../prompts.js";
 import { parseJsonArray } from "../pipeline.js";
+import { canonicalYouTubeUrl } from "../identity.js";
 
 const TAGS_TO_STRIP = [
   "script",
@@ -100,16 +101,16 @@ function bytes(s: string): string {
 }
 
 /**
- * A document hosted by the site itself: `<origin>/_files/ugd/…pdf`, the path
- * Wix stores uploaded files under. The origin is the configured page's, so a
- * model that returns a link to some other site's PDF has it dropped.
+ * A PDF hosted by the site itself: any `<origin>/…pdf` (a query string
+ * allowed). The origin is the configured page's, so a model that returns a
+ * link to some other site's PDF has it dropped. Until 2026-10-16 only Wix's
+ * upload path (`/_files/ugd/`) was accepted, which dropped every document on
+ * any other kind of site.
  */
 export function sitePdfPattern(siteOrigin: string): RegExp {
   const escaped = siteOrigin.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
-  return new RegExp(`^${escaped}/_files/ugd/.+\\.pdf$`, "i");
+  return new RegExp(`^${escaped}/[^?#]*\\.pdf(\\?[^#]*)?$`, "i");
 }
-const YOUTUBE_WATCH_PATTERN =
-  /^https:\/\/(www\.)?youtube\.com\/watch\?.*v=[A-Za-z0-9_-]{11}/i;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function isValidEntry(raw: unknown, sitePdf: RegExp): raw is MeetingEntry {
@@ -133,25 +134,29 @@ function isValidEntry(raw: unknown, sitePdf: RegExp): raw is MeetingEntry {
       return false;
     }
   }
+  // A recording in any YouTube form, stored in the one canonical form.
+  if (e.source_video_url !== null && e.source_video_url !== undefined) {
+    const video = canonicalYouTubeUrl(typeof e.source_video_url === "string" ? e.source_video_url : null);
+    if (!video) return false;
+    e.source_video_url = video;
+  } else {
+    e.source_video_url = null;
+  }
+  if (!Array.isArray(e.additional_video_urls)) return false;
+  const more: string[] = [];
+  for (const v of e.additional_video_urls) {
+    const video = canonicalYouTubeUrl(typeof v === "string" ? v : null);
+    if (!video) return false;
+    more.push(video);
+  }
+  e.additional_video_urls = more;
   // Must have at least one document source (minutes, agenda, or video)
   const hasMinutes = typeof e.source_minutes_url === "string" && sitePdf.test(e.source_minutes_url);
   const hasAgenda = typeof e.source_agenda_url === "string" && sitePdf.test(e.source_agenda_url);
-  const hasVideo = typeof e.source_video_url === "string" && YOUTUBE_WATCH_PATTERN.test(e.source_video_url);
-  if (!hasMinutes && !hasAgenda && !hasVideo) return false;
+  if (!hasMinutes && !hasAgenda && !e.source_video_url) return false;
   // Normalize nulls
   if (!hasMinutes) e.source_minutes_url = null;
   if (!hasAgenda) e.source_agenda_url = null;
-  if (
-    e.source_video_url !== null &&
-    (typeof e.source_video_url !== "string" ||
-      !YOUTUBE_WATCH_PATTERN.test(e.source_video_url))
-  ) {
-    return false;
-  }
-  if (!Array.isArray(e.additional_video_urls)) return false;
-  for (const v of e.additional_video_urls) {
-    if (typeof v !== "string" || !YOUTUBE_WATCH_PATTERN.test(v)) return false;
-  }
   if (typeof e.source_id !== "string" || e.source_id.trim().length === 0) {
     return false;
   }

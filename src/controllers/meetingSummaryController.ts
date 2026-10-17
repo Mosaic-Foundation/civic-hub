@@ -54,6 +54,8 @@ import {
   isMeetingNotReady,
   meetingHasHappened,
   RECORD_GRACE_DAYS,
+  SOURCE_QUIET_DAYS,
+  daysSetting,
   summaryPredatesMeeting,
   todayIso,
   type MeetingEntry,
@@ -99,6 +101,16 @@ const DEFAULT_MAX_PER_RUN = 3;
  * improvement does not sit unread for a whole meeting cycle.
  */
 const REVISION_NAG_DAYS = 14;
+
+/** How long a meeting may wait for its record before the run reports it (record_grace_days). */
+function recordGraceDays(): number {
+  return daysSetting(getSettingSync(KEYS.PLUGIN_MEETING_RECORD_GRACE_DAYS), RECORD_GRACE_DAYS);
+}
+
+/** How long without a new meeting before the run asks for a check (source_quiet_days). */
+function sourceQuietDays(): number {
+  return daysSetting(getSettingSync(KEYS.PLUGIN_MEETING_SOURCE_QUIET_DAYS), SOURCE_QUIET_DAYS);
+}
 
 function maxPerRun(): number {
   const raw = getSettingSync(KEYS.PLUGIN_MEETING_MAX_PER_RUN)?.trim();
@@ -209,6 +221,8 @@ interface CronOutcome {
    * only those past RECORD_GRACE_DAYS count as a problem.
    */
   waiting?: WaitingMeeting[];
+  /** The hub's grace (record_grace_days) the run used; RECORD_GRACE_DAYS when unset. */
+  graceDays?: number;
   /** Set when the run aborted before finishing (discovery threw, config invalid). */
   fatal?: string;
 }
@@ -228,8 +242,11 @@ export interface WaitingMeeting {
 }
 
 /** Waiting meetings that have waited longer than anyone should expect. */
-export function overdueMeetings(waiting: readonly WaitingMeeting[] = []): WaitingMeeting[] {
-  return waiting.filter((w) => w.days_since_meeting > RECORD_GRACE_DAYS);
+export function overdueMeetings(
+  waiting: readonly WaitingMeeting[] = [],
+  graceDays: number = RECORD_GRACE_DAYS,
+): WaitingMeeting[] {
+  return waiting.filter((w) => w.days_since_meeting > graceDays);
 }
 
 /**
@@ -269,10 +286,11 @@ export function cronAlertReason(outcome: CronOutcome): string | null {
       `and are held for review: ${outcome.flagged.map((f) => `${f.meeting_date} ${f.meeting_title}`).join("; ")}.`
     );
   }
-  const overdue = overdueMeetings(outcome.waiting);
+  const graceDays = outcome.graceDays ?? RECORD_GRACE_DAYS;
+  const overdue = overdueMeetings(outcome.waiting, graceDays);
   if (overdue.length > 0) {
     return (
-      `${overdue.length} meeting(s) have waited more than ${RECORD_GRACE_DAYS} days for a ` +
+      `${overdue.length} meeting(s) have waited more than ${graceDays} days for a ` +
       `usable record: ${overdue.map((w) => `${w.meeting_date} ${w.meeting_title} (${w.reason})`).join("; ")}.`
     );
   }
@@ -674,7 +692,8 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
 
     const perRunCap = maxPerRun();
     const willAutoPublish = autoPublish();
-    const today = todayIso();
+    const today = todayIso(new Date(), getSettingSync(KEYS.IDENTITY_TIMEZONE));
+    const graceDays = recordGraceDays();
     const flagged: FlaggedSummary[] = [];
     const waiting: WaitingMeeting[] = [];
     console.log(
@@ -741,7 +760,7 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
           { fetchPdf, fetchYouTubeTranscript, callClaude },
           // Past the grace period, official minutes may go ahead without the
           // video's transcript — flagged, so an admin still decides.
-          { allowMissingTranscript: waitedDays > RECORD_GRACE_DAYS },
+          { allowMissingTranscript: waitedDays > graceDays },
         );
 
         const createInput = buildCreateInput(entry, summary);
@@ -858,7 +877,7 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
         const retryFlagged =
           !!effectiveQualityFlag(existingState) &&
           !!entry.source_video_url &&
-          daysSinceMeeting(entry.meeting_date, today) <= RECORD_GRACE_DAYS;
+          daysSinceMeeting(entry.meeting_date, today) <= graceDays;
         if (
           !offersNewSources(entry, existingState) &&
           !summaryPredatesMeeting(existingState) &&
@@ -909,7 +928,7 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
             { fetchPdf, fetchYouTubeTranscript, callClaude },
             {
               allowMissingTranscript:
-                daysSinceMeeting(entry.meeting_date, today) > RECORD_GRACE_DAYS,
+                daysSinceMeeting(entry.meeting_date, today) > graceDays,
             },
           );
           const state = summaryState(existing);
@@ -1113,6 +1132,9 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
       failures,
       newest_meeting_date: newestMeeting,
       days_since_newest_meeting: daysSinceNewestMeeting,
+      // The hub's thresholds, so describe.ts judges the run by them (2026-10-16).
+      record_grace_days: graceDays,
+      source_quiet_days: sourceQuietDays(),
       duration_ms,
     });
 
@@ -1129,6 +1151,7 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
       staleRevisions,
       flagged,
       waiting,
+      graceDays,
     }).catch((err) => {
       console.warn(
         `[meeting-summary] notification send error: ${err instanceof Error ? err.message : "unknown"}`,

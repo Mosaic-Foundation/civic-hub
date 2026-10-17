@@ -70,6 +70,7 @@ export {
   qualityFlag,
   RECORD_GRACE_DAYS,
   SOURCE_QUIET_DAYS,
+  daysSetting,
   summaryPredatesMeeting,
   todayIso,
 } from "./readiness.js";

@@ -20,24 +20,38 @@
 // Pure functions only; the controller and the tests share them.
 
 import { ConflictError } from "../../errors/index.js";
+import { resolveTimeZone } from "../../utils/hubTime.js";
 import type { SummaryBlock, TranscriptSegment } from "./models.js";
 
 /**
  * How long a meeting may wait for its missing record before the run reports
- * it. Floyd posts recordings within a day and minutes within about four weeks;
- * two weeks without a transcript for a listed video means something is wrong
- * (captions off, provider failing), and that is worth an admin's attention.
+ * it, unless the hub sets `plugin.meeting_summary.record_grace_days` (the
+ * cleanup slice, 2026-10-16). The first hub posts recordings within a day and
+ * minutes within about four weeks; two weeks without a transcript for a
+ * listed video means something is wrong (captions off, provider failing).
  */
 export const RECORD_GRACE_DAYS = 14;
 
 /**
- * A source quiet this long probably stopped working (Adam, 2026-10-07). A run
- * that finds nothing is "nothing new", not a failure (review M7); but in
- * August 2026 the county's page went client-side and parsed to nothing for
- * weeks. Boards meet at least monthly, so once the newest meeting the hub
+ * A source quiet this long probably stopped working (Adam, 2026-10-07), unless
+ * the hub sets `plugin.meeting_summary.source_quiet_days` (a body that meets
+ * quarterly needs longer). A run that finds nothing is "nothing new", not a
+ * failure (review M7); but in August 2026 the first hub's source page went
+ * client-side and parsed to nothing for weeks. Once the newest meeting the hub
  * knows of is older than this, the job asks for a check (flagged, not failed).
  */
 export const SOURCE_QUIET_DAYS = 45;
+
+/**
+ * A whole-number days setting, or its default when unset or not a whole
+ * number of at least 1. The save already checks the range.
+ */
+export function daysSetting(raw: string | null | undefined, fallback: number): number {
+  const v = (raw ?? "").trim();
+  if (!/^\d+$/.test(v)) return fallback;
+  const n = Number(v);
+  return n >= 1 ? n : fallback;
+}
 
 /**
  * The newest meeting date among what discovery listed and what the hub has
@@ -102,12 +116,16 @@ export function isMeetingNotReady(err: unknown): err is MeetingNotReadyError {
 }
 
 /**
- * Today's calendar date, UTC. Meeting dates carry no time zone; comparing
- * against UTC is at most a few hours conservative for a US hub, which is the
- * safe direction.
+ * Today's calendar date in the hub's time zone (`identity.timezone`; UTC when
+ * unset or unknown). Meeting dates carry no zone and are the hub's own dates.
+ * Until 2026-10-16 this was always UTC, which turns over to tomorrow in the
+ * evening of a US meeting day, while the meeting may still be on.
  */
-export function todayIso(now: Date = new Date()): string {
-  return now.toISOString().slice(0, 10);
+export function todayIso(now: Date = new Date(), timeZone?: string | null): string {
+  const zone = resolveTimeZone(timeZone);
+  if (zone === "UTC") return now.toISOString().slice(0, 10);
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
 
 /**

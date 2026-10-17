@@ -178,6 +178,11 @@ export const KEYS = {
   PLUGIN_MEETING_AUTO_PUBLISH: "plugin.meeting_summary.auto_publish",
   PLUGIN_MEETING_CUTOFF_DATE: "plugin.meeting_summary.cutoff_date",
   PLUGIN_MEETING_MAX_PER_RUN: "plugin.meeting_summary.max_per_run",
+  // Generic meeting summaries (the cleanup slice, 2026-10-16). Unset reads as
+  // what every hub had before: the first hub's Wix columns, 14 and 45 days.
+  PLUGIN_MEETING_WIX_FIELDS: "plugin.meeting_summary.wix_fields",
+  PLUGIN_MEETING_RECORD_GRACE_DAYS: "plugin.meeting_summary.record_grace_days",
+  PLUGIN_MEETING_SOURCE_QUIET_DAYS: "plugin.meeting_summary.source_quiet_days",
 
   // Which connector reads the hub's news feed ("wix-cms"), chosen per hub.
   // Added 2026-09-24 with the module rename; it has no env fallback because

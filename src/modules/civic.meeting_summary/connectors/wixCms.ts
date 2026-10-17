@@ -42,6 +42,7 @@ import type {
   MeetingSummaryConfig,
 } from "../models.js";
 import { matchesTitleFilter } from "./youtubeChannel.js";
+import { DEFAULT_WIX_FIELDS, parseWixFields, type WixFieldMap } from "../../../shared/wixFields.js";
 
 /** Wix serves compiled page structure from this host. */
 const PAGE_JSON_HOST = "https://pages.parastorage.com/sites";
@@ -53,7 +54,9 @@ const MAX_PAGES = 10;
 // --- Row shape -------------------------------------------------------------
 
 /**
- * One row of a Wix meetings collection, as Floyd's is shaped.
+ * One row of a Wix meetings collection. The named fields are the default
+ * columns (DEFAULT_WIX_FIELDS, the first hub's collection); another site's
+ * columns are named by `plugin.meeting_summary.wix_fields` and read by name.
  *
  * Wix names a link's LABEL and its URL as sibling fields, with the URL taking
  * a "1" suffix — `description`/`agendaPdf`, `minutes`/`minutesPdf`,
@@ -62,6 +65,7 @@ const MAX_PAGES = 10;
  * legitimately has an agenda and nothing else.
  */
 export interface WixMeetingRow {
+  [column: string]: unknown;
   /** Display date, e.g. "August 11, 2026". Present on every Floyd row. */
   title1?: unknown;
   /** Meeting type, e.g. "Regular Meeting" / "Budget Workshop Meeting". */
@@ -183,8 +187,11 @@ export function rowsToMeetings(
     collection: string;
     title_filter: string;
     type_exclude: string;
+    /** Which columns hold what; the defaults when omitted. */
+    fields?: WixFieldMap;
   },
 ): MeetingEntry[] {
+  const fields = opts.fields ?? DEFAULT_WIX_FIELDS;
   const entries: MeetingEntry[] = [];
   // base key -> entries sharing it, so collisions can be disambiguated after
   // the full pass (a collision is only knowable once every row is mapped).
@@ -192,18 +199,18 @@ export function rowsToMeetings(
   const fingerprints = new WeakMap<MeetingEntry, string>();
 
   for (const row of rows) {
-    const meeting_date = parseWixMeetingDate(row.title1);
+    const meeting_date = parseWixMeetingDate(row[fields.date]);
     if (!meeting_date) continue;
 
-    const meeting_title = String(row.title ?? "").trim() || "Meeting";
+    const meeting_title = String(row[fields.type] ?? "").trim() || "Meeting";
     if (!matchesTitleFilter(meeting_title, opts.title_filter)) continue;
     if (matchesAny(meeting_title, opts.type_exclude)) continue;
 
-    const source_minutes_url = normalizeWixDocUrl(row.minutesPdf, opts.site_origin);
-    const source_agenda_url = normalizeWixDocUrl(row.agendaPdf, opts.site_origin);
-    const source_video_url = asUrl(row.recording1);
-    const additional_video_urls = [row.recording21, row.recording31]
-      .map(asUrl)
+    const source_minutes_url = normalizeWixDocUrl(row[fields.minutes], opts.site_origin);
+    const source_agenda_url = normalizeWixDocUrl(row[fields.agenda], opts.site_origin);
+    const source_video_url = asUrl(row[fields.video]);
+    const additional_video_urls = fields.more_video
+      .map((column) => asUrl(row[column]))
       .filter((u): u is string => u !== null);
 
     // A row with no document and no recording is an announcement of a future
@@ -395,7 +402,12 @@ export const wixCmsConnector: MeetingSourceConnector = {
       `[meeting-summary] wix collection "${collection}": ${rows.length} row(s)`,
     );
 
+    const parsedFields = parseWixFields(cfg.wix_fields);
+    if (parsedFields.errors.length > 0) {
+      console.warn(`[meeting-summary] plugin.meeting_summary.wix_fields: ${parsedFields.errors.join("; ")} (defaults used for those)`);
+    }
     const entries = rowsToMeetings(rows, {
+      fields: parsedFields.fields,
       site_origin: siteOrigin,
       collection,
       title_filter: (cfg.title_filter ?? "").trim(),

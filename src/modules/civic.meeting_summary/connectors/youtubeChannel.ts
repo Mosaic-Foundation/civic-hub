@@ -298,7 +298,7 @@ export const youtubeChannelConnector: MeetingSourceConnector = {
     if (!channelId) {
       throw new Error(
         "plugin.meeting_summary.youtube_channel_id must be set for the youtube-channel connector " +
-          "(e.g. UCxyzO8F2UfiN1NVOax2s27Q — the UC… id, not the @handle).",
+          "(the channel's UC… id, 24 characters, not its @handle).",
       );
     }
     if (!isValidChannelId(channelId)) {
