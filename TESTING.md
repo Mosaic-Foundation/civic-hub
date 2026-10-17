@@ -62,6 +62,63 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Cleanup: instant settings, queue counts, the invite check, generic summaries, Polis (2026-10-17)
+
+Branch `cleanup`. Two migrations, both additive: `20261018000000` (`hubs.settings_version` and its triggers) and
+`20261018010000` (`count_pending_reviews`). The non-additive drop of the old sign-in code tables is on its own
+branch, `cleanup-drop-codes`, and is tested there (below).
+
+- **Settings reach every server at once.** `tests/api/settingsVersion.test.ts` (both modes) needs a second server on
+  the same stack, `CIVIC_OTHER_API_BASE`; CI gives each pass the other's address (:3000 and :3001), and it skips
+  without one. Each test reads `/hub-config` on BOTH servers first (so both have the hub's settings cached), changes
+  something, then reads both again at once, with no wait: an admin's save through one server; a `hub_settings` row
+  written round the API (as the console, a script or the SQL editor would); the hub's own row (its name; the mode is
+  the same row). A fourth checks that a write that changes nothing leaves the version alone. All four fail on the
+  code before this slice and pass after.
+  - **What it proves:** two processes with their own caches agree on the next request after any write, through the
+    API or not. **What it doesn't:** how many instances Vercel runs, or what one serving an older deploy does
+    mid-release. It also doesn't time anything: the cost is one indexed read of the hub row per request.
+  - **The older settings-cache note** (the Phase 4 entry: "a settings cache on a server started before the seed")
+    no longer applies to writes: every write, the seed's included, bumps the version. A server started before a
+    `supabase db reset` can still hold a copy tagged with a number the fresh stack reaches again, so still restart
+    the servers after a reset.
+- **Admin queue counts past 1,000.** `tests/api/adminQueueCounts.test.ts` (both modes) plants 1,050 pending reviews
+  on Floyd after the admin opens the Reviews tab and expects exactly 1,053 with three more on a process of another
+  type; `count_pending_reviews` leaves out an excluded type's three, and Athens counts none of Floyd's. The old
+  "known failing locally on a long-used stack" note is gone. `functionGrants` lists the new function.
+- **The invite message's Code of Conduct check.** API, `membersInvites.test.ts` (+4, both modes): a flagged message
+  (`[coc-flag]`) is 400 `code_of_conduct_flagged` with the finding, records nothing, and uses none of the day's ten;
+  `[coc-down]` is 400 `code_of_conduct_unavailable` ("Send without a message") and the same address goes with an
+  empty message; the hub's prefilled message left as is is not checked even when the hub's intro carries
+  `[coc-flag]`, and one added word is; a beta member's waitlisted invite carries no message and is not checked.
+  Playwright, `membersInvites.spec.ts` test 3: the finding under the message, the message kept, the finding gone on
+  editing. Smoke (+1): an admin's invite on the beta smoke hub with the flagged text shows the finding and records
+  no invite (one real AI check on dev).
+- **Meeting summaries made generic.** Unit, `meetingSummaryGeneric.test.ts` (8): the Wix column map (unset = the
+  old columns, partial overrides, errors refused on save, another site's rows read); every YouTube link form becomes
+  the watch link; the two thresholds read unset as 14 and 45 and a run is judged by the ones it recorded; "today" is
+  the hub's date in its time zone. `meetingSummaryHubConfig` and `meetingSummaryPrompt` follow the PDF rule and the
+  prompt's wording. The wording was compared by hand on one real meeting (the session report).
+- **Polis.** Unit, `polisCleanup.test.ts` (4): a close queues its Polis call and summary for after the commit and
+  makes neither itself (a close that lost never runs its queue); without the host's hooks it does both inline; the
+  Polis address is each hub's setting, read per call; a 5xx, a timeout or no answer is 503 `polis_unavailable` and a
+  4xx stays as it was. The conformance suite (in the API layer) walks a conversation's close and its brief with the
+  summary made after the commit.
+- **Smoke:** the two 65-second waits (the sidebar after Navigation is saved, the member count after the threshold is
+  raised) are gone; both read at once.
+- **Results, 2026-10-17, on a fresh local stack** (reset, both hubs seeded, the jurisdiction list loaded; servers on
+  :3020 service role and :3021 minted tokens, each the other's `CIVIC_OTHER_API_BASE`):
+  - `npm test` (lint, unit, API against :3020): 208 files, 2,416 passed, 10 skipped, 1 todo;
+  - API in token mode (:3021): 66 files, 810 passed, 10 skipped, 1 todo; the conformance suite is in both;
+  - Playwright against a preview build (:4193 → :3022, as `e2e.yml`): 159 passed, 2 skipped;
+  - smoke against a local `smoke` hub (:4194 → :3023): 22 of 22 in 22 s. A smoke hub made today gets today's
+    defaults for new hubs (the sidebar, members shown from 10), which the suite does not expect; dev's smoke hub
+    predates both. Locally, set `nav.layout` to `top_tabs` and `plugin.members.min_count` to `0` on it first.
+- **The drop branch (`cleanup-drop-codes`)** changes `forHubIsolation` to prove the same two things on
+  `hub_settings` and `sign_in_codes`, and the table counts in `exportManifest`, `forHub`, `hubBundle`,
+  `hubExportRoundTrip` and `leakHarness`. Run on a stack reset from that branch (so the drop applied): `/health` ok
+  with no gaps, `npm test` 2,416 passed, token mode 810 passed.
+
 ## Operations shell: health for monitors, error tracking, heartbeats (2026-10-15)
 
 - **Unit:**
@@ -2268,7 +2325,7 @@ the local-stack jobs.
 
 ---
 
-*Last updated: 2026-10-15 — leaving demo (`leavingDemo.test.ts`, `adminDigestTally.test.ts`, `leavingDemo.spec.ts`, the tally's unit tests, a read-only smoke test of Mode). Before that, 2026-10-14 — the Members plugin (`membersPlugin.test.ts`, `membersPlugin.spec.ts`, a last smoke test, console-made hubs' threshold of 10). Before that, 2026-10-14 — navigation polish (`hubNavigation.spec.ts` 13 tests, the smoke phone test extended, `more-sheet-bar`, the notice's localStorage key). Before that, 2026-10-14 — navigation (`navSections.test.ts`, `navigation.test.ts`, `hubNavigation.spec.ts`, two smoke tests replacing the phone Admin menu one, the console-made hubs' sidebar). Before that, 2026-10-14 — members and invites (`memberInvites.test.ts`, `membersInvites.test.ts`, `membersInvites.spec.ts`, three smoke tests, the leak harness's member routes). Before that, 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-17 — the cleanup slice (`settingsVersion.test.ts` on two servers, `adminQueueCounts.test.ts`, the invite check in `membersInvites` and one smoke test, `meetingSummaryGeneric.test.ts`, `polisCleanup.test.ts`, the smoke suite's waits gone). Before that, 2026-10-15 — leaving demo (`leavingDemo.test.ts`, `adminDigestTally.test.ts`, `leavingDemo.spec.ts`, the tally's unit tests, a read-only smoke test of Mode). Before that, 2026-10-14 — the Members plugin (`membersPlugin.test.ts`, `membersPlugin.spec.ts`, a last smoke test, console-made hubs' threshold of 10). Before that, 2026-10-14 — navigation polish (`hubNavigation.spec.ts` 13 tests, the smoke phone test extended, `more-sheet-bar`, the notice's localStorage key). Before that, 2026-10-14 — navigation (`navSections.test.ts`, `navigation.test.ts`, `hubNavigation.spec.ts`, two smoke tests replacing the phone Admin menu one, the console-made hubs' sidebar). Before that, 2026-10-14 — members and invites (`memberInvites.test.ts`, `membersInvites.test.ts`, `membersInvites.spec.ts`, three smoke tests, the leak harness's member routes). Before that, 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,
