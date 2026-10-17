@@ -62,6 +62,49 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Dashboard: the console's one page for hubs, jobs, backups and what is waiting (2026-10-17)
+
+Branch `dashboard`. One additive migration, `20261019000000_job_last_run`.
+
+- **The server needs `CIVIC_DASHBOARD_FAKE=on`** (CI's API and E2E servers set it; refused in production). With it,
+  the console reads each hub's `/health` from its own server with the hub's hostname in Host, never a real address,
+  and a hub whose slug contains "slow" goes to a listener that never answers. Without it, `dashboard.test.ts` fails
+  on Floyd's health ("start the server with CIVIC_DASHBOARD_FAKE=on"), and a local console would ask the production
+  hostnames in the local database.
+- **API, `tests/api/dashboard.test.ts`** (12, both modes): no console session, a hub admin's session, and a hub's
+  hostname are refused (401, 401, 404); the four sections in order with `gathered_at`; a beta hub made with "slow" in
+  its slug is down with "no answer in 3 s" and the page answers in under 8 s with every section ok; hubs ordered
+  live, beta, demo, archived; with no outside keys the backup, uptime and errors cards are `not_connected` with a
+  setup line; an emptied `job_last_run` shows every job never run with a next run; `/internal/vote-close/run`
+  records itself and `/internal/digest/run?hub=floyd` does not; three planted pending reviews (one Code of
+  Conduct-flagged), two waitlist rows and a feedback item move the counts by 3, 1 flagged, 2 and 1 even after the
+  admin opens the Reviews tab, with links on Floyd's hostname; a pending summary with no flag and one with a flag
+  move meeting summaries by 2 and flagged by 1 (the JSON-null bug the review found); archived hubs are left out.
+  Planted rows are deleted, process rows archived, the slow hub archived.
+- **Unit:** `dashboard.test.ts` (14): a slow section times out alone and a throwing one says "could not be loaded"
+  without its error text; reading health answers (up, degraded with gaps and why, down); each outside service not
+  connected without its key and calling nothing, Sentry needing org and project too, the backup read with a GET and
+  the key, a refused key or a 500 as an error on the card, the one-minute cache and `fresh`; Better Stack's and
+  Sentry's answers parsed; jobs' rows from an empty table and from a recent ok or failed run.
+  `jobSchedule.test.ts` (8): next and previous runs, steps, daily, every registry schedule, malformed ones, the
+  heartbeats' grace, lateness, 7 as Sunday in a range, stepped stars.
+- **Playwright, `tests/e2e/dashboard.spec.ts`** (3): the operator at 1280 px (every section ok, the slow hub down
+  with why, Floyd up, the jobs, the three outside cards not connected, Floyd's six counts with "Flagged by checks"
+  and a link to `floyd.civic.social/admin/reviews` in a new tab, Refresh); at 375 px (no sideways scroll, archived
+  collapsed); a hub admin (no Dashboard in the hub's Admin menu or links; the console shows its own sign-in, no
+  Dashboard).
+- **Smoke:** unchanged; the console is not in it.
+- **Results, 2026-10-17, on a fresh local stack** (reset, both hubs seeded, the jurisdiction list loaded; :3030
+  service role and :3031 minted tokens, each the other's `CIVIC_OTHER_API_BASE`; :3032 behind a preview build on
+  :4203; all with `CIVIC_DASHBOARD_FAKE=on`):
+  - `npm test`: 212 files, 2,451 passed, 1 failed: `auditSignIn`'s "code checks are atomic" hit a Postgres
+    deadlock (40P01) in `take_platform_sign_in_attempt`, which this slice doesn't touch; it passed in the run before
+    and alone after (15 of 15). Worth watching if it recurs;
+  - API in token mode: 67 files, 822 passed, 10 skipped, 1 todo (an earlier run lost two concurrency tests to a
+    local Postgres restart; both passed alone);
+  - Playwright: 164 passed, 2 skipped;
+  - `npm run typecheck` clean.
+
 ## Cleanup: instant settings, queue counts, the invite check, generic summaries, Polis (2026-10-17)
 
 Branch `cleanup`. Two migrations, both additive: `20261018000000` (`hubs.settings_version` and its triggers) and
@@ -2331,7 +2374,7 @@ the local-stack jobs.
 
 ---
 
-*Last updated: 2026-10-17 — the cleanup slice (`settingsVersion.test.ts` on two servers, `adminQueueCounts.test.ts`, the invite check in `membersInvites` and one smoke test, `meetingSummaryGeneric.test.ts`, `polisCleanup.test.ts`, the smoke suite's waits gone). Before that, 2026-10-15 — leaving demo (`leavingDemo.test.ts`, `adminDigestTally.test.ts`, `leavingDemo.spec.ts`, the tally's unit tests, a read-only smoke test of Mode). Before that, 2026-10-14 — the Members plugin (`membersPlugin.test.ts`, `membersPlugin.spec.ts`, a last smoke test, console-made hubs' threshold of 10). Before that, 2026-10-14 — navigation polish (`hubNavigation.spec.ts` 13 tests, the smoke phone test extended, `more-sheet-bar`, the notice's localStorage key). Before that, 2026-10-14 — navigation (`navSections.test.ts`, `navigation.test.ts`, `hubNavigation.spec.ts`, two smoke tests replacing the phone Admin menu one, the console-made hubs' sidebar). Before that, 2026-10-14 — members and invites (`memberInvites.test.ts`, `membersInvites.test.ts`, `membersInvites.spec.ts`, three smoke tests, the leak harness's member routes). Before that, 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-17 — the dashboard slice (`dashboard.test.ts` API and unit, `jobSchedule.test.ts`, `dashboard.spec.ts`, `CIVIC_DASHBOARD_FAKE` on CI's servers). Before that, 2026-10-17 — the cleanup slice (`settingsVersion.test.ts` on two servers, `adminQueueCounts.test.ts`, the invite check in `membersInvites` and one smoke test, `meetingSummaryGeneric.test.ts`, `polisCleanup.test.ts`, the smoke suite's waits gone). Before that, 2026-10-15 — leaving demo (`leavingDemo.test.ts`, `adminDigestTally.test.ts`, `leavingDemo.spec.ts`, the tally's unit tests, a read-only smoke test of Mode). Before that, 2026-10-14 — the Members plugin (`membersPlugin.test.ts`, `membersPlugin.spec.ts`, a last smoke test, console-made hubs' threshold of 10). Before that, 2026-10-14 — navigation polish (`hubNavigation.spec.ts` 13 tests, the smoke phone test extended, `more-sheet-bar`, the notice's localStorage key). Before that, 2026-10-14 — navigation (`navSections.test.ts`, `navigation.test.ts`, `hubNavigation.spec.ts`, two smoke tests replacing the phone Admin menu one, the console-made hubs' sidebar). Before that, 2026-10-14 — members and invites (`memberInvites.test.ts`, `membersInvites.test.ts`, `membersInvites.spec.ts`, three smoke tests, the leak harness's member routes). Before that, 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,
