@@ -326,9 +326,10 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--c
   list-style: none; margin: 8px 0 0; padding: 0;
   display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 4px 12px; font-size: 0.9rem;
 }
-.cx-dash-queues a { text-decoration: none; color: inherit; display: inline-block; padding: 4px 0; }
+.cx-dash-queues a, .cx-dash-queues li > span { display: flex; align-items: baseline; gap: 6px; padding: 4px 0; }
+.cx-dash-queues a { text-decoration: none; color: inherit; }
 .cx-dash-queues a:hover { text-decoration: underline; }
-.cx-dash-n { display: inline-block; min-width: 1.6em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cx-dash-n { flex: none; min-width: 1.6em; font-weight: 700; font-variant-numeric: tabular-nums; }
 .cx-dash-queue-on .cx-dash-n { color: var(--cx-warn); }
 .cx-dash-queue-off { color: var(--cx-muted); }
 .cx-dash-archived { margin-top: 12px; }

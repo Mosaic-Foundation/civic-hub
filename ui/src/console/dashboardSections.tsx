@@ -390,11 +390,11 @@ const AttentionSectionView: SectionRenderer = ({ data }) => {
                   <li key={q} className={n ? "cx-dash-queue-on" : "cx-dash-queue-off"} data-queue={q}>
                     {n === null ? (
                       <span title="This plugin is off on this hub">
-                        <span className="cx-dash-n">—</span> {label}
+                        <span className="cx-dash-n">—</span> <span>{label}</span>
                       </span>
                     ) : (
                       <a href={h.links[q]} target="_blank" rel="noreferrer">
-                        <span className="cx-dash-n">{n}</span> {label}
+                        <span className="cx-dash-n">{n}</span> <span>{label}</span>
                       </a>
                     )}
                   </li>
