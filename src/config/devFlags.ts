@@ -13,9 +13,14 @@
 //                             the AI (src/debug/fakeCodeOfConduct.ts), so tests
 //                             can make a submission pass, be flagged, or find
 //                             the check down
+//   CIVIC_DASHBOARD_FAKE=on — the console's Dashboard reads each hub's /health
+//                             from this server (Host set to the hub), never
+//                             the hub's real address, and a hub whose slug
+//                             contains "slow" never answers, so tests reach
+//                             the timeout (src/control/dashboard/hubHealth.ts)
 //
 // With NODE_ENV=production (every Vercel deployment, dev and production) all
-// five are refused: the flag reads as unset, and the boot check reports it, once,
+// six are refused: the flag reads as unset, and the boot check reports it, once,
 // as an error operators see. Refused rather than fatal on purpose: a stray env
 // var should not take every hub on the deployment offline, and ignoring it is
 // already the safe outcome.
@@ -52,6 +57,11 @@ export function cocFakeEnabled(): boolean {
   return env.CIVIC_COC_FAKE === "on" && !isProduction();
 }
 
+/** Does the Dashboard read hubs' health from this server? Never in production. */
+export function dashboardFakeEnabled(): boolean {
+  return env.CIVIC_DASHBOARD_FAKE === "on" && !isProduction();
+}
+
 let checked = false;
 
 /** Report, once per process, a development flag set where it is refused. */
@@ -70,6 +80,9 @@ export function checkDevFlags(): void {
   }
   if (env.CIVIC_COC_FAKE === "on") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_COC_FAKE=on is set in production and is ignored. Remove it from this deployment.", {});
+  }
+  if (env.CIVIC_DASHBOARD_FAKE === "on") {
+    reportError("CIVIC_DEV_FLAG", "CIVIC_DASHBOARD_FAKE=on is set in production and is ignored. Remove it from this deployment.", {});
   }
   if (env.CIVIC_RATE_LIMITS === "off") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_RATE_LIMITS=off is set in production and is ignored. Remove it from this deployment.", {});

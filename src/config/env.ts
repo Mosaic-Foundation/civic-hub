@@ -119,6 +119,20 @@ export const env = {
   /** Healthchecks.io ping key. Unset: scheduled jobs ping no heartbeat (src/utils/heartbeat.ts). */
   get CIVIC_HEARTBEAT_PING_KEY() { return read("CIVIC_HEARTBEAT_PING_KEY"); },
 
+  // --- The console reads the operations services (dashboard, ADR-007) -------
+  // Each unset shows its Dashboard card as "not connected"; never required.
+  /** Healthchecks.io project's read-only API key: the backup's last dump. */
+  get HEALTHCHECKS_READ_KEY() { return read("HEALTHCHECKS_READ_KEY"); },
+  /** Better Stack Uptime API token: monitors' status. Unset until a read-only token exists (ADR-007). */
+  get BETTERSTACK_API_TOKEN() { return read("BETTERSTACK_API_TOKEN"); },
+  /** Sentry user auth token with project:read and event:read only: the last 24 hours' errors. */
+  get SENTRY_READ_TOKEN() { return read("SENTRY_READ_TOKEN"); },
+  /** Sentry organization and project slugs, for SENTRY_READ_TOKEN. */
+  get SENTRY_ORG() { return read("SENTRY_ORG"); },
+  get SENTRY_PROJECT() { return read("SENTRY_PROJECT"); },
+  /** Dev only: the Dashboard reads hubs' /health from this server, and "slow" hubs time out (src/control/dashboard/hubHealth.ts). */
+  get CIVIC_DASHBOARD_FAKE() { return read("CIVIC_DASHBOARD_FAKE"); },
+
   // --- What is deployed ------------------------------------------------------
   get VERCEL_GIT_COMMIT_SHA() { return read("VERCEL_GIT_COMMIT_SHA"); },
   get GIT_COMMIT_SHA() { return read("GIT_COMMIT_SHA"); },
