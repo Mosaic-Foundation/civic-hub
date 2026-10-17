@@ -228,6 +228,9 @@ jobs:
           # The Code of Conduct check as a fixed rule (src/debug/fakeCodeOfConduct.ts):
           # Submit runs the check, and the suites make it flag text or be down.
           CIVIC_COC_FAKE: "on"
+          # The console's Dashboard reads hubs' /health from this server, and
+          # a hub whose slug contains "slow" never answers (tests/api/dashboard.test.ts).
+          CIVIC_DASHBOARD_FAKE: "on"
 
       - name: API tests (service role)
         run: npx vitest run tests/api
