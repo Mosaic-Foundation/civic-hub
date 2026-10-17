@@ -14,6 +14,7 @@
 
 import { JOBS } from "../src/jobs/registry.js";
 import { heartbeatSlug } from "../src/utils/heartbeat.js";
+import { graceFor } from "../src/jobs/schedule.js";
 
 const API = "https://healthchecks.io/api/v3/checks/";
 
@@ -25,13 +26,9 @@ interface Check {
   grace: number;
 }
 
-/** How late a ping may be before the alert: a third of the gap, within bounds. */
-export function graceFor(schedule: string): number {
-  const [minute, hour] = schedule.split(/\s+/);
-  if (hour === "*") return minute.includes("*/") ? 10 * 60 : 20 * 60; // hourly
-  if (hour.includes("*/") || hour.includes(",")) return 60 * 60; // every few hours
-  return 2 * 60 * 60; // daily
-}
+// How late a ping may be before the alert: graceFor (src/jobs/schedule.ts),
+// shared with the console's Dashboard so both call the same run late.
+export { graceFor };
 
 export function checks(): Check[] {
   const jobs = JOBS.map((j) => ({
