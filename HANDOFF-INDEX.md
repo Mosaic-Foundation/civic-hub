@@ -17,6 +17,8 @@ numbers below, or just grep the heading.
 | Hub identity and jurisdiction constants | `src/config/hub.ts` |
 | Runtime settings read/write (`hub_settings`) | `src/services/hubSettings.ts` |
 | Settings key names, aliases, env fallbacks, public list | `src/models/hubSettings.ts` |
+| Settings reaching every server at once: `hubs.settings_version` (bumped by trigger), the per-request hub read, the version-checked cache; the two-server test | `src/db/hubs.ts`, `src/db/hubSettingsStore.ts`, `20261018000000`, `tests/api/settingsVersion.test.ts` |
+| Admin queue counts (database counts, past 1,000) | `src/services/adminQueues.ts`, `count_pending_reviews` (`20261018010000`), `countUnseenEdits` in `src/services/editNotifications.ts` |
 | Shared legal documents + per-hub substitution | `config/legal/`, `src/services/hubDocuments.ts` |
 | Seeding a hub's settings from env | `scripts/seed-hub-settings.ts` |
 | Releasing a change with migrations: the order (migrations, schema reload, code, `/health`), pre-checks, the guard | `RUNBOOK-release.md` |
@@ -56,6 +58,9 @@ numbers below, or just grep the heading.
 | Leak harness, RLS catalog test | `tests/api/leakHarness.test.ts`, `leakHarnessDb.test.ts`, `rlsCatalog.test.ts`, rules in `tests/fixtures/tenancyCatalog.ts` |
 | Code of Conduct check standing (fields, hash, verdict) | `src/services/codeOfConduct.ts` |
 | Submit runs the check; running it; "tell the admins"; the fake check for tests | `src/controllers/draftController.ts` (`submit`), `src/services/codeOfConductCheck.ts`, `process_reviews.coc_flags` (`20261013000000`), `src/debug/fakeCodeOfConduct.ts` (`CIVIC_COC_FAKE=on`); UI `ui/src/pages/draft/DraftPage.tsx`, `ui/src/components/{DraftFooter,CocFindings}.tsx` |
+| The Code of Conduct check on an invite message (Send) | `checkInviteMessage` in `src/services/hubInvites.ts`, `src/shared/inviteMessage.ts`, `ui/src/components/SharePanel.tsx` |
+| Polis per hub (address read per call), the close after commit, 503 on an outage | `src/processes/deliberationBoot.ts` (`PolisUnavailableError`), `afterCommit`/`summarizeLater` in `src/shared/polis_deliberation/handler.ts` |
+| Meeting summaries' Wix column map and thresholds | `src/shared/wixFields.ts`, `daysSetting`/`todayIso` in `src/modules/civic.meeting_summary/readiness.ts` |
 | The one modal | `ui/src/components/Modal.tsx` (every dialog in the hub and the console) |
 | Running an action in the UI (one at a time, busy, error) and applying the answer's `view` | `ui/src/hooks/useAction.ts`; `viewFor` / `readAsPage` in `src/controllers/processController.ts`; a posted comment into the panel `ui/src/services/inputEvents.ts`; tab refresh `ui/src/hooks/useRefreshOnVisible.ts` |
 | Close early (note, record, audit) and its line | `src/services/closeEarly.ts` (called in `attemptAction`), `src/shared/closedEarly.ts`, `DEADLINE_CLOSE_INPUT` in `src/processes/descriptor.ts`; UI `ui/src/components/CloseEarly.tsx` |

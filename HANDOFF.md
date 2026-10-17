@@ -4,6 +4,54 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Cleanup: the carried small items — 2026-10-17
+
+Branch `cleanup` from `f5c2d8f`, one commit per item (`a19b8c3`..`38b93ae`), plus TESTING and this entry. **Not
+merged, not released.** Adam merges `cleanup` into `multi-tenant` after the operations shell is on production; the dev
+release follows. Two migrations, both additive, apply first: `20261018000000_settings_version`,
+`20261018010000_count_pending_reviews`. No one is signed out. Report and merge steps:
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Cleanup-Session-Report-2026-10-17.md`.
+
+**What changed:**
+- **Settings reach every visitor at once.** `hubs.settings_version` is bumped by trigger on every change to a hub's
+  `hub_settings` rows or its own row. The resolver reads the hub row on every request (one indexed query; only
+  unknown hostnames are cached), and the settings cache reloads when its copy is older. The Mode page's and the
+  console's "within a minute" lines and the smoke suite's two 65 s waits are gone. Code ahead of the migration still
+  resolves hubs and falls back to the 60 s expiry (`src/db/hubs.ts`, `src/db/hubSettingsStore.ts`).
+- **Admin queue counts** are counted by the database: reviews by `count_pending_reviews` (switched-off types left
+  out), briefs and summaries by count queries, edits from the events since the tab was last opened.
+- **Invite messages** go through the Code of Conduct check on Send: flagged → nothing sent, the finding under the
+  message; check down → nothing sent, "send without a message"; empty or the untouched prefilled message → not
+  checked. `ApiError` now keeps the error body.
+- **Meeting summaries:** `plugin.meeting_summary.wix_fields`, `.record_grace_days`, `.source_quiet_days` (help keys
+  pending the docs); PDFs anywhere on the configured site; every YouTube link form; "today" in the hub's time zone;
+  the summariser's wording names no one body's agenda (`9d6ed6d`, droppable on its own; six runs compared in the
+  report).
+- **Polis:** the address is each hub's own setting, read per call; a close commits first and only the winner calls
+  Polis and summarizes (as `regenerate_summary`, after commit; the brief step re-reads the process); a Polis outage
+  answers 503 `polis_unavailable`.
+
+**Not merged here, waiting on Adam:**
+- **`cleanup-drop-codes`** (`c5fe6dc` migration, `24d9980` references): drops `pending_verifications`,
+  `control_codes`, `start_codes` and their three attempt functions. Non-additive; merge only with Adam's yes after
+  the production count in the report comes back clean.
+- **Legal 1.4**, proposal only (report): "the Settings page" replaced with full sentences, the `{LIKE_THIS}` draft
+  sentence removed, and 1.4 marked non-material so members aren't asked to accept again.
+
+**Left open:**
+- `POST /deliberations` stays: the conformance suite creates conversations through it (the descriptor's
+  `examples.create`). Pointing that at `POST /process` would let it go.
+- Polis-side: the close call that hangs, the orphan conversations on polis.civic.social, seed statements not checked
+  against real Polis, per-hub Polis tokens (an env convention, not built).
+- Meeting summaries: transcripts in English only, YouTube only, one scheduled time for every hub.
+
+**Tests** (TESTING.md → "Cleanup"), all on a fresh local stack: `npm test` 208 files / 2,416 passed; API in token
+mode 66 files / 810 passed (conformance in both); Playwright 159 passed, 2 skipped; smoke 22 of 22 locally. The drop
+branch, on a stack that ran its migration: the same two API totals. **CI:** not run; this session could not push
+(the push is in the report for Adam).
+
+---
+
 ## Operations shell: uptime monitoring, error tracking, heartbeats, a status page — 2026-10-15
 
 Commits on `multi-tenant` `b870027`..`1694952`, one item each, plus this entry; ADR-006 at the mono-repo root
