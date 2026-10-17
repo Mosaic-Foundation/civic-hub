@@ -32,6 +32,7 @@ import { describeInvites } from "../services/adminInvite.js";
 import { addStarterWordcloud, inviteAdmins, seedSampleInHub } from "./inHub.js";
 import { feedbackInbox, updateFeedbackItem } from "./platformFeedback.js";
 import { countReceived } from "../db/platformFeedback.js";
+import { gatherDashboard } from "./dashboard/registry.js";
 import {
   CODE_SENT,
   ControlAuthError,
@@ -352,6 +353,14 @@ export function controlRouter(): Router {
   r.get("/control/slug-suggestion", route(async (req, res) => {
     const str = (v: unknown) => (typeof v === "string" ? v : "");
     res.json(await suggestSlug({ name: str(req.query.name), type: str(req.query.type) || null, state: str(req.query.state) || null }));
+  }));
+
+  // --- The Dashboard (the dashboard slice): every section's loader at once ---
+
+  // ?fresh=1 is the page's Refresh button: skip the one-minute caches.
+  r.get("/control/dashboard", route(async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json(await gatherDashboard({ fresh: req.query.fresh === "1" }));
   }));
 
   // --- Hubs ---
