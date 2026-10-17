@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import type { DraftSuggestion } from "../services/api";
+import "./CocFindings.css";
 
 /**
  * What the Code of Conduct check flagged on a draft, for every field to read

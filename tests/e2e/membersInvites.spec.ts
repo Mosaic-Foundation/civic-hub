@@ -206,7 +206,17 @@ for (const [name, viewport] of [["phone", PHONE], ["desktop", DESKTOP]] as const
     const message = panel.getByLabel("Your message");
     await expect(message).toHaveValue(/thought you'd want to join too\.$/);
     await panel.getByLabel("Email addresses").fill(`${addr(`friend-a-${name}`)}, ${addr(`friend-b-${name}`)}`);
+    // A changed message goes through the Code of Conduct check (the cleanup
+    // slice): flagged, nothing is sent, the finding shows under the message
+    // and the message stays as written.
+    await message.fill(`Come along, you'll love it [coc-flag]`);
+    await panel.getByRole("button", { name: "Send invites" }).click();
+    await expect(panel.getByTestId("invite-message-finding")).toContainText("Code of Conduct:");
+    await expect(panel.getByRole("alert").filter({ hasText: "Nothing was sent." })).toBeVisible();
+    await expect(message).toHaveValue(/\[coc-flag\]$/);
+    await expect(panel.getByLabel("Email addresses")).not.toHaveValue("");
     await message.fill(`Come to the next one! ${run}`);
+    await expect(panel.getByTestId("invite-message-finding")).toHaveCount(0);
     await expect(panel.getByRole("link", { name: "Nextdoor" })).toHaveAttribute("href", /^https:\/\/nextdoor\.com\/sharekit\//);
     await expect(panel.getByRole("link", { name: "WhatsApp" })).toHaveAttribute("href", /^https:\/\/wa\.me\/\?text=/);
     await expect(panel.getByRole("button", { name: "Copy link" })).toBeVisible();

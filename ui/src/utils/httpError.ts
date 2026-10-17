@@ -24,11 +24,14 @@ export function apiErrorMessage(body: unknown, status: number, statusText = ""):
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string | null;
-  constructor(message: string, status: number, code: string | null) {
+  /** The error body as sent, for a typed error's extra fields (`findings`). */
+  readonly body: unknown;
+  constructor(message: string, status: number, code: string | null, body: unknown = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.body = body;
   }
 }
 

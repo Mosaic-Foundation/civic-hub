@@ -86,7 +86,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       window.dispatchEvent(new CustomEvent("civic:auth-expired"));
     }
     const err = await res.json().catch(() => null);
-    throw new ApiError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err));
+    throw new ApiError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err), err);
   }
 
   const data = await res.json();

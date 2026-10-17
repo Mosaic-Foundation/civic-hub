@@ -20,6 +20,12 @@
 //     the page offers the link and the share buttons only.
 //   - Each request is recorded in the admin log with the addresses and what
 //     became of them, never the message. The message is not stored anywhere.
+//   - The message goes through the Code of Conduct check before anything is
+//     sent (the cleanup slice, Adam's decisions 2026-10-16): flagged, nothing
+//     is sent and the member changes it; the check can't run, nothing is sent
+//     either (an invite has no human review to fall back on), and the member
+//     can send without a message. An empty message, or the prefilled one left
+//     as the page wrote it, is not checked: the hub wrote it.
 //
 // The limit and the no-repeat rule are one database call
 // (take_member_invites, 20261016000000), under a lock per inviter.
@@ -31,7 +37,15 @@ import { ForbiddenError, ValidationError } from "../errors/index.js";
 import { sha256Hex, randomToken } from "../utils/hash.js";
 import { sendEmail } from "../utils/email.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
-import { getBetaAllowlist, hubDisplayNameSync, hubModeSync, setBetaAllowlist } from "./hubSettings.js";
+import { getBetaAllowlist, getSettingSync, hubDisplayNameSync, hubModeSync, KEYS, setBetaAllowlist } from "./hubSettings.js";
+import { AiLimitError, admitAiCall } from "./aiBudget.js";
+import { cocFakeEnabled } from "../config/devFlags.js";
+import { fakeCodeOfConductCheck } from "../debug/fakeCodeOfConduct.js";
+import { checkTextAgainstCoC } from "../modules/civic.assistant/service.js";
+import { getHubConfig } from "../modules/civic.assistant/index.js";
+import { defaultIntroBody } from "../shared/hubCopy.js";
+import { hubKindOf } from "../shared/hubKind.js";
+import { defaultInviteMessage, sameInviteMessage } from "../shared/inviteMessage.js";
 import { recordHubAdminAudit } from "./hubAdminAudit.js";
 import { personFallbackName } from "./creatorDisplay.js";
 
@@ -160,6 +174,55 @@ export function renderInviteEmail(input: InviteEmailInput): { subject: string; t
   return { subject, text, html };
 }
 
+/** The message as "Share this hub" prefills it for this hub. */
+function prefilledMessage(): string {
+  const intro =
+    getSettingSync(KEYS.COPY_INTRO_BODY) ??
+    defaultIntroBody({
+      kind: hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)),
+      jurisdictionType: getSettingSync(KEYS.IDENTITY_JURISDICTION_TYPE),
+      hubName: hubDisplayNameSync(),
+      residentNoun: getSettingSync(KEYS.COPY_RESIDENT_NOUN),
+    });
+  return defaultInviteMessage(intro);
+}
+
+/** The label a finding names, as the check and the panel show it. */
+export const INVITE_MESSAGE_FIELD = "Your message";
+
+/**
+ * The Code of Conduct check on an invite's message, before anything is sent.
+ * Throws `code_of_conduct_flagged` (with the findings) or
+ * `code_of_conduct_unavailable`; a member over their own hourly count gets the
+ * AI limit's 429, as on Submit.
+ */
+async function checkInviteMessage(inviterId: string, message: string): Promise<void> {
+  if (!message || sameInviteMessage(message, prefilledMessage())) return;
+  const fields = [{ label: INVITE_MESSAGE_FIELD, text: message }];
+  let suggestions;
+  try {
+    await admitAiCall("review", inviterId);
+    suggestions = cocFakeEnabled() ? fakeCodeOfConductCheck(fields) : await checkTextAgainstCoC(fields, await getHubConfig());
+  } catch (err) {
+    if (err instanceof AiLimitError && !err.budget) throw err;
+    console.error("[coc-check:invite] unavailable, nothing sent:", err instanceof Error ? err.message : err);
+    throw new ValidationError(
+      "The Code of Conduct check couldn't run, so nothing was sent. Send without a message, or try again later.",
+      "code_of_conduct_unavailable",
+    );
+  }
+  const findings = suggestions
+    .filter((s) => s.severity === "hard" && !s.check_unavailable)
+    .map((s) => ({ field: s.field, quoted_text: s.quoted_text, message: s.message }));
+  if (findings.length > 0) {
+    throw new ValidationError(
+      "The Code of Conduct check found something to change in your message. Nothing was sent.",
+      "code_of_conduct_flagged",
+      { extra: { findings } },
+    );
+  }
+}
+
 interface TakenRow {
   email: string;
   status: "new" | "skipped" | "over_limit";
@@ -175,6 +238,8 @@ export async function sendMemberInvites(inviter: Inviter, addresses: string[], m
     );
   }
   const outcome: InviteResult["outcome"] = mode === "beta" && !inviter.isAdmin ? "waitlisted" : "emailed";
+  // Only an emailed invite carries the message; a waitlisted one sends none.
+  if (outcome === "emailed") await checkInviteMessage(inviter.id, message);
   const limit = inviter.isAdmin ? ADMIN_DAILY_LIMIT : MEMBER_DAILY_LIMIT;
   const hubId = currentHubId();
   const hub = forHub(hubId);

@@ -697,6 +697,29 @@ test("a member sends an invite from Share this hub; on the beta smoke hub it goe
   await page.close();
 });
 
+// The Code of Conduct check on an invite's message (the cleanup slice,
+// 2026-10-16). An admin's invite on the beta smoke hub is emailed, so its
+// message is checked: the real check on dev refuses the flagged text, and
+// nothing is recorded or sent. One AI check.
+test("an admin's invite with a message the check flags sends nothing and shows what to change", async ({ browser }) => {
+  const page = await open(browser, { viewport: { width: 375, height: 812 } });
+  await visitAs(page, admin);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Share this hub" }).click();
+  const panel = page.getByRole("dialog", { name: "Share this hub" });
+  const to = `smoke-${run}-flagged-invitee@example.test`;
+  await panel.getByLabel("Email addresses").fill(to);
+  await panel.getByLabel("Your message").fill(FLAGGED);
+  await panel.getByRole("button", { name: "Send invites" }).click();
+  await expect(panel.getByTestId("invite-message-finding")).toContainText("Code of Conduct:", { timeout: 30_000 });
+  await expect(panel.getByLabel("Your message")).toHaveValue(FLAGGED);
+  const rows = (await devRest(
+    `hub_invites?select=id&hub_id=eq.${encodeURIComponent(smokeHub())}&email=eq.${encodeURIComponent(to)}`,
+  )) as unknown[];
+  expect(rows).toEqual([]);
+  await page.close();
+});
+
 // Last, because the member tests above need the count: the Members plugin's
 // threshold (2026-10-14), raised above any count and put back in afterAll.
 test("below the Members threshold a resident gets no count from the server; the admin sees it with a note", async ({ browser, request }) => {

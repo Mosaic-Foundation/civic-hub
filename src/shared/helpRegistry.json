@@ -440,7 +440,7 @@
     "anchor": "people-hidden-members"
   },
   "share.invites": {
-    "text": "Invite people by email: ten addresses a day, fifty for an admin, never twice to one address. On a beta hub a member's invites go on the waitlist; an admin's let the address in.",
+    "text": "Invite people by email: ten addresses a day, fifty for an admin, never twice to one address. On a beta hub a member's invites go on the waitlist; an admin's let the address in. A changed message is checked against the Code of Conduct.",
     "page": "/reference/modes",
     "anchor": "share-invites"
   },

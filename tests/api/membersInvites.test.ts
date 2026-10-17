@@ -242,6 +242,55 @@ describe("Share this hub: email invites", () => {
     expect(await invites(LIVE, addr("fine"))).toEqual([]);
   });
 
+  // The Code of Conduct check on the message (the cleanup slice, 2026-10-16),
+  // through the fake check (CIVIC_COC_FAKE=on): [coc-flag] flags, [coc-down]
+  // makes it unavailable. Either way nothing is recorded or sent.
+  it("a flagged message sends nothing and says what to change", async () => {
+    const a = await member(LIVE, "coc-flag", "Jules Flagged");
+    const to = addr("coc-flag-friend");
+    const res = await call("POST", "/members/invites", host(LIVE), { emails: to, message: "You'll like it here [coc-flag]" }, a.token);
+    expect(res.status, JSON.stringify(res.body)).toBe(400);
+    expect(res.body.code).toBe("code_of_conduct_flagged");
+    expect(res.body.findings).toEqual([expect.objectContaining({ quoted_text: "[coc-flag]" })]);
+    expect(await invites(LIVE, to)).toEqual([]);
+
+    // Changed, it goes; the refused try used none of the day's ten.
+    const fixed = await call("POST", "/members/invites", host(LIVE), { emails: to, message: "You'll like it here." }, a.token);
+    expect(fixed.status, JSON.stringify(fixed.body)).toBe(200);
+    expect(fixed.body).toMatchObject({ outcome: "emailed", done: 1 });
+  });
+
+  it("when the check can't run, nothing is sent; without a message it goes", async () => {
+    const a = await member(LIVE, "coc-down", "Kit Down");
+    const to = addr("coc-down-friend");
+    const res = await call("POST", "/members/invites", host(LIVE), { emails: to, message: "Come along [coc-down]" }, a.token);
+    expect(res.status, JSON.stringify(res.body)).toBe(400);
+    expect(res.body.code).toBe("code_of_conduct_unavailable");
+    expect(res.body.error).toMatch(/Send without a message/);
+    expect(await invites(LIVE, to)).toEqual([]);
+
+    const bare = await call("POST", "/members/invites", host(LIVE), { emails: to, message: "" }, a.token);
+    expect(bare.status, JSON.stringify(bare.body)).toBe(200);
+    expect(bare.body).toMatchObject({ outcome: "emailed", done: 1 });
+  });
+
+  it("the prefilled message, left as the page wrote it, is not checked: the hub wrote it", async () => {
+    const intro = `Welcome to the test hub ${run} [coc-flag]`;
+    await localRest("hub_settings?on_conflict=hub_id,key", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ hub_id: LIVE, key: "copy.intro_body", value: intro }),
+    });
+    const a = await member(LIVE, "coc-default", "Lee Default");
+    const prefilled = `${intro}\n\nI'm a member and thought you'd want to join too.`;
+    const res = await call("POST", "/members/invites", host(LIVE), { emails: addr("coc-default-friend"), message: prefilled }, a.token);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    // One word changed, and it is checked.
+    const edited = await call("POST", "/members/invites", host(LIVE), { emails: addr("coc-default-2"), message: `${prefilled} Really.` }, a.token);
+    expect(edited.body.code).toBe("code_of_conduct_flagged");
+    await localRest(`hub_settings?hub_id=eq.${LIVE}&key=eq.copy.intro_body`, { method: "DELETE" });
+  });
+
   it("is for signed-in members only", async () => {
     expect((await call("POST", "/members/invites", host(LIVE), { emails: addr("x") })).status).toBe(401);
   });
@@ -270,6 +319,13 @@ describe("Share this hub: email invites", () => {
     expect(res.body).toMatchObject({ outcome: "emailed", done: 1, limit: 50 });
     const allow = (await localRest(`hub_settings?select=value&hub_id=eq.${BETA}&key=eq.beta.allowlist`)) as Row[];
     expect(allow[0]?.value).toContain(to);
+  });
+
+  it("on a beta hub, a member's waitlisted invite sends no message, so none is checked", async () => {
+    const m = await member(BETA, "beta-coc", "Morgan Beta");
+    const res = await call("POST", "/members/invites", host(BETA), { emails: addr("beta-coc-friend"), message: "hi [coc-flag]" }, m.token);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toMatchObject({ outcome: "waitlisted", done: 1 });
   });
 
   it("a demo hub sends no invites by email", async () => {

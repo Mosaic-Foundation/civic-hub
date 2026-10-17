@@ -326,31 +326,6 @@
   cursor: not-allowed;
 }
 
-/* --- What the Code of Conduct check flagged, under its field --- */
-.field-finding {
-  margin: var(--space-xs) 0 0;
-  padding: var(--space-xs) var(--space-sm);
-  border-left: 3px solid var(--color-error);
-  background: var(--color-error-bg);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.field-finding-text {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  line-height: 1.4;
-  color: var(--color-text);
-}
-
-.field-finding-text + .field-finding-text {
-  margin-top: var(--space-xs);
-}
-
-.field-finding-quote {
-  font-style: italic;
-  color: var(--color-text-muted);
-}
-
 /* --- Focused drafting layout at phone width (Submit and Save) --- */
 /* DraftPage marks the page; the hub header, the section tabs, the word-cloud
    strip, the hub banner and the beta/demo bar give way to DraftShell's one

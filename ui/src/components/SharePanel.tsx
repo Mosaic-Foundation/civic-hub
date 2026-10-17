@@ -4,7 +4,10 @@ import HelpButton from "./HelpButton";
 import hub from "../config/hub";
 import { useAuth } from "../context/AuthContext";
 import { sendInvites, type InviteResult } from "../services/api";
+import { ApiError } from "../utils/httpError";
+import { defaultInviteMessage } from "../../../src/shared/inviteMessage";
 import "./SharePanel.css";
+import "./CocFindings.css";
 
 /**
  * "Share this hub" (members and invites slice, Adam's design 2026-10-10,
@@ -21,6 +24,10 @@ import "./SharePanel.css";
  *
  * The answer never says which addresses were already invited or already
  * here: "Done" covers both, so the form can't tell a member who belongs.
+ *
+ * A message the member changed goes through the Code of Conduct check on
+ * Send (the cleanup slice, 2026-10-16). Flagged, nothing is sent; what to
+ * change shows under the message, which stays as written.
  */
 export default function SharePanel({ onClose }: { onClose: () => void }) {
   const { isAdmin } = useAuth();
@@ -28,12 +35,11 @@ export default function SharePanel({ onClose }: { onClose: () => void }) {
   const messageId = useId();
   const hubUrl = `${window.location.origin}/`;
   const [emails, setEmails] = useState("");
-  const [message, setMessage] = useState(
-    `${hub.intro_body}\n\nI'm a member and thought you'd want to join too.`,
-  );
+  const [message, setMessage] = useState(defaultInviteMessage(hub.intro_body));
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<InviteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [findings, setFindings] = useState<MessageFinding[]>([]);
   const [copied, setCopied] = useState(false);
 
   const emailInvites = !hub.demo_mode;
@@ -45,12 +51,17 @@ export default function SharePanel({ onClose }: { onClose: () => void }) {
     if (busy) return;
     setBusy(true);
     setError(null);
+    setFindings([]);
     setResult(null);
     try {
       const r = await sendInvites(emails, message);
       setResult(r);
       if (r.over_limit.length === 0 && r.failed === 0) setEmails("");
     } catch (err) {
+      if (err instanceof ApiError && err.code === "code_of_conduct_flagged") {
+        const found = (err.body as { findings?: MessageFinding[] } | null)?.findings;
+        setFindings(Array.isArray(found) ? found : []);
+      }
       setError(err instanceof Error ? err.message : "The invites couldn't be sent.");
     } finally {
       setBusy(false);
@@ -116,9 +127,31 @@ export default function SharePanel({ onClose }: { onClose: () => void }) {
                   rows={5}
                   maxLength={1000}
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    setFindings([]);
+                  }}
                   disabled={busy}
+                  aria-describedby={`${messageId}-hint`}
                 />
+                {findings.length > 0 && (
+                  <div className="field-finding" role="alert" data-testid="invite-message-finding">
+                    {findings.map((f, i) => (
+                      <p key={i} className="field-finding-text">
+                        <strong>Code of Conduct:</strong> {f.message}
+                        {f.quoted_text && (
+                          <>
+                            {" "}
+                            <span className="field-finding-quote">“{f.quoted_text}”</span>
+                          </>
+                        )}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                <p id={`${messageId}-hint`} className="form-hint">
+                  A message you change goes through a quick Code of Conduct check when you send.
+                </p>
               </>
             )}
             {error && (
@@ -186,6 +219,12 @@ export default function SharePanel({ onClose }: { onClose: () => void }) {
       </section>
     </Modal>
   );
+}
+
+/** One thing the Code of Conduct check found in the message. */
+interface MessageFinding {
+  message: string;
+  quoted_text?: string | null;
 }
 
 function InviteOutcome({ result }: { result: InviteResult }) {
