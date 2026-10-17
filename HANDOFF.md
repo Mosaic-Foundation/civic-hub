@@ -6,8 +6,9 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Cleanup: the carried small items — 2026-10-17
 
-Branch `cleanup` from `f5c2d8f`, one commit per item (`a19b8c3`..`38b93ae`), plus TESTING and this entry. **Not
-merged, not released.** Adam merges `cleanup` into `multi-tenant` after the operations shell is on production; the dev
+Branch `cleanup` from `f5c2d8f`, one commit per item (`a19b8c3`..`38b93ae`), TESTING and this entry, then, after
+Adam's review the same day: a type fix in a test (`2bfd3d2`), legal 1.4 (`480d50a`, its Playwright fix `228e35e`), and the
+summariser's opening rule (`3b85ce3`). **Not merged, not released.** Adam merges `cleanup` into `multi-tenant` after the operations shell is on production; the dev
 release follows. Two migrations, both additive, apply first: `20261018000000_settings_version`,
 `20261018010000_count_pending_reviews`. No one is signed out. Report and merge steps:
 `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Cleanup-Session-Report-2026-10-17.md`.
@@ -25,8 +26,8 @@ release follows. Two migrations, both additive, apply first: `20261018000000_set
   checked. `ApiError` now keeps the error body.
 - **Meeting summaries:** `plugin.meeting_summary.wix_fields`, `.record_grace_days`, `.source_quiet_days` (help keys
   pending the docs); PDFs anywhere on the configured site; every YouTube link form; "today" in the hub's time zone;
-  the summariser's wording names no one body's agenda (`9d6ed6d`, droppable on its own; six runs compared in the
-  report).
+  the summariser's wording names no one body's agenda (`9d6ed6d`), and the meeting's opening gets no block
+  (`3b85ce3`; seven runs compared in the report). Reverting the wording means reverting both.
 - **Polis:** the address is each hub's own setting, read per call; a close commits first and only the winner calls
   Polis and summarizes (as `regenerate_summary`, after commit; the brief step re-reads the process); a Polis outage
   answers 503 `polis_unavailable`.
@@ -35,8 +36,9 @@ release follows. Two migrations, both additive, apply first: `20261018000000_set
 - **`cleanup-drop-codes`** (`c5fe6dc` migration, `24d9980` references): drops `pending_verifications`,
   `control_codes`, `start_codes` and their three attempt functions. Non-additive; merge only with Adam's yes after
   the production count in the report comes back clean.
-- **Legal 1.4**, proposal only (report): "the Settings page" replaced with full sentences, the `{LIKE_THIS}` draft
-  sentence removed, and 1.4 marked non-material so members aren't asked to accept again.
+- **Legal 1.4 is in** (Adam's yes): Terms and Privacy name Your settings, the `{LIKE_THIS}` draft sentence is gone,
+  version 1.4 dated 2026-10-17. Non-material: `LEGAL_VERSIONS_NOT_REQUIRING_REACCEPTANCE` (`src/shared/legal.ts`)
+  holds 1.3, so whoever accepted 1.3 isn't asked again; anyone older is, as before. A material revision empties it.
 
 **Left open:**
 - `POST /deliberations` stays: the conformance suite creates conversations through it (the descriptor's
@@ -45,10 +47,10 @@ release follows. Two migrations, both additive, apply first: `20261018000000_set
   against real Polis, per-hub Polis tokens (an env convention, not built).
 - Meeting summaries: transcripts in English only, YouTube only, one scheduled time for every hub.
 
-**Tests** (TESTING.md → "Cleanup"), all on a fresh local stack: `npm test` 208 files / 2,416 passed; API in token
-mode 66 files / 810 passed (conformance in both); Playwright 159 passed, 2 skipped; smoke 22 of 22 locally. The drop
-branch, on a stack that ran its migration: the same two API totals. **CI:** not run; this session could not push
-(the push is in the report for Adam).
+**Tests** (TESTING.md → "Cleanup"), on a fresh local stack after the last commit: `npm test` 209 files / 2,418
+passed; API in token mode 66 files / 810 passed (conformance in both); Playwright 161 passed, 2 skipped; smoke 22 of
+22 locally (before the legal commit). The drop branch, on a stack that ran its migration: 2,416 / 810. **CI** on the
+pushed `0bdd36b`: both API passes green; the type check failed on a test, fixed in `2bfd3d2`.
 
 ---
 

@@ -104,13 +104,19 @@ branch, `cleanup-drop-codes`, and is tested there (below).
   Polis address is each hub's setting, read per call; a 5xx, a timeout or no answer is 503 `polis_unavailable` and a
   4xx stays as it was. The conformance suite (in the API layer) walks a conversation's close and its brief with the
   summary made after the commit.
+- **Legal 1.4** (non-material): unit, `legalVersion.test.ts` (1.4 and 1.3 count as accepted; 1.2, none or empty
+  do not); `hubDocuments.test.ts` with the golden copies in `tests/fixtures/floyd-legal/`. Playwright,
+  `legalVersion.spec.ts` (2): a 1.3 account sees no "We've updated our Terms"; a 1.2 account does, and Continue
+  records 1.4. The dialog is an `alertdialog`, and both wait for the account menu first: it decides from the
+  account, which took over 5 s to load on the preview build.
 - **Smoke:** the two 65-second waits (the sidebar after Navigation is saved, the member count after the threshold is
   raised) are gone; both read at once.
 - **Results, 2026-10-17, on a fresh local stack** (reset, both hubs seeded, the jurisdiction list loaded; servers on
   :3020 service role and :3021 minted tokens, each the other's `CIVIC_OTHER_API_BASE`):
   - `npm test` (lint, unit, API against :3020): 208 files, 2,416 passed, 10 skipped, 1 todo;
   - API in token mode (:3021): 66 files, 810 passed, 10 skipped, 1 todo; the conformance suite is in both;
-  - Playwright against a preview build (:4193 → :3022, as `e2e.yml`): 159 passed, 2 skipped;
+  - Playwright against a preview build (:4193 → :3022, as `e2e.yml`): 159 passed, 2 skipped; after legal 1.4,
+    161 passed, 2 skipped (`npm test` then 209 files, 2,418 passed);
   - smoke against a local `smoke` hub (:4194 → :3023): 22 of 22 in 22 s. A smoke hub made today gets today's
     defaults for new hubs (the sidebar, members shown from 10), which the suite does not expect; dev's smoke hub
     predates both. Locally, set `nav.layout` to `top_tabs` and `plugin.members.min_count` to `0` on it first.
