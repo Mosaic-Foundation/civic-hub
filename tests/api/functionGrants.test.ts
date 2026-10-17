@@ -39,6 +39,7 @@ const AUTHENTICATED = [
   "ballot_by_receipt",
   "cast_ballot",
   "claim_vote_key",
+  "count_pending_reviews",
   "current_hub_id",
   "reshuffle_ballots",
   "search_processes",

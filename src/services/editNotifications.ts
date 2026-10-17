@@ -184,6 +184,45 @@ export async function listAllEdits(adminId: string, sinceDays = 90): Promise<{ i
   return { items, unseen: items.filter((i) => i.unseen).length };
 }
 
+/**
+ * How many processes have a substantive edit the admin hasn't seen: the
+ * Edits tab's count, the same number as listAllEdits(...).unseen. Reads only
+ * the events since the tab was last opened (or the last 90 days, whichever is
+ * shorter), not the whole window, so the count stays cheap however long the
+ * hub has been used.
+ */
+export async function countUnseenEdits(adminId: string, sinceDays = 90): Promise<number> {
+  const hubDb = db();
+  const userRow = await hubDb
+    .from("users")
+    .select<{ edits_seen_at: string | null }>("edits_seen_at")
+    .eq("id", adminId)
+    .maybeSingle();
+  const seenAt = userRow?.edits_seen_at ?? EPOCH;
+  const windowStart = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
+  const from = seenAt > windowStart ? seenAt : windowStart;
+
+  const events = await readAll((lo, hi) =>
+    hubDb
+      .from("events")
+      .select<{ process_id: string; data: Record<string, unknown> | null }>("process_id, data")
+      .eq("event_type", "civic.process.updated")
+      .gt("created_at", from)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(lo, hi),
+  );
+  const edited = new Set<string>();
+  for (const row of events) {
+    const edit = (row.data as { edit?: { changed_fields?: unknown } } | null)?.edit;
+    if (edit && isSubstantiveEdit(edit as Parameters<typeof isSubstantiveEdit>[0])) edited.add(row.process_id);
+  }
+  if (edited.size === 0) return 0;
+  // Only processes that still exist, as the list shows them.
+  const counts = await inChunks([...edited], async (chunk) => [await hubDb.from("processes").count().in("id", chunk)]);
+  return counts.reduce((a, b) => a + b, 0);
+}
+
 function friendlyTypeLabel(type: string): string {
   const map: Record<string, string> = {
     "civic.vote": "Vote",

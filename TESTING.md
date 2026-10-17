@@ -133,9 +133,6 @@ first time that layer has been runnable from a clean checkout.
 - **Smoke** (21 tests): the smoke hub stays in beta, so this slice adds only read-only signs. As the admin at
   375 px: the mode notice is present, the Mode page renders with Beta current, picking Live shows the readiness list
   and the consequences, and Cancel leaves Beta current. Nothing is switched, saved or emailed.
-- **Local note:** a long-lived local stack whose Floyd has over 1,000 process reviews fails
-  `hubIsolationControllers` → "Floyd's pending review counts" with `CIVIC_ROW_CAP` on `/admin/queue-counts`. That
-  is the carried "/admin/queue-counts past 1,000 reviews" item, not this slice; CI's fresh stack passes.
 
 ---
 

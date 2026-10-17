@@ -14,13 +14,17 @@
 // A queue whose plugin the hub switched off counts zero: its tab is gone, so
 // a number would light the badge for something the admin cannot open. Pending
 // reviews of a switched-off type are left out the same way.
+//
+// Every number is counted by the database, not by reading the rows (the
+// cleanup slice): a long-used hub has thousands of reviews, past PostgREST's
+// 1,000-row cap.
 
 import { forHub, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
-import { getAllProcesses, getDisabledTypeProcessIds } from "./processService.js";
-import { isProcessTypeEnabled } from "./pluginGate.js";
+import { disabledProcessTypes, isProcessTypeEnabled } from "./pluginGate.js";
+import { nonPublicStatusFilter } from "./processLifecycle.js";
 import { isPluginEnabledSync } from "./hubSettings.js";
-import { listAllEdits } from "./editNotifications.js";
+import { countUnseenEdits } from "./editNotifications.js";
 
 /** The hub in scope. Queue counts are only ever read or stamped inside one. */
 function db(): HubDb {
@@ -56,48 +60,36 @@ export async function getAdminQueueCounts(userId: string): Promise<AdminQueueCou
   const seen = (queue: AdminQueue): string => userRow?.[SEEN_COLUMN[queue]] ?? EPOCH;
 
   // Reviews: pending ones that arrived or changed since the tab was opened.
-  const off = await getDisabledTypeProcessIds();
-  const reviews = (
-    await db()
-      .from("process_reviews")
-      .select<{ process_id: string }>("process_id")
-      .eq("status", "pending_review")
-      .gt("updated_at", seen("reviews"))
-  ).filter((r) => !off.has(r.process_id)).length;
+  const reviews = Number(
+    await db().rpc<number | string>("count_pending_reviews", {
+      p_since: seen("reviews"),
+      p_excluded_types: disabledProcessTypes(),
+    }),
+  );
 
   // Briefs and meeting summaries: pending ones generated since the tab was
-  // opened. One pass over processes; volume is small.
-  let briefs = 0;
-  let meetingSummaries = 0;
-  const briefsSeen = seen("briefs");
-  const summariesSeen = seen("meeting_summaries");
-  for (const proc of await getAllProcesses()) {
-    const state = proc.state as
-      | { publication_status?: unknown; approval_status?: unknown }
-      | null
-      | undefined;
-    const type = proc.definition.type;
-    if (!isProcessTypeEnabled(type)) continue;
-    if (
-      (type === "civic.brief" || type === "civic.vote_results") &&
-      state?.publication_status === "pending" &&
-      proc.createdAt > briefsSeen
-    ) {
-      briefs += 1;
-    } else if (
-      type === "civic.meeting_summary" &&
-      state?.approval_status === "pending" &&
-      proc.createdAt > summariesSeen
-    ) {
-      meetingSummaries += 1;
-    }
-  }
+  // opened, among the processes a list shows.
+  const pendingSince = (types: string[], stateKey: string, since: string): PromiseLike<number> | number => {
+    const enabled = types.filter((t) => isProcessTypeEnabled(t));
+    if (enabled.length === 0) return 0;
+    return db()
+      .from("processes")
+      .count()
+      .in("type", enabled)
+      .not("status", "in", nonPublicStatusFilter())
+      .eq(`state->>${stateKey}`, "pending")
+      .gt("created_at", since);
+  };
+  const [briefs, meetingSummaries] = await Promise.all([
+    pendingSince(["civic.brief", "civic.vote_results"], "publication_status", seen("briefs")),
+    pendingSince(["civic.meeting_summary"], "approval_status", seen("meeting_summaries")),
+  ]);
 
   const feedback = isPluginEnabledSync("feedback")
     ? await db().from("feedback_submissions").count().gt("created_at", seen("feedback"))
     : 0;
 
-  const edits = (await listAllEdits(userId)).unseen;
+  const edits = await countUnseenEdits(userId);
 
   const counts: Record<AdminQueue, number> = {
     reviews,
