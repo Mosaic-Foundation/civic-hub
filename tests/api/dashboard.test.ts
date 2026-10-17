@@ -74,6 +74,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Process rows stay (events point at them); archived, no later suite lists them.
+  await localRest(`processes?hub_id=eq.floyd&id=like.${MARK}*`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ status: "archived" }),
+  });
   await localRest(`process_reviews?hub_id=eq.floyd&creator_id=eq.user_${MARK}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
   await localRest(`waitlist?hub_id=eq.floyd&email=like.${MARK}*`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
   await localRest(`feedback_submissions?hub_id=eq.floyd&id=like.${MARK}*`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
@@ -220,6 +226,29 @@ describe("waiting for attention", () => {
     expect(after.links.reviews).toMatch(/\/admin\/reviews$/);
     expect(after.links.waitlist).toMatch(/\/admin\/settings\/mode#waitlist$/);
     expect(new URL(after.links.reviews).hostname).toBe(FLOYD);
+  });
+
+  it("counts a meeting summary as flagged only when it carries a quality flag", async () => {
+    const before = await attentionFor("floyd");
+    expect(before.counts.meeting_summaries, "Floyd's meeting-summary plugin is on in the seed").not.toBeNull();
+    const summary = (suffix: string, flag: Row | null) => ({
+      id: `${MARK}_ms_${suffix}`,
+      hub_id: "floyd",
+      type: "civic.meeting_summary",
+      title: "Dashboard test summary",
+      description: "",
+      status: "active",
+      // A summary with no flag stores JSON null, as the module writes it.
+      state: { approval_status: "pending", quality_flag: flag },
+    });
+    await localRest("processes", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify([summary("plain", null), summary("flagged", { code: "transcript_unavailable", message: "test" })]),
+    });
+    const after = await attentionFor("floyd");
+    expect(after.counts.meeting_summaries - before.counts.meeting_summaries).toBe(2);
+    expect(after.counts.flagged - before.counts.flagged).toBe(1);
   });
 
   it("leaves archived hubs out", async () => {

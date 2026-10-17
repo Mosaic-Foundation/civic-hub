@@ -74,8 +74,34 @@ async function pendingProcesses(types: string[], stateKey: string, flaggedOnly =
     .in("type", enabled)
     .not("status", "in", nonPublicStatusFilter())
     .eq(`state->>${stateKey}`, "pending");
-  if (flaggedOnly) q = q.not("state->quality_flag", "is", null);
+  // ->> : a summary with no flag stores JSON null, which -> would read as a
+  // value; as text it is SQL NULL.
+  if (flaggedOnly) q = q.not("state->>quality_flag", "is", null);
   return q;
+}
+
+/**
+ * Pending reviews the Code of Conduct check flagged, leaving out reviews of a
+ * switched-off type's processes as count_pending_reviews does. Flagged reviews
+ * are few, so their processes are read and the switched-off ones dropped.
+ */
+async function countFlaggedReviews(): Promise<number> {
+  const db = forHub(currentHubId());
+  const excluded = disabledProcessTypes();
+  if (excluded.length === 0) {
+    return db.from("process_reviews").count().eq("status", "pending_review").not("coc_flags", "is", null);
+  }
+  const rows = await db
+    .from("process_reviews")
+    .select<{ process_id: string }>("process_id")
+    .eq("status", "pending_review")
+    .not("coc_flags", "is", null)
+    .limit(1000);
+  if (rows.length === 0) return 0;
+  const ids = [...new Set(rows.map((r) => r.process_id))];
+  const off = await db.from("processes").select<{ id: string }>("id").in("id", ids).in("type", excluded);
+  const offIds = new Set(off.map((p) => p.id));
+  return rows.filter((r) => !offIds.has(r.process_id)).length;
 }
 
 async function hubCounts(now: Date): Promise<Record<AttentionQueue, number | null>> {
@@ -89,7 +115,7 @@ async function hubCounts(now: Date): Promise<Record<AttentionQueue, number | nul
     pendingProcesses(["civic.meeting_summary"], "approval_status"),
     isPluginEnabledSync("feedback") ? db.from("feedback_submissions").count().gte("created_at", since) : null,
     db.from("waitlist").count().is("told_open_at", null),
-    db.from("process_reviews").count().eq("status", "pending_review").not("coc_flags", "is", null),
+    countFlaggedReviews(),
     pendingProcesses(["civic.meeting_summary"], "approval_status", true),
   ]);
   return {
