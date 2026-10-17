@@ -83,7 +83,10 @@ function get(target: Target, timeoutMs: number): Promise<{ status: number; body:
         res.on("error", reject);
       },
     );
-    req.setTimeout(timeoutMs, () => req.destroy(new Error(`no answer in ${timeoutMs / 1000} s`)));
+    // A hard limit on the whole answer, not only on silence: a hub that
+    // trickles bytes is cut off too.
+    const timer = setTimeout(() => req.destroy(new Error(`no answer in ${timeoutMs / 1000} s`)), timeoutMs);
+    req.on("close", () => clearTimeout(timer));
     req.on("error", reject);
     req.end();
   });
