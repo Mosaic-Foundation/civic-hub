@@ -161,13 +161,13 @@ describe("the connector ladder names no hub", () => {
   it("writes the discovery example with the hub's governing body", () => {
     const base = { extraction_instructions: "", trimmed_html: "<main></main>", source_url: ATHENS_MEETINGS_URL };
     const floyd = buildDiscoveryPrompt({ ...base, governing_body: "Board of Supervisors" });
-    expect(floyd).toContain('(e.g. "Board of Supervisors Regular Meeting", "Budget Workshop")');
+    expect(floyd).toContain('(e.g. "Board of Supervisors Regular Meeting", "Special Meeting")');
     expect(floyd).toContain('(e.g. "2026-06-09:Board of Supervisors Regular Meeting")');
 
     const athens = buildDiscoveryPrompt({ ...base, governing_body: "Town Council" });
     expect(athens).toContain('"Town Council Regular Meeting"');
     expect(athens).not.toMatch(/supervisors|floyd/i);
 
-    expect(buildDiscoveryPrompt(base)).toContain('(e.g. "Regular Meeting", "Budget Workshop")');
+    expect(buildDiscoveryPrompt(base)).toContain('(e.g. "Regular Meeting", "Special Meeting")');
   });
 });

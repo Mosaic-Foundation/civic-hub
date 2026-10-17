@@ -58,11 +58,11 @@ ${input.trimmed_html}
 </trimmed_html>
 
 For each meeting entry visible on the page, extract:
-- meeting_title: short human-readable name (e.g. "${exampleTitle}", "Budget Workshop"). Do NOT include the date in this field.
+- meeting_title: short human-readable name (e.g. "${exampleTitle}", "Special Meeting"). Do NOT include the date in this field.
 - meeting_date: ISO 8601 date (YYYY-MM-DD). Infer year if missing but prefer pages where the year is explicit.
 - source_minutes_url: the full https:// URL of the minutes PDF for that meeting, or null if no minutes PDF is linked. Must end in .pdf. Look for links labeled "Minutes" — do NOT confuse "Agenda" links with "Minutes" links.
 - source_agenda_url: the full https:// URL of the agenda PDF for that meeting, or null if no agenda PDF is linked. Must end in .pdf. Look for links labeled "Agenda".
-- source_video_url: the full https:// URL of the primary YouTube recording for that meeting, or null if no recording is available. If multiple recordings exist for the same meeting (e.g. "Video Recording 1" and "Video Recording 2"), this is the FIRST one.
+- source_video_url: the full https:// URL of the primary YouTube recording for that meeting, or null if no recording is available. If multiple recordings exist for the same meeting (e.g. "Part 1" and "Part 2"), this is the FIRST one.
 - additional_video_urls: array of any additional YouTube URLs for the same meeting (segment 2, continuation, retry after stream drop). Empty array if only one recording exists.
 - source_id: a stable dedupe key. Use the source_minutes_url when available (the PDF URL). For meetings with no minutes, use the format "YYYY-MM-DD:<meeting_title>" (e.g. "2026-06-09:${exampleTitle}").
 
@@ -200,9 +200,9 @@ ${videoGuidance}
 
 ${blockTarget}
 
-COVER THE WHOLE MEETING. Work through the ${input.has_video ? "transcript" : "document"} from beginning to end and produce blocks for the entire session, right through to adjournment — not just the first portion. A long meeting's later items (department reports, new business, public comment, board discussion) matter as much as its opening ones, and omitting them silently misrepresents what happened.
+COVER THE WHOLE MEETING. Work through the ${input.has_video ? "transcript" : "document"} from beginning to end and produce blocks for the entire session, right through to adjournment — not just the first portion. A long meeting's later items (staff and department reports, new business, public comment, and the members' own discussion and reports, whatever this body's agenda calls them) matter as much as its opening ones, and omitting them silently misrepresents what happened.
 
-Never omit a closed session. If the body goes into closed session, produce a block for it recording the stated legal basis, and record the certification vote on return in action_taken.
+Never omit a closed session (also called an executive session). If the body goes into one, produce a block for it recording the stated reason or legal basis, and record in action_taken any vote or certification the record shows on return.
 
 Skip procedural micro-items (call to order, roll call, adjournment, etc.) unless they contain substantive content.
 

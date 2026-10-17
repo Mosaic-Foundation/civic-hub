@@ -98,7 +98,16 @@ describe("buildSummarizationPrompt — coverage instructions", () => {
     // certification vote — a material governance event.
     const p = buildSummarizationPrompt({ ...base, transcript_duration_seconds: 3600 });
     expect(p).toContain("Never omit a closed session");
-    expect(p).toContain("certification vote");
+    // Any vote or certification on return, not one state's term for it (the
+    // cleanup slice, 2026-10-16).
+    expect(p).toContain("any vote or certification the record shows on return");
+    expect(p).not.toContain("certification vote");
+  });
+
+  it("names no one body's agenda sections or meeting types", () => {
+    const p = buildSummarizationPrompt({ ...base, transcript_duration_seconds: 3600 });
+    expect(p).not.toMatch(/board discussion|budget workshop/i);
+    expect(p).toContain("the members' own discussion and reports, whatever this body's agenda calls them");
   });
 
   it("still keeps the procedural-noise exclusion", () => {
