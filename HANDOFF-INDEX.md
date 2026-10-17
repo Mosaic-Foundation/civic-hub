@@ -18,6 +18,7 @@ numbers below, or just grep the heading.
 | Runtime settings read/write (`hub_settings`) | `src/services/hubSettings.ts` |
 | Settings key names, aliases, env fallbacks, public list | `src/models/hubSettings.ts` |
 | Settings reaching every server at once: `hubs.settings_version` (bumped by trigger), the per-request hub read, the version-checked cache; the two-server test | `src/db/hubs.ts`, `src/db/hubSettingsStore.ts`, `20261018000000`, `tests/api/settingsVersion.test.ts` |
+| The console's Dashboard: the section registry, loaders (hubs' health, jobs, outside services, pending counts), the page and its renderers; adding a section | `src/control/dashboard/` (`registry.ts`), `GET /control/dashboard`, `ui/src/console/{Dashboard,dashboardSections}.tsx`, `src/db/jobLastRun.ts` (`job_last_run`, `20261019000000`), `src/jobs/schedule.ts`; ADR-007; HANDOFF "Dashboard" (2026-10-17) |
 | Admin queue counts (database counts, past 1,000) | `src/services/adminQueues.ts`, `count_pending_reviews` (`20261018010000`), `countUnseenEdits` in `src/services/editNotifications.ts` |
 | Shared legal documents + per-hub substitution | `config/legal/`, `src/services/hubDocuments.ts` |
 | Seeding a hub's settings from env | `scripts/seed-hub-settings.ts` |

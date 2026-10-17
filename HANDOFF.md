@@ -4,6 +4,90 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Dashboard: one console page for hubs, jobs, backups and what is waiting — 2026-10-17
+
+Branch `dashboard` from `origin/multi-tenant` at `3eebfc4` (which already holds `cleanup`), one commit per item
+(`808229a`..`db540f8`), then this entry. ADR-007 is at the mono-repo root (`0f1aab0`, local). **Not merged, not
+released, not pushed** (this session could not push). One migration, additive: `20261019000000_job_last_run`. No one
+is signed out. Report and merge steps:
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Dashboard-Session-Report-2026-10-17.md`.
+
+**What it does** (console → Dashboard, `#/dashboard`, the operator only):
+- **Hubs:** one row per hub, live, beta, demo, then archived (collapsed). Mode, health (up, degraded with the schema
+  gaps and why, down with why), the commit the hub reports and whether it is the console's own, members (the Members
+  plugin's count rule), days since the newest non-sample event. Health is each hub's `/api/health` fetched by the
+  console's server, 3 s timeout, cached a minute (`src/control/dashboard/hubHealth.ts`).
+- **Jobs and backups:** one row per job in `src/jobs/registry.ts`: last scheduled run, result, duration, hubs failed,
+  next run; late (the heartbeats' grace, `src/jobs/schedule.ts`) or failed rows stand out. The last run comes from
+  the new `job_last_run` (one row per job, replaced at the end of every scheduled run, including runs that did
+  nothing; a `?hub=` run by hand is not recorded, as it pings no heartbeat). The backup card reads Healthchecks.io's
+  `backup-dump` check.
+- **Uptime and errors:** Better Stack monitors and Sentry's last 24 hours. Each outside card is "not connected" with
+  its one-line setup when its key is unset, "could not read" when the service fails; never fails the page (ADR-007,
+  `src/control/dashboard/outside.ts`).
+- **Waiting for attention:** per hub in service, pending reviews (`count_pending_reviews` with no cursor), briefs,
+  meeting summaries, feedback in the last 7 days (feedback has no done state), waitlist not yet told, and "Flagged
+  by checks" (Code of Conduct-flagged pending reviews plus quality-flagged pending summaries). Each links to the
+  hub's own queue on its hostname. `adminQueues.ts` is unchanged: its counts are "new since you looked".
+- **Freshness:** "Gathered … ago", refreshes every minute while the tab is visible, Refresh skips the caches
+  (`?fresh=1`). Every section's loader runs at once with its own 8 s timeout; a slow one shows its own notice.
+
+**Keys (Adam, Vercel civic-hub Production, then redeploy; all optional, all read-only):** `HEALTHCHECKS_READ_KEY`
+(Healthchecks.io → Project Settings → API Access → read-only key); `SENTRY_READ_TOKEN` (personal token,
+`project:read` + `event:read` only) with `SENTRY_ORG` and `SENTRY_PROJECT`; `BETTERSTACK_API_TOKEN` **stays unset**:
+Better Stack documents no read-only token (ADR-007). `RUNBOOK-operations.md`'s "Rotating a key" table should take
+these on its next edit (this session does not touch that file).
+
+**Dev only:** `CIVIC_DASHBOARD_FAKE=on` (refused in production) reads hubs' health from the server itself with the
+hub's hostname in Host, and a hub whose slug contains "slow" goes to a listener that never answers. Set it locally,
+or a local console fetches the production hostnames in the local database.
+
+### Dashboard: adding a section
+
+1. **Loader:** a function `(ctx: { now, fresh }) => Promise<data>` in `src/control/dashboard/<name>.ts`. Counts
+   only, nothing per person; read a hub's data inside `inHubScope(hub.id, …)`; cache an outside read with
+   `cached()`. Throwing is fine: that section alone shows "could not be loaded".
+2. **Register it:** one entry in `DASHBOARD_SECTIONS` (`src/control/dashboard/registry.ts`): `{ id, name, load }`,
+   optionally `timeoutMs`. Order there is order on the page.
+3. **Renderer:** a component under the same id in `SECTION_RENDERERS` (`ui/src/console/dashboardSections.tsx`), its
+   data shape in `ui/src/console/dashboardTypes.ts`. Reuse `cx-dash-rows` / `cx-dash-row` / `cx-dash-facts` so it
+   stacks at 375 px.
+4. **Tests:** the section's id in the order assertion of `tests/api/dashboard.test.ts`, its data checked there, and
+   its testid in `tests/e2e/dashboard.spec.ts` (both widths).
+
+### Dashboard: analytics sections planned next (not built)
+
+Aggregate only: counts per hub and in total, never a list of people, from our own database. Each would be one
+section (or one section with a hub picker), read with `inHubScope` per hub:
+
+| Section | Number | Where it comes from |
+|---|---|---|
+| Members | members now, joined this week | `users` with the Members plugin's rule (`is_resident`, no samples, no `demo_only` off demo; `src/services/members.ts`), `created_at` |
+| Submissions by type | resident submissions per type, last 4 weeks | `process_reviews` (one row per submission) joined to `processes.type`; drafts excluded |
+| Votes cast | ballots per vote, and per week of the vote's close | `vote_records` counted per `process_id`; neither ballot table keeps a time (ballot secrecy, `20261010000000`), so a week is the vote's (`processes` close time), never the ballot's |
+| Participation rate | people who took part ÷ members, over processes that closed in the last 30 days | distinct `vote_participation.user_id` on those votes (it has no time either), `process_reviews.creator_id` and the support and comment tables (`proposal_supports`, `project_comments`) by their own times; counted, never listed |
+| Items reaching a brief | processes that got a published brief, per month | `processes` of type `civic.brief` / `civic.vote_results` with `state.publication_status = 'published'`, and `process_links` back to their source |
+| Growth over weeks | members, submissions, ballots per ISO week, 12 weeks | the same tables bucketed by week; one SQL function per hub returning `(week, metric, n)` would keep it to one call (needs explicit grants and a `functionGrants.test.ts` entry) |
+
+**Left open:**
+- A job with no `job_last_run` row shows "never run" and late. Right after the production release, daily jobs will
+  read late until their first run (up to a day). Expected; it clears itself.
+- Hub health is read from the console's own deployment, so "down" can also mean the console can't reach the hub
+  (Vercel's firewall: `/api/health` has a Bypass rule). Better Stack, from outside, is the second opinion.
+- The console's landing page is still Hubs; making Dashboard the landing page is a one-line change in
+  `ui/src/console/route.ts` if Adam wants it.
+
+**Review:** a Sonnet subagent reviewed the diff; its four findings are fixed (`530be78`: a summary with no quality
+flag stores JSON null, which `state->quality_flag` counted as flagged; flagged reviews now leave out switched-off
+types; `1f115ad`: day-of-week 7 in a range, stepped stars; `db540f8`: a hard 3 s limit on the health request).
+
+**Tests** (TESTING.md → "Dashboard"), on a fresh local stack after the last code commit: `npm test` 212 files, 2,451
+passed, 1 failed (`auditSignIn`'s console-code race hit a Postgres deadlock, 40P01, in code this slice doesn't
+touch; the file then passed alone, 15 of 15); API in token mode 67 files, 822 passed; Playwright 164 passed,
+2 skipped; `npm run typecheck` clean. CI not run (not pushed).
+
+---
+
 ## Cleanup: the carried small items — 2026-10-17
 
 Branch `cleanup` from `f5c2d8f`, one commit per item (`a19b8c3`..`38b93ae`), TESTING and this entry, then, after
