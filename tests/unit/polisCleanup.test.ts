@@ -137,7 +137,7 @@ describe("the hub's Polis", () => {
       const a = getPolisAdapter();
       await expect(a.pullClusterState("c1")).rejects.toBeInstanceOf(PolisUnavailableError);
       await expect(a.pullClusterState("c1")).rejects.toMatchObject({ status: 503, code: "polis_unavailable" });
-      await expect(a.submitStatement("c1", "x" as never)).rejects.toBeInstanceOf(PolisUnavailableError);
+      await expect(a.submitStatement("c1", "xid", "a statement")).rejects.toBeInstanceOf(PolisUnavailableError);
       await expect(a.getStatements("c1")).rejects.toMatchObject({ status: 409 });
     });
   });
