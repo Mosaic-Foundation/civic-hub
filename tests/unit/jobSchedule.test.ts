@@ -43,3 +43,16 @@ describe("job schedule", () => {
     expect(isLate(hourly, null, at("2026-10-17T10:26:00Z"))).toBe(true);
   });
 });
+
+describe("job schedule, day-of-week", () => {
+  it("reads 7 as Sunday, in a range too", () => {
+    // 2026-10-17 is a Saturday.
+    expect(nextRun("0 9 * * 7", new Date("2026-10-17T12:00:00Z"))?.toISOString()).toBe("2026-10-18T09:00:00.000Z");
+    expect(nextRun("0 9 * * 5-7", new Date("2026-10-17T12:00:00Z"))?.toISOString()).toBe("2026-10-18T09:00:00.000Z");
+  });
+
+  it("treats a stepped star as unrestricted when combining the day fields", () => {
+    // Day-of-month */2 with day-of-week Monday: Monday only, as cron does.
+    expect(nextRun("0 9 */2 * 1", new Date("2026-10-17T12:00:00Z"))?.toISOString()).toBe("2026-10-19T09:00:00.000Z");
+  });
+});

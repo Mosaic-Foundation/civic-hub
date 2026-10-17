@@ -35,7 +35,9 @@ function parseField(raw: string, min: number, max: number): Field | null {
     if (!Number.isInteger(lo) || !Number.isInteger(hi) || lo < min || hi > max || lo > hi) return null;
     for (let v = lo; v <= hi; v += step) values.add(v);
   }
-  return { values, any: raw === "*" };
+  // Cron reads a field that starts with "*" (also "*/2") as unrestricted
+  // when combining day-of-month and day-of-week.
+  return { values, any: raw.startsWith("*") };
 }
 
 interface Cron {
@@ -53,8 +55,10 @@ function parseCron(expr: string): Cron | null {
   const hour = parseField(parts[1], 0, 23);
   const dom = parseField(parts[2], 1, 31);
   const month = parseField(parts[3], 1, 12);
-  const dow = parseField(parts[4].replace(/\b7\b/g, "0"), 0, 6);
+  // 0 and 7 are both Sunday; read 0-7, then fold 7 onto 0.
+  const dow = parseField(parts[4], 0, 7);
   if (!minute || !hour || !dom || !month || !dow) return null;
+  if (dow.values.delete(7)) dow.values.add(0);
   return { minute, hour, dom, month, dow };
 }
 
