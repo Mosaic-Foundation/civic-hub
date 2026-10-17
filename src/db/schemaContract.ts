@@ -92,6 +92,8 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "hub_admin_audit_log", columns: ["hub_id", "actor_email", "action", "before", "after"], owner: "core/hubAdminAudit" },
   // Scheduled-job outcomes (20260929000000): the admin's last-run lines and the admin digest.
   { table: "job_runs", columns: ["hub_id", "job_id", "started_at", "finished_at", "status", "summary", "problems", "details"], owner: "core/jobRuns" },
+  // The last scheduled run of each job, whatever it did (20261019000000): the console's Dashboard.
+  { table: "job_last_run", columns: ["job_id", "started_at", "finished_at", "status", "duration_ms", "hubs_run", "hubs_failed", "error"], owner: "core/jobLastRun" },
   { table: "users", columns: ["id", "email", "display_name", "full_name", "reviews_seen_at", "edits_seen_at", "feedback_seen_at", "briefs_seen_at", "meeting_summaries_seen_at"], owner: "civic.auth" },
   { table: "sessions", columns: ["token", "assurance"], owner: "civic.auth" },
   { table: "sign_in_codes", columns: ["email", "code_hash", "link_hash", "attempts", "expires_at"], owner: "civic.auth" },

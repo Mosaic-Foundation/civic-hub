@@ -89,7 +89,8 @@ describe("export manifest", () => {
     // routing): platform_feedback (platform, not in a hub's export).
     // 47 since 2026-10-14 (members and invites): hub_invites (hub data, exported).
     // 48 since 2026-10-15 (leaving demo): admin_digest_marks (hub data, omitted).
-    expect(schema.tables.size).toBe(48);
+    // 49 since 2026-10-17 (dashboard): job_last_run (platform, not in a hub's export).
+    expect(schema.tables.size).toBe(49);
     expect(schema.withHubId.size).toBe(36);
     expect(schema.tables.has("hubs")).toBe(true);
     expect(schema.withHubId.has("hubs")).toBe(false);
