@@ -296,7 +296,7 @@ export const handleLogout = route(async (req, res) => {
  * Header: Authorization: Bearer <token>
  *
  * Slice 13.11 — self-service account deletion. Resolves the bearer
- * token to a user, then removes the user row + pending_verifications
+ * token to a user, then removes the user row + sign_in_codes
  * for that email. Sessions cascade. Public-record references
  * (comments, endorsements, vote-participation) are intentionally
  * orphaned, not deleted — see deleteAccount() doc comment.

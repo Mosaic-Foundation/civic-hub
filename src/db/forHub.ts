@@ -70,7 +70,6 @@ export const HUB_TABLES = [
   "hub_settings",
   "job_runs",
   "link_previews",
-  "pending_verifications",
   "process_links",
   "process_reviews",
   "processes",

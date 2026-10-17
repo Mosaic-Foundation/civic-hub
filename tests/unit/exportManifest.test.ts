@@ -70,7 +70,7 @@ const schema = schemaFromMigrations();
 const manifest = EXPORT_MANIFEST.map((e) => e.table);
 
 describe("export manifest", () => {
-  it("reads the schema it is checked against (44 tables, 33 with hub_id)", () => {
+  it("reads the schema it is checked against (45 tables, 35 with hub_id)", () => {
     // If this moves, a table was added or dropped: expected, but look at the
     // manifest in the same change. 35 since 2026-09-26: Phase 7's
     // hub_admin_audit_log (hub data, exported), after the super admin's
@@ -89,8 +89,10 @@ describe("export manifest", () => {
     // routing): platform_feedback (platform, not in a hub's export).
     // 47 since 2026-10-14 (members and invites): hub_invites (hub data, exported).
     // 48 since 2026-10-15 (leaving demo): admin_digest_marks (hub data, omitted).
-    expect(schema.tables.size).toBe(48);
-    expect(schema.withHubId.size).toBe(36);
+    // 45 since 20261018020000: pending_verifications (hub data, omitted),
+    // control_codes and start_codes (platform) dropped.
+    expect(schema.tables.size).toBe(45);
+    expect(schema.withHubId.size).toBe(35);
     expect(schema.tables.has("hubs")).toBe(true);
     expect(schema.withHubId.has("hubs")).toBe(false);
   });

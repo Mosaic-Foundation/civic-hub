@@ -7,7 +7,7 @@ import { API_BASE, freshTestIp } from "../fixtures/helpers.js";
  *
  * WHAT THESE CANNOT COVER, and why the guards have their own unit tests: a
  * successful roster change needs a real one-time code, and this layer speaks
- * HTTP only — it cannot read `pending_verifications`. An Athens admin cannot
+ * HTTP only — it cannot read `sign_in_codes`. An Athens admin cannot
  * take the demo shortcut either, precisely because privileged accounts always
  * get a real emailed code, so there is no admin token to be had here. So this
  * file covers the boundary (who is refused, and with what) and

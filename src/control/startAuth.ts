@@ -6,7 +6,7 @@
 // The code's rules (lifetime, throttle, wrong-guess cap, lockout, the email
 // itself) are a hub's, from src/modules/civic.auth/otp.ts, as the console's
 // are. Codes and session tokens are stored only as SHA-256 hashes, in
-// `start_codes` and `start_sessions` (platform tables, deny-all RLS).
+// `platform_sign_in_codes` and `start_sessions` (platform tables, deny-all RLS).
 //
 // Rate limits live in the database, so they hold across serverless
 // instances: by IP for every step, and by email for code requests. IPs and
