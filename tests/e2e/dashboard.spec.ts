@@ -1,8 +1,9 @@
 /**
  * The console's Dashboard (the dashboard slice, 2026-10-17).
  *
- * 1. The operator opens it at desktop width: every section, a hub that never
- *    answers shown down while the others are up, the outside services "not
+ * 1. The operator opens it at desktop width: the Overview's tiles and "Needs
+ *    a look", then each tab with its filters: a hub that never answers shown
+ *    down, one that answers on its retry shown slow, the outside services "not
  *    connected" with their setup, the jobs, the waiting counts with links to
  *    the hub's own queues, and Refresh.
  * 2. The same at phone width (375 px): nothing scrolls sideways, and the
@@ -72,31 +73,57 @@ test.describe("the console's Dashboard", () => {
     await openDashboard(page);
 
     await expect(page.getByRole("navigation", { name: "Console" }).getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
-    for (const id of ["hubs", "jobs", "outside", "attention"]) {
-      await expect(page.getByTestId(`dash-section-${id}`)).toHaveAttribute("data-status", "ok");
-    }
+    const tabs = page.getByRole("navigation", { name: "Dashboard sections" });
+    await expect(tabs.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
 
-    // Hubs: the slow one is down with why; Floyd is up.
+    // Overview: a tile per section, each loaded; the down hub makes Hubs red and leads "Needs a look".
+    for (const id of ["hubs", "jobs", "outside", "attention"]) {
+      await expect(page.getByTestId(`dash-tile-${id}`)).toHaveAttribute("data-status", "ok");
+    }
+    await expect(page.getByTestId("dash-tile-hubs")).toHaveAttribute("data-tone", "danger");
+    const look = page.getByTestId("dash-needs-look");
+    await expect(look.locator(".cx-dash-concern-danger", { hasText: "E2E Slow Hub is down: no answer in 8 s" })).toBeVisible();
+    await expect(look.locator(".cx-dash-concern-warn", { hasText: "E2E Flaky Hub was slow to answer" })).toBeVisible();
+    await expect(tabs.getByTestId("dash-tab-hubs")).toContainText(/Hubs\s*\d+/);
+
+    // A tile opens its tab. Hubs opens on its problems.
+    await page.getByTestId("dash-tile-hubs").click();
+    await expect(page).toHaveURL(/#\/dashboard\/hubs$/);
+    await expect(page.getByTestId("dash-section-hubs")).toHaveAttribute("data-status", "ok");
+    const chips = page.getByRole("group", { name: "Show hubs" });
+    await expect(chips.getByRole("button", { name: /^Problems/ })).toHaveAttribute("aria-pressed", "true");
     const slow = page.getByTestId(`dash-hub-${SLOW}`);
     await expect(slow).toHaveAttribute("data-health", "down");
     await expect(slow).toContainText("no answer in 8 s");
-    await expect(page.getByTestId("dash-hub-floyd")).toHaveAttribute("data-health", "up");
     // A failed first try that answers on the retry: slow, with the time, never down.
     const flaky = page.getByTestId(`dash-hub-${FLAKY}`);
     await expect(flaky).toHaveAttribute("data-health", "slow");
     await expect(flaky).toContainText(/slow · [\d.]+ (ms|s)/);
     await expect(flaky).toContainText("first try: connection dropped");
-    await expect(page.getByTestId("dash-section-hubs")).toContainText("1 slow to answer");
-    await expect(page.getByTestId("dash-section-hubs")).toContainText(/not up/);
+    await expect(page.getByTestId("dash-hub-floyd")).toHaveCount(0);
+    // Every hub in service, then a search.
+    await chips.getByRole("button", { name: /^In service/ }).click();
+    await expect(page.getByTestId("dash-hub-floyd")).toHaveAttribute("data-health", "up");
+    await page.getByRole("searchbox", { name: "Find a hub" }).fill("flaky");
+    await expect(page.getByTestId(`dash-hub-${FLAKY}`)).toBeVisible();
+    await expect(page.getByTestId("dash-hub-floyd")).toHaveCount(0);
 
-    // Jobs: every scheduled job has a row; the outside cards say how to connect.
+    // Jobs: the backup card, and every job under "All jobs".
+    await tabs.getByRole("link", { name: /^Jobs and backups/ }).click();
+    await page.getByRole("group", { name: "Show jobs" }).getByRole("button", { name: /^All jobs/ }).click();
     await expect(page.getByTestId("dash-job-vote_close")).toBeVisible();
-    for (const card of ["dash-backup", "dash-uptime", "dash-errors"]) {
+    await expect(page.getByTestId("dash-backup")).toHaveAttribute("data-state", "not_connected");
+
+    // Uptime and errors: not connected, with how.
+    await tabs.getByRole("link", { name: /^Uptime and errors/ }).click();
+    for (const card of ["dash-uptime", "dash-errors"]) {
       await expect(page.getByTestId(card)).toHaveAttribute("data-state", "not_connected");
       await expect(page.getByTestId(card)).toContainText("not connected");
     }
 
     // Waiting: the six counts, each a link to the hub's own queue.
+    await tabs.getByRole("link", { name: /^Waiting/ }).click();
+    await page.getByRole("group", { name: "Show hubs" }).getByRole("button", { name: /^All hubs/ }).click();
     const floyd = page.getByTestId("dash-attention-floyd");
     await expect(floyd).toContainText("Flagged by checks");
     const reviews = floyd.locator('[data-queue="reviews"] a');
@@ -109,23 +136,24 @@ test.describe("the console's Dashboard", () => {
     await expect(page.getByTestId("dash-gathered")).toContainText("just now");
   });
 
-  test("works at phone width: nothing scrolls sideways, archived hubs are collapsed", async ({ page, context }) => {
+  test("works at phone width: tiles, tabs and rows fit, nothing scrolls sideways", async ({ page, context }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ width: 375, height: 812 });
     await asOperator(context);
     await openDashboard(page);
+    const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
+    await expect(page.getByTestId("dash-tile-hubs")).toBeVisible();
+    await expect(page.getByTestId("dash-tile-attention")).toBeVisible();
+    expect(await overflow()).toBeLessThanOrEqual(0);
+
+    await page.getByTestId("dash-tile-hubs").click();
     await expect(page.getByTestId(`dash-hub-${SLOW}`)).toBeVisible();
-    await page.getByTestId("dash-section-attention").scrollIntoViewIfNeeded();
-    await expect(page.getByTestId("dash-attention-floyd")).toBeVisible();
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(overflow).toBeLessThanOrEqual(0);
+    expect(await overflow()).toBeLessThanOrEqual(0);
 
-    // Archived hubs (earlier runs leave some) sit behind a closed summary.
-    const archived = page.locator(".cx-dash-archived");
-    if (await archived.count()) {
-      await expect(archived).not.toHaveAttribute("open", "");
-    }
+    await page.goto(`${CONSOLE_UI}#/dashboard/attention`);
+    await expect(page.getByTestId("dash-section-attention")).toBeVisible({ timeout: 40_000 });
+    expect(await overflow()).toBeLessThanOrEqual(0);
   });
 });
 
