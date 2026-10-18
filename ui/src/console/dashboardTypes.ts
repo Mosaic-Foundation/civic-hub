@@ -25,12 +25,15 @@ export type OutsideResult<T> =
 export type HubGroup = "live" | "beta" | "demo" | "archived";
 
 export interface HubHealth {
-  state: "up" | "degraded" | "down";
+  /** slow: the first attempt failed and the retry answered ok. */
+  state: "up" | "slow" | "degraded" | "down";
   http_status: number | null;
   commit: string | null;
   gaps: string[];
   reason: string | null;
+  /** The whole check, retry included. */
   ms: number;
+  attempts: number;
 }
 
 export interface HubRow {

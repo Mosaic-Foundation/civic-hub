@@ -99,16 +99,19 @@ function OutsideCard<T>({
 function healthPill(h: HubRow) {
   if (!h.health) return <Pill tone="quiet">not checked</Pill>;
   if (h.health.state === "up") return <Pill tone="ok">up</Pill>;
+  if (h.health.state === "slow") return <Pill tone="warn">slow · {duration(h.health.ms)}</Pill>;
   if (h.health.state === "degraded") return <Pill tone="warn">degraded</Pill>;
   return <Pill tone="danger">down</Pill>;
 }
 
 function HubLine({ h }: { h: HubRow }) {
-  const trouble = h.health && h.health.state !== "up";
+  // Slow answered on its retry: a cold start, not an outage.
+  const trouble = h.health && (h.health.state === "down" || h.health.state === "degraded");
+  const slow = h.health?.state === "slow";
   const stale = h.commit_matches === false;
   return (
     <li
-      className={`cx-dash-row${trouble ? " cx-dash-row-danger" : stale ? " cx-dash-row-warn" : ""}`}
+      className={`cx-dash-row${trouble ? " cx-dash-row-danger" : stale || slow ? " cx-dash-row-warn" : ""}`}
       data-testid={`dash-hub-${h.id}`}
       data-health={h.health?.state ?? "none"}
     >
@@ -170,7 +173,8 @@ const HubsSectionView: SectionRenderer = ({ data }) => {
   const [showArchived, setShowArchived] = useState(false);
   const inService = hubs.filter((h) => h.group !== "archived");
   const archived = hubs.filter((h) => h.group === "archived");
-  const down = inService.filter((h) => h.health && h.health.state !== "up").length;
+  const down = inService.filter((h) => h.health && (h.health.state === "down" || h.health.state === "degraded")).length;
+  const slow = inService.filter((h) => h.health?.state === "slow").length;
   return (
     <>
       <p className="cx-dash-summary">
@@ -180,6 +184,12 @@ const HubsSectionView: SectionRenderer = ({ data }) => {
           <Pill tone="danger">
             {down} of {inService.length} not up
           </Pill>
+        )}
+        {slow > 0 && (
+          <>
+            {" "}
+            <Pill tone="warn">{slow} slow to answer</Pill>
+          </>
         )}
       </p>
       <ul className="cx-dash-rows">
