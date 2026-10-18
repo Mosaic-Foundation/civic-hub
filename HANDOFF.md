@@ -58,6 +58,22 @@ first attempt's connection dropped. Tests: unit `checkWithRetry` (6), API (a fla
 upstream error on `transition_process`; the file passed alone, 10 of 10); token mode 823 passed; Playwright 164
 passed, 2 skipped.
 
+### Dashboard: tabs, tiles and filters (2026-10-18)
+
+Adam on dev: one long list, the jobs and waiting counts far below 15 hubs. Now (UI only, no server change):
+- **Overview** (`#/dashboard`): one tile per section, coloured by its worst problem (red down/failed/late, amber
+  slow/not on the release/waiting, grey not connected), with a big figure ("17/18 hubs up", "1/7 jobs on time",
+  "162 items waiting"); a tile opens its tab. Below, **Needs a look**: every concern from every section, red first,
+  each linking to its tab; "Nothing needs a look" when all is well.
+- **A tab per section** (`#/dashboard/<id>`), each with a red or amber count when it has concerns. Hubs: chips In
+  service / Problems / Live / Beta / Demo / Archived and a search; opens on Problems when there are any. Jobs: the
+  backup card, then All jobs / Late or failed. Waiting: With items / All hubs.
+- **Rows** are a compact table on a wide screen (Hub, Health, Commit, Members, Last activity), labelled two-column
+  stacks at phone width; the tab bar scrolls by itself, the page never sideways.
+- **Suspended** hubs are labelled, not flagged: it is the operator's own choice. A job with no run yet is amber,
+  not red.
+- **The first load** says why it can take up to about 20 seconds (sleeping hubs get a retry).
+
 ### Dashboard: adding a section
 
 1. **Loader:** a function `(ctx: { now, fresh }) => Promise<data>` in `src/control/dashboard/<name>.ts`. Counts
@@ -65,11 +81,13 @@ passed, 2 skipped.
    `cached()`. Throwing is fine: that section alone shows "could not be loaded".
 2. **Register it:** one entry in `DASHBOARD_SECTIONS` (`src/control/dashboard/registry.ts`): `{ id, name, load }`,
    optionally `timeoutMs`. Order there is order on the page.
-3. **Renderer:** a component under the same id in `SECTION_RENDERERS` (`ui/src/console/dashboardSections.tsx`), its
-   data shape in `ui/src/console/dashboardTypes.ts`. Reuse `cx-dash-rows` / `cx-dash-row` / `cx-dash-facts` so it
-   stacks at 375 px.
+3. **View:** an entry under the same id in `SECTION_VIEWS` (`ui/src/console/dashboardSections.tsx`): `tab` (its
+   tab's name), `summarize(data, now)` (its Overview tile: tone, big figure, label, one line, and the concerns it
+   adds to "Needs a look"), and `render` (its tab, with any filter chips). Its data shape goes in
+   `ui/src/console/dashboardTypes.ts`. Reuse `cx-dash-table` / `cx-dash-row` with `data-label` cells so it is a
+   table on a wide screen and labelled stacks at 375 px.
 4. **Tests:** the section's id in the order assertion of `tests/api/dashboard.test.ts`, its data checked there, and
-   its testid in `tests/e2e/dashboard.spec.ts` (both widths).
+   its tile and tab in `tests/e2e/dashboard.spec.ts` (both widths).
 
 ### Dashboard: analytics sections planned next (not built)
 

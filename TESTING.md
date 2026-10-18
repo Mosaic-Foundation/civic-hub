@@ -100,6 +100,12 @@ Branch `dashboard`. One additive migration, `20261019000000_job_last_run`.
   reason; a 503 report is degraded and not retried; a retry that finds the hub degraded says degraded. The API file
   sets a 60 s test timeout (the first gathering waits out the slow hub's two attempts) and reads health from the
   cache unless a test needs it fresh. Playwright waits up to 40 s for the page.
+- **Tabs (2026-10-18):** `dashboard.spec.ts` now walks the Overview (four tiles loaded, Hubs red, the slow hub's
+  red concern and the flaky hub's amber one in "Needs a look"), a tile into Hubs (opens on Problems: the slow hub
+  down, the flaky hub slow, Floyd not listed; In service shows Floyd up; the search narrows to "flaky"), Jobs (All
+  jobs, the backup card), Uptime and errors (not connected), Waiting (All hubs, Floyd's counts and link), and
+  Refresh; at 375 px the tiles, the Hubs tab and the Waiting tab with no sideways scroll. Playwright 164 passed,
+  2 skipped; unit 1,636 passed (UI only, so the API layers were not rerun).
 - **Smoke:** unchanged; the console is not in it.
 - **Results, 2026-10-17, on a fresh local stack** (reset, both hubs seeded, the jurisdiction list loaded; :3030
   service role and :3031 minted tokens, each the other's `CIVIC_OTHER_API_BASE`; :3032 behind a preview build on
