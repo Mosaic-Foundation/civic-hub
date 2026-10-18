@@ -8,7 +8,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 Branch `dashboard` from `origin/multi-tenant` at `3eebfc4` (which already holds `cleanup`), one commit per item
 (`808229a`..`db540f8`), then this entry. ADR-007 is at the mono-repo root (`0f1aab0`, local). **Not merged, not
-released, not pushed** (this session could not push). One migration, additive: `20261019000000_job_last_run`. No one
+released**; pushed by Adam (2026-10-17). One migration, additive: `20261019000000_job_last_run`. No one
 is signed out. Report and merge steps:
 `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Dashboard-Session-Report-2026-10-17.md`.
 
@@ -84,7 +84,9 @@ types; `1f115ad`: day-of-week 7 in a range, stepped stars; `db540f8`: a hard 3 s
 **Tests** (TESTING.md → "Dashboard"), on a fresh local stack after the last code commit: `npm test` 212 files, 2,451
 passed, 1 failed (`auditSignIn`'s console-code race hit a Postgres deadlock, 40P01, in code this slice doesn't
 touch; the file then passed alone, 15 of 15); API in token mode 67 files, 822 passed; Playwright 164 passed,
-2 skipped; `npm run typecheck` clean. CI not run (not pushed).
+2 skipped; `npm run typecheck` clean. **CI on the pushed `1b103fa`:** CI green (build-and-test, both API passes,
+the auditSignIn race included); E2E run by hand on `dashboard` green, 164 passed, 2 skipped (run 39082149244); Smoke
+skipped (a preview deployment, by design).
 
 ---
 
