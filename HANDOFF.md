@@ -16,7 +16,9 @@ is signed out. Report and merge steps:
 - **Hubs:** one row per hub, live, beta, demo, then archived (collapsed). Mode, health (up, degraded with the schema
   gaps and why, down with why), the commit the hub reports and whether it is the console's own, members (the Members
   plugin's count rule), days since the newest non-sample event. Health is each hub's `/api/health` fetched by the
-  console's server, 3 s timeout, cached a minute (`src/control/dashboard/hubHealth.ts`).
+  console's server, cached a minute (`src/control/dashboard/hubHealth.ts`): 8 s per attempt, one retry after a
+  failed or timed-out attempt, at most 5 hubs asked at once; a hub that answers on the retry is "slow" with the
+  check's time, never down (after dev's first look, below).
 - **Jobs and backups:** one row per job in `src/jobs/registry.ts`: last scheduled run, result, duration, hubs failed,
   next run; late (the heartbeats' grace, `src/jobs/schedule.ts`) or failed rows stand out. The last run comes from
   the new `job_last_run` (one row per job, replaced at the end of every scheduled run, including runs that did
@@ -41,6 +43,20 @@ these on its next edit (this session does not touch that file).
 **Dev only:** `CIVIC_DASHBOARD_FAKE=on` (refused in production) reads hubs' health from the server itself with the
 hub's hostname in Host, and a hub whose slug contains "slow" goes to a listener that never answers. Set it locally,
 or a local console fetches the production hostnames in the local database.
+
+### Dashboard: cold starts are not outages (follow-up, 2026-10-17)
+
+On dev's first load 13 of 15 hubs read "down: no answer in 3 s"; one Refresh later all were up, and each answers in
+under a second from outside: cold functions woken all at once. Now: 8 s per attempt, one retry after a failed or
+timed-out attempt (or an answer that is neither 200 nor a 503 report; a 503 report is degraded, not retried), and at
+most 5 hubs asked at once (`HEALTH_CONCURRENCY`). A retry that answers ok is **slow**, shown amber with the whole
+check's time ("slow · 9.2 s") and why the first try failed; it doesn't count as not up. The hubs section's own limit
+is 60 s (15 hubs that all fail twice take 48 s); the other sections keep 8 s. Fake mode: a slug with "flaky" has its
+first attempt's connection dropped. Tests: unit `checkWithRetry` (6), API (a flaky hub is slow with
+"first try: connection dropped"; the slow hub is down after two attempts, ≥ 16 s), Playwright (the slow pill and
+"1 slow to answer"). Results on a fresh stack: `npm test` 2,458 passed, 1 failed (`auditConcurrency`, a local
+upstream error on `transition_process`; the file passed alone, 10 of 10); token mode 823 passed; Playwright 164
+passed, 2 skipped.
 
 ### Dashboard: adding a section
 

@@ -73,7 +73,9 @@ Branch `dashboard`. One additive migration, `20261019000000_job_last_run`.
   hostnames in the local database.
 - **API, `tests/api/dashboard.test.ts`** (12, both modes): no console session, a hub admin's session, and a hub's
   hostname are refused (401, 401, 404); the four sections in order with `gathered_at`; a beta hub made with "slow" in
-  its slug is down with "no answer in 3 s" and the page answers in under 8 s with every section ok; hubs ordered
+  its slug is down with "no answer in 8 s" after two attempts (≥ 16 s, under 30 s) with every section ok; a beta hub
+  with "flaky" in its slug (first attempt's connection dropped) is slow, two attempts, "first try: connection
+  dropped" (the cold-start follow-up); hubs ordered
   live, beta, demo, archived; with no outside keys the backup, uptime and errors cards are `not_connected` with a
   setup line; an emptied `job_last_run` shows every job never run with a next run; `/internal/vote-close/run`
   records itself and `/internal/digest/run?hub=floyd` does not; three planted pending reviews (one Code of
@@ -93,6 +95,11 @@ Branch `dashboard`. One additive migration, `20261019000000_job_last_run`.
   and a link to `floyd.civic.social/admin/reviews` in a new tab, Refresh); at 375 px (no sideways scroll, archived
   collapsed); a hub admin (no Dashboard in the hub's Admin menu or links; the console shows its own sign-in, no
   Dashboard).
+- **Cold-start follow-up:** unit `checkWithRetry` (6): first try ok is up and asked once; a failed first try that
+  answers on the retry is slow with the check's time and why; a 504 is retried; two failures are down with the last
+  reason; a 503 report is degraded and not retried; a retry that finds the hub degraded says degraded. The API file
+  sets a 60 s test timeout (the first gathering waits out the slow hub's two attempts) and reads health from the
+  cache unless a test needs it fresh. Playwright waits up to 40 s for the page.
 - **Smoke:** unchanged; the console is not in it.
 - **Results, 2026-10-17, on a fresh local stack** (reset, both hubs seeded, the jurisdiction list loaded; :3030
   service role and :3031 minted tokens, each the other's `CIVIC_OTHER_API_BASE`; :3032 behind a preview build on
