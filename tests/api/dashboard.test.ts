@@ -17,7 +17,7 @@
 // "slow" never answers. Hubs are made by the console's Create hub and
 // archived in afterAll; planted rows are deleted.
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
 import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
@@ -25,9 +25,13 @@ import { API_BASE } from "../fixtures/helpers.js";
 
 const run = Date.now().toString(36);
 const SLOW = `dash-slow-${run}`;
+const FLAKY = `dash-flaky-${run}`;
 const FLOYD = "floyd.civic.social";
 const MARK = `dash_${run}`;
 const CRON = process.env.CIVIC_TEST_CRON_SECRET ?? "ci-only-cron-secret";
+
+// The first gathering waits out the slow hub's two 8 s attempts.
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
 type Row = Record<string, any>;
 type Section = { id: string; name: string; status: string; ms: number; data: any; message?: string };
@@ -35,7 +39,7 @@ type Section = { id: string; name: string; status: string; ms: number; data: any
 let cookie = "";
 const created: string[] = [];
 
-async function dashboard(fresh = true): Promise<{ status: number; body: { gathered_at: string; sections: Section[] } }> {
+async function dashboard(fresh = false): Promise<{ status: number; body: { gathered_at: string; sections: Section[] } }> {
   const res = await consoleCall("GET", `/control/dashboard${fresh ? "?fresh=1" : ""}`, { cookie });
   return res;
 }
@@ -56,21 +60,23 @@ async function attentionFor(hubId: string): Promise<Row> {
 
 beforeAll(async () => {
   cookie = await mintConsoleSession();
-  const res = await consoleCall("POST", "/control/hubs", {
-    cookie,
-    body: {
-      slug: SLOW,
-      name: "Slow Test Hub",
-      hostname: `${SLOW}.localhost`,
-      admin_email: "admin@example.test",
-      jurisdiction_name: "Dashboard Test Area",
-      jurisdiction_custom: true,
-      jurisdiction_type: "county",
-      mode: "beta",
-    },
-  });
-  expect(res.status, JSON.stringify(res.body)).toBe(201);
-  created.push(SLOW);
+  for (const [slug, name] of [[SLOW, "Slow Test Hub"], [FLAKY, "Flaky Test Hub"]]) {
+    const res = await consoleCall("POST", "/control/hubs", {
+      cookie,
+      body: {
+        slug,
+        name,
+        hostname: `${slug}.localhost`,
+        admin_email: "admin@example.test",
+        jurisdiction_name: "Dashboard Test Area",
+        jurisdiction_custom: true,
+        jurisdiction_type: "county",
+        mode: "beta",
+      },
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    created.push(slug);
+  }
 });
 
 afterAll(async () => {
@@ -115,22 +121,31 @@ describe("GET /control/dashboard", () => {
     expect(Math.abs(Date.now() - Date.parse(res.body.gathered_at))).toBeLessThan(60_000);
   });
 
-  it("a hub that never answers is down after the timeout; the other hubs and sections still come back", async () => {
+  it("a hub that never answers is down after two 8 s attempts; the other hubs and sections still come back", async () => {
     const started = Date.now();
-    const res = await dashboard();
+    const res = await dashboard(true);
     expect(res.status).toBe(200);
-    // The 3 s health timeout, well inside the section's 8 s.
-    expect(Date.now() - started).toBeLessThan(8_000);
+    // Two 8 s attempts, inside the hubs section's own limit.
+    expect(Date.now() - started).toBeLessThan(30_000);
     const hubs = section(res.body, "hubs");
     expect(hubs.status).toBe("ok");
     const slow = hubs.data.hubs.find((h: Row) => h.id === SLOW);
     expect(slow, "the slow hub's row").toBeTruthy();
-    expect(slow.health).toMatchObject({ state: "down", http_status: null, reason: "no answer in 3 s" });
+    expect(slow.health).toMatchObject({ state: "down", http_status: null, reason: "no answer in 8 s", attempts: 2 });
+    expect(slow.health.ms).toBeGreaterThanOrEqual(16_000);
     expect(slow.group).toBe("beta");
     const floyd = hubs.data.hubs.find((h: Row) => h.id === "floyd");
-    expect(floyd.health.state, "start the server with CIVIC_DASHBOARD_FAKE=on").toBe("up");
+    expect(floyd.health, "start the server with CIVIC_DASHBOARD_FAKE=on").toMatchObject({ state: "up", attempts: 1 });
     expect(floyd.members).toEqual(expect.any(Number));
     for (const s of res.body.sections) expect(s.status, s.id).toBe("ok");
+  });
+
+  it("a hub whose first answer fails and whose retry answers is slow, with the time and why, not down", async () => {
+    const res = await dashboard();
+    const flaky = section(res.body, "hubs").data.hubs.find((h: Row) => h.id === FLAKY);
+    expect(flaky, "the flaky hub's row").toBeTruthy();
+    expect(flaky.health).toMatchObject({ state: "slow", attempts: 2, reason: "first try: connection dropped" });
+    expect(flaky.health.ms).toEqual(expect.any(Number));
   });
 
   it("orders hubs live, beta, demo, then archived", async () => {

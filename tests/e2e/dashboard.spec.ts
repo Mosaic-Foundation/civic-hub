@@ -22,6 +22,7 @@ import { adminEmailFor, hubId, run, session, visitAs } from "./actors";
 const UI = new URL(process.env.CIVIC_E2E_UI_ORIGIN?.trim() || "http://localhost:5173");
 const CONSOLE_UI = `${UI.protocol}//console.localhost${UI.port ? `:${UI.port}` : ""}/console.html`;
 const SLOW = `dash-slow-e2e-${run}`;
+const FLAKY = `dash-flaky-e2e-${run}`;
 
 async function asOperator(context: BrowserContext): Promise<void> {
   const cookie = await mintConsoleSession();
@@ -32,36 +33,40 @@ async function asOperator(context: BrowserContext): Promise<void> {
 async function openDashboard(page: Page): Promise<void> {
   await page.goto(`${CONSOLE_UI}#/dashboard`);
   await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
-  // The slow hub's health check runs to its 3 s timeout.
-  await expect(page.getByTestId("dash-gathered")).toContainText("Gathered", { timeout: 15_000 });
+  // The slow hub's health check runs two 8 s attempts.
+  await expect(page.getByTestId("dash-gathered")).toContainText("Gathered", { timeout: 40_000 });
 }
 
 test.describe("the console's Dashboard", () => {
   test.beforeAll(async () => {
-    const res = await consoleCall("POST", "/control/hubs", {
-      cookie: await mintConsoleSession(),
-      body: {
-        slug: SLOW,
-        name: "E2E Slow Hub",
-        hostname: `${SLOW}.localhost`,
-        admin_email: `slow-${run}@example.test`,
-        jurisdiction_name: "Dashboard Test Area",
-        jurisdiction_custom: true,
-        jurisdiction_type: "county",
-        mode: "beta",
-      },
-    });
-    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    for (const [slug, name] of [[SLOW, "E2E Slow Hub"], [FLAKY, "E2E Flaky Hub"]]) {
+      const res = await consoleCall("POST", "/control/hubs", {
+        cookie: await mintConsoleSession(),
+        body: {
+          slug,
+          name,
+          hostname: `${slug}.localhost`,
+          admin_email: `slow-${run}@example.test`,
+          jurisdiction_name: "Dashboard Test Area",
+          jurisdiction_custom: true,
+          jurisdiction_type: "county",
+          mode: "beta",
+        },
+      });
+      expect(res.status, JSON.stringify(res.body)).toBe(201);
+    }
   });
 
   test.afterAll(async () => {
     const code = String(100000 + Math.floor(Math.random() * 899999));
-    await plantCode("step_up", code);
-    await consoleCall("POST", `/control/hubs/${SLOW}/archive`, { cookie: await mintConsoleSession(), body: { step_up_code: code } });
+    for (const slug of [SLOW, FLAKY]) {
+      await plantCode("step_up", code);
+      await consoleCall("POST", `/control/hubs/${slug}/archive`, { cookie: await mintConsoleSession(), body: { step_up_code: code } });
+    }
   });
 
   test("the operator sees every hub, the jobs, the outside services and what is waiting, at desktop width", async ({ page, context }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(90_000);
     await page.setViewportSize({ width: 1280, height: 900 });
     await asOperator(context);
     await openDashboard(page);
@@ -74,8 +79,14 @@ test.describe("the console's Dashboard", () => {
     // Hubs: the slow one is down with why; Floyd is up.
     const slow = page.getByTestId(`dash-hub-${SLOW}`);
     await expect(slow).toHaveAttribute("data-health", "down");
-    await expect(slow).toContainText("no answer in 3 s");
+    await expect(slow).toContainText("no answer in 8 s");
     await expect(page.getByTestId("dash-hub-floyd")).toHaveAttribute("data-health", "up");
+    // A failed first try that answers on the retry: slow, with the time, never down.
+    const flaky = page.getByTestId(`dash-hub-${FLAKY}`);
+    await expect(flaky).toHaveAttribute("data-health", "slow");
+    await expect(flaky).toContainText(/slow · [\d.]+ (ms|s)/);
+    await expect(flaky).toContainText("first try: connection dropped");
+    await expect(page.getByTestId("dash-section-hubs")).toContainText("1 slow to answer");
     await expect(page.getByTestId("dash-section-hubs")).toContainText(/not up/);
 
     // Jobs: every scheduled job has a row; the outside cards say how to connect.
@@ -94,12 +105,12 @@ test.describe("the console's Dashboard", () => {
 
     // Refresh asks again, and the page says when.
     await page.getByRole("button", { name: "Refresh" }).click();
-    await expect(page.getByRole("button", { name: "Refresh" })).toBeEnabled({ timeout: 15_000 });
+    await expect(page.getByRole("button", { name: "Refresh" })).toBeEnabled({ timeout: 40_000 });
     await expect(page.getByTestId("dash-gathered")).toContainText("just now");
   });
 
   test("works at phone width: nothing scrolls sideways, archived hubs are collapsed", async ({ page, context }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(90_000);
     await page.setViewportSize({ width: 375, height: 812 });
     await asOperator(context);
     await openDashboard(page);
