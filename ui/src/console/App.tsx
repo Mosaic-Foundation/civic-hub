@@ -90,7 +90,7 @@ export default function App() {
         </div>
       </header>
       <main className="cx-main">
-        {route.name === "dashboard" && <Dashboard />}
+        {route.name === "dashboard" && <Dashboard tab={route.tab ?? "overview"} />}
         {route.name === "hubs" && <HubList />}
         {route.name === "new" && <CreateHub />}
         {route.name === "hub" && <HubDetailPage id={route.id} />}

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 
 export type Route =
   | { name: "hubs" }
-  | { name: "dashboard" }
+  // tab: "overview", or a Dashboard section's id (#/dashboard/hubs).
+  | { name: "dashboard"; tab?: string }
   | { name: "new" }
   | { name: "hub"; id: string }
   | { name: "audit" }
@@ -14,7 +15,8 @@ export type Route =
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#\/?/, "");
   if (path === "hubs/new") return { name: "new" };
-  if (path === "dashboard") return { name: "dashboard" };
+  const dash = path.match(/^dashboard(?:\/([a-z_]+))?$/);
+  if (dash) return { name: "dashboard", tab: dash[1] ?? "overview" };
   if (path === "audit") return { name: "audit" };
   if (path === "invites") return { name: "invites" };
   if (path === "feedback") return { name: "feedback" };
@@ -28,7 +30,7 @@ export function href(route: Route): string {
     case "new":
       return "#/hubs/new";
     case "dashboard":
-      return "#/dashboard";
+      return route.tab && route.tab !== "overview" ? `#/dashboard/${route.tab}` : "#/dashboard";
     case "audit":
       return "#/audit";
     case "invites":
