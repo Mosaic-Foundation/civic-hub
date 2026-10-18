@@ -2,14 +2,22 @@
 //
 // The same request Better Stack makes (RUNBOOK-operations.md): 200 is up, 503
 // with JSON is degraded (its schema gaps are shown), anything else, a refused
-// connection or no answer within HEALTH_TIMEOUT_MS is down. Cached for a
-// minute (cache.ts). Our own hubs, at the hostnames in the registry: no SSRF
-// guard, since no admin chose the address, and nothing is sent.
+// connection or no answer within HEALTH_TIMEOUT_MS is a failed attempt.
+// Cached for a minute (cache.ts). Our own hubs, at the hostnames in the
+// registry: no SSRF guard, since no admin chose the address, and nothing is sent.
+//
+// A cold start is not an outage (dev, 2026-10-17: 13 of 15 hubs "down" on the
+// first load, all up one Refresh later, each under a second from outside). So:
+// 8 s per attempt, one retry after a failed or timed-out attempt, and at most
+// HEALTH_CONCURRENCY hubs asked at once. A hub that answers on the retry is
+// "slow", with the time the whole check took; only two failures are "down".
 //
 // With CIVIC_DASHBOARD_FAKE=on (refused in production) the request goes to
 // this server itself with the hub's hostname in Host, so a local console never
 // asks a production hub; a hub whose slug contains "slow" is sent to a local
-// listener that accepts and never answers, so tests reach the real timeout.
+// listener that accepts and never answers, so tests reach the real timeout,
+// and one whose slug contains "flaky" has its first attempt's connection
+// dropped, so tests reach the retry.
 
 import http from "node:http";
 import https from "node:https";
@@ -18,19 +26,27 @@ import { env } from "../../config/env.js";
 import { dashboardFakeEnabled } from "../../config/devFlags.js";
 import { cached } from "./cache.js";
 
-export const HEALTH_TIMEOUT_MS = 3_000;
+export const HEALTH_TIMEOUT_MS = 8_000;
+/** One try and one retry. */
+export const HEALTH_ATTEMPTS = 2;
+/** Hubs asked at once, so a page of hubs doesn't wake every cold function together. */
+export const HEALTH_CONCURRENCY = 5;
 const MAX_BODY_BYTES = 64 * 1024;
 
 export interface HubHealth {
-  state: "up" | "degraded" | "down";
+  /** slow: the first attempt failed and the retry answered ok. */
+  state: "up" | "slow" | "degraded" | "down";
   http_status: number | null;
   /** The commit the hub reports it runs. */
   commit: string | null;
   /** "table: detail" lines from a 503's schema report. */
   gaps: string[];
-  /** Why it is down or degraded, in a few words. */
+  /** Why it is down, degraded or slow, in a few words. */
   reason: string | null;
+  /** The whole check, retry included. */
   ms: number;
+  /** 1, or 2 when the first attempt failed. */
+  attempts: number;
 }
 
 interface Target {
@@ -53,9 +69,26 @@ function blackHolePort(): Promise<number> {
   return blackHole;
 }
 
-async function targetFor(hub: { id: string; hostname: string }): Promise<Target> {
+let dropper: Promise<number> | null = null;
+
+/** A listener that accepts connections and drops them at once (fake mode only). */
+function dropperPort(): Promise<number> {
+  dropper ??= new Promise((resolve, reject) => {
+    const server = net.createServer((socket) => socket.destroy());
+    server.unref();
+    server.on("error", reject);
+    server.listen(0, "127.0.0.1", () => resolve((server.address() as net.AddressInfo).port));
+  });
+  return dropper;
+}
+
+async function targetFor(hub: { id: string; hostname: string }, attempt: number): Promise<Target> {
   if (dashboardFakeEnabled()) {
-    const port = hub.id.includes("slow") ? await blackHolePort() : Number(env.PORT ?? 3000);
+    const port = hub.id.includes("slow")
+      ? await blackHolePort()
+      : hub.id.includes("flaky") && attempt === 1
+        ? await dropperPort()
+        : Number(env.PORT ?? 3000);
     return { url: new URL(`http://127.0.0.1:${port}/health`), host: hub.hostname };
   }
   return { url: new URL(`https://${hub.hostname}/api/health`), host: hub.hostname };
@@ -93,7 +126,7 @@ function get(target: Target, timeoutMs: number): Promise<{ status: number; body:
 }
 
 /** Read a health answer. Pure; pinned by tests/unit/dashboard.test.ts. */
-export function readHealth(status: number, body: string): Omit<HubHealth, "ms"> {
+export function readHealth(status: number, body: string): Omit<HubHealth, "ms" | "attempts"> {
   let json: { status?: unknown; commit?: unknown; schema?: { gaps?: unknown }; db?: { ok?: unknown }; hub_db?: { ok?: unknown } } | null = null;
   try {
     json = JSON.parse(body);
@@ -126,21 +159,62 @@ function failureReason(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-export function hubHealth(hub: { id: string; hostname: string }, fresh: boolean): Promise<HubHealth> {
-  return cached(`health:${hub.id}:${hub.hostname}`, fresh, async () => {
-    const started = Date.now();
+type Attempt = Omit<HubHealth, "ms" | "attempts">;
+
+function failed(err: unknown): Attempt {
+  return { state: "down", http_status: null, commit: null, gaps: [], reason: failureReason(err) };
+}
+
+/**
+ * One check: an attempt, and one retry when it failed (no answer, a refused
+ * or dropped connection, or an answer that is neither 200 nor a 503 report).
+ * A 503 report is an answer, not a failure: degraded, no retry. Pure apart
+ * from `attempt`; pinned by tests/unit/dashboard.test.ts.
+ */
+export async function checkWithRetry(
+  attempt: (n: number) => Promise<{ status: number; body: string }>,
+  now: () => number = Date.now,
+): Promise<HubHealth> {
+  const started = now();
+  let first: Attempt | null = null;
+  for (let n = 1; n <= HEALTH_ATTEMPTS; n++) {
+    let result: Attempt;
     try {
-      const res = await get(await targetFor(hub), HEALTH_TIMEOUT_MS);
-      return { ...readHealth(res.status, res.body), ms: Date.now() - started };
+      const res = await attempt(n);
+      result = readHealth(res.status, res.body);
     } catch (err) {
-      return {
-        state: "down" as const,
-        http_status: null,
-        commit: null,
-        gaps: [],
-        reason: failureReason(err),
-        ms: Date.now() - started,
-      };
+      result = failed(err);
     }
-  });
+    if (result.state !== "down" || n === HEALTH_ATTEMPTS) {
+      const ms = now() - started;
+      if (first && result.state === "up") {
+        return { ...result, state: "slow", reason: `first try: ${first.reason}`, ms, attempts: n };
+      }
+      return { ...result, ms, attempts: n };
+    }
+    first = result;
+  }
+  throw new Error("unreachable");
+}
+
+// --- At most HEALTH_CONCURRENCY checks at once ------------------------------------
+
+let running = 0;
+const waiting: Array<() => void> = [];
+
+async function limited<T>(fn: () => Promise<T>): Promise<T> {
+  if (running >= HEALTH_CONCURRENCY) await new Promise<void>((resolve) => waiting.push(resolve));
+  running++;
+  try {
+    return await fn();
+  } finally {
+    running--;
+    waiting.shift()?.();
+  }
+}
+
+export function hubHealth(hub: { id: string; hostname: string }, fresh: boolean): Promise<HubHealth> {
+  return cached(`health:${hub.id}:${hub.hostname}`, fresh, () =>
+    limited(() => checkWithRetry(async (n) => get(await targetFor(hub, n), HEALTH_TIMEOUT_MS))),
+  );
 }

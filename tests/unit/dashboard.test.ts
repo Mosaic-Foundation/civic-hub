@@ -4,7 +4,7 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { runSection, gatherDashboard, type DashboardSection } from "../../src/control/dashboard/registry.js";
-import { readHealth } from "../../src/control/dashboard/hubHealth.js";
+import { checkWithRetry, readHealth } from "../../src/control/dashboard/hubHealth.js";
 import {
   backupStatus,
   errorsStatus,
@@ -77,6 +77,52 @@ describe("a hub's health answer", () => {
   it("anything else is down", () => {
     expect(readHealth(403, "request was blocked")).toMatchObject({ state: "down", reason: "answered 403" });
     expect(readHealth(503, "<html>")).toMatchObject({ state: "down" });
+  });
+});
+
+describe("a hub's health check, with one retry", () => {
+  const ok = { status: 200, body: JSON.stringify({ status: "ok", commit: "abc" }) };
+  const noAnswer = () => Promise.reject(new Error("no answer in 8 s"));
+  // A clock that moves 5 s per reading, so the check's time is known.
+  const clock = () => {
+    let t = 0;
+    return () => (t += 5_000);
+  };
+
+  it("an answer on the first try is up, asked once", async () => {
+    const asked: number[] = [];
+    const h = await checkWithRetry(async (n) => (asked.push(n), ok));
+    expect(h).toMatchObject({ state: "up", attempts: 1, commit: "abc" });
+    expect(asked).toEqual([1]);
+  });
+
+  it("a failed first try that answers on the retry is slow, with the whole check's time and why", async () => {
+    const asked: number[] = [];
+    const h = await checkWithRetry(async (n) => (asked.push(n), n === 1 ? noAnswer() : ok), clock());
+    expect(asked).toEqual([1, 2]);
+    expect(h).toMatchObject({ state: "slow", attempts: 2, commit: "abc", reason: "first try: no answer in 8 s", ms: 5_000 });
+  });
+
+  it("an answer that is neither 200 nor a 503 report is retried too", async () => {
+    const h = await checkWithRetry(async (n) => (n === 1 ? { status: 504, body: "Gateway timeout" } : ok));
+    expect(h).toMatchObject({ state: "slow", reason: "first try: answered 504" });
+  });
+
+  it("two failures are down, with the last reason", async () => {
+    const h = await checkWithRetry(async (n) => (n === 1 ? noAnswer() : Promise.reject(Object.assign(new Error("x"), { code: "ECONNREFUSED" }))));
+    expect(h).toMatchObject({ state: "down", attempts: 2, reason: "connection refused", http_status: null });
+  });
+
+  it("a 503 report is an answer: degraded, not retried", async () => {
+    const asked: number[] = [];
+    const h = await checkWithRetry(async (n) => (asked.push(n), { status: 503, body: JSON.stringify({ db: { ok: false } }) }));
+    expect(asked).toEqual([1]);
+    expect(h).toMatchObject({ state: "degraded", attempts: 1 });
+  });
+
+  it("a retry that finds the hub degraded says degraded, not slow", async () => {
+    const h = await checkWithRetry(async (n) => (n === 1 ? noAnswer() : { status: 503, body: JSON.stringify({ schema: { gaps: ["t: c"] } }) }));
+    expect(h).toMatchObject({ state: "degraded", attempts: 2, gaps: ["t: c"] });
   });
 });
 

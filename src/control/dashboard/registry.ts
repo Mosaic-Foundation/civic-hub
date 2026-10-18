@@ -36,11 +36,15 @@ export interface DashboardSection {
   readonly timeoutMs?: number;
 }
 
-/** Long enough for a hub's health timeout plus the database reads around it. */
+/** Long enough for any section's database reads and an outside service's 5 s. */
 export const SECTION_TIMEOUT_MS = 8_000;
+/** The hubs section: every hub's health, retries included, five at a time. */
+export const HUBS_TIMEOUT_MS = 60_000;
 
 export const DASHBOARD_SECTIONS: readonly DashboardSection[] = [
-  { id: "hubs", name: "Hubs", load: loadHubs },
+  // Each hub's check may take two 8 s attempts, five hubs at a time
+  // (hubHealth.ts): 15 hubs that all fail take 48 s. The rest stay at 8 s.
+  { id: "hubs", name: "Hubs", load: loadHubs, timeoutMs: HUBS_TIMEOUT_MS },
   { id: "jobs", name: "Jobs and backups", load: loadJobs },
   { id: "outside", name: "Uptime and errors", load: loadOutside },
   { id: "attention", name: "Waiting for attention", load: loadAttention },
