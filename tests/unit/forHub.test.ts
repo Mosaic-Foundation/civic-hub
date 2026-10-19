@@ -84,10 +84,10 @@ describe("forHub — construction", () => {
     expect(() => floyd.from("nope" as never)).toThrow(/not a hub-scoped table/);
   });
 
-  it("covers every tenant table: 36, and never hubs", () => {
+  it("covers every tenant table: 35, and never hubs", () => {
     // 32 since 2026-09-29: job_runs. 33 since 2026-10-11: ai_usage. 34 since
-    // 2026-10-14: sign_in_codes. 35 since 2026-10-14: hub_invites. 36 since 2026-10-15: admin_digest_marks.
-    expect(HUB_TABLES).toHaveLength(36);
+    // 2026-10-14: sign_in_codes. 35 since 2026-10-14: hub_invites. 36 since 2026-10-15: admin_digest_marks. 35 since 20261019100000: pending_verifications dropped.
+    expect(HUB_TABLES).toHaveLength(35);
     expect(HUB_TABLES).not.toContain("hubs");
   });
 });
@@ -224,7 +224,7 @@ describe("forHub — upserts are stamped and must conflict within the hub", () =
 
   it("refuses a conflict target without hub_id — it would update another hub's row", () => {
     expect(() =>
-      athens.from("pending_verifications").upsert({ email: "a@b.c" }, { onConflict: "email" }),
+      athens.from("sign_in_codes").upsert({ email: "a@b.c" }, { onConflict: "email" }),
     ).toThrow(/onConflict/);
     // @ts-expect-error -- deliberate: no conflict target; the type refuses it, and the runtime guard is what is under test
     expect(() => athens.from("link_previews").upsert({ url: "https://x" })).toThrow(

@@ -172,7 +172,6 @@ export const EXPORT_MANIFEST: readonly ExportManifestEntry[] = [
   { table: "hub_settings", rows: "export" },
   { table: "job_runs", rows: "omit", reason: "an operational log of this host's scheduled runs; the next host writes its own" },
   { table: "link_previews", rows: "omit", reason: "a cache of other sites' metadata; the next host refetches it" },
-  { table: "pending_verifications", rows: "omit", reason: "live sign-in codes" },
   { table: "process_links", rows: "export" },
   { table: "process_reviews", rows: "export" },
   { table: "processes", rows: "export" },

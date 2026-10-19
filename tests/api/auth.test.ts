@@ -77,7 +77,7 @@ describe("Auth endpoints", () => {
     // COVERAGE GAP, stated rather than hidden: the security-relevant case — a
     // wrong code rejected on a hub that is NOT a demo — is not exercised
     // here. This suite talks to the server over HTTP only, so it cannot read
-    // the real one-time code out of pending_verifications to supply a
+    // the real one-time code out of sign_in_codes to supply a
     // genuinely wrong one against a live hub. Closing it needs a fixture hub
     // in beta or live mode plus database access from the test. See HANDOFF.
     const wrongEmail = `wrong-code-${Date.now()}@civic.social`;

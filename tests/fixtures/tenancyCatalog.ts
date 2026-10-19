@@ -33,7 +33,6 @@ export const NOT_HUB_SCOPED: Readonly<Record<string, string>> = {
   // 2026-09-26). Platform data, not any hub's: read and written only by
   // src/control/ as the service role; deny-all RLS, no policy, and no grants
   // to anon or authenticated.
-  control_codes: "the super admin's emailed sign-in / step-up codes; platform, not hub, data; service role (src/control/) only",
   control_sessions: "the super admin's sessions; platform, not hub, data; service role (src/control/) only",
   control_audit_log:
     "every super admin action, across hubs; a hub must not read another's rows or its own audit trail's platform view; append-only, service role (src/control/) only",
@@ -44,9 +43,9 @@ export const NOT_HUB_SCOPED: Readonly<Record<string, string>> = {
     "rights granted on the platform (an invite code to create one hub; a payment later); hashed codes; no hub exists yet; service role (src/control/) only",
   entitlement_redemptions:
     "each use of an entitlement (who, which hub), across hubs; service role (src/control/) only",
-  start_codes: "the start page's emailed sign-in codes, hashed; platform, not hub, data; service role (src/control/) only",
   // The sign-in slice (20261014000000, Adam 2026-10-13): one row per code,
-  // up to three live per address; replaces control_codes and start_codes.
+  // up to three live per address; replaced control_codes and start_codes, which
+  // 20261019100000 drops.
   platform_sign_in_codes:
     "the console's and the start page's emailed codes, hashed, one row per code; platform, not hub, data; service role (src/control/) only",
   start_sessions: "start-page sessions, by token hash; platform, not hub, data; service role (src/control/) only",

@@ -33,7 +33,6 @@ describe("what leaves", () => {
       "ai_usage",
       "job_runs",
       "link_previews",
-      "pending_verifications",
       "sessions",
       "sign_in_codes",
     ]);

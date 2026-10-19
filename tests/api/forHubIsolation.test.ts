@@ -32,6 +32,7 @@ const run = randomBytes(4).toString("hex");
 const FLOYD_ROW = `fb_isofloyd_${run}`;
 const ATHENS_ROW = `fb_isoathens_${run}`;
 const EMAIL = `iso-${run}@example.test`;
+const SETTING_KEY = `iso_${run}`;
 
 function feedback(id: string, message: string) {
   return { id, category: "general", message };
@@ -45,7 +46,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await raw.from("feedback_submissions").delete().in("id", [FLOYD_ROW, ATHENS_ROW, `${ATHENS_ROW}_up`]);
   await raw.from("users").delete().like("email", `%${run}%`);
-  await raw.from("pending_verifications").delete().like("email", `%${run}%`);
+  await raw.from("hub_settings").delete().eq("key", SETTING_KEY);
 });
 
 describe("forHub against the database — own hub", () => {
@@ -149,32 +150,27 @@ describe("forHub against the database — another hub's rows", () => {
   });
 
   it("an upsert that would conflict on a global key throws", () => {
+    // sign_in_codes' only unique key is its global primary key (id).
     expect(() =>
-      athens.from("pending_verifications").upsert(
-        { email: EMAIL, code_hash: sha("123456"), expires_at: new Date().toISOString() },
-        { onConflict: "email" },
+      athens.from("sign_in_codes").upsert(
+        { id: `sic_${run}`, email: EMAIL, code_hash: sha("123456"), expires_at: new Date().toISOString() },
+        { onConflict: "id" },
       ),
     ).toThrow(/onConflict/);
   });
 
-  it("each hub keeps its own copy of the same address — neither overwrites the other", async () => {
-    // Since the post-cutover cleanup (20260926005000) the key is (hub_id,
-    // email). Before it, the global primary key (email) refused Athens's
-    // copy; now both hubs hold one, and each upsert touches only its own.
-    const expires = new Date(Date.now() + 600_000).toISOString();
-    await floyd
-      .from("pending_verifications")
-      .upsert({ email: EMAIL, code_hash: sha("111111"), expires_at: expires }, { onConflict: "hub_id,email" });
-    await athens
-      .from("pending_verifications")
-      .upsert({ email: EMAIL, code_hash: sha("222222"), expires_at: expires }, { onConflict: "hub_id,email" });
-    await athens
-      .from("pending_verifications")
-      .upsert({ email: EMAIL, code_hash: sha("333333"), expires_at: expires }, { onConflict: "hub_id,email" });
-    const rows = await raw.from("pending_verifications").select("hub_id, code_hash").eq("email", EMAIL).order("hub_id");
+  it("each hub keeps its own copy of the same key — neither overwrites the other", async () => {
+    // hub_settings is keyed (hub_id, key) (20260924020000). Both hubs hold a
+    // row for the same key, and each upsert touches only its own hub's row.
+    // (Sign-in codes were the sample here until 20261019100000; sign_in_codes
+    // has no per-hub natural key, one row per code.)
+    await floyd.from("hub_settings").upsert({ key: SETTING_KEY, value: "111111" }, { onConflict: "hub_id,key" });
+    await athens.from("hub_settings").upsert({ key: SETTING_KEY, value: "222222" }, { onConflict: "hub_id,key" });
+    await athens.from("hub_settings").upsert({ key: SETTING_KEY, value: "333333" }, { onConflict: "hub_id,key" });
+    const rows = await raw.from("hub_settings").select("hub_id, value").eq("key", SETTING_KEY).order("hub_id");
     expect(rows.data).toEqual([
-      { hub_id: "athens", code_hash: sha("333333") },
-      { hub_id: "floyd", code_hash: sha("111111") },
+      { hub_id: "athens", value: "333333" },
+      { hub_id: "floyd", value: "111111" },
     ]);
   });
 

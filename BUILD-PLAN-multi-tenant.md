@@ -1816,7 +1816,7 @@ page.
 - **Consolidated city-counties** are data (`config/jurisdictions/consolidated.csv`), one `city_county` row each, on
   the county's OCD id. A release that changes the list loads it (`release.sh`).
 - **Codes moved to one row per code:** `sign_in_codes` (hub) and `platform_sign_in_codes` (console, start page).
-  `pending_verifications`, `control_codes` and `start_codes` are unread from 2026-10-14 and dropped later.
+  `pending_verifications`, `control_codes` and `start_codes` are unread from 2026-10-14; dropped by `20261019100000_drop_old_sign_in_codes.sql` (pending Adam's yes).
 
 ### Sign-in and abuse limits (Audit 2, 2026-10-11, Adam)
 

@@ -118,7 +118,7 @@ function hubConfig(host: string): Promise<{ status: number; body: any }> {
 
 async function counts(client: pg.Client, hub: string): Promise<Record<string, number>> {
   const out: Record<string, number> = {};
-  for (const t of ["users", "processes", "process_reviews", "review_turns", "events", "community_inputs", "process_links", "vote_participation", "vote_records", "waitlist", "hub_settings", "sessions", "pending_verifications"]) {
+  for (const t of ["users", "processes", "process_reviews", "review_turns", "events", "community_inputs", "process_links", "vote_participation", "vote_records", "waitlist", "hub_settings", "sessions", "sign_in_codes"]) {
     const r = await client.query(`select count(*)::int as n from ${t} where hub_id = $1`, [hub]);
     out[t] = r.rows[0].n;
   }
@@ -129,7 +129,7 @@ async function counts(client: pg.Client, hub: string): Promise<Record<string, nu
 async function wipeHub(): Promise<void> {
   await db.query("begin");
   await db.query("set local session_replication_role = replica");
-  for (const t of ["review_turns", "events", "process_links", "community_inputs", "vote_records", "vote_participation", "sessions", "pending_verifications", "process_reviews", "processes", "waitlist", "hub_settings", "users"]) {
+  for (const t of ["review_turns", "events", "process_links", "community_inputs", "vote_records", "vote_participation", "sessions", "sign_in_codes", "process_reviews", "processes", "waitlist", "hub_settings", "users"]) {
     await db.query(`delete from ${t} where hub_id = $1`, [HUB]);
   }
   await db.query("delete from hubs where id = $1", [HUB]);
@@ -181,7 +181,7 @@ beforeAll(async () => {
   await q(`insert into vote_records (receipt_id, process_id, hub_id, choice) values ($1, $2, $3, 'Yes')`, [`rcpt_${randomBytes(6).toString("hex")}`, ids.vote, HUB]);
   await q(`insert into waitlist (email, hub_id, name) values ($1, $2, 'Cy')`, [`cy+${HUB}@example.test`, HUB]);
   await q(`insert into sessions (token, user_id, hub_id, expires_at, assurance) values ($1, $2, $3, now() + interval '1 day', 'code')`, [randomBytes(32).toString("hex"), ids.u1, HUB]);
-  await q(`insert into pending_verifications (email, hub_id, code_hash, expires_at) values ($1, $2, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', now() + interval '10 minutes')`, [`dee+${HUB}@example.test`, HUB]);
+  await q(`insert into sign_in_codes (email, hub_id, code_hash, expires_at) values ($1, $2, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', now() + interval '10 minutes')`, [`dee+${HUB}@example.test`, HUB]);
 }, 60_000);
 
 afterAll(async () => {
@@ -214,7 +214,7 @@ describe("hub export → import → restore, on the local stack", () => {
     expect(rows.hub_settings).toBe(before.hub_settings - 1);
     expect(m.excluded_settings.map((s: { key: string }) => s.key)).toEqual(["demo_bypass_code"]);
     expect(m.tables.map((t: { table: string }) => t.table)).not.toContain("sessions");
-    expect(m.omitted_tables.map((t: { table: string }) => t.table).sort()).toEqual(["admin_digest_marks", "ai_usage", "job_runs", "link_previews", "pending_verifications", "sessions", "sign_in_codes"]);
+    expect(m.omitted_tables.map((t: { table: string }) => t.table).sort()).toEqual(["admin_digest_marks", "ai_usage", "job_runs", "link_previews", "sessions", "sign_in_codes"]);
     expect(m.images.count).toBe(2);
     expect(JSON.parse(await readFile(join(bundle, "hub.json"), "utf8")).jurisdiction_ocd_id).toBe(OCD);
 
@@ -252,7 +252,7 @@ describe("hub export → import → restore, on the local stack", () => {
     expect(r.out).toMatch(/matches the bundle/);
 
     const now = await counts(db, HUB);
-    expect(now).toEqual({ ...before, hub_settings: before.hub_settings - 1, sessions: 0, pending_verifications: 0 });
+    expect(now).toEqual({ ...before, hub_settings: before.hub_settings - 1, sessions: 0, sign_in_codes: 0 });
 
     // The review cycle survived the ordering.
     const p = await db.query("select review_id, state from processes where id = $1", [ids.vote]);
@@ -323,7 +323,7 @@ describe("hub export → import → restore, on the local stack", () => {
       const r = await script("import-hub.ts", [bundle, "--no-images", "--hostname", `${HUB}.example.test`], env);
       expect(r.code, r.out).toBe(0);
       expect((await plain.query("select jurisdiction_ocd_id from hubs where id = $1", [HUB])).rows[0].jurisdiction_ocd_id).toBe(OCD);
-      expect(await counts(plain, HUB)).toEqual({ ...before, hub_settings: before.hub_settings - 1, sessions: 0, pending_verifications: 0 });
+      expect(await counts(plain, HUB)).toEqual({ ...before, hub_settings: before.hub_settings - 1, sessions: 0, sign_in_codes: 0 });
     } finally {
       await plain.end();
     }

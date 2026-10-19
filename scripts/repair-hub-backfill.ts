@@ -114,7 +114,7 @@ async function main(): Promise<void> {
       continue;
     }
     await db
-      .from("pending_verifications")
+      .from("sign_in_codes")
       .delete()
       .eq("email", m.email)
       .eq("hub_id", MIGRATION_DEFAULT_HUB_ID);
