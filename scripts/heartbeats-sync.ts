@@ -18,13 +18,19 @@ import { graceFor } from "../src/jobs/schedule.js";
 
 const API = "https://healthchecks.io/api/v3/checks/";
 
-interface Check {
+/**
+ * A cron check (`schedule`, UTC) or a period check (`timeout`, seconds), with
+ * `grace` seconds before the alert. Healthchecks.io makes a period ("simple")
+ * check when it is sent a timeout and no schedule.
+ */
+type Check = {
   slug: string;
   name: string;
   desc: string;
-  schedule: string;
   grace: number;
-}
+} & ({ schedule: string; timeout?: never } | { timeout: number; schedule?: never });
+
+const HOUR = 60 * 60;
 
 // How late a ping may be before the alert: graceFor (src/jobs/schedule.ts),
 // shared with the console's Dashboard so both call the same run late.
@@ -40,12 +46,17 @@ export function checks(): Check[] {
   }));
   // civic-hub-backups/.github/workflows/dump.yml, "17 */6 * * *". Watched
   // from here because GitHub is what it would otherwise rely on.
+  //
+  // A period check, not the cron schedule (Adam, 2026-10-19): GitHub starts
+  // the scheduled dumps 2½ to 4½ hours late, so a cron check with an hour's
+  // grace alerted on dumps that came. Every 6 hours with 6 hours' grace
+  // alerts only when no dump has arrived for 12 hours, which is two missed.
   const backup: Check = {
     slug: "backup-dump",
     name: "Backup: database dump",
     desc: "civic-hub-backups dump.yml pings after an encrypted dump is uploaded.",
-    schedule: "17 */6 * * *",
-    grace: 60 * 60,
+    timeout: 6 * HOUR,
+    grace: 6 * HOUR,
   };
   return [...jobs, backup];
 }
@@ -58,7 +69,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   for (const c of checks()) {
-    const line = `${c.slug.padEnd(20)} ${c.schedule.padEnd(14)} grace ${c.grace / 60} min`;
+    const when = c.schedule ?? `every ${c.timeout / HOUR} h`;
+    const line = `${c.slug.padEnd(20)} ${when.padEnd(14)} grace ${c.grace / 60} min`;
     if (dryRun) {
       console.log(`would sync  ${line}`);
       continue;
@@ -66,7 +78,13 @@ async function main(): Promise<void> {
     const res = await fetch(API, {
       method: "POST",
       headers: { "X-Api-Key": key!, "Content-Type": "application/json" },
-      body: JSON.stringify({ ...c, tz: "UTC", unique: ["slug"], channels: "*", tags: "civic-hub production" }),
+      body: JSON.stringify({
+        ...c,
+        ...(c.schedule ? { tz: "UTC" } : {}),
+        unique: ["slug"],
+        channels: "*",
+        tags: "civic-hub production",
+      }),
     });
     if (res.status !== 200 && res.status !== 201) {
       console.error(`FAILED      ${line}: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
