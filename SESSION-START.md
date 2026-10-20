@@ -14,8 +14,9 @@ Read, in this order, and nothing else until you need it:
 1. `../CLAUDE.md` (project rules and session ritual)
 2. `HANDOFF-INDEX.md` (do NOT read HANDOFF.md whole; open only the line ranges
    the index points you to, with `sed -n START,ENDp HANDOFF.md`)
-3. `BUILD-PLAN-multi-tenant.md` (the contracts: `hubs` columns, settings key
-   names, `forHub()` signature; the phase checklists)
+3. `BUILD-PLAN-multi-tenant.md` (the standing rules at the top, "what must not
+   be undone"; the contracts: `hubs` columns, settings key names, `forHub()`
+   signature; the phase checklists)
 4. `TESTING.md` "Quick Start" only
 
 Context you already have: one codebase, today one Supabase database per hub.

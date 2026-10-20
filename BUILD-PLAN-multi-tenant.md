@@ -5,6 +5,33 @@ sessions build against them and do not change them without asking Adam.
 Decision record: `../decisions/2026-09-22-multi-tenant.md` (ADR-004).
 Session ritual: `SESSION-START.md`.
 
+## Standing rules: what must not be undone (read every session)
+
+Recorded 2026-10-20 from the Oct 10 code audit, section H ("What to preserve"). These patterns are why the hub is
+safe to extend. Building on them is fine; replacing, bypassing or weakening one needs Adam's decision first and a
+decision record. Each row names the file and line that embodies the rule today (lines drift; grep the name).
+
+| Rule | Where it lives |
+|---|---|
+| **One emission path.** Every event is built by `buildEvent()` and stored by `appendEvent()`, the only insert into `events`, or by the atomic functions with a row `buildEvent()` made. Nothing writes an event any other way. | `src/events/eventEmitter.ts:28` (`emitEvent`), `src/events/eventStore.ts:93` (the insert), `_civic_insert_event` in `supabase/migrations/20260924080000_atomic_transition_and_vote.sql:48` |
+| **State and its event are written together or not at all.** A status change and the events recording it go through one database function. | `src/db/atomic.ts:82` (`transitionProcess`), `:123` (`castBallot`); `transition_process` / `cast_ballot` |
+| **Every hub query goes through `forHub()`, and the database enforces it.** One RLS policy template on every table, a leak harness and a catalog test that fail on a gap. The raw client is lint-fenced. | `src/db/forHub.ts:415`; policy `supabase/migrations/20260925000000_hub_isolation_policies.sql:83`; `tests/api/leakHarness.test.ts`, `tests/api/rlsCatalog.test.ts:27`, `tests/fixtures/tenancyCatalog.ts:77`; `eslint.config.js:59` (`civic/raw-client`) |
+| **The actor comes from the session, never the request.** | `src/middleware/auth.ts:255` (`res.locals.authUser`), `src/controllers/processController.ts:144` (`actor: user.id`) |
+| **Admin fails closed on an empty roster.** A hub with no admins has none; nothing falls back to the environment. | `src/middleware/auth.ts:299` (`requireAdmin`, `no_admins`), `src/services/hubSettings.ts:91` (`people.*` never read from env) |
+| **The control plane's session, step-up and audit.** HttpOnly SameSite=Strict cookie, 8-hour sessions, a fresh emailed code for consequential actions, an audit row that must be written. | `src/control/router.ts:94` (cookie), `:197` (`stepUp`), `src/control/auth.ts:141` (`createSession`), `src/control/audit.ts:30` (`recordAudit`) |
+| **The start page's invite codes and handoff.** | `src/control/startRouter.ts:260` (`POST /start/invite`), `src/control/inHub.ts:60` (`handoffUrl`), `src/modules/civic.auth/index.ts:610` (`createHandoffSession`) |
+| **Import refuses a bad bundle before touching a database.** | `scripts/lib/hubImport.ts:152` (`checkBundle`), `src/control/hubBundle/format.ts:27` (`BUNDLE_FORMAT`) |
+| **Append-only logs stay append-only.** Events, review turns, the hub admin log and the console audit log refuse UPDATE/DELETE by trigger; a migration that must change a row disables the trigger for one statement in its own transaction. | `events_no_update` (`20260416000100_align_events_schema.sql:45`), `review_turns_no_mutation` (`20261007000000_added_in_demo.sql:139`), `20260926040000_sample_content.sql:161`, `20260926010000_control_plane.sql:89` |
+| **The activity serializer is table-driven, deterministic and honest.** One mapping per event type, an unmapped type throws, same row in gives the same bytes out, and the conformance claim is only what is true. | `src/events/activitySerializer.ts:272` (`ACTIVITY_MAPPINGS`), `:128` (`toActivity`); `tests/unit/activitySerializer.test.ts:471` |
+| **Settings writes are validated strictly.** Unknown sections, unknown keys and bad values are refused. | `src/models/hubSettingsWrite.ts:49` (`validateSettingsWrite`) |
+| **Fetching a URL someone else chose is SSRF-guarded,** with each redirect hop checked again. | `src/utils/ssrfGuard.ts:232` (`guardedFetch`), `src/services/linkPreviewFetcher.ts:29` |
+| **Uploads are size-limited and type-whitelisted while streaming.** | `src/controllers/uploadController.ts:79` (busboy limits), `:223` (MIME whitelist) |
+| **`RichText` is the one markdown renderer.** No raw HTML, no images, `rel="noopener"`. A convention, not lint-enforced. | `ui/src/components/RichText.tsx:40` |
+| **The three UI apps keep their import boundaries** (hub, console, start page). | `ui/eslint.config.js:34`, `:49`, `:58`; server side `civic/control-boundary` in `eslint.config.js` |
+| **`PolisHostInterface` is the model plugin seam.** A plugin reaches the hub only through an interface the host implements. | `src/shared/polis_deliberation/hostInterface.ts:34`, `src/processes/deliberationBoot.ts:261` |
+
+---
+
 ## Goal
 
 civic-hub today is multi-deployment: one codebase, one Vercel project and
