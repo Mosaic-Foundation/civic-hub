@@ -54,6 +54,7 @@ const SERVICE_ROLE = [
   ...AUTHENTICATED,
   "cast_vote",
   "function_catalog",
+  "move_hub_hostname",
   "rate_limit_retry_at",
   "rate_limit_take",
   "take_platform_sign_in_attempt",

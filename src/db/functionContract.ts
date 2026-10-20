@@ -58,6 +58,7 @@ export const FUNCTION_CONTRACT: readonly FunctionRequirement[] = [
       "p_expires_at timestamp with time zone, p_limit integer, p_window_seconds integer",
     owner: "services/hubInvites",
   },
+  { name: "move_hub_hostname", args: "p_hub_id text, p_from text, p_to text, p_previous_hostnames text[], p_event jsonb", owner: "control/hubs (moveHub)" },
   { name: "count_pending_reviews", args: "p_hub_id text, p_since timestamp with time zone, p_excluded_types text[]", owner: "services/adminQueues" },
   { name: "ai_tokens_since", args: "p_hub_id text, p_since timestamp with time zone, p_purposes text[]", owner: "services/aiBudget" },
   {
