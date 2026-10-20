@@ -644,9 +644,18 @@ export async function applyImport(
     for (const t of plan.order) {
       const rs = plan.rows.get(t) ?? [];
       if (!rs.length) continue;
-      const cols = b.manifest.tables.find((x) => x.table === t)!.columns;
+      let cols = b.manifest.tables.find((x) => x.table === t)!.columns;
       const d = plan.deferred.find((x) => x.table === t);
-      const toInsert = d ? rs.map((r) => ({ ...r, ...Object.fromEntries(d.columns.map((c) => [c, null])) })) : rs;
+      let toInsert = d ? rs.map((r) => ({ ...r, ...Object.fromEntries(d.columns.map((c) => [c, null])) })) : rs;
+      // A bundle from before 20261020000000 has no events.wire_ns. Its events
+      // were served with their hub's own `{origin}/ns#`, so they keep it
+      // (null), rather than taking the column default meant for new events
+      // (ADR-008). The hostname columns need nothing: the trigger stamps the
+      // target hub's hostname, which is what such a row was served with.
+      if (t === "events" && !cols.includes("wire_ns") && plan.catalog.columns.get("events")?.has("wire_ns")) {
+        cols = [...cols, "wire_ns"];
+        toInsert = toInsert.map((r) => ({ ...r, wire_ns: null }));
+      }
       await insertRows(client, t, toInsert, cols);
     }
 
