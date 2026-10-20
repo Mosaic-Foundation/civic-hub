@@ -1,0 +1,78 @@
+{
+  "@context": {
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "hub": "https://www.civic.social/ns/civic-hub#",
+    "civic": "https://civic.social/ns/civic",
+    "label": "rdfs:label",
+    "comment": "rdfs:comment",
+    "terms": {
+      "@id": "rdfs:member",
+      "@container": "@set"
+    }
+  },
+  "@id": "https://www.civic.social/ns/civic-hub#",
+  "label": "Civic Hub extension terms",
+  "comment": "Hub-local terms this space emits in Civic Activity documents. Each is a promotion candidate for the canonical civic context: they exist because no canonical class covers them yet, and none redefines an ActivityStreams or civic term.",
+  "terms": [
+    {
+      "@id": "hub:payload",
+      "label": "hub:payload",
+      "kind": "property",
+      "comment": "Verbatim carry of the internal event's `data`. Preserves fidelity for consumers without renaming or reinterpreting hub-specific fields."
+    },
+    {
+      "@id": "hub:ProposedProcess",
+      "label": "hub:ProposedProcess",
+      "kind": "object type",
+      "comment": "A process offered for community support before it opens. No canonical civic class yet."
+    },
+    {
+      "@id": "hub:SupportThreshold",
+      "label": "hub:SupportThreshold",
+      "kind": "object type",
+      "comment": "The support threshold of a proposed process being reached."
+    },
+    {
+      "@id": "hub:Aggregation",
+      "label": "hub:Aggregation",
+      "kind": "object type",
+      "comment": "Raw participation aggregated into structured results — the step before a result is published."
+    },
+    {
+      "@id": "hub:Submission",
+      "label": "hub:Submission",
+      "kind": "object type",
+      "comment": "Free-text participation with no ballot/comment shape (word clouds)."
+    },
+    {
+      "@id": "hub:Project",
+      "label": "hub:Project",
+      "kind": "object type",
+      "comment": "A community project page. A candidate civic process class, not yet in the registry."
+    },
+    {
+      "@id": "hub:ProjectSentiment",
+      "label": "hub:ProjectSentiment",
+      "kind": "object type",
+      "comment": "Aggregate support/oppose sentiment on a project."
+    },
+    {
+      "@id": "hub:ReviewSubmission",
+      "label": "hub:ReviewSubmission",
+      "kind": "object type",
+      "comment": "A resident submission moving through the hub's admin review workflow. Space-internal correspondence, always restricted."
+    },
+    {
+      "@id": "hub:OfficialResponse",
+      "label": "hub:OfficialResponse",
+      "kind": "object type",
+      "comment": "A public on-the-record response by a designated official to a published Civic Brief. No canonical civic class yet."
+    },
+    {
+      "@id": "hub:ProcessAction",
+      "label": "hub:ProcessAction",
+      "kind": "object type",
+      "comment": "Generic fallback object for civic.process.action_taken payloads that are not official responses."
+    }
+  ]
+}

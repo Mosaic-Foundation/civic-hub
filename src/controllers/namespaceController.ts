@@ -13,44 +13,21 @@
 // EXTENSION_TERMS in the serializer is the single source — the register here
 // cannot drift from what the mapping table can actually emit, and
 // tests/unit/extensionTerms.test.ts fails if a term is emitted undeclared.
+//
+// Since 2026-10-20 (ADR-008) this is the per-hub namespace of activities
+// stored before then; newer ones declare the software-level namespace,
+// https://www.civic.social/ns/civic-hub# (src/events/namespaceDocument.ts).
 
 import { route } from "../http/route.js";
-import {
-  EXTENSION_TERMS,
-  hubNamespace,
-  CIVIC_CONTEXT,
-} from "../events/activitySerializer.js";
+import { hubNamespace } from "../events/activitySerializer.js";
+import { namespaceDocument } from "../events/namespaceDocument.js";
 import { hubName } from "../config/hub.js";
 
 const LD_JSON = "application/ld+json; charset=utf-8";
 
 export const handleGetNamespace = route((_req, res) => {
-  const ns = hubNamespace();
-
   res.setHeader("Content-Type", LD_JSON);
   // A namespace document is stable between deploys; let consumers cache it.
   res.setHeader("Cache-Control", "public, max-age=3600");
-  res.json({
-    "@context": {
-      rdfs: "http://www.w3.org/2000/01/rdf-schema#",
-      hub: ns,
-      civic: CIVIC_CONTEXT,
-      label: "rdfs:label",
-      comment: "rdfs:comment",
-      terms: { "@id": "rdfs:member", "@container": "@set" },
-    },
-    "@id": ns,
-    label: `${hubName()} extension terms`,
-    comment:
-      "Hub-local terms this space emits in Civic Activity documents. Each is a " +
-      "promotion candidate for the canonical civic context: they exist because " +
-      "no canonical class covers them yet, and none redefines an ActivityStreams " +
-      "or civic term.",
-    terms: EXTENSION_TERMS.map((t) => ({
-      "@id": `hub:${t.term.replace(/^hub:/, "")}`,
-      label: t.term,
-      kind: t.kind,
-      comment: t.why,
-    })),
-  });
+  res.json(namespaceDocument(hubNamespace(), `${hubName()} extension terms`));
 });
