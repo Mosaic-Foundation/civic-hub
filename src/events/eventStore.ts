@@ -30,7 +30,7 @@ function db(): HubDb {
 
 // --- Row <-> model mapping -------------------------------------------------
 
-interface EventRow {
+export interface EventRow {
   id: string;
   version: string;
   event_type: string;
@@ -45,7 +45,8 @@ interface EventRow {
   created_at: string;
 }
 
-function rowToEvent(row: EventRow): CivicEvent {
+/** Exported for scripts/wire-snapshot.ts, which reads rows over pg. */
+export function rowToEvent(row: EventRow): CivicEvent {
   return {
     id: row.id,
     version: row.version,

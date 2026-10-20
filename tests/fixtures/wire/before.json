@@ -1,0 +1,5241 @@
+{
+  "event_types": [
+    "civic.outcome_delivered",
+    "civic.process.action_taken",
+    "civic.process.aggregation_completed",
+    "civic.process.comment_added",
+    "civic.process.created",
+    "civic.process.ended",
+    "civic.process.outcome_recorded",
+    "civic.process.proposed",
+    "civic.process.result_published",
+    "civic.process.started",
+    "civic.process.submission_received",
+    "civic.process.threshold_met",
+    "civic.process.updated",
+    "civic.process.vote_submitted",
+    "civic.project.archived",
+    "civic.project.comment_added",
+    "civic.project.created",
+    "civic.project.sentiment_changed",
+    "civic.project.updated",
+    "civic.proposal.closed",
+    "civic.proposal.endorsed",
+    "civic.proposal.submitted",
+    "civic.proposal.support_withdrawn",
+    "civic.proposal.supported",
+    "civic.review.approved",
+    "civic.review.changes_requested",
+    "civic.review.declined",
+    "civic.review.revised",
+    "civic.review.submitted",
+    "civic.review.withdrawn"
+  ],
+  "documents": [
+    {
+      "event_id": "evt_wire_001",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_001",
+        "type": "Announce",
+        "actor": "https://wirefix.example/users/u_resident",
+        "published": "2026-09-10T12:00:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Outcome",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.outcome_delivered",
+              "status": "active"
+            },
+            "title": "Fixture civic.outcome_delivered",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_001",
+        "type": "Announce",
+        "actor": "https://wirefix.example/process/proc_wire_1/participants/anon-8d4ba3ae109545ec",
+        "published": "2026-09-10T12:00:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Outcome",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.outcome_delivered",
+              "status": "active"
+            },
+            "title": "Fixture civic.outcome_delivered",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_001",
+        "type": "Announce",
+        "actor": "https://wirefix.example/process/proc_wire_1/participants/anon-8d4ba3ae109545ec",
+        "published": "2026-09-10T12:00:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Outcome",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.outcome_delivered",
+              "status": "active"
+            },
+            "title": "Fixture civic.outcome_delivered",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      }
+    },
+    {
+      "event_id": "evt_wire_002",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_002",
+        "type": "Create",
+        "actor": "https://wirefix.example/users/u_bare",
+        "published": "2026-09-11T12:01:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:OfficialResponse",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "name": "Fixture civic.process.action_taken",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.action_taken",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.action_taken",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "action": "official_response",
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_002",
+        "type": "Create",
+        "actor": "https://wirefix.example/process/proc_wire_2/participants/anon-ee68ee8d3bed9c54",
+        "published": "2026-09-11T12:01:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:OfficialResponse",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "name": "Fixture civic.process.action_taken",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.action_taken",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.action_taken",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "action": "official_response",
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_002",
+        "type": "Create",
+        "actor": "https://wirefix.example/process/proc_wire_2/participants/anon-ee68ee8d3bed9c54",
+        "published": "2026-09-11T12:01:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:OfficialResponse",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "name": "Fixture civic.process.action_taken",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.action_taken",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.action_taken",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "action": "official_response",
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      }
+    },
+    {
+      "event_id": "evt_wire_003",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_003",
+        "type": "Create",
+        "actor": "https://wirefix.example/system/brief-spawn",
+        "published": "2026-09-12T12:02:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:Aggregation",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.aggregation_completed",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.aggregation_completed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_003",
+        "type": "Create",
+        "actor": "https://wirefix.example/system/brief-spawn",
+        "published": "2026-09-12T12:02:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:Aggregation",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.aggregation_completed",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.aggregation_completed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_003",
+        "type": "Create",
+        "actor": "https://wirefix.example/system/brief-spawn",
+        "published": "2026-09-12T12:02:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:Aggregation",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.aggregation_completed",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.aggregation_completed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      }
+    },
+    {
+      "event_id": "evt_wire_004",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_004",
+        "type": "Create",
+        "actor": "https://wirefix.example/system/unspecified",
+        "published": "2026-09-13T12:03:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "Note",
+          "content": "A fixture comment",
+          "inReplyTo": "https://wirefix.example/process/proc_wire_4",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.comment_added",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.comment_added",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_004",
+        "type": "Create",
+        "actor": "https://wirefix.example/system/unspecified",
+        "published": "2026-09-13T12:03:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "Note",
+          "content": "A fixture comment",
+          "inReplyTo": "https://wirefix.example/process/proc_wire_4",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.comment_added",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.comment_added",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_004",
+        "type": "Create",
+        "actor": "https://wirefix.example/system/unspecified",
+        "published": "2026-09-13T12:03:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "Note",
+          "content": "A fixture comment",
+          "inReplyTo": "https://wirefix.example/process/proc_wire_4",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.comment_added",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.comment_added",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      }
+    },
+    {
+      "event_id": "evt_wire_005",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_005",
+        "type": "Create",
+        "actor": "did:web:person.example",
+        "published": "2026-09-14T12:04:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "civic:Process",
+          "name": "Fixture civic.process.created",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.created",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.created",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        }
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_005",
+        "type": "Create",
+        "actor": "did:web:person.example",
+        "published": "2026-09-14T12:04:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "civic:Process",
+          "name": "Fixture civic.process.created",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.created",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.created",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        }
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_005",
+        "type": "Create",
+        "actor": "did:web:person.example",
+        "published": "2026-09-14T12:04:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "civic:Process",
+          "name": "Fixture civic.process.created",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.created",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.created",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        }
+      }
+    },
+    {
+      "event_id": "evt_wire_006",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_006",
+        "type": "civic:End",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-15T12:05:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Process",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "name": "Fixture civic.process.ended",
+          "civic:terminalState": "active",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.ended",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.ended",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_006",
+        "type": "civic:End",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-15T12:05:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Process",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "name": "Fixture civic.process.ended",
+          "civic:terminalState": "active",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.ended",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.ended",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_006",
+        "type": "civic:End",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-15T12:05:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Process",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "name": "Fixture civic.process.ended",
+          "civic:terminalState": "active",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.ended",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.ended",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      }
+    },
+    {
+      "event_id": "evt_wire_007",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_007",
+        "type": "Create",
+        "actor": "https://wirefix.example/users/u_official",
+        "published": "2026-09-16T12:06:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Outcome",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.outcome_recorded",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.outcome_recorded",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_007",
+        "type": "Create",
+        "actor": "https://wirefix.example/users/u_official",
+        "published": "2026-09-16T12:06:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Outcome",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.outcome_recorded",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.outcome_recorded",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_007",
+        "type": "Create",
+        "actor": "https://wirefix.example/users/u_official",
+        "published": "2026-09-16T12:06:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Outcome",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.outcome_recorded",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.outcome_recorded",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      }
+    },
+    {
+      "event_id": "evt_wire_008",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_008",
+        "type": "Offer",
+        "actor": "https://wirefix.example/users/u_resident",
+        "published": "2026-09-17T12:07:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ProposedProcess",
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "name": "Fixture civic.process.proposed",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.proposed",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.proposed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_008",
+        "type": "Offer",
+        "actor": "https://wirefix.example/process/proc_wire_4/participants/anon-738ff8bfdd1b3623",
+        "published": "2026-09-17T12:07:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ProposedProcess",
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "name": "Fixture civic.process.proposed",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.proposed",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.proposed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_008",
+        "type": "Offer",
+        "actor": "https://wirefix.example/process/proc_wire_4/participants/anon-738ff8bfdd1b3623",
+        "published": "2026-09-17T12:07:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ProposedProcess",
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "name": "Fixture civic.process.proposed",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.proposed",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.proposed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      }
+    },
+    {
+      "event_id": "evt_wire_009",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_009",
+        "type": "Announce",
+        "actor": "https://wirefix.example/users/u_bare",
+        "published": "2026-09-18T12:08:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Result",
+          "name": "Fixture civic.process.result_published",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.result_published",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.result_published",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_009",
+        "type": "Announce",
+        "actor": "https://wirefix.example/process/proc_wire_1/participants/anon-ae9d9dac3d291210",
+        "published": "2026-09-18T12:08:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Result",
+          "name": "Fixture civic.process.result_published",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.result_published",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.result_published",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_009",
+        "type": "Announce",
+        "actor": "https://wirefix.example/process/proc_wire_1/participants/anon-ae9d9dac3d291210",
+        "published": "2026-09-18T12:08:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Result",
+          "name": "Fixture civic.process.result_published",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.result_published",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.result_published",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      }
+    },
+    {
+      "event_id": "evt_wire_010",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_010",
+        "type": "civic:Start",
+        "actor": "https://wirefix.example/system/brief-spawn",
+        "published": "2026-09-19T12:09:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "civic:Process",
+          "name": "Fixture civic.process.started",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.started",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.started",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        }
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_010",
+        "type": "civic:Start",
+        "actor": "https://wirefix.example/system/brief-spawn",
+        "published": "2026-09-19T12:09:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "civic:Process",
+          "name": "Fixture civic.process.started",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.started",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.started",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        }
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_010",
+        "type": "civic:Start",
+        "actor": "https://wirefix.example/system/brief-spawn",
+        "published": "2026-09-19T12:09:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "civic:Process",
+          "name": "Fixture civic.process.started",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.started",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.started",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        }
+      }
+    },
+    {
+      "event_id": "evt_wire_011",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_011",
+        "type": "Create",
+        "actor": "https://wirefix.example/system/unspecified",
+        "published": "2026-09-20T12:10:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:Submission",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.submission_received",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.submission_received",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_011",
+        "type": "Create",
+        "actor": "https://wirefix.example/system/unspecified",
+        "published": "2026-09-20T12:10:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:Submission",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.submission_received",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.submission_received",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_011",
+        "type": "Create",
+        "actor": "https://wirefix.example/system/unspecified",
+        "published": "2026-09-20T12:10:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:Submission",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.submission_received",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.submission_received",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      }
+    },
+    {
+      "event_id": "evt_wire_012",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_012",
+        "type": "Announce",
+        "actor": "did:web:person.example",
+        "published": "2026-09-21T12:11:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:SupportThreshold",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.threshold_met",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.threshold_met",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_012",
+        "type": "Announce",
+        "actor": "did:web:person.example",
+        "published": "2026-09-21T12:11:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:SupportThreshold",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.threshold_met",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.threshold_met",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_012",
+        "type": "Announce",
+        "actor": "did:web:person.example",
+        "published": "2026-09-21T12:11:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:SupportThreshold",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.threshold_met",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.threshold_met",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      }
+    },
+    {
+      "event_id": "evt_wire_013",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_013",
+        "type": "Update",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-22T12:12:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Process",
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "name": "Fixture civic.process.updated",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.updated",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.updated",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_013",
+        "type": "Update",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-22T12:12:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Process",
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "name": "Fixture civic.process.updated",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.updated",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.updated",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_013",
+        "type": "Update",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-22T12:12:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Process",
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "name": "Fixture civic.process.updated",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.updated",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.updated",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      }
+    },
+    {
+      "event_id": "evt_wire_014",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_014",
+        "type": "Create",
+        "actor": "https://wirefix.example/users/u_official",
+        "published": "2026-09-23T12:13:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Ballot",
+          "civic:method": "single_choice",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.vote_submitted",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.vote_submitted",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_014",
+        "type": "Create",
+        "actor": "https://wirefix.example/users/u_official",
+        "published": "2026-09-23T12:13:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Ballot",
+          "civic:method": "single_choice",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.vote_submitted",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.vote_submitted",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_014",
+        "type": "Create",
+        "actor": "https://wirefix.example/users/u_official",
+        "published": "2026-09-23T12:13:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Ballot",
+          "civic:method": "single_choice",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.process.vote_submitted",
+              "status": "active"
+            },
+            "title": "Fixture civic.process.vote_submitted",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      }
+    },
+    {
+      "event_id": "evt_wire_015",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_015",
+        "type": "civic:End",
+        "actor": "https://wirefix.example/users/u_resident",
+        "published": "2026-09-24T12:14:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "civic:Process",
+          "name": "Fixture civic.project.archived",
+          "civic:terminalState": "active",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.archived",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.archived",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        }
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_015",
+        "type": "civic:End",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-24T12:14:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "civic:Process",
+          "name": "Fixture civic.project.archived",
+          "civic:terminalState": "active",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.archived",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.archived",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        }
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_015",
+        "type": "civic:End",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-24T12:14:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "civic:Process",
+          "name": "Fixture civic.project.archived",
+          "civic:terminalState": "active",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.archived",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.archived",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        }
+      }
+    },
+    {
+      "event_id": "evt_wire_016",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_016",
+        "type": "Create",
+        "actor": "https://wirefix.example/users/u_bare",
+        "published": "2026-09-25T12:15:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "Note",
+          "content": "A fixture comment",
+          "inReplyTo": "https://wirefix.example/process/proc_wire_4",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.comment_added",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.comment_added",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_016",
+        "type": "Create",
+        "actor": "https://wirefix.example/process/proc_wire_4/participants/anon-0b9c704574f0c950",
+        "published": "2026-09-25T12:15:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "Note",
+          "content": "A fixture comment",
+          "inReplyTo": "https://wirefix.example/process/proc_wire_4",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.comment_added",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.comment_added",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_016",
+        "type": "Create",
+        "actor": "https://wirefix.example/process/proc_wire_4/participants/anon-0b9c704574f0c950",
+        "published": "2026-09-25T12:15:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "Note",
+          "content": "A fixture comment",
+          "inReplyTo": "https://wirefix.example/process/proc_wire_4",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.comment_added",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.comment_added",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      }
+    },
+    {
+      "event_id": "evt_wire_017",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_017",
+        "type": "Create",
+        "actor": "https://wirefix.example/system/brief-spawn",
+        "published": "2026-09-26T12:16:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:Project",
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "name": "Fixture civic.project.created",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.created",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.created",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_017",
+        "type": "Create",
+        "actor": "https://wirefix.example/system/brief-spawn",
+        "published": "2026-09-26T12:16:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:Project",
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "name": "Fixture civic.project.created",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.created",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.created",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_017",
+        "type": "Create",
+        "actor": "https://wirefix.example/system/brief-spawn",
+        "published": "2026-09-26T12:16:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:Project",
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "name": "Fixture civic.project.created",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.created",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.created",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      }
+    },
+    {
+      "event_id": "evt_wire_018",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_018",
+        "type": "Update",
+        "actor": "https://wirefix.example/system/unspecified",
+        "published": "2026-09-27T12:17:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ProjectSentiment",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.sentiment_changed",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.sentiment_changed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_018",
+        "type": "Update",
+        "actor": "https://wirefix.example/system/unspecified",
+        "published": "2026-09-27T12:17:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ProjectSentiment",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.sentiment_changed",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.sentiment_changed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_018",
+        "type": "Update",
+        "actor": "https://wirefix.example/system/unspecified",
+        "published": "2026-09-27T12:17:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ProjectSentiment",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.sentiment_changed",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.sentiment_changed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      }
+    },
+    {
+      "event_id": "evt_wire_019",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_019",
+        "type": "Update",
+        "actor": "did:web:person.example",
+        "published": "2026-09-10T12:18:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:Project",
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.updated",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.updated",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_019",
+        "type": "Update",
+        "actor": "did:web:person.example",
+        "published": "2026-09-10T12:18:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:Project",
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.updated",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.updated",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_019",
+        "type": "Update",
+        "actor": "did:web:person.example",
+        "published": "2026-09-10T12:18:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:Project",
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.project.updated",
+              "status": "active"
+            },
+            "title": "Fixture civic.project.updated",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      }
+    },
+    {
+      "event_id": "evt_wire_020",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_020",
+        "type": "civic:End",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-11T12:19:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "civic:Process",
+          "name": "Fixture civic.proposal.closed",
+          "civic:terminalState": "active",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.closed",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.closed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        }
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_020",
+        "type": "civic:End",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-11T12:19:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "civic:Process",
+          "name": "Fixture civic.proposal.closed",
+          "civic:terminalState": "active",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.closed",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.closed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        }
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_020",
+        "type": "civic:End",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-11T12:19:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "civic:Process",
+          "name": "Fixture civic.proposal.closed",
+          "civic:terminalState": "active",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.closed",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.closed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        }
+      }
+    },
+    {
+      "event_id": "evt_wire_021",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_021",
+        "type": "Like",
+        "actor": "https://wirefix.example/users/u_official",
+        "published": "2026-09-12T12:20:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Proposal",
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.endorsed",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.endorsed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_021",
+        "type": "Like",
+        "actor": "https://wirefix.example/users/u_official",
+        "published": "2026-09-12T12:20:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Proposal",
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.endorsed",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.endorsed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_021",
+        "type": "Like",
+        "actor": "https://wirefix.example/users/u_official",
+        "published": "2026-09-12T12:20:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Proposal",
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.endorsed",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.endorsed",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      }
+    },
+    {
+      "event_id": "evt_wire_022",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_022",
+        "type": "Create",
+        "actor": "https://wirefix.example/users/u_resident",
+        "published": "2026-09-13T12:21:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Proposal",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "name": "Fixture civic.proposal.submitted",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.submitted",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.submitted",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_022",
+        "type": "Create",
+        "actor": "https://wirefix.example/process/proc_wire_2/participants/anon-7cade881a1a44616",
+        "published": "2026-09-13T12:21:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Proposal",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "name": "Fixture civic.proposal.submitted",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.submitted",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.submitted",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_022",
+        "type": "Create",
+        "actor": "https://wirefix.example/process/proc_wire_2/participants/anon-7cade881a1a44616",
+        "published": "2026-09-13T12:21:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Proposal",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "name": "Fixture civic.proposal.submitted",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.submitted",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.submitted",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      }
+    },
+    {
+      "event_id": "evt_wire_023",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_023",
+        "type": "Undo",
+        "actor": "https://wirefix.example/users/u_bare",
+        "published": "2026-09-14T12:22:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Proposal",
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.support_withdrawn",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.support_withdrawn",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_023",
+        "type": "Undo",
+        "actor": "https://wirefix.example/process/proc_wire_3/participants/anon-9b2133a4150d5ba5",
+        "published": "2026-09-14T12:22:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Proposal",
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.support_withdrawn",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.support_withdrawn",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_023",
+        "type": "Undo",
+        "actor": "https://wirefix.example/process/proc_wire_3/participants/anon-9b2133a4150d5ba5",
+        "published": "2026-09-14T12:22:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Proposal",
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.support_withdrawn",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.support_withdrawn",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      }
+    },
+    {
+      "event_id": "evt_wire_024",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_024",
+        "type": "Like",
+        "actor": "https://wirefix.example/system/brief-spawn",
+        "published": "2026-09-15T12:23:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Proposal",
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.supported",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.supported",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_024",
+        "type": "Like",
+        "actor": "https://wirefix.example/system/brief-spawn",
+        "published": "2026-09-15T12:23:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Proposal",
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.supported",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.supported",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_024",
+        "type": "Like",
+        "actor": "https://wirefix.example/system/brief-spawn",
+        "published": "2026-09-15T12:23:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "civic:Proposal",
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.proposal.supported",
+              "status": "active"
+            },
+            "title": "Fixture civic.proposal.supported",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      }
+    },
+    {
+      "event_id": "evt_wire_025",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_025",
+        "type": "Accept",
+        "actor": "https://wirefix.example/system/unspecified",
+        "published": "2026-09-16T12:24:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "name": "Fixture civic.review.approved",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.approved",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.approved",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        }
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_025",
+        "type": "Accept",
+        "actor": "https://wirefix.example/system/unspecified",
+        "published": "2026-09-16T12:24:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "name": "Fixture civic.review.approved",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.approved",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.approved",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        }
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_025",
+        "type": "Accept",
+        "actor": "https://wirefix.example/system/unspecified",
+        "published": "2026-09-16T12:24:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "name": "Fixture civic.review.approved",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.approved",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.approved",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        }
+      }
+    },
+    {
+      "event_id": "evt_wire_026",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_026",
+        "type": "TentativeReject",
+        "actor": "did:web:person.example",
+        "published": "2026-09-17T12:25:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "name": "Fixture civic.review.changes_requested",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.changes_requested",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.changes_requested",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_026",
+        "type": "TentativeReject",
+        "actor": "did:web:person.example",
+        "published": "2026-09-17T12:25:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "name": "Fixture civic.review.changes_requested",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.changes_requested",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.changes_requested",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_026",
+        "type": "TentativeReject",
+        "actor": "did:web:person.example",
+        "published": "2026-09-17T12:25:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "id": "https://wirefix.example/process/proc_wire_2",
+          "name": "Fixture civic.review.changes_requested",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.changes_requested",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.changes_requested",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_2"
+      }
+    },
+    {
+      "event_id": "evt_wire_027",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_027",
+        "type": "Reject",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-18T12:26:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "name": "Fixture civic.review.declined",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.declined",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.declined",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_027",
+        "type": "Reject",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-18T12:26:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "name": "Fixture civic.review.declined",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.declined",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.declined",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_027",
+        "type": "Reject",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-18T12:26:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "id": "https://wirefix.example/process/proc_wire_3",
+          "name": "Fixture civic.review.declined",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.declined",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.declined",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_3"
+      }
+    },
+    {
+      "event_id": "evt_wire_028",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_028",
+        "type": "Update",
+        "actor": "https://wirefix.example/users/u_official",
+        "published": "2026-09-19T12:27:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "name": "Fixture civic.review.revised",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.revised",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.revised",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_028",
+        "type": "Update",
+        "actor": "https://wirefix.example/users/u_official",
+        "published": "2026-09-19T12:27:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "name": "Fixture civic.review.revised",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.revised",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.revised",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_028",
+        "type": "Update",
+        "actor": "https://wirefix.example/users/u_official",
+        "published": "2026-09-19T12:27:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "id": "https://wirefix.example/process/proc_wire_4",
+          "name": "Fixture civic.review.revised",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.revised",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.revised",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_4"
+      }
+    },
+    {
+      "event_id": "evt_wire_029",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_029",
+        "type": "Create",
+        "actor": "https://wirefix.example/users/u_resident",
+        "published": "2026-09-20T12:28:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "name": "Fixture civic.review.submitted",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.submitted",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.submitted",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_029",
+        "type": "Create",
+        "actor": "https://wirefix.example/process/proc_wire_1/participants/anon-8d4ba3ae109545ec",
+        "published": "2026-09-20T12:28:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "name": "Fixture civic.review.submitted",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.submitted",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.submitted",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_029",
+        "type": "Create",
+        "actor": "https://wirefix.example/process/proc_wire_1/participants/anon-8d4ba3ae109545ec",
+        "published": "2026-09-20T12:28:00+00:00",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "context": {
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "type": "civic:Process",
+          "civic:processType": "civic.vote"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "id": "https://wirefix.example/process/proc_wire_1",
+          "name": "Fixture civic.review.submitted",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.submitted",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.submitted",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        },
+        "url": "https://wirefix.example/process/proc_wire_1"
+      }
+    },
+    {
+      "event_id": "evt_wire_030",
+      "admin": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_030",
+        "type": "Undo",
+        "actor": "https://wirefix.example/users/u_bare",
+        "published": "2026-09-21T12:29:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "name": "Fixture civic.review.withdrawn",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.withdrawn",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.withdrawn",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        }
+      },
+      "member": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_030",
+        "type": "Undo",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-21T12:29:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "name": "Fixture civic.review.withdrawn",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.withdrawn",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.withdrawn",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Fixture Author",
+            "full_name": "Fixture Person"
+          }
+        }
+      },
+      "public": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://civic.social/ns/civic",
+          {
+            "hub": "https://wirefix.example/ns#"
+          }
+        ],
+        "id": "https://wirefix.example/activities/evt_wire_030",
+        "type": "Undo",
+        "actor": "https://wirefix.example/users/anonymous",
+        "published": "2026-09-21T12:29:00+00:00",
+        "to": [
+          "https://wirefix.example/audiences/admins"
+        ],
+        "generator": {
+          "id": "did:web:wirefix.example",
+          "type": [
+            "Organization",
+            "civic:Hub"
+          ],
+          "name": "Wire Fixture Hub",
+          "url": "https://wirefix.example"
+        },
+        "location": {
+          "type": "Place",
+          "name": "Wire Fixture County",
+          "civic:code": "us-zz-wirefix"
+        },
+        "object": {
+          "type": "hub:ReviewSubmission",
+          "name": "Fixture civic.review.withdrawn",
+          "hub:payload": {
+            "process": {
+              "type": "civic.vote",
+              "title": "Fixture civic.review.withdrawn",
+              "status": "active"
+            },
+            "title": "Fixture civic.review.withdrawn",
+            "comment": {
+              "body_preview": "A fixture comment",
+              "parent_id": "cmt_parent"
+            },
+            "vote": {
+              "changed": false,
+              "method": "single_choice"
+            },
+            "author_display_name": "Admin"
+          }
+        }
+      }
+    }
+  ]
+}
