@@ -31,6 +31,29 @@ export interface CivicEvent {
   dedupe_key?: string;
   data: Record<string, unknown>;
   meta: EventMeta;
+  /**
+   * Where this event's identifiers were minted (ADR-008), as stored on its
+   * row by the database at insert. Absent on an event not yet stored (the
+   * emission-path check), which serializes as the database will stamp it:
+   * the hub's hostname now and the software namespace.
+   */
+  wire?: EventWire;
+}
+
+/**
+ * The hostnames an event's identifiers are minted on, frozen at insert
+ * (supabase/migrations/20261020000000_wire_origins.sql). A hub move changes
+ * none of them, so nothing it has published changes id.
+ */
+export interface EventWire {
+  /** The hub's hostname when the event was stored: the activity id, system and audience IRIs, generator.url. */
+  hostname: string;
+  /** The event's process's hostname at its creation: the process IRI. */
+  process_hostname: string;
+  /** The acting account's hostname at its creation: a participant's IRI. */
+  actor_hostname: string;
+  /** The `hub:` namespace IRI; null on rows from before 2026-10-20, which keep `{origin}/ns#`. */
+  ns: string | null;
 }
 
 /**

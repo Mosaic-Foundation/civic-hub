@@ -67,7 +67,10 @@ const PLACE = {
 };
 const AS2 = "https://www.w3.org/ns/activitystreams";
 const CIVIC = "https://civic.social/ns/civic";
-const HUB_NS = { hub: "https://hub.floyd.example/ns#" };
+// An event not yet stored declares the software namespace, as the database
+// will stamp it (ADR-008, 2026-10-20). Stored rows from before keep their
+// per-hub `{origin}/ns#`: tests/unit/wireIdentity.test.ts.
+const HUB_NS = { hub: "https://www.civic.social/ns/civic-hub#" };
 const PUBLIC = ["https://www.w3.org/ns/activitystreams#Public"];
 const ADMINS = ["https://hub.floyd.example/audiences/admins"];
 const PROCESS_IRI = "https://app.floyd.example/process/proc_abc";
@@ -420,6 +423,32 @@ describe("toActivity — determinism", () => {
     expect(second).toEqual(first);
     // Byte-identical, not merely deep-equal: future work signs these bytes.
     expect(JSON.stringify(second)).toBe(JSON.stringify(first));
+  });
+
+  it("reads a stored event's identifiers from its row, not the configuration", () => {
+    // ADR-008: a stored row carries the hostnames its ids were minted on.
+    // Changing where the hub is served changes none of its bytes.
+    const stored = event({
+      wire: {
+        hostname: "old.example",
+        process_hostname: "older.example",
+        actor_hostname: "oldest.example",
+        ns: null,
+      },
+    });
+    const first = JSON.stringify(toActivity(stored));
+    const saved = process.env.BASE_URL;
+    process.env.BASE_URL = "https://elsewhere.example";
+    try {
+      expect(JSON.stringify(toActivity(stored))).toBe(first);
+    } finally {
+      process.env.BASE_URL = saved;
+    }
+    const doc = JSON.parse(first) as Record<string, unknown>;
+    expect(doc.id).toBe("https://old.example/activities/evt_0001");
+    expect((doc.context as { id: string }).id).toBe("https://older.example/process/proc_abc");
+    expect(doc.actor).toBe("https://oldest.example/users/9f2c1b7a");
+    expect((doc.generator as { url: string }).url).toBe("https://old.example");
   });
 });
 

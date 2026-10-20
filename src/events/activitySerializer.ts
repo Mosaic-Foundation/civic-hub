@@ -56,7 +56,8 @@
 // worthless.
 
 import { CivicEvent } from "../models/event.js";
-import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
+import { apiOriginFor, baseUrl, uiBaseUrl, uiOriginFor } from "../utils/baseUrl.js";
+import { currentHub } from "../config/hubContext.js";
 import {
   civicPlaceCode,
   civicPlaceName,
@@ -73,11 +74,21 @@ export const CIVIC_CONTEXT = "https://civic.social/ns/civic";
 export const PUBLIC_AUDIENCE = "https://www.w3.org/ns/activitystreams#Public";
 
 /**
- * Namespace for hub-local extension terms (`hub:` prefixed). Per spec §3.4 an
- * extension defines its terms under a domain its author controls; this hub's
- * terms live under its own origin. The `hub` context entry is added ONLY to
- * documents that actually use a hub term — see EXTENSION_TERMS below for the
- * full register (they are promotion candidates for the civic context).
+ * The one namespace for the software's extension terms (`hub:` prefixed),
+ * the same IRI on every hub (ADR-008). Per spec §3.4 an extension defines its
+ * terms under a domain its author controls; the document is published beside
+ * the civic context, from config/ns/civic-hub.jsonld. Activities stored from
+ * 2026-10-20 declare it (the events.wire_ns column default, which must equal
+ * this; tests/unit/wireIdentity.test.ts checks the migration). The `hub`
+ * context entry is added ONLY to documents that actually use a hub term — see
+ * EXTENSION_TERMS below for the full register (promotion candidates for the
+ * civic context).
+ */
+export const HUB_EXTENSION_NS = "https://www.civic.social/ns/civic-hub#";
+
+/**
+ * The per-hub namespace activities stored before 2026-10-20 declare,
+ * `{origin}/ns#`, still served at GET /ns so those terms keep resolving.
  */
 export function hubNamespace(): string {
   return `${baseUrl()}/ns#`;
@@ -139,10 +150,7 @@ export function toActivity(
     );
   }
 
-  const env: SerializerEnv = {
-    base: baseUrl(),
-    ui: uiBaseUrl(),
-  };
+  const env = serializerEnv(event);
   const data = event.data ?? {};
 
   const object = mapping.buildObject(event, data, env);
@@ -155,7 +163,7 @@ export function toActivity(
   // are diffable by eye. JSON.stringify preserves insertion order, which is
   // what makes the output byte-stable.
   const activity: Record<string, unknown> = {
-    "@context": contextFor(usesHubTerms(object) || usesHubTerms(target)),
+    "@context": contextFor(usesHubTerms(object) || usesHubTerms(target), env.ns),
     id: `${env.base}/activities/${event.id}`,
     type: mapping.type,
     actor: wire.actorIriOverride ?? actorIri(event.actor, env),
@@ -234,10 +242,51 @@ export class UnmappedEventTypeError extends ActivitySerializationError {
 // --- Mapping table ---------------------------------------------------------
 
 interface SerializerEnv {
-  /** API origin — activity ids, system actor IRIs, hub namespace. */
+  /** API origin at emission — activity id, system actor and audience IRIs, generator.url. */
   base: string;
-  /** UI origin — process/participant IRIs a human can open. */
+  /** UI origin at emission — the anonymous actor IRI. */
   ui: string;
+  /** UI origin of the event's process at its creation — the process IRI. */
+  processUi: string;
+  /** UI origin of the acting account at its creation — a participant's IRI. */
+  actorUi: string;
+  /** The `hub:` namespace this document declares. */
+  ns: string;
+}
+
+/**
+ * The origins an event's identifiers are minted on (ADR-008). A stored event
+ * carries them on its row, frozen at insert, so a hub move changes none of
+ * them. An event not yet stored is serialized as the database will stamp it:
+ * the hub's hostname now, and the software namespace.
+ */
+export function wireOrigins(event: CivicEvent): {
+  api: string;
+  ui: string;
+  processUi: string;
+  actorUi: string;
+  ns: string;
+} {
+  const wire = event.wire;
+  if (wire) {
+    const api = apiOriginFor(wire.hostname);
+    return {
+      api,
+      ui: uiOriginFor(wire.hostname),
+      processUi: uiOriginFor(wire.process_hostname),
+      actorUi: uiOriginFor(wire.actor_hostname),
+      ns: wire.ns ?? `${api}/ns#`,
+    };
+  }
+  const hostname = currentHub()?.hostname;
+  const api = hostname ? apiOriginFor(hostname) : baseUrl();
+  const ui = hostname ? uiOriginFor(hostname) : uiBaseUrl();
+  return { api, ui, processUi: ui, actorUi: ui, ns: HUB_EXTENSION_NS };
+}
+
+function serializerEnv(event: CivicEvent): SerializerEnv {
+  const o = wireOrigins(event);
+  return { base: o.api, ui: o.ui, processUi: o.processUi, actorUi: o.actorUi, ns: o.ns };
 }
 
 type Payload = Record<string, unknown>;
@@ -732,7 +781,7 @@ function processTypeOf(data: Payload): string | null {
 // --- Shared property builders ----------------------------------------------
 
 function processIri(event: CivicEvent, env: SerializerEnv): string | null {
-  return event.process_id ? `${env.ui}/process/${event.process_id}` : null;
+  return event.process_id ? `${env.processUi}/process/${event.process_id}` : null;
 }
 
 /**
@@ -779,8 +828,9 @@ function actorIri(actor: string, env: SerializerEnv): string {
   // /users/ would misattribute an automated transition to a person. Current
   // emitters name their component ("system:brief-spawn").
   if (value === "system") return `${env.base}/system/unspecified`;
+  if (value === "anonymous") return `${env.ui}/users/anonymous`;
   const id = value.startsWith("user:") ? value.slice("user:".length) : value;
-  return `${env.ui}/users/${encodeURIComponent(id)}`;
+  return `${env.actorUi}/users/${encodeURIComponent(id)}`;
 }
 
 /**
@@ -816,9 +866,9 @@ function placeOf(event: CivicEvent): Record<string, unknown> | null {
  * the hub extension namespace — but ONLY on documents that actually use a
  * `hub:` term, so a document with no extension in it stays pure profile.
  */
-function contextFor(usesHubTerms: boolean): unknown[] {
+function contextFor(usesHubTerms: boolean, ns: string): unknown[] {
   const context: unknown[] = [AS2_CONTEXT, CIVIC_CONTEXT];
-  if (usesHubTerms) context.push({ hub: hubNamespace() });
+  if (usesHubTerms) context.push({ hub: ns });
   return context;
 }
 

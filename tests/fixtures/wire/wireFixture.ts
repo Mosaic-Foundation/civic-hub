@@ -12,7 +12,7 @@
 // change. tests/unit/wireIdentity.test.ts compares against it; never
 // regenerate it to make a red test green.
 
-import type { CivicEvent } from "../../../src/models/event.js";
+import type { CivicEvent, EventWire } from "../../../src/models/event.js";
 import type { Hub } from "../../../src/models/hub.js";
 import { withHubScope } from "../../../src/config/hubContext.js";
 import { toActivity } from "../../../src/events/activitySerializer.js";
@@ -62,8 +62,12 @@ function payloadFor(eventType: string): Record<string, unknown> {
   };
 }
 
-/** The fixture events, in a fixed order, for the given mapped types. */
-export function wireFixtureEvents(eventTypes: readonly string[]): CivicEvent[] {
+/**
+ * The fixture events, in a fixed order, for the given mapped types. `wire`
+ * stamps every event as stored rows carry it (ADR-008); without it the events
+ * are as the serializer saw them before rows carried anything.
+ */
+export function wireFixtureEvents(eventTypes: readonly string[], wire?: EventWire): CivicEvent[] {
   return [...eventTypes].sort().map((eventType, i) => {
     const n = String(i + 1).padStart(3, "0");
     const withProcess = i % 5 !== 4;
@@ -79,9 +83,18 @@ export function wireFixtureEvents(eventTypes: readonly string[]): CivicEvent[] {
       source: { hub_id: "civic-hub-wirefix", hub_url: "https://wirefix.example" },
       data: payloadFor(eventType),
       meta: { visibility: i % 3 === 2 ? "restricted" : "public" },
+      ...(wire ? { wire } : {}),
     };
   });
 }
+
+/** The wire columns the 20261020000000 backfill gives the fixture hub's rows. */
+export const BACKFILLED: EventWire = {
+  hostname: WIRE_FIXTURE_HUB.hostname,
+  process_hostname: WIRE_FIXTURE_HUB.hostname,
+  actor_hostname: WIRE_FIXTURE_HUB.hostname,
+  ns: null,
+};
 
 export interface WireDocuments {
   event_id: string;

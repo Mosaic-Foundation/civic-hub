@@ -61,6 +61,19 @@ export function hubOrigin(hostname: string, devTemplate: string): string {
   return `https://${host}`;
 }
 
+/**
+ * The API origin for a hostname a hub has (or had): the origin an identifier
+ * minted on that hostname carries (ADR-008).
+ */
+export function apiOriginFor(hostname: string): string {
+  return hubOrigin(hostname, envApiBase());
+}
+
+/** The UI origin for a hostname a hub has (or had). */
+export function uiOriginFor(hostname: string): string {
+  return hubOrigin(hostname, envUiBase());
+}
+
 export function baseUrl(): string {
   const hub = currentHub();
   return hub ? hubOrigin(hub.hostname, envApiBase()) : envApiBase();

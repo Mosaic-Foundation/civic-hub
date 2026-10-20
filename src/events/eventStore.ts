@@ -43,6 +43,11 @@ export interface EventRow {
   data: Record<string, unknown> | null;
   meta: { visibility: "public" | "restricted" } | null;
   created_at: string;
+  /** Stamped by the database at insert (ADR-008); never written by the app. */
+  wire_hostname?: string | null;
+  wire_process_hostname?: string | null;
+  wire_actor_hostname?: string | null;
+  wire_ns?: string | null;
 }
 
 /** Exported for scripts/wire-snapshot.ts, which reads rows over pg. */
@@ -60,6 +65,16 @@ export function rowToEvent(row: EventRow): CivicEvent {
     ...(row.dedupe_key ? { dedupe_key: row.dedupe_key } : {}),
     data: row.data ?? {},
     meta: row.meta ?? { visibility: "public" },
+    ...(row.wire_hostname
+      ? {
+          wire: {
+            hostname: row.wire_hostname,
+            process_hostname: row.wire_process_hostname || row.wire_hostname,
+            actor_hostname: row.wire_actor_hostname || row.wire_hostname,
+            ns: row.wire_ns ?? null,
+          },
+        }
+      : {}),
   };
 }
 

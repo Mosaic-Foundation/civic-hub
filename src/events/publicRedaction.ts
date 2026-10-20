@@ -48,8 +48,7 @@ import {
   resolveCreators,
   PUBLIC_ADMIN_NAME,
 } from "../services/creatorDisplay.js";
-import { toActivity } from "./activitySerializer.js";
-import { uiBaseUrl } from "../utils/baseUrl.js";
+import { toActivity, wireOrigins } from "./activitySerializer.js";
 
 /** Actor values that name a PERSON (a hub participant), not machinery. */
 export function isParticipantActor(actor: string | null | undefined): boolean {
@@ -231,9 +230,12 @@ export function toRedactedActivity(
     // scrubbed event.
     return toActivity(redacted);
   }
+  // Minted on the origins the event's row froze (ADR-008): the process's for
+  // a process-scoped token, the event's own for the shared anonymous IRI.
+  const origins = wireOrigins(event);
   const actorIri = event.process_id
-    ? `${uiBaseUrl()}/process/${event.process_id}/participants/${redacted.actor}`
-    : `${uiBaseUrl()}/users/anonymous`;
+    ? `${origins.processUi}/process/${event.process_id}/participants/${redacted.actor}`
+    : `${origins.ui}/users/anonymous`;
   return toActivity(redacted, { actorIriOverride: actorIri });
 }
 

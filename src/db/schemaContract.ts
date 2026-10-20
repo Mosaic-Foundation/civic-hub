@@ -82,6 +82,9 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "events", columns: ["id", "event_type", "process_id", "data"], owner: "core/eventStore" },
   // The digest selects by it (20260926030000).
   { table: "events", columns: ["recorded_at"], owner: "digest" },
+  // Wire identity frozen at insert (20261020000000, ADR-008): the serializer
+  // reads every identifier's hostname from the row.
+  { table: "events", columns: ["wire_hostname", "wire_process_hostname", "wire_actor_hostname", "wire_ns"], owner: "core/activitySerializer" },
   // Sample content (Phase 7, 20260926040000): every public read filters it.
   { table: "processes", columns: ["is_sample"], owner: "core/sampleContent" },
   { table: "events", columns: ["is_sample"], owner: "core/sampleContent" },
