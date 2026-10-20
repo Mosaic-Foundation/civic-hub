@@ -155,6 +155,7 @@ export function toActivity(
 
   const object = mapping.buildObject(event, data, env);
   const target = mapping.buildTarget?.(event, data, env);
+  const origin = mapping.buildOrigin?.(event, data, env);
   const context = processContext(event, data, env);
   const location = placeOf(event);
   const published = toRfc3339(event.timestamp, event.event_type);
@@ -179,6 +180,7 @@ export function toActivity(
   if (location) activity.location = location;
   if (context) activity.context = context;
   activity.object = object;
+  if (origin !== undefined) activity.origin = origin;
   if (target !== undefined) activity.target = target;
   if (event.action_url) activity.url = event.action_url;
 
@@ -306,6 +308,8 @@ interface ActivityMapping {
     data: Payload,
     env: SerializerEnv,
   ) => unknown | undefined;
+  /** AS2 `origin`, for the one activity that has one (Move). */
+  buildOrigin?: (event: CivicEvent, data: Payload, env: SerializerEnv) => unknown | undefined;
 }
 
 /**
@@ -496,6 +500,18 @@ const ACTIVITY_MAPPINGS: Record<string, ActivityMapping> = {
   "civic.review.withdrawn": {
     type: "Undo",
     buildObject: (e, data, env) => reviewObject(e, data, env),
+  },
+
+  // --- The hub itself -----------------------------------------------------
+  // A hub moved to a new address (ADR-008; Civic Activity Spec §3.3). Pure
+  // AS2: the space DID is the object (and the actor), and the old and new
+  // origins are Links. Everything comes from the stored payload, so the
+  // document never changes after a later move.
+  "civic.hub.moved": {
+    type: "Move",
+    buildObject: (_e, data) => firstString(nested(data, "move")?.space),
+    buildOrigin: (_e, data) => linkTo(nested(data, "move")?.from),
+    buildTarget: (_e, data) => linkTo(nested(data, "move")?.to),
   },
 };
 
@@ -721,6 +737,11 @@ function deliveryTarget(data: Payload): unknown | undefined {
 //
 // Fixed, ordered lookups over the payload shapes the hub's modules actually
 // emit. Ordered so the reading is deterministic when two shapes coexist.
+
+/** An AS2 Link to an address, or undefined when there is none. */
+function linkTo(href: unknown): Record<string, unknown> | undefined {
+  return typeof href === "string" && href ? { type: "Link", href } : undefined;
+}
 
 function nested(data: Payload, key: string): Payload | undefined {
   const value = data[key];

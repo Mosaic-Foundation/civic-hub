@@ -11,6 +11,11 @@ import { envVar, processEnv } from "../config/env.js";
 import { CivicError, codeForStatus } from "../errors/index.js";
 import { DEFAULT_HUB_BANNER } from "../shared/platform.js";
 import { getDb } from "../db/client.js";
+import { eventToRow } from "../events/eventStore.js";
+import { buildEvent } from "../events/eventEmitter.js";
+import { defaultJurisdiction, spaceDid } from "../config/hub.js";
+import { apiOriginFor } from "../utils/baseUrl.js";
+import { inHubScope } from "./inHub.js";
 import { readAll } from "../db/readAll.js";
 import { invalidateHubCache } from "../db/hubs.js";
 import { invalidateHubSettings } from "../db/hubSettingsStore.js";
@@ -790,10 +795,9 @@ export async function updateHubConfig(
   ] as const) {
     if (changes[k] !== undefined) row[k] = changes[k];
   }
-  // The address it leaves keeps working: it redirects here (review R47).
-  if (changes.hostname !== undefined) {
-    row.previous_hostnames = movedHostnames(hub.previous_hostnames ?? [], hub.hostname, changes.hostname);
-  }
+  // A new address is a move: its own transaction, with its Move activity.
+  const moveTo = changes.hostname !== undefined && changes.hostname !== hub.hostname ? changes.hostname : null;
+  delete row.hostname;
   if (Object.keys(row).length > 0) {
     const { error } = await getDb().from("hubs").update(row).eq("id", hub.id);
     if (error) {
@@ -801,6 +805,7 @@ export async function updateHubConfig(
       throw new ControlInputError("The database refused the change, and nothing was saved. The server log has the details.", 409);
     }
   }
+  if (moveTo) await moveHub(hub, moveTo);
   if (changes.hub_kind !== undefined) {
     await writeSettings(hub.id, { [KEYS.IDENTITY_HUB_KIND]: changes.hub_kind }, consoleBy(actor));
   }
@@ -820,6 +825,49 @@ export async function updateHubConfig(
   }
   refreshCaches(hub.id);
   return followOn;
+}
+
+/**
+ * Move a hub to a new hostname (ADR-008). One transaction changes the
+ * hostname, records the old one in previous_hostnames (it keeps answering,
+ * with a redirect and the move signal; review R47) and writes a
+ * `civic.hub.moved` event, served as an AS2 Move. The event is built in the
+ * hub's own scope by buildEvent(), the one emission path, and is minted at
+ * the old address: everything the hub published keeps its identifiers.
+ */
+export async function moveHub(hub: ControlHub, to: string): Promise<void> {
+  const from = hub.hostname;
+  const event = await inHubScope(hub.id, async () => {
+    const target = apiOriginFor(to);
+    return buildEvent({
+      event_type: "civic.hub.moved",
+      actor: spaceDid(),
+      process_id: "",
+      jurisdiction: defaultJurisdiction(),
+      data: { move: { space: spaceDid(), from: apiOriginFor(from), to: target } },
+      action_url_path: target,
+    });
+  });
+  // move_hub_hostname (20261020010000): the event goes in before the
+  // hostname changes, so the wire trigger stamps it with the old one.
+  const { error } = await getDb().rpc("move_hub_hostname", {
+    p_hub_id: hub.id,
+    p_from: from,
+    p_to: to,
+    p_previous_hostnames: movedHostnames(hub.previous_hostnames ?? [], from, to),
+    p_event: eventToRow(event),
+  });
+  if (error) {
+    if (/hub_moved_meanwhile/.test(error.message)) {
+      throw new ControlInputError(
+        "This hub's address changed while you were editing it, and nothing was saved. Reload the page to see its address now.",
+        409,
+      );
+    }
+    console.error(`[control] move of ${hub.id} refused: ${error.message}`);
+    throw new ControlInputError("The database refused the change, and nothing was saved. The server log has the details.", 409);
+  }
+  console.log(`[event] civic.hub.moved by ${event.actor} (${event.id})`);
 }
 
 /** The hub's old addresses after a move from `from` to `to`: `from` added, `to` (moving back) removed. */
