@@ -2,8 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineManifest } from "../../processes/manifest.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
 
 /**
  * What a vote-results record is (src/processes/descriptor.ts). A legacy
@@ -17,7 +16,7 @@ import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
  * Lifecycle: active (created, pending review) to finalized (published); never
  * closed.
  */
-const descriptor: ProcessTypeDescriptor = {
+const descriptor = defineDescriptor({
   type: "civic.vote_results",
   version: "0.1",
   tier: 1,
@@ -39,7 +38,7 @@ const descriptor: ProcessTypeDescriptor = {
   // The pre-brief results record: an Outcome too, listed under Outcomes
   // (the brief's section, whose detail paths include /vote-results/).
   display: { label: "Outcome", plural: "Outcomes", icon: "outcome" },
-};
+});
 
 export const VOTE_RESULTS_MANIFEST = defineManifest({
   descriptor,

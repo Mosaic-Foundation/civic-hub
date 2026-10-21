@@ -4,6 +4,12 @@
  * was written from commit 90d8a1f, before anything was derived; see
  * writeParity.ts there. Kept as a fixture: a manifest change that alters one
  * of these lists must update the fixture by hand, on purpose.
+ *
+ * Changed by hand once, on purpose (2026-10-21, the feature split): PLUGIN_IDS
+ * now has the Plugins section's order (it had its own, which only the
+ * console's plugin checkboxes showed), and the Plugins section's own settings
+ * follow that order (feedback's address before the digest's hour). Same
+ * members, both checked before the change.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

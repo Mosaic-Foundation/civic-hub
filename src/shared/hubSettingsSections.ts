@@ -21,7 +21,9 @@
 //     to a hub (see "The sending domain belongs to the platform" in the build
 //     plan). The Email section shows it read-only.
 
-import { MEETING_CONNECTOR_OPTIONS, NEWS_CONNECTOR_OPTIONS } from "./connectorOptions.js";
+import { MANIFEST_LIST, type ProcessPluginId } from "./processManifests.js";
+import { HUB_FEATURES, type HubFeatureId } from "./hubFeatures.js";
+
 
 export type SettingFieldKind =
   /** One line of plain text. */
@@ -85,29 +87,25 @@ export interface SettingFieldSpec {
 
 export const SETTINGS_SECTION_IDS = ["identity", "copy", "legal", "email", "theme", "plugins"] as const;
 
+/** A `plugin.<id>.` id: a process plugin (from the manifests) or a hub feature. */
+export type PluginId = ProcessPluginId | HubFeatureId;
+
 /**
- * Every plugin id, in the order the Plugins section lists them. The same ids
- * as PLUGIN_IDS in src/models/hubSettings.ts (tests/unit/pluginGate.test.ts
- * holds them equal); repeated here because this file is shared with the UI
- * and imports nothing from the server.
+ * Each plugin's part of the Plugins section, in its order: every process
+ * plugin's (its manifest's pluginSection) and every hub feature's
+ * (src/shared/hubFeatures.ts), on one scale (ADR-009).
  */
-export const PLUGIN_SECTION_ORDER = [
-  "vote",
-  "proposal",
-  "project",
-  "conversation",
-  "wordcloud",
-  "brief",
-  "announcement",
-  "meeting_summary",
-  "news_sync",
-  "assistant",
-  "search",
-  "feedback",
-  "digest",
-  "admin_digest",
-  "members",
-] as const;
+const PLUGIN_SECTIONS: ReadonlyArray<{ id: PluginId; order: number; fields: readonly SettingFieldSpec[] }> = [
+  ...MANIFEST_LIST.flatMap((m) =>
+    m.pluginSection
+      ? [{ id: m.descriptor.plugin as ProcessPluginId, order: m.pluginSection.order, fields: m.pluginSection.fields }]
+      : [],
+  ),
+  ...HUB_FEATURES,
+].sort((x, y) => x.order - y.order);
+
+/** Every plugin id, in the order the Plugins section lists them (and PLUGIN_IDS is). */
+export const PLUGIN_SECTION_ORDER: readonly PluginId[] = PLUGIN_SECTIONS.map((p) => p.id);
 
 export { MEETING_CONNECTOR_OPTIONS, NEWS_CONNECTOR_OPTIONS } from "./connectorOptions.js";
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
@@ -168,33 +166,10 @@ export const SETTINGS_SECTIONS: Readonly<
   // anonymity) are linked from here, never repeated: one writer per key.
   plugins: [
     ...PLUGIN_SECTION_ORDER.map((id) => ({ key: `plugin.${id}.enabled`, kind: "boolean" as const })),
-    { key: "plugin.vote.min_duration_days", kind: "number", min: 1, max: 365 },
-    { key: "plugin.vote.max_duration_days", kind: "number", min: 1, max: 365 },
-    { key: "plugin.vote.default_duration_days", kind: "number", min: 1, max: 365 },
-    { key: "plugin.vote.default_check_mode", kind: "choice", options: ["show_choice", "counted_only"] },
-    { key: "plugin.conversation.polis_url", kind: "url" },
-    { key: "plugin.wordcloud.onboarding_id", kind: "process", processType: "civic.wordcloud" },
-    { key: "plugin.meeting_summary.connector_id", kind: "choice", options: MEETING_CONNECTOR_OPTIONS },
-    { key: "plugin.meeting_summary.source_url", kind: "url" },
-    { key: "plugin.meeting_summary.youtube_channel_id", kind: "text", maxLength: 64 },
-    { key: "plugin.meeting_summary.title_filter", kind: "text", maxLength: 300 },
-    { key: "plugin.meeting_summary.type_exclude", kind: "text", maxLength: 300 },
-    { key: "plugin.meeting_summary.cutoff_date", kind: "date" },
-    { key: "plugin.meeting_summary.auto_publish", kind: "boolean" },
-    { key: "plugin.meeting_summary.extraction_instructions", kind: "textarea", maxLength: 4000 },
-    // Generic meeting summaries (the cleanup slice, 2026-10-16). Empty reads as
-    // the defaults, which are what every hub had before.
-    { key: "plugin.meeting_summary.wix_fields", kind: "wix_fields", maxLength: 300 },
-    { key: "plugin.meeting_summary.record_grace_days", kind: "number", min: 1, max: 120 },
-    { key: "plugin.meeting_summary.source_quiet_days", kind: "number", min: 7, max: 365 },
-    { key: "plugin.news_sync.connector", kind: "choice", options: NEWS_CONNECTOR_OPTIONS },
-    { key: "plugin.news_sync.source_url", kind: "url" },
-    { key: "plugin.digest.send_hour", kind: "hour" },
-    // The address the Feedback page shows (2026-10-08, Adam).
-    { key: "plugin.feedback.contact_email", kind: "email" },
-    // The Members plugin (2026-10-14, Adam).
-    { key: "plugin.members.min_count", kind: "number", min: 0, max: 100000 },
-    { key: "plugin.members.page_before_threshold", kind: "boolean" },
+    // Then each plugin's own settings, in the same order. Settings another
+    // section owns (announcement authors, brief recipients, the support
+    // threshold, comment anonymity) are linked from the page, never repeated.
+    ...PLUGIN_SECTIONS.flatMap((p) => p.fields),
   ],
 };
 

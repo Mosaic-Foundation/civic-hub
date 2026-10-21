@@ -2,8 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineManifest } from "../../processes/manifest.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
 
 /**
  * What a word cloud is (src/processes/descriptor.ts). Residents submit one
@@ -19,7 +18,7 @@ import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
  *
  * Lifecycle: draft, active, closed; it stops at closed.
  */
-const descriptor: ProcessTypeDescriptor = {
+const descriptor = defineDescriptor({
   type: "civic.wordcloud",
   version: "0.1",
   tier: 1,
@@ -96,7 +95,7 @@ const descriptor: ProcessTypeDescriptor = {
     },
   },
   display: { label: "Word cloud", plural: "Word clouds", icon: "wordcloud" },
-};
+});
 
 export const WORDCLOUD_MANIFEST = defineManifest({
   descriptor,

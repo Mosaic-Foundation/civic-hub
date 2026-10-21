@@ -2,8 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineManifest } from "../../processes/manifest.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
 
 /**
  * What an announcement is (src/processes/descriptor.ts). It is published the
@@ -15,7 +14,7 @@ import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
  * Lifecycle: born active and finalized in the same request (the row is never
  * observably active).
  */
-const descriptor: ProcessTypeDescriptor = {
+const descriptor = defineDescriptor({
   type: "civic.announcement",
   version: "0.1",
   tier: 1,
@@ -33,7 +32,7 @@ const descriptor: ProcessTypeDescriptor = {
     create: { path: "/announcement", body: { title: "Conformance announcement", body: "A notice." } },
   },
   display: { label: "Announcement", plural: "Announcements", icon: "announcement" },
-};
+});
 
 export const ANNOUNCEMENT_MANIFEST = defineManifest({
   descriptor,

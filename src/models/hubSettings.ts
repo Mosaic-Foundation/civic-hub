@@ -8,6 +8,9 @@
 // Pure by construction — no database, no request — so CI can test the rules
 // that decide what a hub is allowed to expose.
 
+import { PLUGIN_SECTION_ORDER, type PluginId } from "../shared/hubSettingsSections.js";
+import { HUB_FEATURE_IDS } from "../shared/hubFeatures.js";
+
 /**
  * Every canonical key. Dotted, lowercase, namespaced.
  *
@@ -201,28 +204,22 @@ export const KEYS = {
 
 export type SettingKey = (typeof KEYS)[keyof typeof KEYS] | string;
 
-/** The process registry ids a hub can carry `plugin.<id>.*` settings for. */
-export const PLUGIN_IDS = [
-  "vote",
-  "proposal",
-  "project",
-  "announcement",
-  "brief",
-  "meeting_summary",
-  "wordcloud",
-  "conversation",
-  "assistant",
-  "digest",
-  "admin_digest",
-  "search",
-  "feedback",
-  "news_sync",
-  // The member count, avatar stack and Members page (Adam, 2026-10-14).
-  // Share this hub's invites are the hub's own, not this plugin's.
-  "members",
-] as const;
+/**
+ * The ids a hub can carry `plugin.<id>.*` settings for: every process plugin
+ * (from the process manifests) and every hub feature (src/shared/hubFeatures.ts),
+ * in the Plugins section's order (ADR-009).
+ */
+export const PLUGIN_IDS: readonly PluginId[] = PLUGIN_SECTION_ORDER;
 
-export type PluginId = (typeof PLUGIN_IDS)[number];
+export type { PluginId };
+
+/** The plugins that switch process types on and off (not hub features). */
+export const PROCESS_PLUGIN_IDS: readonly PluginId[] = PLUGIN_IDS.filter((id) => !isHubFeatureId(id));
+
+/** Whether a plugin id names a hub feature rather than a process plugin. */
+export function isHubFeatureId(id: string): boolean {
+  return (HUB_FEATURE_IDS as readonly string[]).includes(id);
+}
 
 export function isPluginId(value: unknown): value is PluginId {
   return typeof value === "string" && (PLUGIN_IDS as readonly string[]).includes(value);

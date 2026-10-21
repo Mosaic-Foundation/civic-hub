@@ -2,8 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineManifest } from "../../processes/manifest.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
 import { MEETING_CONNECTOR_OPTIONS } from "../../shared/connectorOptions.js";
 
 /**
@@ -16,7 +15,7 @@ import { MEETING_CONNECTOR_OPTIONS } from "../../shared/connectorOptions.js";
  *
  * Lifecycle: active (pending review) to finalized (published); never closed.
  */
-const descriptor: ProcessTypeDescriptor = {
+const descriptor = defineDescriptor({
   type: "civic.meeting_summary",
   version: "0.1",
   tier: 1,
@@ -36,7 +35,7 @@ const descriptor: ProcessTypeDescriptor = {
   outside_services: [],
   examples: {},
   display: { label: "Meeting summary", plural: "Meeting summaries", icon: "meeting" },
-};
+});
 
 export const MEETING_SUMMARY_MANIFEST = defineManifest({
   descriptor,

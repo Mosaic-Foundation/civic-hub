@@ -33,7 +33,6 @@
 import { isProductionEnv } from "../config/env.js";
 import { reportError, type ErrorDetails } from "../utils/reportError.js";
 import type { ProcessStatus } from "../models/process.js";
-import type { PluginId } from "../models/hubSettings.js";
 import type { TypeDisplay } from "../shared/typeDisplay.js";
 
 export type { TypeDisplay, TypeSection } from "../shared/typeDisplay.js";
@@ -156,12 +155,12 @@ export interface OutsideService {
   participation: ReadonlyArray<{ method: "POST"; path: string; body: Record<string, unknown> }>;
 }
 
-export interface ProcessTypeDescriptor {
+export interface ProcessTypeDescriptor<P extends string = string> {
   type: string;
   version: string;
   tier: TrustTier;
-  /** The plugin that switches this type on and off on a hub. */
-  plugin: PluginId;
+  /** The plugin that switches this type on and off on a hub (a literal, so PluginId is derived). */
+  plugin: P;
   /** The statuses its own lifecycle uses (HOST_STATES are implied). */
   states: readonly ProcessStatus[];
   /** The status createProcess gives a new one. */

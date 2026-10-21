@@ -15,10 +15,23 @@
 
 import type { ProcessTypeDescriptor } from "./descriptor.js";
 import type { SchemaRequirement } from "../db/schemaContract.js";
-import type { HubJobSpec } from "../jobs/registry.js";
 import type { SettingFieldSpec } from "../shared/hubSettingsSections.js";
 import type { ThemeTypeKey } from "../shared/theme.js";
 import type { ActivityRecipe } from "../shared/activityRecipe.js";
+
+/**
+ * One scheduled job of a type: src/jobs/registry.ts's HubJobSpec, with the
+ * plugin as a plain string (PluginId is derived from the manifests, so it
+ * cannot be used inside one). checkManifests requires it to be the type's.
+ */
+export interface ManifestJob {
+  readonly id: string;
+  readonly plugin: string;
+  readonly path: string;
+  readonly schedule: string;
+  readonly description: string;
+  readonly deprecatedPaths?: readonly string[];
+}
 
 /** One table a type owns beyond `processes`: what a hub export does with it, and its key. */
 export interface TableDeclaration {
@@ -69,7 +82,7 @@ export interface ProcessManifest {
   /** The tables it owns beyond `processes`. */
   tables: readonly TableDeclaration[];
   /** Its scheduled jobs (their `plugin` is the type's plugin). */
-  jobs: readonly HubJobSpec[];
+  jobs: readonly ManifestJob[];
   /** Present on the manifest that owns its plugin. */
   pluginSection?: PluginSection;
   /**
@@ -85,6 +98,15 @@ export interface ProcessManifest {
   legacyActivities?: Readonly<Record<string, ActivityRecipe>>;
   /** Which of its processes GET /process lists to residents. */
   publicListing: PublicListing;
+}
+
+/**
+ * Declare a type's descriptor. Returns it as given, keeping its plugin id as
+ * a literal (PluginId is the union of the manifests' plugins and the hub
+ * features).
+ */
+export function defineDescriptor<const P extends string>(descriptor: ProcessTypeDescriptor<P>): ProcessTypeDescriptor<P> {
+  return descriptor;
 }
 
 /**

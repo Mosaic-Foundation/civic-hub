@@ -143,7 +143,11 @@ const HOST_JOBS: readonly JobSpec[] = [
 ];
 
 /** Every job: each process type's (from its manifest), then the host's. */
-export const JOBS: readonly JobSpec[] = [...MANIFEST_LIST.flatMap((m) => m.jobs), ...HOST_JOBS];
+export const JOBS: readonly JobSpec[] = [
+  // The startup check holds each job's plugin to its type's, a PluginId.
+  ...MANIFEST_LIST.flatMap((m) => m.jobs.map((j) => ({ ...j, plugin: j.plugin as PluginId }))),
+  ...HOST_JOBS,
+];
 
 export function jobById(id: string): JobSpec | undefined {
   return JOBS.find((j) => j.id === id);

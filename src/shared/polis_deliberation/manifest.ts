@@ -3,8 +3,7 @@
 // are built from it. The host wiring (src/processes/deliberationBoot.ts)
 // pairs it with the portable handler (./handler.ts).
 
-import { defineManifest } from "../../processes/manifest.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
 import { DEADLINE_CLOSE_INPUT } from "../deadlineClose.js";
 
 /**
@@ -25,7 +24,7 @@ import { DEADLINE_CLOSE_INPUT } from "../deadlineClose.js";
  * Lifecycle: draft, active, closed. Its brief, when published, finalizes the
  * conversation (finalizeBriefSource), so a published one is finalized.
  */
-const descriptor: ProcessTypeDescriptor = {
+const descriptor = defineDescriptor({
   type: "civic.polis_deliberation",
   version: "0.1",
   tier: 3,
@@ -110,7 +109,7 @@ const descriptor: ProcessTypeDescriptor = {
       order: 10,
     },
   },
-};
+});
 
 export const POLIS_DELIBERATION_MANIFEST = defineManifest({
   descriptor,

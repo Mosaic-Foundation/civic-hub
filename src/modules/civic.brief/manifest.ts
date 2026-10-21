@@ -2,8 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineManifest } from "../../processes/manifest.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
 
 /**
  * What a brief is (src/processes/descriptor.ts). The hub spawns one when a
@@ -15,7 +14,7 @@ import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
  *
  * Lifecycle: active (pending review) to finalized (published); never closed.
  */
-const descriptor: ProcessTypeDescriptor = {
+const descriptor = defineDescriptor({
   type: "civic.brief",
   version: "0.1",
   tier: 1,
@@ -49,7 +48,7 @@ const descriptor: ProcessTypeDescriptor = {
       order: 50,
     },
   },
-};
+});
 
 export const BRIEF_MANIFEST = defineManifest({
   descriptor,

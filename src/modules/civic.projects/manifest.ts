@@ -2,8 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineManifest } from "../../processes/manifest.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
 
 /**
  * What a project is (src/processes/descriptor.ts). Residents say whether they
@@ -16,7 +15,7 @@ import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 /** The views a resident may hold on an active project. */
 export const SENTIMENTS = ["support", "oppose", "neutral"] as const;
 
-const descriptor: ProcessTypeDescriptor = {
+const descriptor = defineDescriptor({
   type: "civic.project",
   version: "0.1",
   tier: 1,
@@ -65,7 +64,7 @@ const descriptor: ProcessTypeDescriptor = {
     icon: "project",
     section: { id: "projects", label: "Projects", path: "/projects", detail_paths: ["/project/"], order: 40 },
   },
-};
+});
 
 export const PROJECT_MANIFEST = defineManifest({
   descriptor,

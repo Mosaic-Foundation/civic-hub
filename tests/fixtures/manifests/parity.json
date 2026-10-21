@@ -3,17 +3,17 @@
     "vote",
     "proposal",
     "project",
-    "announcement",
-    "brief",
-    "meeting_summary",
-    "wordcloud",
     "conversation",
+    "wordcloud",
+    "brief",
+    "announcement",
+    "meeting_summary",
+    "news_sync",
     "assistant",
-    "digest",
-    "admin_digest",
     "search",
     "feedback",
-    "news_sync",
+    "digest",
+    "admin_digest",
     "members"
   ],
   "PROCESS_TYPE_PLUGINS": {
@@ -526,12 +526,12 @@
       "kind": "url"
     },
     {
-      "key": "plugin.digest.send_hour",
-      "kind": "hour"
-    },
-    {
       "key": "plugin.feedback.contact_email",
       "kind": "email"
+    },
+    {
+      "key": "plugin.digest.send_hour",
+      "kind": "hour"
     },
     {
       "key": "plugin.members.min_count",

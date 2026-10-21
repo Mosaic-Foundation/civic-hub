@@ -2,8 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineManifest } from "../../processes/manifest.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
 import { DEADLINE_CLOSE_INPUT } from "../../shared/deadlineClose.js";
 
 /**
@@ -21,7 +20,7 @@ import { DEADLINE_CLOSE_INPUT } from "../../shared/deadlineClose.js";
  * activation) from pending_review, in the same transaction as the approval's
  * status change (src/modules/civic.review/service.ts).
  */
-const descriptor: ProcessTypeDescriptor = {
+const descriptor = defineDescriptor({
   type: "civic.vote",
   version: "0.1",
   tier: 1,
@@ -135,7 +134,7 @@ const descriptor: ProcessTypeDescriptor = {
     icon: "vote",
     section: { id: "votes", label: "Votes", path: "/votes", detail_paths: ["/process/", "/votes/"], order: 30 },
   },
-};
+});
 
 export const VOTE_MANIFEST = defineManifest({
   descriptor,

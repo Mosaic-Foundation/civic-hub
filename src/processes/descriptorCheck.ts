@@ -30,7 +30,7 @@ export const PROCESS_STATUSES: readonly ProcessStatus[] = [
 
 /** What the hub knows that a descriptor is checked against. */
 export interface HostFacts {
-  /** Every plugin id (src/models/hubSettings.ts PLUGIN_IDS). */
+  /** Every process plugin id (src/models/hubSettings.ts PROCESS_PLUGIN_IDS; hub features are not). */
   pluginIds: readonly string[];
   /** Every event type the activity serializer maps (activitySerializer.mappedEventTypes()). */
   mappedEventTypes: readonly string[];
@@ -53,7 +53,7 @@ export function checkDescriptor(handler: ProcessHandler, host: HostFacts): strin
   // Identity and manifest fields.
   if (d.type !== t) add(`descriptor.type is ${d.type}; the handler is ${t}`);
   if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(d.type)) add(`type must be reverse-namespace (vendor.name)`);
-  if (!host.pluginIds.includes(d.plugin)) add(`plugin ${d.plugin} is not a plugin id`);
+  if (!host.pluginIds.includes(d.plugin)) add(`plugin ${d.plugin} is not a process plugin id`);
   if (d.tier === 2) add(`declares tier 2 (sandboxed); no sandbox runtime exists yet, so it cannot run here`);
   if (d.tier === 3 && d.outside_services.length === 0) add(`is tier 3 but declares no outside service`);
   if (d.tier === 1 && d.outside_services.length > 0) add(`is tier 1 but declares an outside service`);

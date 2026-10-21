@@ -34,5 +34,8 @@ export const PROCESS_MANIFESTS = [
 /** The same list, each as a plain ProcessManifest (for reading fields every manifest has). */
 export const MANIFEST_LIST: readonly ProcessManifest[] = PROCESS_MANIFESTS;
 
+/** Every process plugin id: the plugin each manifest's type belongs to. */
+export type ProcessPluginId = (typeof PROCESS_MANIFESTS)[number]["descriptor"]["plugin"];
+
 /** Every table a process type owns, by name. */
 export type ProcessTableName = (typeof PROCESS_MANIFESTS)[number]["tables"][number]["name"];

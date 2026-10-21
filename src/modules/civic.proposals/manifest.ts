@@ -2,8 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineManifest } from "../../processes/manifest.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
 import { DEADLINE_CLOSE_INPUT } from "../../shared/deadlineClose.js";
 
 /**
@@ -14,7 +13,7 @@ import { DEADLINE_CLOSE_INPUT } from "../../shared/deadlineClose.js";
  * Its creation is announced as civic.proposal.submitted and its close as
  * civic.proposal.closed.
  */
-const descriptor: ProcessTypeDescriptor = {
+const descriptor = defineDescriptor({
   type: "civic.proposal",
   version: "0.1",
   tier: 1,
@@ -74,7 +73,7 @@ const descriptor: ProcessTypeDescriptor = {
     icon: "proposal",
     section: { id: "proposals", label: "Proposals", path: "/propose", detail_paths: ["/proposal/"], order: 20 },
   },
-};
+});
 
 export const PROPOSAL_MANIFEST = defineManifest({
   descriptor,

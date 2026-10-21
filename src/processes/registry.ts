@@ -37,6 +37,7 @@ import { PROCESS_MANIFESTS } from "../shared/processManifests.js";
 import { THEME_TYPE_KEYS } from "../shared/theme.js";
 import { checkManifests, ManifestError, type ProcessManifest } from "./manifest.js";
 import { HOST_TABLES } from "../db/forHub.js";
+import { HUB_FEATURE_IDS } from "../shared/hubFeatures.js";
 import { hostMappedEventTypes } from "../events/activitySerializer.js";
 
 // civic.vote_results + civic.announcement + civic.meeting_summary are
@@ -74,7 +75,7 @@ const MANIFESTS = checkManifests(PROCESS_MANIFESTS, {
   colors: THEME_TYPE_KEYS,
   hostActivityTypes: hostMappedEventTypes(),
   hostTables: HOST_TABLES,
-  featureIds: [],
+  featureIds: HUB_FEATURE_IDS,
 });
 
 /** Each manifest with its handler, in the manifests' order; a manifest without one, or a stray handler, stops startup. */
@@ -121,7 +122,8 @@ for (const handler of Object.values(processRegistry)) registerDescriptor(handler
  * record a vote produced, so it belongs to votes.
  */
 export const PROCESS_TYPE_PLUGINS: Readonly<Record<string, PluginId>> = Object.fromEntries(
-  Object.entries(processRegistry).map(([type, handler]) => [type, handler.descriptor.plugin]),
+  // PluginId is the union of the manifests' plugins, so each is one.
+  MANIFESTS.map((m) => [m.descriptor.type, m.descriptor.plugin as PluginId]),
 );
 
 /** A registered type's descriptor. */
