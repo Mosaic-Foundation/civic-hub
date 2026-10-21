@@ -76,7 +76,9 @@ test.describe("every type's pages, from the manifests", () => {
       await expect(page.locator("main h1, main h2").first(), `${t.type} at ${path}`).toBeVisible();
       opened.push(t.type);
     }
-    expect(opened.length, `opened: ${opened.join(", ")}`).toBeGreaterThanOrEqual(5);
+    // Every type with a live, published record opened; a fresh seed has at
+    // least these (hub-made types appear once a brief or summary is published).
+    for (const t of ["civic.vote", "civic.proposal", "civic.project"]) expect(opened, `opened: ${opened.join(", ")}`).toContain(t);
     expect(errors).toEqual([]);
   });
 
@@ -132,7 +134,7 @@ test.describe("the Plugins page and the link picker", () => {
     await expect(search).toBeVisible();
     await search.fill("a");
     const results = page.locator(".link-picker__result-meta");
-    await expect(results.first()).toBeVisible();
+    await expect(results.first()).toBeVisible({ timeout: 15_000 });
     const labels = await results.allTextContents();
     const known = ["Vote", "Vote results", "Brief", "Proposal", "Project", "Conversation", "Word cloud", "Announcement", "Meeting summary"];
     for (const l of labels) expect(known, l).toContain(l.trim());

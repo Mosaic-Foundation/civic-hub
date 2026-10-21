@@ -6,8 +6,9 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ## Architecture 2: a process type is its manifest; the descriptor is served; a read never closes — 2026-10-21
 
-`multi-tenant`, one commit per item (`b90eaed`..the HANDOFF commit), from `90d8a1f`. **No migrations.** Not on
-production. Decision record: ADR-009 at the mono-repo root (`decisions/009-process-manifest.md`). Report and handoff:
+`multi-tenant`, one commit per item (`b90eaed`..the HANDOFF commit), from `90d8a1f`. **No migrations.** **Live on
+dev** (`./scripts/release.sh dev --yes`, health ok; dev's 2,047 events serialize identically under the old and new
+code). Not on production. Decision record: ADR-009 at the mono-repo root (`decisions/009-process-manifest.md`). Report and handoff:
 `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Architecture-2-Session-Report-2026-10-21.md`.
 
 **What changed:**
@@ -45,7 +46,9 @@ the archive names a brief "Brief".
 **Results (local, 2026-10-21):** unit 1,700 (154 files); `npm run build` in ui clean; lint and
 typecheck clean. API, service role: 828 passed in the last full run; its 4 failures were the documented PostgREST
 upstream 502 (`auditConcurrency`, `sampleRefresh`: passed alone), the dashboard's pre-existing order-dependence, and
-one test of mine (fixed, then 8/8). API, minted tokens: 846 passed, 2 failed (the dashboard's, as above). Conformance
+one test of mine (fixed, then 8/8). CI's first run on `b71082e` failed on two of mine, fixed in the next commit: a
+unit test that pulled UI modules into the root typecheck (removed; `ui/src/processes/index.ts` checks the same
+pairing when it loads), and a Playwright spec that expected more seeded types than CI's fresh seed has. API, minted tokens: 846 passed, 2 failed (the dashboard's, as above). Conformance
 inside both. Playwright 164 passed, 2 skipped, no flakes; the new `manifestUi.spec.ts` 5/5.
 
 **For the production release (Adam):** no migrations; `./scripts/release.sh prod` as usual. Then, once production
