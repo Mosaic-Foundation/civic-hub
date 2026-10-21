@@ -66,7 +66,10 @@ beforeAll(async () => {
   residentId = me.body.id ?? me.body.user?.id;
   expect(residentId).toMatch(/^user_/);
   // Every type's plugin on, so no check below passes because a type is off.
-  summariesBefore = (await call("GET", "/hub-config", HOST)).body.settings["plugin.meeting_summary.enabled"] ?? "false";
+  // Unset reads as on (pluginEnabled is `!== "false"`), so restore "true" for
+  // it: restoring "false" left Athens' meeting summaries off for every later
+  // file (Architecture 2 found it through the dashboard's order-dependent fail).
+  summariesBefore = (await call("GET", "/hub-config", HOST)).body.settings["plugin.meeting_summary.enabled"] ?? "true";
   await setPlugins({ "plugin.meeting_summary.enabled": "true" });
 });
 
