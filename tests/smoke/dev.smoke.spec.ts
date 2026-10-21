@@ -204,6 +204,17 @@ test("health is ok with no schema gaps on the hub and the console, never cached,
   expect((await missingRoute.json()).code).toBe("not_found");
 });
 
+test("the hub's DID document answers at its address, read-only (ADR-008)", async ({ request }) => {
+  // Through the public path (vercel.json's rewrite), as a did:web resolver
+  // fetches it. The smoke hub's DID names its own hostname.
+  const res = await request.get(`${baseUrl()}/.well-known/did.json`);
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("application/did+json");
+  const doc = await res.json();
+  expect(doc.id).toBe(`did:web:${new URL(baseUrl()).hostname}`);
+  expect(doc.service.map((s: { serviceEndpoint: string }) => s.serviceEndpoint)).toContain(`${baseUrl()}/events`);
+});
+
 test("a resident and an admin are signed in", async ({ browser }) => {
   const r = await open(browser);
   await visitAs(r, resident);
