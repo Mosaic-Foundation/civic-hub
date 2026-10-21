@@ -7,7 +7,7 @@
 
 import { forHub, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
-import { getAllHandlers, processDetailPath } from "../processes/registry.js";
+import { getAllHandlers, getManifest, processDetailPath } from "../processes/registry.js";
 import { isSubstantiveEdit } from "./processEdits.js";
 import { readAll } from "../db/readAll.js";
 import { inChunks } from "../db/inChunks.js";
@@ -224,14 +224,7 @@ export async function countUnseenEdits(adminId: string, sinceDays = 90): Promise
 }
 
 function friendlyTypeLabel(type: string): string {
-  const map: Record<string, string> = {
-    "civic.vote": "Vote",
-    "civic.proposal": "Proposal",
-    "civic.project": "Project",
-    "civic.polis_deliberation": "Conversation",
-    "civic.brief": "Brief",
-  };
-  return map[type] ?? type.replace(/^civic\./, "").replace(/_/g, " ");
+  return getManifest(type)?.descriptor.display.label ?? type.replace(/^civic\./, "").replace(/_/g, " ");
 }
 
 /** Stamp edits_seen_at = now(), clearing the badge. */

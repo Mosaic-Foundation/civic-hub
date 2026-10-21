@@ -10,6 +10,7 @@
 
 import { participantNoun, type HubKind } from "./hubKind.js";
 import { isJurisdictionType, type JurisdictionType } from "./jurisdictionType.js";
+import { MANIFEST_LIST } from "./processManifests.js";
 
 export interface HubCopyContext {
   kind: HubKind;
@@ -82,7 +83,8 @@ export function fillSampleText(
  * classifier's own pill ("Proposal results"), passed as `fallback`.
  */
 export function briefPillFor(sourceType: string | undefined, boardShort: string, fallback: string): string {
-  if (sourceType !== "civic.vote") return fallback;
+  // Which types' briefs take the hub-worded pill is each manifest's `briefPill`.
+  if (!MANIFEST_LIST.some((m) => m.descriptor.type === sourceType && m.briefPill === "to_board")) return fallback;
   return boardShort.trim() ? `Brief to the ${boardShort.trim()}` : "Brief";
 }
 
