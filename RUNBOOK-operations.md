@@ -45,7 +45,7 @@ passed without one. A `/fail` ping alerts at once. Made by `npm run heartbeats:s
 | `meeting-summary` | `30 11 * * *` | 2 h | meeting summaries |
 | `news-sync` | `0 12 * * *` | 2 h | the news sync |
 | `sample-refresh` | `45 6 * * *` | 2 h | demo hubs' sample refresh |
-| `backup-dump` | `17 */6 * * *` | 1 h | civic-hub-backups `dump.yml` (prod target only) |
+| `backup-dump` | every 6 hours (period, not cron) | 6 h | civic-hub-backups `dump.yml` (prod target only). Scheduled `17 */6 * * *`, but GitHub often starts it 2–4 hours late, so the check alerts only after about 12 hours with no dump (`59098b3`). |
 
 Production only: `CIVIC_HEARTBEAT_PING_KEY` is set on civic-hub's Production environment and nowhere else. A job
 pings when its run for **every** hub finishes: success, or `/fail` when any hub failed or the run threw. A run for one
@@ -135,7 +135,7 @@ next scheduled run tries again. A fail at 3 am that is followed by a success nee
 ### The backup is late (Healthchecks.io: `backup-dump`)
 
 1. GitHub → Mosaic-Foundation/civic-hub-backups → Actions → "Database dump". Did the 00:17 / 06:17 / 12:17 / 18:17 run
-   start?
+   start? (GitHub often starts it hours late; the alert means about 12 hours with no dump.)
    - **Failed:** read its log. RUNBOOK-restore-database.md and the backups README cover the identities and the
      bucket.
    - **Didn't start:** GitHub Actions is down (githubstatus.com), or the workflow was disabled (Actions → Database
