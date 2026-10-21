@@ -23,6 +23,7 @@ import {
   fieldSpec,
 } from "../../src/shared/hubSettingsSections.js";
 import { normalizeValue } from "../../src/models/hubSettingsWrite.js";
+import { MANIFEST_LIST } from "../../src/shared/processManifests.js";
 
 const { PROCESS_TYPE_PLUGINS, registeredProcessTypes } = await import("../../src/processes/registry.js");
 const {
@@ -43,11 +44,16 @@ describe("process types and plugins", () => {
     for (const plugin of Object.values(PROCESS_TYPE_PLUGINS)) expect(PLUGIN_IDS).toContain(plugin);
   });
 
-  it("the UI's copy of the map is the server's", () => {
+  it("the UI keeps no hand map of types to plugins: it reads the manifests", () => {
     const ui = readFileSync(new URL("../../ui/src/config/plugins.tsx", import.meta.url), "utf8");
-    const block = ui.slice(ui.indexOf("PROCESS_TYPE_PLUGINS"), ui.indexOf("};", ui.indexOf("PROCESS_TYPE_PLUGINS")));
-    const pairs = Object.fromEntries([...block.matchAll(/"([a-z._]+)":\s*"([a-z_]+)"/g)].map((m) => [m[1], m[2]]));
-    expect(pairs).toEqual(PROCESS_TYPE_PLUGINS);
+    // No `"civic.<type>": "<plugin>"` pair left in the file, and the map is built from the manifests.
+    expect(ui).not.toMatch(/"civic\.[a-z_]+":\s*"[a-z_]+"/);
+    expect(ui).toContain("processManifests");
+    expect(ui).toContain("MANIFEST_LIST");
+    // So the UI's map is the server's by construction: the same list builds both.
+    expect(
+      Object.fromEntries(MANIFEST_LIST.map((m) => [m.descriptor.type, m.descriptor.plugin])),
+    ).toEqual(PROCESS_TYPE_PLUGINS);
   });
 
   it("a type switched off on Athens cannot be created there, and can on Floyd", () => {

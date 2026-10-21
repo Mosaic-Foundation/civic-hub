@@ -6,6 +6,8 @@ import {
   type RelationType,
 } from "../services/api";
 import "./ProcessLinkPicker.css";
+import { typeName } from "../processes/display";
+import { processUiOf } from "../processes";
 
 /**
  * Search-as-you-type picker for relating one process to another.
@@ -69,14 +71,8 @@ const RELATION_OPTIONS: Array<{
  * from one. Same reasoning as a conversation.
  */
 export function defaultRelationFor(processType?: string): RelationType {
-  switch (processType) {
-    case "civic.project":
-      return "implements";
-    case "civic.vote":
-      return "continues";
-    default:
-      return "references";
-  }
+  // Each type says its own (ui/src/processes/: a project implements, a vote continues).
+  return processUiOf(processType)?.linkRelation ?? "references";
 }
 
 interface Props {
@@ -326,16 +322,5 @@ export default function ProcessLinkPicker({
  * broken or invisible.
  */
 export function friendlyType(type: string): string {
-  const map: Record<string, string> = {
-    "civic.vote": "Vote",
-    "civic.proposal": "Proposal",
-    "civic.project": "Project",
-    "civic.polis_deliberation": "Conversation",
-    "civic.wordcloud": "Word cloud",
-    "civic.announcement": "Announcement",
-    "civic.meeting_summary": "Meeting summary",
-    "civic.vote_results": "Vote results",
-    "civic.brief": "Brief",
-  };
-  return map[type] ?? type.replace(/^civic\./, "").replace(/_/g, " ");
+  return typeName(type);
 }

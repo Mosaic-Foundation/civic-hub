@@ -23,13 +23,13 @@ import "./Brief.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import { heldBackLine, joinNames } from "../services/briefDelivery";
 import AdminArchiveButton from "../components/AdminArchiveButton";
+import { manifestOf, typeName } from "../processes/display";
 
-const SOURCE_NOUN: Record<string, string> = {
-  "civic.polis_deliberation": "conversation",
-  "civic.proposal": "proposal",
-  "civic.vote": "vote",
-  "civic.project": "project",
-};
+// The noun for the source process: its type's name, lowercased, for a type a
+// brief is made for; anything else is a "process".
+function sourceNoun(type: string): string {
+  return manifestOf(type)?.descriptor.brief ? typeName(type).toLowerCase() : "process";
+}
 
 
 /**
@@ -109,7 +109,7 @@ export default function BriefPage() {
     );
   }
 
-  const noun = SOURCE_NOUN[brief.source_process_type] ?? "process";
+  const noun = sourceNoun(brief.source_process_type);
 
   // Split once, so the render can ask whether there is anything to show
   // before committing to a heading.

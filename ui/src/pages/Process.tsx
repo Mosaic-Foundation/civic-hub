@@ -20,6 +20,8 @@ import { statusDisplay } from "../components/statusDisplay";
 import ProcessHeader from "../components/ProcessHeader";
 import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
+import { detailPathOf, pluginOfDetailRoute, pluginOfType } from "../processes/display";
+import { PluginOff, pluginEnabled } from "../config/plugins";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -67,6 +69,11 @@ export default function Process() {
   // Back in view after a while: read it again (a second tab catches up).
   useRefreshOnVisible(() => fetchState(0));
 
+  // With the plugin whose page this is switched off, the route shows what a
+  // switched-off plugin's route shows, as before it stopped being behind it.
+  const routePlugin = pluginOfDetailRoute("/process/");
+  if (routePlugin && !pluginEnabled(routePlugin)) return <PluginOff />;
+
   if (loading) return <p className="detail-page">Loading...</p>;
   if (error) return (
     <div className="page detail-page">
@@ -82,9 +89,14 @@ export default function Process() {
     </div>
   );
 
-  // A proposal's page is /proposal/:id; this generic page once had an
-  // endorsement panel for an older proposal shape that no longer exists.
-  if (process.type === "civic.proposal") return <Navigate to={`/proposal/${process.id}`} replace />;
+  // This is the vote's page (its manifest's detailPath). Any other type has a
+  // page of its own: a proposal's is /proposal/:id, a brief's /brief/:id.
+  // The route is not behind the vote plugin, so the type's own plugin is
+  // checked here once the type is known.
+  const path = detailPathOf(process.type, process.id);
+  if (path !== `/process/${process.id}`) return <Navigate to={path} replace />;
+  const plugin = pluginOfType(process.type);
+  if (plugin && !pluginEnabled(plugin)) return <PluginOff />;
 
   const isVote = process.type === "civic.vote";
   const voteState = isVote ? (process as VoteState) : null;

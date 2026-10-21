@@ -18,23 +18,10 @@
 import type { ReactElement } from "react";
 import { getLoadedHubConfig, setting } from "./hubConfig";
 import { pluginShownGiven, type PluginSetupStatus } from "../../../src/shared/pluginSetup";
+import type { PluginId } from "../../../src/shared/hubSettingsSections";
+import { MANIFEST_LIST } from "../../../src/shared/processManifests";
 
-export type PluginId =
-  | "vote"
-  | "proposal"
-  | "project"
-  | "announcement"
-  | "brief"
-  | "meeting_summary"
-  | "wordcloud"
-  | "conversation"
-  | "assistant"
-  | "digest"
-  | "admin_digest"
-  | "search"
-  | "feedback"
-  | "news_sync"
-  | "members";
+export type { PluginId };
 
 /** On unless the hub switched it off. A config that failed to load means on. */
 export function pluginEnabled(id: PluginId): boolean {
@@ -51,18 +38,10 @@ export function pluginShown(id: PluginId): boolean {
   return pluginShownGiven(id, pluginEnabled(id), getLoadedHubConfig()?.plugin_setup);
 }
 
-/** The plugin a process type belongs to (mirrors PROCESS_TYPE_PLUGINS). */
-const PROCESS_TYPE_PLUGINS: Readonly<Record<string, PluginId>> = {
-  "civic.vote": "vote",
-  "civic.proposal": "proposal",
-  "civic.project": "project",
-  "civic.vote_results": "vote",
-  "civic.brief": "brief",
-  "civic.announcement": "announcement",
-  "civic.meeting_summary": "meeting_summary",
-  "civic.polis_deliberation": "conversation",
-  "civic.wordcloud": "wordcloud",
-};
+/** The plugin a process type belongs to: its manifest's descriptor.plugin. */
+const PROCESS_TYPE_PLUGINS: Readonly<Record<string, PluginId>> = Object.fromEntries(
+  MANIFEST_LIST.map((m) => [m.descriptor.type, m.descriptor.plugin as PluginId]),
+);
 
 export function processTypeEnabled(type: string): boolean {
   const plugin = PROCESS_TYPE_PLUGINS[type];
@@ -76,7 +55,7 @@ export function processTypeShown(type: string): boolean {
 }
 
 /** What a route of a switched-off plugin renders instead of its page. */
-function PluginOff() {
+export function PluginOff() {
   return (
     <main className="page-container" style={{ padding: "48px 16px", textAlign: "center" }}>
       <h1>Page not found</h1>

@@ -1,17 +1,17 @@
 import { Link } from "react-router-dom";
 import type { CivicEvent } from "../services/api";
 import { useIsWideViewport } from "../hooks/useIsWideViewport";
-import hub from "../config/hub";
 import SampleBadge from "./SampleBadge";
 import { typeDisplay } from "../config/navigation";
 import {
-  briefResponseContext,
   classifyActivity,
-  voteResultLine,
   type Activity,
   type ActivityColor,
   type ActivityKind,
 } from "../../../src/shared/feedActivity";
+import { feedKindUi } from "../processes";
+import { relativeTime, summaryFromDescription } from "../processes/feedText";
+import type { CardText } from "../processes/types";
 
 /**
  * Color/label kind for the per-post type pill. Phase 3 — this IS the shared
@@ -144,204 +144,32 @@ export function eventToPost(
 /**
  * Derive the title/summary/author for a card from its classified kind plus the
  * event payload and the lazily-fetched per-process metadata. Pure presentation
- * — the feed-worthiness decision already happened in classifyActivity.
+ * — the feed-worthiness decision already happened in classifyActivity, and
+ * each kind's wording lives with its process type (ui/src/processes/).
  */
 function buildTitleSummary(
   activity: Activity,
   event: CivicEvent,
   getTitle: (id: string) => string | undefined,
   getDescription: (id: string) => string | undefined,
-): {
-  title: string;
-  summary: string;
-  authorName?: string | null;
-  /** Event-derived metadata line. When set, it wins over the Feed
-   *  container's fetched-meta buildEngagement (which knows nothing about
-   *  this event's payload). */
-  engagement?: string | null;
-} {
+): CardText {
   const id = event.process_id;
-  const data = event.data as Record<string, unknown>;
-  const descSummary = summaryFromDescription(getDescription(id));
-
-  switch (activity.kind) {
-    case "vote-open":
-      return { title: getTitle(id) ?? "Untitled vote", summary: descSummary };
-
-    case "vote-closed": {
-      // The vote's own results, posted when it closes. The count of voters
-      // is on the engagement line; the summary is the final count.
-      const line = voteResultLine(data);
-      return {
-        title: getTitle(id) ?? "Vote results",
-        summary: line ? `Voting has closed. Final count: ${line}.` : "Voting has closed. No votes were cast.",
-      };
-    }
-
-    case "vote-results": {
-      const headline =
-        typeof data.headline_result === "string" ? data.headline_result : "";
-      return {
-        title: getTitle(id) ?? "Vote results",
-        // Summary carries context; the participation/comment counts live on
-        // the engagement line so the two don't both say "N residents voted".
-        summary:
-          headline ||
-          (hub.governing_body_short
-            ? `Delivered to the ${hub.governing_body_name || hub.governing_body_short}.`
-            : ""),
-      };
-    }
-
-    case "wordcloud":
-      return { title: getTitle(id) ?? "Word Cloud", summary: descSummary };
-
-    case "announcement":
-    case "announcement-author": {
-      const ann = data.announcement as
-        | { title?: string; author_display_name?: string | null }
-        | undefined;
-      return {
-        title: ann?.title ?? getTitle(id) ?? "Announcement",
-        summary: descSummary,
-        authorName: ann?.author_display_name ?? null,
-      };
-    }
-
-    case "meeting": {
-      const ms = data.meeting_summary as
-        | { meeting_title?: string; meeting_date?: string }
-        | undefined;
-      const meetingDate =
-        ms?.meeting_date ??
-        (typeof data.meeting_date === "string" ? data.meeting_date : "") ??
-        "";
-      const meetingTitle =
-        ms?.meeting_title ??
-        (typeof data.meeting_title === "string" ? data.meeting_title : undefined) ??
-        getTitle(id);
-      const baseTitle = meetingTitle || "Meeting summary";
-      const dateStr = meetingDate ? formatMeetingDate(meetingDate) : "";
-      return { title: dateStr ? `${baseTitle} — ${dateStr}` : baseTitle, summary: "" };
-    }
-
-    case "proposal": {
-      const prop = data.proposal as { title?: string } | undefined;
-      return {
-        title: prop?.title ?? getTitle(id) ?? "New proposal",
-        summary: descSummary,
-      };
-    }
-
-    case "proposal-closed":
-      return { title: getTitle(id) ?? "Proposal", summary: descSummary };
-
-    case "project-created": {
-      const proj = data.project as { title?: string } | undefined;
-      return {
-        title: proj?.title ?? getTitle(id) ?? "New project",
-        summary: descSummary,
-      };
-    }
-
-    case "project-updated":
-      return { title: getTitle(id) ?? "Project update", summary: "" };
-
-    case "conversation": {
-      const proc = data.process as { title?: string } | undefined;
-      return {
-        title: proc?.title ?? getTitle(id) ?? "New conversation",
-        summary: descSummary,
-      };
-    }
-
-    case "conversation-results":
-      return { title: getTitle(id) ?? "Conversation results", summary: descSummary };
-
-    case "brief": {
-      // Rendered from the publish event alone (no metadata fetch): the
-      // process title as the card title, the outcome headline as summary.
-      const brief = (data.brief ?? {}) as { title?: string; headline?: string };
-      return {
-        title: brief.title ?? getTitle(id) ?? "Civic Brief",
-        summary: brief.headline ?? "",
-      };
-    }
-
-    case "brief-response": {
-      // Rendered from the response event alone: the brief's title as the
-      // card title, the official as the byline, and the shared context
-      // line ("Responding to the community's Civic Brief on this …") in
-      // the metadata slot. NO excerpt of the response — a truncated quote
-      // can misrepresent an official statement (Adam, 2026-08-28); the
-      // card links to /brief/:id where every response (including any
-      // collapsed under the 24h anchor) reads in full and in context.
-      const brief = (data.brief ?? {}) as {
-        title?: string;
-        source_process_type?: string;
-      };
-      const response = (data.response ?? {}) as {
-        official_title?: string;
-        responder_name?: string;
-      };
-      const byline = [response.responder_name, response.official_title]
-        .filter((s): s is string => typeof s === "string" && s.length > 0)
-        .join(", ");
-      return {
-        title: brief.title ?? getTitle(id) ?? "Civic Brief",
-        summary: "",
-        authorName: byline || null,
-        engagement: briefResponseContext(brief.source_process_type),
-      };
-    }
-  }
-}
-
-function summaryFromDescription(description: string | undefined): string {
-  if (!description) return "";
-  const firstLine = description.split(/\r?\n/).find((l) => l.trim().length > 0);
-  return firstLine?.trim() ?? "";
-}
-
-/**
- * Format a YYYY-MM-DD (or full ISO) date for feed post titles. Falls back
- * to the raw string if parsing fails, so truncated or malformed dates
- * don't render as "Invalid Date".
- */
-function formatMeetingDate(iso: string): string {
-  if (!iso) return "(date unknown)";
-  const d = iso.includes("T")
-    ? new Date(iso)
-    : new Date(`${iso}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
+  const ui = feedKindUi(activity.kind);
+  // A kind no module claims: no wording to give.
+  if (!ui) return { title: "", summary: "" };
+  return ui.card({
+    activity,
+    event,
+    id,
+    data: event.data as Record<string, unknown>,
+    getTitle,
+    getDescription,
+    descSummary: summaryFromDescription(getDescription(id)),
   });
 }
 
-/**
- * Relative time string per Slice-8 rules. < 7 days renders relative;
- * older renders as an absolute short date (e.g. "Apr 14, 2026"). The
- * full datetime is exposed via the `title` attribute by the caller.
- */
-export function relativeTime(iso: string, now: Date = new Date()): string {
-  const then = new Date(iso);
-  const seconds = Math.round((now.getTime() - then.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  const days = Math.round(hours / 24);
-  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
-  return then.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+// relativeTime lives with the other feed text helpers; re-exported for its callers.
+export { relativeTime };
 
 export function absoluteTime(iso: string): string {
   const d = new Date(iso);

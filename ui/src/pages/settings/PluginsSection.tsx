@@ -23,19 +23,16 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import SectionForm, { type FormApi } from "./SectionForm";
+import SectionForm from "./SectionForm";
 import {
   BooleanField,
   ChoiceField,
-  DateField,
   EmailField,
   HourField,
   NumberField,
-  ProcessField,
-  TextAreaField,
-  TextField,
   UrlField,
-} from "./fields";
+  type FormApi,
+} from "./pluginFields";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
 import hub from "../../config/hub";
 import { feedbackContactEmail } from "../../../../src/shared/platform";
@@ -43,11 +40,12 @@ import { pluginSetup } from "../../config/plugins";
 import { pluginAnchor } from "../../../../src/shared/adminAnchors";
 import { useAnchoredOpen } from "../../hooks/useAnchor";
 import HelpButton from "../../components/HelpButton";
+import { HUB_FEATURES } from "../../../../src/shared/hubFeatures";
+import { pluginHasDeadlines, processPluginCopy } from "../../processes/display";
+import { processSettingsPanel } from "../../processes";
 import {
   adminGetJobRuns,
   adminGetPluginLiveCounts,
-  adminGetSettings,
-  type CommentIdentityMode,
   type MemberSummary,
   getMemberSummary,
   type JobRunRecord,
@@ -56,60 +54,28 @@ import {
 
 type PluginId = (typeof PLUGIN_SECTION_ORDER)[number];
 
-const PLUGINS: Record<PluginId, { name: string; what: string }> = {
-  vote: { name: "Votes", what: "Advisory votes residents propose and cast, with results." },
-  proposal: { name: "Proposals", what: "Ideas residents float for discussion and support." },
-  project: { name: "Projects", what: "Community projects with updates, comments and sentiment." },
-  conversation: { name: "Conversations", what: "Structured group conversations that map where people agree." },
-  wordcloud: { name: "Word clouds", what: "One-word answers gathered into a cloud." },
-  brief: { name: "Briefs", what: "The published record of what residents decided, sent to officials." },
-  announcement: { name: "Announcements", what: "Posts from officials and admins on the feed." },
-  meeting_summary: { name: "Meeting summaries", what: "Plain-language summaries of public meetings, drafted for admin review." },
-  news_sync: { name: "News sync", what: "Posts from your government's own news feed, copied in as announcements." },
-  assistant: { name: "Writing assistant", what: "AI help while drafting a vote, proposal, project or conversation." },
-  search: { name: "Search", what: "Full-text search across everything on the hub." },
-  feedback: { name: "Feedback", what: "A form for residents to report problems or suggest changes." },
-  // Worded from the hub's own noun (place: resident, organization: member,
-  // else participant, or copy.resident_noun); read at render, not at load.
-  digest: {
-    get name() {
-      return `${hub.person_label} digest`;
-    },
-    get what() {
-      return `A summary email of new activity to each ${hub.noun(1)} who has not unsubscribed.`;
-    },
+// What the Plugins page calls each plugin: a process plugin's from its
+// manifest (pluginSection), a hub feature's from src/shared/hubFeatures.ts.
+// The digest alone is worded from the hub's own noun (place: resident,
+// organization: member, else participant, or copy.resident_noun); read at
+// render, not at load.
+const DIGEST_COPY = {
+  get name() {
+    return `${hub.person_label} digest`;
   },
-  admin_digest: {
-    name: "Admin digest",
-    what: "A daily email to admins counting what is new since the last one, with what is waiting beside it. Not sent when nothing is new.",
-  },
-  members: {
-    name: "Members",
-    what: "The member count and faces on the home page, and the Members page. Share this hub stays either way.",
+  get what() {
+    return `A summary email of new activity to each ${hub.noun(1)} who has not unsubscribed.`;
   },
 };
 
-const MEETING_CONNECTOR_LABELS: Record<string, string> = {
-  auto: "Automatic (try each source below)",
-  "wix-cms": "Wix site collection",
-  "minutes-page": "Agendas & minutes page",
-  "youtube-channel": "YouTube channel",
-};
+function pluginCopy(id: PluginId): { name: string; what: string } {
+  if (id === "digest") return DIGEST_COPY;
+  return processPluginCopy(id) ?? HUB_FEATURES.find((f) => f.id === id) ?? { name: id, what: "" };
+}
 
 const NEWS_CONNECTOR_LABELS: Record<string, string> = {
   "wix-cms": "Wix blog feed",
 };
-
-const IDENTITY_MODE_LABELS: Record<CommentIdentityMode, string> = {
-  real_name: "Real names on every comment",
-  anonymous_optional: "Residents may choose to comment anonymously",
-  anonymous_only: "Every comment is anonymous",
-};
-
-// Plugins whose items close at a deadline. The close runs when the item is
-// read, and reads skip a switched-off plugin, so while one of these is off
-// nothing of it closes (Phase 5 part one, step 0.4).
-const HAS_DEADLINES: ReadonlySet<PluginId> = new Set(["vote", "proposal", "conversation"]);
 
 export default function PluginsSection() {
   // Live items per plugin, loaded once. A failed load shows no warning
@@ -185,7 +151,7 @@ function PluginCard({
       id={anchor}
       data-anchor=""
       className={`plugin-card${on ? "" : " plugin-card-off"}${open ? " is-open" : ""}`}
-      aria-label={PLUGINS[id].name}
+      aria-label={pluginCopy(id).name}
     >
       <div className="plugin-card-top">
       <button
@@ -196,22 +162,22 @@ function PluginCard({
         onClick={() => setOpen(!open)}
       >
         <span className="plugin-card-title">
-          <span className="plugin-card-name">{PLUGINS[id].name}</span>
+          <span className="plugin-card-name">{pluginCopy(id).name}</span>
           <span className={`plugin-card-state${on ? " is-on" : ""}`}>{on ? "On" : "Off"}</span>
           {on && setup && <span className="plugin-needs-setup-chip">Needs setup</span>}
         </span>
-        <span className="plugin-card-what">{PLUGINS[id].what}</span>
+        <span className="plugin-card-what">{pluginCopy(id).what}</span>
         <svg className="plugin-card-chevron" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
           <path d="M3.5 5.5L7 9L10.5 5.5" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" />
         </svg>
       </button>
       <span className="plugin-card-help">
-        <HelpButton k={`plugins.${id}`} label={PLUGINS[id].name} />
+        <HelpButton k={`plugins.${id}`} label={pluginCopy(id).name} />
       </span>
       </div>
       {open && (
         <div id={bodyId} className="plugin-card-body">
-          <BooleanField f={f} k={`plugin.${id}.enabled`} label={`${PLUGINS[id].name} on`} />
+          <BooleanField f={f} k={`plugin.${id}.enabled`} label={`${pluginCopy(id).name} on`} />
           {on && setup && <NeedsSetup missing={setup.missing} shown={setup.shown} />}
           {on && <JobRunLines jobs={jobs} plugin={id} />}
           {!on && live > 0 && <LiveItemsWarning id={id} live={live} />}
@@ -317,15 +283,18 @@ function JobRunLine({ entry, labelled }: { entry: JobRunsEntry; labelled: boolea
 }
 
 function LiveItemsWarning({ id, live }: { id: PluginId; live: number }) {
-  const name = PLUGINS[id].name;
+  const name = pluginCopy(id).name;
   const one = live === 1;
+  // A plugin whose items close at a deadline (any of its types has one). A read
+  // never closes anything (since Architecture 2); the hourly job closes them and
+  // skips a switched-off plugin, so while one of these is off nothing of it closes.
   return (
     <p className="plugin-live-warning" role="status">
       <strong>
         {live} live {one ? "item" : "items"}.
       </strong>{" "}
       While {name} is off, {one ? "it is" : "they are"} hidden from residents
-      {HAS_DEADLINES.has(id) ? (
+      {pluginHasDeadlines(id) ? (
         <>
           , and nothing closes at its deadline: anything past its closing time
           stays open until {name} is switched back on, then closes.
@@ -337,223 +306,78 @@ function LiveItemsWarning({ id, live }: { id: PluginId; live: number }) {
   );
 }
 
+// The hub features' own panels. A process plugin's panel comes from its type's
+// module (ui/src/processes/), through processSettingsPanel.
+const FEATURE_PANELS: Partial<Record<PluginId, (f: FormApi) => React.ReactNode>> = {
+  news_sync: (f) => (
+    <>
+      <ChoiceField
+        f={f}
+        k="plugin.news_sync.connector"
+        label="Kind of feed"
+        labels={NEWS_CONNECTOR_LABELS}
+        emptyLabel="Not set up"
+      />
+      <UrlField
+        f={f}
+        k="plugin.news_sync.source_url"
+        label="Feed address"
+        hint="Both must be set for news sync to run. Posts are created as announcements, so Announcements must be on too."
+      />
+    </>
+  ),
+  digest: (f) => (
+    <HourField
+      f={f}
+      k="plugin.digest.send_hour"
+      label="Send time"
+      hint={
+        <>
+          In the hub's time zone, set under{" "}
+          <Link to="/admin/settings/identity">Identity</Link>.
+        </>
+      }
+    />
+  ),
+  feedback: (f) => (
+    <EmailField
+      f={f}
+      k="plugin.feedback.contact_email"
+      label="Address on the Feedback page"
+      placeholder={feedbackContactEmail(undefined, f.data.values["legal.contact_email"])}
+      hint={
+        <>
+          Where the <a href="/feedback" target="_blank" rel="noreferrer">Feedback page</a> tells
+          people to write if they would rather email. Left empty, it shows the contact address
+          under <Link to="/admin/settings/legal">Legal</Link>, or the platform's when that is
+          empty too: the address shown here.
+        </>
+      }
+    />
+  ),
+  members: (f) => (
+    <>
+      <MemberCountLine saved={f.data.values["plugin.members.min_count"] ?? ""} />
+      <NumberField
+        f={f}
+        k="plugin.members.min_count"
+        label="Show members from"
+        unit="members"
+        placeholder="0"
+        hint="Until the hub has this many members, residents see no member count, no faces and no Members page. Admins always see them. Empty or 0 shows them from the first member."
+      />
+      <BooleanField
+        f={f}
+        k="plugin.members.page_before_threshold"
+        label="Show the Members page before then"
+        hint="The page and its place in the menus appear for members now; the count on the home page still waits."
+      />
+    </>
+  ),
+};
+
 function settingsPanel(f: FormApi, id: PluginId): React.ReactNode | null {
-  switch (id) {
-    case "vote":
-      return (
-        <>
-          <p className="form-hint">
-            How long a resident may keep a vote open. The person drafting a vote
-            picks a length within this range; a new draft starts at the default.
-            Leave a box empty to keep today's value.
-          </p>
-          <NumberField f={f} k="plugin.vote.min_duration_days" label="Shortest voting window" unit="days" placeholder="14" />
-          <NumberField f={f} k="plugin.vote.max_duration_days" label="Longest voting window" unit="days" placeholder="90" />
-          <NumberField f={f} k="plugin.vote.default_duration_days" label="Default voting window" unit="days" placeholder="42" />
-          <ChoiceField
-            f={f}
-            k="plugin.vote.default_check_mode"
-            label="Receipt check, for new votes"
-            hint="After a vote closes, anyone with a receipt code can check it. The person drafting a vote can choose the other; it is fixed once the vote is approved."
-            labels={{
-              show_choice: "Show the choice: a code shows how that ballot was cast",
-              counted_only: "Counted only: a code shows only that the ballot was counted",
-            }}
-            emptyLabel="Show the choice (the default)"
-          />
-          <ParticipationValues show="threshold" />
-          <ParticipationValues show="anonymity" />
-        </>
-      );
-    case "proposal":
-      return <ParticipationValues show="anonymity" />;
-    case "conversation":
-      return (
-        <UrlField
-          f={f}
-          k="plugin.conversation.polis_url"
-          label="Conversation server"
-          hint="The address of the Polis server this hub's conversations run on."
-        />
-      );
-    case "wordcloud":
-      return (
-        <ProcessField
-          f={f}
-          k="plugin.wordcloud.onboarding_id"
-          label="The hub's word cloud"
-          hint="Shown in the strip at the top of every page, and where a new account lands after signing up. None hides the strip."
-          create={{
-            to: "/wordcloud/new",
-            label: "Create a word cloud",
-            none: "This hub has no word cloud yet, so the strip is hidden.",
-          }}
-        />
-      );
-    case "brief":
-      return (
-        <p className="form-hint">
-          Who receives a brief is set under{" "}
-          <Link to="/admin/settings/officials">Officials</Link> (brief recipients).
-        </p>
-      );
-    case "announcement":
-      return (
-        <p className="form-hint">
-          Who may post is set under <Link to="/admin/settings/officials">Officials</Link>.
-          Admins can always post.
-        </p>
-      );
-    case "meeting_summary":
-      return (
-        <>
-          <ChoiceField
-            f={f}
-            k="plugin.meeting_summary.connector_id"
-            label="Where meetings come from"
-            labels={MEETING_CONNECTOR_LABELS}
-            emptyLabel="Automatic (the default)"
-          />
-          <UrlField
-            f={f}
-            k="plugin.meeting_summary.source_url"
-            label="Meetings page"
-            hint="Your government's agendas and minutes page."
-          />
-          <TextField
-            f={f}
-            k="plugin.meeting_summary.youtube_channel_id"
-            label="YouTube channel ID"
-            width={260}
-            hint="For meetings published as videos. The ID starts with UC."
-          />
-          <TextField
-            f={f}
-            k="plugin.meeting_summary.title_filter"
-            label="Only meetings whose title contains"
-            hint="Comma-separated. Empty takes every meeting."
-          />
-          <TextField
-            f={f}
-            k="plugin.meeting_summary.type_exclude"
-            label="Skip meetings whose title contains"
-            hint="Comma-separated, e.g. a board this hub does not cover."
-          />
-          <DateField
-            f={f}
-            k="plugin.meeting_summary.cutoff_date"
-            label="Ignore meetings before"
-            hint="Empty summarizes every meeting found."
-          />
-          <BooleanField
-            f={f}
-            k="plugin.meeting_summary.auto_publish"
-            label="Publish summaries without review"
-            hint="Off: each summary waits for an admin under Meeting summaries."
-          />
-          <NumberField
-            f={f}
-            k="plugin.meeting_summary.record_grace_days"
-            label="Wait for a meeting's record"
-            unit="days"
-            placeholder="14"
-            hint="How long a listed meeting may wait for its minutes or transcript before the admins are told."
-          />
-          <NumberField
-            f={f}
-            k="plugin.meeting_summary.source_quiet_days"
-            label="Ask for a check after no new meeting for"
-            unit="days"
-            placeholder="45"
-            hint="Longer for a body that meets less than monthly."
-          />
-          <TextField
-            f={f}
-            k="plugin.meeting_summary.wix_fields"
-            label="Wix collection columns"
-            hint="Only for a Wix site whose columns differ, e.g. date=meetingDate, minutes=minutesPdf. Empty uses the usual ones."
-          />
-          <TextAreaField
-            f={f}
-            k="plugin.meeting_summary.extraction_instructions"
-            label="Extra instructions for the summarizer"
-            rows={4}
-            hint="Optional. Added to the standard instructions, e.g. which topics residents care about most."
-          />
-        </>
-      );
-    case "news_sync":
-      return (
-        <>
-          <ChoiceField
-            f={f}
-            k="plugin.news_sync.connector"
-            label="Kind of feed"
-            labels={NEWS_CONNECTOR_LABELS}
-            emptyLabel="Not set up"
-          />
-          <UrlField
-            f={f}
-            k="plugin.news_sync.source_url"
-            label="Feed address"
-            hint="Both must be set for news sync to run. Posts are created as announcements, so Announcements must be on too."
-          />
-        </>
-      );
-    case "digest":
-      return (
-        <HourField
-          f={f}
-          k="plugin.digest.send_hour"
-          label="Send time"
-          hint={
-            <>
-              In the hub's time zone, set under{" "}
-              <Link to="/admin/settings/identity">Identity</Link>.
-            </>
-          }
-        />
-      );
-    case "feedback":
-      return (
-        <EmailField
-          f={f}
-          k="plugin.feedback.contact_email"
-          label="Address on the Feedback page"
-          placeholder={feedbackContactEmail(undefined, f.data.values["legal.contact_email"])}
-          hint={
-            <>
-              Where the <a href="/feedback" target="_blank" rel="noreferrer">Feedback page</a> tells
-              people to write if they would rather email. Left empty, it shows the contact address
-              under <Link to="/admin/settings/legal">Legal</Link>, or the platform's when that is
-              empty too: the address shown here.
-            </>
-          }
-        />
-      );
-    case "members":
-      return (
-        <>
-          <MemberCountLine saved={f.data.values["plugin.members.min_count"] ?? ""} />
-          <NumberField
-            f={f}
-            k="plugin.members.min_count"
-            label="Show members from"
-            unit="members"
-            placeholder="0"
-            hint="Until the hub has this many members, residents see no member count, no faces and no Members page. Admins always see them. Empty or 0 shows them from the first member."
-          />
-          <BooleanField
-            f={f}
-            k="plugin.members.page_before_threshold"
-            label="Show the Members page before then"
-            hint="The page and its place in the menus appear for members now; the count on the home page still waits."
-          />
-        </>
-      );
-    default:
-      return null;
-  }
+  return processSettingsPanel(id, f) ?? FEATURE_PANELS[id]?.(f) ?? null;
 }
 
 /**
@@ -573,53 +397,5 @@ function MemberCountLine({ saved }: { saved: string }) {
       This hub has {summary.count.toLocaleString()} {summary.count === 1 ? "member" : "members"}
       {summary.shown === false ? "; residents don't see the count yet." : "; residents see the count."}
     </p>
-  );
-}
-
-/**
- * The support threshold and comment anonymity, read-only, from their one
- * writer (Participation). Loaded once per page; a failed read says so rather
- * than showing a guess.
- */
-let participationCache: Promise<{ threshold: number; mode: CommentIdentityMode }> | null = null;
-
-function ParticipationValues({ show }: { show: "threshold" | "anonymity" }) {
-  const [values, setValues] = useState<{ threshold: number; mode: CommentIdentityMode } | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    participationCache ??= adminGetSettings().then((s) => ({
-      threshold: s.support_threshold,
-      mode: s.comment_identity_mode,
-    }));
-    participationCache.then(setValues).catch(() => {
-      participationCache = null;
-      setFailed(true);
-    });
-  }, []);
-
-  const label = show === "threshold" ? "Endorsements before a vote opens" : "Comment anonymity";
-  const value = failed
-    ? "Could not load"
-    : !values
-      ? "…"
-      : show === "threshold"
-        ? values.threshold === 0
-          ? "None — approved votes open directly"
-          : String(values.threshold)
-        : IDENTITY_MODE_LABELS[values.mode] ?? values.mode;
-
-  return (
-    <div className="settings-field">
-      <span className="form-label settings-field-label">{label}</span>
-      <p className="settings-readonly">
-        {value}{" "}
-        <Link to="/admin/settings/participation" className="plugin-change-link">
-          Change in Participation
-        </Link>
-      </p>
-      {show === "anonymity" && (
-        <p className="form-hint">Applies to comments everywhere on the hub, not only here.</p>
-      )}
-    </div>
   );
 }

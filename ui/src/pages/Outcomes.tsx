@@ -8,6 +8,7 @@ import "./Outcomes.css";
 // never drift in style — see .feed-filter-pill--type-* in FeedFilter.css.
 import "../components/FeedFilter.css";
 import SampleBadge from "../components/SampleBadge";
+import { briefColorSlug } from "../processes/display";
 
 /**
  * Outcomes — the public archive of every completed civic process.
@@ -173,7 +174,8 @@ export default function Outcomes() {
 
 
 /**
- * Slug for the source process type, used to color a row.
+ * Slug for the source process type, used to color a row: the colour its
+ * manifest gives its Civic Brief (ui/src/processes/display.ts).
  *
  * The palette is the SAME one the feed uses (--pill-<slug>-* in theme.css), so
  * a proposal outcome here reads the same purple as a proposal card in the
@@ -181,22 +183,7 @@ export default function Outcomes() {
  * unstyled row — a process type registered later looks plain here, never
  * broken.
  */
-function typeSlug(processType: string): string {
-  switch (processType) {
-    case "civic.vote":
-      return "vote";
-    case "civic.proposal":
-      return "proposal";
-    case "civic.polis_deliberation":
-      return "conversation";
-    case "civic.project":
-      return "project";
-    case "civic.wordcloud":
-      return "wordcloud";
-    default:
-      return "generic";
-  }
-}
+const typeSlug = briefColorSlug;
 
 function OutcomeRow({ outcome }: { outcome: OutcomeEntry }) {
   const published = new Date(outcome.published_at);

@@ -13,20 +13,11 @@ import { adminListArchived, adminRestoreProcess } from "../services/api";
 import type { ArchivedProcess } from "../services/api";
 import AdminTabs from "../components/AdminTabs";
 import "./AdminArchived.css";
+import { typeName } from "../processes/display";
 
-const TYPE_LABELS: Record<string, string> = {
-  "civic.vote": "Vote",
-  "civic.proposal": "Proposal",
-  "civic.polis_deliberation": "Conversation",
-  "civic.project": "Project",
-  "civic.meeting_summary": "Meeting summary",
-  "civic.announcement": "Announcement",
-  "civic.wordcloud": "Word cloud",
-  "civic.vote_results": "Vote results",
-};
-
+// From the type's manifest; an unknown type reads as its id made legible.
 function typeLabel(type: string): string {
-  return TYPE_LABELS[type] ?? type;
+  return typeName(type);
 }
 
 function formatTimestamp(iso: string): string {

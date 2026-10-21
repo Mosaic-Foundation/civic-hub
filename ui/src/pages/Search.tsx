@@ -12,6 +12,7 @@ import { relativeTime, absoluteTime } from "../components/FeedPost";
 import hub, { meetingSummaryLabel } from "../config/hub";
 import { processTypeShown } from "../config/plugins";
 import { searchChipsShown } from "../config/pluginRules";
+import { feedColorSlug, manifestOf, typeName } from "../processes/display";
 // FeedFilter.css carries the .feed-filter-pill--<kind> rules we
 // reuse for the post-type filter row on this page. Imported here
 // since Search doesn't render <FeedFilter> directly.
@@ -79,32 +80,15 @@ function fromIsoToBucket(from: string | null): DateBucket {
   return "year";
 }
 
-// Every type search can return (2026-10-07): a type missing here showed as
-// "Post", which is how a brief came to read like a stray post. The classes
-// are the feed's own type colours.
-const TYPE_PILL_LABELS: Record<string, string> = {
-  "civic.vote": "Vote",
-  "civic.vote_results": "Vote results",
-  "civic.brief": "Brief",
-  "civic.proposal": "Proposal",
-  "civic.project": "Project",
-  "civic.polis_deliberation": "Conversation",
-  "civic.wordcloud": "Word cloud",
-  "civic.announcement": "Announcement",
-  "civic.meeting_summary": "Meeting summary",
-};
+// Read from the type's manifest (ui/src/processes/display.ts); a type this
+// build has no manifest for shows as "Post", with no colour class.
+function typePillLabel(type: string): string {
+  return manifestOf(type) ? typeName(type) : "Post";
+}
 
-const TYPE_PILL_CLASSES: Record<string, string> = {
-  "civic.vote": "feed-pill--type-vote",
-  "civic.vote_results": "feed-pill--type-vote",
-  "civic.brief": "feed-pill--type-generic",
-  "civic.proposal": "feed-pill--type-proposal",
-  "civic.project": "feed-pill--type-project",
-  "civic.polis_deliberation": "feed-pill--type-conversation",
-  "civic.wordcloud": "feed-pill--type-wordcloud",
-  "civic.announcement": "feed-pill--type-announcement",
-  "civic.meeting_summary": "feed-pill--type-meeting",
-};
+function typePillClass(type: string): string {
+  return manifestOf(type) ? `feed-pill--type-${feedColorSlug(type)}` : "";
+}
 
 /**
  * A result's heading. A brief carries its source's title (spawnBrief), so it
@@ -112,7 +96,8 @@ const TYPE_PILL_CLASSES: Record<string, string> = {
  * the Supervisors: <title>", as the brief page does.
  */
 function hitTitle(hit: SearchHit): string {
-  if (hit.type !== "civic.brief") return hit.title;
+  // A type that summarizes another process (a brief) carries its source's title.
+  if (!manifestOf(hit.type)?.summarizes) return hit.title;
   const short = hub.governing_body_short;
   return short ? `Brief to the ${short}: ${hit.title}` : `Brief: ${hit.title}`;
 }
@@ -453,8 +438,8 @@ function SearchBody({
 }
 
 function ResultCard({ hit }: { hit: SearchHit }) {
-  const pillLabel = hit.type === "civic.meeting_summary" ? meetingSummaryLabel(false) : (TYPE_PILL_LABELS[hit.type] ?? "Post");
-  const pillClass = TYPE_PILL_CLASSES[hit.type] ?? "";
+  const pillLabel = hit.type === "civic.meeting_summary" ? meetingSummaryLabel(false) : typePillLabel(hit.type);
+  const pillClass = typePillClass(hit.type);
   return (
     <Link to={hit.href} className="search-page-card">
       <div className="search-page-card-head">

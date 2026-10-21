@@ -28,6 +28,7 @@ import {
 } from "../../../src/shared/officialTypes";
 // Reuse the vote-results admin styles — same layout language.
 import "./AdminVoteResults.css";
+import { manifestOf, typeName } from "../processes/display";
 
 const STATUS_FILTERS: Array<{ id: "all" | BriefPublicationStatus; label: string }> = [
   { id: "all", label: "All" },
@@ -38,15 +39,9 @@ const STATUS_FILTERS: Array<{ id: "all" | BriefPublicationStatus; label: string 
 
 // Human labels for the source process type, shown as a small tag on each
 // brief so the admin can tell a conversation brief from a vote brief.
-const SOURCE_LABELS: Record<string, string> = {
-  "civic.polis_deliberation": "Conversation",
-  "civic.proposal": "Proposal",
-  "civic.vote": "Vote",
-  "civic.project": "Project",
-};
-
 function sourceLabel(type: string): string {
-  return SOURCE_LABELS[type] ?? "Process";
+  // Only a type a brief is made for has a label here; anything else is a "Process".
+  return manifestOf(type)?.descriptor.brief ? typeName(type) : "Process";
 }
 
 /** Display label for a roster official: "Jane Doe, Board of Supervisors"
