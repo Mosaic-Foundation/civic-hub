@@ -15,6 +15,12 @@ const mocks = vi.hoisted(() => ({
   getHubBySlug: vi.fn(),
   getHubByPreviousHostname: vi.fn(),
   fetchHubSettings: vi.fn(),
+  getLatestMove: vi.fn(),
+}));
+
+// The tombstone names the hub's Move activity, read from its event log.
+vi.mock("../../src/events/eventStore.js", () => ({
+  getLatestMove: mocks.getLatestMove,
 }));
 
 vi.mock("../../src/db/hubs.js", () => ({
@@ -408,6 +414,75 @@ describe("moved hubs", () => {
     await resolveHub(req, res as never, vi.fn());
     expect(res.state.statusCode).toBe(404);
     expect(res.state.body).toEqual({ error: "This hub has moved to a new address.", code: "hub_moved", location: "https://athens.civic.social" });
+  });
+
+  it("keeps a redirect machine-readable: a Link to the old address's tombstone", async () => {
+    mocks.getHubByPreviousHostname.mockResolvedValue(moved());
+    const req = fakeReq({ host: "athens-demo.civic.social", path: "/activities/evt_1", url: "/activities/evt_1" });
+    const res = fakeRes();
+    await resolveHub(req, res as never, vi.fn());
+    expect(res.state.redirect).toEqual({ status: 301, location: "https://athens.civic.social/activities/evt_1" });
+    expect(res.state.headers.link).toBe(
+      '<https://athens-demo.civic.social/.well-known/civic.json>; rel="https://www.civic.social/ns/civic-hub#moved"',
+    );
+  });
+
+  it("answers the old address's civic.json with a moved tombstone naming the Move", async () => {
+    mocks.getHubByPreviousHostname.mockResolvedValue(moved());
+    mocks.getLatestMove.mockResolvedValue({
+      id: "evt_move",
+      timestamp: "2026-10-20T12:00:00+00:00",
+      data: { move: { to: "https://athens.civic.social" } },
+      wire: { hostname: "athens-demo.civic.social", process_hostname: "athens-demo.civic.social", actor_hostname: "athens-demo.civic.social", ns: null },
+    });
+    const req = fakeReq({ host: "athens-demo.civic.social", path: "/.well-known/civic.json" });
+    const res = fakeRes();
+    await resolveHub(req, res as never, vi.fn());
+    expect(res.state.redirect).toBeNull();
+    expect(res.state.body).toEqual({
+      name: "Floyd Civic Hub",
+      moved: {
+        to: "https://athens.civic.social/.well-known/civic.json",
+        origin: "https://athens.civic.social",
+        space: "did:web:floyd.civic.social",
+        activity: "https://athens-demo.civic.social/activities/evt_move",
+        published: "2026-10-20T12:00:00+00:00",
+      },
+    });
+  });
+
+  it("names no Move when the log has none for this address, and still answers", async () => {
+    mocks.getHubByHostname.mockResolvedValue(hub({ redirect_to: "https://civic.example.org/" }));
+    mocks.getLatestMove.mockRejectedValue(new Error("log unreadable"));
+    const req = fakeReq({ host: "floyd.civic.social", path: "/.well-known/civic.json" });
+    const res = fakeRes();
+    await resolveHub(req, res as never, vi.fn());
+    expect((res.state.body as { moved: { activity: unknown; to: string } }).moved).toMatchObject({
+      to: "https://civic.example.org/.well-known/civic.json",
+      activity: null,
+    });
+  });
+
+  it("keeps serving the DID document at the address its DID names, pointing at the new one", async () => {
+    mocks.getHubByPreviousHostname.mockResolvedValue({ ...moved(), space_did: "did:web:athens-demo.civic.social" });
+    const req = fakeReq({ host: "athens-demo.civic.social", path: "/.well-known/did.json" });
+    const res = fakeRes();
+    await resolveHub(req, res as never, vi.fn());
+    expect(res.state.redirect).toBeNull();
+    const doc = JSON.parse(res.state.body as string) as { id: string; service: Array<{ serviceEndpoint: string }> };
+    expect(doc.id).toBe("did:web:athens-demo.civic.social");
+    expect(doc.service.map((s) => s.serviceEndpoint)).toEqual([
+      "https://athens.civic.social/.well-known/civic.json",
+      "https://athens.civic.social/events",
+    ]);
+  });
+
+  it("redirects did.json from an old address its DID does not name", async () => {
+    mocks.getHubByPreviousHostname.mockResolvedValue(moved());
+    const req = fakeReq({ host: "athens-demo.civic.social", path: "/.well-known/did.json", url: "/.well-known/did.json" });
+    const res = fakeRes();
+    await resolveHub(req, res as never, vi.fn());
+    expect(res.state.redirect?.status).toBe(301);
   });
 
   it("still says no hub for an address nobody used", async () => {

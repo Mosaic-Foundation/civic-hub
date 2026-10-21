@@ -24,6 +24,10 @@ import { getHubByHostname, getHubByPreviousHostname, getHubBySlug } from "../db/
 import { fetchHubSettings, HubSettingsUnavailableError } from "../db/hubSettingsStore.js";
 import { runWithHub } from "../config/hubContext.js";
 import { isLocalHostname } from "../models/hub.js";
+import { getLatestMove } from "../events/eventStore.js";
+import { activityIdOf } from "../events/activitySerializer.js";
+import { DID_JSON, didDocument, hubDidIsServedOn, movedLinkHeader, movedManifest } from "../events/hubIdentity.js";
+import { apiOriginFor } from "../utils/baseUrl.js";
 import { DEAD_ENDS, DEAD_END_STYLE } from "../shared/deadEnd.js";
 import {
   isWellFormedHubSlug,
@@ -213,13 +217,45 @@ function requestedPath(req: Request): string {
  * `hub_moved` with the new origin, and the page sends itself there
  * (ui/src/main.tsx).
  */
-function sendMoved(req: Request, res: Response, origin: string): void {
+async function sendMoved(req: Request, res: Response, hub: Hub, arrivedOn: string, origin: string): Promise<void> {
+  const reading = req.method === "GET" || req.method === "HEAD";
+  // The move signal (ADR-008). The old address keeps serving the hub's DID
+  // document when its DID names this address, so the identity resolves after
+  // the move, and its civic.json becomes a `moved` tombstone.
+  if (reading && req.path === "/.well-known/did.json" && hubDidIsServedOn(hub, arrivedOn)) {
+    res.setHeader("Content-Type", `${DID_JSON}; charset=utf-8`);
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.send(JSON.stringify(didDocument(hub, origin)));
+    return;
+  }
+  if (reading && req.path === "/.well-known/civic.json") {
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.json(movedManifest(hub, origin, await moveActivity(hub, origin)));
+    return;
+  }
   if (req.path === "/hub-config" && prefersJson(req)) {
     res.status(404).json({ error: "This hub has moved to a new address.", code: "hub_moved", location: origin });
     return;
   }
-  const status = req.method === "GET" || req.method === "HEAD" ? 301 : 308;
-  res.redirect(status, `${origin}${requestedPath(req)}`);
+  res.setHeader("Link", movedLinkHeader(apiOriginFor(arrivedOn)));
+  res.redirect(reading ? 301 : 308, `${origin}${requestedPath(req)}`);
+}
+
+/**
+ * The Move activity that took the hub to `origin`, for its tombstone: null
+ * when there is none (a hand-set redirect_to) or the log cannot be read,
+ * which must not stop the tombstone from answering.
+ */
+async function moveActivity(hub: Hub, origin: string): Promise<{ activity: string; published: string } | null> {
+  try {
+    const move = await getLatestMove(hub.id);
+    const to = (move?.data.move as { to?: unknown } | undefined)?.to;
+    if (!move || to !== origin) return null;
+    return { activity: activityIdOf(move), published: move.timestamp };
+  } catch (err) {
+    console.error(`[hub] move activity for ${hub.id} unreadable: ${err instanceof Error ? err.message : String(err)}`);
+    return null;
+  }
 }
 
 /** Resolve without deciding what to do about the result. Exported for tests. */
@@ -282,8 +318,8 @@ export async function resolveHub(
 
   if (!hub) {
     const origin = moved ? movedOrigin(moved, hostname) : null;
-    if (origin) {
-      sendMoved(req, res, origin);
+    if (moved && origin) {
+      await sendMoved(req, res, moved, hostname, origin);
       return;
     }
     sendNoHub(req, res);
@@ -291,7 +327,7 @@ export async function resolveHub(
   }
   const away = hub.redirect_to ? movedOrigin(hub, hostname) : null;
   if (away) {
-    sendMoved(req, res, away);
+    await sendMoved(req, res, hub, hostname, away);
     return;
   }
   if (hub.status === "suspended") {

@@ -336,6 +336,22 @@ export async function countEvents(query: EventCountQuery = {}): Promise<number> 
 }
 
 /** Public wire only: a sample event is not public record, so it is not found. */
+/**
+ * The hub's latest Move (`civic.hub.moved`), for the tombstone its old
+ * address serves (ADR-008). Takes the hub id: the resolver asks before any
+ * hub is in scope, because the request arrived on an address the hub left.
+ */
+export async function getLatestMove(hubId: string): Promise<CivicEvent | null> {
+  const rows = await forHub(hubId)
+    .from("events")
+    .select<EventRow>("*")
+    .eq("event_type", "civic.hub.moved")
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(1);
+  return rows[0] ? rowToEvent(rows[0]) : null;
+}
+
 export async function getEventById(id: string): Promise<CivicEvent | null> {
   const data = await db()
     .from("events")

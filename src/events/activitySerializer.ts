@@ -165,7 +165,7 @@ export function toActivity(
   // what makes the output byte-stable.
   const activity: Record<string, unknown> = {
     "@context": contextFor(usesHubTerms(object) || usesHubTerms(target), env.ns),
-    id: `${env.base}/activities/${event.id}`,
+    id: activityIdOf(event),
     type: mapping.type,
     actor: wire.actorIriOverride ?? actorIri(event.actor, env),
     published,
@@ -284,6 +284,11 @@ export function wireOrigins(event: CivicEvent): {
   const api = hostname ? apiOriginFor(hostname) : baseUrl();
   const ui = hostname ? uiOriginFor(hostname) : uiBaseUrl();
   return { api, ui, processUi: ui, actorUi: ui, ns: HUB_EXTENSION_NS };
+}
+
+/** An activity's id: minted on the origin its row froze (ADR-008). */
+export function activityIdOf(event: CivicEvent): string {
+  return `${wireOrigins(event).api}/activities/${event.id}`;
 }
 
 function serializerEnv(event: CivicEvent): SerializerEnv {
