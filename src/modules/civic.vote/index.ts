@@ -43,7 +43,7 @@ export type { VotingMethod, Ballot } from "./methods.js";
 // Static metadata describing the civic.vote process type, its lifecycle,
 // available actions, and configuration schema. Exposed for discovery endpoints.
 
-// What this type is: VOTE_DESCRIPTOR in src/processes/voteProcess.ts.
+// What this type is: VOTE_DESCRIPTOR in src/modules/civic.vote/handler.ts.
 
 /**
  * Default voting window (30 days) when a caller doesn't specify one. Owned by

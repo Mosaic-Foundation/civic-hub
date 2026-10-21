@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { buildSystemPrompt } from "../../src/modules/civic.assistant/systemPrompt";
-import { proposalAssistantConfig } from "../../src/processes/proposalAssistantConfig";
+import { proposalAssistantConfig } from "../../src/modules/civic.proposals/assistantConfig";
 import { deliberationAssistantConfig } from "../../src/processes/deliberationAssistantConfig";
-import { voteAssistantConfig } from "../../src/processes/voteAssistantConfig";
-import { projectAssistantConfig } from "../../src/processes/projectAssistantConfig";
+import { voteAssistantConfig } from "../../src/modules/civic.vote/assistantConfig";
+import { projectAssistantConfig } from "../../src/modules/civic.projects/assistantConfig";
 
 const hub = { hub_name: "Test Hub", community_description: "a test community", code_of_conduct: "" };
 

@@ -6,7 +6,7 @@
 
 import { forHub } from "../src/db/forHub.js";
 import { getProcess } from "../src/services/processService.js";
-import proposalAdapter from "../src/processes/proposalAdapter.js";
+import proposalAdapter from "../src/modules/civic.proposals/handler.js";
 import {
   createProposal,
   supportProposal,

@@ -9,10 +9,10 @@
 // so the registry can initialize state and produce read models alongside
 // other process types.
 
-import { ValidationError } from "../errors/index.js";
-import type { Process, ProcessAction } from "../models/process.js";
-import type { ProcessHandler } from "./types.js";
-import type { ProcessTypeDescriptor } from "./descriptor.js";
+import { ValidationError } from "../../errors/index.js";
+import type { Process, ProcessAction } from "../../models/process.js";
+import type { ProcessHandler } from "../../processes/types.js";
+import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 import {
   createMeetingSummaryState,
   getPublicReadModel,
@@ -20,7 +20,7 @@ import {
   type CreateMeetingSummaryInput,
   type MeetingSourceType,
   type MeetingSummaryProcessState,
-} from "../modules/civic.meeting_summary/index.js";
+} from "./index.js";
 
 function getState(process: Process): MeetingSummaryProcessState {
   return process.state as unknown as MeetingSummaryProcessState;

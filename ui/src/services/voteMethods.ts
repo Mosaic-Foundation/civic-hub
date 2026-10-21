@@ -1,7 +1,7 @@
 /**
  * Which extra assistant fields each voting method needs, beyond the shared
  * title / description / sources. Mirrors VOTE_METHOD_EXTRA_FIELDS in
- * src/processes/voteAssistantConfig.ts (the ui and the server are separate
+ * src/modules/civic.vote/assistantConfig.ts (the ui and the server are separate
  * builds; keep the two in step). Drives which help chips a vote shows and
  * which suggestion fields can be applied. A method added later declares its
  * own line here and on the server, and is handled everywhere.

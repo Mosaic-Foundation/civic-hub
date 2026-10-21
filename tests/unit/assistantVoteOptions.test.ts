@@ -11,7 +11,7 @@ import { describe, it, expect } from "vitest";
 import {
   voteAssistantConfig,
   VOTE_METHOD_EXTRA_FIELDS,
-} from "../../src/processes/voteAssistantConfig";
+} from "../../src/modules/civic.vote/assistantConfig";
 import { buildRespondTool } from "../../src/modules/civic.assistant/service";
 import { buildSystemPrompt } from "../../src/modules/civic.assistant/systemPrompt";
 import type { DraftState, HubConfig } from "../../src/modules/civic.assistant/models";

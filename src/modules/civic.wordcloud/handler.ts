@@ -3,13 +3,13 @@
 // Adapts the module's service interface to the hub's ProcessHandler contract.
 // Lifecycle: draft → active → closed (per ADR-003, flexible lifecycle profiles).
 
-import { ValidationError } from "../errors/index.js";
-import { Process, ProcessAction } from "../models/process.js";
-import { emitEvent } from "../events/eventEmitter.js";
-import { ProcessHandler } from "./types.js";
-import type { ProcessTypeDescriptor } from "./descriptor.js";
-import { forHub } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
+import { ValidationError } from "../../errors/index.js";
+import { Process, ProcessAction } from "../../models/process.js";
+import { emitEvent } from "../../events/eventEmitter.js";
+import { ProcessHandler } from "../../processes/types.js";
+import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { forHub } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
 import {
   createWordcloudState,
   activateWordcloud,
@@ -19,7 +19,7 @@ import {
   buildClouds,
   getSubmissionCount,
   type WordcloudProcessState,
-} from "../modules/civic.wordcloud/index.js";
+} from "./index.js";
 
 function getState(process: Process): WordcloudProcessState {
   return process.state as unknown as WordcloudProcessState;

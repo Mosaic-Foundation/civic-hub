@@ -325,7 +325,7 @@ describe("default relation per process type", () => {
 
   /**
    * A proposal is an idea board, not a stage that descends from an earlier
-   * one — it never becomes a vote (see processes/proposalAdapter.ts). It more
+   * one — it never becomes a vote (see src/modules/civic.proposals/handler.ts). It more
    * often opens a thread than continues one, so it defaults like a
    * conversation. Distinct from a PROPOSED VOTE, which is a civic.vote in
    * `proposed` status gathering support, and does continue from something.

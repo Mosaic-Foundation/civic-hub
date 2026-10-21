@@ -19,20 +19,20 @@ import type { ProcessTypeDisplay } from "../shared/typeDisplay.js";
 export type { ProcessTypeDisplay };
 import type { Process } from "../models/process.js";
 import type { PluginId } from "../models/hubSettings.js";
-import voteProcess from "./voteProcess.js";
-import proposalAdapter from "./proposalAdapter.js";
-import projectAdapter from "./projectAdapter.js";
-import voteResultsProcess from "./voteResultsProcess.js";
-import briefProcess from "./briefProcess.js";
-import announcementProcess from "./announcementProcess.js";
-import meetingSummaryProcess from "./meetingSummaryProcess.js";
+import voteProcess from "../modules/civic.vote/handler.js";
+import proposalAdapter from "../modules/civic.proposals/handler.js";
+import projectAdapter from "../modules/civic.projects/handler.js";
+import voteResultsProcess from "../modules/civic.vote_results/handler.js";
+import briefProcess from "../modules/civic.brief/handler.js";
+import announcementProcess from "../modules/civic.announcement/handler.js";
+import meetingSummaryProcess from "../modules/civic.meeting_summary/handler.js";
 import { bootDeliberation } from "./deliberationBoot.js";
 import {
   describeSubmissionFields,
   type SubmissionField,
   type SubmissionSource,
 } from "../shared/submissionPreview.js";
-import wordcloudProcess from "./wordcloudProcess.js";
+import wordcloudProcess from "../modules/civic.wordcloud/handler.js";
 
 // civic.vote_results + civic.announcement + civic.meeting_summary are
 // registered here but can be omitted by hubs that don't want those

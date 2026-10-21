@@ -60,7 +60,7 @@ export {
 } from "./responses.js";
 export { emitBriefResponseAdded } from "./events.js";
 
-// What this type is: BRIEF_DESCRIPTOR in src/processes/briefProcess.ts.
+// What this type is: BRIEF_DESCRIPTOR in src/modules/civic.brief/handler.ts.
 
 export type { BriefIndexEntry } from "./service.js";
 export {

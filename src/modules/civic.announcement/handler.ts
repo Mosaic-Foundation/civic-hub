@@ -6,10 +6,10 @@
 // This adapter exists so announcements live in the same process store
 // and register as a known process type for discovery / feed rendering.
 
-import { ValidationError } from "../errors/index.js";
-import { Process, ProcessAction } from "../models/process.js";
-import { ProcessHandler } from "./types.js";
-import type { ProcessTypeDescriptor } from "./descriptor.js";
+import { ValidationError } from "../../errors/index.js";
+import { Process, ProcessAction } from "../../models/process.js";
+import { ProcessHandler } from "../../processes/types.js";
+import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 import {
   createAnnouncementState,
   getPublicReadModel,
@@ -19,7 +19,7 @@ import {
   type AnnouncementProcessState,
   type AnnouncementSource,
   type CreateAnnouncementInput,
-} from "../modules/civic.announcement/index.js";
+} from "./index.js";
 
 function getState(process: Process): AnnouncementProcessState {
   return process.state as unknown as AnnouncementProcessState;

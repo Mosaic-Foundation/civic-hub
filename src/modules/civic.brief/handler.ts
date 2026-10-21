@@ -6,10 +6,10 @@
 // dispatcher — their admin surface is /admin/briefs/*. This adapter exists
 // to initialize state and produce read models.
 
-import { ValidationError } from "../errors/index.js";
-import { Process, ProcessAction } from "../models/process.js";
-import { ProcessHandler } from "./types.js";
-import type { ProcessTypeDescriptor } from "./descriptor.js";
+import { ValidationError } from "../../errors/index.js";
+import { Process, ProcessAction } from "../../models/process.js";
+import { ProcessHandler } from "../../processes/types.js";
+import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 import {
   createBriefState,
   getPublicReadModel,
@@ -17,7 +17,7 @@ import {
   type BriefContent,
   type BriefProcessState,
   type CreateBriefInput,
-} from "../modules/civic.brief/index.js";
+} from "./index.js";
 
 function getState(process: Process): BriefProcessState {
   return process.state as unknown as BriefProcessState;

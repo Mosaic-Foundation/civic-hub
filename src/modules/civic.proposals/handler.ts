@@ -14,14 +14,14 @@
 // the status for its read model: written after the process row commits
 // (afterActionCommits), never before.
 
-import { ValidationError } from "../errors/index.js";
-import { Process, ProcessAction } from "../models/process.js";
-import { ProcessHandler } from "./types.js";
-import type { ProcessTypeDescriptor } from "./descriptor.js";
-import { DEADLINE_CLOSE_INPUT } from "./descriptor.js";
-import { forHub } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
-import { emitEvent } from "../events/eventEmitter.js";
+import { ValidationError } from "../../errors/index.js";
+import { Process, ProcessAction } from "../../models/process.js";
+import { ProcessHandler } from "../../processes/types.js";
+import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { DEADLINE_CLOSE_INPUT } from "../../processes/descriptor.js";
+import { forHub } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
+import { emitEvent } from "../../events/eventEmitter.js";
 import {
   createProposal,
   getProposal,
@@ -29,19 +29,19 @@ import {
   withdrawProposalSupport,
   markProposalClosed,
   getProposalReadModel,
-} from "../modules/civic.proposals/index.js";
-import { emitProposalClosed } from "../modules/civic.proposals/events.js";
-import { closeThroughDispatcher } from "./registry.js";
-import { afterActionCommits } from "../services/actionScope.js";
-import { isPastDeadline } from "../utils/deadline.js";
-import { getInputsByProcess } from "../modules/civic.input/index.js";
-import type { BriefContent } from "../modules/civic.brief/index.js";
-import { proposalAssistantConfig } from "./proposalAssistantConfig.js";
-import { setDraftStatus } from "../modules/civic.drafts/index.js";
-import { proposalDraftKind } from "./draftKinds.js";
-import { hubKindOf, participantNoun } from "../shared/hubKind.js";
-import { getSettingSync } from "../services/hubSettings.js";
-import { KEYS } from "../models/hubSettings.js";
+} from "./index.js";
+import { emitProposalClosed } from "./events.js";
+import { closeThroughDispatcher } from "../../processes/registry.js";
+import { afterActionCommits } from "../../services/actionScope.js";
+import { isPastDeadline } from "../../utils/deadline.js";
+import { getInputsByProcess } from "../civic.input/index.js";
+import type { BriefContent } from "../civic.brief/index.js";
+import { proposalAssistantConfig } from "./assistantConfig.js";
+import { setDraftStatus } from "../civic.drafts/index.js";
+import { proposalDraftKind } from "../../processes/draftKinds.js";
+import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
+import { getSettingSync } from "../../services/hubSettings.js";
+import { KEYS } from "../../models/hubSettings.js";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).
 const hubNoun = (n: number): string =>

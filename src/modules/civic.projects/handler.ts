@@ -10,14 +10,14 @@
 // /projects routes are thin wrappers over executeAction. The `projects` row
 // keeps its own copy of the status, written after the process row commits.
 
-import { ValidationError } from "../errors/index.js";
-import { Process, ProcessAction } from "../models/process.js";
-import { ProcessHandler } from "./types.js";
-import type { ProcessTypeDescriptor } from "./descriptor.js";
-import { afterActionCommits } from "../services/actionScope.js";
-import { forHub } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
-import { validateLinkSet } from "../modules/civic.process_links/index.js";
+import { ValidationError } from "../../errors/index.js";
+import { Process, ProcessAction } from "../../models/process.js";
+import { ProcessHandler } from "../../processes/types.js";
+import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { afterActionCommits } from "../../services/actionScope.js";
+import { forHub } from "../../db/forHub.js";
+import { currentHubId } from "../../config/hubContext.js";
+import { validateLinkSet } from "../civic.process_links/index.js";
 import {
   createProject,
   getProject,
@@ -26,17 +26,17 @@ import {
   markProjectCompleted,
   getProjectReadModel,
   type SentimentValue,
-} from "../modules/civic.projects/index.js";
-import { emitProjectCompleted, emitProjectUpdated } from "../modules/civic.projects/events.js";
-import { emitEvent } from "../events/eventEmitter.js";
-import type { BriefContent } from "../modules/civic.brief/index.js";
-import { projectAssistantConfig } from "./projectAssistantConfig.js";
-import { createDraft, setDraftStatus, updateDraft } from "../modules/civic.drafts/index.js";
-import { projectDraftKind } from "./draftKinds.js";
-import { readAll } from "../db/readAll.js";
-import { hubKindOf, participantNoun } from "../shared/hubKind.js";
-import { getSettingSync } from "../services/hubSettings.js";
-import { KEYS } from "../models/hubSettings.js";
+} from "./index.js";
+import { emitProjectCompleted, emitProjectUpdated } from "./events.js";
+import { emitEvent } from "../../events/eventEmitter.js";
+import type { BriefContent } from "../civic.brief/index.js";
+import { projectAssistantConfig } from "./assistantConfig.js";
+import { createDraft, setDraftStatus, updateDraft } from "../civic.drafts/index.js";
+import { projectDraftKind } from "../../processes/draftKinds.js";
+import { readAll } from "../../db/readAll.js";
+import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
+import { getSettingSync } from "../../services/hubSettings.js";
+import { KEYS } from "../../models/hubSettings.js";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).
 const hubNoun = (n: number): string =>

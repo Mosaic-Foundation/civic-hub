@@ -12,17 +12,17 @@
 // Renamed from `briefProcess.ts` in Slice 8.5. Behavior is unchanged
 // beyond the rename + the new vote_context snapshot input fields.
 
-import { ValidationError } from "../errors/index.js";
-import { Process, ProcessAction } from "../models/process.js";
-import { ProcessHandler } from "./types.js";
-import type { ProcessTypeDescriptor } from "./descriptor.js";
+import { ValidationError } from "../../errors/index.js";
+import { Process, ProcessAction } from "../../models/process.js";
+import { ProcessHandler } from "../../processes/types.js";
+import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 import {
   createVoteResultsState,
   getPublicReadModel,
   getAdminSummary,
   type CreateVoteResultsFromVoteInput,
   type VoteResultsProcessState,
-} from "../modules/civic.vote_results/index.js";
+} from "./index.js";
 
 function getState(process: Process): VoteResultsProcessState {
   return process.state as unknown as VoteResultsProcessState;

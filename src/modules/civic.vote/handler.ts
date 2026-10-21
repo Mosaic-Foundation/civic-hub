@@ -4,14 +4,14 @@
 // at /modules/civic.vote/. It adapts the module's service interface
 // to the hub's ProcessHandler contract.
 
-import { ValidationError } from "../errors/index.js";
-import { Process, ProcessAction } from "../models/process.js";
-import { buildEvent, emitEvent } from "../events/eventEmitter.js";
-import type { CivicEvent } from "../models/event.js";
-import { ProcessHandler } from "./types.js";
-import type { ProcessTypeDescriptor } from "./descriptor.js";
-import { DEADLINE_CLOSE_INPUT } from "./descriptor.js";
-import { voteAssistantConfig } from "./voteAssistantConfig.js";
+import { ValidationError } from "../../errors/index.js";
+import { Process, ProcessAction } from "../../models/process.js";
+import { buildEvent, emitEvent } from "../../events/eventEmitter.js";
+import type { CivicEvent } from "../../models/event.js";
+import { ProcessHandler } from "../../processes/types.js";
+import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
+import { DEADLINE_CLOSE_INPUT } from "../../processes/descriptor.js";
+import { voteAssistantConfig } from "./assistantConfig.js";
 import {
   createVoteState,
   propose,
@@ -27,7 +27,7 @@ import {
   DEFAULT_METHOD,
   type VoteProcessState,
   type Ballot,
-} from "../modules/civic.vote/index.js";
+} from "./index.js";
 import {
   recordOrUpdateVote,
   clearActiveVoteKeysForProcess,
@@ -36,18 +36,18 @@ import {
   reshuffleBallotsForProcess,
   VoteRefusedError,
   type HeldReceipt,
-} from "../modules/civic.receipts/index.js";
-import { AlreadyVotedError } from "../db/atomic.js";
-import { reportError } from "../utils/reportError.js";
-import { getInputsByProcess } from "../modules/civic.input/index.js";
-import { closeThroughDispatcher } from "./registry.js";
-import { afterActionCommits } from "../services/actionScope.js";
-import { describeSubmissionFields } from "../shared/submissionPreview.js";
-import { setDraftStatus } from "../modules/civic.drafts/index.js";
-import { voteDraftKind } from "./draftKinds.js";
-import type { BriefContent } from "../modules/civic.brief/index.js";
+} from "../civic.receipts/index.js";
+import { AlreadyVotedError } from "../../db/atomic.js";
+import { reportError } from "../../utils/reportError.js";
+import { getInputsByProcess } from "../civic.input/index.js";
+import { closeThroughDispatcher } from "../../processes/registry.js";
+import { afterActionCommits } from "../../services/actionScope.js";
+import { describeSubmissionFields } from "../../shared/submissionPreview.js";
+import { setDraftStatus } from "../civic.drafts/index.js";
+import { voteDraftKind } from "../../processes/draftKinds.js";
+import type { BriefContent } from "../civic.brief/index.js";
 
-import { isPastDeadline } from "../utils/deadline.js";
+import { isPastDeadline } from "../../utils/deadline.js";
 
 // --- Helpers ---
 

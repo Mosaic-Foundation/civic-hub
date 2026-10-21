@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { callAssistant, promisesToFollowUp } from "../../src/modules/civic.assistant/service";
 import type { CallClaudeMultiTurnFn } from "../../src/modules/civic.assistant/service";
-import { proposalAssistantConfig } from "../../src/processes/proposalAssistantConfig";
+import { proposalAssistantConfig } from "../../src/modules/civic.proposals/assistantConfig";
 
 const baseInput = {
   hub_config: { hub_name: "Test Hub", community_description: "a test community", code_of_conduct: "Be civil." },
