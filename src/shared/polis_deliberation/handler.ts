@@ -1,5 +1,6 @@
 import { ConflictError, ValidationError } from "../../errors/index.js";
 import type { PolisAdapter } from "./adapter/types.js";
+import { POLIS_DELIBERATION_MANIFEST } from "./manifest.js";
 import type { PolisHostInterface } from "./hostInterface.js";
 import type {
   DeliberationSummary,
@@ -9,15 +10,13 @@ import type {
 
 export const PROCESS_TYPE = "civic.polis_deliberation";
 
-/** The status each action may run from. Approval leaves a conversation at
- *  "draft" until it starts; regenerating is for a closed one whose summary
- *  failed or needs another pass. */
-const ACTION_STATUSES: Readonly<Record<string, readonly string[]>> = {
-  start: ["draft"],
-  close: ["active"],
-  poll_state: ["active"],
-  regenerate_summary: ["closed"],
-};
+/** The status each action may run from: its manifest's (./manifest.ts, plain
+ *  data, so this portable module still imports nothing of the hub). Approval
+ *  leaves a conversation at "draft" until it starts; regenerating is for a
+ *  closed one whose summary failed or needs another pass. */
+const ACTION_STATUSES: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
+  POLIS_DELIBERATION_MANIFEST.descriptor.actions.map((a) => [a.name, a.from]),
+);
 
 export interface ProcessHandlerShape {
   type: string;
