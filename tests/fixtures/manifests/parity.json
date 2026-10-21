@@ -580,7 +580,7 @@
       "id": "vote_close",
       "plugin": null,
       "path": "/vote-close/run",
-      "schedule": "5 * * * *",
+      "schedule": "5,20,35,50 * * * *",
       "description": "Close every process past its deadline (votes, proposals, conversations), per type whose plugin is on; reshuffle open votes' ballots"
     },
     {

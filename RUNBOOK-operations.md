@@ -38,7 +38,7 @@ passed without one. A `/fail` ping alerts at once. Made by `npm run heartbeats:s
 
 | Check | Schedule (UTC) | Grace | Pinged by |
 |---|---|---|---|
-| `vote-close` | `5 * * * *` | 20 min | the hourly vote finalization |
+| `vote-close` | `5,20,35,50 * * * *` | 10 min | the deadline close, every 15 minutes (hourly before Architecture 2) |
 | `digest` | `0 * * * *` | 20 min | the hourly resident digest |
 | `hub-exports-sweep` | `15 * * * *` | 20 min | the export sweep |
 | `admin-digest` | `30 13 * * *` | 2 h | the admin digest |
@@ -124,7 +124,7 @@ Create Alert → Issues → "Number of events in an issue is more than 100 in on
    - **It ran, but no ping arrived:** `CIVIC_HEARTBEAT_PING_KEY` is missing or wrong on Production. The log shows
      `[heartbeat] <job>: ping failed`.
    - **It ran past its time** (300 s maximum): the log shows the timeout. The job resumes next hour.
-3. `vote-close` late matters most: votes past their deadline stay open until it runs. Press **Run** in Cron Jobs.
+3. `vote-close` late matters most: processes past their deadline read as closed but get no results or brief until it runs. Press **Run** in Cron Jobs.
 
 ### A job's heartbeat failed (Healthchecks.io: "/fail")
 

@@ -100,7 +100,8 @@ export function previousRun(schedule: string, at: Date): Date | null {
 /** How late a run may be before it counts as missed, in seconds: a third of the gap, within bounds. */
 export function graceFor(schedule: string): number {
   const [minute = "", hour = ""] = schedule.trim().split(/\s+/);
-  if (hour === "*") return minute.includes("*/") ? 10 * 60 : 20 * 60; // hourly
+  // Several times an hour (a step or a list of minutes): 10 minutes; hourly: 20.
+  if (hour === "*") return minute.includes("*/") || minute.includes(",") ? 10 * 60 : 20 * 60;
   if (hour.includes("*/") || hour.includes(",")) return 60 * 60; // every few hours
   return 2 * 60 * 60; // daily
 }

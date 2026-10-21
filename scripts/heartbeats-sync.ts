@@ -5,7 +5,9 @@
 // each with the job's own cron schedule (UTC), a grace period that fits how
 // often it runs, and every alert channel on the project (email, ntfy). Safe
 // to run again: checks are matched by slug and updated in place. Run it after
-// adding or rescheduling a job.
+// adding or rescheduling a job, once the new schedule is LIVE on production
+// (vote_close went from hourly to every 15 minutes in Architecture 2: a
+// check synced first would alert on production's hourly pings).
 //
 //   node --env-file=$HOME/civic-keys/healthchecks.env --import tsx scripts/heartbeats-sync.ts [--dry-run]
 //
@@ -70,7 +72,7 @@ async function main(): Promise<void> {
   }
   for (const c of checks()) {
     const when = c.schedule ?? `every ${c.timeout / HOUR} h`;
-    const line = `${c.slug.padEnd(20)} ${when.padEnd(14)} grace ${c.grace / 60} min`;
+    const line = `${c.slug.padEnd(20)} ${when.padEnd(20)} grace ${c.grace / 60} min`;
     if (dryRun) {
       console.log(`would sync  ${line}`);
       continue;

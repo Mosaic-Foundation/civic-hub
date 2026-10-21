@@ -9,7 +9,8 @@
  * now has the Plugins section's order (it had its own, which only the
  * console's plugin checkboxes showed), and the Plugins section's own settings
  * follow that order (feedback's address before the digest's hour). Same
- * members, both checked before the change.
+ * members, both checked before the change. And (2026-10-21, step 6) the
+ * vote_close job runs every 15 minutes, not hourly (Adam).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

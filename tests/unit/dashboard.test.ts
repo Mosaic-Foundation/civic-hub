@@ -221,7 +221,7 @@ describe("the jobs' rows", () => {
       error: null,
     });
     const ok = jobRows({ vote_close: run("ok") }, now).find((r) => r.id === "vote_close")!;
-    expect(ok).toMatchObject({ late: false, attention: false, next_run_at: "2026-10-17T13:05:00.000Z" });
+    expect(ok).toMatchObject({ late: false, attention: false, next_run_at: "2026-10-17T12:20:00.000Z" });
     const failed = jobRows({ vote_close: run("failed") }, now).find((r) => r.id === "vote_close")!;
     expect(failed).toMatchObject({ late: false, attention: true });
   });
