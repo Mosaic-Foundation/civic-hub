@@ -43,7 +43,7 @@ to close on every read and the new presents closed.
 with its own page; past the deadline a process shows closed until the job (≤15 min); late resident actions refused;
 the archive names a brief "Brief".
 
-**Results (local, 2026-10-21):** unit 1,700 (154 files); `npm run build` in ui clean; lint and
+**Results (local, 2026-10-21):** unit 1,697 (153 files); `npm run build` in ui clean; lint and
 typecheck clean. API, service role: 828 passed in the last full run; its 4 failures were the documented PostgREST
 upstream 502 (`auditConcurrency`, `sampleRefresh`: passed alone), the dashboard's pre-existing order-dependence, and
 one test of mine (fixed, then 8/8). CI's first run on `b71082e` failed on two of mine, fixed in the next commit: a

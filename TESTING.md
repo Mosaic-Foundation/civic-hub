@@ -96,7 +96,7 @@ first time that layer has been runnable from a clean checkout.
 - **Known, not this slice's:** `dashboard.test.ts`'s "waiting for attention" counts fail order-dependently (pending
   reviews swing by hundreds between two reads); the old code at `90d8a1f` fails the same way. Passes alone.
 
-**Counts (2026-10-21, local):** unit 1,700 (154 files); API service role 828 passed (4 failed: two upstream 502s and
+**Counts (2026-10-21, local):** unit 1,697 (153 files); API service role 828 passed (4 failed: two upstream 502s and
 the dashboard's, all passing alone, and one test since fixed); minted tokens 846 passed (2 failed: the dashboard's);
 Playwright 164 passed, 2 skipped, plus `manifestUi.spec.ts` 5 passed.
 
