@@ -223,10 +223,16 @@ test("an activity's context IRI dereferences to its process descriptor, read-onl
   const page = await request.get(`${baseUrl()}/events?page=true&limit=50`);
   expect(page.status()).toBe(200);
   const items = ((await page.json()).orderedItems ?? []) as Array<{ context?: { id?: string } }>;
-  const iri = items.map((a) => a.context?.id).find((id): id is string => typeof id === "string");
-  test.skip(!iri, "the smoke hub has no activity with a process right now");
+  let iri = items.map((a) => a.context?.id).find((id): id is string => typeof id === "string");
+  if (!iri) {
+    // The suite cleans up after itself, so the hub may have no activity with
+    // a process: plant a sample (deleted in afterAll) and use its process IRI.
+    const id = await plantSample(`Smoke descriptor ${Date.now()}`);
+    plantedSamples.push(id);
+    iri = `${baseUrl()}/process/${id}`;
+  }
 
-  const ld = await request.get(iri!, { headers: { Accept: 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' } });
+  const ld = await request.get(iri, { headers: { Accept: 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' } });
   expect(ld.status()).toBe(200);
   expect(ld.headers()["content-type"]).toContain("application/ld+json");
   const d = await ld.json();
@@ -235,7 +241,7 @@ test("an activity's context IRI dereferences to its process descriptor, read-onl
   expect(typeof d["civic:processType"]).toBe("string");
   expect(d.endpoints.action).toMatch(/\/process\/[^/]+\/action$/);
 
-  const html = await request.get(iri!, { headers: { Accept: "text/html" } });
+  const html = await request.get(iri, { headers: { Accept: "text/html" } });
   expect(html.headers()["content-type"]).toContain("text/html");
 
   const action = await request.get(d.endpoints.action);
