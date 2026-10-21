@@ -24,6 +24,7 @@
 // covers only tables the core owns regardless of which processes are enabled.
 
 import { getAllHandlers } from "../processes/registry.js";
+import { MANIFEST_LIST } from "../shared/processManifests.js";
 
 export interface SchemaRequirement {
   /** Table that must exist. */
@@ -118,13 +119,10 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "community_inputs", columns: ["is_anonymous", "author_name"], owner: "civic.input" },
   { table: "process_reviews", columns: ["coc_flags"], owner: "civic.review" },
   { table: "review_turns", owner: "civic.review" },
-  { table: "proposals", owner: "civic.proposals" },
-  { table: "proposal_supports", owner: "civic.proposals" },
   { table: "proposal_drafts", columns: ["links"], owner: "civic.drafts" },
-  { table: "projects", owner: "civic.projects" },
-  // project_updates / project_comments: superseded by community_inputs on
-  // 2026-09-06 (migration 20260906120000); dropped in a later migration.
-  { table: "project_sentiments", owner: "civic.projects" },
+  // proposals, projects and their supports and sentiments: their manifests'
+  // requiredSchema (ADR-009). project_updates / project_comments: superseded
+  // by community_inputs on 2026-09-06 (migration 20260906120000).
   { table: "project_drafts", columns: ["links"], owner: "civic.drafts" },
   { table: "vote_drafts", columns: ["method", "custom_options", "links", "check_mode"], owner: "civic.drafts" },
   { table: "deliberation_drafts", columns: ["sources", "links"], owner: "civic.drafts" },
@@ -159,15 +157,11 @@ export interface ExportManifestEntry {
   reason?: string;
 }
 
-export const EXPORT_MANIFEST: readonly ExportManifestEntry[] = [
-  { table: "active_vote_keys", rows: "export" },
+/** The host's own tables (src/db/forHub.ts HOST_TABLES). Each process type's are in its manifest. */
+const HOST_EXPORTS: readonly ExportManifestEntry[] = [
   { table: "admin_digest_marks", rows: "omit", reason: "where this host's last admin digest stopped; the next host starts its own" },
   { table: "ai_usage", rows: "omit", reason: "an operational record of paid model calls, for this host's daily budget" },
-  { table: "brief_responses", rows: "export" },
   { table: "community_inputs", rows: "export" },
-  { table: "deliberation_drafts", rows: "export" },
-  { table: "deliberation_submissions", rows: "export" },
-  { table: "deliberation_votes", rows: "export" },
   { table: "events", rows: "export" },
   { table: "feedback_submissions", rows: "export" },
   { table: "hub_admin_audit_log", rows: "export" },
@@ -178,24 +172,19 @@ export const EXPORT_MANIFEST: readonly ExportManifestEntry[] = [
   { table: "process_links", rows: "export" },
   { table: "process_reviews", rows: "export" },
   { table: "processes", rows: "export" },
-  { table: "project_comments", rows: "export" },
-  { table: "project_drafts", rows: "export" },
-  { table: "project_sentiments", rows: "export" },
-  { table: "project_updates", rows: "export" },
-  { table: "projects", rows: "export" },
-  { table: "proposal_drafts", rows: "export" },
-  { table: "proposal_supports", rows: "export" },
-  { table: "proposals", rows: "export" },
   { table: "review_turns", rows: "export" },
   { table: "sessions", rows: "omit", reason: "bearer credentials; residents sign in again on the new host" },
   { table: "sign_in_codes", rows: "omit", reason: "live sign-in codes" },
   { table: "users", rows: "export" },
-  { table: "vote_drafts", rows: "export" },
-  { table: "vote_participation", rows: "export" },
-  { table: "vote_records", rows: "export" },
   { table: "waitlist", rows: "export" },
-  { table: "wordcloud_submissions", rows: "export" },
 ];
+
+export const EXPORT_MANIFEST: readonly ExportManifestEntry[] = [
+  ...HOST_EXPORTS,
+  ...MANIFEST_LIST.flatMap((m) =>
+    m.tables.map((t): ExportManifestEntry => (t.reason ? { table: t.name, rows: t.rows, reason: t.reason } : { table: t.name, rows: t.rows })),
+  ),
+].sort((x, y) => (x.table < y.table ? -1 : x.table > y.table ? 1 : 0));
 
 /**
  * Fold duplicate requirements for the same table into one probe, unioning

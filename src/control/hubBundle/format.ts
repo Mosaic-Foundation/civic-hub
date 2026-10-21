@@ -21,6 +21,7 @@
 // old one; a bundle is a promise to whoever holds it, not a cache.
 
 import { createHash } from "node:crypto";
+import { MANIFEST_LIST } from "../../shared/processManifests.js";
 import { EXPORT_MANIFEST } from "../../db/schemaContract.js";
 import { isSampleRow, type SampleIds } from "../../models/sampleContent.js";
 
@@ -36,13 +37,9 @@ export type Row = Record<string, unknown>;
  * (stable paging) and written in. tests/unit/hubBundle.test.ts checks every
  * exported table has one.
  */
-export const TABLE_KEYS: Readonly<Record<string, readonly string[]>> = {
-  active_vote_keys: ["user_id", "process_id"],
-  brief_responses: ["id"],
+/** The host's own exported tables' keys. Each process type's are in its manifest. */
+const HOST_TABLE_KEYS: Readonly<Record<string, readonly string[]>> = {
   community_inputs: ["id"],
-  deliberation_drafts: ["id"],
-  deliberation_submissions: ["process_id", "user_id"],
-  deliberation_votes: ["process_id", "user_id", "statement_id"],
   events: ["id"],
   feedback_submissions: ["id"],
   hub_admin_audit_log: ["id"],
@@ -51,22 +48,17 @@ export const TABLE_KEYS: Readonly<Record<string, readonly string[]>> = {
   process_links: ["id"],
   process_reviews: ["id"],
   processes: ["id"],
-  project_comments: ["id"],
-  project_drafts: ["id"],
-  project_sentiments: ["project_id", "user_id"],
-  project_updates: ["id"],
-  projects: ["id"],
-  proposal_drafts: ["id"],
-  proposal_supports: ["proposal_id", "user_id"],
-  proposals: ["id"],
   review_turns: ["id"],
   users: ["id"],
-  vote_drafts: ["id"],
-  vote_participation: ["user_id", "process_id"],
-  vote_records: ["receipt_id"],
   waitlist: ["email"],
-  wordcloud_submissions: ["id"],
 };
+
+export const TABLE_KEYS: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
+  [
+    ...Object.entries(HOST_TABLE_KEYS),
+    ...MANIFEST_LIST.flatMap((m) => m.tables.filter((t) => t.rows === "export").map((t) => [t.name, t.key] as const)),
+  ].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)),
+);
 
 /** The tables whose rows leave with an export, in manifest order. */
 export function exportedTables(): string[] {

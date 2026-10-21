@@ -3,7 +3,7 @@
 // are built from it. The host wiring (src/processes/deliberationBoot.ts)
 // pairs it with the portable handler (./handler.ts).
 
-import type { ProcessManifest } from "../../processes/manifest.js";
+import { defineManifest } from "../../processes/manifest.js";
 import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 import { DEADLINE_CLOSE_INPUT } from "../deadlineClose.js";
 
@@ -112,7 +112,7 @@ const descriptor: ProcessTypeDescriptor = {
   },
 };
 
-export const POLIS_DELIBERATION_MANIFEST: ProcessManifest = {
+export const POLIS_DELIBERATION_MANIFEST = defineManifest({
   descriptor,
   color: "conversation",
   detailPath: (id) => `/deliberation/${id}`,
@@ -137,4 +137,4 @@ export const POLIS_DELIBERATION_MANIFEST: ProcessManifest = {
   pluginSection: { order: 40, fields: [{ key: "plugin.conversation.polis_url", kind: "url" }] },
   activities: {},
   publicListing: "always",
-};
+});

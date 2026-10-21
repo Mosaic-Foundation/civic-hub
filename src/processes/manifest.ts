@@ -87,6 +87,14 @@ export interface ProcessManifest {
   publicListing: PublicListing;
 }
 
+/**
+ * Declare a manifest. Returns it as given, keeping its literal values (its
+ * table names become part of forHub's TableName type).
+ */
+export function defineManifest<const M extends ProcessManifest>(manifest: M): M {
+  return manifest;
+}
+
 /** Why a manifest was refused at startup. */
 export class ManifestError extends Error {
   constructor(message: string) {

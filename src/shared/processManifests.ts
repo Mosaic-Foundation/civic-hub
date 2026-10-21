@@ -19,7 +19,7 @@ import { POLIS_DELIBERATION_MANIFEST } from "./polis_deliberation/manifest.js";
 import { WORDCLOUD_MANIFEST } from "../modules/civic.wordcloud/manifest.js";
 import type { ProcessManifest } from "../processes/manifest.js";
 
-export const PROCESS_MANIFESTS: readonly ProcessManifest[] = [
+export const PROCESS_MANIFESTS = [
   VOTE_MANIFEST,
   PROPOSAL_MANIFEST,
   PROJECT_MANIFEST,
@@ -29,4 +29,10 @@ export const PROCESS_MANIFESTS: readonly ProcessManifest[] = [
   MEETING_SUMMARY_MANIFEST,
   POLIS_DELIBERATION_MANIFEST,
   WORDCLOUD_MANIFEST,
-];
+] as const;
+
+/** The same list, each as a plain ProcessManifest (for reading fields every manifest has). */
+export const MANIFEST_LIST: readonly ProcessManifest[] = PROCESS_MANIFESTS;
+
+/** Every table a process type owns, by name. */
+export type ProcessTableName = (typeof PROCESS_MANIFESTS)[number]["tables"][number]["name"];

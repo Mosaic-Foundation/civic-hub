@@ -2,7 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import type { ProcessManifest } from "../../processes/manifest.js";
+import { defineManifest } from "../../processes/manifest.js";
 import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 
 /**
@@ -98,7 +98,7 @@ const descriptor: ProcessTypeDescriptor = {
   display: { label: "Word cloud", plural: "Word clouds", icon: "wordcloud" },
 };
 
-export const WORDCLOUD_MANIFEST: ProcessManifest = {
+export const WORDCLOUD_MANIFEST = defineManifest({
   descriptor,
   color: "wordcloud",
   detailPath: (id) => `/wordcloud/${id}`,
@@ -119,4 +119,4 @@ export const WORDCLOUD_MANIFEST: ProcessManifest = {
   },
   activities: {},
   publicListing: "always",
-};
+});

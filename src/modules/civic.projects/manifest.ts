@@ -2,7 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import type { ProcessManifest } from "../../processes/manifest.js";
+import { defineManifest } from "../../processes/manifest.js";
 import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 
 /**
@@ -67,7 +67,7 @@ const descriptor: ProcessTypeDescriptor = {
   },
 };
 
-export const PROJECT_MANIFEST: ProcessManifest = {
+export const PROJECT_MANIFEST = defineManifest({
   descriptor,
   color: "project",
   detailPath: (id) => `/project/${id}`,
@@ -95,4 +95,4 @@ export const PROJECT_MANIFEST: ProcessManifest = {
     "civic.project.archived": { type: "civic:End", object: { kind: "process", terminalState: "archived" } },
   },
   publicListing: "always",
-};
+});

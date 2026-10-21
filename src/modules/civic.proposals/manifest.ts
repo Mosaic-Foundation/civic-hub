@@ -2,7 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import type { ProcessManifest } from "../../processes/manifest.js";
+import { defineManifest } from "../../processes/manifest.js";
 import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 import { DEADLINE_CLOSE_INPUT } from "../../shared/deadlineClose.js";
 
@@ -76,7 +76,7 @@ const descriptor: ProcessTypeDescriptor = {
   },
 };
 
-export const PROPOSAL_MANIFEST: ProcessManifest = {
+export const PROPOSAL_MANIFEST = defineManifest({
   descriptor,
   color: "proposal",
   detailPath: (id) => `/proposal/${id}`,
@@ -105,4 +105,4 @@ export const PROPOSAL_MANIFEST: ProcessManifest = {
     "civic.proposal.endorsed": { type: "Like", object: { kind: "civic", class: "civic:Proposal", id: "process" } },
   },
   publicListing: "always",
-};
+});

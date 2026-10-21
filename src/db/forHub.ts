@@ -49,20 +49,17 @@ import { seedAllowed } from "../config/devFlags.js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDb, getHubTokenDb, hubTokensEnabled } from "./client.js";
 import { reportError } from "../utils/reportError.js";
+import { MANIFEST_LIST, type ProcessTableName } from "../shared/processManifests.js";
 
 /**
- * Every table that carries hub_id. `hubs` is the registry,
- * read by src/db/hubs.ts, and is deliberately unreachable from here.
+ * The tables the hub itself owns, whatever process types it carries. Each
+ * process type's own tables are in its manifest (ADR-009). `hubs` is the
+ * registry, read by src/db/hubs.ts, and is deliberately unreachable from here.
  */
-export const HUB_TABLES = [
-  "active_vote_keys",
+export const HOST_TABLES = [
   "admin_digest_marks",
   "ai_usage",
-  "brief_responses",
   "community_inputs",
-  "deliberation_drafts",
-  "deliberation_submissions",
-  "deliberation_votes",
   "events",
   "feedback_submissions",
   "hub_admin_audit_log",
@@ -73,26 +70,20 @@ export const HUB_TABLES = [
   "process_links",
   "process_reviews",
   "processes",
-  "project_comments",
-  "project_drafts",
-  "project_sentiments",
-  "project_updates",
-  "projects",
-  "proposal_drafts",
-  "proposal_supports",
-  "proposals",
   "review_turns",
   "sessions",
   "sign_in_codes",
   "users",
-  "vote_drafts",
-  "vote_participation",
-  "vote_records",
   "waitlist",
-  "wordcloud_submissions",
 ] as const;
 
-export type TableName = (typeof HUB_TABLES)[number];
+/** Every table that carries hub_id: the host's and every process type's, sorted. */
+export const HUB_TABLES: readonly TableName[] = [
+  ...HOST_TABLES,
+  ...MANIFEST_LIST.flatMap((m) => m.tables.map((t) => t.name as ProcessTableName)),
+].sort();
+
+export type TableName = (typeof HOST_TABLES)[number] | ProcessTableName;
 
 const TABLE_SET: ReadonlySet<string> = new Set(HUB_TABLES);
 

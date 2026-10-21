@@ -2,7 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import type { ProcessManifest } from "../../processes/manifest.js";
+import { defineManifest } from "../../processes/manifest.js";
 import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 
 /**
@@ -41,7 +41,7 @@ const descriptor: ProcessTypeDescriptor = {
   display: { label: "Outcome", plural: "Outcomes", icon: "outcome" },
 };
 
-export const VOTE_RESULTS_MANIFEST: ProcessManifest = {
+export const VOTE_RESULTS_MANIFEST = defineManifest({
   descriptor,
   color: "brief",
   detailPath: (id) => `/vote-results/${id}`,
@@ -50,4 +50,4 @@ export const VOTE_RESULTS_MANIFEST: ProcessManifest = {
   jobs: [],
   activities: {},
   publicListing: { field: "publication_status", equals: "published" },
-};
+});

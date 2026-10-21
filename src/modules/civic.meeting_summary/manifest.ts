@@ -2,7 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import type { ProcessManifest } from "../../processes/manifest.js";
+import { defineManifest } from "../../processes/manifest.js";
 import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 import { MEETING_CONNECTOR_OPTIONS } from "../../shared/connectorOptions.js";
 
@@ -38,7 +38,7 @@ const descriptor: ProcessTypeDescriptor = {
   display: { label: "Meeting summary", plural: "Meeting summaries", icon: "meeting" },
 };
 
-export const MEETING_SUMMARY_MANIFEST: ProcessManifest = {
+export const MEETING_SUMMARY_MANIFEST = defineManifest({
   descriptor,
   color: "meeting",
   detailPath: (id) => `/meeting-summary/${id}`,
@@ -73,4 +73,4 @@ export const MEETING_SUMMARY_MANIFEST: ProcessManifest = {
   },
   activities: {},
   publicListing: { field: "approval_status", equals: "published" },
-};
+});
