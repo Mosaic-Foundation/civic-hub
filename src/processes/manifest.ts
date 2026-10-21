@@ -46,12 +46,24 @@ export interface TableDeclaration {
   legacy?: true;
 }
 
+/** The admin queues a type's unpublished records can wait in (src/services/adminQueues.ts). */
+export type PublicationQueue = "briefs" | "meeting_summaries";
+
 /**
- * Which of a type's processes the public process list shows. "always": every
- * one. A field rule: only those whose read-model summary has that field at
- * that value (a brief is listed once published).
+ * A type whose records an admin publishes before residents see them (a brief,
+ * a vote's results, a meeting summary). `field` is the state (and read-model)
+ * field that says where a record is: "pending" waits in `queue`, "published"
+ * is public. Until published, a record is not in the public process list.
  */
-export type PublicListing = "always" | { field: string; equals: string };
+export interface Publication {
+  field: string;
+  queue: PublicationQueue;
+  /**
+   * false: an unpublished record's page answers 404 for everyone, so a link
+   * to one is not shown (a brief). Default true.
+   */
+  linkedBeforePublished?: false;
+}
 
 /**
  * The plugin's own part of the Plugins settings section, carried by the one
@@ -96,8 +108,20 @@ export interface ProcessManifest {
    * stored event stays serializable forever (the log is append-only).
    */
   legacyActivities?: Readonly<Record<string, ActivityRecipe>>;
-  /** Which of its processes GET /process lists to residents. */
-  publicListing: PublicListing;
+  /** Present when an admin publishes its records (see Publication). */
+  publication?: Publication;
+  /**
+   * Present when one of its processes summarizes another (a brief): the
+   * state field naming the process it summarizes. Links and the "Read the
+   * brief" pointer go through it.
+   */
+  summarizes?: { stateField: string };
+  /**
+   * How its Civic Brief's pill reads. "to_board": "Brief to the
+   * Supervisors", worded for the hub's governing body (a vote's). Default:
+   * the feed's own pill.
+   */
+  briefPill?: "to_board";
 }
 
 /**
@@ -133,7 +157,6 @@ const REQUIRED: ReadonlyArray<keyof ProcessManifest> = [
   "tables",
   "jobs",
   "activities",
-  "publicListing",
 ];
 
 /** What a manifest is checked against that only the host knows. */
@@ -225,9 +248,15 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       }
     }
 
-    const listing = m.publicListing!;
-    if (listing !== "always" && (typeof listing !== "object" || typeof listing.field !== "string" || typeof listing.equals !== "string")) {
-      throw new ManifestError(`${where(m)}: publicListing must be "always" or { field, equals }`);
+    if (m.publication) {
+      const pub = m.publication;
+      if (typeof pub.field !== "string" || pub.field === "") throw new ManifestError(`${where(m)}: publication.field is empty`);
+      if (pub.queue !== "briefs" && pub.queue !== "meeting_summaries") {
+        throw new ManifestError(`${where(m)}: publication.queue must be "briefs" or "meeting_summaries"`);
+      }
+    }
+    if (m.summarizes && (typeof m.summarizes.stateField !== "string" || m.summarizes.stateField === "")) {
+      throw new ManifestError(`${where(m)}: summarizes.stateField is empty`);
     }
 
     if (m.pluginSection) {

@@ -93,5 +93,4 @@ export const PROJECT_MANIFEST = defineManifest({
     "civic.project.comment_added": { type: "Create", object: { kind: "note" } },
     "civic.project.archived": { type: "civic:End", object: { kind: "process", terminalState: "archived" } },
   },
-  publicListing: "always",
 });

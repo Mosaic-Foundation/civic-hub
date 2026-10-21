@@ -117,5 +117,4 @@ export const WORDCLOUD_MANIFEST = defineManifest({
     fields: [{ key: "plugin.wordcloud.onboarding_id", kind: "process", processType: "civic.wordcloud" }],
   },
   activities: {},
-  publicListing: "always",
 });

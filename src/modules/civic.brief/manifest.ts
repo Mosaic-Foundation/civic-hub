@@ -61,5 +61,8 @@ export const BRIEF_MANIFEST = defineManifest({
   jobs: [],
   pluginSection: { order: 60, fields: [] },
   activities: {},
-  publicListing: { field: "publication_status", equals: "published" },
+  // /brief/:id answers 404 for an unpublished brief, admins included: the
+  // admin reaches one through the Briefs tab (Adam, 2026-09-06).
+  publication: { field: "publication_status", queue: "briefs", linkedBeforePublished: false },
+  summarizes: { stateField: "source_process_id" },
 });

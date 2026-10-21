@@ -53,7 +53,6 @@ function manifest(over: Partial<ProcessManifest> = {}): ProcessManifest {
     jobs: [],
     pluginSection: { order: 10, fields: [] },
     activities: { "civic.sample.taken": { type: "Create", object: { kind: "note" } } },
-    publicListing: "always",
     ...over,
   };
 }
@@ -65,7 +64,7 @@ describe("process manifests", () => {
     expect(checkManifests([manifest()], HOST)).toHaveLength(1);
   });
 
-  for (const field of ["descriptor", "color", "detailPath", "requiredSchema", "tables", "jobs", "activities", "publicListing"] as const) {
+  for (const field of ["descriptor", "color", "detailPath", "requiredSchema", "tables", "jobs", "activities"] as const) {
     it(`refuses a manifest missing "${field}", naming the type and the field`, () => {
       const m = manifest() as unknown as Record<string, unknown>;
       delete m[field];
@@ -117,6 +116,11 @@ describe("process manifests", () => {
     expect(refused([manifest({ pluginSection: undefined })])).toThrow("process plugin vote: no manifest carries its pluginSection");
     const second = manifest({ descriptor: descriptor({ type: "civic.other", tables: [] }), tables: [], activities: {} });
     expect(refused([manifest(), second])).toThrow("plugin vote's section is already carried by civic.sample");
+  });
+
+  it("refuses a publication without a field or with an unknown queue", () => {
+    expect(refused([manifest({ publication: { field: "", queue: "briefs" } })])).toThrow("publication.field is empty");
+    expect(refused([manifest({ publication: { field: "s", queue: "nope" as never } })])).toThrow("publication.queue must be");
   });
 
   it("refuses a setting outside the plugin's keys", () => {

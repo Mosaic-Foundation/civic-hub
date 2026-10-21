@@ -11,6 +11,7 @@ import type { SubmissionField, SubmissionSource } from "../shared/submissionPrev
 import type { BriefContent } from "./contracts/briefContent.js";
 import type { SchemaRequirement } from "../db/schemaContract.js";
 import type { AssistantTypeConfig } from "./contracts/draftingHelp.js";
+import type { FeedProcessMeta } from "./contracts/feedMeta.js";
 import type { ProcessTypeDescriptor } from "./descriptor.js";
 
 /**
@@ -385,6 +386,24 @@ export interface ProcessHandler {
    * (`brief_revisions`), and the process emits civic.process.updated.
    */
   regenerateBrief?(process: Process): Promise<RegeneratedBrief | null>;
+
+  /**
+   * Optional: what the source process becomes when its brief is published
+   * (src/services/briefFinalize.ts). Omit it and the source is simply set to
+   * "finalized" (conversations, proposals, projects). A vote finalizes
+   * through its own module, tallying from the anonymized receipts.
+   * Architecture 2: replaces briefFinalize's switch on the type.
+   */
+  finalizeAfterBrief?(process: Process, actor: string): Promise<void>;
+
+  /**
+   * Optional: the fields a feed card shows for one of its processes, read
+   * from its public read model (GET /feed's processMeta;
+   * src/services/feedMeta.ts). Omit it and the feed carries no meta for the
+   * type. May read its own tables (a word cloud's submission count).
+   * Architecture 2: replaces feedMeta's switch on the type.
+   */
+  feedMeta?(model: Record<string, unknown>, processId: string): FeedProcessMeta | null | Promise<FeedProcessMeta | null>;
 }
 
 /** A regenerated brief, and what its process takes when it is published. */

@@ -48,5 +48,5 @@ export const VOTE_RESULTS_MANIFEST = defineManifest({
   tables: [],
   jobs: [],
   activities: {},
-  publicListing: { field: "publication_status", equals: "published" },
+  publication: { field: "publication_status", queue: "briefs" },
 });

@@ -34,20 +34,8 @@ function db(): HubDb {
   return forHub(currentHubId());
 }
 
-export interface FeedProcessMeta {
-  title?: string;
-  description?: string;
-  imageUrl?: string | null;
-  imageAlt?: string | null;
-  totalVotes?: number;
-  commentsCount?: number;
-  editCount?: number;
-  lastEditedAt?: string | null;
-  blockCount?: number;
-  maxStartSeconds?: number | null;
-  /** Announcement removed by a moderator — the client drops the card. */
-  removed?: boolean;
-}
+export type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
+import type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
 
 /** Kinds whose card reads anything beyond its own event payload —
  *  mirrors the client's per-kind lookup switch in Feed.tsx. */

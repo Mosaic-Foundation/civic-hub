@@ -43,5 +43,4 @@ export const ANNOUNCEMENT_MANIFEST = defineManifest({
   jobs: [],
   pluginSection: { order: 70, fields: [] },
   activities: {},
-  publicListing: "always",
 });

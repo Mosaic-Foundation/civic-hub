@@ -103,5 +103,4 @@ export const PROPOSAL_MANIFEST = defineManifest({
     // mapped so the type stays serializable if the path is ever wired up.
     "civic.proposal.endorsed": { type: "Like", object: { kind: "civic", class: "civic:Proposal", id: "process" } },
   },
-  publicListing: "always",
 });

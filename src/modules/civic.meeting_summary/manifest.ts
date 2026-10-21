@@ -71,5 +71,5 @@ export const MEETING_SUMMARY_MANIFEST = defineManifest({
     ],
   },
   activities: {},
-  publicListing: { field: "approval_status", equals: "published" },
+  publication: { field: "approval_status", queue: "meeting_summaries" },
 });

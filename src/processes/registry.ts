@@ -35,7 +35,13 @@ import {
 import wordcloudProcess from "../modules/civic.wordcloud/handler.js";
 import { PROCESS_MANIFESTS } from "../shared/processManifests.js";
 import { THEME_TYPE_KEYS } from "../shared/theme.js";
-import { checkManifests, ManifestError, type ProcessManifest } from "./manifest.js";
+import {
+  checkManifests,
+  ManifestError,
+  type ProcessManifest,
+  type Publication,
+  type PublicationQueue,
+} from "./manifest.js";
 import { HOST_TABLES } from "../db/forHub.js";
 import { HUB_FEATURE_IDS } from "../shared/hubFeatures.js";
 import { hostMappedEventTypes } from "../events/activitySerializer.js";
@@ -105,6 +111,33 @@ export function getManifests(): readonly ProcessManifest[] {
 /** A registered type's manifest. */
 export function getManifest(type: string): ProcessManifest | undefined {
   return MANIFESTS.find((m) => m.descriptor.type === type);
+}
+
+/** How a type's records are published by an admin, or undefined when they are public as made. */
+export function publicationOf(type: string): Publication | undefined {
+  return getManifest(type)?.publication;
+}
+
+/** The types whose unpublished records wait in an admin queue, in registry order. */
+export function typesPublishedThrough(queue: PublicationQueue): string[] {
+  return MANIFESTS.filter((m) => m.publication?.queue === queue).map((m) => m.descriptor.type);
+}
+
+/**
+ * Whether a record is published: always for a type an admin does not
+ * publish; otherwise its publication field (on its state or its read model)
+ * says "published".
+ */
+export function isPublished(type: string, fields: Record<string, unknown> | null | undefined): boolean {
+  const pub = publicationOf(type);
+  return !pub || fields?.[pub.field] === "published";
+}
+
+/** The process a process of this type summarizes (a brief's source), or null. */
+export function summarizedProcessIdOf(type: string, state: Record<string, unknown> | null | undefined): string | null {
+  const field = getManifest(type)?.summarizes?.stateField;
+  const id = field ? state?.[field] : undefined;
+  return typeof id === "string" && id !== "" ? id : null;
 }
 
 // Each handler's descriptor is the one declaration of what its type is

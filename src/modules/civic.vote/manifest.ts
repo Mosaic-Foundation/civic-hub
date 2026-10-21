@@ -196,5 +196,6 @@ export const VOTE_MANIFEST = defineManifest({
     ],
   },
   activities: {},
-  publicListing: "always",
+  // "Brief to the Supervisors" (Adam, 2026-10-07).
+  briefPill: "to_board",
 });
