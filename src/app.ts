@@ -365,6 +365,7 @@ app.get("/", route((_req, res) => {
       "GET /activities/:id": "Dereference a single civic activity",
       "GET /api/feed": "Internal UI read model, paged: { events, count, process_meta, next_cursor } (limit / cursor / surface / process_id / event_type / pretty)",
       "GET /.well-known/civic.json": "Discovery manifest",
+      "GET /.well-known/did.json": "The hub's DID document (did:web), on the hostname its DID names",
       "POST /debug/seed": "Seed sample data (dev only, admin)",
       "GET /health": "Health check",
     },

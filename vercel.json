@@ -103,6 +103,10 @@
       "destination": "/api"
     },
     {
+      "source": "/.well-known/did.json",
+      "destination": "/api"
+    },
+    {
       "source": "/ns",
       "destination": "/api"
     },
