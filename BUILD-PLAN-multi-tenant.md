@@ -28,6 +28,7 @@ decision record. Each row names the file and line that embodies the rule today (
 | **Uploads are size-limited and type-whitelisted while streaming.** | `src/controllers/uploadController.ts:79` (busboy limits), `:223` (MIME whitelist) |
 | **`RichText` is the one markdown renderer.** No raw HTML, no images, `rel="noopener"`. A convention, not lint-enforced. | `ui/src/components/RichText.tsx:40` |
 | **The three UI apps keep their import boundaries** (hub, console, start page). | `ui/eslint.config.js:34`, `:49`, `:58`; server side `civic/control-boundary` in `eslint.config.js` |
+| **A process type is its manifest.** What a type is lives in its folder's `manifest.ts` (plain data: values only from `src/shared/`, lint-enforced) and nothing else lists types: the registry, plugin ids, tables, export manifest, activity mappings, jobs, the Plugins section, the feed and the UI are built from `src/shared/processManifests.ts`, checked at startup. A read never closes a process (the job does; past its deadline it reads as closed). ADR-009. | `src/processes/manifest.ts` (`checkManifests`), `src/shared/processManifests.ts`, `src/modules/civic.*/manifest.ts`, `ui/src/processes/`; `tests/unit/manifestParity.test.ts`, `tests/unit/processManifest.test.ts`; `eslint.config.js` (manifest fences) |
 | **`PolisHostInterface` is the model plugin seam.** A plugin reaches the hub only through an interface the host implements. | `src/shared/polis_deliberation/hostInterface.ts:34`, `src/processes/deliberationBoot.ts:261` |
 
 ---

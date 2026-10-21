@@ -4,6 +4,65 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Architecture 2: a process type is its manifest; the descriptor is served; a read never closes — 2026-10-21
+
+`multi-tenant`, one commit per item (`b90eaed`..the HANDOFF commit), from `90d8a1f`. **No migrations.** Not on
+production. Decision record: ADR-009 at the mono-repo root (`decisions/009-process-manifest.md`). Report and handoff:
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Architecture-2-Session-Report-2026-10-21.md`.
+
+**What changed:**
+1. **A manifest per type** (`src/modules/civic.<type>/manifest.ts`; Polis's in `src/shared/polis_deliberation/`):
+   descriptor (actions' `callers` are the resident allowlist), colour, detail path, required schema, tables (export
+   or omit, key, legacy), jobs, the plugin's settings section with its name and description, AS2 recipes of its own
+   events, publication, summarizes, briefPill, deadlineRefusal, feed cards. Plain data, lint-fenced, read by the UI
+   too. Handlers moved beside them (`handler.ts`). `src/shared/processManifests.ts` is the one list; the registry
+   checks it at startup and pairs each with its handler. The contract no longer imports `civic.brief`/`civic.assistant`.
+2. **Derived:** `PROCESS_TYPE_PLUGINS`, `PLUGIN_IDS`/`PluginId` (process plugins + `src/shared/hubFeatures.ts`; keys
+   unchanged), `HUB_TABLES`/`TableName`, `EXPORT_MANIFEST`, `TABLE_KEYS`, `ACTIVITY_MAPPINGS`, `PLUGIN_SECTION_ORDER`
+   and the Plugins fields, `JOBS`, the schema contract; the feed classifier; the public list, admin queues, dashboard,
+   admin digest, process links, brief finalize (hook), feed meta (hook), brief pill, edit labels.
+3. **Descriptor served:** `GET /process/:id` with a JSON-LD Accept answers the §12.1 descriptor (id and creator from
+   the wire). `vercel.json` routes the context IRI (JSON-LD Accept) and `/process/:id/action` to the API. civic.json
+   types carry their display name.
+4. **A read never closes.** Past its deadline a process reads as closed (`readAsClosed`); the `vote_close` job closes
+   it and now runs every 15 minutes; residents' late actions are refused with the type's own error (a late proposal
+   support or conversation statement used to go through).
+5. **UI registry** (`ui/src/processes/`): one module per type (routes, feed kinds, settings panel, link relation) and
+   `display.ts` (names, colours, paths from manifests). `/process/:id` for a type with its own page redirects there.
+6. **Central checks:** Polis's statuses from its manifest; tests that every admin-only action is refused to a
+   resident for every type, and of the emission check.
+
+**Invariants:** the wire is byte-identical (old and new serializers over all 20,658 local events: identical; the
+fixture hub: identical; the before-snapshot's 13,696 surviving events: identical). HTTP, old code beside new on one
+database (Floyd, Athens, a console hub; every process's page and state, lists, feed, search, civic.json,
+hub-config): identical apart from added fields, and two test-made rows (row closed, state active) the old code failed
+to close on every read and the new presents closed.
+
+**Deliberate visible changes:** the console's plugin order (now the Plugins page's); `/process/:id` redirects a type
+with its own page; past the deadline a process shows closed until the job (≤15 min); late resident actions refused;
+the archive names a brief "Brief".
+
+**Results (local, 2026-10-21):** unit 1,700 (154 files); `npm run build` in ui clean; lint and
+typecheck clean. API, service role: 828 passed in the last full run; its 4 failures were the documented PostgREST
+upstream 502 (`auditConcurrency`, `sampleRefresh`: passed alone), the dashboard's pre-existing order-dependence, and
+one test of mine (fixed, then 8/8). API, minted tokens: 846 passed, 2 failed (the dashboard's, as above). Conformance
+inside both. Playwright 164 passed, 2 skipped, no flakes; the new `manifestUi.spec.ts` 5/5.
+
+**For the production release (Adam):** no migrations; `./scripts/release.sh prod` as usual. Then, once production
+serves the new commit, `npm run heartbeats:sync` (vote-close's schedule and grace changed; syncing earlier would alert
+on production's hourly pings). The wire snapshot before/after is optional this time (no wire change), but cheap:
+RUNBOOK-release.md. The descriptor needs a JSON-LD Accept, so a browser tab won't show it; the Smoke job's read-only
+check covers it on dev.
+
+**Open:**
+- The dashboard test's "waiting for attention" counts fail order-dependently (a swing of hundreds in pending reviews
+  between two reads); the old code fails the same way. Not this slice's; worth its own look.
+- `auditLiveExposure` left Athens' meeting summaries off for later files: fixed (`1e48dcd`).
+- Left for the plugin program (ADR-009): a route mounter, per-plugin migrations, loading from packages, the grant.
+- Spec differences found: the report's section G. No `hub:` term changed: no website re-copy needed.
+
+---
+
 ## Architecture 1: what a hub published keeps its ids; a served DID; one namespace; a move signal — 2026-10-20
 
 `multi-tenant`, one commit per item (`06a32fb`..`2a384c2`), **live on dev** (`./scripts/release.sh dev --yes`, both

@@ -31,7 +31,10 @@ numbers below, or just grep the heading.
 | Rate limits (sign-in, assistant), AI limits and budget | `src/db/rateLimit.ts`, `src/shared/aiLimits.ts`, `src/services/aiBudget.ts` |
 | Server-side fetches of URLs others chose (SSRF guard) | `src/utils/ssrfGuard.ts` (`guardedFetch`), `src/utils/http.ts` |
 | Security headers (API, vercel.json, vite preview) | `src/shared/securityHeaders.ts` |
-| Process registry and per-type handlers | `src/processes/registry.ts`, `src/processes/*Process.ts` |
+| Process types: each type's manifest (what it is) and handler (what it does); the one list; the startup check; adding a type | `src/modules/civic.<type>/{manifest,handler}.ts` (Polis: `src/shared/polis_deliberation/manifest.ts` + `src/processes/deliberationBoot.ts`), `src/shared/processManifests.ts`, `src/processes/manifest.ts`, `src/processes/registry.ts`; UI `ui/src/processes/` (`display.ts`, one module per type); ADR-009 |
+| Hub features (plugins that are not process types) | `src/shared/hubFeatures.ts` |
+| The served process descriptor (§12.1), the context IRI's routing | `src/services/processDescriptor.ts`, `handleGetProcess`, `vercel.json` (`/process/:id` with a JSON-LD Accept, `/process/:id/action`) |
+| Deadlines: read as closed (`readAsClosed`), closed by the job every 15 minutes, late resident actions refused (`deadlineRefusal`) | `asRead` in `src/services/processService.ts`, each deadline type's handler, `vote_close` in `src/jobs/registry.ts` |
 | What each process type is (descriptor: states, actions + callers, events, tables, creation, tier), the static check, the conformance suite, the fake Polis | `src/processes/descriptor.ts`, `src/processes/descriptorCheck.ts`, `tests/conformance/` (README for plugin authors), `tests/api/conformance.test.ts`, `src/debug/fakePolis.ts` (`CIVIC_POLIS_FAKE=on`) |
 | Reading more than 1,000 rows: `readAll()` (pages), `inChunks()` (long id lists); the `CIVIC_ROW_CAP` guard | `src/db/readAll.ts`, `src/db/inChunks.ts`, `cutOffAtCap` in `src/db/forHub.ts` |
 | Reporting an error operators must see; it goes to Sentry, scrubbed, when `CIVIC_ERROR_DSN` is set | `src/utils/reportError.ts`, `src/utils/errorTracking.ts` (scrubber, envelope, flush); the browser's via `src/http/clientErrors.ts` and `ui/src/services/errorReporter.ts`; ADR-006 |
@@ -167,6 +170,8 @@ numbers below, or just grep the heading.
   `startAuth.ts`, `ui/src/start/`), the handoff session
   (`createHandoffSession`, `POST /auth/handoff`), DB rate limits
   (`start_attempts`), `20261008010000` — top of HANDOFF (grep the heading)
+- **Architecture 2 (2026-10-21)**: the process manifest as the single source, derived lists, the feature split, the
+  served descriptor, reads that never close, the UI registry, ADR-009 — top of HANDOFF (grep the heading)
 - **Architecture 1 (2026-10-20)**: ids frozen at insert, `/.well-known/did.json`, one `hub:` namespace, the move
   signal, the standing rules in BUILD-PLAN, ADR-008 — top of HANDOFF (grep the heading)
 - **Handing a hub over (2026-10-08, session 4)**: ownership at create, the
