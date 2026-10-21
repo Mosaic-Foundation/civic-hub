@@ -12,7 +12,7 @@ import { forHub, HubDbError, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { generateId } from "../utils/id.js";
 import { findExistingBriefId } from "../processes/spawnBrief.js";
-import { processDetailPath } from "../processes/registry.js";
+import { getManifest, isPublished, processDetailPath, publicationOf, summarizedProcessIdOf } from "../processes/registry.js";
 import { isPubliclyFetchable } from "./processLifecycle.js";
 import { isProcessTypeEnabled } from "./pluginGate.js";
 import {
@@ -115,14 +115,12 @@ export async function hydratePeers(
     // through here. The edge row stays; the link returns with the plugin.
     if (!isProcessTypeEnabled(row.type)) continue;
 
-    // A brief is public only once PUBLISHED: /brief/:id 404s for pending and
+    // A type whose manifest says `linkedBeforePublished: false` (a brief) is
+    // public only once PUBLISHED: /brief/:id 404s for pending and
     // approved-but-unpublished records, so a "Summarized by" pointer to one
     // dead-ends for everyone, admins included (Adam, 2026-09-06: "Brief not
     // found"). The admin reaches a pending brief through the Briefs tab.
-    if (row.type === "civic.brief") {
-      const ps = (row.state as { publication_status?: unknown } | null)?.publication_status;
-      if (ps !== "published") continue;
-    }
+    if (publicationOf(row.type)?.linkedBeforePublished === false && !isPublished(row.type, row.state)) continue;
 
     const visible =
       isPubliclyFetchable(row.status as never) ||
@@ -278,10 +276,11 @@ export async function getBriefLinks(
   }
   if (!row) return empty;
 
-  // This process IS a brief -> point at what it summarizes.
-  if (row.type === "civic.brief") {
-    const sourceId = (row.state as { source_process_id?: unknown } | null)?.source_process_id;
-    if (typeof sourceId !== "string" || !sourceId) return empty;
+  // This process IS a brief (its manifest says it summarizes another
+  // process) -> point at what it summarizes.
+  if (getManifest(row.type)?.summarizes) {
+    const sourceId = summarizedProcessIdOf(row.type, row.state);
+    if (!sourceId) return empty;
     const peers = await hydratePeers([sourceId], {
       includeNonPublicOwnedBy: opts.viewerId ?? null,
       isAdmin: opts.isAdmin,

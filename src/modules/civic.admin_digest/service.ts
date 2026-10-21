@@ -34,6 +34,7 @@ import {
   waitlistRows,
 } from "./store.js";
 import { getAllProcesses, getSampleProcessIds } from "../../services/processService.js";
+import { getManifest, publicationOf, typesPublishedThrough } from "../../processes/registry.js";
 import { listReviews } from "../civic.review/index.js";
 import { effectiveQualityFlag } from "../civic.meeting_summary/index.js";
 import { sendEmail } from "../../utils/email.js";
@@ -84,18 +85,23 @@ async function reviewsLine(since: string, until: string, sampleIds: ReadonlySet<
 
 async function briefAndSummaryLines(since: string, until: string, ui: string): Promise<DigestLine[]> {
   const on = { briefs: isPluginEnabledSync("brief"), summaries: isPluginEnabledSync("meeting_summary") };
-  const types = [...(on.briefs ? ["civic.brief"] : []), ...(on.summaries ? ["civic.meeting_summary"] : [])];
+  // Briefs are the published-through-"briefs" types that summarize another
+  // process (not a vote's results record); summaries are the other queue's.
+  const briefTypes = typesPublishedThrough("briefs").filter((t) => getManifest(t)?.summarizes);
+  const summaryTypes = typesPublishedThrough("meeting_summaries");
+  const types = [...(on.briefs ? briefTypes : []), ...(on.summaries ? summaryTypes : [])];
   if (types.length === 0) return [];
   const procs = (await getAllProcesses(types)).filter((p) => !p.isSample);
   const briefs = { new_count: 0, waiting: 0 };
   const summaries = { new_count: 0, waiting: 0, flagged: 0 };
   for (const p of procs) {
-    const state = p.state as { publication_status?: unknown; approval_status?: unknown } | null | undefined;
+    const state = p.state as Record<string, unknown> | null | undefined;
     const fresh = within(p.createdAt, since, until);
-    if (p.definition.type === "civic.brief" && state?.publication_status === "pending") {
+    const type = p.definition.type;
+    if (briefTypes.includes(type) && state?.[publicationOf(type)?.field ?? ""] === "pending") {
       briefs.waiting += 1;
       if (fresh) briefs.new_count += 1;
-    } else if (p.definition.type === "civic.meeting_summary" && state?.approval_status === "pending") {
+    } else if (summaryTypes.includes(type) && state?.[publicationOf(type)?.field ?? ""] === "pending") {
       summaries.waiting += 1;
       if (fresh) {
         summaries.new_count += 1;

@@ -17,7 +17,7 @@ import {
 } from "../middleware/auth.js";
 import { isPubliclyFetchable } from "../services/processLifecycle.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
-import { getDescriptor } from "../processes/registry.js";
+import { getDescriptor, isPublished } from "../processes/registry.js";
 import type { Request, Response } from "express";
 import type { Process } from "../models/process.js";
 
@@ -158,23 +158,12 @@ export const handleListProcesses = route(async (req, res) => {
     types.length > 0 ? types : undefined,
     caller ? "member" : "public",
   );
-  // Public list: hide vote-results, briefs, and meeting summaries that
-  // aren't yet published. Pending / approved records are admin-facing and
-  // must not be visible to the public before approval.
-  //
-  // civic.brief here is the NEW generic brief module (same publication
-  // gate as the legacy civic.vote_results): a pending/approved brief stays
-  // invisible in the public list until an admin publishes it.
-  const filtered = all.filter((p) => {
-    const type = (p as { type?: string }).type;
-    if (type === "civic.vote_results" || type === "civic.brief") {
-      return (p as { publication_status?: string }).publication_status === "published";
-    }
-    if (type === "civic.meeting_summary") {
-      return (p as { approval_status?: string }).approval_status === "published";
-    }
-    return true;
-  });
+  // Public list: hide records an admin publishes (vote results, briefs,
+  // meeting summaries) until they are published. Pending / approved records
+  // are admin-facing and must not be visible to the public before approval.
+  // Which types, and which status field, come from each type's manifest
+  // (`publication`).
+  const filtered = all.filter((p) => isPublished((p as { type?: string }).type ?? "", p as Record<string, unknown>));
   res.json(filtered);
 });
 

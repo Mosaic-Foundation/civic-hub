@@ -16,7 +16,7 @@ import { emitEvent } from "../events/eventEmitter.js";
 import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
 import { getUserFromToken } from "../modules/civic.auth/index.js";
 import { defaultJurisdiction } from "../config/hub.js";
-import { processDetailPath } from "../processes/registry.js";
+import { processDetailPath, summarizedProcessIdOf } from "../processes/registry.js";
 import type { RenderedLink, RenderedLinks } from "../modules/civic.process_links/index.js";
 import { canEditLinks, canRemoveLink, edgeBelongsToProcess, RELATIONS, RELATION_LABELS, suggestionSeed, validateLink } from "../modules/civic.process_links/index.js";
 import {
@@ -45,10 +45,10 @@ async function inheritedFromSource(
 ): Promise<RenderedLinks> {
   const empty: RenderedLinks = { outgoing: [], incoming: [] };
   const proc = await getProcess(processId);
-  if (!proc || proc.definition.type !== "civic.brief") return empty;
+  if (!proc) return empty;
 
-  const sourceId = (proc.state as { source_process_id?: unknown })?.source_process_id;
-  if (typeof sourceId !== "string" || !sourceId) return empty;
+  const sourceId = summarizedProcessIdOf(proc.definition.type, proc.state as Record<string, unknown> | null);
+  if (!sourceId) return empty;
 
   const sourceLinks = await getRenderedLinks(sourceId, opts);
   const mark = (l: RenderedLink): RenderedLink => ({ ...l, inherited: true });

@@ -25,6 +25,8 @@ import { disabledProcessTypes, isProcessTypeEnabled } from "./pluginGate.js";
 import { nonPublicStatusFilter } from "./processLifecycle.js";
 import { isPluginEnabledSync } from "./hubSettings.js";
 import { countUnseenEdits } from "./editNotifications.js";
+import { queueTypeGroups } from "./publicationQueues.js";
+import type { PublicationQueue } from "../processes/manifest.js";
 
 /** The hub in scope. Queue counts are only ever read or stamped inside one. */
 function db(): HubDb {
@@ -80,9 +82,15 @@ export async function getAdminQueueCounts(userId: string): Promise<AdminQueueCou
       .eq(`state->>${stateKey}`, "pending")
       .gt("created_at", since);
   };
+  const pendingInQueue = async (queue: PublicationQueue, since: string): Promise<number> => {
+    const counts = await Promise.all(
+      queueTypeGroups(queue).map((g) => pendingSince(g.types, g.field, since)),
+    );
+    return counts.reduce<number>((sum, n) => sum + Number(n), 0);
+  };
   const [briefs, meetingSummaries] = await Promise.all([
-    pendingSince(["civic.brief", "civic.vote_results"], "publication_status", seen("briefs")),
-    pendingSince(["civic.meeting_summary"], "approval_status", seen("meeting_summaries")),
+    pendingInQueue("briefs", seen("briefs")),
+    pendingInQueue("meeting_summaries", seen("meeting_summaries")),
   ]);
 
   const feedback = isPluginEnabledSync("feedback")

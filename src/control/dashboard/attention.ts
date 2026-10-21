@@ -25,6 +25,8 @@ import { currentHubId } from "../../config/hubContext.js";
 import { disabledProcessTypes, isProcessTypeEnabled } from "../../services/pluginGate.js";
 import { isPluginEnabledSync } from "../../services/hubSettings.js";
 import { nonPublicStatusFilter } from "../../services/processLifecycle.js";
+import { queueTypeGroups } from "../../services/publicationQueues.js";
+import type { PublicationQueue } from "../../processes/manifest.js";
 import { hubOrigin } from "../../utils/baseUrl.js";
 import { listHubs, type ControlHub } from "../hubs.js";
 import { inHubScope } from "../inHub.js";
@@ -81,6 +83,19 @@ async function pendingProcesses(types: string[], stateKey: string, flaggedOnly =
 }
 
 /**
+ * Pending records of one publication queue (the types and the state field
+ * come from the manifests). Null when every one of its types is switched
+ * off; types of one queue that use different fields are counted per field.
+ */
+async function pendingInQueue(queue: PublicationQueue, flaggedOnly = false): Promise<number | null> {
+  const counts = await Promise.all(
+    queueTypeGroups(queue).map((g) => pendingProcesses(g.types, g.field, flaggedOnly)),
+  );
+  const on = counts.filter((n): n is number => n !== null);
+  return on.length === 0 ? null : on.reduce((sum, n) => sum + Number(n), 0);
+}
+
+/**
  * Pending reviews the Code of Conduct check flagged, leaving out reviews of a
  * switched-off type's processes as count_pending_reviews does. Flagged reviews
  * are few, so their processes are read and the switched-off ones dropped.
@@ -111,12 +126,12 @@ async function hubCounts(now: Date): Promise<Record<AttentionQueue, number | nul
     db
       .rpc<number | string>("count_pending_reviews", { p_since: EPOCH, p_excluded_types: disabledProcessTypes() })
       .then(Number),
-    pendingProcesses(["civic.brief", "civic.vote_results"], "publication_status"),
-    pendingProcesses(["civic.meeting_summary"], "approval_status"),
+    pendingInQueue("briefs"),
+    pendingInQueue("meeting_summaries"),
     isPluginEnabledSync("feedback") ? db.from("feedback_submissions").count().gte("created_at", since) : null,
     db.from("waitlist").count().is("told_open_at", null),
     countFlaggedReviews(),
-    pendingProcesses(["civic.meeting_summary"], "approval_status", true),
+    pendingInQueue("meeting_summaries", true),
   ]);
   return {
     reviews,
