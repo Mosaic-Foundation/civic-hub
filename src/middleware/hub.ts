@@ -241,6 +241,14 @@ async function sendMoved(req: Request, res: Response, hub: Hub, arrivedOn: strin
   res.redirect(reading ? 301 : 308, `${origin}${requestedPath(req)}`);
 }
 
+function hostOf(origin: string): string | null {
+  try {
+    return new URL(origin).hostname;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The Move activity that took the hub to `origin`, for its tombstone: null
  * when there is none (a hand-set redirect_to) or the log cannot be read,
@@ -250,7 +258,8 @@ async function moveActivity(hub: Hub, origin: string): Promise<{ activity: strin
   try {
     const move = await getLatestMove(hub.id);
     const to = (move?.data.move as { to?: unknown } | undefined)?.to;
-    if (!move || to !== origin) return null;
+    // By hostname: outside production a local origin may differ in port only.
+    if (!move || typeof to !== "string" || hostOf(to) !== hostOf(origin)) return null;
     return { activity: activityIdOf(move), published: move.timestamp };
   } catch (err) {
     console.error(`[hub] move activity for ${hub.id} unreadable: ${err instanceof Error ? err.message : String(err)}`);
