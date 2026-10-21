@@ -56,6 +56,8 @@
 // worthless.
 
 import { CivicEvent } from "../models/event.js";
+import { MANIFEST_LIST } from "../shared/processManifests.js";
+import type { ActivityRecipe } from "../shared/activityRecipe.js";
 import { apiOriginFor, baseUrl, uiBaseUrl, uiOriginFor } from "../utils/baseUrl.js";
 import { currentHub } from "../config/hubContext.js";
 import {
@@ -327,7 +329,7 @@ interface ActivityMapping {
  * civic:End) where none does, and a `hub:`-typed extension object for the
  * hub-local families the civic registry has no home for yet.
  */
-const ACTIVITY_MAPPINGS: Record<string, ActivityMapping> = {
+const HOST_ACTIVITY_MAPPINGS: Record<string, ActivityMapping> = {
   // --- Process lifecycle (spec §3.2) ---------------------------------------
   "civic.process.created": {
     type: "Create",
@@ -360,39 +362,6 @@ const ACTIVITY_MAPPINGS: Record<string, ActivityMapping> = {
   "civic.process.comment_added": {
     type: "Create",
     buildObject: (e, data, env) => noteObject(e, data, env),
-  },
-  "civic.proposal.submitted": {
-    type: "Create",
-    buildObject: (e, data, env) =>
-      civicObject("civic:Proposal", data, {
-        id: processIri(e, env),
-        name: titleOf(data),
-      }),
-  },
-  // AS2's own verb for endorsement — no civic term needed (spec §3.1 rule 1).
-  "civic.proposal.supported": {
-    type: "Like",
-    buildObject: (e, data, env) =>
-      civicObject("civic:Proposal", data, { id: processIri(e, env) }),
-  },
-  // Withdrawing support undoes the Like above (spec §3.1 rule 1: AS2's own
-  // verb where one exists).
-  "civic.proposal.support_withdrawn": {
-    type: "Undo",
-    buildObject: (e, data, env) =>
-      civicObject("civic:Proposal", data, { id: processIri(e, env) }),
-  },
-  // Emitter exists (civic.proposals/events.ts) but nothing calls it today —
-  // mapped so the type stays serializable if the path is ever wired up.
-  "civic.proposal.endorsed": {
-    type: "Like",
-    buildObject: (e, data, env) =>
-      civicObject("civic:Proposal", data, { id: processIri(e, env) }),
-  },
-  "civic.proposal.closed": {
-    type: "civic:End",
-    buildObject: (e, data, env) =>
-      processObject(e, data, env, { terminalState: "closed" }),
   },
 
   // --- Outcomes (spec §3.2) ------------------------------------------------
@@ -448,36 +417,6 @@ const ACTIVITY_MAPPINGS: Record<string, ActivityMapping> = {
     buildObject: (e, data) => civicObject("hub:Submission", data, {}),
   },
 
-  // --- Projects (hub-local; a candidate civic process class) ---------------
-  "civic.project.created": {
-    type: "Create",
-    buildObject: (e, data, env) =>
-      civicObject("hub:Project", data, {
-        id: processIri(e, env),
-        name: titleOf(data),
-      }),
-  },
-  "civic.project.updated": {
-    type: "Update",
-    buildObject: (e, data, env) =>
-      civicObject("hub:Project", data, { id: processIri(e, env) }),
-  },
-  "civic.project.comment_added": {
-    type: "Create",
-    buildObject: (e, data, env) => noteObject(e, data, env),
-  },
-  "civic.project.archived": {
-    type: "civic:End",
-    buildObject: (e, data, env) =>
-      processObject(e, data, env, { terminalState: "archived" }),
-  },
-  "civic.project.sentiment_changed": {
-    type: "Update",
-    buildObject: (e, data, env) =>
-      civicObject("hub:ProjectSentiment", data, {
-        id: processIri(e, env),
-      }),
-  },
 
   // --- Admin review workflow (always restricted) ---------------------------
   // AS2 has native verbs for the accept/reject shape of a review decision;
@@ -519,6 +458,54 @@ const ACTIVITY_MAPPINGS: Record<string, ActivityMapping> = {
     buildTarget: (_e, data) => linkTo(nested(data, "move")?.to),
   },
 };
+
+/**
+ * A manifest's recipe (src/shared/activityRecipe.ts) as a mapping, built with
+ * the same builders and arguments the host's own mappings use.
+ */
+function fromRecipe(recipe: ActivityRecipe): ActivityMapping {
+  const o = recipe.object;
+  switch (o.kind) {
+    case "civic":
+      return {
+        type: recipe.type,
+        buildObject: (e, data, env) => {
+          const props: { id?: string | null; name?: string | null } = {};
+          if (o.id === "process") props.id = processIri(e, env);
+          if (o.name === "title") props.name = titleOf(data);
+          return civicObject(o.class, data, props);
+        },
+      };
+    case "process":
+      return {
+        type: recipe.type,
+        buildObject: (e, data, env) =>
+          o.terminalState ? processObject(e, data, env, { terminalState: o.terminalState }) : processObject(e, data, env),
+      };
+    case "note":
+      return { type: recipe.type, buildObject: (e, data, env) => noteObject(e, data, env) };
+  }
+}
+
+/**
+ * The host's mappings plus each process type's own (its manifest's
+ * `activities` and `legacyActivities`, ADR-009). An event type mapped twice
+ * stops startup: one mapping per event type.
+ */
+const ACTIVITY_MAPPINGS: Record<string, ActivityMapping> = { ...HOST_ACTIVITY_MAPPINGS };
+for (const m of MANIFEST_LIST) {
+  for (const [eventType, recipe] of [...Object.entries(m.activities), ...Object.entries(m.legacyActivities ?? {})]) {
+    if (ACTIVITY_MAPPINGS[eventType]) {
+      throw new Error(`activity mapping: ${eventType} (${m.descriptor.type}'s manifest) is already mapped`);
+    }
+    ACTIVITY_MAPPINGS[eventType] = fromRecipe(recipe);
+  }
+}
+
+/** The event types the host maps for every process type (not any one manifest's). */
+export function hostMappedEventTypes(): string[] {
+  return Object.keys(HOST_ACTIVITY_MAPPINGS).sort();
+}
 
 // --- Object builders -------------------------------------------------------
 //
