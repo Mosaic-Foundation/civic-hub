@@ -15,7 +15,7 @@
 //     attached (visitors' input on it too; the demo bar says so) and seeded
 //     again from its template under the same id, so links to it still work;
 //   - deadlines are never moved in place: that would fight the vote lifecycle
-//     (close-on-read, the hourly close, its events);
+//     (the read-as-closed deadline, the hourly close, its events);
 //   - the closed vote and its outcome, the project, the announcements, the
 //     meeting summary and the word cloud are left alone;
 //   - visitors' own items (`added_in_demo`) are never touched.

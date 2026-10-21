@@ -56,7 +56,7 @@ function getState(process: Process): VoteProcessState {
   return process.state as unknown as VoteProcessState;
 }
 
-/** The actor a deadline close runs as, hourly or on read. */
+/** The actor a deadline close runs as (the hourly job). */
 export const AUTO_CLOSE_ACTOR = "system:auto-close";
 
 function makeContext(process: Process) {
@@ -219,7 +219,7 @@ const voteProcess: ProcessHandler = {
         const ballots = (await getBallotChoicesForProcess(process.id)).map(
           (c) => method.parseReceipt(c),
         );
-        // A deadline close (hourly or on read) happened at the deadline, not
+        // A deadline close (the hourly job) happened at the deadline, not
         // when it was noticed: its events carry that time (Phase 5 part two,
         // fix 6). A manual close has no `at` and is stamped now.
         const closeCtx = action.at
@@ -324,10 +324,22 @@ const voteProcess: ProcessHandler = {
     });
   },
 
-  // Lazy deadline-close: an active vote past its voting_closes_at runs the
-  // normal close action, which tallies, spawns the vote-results record, and
-  // emits the lifecycle events. Dispatched through the injected action
-  // dispatcher so the close is persisted exactly as a manual close would be.
+  // Past voting_closes_at and not closed yet by the hourly job: it reads as
+  // closed (both the row's status and the state's, which the read model
+  // follows, so the tally shows as it does once a vote closes). No write.
+  readAsClosed(process: Process): Process | null {
+    const state = getState(process);
+    if (state.status !== "active" || !isPastDeadline(state.voting_closes_at)) return null;
+    const copy = structuredClone(process);
+    copy.status = "closed";
+    getState(copy).status = "closed";
+    return copy;
+  },
+
+  // The deadline close, run by the hourly job: an active vote past its
+  // voting_closes_at runs the normal close action, which tallies and emits
+  // the lifecycle events. Dispatched through the injected action dispatcher
+  // so the close is persisted exactly as a manual close would be.
   async closeIfExpired(process: Process): Promise<Process> {
     const state = getState(process);
     if (state.status !== "active") return process;

@@ -82,7 +82,9 @@ async function getVotedStatementIds(
 async function getConversationId(processId: string): Promise<string> {
   const process = await processService.getProcess(processId);
   if (!process) throw new NotFoundError("Conversation not found");
-  if (process.status !== "active") {
+  // Past its deadline it reads as closed until the hourly job closes it, so
+  // it takes no more statements or votes in the meantime.
+  if (process.status !== "active" || (await processService.readsAsClosed(process))) {
     throw new ConflictError("Conversation is not active", "conversation_not_active");
   }
   const state = process.state as unknown as PolisDeliberationState;

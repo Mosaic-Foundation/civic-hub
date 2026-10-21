@@ -224,17 +224,24 @@ describe("a vote in progress when its plugin goes off", () => {
     expect(await endedEvents()).toHaveLength(0);
   });
 
-  it("switched back on, the first read closes it, stamped with the deadline and recorded now", async () => {
+  it("switched back on, a read shows it closed and writes nothing; the hourly job closes it, stamped with the deadline and recorded now", async () => {
     await setAthens({ "plugin.vote.enabled": "true" });
     reEnabledAt = Date.now();
     const state = await call("GET", `/process/${voteId}/state`, ATHENS);
     expect(state.status).toBe(200);
+    // Past its deadline, it reads as closed (Architecture 2: a read never closes).
+    expect(state.body.status).toBe("closed");
+    expect((await storedVote()).status).toBe("active");
+    expect(await endedEvents()).toHaveLength(0);
+
+    const job = await call("GET", "/internal/vote-close/run?hub=athens", ATHENS, undefined, process.env.CIVIC_TEST_CRON_SECRET?.trim() || "ci-only-cron-secret");
+    expect(job.status, JSON.stringify(job.body)).toBe(200);
     const stored = await storedVote();
     // A vote finishes when it closes (2026-10-07).
     expect(stored.status).toBe("finalized");
     const ended = await endedEvents();
     expect(ended).toHaveLength(1);
-    // Stamped at voting_closes_at (a minute earlier), recorded when the read ran.
+    // Stamped at voting_closes_at (a minute earlier), recorded when the job ran.
     expect(Date.parse(ended[0].created_at)).toBe(Date.parse(deadline));
     expect(Date.parse(ended[0].recorded_at)).toBeGreaterThanOrEqual(reEnabledAt - 2_000);
     // So is every event the close emitted.

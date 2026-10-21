@@ -282,11 +282,11 @@ export interface ProcessHandler {
   getSummary(process: Process): Record<string, unknown>;
 
   /**
-   * Optional lazy deadline-close. Called on the read paths
-   * (listProcessSummaries / getProcessState) for every process. If this
-   * process has an elapsed deadline and is still open, perform the terminal
-   * transition — persist the new status AND emit the lifecycle event — then
-   * return the updated process. Otherwise return it unchanged.
+   * Optional deadline close, run by the hourly job (closeExpiredProcesses;
+   * since Architecture 2 a read never closes anything). If this process has an
+   * elapsed deadline and is still open, perform the terminal transition —
+   * persist the new status AND emit the lifecycle event — then return the
+   * updated process. Otherwise return it unchanged.
    *
    * This is the single, type-agnostic close mechanism: each handler owns its
    * own deadline source (voting_closes_at / deliberation deadline /
@@ -299,6 +299,17 @@ export interface ProcessHandler {
    * be idempotent: re-reading an already-closed process is a no-op.
    */
   closeIfExpired?(process: Process): Promise<Process>;
+
+  /**
+   * Optional, with closeIfExpired: a process past its deadline that the job
+   * has not closed yet, as it reads — a copy at "closed", with nothing
+   * written — or null while it is still open. The read paths show this copy
+   * (GET /process, /process/:id, a type's own page, the feed), and
+   * executeAction refuses every action on it but the deadline action, with
+   * the manifest's deadlineRefusal. Pure apart from reading its own deadline.
+   * Architecture 2: replaces closing on read.
+   */
+  readAsClosed?(process: Process): Process | null | Promise<Process | null>;
 
   /**
    * Archive / restore hooks — sync storage this handler owns.

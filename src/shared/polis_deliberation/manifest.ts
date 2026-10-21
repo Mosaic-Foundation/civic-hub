@@ -135,6 +135,8 @@ export const POLIS_DELIBERATION_MANIFEST = defineManifest({
   jobs: [],
   pluginSection: { order: 40, fields: [{ key: "plugin.conversation.polis_url", kind: "url" }] },
   activities: {},
+  // What a closed conversation answers (src/controllers/deliberationController.ts).
+  deadlineRefusal: { code: "conversation_not_active", message: "Conversation is not active" },
   feed: {
     cards: [
       // A conversation posts on created, not started (no double post).

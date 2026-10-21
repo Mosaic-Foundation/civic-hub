@@ -271,12 +271,21 @@ export function bootDeliberation(): ProcessHandler {
   // the hub's deliberation_drafts storage).
   handler.getAssistantConfig = () => deliberationAssistantConfig;
 
-  // Lazy deadline-close: an active deliberation past its deadline runs the
+  // The deadline close, run by the hourly job: an active deliberation past its deadline runs the
   // shared "close" action through the injected dispatcher (persists status +
   // emits the lifecycle event). The shared handler's close guards its Polis
   // call, so a down/unauthorized Polis backend can't wedge the transition.
   // Wired here (not in the portable shared handler) so the shared module stays
   // free of hub registry imports.
+  // Past its deadline and not closed yet by the hourly job: it reads as
+  // closed. No write, no Polis call.
+  handler.readAsClosed = (process: Process): Process | null => {
+    if (process.status !== "active") return null;
+    const deadline = (process.state as Record<string, unknown>).deadline as string | null | undefined;
+    if (!isPastDeadline(deadline)) return null;
+    return { ...structuredClone(process), status: "closed" };
+  };
+
   handler.closeIfExpired = async (process: Process): Promise<Process> => {
     if (process.status !== "active") return process;
     const deadline = (process.state as Record<string, unknown>).deadline as

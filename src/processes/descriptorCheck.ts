@@ -150,6 +150,7 @@ export function checkDescriptor(handler: ProcessHandler, host: HostFacts): strin
       add(`its deadline action ${close.name} takes no note: an admin closing early must give one (DEADLINE_CLOSE_INPUT)`);
     }
     if (!handler.closeIfExpired) add(`declares a deadline but the handler has no closeIfExpired`);
+    if (!handler.readAsClosed) add(`declares a deadline but the handler has no readAsClosed (how it reads past the deadline)`);
   } else if (handler.closeIfExpired) {
     add(`the handler closes at a deadline (closeIfExpired) but the descriptor declares none`);
   }

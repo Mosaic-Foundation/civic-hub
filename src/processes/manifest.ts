@@ -124,6 +124,12 @@ export interface ProcessManifest {
    */
   briefPill?: "to_board";
   /**
+   * For a type with a deadline: the refusal an action gets once the deadline
+   * has passed and before the hourly job closes it — the same code and
+   * message the type gives a closed one (a vote's "vote_closed").
+   */
+  deadlineRefusal?: { code: string; message: string };
+  /**
    * The feed cards its events make, and how a Civic Brief of one of its
    * processes reads (src/shared/feedActivity.ts). Absent: it makes no cards.
    */
@@ -260,6 +266,9 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       if (pub.queue !== "briefs" && pub.queue !== "meeting_summaries") {
         throw new ManifestError(`${where(m)}: publication.queue must be "briefs" or "meeting_summaries"`);
       }
+    }
+    if (d.deadline && (!m.deadlineRefusal || !m.deadlineRefusal.code || !m.deadlineRefusal.message)) {
+      throw new ManifestError(`${where(m)}: a type with a deadline needs "deadlineRefusal" (code and message)`);
     }
     if (m.summarizes && (typeof m.summarizes.stateField !== "string" || m.summarizes.stateField === "")) {
       throw new ManifestError(`${where(m)}: summarizes.stateField is empty`);

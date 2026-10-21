@@ -118,8 +118,9 @@ const HOST_JOBS: readonly JobSpec[] = [
     plugin: null,
     path: "/vote-close/run",
     // Hourly, so a process closes within the hour of its deadline on every
-    // hub, read or not, and its close is recorded in time for the digest. The
-    // close on read stays as the fallback.
+    // hub, read or not, and its close is recorded in time for the digest. A
+    // read never closes (Architecture 2): until this runs, a process past its
+    // deadline reads as closed (readAsClosed) and takes no resident actions.
     // It also reshuffles open votes' ballots (ballot secrecy): keep it a few
     // minutes BEFORE the backups' :17 (civic-hub-backups dump.yml), so each
     // dump sees freshly shuffled ballots.

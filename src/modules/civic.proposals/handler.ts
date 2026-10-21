@@ -50,7 +50,7 @@ function db() {
   return forHub(currentHubId());
 }
 
-/** The actor a deadline close runs as, hourly or on read. */
+/** The actor a deadline close runs as (the hourly job). */
 const AUTO_CLOSE_ACTOR = "system:auto-close";
 
 /** How long a proposal is open when its submission carries no duration (as before 2026-10-12). */
@@ -132,7 +132,11 @@ const proposalAdapter: ProcessHandler = {
       return { id: process.id, type: process.definition.type, title: process.title, status: process.status, created_by: process.createdBy };
     }
     const { submitted_by, ...rest } = model;
-    return { ...rest, type: process.definition.type, created_by: submitted_by ?? process.createdBy };
+    // The page's status is the proposals row's. A proposal that reads as
+    // closed at its deadline (readAsClosed) shows closed while its row still
+    // says submitted; once the job closes it, the row says closed too.
+    const status = process.status === "closed" && rest.status === "submitted" ? "closed" : rest.status;
+    return { ...rest, status, type: process.definition.type, created_by: submitted_by ?? process.createdBy };
   },
 
   getSummary(process: Process): Record<string, unknown> {
@@ -146,10 +150,19 @@ const proposalAdapter: ProcessHandler = {
     };
   },
 
-  // Lazy deadline-close: an active proposal past its closes_at runs the
-  // close action through the shared dispatcher, claimed once however many
-  // readers notice (processService.closeAtDeadline); its brief comes from the
-  // universal seam in executeAction, like every other type's.
+  // Past closes_at and not closed yet by the hourly job: it reads as closed.
+  // No write.
+  async readAsClosed(process: Process): Promise<Process | null> {
+    if (process.status !== "active") return null;
+    const proposal = await getProposal(process.id);
+    if (!proposal || !isPastDeadline(proposal.closes_at)) return null;
+    return { ...structuredClone(process), status: "closed" };
+  },
+
+  // The deadline close, run by the hourly job: an active proposal past its
+  // closes_at runs the close action through the shared dispatcher, claimed
+  // once (processService.closeAtDeadline); its brief comes from the universal
+  // seam in executeAction, like every other type's.
   async closeIfExpired(process: Process): Promise<Process> {
     if (process.status !== "active") return process;
     const proposal = await getProposal(process.id);

@@ -44,6 +44,7 @@ import {
   PROCESS_TYPE_PLUGINS,
   declaredAction,
   retrySafeActionsOf,
+  getManifest,
 } from "../processes/registry.js";
 import {
   allowedTargets,
@@ -368,6 +369,15 @@ async function attemptAction(
     throw new ConflictError("This is finished and can't take any more actions.", "process_finalized");
   }
 
+  // Past its deadline but not closed yet (the hourly job closes it), it reads
+  // as closed, so a resident gets what a closed one answers: the type's own
+  // refusal (its manifest's deadlineRefusal). Admin and hub actions go on to
+  // the handler as before (the job's close, an admin's late close).
+  if (caller === "resident" && handler.descriptor.deadline && (await asRead(process)) !== process) {
+    const refusal = getManifest(handler.type)?.deadlineRefusal;
+    throw new ConflictError(refusal?.message ?? "This has closed.", refusal?.code ?? "process_closed");
+  }
+
   // An admin closing before the deadline must say why (src/services/closeEarly.ts).
   const early = await earlyCloseOf(handler, process, action, caller);
 
@@ -516,33 +526,34 @@ export function isTerminalStatus(status: string): boolean {
   return status === "closed" || status === "finalized";
 }
 
-// --- Lazy deadline-close ---------------------------------------------------
+// --- Deadlines: read as closed, closed by the job ----------------------------
 
 /**
- * One type-agnostic lazy close. For ANY process whose deadline has elapsed and
- * is still open, the registered handler's `closeIfExpired` performs the terminal
- * transition (persist + emit) and returns the updated process. Handlers own
- * their own deadline source and close action (vote → voting_closes_at; polis
- * deliberation → deadline; proposal → proposals.closes_at); types without a
- * deadline (projects) omit the hook and are returned unchanged.
- *
- * Called from the read paths so the UI always sees the correct state without a
- * cron. Best-effort: a close failure (e.g. a race, or the Polis backend being
- * down) is logged and the original process is returned so the read still works.
+ * Whether a process is past its deadline and not yet closed by the hourly
+ * job, so it reads as closed. For participation routes outside
+ * executeAction (a conversation's statements), which must refuse it too.
  */
-async function autoCloseIfExpired(process: Process): Promise<Process> {
-  const handler = getProcessHandler(process.definition.type);
-  if (!handler?.closeIfExpired) return process;
+export async function readsAsClosed(process: Process): Promise<boolean> {
+  return (await asRead(process)) !== process;
+}
 
+/**
+ * A process as it reads: past its deadline and not yet closed by the hourly
+ * job, the handler's readAsClosed copy (status "closed", nothing written);
+ * otherwise the process itself. A read never closes anything (Architecture
+ * 2, Adam 2026-10-21): the job owns the close, its events and the brief.
+ * Best-effort like the close on read it replaced: a failing deadline read is
+ * logged and the process is shown as stored.
+ */
+async function asRead(process: Process): Promise<Process> {
+  const handler = getProcessHandler(process.definition.type);
+  if (!handler?.readAsClosed) return process;
   try {
-    return await handler.closeIfExpired(process);
+    return (await handler.readAsClosed(process)) ?? process;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "unknown error";
-    console.warn(
-      `[auto-close] Failed to close ${process.definition.type} ${process.id}: ${msg}`,
-    );
-    // The row as it is now: another reader's close may have won.
-    return (await getProcess(process.id).catch(() => undefined)) ?? process;
+    console.warn(`[deadline] Could not read ${process.definition.type} ${process.id}'s deadline: ${msg}`);
+    return process;
   }
 }
 
@@ -550,13 +561,13 @@ async function autoCloseIfExpired(process: Process): Promise<Process> {
 const CLOSE_CLAIM_MS = 2 * 60 * 1000;
 
 /**
- * A deadline close, run once however many readers notice the deadline at
- * the same moment (Audit 3). A reader first claims the close on the row
+ * A deadline close, run once however many callers reach the deadline at the
+ * same moment (Audit 3; since Architecture 2 the hourly job and an admin's
+ * close, no longer readers). A caller first claims the close on the row
  * (`close_claimed_until`, a conditional update: one wins); the others return
- * the process as it is, so a conversation's summary is written once and not
- * by every page load during the seconds it takes. The claim lapses after
- * CLOSE_CLAIM_MS, so a close that failed is tried again by a later read or
- * the hourly job. The close itself is an ordinary action, refused if anything
+ * the process as it is, so a conversation's summary is written once. The
+ * claim lapses after CLOSE_CLAIM_MS, so a close that failed is tried again by
+ * the next hourly run. The close itself is an ordinary action, refused if anything
  * else wrote the row first; a refusal after another close won returns the
  * closed process, not an error.
  */
@@ -582,9 +593,8 @@ async function closeAtDeadline(process: Process, action: ProcessAction): Promise
 /**
  * The hourly deadline close (job `vote_close`, closeAllExpired below): every active process of
  * `type` in the hub in scope whose deadline has passed is closed now, through
- * its handler's closeIfExpired — the same close a read would run, stamped
- * with the deadline. Unlike the read path, a failure is reported, not
- * swallowed, so the job's run says which ones did not close.
+ * its handler's closeIfExpired, stamped with the deadline. A failure is
+ * reported, not swallowed, so the job's run says which ones did not close.
  */
 export async function closeExpiredProcesses(
   type: string,
@@ -639,8 +649,8 @@ export async function listProcessSummaries(
   const all = (await getAllProcesses(types)).filter((p) =>
     isProcessTypeEnabled(p.definition.type),
   );
-  // Lazily close any process whose deadline has elapsed before summarizing.
-  const resolved = await Promise.all(all.map(autoCloseIfExpired));
+  // A process past its deadline reads as closed until the hourly job closes it.
+  const resolved = await Promise.all(all.map(asRead));
   const summaries = resolved.map((p) => {
     const handler = getProcessHandler(p.definition.type);
     const summary = handler
@@ -720,8 +730,8 @@ export async function getProcessState(
     return undefined;
   }
 
-  // Lazily close the process if its deadline has elapsed.
-  process = await autoCloseIfExpired(process);
+  // Past its deadline, it reads as closed until the hourly job closes it.
+  process = await asRead(process);
 
   const handler = getProcessHandler(process.definition.type);
   // GET /process/:id/state is public: a handler answers with what anyone

@@ -198,6 +198,8 @@ export const VOTE_MANIFEST = defineManifest({
   activities: {},
   // "Brief to the Supervisors" (Adam, 2026-10-07).
   briefPill: "to_board",
+  // A ballot after the deadline, before the hourly close (the vote module's own words).
+  deadlineRefusal: { code: "vote_closed", message: "Cannot submit vote: voting window has expired" },
   feed: {
     cards: [
       // Votes from before events carried data.process.type are the only

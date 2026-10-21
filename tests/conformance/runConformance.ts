@@ -47,6 +47,7 @@ import type { ProcessHandler } from "../../src/processes/types.js";
 import type { ProcessStatus } from "../../src/models/process.js";
 import { hostFacts } from "./hostFacts.js";
 import { JOBS, JOBS_MOUNT } from "../../src/jobs/registry.js";
+import { getManifest } from "../../src/processes/registry.js";
 import { rowToEvent } from "../../src/events/eventStore.js";
 import { toActivity } from "../../src/events/activitySerializer.js";
 import { toRedactedActivity } from "../../src/events/publicRedaction.js";
@@ -356,7 +357,11 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
 
   if (d.deadline) {
     describe("5. the deadline", () => {
-      it("closes exactly once, with one result and one brief, however many readers notice at once", async () => {
+      // Past the deadline, reads write nothing (a GET never closes,
+      // Architecture 2): the process reads as closed and refuses residents
+      // with its type's own answer, and the hourly job closes it, once,
+      // however many runs overlap.
+      it("past the deadline it reads as closed and refuses residents; the job closes it exactly once, with one result and one brief", async () => {
         const creator = await resident(BETA);
         const id = await liveAs(d, facts, BETA, creator.token);
         touched.push({ id, hub: BETA });
@@ -365,12 +370,44 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
         // By id, not position: a deadline close is stamped with the deadline,
         // which is in the past, so its events sort before ones already there.
         const before = new Set((await eventsOf(id)).map((e) => e.id));
+        const stored = (await processRow(id)).status;
         await expireDeadline(d, id);
+
         const reads = await Promise.all([
           ...Array.from({ length: 6 }, () => call("GET", `/process/${id}/state`, BETA.host)),
           ...Array.from({ length: 3 }, () => call("GET", `/process?type=${d.type}`, BETA.host)),
         ]);
         for (const r of reads) expect(r.status, JSON.stringify(r.body)).toBeLessThan(500);
+        const listed = (reads[6].body as Array<{ id: string; status?: string }>).find((p) => p.id === id);
+        expect(listed?.status, "the list reads it as closed").toBe("closed");
+        expect((await processRow(id)).status, "a read writes nothing").toBe(stored);
+        expect((await eventsOf(id)).filter((e) => !before.has(e.id)), "a read emits nothing").toHaveLength(0);
+
+        // A resident's action (or, for an outside service, taking part) gets
+        // what a closed one answers.
+        const refusal = getManifest(d.type)?.deadlineRefusal;
+        const residentAction = d.actions.find(
+          (a) => a.name !== close.name && a.callers.includes("resident") && a.from.includes(stored as ProcessStatus),
+        );
+        const voter = await resident(BETA);
+        const refused = residentAction
+          ? [await act(BETA, id, residentAction.name, examplePayload(d, residentAction.name, await processRow(id)), voter.token)]
+          : await Promise.all(
+              d.outside_services.flatMap((svc) =>
+                svc.participation.map((r) => call(r.method, r.path.replace(":id", id), BETA.host, r.body, voter.token)),
+              ),
+            );
+        for (const r of refused) {
+          expect(r.status, JSON.stringify(r.body)).toBe(409);
+          if (refusal) expect(r.body.code).toBe(refusal.code);
+        }
+
+        const job = JOBS.find((j) => j.id === "vote_close")!;
+        const cron = process.env.CIVIC_TEST_CRON_SECRET?.trim() || "ci-only-cron-secret";
+        const runs = await Promise.all(
+          Array.from({ length: 3 }, () => call("GET", `${JOBS_MOUNT}${job.path}?hub=${BETA.slug}`, BETA.host, undefined, cron)),
+        );
+        for (const r of runs) expect(r.status, JSON.stringify(r.body)).toBe(200);
         const row = await processRow(id);
         const fromStatus = close.from[0];
         expect([...allowedTargets(close, fromStatus)]).toContain(row.status);
@@ -799,9 +836,14 @@ function tierThree(
         await fakePolis(BETA, { mode, slow_ms: 2_000 });
         try {
           if (mode === "down") {
-            // The hub drives the deadline itself (§10a.3): a read notices it.
+            // The hub drives the deadline itself (§10a.3): the hourly job
+            // closes it (two overlapping runs), not a read.
             await expireDeadline(d, id);
-            await Promise.all(Array.from({ length: 4 }, () => call("GET", `/process/${id}/state`, BETA.host)));
+            const job = JOBS.find((j) => j.id === "vote_close")!;
+            const cron = process.env.CIVIC_TEST_CRON_SECRET?.trim() || "ci-only-cron-secret";
+            await Promise.all(
+              Array.from({ length: 2 }, () => call("GET", `${JOBS_MOUNT}${job.path}?hub=${BETA.slug}`, BETA.host, undefined, cron)),
+            );
           } else {
             const res = await act(BETA, id, close.name, examplePayload(d, close.name, await processRow(id)), await admin(BETA));
             expect(res.status, JSON.stringify(res.body)).toBeLessThan(300);
