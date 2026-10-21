@@ -8,9 +8,9 @@
 
 import { Process, ProcessAction, CreateProcessInput } from "../models/process.js";
 import type { SubmissionField, SubmissionSource } from "../shared/submissionPreview.js";
-import type { BriefContent } from "../modules/civic.brief/index.js";
+import type { BriefContent } from "./contracts/briefContent.js";
 import type { SchemaRequirement } from "../db/schemaContract.js";
-import type { AssistantTypeConfig } from "../modules/civic.assistant/index.js";
+import type { AssistantTypeConfig } from "./contracts/draftingHelp.js";
 import type { ProcessTypeDescriptor } from "./descriptor.js";
 
 /**
