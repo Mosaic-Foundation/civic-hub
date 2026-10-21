@@ -20,6 +20,8 @@ import {
   type CreateAnnouncementInput,
 } from "./index.js";
 import { ANNOUNCEMENT_MANIFEST } from "./manifest.js";
+import { str, num } from "../../utils/readField.js";
+import type { FeedProcessMeta } from "../../processes/contracts/feedMeta.js";
 
 function getState(process: Process): AnnouncementProcessState {
   return process.state as unknown as AnnouncementProcessState;
@@ -101,6 +103,19 @@ const announcementProcess: ProcessHandler = {
       id: process.id,
       createdAt: process.createdAt,
     });
+  },
+  // The feed card's fields, from the public read model.
+  feedMeta(model: Record<string, unknown>): FeedProcessMeta {
+    const moderation = model.moderation as { removed?: unknown } | null;
+    return {
+      title: str(model.title),
+      description: str(model.body),
+      imageUrl: str(model.image_url) ?? null,
+      imageAlt: str(model.image_alt) ?? null,
+      editCount: num(model.edit_count) ?? 0,
+      lastEditedAt: str(model.last_edited_at) ?? null,
+      removed: moderation?.removed === true,
+    };
   },
 };
 

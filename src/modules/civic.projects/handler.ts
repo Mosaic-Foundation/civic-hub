@@ -37,6 +37,8 @@ import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
 import { getSettingSync } from "../../services/hubSettings.js";
 import { KEYS } from "../../models/hubSettings.js";
 import { PROJECT_MANIFEST, SENTIMENTS } from "./manifest.js";
+import { str, num } from "../../utils/readField.js";
+import type { FeedProcessMeta } from "../../processes/contracts/feedMeta.js";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).
 const hubNoun = (n: number): string =>
@@ -305,6 +307,15 @@ const projectAdapter: ProcessHandler = {
       participation_count: weighedIn,
       comments: [],
       admin_notes: "",
+    };
+  },
+  // The feed card's fields, from the public read model.
+  feedMeta(model: Record<string, unknown>): FeedProcessMeta {
+    return {
+      title: str(model.title),
+      description: str(model.description),
+      imageUrl: str(model.banner_image_url) ?? null,
+      imageAlt: str(model.banner_image_alt) ?? null,
     };
   },
 };

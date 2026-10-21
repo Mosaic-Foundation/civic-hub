@@ -18,6 +18,8 @@ import {
   type CreateBriefInput,
 } from "./index.js";
 import { BRIEF_MANIFEST } from "./manifest.js";
+import { str, num } from "../../utils/readField.js";
+import type { FeedProcessMeta } from "../../processes/contracts/feedMeta.js";
 
 function getState(process: Process): BriefProcessState {
   return process.state as unknown as BriefProcessState;
@@ -89,6 +91,16 @@ const briefProcess: ProcessHandler = {
       title: process.title,
       createdAt: process.createdAt,
     });
+  },
+  // The feed card's fields. The published brief (public read model): its
+  // current headline, and when a regenerated version replaced it.
+  feedMeta(model: Record<string, unknown>): FeedProcessMeta {
+    return {
+      title: str(model.title),
+      description: str(model.headline),
+      lastEditedAt: str(model.revised_at) ?? null,
+      editCount: str(model.revised_at) ? 1 : 0,
+    };
   },
 };
 

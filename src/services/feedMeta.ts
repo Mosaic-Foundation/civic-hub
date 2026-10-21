@@ -25,14 +25,8 @@ import {
   type ClassifierEvent,
 } from "../shared/feedActivity.js";
 import { getProcessState } from "./processService.js";
-import { forHub, type HubDb } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
+import { getProcessHandler } from "../processes/registry.js";
 import type { CivicEvent } from "../models/event.js";
-
-/** The hub in scope. Feed metadata is only ever built inside one. */
-function db(): HubDb {
-  return forHub(currentHubId());
-}
 
 export type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
 import type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
@@ -70,7 +64,6 @@ export async function buildFeedProcessMeta(
   }
 
   const out: Record<string, FeedProcessMeta> = {};
-  const wordcloudIds: string[] = [];
 
   await Promise.all(
     ids.map(async (id) => {
@@ -78,15 +71,16 @@ export async function buildFeedProcessMeta(
         // Same read path as GET /process/:id/state (no actor, audience
         // "public": the feed meta is a shared cross-audience projection —
         // per-actor fields and resident names must not be baked into it.
-        // mapModelToMeta below carries no creator fields either way).
+        // The types' feedMeta hooks carry no creator fields either way).
         // Returns undefined for non-processes and anything not publicly
         // fetchable.
         const model = await getProcessState(id, { audience: "public" });
         if (!model) return;
-        const meta = mapModelToMeta(model);
+        // Each type's handler maps its own read model (feedMeta); a type
+        // without the hook has no feed meta.
+        const meta = await getProcessHandler(String(model.type))?.feedMeta?.(model, id);
         if (!meta) return;
         out[id] = meta;
-        if (model.type === "civic.wordcloud") wordcloudIds.push(id);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "unknown error";
         console.warn(`[feed-meta] ${id}: ${msg}`);
@@ -94,121 +88,5 @@ export async function buildFeedProcessMeta(
     }),
   );
 
-  // Wordcloud read models carry no submission count (the wordcloud
-  // controller computes it separately) — one head-count per wordcloud,
-  // and there is rarely more than one on a feed.
-  await Promise.all(
-    wordcloudIds.map(async (id) => {
-      // Best-effort, same posture as the rest of this module: a failed
-      // head-count just leaves totalVotes unset rather than failing the
-      // whole feed's metadata.
-      try {
-        const count = await db().from("wordcloud_submissions").count().eq("process_id", id);
-        out[id]!.totalVotes = count;
-      } catch {
-        // swallowed — see above.
-      }
-    }),
-  );
-
   return out;
-}
-
-// --- Per-type mapping -------------------------------------------------------
-//
-// Tolerant field reads over each handler's public read model — the same
-// extractions the client made from the per-id endpoints, moved server-side.
-
-function str(v: unknown): string | undefined {
-  return typeof v === "string" ? v : undefined;
-}
-function num(v: unknown): number | undefined {
-  return typeof v === "number" ? v : undefined;
-}
-
-function mapModelToMeta(
-  model: Record<string, unknown>,
-): FeedProcessMeta | null {
-  switch (model.type) {
-    case "civic.vote":
-      return {
-        title: str(model.title),
-        description: str(model.description),
-        // Null while the vote hides its results: unknown, not zero, or the
-        // card says "be the first to vote" over 30 ballots (review R26).
-        totalVotes: num(model.total_votes),
-      };
-
-    case "civic.vote_results": {
-      const comments = model.comments;
-      return {
-        title: str(model.title),
-        description: str(model.admin_notes),
-        imageUrl: str(model.image_url) ?? null,
-        imageAlt: str(model.image_alt) ?? null,
-        totalVotes: num(model.participation_count) ?? 0,
-        commentsCount: Array.isArray(comments) ? comments.length : 0,
-      };
-    }
-
-    case "civic.meeting_summary": {
-      const blocks = Array.isArray(model.blocks) ? model.blocks : [];
-      const starts = blocks
-        .map((b) => num((b as { start_time_seconds?: unknown }).start_time_seconds))
-        .filter((n): n is number => n !== undefined);
-      return {
-        title: str(model.meeting_title),
-        blockCount: blocks.length,
-        maxStartSeconds: starts.length > 0 ? Math.max(...starts) : null,
-      };
-    }
-
-    case "civic.brief":
-      // The published brief (public read model): its current headline, and
-      // when a regenerated version replaced it.
-      return {
-        title: str(model.title),
-        description: str(model.headline),
-        lastEditedAt: str(model.revised_at) ?? null,
-        editCount: str(model.revised_at) ? 1 : 0,
-      };
-
-    case "civic.wordcloud":
-      // totalVotes (submission count) filled by the caller's count query.
-      return {
-        title: str(model.title),
-        description: str(model.description),
-      };
-
-    case "civic.project":
-      return {
-        title: str(model.title),
-        description: str(model.description),
-        imageUrl: str(model.banner_image_url) ?? null,
-        imageAlt: str(model.banner_image_alt) ?? null,
-      };
-
-    case "civic.polis_deliberation":
-      // Conversations expose their subject as topic/framing.
-      return {
-        title: str(model.title) ?? str(model.topic),
-        description: str(model.description) ?? str(model.framing),
-      };
-
-    case "civic.announcement": {
-      const moderation = model.moderation as { removed?: unknown } | null;
-      return {
-        title: str(model.title),
-        description: str(model.body),
-        imageUrl: str(model.image_url) ?? null,
-        imageAlt: str(model.image_alt) ?? null,
-        editCount: num(model.edit_count) ?? 0,
-        lastEditedAt: str(model.last_edited_at) ?? null,
-        removed: moderation?.removed === true,
-      };
-    }
-
-    default:
-      return null;
-  }
 }

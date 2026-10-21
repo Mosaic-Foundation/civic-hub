@@ -23,6 +23,8 @@ import {
   type VoteResultsProcessState,
 } from "./index.js";
 import { VOTE_RESULTS_MANIFEST } from "./manifest.js";
+import { str, num } from "../../utils/readField.js";
+import type { FeedProcessMeta } from "../../processes/contracts/feedMeta.js";
 
 function getState(process: Process): VoteResultsProcessState {
   return process.state as unknown as VoteResultsProcessState;
@@ -120,6 +122,18 @@ const voteResultsProcess: ProcessHandler = {
       title: process.title,
       createdAt: process.createdAt,
     });
+  },
+  // The feed card's fields, from the public read model.
+  feedMeta(model: Record<string, unknown>): FeedProcessMeta {
+    const comments = model.comments;
+    return {
+      title: str(model.title),
+      description: str(model.admin_notes),
+      imageUrl: str(model.image_url) ?? null,
+      imageAlt: str(model.image_alt) ?? null,
+      totalVotes: num(model.participation_count) ?? 0,
+      commentsCount: Array.isArray(comments) ? comments.length : 0,
+    };
   },
 };
 

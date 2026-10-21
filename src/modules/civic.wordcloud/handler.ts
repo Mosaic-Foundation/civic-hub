@@ -20,6 +20,8 @@ import {
   type WordcloudProcessState,
 } from "./index.js";
 import { WORDCLOUD_MANIFEST } from "./manifest.js";
+import { str, num } from "../../utils/readField.js";
+import type { FeedProcessMeta } from "../../processes/contracts/feedMeta.js";
 
 function getState(process: Process): WordcloudProcessState {
   return process.state as unknown as WordcloudProcessState;
@@ -156,6 +158,22 @@ const wordcloudProcess: ProcessHandler = {
       created_at: process.createdAt,
       created_by: process.createdBy,
     };
+  },
+  // The feed card's fields. The read model carries no submission count (the
+  // wordcloud controller computes it separately), so one head-count here.
+  // Best-effort, like the rest of the feed's metadata: a failed head-count
+  // just leaves totalVotes unset rather than failing the whole feed.
+  async feedMeta(model: Record<string, unknown>, processId: string): Promise<FeedProcessMeta> {
+    const meta: FeedProcessMeta = {
+      title: str(model.title),
+      description: str(model.description),
+    };
+    try {
+      meta.totalVotes = await db().from("wordcloud_submissions").count().eq("process_id", processId);
+    } catch {
+      // swallowed — see above.
+    }
+    return meta;
   },
 };
 

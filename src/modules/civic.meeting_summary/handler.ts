@@ -21,6 +21,8 @@ import {
   type MeetingSummaryProcessState,
 } from "./index.js";
 import { MEETING_SUMMARY_MANIFEST } from "./manifest.js";
+import { str, num } from "../../utils/readField.js";
+import type { FeedProcessMeta } from "../../processes/contracts/feedMeta.js";
 
 function getState(process: Process): MeetingSummaryProcessState {
   return process.state as unknown as MeetingSummaryProcessState;
@@ -107,6 +109,18 @@ const meetingSummaryProcess: ProcessHandler = {
       title: process.title,
       createdAt: process.createdAt,
     });
+  },
+  // The feed card's fields, from the public read model.
+  feedMeta(model: Record<string, unknown>): FeedProcessMeta {
+    const blocks = Array.isArray(model.blocks) ? model.blocks : [];
+    const starts = blocks
+      .map((b) => num((b as { start_time_seconds?: unknown }).start_time_seconds))
+      .filter((n): n is number => n !== undefined);
+    return {
+      title: str(model.meeting_title),
+      blockCount: blocks.length,
+      maxStartSeconds: starts.length > 0 ? Math.max(...starts) : null,
+    };
   },
 };
 

@@ -391,7 +391,8 @@ export interface ProcessHandler {
    * Optional: what the source process becomes when its brief is published
    * (src/services/briefFinalize.ts). Omit it and the source is simply set to
    * "finalized" (conversations, proposals, projects). A vote finalizes
-   * through its own module, tallying from the anonymized receipts.
+   * through its own module, tallying from the anonymized receipts. The hook
+   * changes the process (status, state); briefFinalize saves it.
    * Architecture 2: replaces briefFinalize's switch on the type.
    */
   finalizeAfterBrief?(process: Process, actor: string): Promise<void>;

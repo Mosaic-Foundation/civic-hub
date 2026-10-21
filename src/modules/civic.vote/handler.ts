@@ -47,6 +47,8 @@ import type { BriefContent } from "../civic.brief/index.js";
 
 import { isPastDeadline } from "../../utils/deadline.js";
 import { VOTE_MANIFEST } from "./manifest.js";
+import { str, num } from "../../utils/readField.js";
+import type { FeedProcessMeta } from "../../processes/contracts/feedMeta.js";
 
 // --- Helpers ---
 
@@ -381,6 +383,33 @@ const voteProcess: ProcessHandler = {
       participation_count: total,
       comments,
       admin_notes: "",
+    };
+  },
+
+  // When the vote's brief is published, the vote finalizes through its own
+  // module so tallying/receipts behave as before. Ballots come from the
+  // anonymized receipts table (ballot secrecy: the vote state carries no
+  // individual ballots). Mutates the process; briefFinalize saves it.
+  async finalizeAfterBrief(process: Process, actor: string): Promise<void> {
+    const vState = getState(process);
+    const method = getVotingMethod(vState.method ?? DEFAULT_METHOD);
+    const ballots = (await getBallotChoicesForProcess(process.id)).map((c) => method.parseReceipt(c));
+    await finalizeVote(vState, actor, ballots, {
+      process_id: process.id,
+      jurisdiction: process.jurisdiction,
+      emit: emitEvent,
+    });
+    process.status = getState(process).status;
+  },
+
+  // The feed card's fields, from the public read model.
+  feedMeta(model: Record<string, unknown>): FeedProcessMeta {
+    return {
+      title: str(model.title),
+      description: str(model.description),
+      // Null while the vote hides its results: unknown, not zero, or the
+      // card says "be the first to vote" over 30 ballots (review R26).
+      totalVotes: num(model.total_votes),
     };
   },
 };

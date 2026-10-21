@@ -22,6 +22,8 @@ import type { PolisAdapter } from "../shared/polis_deliberation/adapter/types.js
 import type { PolisDeliberationState } from "../shared/polis_deliberation/types.js";
 import type { BriefContent, BriefSection } from "../modules/civic.brief/index.js";
 import { defaultJurisdiction } from "../config/hub.js";
+import { str } from "../utils/readField.js";
+import type { FeedProcessMeta } from "./contracts/feedMeta.js";
 import { deliberationAssistantConfig } from "./deliberationAssistantConfig.js";
 import { getSettingSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
@@ -319,6 +321,13 @@ export function bootDeliberation(): ProcessHandler {
     }) as BriefContent | null;
     return content ? { content, source_state: { summary, summary_status: "complete" } } : null;
   };
+
+  // The feed card's fields. Conversations expose their subject as
+  // topic/framing.
+  handler.feedMeta = (model: Record<string, unknown>): FeedProcessMeta => ({
+    title: str(model.title) ?? str(model.topic),
+    description: str(model.description) ?? str(model.framing),
+  });
 
   handler.generateBrief = (process: Process): BriefContent | null => {
     const state = process.state as unknown as PolisDeliberationState;
