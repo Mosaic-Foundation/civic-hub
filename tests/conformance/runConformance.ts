@@ -112,6 +112,7 @@ export function runConformance(options: ConformanceOptions): void {
   beforeAll(installApprovalTrap);
   afterAll(removeApprovalTrap);
 
+  const d0 = (h: ProcessHandler) => h.descriptor;
   describe("the hub serves each type's public descriptor", () => {
     it("GET /.well-known/civic.json lists the public parts of every enabled type, and nothing internal", async () => {
       const res = await call("GET", "/.well-known/civic.json", BETA.host);
@@ -120,7 +121,9 @@ export function runConformance(options: ConformanceOptions): void {
       for (const h of options.handlers) {
         const entry = served.find((t) => t.type === h.type);
         expect(entry, `${h.type} missing from process_types`).toBeTruthy();
-        expect(Object.keys(entry!).sort()).toEqual(["actions", "emits", "lifecycle", "tier", "type", "version"]);
+        expect(Object.keys(entry!).sort()).toEqual(["actions", "display", "emits", "lifecycle", "tier", "type", "version"]);
+        // Its display name (Architecture 2): a consumer names a type without the hub's UI.
+        expect(entry!.display, h.type).toEqual({ label: d0(h).display.label, plural: d0(h).display.plural });
       }
     });
   });
