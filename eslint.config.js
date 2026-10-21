@@ -177,4 +177,43 @@ export default [
       ],
     },
   },
+  // A process manifest is plain data the UI also reads (Architecture 2,
+  // ADR-009): it imports types from anywhere, and values only from
+  // src/shared/. The list of manifests imports nothing but manifests.
+  {
+    files: ["src/modules/*/manifest.ts"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          regex: "^(?!(\\.\\./)+shared/)",
+          allowTypeImports: true,
+          message: "A manifest is plain data: values only from src/shared/ (types from anywhere).",
+        }],
+      }],
+    },
+  },
+  {
+    files: ["src/shared/*/manifest.ts"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          regex: "^(?!\\.\\./[^.])",
+          allowTypeImports: true,
+          message: "A manifest is plain data: values only from src/shared/ (types from anywhere).",
+        }],
+      }],
+    },
+  },
+  {
+    files: ["src/shared/processManifests.ts"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          regex: "^(?!.*/manifest\\.js$)",
+          allowTypeImports: true,
+          message: "The manifest list imports manifests and nothing else.",
+        }],
+      }],
+    },
+  },
 ];
