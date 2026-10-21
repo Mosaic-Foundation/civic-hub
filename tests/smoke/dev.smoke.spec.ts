@@ -224,28 +224,33 @@ test("an activity's context IRI dereferences to its process descriptor, read-onl
   expect(page.status()).toBe(200);
   const items = ((await page.json()).orderedItems ?? []) as Array<{ context?: { id?: string } }>;
   let iri = items.map((a) => a.context?.id).find((id): id is string => typeof id === "string");
+  let planted: string | null = null;
   if (!iri) {
     // The suite cleans up after itself, so the hub may have no activity with
-    // a process: plant a sample (deleted in afterAll) and use its process IRI.
-    const id = await plantSample(`Smoke descriptor ${Date.now()}`);
-    plantedSamples.push(id);
-    iri = `${baseUrl()}/process/${id}`;
+    // a process: plant a sample and use its process IRI. Deleted at the end of
+    // this test (a later test needs its own sample to be the hub's last).
+    planted = await plantSample(`Smoke descriptor ${Date.now()}`);
+    plantedSamples.push(planted);
+    iri = `${baseUrl()}/process/${planted}`;
   }
+  try {
+    const ld = await request.get(iri, { headers: { Accept: 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' } });
+    expect(ld.status()).toBe(200);
+    expect(ld.headers()["content-type"]).toContain("application/ld+json");
+    const d = await ld.json();
+    expect(d.id).toBe(iri);
+    expect(d.type).toBe("civic:Process");
+    expect(typeof d["civic:processType"]).toBe("string");
+    expect(d.endpoints.action).toMatch(/\/process\/[^/]+\/action$/);
 
-  const ld = await request.get(iri, { headers: { Accept: 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' } });
-  expect(ld.status()).toBe(200);
-  expect(ld.headers()["content-type"]).toContain("application/ld+json");
-  const d = await ld.json();
-  expect(d.id).toBe(iri);
-  expect(d.type).toBe("civic:Process");
-  expect(typeof d["civic:processType"]).toBe("string");
-  expect(d.endpoints.action).toMatch(/\/process\/[^/]+\/action$/);
+    const html = await request.get(iri, { headers: { Accept: "text/html" } });
+    expect(html.headers()["content-type"]).toContain("text/html");
 
-  const html = await request.get(iri, { headers: { Accept: "text/html" } });
-  expect(html.headers()["content-type"]).toContain("text/html");
-
-  const action = await request.get(d.endpoints.action);
-  expect(action.headers()["content-type"]).toContain("application/json");
+    const action = await request.get(d.endpoints.action);
+    expect(action.headers()["content-type"]).toContain("application/json");
+  } finally {
+    if (planted) await removeSample(planted);
+  }
 });
 
 test("a resident and an admin are signed in", async ({ browser }) => {
