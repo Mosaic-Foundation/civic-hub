@@ -215,6 +215,33 @@ test("the hub's DID document answers at its address, read-only (ADR-008)", async
   expect(doc.service.map((s: { serviceEndpoint: string }) => s.serviceEndpoint)).toContain(`${baseUrl()}/events`);
 });
 
+test("an activity's context IRI dereferences to its process descriptor, read-only (Architecture 2)", async ({ request }) => {
+  // Through the public path, as a consumer holding an activity would: the
+  // context IRI with a JSON-LD Accept reaches the API (vercel.json), a
+  // browser's Accept gets the page, and the descriptor's action endpoint
+  // reaches the API (a GET there answers the API's JSON 404, not a page).
+  const page = await request.get(`${baseUrl()}/events?page=true&limit=50`);
+  expect(page.status()).toBe(200);
+  const items = ((await page.json()).orderedItems ?? []) as Array<{ context?: { id?: string } }>;
+  const iri = items.map((a) => a.context?.id).find((id): id is string => typeof id === "string");
+  test.skip(!iri, "the smoke hub has no activity with a process right now");
+
+  const ld = await request.get(iri!, { headers: { Accept: 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' } });
+  expect(ld.status()).toBe(200);
+  expect(ld.headers()["content-type"]).toContain("application/ld+json");
+  const d = await ld.json();
+  expect(d.id).toBe(iri);
+  expect(d.type).toBe("civic:Process");
+  expect(typeof d["civic:processType"]).toBe("string");
+  expect(d.endpoints.action).toMatch(/\/process\/[^/]+\/action$/);
+
+  const html = await request.get(iri!, { headers: { Accept: "text/html" } });
+  expect(html.headers()["content-type"]).toContain("text/html");
+
+  const action = await request.get(d.endpoints.action);
+  expect(action.headers()["content-type"]).toContain("application/json");
+});
+
 test("a resident and an admin are signed in", async ({ browser }) => {
   const r = await open(browser);
   await visitAs(r, resident);
