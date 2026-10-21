@@ -18,6 +18,7 @@ import type { SchemaRequirement } from "../db/schemaContract.js";
 import type { SettingFieldSpec } from "../shared/hubSettingsSections.js";
 import type { ThemeTypeKey } from "../shared/theme.js";
 import type { ActivityRecipe } from "../shared/activityRecipe.js";
+import type { FeedDeclaration } from "../shared/feedActivity.js";
 
 /**
  * One scheduled job of a type: src/jobs/registry.ts's HubJobSpec, with the
@@ -122,6 +123,11 @@ export interface ProcessManifest {
    * the feed's own pill.
    */
   briefPill?: "to_board";
+  /**
+   * The feed cards its events make, and how a Civic Brief of one of its
+   * processes reads (src/shared/feedActivity.ts). Absent: it makes no cards.
+   */
+  feed?: FeedDeclaration;
 }
 
 /**

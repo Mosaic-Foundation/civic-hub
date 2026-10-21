@@ -72,4 +72,13 @@ export const MEETING_SUMMARY_MANIFEST = defineManifest({
   },
   activities: {},
   publication: { field: "approval_status", queue: "meeting_summaries" },
+  feed: {
+    cards: [
+      {
+        event: "civic.process.result_published",
+        legacy: [{ field: "meeting_summary", is: "present" }, { field: "summary_id", is: "string" }],
+        card: { surface: "meeting_summary", kind: "meeting", color: "meeting", pill: "Meeting summary", href: "action_url" },
+      },
+    ],
+  },
 });

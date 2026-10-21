@@ -49,4 +49,13 @@ export const VOTE_RESULTS_MANIFEST = defineManifest({
   jobs: [],
   activities: {},
   publication: { field: "publication_status", queue: "briefs" },
+  feed: {
+    cards: [
+      {
+        event: "civic.process.result_published",
+        legacy: [{ field: "results_id", is: "string" }, { field: "brief_id", is: "string" }],
+        card: { surface: "activity", kind: "vote-results", color: "vote", pill: "Vote results", href: "action_url" },
+      },
+    ],
+  },
 });

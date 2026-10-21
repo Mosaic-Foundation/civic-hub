@@ -93,4 +93,11 @@ export const PROJECT_MANIFEST = defineManifest({
     "civic.project.comment_added": { type: "Create", object: { kind: "note" } },
     "civic.project.archived": { type: "civic:End", object: { kind: "process", terminalState: "archived" } },
   },
+  feed: {
+    cards: [
+      { event: "civic.project.created", match: "event", card: { surface: "activity", kind: "project-created", color: "project", pill: "New project", href: "action_url" } },
+      { event: "civic.project.updated", match: "event", card: { surface: "activity", kind: "project-updated", color: "project", pill: "Project update", href: "action_url" } },
+    ],
+    brief: { color: "project", noun: "project", pill: "Project completed" },
+  },
 });

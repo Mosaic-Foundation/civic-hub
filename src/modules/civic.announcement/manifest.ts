@@ -43,4 +43,7 @@ export const ANNOUNCEMENT_MANIFEST = defineManifest({
   jobs: [],
   pluginSection: { order: 70, fields: [] },
   activities: {},
+  feed: {
+    cards: [{ event: "civic.process.result_published", legacy: [{ field: "announcement", is: "present" }], card: "announcement" }],
+  },
 });

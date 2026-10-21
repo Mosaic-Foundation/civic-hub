@@ -205,6 +205,20 @@ export default [
       }],
     },
   },
+  // The feed classifier is shared with the UI: its one import is the
+  // manifest list (Architecture 2; it was import-free before).
+  {
+    files: ["src/shared/feedActivity.ts"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          regex: "^(?!\\./processManifests\\.js$)",
+          allowTypeImports: true,
+          message: "feedActivity imports only the manifest list (src/shared/processManifests.ts).",
+        }],
+      }],
+    },
+  },
   {
     files: ["src/shared/processManifests.ts"],
     rules: {

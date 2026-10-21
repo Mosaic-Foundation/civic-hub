@@ -117,4 +117,19 @@ export const WORDCLOUD_MANIFEST = defineManifest({
     fields: [{ key: "plugin.wordcloud.onboarding_id", kind: "process", processType: "civic.wordcloud" }],
   },
   activities: {},
+  feed: {
+    cards: [
+      {
+        event: "civic.process.started",
+        legacy: [{ field: "wordcloud_snapshot", is: "present" }, { field: "wordcloud_result", is: "present" }],
+        card: { surface: "activity", kind: "wordcloud", color: "wordcloud", pill: "Word cloud", href: "detail" },
+      },
+      {
+        event: "civic.process.result_published",
+        legacy: [{ field: "wordcloud_snapshot", is: "present" }, { field: "wordcloud_result", is: "present" }],
+        card: { surface: "activity", kind: "wordcloud", color: "wordcloud", pill: "Word cloud", href: "detail" },
+      },
+    ],
+    brief: { color: "wordcloud" },
+  },
 });

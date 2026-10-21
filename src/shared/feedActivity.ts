@@ -15,7 +15,9 @@
 // SHARED ACROSS BOTH RUNTIMES — consumed by:
 //   - the Vite frontend (Feed / FeedPost / FeedFilter), and
 //   - the Node backend (civic.digest filter + service).
-// It MUST therefore stay framework-agnostic and DEPENDENCY-FREE (no imports).
+// It MUST therefore stay framework-agnostic and free of server code: its one
+// import is the process manifests (plain data, src/shared/processManifests.ts;
+// eslint keeps it to that).
 // Do NOT fork this logic back into the consumers — that drift is the bug this
 // module exists to kill. Frontend imports it by relative path; the backend
 // gets it via `src/**/*`.
@@ -33,6 +35,8 @@
 // emit the same event_type. We read `data.process.type` (set by every emitter
 // via emitEvent) as the single discriminator, falling back to the legacy
 // data-shape checks for historical events emitted before the field existed.
+
+import { MANIFEST_LIST } from "./processManifests.js";
 
 /**
  * Coarse content category — aligned 1:1 with the FeedFilter `?type=` keys so
@@ -154,289 +158,149 @@ function processTypeOf(event: ClassifierEvent): string | undefined {
   return undefined;
 }
 
+// --- The table (Architecture 2, ADR-009) -----------------------------------
+//
+// Each process type declares the cards its events make in its manifest
+// (`feed.cards`), and how a Civic Brief of one of its processes reads
+// (`feed.brief`). The classifier below walks those rules; it knows no type by
+// name. The kinds and colours above are the vocabulary the rules use.
+
+/** Where a card links. */
+export type FeedHref =
+  /** The process's own page (its manifest's detailPath). */
+  | "detail"
+  /** The event's action_url, verbatim (may be an external URL). */
+  | "action_url"
+  /** The page of the process a data field names, else the event's own. */
+  | { detailOf: string };
+
+/** A card, or one of the two whose pill is built from the payload. */
+export type FeedCard =
+  | { surface: ActivitySurface; kind: ActivityKind; color: ActivityColor; pill: string; href: FeedHref }
+  /** An announcement: its pill is the author's role (classifyAnnouncement). */
+  | "announcement"
+  /** A published Civic Brief: it wears its source's colour and pill. */
+  | "brief";
+
+/** One event of a type that makes a feed card. */
+export interface FeedCardRule {
+  event: string;
+  /**
+   * "event": the event type alone decides (a type's own civic.<type>.* event,
+   * or a retired one). Otherwise the event's process type must be this type,
+   * or the event carries one of its `legacy` fields.
+   */
+  match?: "event";
+  /**
+   * Fields that mark an event as this type's when it was emitted before
+   * events carried data.process.type. "string": the field must be a string.
+   */
+  legacy?: ReadonlyArray<{ field: string; is: "present" | "string" }>;
+  /** The card for an event that carries no process type and no type's legacy field (votes, before the field). */
+  untypedDefault?: true;
+  /** Only when each of these data fields has this value. */
+  when?: Readonly<Record<string, string | boolean>>;
+  card: FeedCard;
+}
+
+/** How a Civic Brief of this type's processes reads. Unset: neutral colour, "process", "Civic Brief". */
+export interface FeedBriefStyle {
+  color?: ActivityColor;
+  /** The reader's noun for one of its processes: "vote". */
+  noun?: string;
+  /** The brief card's pill: "Vote brief". */
+  pill?: string;
+}
+
+/** A manifest's `feed`. */
+export interface FeedDeclaration {
+  cards: readonly FeedCardRule[];
+  brief?: FeedBriefStyle;
+}
+
+interface TableRule extends FeedCardRule {
+  type: string;
+  detail: (id: string) => string;
+}
+
+const RULES: ReadonlyMap<string, readonly TableRule[]> = (() => {
+  const byEvent = new Map<string, TableRule[]>();
+  for (const m of MANIFEST_LIST) {
+    for (const rule of m.feed?.cards ?? []) {
+      const list = byEvent.get(rule.event) ?? [];
+      list.push({ ...rule, type: m.descriptor.type, detail: m.detailPath });
+      byEvent.set(rule.event, list);
+    }
+  }
+  return byEvent;
+})();
+
+const BRIEF_STYLES: ReadonlyMap<string, FeedBriefStyle> = new Map(
+  MANIFEST_LIST.flatMap((m) => (m.feed?.brief ? [[m.descriptor.type, m.feed.brief] as const] : [])),
+);
+
 /**
- * The only event types `classifyActivity` can return a card for: the cases of
- * its switch below that are not always null. The feed asks the database for
- * these types alone (2026-10-07), so a page of cards is not a scan through
- * every ballot and comment. A unit test (feedActivity.test.ts) fails if the
- * classifier returns a card for any other type, so the list cannot fall
- * behind the switch.
+ * The only event types `classifyActivity` can return a card for: every event
+ * a manifest's feed rule names. The feed asks the database for these types
+ * alone (2026-10-07), so a page of cards is not a scan through every ballot
+ * and comment. A unit test (feedActivity.test.ts) fails if the classifier
+ * returns a card for any other type.
  */
-export const FEED_EVENT_TYPES: readonly string[] = [
-  "civic.process.started",
-  "civic.process.result_published",
-  "civic.process.created",
-  "civic.process.action_taken",
-  "civic.proposal.submitted",
-  "civic.project.created",
-  "civic.project.updated",
-  "civic.outcome_delivered",
-];
+export const FEED_EVENT_TYPES: readonly string[] = [...RULES.keys()];
 
 /**
  * Classify a civic event into its feed/digest presentation, or null when the
  * event is not feed-worthy. The ONE predicate the gate, renderer, filter, and
- * digest all share.
+ * digest all share. Default-closed: an event no rule names makes no card.
  */
 export function classifyActivity(event: ClassifierEvent): Activity | null {
-  const eventType = event.event_type;
-  const id = event.process_id;
-  const processType = processTypeOf(event);
-
   // Review-lifecycle events are restricted admin/creator correspondence —
   // admins receive them on the events endpoint for the moderation log, but
   // they are never public activity. Excluded regardless of viewer.
-  if (eventType.startsWith("civic.review.")) return null;
+  if (event.event_type.startsWith("civic.review.")) return null;
 
-  switch (eventType) {
-    case "civic.process.started":
-      return classifyStarted(event, processType, id);
+  const rules = RULES.get(event.event_type);
+  if (!rules) return null;
+  const data = event.data ?? {};
+  const processType = processTypeOf(event);
+  const holds = (r: TableRule) => !r.when || Object.entries(r.when).every(([k, v]) => data[k] === v);
+  const hasLegacy = (r: TableRule) =>
+    (r.legacy ?? []).some((l) => (l.is === "string" ? typeof data[l.field] === "string" : data[l.field] !== undefined));
 
-    case "civic.process.result_published":
-      return classifyResultPublished(event, processType, id);
-
-    case "civic.process.created":
-      // Only conversations post a "created" card. Votes post when they open
-      // (civic.process.started); proposals/projects post via their own
-      // civic.<type>.* events — so created is null for everything else, which
-      // is what prevents double-posting.
-      if (processType === "civic.polis_deliberation") {
-        return {
-          surface: "activity",
-          kind: "conversation",
-          color: "conversation",
-          pill: "New conversation",
-          href: `/deliberation/${id}`,
-        };
-      }
-      return null;
-
-    case "civic.process.action_taken":
-      // An official's public response to a published brief. Every response
-      // emits this event (the log is never throttled), but only the ANCHOR
-      // — stamped by the write path when no other response to the same
-      // brief anchored a card in the last 24h — renders in the feed and
-      // digest, so a burst of responses is one card. Suppressed responses
-      // still reach readers: the card links to /brief/:id, which shows
-      // them all. Any other action_taken stays default-closed.
-      if (
-        processType === "civic.brief" &&
-        event.data?.action === "official_response" &&
-        event.data?.feed_anchor === true
-      ) {
-        return {
-          surface: "activity",
-          kind: "brief-response",
-          color: "official-response",
-          pill: "Official response",
-          href: `/brief/${id}`,
-        };
-      }
-      return null;
-
-    case "civic.proposal.submitted":
-      return {
-        surface: "activity",
-        kind: "proposal",
-        color: "proposal",
-        pill: "New proposal",
-        href: `/proposal/${id}`,
-      };
-
-    case "civic.proposal.closed":
-      // Deliberately silent in the feed (Adam, 2026-08-26). A closing proposal
-      // used to post its own card AND then its published brief posted another,
-      // so one proposal produced two cards saying much the same thing. The
-      // brief is the better of the two: the "closed" card sent a reader to a
-      // finished proposal with no outcome on it yet.
-      //
-      // This makes all three process types behave alike — a vote closing has
-      // never posted a card, and conversations dropped theirs for the same
-      // reason (see shared/polis_deliberation/handler.ts). Publication of the
-      // brief is the announcement that a process has concluded.
-      //
-      // The EVENT still fires and is still on the wire; only the feed card is
-      // withheld. Proposals closed before this change keep their existing
-      // cards, since the feed is a projection of an append-only log.
-      return null;
-
-    case "civic.project.created":
-      return {
-        surface: "activity",
-        kind: "project-created",
-        color: "project",
-        pill: "New project",
-        href: event.action_url,
-      };
-
-    case "civic.project.updated":
-      return {
-        surface: "activity",
-        kind: "project-updated",
-        color: "project",
-        pill: "Project update",
-        href: event.action_url,
-      };
-
-    case "civic.outcome_delivered": {
-      // Part C — deliberation close. Previously an orphan that rendered as a
-      // bland "Activity" card in the feed and was absent from the digest.
-      const origin =
-        typeof event.data?.originating_process_id === "string"
-          ? event.data.originating_process_id
-          : id;
-      return {
-        surface: "activity",
-        kind: "conversation-results",
-        color: "conversation",
-        pill: "Conversation results",
-        href: `/deliberation/${origin}`,
-      };
-    }
-
-    default:
-      // Default-CLOSED. Everything not named above — civic.process.updated /
-      // ended / vote_submitted / comment_added / aggregation_completed /
-      // outcome_recorded / proposed / threshold_met, civic.proposal.supported
-      // / endorsed / converted, civic.project.archived / comment_added /
-      // sentiment_changed, etc. — is intentionally not feed-worthy.
-      return null;
-  }
+  // 1. Rules the event type alone decides. 2. The event's own type's rules.
+  // 3. Rules whose legacy fields it carries (history from before
+  // data.process.type). 4. With no type at all, the untyped default.
+  const pick =
+    rules.find((r) => r.match === "event" && holds(r)) ??
+    (processType !== undefined ? rules.find((r) => r.match !== "event" && r.type === processType && holds(r)) : undefined) ??
+    rules.find((r) => r.match !== "event" && hasLegacy(r) && holds(r)) ??
+    (processType === undefined ? rules.find((r) => r.untypedDefault && holds(r)) : undefined);
+  return pick ? cardFor(pick, event, data) : null;
 }
 
-function classifyStarted(
-  event: ClassifierEvent,
-  processType: string | undefined,
-  id: string,
-): Activity | null {
-  // Conversations post their card on `created`, not `started` — exclude here
-  // to avoid a double-post (and to fix the legacy mislabel where a
-  // deliberation start fell through to the vote branch below).
-  if (processType === "civic.polis_deliberation") return null;
-
-  const data = event.data ?? {};
-  if (
-    processType === "civic.wordcloud" ||
-    data.wordcloud_snapshot !== undefined ||
-    data.wordcloud_result !== undefined
-  ) {
-    return {
-      surface: "activity",
-      kind: "wordcloud",
-      color: "wordcloud",
-      pill: "Word cloud",
-      href: `/wordcloud/${id}`,
-    };
-  }
-
-  // Votes — explicit type, or legacy vote events that predate data.process.type
-  // (undefined). civic.process.started is otherwise only emitted by votes.
-  if (processType === "civic.vote" || processType === undefined) {
-    return {
-      surface: "activity",
-      kind: "vote-open",
-      color: "vote",
-      pill: "Vote open",
-      href: event.action_url,
-    };
-  }
-
-  // A new process type emitting `started` we don't recognize — default-closed.
-  return null;
-}
-
-function classifyResultPublished(
-  event: ClassifierEvent,
-  processType: string | undefined,
-  id: string,
-): Activity | null {
-  const data = event.data ?? {};
-
-  // Universal brief published — the final result of ANY closed process.
-  // Checked first (by processType) so it never falls through to the legacy
-  // vote-results branch. The pill names the process that completed.
-  if (processType === "civic.brief") {
+function cardFor(rule: TableRule, event: ClassifierEvent, data: Record<string, unknown>): Activity {
+  const card = rule.card;
+  if (card === "announcement") return classifyAnnouncement(data, event.action_url);
+  if (card === "brief") {
     const brief = (data.brief ?? {}) as { source_process_type?: unknown };
-    const srcType =
-      typeof brief.source_process_type === "string"
-        ? brief.source_process_type
-        : "";
+    const srcType = typeof brief.source_process_type === "string" ? brief.source_process_type : "";
+    const style = BRIEF_STYLES.get(srcType);
     return {
       surface: "activity",
       kind: "brief",
-      color: briefColorOf(srcType),
-      pill: briefPill(srcType),
+      color: style?.color ?? "generic",
+      pill: style?.pill ?? "Civic Brief",
       briefSource: srcType,
-      href: `/brief/${id}`,
+      href: rule.detail(event.process_id),
     };
   }
-
-  if (
-    processType === "civic.wordcloud" ||
-    data.wordcloud_snapshot !== undefined ||
-    data.wordcloud_result !== undefined
-  ) {
-    return {
-      surface: "activity",
-      kind: "wordcloud",
-      color: "wordcloud",
-      pill: "Word cloud",
-      href: `/wordcloud/${id}`,
-    };
-  }
-
-  if (processType === "civic.announcement" || data.announcement !== undefined) {
-    return classifyAnnouncement(data, event.action_url);
-  }
-
-  if (
-    processType === "civic.meeting_summary" ||
-    data.meeting_summary !== undefined ||
-    typeof data.summary_id === "string"
-  ) {
-    return {
-      surface: "meeting_summary",
-      kind: "meeting",
-      color: "meeting",
-      pill: "Meeting summary",
-      href: event.action_url,
-    };
-  }
-
-  if (
-    processType === "civic.vote_results" ||
-    typeof data.results_id === "string" ||
-    typeof data.brief_id === "string"
-  ) {
-    return {
-      surface: "activity",
-      kind: "vote-results",
-      color: "vote",
-      pill: "Vote results",
-      href: event.action_url,
-    };
-  }
-
-  // A vote's own results, published when it closes (since 2026-10-07: a vote
-  // finishes on its own; its brief is separate and posts its own card).
-  if (processType === "civic.vote" && data.results_at_close === true) {
-    return {
-      surface: "activity",
-      kind: "vote-closed",
-      color: "vote",
-      pill: "Vote results",
-      href: event.action_url,
-    };
-  }
-
-  // Any other raw vote-process result_published — INTENTIONALLY excluded.
-  // Before 2026-10-07 a vote was finalized by approving its brief (or its
-  // civic.vote_results record), and that card announced the result; the
-  // vote's own event stays on the log for audit/federation.
-  if (processType === "civic.vote" || data.result !== undefined) return null;
-
-  // Unknown shape — default-closed (was a bland "Activity" card before Phase 3).
-  return null;
+  const href =
+    card.href === "detail"
+      ? rule.detail(event.process_id)
+      : card.href === "action_url"
+        ? event.action_url
+        : rule.detail(typeof data[card.href.detailOf] === "string" ? (data[card.href.detailOf] as string) : event.process_id);
+  return { surface: card.surface, kind: card.kind, color: card.color, pill: card.pill, href };
 }
 
 /**
@@ -449,65 +313,8 @@ function classifyResultPublished(
  * response reads in context.
  */
 export function briefResponseContext(sourceType: unknown): string {
-  const noun = briefSourceNoun(
-    typeof sourceType === "string" ? sourceType : "",
-  );
+  const noun = BRIEF_STYLES.get(typeof sourceType === "string" ? sourceType : "")?.noun ?? "process";
   return `Responding to the community's Civic Brief on this ${noun}`;
-}
-
-/** Color key for a brief (or its response context) — the brief wears its
- *  SOURCE process's color, which is what makes the Outcomes page and the
- *  feed agree. Unknown sources stay neutral rather than wrong. */
-function briefColorOf(sourceType: string): ActivityColor {
-  switch (sourceType) {
-    case "civic.polis_deliberation":
-      return "conversation";
-    case "civic.vote":
-      return "vote";
-    case "civic.proposal":
-      return "proposal";
-    case "civic.project":
-      return "project";
-    case "civic.wordcloud":
-      return "wordcloud";
-    default:
-      return "generic";
-  }
-}
-
-/** Reader-facing noun for a brief's source process type. */
-function briefSourceNoun(sourceType: string): string {
-  switch (sourceType) {
-    case "civic.polis_deliberation":
-      return "conversation";
-    case "civic.vote":
-      return "vote";
-    case "civic.proposal":
-      return "proposal";
-    case "civic.project":
-      return "project";
-    default:
-      return "process";
-  }
-}
-
-/** Per-source-type pill for a published brief — names the process that
- *  completed, so residents see what kind of thing wrapped up. */
-function briefPill(sourceType: string): string {
-  switch (sourceType) {
-    case "civic.polis_deliberation":
-      return "Conversation results";
-    case "civic.vote":
-      // The vote posts its own "Vote results" card when it closes; its
-      // brief is a separate post (2026-10-07).
-      return "Vote brief";
-    case "civic.proposal":
-      return "Proposal results";
-    case "civic.project":
-      return "Project completed";
-    default:
-      return "Civic Brief";
-  }
 }
 
 function classifyAnnouncement(

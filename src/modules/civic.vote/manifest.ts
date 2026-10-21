@@ -198,4 +198,19 @@ export const VOTE_MANIFEST = defineManifest({
   activities: {},
   // "Brief to the Supervisors" (Adam, 2026-10-07).
   briefPill: "to_board",
+  feed: {
+    cards: [
+      // Votes from before events carried data.process.type are the only
+      // untyped civic.process.started there is.
+      { event: "civic.process.started", untypedDefault: true, card: { surface: "activity", kind: "vote-open", color: "vote", pill: "Vote open", href: "action_url" } },
+      // A vote's own results, published when it closes (since 2026-10-07: a
+      // vote finishes on its own; its brief is separate and posts its own
+      // card). Any other vote result_published is not a card: before
+      // 2026-10-07 approving its brief announced the result.
+      { event: "civic.process.result_published", when: { results_at_close: true }, card: { surface: "activity", kind: "vote-closed", color: "vote", pill: "Vote results", href: "action_url" } },
+    ],
+    // The vote posts its own "Vote results" card when it closes; its brief is
+    // a separate post (2026-10-07).
+    brief: { color: "vote", noun: "vote", pill: "Vote brief" },
+  },
 });

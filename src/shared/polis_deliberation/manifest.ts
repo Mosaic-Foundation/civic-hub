@@ -135,4 +135,18 @@ export const POLIS_DELIBERATION_MANIFEST = defineManifest({
   jobs: [],
   pluginSection: { order: 40, fields: [{ key: "plugin.conversation.polis_url", kind: "url" }] },
   activities: {},
+  feed: {
+    cards: [
+      // A conversation posts on created, not started (no double post).
+      { event: "civic.process.created", card: { surface: "activity", kind: "conversation", color: "conversation", pill: "New conversation", href: "detail" } },
+      // Retired: the close path stopped delivering outcomes when the universal
+      // brief landed; stored history still carries it.
+      {
+        event: "civic.outcome_delivered",
+        match: "event",
+        card: { surface: "activity", kind: "conversation-results", color: "conversation", pill: "Conversation results", href: { detailOf: "originating_process_id" } },
+      },
+    ],
+    brief: { color: "conversation", noun: "conversation", pill: "Conversation results" },
+  },
 });

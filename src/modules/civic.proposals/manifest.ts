@@ -103,4 +103,13 @@ export const PROPOSAL_MANIFEST = defineManifest({
     // mapped so the type stays serializable if the path is ever wired up.
     "civic.proposal.endorsed": { type: "Like", object: { kind: "civic", class: "civic:Proposal", id: "process" } },
   },
+  feed: {
+    cards: [
+      { event: "civic.proposal.submitted", match: "event", card: { surface: "activity", kind: "proposal", color: "proposal", pill: "New proposal", href: "detail" } },
+      // civic.proposal.closed is deliberately not a card (Adam, 2026-08-26):
+      // the published brief announces that a proposal concluded, as for votes
+      // and conversations. The event is still on the wire.
+    ],
+    brief: { color: "proposal", noun: "proposal", pill: "Proposal results" },
+  },
 });

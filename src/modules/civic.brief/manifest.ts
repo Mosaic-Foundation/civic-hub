@@ -65,4 +65,20 @@ export const BRIEF_MANIFEST = defineManifest({
   // admin reaches one through the Briefs tab (Adam, 2026-09-06).
   publication: { field: "publication_status", queue: "briefs", linkedBeforePublished: false },
   summarizes: { stateField: "source_process_id" },
+  feed: {
+    cards: [
+      // The final result of any closed process; it wears its source's colour and pill.
+      { event: "civic.process.result_published", card: "brief" },
+      // An official's public response to a published brief. Every response
+      // emits this event (the log is never throttled), but only the ANCHOR,
+      // stamped by the write path when no other response to the same brief
+      // anchored a card in the last 24h, renders, so a burst of responses is
+      // one card; the brief's page shows them all.
+      {
+        event: "civic.process.action_taken",
+        when: { action: "official_response", feed_anchor: true },
+        card: { surface: "activity", kind: "brief-response", color: "official-response", pill: "Official response", href: "detail" },
+      },
+    ],
+  },
 });
