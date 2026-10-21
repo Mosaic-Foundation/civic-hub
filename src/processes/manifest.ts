@@ -13,8 +13,8 @@
 // src/shared/, so the UI can read it too (eslint `civic/manifest-pure`). The
 // handler (the code that runs actions) is paired with it by the registry.
 
-import type { ProcessTypeDescriptor } from "./descriptor.js";
-import type { SchemaRequirement } from "../db/schemaContract.js";
+import type { ProcessTypeDescriptor } from "./descriptorTypes.js";
+import type { SchemaRequirement } from "../db/schemaRequirement.js";
 import type { SettingFieldSpec } from "../shared/hubSettingsSections.js";
 import type { ThemeTypeKey } from "../shared/theme.js";
 import type { ActivityRecipe } from "../shared/activityRecipe.js";

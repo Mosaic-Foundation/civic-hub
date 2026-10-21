@@ -187,8 +187,7 @@ export default [
       "no-restricted-imports": ["error", {
         patterns: [{
           regex: "^(?!(\\.\\./)+shared/|\\.\\./\\.\\./processes/manifest\\.js$)",
-          allowTypeImports: true,
-          message: "A manifest is plain data: values only from src/shared/ (types from anywhere).",
+          message: "A manifest is plain data: it imports only src/shared/ and defineManifest (src/processes/manifest.ts), types included (the UI type-checks it).",
         }],
       }],
     },
@@ -199,8 +198,21 @@ export default [
       "no-restricted-imports": ["error", {
         patterns: [{
           regex: "^(?!\\.\\./[^.]|\\.\\./\\.\\./processes/manifest\\.js$)",
-          allowTypeImports: true,
-          message: "A manifest is plain data: values only from src/shared/ (types from anywhere).",
+          message: "A manifest is plain data: it imports only src/shared/ and defineManifest (src/processes/manifest.ts), types included (the UI type-checks it).",
+        }],
+      }],
+    },
+  },
+  // What a manifest reaches stays plain: the manifest contract and the two
+  // type files it uses import only each other, src/shared/ and the process
+  // model, types included, because the UI type-checks all of it.
+  {
+    files: ["src/processes/manifest.ts", "src/processes/descriptorTypes.ts", "src/db/schemaRequirement.ts"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          regex: "^(?!\\./descriptorTypes\\.js$|\\.\\./db/schemaRequirement\\.js$|\\.\\./shared/|\\.\\./models/process\\.js$)",
+          message: "The manifest contract imports only src/shared/, descriptorTypes, schemaRequirement and the process model (the UI type-checks it).",
         }],
       }],
     },
