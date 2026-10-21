@@ -133,7 +133,7 @@ export const POLIS_DELIBERATION_MANIFEST = defineManifest({
     { name: "deliberation_drafts", rows: "export", key: ["id"] },
   ],
   jobs: [],
-  pluginSection: { order: 40, fields: [{ key: "plugin.conversation.polis_url", kind: "url" }] },
+  pluginSection: { order: 40, name: "Conversations", what: "Structured group conversations that map where people agree.", fields: [{ key: "plugin.conversation.polis_url", kind: "url" }] },
   activities: {},
   // What a closed conversation answers (src/controllers/deliberationController.ts).
   deadlineRefusal: { code: "conversation_not_active", message: "Conversation is not active" },

@@ -188,6 +188,8 @@ export const VOTE_MANIFEST = defineManifest({
   jobs: [],
   pluginSection: {
     order: 10,
+    name: "Votes",
+    what: "Advisory votes residents propose and cast, with results.",
     fields: [
       { key: "plugin.vote.min_duration_days", kind: "number", min: 1, max: 365 },
       { key: "plugin.vote.max_duration_days", kind: "number", min: 1, max: 365 },

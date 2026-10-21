@@ -54,6 +54,8 @@ export const MEETING_SUMMARY_MANIFEST = defineManifest({
   ],
   pluginSection: {
     order: 80,
+    name: "Meeting summaries",
+    what: "Plain-language summaries of public meetings, drafted for admin review.",
     fields: [
       { key: "plugin.meeting_summary.connector_id", kind: "choice", options: MEETING_CONNECTOR_OPTIONS },
       { key: "plugin.meeting_summary.source_url", kind: "url" },

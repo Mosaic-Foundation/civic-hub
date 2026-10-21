@@ -39,6 +39,7 @@ const descriptor = defineDescriptor({
   display: {
     label: "Outcome",
     plural: "Outcomes",
+    name: "Brief",
     icon: "outcome",
     section: {
       id: "outcomes",
@@ -59,7 +60,10 @@ export const BRIEF_MANIFEST = defineManifest({
     { name: "brief_responses", rows: "export", key: ["id"] },
   ],
   jobs: [],
-  pluginSection: { order: 60, fields: [] },
+  pluginSection: {
+ order: 60,
+ name: "Briefs",
+ what: "The published record of what residents decided, sent to officials.", fields: [] },
   activities: {},
   // /brief/:id answers 404 for an unpublished brief, admins included: the
   // admin reaches one through the Briefs tab (Adam, 2026-09-06).

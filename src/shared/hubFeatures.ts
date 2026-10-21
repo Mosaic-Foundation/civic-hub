@@ -13,6 +13,10 @@ export interface HubFeature {
   id: string;
   /** Its place in the Plugins section, on the process plugins' scale. */
   order: number;
+  /** What the Plugins page and the console call it. */
+  name: string;
+  /** One line on the Plugins page saying what it is. */
+  what: string;
   /** Its settings beyond `plugin.<id>.enabled`. */
   fields: readonly SettingFieldSpec[];
 }
@@ -21,22 +25,26 @@ export const HUB_FEATURES = [
   {
     id: "news_sync",
     order: 90,
+    name: "News sync",
+    what: "Posts from your government's own news feed, copied in as announcements.",
     fields: [
       { key: "plugin.news_sync.connector", kind: "choice", options: NEWS_CONNECTOR_OPTIONS },
       { key: "plugin.news_sync.source_url", kind: "url" },
     ],
   },
-  { id: "assistant", order: 100, fields: [] },
-  { id: "search", order: 110, fields: [] },
+  { id: "assistant", order: 100, name: "Writing assistant", what: "AI help while drafting a vote, proposal, project or conversation.", fields: [] },
+  { id: "search", order: 110, name: "Search", what: "Full-text search across everything on the hub.", fields: [] },
   // The address the Feedback page shows (2026-10-08, Adam).
-  { id: "feedback", order: 120, fields: [{ key: "plugin.feedback.contact_email", kind: "email" }] },
-  { id: "digest", order: 130, fields: [{ key: "plugin.digest.send_hour", kind: "hour" }] },
-  { id: "admin_digest", order: 140, fields: [] },
+  { id: "feedback", order: 120, name: "Feedback", what: "A form for residents to report problems or suggest changes.", fields: [{ key: "plugin.feedback.contact_email", kind: "email" }] },
+  { id: "digest", order: 130, name: "Email digest", what: "A summary email of new activity to each resident who has not unsubscribed.", fields: [{ key: "plugin.digest.send_hour", kind: "hour" }] },
+  { id: "admin_digest", order: 140, name: "Admin digest", what: "A daily email to admins counting what is new since the last one, with what is waiting beside it. Not sent when nothing is new.", fields: [] },
   // The member count, avatar stack and Members page (Adam, 2026-10-14).
   // Share this hub's invites are the hub's own, not this feature's.
   {
     id: "members",
     order: 150,
+    name: "Members",
+    what: "The member count and faces on the home page, and the Members page. Share this hub stays either way.",
     fields: [
       { key: "plugin.members.min_count", kind: "number", min: 0, max: 100000 },
       { key: "plugin.members.page_before_threshold", kind: "boolean" },

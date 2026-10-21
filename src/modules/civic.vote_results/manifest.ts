@@ -37,7 +37,7 @@ const descriptor = defineDescriptor({
   examples: {},
   // The pre-brief results record: an Outcome too, listed under Outcomes
   // (the brief's section, whose detail paths include /vote-results/).
-  display: { label: "Outcome", plural: "Outcomes", icon: "outcome" },
+  display: { label: "Outcome", plural: "Outcomes", name: "Vote results", icon: "outcome" },
 });
 
 export const VOTE_RESULTS_MANIFEST = defineManifest({

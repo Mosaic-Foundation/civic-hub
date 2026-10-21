@@ -51,7 +51,7 @@ function manifest(over: Partial<ProcessManifest> = {}): ProcessManifest {
     requiredSchema: [],
     tables: [{ name: "sample_rows", rows: "export", key: ["id"] }],
     jobs: [],
-    pluginSection: { order: 10, fields: [] },
+    pluginSection: { order: 10, name: "Samples", what: "Sample processes.", fields: [] },
     activities: { "civic.sample.taken": { type: "Create", object: { kind: "note" } } },
     ...over,
   };
@@ -124,7 +124,7 @@ describe("process manifests", () => {
   });
 
   it("refuses a setting outside the plugin's keys", () => {
-    expect(refused([manifest({ pluginSection: { order: 1, fields: [{ key: "plugin.digest.x", kind: "boolean" }] } })]))
+    expect(refused([manifest({ pluginSection: { order: 1, name: "Samples", what: "Sample processes.", fields: [{ key: "plugin.digest.x", kind: "boolean" }] } })]))
       .toThrow("setting plugin.digest.x is not under plugin.vote.");
   });
 

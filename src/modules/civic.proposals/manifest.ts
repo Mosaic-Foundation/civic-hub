@@ -89,7 +89,10 @@ export const PROPOSAL_MANIFEST = defineManifest({
     { name: "proposal_drafts", rows: "export", key: ["id"] },
   ],
   jobs: [],
-  pluginSection: { order: 20, fields: [] },
+  pluginSection: {
+ order: 20,
+ name: "Proposals",
+ what: "Ideas residents float for discussion and support.", fields: [] },
   activities: {
     "civic.proposal.submitted": { type: "Create", object: { kind: "civic", class: "civic:Proposal", id: "process", name: "title" } },
     // AS2's own verb for endorsement: no civic term needed (spec §3.1 rule 1).

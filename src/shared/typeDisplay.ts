@@ -13,6 +13,12 @@ export interface TypeDisplay {
   /** More than one: "Votes". */
   plural: string;
   /**
+   * What lists that mix types call one (search results, the archive, links,
+   * a resident's submissions), when it is not `label`: a brief is "Brief"
+   * there, though its pill and section say "Outcome". Default: label.
+   */
+  name?: string;
+  /**
    * The type's icon in the UI's icon set (ui/src/components/navIcons.tsx).
    * A key the UI doesn't know draws the generic icon.
    */

@@ -82,7 +82,10 @@ export const PROJECT_MANIFEST = defineManifest({
     { name: "project_comments", rows: "export", key: ["id"], legacy: true },
   ],
   jobs: [],
-  pluginSection: { order: 30, fields: [] },
+  pluginSection: {
+ order: 30,
+ name: "Projects",
+ what: "Community projects with updates, comments and sentiment.", fields: [] },
   activities: {
     "civic.project.created": { type: "Create", object: { kind: "civic", class: "hub:Project", id: "process", name: "title" } },
     "civic.project.updated": { type: "Update", object: { kind: "civic", class: "hub:Project", id: "process" } },

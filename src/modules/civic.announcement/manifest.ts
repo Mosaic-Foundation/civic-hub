@@ -41,7 +41,10 @@ export const ANNOUNCEMENT_MANIFEST = defineManifest({
   requiredSchema: [],
   tables: [],
   jobs: [],
-  pluginSection: { order: 70, fields: [] },
+  pluginSection: {
+ order: 70,
+ name: "Announcements",
+ what: "Posts from officials and admins on the feed.", fields: [] },
   activities: {},
   feed: {
     cards: [{ event: "civic.process.result_published", legacy: [{ field: "announcement", is: "present" }], card: "announcement" }],

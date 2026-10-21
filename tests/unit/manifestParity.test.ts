@@ -10,7 +10,8 @@
  * console's plugin checkboxes showed), and the Plugins section's own settings
  * follow that order (feedback's address before the digest's hour). Same
  * members, both checked before the change. And (2026-10-21, step 6) the
- * vote_close job runs every 15 minutes, not hourly (Adam).
+ * vote_close job runs every 15 minutes, not hourly (Adam). And (step 8)
+ * process_types gains display.name for vote results and briefs (additive).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

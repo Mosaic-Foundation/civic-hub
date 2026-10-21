@@ -1074,6 +1074,7 @@
       "plugin": "vote",
       "label": "Outcome",
       "plural": "Outcomes",
+      "name": "Vote results",
       "icon": "outcome"
     },
     {
@@ -1081,6 +1082,7 @@
       "plugin": "brief",
       "label": "Outcome",
       "plural": "Outcomes",
+      "name": "Brief",
       "icon": "outcome",
       "section": {
         "id": "outcomes",

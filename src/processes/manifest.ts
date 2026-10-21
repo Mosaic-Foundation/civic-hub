@@ -74,6 +74,10 @@ export interface Publication {
 export interface PluginSection {
   /** Its place in the Plugins section (lower first; hub features share the scale). */
   order: number;
+  /** What the Plugins page and the console call the plugin: "Votes". */
+  name: string;
+  /** One line on the Plugins page saying what it is. */
+  what: string;
   /** Its settings beyond `plugin.<id>.enabled`, which every plugin has. */
   fields: readonly SettingFieldSpec[];
 }
@@ -278,6 +282,9 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       const owner = pluginOwners.get(d.plugin);
       if (owner) throw new ManifestError(`${where(m)}: plugin ${d.plugin}'s section is already carried by ${owner}`);
       pluginOwners.set(d.plugin, d.type);
+      if (!m.pluginSection.name || !m.pluginSection.what) {
+        throw new ManifestError(`${where(m)}: pluginSection needs a name and a "what" line`);
+      }
       for (const f of m.pluginSection.fields) {
         if (!f.key.startsWith(`plugin.${d.plugin}.`)) {
           throw new ManifestError(`${where(m)}: setting ${f.key} is not under plugin.${d.plugin}.`);

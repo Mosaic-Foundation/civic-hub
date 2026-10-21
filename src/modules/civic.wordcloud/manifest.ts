@@ -114,6 +114,8 @@ export const WORDCLOUD_MANIFEST = defineManifest({
   jobs: [],
   pluginSection: {
     order: 50,
+    name: "Word clouds",
+    what: "One-word answers gathered into a cloud.",
     fields: [{ key: "plugin.wordcloud.onboarding_id", kind: "process", processType: "civic.wordcloud" }],
   },
   activities: {},
