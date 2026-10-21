@@ -133,30 +133,33 @@ describe("GET /process/:id content negotiation", () => {
 });
 
 describe("every type answers a descriptor", () => {
-  it("a live process of each type on Athens is served as a civic:Process of its type", async () => {
-    // Picked from the database, not the public list: other files archive
-    // records, and an admin publishes some types' (briefs) before they list.
+  it("a live process of each type is served as a civic:Process of its type", async () => {
+    // Picked from the database, on either seeded hub, not from a public list:
+    // other files archive records, and an admin publishes some types' first.
     const types = (await get("/.well-known/civic.json")).body.processes as string[];
-    let served = 0;
-    for (const type of types) {
-      const rows = (await localRest(
-        `processes?select=id,state&hub_id=eq.athens&type=eq.${type}&status=not.in.(pending_review,archived,draft)&limit=20`,
-      )) as Array<{ id: string; state: Record<string, unknown> | null }>;
-      const row = rows.find((r) => {
-        const s = r.state ?? {};
-        if (s.publication_status !== undefined) return s.publication_status === "published";
-        if (s.approval_status !== undefined) return s.approval_status === "published";
-        return true;
-      });
-      if (!row) continue;
-      const res = await get(`/process/${row.id}`, LD);
-      expect(res.status, `${type}: ${JSON.stringify(res.body)}`).toBe(200);
-      expect(res.body.type).toBe("civic:Process");
-      expect(res.body["civic:processType"]).toBe(type);
-      expect(Array.isArray(res.body.actions)).toBe(true);
-      served += 1;
+    const served = new Set<string>();
+    for (const [hub, host] of [["athens", ATHENS], ["floyd", "floyd.civic.social"]] as const) {
+      for (const type of types) {
+        if (served.has(type)) continue;
+        const rows = (await localRest(
+          `processes?select=id,state&hub_id=eq.${hub}&type=eq.${type}&status=not.in.(pending_review,archived,draft)&limit=20`,
+        )) as Array<{ id: string; state: Record<string, unknown> | null }>;
+        const row = rows.find((r) => {
+          const s = r.state ?? {};
+          if (s.publication_status !== undefined) return s.publication_status === "published";
+          if (s.approval_status !== undefined) return s.approval_status === "published";
+          return true;
+        });
+        if (!row) continue;
+        const res = await call("GET", `/process/${row.id}`, host, undefined, undefined, undefined, LD);
+        expect(res.status, `${type} on ${hub}: ${JSON.stringify(res.body)}`).toBe(200);
+        expect(res.body.type).toBe("civic:Process");
+        expect(res.body["civic:processType"]).toBe(type);
+        expect(Array.isArray(res.body.actions)).toBe(true);
+        served.add(type);
+      }
     }
-    expect(served).toBeGreaterThanOrEqual(4);
+    expect(served.size, [...served].join(", ")).toBeGreaterThanOrEqual(4);
   });
 });
 
