@@ -147,3 +147,18 @@ describe("every type answers a descriptor", () => {
     }
   });
 });
+
+describe("/.well-known/civic.json", () => {
+  it("lists each type's public descriptor, with its display name", async () => {
+    const res = await get("/.well-known/civic.json");
+    expect(res.status).toBe(200);
+    const types = res.body.process_types as Array<{ type: string; display: { label: string; plural: string }; actions: unknown[] }>;
+    expect(types.map((t) => t.type)).toEqual(res.body.processes);
+    const vote = types.find((t) => t.type === "civic.vote")!;
+    expect(vote.display).toEqual({ label: "Vote", plural: "Votes" });
+    for (const t of types) {
+      expect(t.display.label, t.type).toBeTruthy();
+      expect(Array.isArray(t.actions), t.type).toBe(true);
+    }
+  });
+});

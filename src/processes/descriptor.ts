@@ -210,6 +210,8 @@ export interface PublicProcessType {
   type: string;
   version: string;
   tier: TrustTier;
+  /** How residents name one and several (Architecture 2: a consumer needs a display name). */
+  display: { label: string; plural: string };
   lifecycle: { states: readonly ProcessStatus[] };
   actions: Array<{
     name: string;
@@ -229,6 +231,7 @@ export function publicDescriptor(d: ProcessTypeDescriptor): PublicProcessType {
     type: d.type,
     version: d.version,
     tier: d.tier,
+    display: { label: d.display.label, plural: d.display.plural },
     lifecycle: { states: [...d.states, ...HOST_STATES] },
     actions: d.actions.map((a) => ({
       name: a.name,
