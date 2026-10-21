@@ -18,6 +18,7 @@ import {
 import { isPubliclyFetchable } from "../services/processLifecycle.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import { getDescriptor, isPublished } from "../processes/registry.js";
+import { buildProcessDescriptor, wantsDescriptor } from "../services/processDescriptor.js";
 import type { Request, Response } from "express";
 import type { Process } from "../models/process.js";
 
@@ -57,6 +58,22 @@ export const handleCreateProcess = route(async (req, res) => {
 
 export const handleGetProcess = route(async (req, res) => {
   const id = req.params.id as string;
+  // Asked for JSON-LD (as a consumer dereferencing an activity's `context`
+  // does): the Civic Process Descriptor (§12.1), with the same gate and the
+  // same redaction as the page and the wire. Anything else: the UI read model.
+  const descriptorType = wantsDescriptor(req.headers.accept);
+  if (descriptorType) {
+    const user = await resolveCallerUser(req);
+    const audience = user ? (isAdminEmail(user.email) ? "admin" : "member") : "public";
+    const descriptor = await buildProcessDescriptor(id, { audience, viewerId: user?.id });
+    if (!descriptor) throw new NotFoundError("Process not found");
+    res.setHeader(
+      "Content-Type",
+      descriptorType === "ld" ? "application/ld+json; charset=utf-8" : "application/activity+json; charset=utf-8",
+    );
+    res.json(descriptor);
+    return;
+  }
   // Never serve the raw DB record: it exposes internal fields the
   // public must not see (unpublished vote_results admin notes and
   // recipient emails, moderation reasons, the identified supporters

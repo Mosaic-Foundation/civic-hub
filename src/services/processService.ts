@@ -545,7 +545,7 @@ export async function readsAsClosed(process: Process): Promise<boolean> {
  * Best-effort like the close on read it replaced: a failing deadline read is
  * logged and the process is shown as stored.
  */
-async function asRead(process: Process): Promise<Process> {
+export async function asRead(process: Process): Promise<Process> {
   const handler = getProcessHandler(process.definition.type);
   if (!handler?.readAsClosed) return process;
   try {

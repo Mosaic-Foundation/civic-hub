@@ -111,6 +111,15 @@
       "destination": "/api"
     },
     {
+      "source": "/process/:id/action",
+      "destination": "/api"
+    },
+    {
+      "source": "/process/:id",
+      "has": [{ "type": "header", "key": "accept", "value": ".*application/(ld|activity)\\+json.*" }],
+      "destination": "/api"
+    },
+    {
       "source": "/process/:id*",
       "destination": "/api/og"
     },
