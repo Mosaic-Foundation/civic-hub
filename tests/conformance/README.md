@@ -53,8 +53,10 @@ both API passes (service role, minted hub tokens).
 7. **The plugin switched off**, refused everywhere: the process, its actions,
    its lists, its drafts and `civic.json`. **Switched back on**, everything is
    as it was.
-8. **Every event it wrote** is one it declares and has a wire mapping, and
-   nothing crosses to another hub.
+8. **Every event it wrote** is one it declares and has a wire mapping, its
+   published ids survive a hub move (each row carries the hostname its ids
+   were minted on, and serializing it for a hub moved elsewhere gives the same
+   bytes; ADR-008), and nothing crosses to another hub.
 9. **Tier 3 only:** the hub's side of the external-service contract (plugin
    architecture §10a), through the one adapter, with the service up, down,
    slow or erroring:

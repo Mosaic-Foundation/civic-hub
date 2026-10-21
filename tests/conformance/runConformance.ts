@@ -47,6 +47,10 @@ import type { ProcessHandler } from "../../src/processes/types.js";
 import type { ProcessStatus } from "../../src/models/process.js";
 import { hostFacts } from "./hostFacts.js";
 import { JOBS, JOBS_MOUNT } from "../../src/jobs/registry.js";
+import { rowToEvent } from "../../src/events/eventStore.js";
+import { toActivity } from "../../src/events/activitySerializer.js";
+import { toRedactedActivity } from "../../src/events/publicRedaction.js";
+import { withHubScope } from "../../src/config/hubContext.js";
 import {
   BETA,
   DEMO,
@@ -59,6 +63,8 @@ import {
   reviewsOfDraft,
   tellAdmins,
   eventsOf,
+  eventRowsOf,
+  hubRow,
   examplePayload,
   expireDeadline,
   FAILS_ON_APPROVAL,
@@ -547,6 +553,32 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
           expect(declared.has(e.event_type), `${id}: ${e.event_type} is not declared`).toBe(true);
           expect(facts.mappedEventTypes, `${e.event_type} has no wire mapping`).toContain(e.event_type);
         }
+      }
+    });
+
+    it("its published ids survive a hub move: every identifier is read from the stored row", async () => {
+      // ADR-008. The type's stored events, serialized as the hub serves them
+      // (admin, member, public), must come out byte-identical when the hub
+      // they belong to has moved to another hostname, and every row must
+      // carry the hostname its ids were minted on.
+      expect(touched.length).toBeGreaterThan(0);
+      for (const { id, hub } of touched) {
+        const rows = await eventRowsOf(id);
+        expect(rows.length).toBeGreaterThan(0);
+        for (const r of rows) {
+          expect(r.wire_hostname, `${r.id} has no wire hostname`).toBeTruthy();
+          expect(r.wire_process_hostname, `${r.id} has no process hostname`).toBeTruthy();
+        }
+        const registry = await hubRow(hub.slug);
+        const events = rows.map(rowToEvent);
+        const serve = (at: typeof registry) =>
+          withHubScope(at, {}, async () =>
+            JSON.stringify(events.map((e) => [toActivity(e), toRedactedActivity(e, new Set(), "member"), toRedactedActivity(e, new Set(), "public")])),
+          );
+        const here = await serve(registry);
+        const moved = await serve({ ...registry, hostname: `moved-${registry.hostname}` });
+        expect(moved, `${d.type}: an id changed when the hub moved`).toBe(here);
+        expect(moved).not.toContain(`moved-${registry.hostname}`);
       }
     });
 

@@ -16,6 +16,8 @@ import { localRest, mintSession } from "../fixtures/adminSession.js";
 import { COC_DOWN, COC_FLAG } from "../fixtures/codeOfConduct.js";
 import type { ProcessTypeDescriptor } from "../../src/processes/descriptor.js";
 import type { HostFacts } from "../../src/processes/descriptorCheck.js";
+import type { EventRow } from "../../src/events/eventStore.js";
+import type { Hub as HubModel } from "../../src/models/hub.js";
 
 export const DB_URL =
   process.env.CIVIC_TEST_DATABASE_URL?.trim() || "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
@@ -205,6 +207,20 @@ export interface EventRowView {
   process_id: string;
   hub_id: string;
   created_at: string;
+}
+
+/** A process's event rows whole (wire columns included), oldest first, as the store reads them. */
+export async function eventRowsOf(processId: string): Promise<EventRow[]> {
+  return (await localRest(
+    `events?select=*&process_id=eq.${processId}&order=created_at.asc,id.asc`,
+  )) as EventRow[];
+}
+
+/** A hub's registry row, as the resolver puts it in scope. */
+export async function hubRow(slug: string): Promise<HubModel> {
+  const rows = (await localRest(`hubs?select=*&id=eq.${slug}`)) as HubModel[];
+  if (!rows[0]) throw new Error(`no hub ${slug}`);
+  return rows[0];
 }
 
 /** Every event a process has, oldest first, restricted ones included. */
