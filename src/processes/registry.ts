@@ -36,6 +36,8 @@ import wordcloudProcess from "../modules/civic.wordcloud/handler.js";
 import { PROCESS_MANIFESTS } from "../shared/processManifests.js";
 import { THEME_TYPE_KEYS } from "../shared/theme.js";
 import { checkManifests, ManifestError, type ProcessManifest } from "./manifest.js";
+import { HOST_TABLES } from "../db/forHub.js";
+import { hostMappedEventTypes } from "../events/activitySerializer.js";
 
 // civic.vote_results + civic.announcement + civic.meeting_summary are
 // registered here but can be omitted by hubs that don't want those
@@ -70,8 +72,8 @@ const HANDLERS: readonly ProcessHandler[] = [
 
 const MANIFESTS = checkManifests(PROCESS_MANIFESTS, {
   colors: THEME_TYPE_KEYS,
-  hostActivityTypes: [],
-  hostTables: [],
+  hostActivityTypes: hostMappedEventTypes(),
+  hostTables: HOST_TABLES,
   featureIds: [],
 });
 

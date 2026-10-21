@@ -23,6 +23,7 @@
 // only in the hour that hub chose, in the hub's own time zone.
 
 import type { PluginId } from "../models/hubSettings.js";
+import { MANIFEST_LIST } from "../shared/processManifests.js";
 
 interface JobSpecBase {
   /** Stable id, also the key into the runner table. */
@@ -75,14 +76,12 @@ export const JOBS_MOUNT = "/internal";
  */
 export const VERCEL_API_PREFIX = "/api";
 
-export const JOBS: readonly JobSpec[] = [
-  {
-    id: "meeting_summary",
-    plugin: "meeting_summary",
-    path: "/meeting-summary/run",
-    schedule: "30 11 * * *",
-    description: "Meeting discovery and summarization, per hub that configured a source",
-  },
+/**
+ * Jobs the hub runs whatever process types it carries: hub features' (the
+ * digests, news sync) and housekeeping. A process type's own jobs are in its
+ * manifest (ADR-009).
+ */
+const HOST_JOBS: readonly JobSpec[] = [
   {
     id: "news_sync",
     plugin: "news_sync",
@@ -142,6 +141,9 @@ export const JOBS: readonly JobSpec[] = [
     description: "Delete console hub exports older than 24 hours (the audit rows stay)",
   },
 ];
+
+/** Every job: each process type's (from its manifest), then the host's. */
+export const JOBS: readonly JobSpec[] = [...MANIFEST_LIST.flatMap((m) => m.jobs), ...HOST_JOBS];
 
 export function jobById(id: string): JobSpec | undefined {
   return JOBS.find((j) => j.id === id);
