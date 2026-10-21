@@ -205,7 +205,17 @@ export async function plantSample(title: string): Promise<string> {
       title,
       description: "A sample the smoke suite plants and deletes.",
       status: "active",
-      state: { status: "active", body: "A sample the smoke suite plants and deletes." },
+      // An announcement's state as the hub writes one, so its page and its
+      // descriptor read (the descriptor check dereferences it).
+      state: {
+        status: "active",
+        content: { title, body: "A sample the smoke suite plants and deletes.", links: [] },
+        author_id: "smoke",
+        author_role: "admin",
+        created_at: new Date().toISOString(),
+        last_edited_at: null,
+        edit_count: 0,
+      },
       created_by: "smoke",
       is_sample: true,
     }),
