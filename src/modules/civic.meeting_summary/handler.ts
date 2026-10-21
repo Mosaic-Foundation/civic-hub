@@ -12,7 +12,6 @@
 import { ValidationError } from "../../errors/index.js";
 import type { Process, ProcessAction } from "../../models/process.js";
 import type { ProcessHandler } from "../../processes/types.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 import {
   createMeetingSummaryState,
   getPublicReadModel,
@@ -21,47 +20,17 @@ import {
   type MeetingSourceType,
   type MeetingSummaryProcessState,
 } from "./index.js";
+import { MEETING_SUMMARY_MANIFEST } from "./manifest.js";
 
 function getState(process: Process): MeetingSummaryProcessState {
   return process.state as unknown as MeetingSummaryProcessState;
 }
 
-/**
- * What a meeting summary is (src/processes/descriptor.ts). The meeting
- * summary job (/internal/meeting-summary/run) creates one pending review; an
- * admin edits and approves it through /admin/meeting-summaries/*, and
- * approval publishes it and sets the row to finalized. The job may also
- * publish one itself. It has no process actions. A revision staged on a
- * published summary stays on its state; the row stays finalized.
- *
- * Lifecycle: active (pending review) to finalized (published); never closed.
- */
-export const MEETING_SUMMARY_DESCRIPTOR: ProcessTypeDescriptor = {
-  type: "civic.meeting_summary",
-  version: "0.1",
-  tier: 1,
-  plugin: "meeting_summary",
-  states: ["active", "finalized"],
-  initial_status: "active",
-  actions: [],
-  emits: [
-    "civic.process.aggregation_completed",
-    "civic.process.outcome_recorded",
-    "civic.process.result_published",
-  ],
-  creation: { resident: null, admin: false, system: true },
-  deadline: null,
-  brief: false,
-  tables: [],
-  outside_services: [],
-  examples: {},
-  display: { label: "Meeting summary", plural: "Meeting summaries", icon: "meeting" },
-};
-
 const meetingSummaryProcess: ProcessHandler = {
   type: "civic.meeting_summary",
-  descriptor: MEETING_SUMMARY_DESCRIPTOR,
-  detailPath: (id: string) => `/meeting-summary/${id}`,
+  descriptor: MEETING_SUMMARY_MANIFEST.descriptor,
+  requiredSchema: [...MEETING_SUMMARY_MANIFEST.requiredSchema],
+  detailPath: MEETING_SUMMARY_MANIFEST.detailPath,
 
   initializeState(input: Record<string, unknown>): Record<string, unknown> {
     // Meeting summaries are created programmatically by the cron

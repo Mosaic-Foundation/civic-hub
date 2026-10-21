@@ -17,8 +17,6 @@
 import { ValidationError } from "../../errors/index.js";
 import { Process, ProcessAction } from "../../models/process.js";
 import { ProcessHandler } from "../../processes/types.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
-import { DEADLINE_CLOSE_INPUT } from "../../processes/descriptor.js";
 import { forHub } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { emitEvent } from "../../events/eventEmitter.js";
@@ -42,6 +40,7 @@ import { proposalDraftKind } from "../../processes/draftKinds.js";
 import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
 import { getSettingSync } from "../../services/hubSettings.js";
 import { KEYS } from "../../models/hubSettings.js";
+import { PROPOSAL_MANIFEST } from "./manifest.js";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).
 const hubNoun = (n: number): string =>
@@ -57,80 +56,11 @@ const AUTO_CLOSE_ACTOR = "system:auto-close";
 /** How long a proposal is open when its submission carries no duration (as before 2026-10-12). */
 const DEFAULT_PROPOSAL_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
-/**
- * What a proposal is (src/processes/descriptor.ts). Residents support it, or
- * withdraw support, while it is open; it closes at its deadline (or when an
- * admin closes it) and its brief reports the support it drew.
- *
- * Its creation is announced as civic.proposal.submitted and its close as
- * civic.proposal.closed.
- */
-export const PROPOSAL_DESCRIPTOR: ProcessTypeDescriptor = {
-  type: "civic.proposal",
-  version: "0.1",
-  tier: 1,
-  plugin: "proposal",
-  states: ["active", "closed"],
-  initial_status: "active",
-  actions: [
-    {
-      name: "process.support",
-      description: "Support an open proposal",
-      callers: ["resident", "admin"],
-      from: ["active"],
-      to: null,
-      emits: ["civic.proposal.supported"],
-      once_per_participant: true,
-      input_schema: { type: "object", properties: {}, examples: [{}] },
-    },
-    {
-      name: "process.unsupport",
-      description: "Withdraw support while the proposal is open",
-      callers: ["resident", "admin"],
-      from: ["active"],
-      to: null,
-      emits: ["civic.proposal.support_withdrawn"],
-      input_schema: { type: "object", properties: {}, examples: [{}] },
-    },
-    {
-      name: "process.close",
-      description: "Close the proposal; its support is part of the record",
-      callers: ["admin", "system"],
-      from: ["active"],
-      to: "closed",
-      emits: ["civic.proposal.closed"],
-      input_schema: DEADLINE_CLOSE_INPUT,
-      // Its only other effect, the proposals row's copy of the status, is
-      // written after the process row commits.
-      retry_safe: true,
-    },
-  ],
-  emits: [
-    "civic.proposal.submitted",
-    "civic.proposal.supported",
-    "civic.proposal.support_withdrawn",
-    "civic.proposal.closed",
-  ],
-  creation: { resident: { drafts: "/proposals/drafts" }, admin: false, system: false },
-  deadline: { action: "process.close", source: "proposals.closes_at" },
-  brief: true,
-  tables: ["proposals", "proposal_supports", "proposal_drafts"],
-  outside_services: [],
-  examples: {
-    draft: { title: "Conformance proposal", description: "An idea to gauge interest in.", category: "idea" },
-  },
-  display: {
-    label: "Proposal",
-    plural: "Proposals",
-    icon: "proposal",
-    section: { id: "proposals", label: "Proposals", path: "/propose", detail_paths: ["/proposal/"], order: 20 },
-  },
-};
-
 const proposalAdapter: ProcessHandler = {
   type: "civic.proposal",
-  descriptor: PROPOSAL_DESCRIPTOR,
-  detailPath: (id: string) => `/proposal/${id}`,
+  descriptor: PROPOSAL_MANIFEST.descriptor,
+  requiredSchema: [...PROPOSAL_MANIFEST.requiredSchema],
+  detailPath: PROPOSAL_MANIFEST.detailPath,
   draftPath: (draftId: string) => `/propose/new?draft=${encodeURIComponent(draftId)}`,
   reopenDraft: (draftId: string) => setDraftStatus(proposalDraftKind.spec, draftId, "drafting"),
 

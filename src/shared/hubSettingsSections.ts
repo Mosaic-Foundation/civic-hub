@@ -21,6 +21,8 @@
 //     to a hub (see "The sending domain belongs to the platform" in the build
 //     plan). The Email section shows it read-only.
 
+import { MEETING_CONNECTOR_OPTIONS, NEWS_CONNECTOR_OPTIONS } from "./connectorOptions.js";
+
 export type SettingFieldKind =
   /** One line of plain text. */
   | "text"
@@ -107,10 +109,7 @@ export const PLUGIN_SECTION_ORDER = [
   "members",
 ] as const;
 
-/** Meeting-summary connector ids (src/modules/civic.meeting_summary/connectors). */
-export const MEETING_CONNECTOR_OPTIONS = ["auto", "wix-cms", "minutes-page", "youtube-channel"] as const;
-/** News-sync connector ids (src/modules/civic.news_sync/connectors). */
-export const NEWS_CONNECTOR_OPTIONS = ["wix-cms"] as const;
+export { MEETING_CONNECTOR_OPTIONS, NEWS_CONNECTOR_OPTIONS } from "./connectorOptions.js";
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
 
 export const SETTINGS_SECTIONS: Readonly<

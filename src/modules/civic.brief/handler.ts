@@ -9,7 +9,6 @@
 import { ValidationError } from "../../errors/index.js";
 import { Process, ProcessAction } from "../../models/process.js";
 import { ProcessHandler } from "../../processes/types.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 import {
   createBriefState,
   getPublicReadModel,
@@ -18,61 +17,17 @@ import {
   type BriefProcessState,
   type CreateBriefInput,
 } from "./index.js";
+import { BRIEF_MANIFEST } from "./manifest.js";
 
 function getState(process: Process): BriefProcessState {
   return process.state as unknown as BriefProcessState;
 }
 
-/**
- * What a brief is (src/processes/descriptor.ts). The hub spawns one when a
- * process closes (spawnBriefFromClosedProcess); an admin reviews, edits and
- * approves it through /admin/briefs/*, and approval publishes it and sets the
- * row to finalized. It has no process actions. An official's response
- * (POST /brief/:id/respond, a different table's write) emits action_taken
- * outside any action.
- *
- * Lifecycle: active (pending review) to finalized (published); never closed.
- */
-export const BRIEF_DESCRIPTOR: ProcessTypeDescriptor = {
-  type: "civic.brief",
-  version: "0.1",
-  tier: 1,
-  plugin: "brief",
-  states: ["active", "finalized"],
-  initial_status: "active",
-  actions: [],
-  emits: [
-    "civic.process.aggregation_completed",
-    "civic.process.outcome_recorded",
-    "civic.process.result_published",
-    "civic.process.action_taken",
-  ],
-  creation: { resident: null, admin: false, system: true },
-  deadline: null,
-  brief: false,
-  tables: ["brief_responses"],
-  outside_services: [],
-  examples: {},
-  // A brief is what a finished process produced: residents meet it as an
-  // Outcome, and the Outcomes section lists them.
-  display: {
-    label: "Outcome",
-    plural: "Outcomes",
-    icon: "outcome",
-    section: {
-      id: "outcomes",
-      label: "Outcomes",
-      path: "/outcomes",
-      detail_paths: ["/brief/", "/vote-results/"],
-      order: 50,
-    },
-  },
-};
-
 const briefProcess: ProcessHandler = {
   type: "civic.brief",
-  descriptor: BRIEF_DESCRIPTOR,
-  detailPath: (id: string) => `/brief/${id}`,
+  descriptor: BRIEF_MANIFEST.descriptor,
+  requiredSchema: [...BRIEF_MANIFEST.requiredSchema],
+  detailPath: BRIEF_MANIFEST.detailPath,
   // Social previews carry the approved headline, not the (empty) row
   // description. Unpublished records are not shareable at all.
   describeShare: (process) => {

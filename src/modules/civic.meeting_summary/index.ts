@@ -142,4 +142,4 @@ export {
 } from "./connectors/wixCms.js";
 export type { WixMeetingRow } from "./connectors/wixCms.js";
 
-// What this type is: MEETING_SUMMARY_DESCRIPTOR in src/modules/civic.meeting_summary/handler.ts.
+// What this type is: its manifest, src/modules/civic.meeting_summary/manifest.ts.

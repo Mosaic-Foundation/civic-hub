@@ -39,4 +39,4 @@ export {
 
 export { formatVoteResultsEmail, headlineFor } from "./email.js";
 
-// What this type is: VOTE_RESULTS_DESCRIPTOR in src/modules/civic.vote_results/handler.ts.
+// What this type is: its manifest, src/modules/civic.vote_results/manifest.ts.

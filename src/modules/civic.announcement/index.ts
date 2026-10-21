@@ -45,4 +45,4 @@ export {
   emitAnnouncementUpdated,
 } from "./events.js";
 
-// What this type is: ANNOUNCEMENT_DESCRIPTOR in src/modules/civic.announcement/handler.ts.
+// What this type is: its manifest, src/modules/civic.announcement/manifest.ts.

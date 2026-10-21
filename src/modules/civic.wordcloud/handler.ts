@@ -7,7 +7,6 @@ import { ValidationError } from "../../errors/index.js";
 import { Process, ProcessAction } from "../../models/process.js";
 import { emitEvent } from "../../events/eventEmitter.js";
 import { ProcessHandler } from "../../processes/types.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 import { forHub } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import {
@@ -20,6 +19,7 @@ import {
   getSubmissionCount,
   type WordcloudProcessState,
 } from "./index.js";
+import { WORDCLOUD_MANIFEST } from "./manifest.js";
 
 function getState(process: Process): WordcloudProcessState {
   return process.state as unknown as WordcloudProcessState;
@@ -41,114 +41,13 @@ function db() {
   return forHub(currentHubId());
 }
 
-// What this type is: WORDCLOUD_DESCRIPTOR below.
-
-/**
- * What a word cloud is (src/processes/descriptor.ts). Residents submit one
- * short answer per prompt while it is active; activate, snapshot and close
- * are an admin's. Neither a deadline nor a brief: an evergreen cloud stays
- * active until an admin closes it.
- *
- * Retry-safe: activate, snapshot and close change only the process row and
- * their events (snapshot and close only read the submissions table). A
- * submission is not: it writes a row of its own.
- *
- * The word cloud keeps a copy of its status on state, synced with the row.
- *
- * Lifecycle: draft, active, closed; it stops at closed.
- */
-export const WORDCLOUD_DESCRIPTOR: ProcessTypeDescriptor = {
-  type: "civic.wordcloud",
-  version: "0.1",
-  tier: 1,
-  plugin: "wordcloud",
-  states: ["draft", "active", "closed"],
-  initial_status: "draft",
-  actions: [
-    {
-      name: "process.activate",
-      description: "Open the word cloud for submissions",
-      callers: ["admin"],
-      from: ["draft"],
-      to: "active",
-      emits: ["civic.process.started"],
-      retry_safe: true,
-    },
-    {
-      name: "process.submit",
-      description: "Submit a short answer to one of the prompts",
-      callers: ["resident", "admin"],
-      from: ["active"],
-      to: null,
-      emits: ["civic.process.submission_received"],
-      once_per_participant: true,
-      input_schema: {
-        type: "object",
-        properties: {
-          prompt_id: { type: "string" },
-          text: { type: "string" },
-          device_token: { type: "string" },
-        },
-        required: ["prompt_id", "text"],
-        examples: [{ prompt_id: "prompt_1", text: "parks" }],
-      },
-    },
-    {
-      name: "process.snapshot",
-      description: "Publish a point-in-time snapshot of the cloud",
-      callers: ["admin"],
-      from: ["active"],
-      to: null,
-      emits: ["civic.process.result_published"],
-      retry_safe: true,
-    },
-    {
-      name: "process.close",
-      description: "Close submissions and publish the final cloud",
-      callers: ["admin"],
-      from: ["active"],
-      to: "closed",
-      emits: ["civic.process.ended", "civic.process.result_published"],
-      retry_safe: true,
-    },
-  ],
-  emits: [
-    "civic.process.started",
-    "civic.process.submission_received",
-    "civic.process.result_published",
-    "civic.process.ended",
-  ],
-  creation: { resident: null, admin: true, system: false },
-  deadline: null,
-  brief: false,
-  tables: ["wordcloud_submissions"],
-  outside_services: [],
-  examples: {
-    create: {
-      body: {
-        definition: { type: "civic.wordcloud", version: "0.1" },
-        title: "Conformance word cloud",
-        description: "One word.",
-        state: { prompts: [{ id: "p1", text: "One word?" }] },
-      },
-    },
-  },
-  display: { label: "Word cloud", plural: "Word clouds", icon: "wordcloud" },
-};
+// What this type is: its manifest, ./manifest.ts.
 
 const wordcloudProcess: ProcessHandler = {
-  requiredSchema: [
-    {
-      table: "wordcloud_submissions",
-      columns: ["id", "process_id", "prompt_id", "author_id", "body"],
-      owner: "civic.wordcloud",
-    },
-  ],
-
   type: "civic.wordcloud",
-  descriptor: WORDCLOUD_DESCRIPTOR,
-  detailPath: (id: string) => `/wordcloud/${id}`,
-
+  descriptor: WORDCLOUD_MANIFEST.descriptor,
+  requiredSchema: [...WORDCLOUD_MANIFEST.requiredSchema],
+  detailPath: WORDCLOUD_MANIFEST.detailPath,
 
   /**
    * The word cloud keeps its own `status` inside `state` — the submission form

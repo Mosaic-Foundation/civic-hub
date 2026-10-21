@@ -15,7 +15,6 @@
 import { ValidationError } from "../../errors/index.js";
 import { Process, ProcessAction } from "../../models/process.js";
 import { ProcessHandler } from "../../processes/types.js";
-import type { ProcessTypeDescriptor } from "../../processes/descriptor.js";
 import {
   createVoteResultsState,
   getPublicReadModel,
@@ -23,51 +22,17 @@ import {
   type CreateVoteResultsFromVoteInput,
   type VoteResultsProcessState,
 } from "./index.js";
+import { VOTE_RESULTS_MANIFEST } from "./manifest.js";
 
 function getState(process: Process): VoteResultsProcessState {
   return process.state as unknown as VoteResultsProcessState;
 }
 
-/**
- * What a vote-results record is (src/processes/descriptor.ts). A legacy
- * record: votes stopped creating them when briefs became the one results
- * artifact (the vote's close, src/processes/types.ts generateBrief), but the
- * type stays registered for the records that exist and for their admin
- * routes (/admin/vote-results/*). It has no process actions: edit and approve
- * are those routes, and their events are listed in `emits` only. Approval
- * emails the board, then sets the row to finalized.
- *
- * Lifecycle: active (created, pending review) to finalized (published); never
- * closed.
- */
-export const VOTE_RESULTS_DESCRIPTOR: ProcessTypeDescriptor = {
-  type: "civic.vote_results",
-  version: "0.1",
-  tier: 1,
-  plugin: "vote",
-  states: ["active", "finalized"],
-  initial_status: "active",
-  actions: [],
-  emits: [
-    "civic.process.aggregation_completed",
-    "civic.process.outcome_recorded",
-    "civic.process.result_published",
-  ],
-  creation: { resident: null, admin: false, system: false },
-  deadline: null,
-  brief: false,
-  tables: [],
-  outside_services: [],
-  examples: {},
-  // The pre-brief results record: an Outcome too, listed under Outcomes
-  // (the brief's section, whose detail paths include /vote-results/).
-  display: { label: "Outcome", plural: "Outcomes", icon: "outcome" },
-};
-
 const voteResultsProcess: ProcessHandler = {
   type: "civic.vote_results",
-  descriptor: VOTE_RESULTS_DESCRIPTOR,
-  detailPath: (id: string) => `/vote-results/${id}`,
+  descriptor: VOTE_RESULTS_MANIFEST.descriptor,
+  requiredSchema: [...VOTE_RESULTS_MANIFEST.requiredSchema],
+  detailPath: VOTE_RESULTS_MANIFEST.detailPath,
   // Social previews carry the approved headline, not the (empty) row
   // description. Unpublished records are not shareable at all.
   describeShare: (process) => {

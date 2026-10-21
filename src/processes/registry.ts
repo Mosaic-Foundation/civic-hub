@@ -33,6 +33,9 @@ import {
   type SubmissionSource,
 } from "../shared/submissionPreview.js";
 import wordcloudProcess from "../modules/civic.wordcloud/handler.js";
+import { PROCESS_MANIFESTS } from "../shared/processManifests.js";
+import { THEME_TYPE_KEYS } from "../shared/theme.js";
+import { checkManifests, ManifestError, type ProcessManifest } from "./manifest.js";
 
 // civic.vote_results + civic.announcement + civic.meeting_summary are
 // registered here but can be omitted by hubs that don't want those
@@ -49,17 +52,57 @@ import wordcloudProcess from "../modules/civic.wordcloud/handler.js";
 // through Slice 8. Slice 8.5 renamed it to align the codebase with the
 // user-facing concept ("Vote results"). Existing process rows are
 // migrated by 20260427000000_rename_civic_brief_to_vote_results.sql.
-const processRegistry: Record<string, ProcessHandler> = {
-  "civic.vote": voteProcess,
-  "civic.proposal": proposalAdapter,
-  "civic.project": projectAdapter,
-  "civic.vote_results": voteResultsProcess,
-  "civic.brief": briefProcess,
-  "civic.announcement": announcementProcess,
-  "civic.meeting_summary": meetingSummaryProcess,
-  "civic.polis_deliberation": bootDeliberation(),
-  "civic.wordcloud": wordcloudProcess,
-};
+//
+// Since Architecture 2 (ADR-009) the types are their manifests
+// (src/shared/processManifests.ts), checked at startup; each is paired here
+// with the handler that runs its actions.
+const HANDLERS: readonly ProcessHandler[] = [
+  voteProcess,
+  proposalAdapter,
+  projectAdapter,
+  voteResultsProcess,
+  briefProcess,
+  announcementProcess,
+  meetingSummaryProcess,
+  bootDeliberation(),
+  wordcloudProcess,
+];
+
+const MANIFESTS = checkManifests(PROCESS_MANIFESTS, {
+  colors: THEME_TYPE_KEYS,
+  hostActivityTypes: [],
+  hostTables: [],
+  featureIds: [],
+});
+
+/** Each manifest with its handler, in the manifests' order; a manifest without one, or a stray handler, stops startup. */
+function pair(manifests: readonly ProcessManifest[], handlers: readonly ProcessHandler[]): Record<string, ProcessHandler> {
+  const byType = new Map(handlers.map((h) => [h.type, h]));
+  const out: Record<string, ProcessHandler> = {};
+  for (const m of manifests) {
+    const handler = byType.get(m.descriptor.type);
+    if (!handler) throw new ManifestError(`process manifest ${m.descriptor.type}: no handler is registered for it`);
+    if (handler.descriptor !== m.descriptor) {
+      throw new ManifestError(`process manifest ${m.descriptor.type}: its handler declares another descriptor`);
+    }
+    out[m.descriptor.type] = handler;
+    byType.delete(m.descriptor.type);
+  }
+  for (const type of byType.keys()) throw new ManifestError(`handler ${type}: no manifest declares this type`);
+  return out;
+}
+
+const processRegistry: Record<string, ProcessHandler> = pair(MANIFESTS, HANDLERS);
+
+/** Every loaded manifest, in registry order. */
+export function getManifests(): readonly ProcessManifest[] {
+  return MANIFESTS;
+}
+
+/** A registered type's manifest. */
+export function getManifest(type: string): ProcessManifest | undefined {
+  return MANIFESTS.find((m) => m.descriptor.type === type);
+}
 
 // Each handler's descriptor is the one declaration of what its type is
 // (src/processes/descriptor.ts). Registered here for the emission path's
