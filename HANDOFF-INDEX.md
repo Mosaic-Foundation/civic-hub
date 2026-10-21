@@ -48,7 +48,9 @@ numbers below, or just grep the heading.
 | Scheduled-job run log: what each outcome means, recording, last-run route, admin digest section | `src/jobs/describe.ts`, `src/services/jobRuns.ts` (table `job_runs`, `20260929000000`), `GET /admin/hub/jobs/runs`, `src/modules/civic.admin_digest/service.ts` |
 | Meeting-summary readiness (when a meeting may be summarized) and quality flags | `src/modules/civic.meeting_summary/readiness.ts`, `effectiveQualityFlag` in `service.ts` |
 | Plugin switches at runtime | `src/services/pluginGate.ts`, `src/middleware/pluginGate.ts`, `PROCESS_TYPE_PLUGINS` in `src/processes/registry.ts`, UI `ui/src/config/plugins.tsx` + `pluginRules.ts`; admin page `ui/src/pages/settings/PluginsSection.tsx`; "needs setup" rule `src/shared/pluginSetup.ts` (served by `src/services/pluginSetup.ts`) |
-| A hub's public URLs | `src/utils/baseUrl.ts` (from `hubs.hostname`) |
+| A hub's public URLs | `src/utils/baseUrl.ts` (from `hubs.hostname`; `apiOriginFor` / `uiOriginFor` for a hostname a hub had) |
+| Wire identity: ids minted once on the hostname a thing began on (`events.wire_*`, `processes`/`users.wire_hostname`, stamped by trigger), the serializer reading them, the snapshot and diff scripts | `wireOrigins()` in `src/events/activitySerializer.ts`, `20261020000000_wire_origins.sql`, `scripts/wire-snapshot.ts`, `scripts/wire-snapshot-diff.ts`, `tests/unit/wireIdentity.test.ts` + `tests/fixtures/wire/before.json`; ADR-008 |
+| The DID document, the move signal (tombstone, Link, Move), the software namespace | `src/events/hubIdentity.ts`, `src/controllers/didController.ts`, `sendMoved` in `src/middleware/hub.ts`, `moveHub` in `src/control/hubs.ts` (`move_hub_hostname`, `20261020010000`), `src/events/namespaceDocument.ts`, `config/ns/civic-hub.jsonld`; ADR-008 |
 | Operator scripts' hub | `scripts/lib/hubScope.ts` (`--hub <slug>`, required) |
 | Hub tokens, the RLS switch | `src/db/hubToken.ts`, `hubTokensEnabled()` / `getHubTokenDb()` in `src/db/client.ts`; policies `20260925000000`, catalog `tenancy_catalog()` `20260925010000` |
 | Jurisdiction reference list: sources, build, load (by `release.sh` when its checksum changes); consolidated city-counties (`consolidated.csv`, type `city_county`); console picker; purge | `config/jurisdictions/SOURCES.md`, `config/jurisdictions/consolidated.csv`, `scripts/{fetch-jurisdiction-sources.sh,build-jurisdictions.ts,load-jurisdictions.ts}`, `src/control/jurisdictions.ts`, `ui/src/console/JurisdictionPicker.tsx`, `scripts/purge-hub.ts`, `scripts/lib/hubPurge.ts` |
@@ -165,6 +167,8 @@ numbers below, or just grep the heading.
   `startAuth.ts`, `ui/src/start/`), the handoff session
   (`createHandoffSession`, `POST /auth/handoff`), DB rate limits
   (`start_attempts`), `20261008010000` — top of HANDOFF (grep the heading)
+- **Architecture 1 (2026-10-20)**: ids frozen at insert, `/.well-known/did.json`, one `hub:` namespace, the move
+  signal, the standing rules in BUILD-PLAN, ADR-008 — top of HANDOFF (grep the heading)
 - **Handing a hub over (2026-10-08, session 4)**: ownership at create, the
   console's Handover panel (`PUT /control/hubs/:id/handover`), who writes
   which setting (`src/shared/settingOwners.ts`), renames carry, the admin

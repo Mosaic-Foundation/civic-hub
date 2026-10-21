@@ -14,7 +14,22 @@ Read what the release needs, in its HANDOFF entry and session report:
 - the read-only pre-checks to run first;
 - whether anyone is signed out.
 
-If any of these is missing, ask before releasing. **Run the pre-checks by hand**, read-only, in the target project's
+If any of these is missing, ask before releasing.
+
+**A release that touches the wire** (the activity serializer, the events table, the wire columns) proves that no
+published id changed: snapshot with the old code before the migration, again with the new code after, and diff
+(ADR-008). Read-only; the env file names the target's `CIVIC_TARGET_DATABASE_URL`:
+
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && node --env-file=.env --env-file=<db env file> --import tsx scripts/wire-snapshot.ts --out <dir>
+```
+
+```bash
+cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && npx tsx scripts/wire-snapshot-diff.ts <before dir> <after dir>
+```
+
+The first must run from a checkout of the code that is live (for example a `git worktree` at the live commit), since
+the new code reads columns the old database lacks. **Run the pre-checks by hand**, read-only, in the target project's
 SQL editor (for example, the duplicate queries a new unique index needs). A pre-check that returns rows stops the
 release until those rows are dealt with. The script does not run pre-checks.
 

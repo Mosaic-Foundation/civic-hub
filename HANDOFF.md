@@ -4,6 +4,75 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Architecture 1: what a hub published keeps its ids; a served DID; one namespace; a move signal — 2026-10-20
+
+`multi-tenant`, one commit per item (`06a32fb`..`2a384c2`), **live on dev** (`./scripts/release.sh dev --yes`, both
+migrations applied, health ok). **Not on production.** Two migrations, both additive and safe to run twice:
+`20261020000000_wire_origins` (columns, stamping triggers, a backfill of NULLs) and `20261020010000_move_hub_hostname`
+(one function, service_role only). No one is signed out. Decision record: ADR-008 at the mono-repo root
+(`decisions/008-stable-wire-identity.md`). Report and handoff:
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Architecture-1-Session-Report-2026-10-20.md`.
+
+**The invariant held:** every activity id, process IRI and actor IRI a hub served before is served byte for byte the
+same. Proved on the fixture hub (`tests/fixtures/wire/before.json`, taken before any change), on 100 local hubs
+(6,059 events), and on all 18 dev hubs (2,015 events, admin, member and public views), before and after the
+migration, with `scripts/wire-snapshot.ts` + `scripts/wire-snapshot-diff.ts`.
+
+**What changed:**
+0. **Standing rules** at the top of `BUILD-PLAN-multi-tenant.md`: audit H's "what to preserve", each with its file and
+   line. `SESSION-START.md` points at them.
+1. **Ids frozen at insert.** `events.wire_hostname` (activity id, system and audience IRIs, `generator.url`),
+   `wire_process_hostname` and `wire_actor_hostname` (copied from `processes.wire_hostname` / `users.wire_hostname`,
+   the hostname at creation), `wire_ns`. Stamped by SECURITY DEFINER triggers when NULL; processes and users keep
+   theirs on update. The serializer reads them from the row (`wireOrigins()`); an unstored event serializes as the
+   database will stamp it. `/health` requires the columns. Import keeps an old bundle's per-hub namespace.
+2. **`GET /.well-known/did.json`** on the hostname a hub's DID names: plain `did:web`, no keys, `alsoKnownAs` the
+   origin, services `CivicHub` (civic.json) and `CivicActivityStream` (/events). Any other hostname: 404.
+   `vercel.json` routes it. `did:webvh` is recorded for the signing slice.
+3. **One namespace:** activities stored from now on declare `https://www.civic.social/ns/civic-hub#`; older ones
+   keep `{origin}/ns#`, still served at `/ns`. The document is `config/ns/civic-hub.jsonld`, generated from
+   `EXTENSION_TERMS` and drift-tested. **It is not published yet** (see Open).
+4. **Move signal.** A console hostname change calls `move_hub_hostname`: the `civic.hub.moved` event (AS2 `Move`,
+   actor and object the space DID, origin/target Links) is inserted before the hostname changes, so it is minted at
+   the old address; refuses `hub_moved_meanwhile` (P0001) if another move got there first. On an old address
+   (`previous_hostnames`, or `redirect_to`): `civic.json` answers 200 `{moved: {to, origin, space, activity,
+   published}}`, `did.json` keeps answering when the DID names it (services at the new origin), every other path
+   keeps its 301/308 plus `Link: <old/.well-known/civic.json>; rel="https://www.civic.social/ns/civic-hub#moved"`.
+5. **Tests:** `tests/unit/wireIdentity.test.ts` (the fixture before/after and after a move), a determinism test for
+   stored ids, `namespaceDocument.test.ts`, resolver tests for the move signal, `tests/api/wireIdentity.test.ts` (a
+   console hub moved: same bytes, the Move, tombstone, DID at both addresses, the Link), conformance step 8 "its
+   published ids survive a hub move" for every type (mutation-checked), the leak harness walks `did.json`, smoke
+   checks the smoke hub's `did.json` (read-only).
+6. **Carried:** `RUNBOOK-operations.md`'s `backup-dump` row says a 6-hour period with 6 hours' grace.
+
+**Results (local, 2026-10-20):** `npm test` 2,483 passed, 16 skipped, 1 todo; 2 failed on the documented PostgREST
+upstream 502 (`aiLimits` hub create, `auditConcurrency`) and passed on rerun; 1 was mine (the leak harness needed the
+new route; fixed). API in minted-token mode: 804 passed; 3 files failed on the same 502 and passed on rerun. Unit
+1,653. Conformance 103 passed, 3 skipped, 1 todo. Playwright 163 passed, 2 skipped, 1 flaky (the receipt box,
+passed on retry; no page changed). **CI, E2E and Smoke on `2a384c2`: all green**; dev's Smoke 23 of 23, the DID
+check included.
+
+**For the production release (Adam):**
+1. Snapshot production's wire with the OLD serializer before migrating, read-only, from a worktree at `443c82e` (it
+   has `scripts/wire-snapshot.ts`; its serializer is production's), with the production database URL file. The
+   commands are in the session report and RUNBOOK-release.md.
+2. `./scripts/release.sh prod` (two additive migrations; no pre-check rows to clear).
+3. Snapshot again with the new code and run `scripts/wire-snapshot-diff.ts`: it must say "identical".
+4. Read `https://<hub>/.well-known/did.json` on each production hub once in a browser (no scripted requests).
+
+**Open:**
+- **Publish the namespace document:** copy `civic-hub/config/ns/civic-hub.jsonld` to the website repo as
+  `client/public/ns/civic-hub` (beside `ns/civic`, same `firebase.json` headers) and deploy. Until then the IRI is a
+  valid name that doesn't dereference; nothing breaks.
+- A hand-set `redirect_to` gets the tombstone but no Move; no code writes `redirect_to`.
+- Dev's Athens, Utopia and sample-walk have DIDs on old `vercel.app` hostnames: they resolve only while Vercel still
+  aliases those to the deployment.
+- Rows written by the old code in the minute between migration and deploy take the new namespace default (ADR-008,
+  Consequences).
+- Spec differences found are listed for G in the session report (proposed spec changes, nothing edited).
+
+---
+
 ## Dashboard: one console page for hubs, jobs, backups and what is waiting — 2026-10-17
 
 Branch `dashboard` from `origin/multi-tenant` at `3eebfc4` (which already holds `cleanup`), one commit per item
