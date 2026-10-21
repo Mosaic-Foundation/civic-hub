@@ -1,0 +1,51 @@
+/**
+ * The lists built from the process manifests equal the hand-maintained lists
+ * they replaced (Architecture 2, ADR-009). tests/fixtures/manifests/parity.json
+ * was written from commit 90d8a1f, before anything was derived; see
+ * writeParity.ts there. Kept as a fixture: a manifest change that alters one
+ * of these lists must update the fixture by hand, on purpose.
+ */
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { PLUGIN_IDS } from "../../src/models/hubSettings.js";
+import { PROCESS_TYPE_PLUGINS, processTypeDisplays, getAllHandlers } from "../../src/processes/registry.js";
+import { HUB_TABLES } from "../../src/db/forHub.js";
+import { EXPORT_MANIFEST, currentRequirements } from "../../src/db/schemaContract.js";
+import { TABLE_KEYS } from "../../src/control/hubBundle/format.js";
+import { mappedEventTypes } from "../../src/events/activitySerializer.js";
+import { PLUGIN_SECTION_ORDER, SETTINGS_SECTIONS } from "../../src/shared/hubSettingsSections.js";
+import { JOBS } from "../../src/jobs/registry.js";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const before = JSON.parse(readFileSync(join(here, "../fixtures/manifests/parity.json"), "utf8")) as Record<string, unknown>;
+
+/** Through JSON, as the fixture was written: functions and undefined drop out the same way. */
+const asWritten = (v: unknown) => JSON.parse(JSON.stringify(v));
+
+describe("lists derived from the manifests equal the hand-maintained ones", () => {
+  const now: Record<string, unknown> = {
+    PLUGIN_IDS,
+    PROCESS_TYPE_PLUGINS,
+    HUB_TABLES,
+    EXPORT_MANIFEST,
+    TABLE_KEYS,
+    mappedEventTypes: mappedEventTypes(),
+    PLUGIN_SECTION_ORDER,
+    plugins_section: SETTINGS_SECTIONS.plugins,
+    JOBS,
+    requirements: currentRequirements(),
+    process_types: processTypeDisplays(),
+    detail_paths: Object.fromEntries(getAllHandlers().map((h) => [h.type, h.detailPath?.("p_x") ?? null])),
+  };
+
+  for (const name of Object.keys(before)) {
+    it(`${name}, in the same order`, () => {
+      expect(asWritten(now[name])).toEqual(before[name]);
+      // Same order, not only the same members: lists are iterated (exports,
+      // the settings page, the crontab).
+      expect(JSON.stringify(asWritten(now[name]))).toBe(JSON.stringify(before[name]));
+    });
+  }
+});
