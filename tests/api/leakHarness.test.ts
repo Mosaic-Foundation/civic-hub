@@ -453,6 +453,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /feed/": { query: ["", "?limit=200", "?process_id=" /* + floyd vote, below */] },
   "GET /api/feed/": { query: ["", "?limit=200"] },
   "GET /\\.well-known/civic.json": {},
+  "GET /\\.well-known/did.json": {},
 
   "GET /internal/meeting-summary/run": { skip: "cron: calls the model and the hub's meeting source; per-hub scope is tests/unit/jobsPerHub" },
   "GET /internal/news-sync/run": { skip: "cron: fetches the hub's external feed; per-hub scope is tests/unit/jobsPerHub" },
