@@ -97,6 +97,8 @@ export const PROJECT_MANIFEST = defineManifest({
     "civic.project.archived": { type: "civic:End", object: { kind: "process", terminalState: "archived" } },
   },
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
+  // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
+  disclosure: "members",
   publicPayload: {
     "civic.project.created": ["project"],
     "civic.project.updated": ["project", "edit"],

@@ -122,6 +122,8 @@ export const WORDCLOUD_MANIFEST = defineManifest({
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
   // Submissions are restricted and never reach the member/public wire; the
   // published snapshots and result are the public record.
+  // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
+  disclosure: "anonymous",
   publicPayload: {
     "civic.process.result_published": ["wordcloud_result", "wordcloud_snapshot"],
   },

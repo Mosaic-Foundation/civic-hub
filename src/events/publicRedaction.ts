@@ -3,15 +3,14 @@
 // GET /activities/:id and GET /api/feed.
 //
 // The stored event log is untouched (it is the append-only source of
-// truth); this module redacts AT SERVE TIME, by audience:
-//   - admin   : the events as stored.
-//   - member  : a signed-in non-admin. Account ids are replaced (below);
-//               names stay, because something said publicly is public
-//               within the hub (Adam, audit C2, 2026-10-11). Before this, any
-//               signed-in resident could read raw user ids here and link a
-//               person's named comments to the rest of their activity.
-//   - public  : no session. Account ids replaced AND name-shaped payload
-//               fields scrubbed (public anonymity, 2026-08-31).
+// truth); this module redacts AT SERVE TIME. Account ids are replaced for
+// everyone but admins (below). Names are governed by the process's DECLARED
+// disclosure policy (manifest.disclosure; Architecture 3, ADR-010; Adam,
+// 2026-10-21) rather than by whether the reader signed in: "anonymous" types
+// scrub name-shaped fields for members too, "members" types keep today's
+// member/public split (names to members, scrubbed for the public — Adam,
+// audit C2, 2026-10-11: what residents understood when they posted), and
+// "public" types serve names to every reader as the public record.
 // Something said anonymously stays anonymous for every audience: an
 // anonymous comment's event carries actor "anonymous" and no author id.
 //
@@ -49,7 +48,7 @@ import {
   PUBLIC_ADMIN_NAME,
 } from "../services/creatorDisplay.js";
 import { toActivity, wireOrigins } from "./activitySerializer.js";
-import { projectDocumentPayload } from "./publicPayload.js";
+import { disclosureOfEvent, projectDocumentPayload } from "./publicPayload.js";
 
 /** Actor values that name a PERSON (a hub participant), not machinery. */
 export function isParticipantActor(actor: string | null | undefined): boolean {
@@ -178,16 +177,26 @@ export function scrubAccountIds(
 
 /**
  * Redact one internal event for a non-admin reader: resident actor and
- * payload account ids → per-process opaque token; for the public, name
- * fields scrubbed too. The event's identity, type, timestamps, and process
- * linkage are untouched.
+ * payload account ids → per-process opaque token, always; name-shaped
+ * payload fields by the process's DECLARED disclosure policy rather than by
+ * whether the reader signed in (Architecture 3, ADR-010; Adam, 2026-10-21):
+ *   - "anonymous": names scrubbed for members and the public alike;
+ *   - "members":   names to members, scrubbed for the public (what every
+ *                  reader got before the policy existed, and the default
+ *                  for an event whose type is unknown);
+ *   - "public":    names for every reader — the public record.
+ * The event's identity, type, timestamps, and process linkage are untouched.
  */
 export function redactEvent(
   event: CivicEvent,
   officials: Set<string>,
   audience: Exclude<WireAudience, "admin">,
+  policyOverride?: string | null,
 ): CivicEvent {
-  const named = audience === "public" ? scrubPayloadForPublic(event.data ?? {}) : (event.data ?? {});
+  const policy = disclosureOfEvent(event, policyOverride);
+  const scrubNames =
+    policy === "anonymous" ? true : policy === "public" ? false : audience === "public";
+  const named = scrubNames ? scrubPayloadForPublic(event.data ?? {}) : (event.data ?? {});
   const out: CivicEvent = {
     ...event,
     data: scrubAccountIds(named, event.process_id, officials) as CivicEvent["data"],

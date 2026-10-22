@@ -69,6 +69,8 @@ export const BRIEF_MANIFEST = defineManifest({
   // Dropped deliberately, with Adam's field-row yes (2026-10-21): the review
   // workflow's publication_status on updated (row 1) and the delivery
   // bookkeeping delivered_to_count on outcome_recorded (row 2).
+  // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
+  disclosure: "public",
   publicPayload: {
     "civic.process.created": ["source_process_id", "source_process_type"],
     "civic.process.aggregation_completed": ["source_process_id", "participation_count"],

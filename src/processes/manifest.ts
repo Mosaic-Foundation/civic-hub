@@ -150,6 +150,25 @@ export interface ProcessManifest {
    * stored payload verbatim.
    */
   publicPayload: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Who a participant's name is disclosed to, decided by the process's
+   * declared policy rather than by whether the reader signed in
+   * (Architecture 3, ADR-010; Adam, 2026-10-21, Q6):
+   *   - "anonymous": no reader below admin sees names — members included
+   *     (ballots, conversation statements, word submissions);
+   *   - "members": names to signed-in members only, as residents understood
+   *     when they posted (proposals, projects);
+   *   - "public": names to every reader, signed in or not — the public
+   *     record (announcements, briefs, meeting summaries).
+   * Account ids are never disclosed below admin, whatever the policy.
+   */
+  disclosure: "anonymous" | "members" | "public";
+  /**
+   * True when one of this type's processes may declare its own disclosure
+   * policy (state.disclosure_policy), overriding the default above. The
+   * serving layer honours it only when the manifest allows it here.
+   */
+  disclosureOverridable?: true;
 }
 
 /**
@@ -186,7 +205,12 @@ const REQUIRED: ReadonlyArray<keyof ProcessManifest> = [
   "jobs",
   "activities",
   "publicPayload",
+  "disclosure",
 ];
+
+/** The disclosure policies a manifest (or a process override) may declare. */
+export const DISCLOSURE_POLICIES = ["anonymous", "members", "public"] as const;
+export type DisclosurePolicy = (typeof DISCLOSURE_POLICIES)[number];
 
 /** What a manifest is checked against that only the host knows. */
 export interface ManifestHostFacts {
@@ -296,6 +320,12 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
           `${where(m)}: publicPayload.${eventType} must list non-empty payload keys ("process" is always public and not repeated)`,
         );
       }
+    }
+
+    if (!DISCLOSURE_POLICIES.includes(m.disclosure as DisclosurePolicy)) {
+      throw new ManifestError(
+        `${where(m)}: disclosure "${String(m.disclosure)}" must be one of ${DISCLOSURE_POLICIES.join(", ")}`,
+      );
     }
 
     if (m.publication) {

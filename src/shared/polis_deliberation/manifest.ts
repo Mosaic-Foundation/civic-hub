@@ -140,6 +140,8 @@ export const POLIS_DELIBERATION_MANIFEST = defineManifest({
   // service's polis_conversation_id (row 3), the workflow's summary_status
   // (row 4) and brief_revision (row 5), and the process_id / process_type
   // duplicates of what `context` already carries (row 6).
+  // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
+  disclosure: "anonymous",
   publicPayload: {
     "civic.process.started": ["topic"],
     "civic.process.ended": ["participation_stats", "closed_early"],

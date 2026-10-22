@@ -107,6 +107,8 @@ export const PROPOSAL_MANIFEST = defineManifest({
     "civic.proposal.endorsed": { type: "Like", object: { kind: "civic", class: "civic:Proposal", id: "process" } },
   },
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
+  // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
+  disclosure: "members",
   publicPayload: {
     "civic.proposal.submitted": ["proposal"],
     "civic.proposal.supported": ["proposal"],

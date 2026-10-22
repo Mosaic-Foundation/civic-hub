@@ -51,6 +51,8 @@ export const VOTE_RESULTS_MANIFEST = defineManifest({
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
   // Dropped deliberately, with Adam's field-row yes (2026-10-21, row 7): the
   // internal results_id on result_published.
+  // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
+  disclosure: "public",
   publicPayload: {
     "civic.process.result_published": [
       "headline_result",

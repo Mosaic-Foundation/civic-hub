@@ -25,6 +25,8 @@
 // (scripts/wire-shape-diff.ts) holds the served views to exactly that list.
 
 import { MANIFEST_LIST } from "../shared/processManifests.js";
+import { DISCLOSURE_POLICIES, type DisclosurePolicy } from "../processes/manifest.js";
+import type { CivicEvent } from "../models/event.js";
 import { usesHubTerms } from "./activitySerializer.js";
 
 /** Always public: the process block emitEvent stamps on every event. */
@@ -90,6 +92,49 @@ const UNION_BY_EVENT: ReadonlyMap<string, readonly string[]> = (() => {
   return new Map([...union.entries()].map(([k, v]) => [k, [...v]]));
 })();
 
+/**
+ * Each type's declared disclosure policy (manifest.disclosure; Architecture 3,
+ * ADR-010): who a participant's name is served to. "members" — today's
+ * behaviour before the policy existed — is the default for an event whose
+ * type is unknown (old rows that never stamped data.process.type), so an
+ * undeclared row discloses nothing it did not already.
+ */
+const DISCLOSURE_BY_TYPE: ReadonlyMap<string, DisclosurePolicy> = new Map(
+  MANIFEST_LIST.map((m) => [m.descriptor.type, m.disclosure]),
+);
+
+/** Process types whose processes may override their disclosure policy. */
+const DISCLOSURE_OVERRIDABLE: ReadonlySet<string> = new Set(
+  MANIFEST_LIST.filter((m) => m.disclosureOverridable).map((m) => m.descriptor.type),
+);
+
+/** The declared disclosure policy of a process type ("members" when unknown). */
+export function disclosureOf(processType: string | null): DisclosurePolicy {
+  return (processType && DISCLOSURE_BY_TYPE.get(processType)) || "members";
+}
+
+/**
+ * The disclosure policy an event is served under: its process's own declared
+ * override where the type allows one, else the type's default. The override
+ * comes from the process row (state.disclosure_policy), resolved by the
+ * serving layer; an event alone resolves to the type's default.
+ */
+export function disclosureOfEvent(
+  event: Pick<CivicEvent, "data">,
+  processOverride?: string | null,
+): DisclosurePolicy {
+  const processType = processTypeOf(event.data ?? {});
+  if (
+    processOverride &&
+    processType &&
+    DISCLOSURE_OVERRIDABLE.has(processType) &&
+    (DISCLOSURE_POLICIES as readonly string[]).includes(processOverride)
+  ) {
+    return processOverride as DisclosurePolicy;
+  }
+  return disclosureOf(processType);
+}
+
 /** The canonical process type an event carries, stamped by emitEvent. */
 function processTypeOf(data: Record<string, unknown>): string | null {
   const process = data.process;
@@ -114,6 +159,44 @@ export function publicPayloadKeys(
     : UNION_BY_EVENT.get(eventType);
   for (const k of declared ?? []) keys.add(k);
   return keys;
+}
+
+/** The process type an already-serialized document carries, if any. */
+export function documentProcessType(document: Record<string, unknown>): string | null {
+  const object = document.object;
+  const payload =
+    object && typeof object === "object" && !Array.isArray(object)
+      ? (object as Record<string, unknown>)["hub:payload"]
+      : null;
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const fromPayload = processTypeOf(payload as Record<string, unknown>);
+    if (fromPayload) return fromPayload;
+  }
+  const context = document.context;
+  const fromContext =
+    context && typeof context === "object" && !Array.isArray(context)
+      ? (context as Record<string, unknown>)["civic:processType"]
+      : null;
+  return typeof fromContext === "string" && fromContext ? fromContext : null;
+}
+
+/**
+ * Which view of a PRE-POLICY snapshot a served view must now equal, after the
+ * payload projection (the second transform the shape invariant allows;
+ * Architecture 3, Q6): the declared disclosure policy moved an anonymous
+ * type's member view onto the old public one (names scrubbed for members
+ * too) and a public type's public view onto the old member one (names are
+ * the public record). A "members" type is byte-stable. The two views only
+ * ever differed by the name scrub, which is what makes this mapping exact.
+ */
+export function policyBeforeView(
+  view: "member" | "public",
+  processType: string | null,
+): "member" | "public" {
+  const policy = disclosureOf(processType);
+  if (policy === "anonymous") return "public";
+  if (policy === "public") return "member";
+  return view;
 }
 
 /**

@@ -54,6 +54,7 @@ function manifest(over: Partial<ProcessManifest> = {}): ProcessManifest {
     pluginSection: { order: 10, name: "Samples", what: "Sample processes.", fields: [] },
     activities: { "civic.sample.taken": { type: "Create", object: { kind: "note" } } },
     publicPayload: { "civic.sample.taken": ["sample"] },
+    disclosure: "members",
     ...over,
   };
 }

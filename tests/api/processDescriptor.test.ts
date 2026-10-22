@@ -86,8 +86,11 @@ describe("GET /process/:id content negotiation", () => {
     expect(d.endpoints.view).toMatch(new RegExp(`/process/${voteId}$`));
     expect(d.endpoints.action).toMatch(new RegExp(`/process/${voteId}/action$`));
     expect(d.follow_up_process_ids).toEqual([]);
+    // The declared disclosure policy (Architecture 3): a ballot's anonymity
+    // is the vote's policy, not the reader's sign-in state.
+    expect(d.disclosure_policy).toBe("anonymous");
     // Nothing the hub does not have (spec-only fields wait; results wait for A3).
-    for (const absent of ["lifecycle_profile", "participation_mode", "disclosure_policy", "aggregation_method", "result"]) {
+    for (const absent of ["lifecycle_profile", "participation_mode", "aggregation_method", "result"]) {
       expect(d[absent], absent).toBeUndefined();
     }
   });

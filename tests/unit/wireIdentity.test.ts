@@ -28,7 +28,7 @@ import {
   wireFixtureEvents,
 } from "../fixtures/wire/wireFixture.js";
 import { HUB_EXTENSION_NS } from "../../src/events/activitySerializer.js";
-import { projectDocumentPayload } from "../../src/events/publicPayload.js";
+import { documentProcessType, policyBeforeView, projectDocumentPayload } from "../../src/events/publicPayload.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const BEFORE = JSON.parse(
@@ -46,18 +46,21 @@ function text(docs: unknown): string {
 }
 
 /**
- * before.json with the one allowed transform: the declared public-payload
- * projection on the member and public views (Architecture 3). The event
- * types are sorted exactly as wireFixtureEvents() sorts them, so documents
- * pair with their types by position.
+ * before.json with the allowed transforms and nothing else (Architecture 3):
+ * each member/public view equals the before view the declared DISCLOSURE
+ * POLICY maps it onto (the fixture's events are civic.vote's — anonymous —
+ * so both now read as the old public view), with the declared public-payload
+ * projection applied. The event types are sorted exactly as
+ * wireFixtureEvents() sorts them, so documents pair with their types by
+ * position.
  */
 function expectedDocuments(): unknown[] {
   const types = [...BEFORE.event_types].sort();
-  return (BEFORE.documents as Array<Record<string, Record<string, unknown>>>).map((doc, i) => ({
-    ...doc,
-    member: projectDocumentPayload(doc.member, types[i]),
-    public: projectDocumentPayload(doc.public, types[i]),
-  }));
+  return (BEFORE.documents as Array<Record<string, Record<string, unknown>>>).map((doc, i) => {
+    const view = (v: "member" | "public") =>
+      projectDocumentPayload(doc[policyBeforeView(v, documentProcessType(doc[v]))], types[i]);
+    return { ...doc, member: view("member"), public: view("public") };
+  });
 }
 
 describe("wire identity — the fixture hub before and after", () => {

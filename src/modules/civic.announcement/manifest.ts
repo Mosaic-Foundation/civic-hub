@@ -47,6 +47,8 @@ export const ANNOUNCEMENT_MANIFEST = defineManifest({
  what: "Posts from officials and admins on the feed.", fields: [] },
   activities: {},
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
+  // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
+  disclosure: "public",
   publicPayload: {
     "civic.process.result_published": ["announcement"],
   },

@@ -295,3 +295,62 @@ describe("account ids are hidden from signed-in non-admins", () => {
     expect(JSON.stringify(out)).not.toContain("user_0123456789abcdef");
   });
 });
+
+describe("redaction by declared disclosure policy (Architecture 3, Q6)", () => {
+  // A payload with a name field, on a process of each policy's type.
+  const named = (type: string) =>
+    event({
+      event_type: "civic.process.updated",
+      data: {
+        process: { type },
+        meeting_summary: { author_name: "Dana Resident", note: "kept" },
+      },
+    });
+  const names = (e: CivicEvent, audience: "member" | "public") =>
+    JSON.stringify(redactEvent(e, NO_OFFICIALS, audience).data);
+
+  it("anonymous (a vote): names scrubbed for members and the public alike", () => {
+    for (const audience of ["member", "public"] as const) {
+      const out = names(named("civic.vote"), audience);
+      expect(out).not.toContain("Dana Resident");
+      expect(out).toContain("kept");
+    }
+  });
+
+  it("members (a proposal): names to members, scrubbed for the public — as before the policy", () => {
+    expect(names(named("civic.proposal"), "member")).toContain("Dana Resident");
+    expect(names(named("civic.proposal"), "public")).not.toContain("Dana Resident");
+  });
+
+  it("public (a meeting summary): names to every reader — the public record", () => {
+    expect(names(named("civic.meeting_summary"), "member")).toContain("Dana Resident");
+    expect(names(named("civic.meeting_summary"), "public")).toContain("Dana Resident");
+  });
+
+  it("an unknown type defaults to members — exactly the pre-policy behaviour", () => {
+    expect(names(named("civic.someday"), "member")).toContain("Dana Resident");
+    expect(names(named("civic.someday"), "public")).not.toContain("Dana Resident");
+  });
+
+  it("account ids never serve below admin, whatever the policy", () => {
+    for (const type of ["civic.vote", "civic.proposal", "civic.meeting_summary"]) {
+      for (const audience of ["member", "public"] as const) {
+        const e = event({
+          event_type: "civic.process.updated",
+          data: { process: { type }, submitted_by: "user_0123456789abcdef" },
+        });
+        expect(JSON.stringify(redactEvent(e, NO_OFFICIALS, audience).data)).not.toContain(
+          "user_0123456789abcdef",
+        );
+      }
+    }
+  });
+
+  it("a per-process override is honoured only where the type allows one", () => {
+    // No type declares disclosureOverridable today, so an override is inert.
+    const e = named("civic.vote");
+    expect(JSON.stringify(redactEvent(e, NO_OFFICIALS, "member", "public").data)).not.toContain(
+      "Dana Resident",
+    );
+  });
+});

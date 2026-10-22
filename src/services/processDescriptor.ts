@@ -20,6 +20,7 @@ import { getManifest, getProcessHandler, residentActionsOf } from "../processes/
 import { getEventsByProcessId } from "../events/eventStore.js";
 import { AS2_CONTEXT, CIVIC_CONTEXT, toActivity } from "../events/activitySerializer.js";
 import { officialActorIds, toRedactedActivity, type WireAudience } from "../events/publicRedaction.js";
+import { disclosureOfEvent } from "../events/publicPayload.js";
 import { readDeadline } from "./closeEarly.js";
 import { getBriefLinks, getRenderedLinks, processWireIris } from "./processLinks.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
@@ -115,6 +116,13 @@ export async function buildProcessDescriptor(
     ...(activity?.actor !== undefined ? { created_by: activity.actor } : {}),
     status: process.status,
     ends_at: deadline ? await readDeadline(deadline.source, process) : null,
+    // The declared disclosure policy (§12.1; spec §5.3 wants it declared
+    // before participation begins): the type's default, or this process's
+    // own where the type allows an override (Architecture 3, ADR-010).
+    disclosure_policy: disclosureOfEvent(
+      { data: { process: { type } } },
+      typeof process.state?.disclosure_policy === "string" ? process.state.disclosure_policy : null,
+    ),
     ...(typeof count === "number" ? { participation: { count } } : {}),
     actions,
     endpoints: {

@@ -3,18 +3,24 @@
 //   npx tsx scripts/wire-snapshot-diff.ts <before-dir> <after-dir>
 //
 // Every event in BEFORE must be in AFTER with byte-identical documents in all
-// three views, with ONE exception (Architecture 3, ADR-010; Adam,
+// three views, with TWO exceptions (Architecture 3, ADR-010; Adam,
 // 2026-10-21): a member or public view may differ exactly by the declared
-// public-payload projection — after == projectDocumentPayload(before). The
-// admin view may never differ. Every projected document is reported, grouped
-// by the payload fields it dropped, so the run's output IS the shape diff:
-// the approved changes and nothing else. Events only in AFTER (written
-// between the runs, e.g. by the smoke job) are counted, not compared.
-// Exits 1 on any other difference.
+// public-payload projection, applied to the before view the declared
+// DISCLOSURE POLICY maps it onto — an anonymous type's member view must equal
+// its old public one, a public type's public view its old member one
+// (policyBeforeView). The admin view may never differ. Every allowed
+// difference is reported, so the run's output IS the shape diff: the
+// approved changes and nothing else. Events only in AFTER (written between
+// the runs, e.g. by the smoke job) are counted, not compared. Exits 1 on any
+// other difference.
 
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { projectDocumentPayload } from "../src/events/publicPayload.js";
+import {
+  documentProcessType,
+  policyBeforeView,
+  projectDocumentPayload,
+} from "../src/events/publicPayload.js";
 
 interface SnapshotDoc {
   event_id: string;
@@ -74,12 +80,17 @@ for (const file of readdirSync(beforeDir).filter((f) => f.endsWith(".json")).sor
         problems.push(`${before.hub}: ${doc.event_id} ${view} view changed`);
         continue;
       }
-      if (JSON.stringify(projectDocumentPayload(doc[view], eventType)) === is) {
-        const dropped = payloadKeys(doc[view]).filter((k) => !payloadKeys(now[view]).includes(k));
+      // The before view this one must now equal (the disclosure policy's
+      // mapping), then the declared payload projection on top of it.
+      const base = doc[policyBeforeView(view, documentProcessType(doc[view]))];
+      if (JSON.stringify(projectDocumentPayload(base, eventType)) === is) {
+        const dropped = payloadKeys(base).filter((k) => !payloadKeys(now[view]).includes(k));
+        const moved =
+          JSON.stringify(base) !== was ? " (names per the declared disclosure policy)" : "";
         // A restricted activity is withheld from member/public callers by the
         // serving rule, so a projection there changes no byte anyone gets.
         const restricted = !JSON.stringify(doc[view].to ?? []).includes("#Public");
-        const label = `${eventType} ${view}: -${dropped.sort().join(",") || "(hub:payload removed)"}${
+        const label = `${eventType} ${view}: -${dropped.sort().join(",") || "(names only)"}${moved}${
           restricted ? " (restricted; never served to this audience)" : ""
         }`;
         projected.set(label, (projected.get(label) ?? 0) + 1);

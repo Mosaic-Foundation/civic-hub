@@ -200,6 +200,8 @@ export const VOTE_MANIFEST = defineManifest({
   activities: {},
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
   // `process` (method, options, the voting window, status) is always public.
+  // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
+  disclosure: "anonymous",
   publicPayload: {
     "civic.process.ended": ["result", "closed_early"],
     "civic.process.aggregation_completed": [

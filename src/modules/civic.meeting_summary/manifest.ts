@@ -75,6 +75,8 @@ export const MEETING_SUMMARY_MANIFEST = defineManifest({
   activities: {},
   // What hub:payload carries publicly, per event (Architecture 3, ADR-010):
   // everything a published summary's history already serves stays.
+  // Who a participant's name is disclosed to (Architecture 3, Q6: Adam, 2026-10-21).
+  disclosure: "public",
   publicPayload: {
     "civic.process.aggregation_completed": [
       "aggregation_method",
