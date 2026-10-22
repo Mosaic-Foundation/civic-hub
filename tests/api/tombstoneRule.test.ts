@@ -10,7 +10,7 @@
 //
 // Needs the local stack seeded as in CI and a server (CIVIC_API_BASE).
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomBytes } from "node:crypto";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
@@ -51,6 +51,15 @@ beforeAll(async () => {
   const items = await publicActivities(voteId);
   expect(items.length).toBeGreaterThan(0);
   activityIds = items.map((a) => String(a.id).split("/activities/")[1]);
+});
+
+afterAll(async () => {
+  // The run's rows out of the public list (the restored vote and the planted
+  // sample; archived rows and samples of archived processes stop serving).
+  await localRest(`processes?id=in.(${voteId},proc_tomb${run}s)`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "archived" }),
+  }).catch(() => undefined);
 });
 
 describe("an admin taking a published process down", () => {
@@ -154,6 +163,8 @@ describe("events.is_sample is the trigger's decision, not the inserter's", () =>
 
   it("an event of a sample process is sample, whatever the inserter said", async () => {
     const sampleProcess = `proc_tomb${run}s`;
+    // A well-formed announcement: Athens is a demo hub, so a sample is
+    // publicly listed, and the list reads state.content.
     await localRest("processes", {
       method: "POST",
       body: JSON.stringify({
@@ -163,7 +174,15 @@ describe("events.is_sample is the trigger's decision, not the inserter's", () =>
         status: "active",
         title: `Sample ${run}`,
         description: "",
-        state: {},
+        state: {
+          status: "active",
+          content: { title: `Sample ${run}`, body: "A sample the removal tests plant.", links: [] },
+          author_id: "smoke",
+          author_role: "admin",
+          created_at: new Date().toISOString(),
+          last_edited_at: null,
+          edit_count: 0,
+        },
         is_sample: true,
       }),
     });
