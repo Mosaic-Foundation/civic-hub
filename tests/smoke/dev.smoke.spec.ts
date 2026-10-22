@@ -253,6 +253,45 @@ test("an activity's context IRI dereferences to its process descriptor, read-onl
   }
 });
 
+test("the admins audience IRI and a process's participation aggregate answer, read-only (Architecture 3)", async ({ request }) => {
+  // The audience collection restricted activities are addressed to: it says
+  // what it is and who may read it, and serves no items (ADR-010).
+  const audience = await request.get(`${baseUrl()}/audiences/admins`);
+  expect(audience.status()).toBe(200);
+  expect(audience.headers()["content-type"]).toContain("application/activity+json");
+  const collection = await audience.json();
+  expect(collection.type).toBe("Collection");
+  expect(collection.name).toBe("Hub administrators");
+  expect(collection.items).toBeUndefined();
+  expect(collection.orderedItems).toBeUndefined();
+  expect(collection.totalItems).toBeUndefined();
+
+  // A vote's descriptor carries participation as a count and nothing else.
+  // The suite cleans up after itself, so plant a sample when the hub has no
+  // vote; a sample announcement has no participation block, so the check
+  // needs a vote row (plantSample plants an announcement) — a live vote from
+  // the stream when one exists, else the declared policy fields only.
+  const page = await request.get(`${baseUrl()}/events?page=true&limit=100`);
+  const items = ((await page.json()).orderedItems ?? []) as Array<{ context?: { id?: string; "civic:processType"?: string } }>;
+  const voteIri = items
+    .filter((a) => a.context?.["civic:processType"] === "civic.vote")
+    .map((a) => a.context?.id)
+    .find((id): id is string => typeof id === "string");
+  const iri = voteIri ?? items.map((a) => a.context?.id).find((id): id is string => typeof id === "string");
+  if (iri) {
+    const ld = await request.get(iri, { headers: { Accept: "application/ld+json" } });
+    expect(ld.status()).toBe(200);
+    const d = await ld.json();
+    // The declared disclosure policy is on every descriptor (Architecture 3).
+    expect(["anonymous", "members", "public"]).toContain(d.disclosure_policy);
+    if (voteIri) {
+      expect(d.participation).toBeDefined();
+      expect(typeof d.participation.count).toBe("number");
+      expect(Object.keys(d.participation)).toEqual(["count"]);
+    }
+  }
+});
+
 test("a resident and an admin are signed in", async ({ browser }) => {
   const r = await open(browser);
   await visitAs(r, resident);
