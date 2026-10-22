@@ -4,6 +4,60 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Architecture 3: the wire — declared shapes, counted participation, announced removals, policy redaction — 2026-10-22
+
+`multi-tenant`, one commit per item, from `acf37ec`. **Three migrations, all additive and safe to run twice:**
+`20261022000000_events_sample_by_trigger` (replaces one trigger function: events.is_sample computed from the process,
+never accepted from the inserter; no stored row changes — checked on every environment), `20261022010000_process_links_to_iri`
+(column + backfill from each target's frozen origin), `20261022020000_hub_custody_disclosure` (three nullable `hubs`
+columns). No pre-checks; nobody is signed out. Decision record: ADR-010 at the mono-repo root
+(`decisions/010-the-public-wire.md`, local commit for Adam to push, as ADR-008/009). Report and handoff:
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Architecture-3-Session-Report-2026-10-22.md`.
+
+**The invariants:** identifiers never change (wire snapshot diff over 36,080 local and 2,143 dev events: identical);
+shapes changed exactly by Adam's approved field rows 1–10 and nothing else — `scripts/wire-snapshot-diff.ts` now
+encodes the two allowed transforms (the declared payload projection, and the disclosure policy's view mapping) and
+fails a release on anything beyond them. The admin view never changes. Ballot secrecy untouched.
+
+**What changed (Adam's Q1–Q7, 2026-10-21):**
+1. **Results reach their source.** New brief publications stamp `data.result_of`; their `result_published` carries the
+   SOURCE process as `context` with the brief as the object. The descriptor's `follow_up_process_ids` includes the
+   synthetic summarized-by pair and serves IRIs (frozen origins, ADR-008). History unchanged.
+2. **Declared public shape.** Every manifest declares `publicPayload` per event type (required; startup-checked);
+   member/public `hub:payload` is projected to it at serve time (`projectDocumentPayload`); admins verbatim;
+   `/api/feed` untouched. Dropped with Adam's row-by-row yes: brief `publication_status` + `delivered_to_count`,
+   Polis `polis_conversation_id` + `summary_status` + `brief_revision` + the `process_id`/`process_type` duplicates,
+   vote_results `results_id`. Conformance step 8 refuses any served undeclared field.
+3. **Participation without identities.** `GET /audiences/admins` answers a self-describing AS2 Collection, items
+   withheld for everyone. The served descriptor carries `participation: { count }` (handler hook: a vote's voters from
+   `vote_participation`, a word cloud's submissions, a proposal's supporters, a conversation's close-time stats).
+4. **Deletions are announced.** Archiving a PUBLISHED process writes a public `Delete` in the same transaction; its
+   activity ids answer 410 `Tombstone` (id + removal time, nothing else); the stream and context lookup serve the
+   Delete/Undo; never-published things keep their silent 404. Reason and admin stay in the moderation log. Samples
+   were already off `/events` (recorded in ADR-010), so sample removal needs no tombstones.
+5. **Redaction by declared policy.** `manifest.disclosure`: anonymous (vote, conversation, wordcloud — members too),
+   members (proposal, project — as before), public (announcement, brief, meeting summary — names to signed-out
+   readers too). Account ids never below admin. Served as `disclosure_policy` on the descriptor. Per-process override
+   seam (`disclosureOverridable`) exists; no type uses it.
+6. **Links and declarations.** `process_links.to_iri` beside `to_id`, backfilled, written at insert; nothing reads it
+   yet. `/.well-known/civic.json` serves `space.custody {arrangement, custodian}` and `space.assurance_level` from
+   the hub's row, omitted while unset; the console's Configuration panel edits them.
+
+**For the dev release and after:** `./scripts/release.sh dev --yes` applies the three migrations. **After the release,
+Adam sets in the console** (Configuration): custody `designated_custodian`, custodian `Mosaic Foundation`,
+assurance level `email`, for Floyd, Demosville and Longmont (Q7). The production release later follows
+RUNBOOK-release.md's wire protocol: snapshot with the old code before, the new after, and the diff must list exactly
+the approved rows.
+
+**Open:**
+- A hidden comment's original activity still serves on the wire (moderation hides it in the read model only); the
+  tombstone mechanism could cover single activities — a follow-up, not approved scope here.
+- `summary_id`, `source_minutes_url` etc. stay public on meeting summaries (kept: not on the approved removal list).
+- The hub UI reading `/events` instead of `/api/feed` stays noted for the frontend pass; identity (A4), hosting (A5),
+  spec edits (G list) unchanged.
+
+---
+
 ## Architecture 2: a process type is its manifest; the descriptor is served; a read never closes — 2026-10-21
 
 `multi-tenant`, one commit per item (`b90eaed`..the HANDOFF commit), from `90d8a1f`. **No migrations.** **Live on

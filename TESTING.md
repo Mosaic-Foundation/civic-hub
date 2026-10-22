@@ -62,6 +62,40 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Architecture 3: the wire — declared shapes, participation, tombstones, policy redaction (2026-10-22)
+
+**Identifiers never change; shapes change only by declaration (ADR-010).**
+- **The two allowed transforms, encoded:** `scripts/wire-snapshot-diff.ts` accepts a member/public view that equals the
+  before view the DISCLOSURE POLICY maps it onto (an anonymous type's member view = its old public one; a public
+  type's public view = its old member one) with the declared payload projection applied — and nothing else; the admin
+  view must be byte-identical. It reports every allowed difference grouped by dropped field (restricted ones marked),
+  so its output IS the shape diff. Snapshots now record each document's `event_type` (not a served byte).
+  `tests/unit/wireIdentity.test.ts` holds the fixture to `before.json` with exactly those transforms
+  (`projectDocumentPayload`, `policyBeforeView`); **never regenerate `before.json`.**
+- **Unit:** `publicPayload.test.ts` (field rows 1–7 drop and everything declared stays, byte-stability by reference,
+  the emptied-payload / hub-context case, object types still built from the stored payload);
+  `publicRedaction.test.ts` gained the policy matrix (anonymous / members / public × member / public readers, the
+  unknown-type default, account ids never below admin, the inert override); `processManifest.test.ts` refuses a
+  manifest without `publicPayload` or `disclosure`, an undeclared event type, a repeated "process", a bad policy.
+  `manifestParity` records the two new host event types (removed/restored) as a deliberate change.
+- **API, both modes:** `processDescriptor.test.ts` grew follow-ups (the published brief and a `continues` link as
+  IRIs; an unpublished brief withheld), `participation` (a cast ballot raises the public count; nothing but a count),
+  `/audiences/admins` (self-describing, no items, same document for an admin, unknown audience 404), civic.json's
+  custody/assurance (served once set, omitted while not), to_iri written through the API, and `disclosure_policy` on
+  the descriptor. `tombstoneRule.test.ts`: the public Delete in stream and context lookup, 410 Tombstones (id +
+  removal time and nothing else), the Delete's own id dereferencing, restore's Undo and history returning, the
+  pending-review silent 404, and the is_sample trigger (a claimed sample on a real process stored false; a sample
+  process's event sample whatever the inserter said). `disclosurePolicy.test.ts`: rows 8/9 end to end.
+  The leak harness walks `/audiences/:name`.
+- **Conformance step 8** gained "every payload field it serves a member or the public is one its manifest declares" —
+  a new type cannot ship internals onto the wire.
+- **Smoke (read-only):** the audience IRI answers as a Collection with no items; a live vote's descriptor carries
+  `participation.count` and the declared `disclosure_policy`.
+- **Migrations in this slice:** `20261022000000` (is_sample by trigger), `20261022010000` (to_iri + backfill),
+  `20261022020000` (hubs custody/assurance). All additive; `/health` checks the new columns.
+
+---
+
 ## Architecture 2: the process manifest, the served descriptor, reads that never close (2026-10-21)
 
 **A process type describes itself in one manifest; the lists that named types are derived (ADR-009).**

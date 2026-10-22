@@ -14,7 +14,9 @@
  * process_types gains display.name for vote results and briefs (additive).
  * And (2026-10-22, Architecture 3, ADR-010): the host maps two new event
  * types, civic.process.removed and civic.process.restored — the public
- * Delete/Undo an announced removal leaves on the wire (additive).
+ * Delete/Undo an announced removal leaves on the wire; the schema contract
+ * gains hubs' custody_arrangement/custodian/assurance_level and
+ * process_links.to_iri (all additive).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

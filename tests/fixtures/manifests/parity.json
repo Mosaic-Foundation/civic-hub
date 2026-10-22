@@ -759,6 +759,9 @@
         "name",
         "space_did",
         "status",
+        "custody_arrangement",
+        "custodian",
+        "assurance_level",
         "archived_at",
         "jurisdiction_ocd_id",
         "jurisdiction_custom",
@@ -847,6 +850,7 @@
         "id",
         "from_id",
         "to_id",
+        "to_iri",
         "relation",
         "created_by"
       ],
