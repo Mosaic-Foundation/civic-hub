@@ -21,7 +21,7 @@ import { getEventsByProcessId } from "../events/eventStore.js";
 import { AS2_CONTEXT, CIVIC_CONTEXT, toActivity } from "../events/activitySerializer.js";
 import { officialActorIds, toRedactedActivity, type WireAudience } from "../events/publicRedaction.js";
 import { readDeadline } from "./closeEarly.js";
-import { getRenderedLinks } from "./processLinks.js";
+import { getBriefLinks, getRenderedLinks, processWireIris } from "./processLinks.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
 
 /** The media types a caller asks for the descriptor with. */
@@ -74,10 +74,27 @@ export async function buildProcessDescriptor(
     }));
 
   const deadline = manifest?.descriptor.deadline;
-  const links = await getRenderedLinks(id, { viewerId: caller.viewerId ?? null, isAdmin: caller.audience === "admin" });
-  const followUps = links.incoming
-    .filter((l) => FOLLOW_UP_RELATIONS.has(l.relation) && !l.synthetic && !l.inherited)
-    .map((l) => l.peer.id);
+  // Follow-ups (process spec §11.3): processes that continue or implement this
+  // one, plus its published brief — the result process, reachable from its
+  // source (Adam, 2026-10-21, Architecture 3). The brief pair is synthetic
+  // (derived from the brief's own source_process_id), so it is taken from
+  // getBriefLinks rather than the stored edges. Served as IRIs, each minted on
+  // the hostname the follow-up's row froze (ADR-008).
+  const viewer = { viewerId: caller.viewerId ?? null, isAdmin: caller.audience === "admin" };
+  const [links, briefLinks] = await Promise.all([
+    getRenderedLinks(id, viewer),
+    getBriefLinks(id, viewer),
+  ]);
+  const followUpIds = [
+    ...links.incoming
+      .filter((l) => FOLLOW_UP_RELATIONS.has(l.relation) && !l.synthetic && !l.inherited)
+      .map((l) => l.peer.id),
+    ...briefLinks.incoming.map((l) => l.peer.id),
+  ];
+  const followUpIris = await processWireIris(followUpIds);
+  const followUps = followUpIds.map(
+    (fid) => followUpIris.get(fid) ?? `${uiBaseUrl()}/process/${fid}`,
+  );
 
   return {
     "@context": [AS2_CONTEXT, CIVIC_CONTEXT],

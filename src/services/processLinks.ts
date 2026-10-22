@@ -10,6 +10,7 @@
 
 import { forHub, HubDbError, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
+import { uiBaseUrl, uiOriginFor } from "../utils/baseUrl.js";
 import { generateId } from "../utils/id.js";
 import { findExistingBriefId } from "../processes/spawnBrief.js";
 import { getManifest, isPublished, processDetailPath, publicationOf, summarizedProcessIdOf } from "../processes/registry.js";
@@ -306,6 +307,29 @@ export async function getBriefLinks(
     outgoing: [],
     incoming: [syntheticLink("brief-of", "Summarized by", "incoming", peer)],
   };
+}
+
+/**
+ * The process IRI of each given process, minted on the hostname its row froze
+ * at creation (ADR-008), the same IRI its activities carry as `context.id`.
+ * A row the backfill somehow missed falls back to the hub's current UI origin,
+ * which is what the serializer does for an unstored event.
+ */
+export async function processWireIris(
+  processIds: string[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(processIds)];
+  if (ids.length === 0) return new Map();
+  const rows = await db()
+    .from("processes")
+    .select<{ id: string; wire_hostname: string | null }>("id, wire_hostname")
+    .in("id", ids);
+  const map = new Map<string, string>();
+  for (const row of rows) {
+    const origin = row.wire_hostname ? uiOriginFor(row.wire_hostname) : uiBaseUrl();
+    map.set(row.id, `${origin}/process/${row.id}`);
+  }
+  return map;
 }
 
 function syntheticLink(

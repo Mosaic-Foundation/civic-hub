@@ -6,7 +6,7 @@
 //
 // Needs the local stack seeded as in CI and a server (CIVIC_API_BASE).
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
 import { localRest, mintSession } from "../fixtures/adminSession.js";
 
@@ -129,6 +129,91 @@ describe("GET /process/:id content negotiation", () => {
     const [stored] = (await localRest(`processes?select=status&id=eq.${voteId}`)) as Array<{ status: string }>;
     expect(stored.status).toBe("active");
     expect(((await localRest(`events?select=id&process_id=eq.${voteId}`)) as unknown[]).length).toBe(before);
+  });
+});
+
+describe("follow-ups reach the source's descriptor (Architecture 3)", () => {
+  // Rows are written straight into the local stack, as hubCreatedReads does:
+  // the test is about what the descriptor then serves.
+  const briefId = `proc_fud${run.toString(36)}b`;
+  const continuerId = `proc_fud${run.toString(36)}c`;
+  const linkId = `plink_fud${run.toString(36)}`;
+
+  beforeAll(async () => {
+    await localRest("processes", {
+      method: "POST",
+      body: JSON.stringify({
+        id: briefId,
+        hub_id: "athens",
+        type: "civic.brief",
+        status: "active",
+        title: `Brief of descriptor vote ${run}`,
+        description: "",
+        state: {
+          source_process_id: voteId,
+          source_process_type: "civic.vote",
+          publication_status: "published",
+          generated_at: new Date().toISOString(),
+          published_at: new Date().toISOString(),
+          content: { title: `Brief of descriptor vote ${run}`, headline: "", summary: "", sections: [], comments: [] },
+          delivered_to: [],
+          recipients: [],
+        },
+      }),
+    });
+    await localRest("processes", {
+      method: "POST",
+      body: JSON.stringify({
+        id: continuerId,
+        hub_id: "athens",
+        type: "civic.vote",
+        status: "active",
+        title: `Continuation of descriptor vote ${run}`,
+        description: "",
+        state: { options: ["Yes", "No"] },
+      }),
+    });
+    await localRest("process_links", {
+      method: "POST",
+      body: JSON.stringify({ id: linkId, hub_id: "athens", from_id: continuerId, to_id: voteId, relation: "continues" }),
+    });
+  });
+
+  afterAll(async () => {
+    await localRest(`process_links?id=eq.${linkId}`, { method: "DELETE" });
+    await localRest(`processes?id=in.(${briefId},${continuerId})`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "archived" }),
+    });
+  });
+
+  it("lists the published brief and a continuing process, as IRIs on the hub's origin", async () => {
+    const d = (await get(`/process/${voteId}`, LD)).body;
+    const iriOf = (id: string) => (d.id as string).replace(voteId, id);
+    expect(d.follow_up_process_ids).toContain(iriOf(briefId));
+    expect(d.follow_up_process_ids).toContain(iriOf(continuerId));
+    for (const iri of d.follow_up_process_ids as string[]) {
+      expect(iri).toMatch(/^https?:\/\/.+\/process\/proc_/);
+    }
+  });
+
+  it("withholds an unpublished brief from the public exactly as its page does", async () => {
+    await localRest(`processes?id=eq.${briefId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        state: {
+          source_process_id: voteId,
+          source_process_type: "civic.vote",
+          publication_status: "pending",
+          content: { title: `Brief of descriptor vote ${run}`, headline: "", summary: "", sections: [], comments: [] },
+          delivered_to: [],
+          recipients: [],
+        },
+      }),
+    });
+    const d = (await get(`/process/${voteId}`, LD)).body;
+    const briefIri = (d.id as string).replace(voteId, briefId);
+    expect(d.follow_up_process_ids).not.toContain(briefIri);
   });
 });
 
