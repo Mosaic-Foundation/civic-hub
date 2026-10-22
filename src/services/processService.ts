@@ -22,7 +22,8 @@ import { auditEarlyClose, closedEarlyView, earlyCloseOffer, earlyCloseOf, stampE
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../errors/index.js";
 import { transitionProcess, ProcessChangedError } from "../db/atomic.js";
 import { runInActionScope } from "./actionScope.js";
-import { appendEvent } from "../events/eventStore.js";
+import { appendEvent, getEventsByProcessId } from "../events/eventStore.js";
+import { activityIdOf } from "../events/activitySerializer.js";
 import { assertProcessTypeEnabled, disabledProcessTypes, isProcessTypeEnabled } from "./pluginGate.js";
 import {
   Process,
@@ -45,6 +46,8 @@ import {
   declaredAction,
   retrySafeActionsOf,
   getManifest,
+  isPublished,
+  publicationOf,
 } from "../processes/registry.js";
 import {
   allowedTargets,
@@ -879,6 +882,26 @@ interface ArchiveMeta {
   /** The status the process held before it was archived, for restore. */
   previous_status: ProcessStatus | null;
   restored_at?: string | null;
+  /**
+   * True when the archive announced itself on the public wire (a Delete
+   * activity; Architecture 3, ADR-010) — set only when the process was
+   * published and not a sample. A restore undoes exactly what was announced.
+   */
+  announced?: boolean;
+}
+
+/**
+ * Whether taking this process down must be announced on the public wire
+ * (Architecture 3, ADR-010): it was published — publicly fetchable, published
+ * if its type gates publication, and not sample content (samples never reach
+ * the public stream). An unpublished or pending thing was never on the wire,
+ * so removing it leaves no trace, exactly as before.
+ */
+function removalIsPublic(process: Process): boolean {
+  if (process.isSample) return false;
+  if (!isPubliclyFetchable(process.status)) return false;
+  const type = process.definition.type;
+  return !publicationOf(type) || isPublished(type, process.state ?? null);
 }
 
 export const ARCHIVE_REASON_MAX = 500;
@@ -903,6 +926,7 @@ export async function archiveProcess(
   if (process.status === "archived") return process;
 
   const now = new Date().toISOString();
+  const announced = removalIsPublic(process);
   const archive: ArchiveMeta = {
     archived: true,
     archived_at: now,
@@ -910,12 +934,16 @@ export async function archiveProcess(
     reason: trimmedReason,
     previous_status: process.status,
     restored_at: null,
+    ...(announced ? { announced: true } : {}),
   };
   const nextState = { ...(process.state ?? {}), archive };
 
   // The status change and its restricted-visibility lifecycle event (so the
   // moderation log picks it up and the public feed never surfaces it) are one
-  // transaction.
+  // transaction. Taking a PUBLISHED process down also announces itself there:
+  // a public Delete activity (Architecture 3, ADR-010) written with the
+  // archive or not at all — the removal and its time are the public record,
+  // the reason stays in the moderation log.
   const archivedAt = await transitionProcess({
     hubId: currentHubId(),
     processId: id,
@@ -924,6 +952,18 @@ export async function archiveProcess(
     state: nextState,
     expectedStatus: process.status,
     expectedVersion: process.version,
+    events: announced
+      ? [
+          buildEvent({
+            event_type: "civic.process.removed",
+            actor: adminId,
+            process_id: id,
+            jurisdiction: process.jurisdiction || defaultJurisdiction(),
+            processType: process.definition.type,
+            data: {},
+          }),
+        ]
+      : undefined,
     event: buildEvent({
       event_type: "civic.process.updated",
       actor: adminId,
@@ -990,6 +1030,22 @@ export async function restoreProcess(
       | undefined;
   delete (nextState as Record<string, unknown>).archive;
 
+  // An announced removal (a public Delete; Architecture 3) is undone in
+  // public too: an Undo naming the Delete's own activity IRI, written with
+  // the restore. A removal that was never announced restores silently.
+  let undoEvent: CivicEvent | null = null;
+  if (archive?.announced) {
+    const removal = (await getEventsByProcessId(id, ["civic.process.removed"]))[0];
+    undoEvent = buildEvent({
+      event_type: "civic.process.restored",
+      actor: adminId,
+      process_id: id,
+      jurisdiction: process.jurisdiction || defaultJurisdiction(),
+      processType: process.definition.type,
+      data: removal ? { undo: { removal_activity: activityIdOf(removal) } } : {},
+    });
+  }
+
   const restoredAt = await transitionProcess({
     hubId: currentHubId(),
     processId: id,
@@ -998,6 +1054,7 @@ export async function restoreProcess(
     state: nextState,
     expectedStatus: "archived",
     expectedVersion: process.version,
+    events: undoEvent ? [undoEvent] : undefined,
     event: buildEvent({
       event_type: "civic.process.updated",
       actor: adminId,
@@ -1103,6 +1160,29 @@ export async function isProcessHistoryServable(
   if (!row) return true;
   if (!isPubliclyFetchable(row.status)) return false;
   return !opts.hubSurface || isProcessTypeEnabled(row.type);
+}
+
+/**
+ * The public removal record of a process whose history the wire withholds
+ * (Architecture 3, ADR-010): when an admin archived a PUBLISHED process (the
+ * archive announced itself with a Delete), each of its activity ids answers a
+ * Tombstone carrying the removal time — never a silent 404. Null for
+ * everything else: a process still served, one that was never published
+ * (pending review, a sample, an unpublished record), or an id with no row.
+ */
+export async function processRemovalRecord(
+  processId: string,
+): Promise<{ archivedAt: string } | null> {
+  const rows = await db()
+    .from("processes")
+    .select<{ status: ProcessStatus; state: Record<string, unknown> | null }>("status, state")
+    .eq("id", processId)
+    .limit(1);
+  const row = rows[0];
+  if (!row || row.status !== "archived") return null;
+  const archive = (row.state?.archive ?? null) as ArchiveMeta | null;
+  if (!archive?.announced) return null;
+  return { archivedAt: archive.archived_at ?? "" };
 }
 
 /**

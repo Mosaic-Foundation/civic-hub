@@ -328,8 +328,12 @@ export async function countEvents(query: EventCountQuery = {}): Promise<number> 
     q = q.or("meta->>visibility.is.null,meta->>visibility.neq.restricted");
   }
   if (query.excludeProcessIds?.length) {
+    // A hidden process's removal announcement still serves (Architecture 3),
+    // so it still counts: the third branch keeps totalItems equal to the
+    // sequence the caller can page through.
     q = q.or(
-      `process_id.is.null,process_id.not.in.(${query.excludeProcessIds.join(",")})`,
+      `process_id.is.null,process_id.not.in.(${query.excludeProcessIds.join(",")}),` +
+        `event_type.in.(civic.process.removed,civic.process.restored)`,
     );
   }
   return await q;

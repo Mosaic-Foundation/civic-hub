@@ -446,6 +446,36 @@ const HOST_ACTIVITY_MAPPINGS: Record<string, ActivityMapping> = {
   },
 
 
+  // --- Removal and its undo (Architecture 3, ADR-010) ----------------------
+  // An admin taking a PUBLISHED process down announces it: a public Delete of
+  // the process, emitted in the same transaction as the archive
+  // (processService.archiveProcess), while each of its activities' ids keeps
+  // answering with a Tombstone. A restore undoes the Delete by its id.
+  // Neither carries the reason or who acted beyond the actor: the removal and
+  // its time are the public record, the why stays in the moderation log.
+  "civic.process.removed": {
+    type: "Delete",
+    buildObject: (e, data, env) => {
+      const object: Record<string, unknown> = { type: "civic:Process" };
+      const iri = processIri(e, env);
+      if (iri) object.id = iri;
+      return withPayload(object, data);
+    },
+  },
+  "civic.process.restored": {
+    type: "Undo",
+    // The object is the Delete being undone, by its activity IRI (stamped at
+    // emission); a historical row without one falls back to the process.
+    buildObject: (e, data, env) => {
+      const removal = firstString(nested(data, "undo")?.removal_activity);
+      if (removal) return { type: "Delete", id: removal };
+      const object: Record<string, unknown> = { type: "civic:Process" };
+      const iri = processIri(e, env);
+      if (iri) object.id = iri;
+      return withPayload(object, data);
+    },
+  },
+
   // --- Admin review workflow (always restricted) ---------------------------
   // AS2 has native verbs for the accept/reject shape of a review decision;
   // only the object being reviewed needs a hub term.

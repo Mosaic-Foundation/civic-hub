@@ -24,11 +24,13 @@ import {
   AS2_CONTEXT,
   CIVIC_CONTEXT,
   toActivity,
+  activityIdOf,
   activityTypeIndex,
 } from "../events/activitySerializer.js";
 import { getUserFromToken } from "../modules/civic.auth/index.js";
 import { isAdminEmail, resolveCallerUser } from "../middleware/auth.js";
-import { getNonPublicProcessIds, isProcessHistoryServable } from "../services/processService.js";
+import { getNonPublicProcessIds, isProcessHistoryServable, processRemovalRecord } from "../services/processService.js";
+import { REMOVAL_EVENT_TYPES } from "../processes/descriptor.js";
 import {
   officialActorIds,
   toRedactedActivity,
@@ -147,9 +149,27 @@ export const handleGetActivity = route(async (req, res) => {
     throw new NotFoundError("Activity not found");
   }
   // An archived or pending-review process serves no history, by id or
-  // otherwise: the same rule as its page, for everyone.
+  // otherwise: the same rule as its page, for everyone — with one trace
+  // (Architecture 3, ADR-010): when an admin took a PUBLISHED process down,
+  // each activity id answers a Tombstone keeping the id and the removal time
+  // and nothing else, and the removal's own Delete/Undo keep serving. A
+  // process that was never published keeps its silent 404.
   if (event.process_id && !(await isProcessHistoryServable(event.process_id, { hubSurface: false }))) {
-    throw new NotFoundError("Activity not found");
+    if (!REMOVAL_EVENT_TYPES.has(event.event_type)) {
+      const removal = await processRemovalRecord(event.process_id);
+      if (removal) {
+        res.status(410);
+        res.setHeader("Content-Type", negotiateActivityType(req));
+        res.json({
+          "@context": AS2_CONTEXT,
+          id: activityIdOf(event),
+          type: "Tombstone",
+          deleted: removal.archivedAt,
+        });
+        return;
+      }
+      throw new NotFoundError("Activity not found");
+    }
   }
 
   res.setHeader("Content-Type", negotiateActivityType(req));
@@ -233,6 +253,21 @@ function readFilters(req: Request): Filters {
   return filters;
 }
 
+/**
+ * A withheld process's one public trace (Architecture 3): when its removal
+ * was announced, its collection serves the removal events and nothing else —
+ * the event types the lookup may still match, or null for everything.
+ */
+async function withheldEventTypes(
+  filters: Filters,
+  withheld: boolean,
+): Promise<string[] | null> {
+  if (!withheld) return filters.eventTypes ?? null;
+  if (!filters.processId || !(await processRemovalRecord(filters.processId))) return [];
+  const removal = [...REMOVAL_EVENT_TYPES];
+  return filters.eventTypes ? removal.filter((t) => filters.eventTypes!.includes(t)) : removal;
+}
+
 async function buildCollection(
   req: Request,
   filters: Filters,
@@ -242,20 +277,24 @@ async function buildCollection(
     ? new Set<string>()
     : await getNonPublicProcessIds();
   // A lookup of one process that is archived or pending review answers as
-  // an empty collection, the same as a process with no activity (§5.2).
+  // an empty collection, the same as a process with no activity (§5.2) —
+  // unless its removal was announced: then its Delete (and any Undo) still
+  // serve, the trace the removal leaves (Architecture 3, ADR-010).
   const withheld = !!filters.processId && !(await isProcessHistoryServable(filters.processId, { hubSurface: false }));
+  const servedTypes = await withheldEventTypes(filters, withheld);
 
   // `totalItems` counts only what THIS caller can page through, so it never
   // signals the existence of activities the serving rule withholds. Skipped
   // when the suppression list is too large to express as a filter, and when
   // the type filter matched nothing (the answer is then trivially zero).
   const countable = hidden.size <= MAX_LIMIT;
-  const totalItems = filters.unmatchedType || withheld
+  const nothingServed = filters.unmatchedType || (withheld && servedTypes !== null && servedTypes.length === 0);
+  const totalItems = nothingServed
     ? 0
     : countable
       ? await countEvents({
           processId: filters.processId,
-          eventTypes: filters.eventTypes,
+          eventTypes: servedTypes ?? undefined,
           since: filters.since,
           excludeRestricted: !isAdmin,
           excludeProcessIds: [...hidden],
@@ -282,12 +321,13 @@ async function buildPage(
   let nextCursor: EventCursor | null = null;
 
   const withheld = !!filters.processId && !(await isProcessHistoryServable(filters.processId, { hubSurface: false }));
-  if (!filters.unmatchedType && !withheld) {
+  const servedTypes = await withheldEventTypes(filters, withheld);
+  if (!filters.unmatchedType && !(withheld && servedTypes !== null && servedTypes.length === 0)) {
     const page = await getEventPage({
       limit: filters.limit,
       cursor,
       processId: filters.processId,
-      eventTypes: filters.eventTypes,
+      eventTypes: servedTypes ?? undefined,
       since: filters.since,
     });
     events = page.events;
@@ -295,8 +335,10 @@ async function buildPage(
 
     // Visibility, unchanged from the v0.1 feed:
     //  - events of archived / pending-review processes are suppressed for
-    //    everyone (admins included) so removed items leave no ghost cards;
-    //    a lookup of one such process is withheld whole, above;
+    //    everyone (admins included) so removed items leave no ghost cards —
+    //    except the removal's own Delete/Undo, the trace an announced
+    //    removal leaves on the wire (Architecture 3, ADR-010); a lookup of
+    //    one such process is withheld whole, above, down to that trace;
     //  - restricted events are admin-only.
     // Both filter the page AFTER the keyset read, so a page may carry fewer
     // than `limit` items while `next` still points at more. That is a valid
@@ -305,7 +347,7 @@ async function buildPage(
       const hidden = await getNonPublicProcessIds();
       if (hidden.size > 0) {
         events = events.filter(
-          (e) => !e.process_id || !hidden.has(e.process_id),
+          (e) => !e.process_id || !hidden.has(e.process_id) || REMOVAL_EVENT_TYPES.has(e.event_type),
         );
       }
     }

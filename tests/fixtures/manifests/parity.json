@@ -319,6 +319,8 @@
     "civic.process.ended",
     "civic.process.outcome_recorded",
     "civic.process.proposed",
+    "civic.process.removed",
+    "civic.process.restored",
     "civic.process.result_published",
     "civic.process.started",
     "civic.process.submission_received",

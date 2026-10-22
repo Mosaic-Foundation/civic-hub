@@ -67,6 +67,8 @@ export const HOST_EVENT_TYPES: readonly string[] = [
   "civic.process.created",
   "civic.process.updated",
   "civic.process.comment_added",
+  "civic.process.removed",
+  "civic.process.restored",
   "civic.review.submitted",
   "civic.review.approved",
   "civic.review.changes_requested",
@@ -74,6 +76,18 @@ export const HOST_EVENT_TYPES: readonly string[] = [
   "civic.review.declined",
   "civic.review.withdrawn",
 ];
+
+/**
+ * The public announcement that an admin took a published process down, and
+ * its undo (Architecture 3, ADR-010): a published activity is never removed
+ * without a Delete at its process and a Tombstone at its own id. These two
+ * pass the hidden-process filter on the wire — they are the trace the
+ * removal leaves — and are emitted by archiveProcess/restoreProcess alone.
+ */
+export const REMOVAL_EVENT_TYPES: ReadonlySet<string> = new Set([
+  "civic.process.removed",
+  "civic.process.restored",
+]);
 
 /** The parts of a descriptor that are served publicly (GET /.well-known/civic.json). */
 export interface PublicProcessType {
