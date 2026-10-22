@@ -38,6 +38,9 @@ const ALWAYS: ReadonlySet<string> = new Set(["process"]);
 const HOST_PUBLIC_PAYLOAD: Readonly<Record<string, readonly string[]>> = {
   // A comment on any process (src/modules/civic.input).
   "civic.process.comment_added": ["comment"],
+  // The shared edit path (src/services/processEdits.ts) records a public edit
+  // history on any editable type.
+  "civic.process.updated": ["edit"],
   // The hub moved (ADR-008): the whole payload is the move record.
   "civic.hub.moved": ["move"],
   // Retired (the Polis close path, pre-civic.brief): stored history only.
@@ -57,6 +60,36 @@ const BY_TYPE: ReadonlyMap<string, Readonly<Record<string, readonly string[]>>> 
   MANIFEST_LIST.map((m) => [m.descriptor.type, m.publicPayload]),
 );
 
+/**
+ * A type's OWN namespaced events (civic.proposal.*, civic.project.*) name
+ * their type themselves, so their declaration applies whether or not the row
+ * stamped data.process.type (old rows did not).
+ */
+const OWN_EVENT_KEYS: ReadonlyMap<string, readonly string[]> = new Map(
+  MANIFEST_LIST.flatMap((m) => {
+    const own = new Set([...Object.keys(m.activities), ...Object.keys(m.legacyActivities ?? {})]);
+    return Object.entries(m.publicPayload).filter(([eventType]) => own.has(eventType));
+  }),
+);
+
+/**
+ * For a HOST event type on a row that never stamped data.process.type (events
+ * from before the stamp existed): the union of every manifest's declaration
+ * for that event type. Generous but still declared — an unstamped historical
+ * row keeps every field some type declares public, and nothing undeclared.
+ */
+const UNION_BY_EVENT: ReadonlyMap<string, readonly string[]> = (() => {
+  const union = new Map<string, Set<string>>();
+  for (const m of MANIFEST_LIST) {
+    for (const [eventType, keys] of Object.entries(m.publicPayload)) {
+      const set = union.get(eventType) ?? new Set<string>();
+      for (const k of keys) set.add(k);
+      union.set(eventType, set);
+    }
+  }
+  return new Map([...union.entries()].map(([k, v]) => [k, [...v]]));
+})();
+
 /** The canonical process type an event carries, stamped by emitEvent. */
 function processTypeOf(data: Record<string, unknown>): string | null {
   const process = data.process;
@@ -75,7 +108,10 @@ export function publicPayloadKeys(
 ): ReadonlySet<string> {
   const keys = new Set<string>(ALWAYS);
   for (const k of HOST_PUBLIC_PAYLOAD[eventType] ?? []) keys.add(k);
-  const declared = processType ? BY_TYPE.get(processType)?.[eventType] : undefined;
+  for (const k of OWN_EVENT_KEYS.get(eventType) ?? []) keys.add(k);
+  const declared = processType
+    ? BY_TYPE.get(processType)?.[eventType]
+    : UNION_BY_EVENT.get(eventType);
   for (const k of declared ?? []) keys.add(k);
   return keys;
 }

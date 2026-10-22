@@ -85,6 +85,9 @@ async function main(): Promise<void> {
           const event = rowToEvent(row as EventRow);
           return {
             event_id: event.id,
+            // For the shape diff (wire-snapshot-diff.ts): which projection
+            // the member/public views are allowed. Not a served byte.
+            event_type: event.event_type,
             admin: toActivity(event),
             member: toRedactedActivity(event, officials, "member"),
             public: toRedactedActivity(event, officials, "public"),
