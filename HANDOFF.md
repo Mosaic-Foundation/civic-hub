@@ -49,6 +49,17 @@ assurance level `email`, for Floyd, Demosville and Longmont (Q7). The production
 RUNBOOK-release.md's wire protocol: snapshot with the old code before, the new after, and the diff must list exactly
 the approved rows.
 
+**Rollback hazard:** code from before this slice cannot serialize `civic.process.removed` / `civic.process.restored`
+(unmapped types throw, by the standing rule). After any announced removal, rolling back past this slice makes the old
+code's `/events` 500 on the pages holding those events. Roll forward; for an emergency rollback, carry the two
+mappings into the old code first. (Same class as `civic.hub.moved` in Architecture 1.)
+
+**Results (local, 2026-10-22):** unit 1,719; API service role 871 passed, 0 failed; minted tokens 869 passed, 2
+failed (the dashboard's known order-dependent counts); conformance green inside both; Playwright 166 passed across
+runs (first-run failures environmental, passed on rerun; the dashboard spec times out on the ~600-hub local stack).
+HTTP side by side, `acf37ec` and the slice on one database (Athens): every page, state, list, feed, hub-config and
+`/events` byte-identical; descriptors differ only by the additions.
+
 **Open:**
 - A hidden comment's original activity still serves on the wire (moderation hides it in the read model only); the
   tombstone mechanism could cover single activities — a follow-up, not approved scope here.
