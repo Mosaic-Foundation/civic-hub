@@ -29,6 +29,7 @@ import {
 import {
   recordOrUpdateVote,
   clearActiveVoteKeysForProcess,
+  countVoters,
   getBallotChoicesForProcess,
   hasUserVoted,
   reshuffleBallotsForProcess,
@@ -423,6 +424,15 @@ const voteProcess: ProcessHandler = {
       // card says "be the first to vote" over 30 ballots (review R26).
       totalVotes: num(model.total_votes),
     };
+  },
+
+  // Turnout for the public descriptor (Architecture 3): how many people have
+  // voted, from vote_participation — which knows the voter but never the
+  // choice, so a count here can disclose nothing a ballot protects. Public
+  // while the vote runs (unlike the tally, which result visibility may hold
+  // until close): that a poll book's length is public is the design.
+  async participationCount(process: Process): Promise<number | null> {
+    return countVoters(process.id);
   },
 };
 

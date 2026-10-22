@@ -99,6 +99,10 @@
       "destination": "/api"
     },
     {
+      "source": "/audiences/:name*",
+      "destination": "/api"
+    },
+    {
       "source": "/.well-known/civic.json",
       "destination": "/api"
     },

@@ -416,6 +416,17 @@ export interface ProcessHandler {
    * Architecture 2: replaces feedMeta's switch on the type.
    */
   feedMeta?(model: Record<string, unknown>, processId: string): FeedProcessMeta | null | Promise<FeedProcessMeta | null>;
+
+  /**
+   * How many people have participated in this process so far — a COUNT and
+   * nothing else, served on the public process descriptor as
+   * `participation: { count }` (Architecture 3, ADR-010). It makes turnout
+   * public while every ballot and submission stays restricted: live while the
+   * process runs, final once it closes. Omit it (or return null) and the
+   * descriptor carries no participation block. Must never return anything
+   * that could identify or enumerate participants.
+   */
+  participationCount?(process: Process): Promise<number | null>;
 }
 
 /** A regenerated brief, and what its process takes when it is published. */

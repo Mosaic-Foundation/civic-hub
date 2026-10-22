@@ -217,6 +217,72 @@ describe("follow-ups reach the source's descriptor (Architecture 3)", () => {
   });
 });
 
+describe("participation on the descriptor (Architecture 3)", () => {
+  let openVote = "";
+
+  beforeAll(async () => {
+    const created = await call(
+      "POST",
+      "/process",
+      ATHENS,
+      {
+        definition: { type: "civic.vote", version: "0.1" },
+        title: `Participation vote ${run}`,
+        description: "A vote whose turnout the descriptor serves.",
+        state: { options: ["Yes", "No"], voting_duration_ms: 86_400_000, activation_mode: "direct" },
+      },
+      admin,
+    );
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    openVote = created.body.id ?? created.body.process?.id;
+    const activated = await call("POST", `/process/${openVote}/action`, ATHENS, { type: "process.activate", payload: {} }, admin);
+    expect(activated.status, JSON.stringify(activated.body)).toBe(200);
+  });
+
+  it("a vote's turnout is a public count, live while the vote runs, and only a count", async () => {
+    const before = (await get(`/process/${openVote}`, LD)).body;
+    expect(before.participation).toEqual({ count: 0 });
+
+    const voter = await mintSession("athens", `descriptor-voter-${run}@example.test`);
+    const cast = await call("POST", `/process/${openVote}/action`, ATHENS, { type: "process.vote", payload: { option: "Yes" } }, voter);
+    expect(cast.status, JSON.stringify(cast.body)).toBe(200);
+
+    // The count is served to a signed-out reader; nothing else about the
+    // ballot is (who voted and how stay off the descriptor and the wire).
+    const after = (await get(`/process/${openVote}`, LD)).body;
+    expect(after.participation).toEqual({ count: 1 });
+    expect(JSON.stringify(after)).not.toContain("descriptor-voter");
+  });
+});
+
+describe("GET /audiences/admins (Architecture 3)", () => {
+  it("says what the audience is and who may read it, and serves no items", async () => {
+    const res = await get("/audiences/admins");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/^application\/activity\+json/);
+    expect(res.body.type).toBe("Collection");
+    expect(res.body.id).toMatch(/\/audiences\/admins$/);
+    expect(res.body.name).toBe("Hub administrators");
+    expect(res.body.summary).toContain("administrators");
+    // Listing members or counts would itself be a disclosure (§5.2).
+    expect(res.body.items).toBeUndefined();
+    expect(res.body.orderedItems).toBeUndefined();
+    expect(res.body.totalItems).toBeUndefined();
+  });
+
+  it("an admin reader gets the same document — the audience never enumerates", async () => {
+    const asAdmin = await get("/audiences/admins", {}, admin);
+    const asPublic = await get("/audiences/admins");
+    expect(asAdmin.body).toEqual(asPublic.body);
+  });
+
+  it("an unknown audience is not found", async () => {
+    const res = await get(`/audiences/nope-${run}`);
+    expect(res.status).toBe(404);
+    expect(res.body.code).toBe("not_found");
+  });
+});
+
 describe("every type answers a descriptor", () => {
   it("a live process of each type is served as a civic:Process of its type", async () => {
     // Picked from the database, on either seeded hub, not from a public list:

@@ -175,6 +175,13 @@ const wordcloudProcess: ProcessHandler = {
     }
     return meta;
   },
+
+  // Participation for the public descriptor (Architecture 3): how many
+  // submissions the cloud has taken — a count and nothing else, while every
+  // submission itself stays restricted on the wire.
+  async participationCount(process: Process): Promise<number | null> {
+    return db().from("wordcloud_submissions").count().eq("process_id", process.id);
+  },
 };
 
 export default wordcloudProcess;

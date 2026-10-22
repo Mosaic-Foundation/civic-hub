@@ -17,6 +17,7 @@ import processEditRoutes from "./routes/processEditRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import namespaceRoutes from "./routes/namespaceRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
+import audienceRoutes from "./routes/audienceRoutes.js";
 import feedRoutes from "./routes/feedRoutes.js";
 import discoveryRoutes from "./routes/discoveryRoutes.js";
 import debugRoutes from "./routes/debugRoutes.js";
@@ -282,6 +283,9 @@ app.use("/user/settings", userSettingsRouter);
 // All external systems (feeds, dashboards, federation) read these.
 app.use("/events", eventRoutes);
 app.use("/activities", activityRoutes);
+// The audience collection restricted activities are addressed to: it says
+// what it is and who may read it, items never served (Architecture 3).
+app.use("/audiences", audienceRoutes);
 // The `hub:` prefix every activity's @context declares. Must resolve, or a
 // consumer following it lands on the SPA (Civic Activity Spec v0.2 §3.4).
 app.use("/ns", namespaceRoutes);

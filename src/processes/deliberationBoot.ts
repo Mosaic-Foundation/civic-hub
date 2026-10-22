@@ -338,6 +338,15 @@ export function bootDeliberation(): ProcessHandler {
     description: str(model.description) ?? str(model.framing),
   });
 
+  // Participation for the public descriptor (Architecture 3). Statements live
+  // in Polis, so the hub has a count only once the close stored the summary's
+  // participation_stats; while the conversation runs there is none to serve.
+  handler.participationCount = async (process: Process): Promise<number | null> => {
+    const state = process.state as unknown as PolisDeliberationState;
+    const participants = state.summary?.participation_stats?.total_participants;
+    return typeof participants === "number" ? participants : null;
+  };
+
   handler.generateBrief = (process: Process): BriefContent | null => {
     const state = process.state as unknown as PolisDeliberationState;
     const summary = state.summary;

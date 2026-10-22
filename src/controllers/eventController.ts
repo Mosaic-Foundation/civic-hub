@@ -160,6 +160,32 @@ export const handleGetActivity = route(async (req, res) => {
   }
 });
 
+// --- GET /audiences/:name ----------------------------------------------------
+
+/**
+ * The audience collection restricted activities are addressed to
+ * (Architecture 3; Adam, 2026-10-21, Q4). Dereferencing it tells a reader
+ * what the audience is and who may read activities addressed to it; its
+ * items are never served, to anyone — the serving rule (spec §5.2) is what
+ * enforces the audience, and listing members or counts would itself be a
+ * disclosure. `admins` is the only audience the hub mints (the serializer's
+ * audienceOf).
+ */
+export const handleGetAudience = route((req, res) => {
+  if (String(req.params.name ?? "") !== "admins") {
+    throw new NotFoundError("Audience not found");
+  }
+  res.setHeader("Content-Type", negotiateActivityType(req));
+  res.json({
+    "@context": AS2_CONTEXT,
+    id: `${baseUrl()}/audiences/admins`,
+    type: "Collection",
+    name: "Hub administrators",
+    summary:
+      "Activities addressed to this collection are readable only by this hub's administrators. Its items are not served.",
+  });
+});
+
 // --- Collection assembly ---------------------------------------------------
 
 interface Filters {

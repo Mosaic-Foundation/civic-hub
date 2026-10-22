@@ -16,7 +16,7 @@
 // the descriptor and the wire cannot disagree about who or where.
 
 import { getProcess, getProcessState, asRead } from "./processService.js";
-import { getManifest, residentActionsOf } from "../processes/registry.js";
+import { getManifest, getProcessHandler, residentActionsOf } from "../processes/registry.js";
 import { getEventsByProcessId } from "../events/eventStore.js";
 import { AS2_CONTEXT, CIVIC_CONTEXT, toActivity } from "../events/activitySerializer.js";
 import { officialActorIds, toRedactedActivity, type WireAudience } from "../events/publicRedaction.js";
@@ -96,6 +96,12 @@ export async function buildProcessDescriptor(
     (fid) => followUpIris.get(fid) ?? `${uiBaseUrl()}/process/${fid}`,
   );
 
+  // Aggregate participation: a count and nothing else, live while the
+  // process runs, final at close, so turnout is public while every ballot
+  // and submission stays restricted (Architecture 3, ADR-010; Adam,
+  // 2026-10-21, Q4). Types without the hook carry no participation block.
+  const count = await getProcessHandler(type)?.participationCount?.(process);
+
   return {
     "@context": [AS2_CONTEXT, CIVIC_CONTEXT],
     // The process IRI its activities carry as `context.id` (minted once,
@@ -109,6 +115,7 @@ export async function buildProcessDescriptor(
     ...(activity?.actor !== undefined ? { created_by: activity.actor } : {}),
     status: process.status,
     ends_at: deadline ? await readDeadline(deadline.source, process) : null,
+    ...(typeof count === "number" ? { participation: { count } } : {}),
     actions,
     endpoints: {
       view: `${uiBaseUrl()}${manifest ? manifest.detailPath(id) : `/process/${id}`}`,

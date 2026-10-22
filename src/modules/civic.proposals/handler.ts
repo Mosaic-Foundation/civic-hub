@@ -152,6 +152,13 @@ const proposalAdapter: ProcessHandler = {
 
   // Past closes_at and not closed yet by the hourly job: it reads as closed.
   // No write.
+  // Participation for the public descriptor (Architecture 3): how many
+  // people support the proposal — the same count its public events carry.
+  async participationCount(process: Process): Promise<number | null> {
+    const proposal = await getProposal(process.id);
+    return typeof proposal?.support_count === "number" ? proposal.support_count : null;
+  },
+
   async readAsClosed(process: Process): Promise<Process | null> {
     if (process.status !== "active") return null;
     const proposal = await getProposal(process.id);

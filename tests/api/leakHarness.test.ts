@@ -449,6 +449,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /unsubscribe/digest": { query: [] /* filled in below: none, a bad token, Floyd's resident's token */ },
   "GET /events/": { query: ["", "?limit=500", "?page=true&limit=200", `?context=${"x"}`] },
   "GET /activities/:id": { ids: "events" },
+  "GET /audiences/:name": {},
   "GET /ns/": {},
   "GET /feed/": { query: ["", "?limit=200", "?process_id=" /* + floyd vote, below */] },
   "GET /api/feed/": { query: ["", "?limit=200"] },
@@ -524,6 +525,7 @@ function expand(route: string, plan: Plan): Array<{ path: string; echoed: string
       path
         .replace(":processType", "civic.vote")
         .replace(":key", "copy.about")
+        .replace(":name", "admins")
         .replace(/:(id|processId|reviewId)/, id);
     for (const id of [...floyd, ...athens]) out.push({ path: fill(id) + q, echoed: [...echoed, id], values });
   }

@@ -294,6 +294,19 @@ export async function hasUserVoted(
   return count > 0;
 }
 
+/**
+ * How many people have voted on a process — a count and nothing else, for
+ * the public participation aggregate (Architecture 3, ADR-010). Uses
+ * vote_participation only — never touches vote_records.
+ */
+export async function countVoters(processId: string): Promise<number> {
+  return db()
+    .from("vote_participation")
+    .count()
+    .eq("process_id", processId)
+    .eq("has_voted", true);
+}
+
 /** Clear this hub's receipt data — dev/test reset only. */
 export async function clearReceipts(): Promise<void> {
   const hubDb = db();
