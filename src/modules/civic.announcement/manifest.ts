@@ -46,6 +46,10 @@ export const ANNOUNCEMENT_MANIFEST = defineManifest({
  name: "Announcements",
  what: "Posts from officials and admins on the feed.", fields: [] },
   activities: {},
+  // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
+  publicPayload: {
+    "civic.process.result_published": ["announcement"],
+  },
   feed: {
     cards: [{ event: "civic.process.result_published", legacy: [{ field: "announcement", is: "present" }], card: "announcement" }],
   },

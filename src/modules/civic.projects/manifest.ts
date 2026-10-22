@@ -96,6 +96,13 @@ export const PROJECT_MANIFEST = defineManifest({
     "civic.project.comment_added": { type: "Create", object: { kind: "note" } },
     "civic.project.archived": { type: "civic:End", object: { kind: "process", terminalState: "archived" } },
   },
+  // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
+  publicPayload: {
+    "civic.project.created": ["project"],
+    "civic.project.updated": ["project", "edit"],
+    "civic.project.sentiment_changed": ["project"],
+    "civic.project.comment_added": ["project"],
+  },
   feed: {
     cards: [
       { event: "civic.project.created", match: "event", card: { surface: "activity", kind: "project-created", color: "project", pill: "New project", href: "action_url" } },

@@ -49,6 +49,7 @@ import {
   PUBLIC_ADMIN_NAME,
 } from "../services/creatorDisplay.js";
 import { toActivity, wireOrigins } from "./activitySerializer.js";
+import { projectDocumentPayload } from "./publicPayload.js";
 
 /** Actor values that name a PERSON (a hub participant), not machinery. */
 export function isParticipantActor(actor: string | null | undefined): boolean {
@@ -225,10 +226,16 @@ export function toRedactedActivity(
   audience: Exclude<WireAudience, "admin">,
 ): Record<string, unknown> {
   const redacted = redactEvent(event, officials, audience);
+  // The AS2 surface serves a non-admin only the payload fields the event's
+  // type declares public: the full document is built first (so object types,
+  // names and statuses come from the stored payload exactly as before) and
+  // `hub:payload` alone is then projected (Architecture 3;
+  // src/events/publicPayload.ts). The internal /api/feed does not pass
+  // through here and keeps its shape.
   if (redacted.actor === event.actor) {
     // Official / system / DID actor — default serialization of the
     // scrubbed event.
-    return toActivity(redacted);
+    return projectDocumentPayload(toActivity(redacted), event.event_type);
   }
   // Minted on the origins the event's row froze (ADR-008): the process's for
   // a process-scoped token, the event's own for the shared anonymous IRI.
@@ -236,7 +243,10 @@ export function toRedactedActivity(
   const actorIri = event.process_id
     ? `${origins.processUi}/process/${event.process_id}/participants/${redacted.actor}`
     : `${origins.ui}/users/anonymous`;
-  return toActivity(redacted, { actorIriOverride: actorIri });
+  return projectDocumentPayload(
+    toActivity(redacted, { actorIriOverride: actorIri }),
+    event.event_type,
+  );
 }
 
 /** toRedactedActivity for a signed-out caller. */

@@ -138,6 +138,18 @@ export interface ProcessManifest {
    * processes reads (src/shared/feedActivity.ts). Absent: it makes no cards.
    */
   feed?: FeedDeclaration;
+  /**
+   * The payload fields of each event type that are PUBLIC — what `hub:payload`
+   * may carry on the wire for a member or public reader (Architecture 3,
+   * ADR-010; Adam, 2026-10-21). Keyed by event type, each entry listing
+   * top-level payload keys; a declared key keeps its whole subtree. The host
+   * always serves `data.process` (and a few host-owned keys, see
+   * src/events/publicPayload.ts), so `process` is not repeated here. An event
+   * type with no entry publishes `process` and nothing else; an undeclared
+   * field is dropped at serve time, never at storage. Admins are served the
+   * stored payload verbatim.
+   */
+  publicPayload: Readonly<Record<string, readonly string[]>>;
 }
 
 /**
@@ -173,6 +185,7 @@ const REQUIRED: ReadonlyArray<keyof ProcessManifest> = [
   "tables",
   "jobs",
   "activities",
+  "publicPayload",
 ];
 
 /** What a manifest is checked against that only the host knows. */
@@ -261,6 +274,27 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
     for (const eventType of Object.keys(m.activities!)) {
       if (!d.emits.includes(eventType)) {
         throw new ManifestError(`${where(m)}: maps ${eventType}, which its descriptor does not emit (legacy types go in legacyActivities)`);
+      }
+    }
+
+    // Host lifecycle types (created, updated, ...) are emitted for every type
+    // without appearing in a descriptor's emits, so they may be declared too.
+    const known = new Set<string>([
+      ...d.emits,
+      ...Object.keys(m.activities!),
+      ...Object.keys(m.legacyActivities ?? {}),
+      ...host.hostActivityTypes,
+    ]);
+    for (const [eventType, keys] of Object.entries(m.publicPayload!)) {
+      if (!known.has(eventType)) {
+        throw new ManifestError(
+          `${where(m)}: publicPayload declares ${eventType}, which the type neither emits nor maps`,
+        );
+      }
+      if (!Array.isArray(keys) || keys.some((k) => typeof k !== "string" || k === "" || k === "process")) {
+        throw new ManifestError(
+          `${where(m)}: publicPayload.${eventType} must list non-empty payload keys ("process" is always public and not repeated)`,
+        );
       }
     }
 

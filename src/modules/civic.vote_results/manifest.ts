@@ -48,6 +48,21 @@ export const VOTE_RESULTS_MANIFEST = defineManifest({
   tables: [],
   jobs: [],
   activities: {},
+  // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
+  // Dropped deliberately, with Adam's field-row yes (2026-10-21, row 7): the
+  // internal results_id on result_published.
+  publicPayload: {
+    "civic.process.result_published": [
+      "headline_result",
+      "participation_count",
+      "source_process_id",
+    ],
+    "civic.process.outcome_recorded": [
+      "outcome_type",
+      "outcome_description",
+      "linked_process_id",
+    ],
+  },
   publication: { field: "publication_status", queue: "briefs" },
   feed: {
     cards: [

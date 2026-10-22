@@ -119,6 +119,12 @@ export const WORDCLOUD_MANIFEST = defineManifest({
     fields: [{ key: "plugin.wordcloud.onboarding_id", kind: "process", processType: "civic.wordcloud" }],
   },
   activities: {},
+  // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
+  // Submissions are restricted and never reach the member/public wire; the
+  // published snapshots and result are the public record.
+  publicPayload: {
+    "civic.process.result_published": ["wordcloud_result", "wordcloud_snapshot"],
+  },
   feed: {
     cards: [
       {

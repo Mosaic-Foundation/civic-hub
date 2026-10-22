@@ -73,6 +73,29 @@ export const MEETING_SUMMARY_MANIFEST = defineManifest({
     ],
   },
   activities: {},
+  // What hub:payload carries publicly, per event (Architecture 3, ADR-010):
+  // everything a published summary's history already serves stays.
+  publicPayload: {
+    "civic.process.aggregation_completed": [
+      "aggregation_method",
+      "participant_count",
+      "result_summary",
+      "result_type",
+      "block_count",
+      "meeting_date",
+    ],
+    "civic.process.outcome_recorded": ["outcome_type", "outcome_description"],
+    "civic.process.result_published": [
+      "meeting_summary",
+      "meeting_title",
+      "meeting_date",
+      "block_count",
+      "source_minutes_url",
+      "source_video_url",
+      "summary_id",
+    ],
+    "civic.process.updated": ["meeting_summary"],
+  },
   publication: { field: "approval_status", queue: "meeting_summaries" },
   feed: {
     cards: [

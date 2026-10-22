@@ -923,8 +923,9 @@ function contextFor(usesHubTerms: boolean, ns: string): unknown[] {
  * True when a serialized object (or target) uses a hub-namespaced type or
  * property. Shallow by design: hub terms are only ever minted by the builders
  * above, never by payload contents, which ride verbatim inside `hub:payload`.
+ * Exported for publicPayload.ts, whose document projection mirrors it.
  */
-function usesHubTerms(value: unknown): boolean {
+export function usesHubTerms(value: unknown): boolean {
   if (typeof value === "string") return value.startsWith("hub:");
   if (Array.isArray(value)) return value.some(usesHubTerms);
   if (value && typeof value === "object") {

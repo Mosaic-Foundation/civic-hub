@@ -106,6 +106,14 @@ export const PROPOSAL_MANIFEST = defineManifest({
     // mapped so the type stays serializable if the path is ever wired up.
     "civic.proposal.endorsed": { type: "Like", object: { kind: "civic", class: "civic:Proposal", id: "process" } },
   },
+  // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
+  publicPayload: {
+    "civic.proposal.submitted": ["proposal"],
+    "civic.proposal.supported": ["proposal"],
+    "civic.proposal.support_withdrawn": ["proposal"],
+    "civic.proposal.closed": ["proposal", "closed_early"],
+    "civic.proposal.endorsed": ["proposal"],
+  },
   // What a closed proposal answers a support (civic.proposals).
   deadlineRefusal: { code: "proposal_not_open", message: "This proposal is no longer accepting support." },
   feed: {

@@ -135,6 +135,16 @@ export const POLIS_DELIBERATION_MANIFEST = defineManifest({
   jobs: [],
   pluginSection: { order: 40, name: "Conversations", what: "Structured group conversations that map where people agree.", fields: [{ key: "plugin.conversation.polis_url", kind: "url" }] },
   activities: {},
+  // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
+  // Dropped deliberately, with Adam's field-row yes (2026-10-21): the outside
+  // service's polis_conversation_id (row 3), the workflow's summary_status
+  // (row 4) and brief_revision (row 5), and the process_id / process_type
+  // duplicates of what `context` already carries (row 6).
+  publicPayload: {
+    "civic.process.started": ["topic"],
+    "civic.process.ended": ["participation_stats", "closed_early"],
+    "civic.process.updated": ["reason"],
+  },
   // What a closed conversation answers (src/controllers/deliberationController.ts).
   deadlineRefusal: { code: "conversation_not_active", message: "Conversation is not active" },
   feed: {

@@ -198,6 +198,19 @@ export const VOTE_MANIFEST = defineManifest({
     ],
   },
   activities: {},
+  // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
+  // `process` (method, options, the voting window, status) is always public.
+  publicPayload: {
+    "civic.process.ended": ["result", "closed_early"],
+    "civic.process.aggregation_completed": [
+      "aggregation_method",
+      "participant_count",
+      "result_summary",
+      "result_type",
+      "closed_early",
+    ],
+    "civic.process.result_published": ["result", "results_at_close", "closed_early"],
+  },
   // "Brief to the Supervisors" (Adam, 2026-10-07).
   briefPill: "to_board",
   // A ballot after the deadline, before the hourly close (the vote module's own words).

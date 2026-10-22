@@ -65,6 +65,18 @@ export const BRIEF_MANIFEST = defineManifest({
  name: "Briefs",
  what: "The published record of what residents decided, sent to officials.", fields: [] },
   activities: {},
+  // What hub:payload carries publicly, per event (Architecture 3, ADR-010).
+  // Dropped deliberately, with Adam's field-row yes (2026-10-21): the review
+  // workflow's publication_status on updated (row 1) and the delivery
+  // bookkeeping delivered_to_count on outcome_recorded (row 2).
+  publicPayload: {
+    "civic.process.created": ["source_process_id", "source_process_type"],
+    "civic.process.aggregation_completed": ["source_process_id", "participation_count"],
+    "civic.process.outcome_recorded": ["source_process_id"],
+    "civic.process.result_published": ["brief", "result_of"],
+    // The official's on-the-record response to a published brief.
+    "civic.process.action_taken": ["action", "feed_anchor", "brief", "response"],
+  },
   // /brief/:id answers 404 for an unpublished brief, admins included: the
   // admin reaches one through the Briefs tab (Adam, 2026-09-06).
   publication: { field: "publication_status", queue: "briefs", linkedBeforePublished: false },

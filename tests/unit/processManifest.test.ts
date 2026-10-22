@@ -53,6 +53,7 @@ function manifest(over: Partial<ProcessManifest> = {}): ProcessManifest {
     jobs: [],
     pluginSection: { order: 10, name: "Samples", what: "Sample processes.", fields: [] },
     activities: { "civic.sample.taken": { type: "Create", object: { kind: "note" } } },
+    publicPayload: { "civic.sample.taken": ["sample"] },
     ...over,
   };
 }
@@ -126,6 +127,24 @@ describe("process manifests", () => {
   it("refuses a setting outside the plugin's keys", () => {
     expect(refused([manifest({ pluginSection: { order: 1, name: "Samples", what: "Sample processes.", fields: [{ key: "plugin.digest.x", kind: "boolean" }] } })]))
       .toThrow("setting plugin.digest.x is not under plugin.vote.");
+  });
+
+  it("refuses a missing publicPayload, so no type ships without deciding its public shape", () => {
+    expect(refused([manifest({ publicPayload: undefined as never })])).toThrow('missing "publicPayload"');
+  });
+
+  it("refuses a publicPayload entry for an event the type neither emits nor maps", () => {
+    expect(refused([manifest({ publicPayload: { "civic.other.thing": ["x"] } })]))
+      .toThrow("publicPayload declares civic.other.thing, which the type neither emits nor maps");
+  });
+
+  it("refuses 'process' in a publicPayload entry — it is always public, never repeated", () => {
+    expect(refused([manifest({ publicPayload: { "civic.sample.taken": ["process"] } })]))
+      .toThrow('publicPayload.civic.sample.taken must list non-empty payload keys');
+  });
+
+  it("accepts a publicPayload entry for a host lifecycle type the descriptor does not list", () => {
+    expect(refused([manifest({ publicPayload: { "civic.process.created": ["sample"] } })])).not.toThrow();
   });
 
   it("derives the resident allowlist from the actions' callers", () => {
