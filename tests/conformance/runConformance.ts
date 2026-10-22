@@ -51,6 +51,7 @@ import { getManifest } from "../../src/processes/registry.js";
 import { rowToEvent } from "../../src/events/eventStore.js";
 import { toActivity } from "../../src/events/activitySerializer.js";
 import { toRedactedActivity } from "../../src/events/publicRedaction.js";
+import { publicPayloadKeys } from "../../src/events/publicPayload.js";
 import { withHubScope } from "../../src/config/hubContext.js";
 import {
   BETA,
@@ -619,6 +620,34 @@ function conformanceWalk(d: ProcessTypeDescriptor, facts: HostFacts): void {
         const moved = await serve({ ...registry, hostname: `moved-${registry.hostname}` });
         expect(moved, `${d.type}: an id changed when the hub moved`).toBe(here);
         expect(moved).not.toContain(`moved-${registry.hostname}`);
+      }
+    });
+
+    it("every payload field it serves a member or the public is one its manifest declares", async () => {
+      // Architecture 3, ADR-010: hub:payload on the member/public wire is the
+      // type's declared public shape and nothing else. The admin view is the
+      // stored payload and is not checked here.
+      expect(touched.length).toBeGreaterThan(0);
+      for (const { id, hub } of touched) {
+        const rows = await eventRowsOf(id);
+        const registry = await hubRow(hub.slug);
+        const events = rows.map(rowToEvent);
+        await withHubScope(registry, {}, async () => {
+          for (const e of events) {
+            const allowed = publicPayloadKeys(e.event_type, d.type);
+            for (const audience of ["member", "public"] as const) {
+              const doc = toRedactedActivity(e, new Set(), audience);
+              const object = doc.object as Record<string, unknown> | undefined;
+              const payload = object?.["hub:payload"] as Record<string, unknown> | undefined;
+              for (const key of Object.keys(payload ?? {})) {
+                expect(
+                  allowed.has(key),
+                  `${d.type}: ${e.event_type} serves undeclared payload field "${key}" to a ${audience} reader`,
+                ).toBe(true);
+              }
+            }
+          }
+        });
       }
     });
 
