@@ -10,7 +10,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 `20261022000000_events_sample_by_trigger` (replaces one trigger function: events.is_sample computed from the process,
 never accepted from the inserter; no stored row changes — checked on every environment), `20261022010000_process_links_to_iri`
 (column + backfill from each target's frozen origin), `20261022020000_hub_custody_disclosure` (three nullable `hubs`
-columns). No pre-checks; nobody is signed out. Decision record: ADR-010 at the mono-repo root
+columns). No pre-checks; nobody is signed out. **Live on dev at `503a8e9`** (`./scripts/release.sh dev --yes`: 3 migrations applied, health ok, no schema gaps); **CI, E2E and Smoke green on `503a8e9`** (E2E and Smoke re-run once after GitHub's Ubuntu mirror stalled the browser install; no test had started). Dev's wire after the migrations: 2,143 events, identifiers identical, served changes exactly the approved rows. Decision record: ADR-010 at the mono-repo root
 (`decisions/010-the-public-wire.md`, local commit for Adam to push, as ADR-008/009). Report and handoff:
 `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Architecture-3-Session-Report-2026-10-22.md`.
 
