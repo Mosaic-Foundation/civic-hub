@@ -29,6 +29,7 @@ import {
   saveProcessState,
 } from "../services/processService.js";
 import { finalizeBriefSource } from "../services/briefFinalize.js";
+import { processWireIris } from "../services/processLinks.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { sendEmail } from "../services/mailer.js";
 import { publishedMessage } from "../shared/delivery.js";
@@ -193,6 +194,8 @@ export const handleApproveBrief = route(async (req, res) => {
     // A sample brief is never delivered (Phase 7).
     sendEmail: record.isSample ? sampleDeliverySuppressed : sendEmail,
     finalizeSource: finalizeBriefSource,
+    sourceProcessIri:
+      (await processWireIris([state.source_process_id])).get(state.source_process_id) ?? null,
   });
 
   // A published brief is terminal.

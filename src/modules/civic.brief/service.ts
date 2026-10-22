@@ -298,6 +298,9 @@ export async function approveBrief(
     publicBriefUrl: string;
     sendEmail: SendEmailFn;
     finalizeSource: FinalizeSourceFn;
+    /** The source process's frozen IRI (ADR-008), for `data.result_of` on the
+     *  result event; null when the host could not resolve it. */
+    sourceProcessIri?: string | null;
   },
 ): Promise<BriefActionOutcome> {
   if (!canApprove(state)) {
@@ -360,7 +363,7 @@ export async function approveBrief(
   state.published_at = new Date().toISOString();
 
   // Step 6: result published (feed-worthy)
-  await emitBriefResultPublished(ctx, actor, state);
+  await emitBriefResultPublished(ctx, actor, state, deps.sourceProcessIri);
 
   // Step 7: finalize the source process
   await deps.finalizeSource(

@@ -59,6 +59,7 @@ import {
   type SampleVote,
 } from "./sampleTemplates.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
+import { processWireIris } from "./processLinks.js";
 import * as vote from "../modules/civic.vote/index.js";
 import type { VoteProcessState } from "../modules/civic.vote/index.js";
 import { getBallotChoicesForProcess, clearActiveVoteKeysForProcess } from "../modules/civic.receipts/index.js";
@@ -415,6 +416,8 @@ class SeedRun {
       fallbackRecipients: [],
       hubLabel: this.names.HUB_NAME,
       publicBriefUrl: `${uiBaseUrl()}/brief/${record.id}`,
+      sourceProcessIri:
+        (await processWireIris([state.source_process_id])).get(state.source_process_id) ?? null,
       // Never delivered: sample content (and a .invalid address besides).
       sendEmail: sampleDeliverySuppressed,
       finalizeSource: async (sourceId) => {

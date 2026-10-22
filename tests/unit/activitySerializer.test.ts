@@ -192,6 +192,44 @@ describe("toActivity — golden documents", () => {
       type: "civic:Result",
       name: "Green Box Sites — Results",
     });
+    // Published before Architecture 3 (no `result_of`): the brief's own
+    // process stays the context and the object carries no id — byte-stable.
+    expect(activity.context).toEqual({
+      id: PROCESS_IRI,
+      type: "civic:Process",
+      "civic:processType": "civic.brief",
+    });
+    expect((activity.object as Record<string, unknown>).id).toBeUndefined();
+  });
+
+  it("a result published with result_of → context is the SOURCE, the object the result process", () => {
+    // Architecture 3 (Adam, 2026-10-21, Q1): a result published as a separate
+    // process (a brief) names the process whose result it is in `context`, so
+    // a reader following the vote sees its result; the object is the brief.
+    const activity = toActivity(
+      event({
+        event_type: "civic.process.result_published",
+        data: {
+          process: { type: "civic.brief" },
+          brief: { title: "Green Box Sites — Results", headline: "Residents back three sites" },
+          result_of: {
+            id: "proc_vote1",
+            iri: "https://app.floyd.example/process/proc_vote1",
+            type: "civic.vote",
+          },
+        },
+      }),
+    );
+    expect(activity.context).toEqual({
+      id: "https://app.floyd.example/process/proc_vote1",
+      type: "civic:Process",
+      "civic:processType": "civic.vote",
+    });
+    expect(activity.object).toMatchObject({
+      type: "civic:Result",
+      id: PROCESS_IRI,
+      name: "Green Box Sites — Results",
+    });
   });
 
   it("ballot cast → Create + civic:Ballot, and the selection is NEVER added", () => {

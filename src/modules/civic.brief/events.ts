@@ -138,11 +138,19 @@ export async function emitBriefResponseAdded(
   });
 }
 
-/** Phase 6 — the brief is published (public). This is the feed-worthy one. */
+/** Phase 6 — the brief is published (public). This is the feed-worthy one.
+ *
+ * `sourceProcessIri` is the source process's frozen IRI (ADR-008), looked up
+ * by the host: with it the event stamps `data.result_of`, and the wire then
+ * serves this activity with the SOURCE as its `context` and the brief as the
+ * object, so the result is discoverable from the vote (Architecture 3, Q1).
+ * Without it (a source the host could not resolve) the event is emitted as
+ * before and serializes as before. */
 export async function emitBriefResultPublished(
   ctx: BriefProcessContext,
   actor: string,
   state: BriefProcessState,
+  sourceProcessIri?: string | null,
 ): Promise<void> {
   await ctx.emit({
     event_type: "civic.process.result_published",
@@ -161,6 +169,15 @@ export async function emitBriefResultPublished(
         headline: state.content.headline,
         title: state.content.title,
       },
+      ...(sourceProcessIri
+        ? {
+            result_of: {
+              id: state.source_process_id,
+              iri: sourceProcessIri,
+              type: state.source_process_type,
+            },
+          }
+        : {}),
     },
   });
 }

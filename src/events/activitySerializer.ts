@@ -158,7 +158,7 @@ export function toActivity(
   const object = mapping.buildObject(event, data, env);
   const target = mapping.buildTarget?.(event, data, env);
   const origin = mapping.buildOrigin?.(event, data, env);
-  const context = processContext(event, data, env);
+  const context = mapping.buildContext?.(event, data, env) ?? processContext(event, data, env);
   const location = placeOf(event);
   const published = toRfc3339(event.timestamp, event.event_type);
 
@@ -317,6 +317,17 @@ interface ActivityMapping {
   ) => unknown | undefined;
   /** AS2 `origin`, for the one activity that has one (Move). */
   buildOrigin?: (event: CivicEvent, data: Payload, env: SerializerEnv) => unknown | undefined;
+  /**
+   * AS2 `context`, where the mapping overrides the default process linkage.
+   * Returning undefined falls back to processContext() — the event's own
+   * process — so a mapping with this hook never changes a stored row that
+   * lacks the payload the hook reads.
+   */
+  buildContext?: (
+    event: CivicEvent,
+    data: Payload,
+    env: SerializerEnv,
+  ) => Record<string, unknown> | undefined;
 }
 
 /**
@@ -348,9 +359,26 @@ const HOST_ACTIVITY_MAPPINGS: Record<string, ActivityMapping> = {
     buildObject: (e, data, env) =>
       processObject(e, data, env, { terminalState: "closed" }),
   },
+  // The spec's "Result published" row (§3.2) means the result belongs to the
+  // process whose result it is. A result published as a SEPARATE process (a
+  // brief) stamps `data.result_of` at emission — the source process's frozen
+  // IRI, id and type — and then `context` names the source and the object is
+  // the result process itself, so a reader following the vote sees its result
+  // (Adam, 2026-10-21, Architecture 3, Q1). Events stored without
+  // `result_of` (everything published before, and a process publishing its
+  // own result) serialize exactly as before.
   "civic.process.result_published": {
     type: "Announce",
-    buildObject: (e, data) => resultObject(data),
+    buildObject: (e, data, env) =>
+      resultObject(data, resultOfIri(data) ? processIri(e, env) : null),
+    buildContext: (_e, data) => {
+      const iri = resultOfIri(data);
+      if (!iri) return undefined;
+      const context: Record<string, unknown> = { id: iri, type: "civic:Process" };
+      const sourceType = firstString(nested(data, "result_of")?.type);
+      if (sourceType) context["civic:processType"] = sourceType;
+      return context;
+    },
   },
 
   // --- Participation (spec §3.2) -------------------------------------------
@@ -536,11 +564,17 @@ function processObject(
   return withPayload(object, data);
 }
 
-function resultObject(data: Payload): Record<string, unknown> {
+function resultObject(data: Payload, id?: string | null): Record<string, unknown> {
   const object: Record<string, unknown> = { type: "civic:Result" };
+  if (id) object.id = id;
   const name = titleOf(data);
   if (name) object.name = name;
   return withPayload(object, data);
+}
+
+/** The source process IRI a result-publishing event stamped, if any. */
+function resultOfIri(data: Payload): string | null {
+  return firstString(nested(data, "result_of")?.iri);
 }
 
 /**
