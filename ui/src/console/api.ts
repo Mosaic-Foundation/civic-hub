@@ -85,6 +85,11 @@ export interface HubConfig {
   mode: string | null;
   /** Addresses the hub moved from; each redirects to `hostname`. */
   previous_hostnames: string[];
+  /** Who stands behind the space DID (identity §5.3), served in civic.json; null = undeclared, omitted there. */
+  custody_arrangement: string | null;
+  custodian: string | null;
+  /** The declared identity assurance level (identity §12.4), e.g. "email". */
+  assurance_level: string | null;
 }
 
 /** The keys the Handover panel edits (src/shared/settingOwners.ts HANDOVER_KEYS). */

@@ -38,7 +38,7 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   // database is missing it cannot serve anything at all — which makes it the
   // one table where drift is worth catching in the deploy log rather than in
   // the first 404.
-  { table: "hubs", columns: ["id", "protocol_hub_id", "hostname", "name", "space_did", "status"], owner: "core/hubRegistry" },
+  { table: "hubs", columns: ["id", "protocol_hub_id", "hostname", "name", "space_did", "status", "custody_arrangement", "custodian", "assurance_level"], owner: "core/hubRegistry" },
   // The super admin (src/control/, 20260926010000).
   { table: "hubs", columns: ["archived_at"], owner: "control" },
   { table: "platform_sign_in_codes", columns: ["realm", "purpose", "email", "code_hash", "link_hash", "attempts", "expires_at"], owner: "control" },
@@ -106,7 +106,7 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   // so it belongs in core rather than behind a requiredSchema declaration.
   {
     table: "process_links",
-    columns: ["id", "from_id", "to_id", "relation", "created_by"],
+    columns: ["id", "from_id", "to_id", "to_iri", "relation", "created_by"],
     owner: "core/processLinks",
   },
 ];

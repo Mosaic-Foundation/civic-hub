@@ -181,10 +181,15 @@ export async function createEdge(
   link: LinkProposal,
   createdBy: string | null,
 ): Promise<ProcessLinkEdge> {
+  // The linked process's IRI beside its bare id (Architecture 3, ADR-010):
+  // the form a cross-hub link will carry, written at insert from the target's
+  // frozen origin, the same IRI its activities serve as `context.id`.
+  const toIri = (await processWireIris([link.to_id])).get(link.to_id) ?? null;
   const row = {
     id: generateId("plink"),
     from_id: fromId,
     to_id: link.to_id,
+    to_iri: toIri,
     relation: link.relation,
     created_by: createdBy,
   };

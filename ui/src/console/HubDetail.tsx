@@ -200,6 +200,9 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
     jurisdiction_ocd_id: c.jurisdiction_ocd_id ?? "",
     jurisdiction_custom: c.jurisdiction_custom,
     status: c.status,
+    custody_arrangement: c.custody_arrangement ?? "",
+    custodian: c.custodian ?? "",
+    assurance_level: c.assurance_level ?? "",
   };
   const [form, setForm] = useState(saved);
   const [choice, setChoice] = useState<JurisdictionChoice>(
@@ -328,6 +331,45 @@ function ConfigSection({ detail, onSaved, withStepUp }: { detail: HubDetail; onS
         </select>
       </label>
       </>)}
+      <div className="cx-two">
+        <label className="cx-field">
+          <span>Custody of the hub's identity</span>
+          <select
+            value={form.custody_arrangement}
+            onChange={(e) => setForm({ ...form, custody_arrangement: e.target.value })}
+          >
+            <option value="">Not declared</option>
+            <option value="designated_custodian">Designated custodian</option>
+            <option value="multisig">Multisig (several key-holders)</option>
+            <option value="threshold">Threshold signature</option>
+          </select>
+          <small className="cx-muted">
+            Who can speak as this hub (identity spec §5.3). Declared in the hub&apos;s public manifest
+            (/.well-known/civic.json); omitted there while not declared.
+          </small>
+        </label>
+        <label className="cx-field">
+          <span>Custodian</span>
+          <input
+            value={form.custodian}
+            onChange={(e) => setForm({ ...form, custodian: e.target.value })}
+            placeholder="e.g. the operating foundation's name"
+          />
+          <small className="cx-muted">The named operator holding the hub&apos;s identity.</small>
+        </label>
+      </div>
+      <label className="cx-field">
+        <span>Identity assurance level</span>
+        <input
+          value={form.assurance_level}
+          onChange={(e) => setForm({ ...form, assurance_level: e.target.value })}
+          placeholder='e.g. "email"'
+        />
+        <small className="cx-muted">
+          How participants are verified (identity spec §12.4) — &quot;email&quot; for email-verified accounts with
+          self-attested residency. Also in the public manifest; omitted while empty.
+        </small>
+      </label>
       <div className="cx-two">
         <label className="cx-field">
           <span>Status</span>

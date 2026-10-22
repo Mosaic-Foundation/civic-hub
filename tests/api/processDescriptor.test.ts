@@ -200,6 +200,22 @@ describe("follow-ups reach the source's descriptor (Architecture 3)", () => {
     }
   });
 
+  it("a link written through the API carries the target's IRI beside its id (to_iri)", async () => {
+    const res = await call(
+      "POST",
+      `/process/${continuerId}/links`,
+      ATHENS,
+      { to_id: voteId, relation: "references" },
+      admin,
+    );
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    const [row] = (await localRest(
+      `process_links?select=to_iri&from_id=eq.${continuerId}&to_id=eq.${voteId}&relation=eq.references`,
+    )) as Array<{ to_iri: string | null }>;
+    expect(row.to_iri).toMatch(new RegExp(`/process/${voteId}$`));
+    await localRest(`process_links?from_id=eq.${continuerId}&relation=eq.references`, { method: "DELETE" });
+  });
+
   it("withholds an unpublished brief from the public exactly as its page does", async () => {
     await localRest(`processes?id=eq.${briefId}`, {
       method: "PATCH",
@@ -318,6 +334,34 @@ describe("every type answers a descriptor", () => {
 });
 
 describe("/.well-known/civic.json", () => {
+  it("declares the space DID's custody and the assurance level once set, and omits them while not (Architecture 3, Q7)", async () => {
+    const before = (await get("/.well-known/civic.json")).body;
+    expect(before.space.custody).toBeUndefined();
+    expect(before.space.assurance_level).toBeUndefined();
+
+    await localRest(`hubs?id=eq.athens`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        custody_arrangement: "designated_custodian",
+        custodian: "Mosaic Foundation",
+        assurance_level: "email",
+      }),
+    });
+    try {
+      const after = (await get("/.well-known/civic.json")).body;
+      expect(after.space.custody).toEqual({
+        arrangement: "designated_custodian",
+        custodian: "Mosaic Foundation",
+      });
+      expect(after.space.assurance_level).toBe("email");
+    } finally {
+      await localRest(`hubs?id=eq.athens`, {
+        method: "PATCH",
+        body: JSON.stringify({ custody_arrangement: null, custodian: null, assurance_level: null }),
+      });
+    }
+  });
+
   it("lists each type's public descriptor, with its display name", async () => {
     const res = await get("/.well-known/civic.json");
     expect(res.status).toBe(200);

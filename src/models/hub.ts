@@ -36,6 +36,16 @@ export interface Hub {
   /** The space's stable identifier: generator.id on emitted activities. */
   space_did: string;
   space_type: string;
+  /**
+   * Who stands behind the space DID (identity spec §5.3; Architecture 3,
+   * ADR-010): the custody arrangement and the named custodian, declared in
+   * the console and served in /.well-known/civic.json. Null = not declared;
+   * the manifest omits them. Optional: rows built by tests may leave them out.
+   */
+  custody_arrangement?: "designated_custodian" | "multisig" | "threshold" | null;
+  custodian?: string | null;
+  /** The declared identity assurance level (identity spec §12.4), e.g. "email". */
+  assurance_level?: string | null;
   status: HubStatus;
   /**
    * Lifecycle state. Null means "not configured", and the reader falls back

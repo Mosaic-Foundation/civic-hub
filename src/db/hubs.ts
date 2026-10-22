@@ -36,7 +36,7 @@ const bySlug = new Map<string, CacheEntry<Hub | null>>();
 const byPreviousHostname = new Map<string, CacheEntry<Hub | null>>();
 
 const BASE_COLUMNS =
-  "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, space_did, space_type, status, mode, created_at, updated_at, redirect_to";
+  "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, space_did, space_type, status, mode, created_at, updated_at, redirect_to, custody_arrangement, custodian, assurance_level";
 
 /**
  * Off once a read finds no `settings_version` column: code deployed ahead of

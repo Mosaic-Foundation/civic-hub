@@ -72,7 +72,7 @@ export class ControlInputError extends CivicError {
 }
 
 const HUB_COLUMNS =
-  "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, jurisdiction_ocd_id, jurisdiction_custom, space_did, space_type, status, mode, created_at, updated_at, archived_at, redirect_to, previous_hostnames";
+  "id, protocol_hub_id, hostname, name, jurisdiction_code, jurisdiction_name, jurisdiction_ocd_id, jurisdiction_custom, space_did, space_type, status, mode, created_at, updated_at, archived_at, redirect_to, previous_hostnames, custody_arrangement, custodian, assurance_level";
 
 export type ControlHub = Hub & {
   archived_at: string | null;
@@ -611,6 +611,9 @@ export interface HubConfigPatch {
   hub_kind?: HubKind;
   name?: string;
   hostname?: string;
+  custody_arrangement?: string | null;
+  custodian?: string | null;
+  assurance_level?: string | null;
   jurisdiction_code?: string | null;
   jurisdiction_name?: string | null;
   jurisdiction_ocd_id?: string | null;
@@ -633,7 +636,18 @@ export interface HubConfigView {
   mode: string | null;
   /** Addresses this hub has moved from; each redirects to `hostname` (review R47). */
   previous_hostnames: string[];
+  /**
+   * Who stands behind the space DID (identity §5.3) and the declared identity
+   * assurance level (§12.4), served in /.well-known/civic.json; null =
+   * undeclared, omitted there (Architecture 3, ADR-010; Adam, 2026-10-21, Q7).
+   */
+  custody_arrangement: string | null;
+  custodian: string | null;
+  assurance_level: string | null;
 }
+
+/** Identity spec §5.3's custody vocabulary. */
+export const CUSTODY_ARRANGEMENTS = ["designated_custodian", "multisig", "threshold"] as const;
 
 export async function hubConfigView(hub: ControlHub): Promise<HubConfigView> {
   return {
@@ -648,6 +662,9 @@ export async function hubConfigView(hub: ControlHub): Promise<HubConfigView> {
     status: hub.status,
     mode: hub.mode,
     previous_hostnames: hub.previous_hostnames ?? [],
+    custody_arrangement: hub.custody_arrangement ?? null,
+    custodian: hub.custodian ?? null,
+    assurance_level: hub.assurance_level ?? null,
   };
 }
 
@@ -681,6 +698,15 @@ export function parseConfigPatch(body: Record<string, unknown>): HubConfigPatch 
     if (s !== "active" && s !== "suspended") throw new ControlInputError("Status is active or suspended.");
     patch.status = s;
   }
+  if ("custody_arrangement" in body) {
+    const c = orNull(text(body.custody_arrangement, 32));
+    if (c && !(CUSTODY_ARRANGEMENTS as readonly string[]).includes(c)) {
+      throw new ControlInputError(`Custody is one of: ${CUSTODY_ARRANGEMENTS.join(", ")} — or empty for undeclared.`);
+    }
+    patch.custody_arrangement = c;
+  }
+  if ("custodian" in body) patch.custodian = orNull(text(body.custodian));
+  if ("assurance_level" in body) patch.assurance_level = orNull(text(body.assurance_level, 64));
   return patch;
 }
 
@@ -792,6 +818,9 @@ export async function updateHubConfig(
     "jurisdiction_ocd_id",
     "jurisdiction_custom",
     "status",
+    "custody_arrangement",
+    "custodian",
+    "assurance_level",
   ] as const) {
     if (changes[k] !== undefined) row[k] = changes[k];
   }
