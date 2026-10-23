@@ -49,6 +49,13 @@ assurance level `email`, for Floyd, Demosville and Longmont (Q7). The production
 RUNBOOK-release.md's wire protocol: snapshot with the old code before, the new after, and the diff must list exactly
 the approved rows.
 
+**Smoke red on `d3b1c89`, fixed (2026-10-23):** the suite's own cleanup archives the vote it approved, which since this
+slice writes a public Delete; the next run's descriptor check picked that Delete's context — an archived process — and
+the descriptor route answered 404. Fixed on both sides: a removed process's IRI with a JSON-LD Accept now answers 410
+with a Tombstone (`processTombstone`), as its activity ids do, so every served activity's context dereferences; and
+both smoke checks pick a live process and assert the Tombstone when a Delete is in the stream. `tombstoneRule` covers
+the process-IRI Tombstone, its restore, and the never-published 404.
+
 **Rollback hazard:** code from before this slice cannot serialize `civic.process.removed` / `civic.process.restored`
 (unmapped types throw, by the standing rule). After any announced removal, rolling back past this slice makes the old
 code's `/events` 500 on the pages holding those events. Roll forward; for an emergency rollback, carry the two

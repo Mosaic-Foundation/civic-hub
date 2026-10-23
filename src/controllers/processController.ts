@@ -18,7 +18,7 @@ import {
 import { isPubliclyFetchable } from "../services/processLifecycle.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import { getDescriptor, isPublished } from "../processes/registry.js";
-import { buildProcessDescriptor, wantsDescriptor } from "../services/processDescriptor.js";
+import { buildProcessDescriptor, processTombstone, wantsDescriptor } from "../services/processDescriptor.js";
 import type { Request, Response } from "express";
 import type { Process } from "../models/process.js";
 
@@ -66,11 +66,22 @@ export const handleGetProcess = route(async (req, res) => {
     const user = await resolveCallerUser(req);
     const audience = user ? (isAdminEmail(user.email) ? "admin" : "member") : "public";
     const descriptor = await buildProcessDescriptor(id, { audience, viewerId: user?.id });
-    if (!descriptor) throw new NotFoundError("Process not found");
-    res.setHeader(
-      "Content-Type",
-      descriptorType === "ld" ? "application/ld+json; charset=utf-8" : "application/activity+json; charset=utf-8",
-    );
+    const contentType =
+      descriptorType === "ld" ? "application/ld+json; charset=utf-8" : "application/activity+json; charset=utf-8";
+    if (!descriptor) {
+      // A process an admin took down after it was published still has a
+      // public Delete on the wire whose `context` names it, so its IRI must
+      // dereference — to a Tombstone (410), as each of its activity ids does
+      // (Architecture 3, ADR-010). Never-published processes keep the 404.
+      const tombstone = await processTombstone(id);
+      if (tombstone) {
+        res.status(410).setHeader("Content-Type", contentType);
+        res.json(tombstone);
+        return;
+      }
+      throw new NotFoundError("Process not found");
+    }
+    res.setHeader("Content-Type", contentType);
     res.json(descriptor);
     return;
   }

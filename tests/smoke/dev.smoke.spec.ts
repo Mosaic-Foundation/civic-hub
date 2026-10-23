@@ -222,8 +222,23 @@ test("an activity's context IRI dereferences to its process descriptor, read-onl
   // reaches the API (a GET there answers the API's JSON 404, not a page).
   const page = await request.get(`${baseUrl()}/events?page=true&limit=50`);
   expect(page.status()).toBe(200);
-  const items = ((await page.json()).orderedItems ?? []) as Array<{ context?: { id?: string } }>;
-  let iri = items.map((a) => a.context?.id).find((id): id is string => typeof id === "string");
+  const items = ((await page.json()).orderedItems ?? []) as Array<{ type?: string; context?: { id?: string } }>;
+  // A live process: a Delete's context is a process an admin took down (the
+  // suite's own cleanup archives the vote it approved), which answers a
+  // Tombstone, checked below (Architecture 3, ADR-010).
+  const removed = items.find((a) => a.type === "Delete" && typeof a.context?.id === "string");
+  if (removed) {
+    const gone = await request.get(removed.context!.id!, { headers: { Accept: "application/ld+json" } });
+    expect(gone.status(), "a removed process's context IRI answers a Tombstone").toBe(410);
+    const tomb = await gone.json();
+    expect(tomb.type).toBe("Tombstone");
+    expect(tomb.id).toBe(removed.context!.id);
+  }
+  const removedIris = new Set(items.filter((a) => a.type === "Delete").map((a) => a.context?.id));
+  let iri = items
+    .filter((a) => a.type !== "Delete")
+    .map((a) => a.context?.id)
+    .find((id): id is string => typeof id === "string" && !removedIris.has(id));
   let planted: string | null = null;
   if (!iri) {
     // The suite cleans up after itself, so the hub may have no activity with
@@ -272,7 +287,13 @@ test("the admins audience IRI and a process's participation aggregate answer, re
   // needs a vote row (plantSample plants an announcement) — a live vote from
   // the stream when one exists, else the declared policy fields only.
   const page = await request.get(`${baseUrl()}/events?page=true&limit=100`);
-  const items = ((await page.json()).orderedItems ?? []) as Array<{ context?: { id?: string; "civic:processType"?: string } }>;
+  const all = ((await page.json()).orderedItems ?? []) as Array<{
+    type?: string;
+    context?: { id?: string; "civic:processType"?: string };
+  }>;
+  // Live processes only: a Delete's context is a removed process (a Tombstone).
+  const removedIris = new Set(all.filter((a) => a.type === "Delete").map((a) => a.context?.id));
+  const items = all.filter((a) => a.type !== "Delete" && !removedIris.has(a.context?.id));
   const voteIri = items
     .filter((a) => a.context?.["civic:processType"] === "civic.vote")
     .map((a) => a.context?.id)

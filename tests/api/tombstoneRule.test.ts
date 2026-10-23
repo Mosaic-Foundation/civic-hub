@@ -93,6 +93,23 @@ describe("an admin taking a published process down", () => {
     }
   });
 
+  it("the Delete's context — the process IRI — dereferences to a Tombstone, not a 404", async () => {
+    // A consumer holding the Delete follows its context (activity spec §4.1).
+    const res = await call("GET", `/process/${voteId}`, ATHENS, undefined, undefined, undefined, {
+      Accept: "application/ld+json",
+    });
+    expect(res.status).toBe(410);
+    expect(res.headers["content-type"]).toMatch(/^application\/ld\+json/);
+    expect(res.body.type).toBe("Tombstone");
+    expect(res.body.formerType).toBe("civic:Process");
+    expect(res.body.id).toMatch(new RegExp(`/process/${voteId}$`));
+    expect(typeof res.body.deleted).toBe("string");
+    expect(Object.keys(res.body).sort()).toEqual(["@context", "deleted", "formerType", "id", "type"]);
+    // A browser's Accept still gets the page's answer: the page is gone.
+    const page = await call("GET", `/process/${voteId}`, ATHENS);
+    expect(page.status).toBe(404);
+  });
+
   it("the Delete's own id dereferences while the process stays down", async () => {
     const id = deleteActivityId.split("/activities/")[1];
     const res = await call("GET", `/activities/${id}`, ATHENS);
@@ -109,10 +126,16 @@ describe("an admin taking a published process down", () => {
     expect(undo, "an Undo of the Delete").toBeTruthy();
     expect(undo!.object).toEqual({ type: "Delete", id: deleteActivityId });
 
-    // The original activities answer again, not Tombstones.
+    // The original activities answer again, not Tombstones, and so does the
+    // process's descriptor.
     const res = await call("GET", `/activities/${activityIds[0]}`, ATHENS);
     expect(res.status).toBe(200);
     expect(res.body.type).not.toBe("Tombstone");
+    const descriptor = await call("GET", `/process/${voteId}`, ATHENS, undefined, undefined, undefined, {
+      Accept: "application/ld+json",
+    });
+    expect(descriptor.status).toBe(200);
+    expect(descriptor.body.type).toBe("civic:Process");
   });
 });
 
@@ -136,6 +159,11 @@ describe("what was never published leaves no trace", () => {
     expect(archived.status, JSON.stringify(archived.body)).toBe(200);
     const items = await publicActivities(id);
     expect(items).toEqual([]);
+    // Its IRI stays a plain 404: its existence was never on the wire.
+    const res = await call("GET", `/process/${id}`, ATHENS, undefined, undefined, undefined, {
+      Accept: "application/ld+json",
+    });
+    expect(res.status).toBe(404);
   });
 });
 

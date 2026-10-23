@@ -15,7 +15,7 @@
 // /events serves it (ids frozen at creation, ADR-008; the same redaction), so
 // the descriptor and the wire cannot disagree about who or where.
 
-import { getProcess, getProcessState, asRead } from "./processService.js";
+import { getProcess, getProcessState, asRead, processRemovalRecord } from "./processService.js";
 import { getManifest, getProcessHandler, residentActionsOf } from "../processes/registry.js";
 import { getEventsByProcessId } from "../events/eventStore.js";
 import { AS2_CONTEXT, CIVIC_CONTEXT, toActivity } from "../events/activitySerializer.js";
@@ -31,6 +31,26 @@ export function wantsDescriptor(accept: string | undefined): "ld" | "activity" |
   if (a.includes("application/ld+json")) return "ld";
   if (a.includes("application/activity+json")) return "activity";
   return null;
+}
+
+/**
+ * What a removed process's IRI answers (Architecture 3, ADR-010): when an
+ * admin took a PUBLISHED process down, its public Delete names it as
+ * `context`, so the IRI dereferences to an AS2 Tombstone keeping the id and
+ * the removal time and nothing else. Undefined for everything else — a
+ * process still served, or one never published (which stays a plain 404).
+ */
+export async function processTombstone(id: string): Promise<Record<string, unknown> | undefined> {
+  const removal = await processRemovalRecord(id);
+  if (!removal) return undefined;
+  const iri = (await processWireIris([id])).get(id) ?? `${uiBaseUrl()}/process/${id}`;
+  return {
+    "@context": AS2_CONTEXT,
+    id: iri,
+    type: "Tombstone",
+    formerType: "civic:Process",
+    deleted: removal.archivedAt,
+  };
 }
 
 /** The two links that make a process a follow-up of this one ("Continued by", "Implemented by"). */
