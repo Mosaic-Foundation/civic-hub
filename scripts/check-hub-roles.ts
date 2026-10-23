@@ -45,9 +45,14 @@ export interface HubRolesReport {
   ok: boolean;
 }
 
-/** One row as a comparable string: role, address, account (or pending), attrs. */
+/**
+ * One row as a comparable string: role, address, account (or pending), attrs
+ * with its keys sorted (jsonb hands them back in its own order).
+ */
 function key(role: string, email: string, userId: string | null, attrs: unknown): string {
-  return JSON.stringify([role, email, userId, attrs ?? {}]);
+  const a = (attrs ?? {}) as Record<string, unknown>;
+  const sorted = Object.fromEntries(Object.keys(a).sort().map((k) => [k, a[k]]));
+  return JSON.stringify([role, email, userId, sorted]);
 }
 
 export async function checkHub(client: pg.Client, hubId: string): Promise<HubRolesReport> {

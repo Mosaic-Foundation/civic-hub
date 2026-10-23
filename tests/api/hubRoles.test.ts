@@ -155,6 +155,9 @@ describe("the trigger reads the lists as the app does", () => {
     expect((await roles()).filter((r) => r.role === "announcement_author").map((r) => [r.granted_email, r.attrs])).toEqual([
       ["clerk@example.test", { label: "Clerk", name: "Pat" }],
     ]);
+    // A named author, bound to an account, as the release check compares it.
+    await user("clerk@example.test");
+    expect((await checkHub(db, hub)).ok).toBe(true);
     // The canonical key wins over the legacy one.
     await setting("people.announcement_authors", JSON.stringify([{ email: "chair@example.test", label: "Chair" }]));
     expect((await roles()).filter((r) => r.role === "announcement_author").map((r) => r.granted_email)).toEqual(["chair@example.test"]);
