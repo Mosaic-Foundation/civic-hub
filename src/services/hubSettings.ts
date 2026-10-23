@@ -375,7 +375,21 @@ export interface AnnouncementAuthor {
 export async function getAnnouncementAuthors(
   hubId: string | null,
 ): Promise<AnnouncementAuthor[]> {
-  const stored = await getSetting(hubId, KEYS.PEOPLE_ANNOUNCEMENT_AUTHORS);
+  return announcementAuthorsFrom(
+    await getSetting(hubId, KEYS.PEOPLE_ANNOUNCEMENT_AUTHORS),
+    await getSetting(hubId, KEYS.PEOPLE_BOARD_EMAILS),
+  );
+}
+
+/**
+ * The author list from its two stored values: the list when it parses as a
+ * JSON array of objects, else the board roster labelled "Board member". Pure,
+ * so the hub_roles trigger's parity check reads the lists exactly as this does.
+ */
+export function announcementAuthorsFrom(
+  stored: string | undefined,
+  board: string | undefined,
+): AnnouncementAuthor[] {
   if (stored) {
     try {
       const parsed = JSON.parse(stored) as unknown;
@@ -388,7 +402,6 @@ export async function getAnnouncementAuthors(
   }
   // Board emails, each labelled generically, so a hub that has only ever set
   // the roster still has working authors.
-  const board = await getSetting(hubId, KEYS.PEOPLE_BOARD_EMAILS);
   return normalizeAuthors(
     asList(board).map((email) => ({ email, label: "Board member" })),
   );
@@ -426,6 +439,27 @@ function normalizeAuthors(raw: unknown[]): AnnouncementAuthor[] {
     out.push(name ? { email, name, label } : { email, label });
   }
   return out;
+}
+
+/**
+ * The three people lists one hub's stored settings make, read as the request
+ * readers read them (resolve, then asEmailList / the author rules). The input
+ * to hub_roles (20261023000000): its trigger must agree with this on every
+ * hub, which scripts/check-hub-roles.ts and tests/api/hubRoles.test.ts check.
+ */
+export function peopleListsFrom(map: SettingsMap): {
+  admins: string[];
+  board: string[];
+  authors: AnnouncementAuthor[];
+} {
+  return {
+    admins: asEmailList(resolve(map, KEYS.PEOPLE_ADMIN_EMAILS)),
+    board: asEmailList(resolve(map, KEYS.PEOPLE_BOARD_EMAILS)),
+    authors: announcementAuthorsFrom(
+      resolve(map, KEYS.PEOPLE_ANNOUNCEMENT_AUTHORS),
+      resolve(map, KEYS.PEOPLE_BOARD_EMAILS),
+    ),
+  };
 }
 
 export async function lookupAuthor(

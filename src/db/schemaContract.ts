@@ -87,6 +87,7 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   { table: "admin_digest_marks", columns: ["hub_id", "covered_until", "updated_at"], owner: "civic.admin_digest" },
   { table: "waitlist", columns: ["invited_by"], owner: "services/hubInvites" },
   { table: "hub_invites", columns: ["hub_id", "email", "invited_by", "outcome", "link_hash", "created_at", "expires_at", "used_at"], owner: "services/hubInvites" },
+  { table: "hub_roles", columns: ["hub_id", "role", "user_id", "source", "granted_email", "attrs"], owner: "authz" },
   { table: "feedback_submissions", columns: ["screenshot_url"], owner: "civic.feedback" },
   // Feedback routing (20261015000000): what the form captures, and the copy's status for the badge.
   { table: "feedback_submissions", columns: ["page_path", "software_version", "contact_ok", "mosaic_item_id", "mosaic_stream", "mosaic_status", "mosaic_sent_at", "mosaic_sent_by"], owner: "civic.feedback" },
@@ -141,6 +142,7 @@ const HOST_EXPORTS: readonly ExportManifestEntry[] = [
   { table: "feedback_submissions", rows: "export" },
   { table: "hub_admin_audit_log", rows: "export" },
   { table: "hub_invites", rows: "export" },
+  { table: "hub_roles", rows: "omit", reason: "derived by trigger from the people.* settings and the accounts, which the export carries; the import re-derives it (ADR-011)" },
   { table: "hub_settings", rows: "export" },
   { table: "job_runs", rows: "omit", reason: "an operational log of this host's scheduled runs; the next host writes its own" },
   { table: "link_previews", rows: "omit", reason: "a cache of other sites' metadata; the next host refetches it" },

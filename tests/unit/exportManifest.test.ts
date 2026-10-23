@@ -92,8 +92,10 @@ describe("export manifest", () => {
     // 49 since 2026-10-17 (dashboard): job_last_run (platform, not in a hub's export).
     // 46 since 20261019100000: pending_verifications (hub data, omitted),
     // control_codes and start_codes (platform) dropped.
-    expect(schema.tables.size).toBe(46);
-    expect(schema.withHubId.size).toBe(35);
+    // 47 since 20261023000000 (Architecture 4): hub_roles (hub data, omitted:
+    // derived by trigger from the settings and accounts the export carries).
+    expect(schema.tables.size).toBe(47);
+    expect(schema.withHubId.size).toBe(36);
     expect(schema.tables.has("hubs")).toBe(true);
     expect(schema.withHubId.has("hubs")).toBe(false);
   });

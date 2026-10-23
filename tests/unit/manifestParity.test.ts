@@ -17,6 +17,9 @@
  * Delete/Undo an announced removal leaves on the wire; the schema contract
  * gains hubs' custody_arrangement/custodian/assurance_level and
  * process_links.to_iri (all additive).
+ * And (2026-10-23, Architecture 4, ADR-011): the host gains hub_roles — a hub
+ * table (HUB_TABLES), omitted from the export (derived by trigger from the
+ * settings and accounts the export carries), and its schema requirement.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

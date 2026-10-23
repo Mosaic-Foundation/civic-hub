@@ -40,6 +40,7 @@
     "feedback_submissions",
     "hub_admin_audit_log",
     "hub_invites",
+    "hub_roles",
     "hub_settings",
     "job_runs",
     "link_previews",
@@ -114,6 +115,11 @@
     {
       "table": "hub_invites",
       "rows": "export"
+    },
+    {
+      "table": "hub_roles",
+      "rows": "omit",
+      "reason": "derived by trigger from the people.* settings and the accounts, which the export carries; the import re-derives it (ADR-011)"
     },
     {
       "table": "hub_settings",
@@ -743,6 +749,18 @@
       "owner": "services/hubInvites"
     },
     {
+      "table": "hub_roles",
+      "columns": [
+        "hub_id",
+        "role",
+        "user_id",
+        "source",
+        "granted_email",
+        "attrs"
+      ],
+      "owner": "authz"
+    },
+    {
       "table": "hub_settings",
       "columns": [
         "key",
@@ -997,7 +1015,7 @@
       "forbiddenColumns": [
         {
           "column": "user_id",
-          "reason": "vote_records must never identify the voter — this column would make every past ballot attributable"
+          "reason": "vote_records must never identify the voter \u2014 this column would make every past ballot attributable"
         }
       ],
       "owner": "civic.vote"

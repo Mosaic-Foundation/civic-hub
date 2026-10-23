@@ -64,6 +64,7 @@ export const HOST_TABLES = [
   "feedback_submissions",
   "hub_admin_audit_log",
   "hub_invites",
+  "hub_roles",
   "hub_settings",
   "job_runs",
   "link_previews",
