@@ -7,7 +7,8 @@ import { recentTurns } from "../../src/modules/civic.assistant/service.js";
 describe("AI limits", () => {
   it("gives a demo hub a smaller budget and no web search", () => {
     expect(aiLimitDefaults("demo")).toMatchObject({ daily_tokens: 300_000, web_search: false });
-    expect(aiLimitDefaults("live")).toMatchObject({ daily_tokens: 1_500_000, web_search: true, user_per_hour: 20, user_per_day: 60, review_per_hour: 30, hub_per_hour: 200, max_message_chars: 4000, history_messages: 12 });
+    expect(aiLimitDefaults("demo").job_daily_tokens).toBe(500_000);
+    expect(aiLimitDefaults("live")).toMatchObject({ daily_tokens: 1_500_000, job_daily_tokens: 2_000_000, web_search: true, user_per_hour: 20, user_per_day: 60, review_per_hour: 30, hub_per_hour: 200, max_message_chars: 4000, history_messages: 12 });
   });
 
   it("keeps only valid overrides; a corrupt row means none, never no limits", () => {
@@ -15,6 +16,8 @@ describe("AI limits", () => {
     expect(parseAiLimitOverrides("not json")).toEqual({});
     expect(parseAiLimitOverrides("[1,2]")).toEqual({});
     expect(effectiveAiLimits("demo", '{"web_search": true}').web_search).toBe(true);
+    // The jobs' ceiling is the operator's to change, like the residents' budget.
+    expect(effectiveAiLimits("live", '{"job_daily_tokens": 250000}').job_daily_tokens).toBe(250_000);
   });
 
   it("explains a refused override", () => {

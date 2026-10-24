@@ -5,9 +5,9 @@
 // hourly count; the hub's daily token budget; and a hub admin cannot set the
 // limits from the hub's own Settings.
 //
-// The test servers have no ANTHROPIC_API_KEY, so a chat turn that is let
-// through answers 503 ai_not_configured after it was counted. All these tests need: no
-// paid call is ever made here.
+// The test servers run with the in-memory AI (CIVIC_FAKE_ADAPTERS, ADR-012),
+// so a chat turn that is let through is answered by the fake after it was
+// counted, and no paid call is ever made here.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { call } from "../fixtures/hostCall.js";
@@ -52,7 +52,7 @@ describe("the console sets a hub's AI limits", () => {
   it("shows a demo hub's defaults: a smaller budget and no web search", async () => {
     const res = await consoleCall("GET", `/control/hubs/${SLUG}`, { cookie });
     expect(res.status).toBe(200);
-    expect(res.body.ai_limits.defaults).toMatchObject({ daily_tokens: 300_000, web_search: false, user_per_hour: 20, max_message_chars: 4000 });
+    expect(res.body.ai_limits.defaults).toMatchObject({ daily_tokens: 300_000, job_daily_tokens: 500_000, web_search: false, user_per_hour: 20, max_message_chars: 4000 });
     expect(res.body.ai_limits.overrides).toEqual({});
   });
 
@@ -97,9 +97,10 @@ describe("the hub enforces them", () => {
     for (let i = 0; i < 2; i++) {
       const r = await call("POST", message(draft), HOST, { phase: "free_form", user_message: "hello" }, token);
       expect(r.status, JSON.stringify(r.body)).not.toBe(429);
-      // Let through and counted; with no key here, the assistant says it isn't set up (Audit 4).
-      expect(r.status).toBe(503);
-      expect(r.body.code).toBe("ai_not_configured");
+      // Let through and counted; the server's AI is the in-memory fake
+      // (CIVIC_FAKE_ADAPTERS, ADR-012), which answers. The not-set-up answer
+      // is tests/unit/aiGate.test.ts.
+      expect(r.status, JSON.stringify(r.body)).toBe(200);
     }
     const refused = await call("POST", message(draft), HOST, { phase: "free_form", user_message: "hello" }, token);
     expect(refused.status).toBe(429);

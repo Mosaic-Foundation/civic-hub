@@ -67,8 +67,9 @@ test("over the hourly limit, the chat says to wait a while", async ({ page, requ
     await page.goto("/votes/new");
     await page.getByRole("button", { name: "Open the assistant" }).click();
     // Opening the assistant is a turn: it asks the model for its first
-    // question (with no AI key here, that call fails after being counted).
-    await expect(page.getByText(/isn't set up on this hub yet/)).toBeVisible();
+    // question, counted; the server's AI is the in-memory fake
+    // (CIVIC_FAKE_ADAPTERS, ADR-012), which answers.
+    await expect(page.getByText("This is the test assistant's reply.")).toBeVisible();
     // So the person's first message is the second turn, and is refused, in
     // the server's words.
     const box = page.getByPlaceholder(/Type your answer here|Ask for help with your draft/);
