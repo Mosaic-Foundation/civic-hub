@@ -4,6 +4,79 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Architecture 4: one authorization seam, roles by account, the actor's own DID — 2026-10-23
+
+`multi-tenant`, one commit per item, from `a104260`. Decision record: ADR-011 at the mono-repo root
+(`decisions/011-authorization-seam.md`, a local commit for Adam to push, as ADR-008 to ADR-010). Report and handoff:
+`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Architecture-4-Session-Report-2026-10-23.md`.
+
+**Two migrations, both additive and safe to run twice:**
+- `20261023000000_hub_roles`: a table, its triggers and an idempotent backfill. It went to dev alone first, at
+  `6bdd186`, so the coverage check could run before any check switched.
+- `20261023010000_actor_did`: two nullable columns, and the wire trigger replaced with the same body plus one step.
+
+No pre-checks; nobody is signed out. **Live on dev at `8ed6838`** (`./scripts/release.sh dev --yes`, health ok). Not on production. **CI, E2E and Smoke are green on `8ed6838`.** CI on `ca1f273` failed only at the npm audit step (advisories new since the last green run), fixed in `8ed6838`.
+
+**The invariants:**
+- **Identifiers and shapes are unchanged.** Wire snapshot diff identical: local 58,347 events, dev 2,179 (before at `a104260`, after at `ca1f273`).
+- **Nobody's access changed.** The parity test compares the old email rules and the seam on 6,586 answers, and they
+  agree on all of them. The API suites pass in both modes.
+- **HTTP side by side** (a104260 against the slice on one database): 24,352 request pairs; 24,344 byte-identical
+  with the port normalized, and 8 `/feed` responses identical as JSON, differing only in `process_meta` key order.
+- Ballot secrecy untouched.
+
+**What changed (Adam's Q1–Q7 and two conditions, 2026-10-23):**
+1. **One seam.** `canActor(actor, action, resource)` in `src/authz/` answers every role question by account.
+   - The actor is the account id plus its claims: grants, residency, a name on file, how the session was proved.
+   - The five guards are questions to it, and `executeAction`'s descriptor rule lives there (`callerMayCall`).
+   - Everything else asks it too: the 23 `isAdminEmail` sites, authorship and offices (looked up by account), and
+     `civic.review`'s auto-approval and demo-visitor rules (found on the way: they decided by address).
+   - `sessionUser` in `src/middleware/auth.ts` is the one place a token becomes a user and an actor. A different
+     sign-in method plugs in there.
+   - Lint (`civic/authz-seam`) refuses role checks outside `src/authz/`, and a new standing rule is in BUILD-PLAN.
+2. **Roles are account-keyed claims.** `hub_roles` holds admin, board and announcement-author grants.
+   - A trigger fills it from the people lists, which stay the input. A listed address with no account is pending
+     and binds at sign-up; there are no shell accounts, since they would get the digest.
+   - It is cached per hub by the settings version, and dropped when a request writes a list or creates an account.
+   - Coverage check before the switch (Adam's Q1 condition), `scripts/check-hub-roles.ts`: dev 18 hubs and local
+     930, no mismatch.
+   - Dev counts, listed / bound / pending: admins 19 / 12 / 7, board 1 / 0 / 1, authors 4 / 3 / 1. Per hub in the
+     session report.
+   - `User.email` is optional by type; mail, sign-in admission and display handle null explicitly.
+3. **Eligibility behind the seam.** Every process inherits the hub's rule: residency, plus a real name, which is a
+   constant (Q7); pseudonymous participation is not offered (ADR-011 says what turns it on). A manifest may declare
+   stricter `eligibility.requirements` (credential types). No type does, and the descriptor serves the field only
+   when declared.
+4. **The actor's own DID.** `events.wire_actor_did` is stamped at insert, only when the person set the DID
+   themselves (`users.identity_did_source = 'self'`; Adam's Q4 condition). The serializer serves it in place of
+   `/users/<id>` only where the type's policy serves an actor, never for anonymous, and redaction hides it with the
+   actor. Nobody has one, so nothing on the wire changed.
+
+**For production (Adam):**
+- Run `scripts/check-hub-roles.ts` read-only against production after the migrations (dev and local found nothing).
+- Take the wire snapshot before and after, as the runbook asks.
+- **Roll back safely:** the old code reads the lists, which are still written; it ignores `hub_roles` and
+  `wire_actor_did`.
+
+**Results (local, 2026-10-23):**
+- `npm test`: 2,642 passed. The 5 failures were the dashboard's known local timeouts (4) and one PostgREST upstream
+  502 in conformance, which passed on rerun.
+- Minted tokens: 893 passed, 4 failed (the dashboard).
+- Conformance: green inside both passes.
+- Playwright: 171 passed, 2 skipped, 1 failed (`dashboard.spec.ts`, the known local timeout on ~930 hubs; CI decides it). The new `authzSeam.spec.ts`: 3 passed.
+- Unit: 1,750.
+
+**Also in this slice:** `npm audit fix` (`8ed6838`). CI's audit step began failing on advisories published since the last green run: body-parser and undici (high), vitest's mocker (moderate), and the UI's zod (high, dev-only). Patch and minor lockfile bumps only.
+
+**Carried (not this slice):**
+- A hidden comment's original activity still serves on the wire; `summary_id` etc. stay public on meeting summaries.
+- Spec edits (G list): `eligibility_requirements` by manifest with §8.1 semantics, the `identity_did_source` rule,
+  and the seam's signature.
+- The plugin program's capability grant.
+- A5 (hosting).
+
+---
+
 ## Architecture 3: the wire — declared shapes, counted participation, announced removals, policy redaction — 2026-10-22
 
 `multi-tenant`, one commit per item, from `acf37ec`. **Three migrations, all additive and safe to run twice:**
