@@ -25,7 +25,9 @@ numbers below, or just grep the heading.
 | Releasing a change with migrations: the order (migrations, schema reload, code, `/health`), pre-checks, the guard | `RUNBOOK-release.md` |
 | Dev deployment runbook + Preview env checklist; dev domain `*.dev.civic.social` (§9) | `DEPLOY-dev.md` |
 | Guards: production db push, deploy env safety | `scripts/db-push.sh`, `scripts/check-deploy-env.ts` |
-| Auth, sessions, admin/board resolution | `src/middleware/auth.ts`, `src/modules/civic.auth/` (per-IP caps: `limits.ts`) |
+| Auth, sessions (the identity adapter: `sessionUser`) | `src/middleware/auth.ts`, `src/modules/civic.auth/` (per-IP caps: `limits.ts`) |
+| Authorization: the one seam (`canActor`, the rule for adding a check), the actor, eligibility (the hub's rule, a manifest's `eligibility`); role grants (`hub_roles`, filled by trigger from the people lists; cached per hub); the coverage check; the parity test and its frozen old rules; the lint | `src/authz/{canActor,actor,eligibility}.ts`, `src/db/hubRolesStore.ts`, `20261023000000_hub_roles.sql`, `scripts/check-hub-roles.ts`, `tests/api/authzParity.test.ts` + `tests/fixtures/authz/oldRules.ts`, `civic/authz-seam` in `eslint.config.js`; ADR-011 |
+| The actor's own DID on the wire (`events.wire_actor_did`, `users.identity_did_source`) | `20261023010000_actor_did.sql`, `actorDidServable` in `src/events/publicPayload.ts`, `actorIri` in `src/events/activitySerializer.ts`; ADR-011 |
 | Sign-in codes: the rules (three live codes, tries burn the code, never the address), the email and its link, Keep me signed in; the console's and start page's store | `src/modules/civic.auth/codeRules.ts`, `otp.ts` (`renderCodeEmail`), `verifyLink` in `civic.auth/index.ts`, `src/control/platformCodes.ts`; tables `sign_in_codes`, `platform_sign_in_codes` (`20261014000000`); UI `ui/src/components/AuthModal.tsx`, `ui/src/pages/SignInLink.tsx` |
 | Terms: the notice beside Join, the creator's agreement at creation, the legal version | `ui/src/components/TermsNotice.tsx`, `ui/src/start/TermsAtCreate.tsx`, `src/shared/legal.ts`, "In short" at the top of `config/legal/{code-of-conduct,privacy,terms}.md`, `legalSummaries` in `src/services/hubDocuments.ts` |
 | Rate limits (sign-in, assistant), AI limits and budget | `src/db/rateLimit.ts`, `src/shared/aiLimits.ts`, `src/services/aiBudget.ts` |
@@ -118,6 +120,9 @@ numbers below, or just grep the heading.
 - Pluggable voting methods + approval voting — 7420–7484
 
 ### Security, identity, anonymity
+- **Architecture 4 (2026-10-23)**: one authorization seam by account (`canActor`), roles as `hub_roles` grants from
+  the people lists, eligibility behind the seam, the actor's own DID frozen at emission, `User.email` optional,
+  ADR-011 — top of HANDOFF (grep the heading)
 - **Sign-in slice (2026-10-14)**: lock the code not the person, three live codes, plain "Try again after" times, the
   email's Sign in link, Keep me signed in, terms without a checkbox, city-counties, `release.sh dev --yes` — top of
   HANDOFF (grep the heading)

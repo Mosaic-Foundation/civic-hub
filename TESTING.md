@@ -62,6 +62,65 @@ first time that layer has been runnable from a clean checkout.
 
 ---
 
+## Architecture 4: one authorization seam, roles by account, the actor's own DID (2026-10-23)
+
+**Who may do what is asked of `canActor` (src/authz/), by account; nobody's access changed (ADR-011).**
+- **Parity (kept until the people lists stop being the input, Adam Q5):** `tests/api/authzParity.test.ts` asks
+  a104260's rules, frozen by address in `tests/fixtures/authz/oldRules.ts`, and the real seam (in-process on the
+  local stack). The questions:
+  - every hub question;
+  - every declared action of every registered type, as creator and not;
+  - the read-path admin checks and `/auth/me`'s authorship.
+
+  It asks them for every kind of person, over six people-list configurations, on a scratch hub plus Athens and
+  Floyd. Result: 6,586 answers, all agreeing. Mutation-checked (a changed author label or creator rule fails 7
+  tests). `CIVIC_PARITY_REPORT=<file>` writes the count. Delete the test and its fixture together when the lists
+  stop being the input.
+- **The seam:** `tests/unit/canActor.test.ts` covers signed out, signed in but not a member, a member without a
+  name, a member, an admin and an official, against every hub question and every type's declared actions. It also
+  covers the empty roster (`no_admins`), a demo session carrying no role, the eligibility constant and the §8.1
+  conjunction. `authOfficial.test.ts` now asks `authorshipOf` / `officialOf` by account; `adminRoster.test.ts`
+  pins how the lists, the input, read.
+- **The claims (`hub_roles`, 20261023000000):** `tests/api/hubRoles.test.ts` (pg, local only) checks:
+  - equal to the lists on every hub of the stack, by `scripts/check-hub-roles.ts`'s comparison;
+  - idempotent: the sync, and the whole migration, re-run change no row;
+  - the app's parsing rules;
+  - pending grants binding, unbinding and pending again;
+  - only the triggers write the table, and a change bumps the settings version.
+
+  **`scripts/check-hub-roles.ts`** is the release check (read-only pg, exit 1 on any mismatch): local 930 hubs and
+  dev 18 hubs, no mismatch.
+- **The DID (20261023010000):** `tests/unit/actorDid.test.ts` checks:
+  - unset, every view byte-identical;
+  - set, the admin view names it;
+  - hidden with the actor, and off the internal feed's event;
+  - an official on a public type named by it to every reader;
+  - never for an anonymous type.
+
+  `tests/api/actorDid.test.ts` (pg, rolled back) checks that it is stamped only when `identity_did_source =
+  'self'`, frozen, and never for machinery or anonymous.
+- **Eligibility:** `processManifest.test.ts` accepts and refuses `eligibility.requirements`;
+  `processDescriptor.test.ts` asserts no type serves `eligibility_requirements`.
+- **Lint:** `civic/authz-seam` (eslint.config.js) refuses role-grant reads, `actor.roles`, `isAdminEmail` and
+  people-list reads outside `src/authz/` and the named readers; mutation-checked with a planted file.
+- **Playwright:** `tests/e2e/authzSeam.spec.ts` covers:
+  - a listed admin's first sign-in and join make them an admin at once, and they close a vote early from its page;
+  - a resident votes, has no Close early, and the server refuses the close with `admin_required`;
+  - signed out is refused with `sign_in_required`.
+- **HTTP side by side** (a104260 on :3200 and the slice on :3000, one local database, back to back; Athens with
+  five personas, Floyd with three; every parameterless GET, every process's state, page and descriptor, `/events`,
+  `/feed`): 24,352 request pairs.
+  - 24,344 are byte-identical once the port in absolute URLs is normalized.
+  - 8 (`/feed`) are identical as JSON, with only `process_meta`'s key order differing (an object built from
+    parallel lookups).
+  - Script: `http-compare.ts` in the session report.
+- **Wire:** `scripts/wire-snapshot-diff.ts` reports identical on local (58,347 events) and dev.
+- **Counts (2026-10-23, local):** unit 1,750; `npm test` (lint, unit, API service role) 2,642 passed, 5 failed (the dashboard's 4 known local timeouts, one PostgREST upstream 502 in conformance that passed on two reruns); API minted tokens 893 passed, 4 failed (the dashboard); Playwright 171 passed, 2 skipped, 1 failed (`dashboard.spec.ts`, the known local timeout on ~930 hubs).
+- **Trap fixed on the way:** the export tests pin the omitted tables; `hub_roles` is omitted on purpose. CI on
+  `6bdd186` failed there and was fixed in `d9a9b67`.
+
+---
+
 ## Architecture 3: the wire — declared shapes, participation, tombstones, policy redaction (2026-10-22)
 
 **Identifiers never change; shapes change only by declaration (ADR-010).**
@@ -2493,7 +2552,7 @@ the local-stack jobs.
 
 ---
 
-*Last updated: 2026-10-21 — Architecture 2 (`processManifest`, `manifestParity` + `tests/fixtures/manifests/`, `feedMetaHooks`, `emissionCheck`, `descriptorRouting`, `uiRegistry` unit tests; `processDescriptor` and `residentActions` API tests; conformance step 5 rewritten for reads that never close; `manifestUi.spec.ts`; the smoke descriptor check; the `auditLiveExposure` restore fix). Before that, 2026-10-20 — Architecture 1 (`wireIdentity` unit and API tests, `tests/fixtures/wire/before.json`, `namespaceDocument.test.ts`, conformance step 8's move check, the smoke DID check, the wire snapshot scripts). Before that, 2026-10-17 — the dashboard slice (`dashboard.test.ts` API and unit, `jobSchedule.test.ts`, `dashboard.spec.ts`, `CIVIC_DASHBOARD_FAKE` on CI's servers). Before that, 2026-10-17 — the cleanup slice (`settingsVersion.test.ts` on two servers, `adminQueueCounts.test.ts`, the invite check in `membersInvites` and one smoke test, `meetingSummaryGeneric.test.ts`, `polisCleanup.test.ts`, the smoke suite's waits gone). Before that, 2026-10-15 — leaving demo (`leavingDemo.test.ts`, `adminDigestTally.test.ts`, `leavingDemo.spec.ts`, the tally's unit tests, a read-only smoke test of Mode). Before that, 2026-10-14 — the Members plugin (`membersPlugin.test.ts`, `membersPlugin.spec.ts`, a last smoke test, console-made hubs' threshold of 10). Before that, 2026-10-14 — navigation polish (`hubNavigation.spec.ts` 13 tests, the smoke phone test extended, `more-sheet-bar`, the notice's localStorage key). Before that, 2026-10-14 — navigation (`navSections.test.ts`, `navigation.test.ts`, `hubNavigation.spec.ts`, two smoke tests replacing the phone Admin menu one, the console-made hubs' sidebar). Before that, 2026-10-14 — members and invites (`memberInvites.test.ts`, `membersInvites.test.ts`, `membersInvites.spec.ts`, three smoke tests, the leak harness's member routes). Before that, 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-23 — Architecture 4 (`authzParity` API test + `tests/fixtures/authz/oldRules.ts`, `hubRoles` and `actorDid` API tests, `canActor` and `actorDid` unit tests, `authOfficial`/`adminRoster` rewritten for the seam, `authzSeam.spec.ts`, `scripts/check-hub-roles.ts`, the `civic/authz-seam` lint, the export tests naming `hub_roles`). Before that, 2026-10-21 — Architecture 2 (`processManifest`, `manifestParity` + `tests/fixtures/manifests/`, `feedMetaHooks`, `emissionCheck`, `descriptorRouting`, `uiRegistry` unit tests; `processDescriptor` and `residentActions` API tests; conformance step 5 rewritten for reads that never close; `manifestUi.spec.ts`; the smoke descriptor check; the `auditLiveExposure` restore fix). Before that, 2026-10-20 — Architecture 1 (`wireIdentity` unit and API tests, `tests/fixtures/wire/before.json`, `namespaceDocument.test.ts`, conformance step 8's move check, the smoke DID check, the wire snapshot scripts). Before that, 2026-10-17 — the dashboard slice (`dashboard.test.ts` API and unit, `jobSchedule.test.ts`, `dashboard.spec.ts`, `CIVIC_DASHBOARD_FAKE` on CI's servers). Before that, 2026-10-17 — the cleanup slice (`settingsVersion.test.ts` on two servers, `adminQueueCounts.test.ts`, the invite check in `membersInvites` and one smoke test, `meetingSummaryGeneric.test.ts`, `polisCleanup.test.ts`, the smoke suite's waits gone). Before that, 2026-10-15 — leaving demo (`leavingDemo.test.ts`, `adminDigestTally.test.ts`, `leavingDemo.spec.ts`, the tally's unit tests, a read-only smoke test of Mode). Before that, 2026-10-14 — the Members plugin (`membersPlugin.test.ts`, `membersPlugin.spec.ts`, a last smoke test, console-made hubs' threshold of 10). Before that, 2026-10-14 — navigation polish (`hubNavigation.spec.ts` 13 tests, the smoke phone test extended, `more-sheet-bar`, the notice's localStorage key). Before that, 2026-10-14 — navigation (`navSections.test.ts`, `navigation.test.ts`, `hubNavigation.spec.ts`, two smoke tests replacing the phone Admin menu one, the console-made hubs' sidebar). Before that, 2026-10-14 — members and invites (`memberInvites.test.ts`, `membersInvites.test.ts`, `membersInvites.spec.ts`, three smoke tests, the leak harness's member routes). Before that, 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,
