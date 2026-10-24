@@ -66,6 +66,19 @@ No pre-checks; nobody is signed out. **Live on dev at `8ed6838`** (`./scripts/re
 - Playwright: 171 passed, 2 skipped, 1 failed (`dashboard.spec.ts`, the known local timeout on ~930 hubs; CI decides it). The new `authzSeam.spec.ts`: 3 passed.
 - Unit: 1,750.
 
+**Smoke red on `0de8625` (2026-10-24), cause found:**
+- **The cause:** dev's Anthropic account reached its specified usage limit at about 02:40 UTC. Vercel's runtime logs
+  show `400 … You have reached your specified API usage limits. You will regain access on 2026-11-01`. From then on,
+  every Code of Conduct check has answered "unavailable", so the two smoke tests that need the real check fail.
+- **Not the cause:**
+  - the code: the hub held the flagged draft for an admin (`auto_approved: false`, never published) and sent no
+    invite;
+  - `8ed6838`'s bumps: the call uses Node's built-in fetch, and body-parser only parses inbound requests.
+- **The fix in code is `40e6a59`:** the provider's usage-limit refusal is now a reported error (`ai.usage_limit`,
+  Sentry), not only a log line.
+- **Smoke stays red on those two tests** until Adam raises the limit in the Anthropic console, or it resets on
+  2026-11-01.
+
 **Also in this slice:** `npm audit fix` (`8ed6838`). CI's audit step began failing on advisories published since the last green run: body-parser and undici (high), vitest's mocker (moderate), and the UI's zod (high, dev-only). Patch and minor lockfile bumps only.
 
 **Carried (not this slice):**
