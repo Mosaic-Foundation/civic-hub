@@ -3,7 +3,8 @@ import { forHub, type HubDb } from "../../db/forHub.js";
 import { reportError } from "../../utils/reportError.js";
 import { assertProcessTypeEnabled } from "../../services/pluginGate.js";
 import { currentHub, currentHubId } from "../../config/hubContext.js";
-import { createEdges } from "../../services/processLinks.js";
+import { createEdges, processWireIris } from "../../services/processLinks.js";
+import { eventToRow } from "../../events/eventStore.js";
 import {
   draftPathFor,
   reopenDraftForRevision,
@@ -20,7 +21,7 @@ import {
   ReviseInput,
   ProcessSnapshot,
 } from "./models.js";
-import { emitReviewEvent } from "./events.js";
+import { buildReviewEvent, emitReviewEvent } from "./events.js";
 import {
   notifyCreatorSubmitted,
   notifyAdminNewSubmission,
@@ -132,20 +133,27 @@ export async function submitForReview(
     ...(isDemoVisitor(opts.creatorIsAdmin === true) ? { is_sample: true, added_in_demo: true } : {}),
   };
 
-  // Through forHub so the process is stamped with the hub it was submitted on.
-  await db().from("processes").insert(processRow);
-
   // Materialize the creator's proposed links. Done here — the one funnel every
   // process type passes through — so creation-time linking is universal rather
   // than something each new type has to wire up.
   //
   // Best-effort by design: a link to a process that has since been removed
   // must not cost someone the submission they just spent time writing. Invalid
-  // input is dropped with a warning rather than thrown.
+  // input is dropped with a warning rather than thrown; a missing target is
+  // skipped by the database function.
+  let links: Array<Record<string, unknown>> = [];
   if (input.links?.length) {
     try {
-      const links = validateLinkSet(processId, input.links);
-      await createEdges(processId, links, input.creator_id);
+      const valid = validateLinkSet(processId, input.links);
+      // The linked process's IRI beside its bare id (Architecture 3, ADR-010).
+      const iris = await processWireIris(valid.map((l) => l.to_id));
+      links = valid.map((l) => ({
+        id: generateId("plink"),
+        to_id: l.to_id,
+        to_iri: iris.get(l.to_id) ?? null,
+        relation: l.relation,
+        created_by: input.creator_id,
+      }));
     } catch (err) {
       console.warn(
         `[review] dropped invalid links on ${processId}: ${
@@ -155,7 +163,6 @@ export async function submitForReview(
     }
   }
 
-  // Insert the review record
   const reviewRow = {
     id: reviewId,
     process_id: processId,
@@ -167,22 +174,8 @@ export async function submitForReview(
     ...(input.coc_flags?.length ? { coc_flags: input.coc_flags } : {}),
   };
 
-  const reviewData = await db()
-    .from("process_reviews")
-    .insert(reviewRow)
-    .select()
-    .single();
-
-  // Now link the process back to the review
-  await db()
-    .from("processes")
-    .update({ review_id: reviewId })
-    .eq("id", processId);
-
-  // Insert the first turn
-  const turnId = generateId("turn");
-  await db().from("review_turns").insert({
-    id: turnId,
+  const turnRow = {
+    id: generateId("turn"),
     review_id: reviewId,
     turn_number: 1,
     actor: input.creator_id,
@@ -195,10 +188,9 @@ export async function submitForReview(
       content: input.content ?? null,
       config: input.config ?? null,
     }),
-  });
+  };
 
-  // Emit review event
-  await emitReviewEvent({
+  const event = buildReviewEvent({
     event_type: "civic.review.submitted",
     actor: input.creator_id,
     process_id: processId,
@@ -209,6 +201,22 @@ export async function submitForReview(
       ...(input.coc_flags?.length ? { coc_flagged: true } : {}),
     },
   });
+
+  // The process, its links, the review, the process's link back to it, the
+  // first turn and the event: one transaction (submit_for_review,
+  // 20261024000000), stamped with the hub it was submitted on.
+  const written = await db().rpc<{ review: ProcessReview; links_skipped: number }>("submit_for_review", {
+    p_process: processRow,
+    p_review: reviewRow,
+    p_turn: turnRow,
+    p_links: links,
+    p_event: eventToRow(event),
+  });
+  if (written.links_skipped > 0) {
+    console.warn(`[review] ${written.links_skipped} link(s) on ${processId} skipped: target gone, or already linked`);
+  }
+  console.log(`[event] ${event.event_type} by ${event.actor} (${event.id})`);
+  const reviewData = written.review;
 
   // Notifications (best-effort — don't fail the submission). Suppressed when
   // the caller will auto-approve (admin self-submission).

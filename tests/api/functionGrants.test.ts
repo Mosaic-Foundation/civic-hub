@@ -44,6 +44,7 @@ const AUTHENTICATED = [
   "reshuffle_ballots",
   "search_processes",
   "search_processes_count",
+  "submit_for_review",
   "take_member_invites",
   "take_sign_in_attempt",
   "transition_process",
