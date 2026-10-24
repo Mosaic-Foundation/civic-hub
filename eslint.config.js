@@ -233,19 +233,13 @@ const hostingBoundaryRule = {
 // nothing is added.
 const MODULES_NOT_YET_ON_STORES = [
   "src/modules/civic.auth/",
-  "src/modules/civic.input/",
-  "src/modules/civic.projects/",
-  "src/modules/civic.proposals/",
   "src/modules/civic.receipts/",
   "src/modules/civic.review/",
 ];
 const PROCESS_TABLE_OWNERS = ["src/services/processService.ts", "src/services/processRows.ts", "src/db/", "src/control/hubBundle/"];
 const PROCESS_TABLE_NOT_YET = [
   "src/control/dashboard/attention.ts",
-  "src/controllers/inputController.ts",
   "src/debug/autoSeed.ts",
-  "src/modules/civic.projects/handler.ts",
-  "src/modules/civic.proposals/handler.ts",
   "src/modules/civic.receipts/index.ts",
   "src/modules/civic.review/service.ts",
   "src/processes/spawnBrief.ts",
@@ -261,7 +255,6 @@ const PROCESS_TABLE_NOT_YET = [
   "src/services/sampleSeed.ts",
 ];
 const CONTROLLERS_NOT_YET_ON_SERVICES = [
-  "src/controllers/inputController.ts",
 ];
 const QUERY_NAMES = new Set(["forHub", "readAll", "inChunks", "getDb", "getHubTokenDb"]);
 

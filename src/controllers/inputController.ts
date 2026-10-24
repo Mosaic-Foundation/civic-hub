@@ -12,7 +12,6 @@ import {
 import { getProcess } from "../services/processService.js";
 import { isProcessTypeEnabled } from "../services/pluginGate.js";
 import { getProcessHandler } from "../processes/registry.js";
-import { forHub } from "../db/forHub.js";
 import {
   getAuthUser,
   resolveCaller,
@@ -25,28 +24,8 @@ import {
   redactForAudience, personFallbackName } from "../services/creatorDisplay.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import { currentHubId } from "../config/hubContext.js";
-
-function db() {
-  return forHub(currentHubId());
-}
-
-async function proposalExists(id: string): Promise<boolean> {
-  const data = await db()
-    .from("proposals")
-    .select<{ id: string }>("id")
-    .eq("id", id)
-    .maybeSingle();
-  return !!data;
-}
-
-async function getSourceProposalId(processId: string): Promise<string | null> {
-  const data = await db()
-    .from("processes")
-    .select<{ source_proposal_id: string | null }>("source_proposal_id")
-    .eq("id", processId)
-    .maybeSingle();
-  return data?.source_proposal_id ?? null;
-}
+import { proposalExists } from "../modules/civic.proposals/index.js";
+import { readSourceProposalId } from "../services/processRows.js";
 
 /**
  * Redact a comment for non-admin viewers.
@@ -183,7 +162,7 @@ export const handleGetInputs = route(async (req, res) => {
   // If this is a vote that was converted from a proposal, merge in
   // the proposal-phase comments so they carry forward.
   if (process) {
-    const sourceProposalId = await getSourceProposalId(processId);
+    const sourceProposalId = await readSourceProposalId(processId);
     if (sourceProposalId) {
       const proposalInputs = await getInputsByProcess(sourceProposalId);
       inputs = [...inputs, ...proposalInputs];

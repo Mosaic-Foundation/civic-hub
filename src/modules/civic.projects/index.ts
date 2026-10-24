@@ -1,7 +1,6 @@
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../../errors/index.js";
-import { forHub, type HubDb } from "../../db/forHub.js";
-import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
+import { projectsStore, type ProjectRow } from "./store.js";
 import type {
   Project,
   ProjectUpdate,
@@ -26,29 +25,8 @@ export type {
   SentimentValue,
   CreateProjectInput,
 } from "./models.js";
-import { readAll } from "../../db/readAll.js";
-
-function db(): HubDb {
-  return forHub(currentHubId());
-}
 
 // --- Row <-> model mapping -------------------------------------------------
-
-interface ProjectRow {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string | null;
-  sources: string[] | null;
-  status: ProjectStatus;
-  support_count: number;
-  oppose_count: number;
-  assistant_helped: boolean;
-  banner_image_url: string | null;
-  banner_image_alt: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 function rowToProject(row: ProjectRow): Project {
   return {
@@ -81,23 +59,19 @@ export async function createProject(
   const id = input.id ?? generateId("proj");
   const sources = (input.sources ?? []).filter((s) => s.trim().length > 0);
 
-  const data = await db()
-    .from("projects")
-    .insert({
-      id,
-      user_id: input.user_id,
-      title: input.title.trim(),
-      description: (input.description ?? "").trim(),
-      sources,
-      status: "active" as ProjectStatus,
-      support_count: 0,
-      oppose_count: 0,
-      assistant_helped: input.assistant_helped ?? false,
-      banner_image_url: input.banner_image_url ?? null,
-      banner_image_alt: input.banner_image_alt ?? null,
-    })
-    .select<ProjectRow>()
-    .single();
+  const data = await projectsStore.get().insertProject({
+    id,
+    user_id: input.user_id,
+    title: input.title.trim(),
+    description: (input.description ?? "").trim(),
+    sources,
+    status: "active" as ProjectStatus,
+    support_count: 0,
+    oppose_count: 0,
+    assistant_helped: input.assistant_helped ?? false,
+    banner_image_url: input.banner_image_url ?? null,
+    banner_image_alt: input.banner_image_alt ?? null,
+  });
 
   const project = rowToProject(data);
 
@@ -115,11 +89,7 @@ export async function createProject(
 }
 
 export async function getProject(id: string): Promise<Project | undefined> {
-  const data = await db()
-    .from("projects")
-    .select<ProjectRow>("*")
-    .eq("id", id)
-    .maybeSingle();
+  const data = await projectsStore.get().findProject(id);
   if (!data) return undefined;
   return rowToProject(data);
 }
@@ -127,24 +97,7 @@ export async function getProject(id: string): Promise<Project | undefined> {
 export async function listProjects(
   statusFilter?: ProjectStatus,
 ): Promise<Project[]> {
-  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
-  const data = await readAll((from, to) => {
-    let query = db()
-      .from("projects")
-      .select<ProjectRow>("*")
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: true });
-
-    if (statusFilter) {
-      query = query.eq("status", statusFilter);
-    } else {
-      // Default-exclude archived, for the same reason as proposals: an
-      // unfiltered list is the public list.
-      query = query.neq("status", "archived");
-    }
-
-    return query.range(from, to);
-  });
+  const data = await projectsStore.get().listProjects(statusFilter);
   return data.map(rowToProject);
 }
 
@@ -167,12 +120,7 @@ export async function updateProject(
   if (patch.description !== undefined) updates.description = patch.description.trim();
   if (patch.sources !== undefined) updates.sources = patch.sources;
 
-  const data = await db()
-    .from("projects")
-    .update(updates)
-    .eq("id", id)
-    .select<ProjectRow>()
-    .single();
+  const data = await projectsStore.get().updateProject(id, updates);
   return rowToProject(data);
 }
 
@@ -183,11 +131,7 @@ export async function updateProject(
  * in one transaction; this copy is written after it commits.
  */
 export async function markProjectCompleted(id: string): Promise<void> {
-  await db()
-    .from("projects")
-    .update({ status: "completed" as ProjectStatus, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("status", "active");
+  await projectsStore.get().completeIfActive(id);
 }
 
 // --- Project Updates -------------------------------------------------------
@@ -201,15 +145,7 @@ export async function markProjectCompleted(id: string): Promise<void> {
 export async function listProjectUpdates(
   projectId: string,
 ): Promise<ProjectUpdate[]> {
-  const data = await db()
-    .from("community_inputs")
-    .select<{ id: string; process_id: string; body: string; submitted_at: string }>(
-      "id, process_id, body, submitted_at",
-    )
-    .eq("process_id", projectId)
-    .eq("phase", "update")
-    .is("hidden_at", null)
-    .order("submitted_at", { ascending: false });
+  const data = await projectsStore.get().updateInputs(projectId);
   return data.map((r) => ({
     id: r.id,
     project_id: r.process_id,
@@ -233,21 +169,10 @@ export async function setProjectSentiment(
     throw new ConflictError("Cannot change sentiment on an archived project", "project_not_active");
   }
 
-  const hubDb = db();
-
   if (sentiment === "neutral") {
-    await hubDb
-      .from("project_sentiments")
-      .delete()
-      .eq("project_id", projectId)
-      .eq("user_id", userId);
+    await projectsStore.get().deleteSentiment(projectId, userId);
   } else {
-    await hubDb
-      .from("project_sentiments")
-      .upsert(
-        { project_id: projectId, user_id: userId, sentiment },
-        { onConflict: "hub_id,project_id,user_id" },
-      );
+    await projectsStore.get().upsertSentiment(projectId, userId, sentiment);
   }
 
   const counts = await recountSentiments(projectId);
@@ -268,37 +193,16 @@ export async function getUserSentiment(
   projectId: string,
   userId: string,
 ): Promise<SentimentValue | null> {
-  const data = await db()
-    .from("project_sentiments")
-    .select<{ sentiment: SentimentValue }>("sentiment")
-    .eq("project_id", projectId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!data) return null;
-  return data.sentiment;
+  return projectsStore.get().sentimentOf(projectId, userId);
 }
 
 async function recountSentiments(
   projectId: string,
 ): Promise<{ support_count: number; oppose_count: number }> {
-  const hubDb = db();
+  const support_count = await projectsStore.get().countSentiments(projectId, "support");
+  const oppose_count = await projectsStore.get().countSentiments(projectId, "oppose");
 
-  const support_count = await hubDb
-    .from("project_sentiments")
-    .count()
-    .eq("project_id", projectId)
-    .eq("sentiment", "support");
-
-  const oppose_count = await hubDb
-    .from("project_sentiments")
-    .count()
-    .eq("project_id", projectId)
-    .eq("sentiment", "oppose");
-
-  await hubDb
-    .from("projects")
-    .update({ support_count, oppose_count, updated_at: new Date().toISOString() })
-    .eq("id", projectId);
+  await projectsStore.get().setSentimentCounts(projectId, { support_count, oppose_count });
 
   return { support_count, oppose_count };
 }
@@ -319,12 +223,7 @@ export async function getProjectReadModel(
   const updates = await listProjectUpdates(id);
   const userSentiment = actor ? await getUserSentiment(id, actor) : null;
 
-  const commentCount = await db()
-    .from("community_inputs")
-    .count()
-    .eq("process_id", id)
-    .neq("phase", "update")
-    .is("hidden_at", null);
+  const commentCount = await projectsStore.get().countComments(id);
 
   return {
     ...project,
@@ -352,7 +251,5 @@ export function getProjectSummary(project: Project): Record<string, unknown> {
 // --- Dev/test utilities ----------------------------------------------------
 
 export async function clearProjects(): Promise<void> {
-  const hubDb = db();
-  await hubDb.from("project_sentiments").delete().neq("project_id", "");
-  await hubDb.from("projects").delete().neq("id", "");
+  await projectsStore.get().deleteAll();
 }

@@ -6,16 +6,16 @@
 // Proposals are raw, unstructured ideas. They become structured
 // civic.vote processes only after admin review and curation.
 //
-// Storage: Postgres (proposals, proposal_supports tables).
+// Storage: the proposals and proposal_supports tables, through the module's
+// store (store.ts, bound by the host).
 //
 // GUARDRAIL: This module MUST NOT import from civic.vote.
 // The conversion to a vote is handled by the service/controller layer,
 // which coordinates between this module and the vote module.
 
 import { ConflictError, NotFoundError, ValidationError } from "../../errors/index.js";
-import { forHub, HubDbError, type HubDb } from "../../db/forHub.js";
-import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
+import { proposalsStore, type ProposalRow } from "./store.js";
 import type {
   Proposal,
   ProposalSupport,
@@ -37,12 +37,7 @@ export type {
   CreateProposalInput,
   ProposalConfig,
 } from "./models.js";
-import { readAll } from "../../db/readAll.js";
 export { DEFAULT_PROPOSAL_CONFIG } from "./models.js";
-
-function db(): HubDb {
-  return forHub(currentHubId());
-}
 
 // --- Configuration ---------------------------------------------------------
 
@@ -57,22 +52,6 @@ export function getProposalConfig(): ProposalConfig {
 }
 
 // --- Row <-> model mapping -------------------------------------------------
-
-interface ProposalRow {
-  id: string;
-  title: string;
-  description: string | null;
-  links: string[] | null;
-  status: ProposalStatus;
-  support_count: number;
-  submitted_by: string | null;
-  converted_to_process_id: string | null;
-  category?: string | null;
-  assistant_helped?: boolean;
-  closes_at?: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 function rowToProposal(row: ProposalRow): Proposal {
   return {
@@ -120,11 +99,7 @@ export async function createProposal(
   if (input.assistant_helped !== undefined) row.assistant_helped = input.assistant_helped;
   if (input.closes_at !== undefined) row.closes_at = input.closes_at;
 
-  const data = await db()
-    .from("proposals")
-    .insert(row)
-    .select<ProposalRow>()
-    .single();
+  const data = await proposalsStore.get().insertProposal(row);
 
   const proposal = rowToProposal(data);
 
@@ -145,13 +120,17 @@ export async function createProposal(
  * Get a proposal by ID.
  */
 export async function getProposal(id: string): Promise<Proposal | undefined> {
-  const data = await db()
-    .from("proposals")
-    .select<ProposalRow>("*")
-    .eq("id", id)
-    .maybeSingle();
+  const data = await proposalsStore.get().findProposal(id);
   if (!data) return undefined;
   return rowToProposal(data);
+}
+
+/**
+ * Whether a proposal row with this id exists (a cheaper check than
+ * getProposal, for callers that only need to know).
+ */
+export async function proposalExists(id: string): Promise<boolean> {
+  return proposalsStore.get().proposalExists(id);
 }
 
 /**
@@ -165,24 +144,7 @@ export async function getProposal(id: string): Promise<Proposal | undefined> {
 export async function listProposals(
   statusFilter?: ProposalStatus,
 ): Promise<Proposal[]> {
-  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
-  const data = await readAll((from, to) => {
-    let query = db()
-      .from("proposals")
-      .select<ProposalRow>("*")
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: true });
-
-    if (statusFilter) {
-      query = query.eq("status", statusFilter);
-    } else {
-      // Default-exclude archived. See the note above: an unfiltered list is the
-      // PUBLIC list, and an archived proposal must not appear on it.
-      query = query.neq("status", "archived");
-    }
-
-    return query.range(from, to);
-  });
+  const data = await proposalsStore.get().listProposals(statusFilter);
   return data.map(rowToProposal);
 }
 
@@ -191,16 +153,7 @@ export async function listProposals(
  * Most supported first, then most recent.
  */
 export async function listEndorsedProposals(): Promise<Proposal[]> {
-  const data = await readAll((from, to) =>
-    db()
-      .from("proposals")
-      .select<ProposalRow>("*")
-      .eq("status", "endorsed")
-      .order("support_count", { ascending: false })
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
+  const data = await proposalsStore.get().listEndorsed();
   return data.map(rowToProposal);
 }
 
@@ -219,8 +172,6 @@ export async function supportProposal(
   userId: string,
   emit: EmitEventFn,
 ): Promise<Proposal> {
-  const hubDb = db();
-
   // Load current proposal and validate state.
   const proposal = await getProposal(proposalId);
   if (!proposal) {
@@ -234,37 +185,19 @@ export async function supportProposal(
   }
 
   // Insert support — composite PK catches duplicates atomically.
-  try {
-    await hubDb.from("proposal_supports").insert({
-      proposal_id: proposalId,
-      user_id: userId,
-    });
-  } catch (err) {
-    if (err instanceof HubDbError && err.code === "23505") {
-      throw new ConflictError("You have already supported this proposal", "already_supported");
-    }
-    throw err;
+  const inserted = await proposalsStore.get().insertSupport(proposalId, userId);
+  if (inserted === "duplicate") {
+    throw new ConflictError("You have already supported this proposal", "already_supported");
   }
 
   // Recount from the authoritative source (the supports table).
-  const newCount = await hubDb
-    .from("proposal_supports")
-    .count()
-    .eq("proposal_id", proposalId);
+  const newCount = await proposalsStore.get().countSupports(proposalId);
 
   // Update the proposal row with the new count. Status stays unchanged —
   // Slice B removed the auto-promotion to "endorsed" when crossing the
   // support threshold. Proposals remain in "submitted" status regardless
   // of support count.
-  const updated = await hubDb
-    .from("proposals")
-    .update({
-      support_count: newCount,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", proposalId)
-    .select<ProposalRow>()
-    .single();
+  const updated = await proposalsStore.get().setSupportCount(proposalId, newCount);
 
   const result = rowToProposal(updated);
 
@@ -291,8 +224,6 @@ export async function withdrawProposalSupport(
   userId: string,
   emit: EmitEventFn,
 ): Promise<Proposal> {
-  const hubDb = db();
-
   const proposal = await getProposal(proposalId);
   if (!proposal) {
     throw new NotFoundError("Proposal not found", "proposal_not_found");
@@ -304,30 +235,14 @@ export async function withdrawProposalSupport(
     );
   }
 
-  const removed = await hubDb
-    .from("proposal_supports")
-    .delete()
-    .eq("proposal_id", proposalId)
-    .eq("user_id", userId)
-    .select();
-  if (!removed || removed.length === 0) {
+  const removed = await proposalsStore.get().deleteSupport(proposalId, userId);
+  if (!removed) {
     throw new ConflictError("You haven't supported this proposal", "not_supported");
   }
 
-  const newCount = await hubDb
-    .from("proposal_supports")
-    .count()
-    .eq("proposal_id", proposalId);
+  const newCount = await proposalsStore.get().countSupports(proposalId);
 
-  const updated = await hubDb
-    .from("proposals")
-    .update({
-      support_count: newCount,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", proposalId)
-    .select<ProposalRow>()
-    .single();
+  const updated = await proposalsStore.get().setSupportCount(proposalId, newCount);
 
   const result = rowToProposal(updated);
 
@@ -350,11 +265,7 @@ export async function hasUserSupported(
   proposalId: string,
   userId: string,
 ): Promise<boolean> {
-  const count = await db()
-    .from("proposal_supports")
-    .count()
-    .eq("proposal_id", proposalId)
-    .eq("user_id", userId);
+  const count = await proposalsStore.get().countSupports(proposalId, userId);
   return count > 0;
 }
 
@@ -368,11 +279,7 @@ export async function hasUserSupported(
 
 /** Copy a committed close onto the proposals row (only an open one). */
 export async function markProposalClosed(proposalId: string): Promise<void> {
-  await db()
-    .from("proposals")
-    .update({ status: "closed" as ProposalStatus, updated_at: new Date().toISOString() })
-    .eq("id", proposalId)
-    .eq("status", "submitted");
+  await proposalsStore.get().closeIfSubmitted(proposalId);
 }
 
 // --- Read models -----------------------------------------------------------
@@ -444,9 +351,5 @@ export function getProposalSummary(proposal: Proposal): Record<string, unknown> 
 
 /** Clear all proposals — dev/seed only. ON DELETE CASCADE removes supports. */
 export async function clearProposals(): Promise<void> {
-  const hubDb = db();
-  // Explicit delete of supports first (belt-and-suspenders; FK cascade would
-  // handle it, but being explicit avoids any surprise if FK is modified).
-  await hubDb.from("proposal_supports").delete().neq("proposal_id", "");
-  await hubDb.from("proposals").delete().neq("id", "");
+  await proposalsStore.get().deleteAll();
 }

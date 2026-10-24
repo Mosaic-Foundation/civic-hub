@@ -4,18 +4,18 @@
 // Input is stored independently from votes and is NOT used
 // in vote tallying or lifecycle transitions.
 //
-// Storage: Postgres (community_inputs table), through forHub(): every read,
-// write and the dev clear are the request's hub only (Phase 2b).
+// Storage: the community_inputs table, through the module's store (store.ts,
+// bound by the host): every read, write and the dev clear are the request's
+// hub only.
 //
 // GUARDRAIL: This module MUST NOT import from civic.vote or any
 // lifecycle/results code. Community input is a parallel data stream.
 
 import { NotFoundError, ValidationError } from "../../errors/index.js";
-import { forHub } from "../../db/forHub.js";
-import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
 import { assertPassesWordlist } from "../../shared/wordlist/index.js";
 import type { CommunityInput, CommentModeration, CommentPhase, InputContext } from "./models.js";
+import { inputStore, type InputRow } from "./store.js";
 import { BODY_PREVIEW_LEN, MODERATION_REASON_MAX } from "./models.js";
 
 export type {
@@ -25,27 +25,7 @@ export type {
   EmitEventFn,
   InputContext,
 } from "./models.js";
-import { readAll } from "../../db/readAll.js";
 export { MODERATION_REASON_MAX } from "./models.js";
-
-interface InputRow {
-  id: string;
-  process_id: string;
-  author_id: string | null;
-  author_name: string | null;
-  is_anonymous: boolean | null;
-  body: string;
-  submitted_at: string;
-  phase: string | null;
-  hidden_at: string | null;
-  hidden_by: string | null;
-  hidden_reason: string | null;
-  restored_at: string | null;
-}
-
-function db() {
-  return forHub(currentHubId());
-}
 
 function rowToInput(row: InputRow): CommunityInput {
   // The `hidden` flag is derived from the columns: a comment is hidden
@@ -117,19 +97,15 @@ export async function submitInput(
   // cache lag when the column was new; that update's failure was ignored, so
   // a comment could report a phase it did not store. The column has long
   // since settled: one insert, and a failure throws.
-  const data = await db()
-    .from("community_inputs")
-    .insert({
-      id,
-      process_id,
-      author_id,
-      body: trimmed,
-      is_anonymous: isAnonymous,
-      author_name: authorName,
-      ...(phase ? { phase } : {}),
-    })
-    .select<InputRow>()
-    .single();
+  const data = await inputStore.get().insertInput({
+    id,
+    process_id,
+    author_id,
+    body: trimmed,
+    is_anonymous: isAnonymous,
+    author_name: authorName,
+    ...(phase ? { phase } : {}),
+  });
 
   const input = rowToInput(data);
 
@@ -162,16 +138,7 @@ export async function submitInput(
 export async function getInputsByProcess(
   process_id: string,
 ): Promise<CommunityInput[]> {
-  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
-  const rows = await readAll((from, to) =>
-    db()
-      .from("community_inputs")
-      .select<InputRow>("*")
-      .eq("process_id", process_id)
-      .order("submitted_at", { ascending: true })
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
+  const rows = await inputStore.get().inputsForProcess(process_id);
   return rows.map(rowToInput);
 }
 
@@ -184,11 +151,7 @@ export async function getInputsByProcess(
 export async function getInputById(
   id: string,
 ): Promise<CommunityInput | undefined> {
-  const row = await db()
-    .from("community_inputs")
-    .select<InputRow>("*")
-    .eq("id", id)
-    .maybeSingle();
+  const row = await inputStore.get().findInput(id);
   return row ? rowToInput(row) : undefined;
 }
 
@@ -225,17 +188,7 @@ export async function hideComment(
 
   const now = new Date().toISOString();
   const updated = rowToInput(
-    await db()
-      .from("community_inputs")
-      .update({
-        hidden_at: now,
-        hidden_by: admin_id,
-        hidden_reason: trimmedReason,
-        restored_at: null,
-      })
-      .eq("id", comment_id)
-      .select<InputRow>()
-      .single(),
+    await inputStore.get().markHidden(comment_id, { hiddenAt: now, hiddenBy: admin_id, reason: trimmedReason }),
   );
 
   await ctx.emit({
@@ -285,12 +238,7 @@ export async function restoreComment(
 
   const now = new Date().toISOString();
   const updated = rowToInput(
-    await db()
-      .from("community_inputs")
-      .update({ restored_at: now })
-      .eq("id", comment_id)
-      .select<InputRow>()
-      .single(),
+    await inputStore.get().markRestored(comment_id, now),
   );
 
   await ctx.emit({
@@ -314,5 +262,5 @@ export async function restoreComment(
 
 /** Clear this hub's inputs — dev/seed only. Other hubs' are untouched. */
 export async function clearInputs(): Promise<void> {
-  await db().from("community_inputs").delete().neq("id", "");
+  await inputStore.get().deleteAll();
 }

@@ -18,10 +18,19 @@ import { feedbackStore } from "../modules/civic.feedback/store.js";
 import { feedbackStoreImpl } from "./feedback.js";
 import { adminDigestStore } from "../modules/civic.admin_digest/store.js";
 import { adminDigestStoreImpl } from "./adminDigest.js";
+import { proposalsStore } from "../modules/civic.proposals/store.js";
+import { proposalsStoreImpl } from "./proposals.js";
+import { projectsStore } from "../modules/civic.projects/store.js";
+import { projectsStoreImpl } from "./projects.js";
+import { inputStore } from "../modules/civic.input/store.js";
+import { inputStoreImpl } from "./input.js";
 
 export function installStores(): void {
   wordcloudStore.bind(wordcloudStoreImpl);
   draftsStore.bind(draftsStoreImpl);
   feedbackStore.bind(feedbackStoreImpl);
   adminDigestStore.bind(adminDigestStoreImpl);
+  proposalsStore.bind(proposalsStoreImpl);
+  projectsStore.bind(projectsStoreImpl);
+  inputStore.bind(inputStoreImpl);
 }

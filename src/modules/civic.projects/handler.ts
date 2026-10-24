@@ -14,8 +14,8 @@ import { ValidationError } from "../../errors/index.js";
 import { Process, ProcessAction } from "../../models/process.js";
 import { ProcessHandler } from "../../processes/types.js";
 import { afterActionCommits } from "../../services/actionScope.js";
-import { forHub } from "../../db/forHub.js";
-import { currentHubId } from "../../config/hubContext.js";
+import { readProcessState, writeProcessState } from "../../services/processRows.js";
+import { projectsStore } from "./store.js";
 import { validateLinkSet } from "../civic.process_links/index.js";
 import {
   createProject,
@@ -32,7 +32,6 @@ import type { BriefContent } from "../civic.brief/index.js";
 import { projectAssistantConfig } from "./assistantConfig.js";
 import { createDraft, setDraftStatus, updateDraft } from "../civic.drafts/index.js";
 import { projectDraftKind } from "../../processes/draftKinds.js";
-import { readAll } from "../../db/readAll.js";
 import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
 import { getSettingSync } from "../../services/hubSettings.js";
 import { KEYS } from "../../models/hubSettings.js";
@@ -43,10 +42,6 @@ import type { FeedProcessMeta } from "../../processes/contracts/feedMeta.js";
 // What the people taking part are called on this hub (review R29, 2026-10-07).
 const hubNoun = (n: number): string =>
   participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), n, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
-
-function db() {
-  return forHub(currentHubId());
-}
 
 const projectAdapter: ProcessHandler = {
   type: "civic.project",
@@ -60,35 +55,14 @@ const projectAdapter: ProcessHandler = {
   // while the project is active; the title locks once anyone supports it,
   // because the title is what people endorsed.
   editPolicy: async (process) => {
-    const row = await db()
-      .from("projects")
-      .select<{ status?: string }>("status")
-      .eq("id", process.id)
-      .maybeSingle();
-    const status = row?.status;
+    const status = await projectsStore.get().statusOf(process.id);
     if (status !== "active") {
       return { editable: false, locked_fields: [], reason: "Only an active project can be edited." };
     }
-    const count = await db()
-      .from("project_sentiments")
-      .count()
-      .eq("project_id", process.id)
-      .eq("sentiment", "support");
+    const count = await projectsStore.get().countSentiments(process.id, "support");
     return { editable: true, locked_fields: count > 0 ? ["title"] : [] };
   },
-  listSupporters: async (processId) => {
-    // Paged: a project can have more than 1,000 supporters (PostgREST's cap).
-    const rows = await readAll((from, to) =>
-      db()
-        .from("project_sentiments")
-        .select<{ user_id: string }>("user_id")
-        .eq("project_id", processId)
-        .eq("sentiment", "support")
-        .order("user_id", { ascending: true })
-        .range(from, to),
-    );
-    return rows.map((r) => r.user_id);
-  },
+  listSupporters: async (processId) => projectsStore.get().supporterIds(processId),
   draftFromProcess: async (process, editorId, links) => {
     const project = await getProject(process.id);
     const content = (process.content ?? {}) as Record<string, unknown>;
@@ -115,19 +89,9 @@ const projectAdapter: ProcessHandler = {
       links: validateLinkSet(process.id, links),
     });
     // Fresh start: no stale check result, and the check must run again.
-    await db()
-      .from("project_drafts")
-      .update({ last_review_result: null, draft_modified_since_review: true, coc_checked_hash: null })
-      .eq("id", draftId);
+    await projectsStore.get().resetDraftReview(draftId);
   },
-  listSupportedBy: async (userId) => {
-    const rows = await db()
-      .from("project_sentiments")
-      .select<{ project_id: string }>("project_id")
-      .eq("user_id", userId)
-      .eq("sentiment", "support");
-    return rows.map((r) => r.project_id);
-  },
+  listSupportedBy: async (userId) => projectsStore.get().supportedProjectIds(userId),
   onEdited: async (process, changes) => {
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     const c = changes.current;
@@ -136,7 +100,7 @@ const projectAdapter: ProcessHandler = {
     if (Array.isArray(c.sources)) patch.sources = c.sources;
     if ("banner_image_url" in c) patch.banner_image_url = c.banner_image_url ?? null;
     if ("banner_image_alt" in c) patch.banner_image_alt = c.banner_image_alt ?? null;
-    await db().from("projects").update(patch).eq("id", process.id);
+    await projectsStore.get().patchProject(process.id, patch);
   },
 
   getAssistantConfig: () => projectAssistantConfig,
@@ -236,27 +200,18 @@ const projectAdapter: ProcessHandler = {
    * restored a closed proposal as `submitted` in the sibling handler.
    */
   async onArchive(process: Process): Promise<void> {
-    const hubDb = db();
-    const row = await hubDb
-      .from("projects").select<{ status?: string }>("status").eq("id", process.id).maybeSingle();
-    const previous = row?.status ?? "active";
+    const previous = (await projectsStore.get().statusOf(process.id)) ?? "active";
 
     // Re-read: archiveProcess has already written state with its archive meta.
-    const proc = await hubDb
-      .from("processes").select<{ state: Record<string, unknown> }>("state").eq("id", process.id).maybeSingle();
-    const state = { ...((proc?.state as Record<string, unknown>) ?? {}) };
+    const state = (await readProcessState(process.id)) ?? {};
     const archive = { ...((state.archive as Record<string, unknown>) ?? {}) };
     archive.child_previous_status = previous;
     state.archive = archive;
 
-    await hubDb
-      .from("processes").update({ state }).eq("id", process.id);
+    await writeProcessState(process.id, state);
     process.state = state;
 
-    await hubDb
-      .from("projects")
-      .update({ status: "archived", updated_at: new Date().toISOString() })
-      .eq("id", process.id);
+    await projectsStore.get().setStatus(process.id, "archived");
   },
 
   async onRestore(
@@ -272,10 +227,7 @@ const projectAdapter: ProcessHandler = {
     const next =
       typeof stashed === "string" && known.includes(stashed) ? stashed : "active";
 
-    await db()
-      .from("projects")
-      .update({ status: next, updated_at: new Date().toISOString() })
-      .eq("id", _process.id);
+    await projectsStore.get().setStatus(_process.id, next);
   },
 
   async generateBrief(process: Process): Promise<BriefContent | null> {

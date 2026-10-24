@@ -17,9 +17,9 @@
 import { ValidationError } from "../../errors/index.js";
 import { Process, ProcessAction } from "../../models/process.js";
 import { ProcessHandler } from "../../processes/types.js";
-import { forHub } from "../../db/forHub.js";
-import { currentHubId } from "../../config/hubContext.js";
 import { emitEvent } from "../../events/eventEmitter.js";
+import { readProcessState, writeProcessState } from "../../services/processRows.js";
+import { proposalsStore } from "./store.js";
 import {
   createProposal,
   getProposal,
@@ -45,10 +45,6 @@ import { PROPOSAL_MANIFEST } from "./manifest.js";
 // What the people taking part are called on this hub (review R29, 2026-10-07).
 const hubNoun = (n: number): string =>
   participantNoun(hubKindOf(getSettingSync(KEYS.IDENTITY_HUB_KIND)), n, getSettingSync(KEYS.COPY_RESIDENT_NOUN));
-
-function db() {
-  return forHub(currentHubId());
-}
 
 /** The actor a deadline close runs as (the hourly job). */
 const AUTO_CLOSE_ACTOR = "system:auto-close";
@@ -196,27 +192,18 @@ const proposalAdapter: ProcessHandler = {
    * this, and it silently restored a closed proposal as `submitted`.
    */
   async onArchive(process: Process): Promise<void> {
-    const hubDb = db();
-    const row = await hubDb
-      .from("proposals").select<{ status?: string }>("status").eq("id", process.id).maybeSingle();
-    const previous = row?.status ?? "submitted";
+    const previous = (await proposalsStore.get().statusOf(process.id)) ?? "submitted";
 
     // Re-read: archiveProcess has already written state with its archive meta.
-    const proc = await hubDb
-      .from("processes").select<{ state: Record<string, unknown> }>("state").eq("id", process.id).maybeSingle();
-    const state = { ...((proc?.state as Record<string, unknown>) ?? {}) };
+    const state = (await readProcessState(process.id)) ?? {};
     const archive = { ...((state.archive as Record<string, unknown>) ?? {}) };
     archive.child_previous_status = previous;
     state.archive = archive;
 
-    await hubDb
-      .from("processes").update({ state }).eq("id", process.id);
+    await writeProcessState(process.id, state);
     process.state = state;
 
-    await hubDb
-      .from("proposals")
-      .update({ status: "archived", updated_at: new Date().toISOString() })
-      .eq("id", process.id);
+    await proposalsStore.get().setStatus(process.id, "archived");
   },
 
   async onRestore(
@@ -232,10 +219,7 @@ const proposalAdapter: ProcessHandler = {
     const next =
       typeof stashed === "string" && known.includes(stashed) ? stashed : "submitted";
 
-    await db()
-      .from("proposals")
-      .update({ status: next, updated_at: new Date().toISOString() })
-      .eq("id", _process.id);
+    await proposalsStore.get().setStatus(_process.id, next);
   },
 
   async generateBrief(process: Process): Promise<BriefContent | null> {

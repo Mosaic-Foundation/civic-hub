@@ -84,3 +84,15 @@ export async function readProcessRow(processId: string): Promise<Record<string, 
 export async function insertProcessRow(row: Record<string, unknown>): Promise<void> {
   await db().from("processes").insert(row);
 }
+
+// --- proposals, projects and input ---
+
+/** The proposal a process was converted from (`source_proposal_id`), or null. */
+export async function readSourceProposalId(processId: string): Promise<string | null> {
+  const data = await db()
+    .from("processes")
+    .select<{ source_proposal_id: string | null }>("source_proposal_id")
+    .eq("id", processId)
+    .maybeSingle();
+  return data?.source_proposal_id ?? null;
+}
