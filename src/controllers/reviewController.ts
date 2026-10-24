@@ -21,6 +21,7 @@ import {
 } from "../modules/civic.review/index.js";
 import { processDetailPath } from "../processes/registry.js";
 import { processTypesAndTitles, readProcessRow } from "../services/processRows.js";
+import type { ProcessRow } from "../services/processService.js";
 
 /** The process row backing a review (type/title/description only), for list views. */
 /**
@@ -43,7 +44,7 @@ async function withProcessSummaries<R extends { process_id: string }>(
 }
 
 /** The full process row backing a review, for detail views. */
-async function getProcessRow(processId: string): Promise<Record<string, unknown>> {
+async function getProcessRow(processId: string): Promise<ProcessRow> {
   return readProcessRow(processId);
 }
 

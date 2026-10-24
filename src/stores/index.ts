@@ -24,6 +24,10 @@ import { projectsStore } from "../modules/civic.projects/store.js";
 import { projectsStoreImpl } from "./projects.js";
 import { inputStore } from "../modules/civic.input/store.js";
 import { inputStoreImpl } from "./input.js";
+import { reviewStore } from "../modules/civic.review/store.js";
+import { reviewStoreImpl } from "./review.js";
+import { receiptsStore } from "../modules/civic.receipts/store.js";
+import { receiptsStoreImpl } from "./receipts.js";
 
 export function installStores(): void {
   wordcloudStore.bind(wordcloudStoreImpl);
@@ -33,4 +37,6 @@ export function installStores(): void {
   proposalsStore.bind(proposalsStoreImpl);
   projectsStore.bind(projectsStoreImpl);
   inputStore.bind(inputStoreImpl);
+  reviewStore.bind(reviewStoreImpl);
+  receiptsStore.bind(receiptsStoreImpl);
 }

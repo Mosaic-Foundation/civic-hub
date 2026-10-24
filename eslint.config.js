@@ -233,13 +233,9 @@ const hostingBoundaryRule = {
 // nothing is added.
 const MODULES_NOT_YET_ON_STORES = [
   "src/modules/civic.auth/",
-  "src/modules/civic.receipts/",
-  "src/modules/civic.review/",
 ];
 const PROCESS_TABLE_OWNERS = ["src/services/processService.ts", "src/services/processRows.ts", "src/db/", "src/control/hubBundle/"];
 const PROCESS_TABLE_NOT_YET = [
-  "src/modules/civic.receipts/index.ts",
-  "src/modules/civic.review/service.ts",
 ];
 const CONTROLLERS_NOT_YET_ON_SERVICES = [
 ];

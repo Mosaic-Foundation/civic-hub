@@ -23,31 +23,23 @@
 // join key, a shared time, or a shared order. tests/api/ballotSecrecy.test.ts
 // and tests/api/ballotSecrecyCatalog.test.ts fail if one comes back.
 //
-// Per hub since Phase 2a: all tables carry hub_id and every query here goes
-// through forHub(). hub_id is NOT a join key in the sense of the guardrail:
+// Per hub since Phase 2a: all tables carry hub_id and every query goes
+// through forHub() (the store, src/stores/receipts.ts). hub_id is NOT a join
+// key in the sense of the guardrail:
 // both tables already carry process_id, and a process belongs to one hub.
 
 import { CivicError } from "../../errors/index.js";
-import { forHub, type HubDb } from "../../db/forHub.js";
 import { createHash, randomBytes } from "node:crypto";
 import {
   AlreadyVotedError,
   ReceiptNotAcceptedError,
   ReceiptWithoutVoteError,
   VoteClosedError,
-  ballotByReceipt,
-  castBallot,
-  claimVoteKey as claimVoteKeyRpc,
-  reshuffleBallots,
 } from "../../db/atomic.js";
 import type { CivicEvent } from "../../models/event.js";
 import { currentHubId } from "../../config/hubContext.js";
-import { readAll } from "../../db/readAll.js";
-
-/** The hub in scope. Votes are only ever cast, read or cleared inside one. */
-function db(): HubDb {
-  return forHub(currentHubId());
-}
+import { archivedVotes, openOrRecentVoteIds } from "../../services/processRows.js";
+import { receiptsStore } from "./store.js";
 
 // --- Public API ------------------------------------------------------------
 
@@ -94,7 +86,7 @@ export async function recordOrUpdateVote(
 ): Promise<{ receipt_id: string; change_key: string | null; updated: boolean; unchanged: boolean }> {
   const changeKey = held ? null : newChangeKey();
   try {
-    const out = await castBallot({
+    const out = await receiptsStore.get().castBallot({
       hubId: currentHubId(),
       processId,
       userId,
@@ -130,7 +122,7 @@ export async function claimVoteKey(
   userId: string,
 ): Promise<{ receipt_id: string; change_key: string; choice: string } | null> {
   const changeKey = newChangeKey();
-  const out = await claimVoteKeyRpc(currentHubId(), processId, userId, hashChangeKey(changeKey));
+  const out = await receiptsStore.get().claimVoteKey(currentHubId(), processId, userId, hashChangeKey(changeKey));
   return out ? { receipt_id: out.receipt_id, change_key: changeKey, choice: String(out.choice) } : null;
 }
 
@@ -139,7 +131,7 @@ export async function claimVoteKey(
  * shared transaction id. Called at close and by the hourly vote_close job.
  */
 export async function reshuffleBallotsForProcess(processId: string): Promise<number> {
-  return reshuffleBallots(currentHubId(), processId);
+  return receiptsStore.get().reshuffleBallots(currentHubId(), processId);
 }
 
 /**
@@ -149,18 +141,10 @@ export async function reshuffleBallotsForProcess(processId: string): Promise<num
  */
 export async function reshuffleOpenBallots(now: Date = new Date()): Promise<{ processes: number; ballots: number }> {
   const since = new Date(now.getTime() - 2 * 3600_000).toISOString();
-  const rows = await readAll((from, to) =>
-    db()
-      .from("processes")
-      .select<{ id: string }>("id")
-      .eq("type", "civic.vote")
-      .or(`status.eq.active,updated_at.gte.${since}`)
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
+  const ids = await openOrRecentVoteIds(since);
   let ballots = 0;
-  for (const r of rows) ballots += await reshuffleBallotsForProcess(r.id);
-  return { processes: rows.length, ballots };
+  for (const id of ids) ballots += await reshuffleBallotsForProcess(id);
+  return { processes: ids.length, ballots };
 }
 
 /**
@@ -171,15 +155,7 @@ export async function reshuffleOpenBallots(now: Date = new Date()): Promise<{ pr
 export async function getBallotChoicesForProcess(
   processId: string,
 ): Promise<string[]> {
-  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
-  const rows = await readAll((from, to) =>
-    db()
-      .from("vote_records")
-      .select<{ choice: string }>("choice")
-      .eq("process_id", processId)
-      .order("receipt_id", { ascending: true })
-      .range(from, to),
-  );
+  const rows = await receiptsStore.get().ballotChoices(processId);
   return rows.map((r) => String(r.choice));
 }
 
@@ -190,7 +166,7 @@ export async function getBallotChoicesForProcess(
 export async function clearActiveVoteKeysForProcess(
   processId: string,
 ): Promise<void> {
-  await db().from("active_vote_keys").delete().eq("process_id", processId);
+  await receiptsStore.get().clearActiveVoteKeys(processId);
 }
 
 /**
@@ -206,22 +182,14 @@ export async function clearActiveVoteKeysForProcess(
  */
 export async function clearEndedArchivedVoteKeys(now: Date = new Date()): Promise<string[]> {
   // Started from the votes, never by reading the bridge (ballotSecrecyRules).
-  const archived = await readAll((from, to) =>
-    db()
-      .from("processes")
-      .select<{ id: string; state: { voting_closes_at?: string | null } | null }>("id, state")
-      .eq("type", "civic.vote")
-      .eq("status", "archived")
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
+  const archived = await archivedVotes();
   const finished: string[] = [];
   for (const v of archived) {
     const closes = v.state?.voting_closes_at;
     if (closes == null || Date.parse(closes) > now.getTime()) continue;
     // The delete is the check: only a vote that still had rows is shuffled.
-    const cleared = await db().from("active_vote_keys").delete().eq("process_id", v.id).select<{ process_id: string }>("process_id");
-    if (cleared.length === 0) continue;
+    const cleared = await receiptsStore.get().drainActiveVoteKeys(v.id);
+    if (cleared === 0) continue;
     await reshuffleBallotsForProcess(v.id);
     finished.push(v.id);
   }
@@ -239,7 +207,7 @@ export async function verifyReceipt(
 ): Promise<{ receipt_id: string; choice: string } | null> {
   // A failed lookup verifies nothing, as before: null, never a 500.
   try {
-    const row = await ballotByReceipt(currentHubId(), processId, receiptId);
+    const row = await receiptsStore.get().ballotByReceipt(currentHubId(), processId, receiptId);
     return row ? { receipt_id: row.receipt_id, choice: String(row.choice) } : null;
   } catch {
     return null;
@@ -254,15 +222,7 @@ export async function verifyReceipt(
 export async function getVoteLog(
   processId: string,
 ): Promise<{ receipt_id: string; choice: string }[]> {
-  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
-  const rows = await readAll((from, to) =>
-    db()
-      .from("vote_records")
-      .select<{ receipt_id: string; choice: string }>("receipt_id, choice")
-      .eq("process_id", processId)
-      .order("receipt_id", { ascending: true })
-      .range(from, to),
-  );
+  const rows = await receiptsStore.get().ballotLog(processId);
 
   const log = rows.map((r) => ({
     receipt_id: r.receipt_id,
@@ -286,11 +246,7 @@ export async function hasUserVoted(
   userId: string,
   processId: string,
 ): Promise<boolean> {
-  const count = await db()
-    .from("vote_participation")
-    .count()
-    .eq("user_id", userId)
-    .eq("process_id", processId);
+  const count = await receiptsStore.get().countParticipation(userId, processId);
   return count > 0;
 }
 
@@ -300,17 +256,10 @@ export async function hasUserVoted(
  * vote_participation only — never touches vote_records.
  */
 export async function countVoters(processId: string): Promise<number> {
-  return db()
-    .from("vote_participation")
-    .count()
-    .eq("process_id", processId)
-    .eq("has_voted", true);
+  return receiptsStore.get().countVoted(processId);
 }
 
 /** Clear this hub's receipt data — dev/test reset only. */
 export async function clearReceipts(): Promise<void> {
-  const hubDb = db();
-  await hubDb.from("vote_records").delete().neq("receipt_id", "");
-  await hubDb.from("vote_participation").delete().neq("user_id", "");
-  await hubDb.from("active_vote_keys").delete().neq("user_id", "");
+  await receiptsStore.get().clearAll();
 }

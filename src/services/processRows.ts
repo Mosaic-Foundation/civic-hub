@@ -16,6 +16,7 @@ import { readAll } from "../db/readAll.js";
 import { inChunks } from "../db/inChunks.js";
 import { NON_PUBLIC_STATUSES, nonPublicStatusFilter } from "./processLifecycle.js";
 import type { ProcessStatus } from "../models/process.js";
+import type { ProcessRow } from "./processService.js";
 
 function db(): HubDb {
   return forHub(currentHubId());
@@ -77,9 +78,9 @@ export async function processTypesAndTitles(
   );
 }
 
-/** A process's full row; throws when there is not exactly one. */
-export async function readProcessRow(processId: string): Promise<Record<string, unknown>> {
-  return db().from("processes").select("*").eq("id", processId).single();
+/** A process's full row; throws (HubDbError, PGRST116) when there is not exactly one. */
+export async function readProcessRow(processId: string): Promise<ProcessRow> {
+  return db().from("processes").select<ProcessRow>("*").eq("id", processId).single();
 }
 
 /** Insert a process row as given, stamped with the hub in scope. For the dev seed. */
@@ -387,4 +388,74 @@ export async function processVersionOnHub(hubId: string, processId: string): Pro
     .eq("id", processId)
     .single();
   return Number(row.version);
+}
+
+// --- civic.review and civic.receipts ---
+
+/** A process's type and title; HubDbError (PGRST116) when there is none. */
+export async function readProcessTypeAndTitle(processId: string): Promise<{ type: string; title: string }> {
+  return db().from("processes").select<{ type: string; title: string }>("type, title").eq("id", processId).single();
+}
+
+/** A process's type; HubDbError (PGRST116) when there is none. */
+export async function readProcessType(processId: string): Promise<{ type: string }> {
+  return db().from("processes").select<{ type: string }>("type").eq("id", processId).single();
+}
+
+/** The fields a review snapshots, with the type; HubDbError (PGRST116) when there is none. */
+export async function readProcessForSnapshot(processId: string): Promise<{
+  title: string;
+  description: string;
+  content?: Record<string, unknown> | null;
+  config?: Record<string, unknown> | null;
+  type: string;
+}> {
+  return db()
+    .from("processes")
+    .select<{
+      title: string;
+      description: string;
+      content?: Record<string, unknown> | null;
+      config?: Record<string, unknown> | null;
+      type: string;
+    }>("title, description, content, config, type")
+    .eq("id", processId)
+    .single();
+}
+
+/** Archive a process (status and updated_at only, no event). */
+export async function archiveProcessRow(processId: string, updatedAt: string): Promise<void> {
+  await db().from("processes").update({ status: "archived", updated_at: updatedAt }).eq("id", processId);
+}
+
+/** Set a process's status, nothing else (no event). */
+export async function setProcessStatusRow(processId: string, status: string): Promise<void> {
+  await db().from("processes").update({ status }).eq("id", processId);
+}
+
+/** The votes that are open or changed status after `since` (an ISO time), by id (paged past 1,000). */
+export async function openOrRecentVoteIds(since: string): Promise<string[]> {
+  const rows = await readAll((from, to) =>
+    db()
+      .from("processes")
+      .select<{ id: string }>("id")
+      .eq("type", "civic.vote")
+      .or(`status.eq.active,updated_at.gte.${since}`)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
+  return rows.map((r) => r.id);
+}
+
+/** The archived votes with their state, by id (paged past 1,000). */
+export async function archivedVotes(): Promise<Array<{ id: string; state: { voting_closes_at?: string | null } | null }>> {
+  return readAll((from, to) =>
+    db()
+      .from("processes")
+      .select<{ id: string; state: { voting_closes_at?: string | null } | null }>("id, state")
+      .eq("type", "civic.vote")
+      .eq("status", "archived")
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
 }

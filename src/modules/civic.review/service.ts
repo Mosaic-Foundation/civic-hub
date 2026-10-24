@@ -1,5 +1,4 @@
 import { ConflictError, ForbiddenError, NotFoundError } from "../../errors/index.js";
-import { forHub, type HubDb } from "../../db/forHub.js";
 import { reportError } from "../../utils/reportError.js";
 import { assertProcessTypeEnabled } from "../../services/pluginGate.js";
 import { currentHub, currentHubId } from "../../config/hubContext.js";
@@ -33,17 +32,19 @@ import {
   notifyAdminActivationFailed,
 } from "./email.js";
 import { buildEvent } from "../../events/eventEmitter.js";
-import { transitionProcess } from "../../db/atomic.js";
 import { executeAction, getDisabledTypeProcessIds, rowToProcess, type ProcessRow } from "../../services/processService.js";
 import { defaultJurisdiction } from "../../config/hub.js";
 import { getAdminEmailsSync } from "../../services/hubSettings.js";
-import { readAll } from "../../db/readAll.js";
-
-
-/** The hub in scope. Reviews are only ever created, read or transitioned inside one. */
-function db(): HubDb {
-  return forHub(currentHubId());
-}
+import {
+  archiveProcessRow,
+  readProcessForSnapshot,
+  readProcessRow,
+  readProcessType,
+  readProcessTypeAndTitle,
+  setProcessStatusRow,
+  updateProcessColumns,
+} from "../../services/processRows.js";
+import { reviewStore } from "./store.js";
 
 function getAdminEmails(): string[] {
   return getAdminEmailsSync();
@@ -205,12 +206,12 @@ export async function submitForReview(
   // The process, its links, the review, the process's link back to it, the
   // first turn and the event: one transaction (submit_for_review,
   // 20261024000000), stamped with the hub it was submitted on.
-  const written = await db().rpc<{ review: ProcessReview; links_skipped: number }>("submit_for_review", {
-    p_process: processRow,
-    p_review: reviewRow,
-    p_turn: turnRow,
-    p_links: links,
-    p_event: eventToRow(event),
+  const written = await reviewStore.get().submitForReview({
+    process: processRow,
+    review: reviewRow,
+    turn: turnRow,
+    links,
+    event: eventToRow(event),
   });
   if (written.links_skipped > 0) {
     console.warn(`[review] ${written.links_skipped} link(s) on ${processId} skipped: target gone, or already linked`);
@@ -324,11 +325,7 @@ export async function approveReview(
   }
 
   // Load the process
-  const proc = await db()
-    .from("processes")
-    .select<ProcessRow>("*")
-    .eq("id", review.process_id)
-    .single();
+  const proc = await readProcessRow(review.process_id);
 
   // A submission whose plugin the hub switched off cannot go live: approving
   // it would publish a process nobody can open. It waits, hidden from the
@@ -373,17 +370,11 @@ export async function approveReview(
   // concurrent or duplicate approve (double-click, network retry, stale UI)
   // affects 0 rows and bails out here, BEFORE creating a proposal/project.
   // This is the real guard against duplicate postings.
-  const claimedRows = await db()
-    .from("process_reviews")
-    .update({ status: "approved" as ReviewStatus })
-    .eq("id", reviewId)
-    .eq("status", "pending_review")
-    .select();
-  if (claimedRows.length === 0) {
+  const updatedReview = await reviewStore.get().claimPendingReview(reviewId);
+  if (updatedReview === null) {
     // Someone already approved this between our read and write.
     throw new ConflictError("Review has already been approved", "already_approved");
   }
-  const updatedReview = claimedRows[0];
 
   // The live id used for the approval email link. Every process type now keeps
   // its single canonical `processes` row id through approval — votes and
@@ -410,7 +401,7 @@ export async function approveReview(
   // Add the approval turn
   const nextTurn = await getNextTurnNumber(reviewId);
   const turnId = generateId("turn");
-  await db().from("review_turns").insert({
+  await reviewStore.get().insertTurn({
     id: turnId,
     review_id: reviewId,
     turn_number: nextTurn,
@@ -445,7 +436,7 @@ export async function approveReview(
       { leadingEvents: createdEvent ? [createdEvent] : [] },
     );
   } else {
-    await transitionProcess({
+    await reviewStore.get().transitionProcess({
       hubId: currentHubId(),
       processId: review.process_id,
       toStatus: liveStatus,
@@ -476,15 +467,9 @@ export async function approveReview(
     // Posting failed after we claimed the review — revert the review (and the
     // process, if it went live) to pending_review so the admin can retry
     // cleanly rather than hitting "Cannot approve review in status: approved".
-    await db()
-      .from("process_reviews")
-      .update({ status: "pending_review" as ReviewStatus })
-      .eq("id", reviewId);
+    await reviewStore.get().setReviewStatus(reviewId, "pending_review");
     if (wentLive) {
-      await db()
-        .from("processes")
-        .update({ status: "pending_review" })
-        .eq("id", review.process_id);
+      await setProcessStatusRow(review.process_id, "pending_review");
     }
     throw workErr;
   }
@@ -573,17 +558,12 @@ export async function requestChanges(
   }
 
   // Update review status
-  const updatedReview = await db()
-    .from("process_reviews")
-    .update({ status: "changes_requested" as ReviewStatus })
-    .eq("id", reviewId)
-    .select()
-    .single();
+  const updatedReview = await reviewStore.get().updateReview(reviewId, { status: "changes_requested" as ReviewStatus });
 
   // Add the turn
   const nextTurn = await getNextTurnNumber(reviewId);
   const turnId = generateId("turn");
-  await db().from("review_turns").insert({
+  await reviewStore.get().insertTurn({
     id: turnId,
     review_id: reviewId,
     turn_number: nextTurn,
@@ -605,11 +585,7 @@ export async function requestChanges(
 
   // Notify creator
   try {
-    const proc = await db()
-      .from("processes")
-      .select<{ type: string; title: string }>("type, title")
-      .eq("id", review.process_id)
-      .single();
+    const proc = await readProcessTypeAndTitle(review.process_id);
 
     await notifyCreatorChangesRequested({
       creator_email: review.creator_email,
@@ -639,23 +615,15 @@ export async function declineReview(
 
   // Archive the process
   const now = new Date().toISOString();
-  await db()
-    .from("processes")
-    .update({ status: "archived", updated_at: now })
-    .eq("id", review.process_id);
+  await archiveProcessRow(review.process_id, now);
 
   // Update review status
-  const updatedReview = await db()
-    .from("process_reviews")
-    .update({ status: "declined" as ReviewStatus })
-    .eq("id", reviewId)
-    .select()
-    .single();
+  const updatedReview = await reviewStore.get().updateReview(reviewId, { status: "declined" as ReviewStatus });
 
   // Add the turn
   const nextTurn = await getNextTurnNumber(reviewId);
   const turnId = generateId("turn");
-  await db().from("review_turns").insert({
+  await reviewStore.get().insertTurn({
     id: turnId,
     review_id: reviewId,
     turn_number: nextTurn,
@@ -677,11 +645,7 @@ export async function declineReview(
 
   // Notify creator
   try {
-    const proc = await db()
-      .from("processes")
-      .select<{ type: string; title: string }>("type, title")
-      .eq("id", review.process_id)
-      .single();
+    const proc = await readProcessTypeAndTitle(review.process_id);
 
     await notifyCreatorDeclined({
       creator_email: review.creator_email,
@@ -729,30 +693,19 @@ export async function reviseAndResubmit(
     // Same path as submitForReview: the handler turns raw submit input into
     // its initial state, so a revised vote/conversation is exactly what a
     // fresh submission of the same draft would be.
-    const current = await db()
-      .from("processes")
-      .select<{ type: string }>("type")
-      .eq("id", review.process_id)
-      .single();
+    const current = await readProcessType(review.process_id);
     const handler = getProcessHandler(String(current.type));
     updates.state = handler ? handler.initializeState(input.state) : input.state;
   }
 
-  await db()
-    .from("processes")
-    .update(updates)
-    .eq("id", review.process_id);
+  await updateProcessColumns(review.process_id, updates);
 
   // Related processes: the revised draft's picks replace the creator's
   // earlier ones (an admin's additions during review are not the creator's
   // and are kept). Best-effort, like creation-time linking.
   if (input.links !== undefined) {
     try {
-      await db()
-        .from("process_links")
-        .delete()
-        .eq("from_id", review.process_id)
-        .eq("created_by", creatorActor);
+      await reviewStore.get().deleteLinksCreatedBy(review.process_id, creatorActor);
       if (input.links.length) {
         const links = validateLinkSet(review.process_id, input.links);
         await createEdges(review.process_id, links, creatorActor);
@@ -767,33 +720,18 @@ export async function reviseAndResubmit(
   }
 
   // Read back the updated process for the snapshot
-  const proc = await db()
-    .from("processes")
-    .select<{
-      title: string;
-      description: string;
-      content?: Record<string, unknown> | null;
-      config?: Record<string, unknown> | null;
-      type: string;
-    }>("title, description, content, config, type")
-    .eq("id", review.process_id)
-    .single();
+  const proc = await readProcessForSnapshot(review.process_id);
 
   // Update review status back to pending_review
-  const updatedReview = await db()
-    .from("process_reviews")
-    .update({
-      status: "pending_review" as ReviewStatus,
-      ...(input.coc_flags !== undefined ? { coc_flags: input.coc_flags?.length ? input.coc_flags : null } : {}),
-    })
-    .eq("id", reviewId)
-    .select()
-    .single();
+  const updatedReview = await reviewStore.get().updateReview(reviewId, {
+    status: "pending_review" as ReviewStatus,
+    ...(input.coc_flags !== undefined ? { coc_flags: input.coc_flags?.length ? input.coc_flags : null } : {}),
+  });
 
   // Add the turn with a snapshot
   const nextTurn = await getNextTurnNumber(reviewId);
   const turnId = generateId("turn");
-  await db().from("review_turns").insert({
+  await reviewStore.get().insertTurn({
     id: turnId,
     review_id: reviewId,
     turn_number: nextTurn,
@@ -857,23 +795,15 @@ export async function withdrawReview(
 
   // Archive the process
   const now = new Date().toISOString();
-  await db()
-    .from("processes")
-    .update({ status: "archived", updated_at: now })
-    .eq("id", review.process_id);
+  await archiveProcessRow(review.process_id, now);
 
   // Update review status
-  const updatedReview = await db()
-    .from("process_reviews")
-    .update({ status: "withdrawn" as ReviewStatus })
-    .eq("id", reviewId)
-    .select()
-    .single();
+  const updatedReview = await reviewStore.get().updateReview(reviewId, { status: "withdrawn" as ReviewStatus });
 
   // Add the turn
   const nextTurn = await getNextTurnNumber(reviewId);
   const turnId = generateId("turn");
-  await db().from("review_turns").insert({
+  await reviewStore.get().insertTurn({
     id: turnId,
     review_id: reviewId,
     turn_number: nextTurn,
@@ -895,11 +825,7 @@ export async function withdrawReview(
 
   // Notify admin
   try {
-    const proc = await db()
-      .from("processes")
-      .select<{ type: string; title: string }>("type, title")
-      .eq("id", review.process_id)
-      .single();
+    const proc = await readProcessTypeAndTitle(review.process_id);
 
     const admins = getAdminEmails();
     for (const admin of admins) {
@@ -922,34 +848,19 @@ export async function withdrawReview(
 export async function getReview(
   reviewId: string,
 ): Promise<ProcessReview | null> {
-  const data = await db()
-    .from("process_reviews")
-    .select<ProcessReview>("*")
-    .eq("id", reviewId)
-    .maybeSingle();
-  return data;
+  return reviewStore.get().reviewById(reviewId);
 }
 
 export async function getReviewByProcessId(
   processId: string,
 ): Promise<ProcessReview | null> {
-  const data = await db()
-    .from("process_reviews")
-    .select<ProcessReview>("*")
-    .eq("process_id", processId)
-    .maybeSingle();
-  return data;
+  return reviewStore.get().reviewOfProcess(processId);
 }
 
 export async function getReviewTurns(
   reviewId: string,
 ): Promise<ReviewTurn[]> {
-  const data = await db()
-    .from("review_turns")
-    .select<ReviewTurn>("*")
-    .eq("review_id", reviewId)
-    .order("turn_number", { ascending: true });
-  return data;
+  return reviewStore.get().turnsOf(reviewId);
 }
 
 /**
@@ -966,33 +877,14 @@ export async function listReviews(
   statusFilter?: string,
 ): Promise<ProcessReview[]> {
   // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
-  const rows = await readAll((from, to) => {
-    let query = db()
-      .from("process_reviews")
-      .select<ProcessReview>("*")
-      .order("updated_at", { ascending: false })
-      .order("id", { ascending: true });
-
-    if (statusFilter) {
-      query = query.eq("status", statusFilter);
-    }
-    return query.range(from, to);
-  });
+  const rows = await reviewStore.get().allReviews(statusFilter);
   return withoutDisabledTypes(rows);
 }
 
 export async function listCreatorReviews(
   creatorId: string,
 ): Promise<ProcessReview[]> {
-  const data = await readAll((from, to) =>
-    db()
-      .from("process_reviews")
-      .select<ProcessReview>("*")
-      .eq("creator_id", creatorId)
-      .order("updated_at", { ascending: false })
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
+  const data = await reviewStore.get().reviewsOfCreator(creatorId);
   return withoutDisabledTypes(data);
 }
 
@@ -1011,27 +903,10 @@ export async function countReviewNotifications(
   userId: string,
   isAdmin: boolean,
 ): Promise<number> {
-  const userRow = await db()
-    .from("users")
-    .select<{ reviews_seen_at: string | null }>("reviews_seen_at")
-    .eq("id", userId)
-    .maybeSingle();
-  const seenAt = userRow?.reviews_seen_at ?? EPOCH;
+  const seenAt = (await reviewStore.get().reviewsSeenAt(userId)) ?? EPOCH;
 
   // Paged, not a count: reviews of a switched-off plugin are left out below.
-  const rows = await readAll((from, to) => {
-    let query = db()
-      .from("process_reviews")
-      .select<{ process_id: string }>("process_id")
-      .gt("updated_at", seenAt);
-
-    if (isAdmin) {
-      query = query.eq("status", "pending_review");
-    } else {
-      query = query.eq("creator_id", userId).eq("status", "changes_requested");
-    }
-    return query.order("id", { ascending: true }).range(from, to);
-  });
+  const rows = await reviewStore.get().reviewProcessesNeedingAttention({ userId, isAdmin, since: seenAt });
 
   return (await withoutDisabledTypes(rows)).length;
 }
@@ -1041,32 +916,20 @@ export async function countReviewNotifications(
  * predate `draft_id` (before 2026-09-02). Only ever fills a null.
  */
 export async function setReviewDraftId(reviewId: string, draftId: string): Promise<void> {
-  await db()
-    .from("process_reviews")
-    .update({ draft_id: draftId })
-    .eq("id", reviewId)
-    .is("draft_id", null);
+  await reviewStore.get().fillDraftId(reviewId, draftId);
 }
 
 /** Stamp reviews_seen_at = now() for the user, clearing their badge. */
 export async function markReviewsSeen(userId: string): Promise<void> {
-  await db()
-    .from("users")
-    .update({ reviews_seen_at: new Date().toISOString() })
-    .eq("id", userId);
+  await reviewStore.get().setReviewsSeenAt(userId, new Date().toISOString());
 }
 
 // --- Helpers ---
 
 async function getNextTurnNumber(reviewId: string): Promise<number> {
-  const data = await db()
-    .from("review_turns")
-    .select<{ turn_number: number }>("turn_number")
-    .eq("review_id", reviewId)
-    .order("turn_number", { ascending: false })
-    .limit(1);
-  if (data.length === 0) return 1;
-  return Number(data[0].turn_number) + 1;
+  const latest = await reviewStore.get().latestTurnNumber(reviewId);
+  if (latest === null) return 1;
+  return latest + 1;
 }
 
 
@@ -1091,11 +954,7 @@ export async function reopenForRevision(
   }
   if (!review.draft_id) return null;
 
-  const proc = await db()
-    .from("processes")
-    .select<{ type: string }>("type")
-    .eq("id", review.process_id)
-    .single();
+  const proc = await readProcessType(review.process_id);
   const type = String(proc.type);
   const path = draftPathFor(type, review.draft_id);
   if (!path) return null;
