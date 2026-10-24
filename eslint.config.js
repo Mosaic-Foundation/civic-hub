@@ -235,8 +235,8 @@ const PEOPLE_LIST_READERS = {
   "src/controllers/adminSettingsController.ts": "the admin panel shows the lists",
   "src/control/hubs.ts": "the console sets a hub's admins (create, handover)",
   "src/services/mailGuard.ts": "mail: who may receive the hub's mail",
-  "src/controllers/adminDigestController.ts": "mail: the admin digest's recipients",
-  "src/controllers/meetingSummaryController.ts": "mail: meeting-summary notices to admins",
+  "src/jobs/adminDigest.ts": "mail: the admin digest's recipients",
+  "src/services/cronAlerts.ts": "mail: meeting-summary notices to admins",
   "src/modules/civic.announcement/receipt.ts": "mail: publication receipts to admins",
   "src/modules/civic.feedback/service.ts": "mail: feedback to admins",
   "src/services/waitlistNotify.ts": "mail: waitlist notices to admins",
@@ -373,6 +373,19 @@ export default [
         patterns: [{
           regex: "^(?!\\./descriptorTypes\\.js$|\\.\\./db/schemaRequirement\\.js$|\\.\\./shared/|\\.\\./models/process\\.js$)",
           message: "The manifest contract imports only src/shared/, descriptorTypes, schemaRequirement and the process model (the UI type-checks it).",
+        }],
+      }],
+    },
+  },
+  // A job is not a request handler: it returns a JobOutcome, so what it shares
+  // with a controller lives in src/services/ or src/jobs/.
+  {
+    files: ["src/jobs/**/*.ts"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          regex: "(^|/)controllers/",
+          message: "A job is not a request handler: it returns a JobOutcome (src/jobs/types.ts). Move what both need into src/services/ or src/jobs/.",
         }],
       }],
     },

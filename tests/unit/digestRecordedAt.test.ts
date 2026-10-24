@@ -4,7 +4,7 @@
 // stamp it would sit before the resident's cursor and never be mailed.
 
 import { describe, expect, it } from "vitest";
-import { recordedAfter } from "../../src/controllers/digestController.js";
+import { recordedAfter } from "../../src/jobs/digest.js";
 
 const since = "2026-09-20T13:00:00.000Z"; // the resident's last digest
 

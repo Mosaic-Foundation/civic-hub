@@ -1,23 +1,22 @@
-// civic.news_sync — the "news_sync" job (src/jobs/registry.ts).
+// The "news_sync" job (src/jobs/registry.ts): discovers new posts from a
+// hub's own news feed and creates one civic.announcement per new entry.
 //
-// Run once per active hub by the job runner. For a hub that has configured it, discovers new posts from the hub's
-// own news feed through the hub's own connector, filters out past-dated
-// events, dedupes against already-ingested rows, and creates one
-// civic.announcement per new entry (auto-published, no admin review).
-// Per-entry failures are isolated; one bad post does not abort the run, and
-// one hub's broken feed does not stop the next hub's.
+// Runs once per active hub, inside that hub's scope (src/jobs/runJob.ts). For
+// a hub that has configured it, discovers posts through the hub's own
+// connector, filters out past-dated events, dedupes against already-ingested
+// rows, and publishes each new entry as an announcement (no admin review).
+// Per-entry failures are isolated: one bad post does not abort the run, and
+// one hub's broken feed does not stop the next hub's. Returns a JobOutcome:
+// 200 with the counts (or a skip reason), 500 with an error when the config
+// is invalid or the run throws.
 //
-// Renamed from the Floyd news sync on 2026-09-24. The old path is still
-// mounted as a deprecated alias (the job's deprecatedPaths in the registry),
-// because production's vercel.json on `main` calls it until the cutover.
-//
-// Per Slice 13 design: synced announcements have `state.source` set so the
-// event emitter routes the action_url to the external permalink. The
-// feed-card click goes directly to the government's site, not the internal
-// /announcement/:id page. Per Slice 13.1 redesign: no thumbnails (Wix
-// document scans are unreadable), body comes from the feed's description when
-// present, otherwise a strict Claude paraphrase of the title, otherwise empty.
-//
+// A synced announcement has `state.source` set so the event emitter routes
+// the action_url to the external permalink: the feed-card click goes straight
+// to the government's site, not the internal /announcement/:id page. There
+// are no thumbnails (document scans are unreadable); the body comes from the
+// feed's description when present, otherwise a strict Claude paraphrase of
+// the title, otherwise empty.
+
 import { env } from "../config/env.js";
 import {
   discoverNewsEntries,
@@ -46,6 +45,7 @@ import {
 import { getSettingSync, isPluginEnabledSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 import { civicPlaceShortName, processJurisdiction } from "../config/hub.js";
+import type { JobOutcome, JobRunner } from "./types.js";
 
 const CRON_ACTOR = "system:news-sync-cron";
 
@@ -94,19 +94,13 @@ async function existingShareUrls(): Promise<Set<string>> {
   return out;
 }
 
-/** What one hub's run reports. `status` is the HTTP status it would have had alone. */
-export interface NewsSyncHubOutcome {
-  status: number;
-  body: Record<string, unknown>;
-}
-
 /**
  * One hub's run, inside that hub's scope. Every value it reads — enabled,
  * connector, feed, cap, jurisdiction, author label, the names in the
  * paraphrase prompt — is the hub in scope's, and there is no default that
  * could stand in for a hub that set nothing.
  */
-export async function runNewsSyncForHub(): Promise<NewsSyncHubOutcome> {
+export const newsSyncJob: JobRunner = async (): Promise<JobOutcome> => {
   // What news sync makes is announcements; with those off there is nothing
   // it may create, so it does not fetch at all.
   if (!isPluginEnabledSync("announcement")) {
@@ -274,4 +268,4 @@ export async function runNewsSyncForHub(): Promise<NewsSyncHubOutcome> {
     console.error("[news-sync] run failed:", err);
     return { status: 500, body: { error: msg } };
   }
-}
+};

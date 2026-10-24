@@ -98,7 +98,7 @@ const HOST_JOBS: readonly JobSpec[] = [
     plugin: "digest",
     path: "/digest/run",
     // Hourly: each hub is mailed in its own plugin.digest.send_hour, read in
-    // its identity.timezone. See runDigestForHub.
+    // its identity.timezone. See digestJob (src/jobs/digest.ts).
     schedule: "0 * * * *",
     description: "Resident email digest, per hub in its own send hour",
   },

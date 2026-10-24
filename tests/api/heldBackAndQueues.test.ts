@@ -360,9 +360,9 @@ describe("the resident digest with every resident held back (#36)", () => {
     installAdapters({ mail });
     try {
       const within = await inProcess();
-      const { runDigestForHub } = await import("../../src/controllers/digestController.js");
+      const { digestJob } = await import("../../src/jobs/digest.js");
       const { describeJobRun } = await import("../../src/jobs/describe.js");
-      const outcome = await within(() => runDigestForHub({ now: new Date(), force: true }));
+      const outcome = await within(() => digestJob({ now: new Date(), force: true }));
       expect(outcome.status, JSON.stringify(outcome.body)).toBe(200);
       expect(outcome.body.failed_count).toBe(0);
       expect(outcome.body.held_back_count).toBeGreaterThanOrEqual(1);

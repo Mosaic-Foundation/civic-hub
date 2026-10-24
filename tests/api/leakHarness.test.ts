@@ -758,13 +758,13 @@ describe("the digest", () => {
     const { getHubBySlug } = await import("../../src/db/hubs.js");
     const { fetchHubSettings } = await import("../../src/db/hubSettingsStore.js");
     const { runWithHub } = await import("../../src/config/hubContext.js");
-    const { runDigestForHub } = await import("../../src/controllers/digestController.js");
+    const { digestJob } = await import("../../src/jobs/digest.js");
 
     const hub = await getHubBySlug("athens");
     expect(hub).toBeTruthy();
     const settings = await fetchHubSettings("athens");
     mailbox.length = 0;
-    const outcome = await runWithHub(hub!, settings, () => runDigestForHub({ now: new Date(), force: true }));
+    const outcome = await runWithHub(hub!, settings, () => digestJob({ now: new Date(), force: true }));
     expect(outcome.status, JSON.stringify(outcome.body)).toBe(200);
 
     const mine = mailbox.filter((m) => m.to.includes(MARKER_A));

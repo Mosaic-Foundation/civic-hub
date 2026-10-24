@@ -4,10 +4,10 @@
 // settings read, forHub() call and mail guard answers for that hub.
 
 import type { JobOutcome, JobRunInput, JobRunner } from "./types.js";
-import { runDigestForHub } from "../controllers/digestController.js";
-import { runAdminDigestForHub } from "../controllers/adminDigestController.js";
-import { runNewsSyncForHub } from "../controllers/newsSyncController.js";
-import { RunSink, runMeetingSummaryForHub } from "../controllers/meetingSummaryController.js";
+import { digestJob } from "./digest.js";
+import { adminDigestJob } from "./adminDigest.js";
+import { newsSyncJob } from "./newsSync.js";
+import { meetingSummaryJob } from "./meetingSummary.js";
 import { sweepHubExports } from "../services/hubExportsStore.js";
 import { closeAllExpired } from "../services/processService.js";
 import { isPluginEnabledSync } from "../services/hubSettings.js";
@@ -15,14 +15,10 @@ import { refreshSamples } from "../services/sampleRefresh.js";
 import { clearEndedArchivedVoteKeys, reshuffleOpenBallots } from "../modules/civic.receipts/index.js";
 
 export const JOB_RUNNERS: Readonly<Record<string, JobRunner>> = {
-  meeting_summary: async () => {
-    const sink = new RunSink();
-    await runMeetingSummaryForHub(sink);
-    return sink.result ?? { status: 500, body: { error: "run wrote no outcome" } };
-  },
-  news_sync: () => runNewsSyncForHub(),
-  digest: (input) => runDigestForHub(input),
-  admin_digest: () => runAdminDigestForHub(),
+  meeting_summary: meetingSummaryJob,
+  news_sync: newsSyncJob,
+  digest: digestJob,
+  admin_digest: adminDigestJob,
   vote_close: async ({ now }) => {
     // Every type with a deadline whose plugin is on (2026-10-13), not only votes.
     const r = await closeAllExpired();

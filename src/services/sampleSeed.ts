@@ -577,7 +577,7 @@ class SeedRun {
       start_time_seconds: b.at_minute * 60,
       action_taken: b.action ? this.fill(b.action) : null,
     }));
-    // The pipeline's shape (meetingSummaryController's cron), with no source:
+    // The pipeline's shape (the meeting_summary job's), with no source:
     // no minutes, no agenda, no recording, no AI. source_type "minutes" keeps
     // the cron's upgrade pass from ever picking it up.
     const p = await this.create(t, {

@@ -17,7 +17,7 @@
 // be read throws in discovery, and that run aborts and alerts (`fatal`).
 
 import { describe, it, expect } from "vitest";
-import { cronAlertReason } from "../../src/controllers/meetingSummaryController.js";
+import { cronAlertReason } from "../../src/services/cronAlerts.js";
 
 const healthy = {
   discovered: 8,

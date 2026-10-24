@@ -13,7 +13,7 @@
 
 import { describe, it, expect } from "vitest";
 
-/** Mirrors meetingKey() in meetingSummaryController.ts. */
+/** Mirrors meetingKey() in src/jobs/meetingSummary.ts. */
 function meetingKey(date: string, title: string): string {
   const normalized = (title ?? "")
     .toLowerCase()
