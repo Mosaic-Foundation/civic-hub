@@ -13,7 +13,7 @@ import { UnauthorizedError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { contactMosaic, forwardToMosaic, listFeedback } from "../modules/civic.feedback/index.js";
 import type { FeedbackCategory, MosaicHubStream } from "../modules/civic.feedback/index.js";
-import { recordHubAdminAudit } from "../services/hubAdminAudit.js";
+import { auditActor, recordHubAdminAudit } from "../services/hubAdminAudit.js";
 import { caller } from "./adminStepUp.js";
 
 // --- GET /admin/feedback ----------------------------------------------------
@@ -46,7 +46,7 @@ export const handleForwardFeedback = route(async (req, res) => {
   const stream = (req.body as Record<string, unknown> | undefined)?.stream as MosaicHubStream;
   const item = await forwardToMosaic(String(req.params.id), stream);
   await recordHubAdminAudit({
-    actor: user.email,
+    actor: auditActor(user),
     action: "feedback.forward",
     after: { id: item.id, category: item.category, stream },
   });

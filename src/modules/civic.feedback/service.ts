@@ -289,7 +289,8 @@ export async function forwardToMosaic(
  */
 export async function contactMosaic(input: {
   message: unknown;
-  adminEmail: string;
+  /** The admin's address, when the account has one; without it nothing is offered to reply to. */
+  adminEmail: string | null;
   pagePath?: unknown;
   userAgent?: string | null;
 }): Promise<{ id: string }> {
@@ -307,7 +308,7 @@ export async function contactMosaic(input: {
     pagePath: normalizePagePath(input.pagePath),
     userAgent: input.userAgent?.slice(0, UA_MAX_LEN) ?? null,
     softwareVersion: deploymentCommit(),
-    contactOk: true,
+    contactOk: input.adminEmail !== null,
     contactEmail: input.adminEmail,
   });
   return { id: copy.id };

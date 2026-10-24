@@ -46,7 +46,7 @@ import { getHubConfig } from "../modules/civic.assistant/index.js";
 import { defaultIntroBody } from "../shared/hubCopy.js";
 import { hubKindOf } from "../shared/hubKind.js";
 import { defaultInviteMessage, sameInviteMessage } from "../shared/inviteMessage.js";
-import { recordHubAdminAudit } from "./hubAdminAudit.js";
+import { auditActor, recordHubAdminAudit } from "./hubAdminAudit.js";
 import { personFallbackName } from "./creatorDisplay.js";
 
 export const MEMBER_DAILY_LIMIT = 10;
@@ -61,7 +61,7 @@ const EMAIL_SHAPE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
 
 export interface Inviter {
   id: string;
-  email: string;
+  email: string | null;
   full_name: string | null;
   /** On the admin roster, with a code-proved session. */
   isAdmin: boolean;
@@ -289,7 +289,7 @@ export async function sendMemberInvites(inviter: Inviter, addresses: string[], m
   }
 
   await recordHubAdminAudit({
-    actor: inviter.email,
+    actor: auditActor(inviter),
     action: "member.invite",
     after: {
       outcome,

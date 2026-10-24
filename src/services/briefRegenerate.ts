@@ -26,7 +26,7 @@ import { emitEvent } from "../events/eventEmitter.js";
 import { getProcessHandler, processDetailPath } from "../processes/registry.js";
 import { getProcess, isTerminalStatus, saveProcessState } from "./processService.js";
 import { closedEarlyView } from "./closeEarly.js";
-import { recordHubAdminAudit } from "./hubAdminAudit.js";
+import { auditActor, recordHubAdminAudit } from "./hubAdminAudit.js";
 import { emitBriefUpdated } from "../modules/civic.brief/events.js";
 import { createBriefState } from "../modules/civic.brief/service.js";
 import type { BriefContent, BriefProcessState } from "../modules/civic.brief/models.js";
@@ -118,7 +118,7 @@ function keep(state: BriefProcessState, now: string): void {
 
 export async function regenerateBrief(
   briefId: string,
-  admin: { id: string; email: string },
+  admin: { id: string; email: string | null },
 ): Promise<{ staged: boolean; state: BriefProcessState; record: Process }> {
   const { record, state } = await briefRecord(briefId);
   const source = await getProcess(state.source_process_id);
@@ -151,7 +151,7 @@ export async function regenerateBrief(
   await emitBriefUpdated(ctx(record), admin.id, state);
   await saveProcessState(record);
   await recordHubAdminAudit({
-    actor: admin.email,
+    actor: auditActor(admin),
     action: "brief.regenerate",
     after: { brief_id: record.id, source_process_id: source.id, staged },
   });
@@ -161,7 +161,7 @@ export async function regenerateBrief(
 /** Publish a staged version: it replaces the published one in place. No email. */
 export async function publishBriefRevision(
   briefId: string,
-  admin: { id: string; email: string },
+  admin: { id: string; email: string | null },
 ): Promise<{ state: BriefProcessState; record: Process }> {
   const { record, state } = await briefRecord(briefId);
   const revision = state.pending_revision;
@@ -178,7 +178,7 @@ export async function publishBriefRevision(
   await emitBriefUpdated(ctx(record), admin.id, state);
   await saveProcessState(record);
   await recordHubAdminAudit({
-    actor: admin.email,
+    actor: auditActor(admin),
     action: "brief.revision_published",
     after: { brief_id: record.id, source_process_id: state.source_process_id, revised_at: now },
   });
@@ -188,7 +188,7 @@ export async function publishBriefRevision(
 /** Drop a staged version; the published one stays as it is. */
 export async function discardBriefRevision(
   briefId: string,
-  admin: { id: string; email: string },
+  admin: { id: string; email: string | null },
 ): Promise<{ state: BriefProcessState; record: Process }> {
   const { record, state } = await briefRecord(briefId);
   if (!state.pending_revision) throw new ConflictError("There is no new version waiting.", "no_pending_revision");

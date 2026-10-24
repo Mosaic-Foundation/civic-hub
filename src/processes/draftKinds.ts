@@ -47,7 +47,7 @@ export interface DraftKind<D extends BaseDraft = BaseDraft> {
   applyLiveEdit?(
     draft: D,
     processId: string,
-    editor: { id: string; email: string },
+    editor: { id: string; email: string | null },
     submission: DraftSubmission,
   ): Promise<Record<string, unknown>>;
 }

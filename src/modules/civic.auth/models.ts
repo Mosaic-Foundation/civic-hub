@@ -9,7 +9,13 @@
 /** A civic hub user */
 export interface User {
   id: string;
-  email: string;
+  /**
+   * The account's mailbox, when it has one. Every account has one today
+   * (sign-in is by emailed code), but a person who signs in another way (a
+   * DID) may have none. Authorization never reads it (src/authz/, ADR-011).
+   * Code that sends mail or admits a sign-in must handle null explicitly.
+   */
+  email: string | null;
   email_verified: boolean;
   is_resident: boolean;
   created_at: string; // ISO 8601

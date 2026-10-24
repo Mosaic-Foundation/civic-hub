@@ -35,7 +35,7 @@ import {
   setBoardEmails,
 } from "../services/hubSettings.js";
 import { caller, requireStepUpCode } from "./adminStepUp.js";
-import { recordHubAdminAudit } from "../services/hubAdminAudit.js";
+import { auditActor, recordHubAdminAudit } from "../services/hubAdminAudit.js";
 
 export interface HubPeopleResponse {
   admin_emails: string[];
@@ -111,9 +111,9 @@ export const handleSetHubPeople = route(async (req, res) => {
   if (admins !== null) {
     const before = await getAdminEmails(hubId);
     await setAdminEmails(hubId, admins, user.id);
-    logRosterChange("admin", hubId, user.email, before, admins);
+    logRosterChange("admin", hubId, auditActor(user), before, admins);
     if (rosterChanged(before, admins)) {
-      await recordHubAdminAudit({ actor: user.email, action: "people.admins", before, after: admins });
+      await recordHubAdminAudit({ actor: auditActor(user), action: "people.admins", before, after: admins });
     }
     // Each new admin is told, with the first steps (review R38).
     const added = admins.filter((e) => !before.includes(e.toLowerCase()));
@@ -122,9 +122,9 @@ export const handleSetHubPeople = route(async (req, res) => {
   if (board !== null) {
     const before = await getBoardEmails(hubId);
     await setBoardEmails(hubId, board, user.id);
-    logRosterChange("board", hubId, user.email, before, board);
+    logRosterChange("board", hubId, auditActor(user), before, board);
     if (rosterChanged(before, board)) {
-      await recordHubAdminAudit({ actor: user.email, action: "people.board", before, after: board });
+      await recordHubAdminAudit({ actor: auditActor(user), action: "people.board", before, after: board });
     }
   }
   const people = await loadPeople();

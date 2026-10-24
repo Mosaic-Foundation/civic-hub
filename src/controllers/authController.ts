@@ -86,7 +86,7 @@ export const handleVerifyInvite = route(async (req, res) => {
 });
 
 /** The token and user, with role + author_label + office. */
-async function answerSignedIn(res: Response, result: { token: string; user: { email: string } }): Promise<void> {
+async function answerSignedIn(res: Response, result: { token: string; user: { email: string | null } }): Promise<void> {
   // Include role + author_label + office alongside the token + user so
   // the UI gets the posting-privilege bit and the byline pill without a
   // follow-up /auth/me call.

@@ -94,7 +94,9 @@ async function migrated(): Promise<number> {
         `beta allow list: ${asEmailList(getSettingSync(KEYS.BETA_ALLOWLIST)).length}`,
     );
     const users = await listSubscribedUsers(hub.id);
-    return report(users, (e) => mailDecision(e).send);
+    // An account without a mailbox gets no digest, so it is not a recipient to report.
+    const mailable = users.flatMap((u) => (u.email === null ? [] : [{ email: u.email, created_at: u.created_at }]));
+    return report(mailable, (e) => mailDecision(e).send);
   });
 }
 

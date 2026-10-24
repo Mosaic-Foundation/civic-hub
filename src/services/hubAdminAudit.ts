@@ -45,6 +45,15 @@ export interface HubAdminAuditEntry {
   after?: unknown;
 }
 
+/**
+ * Who the log names for an acting account: its address (what the log has
+ * always carried), or the account id for an account that has none. The column
+ * is `actor_email`, kept as it is.
+ */
+export function auditActor(user: { id: string; email: string | null }): string {
+  return user.email ?? user.id;
+}
+
 export async function recordHubAdminAudit(entry: HubAdminAuditEntry): Promise<void> {
   await forHub(currentHubId())
     .from("hub_admin_audit_log")

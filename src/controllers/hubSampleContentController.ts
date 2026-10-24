@@ -14,6 +14,7 @@
 import { NotFoundError, UnauthorizedError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { caller, requireStepUpCode } from "./adminStepUp.js";
+import { auditActor } from "../services/hubAdminAudit.js";
 import {
   deleteOneSample,
   listSampleItems,
@@ -39,7 +40,7 @@ export const handleDeleteOneSample = route(async (req, res) => {
   if (!user) {
     throw new UnauthorizedError("Authentication required");
   }
-  const result = await deleteOneSample(String(req.params.id), user.email);
+  const result = await deleteOneSample(String(req.params.id), auditActor(user));
   if (!result) throw new NotFoundError("No sample with that id on this hub.");
   res.json({ deleted: result.item, rows: result.deleted, cleared: result.cleared, summary: await summaryWithItems() });
 });
@@ -51,6 +52,6 @@ export const handleRemoveSampleContent = route(async (req, res) => {
   }
   const body = (req.body ?? {}) as { code?: unknown };
   await requireStepUpCode(req, res, body.code);
-  const result = await removeSampleContent(user.email);
+  const result = await removeSampleContent(auditActor(user));
   res.json({ removed: result.summary, deleted: result.deleted, summary: await summaryWithItems() });
 });

@@ -19,7 +19,7 @@
 // on a demo hub — so this path cannot be used to skip verification either.
 
 import type { Request, Response } from "express";
-import { UnauthorizedError, ValidationError } from "../errors/index.js";
+import { ForbiddenError, UnauthorizedError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { requestVerification, consumePendingCode } from "../modules/civic.auth/index.js";
 import type { User } from "../modules/civic.auth/index.js";
@@ -27,6 +27,20 @@ import { clientIp } from "../utils/clientIp.js";
 
 export function caller(res: Response): User | undefined {
   return res.locals.authUser as User | undefined;
+}
+
+/**
+ * The mailbox a step-up code is proved against. An account with none cannot
+ * prove one, so the act is refused (fails closed) rather than skipped.
+ */
+function mailboxOf(user: User): string {
+  if (user.email === null) {
+    throw new ForbiddenError(
+      "This account has no email address to send a confirmation code to.",
+      "step_up_no_mailbox",
+    );
+  }
+  return user.email;
 }
 
 /**
@@ -41,9 +55,10 @@ export const handleRequestStepUpCode = route(async (req, res) => {
   const user = caller(res);
   if (!user) throw new UnauthorizedError("Authentication required");
   // Counted in the same per-IP and per-address buckets as a sign-in code.
-  await requestVerification(user.email, clientIp(req), "step_up");
+  const mailbox = mailboxOf(user);
+  await requestVerification(mailbox, clientIp(req), "step_up");
   res.json({
-    message: `A confirmation code has been sent to ${user.email}.`,
+    message: `A confirmation code has been sent to ${mailbox}.`,
   });
 });
 
@@ -73,5 +88,5 @@ export async function requireStepUpCode(
 
   // A wrong code here counts toward the same lockout as a wrong sign-in
   // code, which is the point of sharing the function rather than the rule.
-  await consumePendingCode(user.email, code, clientIp(req));
+  await consumePendingCode(mailboxOf(user), code, clientIp(req));
 }

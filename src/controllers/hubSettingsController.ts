@@ -36,7 +36,7 @@ import { latestJobRuns } from "../services/jobRuns.js";
 import { JOBS, isPlatformJob, type HubJobSpec } from "../jobs/registry.js";
 import { JOB_NAMES } from "../modules/civic.admin_digest/index.js";
 import { validateSettingsWrite } from "../models/hubSettingsWrite.js";
-import { recordHubAdminAudit } from "../services/hubAdminAudit.js";
+import { auditActor, recordHubAdminAudit } from "../services/hubAdminAudit.js";
 import {
   EDITABLE_SETTING_KEYS,
   fieldSpec,
@@ -114,7 +114,9 @@ async function loadHubSettings(): Promise<HubSettingsResponse> {
   await Promise.all(
     [...actorIds].map(async (id) => {
       const user = await getUser(id).catch(() => undefined);
-      if (user) names.set(id, user.full_name || user.display_name || user.email);
+      // A person with no name and no address stays unnamed (the entry's `by` is null).
+      const label = user && (user.full_name || user.display_name || user.email);
+      if (label) names.set(id, label);
     }),
   );
   for (const entry of Object.values(changed)) {
@@ -239,7 +241,7 @@ export const handlePutHubSettings = route(async (req, res) => {
   if (followOn.registryName) await renameHub(hubId, followOn.registryName);
   if (reviewed && reviewedBefore !== null && (reviewed.value === "true") !== reviewedBefore) {
     await recordHubAdminAudit({
-      actor: actor.email,
+      actor: auditActor(actor),
       action: "legal.reviewed",
       before: { reviewed: reviewedBefore },
       after: { reviewed: reviewed.value === "true" },
@@ -249,7 +251,7 @@ export const handlePutHubSettings = route(async (req, res) => {
   // One line per save, naming who and which keys — never the values, which
   // include whole documents.
   console.log(
-    `[hub-settings] ${hubId}: ${actor.email} saved ${result.section} ` +
+    `[hub-settings] ${hubId}: ${auditActor(actor)} saved ${result.section} ` +
       `(${entries.map((e) => e.key).join(", ")})`,
   );
 

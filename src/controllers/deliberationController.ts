@@ -1,7 +1,8 @@
 import { ConflictError, NotFoundError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { AiLimitError, admitAiCall } from "../services/aiBudget.js";
-import { getAuthUser } from "../middleware/auth.js";
+import { getActor, getAuthUser } from "../middleware/auth.js";
+import { can } from "../authz/canActor.js";
 import { getPolisAdapter } from "../processes/deliberationBoot.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
@@ -15,7 +16,7 @@ import {
   advanceMockStatement,
   addMockStatement,
 } from "../debug/seedDeliberationMocks.js";
-import { submitAsCreator } from "../modules/civic.review/index.js";
+import { submitAsCreator, reviewMailbox } from "../modules/civic.review/index.js";
 import { readAsPage, viewFor } from "./processController.js";
 import { checkTextAgainstCoC, getHubConfig } from "../modules/civic.assistant/index.js";
 import { assertPassesWordlist } from "../shared/wordlist/index.js";
@@ -295,11 +296,10 @@ export const handleCreateDeliberation = route(async (req, res) => {
       description: description || framing,
       creator_id: user.id,
       creator_name: user.full_name || user.display_name || personFallbackName(),
-      creator_email: user.email,
+      creator_email: reviewMailbox(user.email),
       state: statePayload,
     },
-    user.email,
-    { cocPassed },
+    { cocPassed, creatorIsAdmin: await can(getActor(res), "hub.administer") },
   );
 
   res.status(201).json(result);

@@ -9,7 +9,8 @@
 // This controller owns draft storage and submission.
 
 import type { Request, RequestHandler, Response } from "express";
-import { getAuthUser } from "../middleware/auth.js";
+import { getActor, getAuthUser } from "../middleware/auth.js";
+import { can } from "../authz/canActor.js";
 import {
   claimDraftForSubmission,
   createDraft,
@@ -19,7 +20,7 @@ import {
   updateDraft,
   type BaseDraft,
 } from "../modules/civic.drafts/index.js";
-import { submitAsCreator, reviseAndResubmit } from "../modules/civic.review/index.js";
+import { submitAsCreator, reviseAndResubmit, reviewMailbox } from "../modules/civic.review/index.js";
 import { codeOfConductStanding } from "../services/codeOfConduct.js";
 import { runCodeOfConductCheck } from "../services/codeOfConductCheck.js";
 import type { AssistantDraft } from "../modules/civic.assistant/index.js";
@@ -198,13 +199,12 @@ export function draftController<D extends BaseDraft>(kind: DraftKind<D>): DraftH
             description: submission.description,
             creator_id: user.id,
             creator_name: user.full_name || user.display_name || personFallbackName(),
-            creator_email: user.email,
+            creator_email: reviewMailbox(user.email),
             content: submission.content,
             state: submission.state,
             ...(cocFlags ? { coc_flags: cocFlags, ...(note ? { note } : {}) } : {}),
           },
-          user.email,
-          { cocPassed: coc.passed },
+          { cocPassed: coc.passed, creatorIsAdmin: await can(getActor(res), "hub.administer") },
         );
         res.status(201).json({
           ...result,

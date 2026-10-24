@@ -112,7 +112,7 @@ async function insertSession(
 function rowToUser(row: Record<string, unknown>): User {
   return {
     id: String(row.id),
-    email: String(row.email),
+    email: row.email === null || row.email === undefined ? null : String(row.email),
     email_verified: Boolean(row.email_verified),
     is_resident: Boolean(row.is_resident),
     created_at: String(row.created_at),
@@ -791,7 +791,9 @@ export async function getSessionFromToken(
     const user = rowToUser(row);
     // isPrivilegedEmail fails closed (true on a read error), so a wobble
     // signs a demo visitor out rather than letting one through.
-    if (assurance === "demo" && (await isPrivilegedEmail(user.email))) return undefined;
+    // An account with no address has nothing to look up, and a demo session
+    // is only ever opened for an address: stricter, it is signed out.
+    if (assurance === "demo" && (user.email === null || (await isPrivilegedEmail(user.email)))) return undefined;
     return { user, assurance };
   } catch (err) {
     console.error(`[auth] session lookup failed: ${(err as Error).message}`);
@@ -848,16 +850,17 @@ export async function logout(token: string): Promise<void> {
  */
 export async function deleteAccount(
   userId: string,
-  email: string,
+  email: string | null,
 ): Promise<void> {
-  if (!userId || !email) {
-    throw new Error("Auth: deleteAccount requires both userId and email.");
+  if (!userId) {
+    throw new Error("Auth: deleteAccount requires a userId.");
   }
   const hubDb = db();
   // The codes first so a stale code can't be used to race a fresh signup
   // against the in-flight delete. This hub's only: the same person's account
   // on another hub is theirs to delete there.
-  await hubDb.from("sign_in_codes").delete().eq("email", email.toLowerCase());
+  // An account without a mailbox has no codes keyed to an address.
+  if (email) await hubDb.from("sign_in_codes").delete().eq("email", email.toLowerCase());
   await hubDb.from("users").delete().eq("id", userId);
 }
 

@@ -34,7 +34,7 @@ import { setHubMode } from "../db/hubs.js";
 import { hubModeChangeRejectionReason, type HubMode } from "../models/hub.js";
 import { hubModeFor } from "../services/hubSettings.js";
 import { caller, requireStepUpCode } from "./adminStepUp.js";
-import { recordHubAdminAudit } from "../services/hubAdminAudit.js";
+import { auditActor, recordHubAdminAudit } from "../services/hubAdminAudit.js";
 import { removeSampleContent } from "../services/sampleContent.js";
 import { modeReadiness, readinessRefusal } from "../services/modeReadiness.js";
 import { tellWaitlistHubIsOpen } from "../services/waitlistOpen.js";
@@ -94,11 +94,11 @@ export const handleSetHubMode = route(async (req, res) => {
   // first, so a hub that asked for both never goes live with it.
   let removedSample: unknown = null;
   if (removeSamples) {
-    removedSample = (await removeSampleContent(user.email)).summary;
+    removedSample = (await removeSampleContent(auditActor(user))).summary;
   }
   await setHubMode(hub.id, mode);
   await recordHubAdminAudit({
-    actor: user.email,
+    actor: auditActor(user),
     action: "hub.mode",
     before: { mode: from },
     after: {
@@ -115,6 +115,6 @@ export const handleSetHubMode = route(async (req, res) => {
     waitlist = await tellWaitlistHubIsOpen();
   }
 
-  console.log(`[hub] mode changed: ${hub.id} ${from} -> ${mode} by ${user.email}`);
+  console.log(`[hub] mode changed: ${hub.id} ${from} -> ${mode} by ${auditActor(user)}`);
   res.json({ hub_id: hub.id, mode, ...(waitlist ? { waitlist } : {}) });
 });

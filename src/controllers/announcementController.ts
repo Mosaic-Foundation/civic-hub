@@ -201,6 +201,7 @@ export const handleCreateAnnouncement = route(async (req, res) => {
         publicUrl: `${uiBaseUrl()}/announcement/${record.id}`,
         hubLabel: hubDisplayNameSync(),
       },
+      // An author without a mailbox gets no receipt (the admins still do).
       user.email,
     );
   } catch (err) {

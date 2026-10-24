@@ -306,6 +306,11 @@ export async function runDigestForHub(input: {
 
     for (const user of users) {
       processed += 1;
+      // An account without a mailbox gets no mail: counted as skipped.
+      if (user.email === null) {
+        skipped += 1;
+        continue;
+      }
       try {
         // Frequency-aware skip: if the user has a frequency > 1 day and
         // their last digest was sent less than frequency_days ago, skip.

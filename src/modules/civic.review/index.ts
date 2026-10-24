@@ -12,6 +12,7 @@ export type {
 export {
   submitForReview,
   submitAsCreator,
+  reviewMailbox,
   DEMO_PUBLISH_ACTOR,
   approveReview,
   reopenForRevision,

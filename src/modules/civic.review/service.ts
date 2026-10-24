@@ -53,11 +53,28 @@ function getAdminEmails(): string[] {
  * the hub's admins, while the hub is in `demo` mode. Their submissions are
  * stored as demo content (is_sample + added_in_demo), so "Remove sample
  * content" clears them with the samples; and one that passed the automated
- * Code of Conduct check publishes without waiting for an admin.
+ * Code of Conduct check publishes without waiting for an admin. Whether the
+ * creator is an admin is the seam's answer (canActor "hub.administer",
+ * ADR-011), asked by the controller and passed in.
  */
-function isDemoVisitor(creatorEmail: string): boolean {
+function isDemoVisitor(creatorIsAdmin: boolean): boolean {
   if (currentHub()?.mode !== "demo") return false;
-  return !getAdminEmails().includes(creatorEmail.trim().toLowerCase());
+  return !creatorIsAdmin;
+}
+
+/**
+ * The address a submission's notices go to (process_reviews.creator_email,
+ * NOT NULL): review needs a mailbox. An account without one cannot submit for
+ * review; every account has one today.
+ */
+export function reviewMailbox(email: string | null): string {
+  if (email === null) {
+    throw new ForbiddenError(
+      "Submissions are confirmed by email, and this account has no email address.",
+      "submission_no_mailbox",
+    );
+  }
+  return email;
 }
 
 /** The actor recorded when a demo hub publishes a visitor's submission itself. */
@@ -81,7 +98,7 @@ function takeSnapshot(process: {
 
 export async function submitForReview(
   input: SubmitForReviewInput,
-  opts: { notify?: boolean } = {},
+  opts: { notify?: boolean; creatorIsAdmin?: boolean } = {},
 ): Promise<{ review: ProcessReview; process_id: string }> {
   // Auto-approved admin submissions skip the "under review" notifications
   // (the submission is approved in the same request, so a "needs review" email
@@ -112,7 +129,7 @@ export async function submitForReview(
     created_by: input.creator_id,
     // Demo content from the first event on, so every event it ever has is a
     // sample event (kept off /events, deletable with the samples).
-    ...(isDemoVisitor(input.creator_email) ? { is_sample: true, added_in_demo: true } : {}),
+    ...(isDemoVisitor(opts.creatorIsAdmin === true) ? { is_sample: true, added_in_demo: true } : {}),
   };
 
   // Through forHub so the process is stamped with the hub it was submitted on.
@@ -239,27 +256,33 @@ export async function submitForReview(
  */
 export async function submitAsCreator(
   input: SubmitForReviewInput,
-  creatorEmail: string,
   opts: {
+    /**
+     * Whether the creator is one of the hub's admins: the seam's answer
+     * (canActor "hub.administer", ADR-011), asked by the controller. An
+     * admin's own submission is approved at once.
+     */
+    creatorIsAdmin: boolean;
     /**
      * The automated Code of Conduct check ran on exactly this text and found
      * nothing. False when it was not run, was unavailable (it fails open to
      * human review), or the text changed after it.
      */
     cocPassed?: boolean;
-  } = {},
+  },
 ): Promise<{ review_id: string; process_id: string; auto_approved: boolean }> {
-  const isAdmin = getAdminEmails().includes(creatorEmail.trim().toLowerCase());
+  const isAdmin = opts.creatorIsAdmin;
   // On a demo hub nobody reviews (review R25): a visitor's submission that
   // passed the check goes live at once, so the evaluator sees what a
   // published one looks like. Beta and live hubs always review.
-  const demoPublish = !isAdmin && opts.cocPassed === true && isDemoVisitor(creatorEmail);
+  const demoPublish = !isAdmin && opts.cocPassed === true && isDemoVisitor(isAdmin);
   // Text the check flagged, sent to the admins anyway, always waits for one:
   // an admin's own included, and on a demo hub too (Adam, 2026-10-12).
   const flagged = (input.coc_flags?.length ?? 0) > 0;
   const autoApprove = !flagged && (isAdmin || demoPublish);
   const { review, process_id } = await submitForReview(input, {
     notify: !autoApprove,
+    creatorIsAdmin: isAdmin,
   });
   if (autoApprove) {
     // The submission exists now. If going live at once fails (an approval

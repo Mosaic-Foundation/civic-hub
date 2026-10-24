@@ -42,7 +42,7 @@ function db(): HubDb {
 
 export interface Editor {
   id: string;
-  email: string;
+  email: string | null;
 }
 
 export interface EditInput {
