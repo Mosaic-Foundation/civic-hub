@@ -25,7 +25,7 @@ import { hubModeHoldReason } from "../shared/delivery.js";
  */
 export function validateEmailConfig(): void {
   const apiKey = env.RESEND_API_KEY;
-  const from = env.RESEND_FROM?.trim() || env.SMTP_FROM?.trim();
+  const from = env.RESEND_FROM;
   const isProd = env.NODE_ENV === "production";
 
   if (!apiKey) {

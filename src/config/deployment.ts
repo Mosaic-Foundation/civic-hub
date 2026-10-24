@@ -10,12 +10,11 @@
 import { env } from "./env.js";
 export function deploymentCommit(): string {
   return (
-    env.VERCEL_GIT_COMMIT_SHA?.trim() ||
-    env.GIT_COMMIT_SHA?.trim() ||
+    env.GIT_COMMIT_SHA ||
     "unknown"
   );
 }
 
 export function deploymentId(): string | null {
-  return env.VERCEL_DEPLOYMENT_ID?.trim() || env.DEPLOYMENT_ID?.trim() || null;
+  return env.DEPLOYMENT_ID || null;
 }

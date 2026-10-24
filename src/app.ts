@@ -61,7 +61,13 @@ import { healthHandler } from "./http/health.js";
 import { validateEmailConfig } from "./utils/email.js";
 import { validateSchemaAtStartup, getSchemaReport } from "./db/schemaCheck.js";
 import { checkDevFlags } from "./config/devFlags.js";
+import { assertSettings } from "./config/checkSettings.js";
 import { API_SECURITY_HEADERS } from "./shared/securityHeaders.js";
+
+// Every declared setting, checked once (src/config/settings.ts, ADR-012): a
+// missing required one or a value of the wrong type stops the start here,
+// naming the setting.
+assertSettings();
 
 const app = express();
 
