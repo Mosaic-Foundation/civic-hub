@@ -228,16 +228,9 @@ const hostingBoundaryRule = {
 //     else.
 //   - A controller does not query: no forHub/readAll/inChunks/getDb in
 //     src/controllers/. It calls a service or a module.
-// The three lists below are what was not yet converted when the rule came in.
-// They only ever shrink; a file leaves its list when it is converted, and
-// nothing is added.
-const MODULES_NOT_YET_ON_STORES = [
-];
+// Every module, controller and caller was converted when the rule came in;
+// it has no exemptions.
 const PROCESS_TABLE_OWNERS = ["src/services/processService.ts", "src/services/processRows.ts", "src/db/", "src/control/hubBundle/"];
-const PROCESS_TABLE_NOT_YET = [
-];
-const CONTROLLERS_NOT_YET_ON_SERVICES = [
-];
 const QUERY_NAMES = new Set(["forHub", "readAll", "inChunks", "getDb", "getHubTokenDb"]);
 
 function resolvesIntoDb(fromFile, spec) {
@@ -256,12 +249,9 @@ const dbConventionRule = {
     const file = context.filename;
     const rel = relative(ROOT, file).split("\\").join("/");
     const isPlugin = rel.startsWith("src/modules/") || rel.startsWith("src/shared/polis_deliberation/");
-    const pluginChecked = isPlugin && !MODULES_NOT_YET_ON_STORES.some((p) => rel.startsWith(p));
-    const isController = rel.startsWith("src/controllers/") && !CONTROLLERS_NOT_YET_ON_SERVICES.includes(rel);
-    const tableChecked =
-      rel.startsWith("src/") &&
-      !PROCESS_TABLE_OWNERS.some((p) => rel.startsWith(p)) &&
-      !PROCESS_TABLE_NOT_YET.includes(rel);
+    const pluginChecked = isPlugin;
+    const isController = rel.startsWith("src/controllers/");
+    const tableChecked = rel.startsWith("src/") && !PROCESS_TABLE_OWNERS.some((p) => rel.startsWith(p));
     return {
       ImportDeclaration(n) {
         const spec = n.source.value;

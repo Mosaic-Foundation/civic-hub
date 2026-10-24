@@ -1,7 +1,7 @@
 // civic/db-convention (eslint.config.js, ADR-012): a module uses its store,
 // only processService queries `processes`, a controller does not query.
-// Linted as real files of this repo, through the repo's config. The rule's
-// "not yet" lists only shrink; these use files that are on the convention.
+// Linted as real files of this repo, through the repo's config. The rule has
+// no exemptions: every module, controller and caller is on the convention.
 
 import { resolve } from "node:path";
 import { ESLint } from "eslint";
@@ -40,5 +40,12 @@ describe("civic/db-convention", () => {
     expect(await errors("src/controllers/wordcloudController.ts", `import { forHub } from "../db/forHub.js";`)).toHaveLength(1);
     expect(await errors("src/controllers/newController.ts", `import { readAll } from "../db/readAll.js";`)).toHaveLength(1);
     expect(await errors("src/controllers/newController.ts", `import { HubDbError } from "../db/forHub.js";`)).toHaveLength(0);
+    expect(await errors("src/controllers/briefController.ts", `import { readAll } from "../db/readAll.js";`)).toHaveLength(1);
+  });
+
+  it("covers every module, the review and auth modules included", async () => {
+    expect(await errors("src/modules/civic.review/x.ts", `import { forHub } from "../../db/forHub.js";`)).toHaveLength(1);
+    expect(await errors("src/modules/civic.auth/x.ts", `import { takeRateLimit } from "../../db/rateLimit.js";`)).toHaveLength(1);
+    expect(await errors("src/modules/civic.receipts/x.ts", `export const q = (db: any) => db.from("processes").select("id");`)).toHaveLength(1);
   });
 });
