@@ -1,6 +1,8 @@
 // Compare two wire-snapshot directories (scripts/wire-snapshot.ts).
 //
-//   npx tsx scripts/wire-snapshot-diff.ts <before-dir> <after-dir>
+//   npx tsx scripts/wire-snapshot-diff.ts <before-dir> <after-dir> [--all]
+//
+// --all prints every difference, not the first 50.
 //
 // Every event in BEFORE must be in AFTER with byte-identical documents in all
 // three views, with TWO exceptions (Architecture 3, ADR-010; Adam,
@@ -113,7 +115,7 @@ if (projected.size > 0) {
   }
 }
 if (problems.length > 0) {
-  for (const p of problems.slice(0, 50)) console.error(`  ${p}`);
+  for (const p of process.argv.includes("--all") ? problems : problems.slice(0, 50)) console.error(`  ${p}`);
   console.error(`[wire-snapshot-diff] ${problems.length} difference(s) beyond the declared projection`);
   process.exit(1);
 }
