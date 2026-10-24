@@ -65,6 +65,13 @@ describe("checkSettings", () => {
     expect(settingsFailure(r)).toBeNull();
   });
 
+  it("reports, never refuses, a production setting of the wrong type: only its absence stops the start", () => {
+    const r = checkSettings({ ...PROD, CIVIC_ALLOWED_ORIGINS: "floyd.example, https://ok.example", CIVIC_CONSOLE_HOSTNAME: "c.example", CIVIC_CONSOLE_ADMIN_EMAIL: "not-an-address" });
+    expect(r.invalid.map((i) => [i.name, i.required]).sort()).toEqual([["CIVIC_ALLOWED_ORIGINS", false], ["CIVIC_CONSOLE_ADMIN_EMAIL", false]]);
+    expect(r.missing).toEqual([]);
+    expect(settingsFailure(r)).toBeNull();
+  });
+
   it("never prints a secret's value, set or missing", () => {
     const r = checkSettings({ ...PROD, CRON_SECRET: undefined, SUPABASE_URL: "x" });
     expect(settingsFailure(r)).toMatch(/CRON_SECRET/);

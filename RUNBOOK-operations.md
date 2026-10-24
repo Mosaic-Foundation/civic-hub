@@ -236,10 +236,11 @@ Better Stack holds no key of ours: it only fetches public URLs.
 ## Settings
 
 Every setting the server reads, generated from `src/config/settings.ts` by `npm run settings:doc` (ADR-012); do not
-edit the table by hand. The server checks them when it starts: a missing **required** setting, or a value that is not
-its type, stops it with a message naming the setting (never its value), and on Vercel that shows as every request
-failing and `/api/health` down. A set variable with one of our prefixes that nothing declares is logged at startup as
-`[settings] set but not a setting this hub reads: …` and otherwise ignored.
+edit the table by hand. The server checks them when it starts: a missing **required** setting (or a database setting
+that is not a valid value) stops it with a message naming the setting, never its value, and on Vercel that shows as
+every request failing and `/api/health` down. Any other setting that is not its type is logged as
+`[settings] <NAME> is not …` and the hub runs on; so is a set variable with one of our prefixes that nothing declares
+(`[settings] set but not a setting this hub reads: …`). Search the deployment's log for `[settings]` after a release.
 
 **Layer:** `engine` settings are read by the hub itself; `hosting` settings only by the hosting layer
 (`src/hosting/`, the console, `api/`), which is what a host on other services would replace; `dev` settings are

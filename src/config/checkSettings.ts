@@ -2,12 +2,13 @@
 //
 // Called once when the app module loads (src/app.ts), so `npm run dev`, a
 // plain `node src/index.ts` and the Vercel function all check the same way.
-// A missing required setting, or a required one whose value is not its type,
-// stops the server with a message that names the setting and never its value.
-// An optional setting of the wrong type, and a set variable that looks like
-// ours (KNOWN_PREFIXES) but that nothing declares, are reported, not refused:
-// a stray value must not take every hub offline, and the code already
-// treats a value it cannot read as unset.
+// A missing required setting stops the server with a message that names the
+// setting and never its value; so does a database setting (required always)
+// whose value is not its type, since nothing works without it. Any other
+// setting of the wrong type, and a set variable that looks like ours
+// (KNOWN_PREFIXES) but that nothing declares, are reported, not refused: a
+// value nobody has checked must not take every hub offline, and the code
+// already reads what it cannot use as it always has.
 
 import { ENV_FALLBACKS } from "../models/hubSettings.js";
 import { processEnv } from "./env.js";
@@ -16,7 +17,7 @@ import { KNOWN_PREFIXES, SETTINGS, type SettingDecl, type SettingName, type Sett
 export interface SettingsReport {
   /** Required and unset, each with why it is required. */
   missing: Array<{ name: string; reason: string }>;
-  /** Set but not its declared type: refused when required, reported otherwise. */
+  /** Set but not its declared type: refused when required always, reported otherwise. */
   invalid: Array<{ name: string; problem: string; required: boolean }>;
   /** Set, carrying one of our prefixes, and declared nowhere. */
   unknown: string[];
@@ -74,11 +75,9 @@ export function knownNames(): Set<string> {
   return names;
 }
 
-function isRequired(req: SettingDecl["required"], environment: NodeJS.ProcessEnv, production: boolean): boolean {
-  if (req === "always") return true;
-  if (req === "production") return production;
-  if (typeof req === "object") return Boolean(environment[req.when]?.trim()) && (!req.production || production);
-  return false;
+/** A wrong type refuses the start only for the settings nothing works without (the database's). */
+function isRequired(req: SettingDecl["required"]): boolean {
+  return req === "always";
 }
 
 export function checkSettings(environment: NodeJS.ProcessEnv = processEnv()): SettingsReport {
@@ -102,7 +101,7 @@ export function checkSettings(environment: NodeJS.ProcessEnv = processEnv()): Se
       continue;
     }
     const problem = typeProblem(decl.type, v);
-    if (problem) report.invalid.push({ name, problem, required: isRequired(req, environment, production) });
+    if (problem) report.invalid.push({ name, problem, required: isRequired(req) });
   }
 
   const known = knownNames();
