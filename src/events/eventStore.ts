@@ -22,6 +22,7 @@ import { forHub, forHubDevReset, type HubDb, type HubSelect } from "../db/forHub
 import { readAll } from "../db/readAll.js";
 import { currentHubId } from "../config/hubContext.js";
 import { CivicEvent } from "../models/event.js";
+import { actorDidServable } from "./publicPayload.js";
 
 /** The hub in scope. The log is only ever read or appended inside one. */
 function db(): HubDb {
@@ -48,6 +49,7 @@ export interface EventRow {
   wire_process_hostname?: string | null;
   wire_actor_hostname?: string | null;
   wire_ns?: string | null;
+  wire_actor_did?: string | null;
 }
 
 /** Exported for scripts/wire-snapshot.ts, which reads rows over pg. */
@@ -72,6 +74,11 @@ export function rowToEvent(row: EventRow): CivicEvent {
             process_hostname: row.wire_process_hostname || row.wire_hostname,
             actor_hostname: row.wire_actor_hostname || row.wire_hostname,
             ns: row.wire_ns ?? null,
+            // The actor's self-set DID (ADR-011), only where the type's
+            // policy serves an actor; absent otherwise (the object unchanged).
+            ...(row.wire_actor_did && actorDidServable({ data: row.data ?? {} })
+              ? { actor_did: row.wire_actor_did }
+              : {}),
           },
         }
       : {}),

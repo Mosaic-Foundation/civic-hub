@@ -19,7 +19,9 @@
  * process_links.to_iri (all additive).
  * And (2026-10-23, Architecture 4, ADR-011): the host gains hub_roles — a hub
  * table (HUB_TABLES), omitted from the export (derived by trigger from the
- * settings and accounts the export carries), and its schema requirement.
+ * settings and accounts the export carries), and its schema requirement; the
+ * schema contract gains events.wire_actor_did and users.identity_did /
+ * identity_did_source (the DID projection; all additive).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

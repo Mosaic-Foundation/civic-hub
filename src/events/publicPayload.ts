@@ -135,6 +135,18 @@ export function disclosureOfEvent(
   return disclosureOf(processType);
 }
 
+/**
+ * May an event carry its actor's own DID (ADR-011; Adam, Q4)? Only where its
+ * type's policy serves an actor at all: never for "anonymous", which serves no
+ * actor, DID or not; and never for a type whose processes may override their
+ * policy, since an event alone cannot know the override.
+ */
+export function actorDidServable(event: Pick<CivicEvent, "data">): boolean {
+  const processType = processTypeOf(event.data ?? {});
+  if (processType && DISCLOSURE_OVERRIDABLE.has(processType)) return false;
+  return disclosureOf(processType) !== "anonymous";
+}
+
 /** The canonical process type an event carries, stamped by emitEvent. */
 function processTypeOf(data: Record<string, unknown>): string | null {
   const process = data.process;

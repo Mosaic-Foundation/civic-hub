@@ -704,6 +704,7 @@
         "wire_process_hostname",
         "wire_actor_hostname",
         "wire_ns",
+        "wire_actor_did",
         "is_sample"
       ],
       "owner": "core/eventStore, digest, core/activitySerializer, core/sampleContent"
@@ -964,6 +965,8 @@
     {
       "table": "users",
       "columns": [
+        "identity_did",
+        "identity_did_source",
         "is_sample",
         "id",
         "email",
@@ -977,7 +980,7 @@
         "hidden_from_members",
         "demo_only"
       ],
-      "owner": "core/sampleContent, civic.auth, services/members"
+      "owner": "core/activitySerializer, core/sampleContent, civic.auth, services/members"
     },
     {
       "table": "vote_drafts",
@@ -1015,7 +1018,7 @@
       "forbiddenColumns": [
         {
           "column": "user_id",
-          "reason": "vote_records must never identify the voter \u2014 this column would make every past ballot attributable"
+          "reason": "vote_records must never identify the voter — this column would make every past ballot attributable"
         }
       ],
       "owner": "civic.vote"

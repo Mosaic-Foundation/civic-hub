@@ -61,6 +61,9 @@ export const CORE_REQUIREMENTS: SchemaRequirement[] = [
   // Wire identity frozen at insert (20261020000000, ADR-008): the serializer
   // reads every identifier's hostname from the row.
   { table: "events", columns: ["wire_hostname", "wire_process_hostname", "wire_actor_hostname", "wire_ns"], owner: "core/activitySerializer" },
+  // The actor's self-set DID, stamped at emission (20261023010000, ADR-011).
+  { table: "events", columns: ["wire_actor_did"], owner: "core/activitySerializer" },
+  { table: "users", columns: ["identity_did", "identity_did_source"], owner: "core/activitySerializer" },
   // Sample content (Phase 7, 20260926040000): every public read filters it.
   { table: "processes", columns: ["is_sample"], owner: "core/sampleContent" },
   { table: "events", columns: ["is_sample"], owner: "core/sampleContent" },

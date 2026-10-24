@@ -54,6 +54,14 @@ export interface EventWire {
   actor_hostname: string;
   /** The `hub:` namespace IRI; null on rows from before 2026-10-20, which keep `{origin}/ns#`. */
   ns: string | null;
+  /**
+   * The acting person's own DID when the event was stored (events.wire_actor_did,
+   * 20261023010000; ADR-011). Present only when they had set one AND the
+   * event's type's disclosure policy serves an actor at all (never for
+   * "anonymous"); absent otherwise, so an event without one is the same object
+   * it always was. Redaction removes it wherever it hides the actor.
+   */
+  actor_did?: string;
 }
 
 /**

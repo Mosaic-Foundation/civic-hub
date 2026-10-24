@@ -206,6 +206,11 @@ export function redactEvent(
     !officials.has(participantUserId(event.actor))
   ) {
     out.actor = anonymousActorToken(event.actor, event.process_id);
+    // The person's own DID goes wherever their identity goes: hidden here.
+    if (event.wire?.actor_did) {
+      const { actor_did: _hidden, ...wire } = event.wire;
+      out.wire = wire;
+    }
   }
   return out;
 }

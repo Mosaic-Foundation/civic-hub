@@ -256,6 +256,8 @@ interface SerializerEnv {
   actorUi: string;
   /** The `hub:` namespace this document declares. */
   ns: string;
+  /** The acting person's own DID, frozen at emission, where it may be served (ADR-011). */
+  actorDid?: string;
 }
 
 /**
@@ -295,7 +297,9 @@ export function activityIdOf(event: CivicEvent): string {
 
 function serializerEnv(event: CivicEvent): SerializerEnv {
   const o = wireOrigins(event);
-  return { base: o.api, ui: o.ui, processUi: o.processUi, actorUi: o.actorUi, ns: o.ns };
+  const env: SerializerEnv = { base: o.api, ui: o.ui, processUi: o.processUi, actorUi: o.actorUi, ns: o.ns };
+  if (event.wire?.actor_did) env.actorDid = event.wire.actor_did;
+  return env;
 }
 
 type Payload = Record<string, unknown>;
@@ -906,6 +910,10 @@ function actorIri(actor: string, env: SerializerEnv): string {
   // emitters name their component ("system:brief-spawn").
   if (value === "system") return `${env.base}/system/unspecified`;
   if (value === "anonymous") return `${env.ui}/users/anonymous`;
+  // A participant who set their own DID is that DID (ADR-011), frozen with
+  // the event; the store carries it only where the type's policy serves an
+  // actor (actorDidServable). Without one, the account's IRI as before.
+  if (env.actorDid) return env.actorDid;
   const id = value.startsWith("user:") ? value.slice("user:".length) : value;
   return `${env.actorUi}/users/${encodeURIComponent(id)}`;
 }
