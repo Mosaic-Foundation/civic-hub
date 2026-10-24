@@ -30,10 +30,13 @@
 // (its bucket names, per-IP caps and time zone).
 
 import { RateLimitedError, ValidationError } from "../../errors/index.js";
-import { HOUR_MS, rateLimitBucket, takeRateLimit, retryAt, type RateLimitCheck } from "../../db/rateLimit.js";
+import type { RateLimitCheck } from "../../db/rateLimit.js";
 import { randomToken, sameHexHash, sha256Hex } from "../../utils/hash.js";
 import { resolveTimeZone } from "../../utils/hubTime.js";
 import { generateOTP, OTP_TTL_MS } from "./otp.js";
+import { authStore } from "./store.js";
+
+export const HOUR_MS = 60 * 60 * 1000;
 
 export const CODE_RULES = {
   ttlMs: OTP_TTL_MS,
@@ -117,9 +120,9 @@ function refuse(message: string, code: string, at: Date): RateLimitedError {
 
 /** Take the checks, or throw "Too many attempts. Try again after …". */
 async function take(realm: Realm, checks: RateLimitCheck[], messageFor?: (c: RateLimitCheck, at: Date) => [string, string]): Promise<void> {
-  const refused = await takeRateLimit(checks);
+  const refused = await authStore.get().takeRateLimit(checks);
   if (!refused) return;
-  const at = (await retryAt(refused)) ?? new Date(Date.now() + refused.windowMs);
+  const at = (await authStore.get().rateLimitRetryAt(refused)) ?? new Date(Date.now() + refused.windowMs);
   const [message, code] = messageFor?.(refused, at) ?? [tooManyMessage(at, realm.timeZone), "rate_limited"];
   throw refuse(message, code, at);
 }
@@ -204,7 +207,7 @@ export async function checkCode(store: CodeStore, realm: Realm, ip: string, pres
   };
   // Refused before a try is spent, so a machine over its wrong tries at this
   // address can't burn the owner's codes.
-  const wait = await retryAt(wrongBucket);
+  const wait = await authStore.get().rateLimitRetryAt(wrongBucket);
   if (wait) throw refuse(tooManyMessage(wait, realm.timeZone), "rate_limited", wait);
 
   const rows = await store.take({ email }, CODE_RULES.maxTries);
@@ -215,7 +218,7 @@ export async function checkCode(store: CodeStore, realm: Realm, ip: string, pres
   if (!match) {
     // A wrong try only: counted after the fact (a refusal here records nothing
     // and changes nothing; the check above is what holds the line).
-    await takeRateLimit([wrongBucket]);
+    await authStore.get().takeRateLimit([wrongBucket]);
     if (rows.every((r) => r.attempts >= CODE_RULES.maxTries)) throw new ValidationError(BURNED_CODE, "code_burned");
     throw new ValidationError(WRONG_CODE, "invalid_code");
   }
@@ -225,5 +228,5 @@ export async function checkCode(store: CodeStore, realm: Realm, ip: string, pres
 
 /** The bucket name, for tests that read rate_limit_hits. */
 export function codeBucket(realm: Pick<Realm, "scope">, step: string, by: string, value: string): string {
-  return rateLimitBucket(`${realm.scope}.${step}`, by, value);
+  return authStore.get().rateLimitBucket(`${realm.scope}.${step}`, by, value);
 }

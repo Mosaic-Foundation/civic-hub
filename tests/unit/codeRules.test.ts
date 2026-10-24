@@ -31,6 +31,13 @@ vi.mock("../../src/db/rateLimit.js", async (orig) => ({
   },
 }));
 
+// The auth store the setup bound was loaded before the mock above: bind one
+// over the mocked limiter (ADR-012: the rules reach the limiter through the store).
+const limiter = await import("../../src/db/rateLimit.js");
+const { authStore } = await import("../../src/modules/civic.auth/store.js");
+const { authStoreImpl } = await import("../../src/stores/auth.js");
+authStore.bind({ ...authStoreImpl, takeRateLimit: limiter.takeRateLimit, rateLimitRetryAt: limiter.retryAt });
+
 const { CODE_RULES, checkCode, issueCode, clockTime } = await import("../../src/modules/civic.auth/codeRules.js");
 type CodeStore = import("../../src/modules/civic.auth/codeRules.js").CodeStore;
 type Realm = import("../../src/modules/civic.auth/codeRules.js").Realm;

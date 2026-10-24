@@ -232,7 +232,6 @@ const hostingBoundaryRule = {
 // They only ever shrink; a file leaves its list when it is converted, and
 // nothing is added.
 const MODULES_NOT_YET_ON_STORES = [
-  "src/modules/civic.auth/",
 ];
 const PROCESS_TABLE_OWNERS = ["src/services/processService.ts", "src/services/processRows.ts", "src/db/", "src/control/hubBundle/"];
 const PROCESS_TABLE_NOT_YET = [

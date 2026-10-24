@@ -24,14 +24,13 @@
 
 import { env } from "../../config/env.js";
 import { ConflictError, ForbiddenError, NotFoundError, RateLimitedError, UnauthorizedError, ValidationError } from "../../errors/index.js";
-import { forHub, HubDbError, type HubDb, type Row } from "../../db/forHub.js";
+import type { Row } from "../../db/forHub.js";
 import { generateId } from "../../utils/id.js";
 import { randomToken, sameHexHash, sha256Hex } from "../../utils/hash.js";
 import { renderCodeEmail } from "./otp.js";
-import { CODE_RULES, checkCode, issueCode, tooManyMessage, type CodeRow, type CodeStore, type Realm } from "./codeRules.js";
+import { HOUR_MS, checkCode, issueCode, tooManyMessage, type Realm } from "./codeRules.js";
 import { sendEmail, mailConfigured } from "../../utils/email.js";
 import { HUB_SIGN_IN_LIMITS } from "./limits.js";
-import { HOUR_MS, retryAt, takeRateLimit } from "../../db/rateLimit.js";
 import { KEYS } from "../../models/hubSettings.js";
 import { resolveTimeZone } from "../../utils/hubTime.js";
 import { uiBaseUrl } from "../../utils/baseUrl.js";
@@ -48,8 +47,7 @@ import { isPrivilegedEmail, isPrivilegedEmailNow } from "../../services/privileg
 import { lookupOfficialByEmail } from "../../services/officials.js";
 import { currentHubId, currentHubIdOrNull } from "../../config/hubContext.js";
 import type { User, PendingVerification, Session, SessionAssurance } from "./models.js";
-import { readAll } from "../../db/readAll.js";
-import { invalidateHubRoles } from "../../db/hubRolesStore.js";
+import { authStore } from "./store.js";
 
 export type { User, PendingVerification, Session, SessionAssurance } from "./models.js";
 
@@ -63,11 +61,6 @@ export type { User, PendingVerification, Session, SessionAssurance } from "./mod
  */
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const KEEP_SIGNED_IN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
-
-/** The hub in scope. Everything here runs inside a request for one hub. */
-function db(): HubDb {
-  return forHub(currentHubId());
-}
 
 /**
  * Shown when an address collides with a global unique email on another hub
@@ -89,7 +82,6 @@ function generateToken(): string {
 
 /** Start a session for this account on the hub in scope; returns the token. */
 async function insertSession(
-  hubDb: HubDb,
   userId: string,
   assurance: SessionAssurance,
   ttlMs = SESSION_TTL_MS,
@@ -98,7 +90,7 @@ async function insertSession(
   // Stamped with the hub it was minted on, by forHub. A session is a bearer
   // credential, so without this a token from one hub would authenticate its
   // holder on every other hub this deployment serves.
-  await hubDb.from("sessions").insert({
+  await authStore.get().insertSession({
     token: sha256Hex(token),
     user_id: userId,
     expires_at: new Date(Date.now() + ttlMs).toISOString(),
@@ -153,38 +145,6 @@ export function normalizeFullName(raw: unknown): string {
 
 // --- Auth flow ---
 
-/** This hub's codes (sign_in_codes, 20261014000000), for ./codeRules.ts. */
-function hubCodeStore(hubDb: HubDb): CodeStore {
-  return {
-    async live(email) {
-      const rows = await hubDb
-        .from("sign_in_codes")
-        .select<{ expires_at: string; attempts: number }>("expires_at, attempts")
-        .eq("email", email)
-        .gt("expires_at", new Date().toISOString());
-      return rows.filter((r) => r.attempts < CODE_RULES.maxTries).map((r) => r.expires_at);
-    },
-    async insert(row) {
-      await hubDb.from("sign_in_codes").insert(row);
-    },
-    async take(by, maxTries) {
-      const rows = await hubDb.rpc<CodeRow[]>("take_sign_in_attempt", {
-        p_email: "email" in by ? by.email : null,
-        p_link_hash: "linkHash" in by ? by.linkHash : null,
-        p_max: maxTries,
-      });
-      return Array.isArray(rows) ? rows : [];
-    },
-    async spend(id) {
-      const spent = await hubDb.from("sign_in_codes").delete().eq("id", id).select<{ id: string }>("id");
-      return spent.length > 0;
-    },
-    async clear(email) {
-      await hubDb.from("sign_in_codes").delete().eq("email", email);
-    },
-  };
-}
-
 /** A hub's realm: its per-IP caps (./limits.ts), its time zone, and links. */
 function hubRealm(): Realm {
   const hubId = currentHubId();
@@ -200,8 +160,8 @@ function hubRealm(): Realm {
 /** Count one step against the IP's hourly cap, or refuse with the time it can try again. */
 async function limitIp(step: keyof typeof HUB_SIGN_IN_LIMITS, ip: string, timeZone: string): Promise<void> {
   const check = { scope: `hub.${step}`, by: "ip", value: ip, limit: HUB_SIGN_IN_LIMITS[step].ip, windowMs: HOUR_MS };
-  if (!(await takeRateLimit([check]))) return;
-  const at = (await retryAt(check)) ?? new Date(Date.now() + HOUR_MS);
+  if (!(await authStore.get().takeRateLimit([check]))) return;
+  const at = (await authStore.get().rateLimitRetryAt(check)) ?? new Date(Date.now() + HOUR_MS);
   throw new RateLimitedError(tooManyMessage(at, timeZone), "rate_limited", { extra: { retry_at: at.toISOString() } });
 }
 
@@ -296,7 +256,7 @@ export async function requestVerification(
   // an hour for the address; then a new code beside any earlier ones, which
   // keep working (./codeRules.ts). Nothing here can lock the address.
   // The IP was counted above, so issueCode doesn't count it again.
-  const issued = await issueCode(hubCodeStore(db()), { ...realm, ipLimits: { ...realm.ipLimits, request: null } }, ip, normalizedEmail);
+  const issued = await issueCode(authStore.get().hubCodes(), { ...realm, ipLimits: { ...realm.ipLimits, request: null } }, ip, normalizedEmail);
   const code = issued.code;
 
   // Send the OTP via email. If Resend is not configured (dev), fall back
@@ -378,7 +338,7 @@ export async function consumePendingCode(
   // The caller's IP, for the per-IP limits on codes typed in.
   ip: string,
 ): Promise<void> {
-  await checkCode(hubCodeStore(db()), hubRealm(), ip, { email: email.trim().toLowerCase(), code: String(code) });
+  await checkCode(authStore.get().hubCodes(), hubRealm(), ip, { email: email.trim().toLowerCase(), code: String(code) });
 }
 
 function sessionTtl(keepSignedIn: boolean): number {
@@ -397,7 +357,6 @@ export async function verifyCode(
   keepSignedIn = false,
 ): Promise<{ token: string; user: User }> {
   const normalizedEmail = email.trim().toLowerCase();
-  const hubDb = db();
 
   // A demo hub accepts any six digits from an ordinary visitor (see
   // requestVerification). Gated on the hub's own `mode`, which lives only in
@@ -420,7 +379,7 @@ export async function verifyCode(
     !(await isPrivilegedEmailNow(normalizedEmail))
   ) {
     await limitIp("verify", ip, hubRealm().timeZone);
-    await hubCodeStore(hubDb).clear?.(normalizedEmail);
+    await authStore.get().hubCodes().clear?.(normalizedEmail);
     assurance = "demo";
   } else {
     await consumePendingCode(normalizedEmail, code, ip);
@@ -428,7 +387,7 @@ export async function verifyCode(
   }
 
   const user = await findOrCreateVerifiedUser(normalizedEmail, assurance === "demo");
-  const token = await insertSession(hubDb, user.id, assurance, sessionTtl(keepSignedIn));
+  const token = await insertSession(user.id, assurance, sessionTtl(keepSignedIn));
   return { token, user };
 }
 
@@ -443,10 +402,9 @@ export async function verifyLink(
   ip: string,
   keepSignedIn = false,
 ): Promise<{ token: string; user: User }> {
-  const hubDb = db();
-  const { email } = await checkCode(hubCodeStore(hubDb), hubRealm(), ip, { linkToken });
+  const { email } = await checkCode(authStore.get().hubCodes(), hubRealm(), ip, { linkToken });
   const user = await findOrCreateVerifiedUser(email);
-  const token = await insertSession(hubDb, user.id, "code", sessionTtl(keepSignedIn));
+  const token = await insertSession(user.id, "code", sessionTtl(keepSignedIn));
   return { token, user };
 }
 
@@ -471,31 +429,18 @@ export async function verifyInviteLink(
     "invite_unusable",
   );
   if (!/^[A-Za-z0-9_-]{20,128}$/.test(inviteToken)) throw invalid;
-  const hubDb = db();
   const now = new Date().toISOString();
   const linkHash = sha256Hex(inviteToken);
-  const live = await hubDb
-    .from("hub_invites")
-    .select<{ email: string }>("email")
-    .eq("link_hash", linkHash)
-    .is("used_at", null)
-    .gt("expires_at", now)
-    .maybeSingle();
-  if (!live) throw invalid;
+  const liveEmail = await authStore.get().liveInviteEmail(linkHash, now);
+  if (!liveEmail) throw invalid;
   // Before the link is spent, so a refusal here leaves it working for when
   // an admin lets the address in.
-  await assertMayEnterBeta(live.email);
+  await assertMayEnterBeta(liveEmail);
   // The spend: one statement, so two taps can't both use it.
-  const spent = await hubDb
-    .from("hub_invites")
-    .update({ used_at: now })
-    .eq("link_hash", linkHash)
-    .is("used_at", null)
-    .select<{ email: string }>("email");
-  const email = spent[0]?.email;
+  const email = await authStore.get().spendInvite(linkHash, now);
   if (!email) throw invalid;
   const user = await findOrCreateVerifiedUser(email);
-  const token = await insertSession(hubDb, user.id, "code", sessionTtl(keepSignedIn));
+  const token = await insertSession(user.id, "code", sessionTtl(keepSignedIn));
   return { token, user };
 }
 
@@ -511,28 +456,18 @@ export async function verifyInviteLink(
  * (services/members.ts); a real code later clears the mark.
  */
 async function findOrCreateVerifiedUser(normalizedEmail: string, demoOnly = false): Promise<User> {
-  const hubDb = db();
-  const existing = await hubDb
-    .from("users")
-    .select("*")
-    .eq("email", normalizedEmail)
-    .maybeSingle();
+  const existing = await authStore.get().userByEmail(normalizedEmail);
 
   let user: User;
 
   if (existing) {
     // A real code proves the mailbox: the account counts from now on.
     if (!demoOnly && existing.demo_only === true) {
-      await hubDb.from("users").update({ demo_only: false }).eq("id", existing.id);
+      await authStore.get().clearDemoOnly(existing.id);
     }
     // Mark email_verified if it wasn't already
     if (!existing.email_verified) {
-      const updated = await hubDb
-        .from("users")
-        .update({ email_verified: true })
-        .eq("id", existing.id)
-        .select()
-        .single();
+      const updated = await authStore.get().markEmailVerified(existing.id);
       user = rowToUser(updated);
     } else {
       user = rowToUser(existing);
@@ -551,26 +486,17 @@ async function findOrCreateVerifiedUser(normalizedEmail: string, demoOnly = fals
       demo_only: demoOnly,
     };
 
-    let inserted: Row | null = null;
-    try {
-      inserted = await hubDb.from("users").insert(newRow).select().single();
-    } catch (err) {
-      // 23505 = unique_violation — another request created the user first.
-      if (!(err instanceof HubDbError && err.code === "23505")) throw err;
-    }
+    // "duplicate": another request created the user first (23505, unique_violation).
+    const inserted: Row | "duplicate" = await authStore.get().insertUser(newRow);
 
-    if (inserted) {
+    if (inserted !== "duplicate") {
       user = rowToUser(inserted);
       // A new account binds any grant pending on its address (hub_roles, by
       // trigger): this request's cached roles are behind it now.
-      invalidateHubRoles(currentHubIdOrNull() ?? undefined);
+      authStore.get().invalidateHubRoles(currentHubIdOrNull() ?? undefined);
       console.log(`[auth] New user created: ${user.id} (${normalizedEmail})`);
     } else {
-      const refetch = await hubDb
-        .from("users")
-        .select("*")
-        .eq("email", normalizedEmail)
-        .maybeSingle();
+      const refetch = await authStore.get().userByEmail(normalizedEmail);
       if (!refetch) {
         // Not on this hub: the violation was a global users_email_key (only
         // on a database without the post-cutover cleanup), so the address
@@ -620,7 +546,7 @@ export async function createHandoffSession(
 ): Promise<string> {
   const user = await findOrCreateVerifiedUser(email.trim().toLowerCase());
   if (agreedLegalVersion) await acceptLegalTerms(user.id, agreedLegalVersion);
-  return insertSession(db(), user.id, "code", HANDOFF_TTL_MS, `${HANDOFF_PREFIX}_${randomToken()}`);
+  return insertSession(user.id, "code", HANDOFF_TTL_MS, `${HANDOFF_PREFIX}_${randomToken()}`);
 }
 
 /**
@@ -630,17 +556,11 @@ export async function createHandoffSession(
 export async function exchangeHandoff(handoff: string): Promise<{ token: string; user: User }> {
   const invalid = new UnauthorizedError("This sign-in link has expired. Sign in with your email instead.", "handoff_expired");
   if (typeof handoff !== "string" || !isHandoffToken(handoff)) throw invalid;
-  const hubDb = db();
-  const spent = await hubDb
-    .from("sessions")
-    .delete()
-    .eq("token", sha256Hex(handoff))
-    .select<{ user_id: string; expires_at: string; assurance: SessionAssurance }>("user_id, expires_at, assurance");
-  const row = spent[0];
+  const row = await authStore.get().spendSession(sha256Hex(handoff));
   if (!row || Date.now() > Date.parse(row.expires_at)) throw invalid;
-  const found = await hubDb.from("users").select("*").eq("id", row.user_id).maybeSingle();
+  const found = await authStore.get().userById(row.user_id);
   if (!found) throw invalid;
-  const token = await insertSession(hubDb, row.user_id, row.assurance);
+  const token = await insertSession(row.user_id, row.assurance);
   return { token, user: rowToUser(found) };
 }
 
@@ -657,12 +577,7 @@ export async function affirmResidency(
   if (fullName !== undefined) {
     patch.full_name = normalizeFullName(fullName);
   }
-  const data = await db()
-    .from("users")
-    .update(patch)
-    .eq("id", userId)
-    .select()
-    .maybeSingle();
+  const data = await authStore.get().updateUser(userId, patch);
 
   if (!data) throw new NotFoundError("User not found", "user_not_found");
 
@@ -680,12 +595,7 @@ export async function updateFullName(
   fullName: string,
 ): Promise<User> {
   const value = normalizeFullName(fullName);
-  const data = await db()
-    .from("users")
-    .update({ full_name: value })
-    .eq("id", userId)
-    .select()
-    .maybeSingle();
+  const data = await authStore.get().updateUser(userId, { full_name: value });
   if (!data) throw new NotFoundError("User not found", "user_not_found");
   return rowToUser(data);
 }
@@ -703,12 +613,7 @@ export async function acceptLegalTerms(
   version: string,
 ): Promise<User> {
   const now = new Date().toISOString();
-  const data = await db()
-    .from("users")
-    .update({ tos_version_accepted: version, tos_accepted_at: now })
-    .eq("id", userId)
-    .select()
-    .maybeSingle();
+  const data = await authStore.get().updateUser(userId, { tos_version_accepted: version, tos_accepted_at: now });
   if (!data) throw new NotFoundError("User not found", "user_not_found");
   console.log(`[auth] User ${userId} accepted legal v${version}`);
   return rowToUser(data);
@@ -757,36 +662,26 @@ export async function getSessionFromToken(
   // request authenticates users.
   const hubId = currentHubIdOrNull();
   if (!hubId) return undefined;
-  const hubDb = forHub(hubId);
+  const sessions = authStore.get().sessionsOn(hubId);
 
   // A lookup that fails reads as no session, as it always has: a database
   // error must not authenticate anyone, and a sign-in check is not the place
   // to turn a blip into a 500 on every page.
   try {
     const tokenHash = sha256Hex(token);
-    const session = await hubDb
-      .from("sessions")
-      .select<{ user_id: string; expires_at: string; assurance: SessionAssurance }>(
-        "user_id, expires_at, assurance",
-      )
-      .eq("token", tokenHash)
-      .maybeSingle();
+    const session = await sessions.byTokenHash(tokenHash);
     if (!session) return undefined;
 
     if (new Date() > new Date(session.expires_at)) {
       // Opportunistic cleanup of the expired session.
-      await hubDb.from("sessions").delete().eq("token", tokenHash);
+      await sessions.deleteByTokenHash(tokenHash);
       return undefined;
     }
 
     const assurance: SessionAssurance = session.assurance === "code" ? "code" : "demo";
     if (assurance === "demo" && !isDemoHubSync()) return undefined;
 
-    const row = await hubDb
-      .from("users")
-      .select("*")
-      .eq("id", session.user_id)
-      .maybeSingle();
+    const row = await sessions.userById(session.user_id);
     if (!row) return undefined;
     const user = rowToUser(row);
     // isPrivilegedEmail fails closed (true on a read error), so a wobble
@@ -806,7 +701,7 @@ export async function getSessionFromToken(
  */
 export async function getUser(userId: string): Promise<User | undefined> {
   try {
-    const data = await db().from("users").select("*").eq("id", userId).maybeSingle();
+    const data = await authStore.get().userById(userId);
     return data ? rowToUser(data) : undefined;
   } catch (err) {
     console.error(`[auth] getUser failed: ${(err as Error).message}`);
@@ -823,7 +718,7 @@ export async function logout(token: string): Promise<void> {
   // destroy a session belonging to another.
   const hubId = currentHubIdOrNull();
   if (!hubId) return;
-  await forHub(hubId).from("sessions").delete().eq("token", sha256Hex(token));
+  await authStore.get().sessionsOn(hubId).deleteByTokenHash(sha256Hex(token));
 }
 
 /**
@@ -855,13 +750,11 @@ export async function deleteAccount(
   if (!userId) {
     throw new Error("Auth: deleteAccount requires a userId.");
   }
-  const hubDb = db();
   // The codes first so a stale code can't be used to race a fresh signup
   // against the in-flight delete. This hub's only: the same person's account
   // on another hub is theirs to delete there.
   // An account without a mailbox has no codes keyed to an address.
-  if (email) await hubDb.from("sign_in_codes").delete().eq("email", email.toLowerCase());
-  await hubDb.from("users").delete().eq("id", userId);
+  await authStore.get().deleteAccount(userId, email);
 }
 
 /**
@@ -880,12 +773,7 @@ export async function updateHideAiDraftingHelp(
   userId: string,
   hide: boolean,
 ): Promise<User> {
-  const data = await db()
-    .from("users")
-    .update({ hide_ai_drafting_help: hide })
-    .eq("id", userId)
-    .select()
-    .maybeSingle();
+  const data = await authStore.get().updateUser(userId, { hide_ai_drafting_help: hide });
   if (!data) throw new NotFoundError("User not found", "user_not_found");
   return rowToUser(data);
 }
@@ -895,12 +783,7 @@ export async function updateDisplayName(
   displayName: string | null,
 ): Promise<User> {
   const value = displayName?.trim() || null;
-  const data = await db()
-    .from("users")
-    .update({ display_name: value })
-    .eq("id", userId)
-    .select()
-    .maybeSingle();
+  const data = await authStore.get().updateUser(userId, { display_name: value });
   if (!data) throw new NotFoundError("User not found", "user_not_found");
   return rowToUser(data);
 }
@@ -916,12 +799,7 @@ export async function setDigestFrequency(
   userId: string,
   frequencyDays: number | null,
 ): Promise<User> {
-  const data = await db()
-    .from("users")
-    .update({ digest_frequency_days: frequencyDays })
-    .eq("id", userId)
-    .select()
-    .maybeSingle();
+  const data = await authStore.get().updateUser(userId, { digest_frequency_days: frequencyDays });
 
   if (!data) throw new NotFoundError("User not found", "user_not_found");
   return rowToUser(data);
@@ -937,10 +815,7 @@ export async function markDigestSent(
   userId: string,
   timestamp: string,
 ): Promise<void> {
-  await forHub(hubId)
-    .from("users")
-    .update({ last_digest_sent_at: timestamp })
-    .eq("id", userId);
+  await authStore.get().markDigestSent(hubId, userId, timestamp);
 }
 
 /**
@@ -951,25 +826,11 @@ export async function markDigestSent(
  * Takes the hub explicitly because the digest cron runs outside a request.
  */
 export async function listSubscribedUsers(hubId: string): Promise<User[]> {
-  // Paged: a hub can have more than 1,000 of these (PostgREST's cap).
-  const rows = await readAll((from, to) =>
-    forHub(hubId)
-      .from("users")
-      .select("*")
-      .not("digest_frequency_days", "is", null)
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
+  const rows = await authStore.get().subscribedUsers(hubId);
   return rows.map((row) => rowToUser(row));
 }
 
 /** Clear this hub's auth data — used by debug/seed only. */
 export async function clearAuth(): Promise<void> {
-  const hubDb = db();
-  // Supabase requires a filter on DELETE to avoid accidental full-table wipes.
-  // neq("<col>", "") matches every row since our IDs/emails are non-empty;
-  // forHub confines it to this hub.
-  await hubDb.from("sign_in_codes").delete().neq("email", "");
-  await hubDb.from("sessions").delete().neq("token", "");
-  await hubDb.from("users").delete().neq("id", "");
+  await authStore.get().clearAll();
 }

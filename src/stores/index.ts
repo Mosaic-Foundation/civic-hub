@@ -28,6 +28,8 @@ import { reviewStore } from "../modules/civic.review/store.js";
 import { reviewStoreImpl } from "./review.js";
 import { receiptsStore } from "../modules/civic.receipts/store.js";
 import { receiptsStoreImpl } from "./receipts.js";
+import { authStore } from "../modules/civic.auth/store.js";
+import { authStoreImpl } from "./auth.js";
 
 export function installStores(): void {
   wordcloudStore.bind(wordcloudStoreImpl);
@@ -39,4 +41,5 @@ export function installStores(): void {
   inputStore.bind(inputStoreImpl);
   reviewStore.bind(reviewStoreImpl);
   receiptsStore.bind(receiptsStoreImpl);
+  authStore.bind(authStoreImpl);
 }

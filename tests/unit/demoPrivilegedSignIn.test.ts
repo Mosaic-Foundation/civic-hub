@@ -52,9 +52,19 @@ vi.mock("../../src/db/forHub.js", async (orig) => {
 
 import { runWithHub } from "../../src/config/hubContext.js";
 import { requestVerification } from "../../src/modules/civic.auth/index.js";
+import { authStore } from "../../src/modules/civic.auth/store.js";
 import { sendEmail } from "../../src/utils/email.js";
 import { installAdapters } from "../../src/adapters/index.js";
 import { fakeMail } from "../../src/adapters/fakes/mail.js";
+
+// The auth store the setup bound was loaded before the mocks above: bind one
+// with nothing limited and no live codes (ADR-012: the module reaches the
+// database through its store).
+authStore.bind({
+  ...(await import("../../src/stores/auth.js")).authStoreImpl,
+  takeRateLimit: async () => null,
+  hubCodes: () => ({ live: async () => [], insert: async () => {}, take: async () => [], spend: async () => false }),
+});
 
 const SETTINGS = { "people.admin_emails": JSON.stringify([ADMIN]) };
 let mail = fakeMail({ configured: true });
