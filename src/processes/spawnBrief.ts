@@ -12,8 +12,8 @@ import { isPluginEnabledSync } from "../services/hubSettings.js";
 import { Process } from "../models/process.js";
 import { getProcessFactory, getProcessHandler } from "./registry.js";
 import { emitEvent } from "../events/eventEmitter.js";
-import { forHub, HubDbError } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
+import { HubDbError } from "../db/forHub.js";
+import { briefIdForSource } from "../services/processRows.js";
 import { emitBriefAggregationCompleted } from "../modules/civic.brief/events.js";
 import type { BriefProcessState } from "../modules/civic.brief/index.js";
 
@@ -94,11 +94,5 @@ export async function spawnBriefFromClosedProcess(
 export async function findExistingBriefId(
   sourceProcessId: string,
 ): Promise<string | null> {
-  const row = await forHub(currentHubId())
-    .from("processes")
-    .select<{ id: string }>("id")
-    .eq("type", "civic.brief")
-    .eq("state->>source_process_id", sourceProcessId)
-    .maybeSingle();
-  return row?.id ?? null;
+  return briefIdForSource(sourceProcessId);
 }

@@ -31,6 +31,7 @@ import {
 } from "../shared/feedActivity.js";
 import { NON_PUBLIC_STATUSES } from "./processLifecycle.js";
 import { isProcessTypeEnabled } from "./pluginGate.js";
+import { processFactRows } from "./processRows.js";
 import type { CivicEvent } from "../models/event.js";
 import type { ProcessStatus } from "../models/process.js";
 
@@ -162,10 +163,7 @@ async function processFacts(events: CivicEvent[]): Promise<Map<string, ProcessFa
   const facts = new Map<string, ProcessFacts>();
   if (ids.length === 0) return facts;
   // At most BATCH ids, so at most BATCH rows: one request, under the cap.
-  const rows = await forHub(currentHubId())
-    .from("processes")
-    .select<ProcessFacts & { id: string; added_in_demo: boolean }>("id, status, type, is_sample, added_in_demo")
-    .in("id", ids);
+  const rows = await processFactRows(ids);
   // A visitor's demo submission is stored as sample but shows no badge.
   for (const r of rows) {
     facts.set(r.id, { status: r.status, type: r.type, is_sample: r.is_sample && !r.added_in_demo });

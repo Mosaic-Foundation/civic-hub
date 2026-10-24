@@ -33,6 +33,7 @@ import { getReviewByProcessId, setReviewDraftId } from "../modules/civic.review/
 import { validateLinkSet } from "../modules/civic.process_links/index.js";
 import { createEdges, getEdgesFor } from "./processLinks.js";
 import { getProcess } from "./processService.js";
+import { updateProcessColumns } from "./processRows.js";
 import { stripMarkdown } from "../shared/markdown.js";
 
 /** The hub in scope. Edits are only ever applied inside one. */
@@ -242,7 +243,7 @@ export async function applyEdit(
     for (const key of contentChanged) content[key] = changes.current[key];
     updates.content = content;
   }
-  await db().from("processes").update(updates).eq("id", processId);
+  await updateProcessColumns(processId, updates);
 
   if (changes.changed_fields.includes("links")) {
     await db().from("process_links").delete().eq("from_id", processId).eq("created_by", process.createdBy);

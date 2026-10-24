@@ -11,6 +11,7 @@ import { getAllHandlers, getManifest, processDetailPath } from "../processes/reg
 import { isSubstantiveEdit } from "./processEdits.js";
 import { readAll } from "../db/readAll.js";
 import { inChunks } from "../db/inChunks.js";
+import { countExistingProcesses, processHeads } from "./processRows.js";
 
 const EPOCH = "1970-01-01T00:00:00.000Z";
 
@@ -78,13 +79,7 @@ export async function listEditNotifications(userId: string, isAdmin = false): Pr
   }
   if (byProcess.size === 0) return [];
 
-  const procs = await inChunks([...byProcess.keys()], (chunk) =>
-    hubDb
-      .from("processes")
-      .select<{ id: string; type: string; title: string; status: string }>("id, type, title, status")
-      .in("id", chunk)
-      .order("id", { ascending: true }),
-  );
+  const procs = await processHeads([...byProcess.keys()]);
   const out: EditNotification[] = [];
   for (const p of procs) {
     if (p.status === "archived") continue;
@@ -157,13 +152,7 @@ export async function listAllEdits(adminId: string, sinceDays = 90): Promise<{ i
   }
   if (byProcess.size === 0) return { items: [], unseen: 0 };
 
-  const procs = await inChunks([...byProcess.keys()], (chunk) =>
-    hubDb
-      .from("processes")
-      .select<{ id: string; type: string; title: string; status: string }>("id, type, title, status")
-      .in("id", chunk)
-      .order("id", { ascending: true }),
-  );
+  const procs = await processHeads([...byProcess.keys()]);
   const items: AdminEditRow[] = [];
   for (const p of procs) {
     const agg = byProcess.get(p.id)!;
@@ -219,8 +208,7 @@ export async function countUnseenEdits(adminId: string, sinceDays = 90): Promise
   }
   if (edited.size === 0) return 0;
   // Only processes that still exist, as the list shows them.
-  const counts = await inChunks([...edited], async (chunk) => [await hubDb.from("processes").count().in("id", chunk)]);
-  return counts.reduce((a, b) => a + b, 0);
+  return countExistingProcesses([...edited]);
 }
 
 function friendlyTypeLabel(type: string): string {

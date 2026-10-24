@@ -22,7 +22,7 @@
 import { forHub, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { disabledProcessTypes, isProcessTypeEnabled } from "./pluginGate.js";
-import { nonPublicStatusFilter } from "./processLifecycle.js";
+import { countPendingByState } from "./processRows.js";
 import { isPluginEnabledSync } from "./hubSettings.js";
 import { countUnseenEdits } from "./editNotifications.js";
 import { queueTypeGroups } from "./publicationQueues.js";
@@ -74,13 +74,7 @@ export async function getAdminQueueCounts(userId: string): Promise<AdminQueueCou
   const pendingSince = (types: string[], stateKey: string, since: string): PromiseLike<number> | number => {
     const enabled = types.filter((t) => isProcessTypeEnabled(t));
     if (enabled.length === 0) return 0;
-    return db()
-      .from("processes")
-      .count()
-      .in("type", enabled)
-      .not("status", "in", nonPublicStatusFilter())
-      .eq(`state->>${stateKey}`, "pending")
-      .gt("created_at", since);
+    return countPendingByState(enabled, stateKey, { since });
   };
   const pendingInQueue = async (queue: PublicationQueue, since: string): Promise<number> => {
     const counts = await Promise.all(

@@ -7,9 +7,8 @@
 // that has a rule naming a content type and is not configured, so a hub with
 // its sources set pays for no query.
 
-import { forHub } from "../db/forHub.js";
 import { getSetting, isPluginEnabled } from "./hubSettings.js";
-import { nonPublicStatusFilter } from "./processLifecycle.js";
+import { countListedProcessesOfType } from "./processRows.js";
 import {
   PLUGIN_SETUP,
   pluginSetupStatus,
@@ -27,11 +26,7 @@ export async function pluginSetupFor(hubId: string): Promise<Record<string, Plug
     const configured = rule.configured(reader);
     let hasContent = false;
     if (!configured && rule.contentType) {
-      const n = await forHub(hubId)
-        .from("processes")
-        .count()
-        .eq("type", rule.contentType)
-        .not("status", "in", nonPublicStatusFilter());
+      const n = await countListedProcessesOfType(hubId, rule.contentType);
       hasContent = n > 0;
     }
     const status = pluginSetupStatus(id, reader, () => hasContent);

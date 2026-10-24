@@ -35,6 +35,15 @@ import { recordHubAdminAudit } from "./hubAdminAudit.js";
 import { getSetting, setSetting } from "./hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 import { ensureStarterWordcloud } from "./starterWordcloud.js";
+import {
+  clearProcessReviewLinks,
+  countNonSampleProcesses,
+  countSeededSampleProcesses,
+  deleteProcesses,
+  sampleProcessHeads,
+  sampleProcessIdsIn,
+  sampleProcessTree,
+} from "./processRows.js";
 
 function db(): HubDb {
   return forHub(currentHubId());
@@ -70,10 +79,7 @@ interface SampleProcessRow {
 }
 
 async function sampleProcesses(): Promise<SampleProcessRow[]> {
-  return db()
-    .from("processes")
-    .select<SampleProcessRow>("id, type, added_in_demo")
-    .eq("is_sample", true);
+  return sampleProcessHeads();
 }
 
 async function sampleUserIds(): Promise<string[]> {
@@ -104,7 +110,7 @@ export async function sampleContentSummary(): Promise<SampleContentSummary> {
     }
   }
 
-  const other_processes = await db().from("processes").count().eq("is_sample", false);
+  const other_processes = await countNonSampleProcesses();
   return {
     processes: seededIds.length,
     by_type,
@@ -128,8 +134,7 @@ export async function deleteSampleProcesses(
   deleted: Record<string, number> = {},
 ): Promise<Record<string, number>> {
   if (requested.length === 0) return deleted;
-  const rows = await db().from("processes").select<{ id: string }>("id").in("id", requested).eq("is_sample", true);
-  const ids = rows.map((r) => r.id);
+  const ids = await sampleProcessIdsIn(requested);
   if (ids.length === 0) return deleted;
 
   const del = async (table: TableName, column: string, values: string[]): Promise<void> => {
@@ -148,7 +153,7 @@ export async function deleteSampleProcesses(
     await del(table as TableName, column, reviewIds);
   }
   // processes.review_id points at the review; let go of it first.
-  if (reviewIds.length > 0) await db().from("processes").update({ review_id: null }).in("id", ids);
+  if (reviewIds.length > 0) await clearProcessReviewLinks(ids);
   // 2. Rows that belong to a sample process — every table in the shared
   //    list except the process-sharing rows and events, which go below.
   //    (FK cascades would take some of these anyway; deleting them
@@ -171,7 +176,8 @@ export async function deleteSampleProcesses(
     }
   }
   // 5. The processes.
-  await del("processes", "id", ids);
+  const removed = await deleteProcesses(ids);
+  if (removed > 0) deleted.processes = (deleted.processes ?? 0) + removed;
   return deleted;
 }
 
@@ -248,10 +254,7 @@ interface SampleTreeRow extends SampleItem {
 }
 
 async function sampleTree(): Promise<SampleTreeRow[]> {
-  return db()
-    .from("processes")
-    .select<SampleTreeRow>("id, type, title, added_in_demo, source_proposal_id, state")
-    .eq("is_sample", true);
+  return sampleProcessTree();
 }
 
 /** What a sample process was made from: a vote's brief names its vote. */
@@ -342,7 +345,7 @@ export async function sampleDeliverySuppressed(message: { to: string[]; subject:
 export async function hubContentFlags(hubId: string): Promise<{ samples: boolean; welcome: boolean }> {
   const db = forHub(hubId);
   const [samples, welcome] = await Promise.all([
-    db.from("processes").count().eq("is_sample", true).eq("added_in_demo", false).then((n) => n > 0, () => false),
+    countSeededSampleProcesses(hubId).then((n) => n > 0, () => false),
     db.from("hub_settings").count().eq("key", KEYS.COPY_WELCOME).neq("value", "").then((n) => n > 0, () => false),
   ]);
   return { samples, welcome };

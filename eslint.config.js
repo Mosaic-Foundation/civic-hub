@@ -238,21 +238,8 @@ const MODULES_NOT_YET_ON_STORES = [
 ];
 const PROCESS_TABLE_OWNERS = ["src/services/processService.ts", "src/services/processRows.ts", "src/db/", "src/control/hubBundle/"];
 const PROCESS_TABLE_NOT_YET = [
-  "src/control/dashboard/attention.ts",
-  "src/debug/autoSeed.ts",
   "src/modules/civic.receipts/index.ts",
   "src/modules/civic.review/service.ts",
-  "src/processes/spawnBrief.ts",
-  "src/services/adminQueues.ts",
-  "src/services/editNotifications.ts",
-  "src/services/feedPage.ts",
-  "src/services/pluginSetup.ts",
-  "src/services/processAnonymity.ts",
-  "src/services/processEdits.ts",
-  "src/services/processLinks.ts",
-  "src/services/sampleContent.ts",
-  "src/services/sampleRefresh.ts",
-  "src/services/sampleSeed.ts",
 ];
 const CONTROLLERS_NOT_YET_ON_SERVICES = [
 ];

@@ -25,6 +25,7 @@
 import { forHub, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { getProcess } from "./processService.js";
+import { sourceProposalIdOf } from "./processRows.js";
 import { getInputsByProcess } from "../modules/civic.input/index.js";
 import { resolveCreators } from "./creatorDisplay.js";
 
@@ -68,12 +69,7 @@ function db(): HubDb {
 }
 
 async function getSourceProposalId(processId: string): Promise<string | null> {
-  const row = await db()
-    .from("processes")
-    .select<{ source_proposal_id: string | null }>("source_proposal_id")
-    .eq("id", processId)
-    .maybeSingle();
-  return row?.source_proposal_id ?? null;
+  return sourceProposalIdOf(processId);
 }
 
 async function getProposalAuthor(

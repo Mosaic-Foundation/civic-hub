@@ -18,7 +18,7 @@ import {
 import { submitInput } from "../modules/civic.input/index.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { getEventCount } from "../events/eventStore.js";
-import { forHub } from "../db/forHub.js";
+import { countProcessesInHub } from "../services/processRows.js";
 import { currentHubIdOrNull } from "../config/hubContext.js";
 import {
   emitPublicationEvents as emitAnnouncementPublicationEvents,
@@ -199,7 +199,7 @@ export async function seedOnStartup(): Promise<void> {
 
   const seedPromise = (async () => {
     // Skip seeding if this hub already has processes.
-    const count = await forHub(hubId).from("processes").count();
+    const count = await countProcessesInHub(hubId);
     if (count > 0) {
       const evCount = await getEventCount();
       console.log(

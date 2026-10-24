@@ -16,6 +16,7 @@ import { findExistingBriefId } from "../processes/spawnBrief.js";
 import { getManifest, isPublished, processDetailPath, publicationOf, summarizedProcessIdOf } from "../processes/registry.js";
 import { isPubliclyFetchable } from "./processLifecycle.js";
 import { isProcessTypeEnabled } from "./pluginGate.js";
+import { processOwnerRow, processPeerRows, processTypeAndState, processWireHostnames } from "./processRows.js";
 import {
   renderLinks,
   type RenderedLink,
@@ -81,17 +82,7 @@ export async function hydratePeers(
   const ids = [...new Set(peerIds)];
   if (ids.length === 0) return new Map();
 
-  const rows = await db()
-    .from("processes")
-    .select<{
-      id: string;
-      type: string;
-      title: string | null;
-      status: string;
-      created_by: string | null;
-      state: Record<string, unknown> | null;
-    }>("id, type, title, status, created_by, state")
-    .in("id", ids);
+  const rows = await processPeerRows(ids);
 
   const map = new Map<string, LinkPeer>();
   for (const row of rows) {
@@ -162,13 +153,7 @@ export async function getRenderedLinks(
 export async function getProcessOwner(
   processId: string,
 ): Promise<{ id: string; created_by: string | null; status: string; title: string; type: string } | null> {
-  return db()
-    .from("processes")
-    .select<{ id: string; created_by: string | null; status: string; title: string; type: string }>(
-      "id, created_by, status, title, type",
-    )
-    .eq("id", processId)
-    .maybeSingle();
+  return processOwnerRow(processId);
 }
 
 /**
@@ -270,11 +255,7 @@ export async function getBriefLinks(
   const empty: RenderedLinks = { outgoing: [], incoming: [] };
   let row: { id: string; type: string; state: Record<string, unknown> | null } | null;
   try {
-    row = await db()
-      .from("processes")
-      .select<{ id: string; type: string; state: Record<string, unknown> | null }>("id, type, state")
-      .eq("id", processId)
-      .maybeSingle();
+    row = await processTypeAndState(processId);
   } catch {
     // Preserves the pre-forHub behaviour: a lookup failure here degraded to
     // "no brief link" rather than failing the whole links panel.
@@ -325,10 +306,7 @@ export async function processWireIris(
 ): Promise<Map<string, string>> {
   const ids = [...new Set(processIds)];
   if (ids.length === 0) return new Map();
-  const rows = await db()
-    .from("processes")
-    .select<{ id: string; wire_hostname: string | null }>("id, wire_hostname")
-    .in("id", ids);
+  const rows = await processWireHostnames(ids);
   const map = new Map<string, string>();
   for (const row of rows) {
     const origin = row.wire_hostname ? uiOriginFor(row.wire_hostname) : uiBaseUrl();

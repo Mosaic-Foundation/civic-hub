@@ -43,6 +43,7 @@ import { createProcess, getProcess, saveProcessState } from "./processService.js
 import { getSettingSync, getSupportThreshold, isPluginEnabled } from "./hubSettings.js";
 import { sampleDeliverySuppressed } from "./sampleContent.js";
 import { sampleNames } from "./sampleNames.js";
+import { processExistsOnHub, processVersionOnHub, stampProcessCreatedAt } from "./processRows.js";
 import {
   SAMPLE_AUTHORS,
   fillSample,
@@ -215,8 +216,7 @@ class SeedRun {
   }
 
   async exists(key: string): Promise<boolean> {
-    const row = await this.db.from("processes").select<{ id: string }>("id").eq("id", this.id(key)).maybeSingle();
-    return !!row;
+    return processExistsOnHub(this.hubId, this.id(key));
   }
 
   async upsertAuthors(): Promise<void> {
@@ -256,11 +256,10 @@ class SeedRun {
       eventTimestamp: at,
       isSample: true,
     });
-    await this.stamp("processes", { id: p.id }, at);
+    await stampProcessCreatedAt(this.hubId, p.id, at);
     // The stamp is a write, so it moved the row's version; this copy is the
     // seed's own and carries on from it (saveProcessState checks it).
-    const row = await this.db.from("processes").select<{ version: number | string }>("version").eq("id", p.id).single();
-    p.version = Number(row.version);
+    p.version = await processVersionOnHub(this.hubId, p.id);
     return p;
   }
 

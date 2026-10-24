@@ -24,7 +24,7 @@ import { forHub } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { disabledProcessTypes, isProcessTypeEnabled } from "../../services/pluginGate.js";
 import { isPluginEnabledSync } from "../../services/hubSettings.js";
-import { nonPublicStatusFilter } from "../../services/processLifecycle.js";
+import { countPendingByState, processIdsOfTypes } from "../../services/processRows.js";
 import { queueTypeGroups } from "../../services/publicationQueues.js";
 import type { PublicationQueue } from "../../processes/manifest.js";
 import { hubOrigin } from "../../utils/baseUrl.js";
@@ -70,16 +70,7 @@ export interface AttentionSection {
 async function pendingProcesses(types: string[], stateKey: string, flaggedOnly = false): Promise<number | null> {
   const enabled = types.filter((t) => isProcessTypeEnabled(t));
   if (enabled.length === 0) return null;
-  let q = forHub(currentHubId())
-    .from("processes")
-    .count()
-    .in("type", enabled)
-    .not("status", "in", nonPublicStatusFilter())
-    .eq(`state->>${stateKey}`, "pending");
-  // ->> : a summary with no flag stores JSON null, which -> would read as a
-  // value; as text it is SQL NULL.
-  if (flaggedOnly) q = q.not("state->>quality_flag", "is", null);
-  return q;
+  return countPendingByState(enabled, stateKey, { flaggedOnly });
 }
 
 /**
@@ -114,8 +105,7 @@ async function countFlaggedReviews(): Promise<number> {
     .limit(1000);
   if (rows.length === 0) return 0;
   const ids = [...new Set(rows.map((r) => r.process_id))];
-  const off = await db.from("processes").select<{ id: string }>("id").in("id", ids).in("type", excluded);
-  const offIds = new Set(off.map((p) => p.id));
+  const offIds = new Set(await processIdsOfTypes(ids, excluded));
   return rows.filter((r) => !offIds.has(r.process_id)).length;
 }
 

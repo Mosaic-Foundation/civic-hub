@@ -35,6 +35,12 @@ import { isJurisdictionType } from "../shared/jurisdictionType.js";
 import { getSettingSync } from "./hubSettings.js";
 import { deleteSampleProcesses } from "./sampleContent.js";
 import { sampleNames } from "./sampleNames.js";
+import {
+  replaceProcessState,
+  sampleProcessIdsMadeFrom,
+  sampleProcessLiveRow,
+  sampleProcessState,
+} from "./processRows.js";
 import { seedSampleContent } from "./sampleSeed.js";
 import { fillSample, templatesFor, type SampleTemplate } from "./sampleTemplates.js";
 
@@ -128,11 +134,7 @@ export async function refreshSamples(opts: { now?: Date; addMissing?: boolean } 
 
   for (const t of liveTemplates(templates)) {
     const id = sampleProcessId(hubId, t.key);
-    const row = await db
-      .from("processes")
-      .select<LiveRow & { is_sample: boolean; added_in_demo: boolean }>("id, status, state, is_sample, added_in_demo")
-      .eq("id", id)
-      .maybeSingle();
+    const row = await sampleProcessLiveRow(id);
     // Not seeded here (or removed with the samples): the job adds nothing.
     if (!row || !row.is_sample || row.added_in_demo) continue;
     let closesAt: string | null = null;
@@ -143,13 +145,8 @@ export async function refreshSamples(opts: { now?: Date; addMissing?: boolean } 
     const reason = refreshReason(t, row, closesAt, now);
     if (!reason) continue;
     // What it spawned goes with it (a brief or results of a vote that closed).
-    const spawned = await db
-      .from("processes")
-      .select<{ id: string }>("id")
-      .eq("is_sample", true)
-      .eq("added_in_demo", false)
-      .or(`state->>source_process_id.eq.${id},source_proposal_id.eq.${id}`);
-    await deleteSampleProcesses([...spawned.map((s) => s.id), id]);
+    const spawned = await sampleProcessIdsMadeFrom(id);
+    await deleteSampleProcesses([...spawned, id]);
     await seedSampleContent({ now, only: [t.key] });
     report.replaced.push({ key: t.key, reason });
   }
@@ -171,17 +168,9 @@ async function addMissingMinutes(templates: SampleTemplate[]): Promise<string[]>
   for (const t of templates) {
     if (t.kind !== "meeting_summary") continue;
     const id = sampleProcessId(hubId, t.key);
-    const row = await db
-      .from("processes")
-      .select<{ state: Record<string, unknown> | null }>("state")
-      .eq("id", id)
-      .eq("is_sample", true)
-      .maybeSingle();
+    const row = await sampleProcessState(id);
     if (!row || typeof row.state?.sample_minutes === "string") continue;
-    await db
-      .from("processes")
-      .update({ state: { ...(row.state ?? {}), sample_minutes: fillSample(t.minutes, names) } })
-      .eq("id", id);
+    await replaceProcessState(id, { ...(row.state ?? {}), sample_minutes: fillSample(t.minutes, names) });
     added.push(t.key);
   }
   return added;
