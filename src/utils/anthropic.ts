@@ -12,6 +12,7 @@
 
 import { env } from "../config/env.js";
 import { CivicError, UnavailableError } from "../errors/index.js";
+import { reportError } from "./reportError.js";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -434,6 +435,15 @@ function providerFailure(err: unknown): unknown {
   if (err instanceof CivicError) return err;
   if (err instanceof Error && ((err as Error & { provider?: boolean }).provider === true || isTransient(err))) {
     console.error(`[anthropic] provider unavailable: ${err.message}`);
+    // The account's spending limit or credit is used up: every AI call fails
+    // until someone raises it, and it is not transient. Operators must see it
+    // (Sentry), not only a log line: on 2026-10-24 dev's Code of Conduct check
+    // stopped for this reason and it surfaced only as a red smoke run.
+    if (isUsageLimit(err)) {
+      reportError("ai.usage_limit", "The AI provider refused a call: the account's usage limit or credit is used up.", {
+        detail: err.message.slice(0, 200),
+      });
+    }
     return new UnavailableError(
       "The AI service isn't responding right now. Please try again in a moment.",
       "ai_unavailable",
@@ -441,6 +451,11 @@ function providerFailure(err: unknown): unknown {
     );
   }
   return err;
+}
+
+/** Anthropic's refusal when the account's spending limit or credit balance is reached. */
+export function isUsageLimit(err: Error): boolean {
+  return /usage limits|credit balance/i.test(err.message);
 }
 
 function isTransient(err: unknown): boolean {
