@@ -98,9 +98,11 @@ jobs:
           CIVIC_CONSOLE_HOSTNAME: console.localhost
           CIVIC_CONSOLE_ADMIN_EMAIL: operator@example.test
           CIVIC_START_HOSTNAME: start.localhost
-          # Submit runs the Code of Conduct check; the specs make it flag text
-          # with the fixed test rule (src/debug/fakeCodeOfConduct.ts).
-          CIVIC_COC_FAKE: "on"
+          # Every outside service is its in-memory fake (ADR-012): no AI, mail,
+          # video, Polis, Sentry or Healthchecks call leaves the job. Submit's
+          # Code of Conduct check is the fixed test rule the specs make flag
+          # text (src/debug/fakeCodeOfConduct.ts).
+          CIVIC_FAKE_ADAPTERS: "on"
           # The console's Dashboard reads hubs' /health from this server
           # (tests/e2e/dashboard.spec.ts), never a real hub's address.
           CIVIC_DASHBOARD_FAKE: "on"

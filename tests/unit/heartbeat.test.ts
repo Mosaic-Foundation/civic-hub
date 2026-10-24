@@ -8,7 +8,8 @@ import type { Request, Response } from "express";
 const runJobAcrossHubs = vi.fn();
 vi.mock("../../src/jobs/runJob.js", () => ({ runJobAcrossHubs: (...a: unknown[]) => runJobAcrossHubs(...a) }));
 
-const { heartbeatSlug, heartbeatUrl, pingHeartbeat } = await import("../../src/utils/heartbeat.js");
+const { heartbeatSlug, heartbeatUrl, pingHeartbeat, healthchecksHeartbeat } = await import("../../src/hosting/healthchecks.js");
+const { installAdapters } = await import("../../src/adapters/index.js");
 const { jobRouter } = await import("../../src/routes/jobRoutes.js");
 const { JOBS } = await import("../../src/jobs/registry.js");
 
@@ -17,6 +18,9 @@ const pings: string[] = [];
 
 beforeEach(() => {
   pings.length = 0;
+  // The job route pings through the heartbeat adapter; here, the real
+  // Healthchecks.io one over a fake network (ADR-012).
+  installAdapters({ heartbeat: healthchecksHeartbeat });
   vi.stubEnv("CIVIC_HEARTBEAT_PING_KEY", KEY);
   vi.stubEnv("CRON_SECRET", "cron-secret");
   vi.stubEnv("CIVIC_ERROR_DSN", "");

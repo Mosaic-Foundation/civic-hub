@@ -1,6 +1,8 @@
-// YouTube helpers — transcript fetch + video-id extraction.
+// The `video` adapter's YouTube implementation (hosting layer, ADR-012):
+// transcript fetch + video-id extraction. The engine asks
+// adapters().video.transcript(url); nothing imports this but src/hosting/.
 //
-// Three transcript paths, picked at call time based on env vars:
+// Three transcript paths, picked at call time based on settings:
 //
 // 1) Supadata.ai (preferred when SUPADATA_API_KEY is set).
 //    Simple REST API for YouTube transcripts. Free tier: 100 credits/month.
@@ -25,10 +27,10 @@
 // which Node cannot expose as named ESM imports. Pointing at the ESM
 // build directly is the robust workaround and survives package updates
 // so long as the ESM file name stays stable.
-import { env } from "../config/env.js";
+import { hostingEnv } from "../config/env.js";
 // @ts-expect-error — deep import has no declaration file; see above
 import { YoutubeTranscript } from "youtube-transcript/dist/youtube-transcript.esm.js";
-import type { TranscriptSegment } from "../modules/civic.meeting_summary/index.js";
+import type { TranscriptSegment, VideoTranscripts } from "../adapters/video.js";
 
 /**
  * Extract the 11-char video id from a watch URL. Returns null on
@@ -70,12 +72,12 @@ export async function fetchYouTubeTranscript(
     throw new Error(`Invalid YouTube watch URL: ${watchUrl}`);
   }
 
-  const supadataKey = env.SUPADATA_API_KEY?.trim();
+  const supadataKey = hostingEnv.SUPADATA_API_KEY?.trim();
   if (supadataKey) {
     return fetchViaSupadata(id, supadataKey);
   }
 
-  const searchApiKey = env.SEARCHAPI_API_KEY?.trim();
+  const searchApiKey = hostingEnv.SEARCHAPI_API_KEY?.trim();
   if (searchApiKey) {
     return fetchViaSearchApi(id, searchApiKey);
   }
@@ -296,3 +298,9 @@ async function fetchViaLibrary(videoId: string): Promise<TranscriptSegment[]> {
   }
   return out;
 }
+
+/** The `video` adapter: YouTube transcripts. */
+export const youtubeTranscripts: VideoTranscripts = {
+  name: "youtube",
+  transcript: (videoUrl) => fetchYouTubeTranscript(videoUrl),
+};

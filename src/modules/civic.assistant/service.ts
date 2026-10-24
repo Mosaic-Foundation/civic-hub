@@ -1,10 +1,5 @@
-import { env } from "../../config/env.js";
 import { stripMarkdown } from "../../shared/markdown.js";
-import {
-  callClaudeMultiTurn,
-  DEFAULT_MODEL,
-  type MultiTurnMessage,
-} from "../../utils/anthropic.js";
+import { aiConverse, aiDefaultModel, type AiConversationInput, type AiMessage, type AiResult } from "../../adapters/ai.js";
 import { buildSystemPrompt, buildCocCheckPrompt } from "./systemPrompt.js";
 import { currentHub } from "../../config/hubContext.js";
 import { civicPlaceName } from "../../config/hub.js";
@@ -12,7 +7,8 @@ import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
 import { getSettingSync, hubDisplayNameSync } from "../../services/hubSettings.js";
 import { hubDocument } from "../../services/hubDocuments.js";
 import { KEYS } from "../../models/hubSettings.js";
-import { recordAiUsage } from "../../services/aiBudget.js";
+import { cocFakeEnabled } from "../../config/devFlags.js";
+import { fakeCodeOfConductCheck } from "../../debug/fakeCodeOfConduct.js";
 import type {
   CallAssistantInput,
   AssistantResponse,
@@ -23,7 +19,11 @@ import type {
   HubConfig,
 } from "./models.js";
 
-export type CallClaudeMultiTurnFn = typeof callClaudeMultiTurn;
+/**
+ * A conversation turn. By default the ai adapter's gate (src/adapters/ai.ts),
+ * which records the call's usage under the purpose; tests pass their own.
+ */
+export type CallClaudeMultiTurnFn = (input: AiConversationInput) => Promise<AiResult>;
 
 /**
  * Hub identity handed to the assistant, for the hub serving this request.
@@ -61,9 +61,11 @@ export async function getHubConfig(): Promise<HubConfig> {
 
 export async function callAssistant(
   input: CallAssistantInput,
-  claude: CallClaudeMultiTurnFn = callClaudeMultiTurn,
+  claudeFn?: CallClaudeMultiTurnFn,
 ): Promise<AssistantResponse> {
-  const model = env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  const purpose = input.purpose ?? "assistant.message";
+  const claude: CallClaudeMultiTurnFn = claudeFn ?? ((i) => aiConverse(purpose, i));
+  const model = aiDefaultModel();
 
   // Web search is off on a demo hub by default, and wherever the operator
   // turned it off (Audit 2). The prompt's search guidance is then overridden
@@ -73,7 +75,7 @@ export async function callAssistant(
     buildSystemPrompt(input.hub_config, input.category, input.draft_state, input.phase, input.config) +
     (webSearch ? "" : NO_WEB_SEARCH);
 
-  const messages: MultiTurnMessage[] = [
+  const messages: AiMessage[] = [
     ...recentTurns(input.conversation_history, input.limits?.history_messages),
     { role: "user", content: input.user_message },
   ];
@@ -82,7 +84,6 @@ export async function callAssistant(
     ...(webSearch ? [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }] : []),
     buildRespondTool(input.config.fields, { includeDraft: true }),
   ];
-  const purpose = input.purpose ?? "assistant.message";
   // "any": the model must end on a tool call, so a turn can search first and
   // still finish with a validated reply — never plain text we have to parse.
   const call = { tools, toolChoice: { type: "any" }, responseTool: RESPONSE_TOOL, maxTokens: 4096 };
@@ -91,7 +92,6 @@ export async function callAssistant(
   // sources card in one JSON object; at 1536 the JSON was being cut off
   // and the person got the prose with no card (2026-09-02).
   const result = await claude({ model, system: systemPrompt, messages, ...call });
-  await recordAiUsage({ purpose, model, usage: result.usage, webSearches: result.serverToolUses });
   const parsed = toAssistantResponse(result, input.config.fields);
 
   // Never let "On it — let me take a look" be the end of a turn. If the model
@@ -116,7 +116,6 @@ export async function callAssistant(
       ],
       ...call,
     });
-    await recordAiUsage({ purpose, model, usage: followUp.usage, webSearches: followUp.serverToolUses });
     const nudged = toAssistantResponse(followUp, input.config.fields);
     // The backstop. Two promises in a row is the model failing to act, and
     // shipping the second one would repeat exactly the dead end this guards
@@ -250,9 +249,13 @@ export function promisesToFollowUp(message: string): boolean {
 export async function checkTextAgainstCoC(
   fields: Array<{ label: string; text: string }>,
   hubConfig: HubConfig,
-  claude: CallClaudeMultiTurnFn = callClaudeMultiTurn,
+  claude: CallClaudeMultiTurnFn = (i) => aiConverse("assistant.review", i),
 ): Promise<Suggestion[]> {
-  const model = env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  // The test rule (CIVIC_FAKE_ADAPTERS, or CIVIC_COC_FAKE; never production),
+  // chosen here so every caller gets it: Submit, an invite's message and a
+  // conversation created directly (which used to call the model regardless).
+  if (cocFakeEnabled()) return fakeCodeOfConductCheck(fields);
+  const model = aiDefaultModel();
   // Formatting is not content: the check reads the stripped text so a
   // marker can neither hide a violation nor be mistaken for one.
   const submission = fields
@@ -278,7 +281,6 @@ export async function checkTextAgainstCoC(
     toolChoice: { type: "tool", name: RESPONSE_TOOL },
     responseTool: RESPONSE_TOOL,
   });
-  await recordAiUsage({ purpose: "assistant.review", model, usage: result.usage });
 
   // Everything this prompt returns is a CoC finding — normalize to hard.
   return toAssistantResponse(result, []).suggestions.map((s) => ({

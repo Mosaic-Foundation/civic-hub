@@ -3,8 +3,9 @@
 // last 24 hours, summed from ai_usage. The numbers are src/shared/aiLimits.ts,
 // with the operator's overrides from the console.
 //
-// Every call the budget counts is recorded here too (recordAiUsage), with its
-// purpose, its model and its tokens, and no account id.
+// Every AI call is recorded here (recordAiUsage, called by the ai adapter's
+// gate, src/adapters/ai.ts), with its purpose, its model and its tokens, and
+// no account id.
 
 import { CivicError } from "../errors/index.js";
 import { forHub } from "../db/forHub.js";
@@ -14,8 +15,18 @@ import { getSettingSync, hubModeSync } from "./hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 import { effectiveAiLimits, type AiLimits } from "../shared/aiLimits.js";
 
-/** What an AI call was for. The budget counts every "assistant." purpose. */
-export type AiPurpose = "assistant.message" | "assistant.suggest" | "assistant.review";
+/**
+ * What an AI call was for. The residents' budget counts every "assistant."
+ * purpose; the "job." purposes count against the jobs' own ceiling
+ * (src/adapters/ai.ts, JOB_PURPOSES).
+ */
+export type AiPurpose =
+  | "assistant.message"
+  | "assistant.suggest"
+  | "assistant.review"
+  | "job.meeting_summary"
+  | "job.news_sync"
+  | "job.deliberation_summary";
 const BUDGET_PURPOSES: readonly AiPurpose[] = ["assistant.message", "assistant.suggest", "assistant.review"];
 
 /** Refused by a limit. `status` is what the HTTP layer answers. */
@@ -71,12 +82,20 @@ export async function admitAiCall(kind: "chat" | "review", userId: string): Prom
   return limits;
 }
 
-async function tokensToday(hubId: string): Promise<number> {
+async function tokensToday(hubId: string, purposes: readonly AiPurpose[] = BUDGET_PURPOSES): Promise<number> {
   const total = await forHub(hubId).rpc<number | string>("ai_tokens_since", {
     p_since: new Date(Date.now() - DAY_MS).toISOString(),
-    p_purposes: BUDGET_PURPOSES,
+    p_purposes: purposes,
   });
   return Number(total) || 0;
+}
+
+/** The scheduled jobs' purposes: counted against `job_daily_tokens`, never the residents' budget. */
+export const JOB_PURPOSES: readonly AiPurpose[] = ["job.meeting_summary", "job.news_sync", "job.deliberation_summary"];
+
+/** Tokens the hub's scheduled jobs used in the last 24 hours (the jobs' ceiling). */
+export function jobTokensToday(hubId: string): Promise<number> {
+  return tokensToday(hubId, JOB_PURPOSES);
 }
 
 /**

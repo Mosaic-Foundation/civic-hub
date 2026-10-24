@@ -1,5 +1,6 @@
 // ESLint for civic-hub. Its own rules: civic/raw-client (below),
-// civic/control-boundary and civic/authz-seam (further down). The first
+// civic/control-boundary, civic/authz-seam and civic/hosting-boundary
+// (further down). The first
 // (Phase 2b, multi-tenant):
 //
 //   civic/raw-client — the raw, service-role database client sees every
@@ -16,8 +17,8 @@
 //
 //   // @civic-raw-client-importer: <why this file needs it>
 //
-// and the tag is honoured only under src/db/, src/control/, scripts/ and
-// tests/ (the tests that prove what the database refuses, run against the
+// and the tag is honoured only under src/db/, src/control/, src/hosting/
+// (Supabase Storage, ADR-012), scripts/ and tests/ (the tests that prove what the database refuses, run against the
 // local stack only). A tag anywhere else is itself an error, so a request
 // module cannot tag its way out. Contract: BUILD-PLAN-multi-tenant.md →
 // "3. Data layer" and "Phase 2b adds" item 7.
@@ -28,7 +29,7 @@ import { fileURLToPath } from "node:url";
 import tsParser from "@typescript-eslint/parser";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
-const ALLOWED_ROOTS = ["src/db/", "src/control/", "scripts/", "tests/"];
+const ALLOWED_ROOTS = ["src/db/", "src/control/", "src/hosting/", "scripts/", "tests/"];
 const RAW_PACKAGES = [/^@supabase\/supabase-js(\/|$)/];
 const PROVIDER_TAG = /^\s*\/\/\s*@civic-raw-client\b(?!-)/m;
 const IMPORTER_TAG = /@civic-raw-client-importer:\s*\S/;
@@ -99,7 +100,7 @@ const rawClientRule = {
           context.report({
             node,
             message:
-              "@civic-raw-client-importer is honoured only under src/db/, src/control/, " +
+              "@civic-raw-client-importer is honoured only under src/db/, src/control/, src/hosting/, " +
               "scripts/ and tests/. Convert this file to forHub() instead.",
           });
         }
@@ -147,6 +148,68 @@ const controlBoundaryRule = {
     }
     return {
       ImportDeclaration: (n) => check(n, n.source.value),
+      ExportNamedDeclaration: (n) => n.source && check(n, n.source.value),
+      ExportAllDeclaration: (n) => check(n, n.source.value),
+      ImportExpression: (n) => n.source.type === "Literal" && check(n, n.source.value),
+    };
+  },
+};
+
+// The hosting boundary (Architecture 5, ADR-012): the engine knows nothing
+// about where it runs. Outside the hosting layer this refuses:
+//   - importing src/hosting/ (the vendors' implementations, the console's
+//     reads of the operations services);
+//   - importing `hostingEnv` (the vendors' and the host's settings);
+//   - importing a vendor's package directly.
+// The engine calls the adapters in src/adapters/ instead. Allowed: the
+// hosting layer itself, the console (src/control/), the composition roots
+// (src/app.ts, src/index.ts, api/), scripts and tests.
+const HOSTING_DIR = "src/hosting/";
+const HOSTING_IMPORTERS = ["src/hosting/", "src/control/", "api/", "scripts/", "tests/"];
+const HOSTING_ENTRY_FILES = ["src/index.ts", "src/app.ts"];
+const VENDOR_PACKAGES = [/^youtube-transcript(\/|$)/, /^@anthropic-ai\//, /^resend$/, /^@sentry\//, /^@vercel\//];
+
+function resolvesIntoHosting(fromFile, spec) {
+  if (!spec.startsWith(".")) return false;
+  const target = relative(ROOT, resolve(dirname(fromFile), spec)).split("\\").join("/");
+  return target === "src/hosting" || target.startsWith(HOSTING_DIR);
+}
+
+const hostingBoundaryRule = {
+  meta: {
+    type: "problem",
+    docs: { description: "The engine may not import the hosting layer, its settings or a vendor's package." },
+    schema: [],
+  },
+  create(context) {
+    const file = context.filename;
+    const rel = relative(ROOT, file).split("\\").join("/");
+    if (HOSTING_IMPORTERS.some((r) => rel.startsWith(r)) || HOSTING_ENTRY_FILES.includes(rel)) return {};
+    function check(node, spec) {
+      if (typeof spec !== "string") return;
+      if (resolvesIntoHosting(file, spec)) {
+        context.report({
+          node,
+          message:
+            `"${spec}" is the hosting layer (src/hosting/). The engine calls an adapter in src/adapters/ instead; ` +
+            "only src/hosting/index.ts chooses the implementations (ADR-012).",
+        });
+      } else if (VENDOR_PACKAGES.some((re) => re.test(spec))) {
+        context.report({ node, message: `"${spec}" is a vendor's package: it belongs in src/hosting/, behind an adapter (ADR-012).` });
+      }
+    }
+    return {
+      ImportDeclaration(n) {
+        check(n, n.source.value);
+        for (const sp of n.specifiers) {
+          if (sp.type === "ImportSpecifier" && sp.imported.name === "hostingEnv") {
+            context.report({
+              node: sp,
+              message: "hostingEnv holds the vendors' and the host's settings; only src/hosting/, src/control/ and api/ read it (ADR-012).",
+            });
+          }
+        }
+      },
       ExportNamedDeclaration: (n) => n.source && check(n, n.source.value),
       ExportAllDeclaration: (n) => check(n, n.source.value),
       ImportExpression: (n) => n.source.type === "Literal" && check(n, n.source.value),
@@ -258,8 +321,8 @@ export default [
     languageOptions: { parser: tsParser, sourceType: "module", ecmaVersion: "latest" },
     // Other plugins' disable comments may exist in the tree; they are not errors here.
     linterOptions: { reportUnusedDisableDirectives: "off" },
-    plugins: { civic: { rules: { "raw-client": rawClientRule, "control-boundary": controlBoundaryRule, "authz-seam": authzSeamRule } } },
-    rules: { "civic/raw-client": "error", "civic/control-boundary": "error", "civic/authz-seam": "error" },
+    plugins: { civic: { rules: { "raw-client": rawClientRule, "control-boundary": controlBoundaryRule, "authz-seam": authzSeamRule, "hosting-boundary": hostingBoundaryRule } } },
+    rules: { "civic/raw-client": "error", "civic/control-boundary": "error", "civic/authz-seam": "error", "civic/hosting-boundary": "error" },
   },
   // One typed config module (Audit 4, F7): the server and api/ read their
   // environment only through src/config/env.ts. Scripts and tests read their

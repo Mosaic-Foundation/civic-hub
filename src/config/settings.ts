@@ -83,7 +83,8 @@ export const SETTINGS = s({
   POLIS_AUTH_TOKEN: { purpose: "The deliberation adapter's Polis service token.", type: "secret", layer: "hosting" },
   SEARCHAPI_API_KEY: { purpose: "Video adapter: SearchAPI transcripts (second choice).", type: "secret", layer: "hosting" },
   SUPADATA_API_KEY: { purpose: "Video adapter: Supadata transcripts (first choice).", type: "secret", layer: "hosting" },
-  SUPABASE_STORAGE_BUCKET: { purpose: "Object store adapter: the public bucket for post images.", type: "string", layer: "hosting", default: "post-images" },
+  SUPABASE_STORAGE_BUCKET: { purpose: "The object store's public bucket for post images (the name predates the adapter; any store uses it).", type: "string", layer: "engine", default: "post-images" },
+  CIVIC_OBJECT_STORE: { purpose: "Which object store: \"supabase\" (Supabase Storage on the database's project) or \"memory\" (nothing kept across restarts; the run-anywhere CI job).", type: "string", layer: "hosting", default: "supabase" },
   LINK_PREVIEW_USER_AGENT: { purpose: "User-Agent sent when fetching link previews.", type: "string", layer: "engine" },
 
   // --- Limits and switches ---------------------------------------------------

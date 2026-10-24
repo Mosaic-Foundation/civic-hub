@@ -77,9 +77,13 @@ import {
 } from "../services/processService.js";
 import { getAuthUser } from "../middleware/auth.js";
 import { enrichCreator } from "../services/creatorDisplay.js";
-import { callClaude, DEFAULT_MODEL } from "../utils/anthropic.js";
+import { aiComplete, aiConfigured, aiDefaultModel, type AiSingleTurnInput } from "../adapters/ai.js";
+import { adapters } from "../adapters/index.js";
 import { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../utils/http.js";
-import { fetchYouTubeTranscript } from "../utils/youtube.js";
+/** The meeting summary's model calls, through the ai adapter's gate, as a job. */
+const callClaude = (input: AiSingleTurnInput) => aiComplete("job.meeting_summary", input);
+/** A recording's transcript, through the video adapter. */
+const fetchYouTubeTranscript = (url: string) => adapters().video.transcript(url);
 import { sendEmail } from "../utils/email.js";
 import {
   findBrokenPublications,
@@ -177,7 +181,7 @@ function isApprovalStatus(s: string): s is MeetingSummaryApprovalStatus {
 
 
 function modelName(): string {
-  return env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL;
+  return aiDefaultModel();
 }
 
 function autoPublish(): boolean {
@@ -519,7 +523,7 @@ export async function runMeetingSummaryForHub(res: RunSink): Promise<void> {
     return;
   }
 
-  if (!env.ANTHROPIC_API_KEY) {
+  if (!aiConfigured()) {
     await failRun(
       res,
       500,

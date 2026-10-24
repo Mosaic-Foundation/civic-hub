@@ -124,10 +124,10 @@ describe("an unexpected error", () => {
     expect(JSON.stringify(out.body)).not.toMatch(/users|duplicate|a@b\.c/);
   });
 
-  it("logs the full error and reports a redacted line with the route pattern", () => {
+  it("logs the full error and reports a redacted line with the route pattern", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     const { res, state } = fakeRes();
-    sendError(req, res, new HubDbError('rpc transition_process: value "someone@example.com" for proc_9f8e7d6c5b', "P0001", "Key (email)=(x@y.z)"));
+    await sendError(req, res, new HubDbError('rpc transition_process: value "someone@example.com" for proc_9f8e7d6c5b', "P0001", "Key (email)=(x@y.z)"));
     expect(state.status).toBe(500);
     const lines = logged.mock.calls.map((c) => c.map(String).join(" "));
     // The deployment log has the full error, with the reference.
@@ -144,11 +144,11 @@ describe("an unexpected error", () => {
     expect(report).not.toMatch(/someone@example\.com|x@y\.z|proc_9f8e7d6c5b|proc_1234abcd/);
   });
 
-  it("a stream already under way is ended, not answered twice", () => {
+  it("a stream already under way is ended, not answered twice", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { res, state } = fakeRes();
     res.headersSent = true;
-    sendError(req, res, new Error("boom"));
+    await sendError(req, res, new Error("boom"));
     expect(state.ended).toBe(true);
     expect(state.status).toBeUndefined();
   });

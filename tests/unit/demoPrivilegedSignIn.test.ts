@@ -10,8 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * neither. The code was generated, stored, and never sent.
  *
  * This runs the real requestVerification through the real utils/email and
- * the real mail guard, with a key configured, and stubs only the network
- * (fetch) and the database. The control case proves the guard is still on
+ * the real mail guard, with a configured (fake) mail transport, and stubs
+ * only the database. The control case proves the guard is still on
  * for everything that is not a sign-in code.
  */
 
@@ -53,26 +53,22 @@ vi.mock("../../src/db/forHub.js", async (orig) => {
 import { runWithHub } from "../../src/config/hubContext.js";
 import { requestVerification } from "../../src/modules/civic.auth/index.js";
 import { sendEmail } from "../../src/utils/email.js";
+import { installAdapters } from "../../src/adapters/index.js";
+import { fakeMail } from "../../src/adapters/fakes/mail.js";
 
 const SETTINGS = { "people.admin_emails": JSON.stringify([ADMIN]) };
-const sentTo: string[] = [];
+let mail = fakeMail({ configured: true });
+/** Who reached "the provider": a configured fake transport's outbox. */
+const sentToFrom = () => mail.outbox.map((m) => m.to);
 
 beforeEach(() => {
-  sentTo.length = 0;
-  process.env.RESEND_API_KEY = "re_test_unit_only";
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (_url: string, init: { body: string }) => {
-      sentTo.push(...(JSON.parse(init.body).to as string[]));
-      return new Response(JSON.stringify({ id: "stub" }), { status: 200 });
-    }),
-  );
+  // A configured transport, so the real send path runs.
+  mail = fakeMail({ configured: true });
+  installAdapters({ mail });
   vi.spyOn(console, "log").mockImplementation(() => {});
 });
 
 afterEach(() => {
-  delete process.env.RESEND_API_KEY;
-  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -80,13 +76,13 @@ describe("a privileged account on a demo hub", () => {
   it("is sent its sign-in code", async () => {
     expect(ATHENS_HUB.mode).toBe("demo");
     await runWithHub(ATHENS_HUB, SETTINGS, () => requestVerification(OFFICIAL, "203.0.113.7"));
-    expect(sentTo).toEqual([OFFICIAL]);
+    expect(sentToFrom()).toEqual([OFFICIAL]);
   });
 
   it("an ordinary visitor still gets no email (any six digits)", async () => {
     const res = await runWithHub(ATHENS_HUB, SETTINGS, () => requestVerification("visitor@example.com", "203.0.113.7"));
     expect(res.message).toMatch(/any six digits/);
-    expect(sentTo).toEqual([]);
+    expect(sentToFrom()).toEqual([]);
   });
 
   it("anything that is not a sign-in code to the same official is still held back", async () => {
@@ -95,7 +91,7 @@ describe("a privileged account on a demo hub", () => {
     );
     expect(result).toMatchObject({ sent: false, held_back: true, held_back_reason: "this hub is in demo mode" });
     expect(result.error).toBeUndefined();
-    expect(sentTo).toEqual([]);
+    expect(sentToFrom()).toEqual([]);
   });
 });
 
@@ -103,14 +99,14 @@ describe("an official on a beta hub (Adam, 2026-10-07)", () => {
   it("is let in as if on the allow list, and sent their code", async () => {
     expect(FLOYD_HUB.mode).toBe("beta");
     await runWithHub(FLOYD_HUB, SETTINGS, () => requestVerification(OFFICIAL, "203.0.113.7"));
-    expect(sentTo).toEqual([OFFICIAL]);
+    expect(sentToFrom()).toEqual([OFFICIAL]);
   });
 
   it("someone on no list is still refused", async () => {
     await expect(
       runWithHub(FLOYD_HUB, SETTINGS, () => requestVerification("stranger@example.com", "203.0.113.7")),
     ).rejects.toThrow("private beta");
-    expect(sentTo).toEqual([]);
+    expect(sentToFrom()).toEqual([]);
   });
 
   it("other mail to the official is still held back", async () => {

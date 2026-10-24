@@ -111,6 +111,11 @@ describe("the hub's Polis", () => {
   });
 
   it("is the hub's own setting, read for the hub in scope on each call", async () => {
+    // The real deliberation service (the suite's default is the fake Polis,
+    // whose address is fixed); its adapter is mocked above.
+    const { installAdapters } = await import("../../src/adapters/index.js");
+    const { polisService } = await import("../../src/hosting/polis.js");
+    installAdapters({ deliberation: polisService });
     // Through the registry, which boots it (importing the boot file first is a cycle).
     await import("../../src/processes/registry.js");
     const { getPolisAdapter } = await import("../../src/processes/deliberationBoot.js");

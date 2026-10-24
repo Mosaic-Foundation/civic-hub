@@ -9,7 +9,7 @@
 // GET /share/meta; browsers get the built SPA so React Router handles
 // client-side routing.
 
-import { env } from "../src/config/env.js";
+import { env, hostingEnv } from "../src/config/env.js";
 import type { IncomingMessage, ServerResponse } from "http";
 import { readFileSync } from "fs";
 import { resolve } from "path";
@@ -33,8 +33,8 @@ export function isSocialCrawler(userAgent: string): boolean {
 // single-hub self-hosted deployment that has no hubs row.
 // Placeless: this function serves every hub, and a card that names one hub
 // is wrong on all the others.
-const FALLBACK_HUB_NAME = env.VITE_HUB_PAGE_TITLE?.trim() || "Civic Hub";
-const FALLBACK_BANNER_URL = env.VITE_HUB_BANNER_URL?.trim() || "";
+const FALLBACK_HUB_NAME = hostingEnv.VITE_HUB_PAGE_TITLE?.trim() || "Civic Hub";
+const FALLBACK_BANNER_URL = hostingEnv.VITE_HUB_BANNER_URL?.trim() || "";
 
 /**
  * This request's own origin.

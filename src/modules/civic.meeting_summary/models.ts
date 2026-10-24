@@ -266,11 +266,9 @@ export interface FetchPdfFn {
   (url: string): Promise<{ bytes: Uint8Array; mime: string }>;
 }
 
-export interface TranscriptSegment {
-  /** Seconds into the video. */
-  start: number;
-  text: string;
-}
+/** A transcript line: the `video` adapter's (src/adapters/video.ts). */
+import type { TranscriptSegment } from "../../adapters/video.js";
+export type { TranscriptSegment };
 
 export interface FetchYouTubeTranscriptFn {
   (videoUrl: string): Promise<TranscriptSegment[]>;

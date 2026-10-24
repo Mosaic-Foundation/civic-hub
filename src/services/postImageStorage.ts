@@ -1,9 +1,9 @@
-// Slice 9 — server-side helper for uploading post images to Supabase
-// Storage. Pure storage concern, kept out of the controller so future
+// Slice 9 — server-side helper for uploading post images to the object
+// store (the `objectStore` adapter, ADR-012; Supabase Storage in hosting). Pure storage concern, kept out of the controller so future
 // callers (cron jobs, federation imports) don't have to re-implement
 // the bucket / key naming.
 //
-// The upload itself is src/db/storage.ts. Who may upload is the route
+// The upload itself is the adapter's putPublic (src/hosting/supabaseStorage.ts). Who may upload is the route
 // layer's call (`requireAnnouncementPoster`, `requireAdmin`); WHERE a hub may
 // write is the bucket's: under the hub token the `post_images_hub_*` policies
 // refuse any key outside `<hub_id>/`. With the token off the upload runs as
@@ -15,10 +15,9 @@
 // remove. Objects uploaded before (`YYYY/MM/…`, `hubs/<hub_id>/…`) keep their
 // keys; their URLs are stored whole and stay valid.
 
-import { env, envVar } from "../config/env.js";
-import { uploadPublicObject } from "../db/storage.js";
+import { env } from "../config/env.js";
+import { adapters } from "../adapters/index.js";
 
-const BUCKET_ENV = "SUPABASE_STORAGE_BUCKET";
 const DEFAULT_BUCKET = "post-images";
 
 export const POST_IMAGE_MIME_WHITELIST: ReadonlySet<string> = new Set([
@@ -44,7 +43,7 @@ export function imageUploadMaxBytes(): number {
 }
 
 export function postImageBucket(): string {
-  return envVar(BUCKET_ENV) ?? DEFAULT_BUCKET;
+  return env.SUPABASE_STORAGE_BUCKET ?? DEFAULT_BUCKET;
 }
 
 /**
@@ -111,7 +110,7 @@ export async function uploadPostImage(
   prefix: string,
 ): Promise<{ key: string; url: string }> {
   const key = makeImageKey(mime, new Date(), prefix);
-  const url = await uploadPublicObject(hubId, postImageBucket(), key, bytes, {
+  const url = await adapters().objectStore.putPublic(hubId, postImageBucket(), key, bytes, {
     contentType: mime,
     cacheControl: "31536000, immutable",
   });

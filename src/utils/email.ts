@@ -13,53 +13,19 @@
 //                              write to
 // Both are no-ops for a live hub on a properly configured deployment.
 
-import { env } from "../config/env.js";
-import { currentSender, isSandboxSender } from "../services/emailSender.js";
+import { adapters } from "../adapters/index.js";
+import { currentSender } from "../services/emailSender.js";
 import { allowDelivery, type MailPurpose } from "../services/mailGuard.js";
 import { hubModeHoldReason } from "../shared/delivery.js";
 
-/**
- * Validate email configuration at startup. Logs warnings for missing
- * or malformed values so misconfigurations surface in deploy logs
- * rather than failing silently per-request.
- */
+/** Startup: the mail transport logs what is missing or malformed. */
 export function validateEmailConfig(): void {
-  const apiKey = env.RESEND_API_KEY;
-  const from = env.RESEND_FROM;
-  const isProd = env.NODE_ENV === "production";
+  adapters().mail.checkAtStartup?.();
+}
 
-  if (!apiKey) {
-    const msg = "RESEND_API_KEY is not set — emails will NOT be sent.";
-    if (isProd) {
-      console.error(`[email] ❌ ${msg} OTP sign-in will fail silently.`);
-    } else {
-      console.warn(`[email] ⚠️  ${msg} OTP codes will be logged to console.`);
-    }
-    return;
-  }
-
-  if (!from) {
-    // Not "may be rejected" — WILL be, for everyone but one address. This
-    // wording was too mild to act on: it appeared in every dev function log
-    // for fourteen hours while sign-in mail silently failed.
-    console.error(
-      "[email] ❌ RESEND_FROM is not set — falling back to the Resend sandbox " +
-      "sender, which delivers ONLY to the Resend account owner's own address. " +
-      "Every other recipient will be refused with 403 validation_error.",
-    );
-  } else {
-    const emailMatch = from.match(/<([^>]+)>/);
-    const addr = emailMatch ? emailMatch[1] : from;
-    const domain = addr.split("@")[1];
-    if (!domain || !domain.includes(".")) {
-      console.error(
-        `[email] ❌ RESEND_FROM domain looks malformed: "${domain}" (full value: "${from}"). ` +
-        'Emails will likely be rejected by Resend.',
-      );
-    } else {
-      console.log(`[email] ✓ RESEND_FROM domain: ${domain}`);
-    }
-  }
+/** Can this deployment deliver mail? Unset, flows log the message instead. */
+export function mailConfigured(): boolean {
+  return adapters().mail.configured();
 }
 
 export interface SendEmailInput {
@@ -73,7 +39,8 @@ export interface SendEmailInput {
 
 export interface SendEmailResult {
   sent: boolean;
-  provider?: "resend";
+  /** The transport that delivered it ("resend", "fake"). */
+  provider?: string;
   id?: string;
   error?: string;
   /**
@@ -86,8 +53,9 @@ export interface SendEmailResult {
 }
 
 /**
- * Send an email via Resend. Returns { sent: false } if RESEND_API_KEY is
- * unset — caller can decide to fall back (e.g. log to console in dev).
+ * Send an email through the mail adapter. Returns { sent: false } when no
+ * transport is configured: the caller can decide to fall back (log it, in
+ * development).
  */
 export async function sendEmail(
   input: SendEmailInput,
@@ -106,51 +74,29 @@ export async function sendEmail(
     };
   }
 
-  const apiKey = env.RESEND_API_KEY;
-  if (!apiKey) {
-    return { sent: false, error: "RESEND_API_KEY is not configured" };
+  const transport = adapters().mail;
+  if (!transport.configured()) {
+    return { sent: false, error: transport.notConfiguredReason() };
   }
 
   const sender = currentSender();
-  if (isSandboxSender(sender.address)) {
+  if (transport.isSandboxSender(sender.address)) {
     console.warn(
-      `[email] sending as the Resend sandbox (${sender.address}) — only the ` +
-      "Resend account owner will receive this. Set RESEND_FROM.",
+      `[email] sending as the provider's sandbox (${sender.address}) — only the ` +
+      "account owner will receive this. Set RESEND_FROM.",
     );
   }
 
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: sender.from,
-        to: [input.to],
-        subject: input.subject,
-        html: input.html,
-        text: input.text ?? stripHtml(input.html),
-      }),
-    });
-
-    if (!res.ok) {
-      const body = await res.text();
-      return {
-        sent: false,
-        error: `Resend ${res.status}: ${body.slice(0, 200)}`,
-      };
-    }
-
-    const data = (await res.json()) as { id?: string };
-    return { sent: true, provider: "resend", id: data.id };
-  } catch (err) {
-    return {
-      sent: false,
-      error: err instanceof Error ? err.message : "Unknown error",
-    };
-  }
+  const delivery = await transport.send({
+    from: sender.from,
+    to: input.to,
+    subject: input.subject,
+    html: input.html,
+    text: input.text ?? stripHtml(input.html),
+  });
+  return delivery.sent
+    ? { sent: true, provider: transport.name, id: delivery.id }
+    : { sent: false, error: delivery.error };
 }
 
 /**

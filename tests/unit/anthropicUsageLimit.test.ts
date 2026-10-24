@@ -3,14 +3,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // When the AI provider refuses because the account's usage limit is reached
 // (2026-10-24: dev's Code of Conduct check stopped until the limit reset),
 // the caller still gets the ordinary "try again" ai_unavailable, and the
-// operators are told: a reported error, not only a log line.
+// operators are told: a reported error, not only a log line. The provider
+// (src/hosting/anthropic.ts) marks it; the ai adapter's gate reports it, so
+// every caller gets the report (ADR-012).
 
 const reported = vi.hoisted(() => [] as Array<{ code: string; message: string }>);
 vi.mock("../../src/utils/reportError.js", () => ({
   reportError: (code: string, message: string) => reported.push({ code, message }),
 }));
 
-const { callClaudeMultiTurn, isUsageLimit } = await import("../../src/utils/anthropic.js");
+const { anthropicProvider, isUsageLimit } = await import("../../src/hosting/anthropic.js");
+const { aiConverse } = await import("../../src/adapters/ai.js");
+const { installAdapters } = await import("../../src/adapters/index.js");
+installAdapters({ ai: anthropicProvider });
+const callClaudeMultiTurn = (input: Parameters<typeof aiConverse>[1]) => aiConverse("assistant.message", input);
 
 const LIMIT_BODY = {
   type: "error",

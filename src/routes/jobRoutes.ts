@@ -14,7 +14,7 @@ import { JOB_RUNNERS, PLATFORM_JOB_RUNNERS } from "../jobs/runners.js";
 import { runJobAcrossHubs } from "../jobs/runJob.js";
 import { isCronAuthorized } from "../jobs/cronAuth.js";
 import { requestedHub } from "../services/cronHubs.js";
-import { pingHeartbeat } from "../utils/heartbeat.js";
+import { adapters } from "../adapters/index.js";
 import { recordJobLastRun } from "../db/jobLastRun.js";
 import { flushErrors } from "../utils/errorTracking.js";
 
@@ -51,14 +51,14 @@ function handlerFor(job: JobSpec, calledAs: string) {
       if (beats) {
         const error = err instanceof Error ? err.message : String(err);
         await Promise.all([
-          pingHeartbeat(job.id, false),
+          adapters().heartbeat.ping(job.id, false),
           recordJobLastRun(job.id, started, { ok: false, hubsRun: 0, hubsFailed: 0, error }),
         ]);
       }
       throw err;
     }
     await Promise.all([
-      beats ? pingHeartbeat(job.id, answer.status < 500) : undefined,
+      beats ? adapters().heartbeat.ping(job.id, answer.status < 500) : undefined,
       beats ? recordJobLastRun(job.id, started, { ok: answer.status < 500, ...hubCounts(answer.body) }) : undefined,
       flushErrors(),
     ]);

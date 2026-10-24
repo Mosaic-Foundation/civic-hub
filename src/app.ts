@@ -62,12 +62,16 @@ import { validateEmailConfig } from "./utils/email.js";
 import { validateSchemaAtStartup, getSchemaReport } from "./db/schemaCheck.js";
 import { checkDevFlags } from "./config/devFlags.js";
 import { assertSettings } from "./config/checkSettings.js";
+import { installHosting } from "./hosting/index.js";
 import { API_SECURITY_HEADERS } from "./shared/securityHeaders.js";
 
 // Every declared setting, checked once (src/config/settings.ts, ADR-012): a
 // missing required one or a value of the wrong type stops the start here,
 // naming the setting.
 assertSettings();
+// The outside services' implementations (src/hosting/, ADR-012): the vendors,
+// or the in-memory fakes with CIVIC_FAKE_ADAPTERS on. Before anything uses one.
+installHosting();
 
 const app = express();
 

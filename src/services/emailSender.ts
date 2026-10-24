@@ -23,10 +23,9 @@
 // account owner, which made the sender look like it was working.
 
 import { getSettingSync } from "./hubSettings.js";
+import { adapters } from "../adapters/index.js";
 import { KEYS } from "../models/hubSettings.js";
 
-/** Resend's sandbox. Reaches the account owner and nobody else. */
-export const SANDBOX_SENDER = "Civic Hub <onboarding@resend.dev>";
 
 export interface Sender {
   /** Display name, or "" when nothing names one. */
@@ -70,7 +69,7 @@ function quoteName(name: string): string {
  */
 export function currentSender(): Sender {
   const configuredAddress = getSettingSync(KEYS.EMAIL_FROM_ADDRESS);
-  const parsed = parseSender(configuredAddress ?? SANDBOX_SENDER);
+  const parsed = parseSender(configuredAddress ?? adapters().mail.defaultSender());
 
   // The hub's own name wins over any name carried along in the address value,
   // because the address value is often a whole deployment's RESEND_FROM and
@@ -81,7 +80,4 @@ export function currentSender(): Sender {
   return { name, address: parsed.address, from };
 }
 
-/** Is this the provider's sandbox, which reaches only the account owner? */
-export function isSandboxSender(address: string): boolean {
-  return /@resend\.dev$/i.test(address);
-}
+

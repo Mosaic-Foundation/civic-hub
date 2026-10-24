@@ -32,11 +32,19 @@ import {
   resolveMeetingSummaryConfig,
   type MeetingEntry,
 } from "../src/modules/civic.meeting_summary/index.js";
-import { callClaude, DEFAULT_MODEL } from "../src/utils/anthropic.js";
+import { adapters } from "../src/adapters/index.js";
+import { aiDefaultModel, type AiSingleTurnInput } from "../src/adapters/ai.js";
+import { installHosting } from "../src/hosting/index.js";
 import { fetchHtml, fetchJson, fetchPdf, fetchXml } from "../src/utils/http.js";
-import { fetchYouTubeTranscript } from "../src/utils/youtube.js";
+
 import { getAdminEmailsSync } from "../src/services/hubSettings.js";
 import { withScriptHub } from "./lib/hubScope.js";
+
+// A dry run writes nothing, so it asks the provider directly rather than
+// through the ai adapter's gate, which records usage in the hub.
+installHosting();
+const callClaude = (input: AiSingleTurnInput) => adapters().ai.complete(input, { purpose: "job.meeting_summary" });
+const fetchYouTubeTranscript = (url: string) => adapters().video.transcript(url);
 
 const ok = (s: string) => console.log(`  ✅ ${s}`);
 const warn = (s: string) => console.log(`  ⚠️  ${s}`);
@@ -68,7 +76,7 @@ async function diagnose(): Promise<void> {
   heading("1. Configuration");
 
   const resolved = resolveMeetingSummaryConfig(
-    process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL,
+    process.env.ANTHROPIC_MODEL?.trim() || aiDefaultModel(),
   );
   if (resolved.status === "skipped") {
     bad(`${resolved.reason} — the cron skips this hub without doing anything`);

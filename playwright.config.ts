@@ -60,6 +60,9 @@ export default defineConfig({
       port: 3000,
       reuseExistingServer: true,
       timeout: 30_000,
+      // The in-memory adapters (ADR-012): with .env's real keys, a local run
+      // would otherwise reach Anthropic and Resend.
+      env: { CIVIC_FAKE_ADAPTERS: "on" },
     },
     {
       command: "cd ui && npm run dev",

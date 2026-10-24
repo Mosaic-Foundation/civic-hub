@@ -5,6 +5,13 @@
 //   CIVIC_RATE_LIMITS=off   — sign-in and assistant rate limits are skipped
 //   CIVIC_SSRF_ALLOW_PRIVATE=true — server-side fetches may reach private
 //                             addresses (a Polis on localhost)
+//   CIVIC_FAKE_ADAPTERS=on  — every outside service is its in-memory fake
+//                             (src/hosting/index.ts, src/adapters/fakes/):
+//                             AI, mail, video, Polis, errors, heartbeats, object
+//                             store, and the Code of Conduct check's rule.
+//                             What CI, Playwright and the run-anywhere job use
+//                             (Architecture 5, ADR-012). The two below are its
+//                             older, narrower names, kept for one release.
 //   CIVIC_POLIS_FAKE=on     — conversations talk to an in-memory Polis behind
 //                             the real adapter (src/debug/fakePolis.ts), so the
 //                             conformance suite can walk them without the
@@ -20,7 +27,7 @@
 //                             the timeout (src/control/dashboard/hubHealth.ts)
 //
 // With NODE_ENV=production (every Vercel deployment, dev and production) all
-// six are refused: the flag reads as unset, and the boot check reports it, once,
+// seven are refused: the flag reads as unset, and the boot check reports it, once,
 // as an error operators see. Refused rather than fatal on purpose: a stray env
 // var should not take every hub on the deployment offline, and ignoring it is
 // already the safe outcome.
@@ -47,14 +54,21 @@ export function privateFetchAllowed(): boolean {
   return env.CIVIC_SSRF_ALLOW_PRIVATE === "true" && !isProduction();
 }
 
+const ON = new Set(["1", "true", "on", "yes"]);
+
+/** Is every outside service its in-memory fake? Never in production. */
+export function fakeAdaptersEnabled(): boolean {
+  return ON.has((env.CIVIC_FAKE_ADAPTERS ?? "").toLowerCase()) && !isProduction();
+}
+
 /** Do conversations use the in-memory Polis? Never in production. */
 export function polisFakeEnabled(): boolean {
-  return env.CIVIC_POLIS_FAKE === "on" && !isProduction();
+  return (fakeAdaptersEnabled() || env.CIVIC_POLIS_FAKE === "on") && !isProduction();
 }
 
 /** Is the Code of Conduct check the fixed test rule? Never in production. */
 export function cocFakeEnabled(): boolean {
-  return env.CIVIC_COC_FAKE === "on" && !isProduction();
+  return (fakeAdaptersEnabled() || env.CIVIC_COC_FAKE === "on") && !isProduction();
 }
 
 /** Does the Dashboard read hubs' health from this server? Never in production. */
@@ -74,6 +88,9 @@ export function checkDevFlags(): void {
   }
   if (env.CIVIC_SSRF_ALLOW_PRIVATE === "true") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_SSRF_ALLOW_PRIVATE=true is set in production and is ignored. Remove it from this deployment.", {});
+  }
+  if (env.CIVIC_FAKE_ADAPTERS) {
+    reportError("CIVIC_DEV_FLAG", "CIVIC_FAKE_ADAPTERS is set in production and is ignored. Remove it from this deployment.", {});
   }
   if (env.CIVIC_POLIS_FAKE === "on") {
     reportError("CIVIC_DEV_FLAG", "CIVIC_POLIS_FAKE=on is set in production and is ignored. Remove it from this deployment.", {});

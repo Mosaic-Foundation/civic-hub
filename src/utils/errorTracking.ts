@@ -1,10 +1,10 @@
-// Error tracking: what reportError() sends to Sentry (operations shell,
-// ADR-006), and the one scrubber every error passes through on its way out.
-//
-// Not the Sentry SDK. This file builds Sentry's envelope by hand so the
-// payload is exactly what is listed here and nothing an SDK adds on its own
-// (request bodies, cookies, headers, the user, breadcrumbs of console lines).
-// Any Sentry-compatible collector takes it.
+// Error tracking: what reportError() sends to the `errors` adapter
+// (operations shell, ADR-006; ADR-012), and the one scrubber every error
+// passes through on its way out. The engine builds and scrubs the report
+// here; the adapter only delivers it (src/hosting/sentry.ts: Sentry's
+// envelope, by hand, no SDK, so the payload is exactly what is listed here
+// and nothing an SDK adds on its own). Any Sentry-compatible collector takes
+// it.
 //
 // What leaves, and nothing else:
 //   - the error's type and message, scrubbed (redactValues: no emails, quoted
@@ -16,12 +16,12 @@
 // Every string goes through scrub() once more on the way out, so a caller
 // that slips a value into a detail still cannot leak an address.
 //
-// Off unless CIVIC_ERROR_DSN is set. A failing collector never fails the
+// Off unless the adapter is enabled (CIVIC_ERROR_DSN). A failing collector never fails the
 // request or job that reported: sends are bounded by a timeout and their
 // errors are swallowed (one warning per instance).
 
 import { randomBytes } from "node:crypto";
-import { env } from "../config/env.js";
+import { adapters } from "../adapters/index.js";
 import { deploymentCommit } from "../config/deployment.js";
 import { currentHubIdOrNull } from "../config/hubContext.js";
 import { redactValues } from "./redact.js";
@@ -150,7 +150,7 @@ function projectPath(file: string): string {
 }
 
 export function errorEnvironment(): string {
-  return env.CIVIC_ERROR_ENVIRONMENT ?? (env.NODE_ENV === "production" ? "production" : "development");
+  return adapters().errors.environment();
 }
 
 /** The Sentry event for one error. Pure apart from its id and time. */
@@ -199,32 +199,12 @@ export function buildEvent(input: CaptureInput): Record<string, unknown> {
 // Sending
 // ---------------------------------------------------------------------------
 
-interface Dsn {
-  url: string;
-  key: string;
-  raw: string;
-}
-
-/** `https://<key>@<host>/<project>` → the envelope endpoint and the key. */
-export function parseDsn(dsn: string | undefined): Dsn | null {
-  if (!dsn) return null;
-  try {
-    const u = new URL(dsn);
-    const project = u.pathname.replace(/^\/+|\/+$/g, "");
-    if (!u.username || !project || u.protocol !== "https:") return null;
-    return { url: `https://${u.host}/api/${project}/envelope/`, key: u.username, raw: dsn };
-  } catch {
-    return null;
-  }
-}
-
 const pending = new Set<Promise<void>>();
 const lastSent = new Map<string, number>();
-let warned = false;
 
 /** Is error tracking switched on for this deployment? */
 export function errorTrackingEnabled(): boolean {
-  return parseDsn(env.CIVIC_ERROR_DSN) !== null;
+  return adapters().errors.enabled();
 }
 
 /**
@@ -232,9 +212,9 @@ export function errorTrackingEnabled(): boolean {
  * instance within a minute are dropped: Sentry counts the first, and a loop
  * of failures does not spend the month's quota.
  */
-export function captureError(input: CaptureInput, fetchImpl: typeof fetch = fetch): void {
-  const dsn = parseDsn(env.CIVIC_ERROR_DSN);
-  if (!dsn) return;
+export function captureError(input: CaptureInput): void {
+  const sink = adapters().errors;
+  if (!sink.enabled()) return;
   const event = buildEvent(input);
   const key = repeatKey(event);
   const now = Date.now();
@@ -243,7 +223,7 @@ export function captureError(input: CaptureInput, fetchImpl: typeof fetch = fetc
   lastSent.set(key, now);
   if (lastSent.size > 500) lastSent.clear();
 
-  const p = send(dsn, event, fetchImpl).finally(() => pending.delete(p));
+  const p = sink.send(event).catch(() => undefined).finally(() => pending.delete(p));
   pending.add(p);
 }
 
@@ -253,36 +233,6 @@ function repeatKey(event: Record<string, unknown>): string {
   const top = ex?.stacktrace.frames.at(-1);
   const tags = event.tags as Record<string, string>;
   return [tags.code, tags.hub ?? "", ex ? `${ex.type}:${ex.value}:${top?.filename}:${top?.lineno}` : JSON.stringify(event.message)].join("|");
-}
-
-/** The envelope body: header, item header, event, one per line. */
-export function envelope(dsn: Dsn, event: Record<string, unknown>): string {
-  const payload = JSON.stringify(event);
-  return [
-    JSON.stringify({ event_id: event.event_id, sent_at: new Date().toISOString(), dsn: dsn.raw }),
-    JSON.stringify({ type: "event", content_type: "application/json", length: Buffer.byteLength(payload) }),
-    payload,
-  ].join("\n");
-}
-
-async function send(dsn: Dsn, event: Record<string, unknown>, fetchImpl: typeof fetch): Promise<void> {
-  try {
-    const res = await fetchImpl(dsn.url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-sentry-envelope",
-        "X-Sentry-Auth": `Sentry sentry_version=7, sentry_key=${dsn.key}, sentry_client=civic-hub/1.0`,
-      },
-      body: envelope(dsn, event),
-      signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  } catch (err) {
-    if (!warned) {
-      warned = true;
-      console.warn(`[error-tracking] send failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
 }
 
 /**
@@ -303,9 +253,8 @@ export function hasPendingErrors(): boolean {
   return pending.size > 0;
 }
 
-/** Tests only: forget the repeat window and the warning. */
+/** Tests only: forget the repeat window. */
 export function resetErrorTrackingForTests(): void {
   lastSent.clear();
   pending.clear();
-  warned = false;
 }

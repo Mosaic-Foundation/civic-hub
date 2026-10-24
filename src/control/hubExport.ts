@@ -4,9 +4,10 @@
 // requires a fresh code first and records the export in the audit log.
 
 import { bundleName, exportHub, memorySink } from "./hubBundle/export.js";
-import { supabaseObjectReader, supabaseRowReader } from "./hubBundle/supabaseReader.js";
+import { supabaseRowReader } from "./hubBundle/supabaseReader.js";
+import { supabaseObjectReader } from "../hosting/supabaseStorage.js";
 import { packTarGz } from "./hubBundle/tar.js";
-import { signHubExport, storeHubExport } from "../db/hubExportsBucket.js";
+import { signHubExport, storeHubExport } from "../services/hubExportsStore.js";
 import { postImageBucket } from "../services/postImageStorage.js";
 import { deploymentCommit } from "../config/deployment.js";
 

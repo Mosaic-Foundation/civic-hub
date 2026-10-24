@@ -14,7 +14,8 @@ import { COC_FLAG } from "../fixtures/codeOfConduct.js";
  * adminFeedbackDigest.test.ts for the body).
  *
  * Needs the server's CRON_SECRET (CIVIC_TEST_CRON_SECRET, as pluginToggles),
- * CIVIC_COC_FAKE=on, and no RESEND_API_KEY (keyless "sends" count as
+ * CIVIC_FAKE_ADAPTERS=on (the Code of Conduct rule, and a mail transport that
+ * is not configured: keyless "sends" count as
  * delivered, so the mark moves).
  */
 

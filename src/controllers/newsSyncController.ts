@@ -33,7 +33,10 @@ import {
 } from "../services/processService.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { fetchXml } from "../utils/http.js";
-import { callClaude, DEFAULT_MODEL } from "../utils/anthropic.js";
+import { aiComplete, aiConfigured, aiDefaultModel, type AiSingleTurnInput } from "../adapters/ai.js";
+
+/** The news sync's model calls, through the ai adapter's gate, as a job. */
+const callClaude = (input: AiSingleTurnInput) => aiComplete("job.news_sync", input);
 import {
   emitAnnouncementResultPublished,
   type AnnouncementProcessContext,
@@ -47,7 +50,7 @@ import { civicPlaceShortName, processJurisdiction } from "../config/hub.js";
 const CRON_ACTOR = "system:news-sync-cron";
 
 function modelName(): string {
-  return env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL;
+  return aiDefaultModel();
 }
 
 /**
@@ -177,7 +180,7 @@ export async function runNewsSyncForHub(): Promise<NewsSyncHubOutcome> {
         // non-fatal: we fall back to an empty body and log a warning.
         let body = entry.body;
         if (!body) {
-          if (!env.ANTHROPIC_API_KEY) {
+          if (!aiConfigured()) {
             console.warn(
               `[news-sync] no body and ANTHROPIC_API_KEY unset — skipping paraphrase for ${entry.share_url}`,
             );

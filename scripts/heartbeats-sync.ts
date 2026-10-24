@@ -15,7 +15,7 @@
 // access. Read from the environment, never printed.
 
 import { JOBS } from "../src/jobs/registry.js";
-import { heartbeatSlug } from "../src/utils/heartbeat.js";
+import { heartbeatSlug } from "../src/hosting/healthchecks.js";
 import { graceFor } from "../src/jobs/schedule.js";
 
 const API = "https://healthchecks.io/api/v3/checks/";

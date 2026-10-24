@@ -17,7 +17,7 @@
 import { env } from "../config/env.js";
 import { currentHub } from "../config/hubContext.js";
 import { hubDisplayNameSync, hubModeSync } from "./hubSettings.js";
-import { sendEmail } from "../utils/email.js";
+import { sendEmail, mailConfigured } from "../utils/email.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { PLATFORM_CONTACT_EMAIL, PLATFORM_SETUP_GUIDE_URL } from "../shared/platform.js";
 
@@ -91,7 +91,7 @@ export async function sendAdminInvites(emails: readonly string[]): Promise<Invit
   const message = renderAdminInvite({ hubName: hubDisplayNameSync(), hubUrl: uiBaseUrl(), mode: hubModeSync() });
   for (const to of emails) {
     try {
-      if (!env.RESEND_API_KEY) {
+      if (!mailConfigured()) {
         // Local development: show what would have gone, as the mailer does.
         console.log(`---- [admin-invite] RESEND_API_KEY unset — logging email ----\nTo: ${to}\nSubject: ${message.subject}\n\n${message.text}\n---- end ----`);
         report.sent.push(to);

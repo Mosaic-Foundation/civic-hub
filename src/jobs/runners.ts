@@ -8,7 +8,7 @@ import { runDigestForHub } from "../controllers/digestController.js";
 import { runAdminDigestForHub } from "../controllers/adminDigestController.js";
 import { runNewsSyncForHub } from "../controllers/newsSyncController.js";
 import { RunSink, runMeetingSummaryForHub } from "../controllers/meetingSummaryController.js";
-import { sweepHubExports } from "../db/hubExportsBucket.js";
+import { sweepHubExports } from "../services/hubExportsStore.js";
 import { closeAllExpired } from "../services/processService.js";
 import { isPluginEnabledSync } from "../services/hubSettings.js";
 import { refreshSamples } from "../services/sampleRefresh.js";

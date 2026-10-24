@@ -1,8 +1,8 @@
 // Mailer service — the brief / vote-results delivery mailer.
 //
 // Callers pass a fully-formatted message (subject, html, text, recipients);
-// this module handles transport. Since 2026-09-06 transport is Resend via
-// utils/email — the same sender every other email on the hub uses (sign-in
+// this module handles transport. Since 2026-09-06 transport is the mail
+// adapter via utils/email (Resend in hosting, ADR-012) — the same sender every other email on the hub uses (sign-in
 // codes, digests, review notices, feedback). It was nodemailer over SMTP,
 // configured by SMTP_* env vars nobody maintained: the first real brief
 // approval on prod halted with "535 Authentication credentials invalid"
@@ -17,7 +17,7 @@
 //     pending. Now the brief publishes and its record says who was held back;
 //   - throws `Email delivery failed: …` if any recipient really fails, so the
 //     approval flows halt before publishing, as before;
-//   - with no RESEND_API_KEY configured (local dev), logs the message and
+//   - with no mail transport configured (local dev), logs the message and
 //     counts it as sent, after the mode guard has had its say, so a held-back
 //     recipient shows locally too.
 //
@@ -27,7 +27,7 @@
 
 import { env } from "../config/env.js";
 import { UnavailableError } from "../errors/index.js";
-import { sendEmail as sendViaResend } from "../utils/email.js";
+import { sendEmail as sendOne, mailConfigured } from "../utils/email.js";
 import { mailDecision } from "./mailGuard.js";
 import { hubModeHoldReason, type DeliveryReport } from "../shared/delivery.js";
 
@@ -56,7 +56,7 @@ export async function sendEmail(message: EmailMessage): Promise<DeliveryReport> 
     );
   }
 
-  if (!env.RESEND_API_KEY) {
+  if (!mailConfigured()) {
     if (deliverable.length === 0) return report;
     // Visible, structured fallback so local dev runs can see what would
     // have been sent. Treated as success for flow purposes.
@@ -73,7 +73,7 @@ export async function sendEmail(message: EmailMessage): Promise<DeliveryReport> 
   const failures: string[] = [];
   for (const to of deliverable) {
     try {
-      const result = await sendViaResend({
+      const result = await sendOne({
         to,
         subject: message.subject,
         html: message.html,

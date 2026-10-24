@@ -12,6 +12,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("../../src/utils/email.js", () => ({
   sendEmail: vi.fn(),
+  // Whether a transport is configured: these tests set or clear the key.
+  mailConfigured: () => Boolean(process.env.RESEND_API_KEY),
 }));
 
 import { sendEmail as sendViaResend } from "../../src/utils/email.js";

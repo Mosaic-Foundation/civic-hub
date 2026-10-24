@@ -37,7 +37,7 @@ import { join, resolve } from "node:path";
 import { userInfo } from "node:os";
 import { hubArg } from "./lib/hubScope.js";
 import { bundleName, exportHub, memorySink, ownedObjectKeys, type ObjectReader } from "../src/control/hubBundle/export.js";
-import { supabaseObjectReader } from "../src/control/hubBundle/supabaseReader.js";
+import { supabaseObjectReader } from "../src/hosting/supabaseStorage.js";
 import { packTarGz } from "../src/control/hubBundle/tar.js";
 import { postImageBucket } from "../src/services/postImageStorage.js";
 import { connectFromEnv, ImportRefused, pgRowReader } from "./lib/hubImport.js";

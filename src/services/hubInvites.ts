@@ -35,12 +35,10 @@ import { currentHubId } from "../config/hubContext.js";
 import { forHub } from "../db/forHub.js";
 import { ForbiddenError, ValidationError } from "../errors/index.js";
 import { sha256Hex, randomToken } from "../utils/hash.js";
-import { sendEmail } from "../utils/email.js";
+import { sendEmail, mailConfigured } from "../utils/email.js";
 import { uiBaseUrl } from "../utils/baseUrl.js";
 import { getBetaAllowlist, getSettingSync, hubDisplayNameSync, hubModeSync, KEYS, setBetaAllowlist } from "./hubSettings.js";
 import { AiLimitError, admitAiCall } from "./aiBudget.js";
-import { cocFakeEnabled } from "../config/devFlags.js";
-import { fakeCodeOfConductCheck } from "../debug/fakeCodeOfConduct.js";
 import { checkTextAgainstCoC } from "../modules/civic.assistant/service.js";
 import { getHubConfig } from "../modules/civic.assistant/index.js";
 import { defaultIntroBody } from "../shared/hubCopy.js";
@@ -202,7 +200,7 @@ async function checkInviteMessage(inviterId: string, message: string): Promise<v
   let suggestions;
   try {
     await admitAiCall("review", inviterId);
-    suggestions = cocFakeEnabled() ? fakeCodeOfConductCheck(fields) : await checkTextAgainstCoC(fields, await getHubConfig());
+    suggestions = await checkTextAgainstCoC(fields, await getHubConfig());
   } catch (err) {
     if (err instanceof AiLimitError && !err.budget) throw err;
     console.error("[coc-check:invite] unavailable, nothing sent:", err instanceof Error ? err.message : err);
@@ -305,7 +303,7 @@ export async function sendMemberInvites(inviter: Inviter, addresses: string[], m
 
 async function deliver(to: string, message: { subject: string; text: string; html: string }): Promise<boolean> {
   try {
-    if (!env.RESEND_API_KEY) {
+    if (!mailConfigured()) {
       // Local development: show what would have gone, as the mailer does.
       console.log(`---- [member-invite] RESEND_API_KEY unset — logging email ----\nTo: ${to}\nSubject: ${message.subject}\n\n${message.text}\n---- end ----`);
       return true;

@@ -14,8 +14,9 @@
 //
 // The last two run in-process, in the same mode as the server (as
 // leakHarness's digest does). Needs the local stack seeded as in CI and a
-// server (CIVIC_API_BASE). The server has no RESEND_API_KEY, so nothing is
-// sent anywhere; the in-process digest intercepts its own Resend calls.
+// server (CIVIC_API_BASE). The server runs with the in-memory adapters, so
+// nothing is sent anywhere; the in-process digest sends through a configured
+// fake transport and reads its outbox.
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { call } from "../fixtures/hostCall.js";
@@ -315,7 +316,6 @@ describe("the admin digest covers the queues admins need (docs session #5)", () 
 // ---------------------------------------------------------------------------
 // In-process, in the same mode as the server.
 
-const resendCalls = vi.hoisted(() => [] as string[]);
 
 async function inProcess() {
   const { url, key } = localStack();
@@ -352,17 +352,12 @@ describe("the resident digest with every resident held back (#36)", () => {
       }),
     });
 
-    // A mail key, so the run takes the real send path; Resend itself is
-    // intercepted, everything else (the database) goes through.
-    process.env.RESEND_API_KEY = "re_test_held_back_only";
-    const realFetch = globalThis.fetch;
-    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (String(input).startsWith("https://api.resend.com/")) {
-        resendCalls.push(...(JSON.parse(String(init?.body)).to as string[]));
-        return new Response(JSON.stringify({ id: "stub" }), { status: 200 });
-      }
-      return realFetch(input, init);
-    });
+    // A configured transport, so the run takes the real send path; its
+    // outbox is what reached "the provider" (ADR-012).
+    const { installAdapters } = await import("../../src/adapters/index.js");
+    const { fakeMail } = await import("../../src/adapters/fakes/mail.js");
+    const mail = fakeMail({ configured: true });
+    installAdapters({ mail });
     try {
       const within = await inProcess();
       const { runDigestForHub } = await import("../../src/controllers/digestController.js");
@@ -372,15 +367,14 @@ describe("the resident digest with every resident held back (#36)", () => {
       expect(outcome.body.failed_count).toBe(0);
       expect(outcome.body.held_back_count).toBeGreaterThanOrEqual(1);
       expect(outcome.body.held_back_reason).toBe("this hub is in demo mode");
-      expect(resendCalls).not.toContain(`resident+heldback${run}@example.test`);
+      expect(mail.outbox.map((m) => m.to)).not.toContain(`resident+heldback${run}@example.test`);
 
       const described = describeJobRun("digest", outcome);
       expect(described?.status).toBe("ok");
       expect(described?.problems).toEqual([]);
       expect(described?.summary).toMatch(/held back from \d+ because this hub is in demo mode/);
     } finally {
-      vi.unstubAllGlobals();
-      delete process.env.RESEND_API_KEY;
+      installAdapters({ mail: fakeMail() });
     }
   }, 60_000);
 });

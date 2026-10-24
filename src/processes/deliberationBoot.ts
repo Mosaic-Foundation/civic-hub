@@ -1,4 +1,3 @@
-import { env } from "../config/env.js";
 import { createPolisDeliberationHandler } from "../shared/polis_deliberation/handler.js";
 import { createPolisAdapter } from "../shared/polis_deliberation/adapter/polisAdapter.js";
 import { createPolisSummarizer } from "../shared/polis_deliberation/summarization/polisSummarizer.js";
@@ -9,8 +8,8 @@ import { deliberationDraftKind } from "./draftKinds.js";
 import { generateId } from "../utils/id.js";
 import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
-import { guardedFetch } from "../utils/ssrfGuard.js";
-import { callClaude, DEFAULT_MODEL } from "../utils/anthropic.js";
+import { aiComplete, aiDefaultModel } from "../adapters/ai.js";
+import { adapters } from "../adapters/index.js";
 import { closeThroughDispatcher, getActionDispatcher } from "./registry.js";
 import { afterActionCommits } from "../services/actionScope.js";
 import { UnavailableError } from "../errors/index.js";
@@ -27,15 +26,7 @@ import type { FeedProcessMeta } from "./contracts/feedMeta.js";
 import { deliberationAssistantConfig } from "./deliberationAssistantConfig.js";
 import { getSettingSync } from "../services/hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
-import { DEFAULT_POLIS_URL } from "../shared/polisUrl.js";
-import { polisFakeEnabled } from "../config/devFlags.js";
-import {
-  FAKE_POLIS_BASE_URL,
-  FAKE_POLIS_RETRY_DELAYS_MS,
-  FAKE_POLIS_TIMEOUT_MS,
-  fakePolisFetch,
-  fakeSummarize,
-} from "../debug/fakePolis.js";
+import { fakeSummarize } from "../debug/fakePolis.js";
 import { POLIS_DELIBERATION_MANIFEST } from "../shared/polis_deliberation/manifest.js";
 
 let _adapter: PolisAdapter | null = null;
@@ -78,42 +69,33 @@ const ADAPTER_METHODS = [
 ] as const satisfies ReadonlyArray<keyof PolisAdapter>;
 
 export function bootDeliberation(): ProcessHandler {
-  // CIVIC_POLIS_FAKE=on (development and tests, never production): the real
-  // adapter talks to an in-memory Polis instead of the network, with short
-  // timeouts, and summaries are made without a language model.
-  const fake = polisFakeEnabled();
-  // Read per call, for the hub in scope: the hub setting, or the default.
-  // Until 2026-10-16 it was read once, here, at boot, outside any hub, so
-  // every hub got the env's value and a hub's own setting never reached the
-  // server (the cleanup slice, Audit 3's Polis findings).
-  const polisBaseUrl = (): string =>
-    fake ? FAKE_POLIS_BASE_URL : getSettingSync(KEYS.PLUGIN_CONVERSATION_POLIS_URL) || DEFAULT_POLIS_URL;
-  const polisAuthToken = env.POLIS_AUTH_TOKEN || (fake ? "fake-polis-service-token" : "");
+  // The deliberation adapter (ADR-012) says where Polis is, with which token
+  // and fetch; read per call, so the hosting layer may install it after this
+  // boot. The fake (CIVIC_FAKE_ADAPTERS or CIVIC_POLIS_FAKE, never
+  // production) is an in-memory Polis behind the real adapter, with short
+  // timeouts, and summaries made without a language model.
+  // The address is read per call, for the hub in scope: the hub setting, or
+  // the default (the cleanup slice, Audit 3's Polis findings).
+  const service = () => adapters().deliberation;
+  const polisBaseUrl = (): string => service().baseUrl(getSettingSync(KEYS.PLUGIN_CONVERSATION_POLIS_URL));
 
-  if (fake) {
-    console.log("[deliberation] CIVIC_POLIS_FAKE=on — conversations use the in-memory Polis (src/debug/fakePolis.ts)");
-  } else if (!polisAuthToken) {
-    console.log(
-      "[deliberation] POLIS_AUTH_TOKEN not set — deliberation handler will fail on Polis API calls",
-    );
-  }
-
-  // One real adapter per Polis address, made on first use; the hub's adapter
-  // picks the one for the hub in scope on every call, and turns an outage
-  // into a 503.
+  // One real adapter per Polis address and service, made on first use; the
+  // hub's adapter picks the one for the hub in scope on every call, and turns
+  // an outage into a 503.
   const byUrl = new Map<string, PolisAdapter>();
   const adapterFor = (baseUrl: string): PolisAdapter => {
-    let adapter = byUrl.get(baseUrl);
+    const svc = service();
+    const cacheKey = `${svc.name} ${baseUrl}`;
+    let adapter = byUrl.get(cacheKey);
     if (!adapter) {
       adapter = createPolisAdapter({
         baseUrl,
-        authToken: polisAuthToken,
-        // The Polis URL is a hub setting its admin chooses: guarded (Audit 2).
-        ...(fake
-          ? { fetch: fakePolisFetch, timeoutMs: FAKE_POLIS_TIMEOUT_MS, retryDelaysMs: FAKE_POLIS_RETRY_DELAYS_MS }
-          : { fetch: guardedFetch }),
+        authToken: svc.authToken(),
+        fetch: svc.fetch,
+        ...(svc.timeoutMs !== undefined ? { timeoutMs: svc.timeoutMs } : {}),
+        ...(svc.retryDelaysMs !== undefined ? { retryDelaysMs: svc.retryDelaysMs } : {}),
       });
-      byUrl.set(baseUrl, adapter);
+      byUrl.set(cacheKey, adapter);
     }
     return adapter;
   };
@@ -136,8 +118,8 @@ export function bootDeliberation(): ProcessHandler {
       user: string;
       maxTokens: number;
     }): Promise<string> {
-      const result = await callClaude({
-        model: DEFAULT_MODEL,
+      const result = await aiComplete("job.deliberation_summary", {
+        model: aiDefaultModel(),
         system: params.system,
         userText: params.user,
         maxTokens: params.maxTokens,
@@ -146,12 +128,12 @@ export function bootDeliberation(): ProcessHandler {
     },
   };
 
-  const summarize = fake
-    ? fakeSummarize
-    : createPolisSummarizer({
-        llmClient,
-        polisBaseUrl,
-      });
+  const realSummarize = createPolisSummarizer({
+    llmClient,
+    polisBaseUrl,
+  });
+  const summarize: typeof realSummarize = (...args) =>
+    service().fake ? fakeSummarize(...args) : realSummarize(...args);
 
   const host: PolisHostInterface = {
     async emitEvent(input) {

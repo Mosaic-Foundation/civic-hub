@@ -281,7 +281,8 @@ refused in production (`src/config/devFlags.ts`).
 | `POLIS_AUTH_TOKEN` | hosting | secret | no |  | The deliberation adapter's Polis service token. |
 | `SEARCHAPI_API_KEY` | hosting | secret | no |  | Video adapter: SearchAPI transcripts (second choice). |
 | `SUPADATA_API_KEY` | hosting | secret | no |  | Video adapter: Supadata transcripts (first choice). |
-| `SUPABASE_STORAGE_BUCKET` | hosting | string | no | `post-images` | Object store adapter: the public bucket for post images. |
+| `SUPABASE_STORAGE_BUCKET` | engine | string | no | `post-images` | The object store's public bucket for post images (the name predates the adapter; any store uses it). |
+| `CIVIC_OBJECT_STORE` | hosting | string | no | `supabase` | Which object store: "supabase" (Supabase Storage on the database's project) or "memory" (nothing kept across restarts; the run-anywhere CI job). |
 | `LINK_PREVIEW_USER_AGENT` | engine | string | no |  | User-Agent sent when fetching link previews. |
 | `IMAGE_UPLOAD_MAX_MB` | engine | number | no |  | Upload size limit in MB, capped by the code's ceiling. |
 | `HUB_CRON_ENABLED` | engine | boolean | no | `true` | "false" stops every scheduled job on this deployment. |

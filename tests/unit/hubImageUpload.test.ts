@@ -1,4 +1,3 @@
-// @civic-raw-client-importer: stubs the storage client the upload handler uses.
 import { describe, expect, it, vi } from "vitest";
 import { Readable } from "node:stream";
 import { deflateSync, crc32 } from "node:zlib";
@@ -7,29 +6,20 @@ import { randomBytes } from "node:crypto";
 /**
  * A hub's banner and logo land under that hub's prefix in the image bucket.
  *
- * Unit, with the bucket write stubbed: what this proves is the part that is
- * ours — the key the handler asks storage to write, and the limits it applies
+ * Unit, with the object store in memory (the `objectStore` adapter's fake,
+ * ADR-012): what this proves is the part that is ours — the key the handler asks storage to write, and the limits it applies
  * before asking. The real upload, in both token modes, is
  * tests/api/uploadHubPrefix.test.ts; what the storage policies refuse is the
  * storage block in tests/api/leakHarnessDb.test.ts.
  */
 
-const uploads: string[] = [];
+const { installAdapters } = await import("../../src/adapters/index.js");
+const { memoryObjectStore, MEMORY_OBJECT_BASE } = await import("../../src/adapters/fakes/objectStore.js");
 
-vi.mock("../../src/db/client.js", () => {
-  const client = {
-    storage: {
-      from: () => ({
-        upload: async (key: string) => {
-          uploads.push(key);
-          return { error: null };
-        },
-        getPublicUrl: (key: string) => ({ data: { publicUrl: `https://storage.test/${key}` } }),
-      }),
-    },
-  };
-  return { getDb: () => client, getHubTokenDb: () => client, hubTokensEnabled: () => false };
-});
+const store = memoryObjectStore();
+installAdapters({ objectStore: store });
+/** The keys written so far, in order (the bucket is "post-images"). */
+const keys = () => [...store.objects.keys()].map((k) => k.replace(/^post-images\//, ""));
 
 const { runWithHub } = await import("../../src/config/hubContext.js");
 const { handleHubImageUpload, handlePostImageUpload } = await import(
@@ -149,23 +139,23 @@ describe("hub image keys", () => {
 
 describe("POST /upload/hub-image", () => {
   it("stores a banner under the hub the request resolved to", async () => {
-    uploads.length = 0;
+    store.objects.clear();
     const res = await upload(ATHENS_HUB, png(800, 200), "banner");
     expect(res.statusCode).toBe(201);
-    expect(uploads).toHaveLength(1);
-    expect(uploads[0]).toMatch(/^athens\/identity\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.png$/);
-    expect((res.body as { url: string }).url).toBe(`https://storage.test/${uploads[0]}`);
+    expect(keys()).toHaveLength(1);
+    expect(keys()[0]).toMatch(/^athens\/identity\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.png$/);
+    expect((res.body as { url: string }).url).toBe(`${MEMORY_OBJECT_BASE}/post-images/${keys()[0]}`);
   });
 
   it("stores the same upload under Floyd when Floyd is the hub in scope", async () => {
-    uploads.length = 0;
+    store.objects.clear();
     const res = await upload(FLOYD_HUB, png(256, 256), "logo");
     expect(res.statusCode).toBe(201);
-    expect(uploads[0]).toMatch(/^floyd\/identity\//);
+    expect(keys()[0]).toMatch(/^floyd\/identity\//);
   });
 
   it("takes a logo only as a square PNG of at least 256 px", async () => {
-    uploads.length = 0;
+    store.objects.clear();
     const notPng = await upload(ATHENS_HUB, png(300, 300), "logo", "image/webp");
     expect(notPng.statusCode).toBe(400);
     expect((notPng.body as { error: string }).error).toMatch(/PNG/);
@@ -176,14 +166,14 @@ describe("POST /upload/hub-image", () => {
 
     const small = await upload(ATHENS_HUB, png(128, 128), "logo");
     expect(small.statusCode).toBe(400);
-    expect(uploads).toHaveLength(0);
+    expect(keys()).toHaveLength(0);
 
     const nearlySquare = await upload(ATHENS_HUB, png(512, 506), "logo");
     expect(nearlySquare.statusCode).toBe(201);
   });
 
   it("applies the banner's size floor and the logo's", async () => {
-    uploads.length = 0;
+    store.objects.clear();
     const narrowBanner = await upload(ATHENS_HUB, png(300, 300), "banner");
     expect(narrowBanner.statusCode).toBe(400);
     expect((narrowBanner.body as { error: string }).error).toMatch(/Minimum 600×100/);
@@ -193,17 +183,17 @@ describe("POST /upload/hub-image", () => {
 
     const bigLogo = await upload(ATHENS_HUB, png(2100, 40), "logo");
     expect(bigLogo.statusCode).toBe(400);
-    expect(uploads).toHaveLength(0);
+    expect(keys()).toHaveLength(0);
   });
 
   it("refuses a file over the logo's 1 MB limit before storing it", async () => {
-    uploads.length = 0;
+    store.objects.clear();
     // Incompressible bytes after a valid header, so the body really is > 1 MB.
     const oversized = Buffer.concat([png(256, 256), randomBytes(1_100_000)]);
     const res = await upload(ATHENS_HUB, oversized, "logo");
     expect(res.statusCode).toBe(413);
     expect((res.body as { error: string }).error).toMatch(/upload limit/);
-    expect(uploads).toHaveLength(0);
+    expect(keys()).toHaveLength(0);
   });
 
   it("refuses a kind it does not know", async () => {
@@ -212,12 +202,12 @@ describe("POST /upload/hub-image", () => {
   });
 
   it("puts post images under the request's hub", async () => {
-    uploads.length = 0;
+    store.objects.clear();
     const req = multipartRequest(png(400, 400), {});
     const res = fakeResponse("user_post_image");
     runWithHub(ATHENS_HUB, {}, () => handlePostImageUpload(req as any, res as any, () => {}));
     await res.done;
     expect(res.statusCode).toBe(201);
-    expect(uploads[0]).toMatch(/^athens\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.png$/);
+    expect(keys()[0]).toMatch(/^athens\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.png$/);
   });
 });

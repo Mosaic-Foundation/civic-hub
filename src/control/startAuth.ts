@@ -20,7 +20,7 @@ import { CivicError, codeForStatus } from "../errors/index.js";
 import { getDb } from "../db/client.js";
 import { HOUR_MS, rateLimitBucket, takeRateLimit } from "../db/rateLimit.js";
 import { randomToken, sha256Hex } from "../utils/hash.js";
-import { sendEmail } from "../utils/email.js";
+import { sendEmail, mailConfigured } from "../utils/email.js";
 import { renderCodeEmail } from "../modules/civic.auth/otp.js";
 import { checkCode, issueCode } from "../modules/civic.auth/codeRules.js";
 import { platformCodeStore, platformRealm } from "./platformCodes.js";
@@ -155,8 +155,8 @@ export async function requestStartCode(email: string, ip: string, timeZone?: unk
     console.warn(`[start] code email NOT sent (${result.error}).`);
     // As a hub's sign-in: the code reaches the log only when there is no
     // mailer at all, which is local development.
-    if (!env.RESEND_API_KEY) console.log(`\n[start] sign-in code for ${email}: ${code}\n`);
-    if (env.RESEND_API_KEY) throw new StartError("The code could not be sent. Try again in a minute.", 502);
+    if (!mailConfigured()) console.log(`\n[start] sign-in code for ${email}: ${code}\n`);
+    if (mailConfigured()) throw new StartError("The code could not be sent. Try again in a minute.", 502);
   }
   return START_CODE_SENT;
 }

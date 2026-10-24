@@ -29,7 +29,7 @@ import { generateId } from "../../utils/id.js";
 import { randomToken, sameHexHash, sha256Hex } from "../../utils/hash.js";
 import { renderCodeEmail } from "./otp.js";
 import { CODE_RULES, checkCode, issueCode, tooManyMessage, type CodeRow, type CodeStore, type Realm } from "./codeRules.js";
-import { sendEmail } from "../../utils/email.js";
+import { sendEmail, mailConfigured } from "../../utils/email.js";
 import { HUB_SIGN_IN_LIMITS } from "./limits.js";
 import { HOUR_MS, retryAt, takeRateLimit } from "../../db/rateLimit.js";
 import { KEYS } from "../../models/hubSettings.js";
@@ -341,7 +341,7 @@ export async function requestVerification(
     // Keyless is a different case and is genuinely local development: there
     // is no mailer at all, the console IS the mailbox, and no real user is
     // waiting on an email that will not arrive.
-    if (!env.RESEND_API_KEY) {
+    if (!mailConfigured()) {
       console.log(`\n[auth] Verification code for ${normalizedEmail}: ${code}\n`);
       if (link) console.log(`[auth] Sign-in link for ${normalizedEmail}: ${link}\n`);
     } else {

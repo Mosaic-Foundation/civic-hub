@@ -10,8 +10,6 @@
 
 import { AiLimitError, admitAiCall } from "./aiBudget.js";
 import { codeOfConductFields, codeOfConductHash, toDraftState } from "./codeOfConduct.js";
-import { cocFakeEnabled } from "../config/devFlags.js";
-import { fakeCodeOfConductCheck } from "../debug/fakeCodeOfConduct.js";
 import { getProcessHandler } from "../processes/registry.js";
 import { checkTextAgainstCoC } from "../modules/civic.assistant/service.js";
 import {
@@ -55,9 +53,7 @@ export async function runCodeOfConductCheck(
   let unavailable = false;
   try {
     await admitAiCall("review", userId);
-    suggestions = cocFakeEnabled()
-      ? fakeCodeOfConductCheck(fields)
-      : await checkTextAgainstCoC(fields, await getHubConfig());
+    suggestions = await checkTextAgainstCoC(fields, await getHubConfig());
   } catch (err) {
     if (err instanceof AiLimitError && !err.budget) throw err;
     console.error(

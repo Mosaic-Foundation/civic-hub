@@ -221,13 +221,13 @@ jobs:
           # The leak harness walks /unsubscribe/digest with a real token for a
           # Floyd resident; it signs with the same value (CIVIC_TEST_DIGEST_SECRET).
           DIGEST_UNSUBSCRIBE_SECRET: ci-only-digest-unsubscribe-secret
-          # Conversations talk to the in-memory Polis behind the real adapter
-          # (src/debug/fakePolis.ts): the plugin conformance suite walks them,
-          # and makes Polis down, slow or erroring, with no network.
-          CIVIC_POLIS_FAKE: "on"
-          # The Code of Conduct check as a fixed rule (src/debug/fakeCodeOfConduct.ts):
-          # Submit runs the check, and the suites make it flag text or be down.
-          CIVIC_COC_FAKE: "on"
+          # Every outside service is its in-memory fake (ADR-012): the AI,
+          # mail, video, errors and heartbeat adapters, Polis (the conformance
+          # suite walks conversations against src/debug/fakePolis.ts and makes
+          # it down, slow or erroring) and the Code of Conduct check's fixed
+          # rule (src/debug/fakeCodeOfConduct.ts). Storage stays the local
+          # stack's (uploadHubPrefix.test.ts reads it back).
+          CIVIC_FAKE_ADAPTERS: "on"
           # The console's Dashboard reads hubs' /health from this server, and
           # a hub whose slug contains "slow" never answers (tests/api/dashboard.test.ts).
           CIVIC_DASHBOARD_FAKE: "on"

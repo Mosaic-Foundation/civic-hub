@@ -1,5 +1,6 @@
-// Heartbeats: each scheduled job tells Healthchecks.io it finished
-// (operations shell, ADR-006). Healthchecks.io alerts when a ping is late,
+// The `heartbeat` adapter's Healthchecks.io implementation (hosting layer,
+// ADR-012; operations shell, ADR-006): each scheduled job tells
+// Healthchecks.io it finished. The engine calls adapters().heartbeat.ping(). Healthchecks.io alerts when a ping is late,
 // which is the one failure the job can't report itself: not running at all.
 //
 // One ping key for the project, one check per job, addressed by slug:
@@ -10,7 +11,8 @@
 // Off unless CIVIC_HEARTBEAT_PING_KEY is set (production only). A ping that
 // fails or hangs never fails the job: bounded by a timeout, errors swallowed.
 
-import { env } from "../config/env.js";
+import { hostingEnv } from "../config/env.js";
+import type { HeartbeatSink } from "../adapters/heartbeat.js";
 
 export const HEARTBEAT_BASE = "https://hc-ping.com";
 const PING_TIMEOUT_MS = 5000;
@@ -21,7 +23,7 @@ export function heartbeatSlug(jobId: string): string {
 }
 
 /** Where a job's ping goes, or null when heartbeats are off. */
-export function heartbeatUrl(jobId: string, ok: boolean, key = env.CIVIC_HEARTBEAT_PING_KEY): string | null {
+export function heartbeatUrl(jobId: string, ok: boolean, key = hostingEnv.CIVIC_HEARTBEAT_PING_KEY): string | null {
   if (!key) return null;
   return `${HEARTBEAT_BASE}/${encodeURIComponent(key)}/${heartbeatSlug(jobId)}${ok ? "" : "/fail"}`;
 }
@@ -38,3 +40,9 @@ export async function pingHeartbeat(jobId: string, ok: boolean, fetchImpl: typeo
     console.warn(`[heartbeat] ${jobId}: ping failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
+
+/** The `heartbeat` adapter: Healthchecks.io pings, off without a key. */
+export const healthchecksHeartbeat: HeartbeatSink = {
+  name: "healthchecks",
+  ping: (jobId, ok) => pingHeartbeat(jobId, ok),
+};

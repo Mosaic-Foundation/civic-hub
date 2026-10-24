@@ -1,4 +1,6 @@
-// The operations services, read for the Dashboard (ADR-007).
+// The operations services, read for the Dashboard (ADR-007). The console is
+// the platform's, not the engine's, so it reads the hosting settings
+// (`hostingEnv`, ADR-012) directly.
 //
 // Three read-only GETs from the console's server, each turned on by a key in
 // the environment and never required:
@@ -11,7 +13,7 @@
 // slow or failing service is "error" on its own card. Nothing but the key and
 // the fixed query is sent. Cached a minute (cache.ts), 5 s timeout each.
 
-import { env } from "../../config/env.js";
+import { hostingEnv as env } from "../../config/env.js";
 import { cached } from "./cache.js";
 import type { SectionContext } from "./registry.js";
 

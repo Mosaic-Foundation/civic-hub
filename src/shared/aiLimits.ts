@@ -3,8 +3,11 @@
 // the console, which shows and edits a hub's overrides. Pure.
 //
 // What is limited: the drafting assistant's chat turns and "Get suggestions"
-// (the `chat` calls), and the Code of Conduct check (`review`). Scheduled jobs
-// (meeting summaries, news) are the platform's and are not counted.
+// (the `chat` calls), and the Code of Conduct check (`review`), against the
+// residents' daily budget. Scheduled jobs' calls (meeting summaries, news
+// paraphrasing, the conversation summarizer) have their own daily ceiling,
+// `job_daily_tokens`, so a hub's jobs can neither use the residents' budget
+// nor run up the platform's account (Architecture 5, ADR-012).
 //
 // Where the numbers live: the defaults below, by the hub's mode, with any
 // override the operator sets in the console (hub_settings `limits.ai`, a JSON
@@ -27,6 +30,8 @@ export interface AiLimits {
   hub_per_hour: number;
   /** Tokens (in + out) per hub per rolling 24 hours, all AI calls residents make. */
   daily_tokens: number;
+  /** Tokens (in + out) per hub per rolling 24 hours for scheduled jobs; past it, they pause until it rolls over. */
+  job_daily_tokens: number;
   /** Longest message a person may send the assistant, in characters. */
   max_message_chars: number;
   /** How many earlier messages (both sides) are sent with each turn. */
@@ -41,13 +46,14 @@ const BASE: AiLimits = {
   review_per_hour: 30,
   hub_per_hour: 200,
   daily_tokens: 1_500_000,
+  job_daily_tokens: 2_000_000,
   max_message_chars: 4000,
   history_messages: 12,
   web_search: true,
 };
 
 /** A demo hub is anyone's to try: a smaller budget, and no web search. */
-const DEMO: Partial<AiLimits> = { daily_tokens: 300_000, web_search: false };
+const DEMO: Partial<AiLimits> = { daily_tokens: 300_000, job_daily_tokens: 500_000, web_search: false };
 
 /** What each field may be set to, and its label in the console. */
 export const AI_LIMIT_FIELDS: ReadonlyArray<{
@@ -61,6 +67,7 @@ export const AI_LIMIT_FIELDS: ReadonlyArray<{
   { key: "review_per_hour", label: "Code of Conduct checks per person per hour", min: 1, max: 500 },
   { key: "hub_per_hour", label: "Assistant turns per hub per hour", min: 0, max: 20000 },
   { key: "daily_tokens", label: "Tokens per hub per day", min: 0, max: 100_000_000 },
+  { key: "job_daily_tokens", label: "Tokens per hub per day for scheduled jobs", min: 0, max: 100_000_000 },
   { key: "max_message_chars", label: "Longest message (characters)", min: 200, max: 20000 },
   { key: "history_messages", label: "Earlier messages sent with each turn", min: 2, max: 100 },
 ];

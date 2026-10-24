@@ -1,18 +1,19 @@
-// Tiny Anthropic client — posts to the Messages API.
-// No SDK dependency; keeps the deployable surface small (same philosophy
-// as utils/email.ts for Resend).
+// The `ai` adapter's Anthropic provider (hosting layer, ADR-012). Posts to the
+// Messages API; no SDK dependency, which keeps the deployable surface small.
+// Callers never import this: they go through the gate in src/adapters/ai.ts,
+// which records usage, keeps the jobs' ceiling and reports a usage limit.
 //
-// Two entry points:
-//   callClaude          — single-turn (one user message, one response)
-//   callClaudeMultiTurn — multi-turn conversation (messages array)
-//
-// Env vars:
-//   ANTHROPIC_API_KEY  — required. Starts with `sk-ant-…`.
-//   ANTHROPIC_MODEL    — optional; default defined in DEFAULT_MODEL.
+// Settings: ANTHROPIC_API_KEY (unset: not configured), ANTHROPIC_MODEL.
 
-import { env } from "../config/env.js";
+import { hostingEnv } from "../config/env.js";
 import { CivicError, UnavailableError } from "../errors/index.js";
-import { reportError } from "./reportError.js";
+import type {
+  AiConversationInput,
+  AiProvider,
+  AiResult,
+  AiSingleTurnInput,
+  UsageLimitMarked,
+} from "../adapters/ai.js";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -34,30 +35,6 @@ const CALL_TIMEOUT_MS = 180_000;
  */
 export const DEFAULT_MODEL = "claude-sonnet-4-6";
 
-export interface CallClaudeInput {
-  model: string;
-  system?: string;
-  userText: string;
-  /** Base64-encoded document for PDF input (native document block). */
-  documentBase64?: { data: string; mediaType: string; filename?: string };
-  /** Upper bound on generated tokens. */
-  maxTokens?: number;
-}
-
-export interface CallClaudeResult {
-  text: string;
-  model: string;
-  usage?: { input_tokens?: number; output_tokens?: number };
-  /** How many server-side tool calls (web search) ran during this turn —
-   *  lets a caller tell "I searched" from "I said I would search". */
-  serverToolUses?: number;
-  /** When the caller named a `responseTool`, the `input` of that tool call —
-   *  the model's reply as an API-validated object. This is the reliable path:
-   *  hand-written JSON in free text broke whenever the model quoted the draft
-   *  with an unescaped `"`, and the whole reply (cards included) was lost. */
-  structured?: unknown;
-}
-
 interface AnthropicContent {
   type: string;
   text?: string;
@@ -76,35 +53,41 @@ interface AnthropicResponse {
   error?: { type: string; message: string };
 }
 
-/**
- * One in-function retry on transient failure (HTTP 5xx or network error),
- * then give up. Matches the slice's scope note: no complex backoff.
- */
-export async function callClaude(
-  input: CallClaudeInput,
-): Promise<CallClaudeResult> {
-  const apiKey = env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw notConfigured();
-  }
-
+/** One in-function retry on transient failure (HTTP 5xx or network error), then give up. */
+async function withRetry(call: () => Promise<AiResult>): Promise<AiResult> {
   try {
     try {
-      return await callClaudeOnce(apiKey, input);
+      return await call();
     } catch (err) {
       if (!isTransient(err)) throw err;
       await sleep(2000);
-      return await callClaudeOnce(apiKey, input);
+      return await call();
     }
   } catch (err) {
     throw providerFailure(err);
   }
 }
 
+export const anthropicProvider: AiProvider = {
+  name: "anthropic",
+  configured: () => Boolean(hostingEnv.ANTHROPIC_API_KEY),
+  defaultModel: () => hostingEnv.ANTHROPIC_MODEL ?? DEFAULT_MODEL,
+  complete(input) {
+    const apiKey = hostingEnv.ANTHROPIC_API_KEY;
+    if (!apiKey) throw notConfigured();
+    return withRetry(() => callClaudeOnce(apiKey, input));
+  },
+  converse(input) {
+    const apiKey = hostingEnv.ANTHROPIC_API_KEY;
+    if (!apiKey) throw notConfigured();
+    return withRetry(() => callClaudeMultiTurnOnce(apiKey, input));
+  },
+};
+
 async function callClaudeOnce(
   apiKey: string,
-  input: CallClaudeInput,
-): Promise<CallClaudeResult> {
+  input: AiSingleTurnInput,
+): Promise<AiResult> {
   const userContent: unknown[] = [];
   if (input.documentBase64) {
     userContent.push({
@@ -184,53 +167,10 @@ async function callClaudeOnce(
   };
 }
 
-// --- Multi-turn conversation support ---
-
-export interface MultiTurnMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
-export interface CallClaudeMultiTurnInput {
-  model: string;
-  system?: string;
-  messages: MultiTurnMessage[];
-  maxTokens?: number;
-  tools?: unknown[];
-  /** Anthropic tool_choice, e.g. {type:"any"} (must call some tool — lets a
-   *  turn search and then reply) or {type:"tool", name:"respond"}. */
-  toolChoice?: unknown;
-  /** Name of the client-defined tool whose call IS the reply. Its input is
-   *  returned as `structured` and ends the turn. */
-  responseTool?: string;
-}
-
-export async function callClaudeMultiTurn(
-  input: CallClaudeMultiTurnInput,
-): Promise<CallClaudeResult> {
-  const apiKey = env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw notConfigured();
-  }
-
-  const doCall = () => callClaudeMultiTurnOnce(apiKey, input);
-  try {
-    try {
-      return await doCall();
-    } catch (err) {
-      if (!isTransient(err)) throw err;
-      await sleep(2000);
-      return await doCall();
-    }
-  } catch (err) {
-    throw providerFailure(err);
-  }
-}
-
 async function callClaudeMultiTurnOnce(
   apiKey: string,
-  input: CallClaudeMultiTurnInput,
-): Promise<CallClaudeResult> {
+  input: AiConversationInput,
+): Promise<AiResult> {
   const messages: unknown[] = input.messages.map((m) => ({
     role: m.role,
     content: [{ type: "text", text: m.content }],
@@ -436,14 +376,11 @@ function providerFailure(err: unknown): unknown {
   if (err instanceof Error && ((err as Error & { provider?: boolean }).provider === true || isTransient(err))) {
     console.error(`[anthropic] provider unavailable: ${err.message}`);
     // The account's spending limit or credit is used up: every AI call fails
-    // until someone raises it, and it is not transient. Operators must see it
-    // (Sentry), not only a log line: on 2026-10-24 dev's Code of Conduct check
-    // stopped for this reason and it surfaced only as a red smoke run.
-    if (isUsageLimit(err)) {
-      reportError("ai.usage_limit", "The AI provider refused a call: the account's usage limit or credit is used up.", {
-        detail: err.message.slice(0, 200),
-      });
-    }
+    // until someone raises it, and it is not transient. Marked, so the gate
+    // (src/adapters/ai.ts) reports it to operators, not only to the log: on
+    // 2026-10-24 dev's Code of Conduct check stopped for this reason and it
+    // surfaced only as a red smoke run.
+    if (isUsageLimit(err)) (err as Error & UsageLimitMarked).aiUsageLimit = true;
     return new UnavailableError(
       "The AI service isn't responding right now. Please try again in a moment.",
       "ai_unavailable",

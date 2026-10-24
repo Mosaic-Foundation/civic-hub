@@ -6,15 +6,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildEvent,
   captureError,
-  envelope,
   flushErrors,
-  parseDsn,
   parseStack,
   resetErrorTrackingForTests,
   scrub,
   scrubPath,
 } from "../../src/utils/errorTracking.js";
 import { reportError } from "../../src/utils/reportError.js";
+import { envelope, parseDsn, resetSentryForTests, sentryErrors } from "../../src/hosting/sentry.js";
+import { installAdapters } from "../../src/adapters/index.js";
 
 const DSN = "https://abc123publickey@o42.ingest.sentry.io/4507";
 const EMAIL = "jane.resident@example.org";
@@ -31,6 +31,10 @@ function fakeFetch() {
 
 beforeEach(() => {
   resetErrorTrackingForTests();
+  resetSentryForTests();
+  // The scrubber is the engine's; Sentry's envelope is the hosting layer's
+  // errors adapter (ADR-012). Tested together, as they run.
+  installAdapters({ errors: sentryErrors() });
   vi.stubEnv("CIVIC_ERROR_DSN", DSN);
   vi.stubEnv("CIVIC_ERROR_ENVIRONMENT", "dev");
   vi.stubEnv("VERCEL_GIT_COMMIT_SHA", "0123456789abcdef0123456789abcdef01234567");
@@ -38,6 +42,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -119,15 +124,17 @@ describe("sending", () => {
   it("is off without a DSN", async () => {
     vi.stubEnv("CIVIC_ERROR_DSN", "");
     const { fn, calls } = fakeFetch();
-    captureError({ code: "x", message: "y" }, fn);
+    vi.stubGlobal("fetch", fn);
+    captureError({ code: "x", message: "y" });
     await flushErrors();
     expect(calls).toHaveLength(0);
   });
 
   it("sends the same error once a minute from one instance, so a loop does not spend the quota", async () => {
     const { fn, calls } = fakeFetch();
-    for (let i = 0; i < 5; i++) captureError({ code: "jobs.failed", message: "boom" }, fn);
-    captureError({ code: "jobs.failed", message: "another" }, fn);
+    vi.stubGlobal("fetch", fn);
+    for (let i = 0; i < 5; i++) captureError({ code: "jobs.failed", message: "boom" });
+    captureError({ code: "jobs.failed", message: "another" });
     await flushErrors();
     expect(calls).toHaveLength(2);
   });
@@ -137,10 +144,12 @@ describe("sending", () => {
       throw new Error("ECONNREFUSED");
     }) as unknown as typeof fetch;
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    expect(() => captureError({ code: "a", message: "b" }, down)).not.toThrow();
+    vi.stubGlobal("fetch", down);
+    expect(() => captureError({ code: "a", message: "b" })).not.toThrow();
     await flushErrors();
     const hang = vi.fn(() => new Promise<Response>(() => undefined)) as unknown as typeof fetch;
-    captureError({ code: "c", message: "d" }, hang);
+    vi.stubGlobal("fetch", hang);
+    captureError({ code: "c", message: "d" });
     const t = Date.now();
     await flushErrors(50);
     expect(Date.now() - t).toBeLessThan(1000);

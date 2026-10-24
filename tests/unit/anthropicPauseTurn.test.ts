@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { callClaudeMultiTurn } from "../../src/utils/anthropic";
+import { anthropicProvider } from "../../src/hosting/anthropic";
+import type { AiConversationInput } from "../../src/adapters/ai";
+
+const callClaudeMultiTurn = (input: AiConversationInput) => anthropicProvider.converse(input, { purpose: "assistant.message" });
 
 // The web_search server tool can pause the turn mid-reply. The client must
 // continue the turn (send the partial content back) instead of returning the

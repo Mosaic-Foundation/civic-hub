@@ -17,7 +17,7 @@ import { CivicError, RateLimitedError, codeForStatus } from "../errors/index.js"
 import { getDb } from "../db/client.js";
 import { HOUR_MS, retryAt, takeRateLimit } from "../db/rateLimit.js";
 import { randomToken, sha256Hex } from "../utils/hash.js";
-import { sendEmail } from "../utils/email.js";
+import { sendEmail, mailConfigured } from "../utils/email.js";
 import { renderCodeEmail } from "../modules/civic.auth/otp.js";
 import { WRONG_CODE, checkCode, issueCode, tooManyMessage } from "../modules/civic.auth/codeRules.js";
 import { platformCodeStore, platformRealm } from "./platformCodes.js";
@@ -108,7 +108,7 @@ export async function requestCode(rawEmail: unknown, purpose: CodePurpose, ip: s
     console.warn(`[control] code email NOT sent (${result.error}).`);
     // As a hub's sign-in: the code reaches the log only when there is no
     // mailer at all, which is local development.
-    if (!env.RESEND_API_KEY) {
+    if (!mailConfigured()) {
       console.log(`\n[control] ${purpose} code for ${email}: ${code}\n`);
     }
   }

@@ -16,7 +16,7 @@
 // Development-only switches are read here but decided in ./devFlags.ts,
 // which refuses them in production (Audit 2).
 
-import { SETTINGS, type SettingDecl, type SettingName } from "./settings.js";
+import { SETTINGS, type EngineSettingName, type HostingSettingName, type SettingDecl, type SettingName } from "./settings.js";
 
 function read(name: string): string | undefined {
   // eslint-disable-next-line no-restricted-properties -- the one reader
@@ -54,15 +54,24 @@ export function processEnv(): NodeJS.ProcessEnv {
   return process.env;
 }
 
-type Env = { readonly [K in SettingName]: string | undefined };
+function reader<K extends SettingName>(names: K[]): { readonly [P in K]: string | undefined } {
+  return Object.defineProperties(
+    {},
+    Object.fromEntries(names.map((name) => [name, { get: () => readSetting(name), enumerable: true }])),
+  ) as { readonly [P in K]: string | undefined };
+}
 
-/** Every declared setting, read at access time. */
-export const env: Env = Object.defineProperties(
-  {},
-  Object.fromEntries(
-    (Object.keys(SETTINGS) as SettingName[]).map((name) => [name, { get: () => readSetting(name), enumerable: true }]),
-  ),
-) as Env;
+const ALL = Object.keys(SETTINGS) as SettingName[];
+
+/** The engine's settings (and the development switches), read at access time. */
+export const env = reader(ALL.filter((n) => SETTINGS[n].layer !== "hosting") as EngineSettingName[]);
+
+/**
+ * The hosting layer's settings: outside services' keys, the host's own names.
+ * Only src/hosting/, src/control/ and api/ may import this (lint:
+ * civic/hosting-boundary); the engine asks an adapter instead.
+ */
+export const hostingEnv = reader(ALL.filter((n) => SETTINGS[n].layer === "hosting") as HostingSettingName[]);
 
 /** NODE_ENV=production: every Vercel deployment. Development flags are refused there. */
 export function isProductionEnv(): boolean {

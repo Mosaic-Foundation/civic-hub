@@ -3,9 +3,9 @@ import { runWithHub } from "../../src/config/hubContext.js";
 import {
   currentSender,
   parseSender,
-  isSandboxSender,
-  SANDBOX_SENDER,
 } from "../../src/services/emailSender.js";
+import { isSandboxSender, SANDBOX_SENDER, resendTransport } from "../../src/hosting/resend.js";
+import { installAdapters } from "../../src/adapters/index.js";
 import type { Hub } from "../../src/models/hub.js";
 
 /**
@@ -136,6 +136,7 @@ describe("the name is the hub's, the address is the deployment's", () => {
   });
 
   it("falls back to the sandbox when the deployment configured nothing", () => {
+    installAdapters({ mail: resendTransport });
     // What dev was doing for fourteen hours. The value is correct; the
     // problem is that it is almost never what anyone wants, which is why
     // sending through it now logs a warning.

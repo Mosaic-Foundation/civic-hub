@@ -83,13 +83,6 @@ vi.mock("../../src/modules/civic.meeting_summary/index.js", async (orig) => ({
   discoverMeetings: async () => [ENTRY],
 }));
 
-vi.mock("../../src/utils/youtube.js", () => ({
-  fetchYouTubeTranscript: async () => [
-    { start: 31, text: "All righty." },
-    { start: 420, text: "Broadband update." },
-    { start: 1800, text: "Adjourn." },
-  ],
-}));
 
 vi.mock("../../src/utils/http.js", () => ({
   fetchXml: async () => {
@@ -104,18 +97,32 @@ vi.mock("../../src/utils/http.js", () => ({
   fetchPdf: async () => ({ bytes: new Uint8Array([1, 2, 3]), mime: "application/pdf" }),
 }));
 
-// The model drops every timestamp, on the first try and on the retry.
-vi.mock("../../src/utils/anthropic.js", () => ({
-  DEFAULT_MODEL: "stub-model",
-  callClaude: async () => ({
-    model: "stub-model",
-    text: JSON.stringify({
-      blocks: [
-        { topic_title: "Broadband", topic_summary: "An update.", start_time_seconds: null, action_taken: null },
-      ],
+// The model drops every timestamp, on the first try and on the retry; the
+// video's transcript is fixed. Both through their adapters (ADR-012).
+const { installAdapters } = await import("../../src/adapters/index.js");
+const { fakeAi } = await import("../../src/adapters/fakes/ai.js");
+installAdapters({
+  ai: {
+    ...fakeAi(),
+    defaultModel: () => "stub-model",
+    complete: async () => ({
+      model: "stub-model",
+      text: JSON.stringify({
+        blocks: [
+          { topic_title: "Broadband", topic_summary: "An update.", start_time_seconds: null, action_taken: null },
+        ],
+      }),
     }),
-  }),
-}));
+  },
+  video: {
+    name: "stub",
+    transcript: async () => [
+      { start: 31, text: "All righty." },
+      { start: 420, text: "Broadband update." },
+      { start: 1800, text: "Adjourn." },
+    ],
+  },
+});
 
 vi.mock("../../src/utils/email.js", () => ({
   sendEmail: async (input: { to: string | string[]; subject: string; html: string }) => {
@@ -286,7 +293,7 @@ describe("a source gone quiet asks for a check (45 days)", () => {
 
 describe("a failed run shows in the admin digest", () => {
   it("records the failure and the next admin digest names it with its reason", async () => {
-    delete process.env.ANTHROPIC_API_KEY; // the meeting-summary run cannot start
+    installAdapters({ ai: fakeAi({ configured: false }) }); // no AI provider: the meeting-summary run cannot start
     await runJob("meeting_summary");
 
     const failedRun = runLog.find((r) => r.job_id === "meeting_summary");
