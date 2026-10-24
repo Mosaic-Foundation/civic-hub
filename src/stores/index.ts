@@ -12,7 +12,16 @@
 
 import { wordcloudStore } from "../modules/civic.wordcloud/store.js";
 import { wordcloudStoreImpl } from "./wordcloud.js";
+import { draftsStore } from "../modules/civic.drafts/store.js";
+import { draftsStoreImpl } from "./drafts.js";
+import { feedbackStore } from "../modules/civic.feedback/store.js";
+import { feedbackStoreImpl } from "./feedback.js";
+import { adminDigestStore } from "../modules/civic.admin_digest/store.js";
+import { adminDigestStoreImpl } from "./adminDigest.js";
 
 export function installStores(): void {
   wordcloudStore.bind(wordcloudStoreImpl);
+  draftsStore.bind(draftsStoreImpl);
+  feedbackStore.bind(feedbackStoreImpl);
+  adminDigestStore.bind(adminDigestStoreImpl);
 }

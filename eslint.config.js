@@ -232,10 +232,7 @@ const hostingBoundaryRule = {
 // They only ever shrink; a file leaves its list when it is converted, and
 // nothing is added.
 const MODULES_NOT_YET_ON_STORES = [
-  "src/modules/civic.admin_digest/",
   "src/modules/civic.auth/",
-  "src/modules/civic.drafts/",
-  "src/modules/civic.feedback/",
   "src/modules/civic.input/",
   "src/modules/civic.projects/",
   "src/modules/civic.proposals/",

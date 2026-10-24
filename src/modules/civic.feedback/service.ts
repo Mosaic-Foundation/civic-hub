@@ -10,14 +10,14 @@
 // reader: feedback never flows through emitEvent() and is never public.
 
 import { ConflictError, NotFoundError, ValidationError } from "../../errors/index.js";
-import { forHub, type HubDb } from "../../db/forHub.js";
 import { currentHubId } from "../../config/hubContext.js";
 import { sendEmail, unsentReason } from "../../utils/email.js";
 import { generateId } from "../../utils/id.js";
 import { getAdminEmailsSync, hubDisplayNameSync, getSettingSync } from "../../services/hubSettings.js";
 import { KEYS, asEmailList } from "../../models/hubSettings.js";
 import { deploymentCommit } from "../../config/deployment.js";
-import { copyToMosaic, type MosaicOrigin } from "../../db/platformFeedback.js";
+import type { MosaicOrigin } from "../../db/platformFeedback.js";
+import { feedbackStore } from "./store.js";
 import { reportError } from "../../utils/reportError.js";
 import {
   FEEDBACK_CATEGORIES,
@@ -28,10 +28,6 @@ import {
   type FeedbackSubmission,
   type SubmitFeedbackInput,
 } from "./models.js";
-
-function db(): HubDb {
-  return forHub(currentHubId());
-}
 
 const MESSAGE_MAX_LEN = 4000;
 const DEFAULT_LIST_LIMIT = 200;
@@ -177,11 +173,7 @@ export async function submitFeedback(
     contact_ok: input.contact_ok === true && email !== null,
   };
 
-  const data = await db()
-    .from("feedback_submissions")
-    .insert(row)
-    .select()
-    .single();
+  const data = await feedbackStore.get().insertSubmission(row);
 
   let submission = rowToSubmission(data);
 
@@ -233,7 +225,7 @@ async function shareWithMosaic(
   origin: MosaicOrigin,
   sentBy: MosaicCopy["sent_by"],
 ): Promise<FeedbackSubmission> {
-  const copy = await copyToMosaic({
+  const copy = await feedbackStore.get().copyToMosaic({
     hubId: currentHubId(),
     sourceFeedbackId: s.id,
     stream,
@@ -248,18 +240,13 @@ async function shareWithMosaic(
     contactOk: sentBy === "sender" && s.contact_ok,
     contactEmail: sentBy === "sender" && s.contact_ok ? s.email : null,
   });
-  const updated = await db()
-    .from("feedback_submissions")
-    .update({
-      mosaic_item_id: copy.id,
-      mosaic_stream: stream,
-      mosaic_status: copy.status,
-      mosaic_sent_at: new Date().toISOString(),
-      mosaic_sent_by: sentBy,
-    })
-    .eq("id", s.id)
-    .select()
-    .single();
+  const updated = await feedbackStore.get().recordMosaicCopy(s.id, {
+    mosaic_item_id: copy.id,
+    mosaic_stream: stream,
+    mosaic_status: copy.status,
+    mosaic_sent_at: new Date().toISOString(),
+    mosaic_sent_by: sentBy,
+  });
   return rowToSubmission(updated);
 }
 
@@ -274,8 +261,7 @@ export async function forwardToMosaic(
   if (stream !== "bug" && stream !== "feature") {
     throw new FeedbackValidationError("stream must be bug or feature");
   }
-  const rows = await db().from("feedback_submissions").select("*").eq("id", id).limit(1);
-  const row = rows[0] as Record<string, unknown> | undefined;
+  const row = await feedbackStore.get().findSubmission(id);
   if (!row) throw new NotFoundError("No such feedback item.");
   const s = rowToSubmission(row);
   if (s.mosaic) throw new ConflictError("This item was already sent to Civic.Social.");
@@ -299,7 +285,7 @@ export async function contactMosaic(input: {
   if (message.length > MESSAGE_MAX_LEN) {
     throw new FeedbackValidationError(`message must be ${MESSAGE_MAX_LEN} characters or fewer`);
   }
-  const copy = await copyToMosaic({
+  const copy = await feedbackStore.get().copyToMosaic({
     hubId: currentHubId(),
     sourceFeedbackId: null,
     stream: "admin",
@@ -346,16 +332,11 @@ export async function listFeedback(
     MAX_LIST_LIMIT,
   );
 
-  let query = db()
-    .from("feedback_submissions")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (options.category) query = query.eq("category", options.category);
-  if (options.since) query = query.gte("created_at", options.since);
-
-  const data = await query;
+  const data = await feedbackStore.get().listSubmissions({
+    limit,
+    category: options.category,
+    since: options.since,
+  });
   return data.map((row) => rowToSubmission(row as Record<string, unknown>));
 }
 

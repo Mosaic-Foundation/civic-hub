@@ -6,13 +6,13 @@
 // are here, once.
 //
 // Each kind keeps its own table (no data moved). Rows are read and written
-// through forHub(), so a draft is only ever seen inside its hub.
+// through the drafts store (./store.ts), on the hub in scope, so a draft is
+// only ever seen inside its hub.
 
 import { NotFoundError } from "../../errors/index.js";
-import { forHub, type HubDb } from "../../db/forHub.js";
-import { currentHubId } from "../../config/hubContext.js";
 import { generateId } from "../../utils/id.js";
 import type { Suggestion } from "../civic.assistant/models.js";
+import { draftsStore } from "./store.js";
 import {
   BASE_CHECKED_FIELDS,
   type BaseDraft,
@@ -23,10 +23,6 @@ import {
 } from "./models.js";
 
 export * from "./models.js";
-
-function db(): HubDb {
-  return forHub(currentHubId());
-}
 
 type Row = Record<string, unknown>;
 
@@ -65,20 +61,16 @@ export async function createDraft<E extends object>(
   userId: string,
   input: Record<string, unknown> = {},
 ): Promise<Draft<E>> {
-  const row = await db()
-    .from(spec.table)
-    .insert({
-      id: generateId(spec.idPrefix),
-      user_id: userId,
-      ...(spec.createDefaults ? spec.createDefaults(input) : {}),
-    })
-    .select<Row>()
-    .single();
+  const row = await draftsStore.get().insertDraft(spec.table, {
+    id: generateId(spec.idPrefix),
+    user_id: userId,
+    ...(spec.createDefaults ? spec.createDefaults(input) : {}),
+  });
   return rowToDraft<E>(spec, row);
 }
 
 export async function getDraft<E extends object>(spec: DraftSpec, id: string): Promise<Draft<E> | undefined> {
-  const row = await db().from(spec.table).select<Row>("*").eq("id", id).maybeSingle();
+  const row = await draftsStore.get().findDraft(spec.table, id);
   return row ? rowToDraft<E>(spec, row) : undefined;
 }
 
@@ -87,9 +79,7 @@ export async function listUserDrafts<E extends object>(
   userId: string,
   status?: DraftStatus,
 ): Promise<Draft<E>[]> {
-  let q = db().from(spec.table).select<Row>("*").eq("user_id", userId).order("updated_at", { ascending: false });
-  if (status) q = q.eq("status", status);
-  const rows = await q;
+  const rows = await draftsStore.get().draftsOf(spec.table, userId, status);
   return rows.map((r) => rowToDraft<E>(spec, r));
 }
 
@@ -133,7 +123,7 @@ export async function updateDraft<E extends object>(spec: DraftSpec, id: string,
   ];
   if (checked.some((k) => k in updates)) updates.draft_modified_since_review = true;
 
-  const row = await db().from(spec.table).update(updates).eq("id", id).select<Row>().single();
+  const row = await draftsStore.get().updateDraft(spec.table, id, updates);
   return rowToDraft<E>(spec, row);
 }
 
@@ -153,7 +143,7 @@ export async function appendConversation(
   // Talking to the assistant does NOT flag the draft as AI-helped: the
   // disclosure fires only when assistant-produced text lands in the form
   // (applyGeneratedDraft, or updateDraft with assistant_applied).
-  await db().from(spec.table).update({ conversation_history: history }).eq("id", id);
+  await draftsStore.get().writeDraft(spec.table, id, { conversation_history: history });
 }
 
 export async function saveReviewResult(
@@ -162,14 +152,11 @@ export async function saveReviewResult(
   suggestions: Suggestion[],
   checkedHash: string | null,
 ): Promise<void> {
-  await db()
-    .from(spec.table)
-    .update({
-      last_review_result: suggestions,
-      draft_modified_since_review: false,
-      coc_checked_hash: checkedHash,
-    })
-    .eq("id", id);
+  await draftsStore.get().writeDraft(spec.table, id, {
+    last_review_result: suggestions,
+    draft_modified_since_review: false,
+    coc_checked_hash: checkedHash,
+  });
 }
 
 /** An assistant-generated first draft: title, description, sources and the kind's generated fields. */
@@ -185,12 +172,12 @@ export async function applyGeneratedDraft<E extends object>(
     assistant_helped: true,
   };
   for (const name of spec.generatedFields ?? []) updates[name] = generated[name] ?? "";
-  const row = await db().from(spec.table).update(updates).eq("id", id).select<Row>().single();
+  const row = await draftsStore.get().updateDraft(spec.table, id, updates);
   return rowToDraft<E>(spec, row);
 }
 
 export async function setDraftStatus(spec: DraftSpec, id: string, status: DraftStatus): Promise<void> {
-  await db().from(spec.table).update({ status }).eq("id", id);
+  await draftsStore.get().writeDraft(spec.table, id, { status });
 }
 
 /**
@@ -200,11 +187,5 @@ export async function setDraftStatus(spec: DraftSpec, id: string, status: DraftS
  * WHERE is the single source of truth against double submission.
  */
 export async function claimDraftForSubmission(spec: DraftSpec, id: string): Promise<boolean> {
-  const rows = await db()
-    .from(spec.table)
-    .update({ status: "submitted" as DraftStatus })
-    .eq("id", id)
-    .eq("status", "drafting")
-    .select<{ id: string }>("id");
-  return rows.length > 0;
+  return draftsStore.get().claimDraft(spec.table, id);
 }
