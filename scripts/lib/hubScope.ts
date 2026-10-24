@@ -17,6 +17,8 @@
 import type { Hub } from "../../src/models/hub.js";
 import { isWellFormedHubSlug } from "../../src/models/hub.js";
 import { pinServiceRole } from "../../src/db/client.js";
+import { installHosting } from "../../src/hosting/index.js";
+import { installStores } from "../../src/stores/index.js";
 
 // Scripts are control plane: they keep the service role even when the env
 // file they share with the app has CIVIC_HUB_MINTED_TOKEN on (Phase 3).
@@ -63,6 +65,16 @@ export async function resolveScriptHub(slug: string): Promise<Hub> {
 }
 
 /**
+ * What the app does at startup and a script needs too: the outside services'
+ * implementations (src/hosting/) and the modules' stores (src/stores/),
+ * ADR-012. Idempotent; withScriptHub calls it.
+ */
+export function prepareScript(): void {
+  installHosting();
+  installStores();
+}
+
+/**
  * Parse `--hub`, look the hub up, and run `fn` inside its scope with its
  * settings loaded. Returns what `fn` returns.
  */
@@ -71,6 +83,7 @@ export async function withScriptHub<T>(
   argv: readonly string[] = process.argv.slice(2),
 ): Promise<T> {
   const slug = hubArg(argv);
+  prepareScript();
   const hub = await resolveScriptHub(slug);
   const { fetchHubSettings } = await import("../../src/db/hubSettingsStore.js");
   const { withHubScope } = await import("../../src/config/hubContext.js");
