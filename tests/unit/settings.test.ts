@@ -50,17 +50,24 @@ describe("checkSettings", () => {
     ]);
   });
 
-  it("reports a value of the wrong type by name, never quoting the value", () => {
-    const r = checkSettings({ ...BASE, PORT: "three-thousand-and-one", SUPABASE_URL: "not a url secretish" });
-    expect(r.invalid.map((i) => i.name).sort()).toEqual(["PORT", "SUPABASE_URL"]);
+  it("refuses a required setting of the wrong type by name, never quoting the value", () => {
+    const r = checkSettings({ ...BASE, SUPABASE_URL: "not a url secretish" });
+    expect(r.invalid).toEqual([{ name: "SUPABASE_URL", problem: "is not an http(s) URL", required: true }]);
     const msg = settingsFailure(r)!;
-    expect(msg).toContain("PORT is not a whole number");
-    expect(msg).not.toContain("three-thousand");
+    expect(msg).toContain("SUPABASE_URL is not an http(s) URL");
     expect(msg).not.toContain("secretish");
   });
 
+  it("reports an optional setting of the wrong type without refusing the start", () => {
+    // Vitest itself sets BASE_URL=/ ; a stray value must not take the hubs down.
+    const r = checkSettings({ ...BASE, PORT: "three-thousand-and-one", BASE_URL: "/" });
+    expect(r.invalid.map((i) => [i.name, i.required])).toEqual([["PORT", false], ["BASE_URL", false]]);
+    expect(settingsFailure(r)).toBeNull();
+  });
+
   it("never prints a secret's value, set or missing", () => {
-    const r = checkSettings({ ...PROD, PORT: "x" });
+    const r = checkSettings({ ...PROD, CRON_SECRET: undefined, SUPABASE_URL: "x" });
+    expect(settingsFailure(r)).toMatch(/CRON_SECRET/);
     expect(settingsFailure(r)).not.toMatch(/secret-value/);
   });
 

@@ -2,10 +2,12 @@
 //
 // Called once when the app module loads (src/app.ts), so `npm run dev`, a
 // plain `node src/index.ts` and the Vercel function all check the same way.
-// A missing required setting, or one whose value is not its type, stops the
-// server with a message that names the setting and never its value. A set
-// variable that looks like ours (KNOWN_PREFIXES) but that nothing declares is
-// reported, not refused: it is usually a typo or a setting nothing reads.
+// A missing required setting, or a required one whose value is not its type,
+// stops the server with a message that names the setting and never its value.
+// An optional setting of the wrong type, and a set variable that looks like
+// ours (KNOWN_PREFIXES) but that nothing declares, are reported, not refused:
+// a stray value must not take every hub offline, and the code already
+// treats a value it cannot read as unset.
 
 import { ENV_FALLBACKS } from "../models/hubSettings.js";
 import { processEnv } from "./env.js";
@@ -14,8 +16,8 @@ import { KNOWN_PREFIXES, SETTINGS, type SettingDecl, type SettingName, type Sett
 export interface SettingsReport {
   /** Required and unset, each with why it is required. */
   missing: Array<{ name: string; reason: string }>;
-  /** Set but not its declared type. */
-  invalid: Array<{ name: string; problem: string }>;
+  /** Set but not its declared type: refused when required, reported otherwise. */
+  invalid: Array<{ name: string; problem: string; required: boolean }>;
   /** Set, carrying one of our prefixes, and declared nowhere. */
   unknown: string[];
 }
@@ -72,6 +74,13 @@ export function knownNames(): Set<string> {
   return names;
 }
 
+function isRequired(req: SettingDecl["required"], environment: NodeJS.ProcessEnv, production: boolean): boolean {
+  if (req === "always") return true;
+  if (req === "production") return production;
+  if (typeof req === "object") return Boolean(environment[req.when]?.trim()) && (!req.production || production);
+  return false;
+}
+
 export function checkSettings(environment: NodeJS.ProcessEnv = processEnv()): SettingsReport {
   const production = environment.NODE_ENV?.trim() === "production";
   const report: SettingsReport = { missing: [], invalid: [], unknown: [] };
@@ -93,7 +102,7 @@ export function checkSettings(environment: NodeJS.ProcessEnv = processEnv()): Se
       continue;
     }
     const problem = typeProblem(decl.type, v);
-    if (problem) report.invalid.push({ name, problem });
+    if (problem) report.invalid.push({ name, problem, required: isRequired(req, environment, production) });
   }
 
   const known = knownNames();
@@ -109,7 +118,7 @@ export function checkSettings(environment: NodeJS.ProcessEnv = processEnv()): Se
 export function settingsFailure(report: SettingsReport): string | null {
   const lines = [
     ...report.missing.map((m) => `  ${m.name} is not set (${m.reason})`),
-    ...report.invalid.map((i) => `  ${i.name} ${i.problem}`),
+    ...report.invalid.filter((i) => i.required).map((i) => `  ${i.name} ${i.problem}`),
   ];
   if (lines.length === 0) return null;
   return `The hub cannot start; fix these settings (RUNBOOK-operations.md → Settings):\n${lines.join("\n")}`;
@@ -120,6 +129,9 @@ export function assertSettings(environment: NodeJS.ProcessEnv = processEnv()): v
   const report = checkSettings(environment);
   if (report.unknown.length > 0) {
     console.warn(`[settings] set but not a setting this hub reads: ${report.unknown.join(", ")}`);
+  }
+  for (const i of report.invalid.filter((x) => !x.required)) {
+    console.warn(`[settings] ${i.name} ${i.problem}; it is read as unset where the code cannot use it`);
   }
   const failure = settingsFailure(report);
   if (failure) throw new Error(failure);
