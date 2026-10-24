@@ -90,7 +90,9 @@ describe("GET /process/:id content negotiation", () => {
     // is the vote's policy, not the reader's sign-in state.
     expect(d.disclosure_policy).toBe("anonymous");
     // Nothing the hub does not have (spec-only fields wait; results wait for A3).
-    for (const absent of ["lifecycle_profile", "participation_mode", "aggregation_method", "result"]) {
+    // No type declares eligibility stricter than the hub's rule (Architecture 4,
+    // ADR-011), so none is served: the descriptor carries it only when declared.
+    for (const absent of ["lifecycle_profile", "participation_mode", "aggregation_method", "result", "eligibility_requirements"]) {
       expect(d[absent], absent).toBeUndefined();
     }
   });

@@ -21,6 +21,7 @@ import { getEventsByProcessId } from "../events/eventStore.js";
 import { AS2_CONTEXT, CIVIC_CONTEXT, toActivity } from "../events/activitySerializer.js";
 import { officialActorIds, toRedactedActivity, type WireAudience } from "../events/publicRedaction.js";
 import { disclosureOfEvent } from "../events/publicPayload.js";
+import { declaredEligibility } from "../authz/eligibility.js";
 import { readDeadline } from "./closeEarly.js";
 import { getBriefLinks, getRenderedLinks, processWireIris } from "./processLinks.js";
 import { baseUrl, uiBaseUrl } from "../utils/baseUrl.js";
@@ -122,6 +123,7 @@ export async function buildProcessDescriptor(
   // and submission stays restricted (Architecture 3, ADR-010; Adam,
   // 2026-10-21, Q4). Types without the hook carry no participation block.
   const count = await getProcessHandler(type)?.participationCount?.(process);
+  const eligibility = declaredEligibility(type);
 
   return {
     "@context": [AS2_CONTEXT, CIVIC_CONTEXT],
@@ -144,6 +146,11 @@ export async function buildProcessDescriptor(
       typeof process.state?.disclosure_policy === "string" ? process.state.disclosure_policy : null,
     ),
     ...(typeof count === "number" ? { participation: { count } } : {}),
+    // Who may take part, when the type is stricter than the hub's own rule
+    // (residency and a real name, which every process inherits): the
+    // credential types its manifest declares (§12.1; Architecture 4,
+    // ADR-011). Served only when declared; no type declares any yet.
+    ...(eligibility ? { eligibility_requirements: eligibility } : {}),
     actions,
     endpoints: {
       view: `${uiBaseUrl()}${manifest ? manifest.detailPath(id) : `/process/${id}`}`,

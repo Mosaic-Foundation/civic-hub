@@ -148,6 +148,17 @@ describe("process manifests", () => {
     expect(refused([manifest({ publicPayload: { "civic.process.created": ["sample"] } })])).not.toThrow();
   });
 
+  it("accepts no eligibility (the hub's rule) or a list of credential types, with alternatives", () => {
+    expect(refused([manifest({ eligibility: { requirements: ["resident.county"] } })])).not.toThrow();
+    expect(refused([manifest({ eligibility: { requirements: ["proof_of_personhood", ["resident.city", "resident.county"]] } })])).not.toThrow();
+  });
+
+  it("refuses an empty or malformed eligibility declaration", () => {
+    for (const requirements of [[], [""], [[]], [["ok", ""]], [3]] as unknown[]) {
+      expect(refused([manifest({ eligibility: { requirements } as never })])).toThrow("eligibility.requirements must be a non-empty list");
+    }
+  });
+
   it("derives the resident allowlist from the actions' callers", () => {
     expect(residentActions(manifest())).toEqual(["sample.take"]);
   });
