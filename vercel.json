@@ -120,44 +120,113 @@
     },
     {
       "source": "/process/:id",
-      "has": [{ "type": "header", "key": "accept", "value": ".*application/(ld|activity)\\+json.*" }],
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*application/(ld|activity)\\+json.*"
+        }
+      ],
       "destination": "/api"
     },
     {
       "source": "/process/:id*",
-      "destination": "/api/og"
+      "destination": "/api/og",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][fF][eE][tT][cC][hH][eE][rR]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[wW][hH][aA][tT][sS][aA][pP][pP]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[aA][pP][pP][lL][eE][bB][oO][tT]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[eE][mM][bB][eE][dD][lL][yY]|[qQ][uU][oO][rR][aA]|[vV][kK][sS][hH][aA][rR][eE]|[wW]3[cC]_[vV][aA][lL][iI][dD][aA][tT][oO][rR]|[gG][oO][oO][gG][lL][eE][bB][oO][tT]|[bB][iI][nN][gG][bB][oO][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]).*"
+        }
+      ]
     },
     {
       "source": "/proposal/:id*",
-      "destination": "/api/og"
+      "destination": "/api/og",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][fF][eE][tT][cC][hH][eE][rR]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[wW][hH][aA][tT][sS][aA][pP][pP]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[aA][pP][pP][lL][eE][bB][oO][tT]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[eE][mM][bB][eE][dD][lL][yY]|[qQ][uU][oO][rR][aA]|[vV][kK][sS][hH][aA][rR][eE]|[wW]3[cC]_[vV][aA][lL][iI][dD][aA][tT][oO][rR]|[gG][oO][oO][gG][lL][eE][bB][oO][tT]|[bB][iI][nN][gG][bB][oO][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]).*"
+        }
+      ]
     },
     {
       "source": "/project/:id*",
-      "destination": "/api/og"
+      "destination": "/api/og",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][fF][eE][tT][cC][hH][eE][rR]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[wW][hH][aA][tT][sS][aA][pP][pP]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[aA][pP][pP][lL][eE][bB][oO][tT]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[eE][mM][bB][eE][dD][lL][yY]|[qQ][uU][oO][rR][aA]|[vV][kK][sS][hH][aA][rR][eE]|[wW]3[cC]_[vV][aA][lL][iI][dD][aA][tT][oO][rR]|[gG][oO][oO][gG][lL][eE][bB][oO][tT]|[bB][iI][nN][gG][bB][oO][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]).*"
+        }
+      ]
     },
     {
       "source": "/deliberation/:id*",
-      "destination": "/api/og"
+      "destination": "/api/og",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][fF][eE][tT][cC][hH][eE][rR]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[wW][hH][aA][tT][sS][aA][pP][pP]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[aA][pP][pP][lL][eE][bB][oO][tT]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[eE][mM][bB][eE][dD][lL][yY]|[qQ][uU][oO][rR][aA]|[vV][kK][sS][hH][aA][rR][eE]|[wW]3[cC]_[vV][aA][lL][iI][dD][aA][tT][oO][rR]|[gG][oO][oO][gG][lL][eE][bB][oO][tT]|[bB][iI][nN][gG][bB][oO][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]).*"
+        }
+      ]
     },
     {
       "source": "/brief/:id*",
-      "destination": "/api/og"
+      "destination": "/api/og",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][fF][eE][tT][cC][hH][eE][rR]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[wW][hH][aA][tT][sS][aA][pP][pP]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[aA][pP][pP][lL][eE][bB][oO][tT]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[eE][mM][bB][eE][dD][lL][yY]|[qQ][uU][oO][rR][aA]|[vV][kK][sS][hH][aA][rR][eE]|[wW]3[cC]_[vV][aA][lL][iI][dD][aA][tT][oO][rR]|[gG][oO][oO][gG][lL][eE][bB][oO][tT]|[bB][iI][nN][gG][bB][oO][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]).*"
+        }
+      ]
     },
     {
       "source": "/vote-results/:id*",
-      "destination": "/api/og"
+      "destination": "/api/og",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][fF][eE][tT][cC][hH][eE][rR]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[wW][hH][aA][tT][sS][aA][pP][pP]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[aA][pP][pP][lL][eE][bB][oO][tT]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[eE][mM][bB][eE][dD][lL][yY]|[qQ][uU][oO][rR][aA]|[vV][kK][sS][hH][aA][rR][eE]|[wW]3[cC]_[vV][aA][lL][iI][dD][aA][tT][oO][rR]|[gG][oO][oO][gG][lL][eE][bB][oO][tT]|[bB][iI][nN][gG][bB][oO][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]).*"
+        }
+      ]
     },
     {
       "source": "/meeting-summary/:id*",
-      "destination": "/api/og"
+      "destination": "/api/og",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][fF][eE][tT][cC][hH][eE][rR]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[wW][hH][aA][tT][sS][aA][pP][pP]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[aA][pP][pP][lL][eE][bB][oO][tT]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[eE][mM][bB][eE][dD][lL][yY]|[qQ][uU][oO][rR][aA]|[vV][kK][sS][hH][aA][rR][eE]|[wW]3[cC]_[vV][aA][lL][iI][dD][aA][tT][oO][rR]|[gG][oO][oO][gG][lL][eE][bB][oO][tT]|[bB][iI][nN][gG][bB][oO][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]).*"
+        }
+      ]
     },
     {
       "source": "/announcement/:id*",
-      "destination": "/api/og"
+      "destination": "/api/og",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][fF][eE][tT][cC][hH][eE][rR]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[wW][hH][aA][tT][sS][aA][pP][pP]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[aA][pP][pP][lL][eE][bB][oO][tT]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[eE][mM][bB][eE][dD][lL][yY]|[qQ][uU][oO][rR][aA]|[vV][kK][sS][hH][aA][rR][eE]|[wW]3[cC]_[vV][aA][lL][iI][dD][aA][tT][oO][rR]|[gG][oO][oO][gG][lL][eE][bB][oO][tT]|[bB][iI][nN][gG][bB][oO][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]).*"
+        }
+      ]
     },
     {
       "source": "/wordcloud/:id*",
-      "destination": "/api/og"
+      "destination": "/api/og",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][fF][eE][tT][cC][hH][eE][rR]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[wW][hH][aA][tT][sS][aA][pP][pP]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[aA][pP][pP][lL][eE][bB][oO][tT]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[eE][mM][bB][eE][dD][lL][yY]|[qQ][uU][oO][rR][aA]|[vV][kK][sS][hH][aA][rR][eE]|[wW]3[cC]_[vV][aA][lL][iI][dD][aA][tT][oO][rR]|[gG][oO][oO][gG][lL][eE][bB][oO][tT]|[bB][iI][nN][gG][bB][oO][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]).*"
+        }
+      ]
     },
     {
       "source": "/(.*)",
