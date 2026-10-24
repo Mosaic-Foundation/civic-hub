@@ -26,11 +26,14 @@ describe("what leaves", () => {
     expect(Object.keys(TABLE_KEYS).sort()).toEqual(exportedTables().sort());
   });
 
-  it("leaves the credentials, the cache and the job run log behind, each with a reason", () => {
+  it("leaves the credentials, the cache, the job run log and derived grants behind, each with a reason", () => {
     const omitted = omittedTables();
     expect(omitted.map((o) => o.table).sort()).toEqual([
       "admin_digest_marks",
       "ai_usage",
+      // Derived by trigger from the settings and accounts the bundle carries;
+      // the import re-derives it (20261023000000, ADR-011).
+      "hub_roles",
       "job_runs",
       "link_previews",
       "sessions",
