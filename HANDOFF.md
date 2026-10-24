@@ -8,7 +8,7 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 `multi-tenant`, one commit per item, from `a104260`. Decision record: ADR-011 at the mono-repo root
 (`decisions/011-authorization-seam.md`, a local commit for Adam to push, as ADR-008 to ADR-010). Report and handoff:
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Architecture-4-Session-Report-2026-10-23.md`.
+`~/Documents/Mosaic/0 Management/Civic Social/Architecture-4-Session-Report-2026-10-23.md`.
 
 **Two migrations, both additive and safe to run twice:**
 - `20261023000000_hub_roles`: a table, its triggers and an idempotent backfill. It went to dev alone first, at
@@ -98,7 +98,7 @@ never accepted from the inserter; no stored row changes — checked on every env
 (column + backfill from each target's frozen origin), `20261022020000_hub_custody_disclosure` (three nullable `hubs`
 columns). No pre-checks; nobody is signed out. **Live on dev at `503a8e9`** (`./scripts/release.sh dev --yes`: 3 migrations applied, health ok, no schema gaps); **CI, E2E and Smoke green on `503a8e9`** (E2E and Smoke re-run once after GitHub's Ubuntu mirror stalled the browser install; no test had started). Dev's wire after the migrations: 2,143 events, identifiers identical, served changes exactly the approved rows. Decision record: ADR-010 at the mono-repo root
 (`decisions/010-the-public-wire.md`, local commit for Adam to push, as ADR-008/009). Report and handoff:
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Architecture-3-Session-Report-2026-10-22.md`.
+`~/Documents/Mosaic/0 Management/Civic Social/Architecture-3-Session-Report-2026-10-22.md`.
 
 **The invariants:** identifiers never change (wire snapshot diff over 36,080 local and 2,143 dev events: identical);
 shapes changed exactly by Adam's approved field rows 1–10 and nothing else — `scripts/wire-snapshot-diff.ts` now
@@ -167,7 +167,7 @@ HTTP side by side, `acf37ec` and the slice on one database (Athens): every page,
 `multi-tenant`, one commit per item (`b90eaed`..the HANDOFF commit), from `90d8a1f`. **No migrations.** **Live on
 dev at `432d0f6`** (`./scripts/release.sh dev --yes`, health ok; dev's 2,047 events serialize identically under the old and new
 code). Not on production. Decision record: ADR-009 at the mono-repo root (`decisions/009-process-manifest.md`). Report and handoff:
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Architecture-2-Session-Report-2026-10-21.md`.
+`~/Documents/Mosaic/0 Management/Civic Social/Architecture-2-Session-Report-2026-10-21.md`.
 
 **What changed:**
 1. **A manifest per type** (`src/modules/civic.<type>/manifest.ts`; Polis's in `src/shared/polis_deliberation/`):
@@ -233,7 +233,7 @@ migrations applied, health ok). **Not on production.** Two migrations, both addi
 `20261020000000_wire_origins` (columns, stamping triggers, a backfill of NULLs) and `20261020010000_move_hub_hostname`
 (one function, service_role only). No one is signed out. Decision record: ADR-008 at the mono-repo root
 (`decisions/008-stable-wire-identity.md`). Report and handoff:
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Architecture-1-Session-Report-2026-10-20.md`.
+`~/Documents/Mosaic/0 Management/Civic Social/Architecture-1-Session-Report-2026-10-20.md`.
 
 **The invariant held:** every activity id, process IRI and actor IRI a hub served before is served byte for byte the
 same. Proved on the fixture hub (`tests/fixtures/wire/before.json`, taken before any change), on 100 local hubs
@@ -301,7 +301,7 @@ Branch `dashboard` from `origin/multi-tenant` at `3eebfc4` (which already holds 
 (`808229a`..`db540f8`), then this entry. ADR-007 is at the mono-repo root (`0f1aab0`, local). **Not merged, not
 released**; pushed by Adam (2026-10-17). One migration, additive: `20261019000000_job_last_run`. No one
 is signed out. Report and merge steps:
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Dashboard-Session-Report-2026-10-17.md`.
+`~/Documents/Mosaic/0 Management/Civic Social/Dashboard-Session-Report-2026-10-17.md`.
 
 **What it does** (console → Dashboard, `#/dashboard`, the operator only):
 - **Hubs:** one row per hub, live, beta, demo, then archived (collapsed). Mode, health (up, degraded with the schema
@@ -422,7 +422,7 @@ Adam's review the same day: a type fix in a test (`2bfd3d2`), legal 1.4 (`480d50
 summariser's opening rule (`3b85ce3`). **Not merged, not released.** Adam merges `cleanup` into `multi-tenant` after the operations shell is on production; the dev
 release follows. Two migrations, both additive, apply first: `20261018000000_settings_version`,
 `20261018010000_count_pending_reviews`. No one is signed out. Report and merge steps:
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Cleanup-Session-Report-2026-10-17.md`.
+`~/Documents/Mosaic/0 Management/Civic Social/Cleanup-Session-Report-2026-10-17.md`.
 
 **What changed:**
 - **Settings reach every visitor at once.** `hubs.settings_version` is bumped by trigger on every change to a hub's
@@ -533,7 +533,7 @@ Commits on `multi-tenant` `ed81976`..`2b670ad`, one item each, plus this closing
 - Smoke: 21 of 21 in 1.8 min.
 
 The dev-walk fix `2b670ad` and this entry follow in the same release. Reports: `Leaving-Demo-Session-Report-2026-10-15.md`, `Leaving-Demo-Handoff-to-Management-2026-10-15.md`
-(Mosaic Foundation Management/Civic Social).
+(Mosaic/0 Management/Civic Social).
 
 **Release needs:**
 - **One additive migration, `20261017000000_leaving_demo.sql`:** `users.demo_only`, `waitlist.told_open_at`, and
@@ -642,7 +642,7 @@ Commits on `multi-tenant` `06036e1`..`89ab64a`, one item each, plus this closing
 navigation slice. **Live on dev; CI, E2E and Smoke green on `89ab64a`:** API 770 passed in both modes, unit 1,563,
 Playwright 143 passed (2 skipped); Smoke 19 of 19 on live dev in 1.6 min.
 It goes to production with that slice. Report and handoff: `Navigation-Polish-Session-Report-2026-10-14.md`,
-`Navigation-Polish-Handoff-to-Management-2026-10-14.md` (Mosaic Foundation Management/Civic Social).
+`Navigation-Polish-Handoff-to-Management-2026-10-14.md` (Mosaic/0 Management/Civic Social).
 
 **Release needs:** none beyond the navigation slice's (no migration, no env vars, no new setting or help key).
 
@@ -687,7 +687,7 @@ a thin "Beta hub" / "Demo hub" bar; pages that show the masthead on section page
 Commits on `multi-tenant` `3af6355`..`85b5674`, one item each, plus this closing entry. **Live on dev at `85b5674`**
 (`release.sh dev --yes`, no migrations, health ok). **CI, E2E and Smoke green on `85b5674`:** API 770 passed in both
 modes, unit 1,563, Playwright 140 passed (2 skipped), help links 87 keys; Smoke 19 of 19 on live dev in 1.6 min. Adam's answers:
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Prompt-Navigation-Answers-2026-10-14.md`. Report
+`~/Documents/Mosaic/0 Management/Civic Social/Prompt-Navigation-Answers-2026-10-14.md`. Report
 and handoff: `Navigation-Session-Report-2026-10-14.md`, `Navigation-Handoff-to-Management-2026-10-14.md`, same folder.
 
 **Release needs:** no migration, no env vars, no pre-checks, nobody signed out. Two new public settings,
@@ -753,7 +753,7 @@ Commits on `multi-tenant` `9585d80`..`585503a`, one item each, plus this closing
 (`release.sh dev --yes`, migration applied, health ok with no schema gaps). **CI, E2E and Smoke green on `585503a`:**
 API 766 passed in both modes, unit 1,546, Playwright 130 passed (2 skipped), help links 85 keys; Smoke 18 of 18 on
 live dev in 1.6 min. Report and handoff:
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Members-Invites-Session-Report-2026-10-14.md`.
+`~/Documents/Mosaic/0 Management/Civic Social/Members-Invites-Session-Report-2026-10-14.md`.
 
 **Release needs:**
 - **One migration, additive:** `20261016000000_members_invites`. It adds `users.hidden_from_members` (default false)
@@ -810,7 +810,7 @@ menu has Share this hub but no Members item. Removing oneself from the Members p
 Commits on `multi-tenant` `c37375c`..`ce8482b`, one item each. **Live on dev at `ce8482b`** (`release.sh dev --yes`,
 migration applied, health ok with no schema gaps). The first push (`aef6956`) had CI and Smoke green and E2E red. The
 cause was a digest link that didn't scroll to its row on CI's slower machine, fixed in `ce8482b`. **CI, E2E and Smoke (15 tests) green on `ce8482b`.** Report and handoff:
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Feedback-Routing-Session-Report-2026-10-13.md`.
+`~/Documents/Mosaic/0 Management/Civic Social/Feedback-Routing-Session-Report-2026-10-13.md`.
 
 **Release needs:**
 - **One migration, additive:** `20261015000000_feedback_routing`. It adds eight columns to `feedback_submissions`
@@ -869,7 +869,7 @@ Commits on `multi-tenant` `afd98d3`..`e35a141`, one item each; the docs repo's s
 `help-anchors` (`75e18d0`..`7ad2494`), merged and live on docs.civic.social. **Live on dev at `2ee0711`**
 (`release.sh dev --yes`, 2026-10-13): CI (with the help-links step, 80 keys), E2E and Smoke 13 of 13 in 1.1 min green.
 Report and handoff:
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Admin-Menu-Session-Report-2026-10-13.md`.
+`~/Documents/Mosaic/0 Management/Civic Social/Admin-Menu-Session-Report-2026-10-13.md`.
 
 **Release needs:**
 - **No migrations, no new env vars, nobody signed out.**
@@ -911,7 +911,7 @@ report); the 8 pending docs sections, which the weekly job drafts once this reac
 
 Commits on `multi-tenant` `ac3b009`..`eadb61f`, one item each, **live on dev** since `release.sh dev --yes` (both
 migrations and the place list in; CI, E2E 101 and Smoke 10 of 10 in 52 s green on `eadb61f`). Report:
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Sign-In-Session-Report-2026-10-14.md`.
+`~/Documents/Mosaic/0 Management/Civic Social/Sign-In-Session-Report-2026-10-14.md`.
 
 **Release needs:**
 - **Two migrations, both additive in effect:**
@@ -972,7 +972,7 @@ and smoke 10 of 10 (16 s), except a pre-existing failure on long-used stacks: `/
 
 Thirteen commits on `multi-tenant` (`d581b02`..`7838351`, plus this note), **live on dev** since `release.sh dev` (CI,
 E2E and Smoke green; smoke 9 of 9 in 1.2 min on live dev). **No migrations, no new database functions, no new env
-vars.** Report: `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Vote-Pages-Fixes-Session-Report-2026-10-13.md`.
+vars.** Report: `~/Documents/Mosaic/0 Management/Civic Social/Vote-Pages-Fixes-Session-Report-2026-10-13.md`.
 
 **Built (Adam's dev walk of the Actions slice):**
 - **Voting never moves the page.** The share bar no longer scrolls itself into view. If the bar is off screen, a
@@ -1021,7 +1021,7 @@ flake, green on rerun), conformance 96, Playwright 96, smoke 9 of 9.
 ## Release tooling: one-command release, dev smoke job — 2026-10-13
 
 Seven commits on `multi-tenant` (`0e35057`..this entry), not pushed. **No migrations, nothing in `src/` or `ui/src/`.**
-Report: `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Release-Tooling-Session-Report-2026-10-13.md`.
+Report: `~/Documents/Mosaic/0 Management/Civic Social/Release-Tooling-Session-Report-2026-10-13.md`.
 
 **Built:**
 - **`scripts/release.sh dev|prod [--dry-run]`** with `scripts/release.config` (the hub URLs and refs; env overrides).
@@ -1062,7 +1062,7 @@ ever passes the flagged text, that test fails, and the message says so.
 
 Eleven commits on `multi-tenant` (`77a2925`..`f452edc`), not pushed. **One migration, additive:**
 `20261013100000_vote_check_mode.sql`, which goes first, on dev and production. No new database functions. Report and
-dev checklist: `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Actions-Session-Report-2026-10-13.md`.
+dev checklist: `~/Documents/Mosaic/0 Management/Civic Social/Actions-Session-Report-2026-10-13.md`.
 
 **Fixes that can ship alone, ahead of the rest:**
 - **`77a2925` Account ids.** `POST /process/:id/action` answered with the raw process row since the first commit
@@ -1610,7 +1610,7 @@ in" is a longer `expires_at` on the same row. Drop `start_attempts` later.
 
 ## Audit 1: what production exposed today — 2026-10-11
 
-From the audit handoff (`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Civic-Hub-Audit-Handoff-2026-10-10.md`),
+From the audit handoff (`~/Documents/Mosaic/0 Management/Civic Social/Civic-Hub-Audit-Handoff-2026-10-10.md`),
 items A2, A3, A4, part of A8, and Adam's decision on C2. Adam approved the four non-additive or behaviour choices in
 chat: rebuild `search_doc`, remove `POST /reviews/submit`, no env roster inside a hub, scrub old anonymous moderation
 events. Report: `Audit-1-Session-Report-2026-10-11.md` in Mosaic Foundation Management. Not pushed.
@@ -1694,7 +1694,7 @@ linked them four ways. All four were verified on the local stack (a vote cast in
 
 Request logs added two more: receipts in URLs, and Supabase logging `active_vote_keys?user_id=…` beside
 `vote_records?receipt_id=…`. The full threat analysis and Adam's answers are in
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Ballot-Secrecy-Session-Report-2026-10-10.md`.
+`~/Documents/Mosaic/0 Management/Civic Social/Ballot-Secrecy-Session-Report-2026-10-10.md`.
 Not pushed.
 
 - **Migration:** `20261010000000_ballot_secrecy_at_rest.sql`.
@@ -2657,7 +2657,7 @@ Production (`civic-hub`, Supabase Civic-Hub-Floyd) now runs **`c3751ec`** on the
 with the console at `console.civic.social`, hubs at `<slug>.civic.social`, the platform sender
 `noreply@mail.civic.social`, and Floyd linked to `ocd-division/country:us/state:va/county:floyd`. Adam ran every
 production step from `RUNBOOK-release-1.md`; the session ran read-only checks. Full timestamped notes:
-`~/Documents/Civic Social/Mosaic Foundation Management/release-1-sitting-notes.md`.
+`~/Documents/Mosaic/0 Management/release-1-sitting-notes.md`.
 
 ### What happened, in order
 - **§0 dev:** complete (Floyd's dev copy linked; test hubs agora, asheville created through the new form).
@@ -4573,7 +4573,7 @@ URL is still one env var for the deployment. That is the recorded 2b item
 ## Hub theming: a Theme section in Settings — 2026-09-24
 
 **Branch:** `multi-tenant`, same session as part five, after Adam agreed the
-plan in `~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Future Tasks/civic-hub-theming-plan.md`.
+plan in `~/Documents/Mosaic/0 Management/Civic Social/Future Tasks/civic-hub-theming-plan.md`.
 Official categories were deliberately NOT started: they wait for Phase 2
 (the roster lives on `users`, which has no `hub_id`).
 
@@ -4769,7 +4769,7 @@ bucket stubbed; the real upload is the dev walkthrough's to prove.
   their standing brief addresses.
 
 **Next sessions, agreed with Adam.** Plans are in
-`~/Documents/Civic Social/Mosaic Foundation Management/Civic Social/Future Tasks/`:
+`~/Documents/Mosaic/0 Management/Civic Social/Future Tasks/`:
 `civic-hub-theming-plan.md` (a Theme section: a small palette, derived
 border/pill pairs, contrast enforced, presets, live preview; no dependency)
 and `civic-hub-official-categories-plan.md` ("Admins & officials" with
@@ -8995,7 +8995,7 @@ out: button present on a normal visit, click lands on `/`. UI tsc + vite build c
 ## Beta demo content slate — seeded on PROD — 2026-09-01
 
 **Script:** `scripts/seedBetaSlate.ts` (`--env dev|prod`, `--dry-run`, `--remove`). Source of
-truth for the content is outside the repo: `~/Documents/Civic Social/Mosaic Foundation
+truth for the content is outside the repo: `~/Documents/Mosaic/2 Civic Social/Mosaic Foundation
 Management/Civic Social/Floyd Civic Hub/Rollout Plan/Seed-Content-Slate.md` (v2, 2026-09-01) and
 `Seed-Content-Draft.md` (verbatim text). Don Kenny (§10) is IN, per Adam ("use that name; it's a
 demo exploration of what the building could be").
@@ -13760,13 +13760,13 @@ Replaced boolean digest toggle with configurable frequency dropdown (Daily, Ever
 - Slice F: Cleanup + migration of existing data
 
 ### Future enhancement: Cross-process-type routing in AI assistant
-When all three process types (Vote, Propose, Projects) are live, the AI assistant should detect when a user's idea would be better suited for a different process type and suggest switching. For example: a user starts in the vote drafting flow but describes a community garden initiative — the assistant could say "This sounds more like a project than a vote. Would you like to start a project instead?" and link them to `/projects/new`. This requires all three process types to exist first, so target Slice E (assistant modularity) or later. See `~/Documents/vote-propose-project-process-prompt.md` for the full design context.
+When all three process types (Vote, Propose, Projects) are live, the AI assistant should detect when a user's idea would be better suited for a different process type and suggest switching. For example: a user starts in the vote drafting flow but describes a community garden initiative — the assistant could say "This sounds more like a project than a vote. Would you like to start a project instead?" and link them to `/projects/new`. This requires all three process types to exist first, so target Slice E (assistant modularity) or later. See `~/Documents/Mosaic/2 Civic Social/Tech & Specs/vote-propose-project-process-prompt.md` for the full design context.
 
 ---
 
 ## AI Assistant Polish + Three Process Types Design — 2026-05-22
 
-**Status:** AI drafting assistant is beta-complete and deployed to production (floyd.civic.social). Comprehensive design document created for the next phase: splitting civic engagement into three independent modules (Votes, Propose, Projects). Design doc saved outside repo at `~/Documents/vote-propose-project-process-prompt.md`.
+**Status:** AI drafting assistant is beta-complete and deployed to production (floyd.civic.social). Comprehensive design document created for the next phase: splitting civic engagement into three independent modules (Votes, Propose, Projects). Design doc saved outside repo at `~/Documents/Mosaic/2 Civic Social/Tech & Specs/vote-propose-project-process-prompt.md`.
 
 ### What was built / changed
 
@@ -13797,7 +13797,7 @@ When all three process types (Vote, Propose, Projects) are live, the AI assistan
 
 ### Three Process Types — Design Document
 
-Created comprehensive session prompt at `~/Documents/vote-propose-project-process-prompt.md` (intentionally outside repo). Key design decisions:
+Created comprehensive session prompt at `~/Documents/Mosaic/2 Civic Social/Tech & Specs/vote-propose-project-process-prompt.md` (intentionally outside repo). Key design decisions:
 
 1. **Three independent modules:** Votes (modify existing), Propose (rebrand existing pipeline), Projects (new build). Each independently toggleable by hub operator.
 2. **Remove steward review gate** — AI assistant's CoC hard blocks replace the manual steward review. Content goes live on submit after passing AI review.
@@ -13835,7 +13835,7 @@ Implementation slices: A (clean up votes) → B (propose tab) → C (project bac
 
 ### What's next
 
-The three process types implementation, following the session prompt at `~/Documents/vote-propose-project-process-prompt.md`. Start with Slice A (clean up votes) and work through the slices in order.
+The three process types implementation, following the session prompt at `~/Documents/Mosaic/2 Civic Social/Tech & Specs/vote-propose-project-process-prompt.md`. Start with Slice A (clean up votes) and work through the slices in order.
 
 ### Open questions
 
