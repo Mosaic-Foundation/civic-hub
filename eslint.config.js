@@ -217,6 +217,137 @@ const hostingBoundaryRule = {
   },
 };
 
+// The database convention (Architecture 5, ADR-012):
+//   - A module (src/modules/civic.*, src/shared/polis_deliberation/: the
+//     plugins) never imports src/db/. It declares a store in its own store.ts
+//     and the host binds it (src/stores/). Types and error classes may still
+//     be imported from src/db/.
+//   - Only processService owns the `processes` table: `.from("processes")`
+//     appears in src/services/processService.ts and processRows.ts (and the
+//     data layer, the console's export reader, scripts and tests), nowhere
+//     else.
+//   - A controller does not query: no forHub/readAll/inChunks/getDb in
+//     src/controllers/. It calls a service or a module.
+// The three lists below are what was not yet converted when the rule came in.
+// They only ever shrink; a file leaves its list when it is converted, and
+// nothing is added.
+const MODULES_NOT_YET_ON_STORES = [
+  "src/modules/civic.admin_digest/",
+  "src/modules/civic.auth/",
+  "src/modules/civic.drafts/",
+  "src/modules/civic.feedback/",
+  "src/modules/civic.input/",
+  "src/modules/civic.projects/",
+  "src/modules/civic.proposals/",
+  "src/modules/civic.receipts/",
+  "src/modules/civic.review/",
+];
+const PROCESS_TABLE_OWNERS = ["src/services/processService.ts", "src/services/processRows.ts", "src/db/", "src/control/hubBundle/"];
+const PROCESS_TABLE_NOT_YET = [
+  "src/control/dashboard/attention.ts",
+  "src/controllers/briefController.ts",
+  "src/controllers/debugController.ts",
+  "src/controllers/inputController.ts",
+  "src/controllers/reviewController.ts",
+  "src/debug/autoSeed.ts",
+  "src/modules/civic.projects/handler.ts",
+  "src/modules/civic.proposals/handler.ts",
+  "src/modules/civic.receipts/index.ts",
+  "src/modules/civic.review/service.ts",
+  "src/processes/spawnBrief.ts",
+  "src/services/adminQueues.ts",
+  "src/services/editNotifications.ts",
+  "src/services/feedPage.ts",
+  "src/services/pluginSetup.ts",
+  "src/services/processAnonymity.ts",
+  "src/services/processEdits.ts",
+  "src/services/processLinks.ts",
+  "src/services/sampleContent.ts",
+  "src/services/sampleRefresh.ts",
+  "src/services/sampleSeed.ts",
+];
+const CONTROLLERS_NOT_YET_ON_SERVICES = [
+  "src/controllers/briefController.ts",
+  "src/controllers/debugController.ts",
+  "src/controllers/deliberationController.ts",
+  "src/controllers/inputController.ts",
+  "src/controllers/reviewController.ts",
+  "src/controllers/waitlistController.ts",
+];
+const QUERY_NAMES = new Set(["forHub", "readAll", "inChunks", "getDb", "getHubTokenDb"]);
+
+function resolvesIntoDb(fromFile, spec) {
+  if (!spec.startsWith(".")) return false;
+  const target = relative(ROOT, resolve(dirname(fromFile), spec)).split("\\").join("/");
+  return target === "src/db" || target.startsWith("src/db/");
+}
+
+const dbConventionRule = {
+  meta: {
+    type: "problem",
+    docs: { description: "Modules use their store, only processService queries `processes`, controllers do not query (ADR-012)." },
+    schema: [],
+  },
+  create(context) {
+    const file = context.filename;
+    const rel = relative(ROOT, file).split("\\").join("/");
+    const isPlugin = rel.startsWith("src/modules/") || rel.startsWith("src/shared/polis_deliberation/");
+    const pluginChecked = isPlugin && !MODULES_NOT_YET_ON_STORES.some((p) => rel.startsWith(p));
+    const isController = rel.startsWith("src/controllers/") && !CONTROLLERS_NOT_YET_ON_SERVICES.includes(rel);
+    const tableChecked =
+      rel.startsWith("src/") &&
+      !PROCESS_TABLE_OWNERS.some((p) => rel.startsWith(p)) &&
+      !PROCESS_TABLE_NOT_YET.includes(rel);
+    return {
+      ImportDeclaration(n) {
+        const spec = n.source.value;
+        if (typeof spec !== "string" || !resolvesIntoDb(file, spec)) return;
+        if (pluginChecked && n.importKind !== "type") {
+          const values = n.specifiers.filter((sp) => sp.importKind !== "type");
+          const bad = values.filter((sp) => !(sp.type === "ImportSpecifier" && /Error$/.test(sp.imported.name)));
+          if (bad.length > 0 || values.length === 0 && n.specifiers.length === 0) {
+            context.report({
+              node: n,
+              message:
+                `"${spec}" is the database layer. A module (a plugin) declares the persistence it needs in its ` +
+                "store.ts and the host binds it in src/stores/ (ADR-012); only types and error classes come from src/db/.",
+            });
+          }
+        }
+        if (isController) {
+          for (const sp of n.specifiers) {
+            if (sp.type === "ImportSpecifier" && QUERY_NAMES.has(sp.imported.name)) {
+              context.report({
+                node: sp,
+                message: `A controller does not query (${sp.imported.name}): it calls a service or a module (ADR-012).`,
+              });
+            }
+          }
+        }
+      },
+      CallExpression(n) {
+        if (!tableChecked) return;
+        const callee = n.callee;
+        if (
+          callee.type === "MemberExpression" &&
+          callee.property.type === "Identifier" &&
+          callee.property.name === "from" &&
+          n.arguments.length === 1 &&
+          n.arguments[0].type === "Literal" &&
+          n.arguments[0].value === "processes"
+        ) {
+          context.report({
+            node: n,
+            message:
+              "Only processService queries the processes table: use a function in src/services/processRows.ts " +
+              "(or add one there) instead (ADR-012).",
+          });
+        }
+      },
+    };
+  },
+};
+
 // The authorization seam (Architecture 4, ADR-011): every "may this person do
 // this" is asked of canActor in src/authz/, by account, never by address.
 // Outside src/authz/ this refuses:
@@ -321,8 +452,8 @@ export default [
     languageOptions: { parser: tsParser, sourceType: "module", ecmaVersion: "latest" },
     // Other plugins' disable comments may exist in the tree; they are not errors here.
     linterOptions: { reportUnusedDisableDirectives: "off" },
-    plugins: { civic: { rules: { "raw-client": rawClientRule, "control-boundary": controlBoundaryRule, "authz-seam": authzSeamRule, "hosting-boundary": hostingBoundaryRule } } },
-    rules: { "civic/raw-client": "error", "civic/control-boundary": "error", "civic/authz-seam": "error", "civic/hosting-boundary": "error" },
+    plugins: { civic: { rules: { "raw-client": rawClientRule, "control-boundary": controlBoundaryRule, "authz-seam": authzSeamRule, "hosting-boundary": hostingBoundaryRule, "db-convention": dbConventionRule } } },
+    rules: { "civic/raw-client": "error", "civic/control-boundary": "error", "civic/authz-seam": "error", "civic/hosting-boundary": "error", "civic/db-convention": "error" },
   },
   // One typed config module (Audit 4, F7): the server and api/ read their
   // environment only through src/config/env.ts. Scripts and tests read their

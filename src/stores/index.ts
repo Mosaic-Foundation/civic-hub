@@ -1,0 +1,18 @@
+// The modules' stores, bound once (ADR-012, the database convention).
+//
+// A module (src/modules/civic.*, a plugin) declares the persistence it needs
+// in its own store.ts and never imports src/db/. Its implementation lives
+// here, one file per module, on forHub() and the hub's tables; installStores()
+// binds them. The composition roots call it: src/app.ts, the test setup
+// (tests/setup/adapters.ts) and the operator scripts' hub scope
+// (scripts/lib/hubScope.ts). Idempotent.
+//
+// Adding a module's store: its interface and slot in the module's store.ts,
+// the implementation here as src/stores/<module>.ts, one bind line below.
+
+import { wordcloudStore } from "../modules/civic.wordcloud/store.js";
+import { wordcloudStoreImpl } from "./wordcloud.js";
+
+export function installStores(): void {
+  wordcloudStore.bind(wordcloudStoreImpl);
+}

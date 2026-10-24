@@ -9,70 +9,30 @@
 import { NotFoundError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { getProcess } from "../services/processService.js";
-import { forHub } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
 import { resolveCallerId } from "../middleware/auth.js";
 import {
   buildClouds,
   getSubmissionCount,
   type WordcloudProcessState,
+  listVisibleResponses,
+  hasVisibleSubmission,
 } from "../modules/civic.wordcloud/index.js";
-import { readAll } from "../db/readAll.js";
 
-function db() {
-  return forHub(currentHubId());
-}
 
 function getState(process: { state: Record<string, unknown> }): WordcloudProcessState {
   return process.state as unknown as WordcloudProcessState;
 }
 
 /** Visible submissions for a word cloud process, newest first. */
-interface WordcloudResponseRow {
-  id: string;
-  body: string;
-  submitted_at: string;
-  prompt_id: string | null;
-}
-
-async function listWordcloudResponses(
-  processId: string,
-  promptId: string | undefined,
-): Promise<WordcloudResponseRow[]> {
-  // Paged: a cloud can have more than 1,000 responses (PostgREST's cap).
-  return readAll((from, to) => {
-    let query = db()
-      .from("wordcloud_submissions")
-      .select<WordcloudResponseRow>("id, body, submitted_at, prompt_id")
-      .eq("process_id", processId)
-      .is("hidden_at", null)
-      .order("submitted_at", { ascending: false })
-      .order("id", { ascending: true });
-
-    if (promptId) {
-      query = query.eq("prompt_id", promptId);
-    }
-    return query.range(from, to);
-  });
-}
+const listWordcloudResponses = (processId: string, promptId: string | undefined) => listVisibleResponses(processId, promptId);
 
 /**
  * Whether this user has a visible submission on this word cloud process.
- * The count read is treated as best-effort here, matching the pre-forHub
- * behaviour of only flipping to true when the count query succeeded.
+ * Best-effort: a failed read answers false.
  */
-async function hasWordcloudSubmission(
-  processId: string,
-  authorId: string,
-): Promise<boolean> {
+async function hasWordcloudSubmission(processId: string, authorId: string): Promise<boolean> {
   try {
-    const count = await db()
-      .from("wordcloud_submissions")
-      .count()
-      .eq("process_id", processId)
-      .eq("author_id", authorId)
-      .is("hidden_at", null);
-    return count > 0;
+    return await hasVisibleSubmission(processId, authorId);
   } catch {
     return false;
   }

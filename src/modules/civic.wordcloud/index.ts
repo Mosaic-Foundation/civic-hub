@@ -9,8 +9,7 @@
 // Evergreen mode stays in active indefinitely; admin can snapshot or close.
 
 import { ConflictError, ValidationError } from "../../errors/index.js";
-import { forHub, HubDbError, type HubDb } from "../../db/forHub.js";
-import { currentHubId } from "../../config/hubContext.js";
+import { wordcloudStore, type ResponseRow, type SubmissionRow } from "./store.js";
 import { generateId } from "../../utils/id.js";
 import { assertPassesWordlist } from "../../shared/wordlist/index.js";
 import { aggregateSubmissions } from "./aggregation.js";
@@ -34,29 +33,12 @@ export type {
   PromptCloud,
   CloudEntry,
 } from "./models.js";
-import { readAll } from "../../db/readAll.js";
 export { DEFAULT_CONFIG } from "./models.js";
 export { aggregateSubmissions, extractWords } from "./aggregation.js";
 
-function db(): HubDb {
-  return forHub(currentHubId());
-}
 
 // --- DB row mapping ---------------------------------------------------------
 
-interface SubmissionRow {
-  id: string;
-  process_id: string;
-  prompt_id: string;
-  author_id: string | null;
-  body: string;
-  submitted_at: string;
-  device_token: string | null;
-  hidden_at: string | null;
-  hidden_by: string | null;
-  hidden_reason: string | null;
-  restored_at: string | null;
-}
 
 function rowToSubmission(row: SubmissionRow): WordcloudSubmission {
   let moderation: SubmissionModeration | null = null;
@@ -182,12 +164,11 @@ export async function submitResponse(
 
   // Enforce one submission per author per prompt
   if (actor) {
-    const count = await db()
-      .from("wordcloud_submissions")
-      .count()
-      .eq("process_id", ctx.process_id)
-      .eq("prompt_id", payload.prompt_id)
-      .eq("author_id", actor);
+    const count = await wordcloudStore.get().countSubmissions({
+      processId: ctx.process_id,
+      promptId: payload.prompt_id,
+      authorId: actor,
+    });
     if (count > 0) {
       throw new ConflictError("You have already submitted a response to this prompt", "already_submitted");
     }
@@ -199,25 +180,16 @@ export async function submitResponse(
   // same moment both pass it, and the unique index on (process, prompt,
   // author) lets one in (20260617000000). The other is the same refusal, not
   // a 500 (plugin conformance, 2026-10-12).
-  let data: SubmissionRow;
-  try {
-    data = await db()
-      .from("wordcloud_submissions")
-      .insert({
-        id,
-        process_id: ctx.process_id,
-        prompt_id: payload.prompt_id,
-        author_id: actor || null,
-        body,
-        device_token: payload.device_token ?? null,
-      })
-      .select<SubmissionRow>()
-      .single();
-  } catch (err) {
-    if (actor && err instanceof HubDbError && err.code === "23505") {
-      throw new ConflictError("You have already submitted a response to this prompt", "already_submitted");
-    }
-    throw err;
+  const data = await wordcloudStore.get().insertSubmission({
+    id,
+    process_id: ctx.process_id,
+    prompt_id: payload.prompt_id,
+    author_id: actor || null,
+    body,
+    device_token: payload.device_token ?? null,
+  });
+  if (data === "duplicate") {
+    throw new ConflictError("You have already submitted a response to this prompt", "already_submitted");
   }
 
   const submission = rowToSubmission(data);
@@ -333,19 +305,8 @@ export async function buildClouds(
   const clouds: PromptCloud[] = [];
 
   for (const prompt of state.prompts) {
-    // Paged: a cloud can have more than 1,000 responses (PostgREST's cap).
-    const data = await readAll((from, to) =>
-      db()
-        .from("wordcloud_submissions")
-        .select<{ body: string }>("body")
-        .eq("process_id", processId)
-        .eq("prompt_id", prompt.id)
-        .is("hidden_at", null)
-        .order("id", { ascending: true })
-        .range(from, to),
-    );
-
-    const bodies = data.map((r) => r.body);
+    // All of them: a cloud can have more than 1,000 responses.
+    const bodies = await wordcloudStore.get().visibleBodies(processId, prompt.id);
     const entries = aggregateSubmissions(bodies, state.config);
 
     clouds.push({
@@ -360,14 +321,21 @@ export async function buildClouds(
 }
 
 export async function getSubmissionCount(processId: string): Promise<number> {
-  return await db()
-    .from("wordcloud_submissions")
-    .count()
-    .eq("process_id", processId);
+  return wordcloudStore.get().countSubmissions({ processId });
+}
+
+/** Visible submissions, newest first, optionally for one prompt. */
+export async function listVisibleResponses(processId: string, promptId?: string): Promise<ResponseRow[]> {
+  return wordcloudStore.get().visibleResponses(processId, promptId);
+}
+
+/** Has this person a visible submission on this word cloud? */
+export async function hasVisibleSubmission(processId: string, authorId: string): Promise<boolean> {
+  return (await wordcloudStore.get().countSubmissions({ processId, authorId, visibleOnly: true })) > 0;
 }
 
 // --- Dev/seed ---------------------------------------------------------------
 
 export async function clearWordcloudSubmissions(): Promise<void> {
-  await db().from("wordcloud_submissions").delete().neq("id", "");
+  await wordcloudStore.get().deleteAll();
 }

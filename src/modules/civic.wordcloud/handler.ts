@@ -7,8 +7,7 @@ import { ValidationError } from "../../errors/index.js";
 import { Process, ProcessAction } from "../../models/process.js";
 import { emitEvent } from "../../events/eventEmitter.js";
 import { ProcessHandler } from "../../processes/types.js";
-import { forHub } from "../../db/forHub.js";
-import { currentHubId } from "../../config/hubContext.js";
+import { readProcessState, writeProcessState } from "../../services/processRows.js";
 import {
   createWordcloudState,
   activateWordcloud,
@@ -39,9 +38,6 @@ function syncStatus(process: Process, state: WordcloudProcessState): void {
   process.status = state.status;
 }
 
-function db() {
-  return forHub(currentHubId());
-}
 
 // What this type is: its manifest, ./manifest.ts.
 
@@ -61,11 +57,8 @@ const wordcloudProcess: ProcessHandler = {
    * copy this handler was handed.
    */
   async onArchive(process: Process): Promise<void> {
-    const hubDb = db();
-    const data = await hubDb
-      .from("processes").select<{ state: Record<string, unknown> }>("state").eq("id", process.id).maybeSingle();
-    const state = { ...((data?.state as Record<string, unknown>) ?? {}), status: "archived" };
-    await hubDb.from("processes").update({ state }).eq("id", process.id);
+    const state = { ...((await readProcessState(process.id)) ?? {}), status: "archived" };
+    await writeProcessState(process.id, state);
     process.state = state;
   },
 
@@ -75,11 +68,8 @@ const wordcloudProcess: ProcessHandler = {
   ): Promise<void> {
     // The word cloud's status IS a ProcessStatus, so previousStatus is
     // directly usable — no stash needed, unlike proposals/projects.
-    const hubDb = db();
-    const data = await hubDb
-      .from("processes").select<{ state: Record<string, unknown> }>("state").eq("id", process.id).maybeSingle();
-    const state = { ...((data?.state as Record<string, unknown>) ?? {}), status: previousStatus };
-    await hubDb.from("processes").update({ state }).eq("id", process.id);
+    const state = { ...((await readProcessState(process.id)) ?? {}), status: previousStatus };
+    await writeProcessState(process.id, state);
     process.state = state;
   },
 
@@ -169,7 +159,7 @@ const wordcloudProcess: ProcessHandler = {
       description: str(model.description),
     };
     try {
-      meta.totalVotes = await db().from("wordcloud_submissions").count().eq("process_id", processId);
+      meta.totalVotes = await getSubmissionCount(processId);
     } catch {
       // swallowed — see above.
     }
@@ -180,7 +170,7 @@ const wordcloudProcess: ProcessHandler = {
   // submissions the cloud has taken — a count and nothing else, while every
   // submission itself stays restricted on the wire.
   async participationCount(process: Process): Promise<number | null> {
-    return db().from("wordcloud_submissions").count().eq("process_id", process.id);
+    return getSubmissionCount(process.id);
   },
 };
 
