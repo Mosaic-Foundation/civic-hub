@@ -1,7 +1,7 @@
 import { ConflictError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
-import { forHub, HubDbError } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
+import { HubDbError } from "../db/forHub.js";
+import { upsertWaitlistSignup } from "../services/waitlist.js";
 import { notifyAdminsOfWaitlistSignup } from "../services/waitlistNotify.js";
 import { isPluginEnabledSync } from "../services/hubSettings.js";
 
@@ -52,12 +52,7 @@ export const handleJoinWaitlist = route(async (req, res) => {
   try {
     // On this hub's waitlist only. The conflict target names hub_id, so a
     // second signup updates this hub's row and never another hub's.
-    await forHub(currentHubId())
-      .from("waitlist")
-      .upsert(
-        { email, name, notes, wants_test_user: wantsTestUser, created_at: createdAt },
-        { onConflict: "hub_id,email" },
-      );
+    await upsertWaitlistSignup({ email, name, notes, wants_test_user: wantsTestUser, created_at: createdAt });
   } catch (err) {
     // 23505 here is a global waitlist primary key (email), which only a
     // database without the post-cutover cleanup (20260926005000) has; since

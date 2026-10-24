@@ -4,8 +4,12 @@ import { AiLimitError, admitAiCall } from "../services/aiBudget.js";
 import { getActor, getAuthUser } from "../middleware/auth.js";
 import { can } from "../authz/canActor.js";
 import { getPolisAdapter } from "../processes/deliberationBoot.js";
-import { forHub } from "../db/forHub.js";
-import { currentHubId } from "../config/hubContext.js";
+import {
+  findExistingSubmission,
+  getVotedStatementIds,
+  recordLocalVoteTracking,
+  recordSubmission,
+} from "../services/deliberationVotes.js";
 import * as processService from "../services/processService.js";
 import type { PolisDeliberationState } from "../shared/polis_deliberation/types.js";
 import type { VoteDirection } from "../shared/polis_deliberation/adapter/types.js";
@@ -22,63 +26,6 @@ import { checkTextAgainstCoC, getHubConfig } from "../modules/civic.assistant/in
 import { assertPassesWordlist } from "../shared/wordlist/index.js";
 import { personFallbackName } from "../services/creatorDisplay.js";
 
-function db() {
-  return forHub(currentHubId());
-}
-
-/**
- * Record a local vote so we can distinguish new participants from users who
- * have voted on everything (Polis returns null for both). Best-effort: a
- * failure here must not fail the vote itself.
- */
-async function recordLocalVoteTracking(
-  processId: string,
-  userId: string,
-  statementId: number,
-): Promise<void> {
-  await db()
-    .from("deliberation_votes")
-    .upsert(
-      { process_id: processId, user_id: userId, statement_id: statementId },
-      { onConflict: "hub_id,process_id,user_id,statement_id" },
-    );
-}
-
-/** Whether this user has already submitted a statement in this conversation. */
-async function findExistingSubmission(
-  processId: string,
-  userId: string,
-): Promise<{ user_id: string } | null> {
-  return db()
-    .from("deliberation_submissions")
-    .select<{ user_id: string }>("user_id")
-    .eq("process_id", processId)
-    .eq("user_id", userId)
-    .maybeSingle();
-}
-
-/** Record that this user has submitted a statement in this conversation. */
-async function recordSubmission(processId: string, userId: string): Promise<void> {
-  await db()
-    .from("deliberation_submissions")
-    .upsert(
-      { process_id: processId, user_id: userId },
-      { onConflict: "hub_id,process_id,user_id" },
-    );
-}
-
-/** The statement ids this user has already voted on, in this conversation. */
-async function getVotedStatementIds(
-  processId: string,
-  userId: string,
-): Promise<Set<number>> {
-  const votes = await db()
-    .from("deliberation_votes")
-    .select<{ statement_id: number }>("statement_id")
-    .eq("process_id", processId)
-    .eq("user_id", userId);
-  return new Set(votes.map((v) => v.statement_id));
-}
 
 async function getConversationId(processId: string): Promise<string> {
   const process = await processService.getProcess(processId);

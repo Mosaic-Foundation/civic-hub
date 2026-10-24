@@ -32,13 +32,10 @@ import {
   type DeliberationSeedScenario,
 } from "../debug/seedData.js";
 import { localizeScenario } from "../debug/localizeScenario.js";
-import { forHub } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { seedIdForHub } from "../debug/autoSeed.js";
-
-function db() {
-  return forHub(currentHubId());
-}
+import { countReviewTurns } from "../services/devSeedChecks.js";
+import { insertProcessRow } from "../services/processRows.js";
 
 // Production Supabase hostnames that MUST NEVER be seeded against.
 // Add a new entry whenever a new production project is provisioned.
@@ -72,7 +69,7 @@ const MANUAL_WIPE_HINT =
 async function reseedBlocker(): Promise<string | null> {
   let count: number;
   try {
-    count = await db().from("review_turns").count();
+    count = await countReviewTurns();
   } catch (err) {
     console.error("[seed] could not inspect review_turns:", err instanceof Error ? err.message : err);
     return "Could not check whether the database can be reseeded. Nothing was deleted.";
@@ -149,7 +146,7 @@ async function seedDeliberation(
   };
 
   // Stamped with the hub being seeded (processes are read per hub).
-  await db().from("processes").insert(row);
+  await insertProcessRow(row);
 
   // Emit a creation event so it shows in the feed
   await emitEvent({

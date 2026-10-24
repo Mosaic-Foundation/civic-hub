@@ -20,13 +20,7 @@ import {
   markReviewsSeen,
 } from "../modules/civic.review/index.js";
 import { processDetailPath } from "../processes/registry.js";
-import { forHub } from "../db/forHub.js";
-import { inChunks } from "../db/inChunks.js";
-import { currentHubId } from "../config/hubContext.js";
-
-function db() {
-  return forHub(currentHubId());
-}
+import { processTypesAndTitles, readProcessRow } from "../services/processRows.js";
 
 /** The process row backing a review (type/title/description only), for list views. */
 /**
@@ -39,9 +33,7 @@ async function withProcessSummaries<R extends { process_id: string }>(
   reviews: R[],
 ): Promise<Array<R & { process_type: string | null; process_title: string | null }>> {
   const ids = [...new Set(reviews.map((r) => r.process_id))];
-  const rows = await inChunks(ids, (chunk) =>
-    db().from("processes").select<{ id: string; type: string; title: string }>("id, type, title").in("id", chunk),
-  );
+  const rows = await processTypesAndTitles(ids);
   const byId = new Map(rows.map((p) => [p.id, p]));
   return reviews.map((review) => ({
     ...review,
@@ -52,7 +44,7 @@ async function withProcessSummaries<R extends { process_id: string }>(
 
 /** The full process row backing a review, for detail views. */
 async function getProcessRow(processId: string): Promise<Record<string, unknown>> {
-  return db().from("processes").select("*").eq("id", processId).single();
+  return readProcessRow(processId);
 }
 
 // --- Notification indicator ---

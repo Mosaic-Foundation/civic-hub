@@ -242,10 +242,7 @@ const MODULES_NOT_YET_ON_STORES = [
 const PROCESS_TABLE_OWNERS = ["src/services/processService.ts", "src/services/processRows.ts", "src/db/", "src/control/hubBundle/"];
 const PROCESS_TABLE_NOT_YET = [
   "src/control/dashboard/attention.ts",
-  "src/controllers/briefController.ts",
-  "src/controllers/debugController.ts",
   "src/controllers/inputController.ts",
-  "src/controllers/reviewController.ts",
   "src/debug/autoSeed.ts",
   "src/modules/civic.projects/handler.ts",
   "src/modules/civic.proposals/handler.ts",
@@ -264,12 +261,7 @@ const PROCESS_TABLE_NOT_YET = [
   "src/services/sampleSeed.ts",
 ];
 const CONTROLLERS_NOT_YET_ON_SERVICES = [
-  "src/controllers/briefController.ts",
-  "src/controllers/debugController.ts",
-  "src/controllers/deliberationController.ts",
   "src/controllers/inputController.ts",
-  "src/controllers/reviewController.ts",
-  "src/controllers/waitlistController.ts",
 ];
 const QUERY_NAMES = new Set(["forHub", "readAll", "inChunks", "getDb", "getHubTokenDb"]);
 
