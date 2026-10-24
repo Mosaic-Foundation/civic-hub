@@ -349,9 +349,10 @@ export async function resolveHub(
   // Load the hub's settings once, here, and carry them with the hub for the
   // rest of the request. The row just read carries the settings version, so a
   // cached copy older than the last save is reloaded now (20261018000000).
-  // Loading them per read would put a round trip inside
-  // isAdminEmail(), which runs on paths served to every visitor; loading them
-  // here is what lets those readers stay synchronous.
+  // Loading them per read would put a round trip inside the synchronous
+  // readers on paths served to every visitor; loading them here is what lets
+  // those readers stay synchronous. (The admin check no longer reads this
+  // snapshot: it reads account-keyed grants through src/authz/, hub_roles.)
   let settings: Awaited<ReturnType<typeof fetchHubSettings>>;
   try {
     settings = await fetchHubSettings(hub.id, hub.settings_version);

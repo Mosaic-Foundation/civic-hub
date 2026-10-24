@@ -24,7 +24,8 @@ import { ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import { buildFeedProcessMeta } from "../services/feedMeta.js";
 import { isProcessHistoryServable } from "../services/processService.js";
-import { isAdminEmail, resolveCallerUser } from "../middleware/auth.js";
+import { resolveCaller } from "../middleware/auth.js";
+import { can } from "../authz/canActor.js";
 import { officialActorIds, redactEvent } from "../events/publicRedaction.js";
 import {
   INVALID_CURSOR,
@@ -65,8 +66,8 @@ export const handleGetFeed = route(async (req, res) => {
 
   // Restricted events are admin-only. Default to public view; only
   // include restricted events when the caller authenticates as admin.
-  const caller = await resolveCallerUser(req);
-  const isAdmin = !!caller && isAdminEmail(caller.email);
+  const { user: caller, actor } = await resolveCaller(req);
+  const isAdmin = await can(actor, "hub.see_as_admin");
 
   // A lookup of one process serves nothing while its page would not:
   // archived, pending review, or a switched-off plugin.

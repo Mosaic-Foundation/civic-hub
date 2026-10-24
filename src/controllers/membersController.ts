@@ -9,8 +9,8 @@
 
 import { NotFoundError } from "../errors/index.js";
 import { route } from "../http/route.js";
-import { getAuthUser, isAdminEmail, resolveCallerIsAdmin } from "../middleware/auth.js";
-import type { SessionAssurance } from "../modules/civic.auth/models.js";
+import { getActor, getAuthUser, resolveCallerIsAdmin } from "../middleware/auth.js";
+import { can } from "../authz/canActor.js";
 import { listMembers, listMembersForAdmin, memberSummary, memberVisibility } from "../services/members.js";
 import { cleanMessage, parseAddresses, sendMemberInvites } from "../services/hubInvites.js";
 
@@ -32,7 +32,7 @@ export const handleListMembers = route(async (req, res) => {
   const user = getAuthUser(res);
   // Before the threshold the page is not there for residents, unless the
   // hub shows it anyway (page_before_threshold); an admin always sees it.
-  if (!(await memberVisibility()).pageShown && !isAdminEmail(user.email)) throw new NotFoundError("Not found");
+  if (!(await memberVisibility()).pageShown && !(await can(getActor(res), "hub.see_as_admin"))) throw new NotFoundError("Not found");
   const offset = Number(req.query.offset ?? 0);
   res.json({
     ...(await listMembers(Number.isFinite(offset) ? offset : 0)),
@@ -46,9 +46,8 @@ export const handleSendInvites = route(async (req, res) => {
   const addresses = parseAddresses(body.emails);
   const message = cleanMessage(body.message);
   // An admin's larger limit and allow-list rights need a code-proved session,
-  // as every admin power does (requireAdmin).
-  const isAdmin =
-    isAdminEmail(user.email) && (res.locals.authAssurance as SessionAssurance | undefined) === "code";
+  // as every admin power does (requireAdmin); the seam's admin answer asks both.
+  const isAdmin = await can(getActor(res), "hub.see_as_admin");
   res.json(
     await sendMemberInvites({ id: user.id, email: user.email, full_name: user.full_name, isAdmin }, addresses, message),
   );

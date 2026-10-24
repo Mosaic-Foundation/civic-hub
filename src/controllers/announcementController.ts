@@ -32,15 +32,15 @@ import {
 } from "../services/processService.js";
 import {
   getAuthUser,
-  isAdminEmail,
   resolveCallerId,
+  resolveCallerIsAdmin,
   resolveCallerUser,
 } from "../middleware/auth.js";
 import {
   enrichCreator,
   PUBLIC_ADMIN_NAME,
 } from "../services/creatorDisplay.js";
-import { getUserFromToken, getUser } from "../modules/civic.auth/index.js";
+import { getUser } from "../modules/civic.auth/index.js";
 import { extractUrls } from "../modules/civic.link_preview/index.js";
 import { warmPreviewsInBackground } from "../services/linkPreviewCache.js";
 
@@ -298,17 +298,7 @@ export const handleUpdateAnnouncement = route(async (req, res) => {
  * error / missing token — fail-closed.
  */
 async function callerIsAdmin(req: Request): Promise<boolean> {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith("Bearer ")) return false;
-  const token = auth.slice(7);
-  if (!token) return false;
-  try {
-    const user = await getUserFromToken(token);
-    if (!user) return false;
-    return isAdminEmail(user.email);
-  } catch {
-    return false;
-  }
+  return resolveCallerIsAdmin(req);
 }
 
 export const handleGetAnnouncement = route(async (req, res) => {

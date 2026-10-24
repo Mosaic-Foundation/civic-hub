@@ -49,6 +49,7 @@ import { lookupOfficialByEmail } from "../../services/officials.js";
 import { currentHubId, currentHubIdOrNull } from "../../config/hubContext.js";
 import type { User, PendingVerification, Session, SessionAssurance } from "./models.js";
 import { readAll } from "../../db/readAll.js";
+import { invalidateHubRoles } from "../../db/hubRolesStore.js";
 
 export type { User, PendingVerification, Session, SessionAssurance } from "./models.js";
 
@@ -560,6 +561,9 @@ async function findOrCreateVerifiedUser(normalizedEmail: string, demoOnly = fals
 
     if (inserted) {
       user = rowToUser(inserted);
+      // A new account binds any grant pending on its address (hub_roles, by
+      // trigger): this request's cached roles are behind it now.
+      invalidateHubRoles(currentHubIdOrNull() ?? undefined);
       console.log(`[auth] New user created: ${user.id} (${normalizedEmail})`);
     } else {
       const refetch = await hubDb

@@ -1,69 +1,67 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-// resolveAuthorship decides two independent things — "can this person post
-// an announcement" and "what shows next to their name". Its predecessor
+// authorshipOf decides two independent things — "can this person post an
+// announcement" and "what shows next to their name". Its predecessor
 // short-circuited on admin, so a hub admin who also sat on the Board could
-// never show their office. These tests pin the split open.
+// never show their office. These tests pin the split open. Since
+// Architecture 4 (ADR-011) both halves are asked of the ACTOR: the admin role
+// is a grant on the account (hub_roles), the legacy author list is an
+// announcement_author grant, and the managed office is looked up by account.
 
 const mocks = vi.hoisted(() => ({
-  lookupOfficialByEmail: vi.fn(),
-  lookupAuthor: vi.fn(),
+  lookupOfficialBySubject: vi.fn(),
   areOfficialsMigrated: vi.fn(),
 }));
 
 vi.mock("../../src/services/officials.js", () => ({
-  lookupOfficialByEmail: mocks.lookupOfficialByEmail,
+  lookupOfficialBySubject: mocks.lookupOfficialBySubject,
 }));
 
-// Only the two lookups are stubbed. The admin/board rosters come from the
-// real readers, which fall back to CIVIC_ADMIN_EMAILS / CIVIC_BOARD_EMAILS
-// when no hub is in scope — which is the case here, since these functions are
-// called directly rather than through a request. Stubbing them too would mean
-// the test no longer exercises the env fallback that every cron and script
-// depends on.
 vi.mock("../../src/services/hubSettings.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/services/hubSettings.js")>();
-  return {
-    ...actual,
-    lookupAuthor: mocks.lookupAuthor,
-    areOfficialsMigrated: mocks.areOfficialsMigrated,
-  };
+  return { ...actual, areOfficialsMigrated: mocks.areOfficialsMigrated };
 });
 
-const { resolveAuthorship, resolveOfficial, isAdminEmail } = await import(
-  "../../src/middleware/auth.js"
-);
+const { authorshipOf, officialOf } = await import("../../src/authz/canActor.js");
+const { SIGNED_OUT } = await import("../../src/authz/actor.js");
+type AccountActor = import("../../src/authz/actor.js").AccountActor;
+type HubRole = import("../../src/authz/actor.js").HubRole;
 
-const ORIGINAL_ADMINS = process.env.CIVIC_ADMIN_EMAILS;
+function account(roles: Partial<Record<HubRole, { label?: string; name?: string }>> = {}): AccountActor {
+  return {
+    kind: "account",
+    subject: "user_x",
+    assurance: "code",
+    roles: new Map(Object.entries(roles) as Array<[HubRole, { label?: string; name?: string }]>),
+    resident: true,
+    named: true,
+  };
+}
+
+const ADMIN = () => account({ admin: {} });
 
 beforeEach(() => {
-  process.env.CIVIC_ADMIN_EMAILS = "boss@floyd.gov";
-  mocks.lookupOfficialByEmail.mockResolvedValue(null);
-  mocks.lookupAuthor.mockResolvedValue(null);
+  mocks.lookupOfficialBySubject.mockResolvedValue(null);
   mocks.areOfficialsMigrated.mockResolvedValue(true);
 });
 
 afterEach(() => {
   vi.clearAllMocks();
-  if (ORIGINAL_ADMINS === undefined) delete process.env.CIVIC_ADMIN_EMAILS;
-  else process.env.CIVIC_ADMIN_EMAILS = ORIGINAL_ADMINS;
 });
 
 const BOARD = { type: "board_of_supervisors" as const, title: "Board of Supervisors" };
 
-describe("resolveAuthorship — the admin × official matrix", () => {
+describe("authorshipOf — the admin × official matrix", () => {
   it("a resident has no posting privilege", async () => {
-    expect(await resolveAuthorship("nobody@example.com")).toBeNull();
+    expect(await authorshipOf(account())).toBeNull();
   });
 
-  it("no email is not an author", async () => {
-    expect(await resolveAuthorship(null)).toBeNull();
-    expect(await resolveAuthorship(undefined)).toBeNull();
-    expect(await resolveAuthorship("")).toBeNull();
+  it("nobody signed in is not an author", async () => {
+    expect(await authorshipOf(SIGNED_OUT)).toBeNull();
   });
 
   it("a plain admin posts as Admin with no office", async () => {
-    const a = await resolveAuthorship("boss@floyd.gov");
+    const a = await authorshipOf(ADMIN());
     expect(a).not.toBeNull();
     expect(a!.isAdmin).toBe(true);
     expect(a!.official).toBeNull();
@@ -72,8 +70,8 @@ describe("resolveAuthorship — the admin × official matrix", () => {
   });
 
   it("an official who is not an admin posts under their office", async () => {
-    mocks.lookupOfficialByEmail.mockResolvedValue(BOARD);
-    const a = await resolveAuthorship("sup@floyd.gov");
+    mocks.lookupOfficialBySubject.mockResolvedValue(BOARD);
+    const a = await authorshipOf(account());
     expect(a!.isAdmin).toBe(false);
     expect(a!.official).toEqual(BOARD);
     expect(a!.role).toBe("author");
@@ -82,13 +80,13 @@ describe("resolveAuthorship — the admin × official matrix", () => {
 
   it("designating someone an official grants announcement posting", async () => {
     // Identity and the posting capability are deliberately fused for now.
-    mocks.lookupOfficialByEmail.mockResolvedValue(BOARD);
-    expect(await resolveAuthorship("sup@floyd.gov")).not.toBeNull();
+    mocks.lookupOfficialBySubject.mockResolvedValue(BOARD);
+    expect(await authorshipOf(account())).not.toBeNull();
   });
 
   it("an admin who is ALSO an official keeps BOTH halves", async () => {
-    mocks.lookupOfficialByEmail.mockResolvedValue(BOARD);
-    const a = await resolveAuthorship("boss@floyd.gov");
+    mocks.lookupOfficialBySubject.mockResolvedValue(BOARD);
+    const a = await authorshipOf(ADMIN());
     expect(a!.isAdmin).toBe(true);
     expect(a!.official).toEqual(BOARD);
   });
@@ -96,8 +94,8 @@ describe("resolveAuthorship — the admin × official matrix", () => {
   it("the office wins the single-valued announcement label", async () => {
     // author_role drives the feed pill and the page eyebrow, which hold
     // exactly one string. A supervisor's post reads as the Board's.
-    mocks.lookupOfficialByEmail.mockResolvedValue(BOARD);
-    const a = await resolveAuthorship("boss@floyd.gov");
+    mocks.lookupOfficialBySubject.mockResolvedValue(BOARD);
+    const a = await authorshipOf(ADMIN());
     expect(a!.label).toBe("Board of Supervisors");
     expect(a!.label).not.toBe("Admin");
   });
@@ -106,34 +104,26 @@ describe("resolveAuthorship — the admin × official matrix", () => {
     // role gates the announcement edit-ownership check: "admin" may edit
     // anyone's post. Losing that on someone who gained an office would
     // quietly demote them.
-    mocks.lookupOfficialByEmail.mockResolvedValue(BOARD);
-    expect((await resolveAuthorship("boss@floyd.gov"))!.role).toBe("admin");
+    mocks.lookupOfficialBySubject.mockResolvedValue(BOARD);
+    expect((await authorshipOf(ADMIN()))!.role).toBe("admin");
   });
 
-  it("matches the admin allowlist case-insensitively", async () => {
-    expect(isAdminEmail("BOSS@FLOYD.GOV")).toBe(true);
-    expect((await resolveAuthorship("BOSS@FLOYD.GOV"))!.isAdmin).toBe(true);
+  it("asks for the office by account, never by address", async () => {
+    await authorshipOf(account());
+    expect(mocks.lookupOfficialBySubject).toHaveBeenCalledWith("user_x");
   });
 });
 
-describe("resolveOfficial — the fallback chain", () => {
-  it("prefers the managed role on the user row", async () => {
-    mocks.lookupOfficialByEmail.mockResolvedValue(BOARD);
-    mocks.lookupAuthor.mockResolvedValue({ email: "x", label: "Stale Label" });
-    // 2026-08-28 perf pass: the tiers are now QUERIED in parallel (one
-    // roundtrip instead of three stacked), so the legacy lookup does
-    // fire — the contract is that its answer LOSES to the managed row,
-    // not that it is never asked.
-    expect(await resolveOfficial("sup@floyd.gov")).toEqual(BOARD);
+describe("officialOf — the fallback chain", () => {
+  it("prefers the managed role on the account", async () => {
+    mocks.lookupOfficialBySubject.mockResolvedValue(BOARD);
+    mocks.areOfficialsMigrated.mockResolvedValue(false);
+    expect(await officialOf(account({ announcement_author: { label: "Stale Label" } }))).toEqual(BOARD);
   });
 
-  it("falls back to the legacy list before migration, inferring the type", async () => {
+  it("falls back to the legacy list's grant before migration, inferring the type", async () => {
     mocks.areOfficialsMigrated.mockResolvedValue(false);
-    mocks.lookupAuthor.mockResolvedValue({
-      email: "sup@floyd.gov",
-      label: "Board member",
-    });
-    expect(await resolveOfficial("sup@floyd.gov")).toEqual({
+    expect(await officialOf(account({ announcement_author: { label: "Board member" } }))).toEqual({
       type: "board_of_supervisors",
       title: "Board member",
     });
@@ -141,11 +131,7 @@ describe("resolveOfficial — the fallback chain", () => {
 
   it("keeps a free-form legacy label verbatim as the title", async () => {
     mocks.areOfficialsMigrated.mockResolvedValue(false);
-    mocks.lookupAuthor.mockResolvedValue({
-      email: "c@floyd.gov",
-      label: "Planning Committee",
-    });
-    expect(await resolveOfficial("c@floyd.gov")).toEqual({
+    expect(await officialOf(account({ announcement_author: { label: "Planning Committee" } }))).toEqual({
       type: "planning_commission",
       title: "Planning Committee",
     });
@@ -155,18 +141,20 @@ describe("resolveOfficial — the fallback chain", () => {
     // Without the latch, removing someone in the admin panel would be
     // undone on the next request by the stale list still naming them.
     mocks.areOfficialsMigrated.mockResolvedValue(true);
-    mocks.lookupAuthor.mockResolvedValue({
-      email: "gone@floyd.gov",
-      label: "Board member",
-    });
-    // The lookup itself fires (parallel tiers, 2026-08-28) — what the
-    // latch guarantees is that its answer is DISCARDED once migrated.
-    expect(await resolveOfficial("gone@floyd.gov")).toBeNull();
+    expect(await officialOf(account({ announcement_author: { label: "Board member" } }))).toBeNull();
+  });
+
+  it("a legacy author's curated name rides along, but not for an admin", async () => {
+    mocks.areOfficialsMigrated.mockResolvedValue(false);
+    const author = await authorshipOf(account({ announcement_author: { label: "Clerk", name: "Pat" } }));
+    expect(author!.name).toBe("Pat");
+    const both = await authorshipOf(account({ admin: {}, announcement_author: { label: "Clerk", name: "Pat" } }));
+    expect(both!.name).toBeNull();
   });
 
   it("a demoted admin+official drops to plain Admin, not to nothing", async () => {
-    mocks.lookupOfficialByEmail.mockResolvedValue(null);
-    const a = await resolveAuthorship("boss@floyd.gov");
+    mocks.lookupOfficialBySubject.mockResolvedValue(null);
+    const a = await authorshipOf(ADMIN());
     expect(a!.isAdmin).toBe(true);
     expect(a!.official).toBeNull();
     expect(a!.label).toBe("Admin");

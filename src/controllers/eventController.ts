@@ -27,8 +27,8 @@ import {
   activityIdOf,
   activityTypeIndex,
 } from "../events/activitySerializer.js";
-import { getUserFromToken } from "../modules/civic.auth/index.js";
-import { isAdminEmail, resolveCallerUser } from "../middleware/auth.js";
+import { resolveCaller, resolveCallerIsAdmin } from "../middleware/auth.js";
+import { can } from "../authz/canActor.js";
 import { getNonPublicProcessIds, isProcessHistoryServable, processRemovalRecord } from "../services/processService.js";
 import { REMOVAL_EVENT_TYPES } from "../processes/descriptor.js";
 import {
@@ -83,17 +83,7 @@ const MAX_LIMIT = 200;
  * public view.
  */
 export async function callerIsAdmin(req: Request): Promise<boolean> {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith("Bearer ")) return false;
-  const token = auth.slice(7);
-  if (!token) return false;
-  try {
-    const user = await getUserFromToken(token);
-    if (!user) return false;
-    return isAdminEmail(user.email);
-  } catch {
-    return false;
-  }
+  return resolveCallerIsAdmin(req);
 }
 
 /**
@@ -105,8 +95,8 @@ export async function callerIsAdmin(req: Request): Promise<boolean> {
 async function callerView(
   req: Request,
 ): Promise<{ isAdmin: boolean; audience: WireAudience }> {
-  const user = await resolveCallerUser(req);
-  const isAdmin = !!user && isAdminEmail(user.email);
+  const { user, actor } = await resolveCaller(req);
+  const isAdmin = await can(actor, "hub.see_as_admin");
   return {
     isAdmin,
     audience: isAdmin ? "admin" : user ? "member" : "public",

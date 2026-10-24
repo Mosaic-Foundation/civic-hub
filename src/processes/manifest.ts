@@ -169,6 +169,19 @@ export interface ProcessManifest {
    * serving layer honours it only when the manifest allows it here.
    */
   disclosureOverridable?: true;
+  /**
+   * Who may take part, when it is stricter than the hub's own rule
+   * (Architecture 4, ADR-011; process spec §12.1 `eligibility_requirements`).
+   * Absent — every type today — a process inherits the hub's rule: residency
+   * affirmed on the hub, and a real name on file (src/authz/eligibility.ts).
+   * Present, each entry names a credential type the participant must hold, in
+   * the identity spec's §8.1 conjunction (every entry; an entry that is itself
+   * a list is satisfied by any one of its members); the descriptor serves the
+   * list, and the seam refuses a participant who does not hold them. No
+   * credential can be presented yet, so a type that declares one admits
+   * nobody but admins until the identity layer can verify credentials.
+   */
+  eligibility?: { requirements: readonly (string | readonly string[])[] };
 }
 
 /**
@@ -326,6 +339,20 @@ export function checkManifests(manifests: readonly unknown[], host: ManifestHost
       throw new ManifestError(
         `${where(m)}: disclosure "${String(m.disclosure)}" must be one of ${DISCLOSURE_POLICIES.join(", ")}`,
       );
+    }
+
+    if (m.eligibility !== undefined) {
+      const reqs = (m.eligibility as { requirements?: unknown }).requirements;
+      const isName = (v: unknown) => typeof v === "string" && v.trim() !== "";
+      if (
+        !Array.isArray(reqs) ||
+        reqs.length === 0 ||
+        reqs.some((r) => !(isName(r) || (Array.isArray(r) && r.length > 0 && r.every(isName))))
+      ) {
+        throw new ManifestError(
+          `${where(m)}: eligibility.requirements must be a non-empty list of credential types (or lists of alternatives)`,
+        );
+      }
     }
 
     if (m.publication) {

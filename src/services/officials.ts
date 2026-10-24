@@ -26,6 +26,7 @@ import { ConflictError } from "../errors/index.js";
 import { forHub, HubDbError, type HubDb } from "../db/forHub.js";
 import { generateId } from "../utils/id.js";
 import { currentHubId } from "../config/hubContext.js";
+import { invalidateHubRoles } from "../db/hubRolesStore.js";
 import {
   areOfficialsMigrated,
   getAnnouncementAuthors,
@@ -158,6 +159,26 @@ export async function lookupOfficialByEmail(
 }
 
 /**
+ * The managed official role of one account, by its id (ADR-011: authorization
+ * asks by subject). Same degradation as lookupOfficialByEmail, which stays
+ * for sign-in admission, where an address is all there is.
+ */
+export async function lookupOfficialBySubject(
+  subject: string | undefined | null,
+): Promise<OfficialIdentity | null> {
+  if (!subject) return null;
+  let row: { official_type?: unknown; official_title?: unknown } | null;
+  try {
+    row = await db().from("users").select("*").eq("id", subject).maybeSingle();
+  } catch (err) {
+    console.error(`[officials] lookup failed, treating as resident: ${(err as Error).message}`);
+    return null;
+  }
+  if (!row) return null;
+  return toOfficialIdentity(row.official_type, row.official_title);
+}
+
+/**
  * Replace the full officials roster.
  *
  * Set semantics, mirroring how the admin panel presents it: accounts in
@@ -247,6 +268,8 @@ async function findOrCreateUserByEmail(email: string): Promise<string> {
   let created: { id: string };
   try {
     created = await hubDb.from("users").insert(row).select<{ id: string }>("id").single();
+    // The shell binds any grant pending on its address (hub_roles, by trigger).
+    invalidateHubRoles(currentHubId());
   } catch (err) {
     // 23505 = unique_violation — a concurrent sign-in created it first.
     if (err instanceof HubDbError && err.code === "23505") {

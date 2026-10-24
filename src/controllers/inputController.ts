@@ -15,9 +15,9 @@ import { getProcessHandler } from "../processes/registry.js";
 import { forHub } from "../db/forHub.js";
 import {
   getAuthUser,
-  isAdminEmail,
-  resolveCallerUser,
+  resolveCaller,
 } from "../middleware/auth.js";
+import { can } from "../authz/canActor.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { getCommentIdentityMode } from "../services/hubSettings.js";
 import {
@@ -206,8 +206,8 @@ export const handleGetInputs = route(async (req, res) => {
   // PUBLIC, whose resident bylines are anonymized to "Resident N" —
   // numbered per-process from the same map the page's author byline
   // uses, so the thread and the byline agree.
-  const caller = await resolveCallerUser(req);
-  const isAdmin = !!caller && isAdminEmail(caller.email);
+  const { user: caller, actor } = await resolveCaller(req);
+  const isAdmin = await can(actor, "hub.see_as_admin");
   const anonNumbers = caller
     ? undefined
     : await buildProcessAnonNumbers(processId);

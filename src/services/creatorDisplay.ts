@@ -10,7 +10,9 @@
 // email-prefix. Unknown / missing / deleted ids resolve to "Resident".
 //
 // Admin rule:
-//   is_admin = the user's email is in CIVIC_ADMIN_EMAILS (via isAdminEmail).
+//   is_admin = the account holds the hub's admin role. The batch resolver
+//   reads that once for the whole set (subjectsHolding, src/authz/actor.ts:
+//   the hub_roles grants, keyed by account), rowToDisplay takes it as given.
 //
 // Official rule:
 //   official = users.official_type + users.official_title, when both are
@@ -45,7 +47,7 @@
 
 import { forHub, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
-import { isAdminEmail } from "../middleware/auth.js";
+import { subjectsHolding } from "../authz/actor.js";
 import { getSettingSync } from "./hubSettings.js";
 import { KEYS } from "../models/hubSettings.js";
 import { hubKindOf, personLabel } from "../shared/hubKind.js";
@@ -154,11 +156,11 @@ interface UserRow {
  * older schema resolves to `official: null` — no title — rather than
  * erroring out the content the byline annotates.
  */
-export function rowToDisplay(row: UserRow): CreatorDisplay {
+export function rowToDisplay(row: UserRow, isAdmin: boolean): CreatorDisplay {
   const name = row.full_name?.trim() || row.display_name?.trim() || personFallbackName();
   return {
     name,
-    is_admin: isAdminEmail(row.email),
+    is_admin: isAdmin,
     official: toOfficialIdentity(row.official_type, row.official_title),
   };
 }
@@ -198,8 +200,15 @@ export async function resolveCreators(
     return map;
   }
 
+  // The Admin badge: a failure to read the grants loses the badge, never the name.
+  let admins: ReadonlySet<string> = new Set();
+  try {
+    admins = await subjectsHolding(rows.map((r) => r.id), "admin");
+  } catch (err) {
+    console.error(`[creatorDisplay] admin grants unreadable, no badges: ${err instanceof Error ? err.message : String(err)}`);
+  }
   for (const row of rows) {
-    map.set(row.id, rowToDisplay(row));
+    map.set(row.id, rowToDisplay(row, admins.has(row.id)));
   }
   return map;
 }

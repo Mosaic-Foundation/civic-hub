@@ -61,6 +61,7 @@ import {
 } from "../processes/spawnBrief.js";
 import { forHub, type HubDb } from "../db/forHub.js";
 import type { ActionCaller } from "../processes/types.js";
+import { callerMayCall } from "../authz/canActor.js";
 import { currentHubId } from "../config/hubContext.js";
 import {
   resolveInitialStatus,
@@ -352,12 +353,13 @@ async function attemptAction(
     throw new Error(`Unsupported process type: ${process.definition.type}`);
   }
 
-  // The descriptor says who may call what. A resident may call only what it
+  // The descriptor says who may call what, and the seam applies it
+  // (src/authz/canActor.ts, callerMayCall): a resident may call only what it
   // opens to residents, or to the creator when they are the creator;
   // everything else is an admin's or the hub's. Checked before the status, so
   // a refused caller learns nothing about where the process is.
   const declared = declaredAction(handler.type, action.type);
-  if (caller === "resident" && !residentMayCall(declared, process, action.actor)) {
+  if (!callerMayCall(caller, declared, process, action.actor)) {
     throw new ActionNotAllowedError(action.type);
   }
   if (!declared) {
@@ -481,13 +483,6 @@ async function attemptAction(
   }
 
   return { process, result };
-}
-
-/** Whether a resident may call an action: the descriptor opens it to residents, or to the creator and they are. */
-function residentMayCall(declared: ActionDescriptor | undefined, process: Process, actor: string): boolean {
-  if (!declared) return false;
-  if (declared.callers.includes("resident")) return true;
-  return declared.callers.includes("creator") && actor !== "" && actor === process.createdBy;
 }
 
 function checkAgainstDescriptor(

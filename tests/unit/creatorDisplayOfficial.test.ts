@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   rowToDisplay,
   redactForAudience,
@@ -9,16 +9,8 @@ import {
 // way. Everything the feed, proposals, projects, and comments show next to
 // a name comes out of this one function.
 
-const ORIGINAL_ADMINS = process.env.CIVIC_ADMIN_EMAILS;
-
-beforeEach(() => {
-  process.env.CIVIC_ADMIN_EMAILS = "boss@floyd.gov";
-});
-
-afterEach(() => {
-  if (ORIGINAL_ADMINS === undefined) delete process.env.CIVIC_ADMIN_EMAILS;
-  else process.env.CIVIC_ADMIN_EMAILS = ORIGINAL_ADMINS;
-});
+// is_admin is given, not derived: the batch resolver reads the admin grants
+// once for the set (subjectsHolding) and passes each row its answer.
 
 function row(over: Record<string, unknown> = {}) {
   return {
@@ -34,17 +26,17 @@ function row(over: Record<string, unknown> = {}) {
 
 describe("rowToDisplay — name resolution is unchanged", () => {
   it("prefers full_name, then display_name, then Resident", () => {
-    expect(rowToDisplay(row()).name).toBe("Dana Reed");
+    expect(rowToDisplay(row(), false).name).toBe("Dana Reed");
     expect(
-      rowToDisplay(row({ full_name: null, display_name: "D. Reed" })).name,
+      rowToDisplay(row({ full_name: null, display_name: "D. Reed" }), false).name,
     ).toBe("D. Reed");
     expect(
-      rowToDisplay(row({ full_name: null, display_name: null })).name,
+      rowToDisplay(row({ full_name: null, display_name: null }), false).name,
     ).toBe("Resident");
   });
 
   it("never falls back to the email", () => {
-    const display = rowToDisplay(row({ full_name: null, display_name: null }));
+    const display = rowToDisplay(row({ full_name: null, display_name: null }), false);
     expect(display.name).not.toContain("@");
     expect(display.name).toBe("Resident");
   });
@@ -52,13 +44,13 @@ describe("rowToDisplay — name resolution is unchanged", () => {
 
 describe("rowToDisplay — official is orthogonal to admin", () => {
   it("a resident is neither", () => {
-    const d = rowToDisplay(row());
+    const d = rowToDisplay(row(), false);
     expect(d.is_admin).toBe(false);
     expect(d.official).toBeNull();
   });
 
   it("an admin with no office has no title", () => {
-    const d = rowToDisplay(row({ email: "boss@floyd.gov" }));
+    const d = rowToDisplay(row({ email: "boss@floyd.gov" }), true);
     expect(d.is_admin).toBe(true);
     expect(d.official).toBeNull();
   });
@@ -69,6 +61,7 @@ describe("rowToDisplay — official is orthogonal to admin", () => {
         official_type: "board_of_supervisors",
         official_title: "Board of Supervisors",
       }),
+      false,
     );
     expect(d.is_admin).toBe(false);
     expect(d.official).toEqual({
@@ -84,13 +77,10 @@ describe("rowToDisplay — official is orthogonal to admin", () => {
         official_type: "board_of_supervisors",
         official_title: "Supervisor, District 3",
       }),
+      true,
     );
     expect(d.is_admin).toBe(true);
     expect(d.official?.title).toBe("Supervisor, District 3");
-  });
-
-  it("matches the admin list case-insensitively", () => {
-    expect(rowToDisplay(row({ email: "BOSS@Floyd.GOV" })).is_admin).toBe(true);
   });
 });
 
@@ -105,20 +95,20 @@ describe("rowToDisplay — schema drift", () => {
       display_name: null,
       email: "dana@example.com",
     } as Parameters<typeof rowToDisplay>[0];
-    expect(() => rowToDisplay(legacy)).not.toThrow();
-    expect(rowToDisplay(legacy).official).toBeNull();
-    expect(rowToDisplay(legacy).name).toBe("Dana Reed");
+    expect(() => rowToDisplay(legacy, false)).not.toThrow();
+    expect(rowToDisplay(legacy, false).official).toBeNull();
+    expect(rowToDisplay(legacy, false).name).toBe("Dana Reed");
   });
 
   it("ignores a half-written office (title without type, type without title)", () => {
     expect(
-      rowToDisplay(row({ official_type: "school_board", official_title: null }))
+      rowToDisplay(row({ official_type: "school_board", official_title: null }), false)
         .official,
     ).toBeNull();
     // A title with no type still renders — the title is the load-bearing
     // half — and takes the default colour.
     expect(
-      rowToDisplay(row({ official_type: null, official_title: "School Board" }))
+      rowToDisplay(row({ official_type: null, official_title: "School Board" }), false)
         .official,
     ).toEqual({ type: "other", title: "School Board" });
   });

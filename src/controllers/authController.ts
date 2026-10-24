@@ -24,9 +24,11 @@ import {
   updateHideAiDraftingHelp,
   deleteAccount,
   getUserFromToken,
+  getSessionFromToken,
   logout,
 } from "../modules/civic.auth/index.js";
-import { resolveAuthorship } from "../middleware/auth.js";
+import { actorFor, SIGNED_OUT } from "../authz/actor.js";
+import { authorshipOf } from "../authz/canActor.js";
 import { clientIp } from "../utils/clientIp.js";
 import { setHiddenFromMembers } from "../services/members.js";
 
@@ -88,7 +90,8 @@ async function answerSignedIn(res: Response, result: { token: string; user: { em
   // Include role + author_label + office alongside the token + user so
   // the UI gets the posting-privilege bit and the byline pill without a
   // follow-up /auth/me call.
-  const authorship = await resolveAuthorship(result.user?.email);
+  const session = await getSessionFromToken(result.token);
+  const authorship = await authorshipOf(session ? await actorFor(session.user, session.assurance) : SIGNED_OUT);
   res.json({
     ...result,
     role: authorship?.role ?? null,
@@ -109,7 +112,8 @@ async function answerSignedIn(res: Response, result: { token: string; user: { em
 export const handleHandoff = route(async (req, res) => {
   const { handoff } = (req.body ?? {}) as { handoff?: unknown };
   const result = await exchangeHandoff(typeof handoff === "string" ? handoff : "");
-  const authorship = await resolveAuthorship(result.user?.email);
+  const session = await getSessionFromToken(result.token);
+  const authorship = await authorshipOf(session ? await actorFor(session.user, session.assurance) : SIGNED_OUT);
   res.json({
     ...result,
     role: authorship?.role ?? null,
@@ -166,17 +170,17 @@ export const handleGetMe = route(async (req, res) => {
     throw new UnauthorizedError("Authentication required");
   }
 
-  const user = await getUserFromToken(token);
-  if (!user) {
+  const session = await getSessionFromToken(token);
+  if (!session) {
     throw new UnauthorizedError("Invalid or expired session");
   }
 
   // Include the derived role + author label so the UI can gate the admin
   // link, the Post Announcement link, and the author-label display
   // without hardcoding anything. null for residents.
-  const authorship = await resolveAuthorship(user.email);
+  const authorship = await authorshipOf(await actorFor(session.user, session.assurance));
   res.json({
-    user,
+    user: session.user,
     role: authorship?.role ?? null,
     author_label: authorship?.label ?? null,
     official_type: authorship?.official?.type ?? null,

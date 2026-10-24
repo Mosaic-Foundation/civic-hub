@@ -3,7 +3,8 @@ import { route } from "../http/route.js";
 import { Request, Response } from "express";
 import { describeSubmission } from "../processes/registry.js";
 import type { SubmissionField } from "../shared/submissionPreview.js";
-import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
+import { getActor, getAuthUser } from "../middleware/auth.js";
+import { can } from "../authz/canActor.js";
 import {
   reopenForRevision,
   approveReview,
@@ -93,7 +94,7 @@ export const handleGetReviewNotifications = route(async (req, res) => {
   const mine = req.query.scope === "mine";
   const count = await countReviewNotifications(
     user.id,
-    !mine && isAdminEmail(user.email),
+    !mine && (await can(getActor(res), "hub.see_as_admin")),
   );
   res.json({ count });
 });
@@ -191,7 +192,7 @@ export const handleGetReview = route(async (req, res) => {
     throw new NotFoundError("Review not found");
   }
 
-  if (review.creator_id !== user.id && !isAdminEmail(user.email)) {
+  if (review.creator_id !== user.id && !(await can(getActor(res), "hub.see_as_admin"))) {
     throw new ForbiddenError("Access denied");
   }
 

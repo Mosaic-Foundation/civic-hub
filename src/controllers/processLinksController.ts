@@ -13,8 +13,8 @@ import { ForbiddenError, NotFoundError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import type { Request } from "express";
 import { emitEvent } from "../events/eventEmitter.js";
-import { getAuthUser, isAdminEmail } from "../middleware/auth.js";
-import { getUserFromToken } from "../modules/civic.auth/index.js";
+import { getActor, getAuthUser, resolveCaller } from "../middleware/auth.js";
+import { can } from "../authz/canActor.js";
 import { defaultJurisdiction } from "../config/hub.js";
 import { processDetailPath, summarizedProcessIdOf } from "../processes/registry.js";
 import type { RenderedLink, RenderedLinks } from "../modules/civic.process_links/index.js";
@@ -58,26 +58,6 @@ async function inheritedFromSource(
   };
 }
 
-/**
- * Resolve the caller on a PUBLIC route, where no auth middleware has run.
- * Returns undefined for anonymous or invalid-token callers rather than
- * throwing — an unreadable token is simply "not signed in" here.
- */
-async function resolveCaller(
-  req: Request,
-): Promise<{ id: string; email: string } | undefined> {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith("Bearer ")) return undefined;
-  const token = auth.slice(7);
-  if (!token) return undefined;
-  try {
-    const user = await getUserFromToken(token);
-    return user ? { id: user.id, email: user.email } : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 /** GET /process/:id/links — public. Returns both directions. */
 export const handleGetLinks = route(async (req, res) => {
   const processId = req.params.id as string;
@@ -87,9 +67,9 @@ export const handleGetLinks = route(async (req, res) => {
   // isAdmin permanently false and quietly strip the add-link affordance
   // from every admin viewing a process they did not create.
   // Anonymous callers resolve to undefined and simply see the public view.
-  const viewer = await resolveCaller(req);
+  const { user: viewer, actor } = await resolveCaller(req);
   const viewerId = viewer?.id;
-  const isAdmin = isAdminEmail(viewer?.email);
+  const isAdmin = await can(actor, "hub.see_as_admin");
 
   // A process whose plugin the hub switched off has no links to show: its
   // page is gone (src/services/pluginGate.ts).
@@ -137,7 +117,7 @@ export const handleGetLinks = route(async (req, res) => {
 export const handleCreateLink = route(async (req, res) => {
   const fromId = req.params.id as string;
   const user = getAuthUser(res);
-  const isAdmin = isAdminEmail(user.email);
+  const isAdmin = await can(getActor(res), "hub.administer");
 
   const source = await getProcessOwner(fromId);
   if (!source || !isProcessTypeEnabled(source.type)) {
@@ -191,7 +171,7 @@ export const handleCreateLink = route(async (req, res) => {
 export const handleDeleteLink = route(async (req, res) => {
   const processId = req.params.id as string;
   const user = getAuthUser(res);
-  const isAdmin = isAdminEmail(user.email);
+  const isAdmin = await can(getActor(res), "hub.administer");
 
   const edge = await getEdgeById(req.params.linkId as string);
   if (!edge) {

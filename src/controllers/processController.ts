@@ -11,10 +11,12 @@ import {
   getProcessState,
 } from "../services/processService.js";
 import {
+  getActor,
   getAuthUser,
-  isAdminEmail,
+  resolveCaller,
   resolveCallerUser,
 } from "../middleware/auth.js";
+import { assertCan, can, canActor } from "../authz/canActor.js";
 import { isPubliclyFetchable } from "../services/processLifecycle.js";
 import { buildProcessAnonNumbers } from "../services/processAnonymity.js";
 import { getDescriptor, isPublished } from "../processes/registry.js";
@@ -63,8 +65,8 @@ export const handleGetProcess = route(async (req, res) => {
   // same redaction as the page and the wire. Anything else: the UI read model.
   const descriptorType = wantsDescriptor(req.headers.accept);
   if (descriptorType) {
-    const user = await resolveCallerUser(req);
-    const audience = user ? (isAdminEmail(user.email) ? "admin" : "member") : "public";
+    const { user, actor } = await resolveCaller(req);
+    const audience = user ? ((await can(actor, "hub.see_as_admin")) ? "admin" : "member") : "public";
     const descriptor = await buildProcessDescriptor(id, { audience, viewerId: user?.id });
     const contentType =
       descriptorType === "ld" ? "application/ld+json; charset=utf-8" : "application/activity+json; charset=utf-8";
@@ -164,12 +166,15 @@ export async function actOnProcess(
   expectedType?: string,
 ): Promise<{ process: Process; result: Record<string, unknown> }> {
   const user = getAuthUser(res);
-  const isAdmin = isAdminEmail(user.email);
+  const actor = getActor(res);
   const target = await getProcess(id);
   if (!target || !isProcessTypeEnabled(target.definition.type)) throw new NotFoundError("Process not found");
   if (expectedType && target.definition.type !== expectedType) throw new NotFoundError("Process not found");
-  if (!isPubliclyFetchable(target.status) && !isAdmin) throw new NotFoundError("Process not found");
-  return executeAction(id, { type, actor: user.id, payload }, isAdmin ? "admin" : "resident");
+  if (!isPubliclyFetchable(target.status) && !(await canActor(actor, "process.see_unpublished", { process: target })).allowed) {
+    throw new NotFoundError("Process not found");
+  }
+  const { caller } = await assertCan(actor, "process.act", { process: target, action: type });
+  return executeAction(id, { type, actor: user.id, payload }, caller!);
 }
 
 // --- Read layer for UI consumption ---

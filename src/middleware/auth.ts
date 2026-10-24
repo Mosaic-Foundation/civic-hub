@@ -1,16 +1,22 @@
-// Auth middleware — enforces identity on action endpoints.
+// Auth middleware: who is asking (the session), and whether they may (the seam).
 //
-// Three guards, ordered from loosest to strictest:
-//   requireAuth      — valid session token (user exists, token not expired)
-//   requireResident  — requireAuth + user.is_resident === true
-//   requireAdmin     — requireAuth + email ∈ the hub's admin roster
+// Five guards, each a question put to the one authorization seam
+// (src/authz/, canActor; ADR-011):
+//   requireAuth                — a valid session token
+//   requireResident            — "hub.participate": the hub's eligibility rule
+//   requireAdmin               — "hub.administer"
+//   requireAnnouncementPoster  — "announcement.post"
+//   requireOfficial            — "office.respond"
 //
-// The authenticated user is placed on `res.locals.authUser`. Controllers
-// read the actor from there, NOT from request bodies. This closes the hole
-// where any caller could POST { actor: "<anyone>" } and act as that user.
+// sessionUser() below is the identity adapter: the one place a request's
+// token becomes a user (res.locals.authUser) and an actor (res.locals.actor).
+// A different sign-in method (a DID, a partner's identity provider) plugs in
+// there and nowhere else. Controllers read the actor from res.locals, NOT from
+// request bodies. This closes the hole where any caller could POST
+// { actor: "<anyone>" } and act as that user.
 
 import { Request, Response } from "express";
-import { ForbiddenError, UnauthorizedError, UnavailableError } from "../errors/index.js";
+import { UnauthorizedError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import {
   getSessionFromToken,
@@ -18,19 +24,8 @@ import {
   type SessionAssurance,
   type User,
 } from "../modules/civic.auth/index.js";
-import {
-  areOfficialsMigrated,
-  getAdminEmailsSync,
-  getBoardEmailsSync,
-  lookupAuthor,
-} from "../services/hubSettings.js";
-import { currentHub, currentHubId, currentHubIdOrNull } from "../config/hubContext.js";
-import { lookupOfficialByEmail } from "../services/officials.js";
-import {
-  type OfficialIdentity,
-  inferOfficialType,
-  toOfficialIdentity,
-} from "../shared/officialTypes.js";
+import { actorFor, SIGNED_OUT, type Actor } from "../authz/actor.js";
+import { assertCan, can } from "../authz/canActor.js";
 
 function extractToken(req: Request): string | null {
   const auth = req.headers.authorization;
@@ -40,159 +35,6 @@ function extractToken(req: Request): string | null {
   return null;
 }
 
-/**
- * The admin roster for the hub serving this request.
- *
- * Per hub, not per deployment: an Athens admin is not a Floyd admin. Reads
- * the request-scoped settings snapshot, which the resolver loaded, so this
- * stays synchronous — it gates fourteen call sites, several of them on read
- * paths that run for every visitor.
- *
- * THE ROSTER IS `people.admin_emails`, a hub_settings row an admin edits in
- * the admin panel, set at creation and handover from the console. Inside a
- * hub it never comes from env (services/hubSettings.ts resolve): a hub with
- * no row has no admins. Only outside a request, with no hub at all, does
- * CIVIC_ADMIN_EMAILS answer.
- */
-function adminEmails(): Set<string> {
-  return new Set(getAdminEmailsSync());
-}
-
-function boardEmails(): Set<string> {
-  return new Set(getBoardEmailsSync());
-}
-
-/**
- * Quick sync admin check. Use when the DB-backed author list is not needed
- * (e.g. gating /admin/*). For announcement posting where the author label
- * matters, use `resolveAuthorship()` below.
- */
-export function isAdminEmail(email: string | undefined | null): boolean {
-  if (!email) return false;
-  return adminEmails().has(email.toLowerCase());
-}
-
-/**
- * Resolve an account's official identity — the public office rendered as
- * a pill next to their name.
- *
- * Three tiers, most authoritative first:
- *   1. users.official_type / official_title — the managed role
- *   2. hub_settings.announcement_authors    — the legacy email-keyed list,
- *      whose free-form label becomes the title and whose type is inferred.
- *      getAnnouncementAuthors() itself falls back to the hub's board
- *      roster when no list has been saved.
- *   3. nothing — a resident.
- *
- * Tiers 2 and 3 are switched OFF once `officials_migrated` is set (the
- * seed script sets it after copying the legacy list onto user rows).
- * Without that switch, demoting someone in the admin panel would be
- * undone on the next request by the stale list still naming them.
- */
-export async function resolveOfficial(
-  email: string | undefined | null,
-): Promise<OfficialIdentity | null> {
-  return (await resolveOfficialParts(email)).official;
-}
-
-/**
- * The three tier lookups, fired IN PARALLEL (perf pass 2026-08-28: they
- * ran sequentially, and /auth/me — which sits on every page mount — was
- * paying three stacked Supabase roundtrips, ~500ms on dev). The tier
- * PRECEDENCE is applied after the fact, so the semantics are unchanged:
- * managed wins; the legacy list counts only until officials_migrated.
- * The wasted queries when an earlier tier hits are cheap point reads.
- */
-async function resolveOfficialParts(
-  email: string | undefined | null,
-): Promise<{
-  official: OfficialIdentity | null;
-  /** The legacy list row, for the admin-curated display name. */
-  legacy: { label: string; name?: string | null } | null;
-}> {
-  if (!email) return { official: null, legacy: null };
-
-  const [managed, migrated, legacy] = await Promise.all([
-    lookupOfficialByEmail(email),
-    areOfficialsMigrated(currentHubIdOrNull()),
-    lookupAuthor(currentHubIdOrNull(), email),
-  ]);
-
-  if (managed) return { official: managed, legacy: null };
-  if (migrated || !legacy) return { official: null, legacy: null };
-  return {
-    official: toOfficialIdentity(inferOfficialType(legacy.label), legacy.label),
-    legacy,
-  };
-}
-
-/**
- * A signed-in user's posting authority, split into its two independent
- * halves.
- *
- * `isAdmin` is a PLATFORM capability (the hub's admin roster — reaches
- * /admin/*). `official` is a PUBLIC IDENTITY (an office an admin
- * designated). They are orthogonal: a county administrator who also sits
- * on the Board is both, and must render both badges. This function
- * therefore does NOT short-circuit on admin the way its predecessor did.
- *
- * Returns null when the user has neither — i.e. no posting privilege.
- */
-export interface Authorship {
-  /** Platform capability. Gates /admin/* and the "Admin" badge. */
-  isAdmin: boolean;
-  /** Public office, or null. Gates the title pill. */
-  official: OfficialIdentity | null;
-  /**
-   * Permission role for the announcement edit-ownership check.
-   * "admin" may edit anyone's; "author" may edit only their own.
-   */
-  role: "admin" | "author";
-  /**
-   * The string stamped on a new announcement as `author_role`. It drives
-   * the feed card pill and the page eyebrow, both of which hold exactly
-   * ONE value — so for someone who is both, the OFFICE wins. A post from
-   * a supervisor should read as coming from the Board, not from the
-   * software's administrator. The Admin badge is unaffected: it renders
-   * separately, from creator_is_admin, next to the name.
-   */
-  label: string;
-  /** Admin-curated display name for a listed author, when set. */
-  name: string | null;
-}
-
-/**
- * Resolve a user's authorship for announcement posting.
- *
- * Async because both halves are DB-backed (users columns; hub_settings).
- */
-export async function resolveAuthorship(
-  email: string | undefined | null,
-): Promise<Authorship | null> {
-  if (!email) return null;
-
-  const isAdmin = isAdminEmail(email);
-  const { official, legacy } = await resolveOfficialParts(email);
-  if (!isAdmin && !official) return null;
-
-  // Legacy list may carry an admin-curated display name; the managed
-  // role writes that straight to users.display_name instead, so this is
-  // only consulted while the legacy tier is still live. Reuses the row
-  // the parallel lookup already fetched — previously a second roundtrip.
-  const legacyName = official && !isAdmin ? legacy?.name ?? null : null;
-
-  return {
-    isAdmin,
-    official,
-    role: isAdmin ? "admin" : "author",
-    label: official?.title ?? "Admin",
-    name: legacyName,
-  };
-}
-
-/**
- * Require a valid session token. Attaches `res.locals.authUser`.
- */
 /**
  * Best-effort caller identification for PUBLIC read paths. Resolves the Bearer
  * token to a user id when present, undefined otherwise. Never rejects — the
@@ -227,158 +69,135 @@ export async function resolveCallerUser(
 }
 
 /**
- * Whether the caller is one of this hub's admins on a code-proved session, as
- * requireAdmin decides, for a public route that shows an admin more. Never
- * rejects and never gates the route.
+ * The caller as the authorization seam sees them, for a PUBLIC read path:
+ * the account behind a valid token, or SIGNED_OUT. Never rejects and never
+ * gates the route; the route asks canActor what to show.
  */
-export async function resolveCallerIsAdmin(req: Request): Promise<boolean> {
+export async function resolveCallerActor(req: Request): Promise<Actor> {
   const token = extractToken(req);
-  if (!token) return false;
+  if (!token) return SIGNED_OUT;
   try {
     const session = await getSessionFromToken(token);
-    if (!session || session.assurance !== "code") return false;
-    return adminEmails().has(session.user.email.toLowerCase());
+    return session ? await actorFor(session.user, session.assurance) : SIGNED_OUT;
   } catch {
-    return false;
+    return SIGNED_OUT;
   }
 }
 
 /**
- * The signed-in user, from the session token, or UnauthorizedError. Stores
- * the user and the session's assurance on res.locals for the handler.
+ * resolveCallerUser and resolveCallerActor from one session lookup, for a
+ * public read that needs the caller's id and asks the seam what to show.
  */
-async function sessionUser(req: Request, res: Response): Promise<User> {
+export async function resolveCaller(req: Request): Promise<{ user: User | undefined; actor: Actor }> {
+  const token = extractToken(req);
+  if (!token) return { user: undefined, actor: SIGNED_OUT };
+  try {
+    const session = await getSessionFromToken(token);
+    if (!session) return { user: undefined, actor: SIGNED_OUT };
+    return { user: session.user, actor: await actorFor(session.user, session.assurance) };
+  } catch {
+    return { user: undefined, actor: SIGNED_OUT };
+  }
+}
+
+/**
+ * Whether the caller may be shown what an administrator is shown, for a
+ * public route that shows an admin more ("hub.see_as_admin"). Never rejects
+ * and never gates the route.
+ */
+export async function resolveCallerIsAdmin(req: Request): Promise<boolean> {
+  return can(await resolveCallerActor(req), "hub.see_as_admin");
+}
+
+/**
+ * The identity adapter: the signed-in user, from the session token, or
+ * UnauthorizedError. Stores the user, the session's assurance and the actor
+ * on res.locals for the handler. The one place a sign-in method plugs in.
+ */
+async function sessionUser(req: Request, res: Response): Promise<{ user: User; actor: Actor }> {
   const token = extractToken(req);
   if (!token) throw new UnauthorizedError("Authentication required", "sign_in_required");
   const session = await getSessionFromToken(token);
   if (!session) throw new UnauthorizedError("Invalid or expired session", "session_expired");
+  const actor = await actorFor(session.user, session.assurance);
   res.locals.authUser = session.user;
   res.locals.authAssurance = session.assurance;
-  return session.user;
+  res.locals.actor = actor;
+  return { user: session.user, actor };
 }
 
+/** Require a valid session token. Attaches `res.locals.authUser` and `res.locals.actor`. */
 export const requireAuth = route(async (req, res, next) => {
   await sessionUser(req, res);
   next();
 });
 
 /**
- * Require a valid session AND a user who has affirmed residency AND a
- * real name on file (required-name policy — accounts that pre-date it
- * are re-gated here; the UI catches the `name_required` code and opens
- * the add-your-name step).
+ * Require a session whose account meets the hub's eligibility rule
+ * ("hub.participate": residency affirmed, a real name on file; accounts
+ * that pre-date the name rule are re-gated here, and the UI catches the
+ * `name_required` code and opens the add-your-name step).
  * Use this for all civic-participation actions (vote, support, submit, etc.).
  */
 export const requireResident = route(async (req, res, next) => {
-  const user = await sessionUser(req, res);
-  if (!user.is_resident) {
-    throw new ForbiddenError("Residency affirmation required to participate", "residency_required");
-  }
-  if (!user.full_name) {
-    throw new ForbiddenError("Please add your name to participate", "name_required");
-  }
+  const { actor } = await sessionUser(req, res);
+  await assertCan(actor, "hub.participate");
   next();
 });
 
 /**
- * Was the caller's mailbox proved with an emailed code? A demo hub's
- * any-six-digits session was not (Audit 2), and never carries a privilege:
- * the three gates below refuse it before they look at any roster.
- */
-function requireCodeVerified(res: Response): void {
-  if ((res.locals.authAssurance as SessionAssurance | undefined) !== "code") {
-    throw new ForbiddenError("Sign in with a code sent to your email to do this.", "code_sign_in_required");
-  }
-}
-
-/**
- * Require an authenticated user on this hub's admin roster
- * (`people.admin_emails`; inside a hub never from env).
- * Matching is case-insensitive.
+ * Require one of this hub's administrators ("hub.administer"): a session
+ * proved by an emailed code, an account holding the admin role; a hub with
+ * no administrators at all fails closed (no_admins).
  */
 export const requireAdmin = route(async (req, res, next) => {
-  const user = await sessionUser(req, res);
-  requireCodeVerified(res);
-
-  const allowed = adminEmails();
-  if (allowed.size === 0) {
-    // Fail closed AND say how to recover. A hub in this state has nobody
-    // who can add an administrator through the admin panel, which is
-    // exactly why the roster endpoint refuses to empty it.
-    throw new UnavailableError(
-      "This hub has no administrators. The platform operator sets them " +
-        "from the console (the hub's handover panel).",
-      "no_admins",
-    );
-  }
-  if (!allowed.has(user.email.toLowerCase())) {
-    throw new ForbiddenError("Admin access required", "admin_required");
-  }
+  const { actor } = await sessionUser(req, res);
+  await assertCan(actor, "hub.administer");
   next();
 });
 
 /**
- * Require an authenticated user authorized to post announcements —
- * either an admin, or a user in the admin-managed author list (with the
- * hub's `people.board_emails` roster as the fallback for the author list).
+ * Require an account that may post announcements ("announcement.post"): an
+ * administrator, or an account holding a public office (the managed role,
+ * or a legacy author-list grant until the hub's officials are migrated).
  *
- * Sets two values on res.locals for the handler to use:
+ * Sets on res.locals for the handler:
  *   - `effectiveRole`: "admin" | "author"
  *   - `authorLabel`: the display label to stamp on new announcements
- *     ("Admin" for admins; the configured label otherwise)
+ *     ("Admin" for admins; the office otherwise)
+ *   - `authorOfficial`, `authorName`
  *
- * This is intentionally separate from requireAdmin. A user whose email
- * is on the author list can post / edit announcements but cannot reach
- * any /admin/* route.
+ * This is intentionally separate from requireAdmin. An author can post and
+ * edit announcements but cannot reach any /admin/* route.
  */
 export const requireAnnouncementPoster = route(async (req, res, next) => {
-  const user = await sessionUser(req, res);
-  requireCodeVerified(res);
+  const { actor } = await sessionUser(req, res);
+  const { authorship } = await assertCan(actor, "announcement.post");
 
-  const authorship = await resolveAuthorship(user.email);
-  if (!authorship) {
-    throw new ForbiddenError(
-      "You are not authorized to post announcements. Ask an admin to add your email.",
-      "author_required",
-    );
-  }
-
-  res.locals.effectiveRole = authorship.role;
-  res.locals.authorLabel = authorship.label;
-  res.locals.authorOfficial = authorship.official;
+  res.locals.effectiveRole = authorship!.role;
+  res.locals.authorLabel = authorship!.label;
+  res.locals.authorOfficial = authorship!.official;
   // Admin-curated display name for a listed author (null for admins, or
   // when the admin left it blank). The handler prefers this over the
   // poster's own account name so the admin controls how a board author
   // appears even before that person has set up their account.
-  res.locals.authorName = authorship.name;
+  res.locals.authorName = authorship!.name;
   next();
 });
 
 /**
- * Require an authenticated user whose ACCOUNT holds the official role
- * (users.official_type / official_title, with the legacy fallback tiers
- * resolveOfficial still honours pre-migration).
- *
- * Deliberately NOT satisfied by admin status: this gates public acts of
- * an OFFICE — an official response to a Civic Brief — and "Admin" is a
- * platform capability, not an office. An administrator who also holds an
- * office passes on the office, like anyone else.
+ * Require an account holding a public office ("office.respond"). Deliberately
+ * NOT satisfied by admin status: this gates public acts of an OFFICE — an
+ * official response to a Civic Brief — and "Admin" is a platform capability,
+ * not an office. An administrator who also holds an office passes on the
+ * office, like anyone else.
  *
  * Sets `res.locals.officialIdentity` (the {type, title} snapshot the
  * handler stamps onto whatever it writes).
  */
 export const requireOfficial = route(async (req, res, next) => {
-  const user = await sessionUser(req, res);
-  requireCodeVerified(res);
-
-  const official = await resolveOfficial(user.email);
-  if (!official) {
-    throw new ForbiddenError(
-      "Only accounts holding an official role can post a response. " +
-        "Ask a hub admin to designate your office.",
-      "official_required",
-    );
-  }
+  const { actor } = await sessionUser(req, res);
+  const { official } = await assertCan(actor, "office.respond");
   res.locals.officialIdentity = official;
   next();
 });
@@ -402,3 +221,17 @@ export function getAuthUser(res: Response): User {
   }
   return user;
 }
+
+/**
+ * The actor the guard resolved, for a controller to put to canActor. Throws
+ * (500) on a route no guard ran on, like getAuthUser.
+ */
+export function getActor(res: Response): Actor {
+  const actor = res.locals.actor as Actor | undefined;
+  if (!actor) {
+    throw new Error("getActor called on an unauthenticated route (middleware missing)");
+  }
+  return actor;
+}
+
+export type { SessionAssurance };

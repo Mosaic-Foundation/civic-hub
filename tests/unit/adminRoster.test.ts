@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { runWithHub } from "../../src/config/hubContext.js";
 import { getAdminEmailsSync, getBoardEmailsSync } from "../../src/services/hubSettings.js";
-import { isAdminEmail } from "../../src/middleware/auth.js";
 import type { Hub } from "../../src/models/hub.js";
 import type { SettingsMap } from "../../src/db/hubSettingsStore.js";
 
@@ -17,9 +16,10 @@ import type { SettingsMap } from "../../src/db/hubSettingsStore.js";
  * cannot hold two answers: without the row-first rule, adding an Athens admin
  * would make them a Floyd admin too.
  *
- * These are synchronous readers, deliberately — they gate fourteen call sites,
- * several on paths that run for every visitor — so they read the snapshot the
- * resolver loaded, which is what runWithHub() puts in place here.
+ * These are synchronous readers of the snapshot the resolver loaded, which is
+ * what runWithHub() puts in place here. Since Architecture 4 (ADR-011) the
+ * lists are the INPUT to the account-keyed grants (hub_roles) the admin check
+ * reads; these tests pin how the input reads.
  */
 
 function hub(id: string): Hub {
@@ -74,7 +74,7 @@ describe("the admin roster is the hub's own data", () => {
     // An env roster would make the same people admins of every hub that had
     // not saved its own. No row means no admins: requireAdmin fails closed.
     expect(inHub("fresh", {}, getAdminEmailsSync)).toEqual([]);
-    expect(inHub("fresh", {}, () => isAdminEmail(ENV_ADMIN))).toBe(false);
+    expect(inHub("fresh", {}, getAdminEmailsSync)).not.toContain(ENV_ADMIN);
   });
 
   it("gives two hubs on one deployment two different admins", () => {
@@ -86,10 +86,7 @@ describe("the admin roster is the hub's own data", () => {
       "people.admin_emails": '["adam+athens@example.test"]',
     }, getAdminEmailsSync);
     expect(floyd).not.toEqual(athens);
-    expect(
-      inHub("athens", { "people.admin_emails": '["adam+athens@example.test"]' },
-        () => isAdminEmail("adam@example.test")),
-    ).toBe(false);
+    expect(athens).not.toContain("adam@example.test");
   });
 
   it("honours a deliberately empty roster rather than reopening the env", () => {
@@ -102,11 +99,12 @@ describe("the admin roster is the hub's own data", () => {
       .toEqual([]);
   });
 
-  it("matches case-insensitively, because email addresses do", () => {
+  it("reads addresses lowercased, because email addresses match case-insensitively", () => {
+    // The admin check itself reads account-keyed grants (hub_roles), which the
+    // trigger binds by lowercased address (tests/api/hubRoles.test.ts).
     expect(
-      inHub("athens", { "people.admin_emails": '["Moderator@Athens.Example"]' },
-        () => isAdminEmail("moderator@athens.example")),
-    ).toBe(true);
+      inHub("athens", { "people.admin_emails": '["Moderator@Athens.Example"]' }, getAdminEmailsSync),
+    ).toEqual(["moderator@athens.example"]);
   });
 
   it("reads a legacy comma list as well as the JSON array", () => {

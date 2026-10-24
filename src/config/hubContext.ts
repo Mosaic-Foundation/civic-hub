@@ -13,9 +13,9 @@
 //
 // The settings snapshot rides along with the hub because the two are always
 // wanted together and because loading it once per request is what lets the
-// readers stay synchronous. `isAdminEmail()` is called from fourteen places;
-// an admin check that awaits its own query would put a round trip on every
-// request that performs one.
+// readers stay synchronous. The admin check no longer reads it: it reads
+// account-keyed grants through src/authz/ (hub_roles), and the snapshot stays
+// synchronous for the other readers.
 //
 // There is deliberately no setter. A hub is entered for the duration of a
 // request and cannot be swapped underneath code that is already running.

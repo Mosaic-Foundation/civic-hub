@@ -32,6 +32,7 @@ import { sha256Hex } from "../utils/hash.js";
 import { getSettingSync, isDemoHubSync } from "./hubSettings.js";
 import { KEYS, asBoolean, asNumber } from "../models/hubSettings.js";
 import { rowToDisplay } from "./creatorDisplay.js";
+import { subjectsHolding } from "../authz/actor.js";
 
 /** How many avatars the home page's stack shows. */
 export const STACK_SIZE = 5;
@@ -115,8 +116,8 @@ export async function memberSummary(): Promise<MemberSummary> {
   return { count, stack: recent.map((r) => avatarSeed(hubId, r.id)) };
 }
 
-function toMember(hubId: string, row: MemberRow): Member {
-  const display = rowToDisplay({ ...row });
+function toMember(hubId: string, row: MemberRow, admins: ReadonlySet<string>): Member {
+  const display = rowToDisplay({ ...row }, admins.has(row.id));
   return { avatar: avatarSeed(hubId, row.id), name: display.name, is_admin: display.is_admin };
 }
 
@@ -143,8 +144,9 @@ export async function listMembers(offset = 0): Promise<MembersPage> {
     .range(start, start + MEMBERS_PAGE_SIZE); // one extra row says whether there is more
   const count = await members(hub.from("users").count());
   const more = rows.length > MEMBERS_PAGE_SIZE;
+  const admins = await subjectsHolding(rows.map((r) => r.id), "admin");
   return {
-    members: rows.slice(0, MEMBERS_PAGE_SIZE).map((r) => toMember(hubId, r)),
+    members: rows.slice(0, MEMBERS_PAGE_SIZE).map((r) => toMember(hubId, r, admins)),
     count,
     next: more ? start + MEMBERS_PAGE_SIZE : null,
   };
@@ -165,8 +167,9 @@ export async function listMembersForAdmin(): Promise<{ hidden: AdminMember[]; co
       .range(from, to),
   );
   const count = await members(hub.from("users").count());
+  const admins = await subjectsHolding(rows.map((r) => r.id), "admin");
   return {
-    hidden: rows.map((r) => ({ ...toMember(hubId, r), hidden: true, joined_at: r.created_at })),
+    hidden: rows.map((r) => ({ ...toMember(hubId, r, admins), hidden: true, joined_at: r.created_at })),
     count,
   };
 }

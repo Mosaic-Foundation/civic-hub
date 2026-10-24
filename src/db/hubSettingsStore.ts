@@ -9,16 +9,17 @@
 // request, so a save reaches every server instance on its next request. When
 // the version can't be known, the copy expires after 60 seconds as before.
 // Loading the whole set rather than one key at a time is what lets
-// the readers stay synchronous: `isAdminEmail()` is called from fourteen
-// places on hot paths and cannot become async without changing all of them,
-// and an admin check that does its own round trip is a round trip on every
-// request that checks one.
+// the readers stay synchronous. The admin check no longer reads it: it
+// reads account-keyed grants through src/authz/ (hub_roles), and the snapshot
+// stays synchronous for the other readers, which are on hot paths and cannot
+// become async without changing all of them.
 
 import { UnavailableError } from "../errors/index.js";
 import { forHub } from "./forHub.js";
 import { getHubSettingsVersion } from "./hubs.js";
 import { currentHub } from "../config/hubContext.js";
 import { DOCUMENT_KEYS } from "../models/hubSettings.js";
+import { invalidateHubRoles } from "./hubRolesStore.js";
 
 const CACHE_TTL_MS = 60_000;
 
@@ -65,6 +66,9 @@ const DOCUMENT_KEY_LIST = `(${DOCUMENT_KEYS.join(",")})`;
  * every other instance sees the bumped version on its next request.
  */
 export function invalidateHubSettings(hubId?: string): void {
+  // hub_roles is derived from the people.* settings in the same transaction
+  // (20261023000000), so a write here may have changed it too.
+  invalidateHubRoles(hubId);
   if (hubId) {
     cache.delete(hubId);
     for (const k of documentCache.keys()) {
