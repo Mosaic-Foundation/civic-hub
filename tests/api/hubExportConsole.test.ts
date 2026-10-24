@@ -16,7 +16,7 @@ import { gunzipSync } from "node:zlib";
 import pg from "pg";
 import { localStack } from "../fixtures/adminSession.js";
 import { auditFor, consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
-import { api } from "../fixtures/helpers.js";
+import { NO_OBJECT_STORAGE, api } from "../fixtures/helpers.js";
 import { unpackTarGz } from "../../src/control/hubBundle/tar.js";
 
 const HUB = "athens";
@@ -71,10 +71,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  if (NO_OBJECT_STORAGE) return;
   await remove([OLD, NEW, ...(exportedKey ? [exportedKey] : [])]);
 });
 
-describe("Export this hub (console)", () => {
+describe.skipIf(NO_OBJECT_STORAGE)("Export this hub (console)", () => {
   it("needs a fresh code, and stores nothing without one", async () => {
     const before = await objectsUnder(HUB);
     const res = await consoleCall("POST", `/control/hubs/${HUB}/export`, { cookie, body: {} });
@@ -120,7 +121,7 @@ describe("Export this hub (console)", () => {
   }, 60_000);
 });
 
-describe("hub_exports_sweep (platform job)", () => {
+describe.skipIf(NO_OBJECT_STORAGE)("hub_exports_sweep (platform job)", () => {
   it("deletes export objects older than 24 hours and keeps newer ones", async () => {
     await put(OLD);
     await put(NEW);

@@ -32,7 +32,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import pg from "pg";
 import { localStack } from "../fixtures/adminSession.js";
-import { API_BASE } from "../fixtures/helpers.js";
+import { NO_OBJECT_STORAGE, API_BASE } from "../fixtures/helpers.js";
 
 const run = promisify(execFile);
 const ROOT = join(__dirname, "../..");
@@ -139,6 +139,7 @@ async function wipeHub(): Promise<void> {
 }
 
 beforeAll(async () => {
+  if (NO_OBJECT_STORAGE) return;
   db = new pg.Client({ connectionString: DB_URL });
   await db.connect();
   work = await mkdtemp(join(tmpdir(), "civic-rt-"));
@@ -185,6 +186,7 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
+  if (NO_OBJECT_STORAGE) return;
   // Archived, as control.test.ts leaves its hubs: the audit log references
   // this one so it cannot be deleted, and the per-hub job runs in
   // crons.test.ts (CI's second pass, same database) must see only Floyd and
@@ -195,7 +197,7 @@ afterAll(async () => {
   await db?.end();
 });
 
-describe("hub export → import → restore, on the local stack", () => {
+describe.skipIf(NO_OBJECT_STORAGE)("hub export → import → restore, on the local stack", () => {
   let before: Record<string, number>;
 
   it("exports a documented bundle without secrets", async () => {

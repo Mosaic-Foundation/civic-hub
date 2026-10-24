@@ -22,6 +22,7 @@ import pg from "pg";
 import { localStack } from "../fixtures/adminSession.js";
 import { consoleCall, mintConsoleSession, plantCode } from "../fixtures/consoleCall.js";
 import { readBundleFiles } from "../../scripts/lib/hubImport.js";
+import { NO_OBJECT_STORAGE } from "../fixtures/helpers.js";
 
 const run = promisify(execFile);
 const ROOT = join(__dirname, "../..");
@@ -143,7 +144,7 @@ describe("purge-hub.ts", () => {
     expect(r.out).toMatch(/not archived/);
   }, 120_000);
 
-  it("purges a freshly archived sample-only hub, export first, and frees its slug", async () => {
+  it.skipIf(NO_OBJECT_STORAGE)("purges a freshly archived sample-only hub, export first, and frees its slug", async () => {
     await archive(SAMPLE);
     toArchive.splice(toArchive.indexOf(SAMPLE), 1);
     // A fresh-code action by the hub's admin, as the audit service writes it.

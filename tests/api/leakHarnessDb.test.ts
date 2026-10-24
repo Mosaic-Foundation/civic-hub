@@ -19,6 +19,7 @@ import { createHash, createHmac, createSign, randomBytes } from "node:crypto";
 import { localRest, localStack } from "../fixtures/adminSession.js";
 import { HUB_TABLES } from "../../src/db/forHub.js";
 import { parseSigningKey, signHubToken } from "../../src/db/hubToken.js";
+import { NO_OBJECT_STORAGE } from "../fixtures/helpers.js";
 
 const keyHash = (k: string) => createHash("sha256").update(k, "utf8").digest("hex");
 
@@ -352,7 +353,7 @@ describe("the atomic functions under a hub token", () => {
 // `post_images_hub_*` policies on storage.objects are the enforcement: the
 // first path segment must be the token's hub. Straight at the Storage API,
 // with the same token forHub() would send.
-describe("storage: a hub token writes only under its own prefix", () => {
+describe.skipIf(NO_OBJECT_STORAGE)("storage: a hub token writes only under its own prefix", () => {
   // A 1×1 PNG. The bucket allows image types only.
   const PNG = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",

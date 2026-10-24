@@ -14,6 +14,13 @@ export const API_BASE = process.env.CIVIC_API_BASE?.trim() || "http://localhost:
 export const UI_BASE = "http://localhost:5173";
 
 /**
+ * The server keeps objects in memory (CIVIC_OBJECT_STORE=memory: the
+ * run-anywhere CI job, plain Postgres with no Storage). The tests that read
+ * Supabase Storage back skip themselves then (ADR-012).
+ */
+export const NO_OBJECT_STORAGE = process.env.CIVIC_TEST_OBJECT_STORE?.trim() === "memory";
+
+/**
  * A made-up client address for X-Forwarded-For. The server's sign-in rate
  * limits (Audit 2) count per IP; locally the header is taken as given, so a
  * fresh address per sign-in keeps one suite from using up another's hour.

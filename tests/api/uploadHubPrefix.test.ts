@@ -12,7 +12,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { request } from "node:http";
 import { deflateSync } from "node:zlib";
 import { localStack, mintSession } from "../fixtures/adminSession.js";
-import { API_BASE } from "../fixtures/helpers.js";
+import { NO_OBJECT_STORAGE, API_BASE } from "../fixtures/helpers.js";
 
 /** A square grey PNG, big enough for the logo floor (256 px). */
 function png(size: number): Buffer {
@@ -107,7 +107,7 @@ afterAll(async () => {
   }
 });
 
-describe("an upload lands under the requesting hub's prefix", () => {
+describe.skipIf(NO_OBJECT_STORAGE)("an upload lands under the requesting hub's prefix", () => {
   for (const [hub, host, email] of [
     ["athens", "athens.localhost", "admin+athens@example.test"],
     ["floyd", "floyd.civic.social", "admin@example.test"],
