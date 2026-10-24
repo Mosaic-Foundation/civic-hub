@@ -51,14 +51,63 @@ supabase stop
 ```
 
 Point the dev server at the local stack rather than at a hosted project
-before running the API or E2E layers, and start it with `CIVIC_COC_FAKE=on`
-and `CIVIC_POLIS_FAKE=on` (both refused in production): Submit runs the Code
-of Conduct check, and the API, conformance and Playwright layers make it flag
-text (`[coc-flag]`) or be down (`[coc-down]`) through the fake. `supabase start` prints the URL and
+before running the API or E2E layers, and start it with `CIVIC_FAKE_ADAPTERS=on`
+(refused in production; ADR-012): every outside service is its in-memory fake,
+so no run reaches Anthropic, Resend, YouTube, Polis, Sentry or Healthchecks.io
+even with `.env`'s keys. Submit runs the Code of Conduct check, and the API,
+conformance and Playwright layers make it flag text (`[coc-flag]`) or be down
+(`[coc-down]`) through the fake rule. Playwright's own web server sets the
+switch. `supabase start` prints the URL and
 keys to use for `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; everything
 else can stay as it is in `.env.example`. As of 2026-09-22 all 8 API test
 files (68 tests) pass against a stack brought up this way, which is the
 first time that layer has been runnable from a clean checkout.
+
+---
+
+## Architecture 5: the engine knows nothing about where it runs (2026-10-24)
+
+**Every outside service is an adapter, every setting is declared, every module keeps its data through a store, the
+jobs are their own modules, and the engine runs on plain Node + Postgres + PostgREST (ADR-012).**
+- **Fakes by default.** `tests/setup/adapters.ts` installs the in-memory adapters before every test file (vitest
+  `setupFiles`) and binds the modules' stores. The test servers (CI, E2E, Playwright's own, run-anywhere) start with
+  `CIVIC_FAKE_ADAPTERS=on`. A test that needs a vendor's implementation, or a configured mail transport, installs it
+  (`installAdapters`); see `demoPrivilegedSignIn`, `heartbeat`, `errorTracking`.
+- **Before this slice, the suites that reached the real Anthropic API:** none in CI (no key); locally, any API or
+  Playwright run against `npm run dev`, which loads `.env`'s real Anthropic and Resend keys with no fake switch; the
+  smoke suite on purpose (the real Code of Conduct check on dev).
+- **Config:** `tests/unit/settings.test.ts`: a missing required setting refuses the start by name, never by value;
+  production-only and conditional requirements; a wrong type reported (refused only for the database's settings);
+  unknown names with our prefixes reported; host names and aliases read in order; the runbook's table generated and
+  current; the `process.env` lint (mutation-checked with planted files).
+- **Adapters:** `adapterFakes.test.ts` (each fake as its header says, the registry's "none" defaults);
+  `aiGate.test.ts` (the jobs' daily ceiling refuses before the provider is asked and reports `ai.job_budget` once,
+  residents unaffected, every answered call recorded under its purpose, `ai.usage_limit` for every caller, not
+  configured); `adapterContracts.test.ts`: one contract per real adapter, run only with its key (and, for the ones a
+  person would see, `CIVIC_CONTRACT_TESTS=1`). The Anthropic contract ran once, locally, and passed.
+- **Lint rules, each with planted files:** `hostingBoundary.test.ts` (the hosting layer, `hostingEnv` and vendor
+  packages refused in the engine), `dbConvention.test.ts` (no `src/db/` in a module, `processes` only through
+  processService/processRows, no query in a controller; no exemptions left), `jobsBoundary.test.ts`.
+- **One-transaction submit:** `tests/api/submitForReview.test.ts` (pg-free, PostgREST as the service role): all six
+  writes together; a forced failure part-way leaves nothing; a missing target, another hub's process or a repeat link
+  is skipped and counted; another hub's event refused. `functionGrants.test.ts` lists `submit_for_review`.
+- **Crawler match:** `ogCrawlers.test.ts` pins every `/api/og` rewrite's `has: user-agent` to
+  `src/hosting/ogCrawlers.ts`, case-insensitive, a superset of og.ts's own list, browsers through to the CDN.
+- **Jobs through `scripts/run-job.ts`, on the local stack:** each of the six hub jobs for Athens (status 200;
+  digest, meeting summary and news sync skipped as configured there), and `--all` for `vote_close` (43 active hubs,
+  5.7 s) and `hub_exports_sweep`, each writing `job_last_run`; a platform job with a hub, and an unknown job, exit 2.
+- **Run anywhere** (`run-anywhere` CI job; `scripts/run-anywhere/up.sh` locally): plain `postgres:17` (ICU `en-US`),
+  bare PostgREST 14.5, no Supabase CLI: 102 migrations and the seed by psql; `/health` ok with no schema gaps,
+  `/.well-known/civic.json`, `/events`; unit suite; API suite in service-role mode **885 passed, 27 skipped** (the
+  Storage readers skip with `CIVIC_TEST_OBJECT_STORE=memory`). Found on the way and fixed in the setup: PostgREST 12's
+  update-with-`or=` bug, glibc vs ICU collation, `pgcrypto` in `public`.
+- **Local, the Supabase stack:** unit 1,820; API service role and minted tokens **898 passed each**, 4 failed each
+  (the dashboard's known local timeouts on ~1,000 hubs). Playwright (as `e2e.yml` runs it: the built UI's preview on :4173): **171 passed, 2 skipped, 1 failed** (`dashboard.spec.ts`, the known local timeout on ~1,000 hubs).
+- **Wire:** `wire-snapshot-diff.ts` (now with `--all`): local, 66,622 of 66,718 events byte-identical in all three
+  views; the other 96 are Athens sample events deleted between the runs (the sample refresh), none changed. Dev:
+  see the HANDOFF entry.
+- **HTTP side by side** (`bdea376` on :3200 and the slice on :3000, one local database, back to back, both servers
+  with the same outside services): **34,660 request pairs**: 34,612 byte-identical with the port normalized; 40 identical as JSON (key order, and the vote log, which is shuffled on every read by design); 8 `/health`, differing only in `schema.checked` 56 → 57, the new `submit_for_review` function in the contract. Error references (random per response) normalized. Method: `http-compare.mts` in the session report.
 
 ---
 
