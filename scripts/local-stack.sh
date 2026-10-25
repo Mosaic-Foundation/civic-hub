@@ -13,7 +13,7 @@
 # The fixture set (what CI loads, plus the smoke hub):
 #   floyd   from the migrations (beta), its settings seeded
 #   athens  from supabase/seed.sql (demo), its settings seeded
-#   smoke   a beta hub of kind "other" at smoke.localhost, for a local smoke run
+#   smoke   a beta hub of kind "other" at smoke.localhost, set up as dev's smoke hub, for a local smoke run
 #   the jurisdiction list (config/jurisdictions/)
 # Test runs delete the hubs they create (tests/setup/dropTestHubs.ts), so the
 # set stays this size between resets.
@@ -96,6 +96,8 @@ load_fixtures() {
   if [ -z "$(sql -c "select 1 from hubs where id = 'smoke'")" ]; then
     fixture scripts/create-hub.ts --id smoke --hostname smoke.localhost --name "Smoke Test Hub" \
       --kind other --mode beta >/dev/null
+    # As dev's smoke hub, made before the navigation and Members slices: top tabs, the member count always shown.
+    sql -c "delete from hub_settings where hub_id = 'smoke' and key in ('nav.layout', 'plugin.members.min_count')"
     say "Created the smoke hub."
   fi
 }
