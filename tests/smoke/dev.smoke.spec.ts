@@ -11,8 +11,14 @@
  * unmistakable personal attack on a made-up neighbour, and a clean text is
  * plainly clean.
  *
- * One serial group, so the items one step makes are what the next acts on,
- * and afterAll can put away everything the run made:
+ * The checks run in file order on one worker (playwright.smoke.config.ts),
+ * and every one runs: a failure does not skip the rest (local stack hygiene,
+ * 2026-10-24; serial mode had hidden 17 checks on Oct 23). After a failure
+ * Playwright starts a fresh worker: the old one's afterAll puts away what it
+ * made, and the new one's beforeAll signs the admin and the resident in again
+ * before the next check. A check that acts on an earlier one's item (approve
+ * and decline) skips, by name, when that item is missing. afterAll puts away
+ * everything its worker made:
  *   - pending reviews are declined, the approved vote is archived;
  *   - the run's residents delete their accounts (their drafts and sessions go
  *     with them), and the admin's minted sessions are ended;
@@ -52,8 +58,6 @@ const CLEAN = "A routine check after a deploy: should the benches by the library
 // proving the suite before CI); the real check on dev flags the words.
 const FLAGGED =
   "Bob Testerman on Maple Lane is a lying thief and a disgusting idiot. Everyone should go to his house and make him regret living here. [coc-flag]";
-
-test.describe.configure({ mode: "serial" });
 
 const missing = missingSmokeEnv();
 test.skip(missing.length > 0, `Smoke suite skipped: set ${missing.join(", ")} (see tests/smoke/devStack.ts).`);

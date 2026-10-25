@@ -7,9 +7,11 @@ import { defineConfig, devices } from "@playwright/test";
  *
  *   npm run test:smoke
  *
- * One worker and no retries: the steps build on each other, and a retry would
- * submit (and spend Code of Conduct checks on) everything again. The whole
- * run must stay under three minutes; the global timeout enforces it.
+ * One worker, in file order, and no retries: a few steps act on what an
+ * earlier one made, and a retry would submit (and spend Code of Conduct
+ * checks on) everything again. Every check runs even after a failure (the
+ * spec is not serial; its header says how state and cleanup survive one).
+ * The whole run must stay under three minutes; the global timeout enforces it.
  */
 export default defineConfig({
   testDir: "./tests/smoke",
