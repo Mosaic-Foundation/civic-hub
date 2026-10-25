@@ -52,6 +52,13 @@ const announcementProcess: ProcessHandler = {
       author_role: input.author_role as AnnouncementAuthorRole,
       official_type:
         typeof input.official_type === "string" ? input.official_type : null,
+      // The name shown with the post (the controller's choice: the author
+      // list's name, else the poster's account name). Stamped on the state and
+      // its events; who may see it is the redaction's rule.
+      author_display_name:
+        typeof input.author_display_name === "string" && input.author_display_name.trim()
+          ? input.author_display_name.trim()
+          : null,
       links: Array.isArray(input.links)
         ? (input.links as AnnouncementLink[])
         : undefined,

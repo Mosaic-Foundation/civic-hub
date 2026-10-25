@@ -269,7 +269,11 @@ test.describe("the feed reads the hub's public stream", () => {
       // member's announcement, and the official response, whose responder is
       // named to every reader on both (a response is an official's public
       // record).
-      expect(stream.cards.find((c) => c.title === `Board note ${run}`), "the board member's announcement").toBeTruthy();
+      // A board member is an office holder: the post carries the name, for
+      // every reader (the announcement handler dropped it until 2026-10-25).
+      const board = stream.cards.find((c) => c.title === `Board note ${run}`);
+      expect(board, "the board member's announcement").toBeTruthy();
+      expect(board!.author).toBe(names.board);
       const response = stream.cards.find((c) => c.title === `Stream brief ${run}` && c.rest.includes("Responding"));
       expect(response, "the official response's card").toBeTruthy();
       expect(response!.author).toContain(names.member);
