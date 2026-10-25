@@ -454,6 +454,7 @@ const GET_PLAN: Record<string, Plan> = {
   "GET /feed/": { query: ["", "?limit=200", "?process_id=" /* + floyd vote, below */] },
   "GET /feed/meta": { query: ["", "?process=" /* + every floyd id, below */] },
   "GET /api/feed/": { query: ["", "?limit=200"] },
+  "GET /api/feed/meta": { query: ["", "?process=" /* + every floyd id, below */] },
   "GET /\\.well-known/civic.json": {},
   "GET /\\.well-known/did.json": {},
 
@@ -508,7 +509,7 @@ function expand(route: string, plan: Plan): Array<{ path: string; echoed: string
   if (route === "GET /link-preview/") queries = ["", `?url=${encodeURIComponent(B.previewUrl)}`];
   if (route === "GET /unsubscribe/digest") queries = ["", "?token=not-a-real-token", `?token=${encodeURIComponent(B.unsubscribeToken)}`];
   if (route === "GET /feed/") queries = ["", "?limit=200", `?process_id=${B.vote}`];
-  if (route === "GET /feed/meta") {
+  if (route === "GET /feed/meta" || route === "GET /api/feed/meta") {
     queries = ["", `?process=${[B.vote, B.proposal, B.project, B.wordcloud, B.brief, B.announcement, B.conversation].join(",")}`];
   }
 
