@@ -4,17 +4,15 @@
  * Actions go through the internal process action endpoint.
  */
 
-import type { HeldBackRecipient } from "../components/HeldBackNote";
-import { ApiError, apiErrorCode, apiErrorMessage } from "../utils/httpError";
-import { getStoredToken } from "./auth";
+import type { SubmissionField } from "../../../src/shared/submissionPreview";
+import { onWrite, request as send, upload } from "./http";
+import { getStoredToken } from "./tokenStore";
 
-const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
-
-/**
- * The session token comes from services/auth.ts (getStoredToken), the one
- * place it is stored. The backend enforces Bearer tokens on all action
- * endpoints; without the header they answer 401.
- */
+/** An address a published item was not emailed to, and why. */
+export interface HeldBackRecipient {
+  email: string;
+  reason: string;
+}
 
 // --- Short-lived GET cache (perf pass, 2026-08-28) --------------------------
 //
@@ -48,6 +46,7 @@ const CACHEABLE_PATHS = new Set([
   "/notifications/edits",
 ]);
 const getCache = new Map<string, { at: number; data: unknown }>();
+onWrite(() => getCache.clear());
 
 function isCacheable(method: string, path: string): boolean {
   if (method !== "GET") return false;
@@ -55,41 +54,14 @@ function isCacheable(method: string, path: string): boolean {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = getStoredToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  if (method !== "GET") {
-    getCache.clear();
-  }
-  const cacheKey = `${path}|${token ?? ""}`;
+  const cacheKey = `${path}|${getStoredToken() ?? ""}`;
   if (isCacheable(method, path)) {
     const hit = getCache.get(cacheKey);
     if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
       return hit.data as T;
     }
   }
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  if (!res.ok) {
-    if (res.status === 401) {
-      // Session expired or invalid. Signal the app to drop to logged-out
-      // state (AuthProvider listens) instead of leaving the user "logged in"
-      // while every action fails with an opaque error.
-      window.dispatchEvent(new CustomEvent("civic:auth-expired"));
-    }
-    const err = await res.json().catch(() => null);
-    throw new ApiError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err), err);
-  }
-
-  const data = await res.json();
+  const data = await send<T>(method, path, body);
   if (isCacheable(method, path)) {
     getCache.set(cacheKey, { at: Date.now(), data });
   }
@@ -1875,25 +1847,11 @@ export function adminGetSettingTemplate(
 }
 
 /** Upload a banner or logo under this hub's storage prefix. Admin only. */
-export async function uploadHubImage(
+export function uploadHubImage(
   kind: "banner" | "logo",
   file: Blob,
 ): Promise<UploadedImage> {
-  const headers: Record<string, string> = {};
-  const token = getStoredToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const form = new FormData();
-  form.append("file", file);
-  const res = await fetch(`${API_BASE}/upload/hub-image?kind=${kind}`, {
-    method: "POST",
-    headers,
-    body: form,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => null);
-    throw new ApiError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err));
-  }
-  return res.json();
+  return upload(`/upload/hub-image?kind=${kind}`, file);
 }
 
 // --- Who administers the hub -------------------------------------------------
@@ -2055,40 +2013,12 @@ export interface UploadedImage {
  * components/PostImagePicker) — this helper only sends the bytes. Auth
  * Bearer token is forwarded automatically.
  */
-export async function uploadPostImage(file: Blob): Promise<UploadedImage> {
-  const headers: Record<string, string> = {};
-  const token = getStoredToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const form = new FormData();
-  form.append("file", file);
-  const res = await fetch(`${API_BASE}/upload/post-image`, {
-    method: "POST",
-    headers,
-    body: form,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => null);
-    throw new ApiError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err));
-  }
-  return res.json();
+export function uploadPostImage(file: Blob): Promise<UploadedImage> {
+  return upload("/upload/post-image", file);
 }
 
-export async function uploadProjectImage(file: Blob): Promise<UploadedImage> {
-  const headers: Record<string, string> = {};
-  const token = getStoredToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const form = new FormData();
-  form.append("file", file);
-  const res = await fetch(`${API_BASE}/upload/project-image`, {
-    method: "POST",
-    headers,
-    body: form,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => null);
-    throw new ApiError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err));
-  }
-  return res.json();
+export function uploadProjectImage(file: Blob): Promise<UploadedImage> {
+  return upload("/upload/project-image", file);
 }
 
 export interface LinkPreviewData {
@@ -2478,22 +2408,8 @@ export function submitFeedback(
 
 /** A screenshot for a bug report — same validation and bucket as the other
  *  image uploads; signed-in only. */
-export async function uploadFeedbackScreenshot(file: Blob): Promise<UploadedImage> {
-  const headers: Record<string, string> = {};
-  const token = getStoredToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const form = new FormData();
-  form.append("file", file);
-  const res = await fetch(`${API_BASE}/upload/feedback-screenshot`, {
-    method: "POST",
-    headers,
-    body: form,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => null);
-    throw new ApiError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err));
-  }
-  return res.json();
+export function uploadFeedbackScreenshot(file: Blob): Promise<UploadedImage> {
+  return upload("/upload/feedback-screenshot", file);
 }
 
 /** One row of the admin feedback archive. Admin-only — carries PII. */
@@ -2696,8 +2612,6 @@ export interface ReviewTurn {
   } | null;
   created_at: string;
 }
-
-import type { SubmissionField } from "../../../src/shared/submissionPreview";
 
 export interface ReviewDetail {
   review: ProcessReviewSummary;

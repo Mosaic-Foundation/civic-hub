@@ -1,41 +1,17 @@
 /**
  * Auth service — handles communication with /auth endpoints.
- * Manages session token in localStorage.
+ * The session token itself is kept by tokenStore.ts.
  */
 
-import { apiErrorMessage, apiErrorCode } from "../utils/httpError";
+import { request as send } from "./http";
 
-const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
-
-class AuthError extends Error {
-  status: number;
-  /** The server's error code (`beta_closed`, `code_burned`…), when it sent one. */
-  code: string | null;
-  constructor(message: string, status: number, code: string | null = null) {
-    super(message);
-    this.status = status;
-    this.code = code;
-  }
-}
-
-async function request<T>(method: string, path: string, body?: unknown, token?: string): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => null);
-    throw new AuthError(apiErrorMessage(err, res.status, res.statusText), res.status, apiErrorCode(err));
-  }
-
-  return res.json();
+/**
+ * The sign-in calls send the token they are given (none before sign-in), and
+ * their 401 is an answer about a code or a session being checked, not the
+ * stored session expiring under a page.
+ */
+function request<T>(method: string, path: string, body?: unknown, token?: string): Promise<T> {
+  return send<T>(method, path, body, { token: token ?? null, expireOn401: false });
 }
 
 // --- Types ---
@@ -86,39 +62,6 @@ export interface AuthUser {
  * fallback). null = regular resident with no special privileges.
  */
 export type AuthRole = "admin" | "author" | null;
-
-// --- Token storage ---
-
-const TOKEN_KEY = "civic_auth_token";
-
-// The one place the token is read and written (src/services/api.ts reads it
-// through getStoredToken). Storage can be blocked (a privacy mode, a site
-// setting, a full quota) and then every access throws; that reads as "not
-// signed in" rather than an error that leaves a page blank (audit F6).
-
-export function getStoredToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function storeToken(token: string): void {
-  try {
-    localStorage.setItem(TOKEN_KEY, token);
-  } catch {
-    // Signed in for this page only; the next visit asks again.
-  }
-}
-
-export function clearToken(): void {
-  try {
-    localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    // Nothing stored, or nothing reachable: either way no token remains here.
-  }
-}
 
 // --- API calls ---
 

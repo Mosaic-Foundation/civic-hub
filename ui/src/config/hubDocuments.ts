@@ -15,7 +15,7 @@
  * own server with its own names substituted.
  */
 
-const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
+import { API_BASE } from "../services/http";
 
 export type DocumentKey =
   | "legal.terms"

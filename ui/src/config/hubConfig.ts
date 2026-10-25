@@ -16,6 +16,7 @@
  * the key names, "4. Request flow" item 5 for the response shape.
  */
 
+import { API_BASE } from "../services/http";
 import type { ProcessTypeDisplay } from "../../../src/shared/typeDisplay";
 import { parseTheme, resolveTheme } from "../../../src/shared/theme";
 import type { DeadEndCode } from "../../../src/shared/deadEnd";
@@ -57,7 +58,6 @@ export interface HubConfig {
   members?: { page_shown: boolean };
 }
 
-const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
 
 /**
  * How long to wait for the config before rendering with build-time fallbacks.

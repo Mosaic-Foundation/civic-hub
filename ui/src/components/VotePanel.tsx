@@ -13,7 +13,8 @@ import {
 import { ApiError } from "../utils/httpError";
 import { dropHeldReceipt, getHeldReceipt, isMine, localDay, saveHeldReceipt, type HeldReceipt } from "../services/voteReceipts";
 import { downloadReceipt } from "../services/receiptFile";
-import { getMe, getStoredToken } from "../services/auth";
+import { getMe } from "../services/auth";
+import { getStoredToken } from "../services/tokenStore";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
 import { useAction } from "../hooks/useAction";

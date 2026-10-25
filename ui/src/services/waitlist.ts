@@ -1,6 +1,4 @@
-import { apiErrorMessage } from "../utils/httpError";
-
-const API_BASE = import.meta.env.DEV ? "http://localhost:3000" : "/api";
+import { request } from "./http";
 
 export interface JoinWaitlistOptions {
   /** Optional — the form never requires it. */
@@ -10,25 +8,14 @@ export interface JoinWaitlistOptions {
   wantsTestUser?: boolean;
 }
 
-export async function joinWaitlist(
+export function joinWaitlist(
   email: string,
   options: JoinWaitlistOptions = {},
 ): Promise<{ message: string }> {
-  const res = await fetch(`${API_BASE}/waitlist`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email,
-      name: options.name || undefined,
-      notes: options.notes || undefined,
-      wants_test_user: options.wantsTestUser ?? false,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => null);
-    throw new Error(apiErrorMessage(err, res.status, res.statusText));
-  }
-
-  return res.json();
+  return request("POST", "/waitlist", {
+    email,
+    name: options.name || undefined,
+    notes: options.notes || undefined,
+    wants_test_user: options.wantsTestUser ?? false,
+  }, { token: null });
 }

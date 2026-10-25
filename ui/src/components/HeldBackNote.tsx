@@ -3,10 +3,7 @@
 // allow list, and sample content is never delivered. That is a decision, not
 // a failure: the item published; this says so in plain words.
 
-export interface HeldBackRecipient {
-  email: string;
-  reason: string;
-}
+import type { HeldBackRecipient } from "../services/api";
 
 export function HeldBackNote({ heldBack }: { heldBack: HeldBackRecipient[] | undefined }) {
   if (!heldBack || heldBack.length === 0) return null;

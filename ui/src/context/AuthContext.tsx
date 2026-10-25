@@ -3,14 +3,12 @@ import type { ReactNode } from "react";
 import {
   type AuthUser,
   type AuthRole,
-  getStoredToken,
-  storeToken,
-  clearToken,
   getMe,
   logoutApi,
   exchangeHandoff,
   takeHandoffFromLocation,
 } from "../services/auth";
+import { clearToken, getStoredToken, storeToken } from "../services/tokenStore";
 import { markHubJustCreated } from "../utils/hubJustCreated";
 
 interface AuthState {

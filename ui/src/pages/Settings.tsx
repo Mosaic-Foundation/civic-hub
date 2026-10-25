@@ -15,10 +15,10 @@ import { pluginEnabled } from "../config/plugins";
 import {
   deleteAccount as deleteAccountApi,
   getMe,
-  getStoredToken,
   setHiddenFromMembers,
   setHideAiDraftingHelp,
 } from "../services/auth";
+import { getStoredToken } from "../services/tokenStore";
 import HelpButton from "../components/HelpButton";
 import { useScrollToHash } from "../hooks/useAnchor";
 import "./Settings.css";
