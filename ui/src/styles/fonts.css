@@ -1,0 +1,38 @@
+/*
+ * The three variable fonts, latin subset only (frontend pass, 2026-10-24).
+ * Self-hosted, bundled by Vite: no external CDN call.
+ *
+ * The packages' own stylesheets declare every subset (17 files, 416 kB).
+ * These are their latin blocks verbatim, so text in the latin range renders
+ * exactly as before. A character outside it (Cyrillic, Greek, Vietnamese, and
+ * latin-ext letters such as ł or ő) falls back to the system font; a hub that
+ * needs one adds that subset's block here from
+ * node_modules/@fontsource-variable/<font>/wght.css.
+ */
+
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: 'Libre Franklin Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(../../node_modules/@fontsource-variable/libre-franklin/files/libre-franklin-latin-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: 'Manrope Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url(../../node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
