@@ -21,6 +21,9 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: process.env.CI ? "github" : "list",
+  // The hubs a run creates are deleted when it ends, pass or fail; local
+  // stack only (tests/setup/dropTestHubs.ts).
+  globalSetup: "./tests/setup/dropTestHubs.ts",
 
   use: {
     // CIVIC_E2E_BASE_URL: a preview build (`vite preview`, which serves the

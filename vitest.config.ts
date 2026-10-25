@@ -11,6 +11,10 @@ export default defineConfig({
     // The in-memory adapters, before every file (tests/setup/adapters.ts).
     setupFiles: ["tests/setup/adapters.ts"],
 
+    // The hubs a run creates are deleted when it ends, pass or fail; local
+    // stack only (tests/setup/dropTestHubs.ts).
+    globalSetup: ["tests/setup/dropTestHubs.ts"],
+
     // Tests run sequentially — they share a dev server and database.
     // fileParallelism: false ensures test files run one at a time,
     // preventing race conditions on shared state (auth tokens, DB).
