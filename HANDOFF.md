@@ -4,6 +4,99 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Frontend pass: one way to do each thing in the hub UI; the feed reads the public stream — 2026-10-25
+
+`multi-tenant`, one commit per item, `7b1945d`..(this commit), from `957fede`.
+- **What it touched:** the UI and the tests. On the server, only item 8's three pieces: `src/shared/feedWire.ts`,
+  `GET /api/feed/meta` and hub-config's `content.sample_items`.
+- **What it didn't:** no migration; the wire unchanged; ballot secrecy untouched; production untouched.
+- **Dev:** pushes to `multi-tenant` deploy it (Smoke runs on each).
+- **Decision record:** ADR-013, in the mono repo, committed locally for Adam to push.
+- **Reports:** `~/Documents/Mosaic/0 Management/Civic Social/Frontend-Pass-Session-Report-2026-10-25.md` and
+  `Frontend-Pass-Handoff-to-Management-2026-10-25.md`.
+
+**Adam's calls (2026-10-24):**
+- Our own `useApi`, with the 30-second cache moved inside it under the same rules. Not TanStack Query.
+- The drafts were already one `DraftPage` and `draftApi(kind)` (Audit 3); recorded, not rebuilt.
+- The feed's All view reads `/events`, with `/api/feed/meta` as the private batch read; the pills stay on `/api/feed`.
+- One `useHub()`, with a lint rule.
+- All lint warnings fixed, and `--max-warnings 0`.
+- ADR-013.
+- The feed parity compares the names on each card, not only the items and their order.
+
+**What changed:**
+- `7b1945d` Playwright refuses a non-local base unless `CIVIC_E2E_REMOTE=yes`, and the API it starts gets the
+  local stack.
+- `92f9208` Before-screenshots: 24 images, local only.
+- `ab558de` One `request()` and one token store:
+  - `services/http.ts`: `API_BASE` defined once; `request()` takes JSON or FormData and goes through the 401
+    handler; the four upload helpers use it.
+  - `services/tokenStore.ts`: the one place the token is read and written.
+- `de4dc1a`, `18a8906` The data hook:
+  - `useApi`;
+  - component tests in `ui/`, run by CI;
+  - `Process` and `ProposalDetail` no longer paint the page just left.
+- `c2e93a6`, `ae0e5aa`, `f72d5ff` The feed reads `/events`; `GET /api/feed/meta`; the parity spec on Floyd for
+  three readers.
+- `361a269` `utils/dates.ts`.
+- `1d01a58` 38 pages on `useApi`; `api.ts` no longer caches. The pages left on their own effects, each with its
+  reason, are in the commit.
+- `3612bde` The `AdminPublicationReview` shell for briefs and vote results, a shared `StatusChip`,
+  `parseCommentsText`, and the feed's times moved to `utils/dates.ts`. The queue is read again on Back.
+- `51fd6bb` `useHub()` and its lint; `HubConfigContext` gone; UI lint at 0 errors and 0 warnings, enforced.
+- `fef886d` Fonts: latin subset only.
+- `6681952` `ui/.env.example` loses the demo bypass code.
+- `d23219a` Modal component tests.
+- `2fc485b` The sign-in link page keeps its token through a render React throws away.
+- `3033671` Every page but the feed loads when needed, preloaded in the background. The stylesheets stay one file in
+  their old order (`styles/hubStyles.ts`).
+- `4ca4101` Playwright checks: the phone layout when a field takes focus, and the Modal's focus trap.
+
+**Numbers:**
+- **Home page at 390px (local preview):**
+  - JS 284 → 196 kB gzipped; CSS 48 → 44 kB.
+  - Main chunk 781 → 64 kB.
+  - Fonts 17 files / 416 kB → 3 / 108 kB.
+- **Lighthouse on dev** (`floyd.dev.civic.social`, mobile, 3 runs each):
+  - Performance 85–90 → 88.
+  - First paint and LCP 2.6 s → 2.2 s.
+  - Page weight 338 → 257 KiB.
+  - Accessibility 100 → 100.
+- **Tests:**
+  - `npm test`: 2,729 passed, plus the known `auditConcurrency` flake.
+  - API with minted tokens: 905.
+  - Playwright: 182, 0 failed.
+  - UI component tests: 35.
+  - Screenshots: the 24 match.
+- **CI:** CI, E2E and Smoke green on `f72d5ff` (the new "UI component tests" step and the lint with `--max-warnings 0` included); dev serves it.
+
+**Carried (item 8):** two cases still read `/api/feed`:
+- the filter pills (the stream has no filter by surface);
+- a hub with any sample item (sample content is never on the stream, ADR-010).
+
+Moving them to the stream would need a surface filter on `/events`, or the pills computed client-side over the
+stream. Neither was done, as asked: nothing was added to the wire.
+
+**Noticed, not changed:**
+- **Announcement author names are dropped.** `src/modules/civic.announcement/handler.ts` `initializeState` never
+  copies `author_display_name`. No announcement records its author's name, so no card shows one, and the
+  controller's choice of name is dead code. It is one line of server code.
+- **The self-hosted fonts are never used.** The tokens ask for "Inter" and the packages declare "Inter Variable".
+- **The settings cache can serve a dead hub's settings.** It is keyed by hub id, so a hub deleted and re-made with
+  the same id inside one server's life gets the old hub's settings. This only affects tests.
+- **Legacy untyped events read by the stored type.** The member and public views strip their legacy fields
+  (ADR-010), so the stream reader types them from the hub's stored process type.
+- **Lighthouse on a local preview is not a fair test of splitting.** The preview serves HTTP/1.1 and does not
+  compress API responses, and splitting adds requests. The stream's first page is 101 kB raw but 5.5 kB gzipped,
+  against `/api/feed`'s 2.5 kB.
+
+**Left:**
+- The announcement author fix (above).
+- Retiring `/api/feed` once the stream carries what the pills need.
+- The `auditConcurrency` flake.
+
+---
+
 ## Local stack hygiene: a small fixture set, runs that clean up, sessions that put things away — 2026-10-24
 
 `multi-tenant`, one commit per item, from `3af0878`. Local tooling and tests only: no change to the engine, the
