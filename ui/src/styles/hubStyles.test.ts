@@ -28,7 +28,7 @@ describe("styles/hubStyles.ts", () => {
     expect([...listed].sort()).toEqual([...all].sort());
     expect(new Set(listed).size).toBe(listed.length);
     // The base first and the app's own rules last, as before.
-    expect(listed.slice(0, 3)).toEqual(["styles/fonts.css", "styles/theme.css", "index.css"]);
+    expect(listed.slice(0, 2)).toEqual(["styles/theme.css", "index.css"]);
     expect(listed.at(-1)).toBe("App.css");
   });
 });

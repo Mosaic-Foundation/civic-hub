@@ -11,7 +11,7 @@
 //     HTML shells load one module each), no third-party script, no eval.
 //   - styles: the bundle, the inline <style> in index.html and React `style`
 //     attributes (theme colours), hence 'unsafe-inline' for styles only.
-//   - fonts: bundled (fontsource), same origin.
+//   - fonts: none bundled since 2026-10-25 (the system's); font-src stays self.
 //   - images: same origin, data: and blob: (the image picker's previews), and
 //     https: (uploaded images on Supabase Storage; a link preview's image
 //     from whatever site the link names).

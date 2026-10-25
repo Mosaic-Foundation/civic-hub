@@ -4,10 +4,13 @@
 // resolve by that order (App.css's ".page h1" over a page's own h1 rule, for
 // one), so the hub looks as it did: the page code is split, its CSS is not.
 //
+// No web fonts are bundled: the design tokens name "Inter" and "Libre
+// Franklin", which the hub never shipped under those names, so it renders in
+// the system's fonts (a decision left for a design pass, HANDOFF 2026-10-25).
+//
 // A new stylesheet goes in this list too (src/styles/hubStyles.test.ts fails
 // otherwise), where its rules should rank: later wins.
 
-import "./fonts.css"; // the latin subsets of the three fonts (fonts.css)
 import "./theme.css";
 import "../index.css";
 import "../components/Modal.css";
