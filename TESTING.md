@@ -101,7 +101,7 @@ jobs are their own modules, and the engine runs on plain Node + Postgres + Postg
   `/.well-known/civic.json`, `/events`; unit suite; API suite in service-role mode **885 passed, 27 skipped** (the
   Storage readers skip with `CIVIC_TEST_OBJECT_STORE=memory`). Found on the way and fixed in the setup: PostgREST 12's
   update-with-`or=` bug, glibc vs ICU collation, `pgcrypto` in `public`.
-- **Local, the Supabase stack:** unit 1,820; API service role and minted tokens **898 passed each**, 4 failed each
+- **Local, the Supabase stack:** unit 1,822; API service role and minted tokens **898 passed each**, 4 failed each
   (the dashboard's known local timeouts on ~1,000 hubs). Playwright (as `e2e.yml` runs it: the built UI's preview on :4173): **171 passed, 2 skipped, 1 failed** (`dashboard.spec.ts`, the known local timeout on ~1,000 hubs).
 - **Wire:** `wire-snapshot-diff.ts` (now with `--all`): local, 66,622 of 66,718 events byte-identical in all three
   views; the other 96 are Athens sample events deleted between the runs (the sample refresh), none changed. Dev:
