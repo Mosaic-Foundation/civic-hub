@@ -23,6 +23,9 @@
  *   never hidden. Only list pages opt in; per-reader detail reads never do.
  * - `refreshOnVisible: true` reads again when the tab comes back into view
  *   (useRefreshOnVisible).
+ * - `rereadOn` (typically the signed-in actor): when it changes, read again
+ *   with the current data still on screen. For a read whose answer depends on
+ *   who asks (has_voted) but whose page should not blank on sign-in.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -59,6 +62,8 @@ export interface UseApiOptions {
   refreshOnVisible?: boolean;
   /** Tries again this many times, a second apart, before showing an error. */
   retries?: number;
+  /** Read again, keeping the data shown, when this value changes. */
+  rereadOn?: unknown;
 }
 
 export interface ApiState<T> {
@@ -156,6 +161,9 @@ export function useApi<T>(
 
   const reload = useCallback(async () => {
     if (k === null) return;
+    // "Try again" after an error: the error goes, and with nothing to show
+    // the page says it is loading.
+    setSnap((s) => (s.key === k && s.error ? { ...s, error: null, loading: s.data === undefined } : s));
     await read(k, 0);
   }, [k, read]);
 
@@ -171,6 +179,14 @@ export function useApi<T>(
   );
 
   useRefreshOnVisible(() => (options.refreshOnVisible ? reload() : undefined));
+
+  const rereadOn = options.rereadOn;
+  const lastRereadOn = useRef(rereadOn);
+  useEffect(() => {
+    if (Object.is(lastRereadOn.current, rereadOn)) return;
+    lastRereadOn.current = rereadOn;
+    void reload();
+  }, [rereadOn, reload]);
 
   return { data: current.data, error: current.error, loading: current.loading, reload, setData };
 }

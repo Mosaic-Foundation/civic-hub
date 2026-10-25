@@ -201,3 +201,17 @@ describe("useApi", () => {
     });
   });
 });
+
+describe("useApi rereadOn", () => {
+  it("reads again when the reader changes, with the page still shown", async () => {
+    let n = 0;
+    const { result, rerender } = renderHook(({ actor }) => useApi("process/a/state", () => Promise.resolve(++n), { rereadOn: actor }), {
+      initialProps: { actor: null as string | null },
+    });
+    await waitFor(() => expect(result.current.data).toBe(1));
+    rerender({ actor: "user_1" });
+    expect(result.current.data).toBe(1);
+    expect(result.current.loading).toBe(false);
+    await waitFor(() => expect(result.current.data).toBe(2));
+  });
+});

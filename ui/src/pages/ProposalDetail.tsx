@@ -1,5 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
-import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
+import { useApi } from "../hooks/useApi";
 import { useParams, useNavigate } from "react-router-dom";
 import { getCivicProposal, supportCivicProposal, unsupportCivicProposal, type CivicProposalDetail } from "../services/api";
 import { useAction } from "../hooks/useAction";
@@ -37,37 +36,23 @@ export default function ProposalDetail() {
   const { id } = useParams<{ id: string }>();
   const { actorId } = useAuth();
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } = useRequireAuth();
-  const [proposal, setProposal] = useState<CivicProposalDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const action = useAction("Your support didn't go through. Please try again.");
   const supporting = action.busy;
 
   const currentActor = actorId ?? "anonymous";
 
-  const fetchProposal = useCallback(() => {
-    if (!id) return;
-    getCivicProposal(id)
-      .then((p) => {
-        setProposal(p);
-        // Clear any earlier failure. Without this a single transient error —
-        // a cold start, a request caught mid-deploy — stayed pinned to the
-        // page forever: every later refetch succeeded and repopulated the
-        // proposal, but nothing ever reset `error`, so the page rendered live
-        // data with a stale "Proposal not found" beside it. React Router does
-        // not remount on client-side navigation, so only a hard reload cleared
-        // it.
-        setError(null);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [id, currentActor]);
-
-  useEffect(() => {
-    fetchProposal();
-  }, [fetchProposal]);
-  // Back in view after a while: read it again (a second tab catches up).
-  useRefreshOnVisible(fetchProposal);
+  // Read again on sign-in/out (whether you support it) and when the tab comes
+  // back into view; a failed re-read leaves the proposal on screen.
+  const {
+    data: proposal,
+    loading,
+    error,
+    reload: fetchProposal,
+    setData: setProposal,
+  } = useApi<CivicProposalDetail>(id ? `proposal/${id}` : null, () => getCivicProposal(id!), {
+    refreshOnVisible: true,
+    rereadOn: currentActor,
+  });
 
   function doSupport() {
     if (!id || !actorId) return;
@@ -92,7 +77,7 @@ export default function ProposalDetail() {
   }
 
   if (loading) return <p className="detail-page">Loading...</p>;
-  if (error && !proposal) return <p className="detail-page error">Error: {error}</p>;
+  if (error && !proposal) return <p className="detail-page error">Error: {error.message}</p>;
   if (!proposal) return (
     <div className="page detail-page">
       <p>Not found.</p>
@@ -165,7 +150,7 @@ export default function ProposalDetail() {
           )}
 
           <div className="proposal-action">
-            {(action.error || error) && <p className="form-error">{action.error ?? error}</p>}
+            {(action.error || error) && <p className="form-error">{action.error ?? error?.message}</p>}
             {proposal.has_supported ? (
               <>
                 <p className="endorse-confirmation">You have supported this proposal.</p>

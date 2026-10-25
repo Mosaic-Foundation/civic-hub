@@ -1,5 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
-import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
+import { useApi } from "../hooks/useApi";
 import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { getProcessState, type ProcessState, type VoteState } from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -36,38 +35,22 @@ export default function Process() {
   const navigate = useNavigate();
   const { actorId } = useAuth();
   const { showAuthModal, closeAuthModal, handleAuthComplete } = useRequireAuth();
-  const [process, setProcess] = useState<ProcessState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // actorId isn't read by the fetch, but a sign-in/out changes the Bearer
+  // token request() sends: read again so has_voted reflects the new session.
+  // Retries: a serverless cold start may need a moment.
+  const {
+    data: process,
+    loading,
+    error,
+    reload,
+    setData: setProcess,
+  } = useApi<ProcessState>(id ? `process/${id}/state` : null, () => getProcessState(id!), {
+    retries: 2,
+    refreshOnVisible: true,
+    rereadOn: actorId,
+  });
 
   const currentActor = actorId ?? "anonymous";
-
-  const fetchState = useCallback(async (retries = 2) => {
-    if (!id) return;
-    try {
-      const state = await getProcessState(id);
-      setProcess(state);
-      setError(null);
-    } catch (err) {
-      if (retries > 0) {
-        // Retry after a short delay — serverless cold start may need a moment
-        await new Promise((r) => setTimeout(r, 1000));
-        return fetchState(retries - 1);
-      }
-      setError(err instanceof Error ? err.message : "Failed to load");
-    } finally {
-      setLoading(false);
-    }
-    // actorId isn't read here directly, but a sign-in/out changes the
-    // Bearer token request() sends — refetch so has_voted reflects the
-    // new session.
-  }, [id, actorId]);
-
-  useEffect(() => {
-    fetchState();
-  }, [fetchState]);
-  // Back in view after a while: read it again (a second tab catches up).
-  useRefreshOnVisible(() => fetchState(0));
 
   // With the plugin whose page this is switched off, the route shows what a
   // switched-off plugin's route shows, as before it stopped being behind it.
@@ -77,8 +60,8 @@ export default function Process() {
   if (loading) return <p className="detail-page">Loading...</p>;
   if (error) return (
     <div className="page detail-page">
-      <p className="error">Error: {error}</p>
-      <button className="retry-button" onClick={() => { setLoading(true); setError(null); fetchState(); }}>
+      <p className="error">Error: {error.message}</p>
+      <button className="retry-button" onClick={() => void reload()}>
         Try again
       </button>
     </div>
@@ -177,7 +160,7 @@ export default function Process() {
         <VotePanel
           process={process as VoteState}
           actor={currentActor}
-          onView={(view) => (view ? setProcess(view) : fetchState())}
+          onView={(view) => (view ? setProcess(view) : void reload())}
         />
       )}
 
@@ -213,7 +196,7 @@ export default function Process() {
             processId={id}
             offer={voteState?.early_close}
             noun="vote"
-            onView={(view) => (view ? setProcess(view) : fetchState())}
+            onView={(view) => (view ? setProcess(view) : void reload())}
           />
           <AdminArchiveButton
             processId={id}
