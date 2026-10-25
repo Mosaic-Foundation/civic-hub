@@ -161,9 +161,15 @@ test.describe("the feed reads the hub's public stream", () => {
       method: "POST",
       body: JSON.stringify({
         id: brief, hub_id: HUB, type: "civic.brief", title: `Stream brief ${run}`, description: `Stream brief ${run}`, status: "finalized",
+        // A whole brief's state, as the brief module keeps it (its pages read every field).
         state: {
-          publication_status: "published", published_at: new Date().toISOString(), source_process_id: source, source_process_type: "civic.vote",
-          content: { title: `Stream brief ${run}`, headline: `Stream headline ${run}`, participation_label: "1 resident" },
+          type: "civic.brief", publication_status: "published", generated_at: new Date().toISOString(),
+          approved_at: new Date().toISOString(), published_at: new Date().toISOString(),
+          source_process_id: source, source_process_type: "civic.vote", delivered_to: [],
+          content: {
+            title: `Stream brief ${run}`, headline: `Stream headline ${run}`, summary: "What residents said.", sections: [],
+            participation_label: "1 resident", participation_count: 1, comments: [], admin_notes: "",
+          },
         },
       }),
     });
