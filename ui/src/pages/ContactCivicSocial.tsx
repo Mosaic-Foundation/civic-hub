@@ -6,17 +6,18 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { contactCivicSocial } from "../services/api";
 import { lastPage } from "../services/lastPage";
 import AdminTabs from "../components/AdminTabs";
-import { pluginEnabled } from "../config/plugins";
+import { useHub } from "../config/hub";
 import HelpButton from "../components/HelpButton";
 import "./Feedback.css";
 
 const MESSAGE_MAX_LEN = 4000;
 
 export default function ContactCivicSocial() {
+  const hub = useHub();
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [pagePath] = useState(() => lastPage());
@@ -89,7 +90,7 @@ export default function ContactCivicSocial() {
                 {sending ? "Sending…" : "Send to Civic.Social"}
               </button>
             </form>
-            {pluginEnabled("feedback") && (
+            {hub.plugins.enabled("feedback") && (
               <p className="feedback-fallback">
                 <Link to="/admin/feedback">Back to Feedback</Link>
               </p>

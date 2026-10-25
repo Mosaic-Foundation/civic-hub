@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useApi } from "../hooks/useApi";
 import { Link, useSearchParams } from "react-router-dom";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import {
   listProcesses,
   type ProcessSummary,
@@ -42,6 +42,7 @@ function isFilterKey(v: string | null): v is VotesFilterKey {
 const NO_PROCESSES: ProcessSummary[] = [];
 
 export default function Votes() {
+  const hub = useHub();
   // CTA-gate (design decision 2026-08-28): the create buttons are
   // visible to everyone, but clicking one runs the sign-up gate first —
   // the picker opens only for signed-in residents. Direct /…/new URLs

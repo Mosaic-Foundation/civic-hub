@@ -17,7 +17,7 @@ import {
 } from "../services/api";
 import AdminTabs from "../components/AdminTabs";
 import ProcessHeader from "../components/ProcessHeader";
-import { friendlyType } from "../components/ProcessLinkPicker";
+import { friendlyType } from "../components/processLinkTypes";
 import { typeColorSlug } from "../components/typeColor";
 import "./AdminReviews.css";
 import RelatedProcesses from "../components/RelatedProcesses";

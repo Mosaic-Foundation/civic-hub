@@ -1,4 +1,4 @@
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 
 /**
  * Banner image strip. Rendered at the very top of the page above the nav on
@@ -7,6 +7,7 @@ import hub from "../config/hub";
  * the text, both, or neither.
  */
 export default function HubBanner() {
+  const hub = useHub();
   // A hub that has not chosen a banner shows none. The default used to be
   // one hub's photograph, so every unconfigured hub wore a picture of
   // somewhere else — which reads as a claim about the place, not as a

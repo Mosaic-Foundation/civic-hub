@@ -14,7 +14,7 @@
 // sensible pill with no change here.
 
 import type { ReactNode } from "react";
-import { friendlyType } from "./ProcessLinkPicker";
+import { friendlyType } from "./processLinkTypes";
 import { typeColorSlug } from "./typeColor";
 import type { StatusDisplay } from "./statusDisplay";
 import SampleBadge from "./SampleBadge";

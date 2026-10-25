@@ -45,7 +45,7 @@ describe("process types and plugins", () => {
   });
 
   it("the UI keeps no hand map of types to plugins: it reads the manifests", () => {
-    const ui = readFileSync(new URL("../../ui/src/config/plugins.tsx", import.meta.url), "utf8");
+    const ui = readFileSync(new URL("../../ui/src/config/plugins.ts", import.meta.url), "utf8");
     // No `"civic.<type>": "<plugin>"` pair left in the file, and the map is built from the manifests.
     expect(ui).not.toMatch(/"civic\.[a-z_]+":\s*"[a-z_]+"/);
     expect(ui).toContain("processManifests");

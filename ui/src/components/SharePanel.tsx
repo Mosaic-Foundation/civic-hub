@@ -1,8 +1,8 @@
 import { useId, useState } from "react";
 import Modal from "./Modal";
 import HelpButton from "./HelpButton";
-import hub from "../config/hub";
-import { useAuth } from "../context/AuthContext";
+import { useHub } from "../config/hub";
+import { useAuth } from "../context/authState";
 import { sendInvites, type InviteResult } from "../services/api";
 import { ApiError } from "../utils/httpError";
 import { defaultInviteMessage } from "../../../src/shared/inviteMessage";
@@ -30,6 +30,7 @@ import "./CocFindings.css";
  * change shows under the message, which stays as written.
  */
 export default function SharePanel({ onClose }: { onClose: () => void }) {
+  const hub = useHub();
   const { isAdmin } = useAuth();
   const addressesId = useId();
   const messageId = useId();

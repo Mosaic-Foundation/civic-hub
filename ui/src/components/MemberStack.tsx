@@ -3,9 +3,9 @@ import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import PatternAvatar from "./PatternAvatar";
 import SharePanel from "./SharePanel";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { membersPageShown } from "../config/navigation";
-import { pluginEnabled } from "../config/plugins";
+import { useHub } from "../config/hub";
 import { getMemberSummary, type MemberSummary } from "../services/api";
 import "./MemberStack.css";
 
@@ -23,10 +23,11 @@ import "./MemberStack.css";
  * don't yet. "Share this hub" is the hub's own and stays either way.
  */
 export default function MemberStack() {
+  const hub = useHub();
   const { user, isAdmin } = useAuth();
   const [sharing, setSharing] = useState(false);
 
-  const membersOn = pluginEnabled("members");
+  const membersOn = hub.plugins.enabled("members");
   // The count is a nicety: a failed read leaves the row out. A sign-in or out
   // reads it again, keeping the row shown.
   const { data: summary } = useApi<MemberSummary>(membersOn ? "members/summary" : null, () => getMemberSummary(), {

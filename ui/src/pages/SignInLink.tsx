@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import AuthModal, { officialFrom, type PendingAuth } from "../components/AuthModal";
+import { useAuth } from "../context/authState";
+import AuthModal, { type PendingAuth } from "../components/AuthModal";
+import { officialFrom } from "../components/authOfficial";
 import { rememberKeepSignedIn, rememberedKeepSignedIn, verifyInvite, verifyLink } from "../services/auth";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 
 /**
  * Where the code email's "Sign in" link lands (sign-in slice, Adam
@@ -28,6 +29,7 @@ function takeLinkToken(): LinkToken | null {
 }
 
 export default function SignInLink() {
+  const hub = useHub();
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const [token, setToken] = useState(takeLinkToken);

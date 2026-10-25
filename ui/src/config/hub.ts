@@ -28,7 +28,9 @@
  * fallback accurate so deployments without the row keep working.
  */
 
-import { getLoadedHubConfig, setting } from "./hubConfig";
+import { useSyncExternalStore } from "react";
+import { getLoadedHubConfig, setting, subscribeHubConfig, type HubConfig } from "./hubConfig";
+import { pluginEnabled, pluginSetup, pluginShown, processTypeEnabled, processTypeShown } from "./plugins";
 import { feedbackContactEmail } from "../../../src/shared/platform";
 import { hubKindOf, participantNoun, personLabel, type HubKind } from "../../../src/shared/hubKind";
 import {
@@ -421,6 +423,48 @@ const hub = {
       ""
     );
   },
+
+  /**
+   * The served config itself (identity: slug, place code, DID; process
+   * types; content flags), or null when the app runs on build-time fallbacks.
+   */
+  get config(): HubConfig | null {
+    return getLoadedHubConfig();
+  },
+
+  /** One settings key, or undefined when this hub has not configured it. */
+  setting(key: string): string | undefined {
+    return setting(key);
+  },
+
+  /** The plugin switches (config/plugins.tsx). */
+  plugins: {
+    enabled: pluginEnabled,
+    shown: pluginShown,
+    setup: pluginSetup,
+    typeEnabled: processTypeEnabled,
+    typeShown: processTypeShown,
+  },
+
+  meetingSummaryLabel,
 };
+
+export type Hub = typeof hub;
+
+/**
+ * The hub, for a component (frontend pass, 2026-10-24; ADR-013). The one way
+ * a component reads the hub's config: `const hub = useHub()`, then `hub.name`,
+ * `hub.setting(key)`, `hub.plugins.enabled(id)`, `hub.config`. The component
+ * re-renders when the config changes under a running page (an admin's
+ * Settings save, refreshHubConfig), on its own, whatever renders above it.
+ *
+ * Plain modules (services, utils, the process display tables) import the
+ * object itself; it reads the same live values, and is called from a
+ * component that holds useHub(). Components may not (ui/eslint.config.js).
+ */
+export function useHub(): Hub {
+  useSyncExternalStore(subscribeHubConfig, getLoadedHubConfig);
+  return hub;
+}
 
 export default hub;

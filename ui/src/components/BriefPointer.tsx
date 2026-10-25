@@ -6,10 +6,10 @@ import {
   type PublicBrief,
   type RenderedLink,
 } from "../services/api";
-import { friendlyType } from "./ProcessLinkPicker";
+import { friendlyType } from "./processLinkTypes";
 import { absoluteDate } from "../utils/dates";
 import "./BriefPointer.css";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import { heldBackLine, joinNames } from "../services/briefDelivery";
 
 /**
@@ -45,12 +45,12 @@ function useBriefPair(processId: string): {
   };
 }
 
-function deliveryLine(brief: PublicBrief): string {
+function deliveryLine(brief: PublicBrief, governingBodyRef: string): string {
   if (brief.sent_to.length > 0 && brief.delivered_at) {
     return `Sent to ${joinNames(brief.sent_to)} on ${absoluteDate(brief.delivered_at)}.`;
   }
   if (brief.delivered_recipient_count > 0) {
-    return `Sent to ${hub.governing_body_ref}.`;
+    return `Sent to ${governingBodyRef}.`;
   }
   const held = heldBackLine(brief);
   if (held) return held;
@@ -63,6 +63,7 @@ function deliveryLine(brief: PublicBrief): string {
  * a brief exists for this process.
  */
 export function BriefPointer({ processId }: { processId: string }) {
+  const hub = useHub();
   const { brief } = useBriefPair(processId);
 
   // The button still works without the receipt line, so a failed read shows none.
@@ -75,7 +76,7 @@ export function BriefPointer({ processId }: { processId: string }) {
     <aside className="brief-pointer" aria-label="Final brief">
       <div className="brief-pointer-text">
         <strong>The final brief is published.</strong>
-        {detail && <span className="brief-pointer-sub"> {deliveryLine(detail)}</span>}
+        {detail && <span className="brief-pointer-sub"> {deliveryLine(detail, hub.governing_body_ref)}</span>}
       </div>
       <Link to={brief.peer.href} className="brief-pointer-button">
         Read the brief &rarr;

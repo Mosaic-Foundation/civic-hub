@@ -4,15 +4,16 @@
 // Sample content. Beta keeps its own bar (BetaBanner); live has none.
 
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { useHubConfig } from "../config/HubConfigContext";
+import { useAuth } from "../context/authState";
+import { useHub } from "../config/hub";
 import ModeNotice from "./ModeNotice";
 
 export default function DemoBanner() {
   const { isAdmin } = useAuth();
+  const hub = useHub();
   // Gone once no sample is left (admin menu slice, 2026-10-13); Settings
   // refreshes the config after each delete, so it goes without a reload.
-  const samplesLeft = useHubConfig()?.content?.samples ?? true;
+  const samplesLeft = hub.config?.content?.samples ?? true;
   return (
     // Closable since the navigation polish (Adam, 2026-10-14): closed, a thin
     // "Demo hub" bar stays, Remove samples still on its right for admins.

@@ -3,7 +3,8 @@
 // place for every type.
 
 import type { VoteSummary } from "../services/api";
-import ProcessListCard, { cardDate } from "./ProcessListCard";
+import ProcessListCard from "./ProcessListCard";
+import { cardDate } from "./cardDate";
 
 interface Props {
   process: VoteSummary;

@@ -1,6 +1,5 @@
 import { type ProjectDraft } from "../../services/api";
 import { demoSubmitNote } from "../../config/demoCopy";
-import hub from "../../config/hub";
 import { reviewDestination, type DraftKindConfig } from "./types";
 import ProjectForm from "./forms/ProjectForm";
 
@@ -43,14 +42,14 @@ export const projectKind: DraftKindConfig<ProjectDraft> = {
         ? "Your edits go live right away. The previous version stays visible on the project page under \"See what changed\", and people who support this project will be told it was edited."
         : ctx.isAdmin
           ? "Once submitted, your project can only be changed through Edit project, which keeps a visible history of every change."
-          : hub.demo_mode
+          : ctx.hub.demo_mode
             ? demoSubmitNote("project")
             : "Your project will be submitted for review before going live. You'll be notified when an admin has reviewed it.",
     finalityEdit: (ctx) => !!ctx.editProcessId,
     noun: "project",
     audience: "Visitors",
     confirmLabel: (ctx) =>
-      ctx.editProcessId ? "Submit edits" : ctx.isAdmin ? "Submit project" : hub.demo_mode ? "Submit" : "Submit for review",
+      ctx.editProcessId ? "Submit edits" : ctx.isAdmin ? "Submit project" : ctx.hub.demo_mode ? "Submit" : "Submit for review",
   },
   liveUrl: (id) => `/project/${id}`,
   submit: async (api, draft, ctx) => {

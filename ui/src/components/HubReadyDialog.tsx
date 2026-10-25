@@ -8,12 +8,13 @@
 
 import { useNavigate } from "react-router-dom";
 import { theName } from "../../../src/shared/hubCopy";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import { clearHubJustCreated } from "../utils/hubJustCreated";
 import Modal from "./Modal";
 import "./IntroPopup.css";
 
 export default function HubReadyDialog({ email, onDismiss }: { email: string; onDismiss: () => void }) {
+  const hub = useHub();
   const navigate = useNavigate();
 
   function close(next?: string) {

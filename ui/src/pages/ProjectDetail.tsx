@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useApi } from "../hooks/useApi";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAction } from "../hooks/useAction";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import {
   getProjectDetail,
   setProjectSentiment,

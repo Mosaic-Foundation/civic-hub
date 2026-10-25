@@ -5,7 +5,7 @@
 // every type) and the public settings `nav.layout` and `nav.section_order`.
 // The ordering rules are shared and tested: src/shared/navSections.ts. Read at
 // render, like the plugin switches: the whole tree re-renders when an admin's
-// save refreshes the config (useHubConfig in App.tsx).
+// save refreshes the config (useHub(), config/hub.ts).
 
 import { getLoadedHubConfig, setting } from "./hubConfig";
 import { pluginEnabled, type PluginId } from "./plugins";

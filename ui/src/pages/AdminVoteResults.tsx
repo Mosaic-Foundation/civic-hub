@@ -17,11 +17,12 @@ import {
 } from "../components/AdminPublicationReview";
 import { parseCommentsText } from "../utils/commentsText";
 import { useApi } from "../hooks/useApi";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import "./AdminVoteResults.css";
 import { localShortDate, localDateAtTime } from "../utils/dates";
 
 export default function AdminVoteResults() {
+  const hub = useHub();
   const navigate = useNavigate();
   const { id: routeId } = useParams<{ id?: string }>();
   const view: "list" | "review" = routeId ? "review" : "list";

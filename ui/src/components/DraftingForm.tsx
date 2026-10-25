@@ -6,7 +6,8 @@ import type { ProposedLink } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
 import SuggestFooterButton from "./SuggestFooterButton";
 import TitleField from "./TitleField";
-import { FieldFinding, hardFindings } from "./CocFindings";
+import { FieldFinding } from "./CocFindings";
+import { hardFindings } from "./cocFindingsState";
 import DraftFooter from "./DraftFooter";
 import { useDebouncedFields } from "../hooks/useDebouncedFields";
 

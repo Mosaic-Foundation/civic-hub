@@ -17,7 +17,7 @@ import {
   type SettingsSectionId,
 } from "../../../../src/shared/hubSettingsSections";
 import { adminGetSettingTemplate, type HubSettings } from "../../services/api";
-import { useHubSettings, useUnsavedChangesGuard } from "./HubSettingsContext";
+import { useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
 import { HANDOVER_KEYS, SETTING_LABELS } from "../../../../src/shared/settingOwners";
 
 /** Values in the form for keys the hub has not set: what the site uses today. */

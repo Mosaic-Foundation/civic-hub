@@ -1,6 +1,5 @@
 import type { DeliberationDraft } from "../../services/api";
 import { demoSubmitNote } from "../../config/demoCopy";
-import hub from "../../config/hub";
 import { DAY_MS, durationLabel } from "./durations";
 import type { DraftKindConfig } from "./types";
 import ConversationForm from "./forms/ConversationForm";
@@ -54,12 +53,12 @@ export const conversationKind: DraftKindConfig<DeliberationDraft> = {
     finality: (ctx) =>
       ctx.isAdmin
         ? "Once submitted, your conversation goes live and participants can join right away."
-        : hub.demo_mode
+        : ctx.hub.demo_mode
           ? demoSubmitNote("conversation")
           : "Your conversation will be submitted for review before going live. You'll be notified when an admin has reviewed it.",
     noun: "conversation",
     audience: "Participants",
-    confirmLabel: (ctx) => (ctx.isAdmin ? "Create conversation" : hub.demo_mode ? "Submit" : "Submit for review"),
+    confirmLabel: (ctx) => (ctx.isAdmin ? "Create conversation" : ctx.hub.demo_mode ? "Submit" : "Submit for review"),
   },
   liveUrl: () => "/deliberations",
 };

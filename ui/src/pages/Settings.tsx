@@ -7,11 +7,10 @@
 
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import AuthModal from "../components/AuthModal";
 import { setDigestFrequency } from "../services/api";
-import hub from "../config/hub";
-import { pluginEnabled } from "../config/plugins";
+import { useHub } from "../config/hub";
 import {
   deleteAccount as deleteAccountApi,
   getMe,
@@ -24,6 +23,7 @@ import { useScrollToHash } from "../hooks/useAnchor";
 import "./Settings.css";
 
 export default function Settings() {
+  const hub = useHub();
   const { user, logout, loading, updateUser } = useAuth();
   // /settings#members, from the Members page's "Change this in Settings".
   useScrollToHash();
@@ -92,7 +92,7 @@ export default function Settings() {
       .catch((err: Error) => {
         setError(`Could not load settings: ${err.message}`);
       });
-  }, [loading, user]);
+  }, [loading, user, cameFromUnsubscribe]);
 
   async function onHideDraftingHelpChange(hide: boolean) {
     const token = getStoredToken();
@@ -255,7 +255,7 @@ export default function Settings() {
         {error && <p className="form-error">{error}</p>}
 
         {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
-        {pluginEnabled("digest") && (
+        {hub.plugins.enabled("digest") && (
         <section className="settings-panel">
           <h3>Email digest</h3>
           <p className="form-hint">
@@ -343,7 +343,7 @@ export default function Settings() {
         </section>
 
         {/* Gone with the Members plugin (2026-10-14): no page to be hidden from. */}
-        {pluginEnabled("members") && (
+        {hub.plugins.enabled("members") && (
           <section className="settings-panel" id="members" data-anchor="">
             <h3 className="settings-panel-heading">
               Members page

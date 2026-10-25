@@ -6,7 +6,7 @@ import {
   updateAnnouncement,
   type AnnouncementLink,
 } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import PostImagePicker from "../components/PostImagePicker";
 import "./PostAnnouncement.css";
 

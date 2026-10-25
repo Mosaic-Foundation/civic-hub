@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import hub from "./config/hub";
-import { pluginEnabled, whenPlugin } from "./config/plugins";
+import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./context/authState";
+import { useHub } from "./config/hub";
+import { whenPlugin } from "./config/plugins";
 import { PROCESS_UI } from "./processes";
 import { pluginOfType } from "./processes/display";
 import ShareBanner from "./components/ShareBanner";
-import { useHubConfig } from "./config/HubConfigContext";
 import { BETA_PUBLIC_PATHS } from "./config/betaPublicPaths";
 import Nav from "./components/Nav";
 import Sidebar from "./components/Sidebar";
@@ -37,14 +37,14 @@ import ContactCivicSocial from "./pages/ContactCivicSocial";
 import { recordPage } from "./services/lastPage";
 import AdminReviews from "./pages/AdminReviews";
 import MySubmissions from "./pages/MySubmissions";
-import IntroPopup, { hasSeenIntro } from "./components/IntroPopup";
+import IntroPopup from "./components/IntroPopup";
+import { hasSeenIntro } from "./components/introSeen";
 import ReAcceptModal from "./components/ReAcceptModal";
 import HubReadyDialog from "./components/HubReadyDialog";
 import { arrivingFromStartPage, hubJustCreated } from "./utils/hubJustCreated";
 import BetaBanner from "./components/BetaBanner";
 import DemoBanner from "./components/DemoBanner";
-import { forgetClosedNoticeOnLive } from "./components/ModeNotice";
-import { getLoadedHubConfig } from "./config/hubConfig";
+import { forgetClosedNoticeOnLive } from "./components/modeNoticeState";
 import BetaWelcomeDialog from "./components/BetaWelcomeDialog";
 import { usePreviewMode } from "./hooks/usePreviewMode";
 import { useIsWideViewport } from "./hooks/useIsWideViewport";
@@ -111,10 +111,10 @@ function BannerSlot() {
 
 
 function AppContent() {
-  // Subscribes the whole tree to the hub config: when the admin saves
-  // Settings, refreshHubConfig() replaces it and everything below re-renders
-  // with the new plugin switches, name and copy, without a reload.
-  useHubConfig();
+  // The routes and banners follow the plugin switches and the mode. Every
+  // component that reads the hub holds useHub() itself (ADR-013), so a
+  // Settings save reaches it whether or not this re-renders it.
+  const hub = useHub();
   // A hub's creator arriving from the start page gets "Your hub is ready"
   // instead of the visitor's popup (2026-10-08).
   const [showIntro, setShowIntro] = useState(() => !hasSeenIntro() && !arrivingFromStartPage());
@@ -153,7 +153,7 @@ function AppContent() {
   // Beside the sidebar, the hub's bars head the content column, so the
   // sidebar starts at the top of the screen and its foot is never pushed off.
   const bannersInColumn = layout === "sidebar" && wide;
-  forgetClosedNoticeOnLive(getLoadedHubConfig()?.hub.mode);
+  forgetClosedNoticeOnLive(hub.config?.hub.mode);
   const hubBanners = (
     <>
       {/* One always-on beta bar for everyone — signed-in testers and
@@ -184,7 +184,7 @@ function AppContent() {
         <div className="app-column">
           {bannersInColumn && hubBanners}
           {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
-          {pluginEnabled("wordcloud") && <WordcloudTeaser />}
+          {hub.plugins.enabled("wordcloud") && <WordcloudTeaser />}
           <BannerSlot />
           <FeedVotesTabs />
 
@@ -250,6 +250,7 @@ function AppContent() {
 }
 
 function SiteFooter() {
+  const hub = useHub();
   return (
     <footer className="app-footer">
       <div className="app-footer-inner">
@@ -272,7 +273,7 @@ function SiteFooter() {
         </div>
         <nav className="app-footer-links" aria-label="Legal and feedback">
           {/* Gone with the Feedback plugin (config/plugins.tsx). */}
-          {pluginEnabled("feedback") && (
+          {hub.plugins.enabled("feedback") && (
             <>
               <Link to="/feedback">Send feedback</Link>
               <span aria-hidden="true">·</span>

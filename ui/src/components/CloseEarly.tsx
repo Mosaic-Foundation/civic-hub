@@ -9,7 +9,7 @@
 
 import { useId, useState } from "react";
 import Modal from "./Modal";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { useAction } from "../hooks/useAction";
 import { closeEarly, type EarlyCloseOffer, type ClosedEarly } from "../services/api";
 import { CLOSE_EARLY_NOTE_MAX } from "../../../src/shared/closedEarly";

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import hub from "../config/hub";
-import { useAuth } from "../context/AuthContext";
+import { useHub } from "../config/hub";
+import { useAuth } from "../context/authState";
 import Modal from "./Modal";
 import WaitlistForm from "./WaitlistForm";
 import ModeNotice from "./ModeNotice";
@@ -27,6 +27,7 @@ import "./BetaBanner.css";
  * BetaDemoBanner (signed-in demo notice) pair.
  */
 export default function BetaBanner() {
+  const hub = useHub();
   const { user, loading } = useAuth();
   const [showWaitlist, setShowWaitlist] = useState(false);
 

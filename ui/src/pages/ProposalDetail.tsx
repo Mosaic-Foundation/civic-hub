@@ -2,7 +2,7 @@ import { useApi } from "../hooks/useApi";
 import { useParams, useNavigate } from "react-router-dom";
 import { getCivicProposal, supportCivicProposal, unsupportCivicProposal, type CivicProposalDetail } from "../services/api";
 import { useAction } from "../hooks/useAction";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import AuthModal from "../components/AuthModal";
 import ShareButton from "../components/ShareButton";

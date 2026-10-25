@@ -11,9 +11,10 @@
 
 import { useState } from "react";
 import { useAction } from "../hooks/useAction";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { adminArchiveProcess } from "../services/api";
-import DeleteSampleButton, { useIsDeletableSample } from "./DeleteSampleButton";
+import DeleteSampleButton from "./DeleteSampleButton";
+import { useIsDeletableSample } from "./deletableSample";
 import { useNavigate } from "react-router-dom";
 import "./AdminArchiveButton.css";
 

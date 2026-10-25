@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import { getWordcloudCloud } from "../services/api";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import "./WordcloudTeaser.css";
 
 /**
@@ -74,6 +74,7 @@ function loadCloud(id: string): Promise<CloudResponse> {
 // configured (VITE_HUB_ONBOARDING_WORDCLOUD_ID) or the fetch fails, so it never
 // renders a broken/empty bar.
 export default function WordcloudTeaser() {
+  const hub = useHub();
   const id = hub.onboarding_wordcloud_id;
   const [idx, setIdx] = useState(0);
 

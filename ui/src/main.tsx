@@ -9,7 +9,6 @@ import './index.css'
 import App from './App.tsx'
 import { loadHubConfig, applyHubHead, getHubDeadEnd, getHubMovedTo } from './config/hubConfig'
 import { DEAD_ENDS, DEAD_END_STYLE } from '../../src/shared/deadEnd'
-import { HubConfigProvider } from './config/HubConfigContext'
 import { installErrorReporter } from './services/errorReporter'
 
 // Uncaught errors go to the hub's /api/client-errors (operations shell).
@@ -58,9 +57,7 @@ if (deadEnd) {
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <HubConfigProvider>
-        <App />
-      </HubConfigProvider>
+      <App />
     </StrictMode>,
   )
 }

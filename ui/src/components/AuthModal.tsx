@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { pluginEnabled } from "../config/plugins";
+import { useAuth } from "../context/authState";
+import { officialFrom } from "./authOfficial";
+import { useHub } from "../config/hub";
 import { onboardingTarget } from "../config/pluginRules";
 import { NEXT_STEPS_PATH } from "../pages/settings/nextSteps";
 import {
@@ -16,7 +17,6 @@ import {
   type AuthUser,
 } from "../services/auth";
 import { CURRENT_LEGAL_VERSION, legalAcceptanceIsCurrent } from "../config/legal";
-import hub from "../config/hub";
 import Modal from "./Modal";
 import TermsNotice from "./TermsNotice";
 import WaitlistForm from "./WaitlistForm";
@@ -35,20 +35,6 @@ export interface PendingAuth {
   official: { type: string; title: string } | null;
 }
 
-/**
- * Collapse the verify response's two flat official_* fields into the
- * shape AuthContext holds. Both must be present — a type with no title
- * has nothing to render (the same both-or-neither rule the DB enforces).
- */
-export function officialFrom(result: {
-  official_type: string | null;
-  official_title: string | null;
-}): { type: string; title: string } | null {
-  return result.official_type && result.official_title
-    ? { type: result.official_type, title: result.official_title }
-    : null;
-}
-
 type Step = "email" | "code" | "residency";
 
 interface Props {
@@ -64,6 +50,7 @@ interface Props {
 }
 
 export default function AuthModal({ onComplete, onDismiss, pending }: Props) {
+  const hub = useHub();
   const { user, token, login, updateUser, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(() => {
@@ -323,7 +310,7 @@ export default function AuthModal({ onComplete, onDismiss, pending }: Props) {
         }
         if (needsResidency) {
           const here = `${window.location.pathname}${window.location.search}`;
-          const target = onboardingTarget(hub.onboarding_wordcloud_id, pluginEnabled("wordcloud"), here);
+          const target = onboardingTarget(hub.onboarding_wordcloud_id, hub.plugins.enabled("wordcloud"), here);
           if (target) {
             onComplete();
             navigate(target);

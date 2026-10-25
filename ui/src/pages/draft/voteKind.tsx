@@ -1,7 +1,6 @@
 import { type VoteDraft } from "../../services/api";
 import { voteAssistantFields, optionsToText, textToOptions } from "../../services/voteMethods";
 import { demoSubmitNote } from "../../config/demoCopy";
-import hub from "../../config/hub";
 import { DAY_MS, durationLabel } from "./durations";
 import type { DraftKindConfig } from "./types";
 import VoteForm from "./forms/VoteForm";
@@ -74,12 +73,12 @@ export const voteKind: DraftKindConfig<VoteDraft> = {
     finality: (ctx) =>
       ctx.isAdmin
         ? "Once submitted, your vote cannot be edited. Please make sure everything looks the way you want it before submitting."
-        : hub.demo_mode
+        : ctx.hub.demo_mode
           ? demoSubmitNote("vote")
           : "Your vote will be submitted for review before going live. You'll be notified when an admin has reviewed it.",
     noun: "vote",
     audience: "Voters",
-    confirmLabel: (ctx) => (ctx.isAdmin ? "Submit vote" : hub.demo_mode ? "Submit" : "Submit for review"),
+    confirmLabel: (ctx) => (ctx.isAdmin ? "Submit vote" : ctx.hub.demo_mode ? "Submit" : "Submit for review"),
   },
   liveUrl: (id) => `/process/${id}`,
 };

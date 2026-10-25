@@ -10,8 +10,7 @@ import {
 } from "../services/api";
 import SearchBar from "../components/SearchBar";
 import { relativeTime, absoluteTime } from "../utils/dates";
-import hub, { meetingSummaryLabel } from "../config/hub";
-import { processTypeShown } from "../config/plugins";
+import { useHub } from "../config/hub";
 import { searchChipsShown } from "../config/pluginRules";
 import { feedColorSlug, manifestOf, typeName } from "../processes/display";
 // FeedFilter.css carries the .feed-filter-pill--<kind> rules we
@@ -96,14 +95,15 @@ function typePillClass(type: string): string {
  * read as a second copy of the vote; it says what it is instead: "Brief to
  * the Supervisors: <title>", as the brief page does.
  */
-function hitTitle(hit: SearchHit): string {
+function hitTitle(hit: SearchHit, governingBodyShort: string): string {
   // A type that summarizes another process (a brief) carries its source's title.
   if (!manifestOf(hit.type)?.summarizes) return hit.title;
-  const short = hub.governing_body_short;
+  const short = governingBodyShort;
   return short ? `Brief to the ${short}: ${hit.title}` : `Brief: ${hit.title}`;
 }
 
 export default function SearchPage() {
+  const hub = useHub();
   const [params, setParams] = useSearchParams();
 
   const q = params.get("q") ?? "";
@@ -233,7 +233,7 @@ export default function SearchPage() {
           </button>
           {/* Only types this hub shows: a switched-off plugin's chip is gone
               (the server leaves its type out of every search anyway). */}
-          {searchChipsShown(TYPE_CHOICES, processTypeShown).map((choice) => {
+          {searchChipsShown(TYPE_CHOICES, hub.plugins.typeShown).map((choice) => {
             const active = types.includes(choice.key);
             const cls = [
               "feed-filter-pill",
@@ -411,12 +411,13 @@ function SearchBody({
 }
 
 function ResultCard({ hit }: { hit: SearchHit }) {
-  const pillLabel = hit.type === "civic.meeting_summary" ? meetingSummaryLabel(false) : typePillLabel(hit.type);
+  const hub = useHub();
+  const pillLabel = hit.type === "civic.meeting_summary" ? hub.meetingSummaryLabel(false) : typePillLabel(hit.type);
   const pillClass = typePillClass(hit.type);
   return (
     <Link to={hit.href} className="search-page-card">
       <div className="search-page-card-head">
-        <h2 className="search-page-card-title">{hitTitle(hit)}</h2>
+        <h2 className="search-page-card-title">{hitTitle(hit, hub.governing_body_short)}</h2>
         <span className={`feed-pill ${pillClass}`}>{pillLabel}</span>
       </div>
       {hit.description && (

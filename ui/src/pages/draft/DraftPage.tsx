@@ -5,9 +5,10 @@ import AuthModal from "../../components/AuthModal";
 import DraftShell from "../../components/DraftShell";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import Modal from "../../components/Modal";
-import { CocFindingsContext, hardFindings } from "../../components/CocFindings";
+import { CocFindingsContext, hardFindings } from "../../components/cocFindingsState";
 import { ApiError } from "../../utils/httpError";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/authState";
+import { useHub } from "../../config/hub";
 import { useDraftFlow, type BaseDraft } from "../../hooks/useDraftFlow";
 import { draftApi, type ProposedLink } from "../../services/api";
 import { reviewDestination, type DraftKindConfig, type DraftPageContext } from "./types";
@@ -34,6 +35,7 @@ export default function DraftPage<D extends BaseDraft & { assistant_helped: bool
 }) {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
+  const hub = useHub();
   const api = useMemo(() => draftApi<D>(config.kind), [config.kind]);
 
   // Revision (from "Edit & resubmit"): reopen THIS draft and, on submit,
@@ -45,6 +47,7 @@ export default function DraftPage<D extends BaseDraft & { assistant_helped: bool
     reviseReviewId: searchParams.get("review"),
     editProcessId: searchParams.get("edit"),
     searchParams,
+    hub,
   };
 
   const [kindState, setKindStateRaw] = useState<Record<string, unknown>>({});

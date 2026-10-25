@@ -1,6 +1,5 @@
 import type { ProposalDraft } from "../../services/api";
 import { demoSubmitNote } from "../../config/demoCopy";
-import hub from "../../config/hub";
 import { DAY_MS, durationLabel } from "./durations";
 import type { DraftKindConfig } from "./types";
 import ProposalForm from "./forms/ProposalForm";
@@ -51,12 +50,12 @@ export const proposalKind: DraftKindConfig<ProposalDraft> = {
     finality: (ctx) =>
       ctx.isAdmin
         ? "Once submitted, your proposal cannot be edited. Please make sure everything looks the way you want it before submitting."
-        : hub.demo_mode
+        : ctx.hub.demo_mode
           ? demoSubmitNote("proposal")
           : "Your proposal will be submitted for review before going live. You'll be notified when an admin has reviewed it.",
     noun: "proposal",
     audience: "Readers",
-    confirmLabel: (ctx) => (ctx.isAdmin ? "Submit proposal" : hub.demo_mode ? "Submit" : "Submit for review"),
+    confirmLabel: (ctx) => (ctx.isAdmin ? "Submit proposal" : ctx.hub.demo_mode ? "Submit" : "Submit for review"),
   },
   liveUrl: (id) => `/proposal/${id}`,
 };

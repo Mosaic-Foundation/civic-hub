@@ -18,12 +18,13 @@ import {
   OFFICIAL_TYPE_LABELS,
   type OfficialType,
 } from "../../../../src/shared/officialTypes";
-import hub from "../../config/hub";
-import { useHubSettings, useUnsavedChangesGuard } from "./HubSettingsContext";
+import { useHub } from "../../config/hub";
+import { useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
 
 type OfficialRow = Official & { sends_briefs: boolean };
 
 export default function OfficialsSection() {
+  const hub = useHub();
   const { setDirty } = useHubSettings();
 
   const [loaded, setLoaded] = useState(false);

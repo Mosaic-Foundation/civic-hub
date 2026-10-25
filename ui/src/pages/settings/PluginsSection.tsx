@@ -34,9 +34,8 @@ import {
   type FormApi,
 } from "./pluginFields";
 import { PLUGIN_SECTION_ORDER } from "../../../../src/shared/hubSettingsSections";
-import hub from "../../config/hub";
+import { useHub, type Hub } from "../../config/hub";
 import { feedbackContactEmail } from "../../../../src/shared/platform";
-import { pluginSetup } from "../../config/plugins";
 import { pluginAnchor } from "../../../../src/shared/adminAnchors";
 import { useAnchoredOpen } from "../../hooks/useAnchor";
 import HelpButton from "../../components/HelpButton";
@@ -59,17 +58,15 @@ type PluginId = (typeof PLUGIN_SECTION_ORDER)[number];
 // The digest alone is worded from the hub's own noun (place: resident,
 // organization: member, else participant, or copy.resident_noun); read at
 // render, not at load.
-const DIGEST_COPY = {
-  get name() {
-    return `${hub.person_label} digest`;
-  },
-  get what() {
-    return `A summary email of new activity to each ${hub.noun(1)} who has not unsubscribed.`;
-  },
-};
+function digestCopy(hub: Hub): { name: string; what: string } {
+  return {
+    name: `${hub.person_label} digest`,
+    what: `A summary email of new activity to each ${hub.noun(1)} who has not unsubscribed.`,
+  };
+}
 
-function pluginCopy(id: PluginId): { name: string; what: string } {
-  if (id === "digest") return DIGEST_COPY;
+function pluginCopy(id: PluginId, hub: Hub): { name: string; what: string } {
+  if (id === "digest") return digestCopy(hub);
   return processPluginCopy(id) ?? HUB_FEATURES.find((f) => f.id === id) ?? { name: id, what: "" };
 }
 
@@ -130,11 +127,12 @@ function PluginCard({
   live: number;
   jobs: JobRunsEntry[] | "error" | null;
 }) {
+  const hub = useHub();
   const on = f.value(`plugin.${id}.enabled`) === "true";
   const panel = settingsPanel(f, id);
   // From the served config, so it describes what is saved; refreshed after
   // every save (src/shared/pluginSetup.ts holds the rule).
-  const setup = pluginSetup(id);
+  const setup = hub.plugins.setup(id);
   // Collapsed until clicked, or until a link names it
   // (/admin/settings/plugins#feedback; admin menu slice, 2026-10-13).
   const anchor = pluginAnchor(id);
@@ -145,7 +143,7 @@ function PluginCard({
       id={anchor}
       data-anchor=""
       className={`plugin-card${on ? "" : " plugin-card-off"}${open ? " is-open" : ""}`}
-      aria-label={pluginCopy(id).name}
+      aria-label={pluginCopy(id, hub).name}
     >
       <div className="plugin-card-top">
       <button
@@ -156,22 +154,22 @@ function PluginCard({
         onClick={() => setOpen(!open)}
       >
         <span className="plugin-card-title">
-          <span className="plugin-card-name">{pluginCopy(id).name}</span>
+          <span className="plugin-card-name">{pluginCopy(id, hub).name}</span>
           <span className={`plugin-card-state${on ? " is-on" : ""}`}>{on ? "On" : "Off"}</span>
           {on && setup && <span className="plugin-needs-setup-chip">Needs setup</span>}
         </span>
-        <span className="plugin-card-what">{pluginCopy(id).what}</span>
+        <span className="plugin-card-what">{pluginCopy(id, hub).what}</span>
         <svg className="plugin-card-chevron" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
           <path d="M3.5 5.5L7 9L10.5 5.5" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" />
         </svg>
       </button>
       <span className="plugin-card-help">
-        <HelpButton k={`plugins.${id}`} label={pluginCopy(id).name} />
+        <HelpButton k={`plugins.${id}`} label={pluginCopy(id, hub).name} />
       </span>
       </div>
       {open && (
         <div id={bodyId} className="plugin-card-body">
-          <BooleanField f={f} k={`plugin.${id}.enabled`} label={`${pluginCopy(id).name} on`} />
+          <BooleanField f={f} k={`plugin.${id}.enabled`} label={`${pluginCopy(id, hub).name} on`} />
           {on && setup && <NeedsSetup missing={setup.missing} shown={setup.shown} />}
           {on && <JobRunLines jobs={jobs} plugin={id} />}
           {!on && live > 0 && <LiveItemsWarning id={id} live={live} />}
@@ -277,7 +275,8 @@ function JobRunLine({ entry, labelled }: { entry: JobRunsEntry; labelled: boolea
 }
 
 function LiveItemsWarning({ id, live }: { id: PluginId; live: number }) {
-  const name = pluginCopy(id).name;
+  const hub = useHub();
+  const name = pluginCopy(id, hub).name;
   const one = live === 1;
   // A plugin whose items close at a deadline (any of its types has one). A read
   // never closes anything (since Architecture 2); the hourly job closes them and

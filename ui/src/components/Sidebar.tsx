@@ -13,11 +13,11 @@ import SearchBar from "./SearchBar";
 import SharePanel from "./SharePanel";
 import AuthModal from "./AuthModal";
 import { useNavGroups } from "../hooks/useNavGroups";
-import { pluginEnabled } from "../config/plugins";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import "./Sidebar.css";
 
 export default function Sidebar() {
+  const hub = useHub();
   const [sharing, setSharing] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const groups = useNavGroups({ onShare: () => setSharing(true) });
@@ -28,7 +28,7 @@ export default function Sidebar() {
         <Link to="/" className="hub-sidebar-brand" aria-label={`${hub.name} home`}>
           {hub.name}
         </Link>
-        {pluginEnabled("search") && (
+        {hub.plugins.enabled("search") && (
           <div className="hub-sidebar-search">
             <SearchBar inDrawer />
           </div>

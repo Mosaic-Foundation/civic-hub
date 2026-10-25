@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { useNavData } from "../context/NavDataContext";
+import { useAuth } from "../context/authState";
+import { useNavData } from "../context/navDataState";
 import { navSections } from "../config/navigation";
 import AuthModal from "./AuthModal";
 import AdminMenu from "./AdminMenu";
 import SharePanel from "./SharePanel";
 import SearchBar from "./SearchBar";
-import hub from "../config/hub";
-import { pluginEnabled } from "../config/plugins";
+import { useHub } from "../config/hub";
 import "./Nav.css";
 
 // Top nav stays minimal: wordmark + search + sign-in. All primary
@@ -19,10 +18,10 @@ const TOP_LINKS: ReadonlyArray<{ to: string; label: string; end?: boolean }> = [
 // Section order (config/navigation.ts; navigation slice, 2026-10-14), then
 // Welcome (only when the hub has written one, review R27) and About. Phones
 // have the bottom bar and More instead, so the drawer is desktop only.
-function drawerLinks(admin: boolean): ReadonlyArray<{ to: string; label: string; end?: boolean }> {
+function drawerLinks(admin: boolean, hasWelcome: boolean): ReadonlyArray<{ to: string; label: string; end?: boolean }> {
   return [
     ...navSections({ admin }).map((s) => ({ to: s.path, label: s.label, end: s.kind === "feed" })),
-    ...(hub.has_welcome ? [{ to: "/welcome", label: "Welcome" }] : []),
+    ...(hasWelcome ? [{ to: "/welcome", label: "Welcome" }] : []),
     { to: "/about", label: "About" },
   ];
 }
@@ -61,6 +60,7 @@ function avatarColor(seed: string): string {
 }
 
 export default function Nav() {
+  const hub = useHub();
   const { user, logout, isAdmin, canPostAnnouncements } = useAuth();
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -158,9 +158,9 @@ export default function Nav() {
   const location = useLocation();
   const onFeedbackPage = location.pathname === "/feedback";
 
-  const links = drawerLinks(isAdmin);
-  const searchEnabled = pluginEnabled("search");
-  const feedbackEnabled = pluginEnabled("feedback");
+  const links = drawerLinks(isAdmin, hub.has_welcome);
+  const searchEnabled = hub.plugins.enabled("search");
+  const feedbackEnabled = hub.plugins.enabled("feedback");
 
   const attention = notifCount + editNotifs.length;
 
@@ -325,7 +325,7 @@ export default function Nav() {
                     >
                       Your settings
                     </button>
-                    {canPostAnnouncements && pluginEnabled("announcement") && (
+                    {canPostAnnouncements && hub.plugins.enabled("announcement") && (
                       <button
                         type="button"
                         role="menuitem"

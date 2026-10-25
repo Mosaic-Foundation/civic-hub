@@ -13,36 +13,9 @@
 // it always did.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { getLoadedHubConfig } from "../config/hubConfig";
+import { useHub } from "../config/hub";
+import { readClosed, writeClosed } from "./modeNoticeState";
 import "./BetaBanner.css";
-
-const CLOSED_KEY = "civic:mode-notice-closed";
-
-/** The mode whose notice was closed in this browser, or null. */
-function readClosed(): string | null {
-  try {
-    return localStorage.getItem(CLOSED_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function writeClosed(mode: string | null): void {
-  try {
-    if (mode) localStorage.setItem(CLOSED_KEY, mode);
-    else localStorage.removeItem(CLOSED_KEY);
-  } catch {
-    /* storage blocked: the notice shows in full next time, as before */
-  }
-}
-
-/**
- * Called on every render of the hub's frame: on a live hub, forget which
- * notice was closed, so the next notice this browser sees is shown in full.
- */
-export function forgetClosedNoticeOnLive(mode: string | null | undefined): void {
-  if (mode === "live" && readClosed() !== null) writeClosed(null);
-}
 
 export default function ModeNotice({
   label,
@@ -61,7 +34,8 @@ export default function ModeNotice({
   action?: ReactNode;
   className?: string;
 }) {
-  const mode = getLoadedHubConfig()?.hub.mode ?? "unknown";
+  const hub = useHub();
+  const mode = hub.config?.hub.mode ?? "unknown";
   const [closed, setClosed] = useState(() => readClosed() === mode);
   // The control a person pressed goes away with the form it was in; the
   // keyboard lands on the one that undoes it.

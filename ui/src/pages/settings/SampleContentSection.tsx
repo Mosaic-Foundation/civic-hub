@@ -18,8 +18,8 @@ import { useState } from "react";
 import { useApi } from "../../hooks/useApi";
 import { Link } from "react-router-dom";
 import DeleteSampleButton from "../../components/DeleteSampleButton";
-import { friendlyType } from "../../components/ProcessLinkPicker";
-import { getLoadedHubConfig } from "../../config/hubConfig";
+import { friendlyType } from "../../components/processLinkTypes";
+import { useHub } from "../../config/hub";
 import { NextSteps } from "./nextSteps";
 import {
   adminGetSampleContent,
@@ -30,6 +30,7 @@ import {
 import { SampleRemovalWarning } from "./sampleWarning";
 
 export default function SampleContentSection() {
+  const hub = useHub();
   const {
     data: read,
     error: readError,
@@ -80,7 +81,7 @@ export default function SampleContentSection() {
 
   if (loadError) return <p className="form-error">{loadError}</p>;
 
-  const demo = getLoadedHubConfig()?.hub.mode === "demo";
+  const demo = hub.config?.hub.mode === "demo";
 
   return (
     <section className="settings-section">

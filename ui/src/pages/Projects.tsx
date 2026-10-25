@@ -7,8 +7,10 @@ import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import Creator from "../components/Creator";
 import "./Projects.css";
-import StatusFilter, { useStatusFilter } from "../components/StatusFilter";
-import ProcessListCard, { cardDate } from "../components/ProcessListCard";
+import StatusFilter from "../components/StatusFilter";
+import { useStatusFilter } from "../components/statusFilterState";
+import ProcessListCard from "../components/ProcessListCard";
+import { cardDate } from "../components/cardDate";
 
 const FILTER_CHOICES = [
   { key: "all", label: "All" },

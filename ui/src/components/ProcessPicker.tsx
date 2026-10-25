@@ -1,7 +1,5 @@
-import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useHubConfig } from "../config/HubConfigContext";
-import { pluginEnabled } from "../config/plugins";
+import { useHub } from "../config/hub";
 import Modal from "./Modal";
 import "./ProcessPicker.css";
 
@@ -85,21 +83,20 @@ const INTENTS = [
 ];
 
 export default function ProcessPicker({ onDismiss, context = null }: Props) {
+  const hub = useHub();
   const navigate = useNavigate();
 
   // Hidden when the hub switched the plugin off (config/plugins.tsx) — each
   // intent's key doubles as its plugin id.
-  // Re-read when the config is refreshed (an admin's Settings save).
-  const hubConfig = useHubConfig();
-  const orderedIntents = useMemo(() => {
-    const available = INTENTS.filter((i) => pluginEnabled(i.key));
+  // Worked out on each render, so it follows the config when an admin's
+  // Settings save refreshes it.
+  const orderedIntents = (() => {
+    const available = INTENTS.filter((i) => hub.plugins.enabled(i.key));
     if (!context) return available;
     const promoted = available.find((i) => i.key === context);
     if (!promoted) return available;
     return [promoted, ...available.filter((i) => i.key !== context)];
-    // pluginEnabled() reads the config from the module; see hubConfig above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [context, hubConfig]);
+  })();
 
   function handlePick(route: string) {
     onDismiss();

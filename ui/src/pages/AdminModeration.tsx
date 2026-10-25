@@ -14,7 +14,7 @@
 
 import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import {
   adminGetModerationLog,
   type ModerationLogEntry,

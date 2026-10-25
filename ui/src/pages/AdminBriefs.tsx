@@ -24,7 +24,7 @@ import {
 } from "../components/AdminPublicationReview";
 import { useApi } from "../hooks/useApi";
 import { parseCommentsText } from "../utils/commentsText";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import {
   OFFICIAL_TYPES,
   OFFICIAL_TYPE_LABELS,
@@ -72,6 +72,7 @@ function prefillRecipients(
 }
 
 export default function AdminBriefs() {
+  const hub = useHub();
   const navigate = useNavigate();
   const { id: routeId } = useParams<{ id?: string }>();
   const view: "list" | "review" = routeId ? "review" : "list";

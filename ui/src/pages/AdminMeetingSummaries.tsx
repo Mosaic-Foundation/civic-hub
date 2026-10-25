@@ -18,7 +18,7 @@ import {
   type SummaryBlock,
 } from "../services/api";
 import AdminTabs from "../components/AdminTabs";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import "./AdminMeetingSummaries.css";
 import { localShortDateOfDay, localDateAtTime } from "../utils/dates";
 
@@ -37,6 +37,7 @@ const STATUS_FILTERS: Array<{
 ];
 
 export default function AdminMeetingSummaries() {
+  const hub = useHub();
   const navigate = useNavigate();
   const { id: routeId } = useParams<{ id?: string }>();
   const view: "list" | "review" = routeId ? "review" : "list";

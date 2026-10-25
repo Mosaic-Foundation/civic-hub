@@ -13,9 +13,9 @@ import ProcessHeader from "../components/ProcessHeader";
 import DetailActions from "../components/DetailActions";
 import { BriefSourcePointer } from "../components/BriefPointer";
 import ShareButton from "../components/ShareButton";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import { useAction } from "../hooks/useAction";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { authorBadges } from "../../../src/shared/officialTypes";
 // Reuse the vote-results public styling — same page language.
 import "./VoteResults.css";
@@ -39,6 +39,7 @@ function sourceNoun(type: string): string {
  * published civic.brief records only (pending/approved 404).
  */
 export default function BriefPage() {
+  const hub = useHub();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { official, user } = useAuth();

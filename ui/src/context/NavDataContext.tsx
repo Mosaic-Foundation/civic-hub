@@ -12,10 +12,11 @@
 // Each is best-effort: a failed read shows no count. Polled on navigation
 // and every minute while the tab is open, as the menus did.
 
-import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { useApi } from "../hooks/useApi";
 import { useLocation } from "react-router-dom";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "./authState";
+import { NavDataContext, type NavData } from "./navDataState";
 import {
   adminQueueCounts,
   ADMIN_QUEUES_CHANGED,
@@ -34,30 +35,7 @@ const REVIEW_QUEUES = [
   { key: "meeting_summaries", to: "/admin/meeting-summaries" },
 ] as const;
 
-export interface NavData {
-  memberCount: number | null;
-  /** New in the review queues; 0 for anyone not an admin. */
-  reviews: number;
-  /** The first queue with something new, so opening it clears what was counted. */
-  reviewsTo: string;
-  mySubmissions: number;
-  editNotifs: EditNotification[];
-  /** Clear the edited-projects badge, then open one of them. */
-  openEdited: (href: string, navigate: (to: string) => void) => void;
-}
-
-const EMPTY: NavData = {
-  memberCount: null,
-  reviews: 0,
-  reviewsTo: "/admin/reviews",
-  mySubmissions: 0,
-  editNotifs: [],
-  openEdited: (href, navigate) => navigate(href),
-};
-
 const NO_EDITS: EditNotification[] = [];
-
-const NavDataContext = createContext<NavData>(EMPTY);
 
 export function NavDataProvider({ children }: { children: ReactNode }) {
   const { user, isAdmin } = useAuth();
@@ -135,8 +113,4 @@ export function NavDataProvider({ children }: { children: ReactNode }) {
     },
   };
   return <NavDataContext.Provider value={value}>{children}</NavDataContext.Provider>;
-}
-
-export function useNavData(): NavData {
-  return useContext(NavDataContext);
 }

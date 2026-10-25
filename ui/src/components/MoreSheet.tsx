@@ -9,7 +9,7 @@ import { useId, useRef, type ReactNode } from "react";
 import Modal from "./Modal";
 import NavItemList from "./NavItemList";
 import NavIcon from "./navIcons";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import type { NavGroups } from "../hooks/useNavGroups";
 import "./MoreSheet.css";
 
@@ -28,6 +28,7 @@ export default function MoreSheet({
   /** The bar, drawn under the sheet, its More closing it. */
   bar: ReactNode;
 }) {
+  const hub = useHub();
   const swipe = useRef<{ startY: number; dy: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);

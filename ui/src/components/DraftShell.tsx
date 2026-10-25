@@ -11,11 +11,12 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { pluginEnabled } from "../config/plugins";
-import { friendlyType } from "./ProcessLinkPicker";
+import { useAuth } from "../context/authState";
+import { useHub } from "../config/hub";
+import { friendlyType } from "./processLinkTypes";
 import AssistantPanel, { type ChatMessage } from "./AssistantPanel";
-import SuggestionCard, { suggestionKey } from "./SuggestionCard";
+import SuggestionCard from "./SuggestionCard";
+import { suggestionKey } from "./suggestionKey";
 import type { DraftSuggestion } from "../services/api";
 import "./DraftShell.css";
 
@@ -114,6 +115,7 @@ export default function DraftShell({
   formVersion,
   children,
 }: Props) {
+  const hub = useHub();
   const { user } = useAuth();
   /**
    * Which suggestions have been applied. Owned HERE, not in the panel and not
@@ -141,7 +143,7 @@ export default function DraftShell({
   // The persistent opt-out: respected everywhere the affordance renders.
   const optedOut = user?.hide_ai_drafting_help === true;
   // Hidden when the hub switched the plugin off (config/plugins.tsx).
-  const showAssistant = assistant !== null && !optedOut && pluginEnabled("assistant");
+  const showAssistant = assistant !== null && !optedOut && hub.plugins.enabled("assistant");
   const open = showAssistant && assistant.open;
 
   // "Updated" marker on the form tab: the draft changed while the assistant

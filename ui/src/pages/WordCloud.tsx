@@ -11,11 +11,11 @@ import {
   type WordcloudCloudEntry,
   type WordcloudResponse,
 } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { useAction } from "../hooks/useAction";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import { safeReturnPath } from "../config/pluginRules";
 import { theName } from "../../../src/shared/hubCopy";
 import ProcessHeader from "../components/ProcessHeader";
@@ -485,6 +485,7 @@ function PromptSection({
 }
 
 export default function WordCloud() {
+  const hub = useHub();
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();

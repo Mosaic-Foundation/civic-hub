@@ -1,10 +1,11 @@
 import SectionForm from "./SectionForm";
 import { BooleanField, DocumentField, TextAreaField, TextField } from "./fields";
-import hub from "../../config/hub";
+import { useHub } from "../../config/hub";
 import { defaultBetaBanner } from "../../../../src/shared/hubCopy";
 import { participantNoun } from "../../../../src/shared/hubKind";
 
 export default function CopySection() {
+  const hub = useHub();
   return (
     <SectionForm
       section="copy"

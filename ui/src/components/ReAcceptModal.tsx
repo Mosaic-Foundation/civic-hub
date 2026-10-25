@@ -13,10 +13,10 @@
 
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { LEGAL_PATHS } from "../config/betaPublicPaths";
 import { acceptTos } from "../services/auth";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import {
   CURRENT_LEGAL_VERSION,
   CURRENT_LEGAL_LAST_UPDATED,
@@ -41,6 +41,7 @@ function needsReAcceptance(
 }
 
 export default function ReAcceptModal() {
+  const hub = useHub();
   const { user, token, updateUser, logout } = useAuth();
   const { pathname } = useLocation();
   const [submitting, setSubmitting] = useState(false);

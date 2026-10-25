@@ -1,6 +1,6 @@
 import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { adminListEdits, markEditsSeen, type AdminEditRow } from "../services/api";
 import AdminTabs from "../components/AdminTabs";
 import "./AdminEdits.css";

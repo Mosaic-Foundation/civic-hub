@@ -9,7 +9,7 @@ import {
   adminPatchSettings,
   type CommentIdentityMode,
 } from "../../services/api";
-import { useHubSettings, useUnsavedChangesGuard } from "./HubSettingsContext";
+import { useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
 
 export default function ParticipationSection() {
   const { setDirty } = useHubSettings();

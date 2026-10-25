@@ -22,11 +22,11 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { submitFeedback, uploadFeedbackScreenshot, type FeedbackCategory } from "../services/api";
 import { lastPage } from "../services/lastPage";
 import PostImagePicker from "../components/PostImagePicker";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import "./Feedback.css";
 
 type Side = "hub" | "software";
@@ -69,6 +69,7 @@ const SHARED_NOTICE =
 const MESSAGE_MAX_LEN = 4000;
 
 export default function Feedback() {
+  const hub = useHub();
   const { user } = useAuth();
   const [side, setSide] = useState<Side | null>(null);
   const [category, setCategory] = useState<FeedbackCategory | null>(null);

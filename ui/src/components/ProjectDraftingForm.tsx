@@ -3,7 +3,7 @@ import { uploadProjectImage } from "../services/api";
 import PostImagePicker from "./PostImagePicker";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
-import { hardFindings } from "./CocFindings";
+import { hardFindings } from "./cocFindingsState";
 import DraftFooter from "./DraftFooter";
 import { useDebouncedFields } from "../hooks/useDebouncedFields";
 import SuggestFooterButton from "./SuggestFooterButton";
@@ -11,7 +11,7 @@ import TitleField from "./TitleField";
 import ProcessLinkField from "./ProcessLinkField";
 import type { ProposedLink } from "../services/api";
 import MarkdownTextarea from "./MarkdownTextarea";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 
 interface Props {
   /** Related processes the author has picked. Optional by design — the
@@ -74,6 +74,7 @@ export default function ProjectDraftingForm({
   onCancel,
   submitLabel = "Submit project",
 }: Props) {
+  const hub = useHub();
   const titleLocked = lockedFields.includes("title");
   const { handleChange, flush } = useDebouncedFields(onFieldChange);
 

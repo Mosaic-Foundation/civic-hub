@@ -3,8 +3,8 @@ import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import { getOutcomes, type OutcomeEntry, type OutcomesPage } from "../services/api";
 import { absoluteDate } from "../utils/dates";
-import { friendlyType } from "../components/ProcessLinkPicker";
-import hub from "../config/hub";
+import { friendlyType } from "../components/processLinkTypes";
+import { useHub } from "../config/hub";
 import "./Outcomes.css";
 // The filter bar reuses the feed's pill classes so the two surfaces can
 // never drift in style — see .feed-filter-pill--type-* in FeedFilter.css.
@@ -25,6 +25,7 @@ import { briefColorSlug } from "../processes/display";
  */
 
 export default function Outcomes() {
+  const hub = useHub();
   // Single-select, like the feed's filter bar: All, or exactly one type.
   // Always newest first — an archive reads backward from today; the old
   // sort dropdown was removed on purpose (Adam, 2026-08-28).

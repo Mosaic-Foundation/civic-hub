@@ -1,5 +1,5 @@
 import type { CommentIdentityMode } from "../services/api";
-import { useHubSetting } from "../config/HubConfigContext";
+import { useHub } from "../config/hub";
 
 /**
  * The hub's comment identity policy: whether a comment carries the author's
@@ -15,6 +15,6 @@ import { useHubSetting } from "../config/HubConfigContext";
  * available. A hub that has not set a policy gets the launch behaviour.
  */
 export function useCommentIdentityMode(): CommentIdentityMode {
-  const served = useHubSetting("moderation.comment_identity_mode");
+  const served = useHub().setting("moderation.comment_identity_mode");
   return (served as CommentIdentityMode | undefined) ?? "anonymous_optional";
 }

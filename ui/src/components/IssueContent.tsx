@@ -7,7 +7,7 @@
 
 import React from "react";
 import type { ProcessContent } from "../services/api";
-import { normalizeSourceLink } from "./SourceLinks";
+import { normalizeSourceLink } from "./sourceLinkParsing";
 
 interface Props {
   content: ProcessContent;

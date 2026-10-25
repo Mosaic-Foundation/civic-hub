@@ -22,8 +22,8 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import hub from "../config/hub";
-import { useAuth } from "../context/AuthContext";
+import { useHub } from "../config/hub";
+import { useAuth } from "../context/authState";
 import type { HubDocument } from "../hooks/useHubDocument";
 import "./LegalPage.css";
 
@@ -62,13 +62,14 @@ function CustomLink({
 }
 
 export default function LegalPage({ document: doc, title }: Props) {
+  const hub = useHub();
   const { isAdmin } = useAuth();
   // Set the document title so the legal page is identifiable in the
   // browser tab. We don't reset on unmount — React Router's next page
   // will overwrite it if it cares.
   useEffect(() => {
     document.title = `${title} · ${hub.name}`;
-  }, [title]);
+  }, [title, hub.name]);
 
   return (
     <article className="page legal-page">

@@ -19,6 +19,7 @@
 
 import type { ComponentType, ReactNode } from "react";
 import type { BaseDraft, useDraftFlow } from "../../hooks/useDraftFlow";
+import type { Hub } from "../../config/hub";
 import type { CreateProcessResult, DraftApi, DraftKindName, ProposedLink } from "../../services/api";
 
 export type DraftFlow<D extends BaseDraft> = ReturnType<typeof useDraftFlow<D>>;
@@ -31,6 +32,8 @@ export interface DraftPageContext {
   /** `?edit=`: an edit of that live process (projects). */
   editProcessId: string | null;
   searchParams: URLSearchParams;
+  /** The hub, from DraftPage's useHub(): a kind's wording reads it here, not from the module (ADR-013). */
+  hub: Hub;
 }
 
 /** What a kind's form gets from the page. */

@@ -15,7 +15,8 @@
 // advertise a plugin's content (a filter chip, a search chip) ask
 // pluginShown(); its pages and admin tabs stay behind pluginEnabled().
 
-import type { ReactElement } from "react";
+import { createElement, type ReactElement } from "react";
+import { PluginOff } from "../components/PluginOff";
 import { getLoadedHubConfig, setting } from "./hubConfig";
 import { pluginShownGiven, type PluginSetupStatus } from "../../../src/shared/pluginSetup";
 import type { PluginId } from "../../../src/shared/hubSettingsSections";
@@ -54,20 +55,7 @@ export function processTypeShown(type: string): boolean {
   return !plugin || pluginShown(plugin);
 }
 
-/** What a route of a switched-off plugin renders instead of its page. */
-export function PluginOff() {
-  return (
-    <main className="page-container" style={{ padding: "48px 16px", textAlign: "center" }}>
-      <h1>Page not found</h1>
-      <p>This hub does not offer this.</p>
-      <p>
-        <a href="/">Back to the home page</a>
-      </p>
-    </main>
-  );
-}
-
 /** Wrap a route's element: the page when the plugin is on, "not found" when off. */
 export function whenPlugin(id: PluginId, element: ReactElement): ReactElement {
-  return pluginEnabled(id) ? element : <PluginOff />;
+  return pluginEnabled(id) ? element : createElement(PluginOff);
 }

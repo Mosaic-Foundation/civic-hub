@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useHubConfig } from "../config/HubConfigContext";
-import { getLoadedHubConfig } from "../config/hubConfig";
 import { WireFeedReader } from "../services/wireFeed";
 import { cachedRead } from "../hooks/useApi";
 import { theName } from "../../../src/shared/hubCopy";
@@ -17,14 +15,12 @@ import {
 } from "../../../src/shared/feedActivity";
 import { feedKindUi } from "../processes";
 import type { ProcessMeta } from "../processes/types";
-import { processTypeEnabled } from "../config/plugins";
 import FeedPost, {
-  eventProcessType,
-  eventToPost,
   type FeedPillKind,
   type FeedPostView,
 } from "./FeedPost";
-import hub from "../config/hub";
+import { eventProcessType, eventToPost } from "./feedPostModel";
+import { useHub } from "../config/hub";
 import "./Feed.css";
 
 /**
@@ -42,9 +38,9 @@ const EMPTY_PAGE_RETRIES = 5;
  * sessionStorage reads /api/feed for this tab: the parity check's other half,
  * and a way back if the stream ever misreads.
  */
-function readsStream(surface: FeedSurface | undefined): boolean {
+function readsStream(surface: FeedSurface | undefined, sampleItems: boolean | undefined): boolean {
   if (surface) return false;
-  if (getLoadedHubConfig()?.content?.sample_items !== false) return false;
+  if (sampleItems !== false) return false;
   try {
     return sessionStorage.getItem("civic_feed_source") !== "internal";
   } catch {
@@ -69,6 +65,7 @@ interface Props {
 }
 
 export default function Feed({ surface, emptyFilteredAction }: Props) {
+  const hub = useHub();
   const [events, setEvents] = useState<CivicEvent[]>([]);
   const [processMeta, setProcessMeta] = useState<Record<string, ProcessMeta>>({});
   // Slice 11 — process_ids whose underlying announcement has been
@@ -108,7 +105,7 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
   const stream = useRef<WireFeedReader | null>(null);
   const fetchPage = useCallback(
     async (cursor: string | null) => {
-      if (readsStream(surface)) {
+      if (readsStream(surface, hub.config?.content?.sample_items)) {
         // "Load more" continues the reader. A first page is kept 30 seconds
         // (useApi's cache), with a reader at the place it ends, so a hop back
         // to the feed is instant.
@@ -130,7 +127,7 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
       }
       return fetchInternalPage(cursor);
     },
-    [surface, fetchInternalPage],
+    [surface, fetchInternalPage, hub],
   );
 
   const absorb = useCallback(
@@ -222,7 +219,6 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
   // The server sends only events that become cards; the classifier and the
   // plugin switch run again here because an admin's Settings save changes
   // the switches without a reload.
-  const hubConfig = useHubConfig();
   const visibleEvents = useMemo(
     () =>
       events.filter(
@@ -232,12 +228,12 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
           // published record, which the server deliberately does not filter
           // by plugin (src/services/pluginGate.ts). A legacy event with no
           // type is left alone rather than hidden.
-          (processTypeEnabled(eventProcessType(e) ?? "")),
+          (hub.plugins.typeEnabled(eventProcessType(e) ?? "")),
       ),
-    // hubConfig: processTypeEnabled() reads it from the module, so the lint
-    // rule cannot see it; it changes when an admin's Settings save refreshes it.
+    // hub.config is the re-run trigger: typeEnabled() reads the live config
+    // (an admin's Settings save replaces it), which the rule cannot see.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [events, hubConfig],
+    [events, hub, hub.config],
   );
 
   // Fetch per-process metadata lazily for events visible in the feed. The

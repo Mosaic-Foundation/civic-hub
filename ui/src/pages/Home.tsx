@@ -6,7 +6,8 @@ import ProcessPicker from "../components/ProcessPicker";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import Feed from "../components/Feed";
-import FeedFilter, { useFeedFilter } from "../components/FeedFilter";
+import FeedFilter from "../components/FeedFilter";
+import { useFeedFilter } from "../components/feedFilterState";
 
 export default function Home() {
   // CTA-gate (design decision 2026-08-28): the create buttons are

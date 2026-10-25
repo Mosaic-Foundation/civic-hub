@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { useApi } from "../hooks/useApi";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { adminListArchived, adminRestoreProcess } from "../services/api";
 import type { ArchivedProcess } from "../services/api";
 import AdminTabs from "../components/AdminTabs";

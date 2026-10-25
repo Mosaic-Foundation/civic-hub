@@ -1,6 +1,6 @@
-import { useSearchParams } from "react-router-dom";
-import { meetingSummaryLabel } from "../config/hub";
-import { pluginShown } from "../config/plugins";
+import type { Hub } from "../config/hub";
+import { useHub } from "../config/hub";
+import type { FeedFilterKey } from "./feedFilterState";
 import "./FeedFilter.css";
 
 /**
@@ -16,12 +16,6 @@ import "./FeedFilter.css";
  * preserves any other query params (the auth flow uses `?token=` etc.).
  */
 
-export type FeedFilterKey =
-  | "all"
-  | "announcement"
-  | "meeting_summary"
-  | "activity";
-
 export interface FeedFilterChoice {
   key: FeedFilterKey;
   label: string;
@@ -32,7 +26,7 @@ export interface FeedFilterChoice {
 // A function, not a constant: the labels read the hub's settings, which
 // arrive after this module loads. A constant built here said "Board" on
 // every hub (2026-10-06).
-function choices(): FeedFilterChoice[] {
+function choices(hub: Hub): FeedFilterChoice[] {
   return [
     { key: "all", label: "All", pillClass: "feed-filter-pill--all" },
     {
@@ -42,7 +36,7 @@ function choices(): FeedFilterChoice[] {
     },
     {
       key: "meeting_summary",
-      label: meetingSummaryLabel(true),
+      label: hub.meetingSummaryLabel(true),
       pillClass: "feed-filter-pill--meeting",
     },
     {
@@ -53,44 +47,6 @@ function choices(): FeedFilterChoice[] {
   ];
 }
 
-const PARAM = "type";
-
-function isFilterKey(v: string | null): v is FeedFilterKey {
-  return (
-    v === "announcement" ||
-    v === "meeting_summary" ||
-    v === "activity"
-  );
-}
-
-/**
- * Public hook — read the current filter from the URL. Returns "all"
- * when the param is missing or unknown. Used by the parent (Home.tsx)
- * to tell <Feed> which surface to ask the server for.
- */
-export function useFeedFilter(): {
-  active: FeedFilterKey;
-  setActive: (next: FeedFilterKey) => void;
-} {
-  const [params, setParams] = useSearchParams();
-  const raw = params.get(PARAM);
-  const active: FeedFilterKey = isFilterKey(raw) ? raw : "all";
-
-  function setActive(next: FeedFilterKey) {
-    const updated = new URLSearchParams(params);
-    if (next === "all") {
-      updated.delete(PARAM);
-    } else {
-      updated.set(PARAM, next);
-    }
-    // `replace` keeps the back button focused on cross-page navigation,
-    // not a stack of filter changes.
-    setParams(updated, { replace: true });
-  }
-
-  return { active, setActive };
-}
-
 interface Props {
   active: FeedFilterKey;
   onChange: (next: FeedFilterKey) => void;
@@ -98,19 +54,20 @@ interface Props {
 
 // Hidden when the hub switched the plugin off, or while it needs setup and
 // has nothing to show (config/plugins.tsx).
-function visibleChoices(): FeedFilterChoice[] {
-  return choices().filter((choice) => {
-    if (choice.key === "announcement") return pluginShown("announcement");
-    if (choice.key === "meeting_summary") return pluginShown("meeting_summary");
+function visibleChoices(hub: Hub): FeedFilterChoice[] {
+  return choices(hub).filter((choice) => {
+    if (choice.key === "announcement") return hub.plugins.shown("announcement");
+    if (choice.key === "meeting_summary") return hub.plugins.shown("meeting_summary");
     return true;
   });
 }
 
 export default function FeedFilter({ active, onChange }: Props) {
+  const hub = useHub();
   return (
     <nav className="feed-filter" aria-label="Filter feed by post type">
       <ul className="feed-filter-list">
-        {visibleChoices().map((choice) => {
+        {visibleChoices(hub).map((choice) => {
           const isActive = choice.key === active;
           const cls = [
             "feed-filter-pill",

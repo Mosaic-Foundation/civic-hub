@@ -1,4 +1,4 @@
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 
 /**
  * Hub identity text: jurisdiction name, hub label, and tagline. Rendered on
@@ -11,6 +11,7 @@ import hub from "../config/hub";
  * 2026-09-24, which pushed every line of text in by the logo's width).
  */
 export default function HubInfo() {
+  const hub = useHub();
   return (
     <header className={`hub-info${hub.logo_url ? " hub-info--with-logo" : ""}`}>
       <div className="hub-info-text">

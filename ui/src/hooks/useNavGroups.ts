@@ -13,11 +13,10 @@
 // with aria-current="page".
 
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { useNavData } from "../context/NavDataContext";
+import { useAuth } from "../context/authState";
+import { useNavData } from "../context/navDataState";
 import { navSections } from "../config/navigation";
-import { pluginEnabled } from "../config/plugins";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import { sectionForPath } from "../../../src/shared/navSections";
 
 export interface NavItem {
@@ -84,6 +83,7 @@ const ADMIN_PAGES: ReadonlyArray<{ id: string; label: string; icon: string; to: 
 const REVIEW_PATHS = ["/admin/reviews", "/admin/briefs", "/admin/meeting-summaries"];
 
 export function useNavGroups({ onShare }: { onShare: () => void }): NavGroups {
+  const hub = useHub();
   const { user, isAdmin, canPostAnnouncements, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -104,7 +104,7 @@ export function useNavGroups({ onShare }: { onShare: () => void }): NavGroups {
 
   const hubLinks: NavItem[] = [];
   if (user?.is_resident) hubLinks.push({ id: "share", label: "Share this hub", icon: "share", onSelect: onShare });
-  if (pluginEnabled("feedback")) {
+  if (hub.plugins.enabled("feedback")) {
     hubLinks.push({ id: "feedback", label: "Feedback", icon: "feedback", to: "/feedback", current: pathname === "/feedback" });
   }
   // Only when the hub has written one (review R27).
@@ -153,7 +153,7 @@ export function useNavGroups({ onShare }: { onShare: () => void }): NavGroups {
           to: "/settings",
           current: pathname === "/settings",
         },
-        ...(canPostAnnouncements && pluginEnabled("announcement")
+        ...(canPostAnnouncements && hub.plugins.enabled("announcement")
           ? [{ id: "announce", label: "Post announcement", icon: "announce", to: "/announcement/new" }]
           : []),
         {

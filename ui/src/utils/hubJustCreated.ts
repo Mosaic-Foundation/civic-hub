@@ -1,7 +1,7 @@
 // The start page's creator has just arrived (2026-10-08): the flag that
 // shows HubReadyDialog once, in place of the visitor's popup.
 
-import { markIntroSeen } from "../components/IntroPopup";
+import { markIntroSeen } from "../components/introSeen";
 
 const FLAG = "civic_hub_just_created";
 

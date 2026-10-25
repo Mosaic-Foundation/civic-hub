@@ -22,7 +22,7 @@ import { announceInput } from "../services/inputEvents";
 import AuthModal from "./AuthModal";
 import ResultBars from "./ResultBars";
 import ReceiptCode from "./ReceiptCode";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 
 const COMMENT_MAX = 500;
 
@@ -74,6 +74,7 @@ interface Props {
 }
 
 export default function VotePanel({ process, actor, onView }: Props) {
+  const hub = useHub();
   // Every action here runs through one runner: one at a time, "…ing" while
   // it runs, the page updated from the answer's view.
   const action = useAction("Your vote didn't go through. Please try again.");

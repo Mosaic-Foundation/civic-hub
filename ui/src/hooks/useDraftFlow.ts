@@ -10,8 +10,8 @@
 // proposal / vote / project — and any future plugin type.
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { pluginEnabled } from "../config/plugins";
-import { useAuth } from "../context/AuthContext";
+import { useHub } from "../config/hub";
+import { useAuth } from "../context/authState";
 import { useRequireAuth } from "./useRequireAuth";
 import { ApiError } from "../utils/httpError";
 import {
@@ -157,6 +157,7 @@ export function useDraftFlow<D extends BaseDraft>({
   resumeDraft,
   applyFields,
 }: Options<D>) {
+  const hub = useHub();
   const { canParticipate } = useAuth();
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } =
     useRequireAuth();
@@ -291,7 +292,6 @@ export function useDraftFlow<D extends BaseDraft>({
       draftPromise.current = null;
     });
     return p;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [createDraft, updateDraft, commitDraft]);
 
   /**
@@ -379,7 +379,7 @@ export function useDraftFlow<D extends BaseDraft>({
         setAssistantLoading(false);
       }
     },
-    [processType, phase, commitDraft, pushAssistantResponse],
+    [processType, phase, commitDraft, pushAssistantResponse, withNetworkRetry],
   );
 
   /**
@@ -441,7 +441,7 @@ export function useDraftFlow<D extends BaseDraft>({
     } finally {
       setAssistantOpening(false);
     }
-  }, [config, ensureDraft, processType, commitDraft, pushAssistantResponse]);
+  }, [config, ensureDraft, processType, commitDraft, pushAssistantResponse, withNetworkRetry]);
 
   /**
    * "Get suggestions": open the assistant and run the best-practices
@@ -475,7 +475,7 @@ export function useDraftFlow<D extends BaseDraft>({
         setSuggesting(false);
       }
     });
-  }, [requireAuth, config, ensureDraft, processType, commitDraft, pushAssistantResponse]);
+  }, [requireAuth, config, ensureDraft, processType, commitDraft, pushAssistantResponse, withNetworkRetry]);
 
   const requestAssistantOpen = useCallback(() => {
     requireAuth(() => {
@@ -626,7 +626,7 @@ export function useDraftFlow<D extends BaseDraft>({
   // the footer echo), per-field help. Null when the type has no assistant or
   // the hub switched the Writing assistant off. The Code of Conduct check is
   // not part of it: Submit runs it, either way (Adam, 2026-10-07; Submit and Save).
-  const shellAssistant: DraftShellAssistant | null = config?.available && pluginEnabled("assistant")
+  const shellAssistant: DraftShellAssistant | null = config?.available && hub.plugins.enabled("assistant")
     ? {
         open: assistantOpen,
         opening: assistantOpening,

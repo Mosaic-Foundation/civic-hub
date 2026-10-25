@@ -10,7 +10,8 @@ import {
   type RenderedLink,
 } from "../services/api";
 import { useAction } from "../hooks/useAction";
-import ProcessLinkPicker, { friendlyType } from "./ProcessLinkPicker";
+import ProcessLinkPicker from "./ProcessLinkPicker";
+import { friendlyType } from "./processLinkTypes";
 import "./RelatedProcesses.css";
 
 /**

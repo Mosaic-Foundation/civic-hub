@@ -8,9 +8,11 @@ import {
 import ProcessPicker from "../components/ProcessPicker";
 import AuthModal from "../components/AuthModal";
 import { useRequireAuth } from "../hooks/useRequireAuth";
-import StatusFilter, { useStatusFilter } from "../components/StatusFilter";
+import StatusFilter from "../components/StatusFilter";
+import { useStatusFilter } from "../components/statusFilterState";
 import "./Propose.css";
-import ProcessListCard, { cardDate } from "../components/ProcessListCard";
+import ProcessListCard from "../components/ProcessListCard";
+import { cardDate } from "../components/cardDate";
 
 const FILTER_CHOICES = [
   { key: "all", label: "All" },

@@ -5,6 +5,12 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
+// What the hub app (src/, not the console or the start page) may not import.
+const HUB_APP_BOUNDARIES = [
+  { group: ['**/console', '**/console/**'], message: 'The hub app may not import the super admin console (src/console/).' },
+  { group: ['**/start', '**/start/**'], message: 'The hub app may not import the start page (src/start/).' },
+]
+
 export default defineConfig([
   globalIgnores(['dist']),
   {
@@ -21,9 +27,20 @@ export default defineConfig([
     },
     rules: {
       // Hot reload only (a file that exports a component and something else
-      // reloads the whole page in dev). A warning, not a CI failure (Adam,
-      // Audit 4); moving the 22 exports is left for the frontend work (F6).
+      // reloads the whole page in dev). CI runs the lint with --max-warnings 0
+      // since the frontend pass (2026-10-24), so it holds like an error.
       'react-refresh/only-export-components': 'warn',
+    },
+  },
+  // The console's Dashboard section registry: it exports the registry
+  // (SECTION_VIEWS, QUEUE_LABELS) and a time helper, and its components are
+  // the registry's private renderers. Splitting them apart would scatter one
+  // table; an edit there reloads the console page in dev, which is all the
+  // rule is about.
+  {
+    files: ['src/console/dashboardSections.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
   // The super admin's page (src/console/, console.html) and the hub app are
@@ -34,10 +51,25 @@ export default defineConfig([
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/console/**', 'src/start/**'],
     rules: {
+      'no-restricted-imports': ['error', { patterns: HUB_APP_BOUNDARIES }],
+    },
+  },
+  // A component reads the hub's config through useHub() (config/hub.ts), so
+  // it re-renders when the config changes under a running page, whatever
+  // renders above it (frontend pass, 2026-10-24; ADR-013). ESLint replaces a
+  // rule's options per block, so the hub app's boundaries are repeated here.
+  // Plain modules, config/ itself and the process display tables (called
+  // from a component's render) read the object directly.
+  {
+    files: ['src/**/*.tsx'],
+    ignores: ['src/console/**', 'src/start/**', 'src/config/**', 'src/processes/**', 'src/**/*.test.tsx'],
+    rules: {
       'no-restricted-imports': ['error', {
         patterns: [
-          { group: ['**/console', '**/console/**'], message: 'The hub app may not import the super admin console (src/console/).' },
-          { group: ['**/start', '**/start/**'], message: 'The hub app may not import the start page (src/start/).' },
+          ...HUB_APP_BOUNDARIES,
+          { group: ['**/config/hub'], importNames: ['default', 'meetingSummaryLabel'], message: 'In a component, read the hub with useHub() (config/hub): it re-renders when the config changes. ADR-013.' },
+          { group: ['**/config/plugins'], importNames: ['pluginEnabled', 'pluginShown', 'pluginSetup', 'processTypeEnabled', 'processTypeShown'], message: 'In a component, read plugin switches with useHub().plugins (config/hub). ADR-013.' },
+          { group: ['**/config/hubConfig'], importNames: ['getLoadedHubConfig', 'setting'], message: 'In a component, read the config with useHub().config / useHub().setting(key). ADR-013.' },
         ],
       }],
     },

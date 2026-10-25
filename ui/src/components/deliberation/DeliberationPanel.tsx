@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { ReactNode } from "react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/authState";
 import SourceLinks from "../SourceLinks";
 import type { DeliberationReadModel, ClusterState, VoteDirection } from "../../services/api";
 import {
@@ -59,7 +59,7 @@ export default function DeliberationPanel({ processId, showTopic, onParticipated
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     }
-  }, [processId, user?.id]);
+  }, [processId]);
 
   const loadNextStatement = useCallback(async () => {
     try {
@@ -79,6 +79,9 @@ export default function DeliberationPanel({ processId, showTopic, onParticipated
     }
   }, [processId]);
 
+  // Signing in or out re-reads the process: has_submitted is the signed-in
+  // visitor's (userId is the re-run trigger, not read in the effect).
+  const userId = user?.id;
   useEffect(() => {
     async function init() {
       setLoading(true);
@@ -87,7 +90,7 @@ export default function DeliberationPanel({ processId, showTopic, onParticipated
       setLoading(false);
     }
     init();
-  }, [loadProcess, loadNextStatement, loadClusters]);
+  }, [loadProcess, loadNextStatement, loadClusters, userId]);
 
   // One vote is a tap, not a commitment; three, or a statement of their
   // own, is taking part.

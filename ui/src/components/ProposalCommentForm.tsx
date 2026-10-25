@@ -2,7 +2,7 @@ import { useState } from "react";
 import { submitInput, type CommunityInput } from "../services/api";
 import { announceInput } from "../services/inputEvents";
 import { useAction } from "../hooks/useAction";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { useCommentIdentityMode } from "../hooks/useCommentIdentityMode";
 import AuthModal from "./AuthModal";

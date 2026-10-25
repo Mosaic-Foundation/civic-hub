@@ -5,7 +5,8 @@ import {
   type ProposedLink,
   type RelationType,
 } from "../services/api";
-import ProcessLinkPicker, { friendlyType } from "./ProcessLinkPicker";
+import ProcessLinkPicker from "./ProcessLinkPicker";
+import { friendlyType } from "./processLinkTypes";
 import "./ProcessLinkField.css";
 
 /**

@@ -19,7 +19,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { adminListFeedback, adminMarkQueueSeen, notifyAdminQueuesChanged } from "../services/api";
 import type { FeedbackCategory, FeedbackSubmission } from "../services/api";
 import AdminTabs from "../components/AdminTabs";

@@ -22,10 +22,10 @@ import {
   adminRestoreComment,
   getInputs,
 } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { useAction } from "../hooks/useAction";
 import { onInputAdded } from "../services/inputEvents";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 
 interface Props {
   processId: string;
@@ -52,6 +52,7 @@ const REASON_CHIPS = [
 ] as const;
 
 export default function CommunityInputPanel({ processId, config }: Props) {
+  const hub = useHub();
   const { isAdmin } = useAuth();
   // Silent when it fails (inputs are non-critical); read again when the tab is
   // back in view (a second tab catches up).

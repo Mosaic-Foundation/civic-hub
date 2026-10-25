@@ -19,7 +19,7 @@ import MoreSheet from "./MoreSheet";
 import SharePanel from "./SharePanel";
 import AuthModal from "./AuthModal";
 import { useNavGroups, type NavGroups } from "../hooks/useNavGroups";
-import { useNavData } from "../context/NavDataContext";
+import { useNavData } from "../context/navDataState";
 import { BAR_SECTION_COUNT } from "../../../src/shared/navSections";
 import "./BottomBar.css";
 

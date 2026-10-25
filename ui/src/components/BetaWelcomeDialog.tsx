@@ -1,6 +1,5 @@
 import { useState } from "react";
-import hub from "../config/hub";
-import { pluginEnabled } from "../config/plugins";
+import { useHub } from "../config/hub";
 import AuthModal from "./AuthModal";
 import Modal from "./Modal";
 import WaitlistForm from "./WaitlistForm";
@@ -39,6 +38,7 @@ export default function BetaWelcomeDialog() {
 }
 
 function WelcomeDialog({ onSignIn }: { onSignIn: () => void }) {
+  const hub = useHub();
   return (
     <Modal
       title={hub.name}
@@ -63,7 +63,7 @@ function WelcomeDialog({ onSignIn }: { onSignIn: () => void }) {
         </button>
       </div>
       {/* The button is the Feedback plugin's; without it, no pointer. */}
-      {pluginEnabled("feedback") && (
+      {hub.plugins.enabled("feedback") && (
         <p className="beta-welcome-feedback-note">
           Have a look around and tell us what you think — use the{" "}
           <strong>Feedback</strong> button at the top of any page.

@@ -18,14 +18,15 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import hub from "../config/hub";
-import { clearIntroSeen } from "../components/IntroPopup";
+import { useHub } from "../config/hub";
+import { clearIntroSeen } from "../components/introSeen";
 import { useHubDocument } from "../hooks/useHubDocument";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import HubInfo from "../components/HubInfo";
 import "../components/LegalPage.css";
 
 export default function About() {
+  const hub = useHub();
   const [introCleared, setIntroCleared] = useState(false);
   const doc = useHubDocument("copy.about");
   const { isAdmin } = useAuth();

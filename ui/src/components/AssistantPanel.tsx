@@ -1,5 +1,6 @@
 import { type ReactNode, useState, useRef, useEffect, useMemo } from "react";
-import SuggestionCard, { suggestionKey } from "./SuggestionCard";
+import SuggestionCard from "./SuggestionCard";
+import { suggestionKey } from "./suggestionKey";
 import type { DraftSuggestion } from "../services/api";
 import "./AssistantPanel.css";
 

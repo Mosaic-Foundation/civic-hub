@@ -32,7 +32,7 @@ import {
   type SampleContentSummary,
   type WaitlistEntry,
 } from "../../services/api";
-import { useHubSettings, useUnsavedChangesGuard } from "./HubSettingsContext";
+import { useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
 import { useAnchoredOpen } from "../../hooks/useAnchor";
 import { SampleRemovalWarning } from "./sampleWarning";
 

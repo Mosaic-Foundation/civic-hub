@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useNavData } from "../context/NavDataContext";
+import { useNavData } from "../context/navDataState";
 import { useDropdownMenu } from "../hooks/useDropdownMenu";
 import "./AdminMenu.css";
 

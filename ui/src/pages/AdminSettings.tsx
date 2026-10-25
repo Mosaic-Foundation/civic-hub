@@ -10,11 +10,8 @@ import { Navigate, useLocation, useNavigate, useParams, Link } from "react-route
 import { adminAnchorPath, SETTINGS_NAV, type SettingsNavId } from "../../../src/shared/adminAnchors";
 import { useScrollToHash } from "../hooks/useAnchor";
 import AdminTabs from "../components/AdminTabs";
-import {
-  HubSettingsProvider,
-  confirmDiscard,
-  useHubSettings,
-} from "./settings/HubSettingsContext";
+import { HubSettingsProvider } from "./settings/HubSettingsContext";
+import { confirmDiscard, useHubSettings } from "./settings/hubSettingsState";
 import IdentitySection from "./settings/IdentitySection";
 import ThemeSection from "./settings/ThemeSection";
 import CopySection from "./settings/CopySection";

@@ -11,7 +11,7 @@ import ProcessLinkField from "./ProcessLinkField";
 import "./DraftingForm.css";
 import "./VoteDraftingForm.css";
 import { FieldGuide } from "./DraftingForm";
-import { hardFindings } from "./CocFindings";
+import { hardFindings } from "./cocFindingsState";
 import DraftFooter from "./DraftFooter";
 import { useDebouncedFields } from "../hooks/useDebouncedFields";
 import SuggestFooterButton from "./SuggestFooterButton";

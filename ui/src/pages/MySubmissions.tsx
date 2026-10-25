@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
 import { useAction } from "../hooks/useAction";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import {
   getMyReviews,
   getReviewDetail,

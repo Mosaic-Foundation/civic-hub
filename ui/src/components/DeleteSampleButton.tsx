@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
 import { useAction } from "../hooks/useAction";
-import { adminDeleteSample, adminGetSampleContent, type SampleContentSummary } from "../services/api";
+import { adminDeleteSample, type SampleContentSummary } from "../services/api";
 import { refreshHubConfig } from "../config/hubConfig";
+import { forgetSampleIds } from "./deletableSample";
 
 /**
  * Delete one sample (admin menu slice, 2026-10-13): a button and its
@@ -10,33 +11,6 @@ import { refreshHubConfig } from "../config/hubConfig";
  * Settings → Admin log. Used in Settings → Sample content's list and beside
  * Archive on a sample's own page.
  */
-
-// The samples an admin can delete, fetched once per page load and kept until
-// a delete, so an item page knows whether to offer the button.
-let sampleIds: Promise<Set<string>> | null = null;
-function loadSampleIds(): Promise<Set<string>> {
-  sampleIds ??= adminGetSampleContent()
-    .then((s) => new Set(s.items.map((i) => i.id)))
-    .catch(() => {
-      sampleIds = null;
-      return new Set<string>();
-    });
-  return sampleIds;
-}
-
-/** True once the admin's list says this process is a sample they can delete. */
-export function useIsDeletableSample(processId: string, isAdmin: boolean): boolean {
-  const [yes, setYes] = useState(false);
-  useEffect(() => {
-    if (!isAdmin) return;
-    let live = true;
-    void loadSampleIds().then((ids) => live && setYes(ids.has(processId)));
-    return () => {
-      live = false;
-    };
-  }, [processId, isAdmin]);
-  return yes;
-}
 
 export default function DeleteSampleButton({
   processId,
@@ -59,7 +33,7 @@ export default function DeleteSampleButton({
   async function remove() {
     const result = await action.run(() => adminDeleteSample(processId));
     if (!result) return;
-    sampleIds = null;
+    forgetSampleIds();
     setConfirming(false);
     // The demo bar's "Remove samples" goes with the last one.
     void refreshHubConfig();

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { pluginEnabled } from "../config/plugins";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import "./WelcomeBanner.css";
 
 const STORAGE_KEY = "welcome-banner-dismissed-v2";
@@ -23,6 +22,7 @@ function dismiss(): void {
 }
 
 export default function WelcomeBanner() {
+  const hub = useHub();
   const [visible, setVisible] = useState(() => !isDismissed());
 
   // The hub's own paragraph, or the default by kind and type of place
@@ -48,7 +48,7 @@ export default function WelcomeBanner() {
             {!custom && (
               <>
                 {" "}It's early and still evolving
-                {pluginEnabled("feedback") ? (
+                {hub.plugins.enabled("feedback") ? (
                   <>
                     {" "}— use Feedback anytime to report a
                     bug, suggest a feature, or share anything else.

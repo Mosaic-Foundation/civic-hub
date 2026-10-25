@@ -3,9 +3,9 @@ import { Link, useParams } from "react-router-dom";
 import { getPublicVoteResults, type PublicVoteResults } from "../services/api";
 import PostFeaturedImage from "../components/PostFeaturedImage";
 import LinkPreviewCard from "../components/LinkPreviewCard";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import ShareButton from "../components/ShareButton";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { getHeldReceipt, isMine } from "../services/voteReceipts";
 import ResultBars from "../components/ResultBars";
 import "./VoteResults.css";
@@ -29,6 +29,7 @@ const URL_RE = /\bhttps?:\/\/\S+/gi;
  *   7. Provenance footer
  */
 export default function VoteResultsPage() {
+  const hub = useHub();
   const { id } = useParams<{ id: string }>();
   const { actorId } = useAuth();
   const {

@@ -15,7 +15,7 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import hub from "../config/hub";
+import { useHub } from "../config/hub";
 import { useHubDocument } from "../hooks/useHubDocument";
 import "../components/LegalPage.css";
 import "./Welcome.css";
@@ -42,11 +42,12 @@ function CustomLink({
 }
 
 export default function Welcome() {
+  const hub = useHub();
   const doc = useHubDocument("copy.welcome");
 
   useEffect(() => {
     document.title = `Welcome · ${hub.name}`;
-  }, []);
+  }, [hub.name]);
 
   return (
     <article className="page legal-page welcome-page">

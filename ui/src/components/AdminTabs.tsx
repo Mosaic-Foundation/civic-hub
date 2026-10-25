@@ -6,7 +6,7 @@ import {
   ADMIN_QUEUES_CHANGED,
   type AdminQueueCounts,
 } from "../services/api";
-import { pluginEnabled } from "../config/plugins";
+import { useHub } from "../config/hub";
 import "./AdminTabs.css";
 
 /**
@@ -35,6 +35,7 @@ const EMPTY: AdminQueueCounts = {
 };
 
 export default function AdminTabs() {
+  const hub = useHub();
   const location = useLocation();
   // A failed read shows no badges (best-effort); each navigation reads again,
   // keeping the badges shown meanwhile.
@@ -64,13 +65,13 @@ export default function AdminTabs() {
         {badge(counts.reviews, "new since you last looked")}
       </NavLink>
       {/* Hidden when the hub switched the plugin off (config/plugins.tsx). */}
-      {pluginEnabled("brief") && (
+      {hub.plugins.enabled("brief") && (
         <NavLink to="/admin/briefs" className={tabClass}>
           Briefs
           {badge(counts.briefs, "new since you last looked")}
         </NavLink>
       )}
-      {pluginEnabled("meeting_summary") && (
+      {hub.plugins.enabled("meeting_summary") && (
         <NavLink to="/admin/meeting-summaries" className={tabClass}>
           Meeting summaries
           {badge(counts.meeting_summaries, "new since you last looked")}
@@ -79,7 +80,7 @@ export default function AdminTabs() {
       <NavLink to="/admin/moderation" className={tabClass}>
         Moderation
       </NavLink>
-      {pluginEnabled("feedback") && (
+      {hub.plugins.enabled("feedback") && (
         <NavLink to="/admin/feedback" className={tabClass}>
           Feedback
           {badge(counts.feedback, "new since you last looked")}

@@ -1,7 +1,7 @@
 import { useApi } from "../hooks/useApi";
 import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { getProcessState, type ProcessState, type VoteState } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authState";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import VotePanel from "../components/VotePanel";
 import Creator from "../components/Creator";
@@ -20,10 +20,12 @@ import ProcessHeader from "../components/ProcessHeader";
 import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
 import { detailPathOf, pluginOfDetailRoute, pluginOfType } from "../processes/display";
-import { PluginOff, pluginEnabled } from "../config/plugins";
+import { useHub } from "../config/hub";
+import { PluginOff } from "../components/PluginOff";
 import { formatDate } from "../utils/dates";
 
 export default function Process() {
+  const hub = useHub();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { actorId } = useAuth();
@@ -48,7 +50,7 @@ export default function Process() {
   // With the plugin whose page this is switched off, the route shows what a
   // switched-off plugin's route shows, as before it stopped being behind it.
   const routePlugin = pluginOfDetailRoute("/process/");
-  if (routePlugin && !pluginEnabled(routePlugin)) return <PluginOff />;
+  if (routePlugin && !hub.plugins.enabled(routePlugin)) return <PluginOff />;
 
   if (loading) return <p className="detail-page">Loading...</p>;
   if (error) return (
@@ -72,7 +74,7 @@ export default function Process() {
   const path = detailPathOf(process.type, process.id);
   if (path !== `/process/${process.id}`) return <Navigate to={path} replace />;
   const plugin = pluginOfType(process.type);
-  if (plugin && !pluginEnabled(plugin)) return <PluginOff />;
+  if (plugin && !hub.plugins.enabled(plugin)) return <PluginOff />;
 
   const isVote = process.type === "civic.vote";
   const voteState = isVote ? (process as VoteState) : null;

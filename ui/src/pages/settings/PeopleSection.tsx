@@ -7,7 +7,7 @@ import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
 import PatternAvatar from "../../components/PatternAvatar";
-import { pluginEnabled } from "../../config/plugins";
+import { useHub } from "../../config/hub";
 import "../Members.css";
 import {
   adminGetHiddenMembers,
@@ -15,9 +15,10 @@ import {
   adminRequestPeopleCode,
   adminSetHubPeople,
 } from "../../services/api";
-import { useHubSettings, useUnsavedChangesGuard } from "./HubSettingsContext";
+import { useHubSettings, useUnsavedChangesGuard } from "./hubSettingsState";
 
 export default function PeopleSection() {
+  const hub = useHub();
   const { setDirty } = useHubSettings();
 
   const [adminEmails, setAdminEmails] = useState<string[]>([]);
@@ -189,7 +190,7 @@ export default function PeopleSection() {
       </div>
 
       {/* The Members plugin's (2026-10-14): gone while it is off. */}
-      {pluginEnabled("members") && <HiddenMembers />}
+      {hub.plugins.enabled("members") && <HiddenMembers />}
     </section>
   );
 }
