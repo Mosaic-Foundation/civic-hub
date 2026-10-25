@@ -87,6 +87,11 @@ jobs:
       - name: UI lint
         run: npm run lint
         working-directory: ui
+      # Component tests (ui/src/**/*.test.tsx, jsdom): the data hook, the
+      # modal, the token store, beside the code they test.
+      - name: UI component tests
+        run: npm test
+        working-directory: ui
       - name: UI build
         run: npm run build
         working-directory: ui
