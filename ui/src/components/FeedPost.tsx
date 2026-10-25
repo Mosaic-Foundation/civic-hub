@@ -10,7 +10,8 @@ import {
   type ActivityKind,
 } from "../../../src/shared/feedActivity";
 import { feedKindUi } from "../processes";
-import { relativeTime, summaryFromDescription } from "../processes/feedText";
+import { summaryFromDescription } from "../processes/feedText";
+import { absoluteTime, relativeTime } from "../utils/dates";
 import type { CardText } from "../processes/types";
 
 /**
@@ -168,22 +169,6 @@ function buildTitleSummary(
   });
 }
 
-// relativeTime lives with the other feed text helpers; re-exported for its callers.
-export { relativeTime };
-
-export function absoluteTime(iso: string): string {
-  const d = new Date(iso);
-  const date = d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const time = d.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `${date} at ${time}`;
-}
 
 /**
  * Classify an action_url as either an internal SPA route or external link.

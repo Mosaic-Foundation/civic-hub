@@ -9,6 +9,7 @@ import {
   localShortDate,
   localShortDateOfDay,
   localTimestamp,
+  relativeTime,
 } from "./dates";
 
 // 3:30 in the afternoon, UTC. Every case runs in UTC unless it says otherwise.
@@ -109,5 +110,18 @@ describe("the date-only functions", () => {
     expect(absoluteDateOfDay(DAY)).toBe("October 24, 2026");
     // What they are for: read as midnight UTC, this day is still the 23rd in Los Angeles.
     expect(new Date(DAY).toLocaleDateString("en-US", { day: "numeric" })).toBe("23");
+  });
+});
+
+describe("relativeTime (the feed's times)", () => {
+  const now = new Date("2026-10-24T15:30:00Z");
+  const ago = (ms: number) => new Date(now.getTime() - ms).toISOString();
+  it("says how long ago within a week, and the date after", () => {
+    expect(relativeTime(ago(30_000), now)).toBe("just now");
+    expect(relativeTime(ago(60_000), now)).toBe("1 minute ago");
+    expect(relativeTime(ago(5 * 60_000), now)).toBe("5 minutes ago");
+    expect(relativeTime(ago(3_600_000), now)).toBe("1 hour ago");
+    expect(relativeTime(ago(2 * 86_400_000), now)).toBe("2 days ago");
+    expect(relativeTime(ago(10 * 86_400_000), now)).toBe(localShortDate(ago(10 * 86_400_000)));
   });
 });

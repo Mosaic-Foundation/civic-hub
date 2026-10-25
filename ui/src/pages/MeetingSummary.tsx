@@ -10,8 +10,7 @@ import AdminArchiveButton from "../components/AdminArchiveButton";
 import "./MeetingSummary.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import SampleBadge from "../components/SampleBadge";
-import { relativeTime, absoluteTime } from "../components/FeedPost";
-import { absoluteDateOfDay } from "../utils/dates";
+import { absoluteDateOfDay, absoluteTime, relativeTime } from "../utils/dates";
 
 export default function MeetingSummaryPage() {
   const { id } = useParams<{ id: string }>();

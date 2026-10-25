@@ -9,8 +9,7 @@ import { useAuth } from "../context/AuthContext";
 import { getHeldReceipt, isMine } from "../services/voteReceipts";
 import ResultBars from "../components/ResultBars";
 import "./VoteResults.css";
-import { relativeTime, absoluteTime } from "../components/FeedPost";
-import { absoluteDate, localShortDate } from "../utils/dates";
+import { absoluteDate, absoluteTime, localShortDate, relativeTime } from "../utils/dates";
 
 const URL_RE = /\bhttps?:\/\/\S+/gi;
 

@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import PostAnnouncement from "../pages/PostAnnouncement";
 import AnnouncementPage from "../pages/Announcement";
 import { getAnnouncement } from "../services/api";
-import { relativeTime } from "./feedText";
+import { relativeTime } from "../utils/dates";
 import type { FeedKindUi, ProcessUi } from "./types";
 
 const announcementKind: FeedKindUi = {

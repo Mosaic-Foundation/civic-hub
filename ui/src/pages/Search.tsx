@@ -9,7 +9,7 @@ import {
   type SearchTypeKey,
 } from "../services/api";
 import SearchBar from "../components/SearchBar";
-import { relativeTime, absoluteTime } from "../components/FeedPost";
+import { relativeTime, absoluteTime } from "../utils/dates";
 import hub, { meetingSummaryLabel } from "../config/hub";
 import { processTypeShown } from "../config/plugins";
 import { searchChipsShown } from "../config/pluginRules";

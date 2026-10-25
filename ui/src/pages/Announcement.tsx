@@ -8,7 +8,7 @@ import {
   type Announcement,
 } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { relativeTime, absoluteTime } from "../components/FeedPost";
+import { relativeTime, absoluteTime } from "../utils/dates";
 import PostFeaturedImage from "../components/PostFeaturedImage";
 import LinkPreviewCard from "../components/LinkPreviewCard";
 import ShareButton from "../components/ShareButton";

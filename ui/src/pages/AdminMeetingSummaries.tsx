@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { StatusChip } from "../components/AdminPublicationReview";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   adminMarkQueueSeen,
@@ -993,17 +994,6 @@ export default function AdminMeetingSummaries() {
       </div>
     </div>
   );
-}
-
-function StatusChip({ status }: { status: MeetingSummaryApprovalStatus }) {
-  const cls = `status-badge admin-brief-status-${status}`;
-  const label =
-    status === "pending"
-      ? "pending review"
-      : status === "approved"
-      ? "approved"
-      : "published";
-  return <span className={cls}>{label}</span>;
 }
 
 function formatSeconds(total: number): string {

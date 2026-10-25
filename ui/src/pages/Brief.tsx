@@ -7,8 +7,7 @@ import {
   postBriefResponse,
   type PublicBrief,
 } from "../services/api";
-import { absoluteTime } from "../components/FeedPost";
-import { absoluteDate } from "../utils/dates";
+import { absoluteDate, absoluteTime } from "../utils/dates";
 import PostFeaturedImage from "../components/PostFeaturedImage";
 import ProcessHeader from "../components/ProcessHeader";
 import DetailActions from "../components/DetailActions";

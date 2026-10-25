@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { HeldBackNote } from "../components/HeldBackNote";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   adminListVoteResults,
@@ -7,40 +6,36 @@ import {
   adminPatchVoteResults,
   adminApproveVoteResults,
   type VoteResultsDetail,
-  type VoteResultsPublicationStatus,
   type VoteResultsSummary,
 } from "../services/api";
-import AdminTabs from "../components/AdminTabs";
 import PostImagePicker from "../components/PostImagePicker";
+import {
+  ApproveActions,
+  PublicationList,
+  PublicationReview,
+  StatusChip,
+} from "../components/AdminPublicationReview";
+import { parseCommentsText } from "../utils/commentsText";
+import { useApi } from "../hooks/useApi";
 import hub from "../config/hub";
 import "./AdminVoteResults.css";
 import { localShortDate, localDateAtTime } from "../utils/dates";
-
-const STATUS_FILTERS: Array<{
-  id: "all" | VoteResultsPublicationStatus;
-  label: string;
-}> = [
-  { id: "all", label: "All" },
-  { id: "pending", label: "Pending" },
-  { id: "approved", label: "Approved" },
-  { id: "published", label: "Published" },
-];
 
 export default function AdminVoteResults() {
   const navigate = useNavigate();
   const { id: routeId } = useParams<{ id?: string }>();
   const view: "list" | "review" = routeId ? "review" : "list";
 
-  const [records, setRecords] = useState<VoteResultsSummary[]>([]);
-  const [selected, setSelected] = useState<VoteResultsDetail | null>(null);
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | VoteResultsPublicationStatus
-  >("all");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const list = useApi<VoteResultsSummary[]>("admin/vote-results", () => adminListVoteResults());
+  // The record named in the URL, read again whenever the id changes.
+  const detail = useApi<VoteResultsDetail>(routeId ? `admin/vote-results/${routeId}` : null, () => adminGetVoteResults(routeId!));
+  const selected = detail.data ?? null;
+  const setSelected = detail.setData;
+
+  const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  // Review form state
+  // Review form state, filled from each record as it opens.
   const [commentsText, setCommentsText] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -48,27 +43,20 @@ export default function AdminVoteResults() {
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [confirmingApprove, setConfirmingApprove] = useState(false);
-
-  function loadList() {
-    setLoading(true);
-    setError(null);
-    adminListVoteResults()
-      .then(setRecords)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+  const [formFor, setFormFor] = useState<string | null>(null);
+  if (selected && formFor !== selected.id) {
+    setFormFor(selected.id);
+    setCommentsText(selected.content.comments.join("\n"));
+    setAdminNotes(selected.content.admin_notes);
+    setImageUrl(selected.content.image_url ?? null);
+    setImageAlt(selected.content.image_alt ?? null);
+    setConfirmingApprove(false);
   }
 
-  useEffect(() => {
-    loadList();
-  }, []);
-
-  const filtered = useMemo(() => {
-    if (statusFilter === "all") return records;
-    return records.filter((b) => b.publication_status === statusFilter);
-  }, [records, statusFilter]);
+  const error = actionError ?? detail.error?.message ?? list.error?.message ?? null;
 
   function openReview(id: string) {
-    setError(null);
+    setActionError(null);
     setActionMessage(null);
     navigate(`/admin/vote-results/${id}`);
   }
@@ -76,29 +64,11 @@ export default function AdminVoteResults() {
   function backToList() {
     setConfirmingApprove(false);
     setActionMessage(null);
-    setError(null);
+    setActionError(null);
+    // The queue is read again: what was just approved shows as published.
+    void list.reload();
     navigate("/admin/vote-results");
   }
-
-  // Load the selected record whenever the URL id changes.
-  useEffect(() => {
-    if (!routeId) {
-      setSelected(null);
-      return;
-    }
-    setError(null);
-    setActionMessage(null);
-    adminGetVoteResults(routeId)
-      .then((record) => {
-        setSelected(record);
-        setCommentsText(record.content.comments.join("\n"));
-        setAdminNotes(record.content.admin_notes);
-        setImageUrl(record.content.image_url ?? null);
-        setImageAlt(record.content.image_alt ?? null);
-        setConfirmingApprove(false);
-      })
-      .catch((err: Error) => setError(err.message));
-  }, [routeId]);
 
   function buildPatch() {
     const altTrimmed = (imageAlt ?? "").trim();
@@ -115,7 +85,7 @@ export default function AdminVoteResults() {
   async function saveDraft() {
     if (!selected) return;
     setSaving(true);
-    setError(null);
+    setActionError(null);
     try {
       const updated = await adminPatchVoteResults(selected.id, buildPatch());
       setSelected(updated);
@@ -123,7 +93,7 @@ export default function AdminVoteResults() {
       setImageAlt(updated.content.image_alt ?? null);
       setActionMessage("Draft saved.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setActionError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -132,7 +102,7 @@ export default function AdminVoteResults() {
   async function approve() {
     if (!selected) return;
     setApproving(true);
-    setError(null);
+    setActionError(null);
     try {
       // Save any unsaved edits first so the published record matches
       // what the admin is looking at.
@@ -142,7 +112,7 @@ export default function AdminVoteResults() {
       setActionMessage(message);
       setConfirmingApprove(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to approve");
+      setActionError(err instanceof Error ? err.message : "Failed to approve");
     } finally {
       setApproving(false);
     }
@@ -152,290 +122,210 @@ export default function AdminVoteResults() {
     const isPending = selected.publication_status === "pending";
     const ctx = selected.content.vote_context;
     return (
-      <div className="page admin-briefs-page">
-        <AdminTabs />
-        <div className="admin-briefs-body">
-          <button className="admin-back-link" onClick={backToList} type="button">
-            &larr; Back to Briefs
-          </button>
-          <h1>Review: {selected.title}</h1>
-          <p className="admin-subtitle">
+      <PublicationReview
+        title={selected.title}
+        subtitle={
+          <>
             Status: <StatusChip status={selected.publication_status} /> · Generated{" "}
             {localDateAtTime(selected.generated_at)}
+          </>
+        }
+        backLabel="Back to Briefs"
+        onBack={backToList}
+        actionMessage={actionMessage}
+        error={error}
+        heldBack={selected.held_back}
+        actions={
+          <>
+            {isPending && (
+              <ApproveActions
+                saveLabel="Save draft"
+                saving={saving}
+                approving={approving}
+                confirming={confirmingApprove}
+                onSave={saveDraft}
+                onApprove={approve}
+                onConfirm={() => setConfirmingApprove(true)}
+                onCancel={() => setConfirmingApprove(false)}
+              />
+            )}
+            {confirmingApprove && (
+              <p className="form-hint" style={{ marginTop: "var(--space-sm)" }}>
+                This will deliver the vote results to {hub.governing_body_ref} and publish a
+                "Vote results: …" post to the public feed. This cannot be undone.
+              </p>
+            )}
+          </>
+        }
+      >
+        <section className="admin-detail-section">
+          <h3>Participation</h3>
+          <p>
+            {selected.content.participation_count}{" "}
+            {hub.noun(selected.content.participation_count)} voted.
           </p>
+        </section>
 
-          {actionMessage && <p className="admin-action-message">{actionMessage}</p>}
-          {error && <p className="form-error">{error}</p>}
+        <section className="admin-detail-section">
+          <h3>Positions</h3>
+          <ul className="brief-positions-list">
+            {selected.content.position_breakdown.map((p) => (
+              <li key={p.option_id}>
+                <strong>{p.option_label}:</strong> {p.count} ({p.percentage}%)
+              </li>
+            ))}
+          </ul>
+        </section>
 
-          <section className="admin-detail-section">
-            <h3>Participation</h3>
-            <p>
-              {selected.content.participation_count}{" "}
-              {hub.noun(selected.content.participation_count)} voted.
+        <section className="admin-detail-section">
+          <h3>About this vote</h3>
+          <p className="form-hint">
+            Snapshotted from the original vote at the time the results were
+            generated. Read-only — editing this would defeat the snapshot.
+          </p>
+          {ctx ? (
+            <div className="admin-vote-context">
+              {ctx.description && (
+                <div className="admin-vote-context-description">
+                  {ctx.description.split(/\n\n+/).map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
+                </div>
+              )}
+              {ctx.options.length > 0 && (
+                <>
+                  <p className="admin-vote-context-options-label">
+                    <strong>Options on the ballot:</strong>
+                  </p>
+                  <ul>
+                    {ctx.options.map((o) => (
+                      <li key={o.option_id}>{o.option_label}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {(ctx.starts_at || ctx.ends_at) && (
+                <p className="admin-vote-context-window">
+                  {formatVotingWindow(ctx.starts_at, ctx.ends_at)}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="empty-state-inline">
+              Original vote context not available for this earlier record.
             </p>
-          </section>
+          )}
+        </section>
 
+        <section className="admin-detail-section">
+          <h3>Community comments</h3>
+          <p className="form-hint">
+            One comment per line. Empty lines are ignored; duplicates are
+            removed. Pre-populated from civic.input — edit anything worth
+            surfacing to {hub.governing_body_ref}.
+          </p>
+          <textarea
+            className="form-textarea"
+            rows={6}
+            value={commentsText}
+            onChange={(e) => setCommentsText(e.target.value)}
+            disabled={!isPending}
+            placeholder="(none)"
+          />
+        </section>
+
+        <section className="admin-detail-section">
+          <h3>Notes from the Civic Hub</h3>
+          <p className="form-hint">
+            Optional admin-authored context delivered alongside the results.
+          </p>
+          <textarea
+            className="form-textarea"
+            rows={4}
+            value={adminNotes}
+            onChange={(e) => setAdminNotes(e.target.value)}
+            disabled={!isPending}
+            placeholder="(none)"
+          />
+        </section>
+
+        <section className="admin-detail-section">
+          <h3>Featured image</h3>
+          <p className="form-hint">
+            Optional. Renders as the lead image on the published vote-results
+            page and as the feed card visual. JPEG, PNG, WebP, or GIF.
+          </p>
+          <PostImagePicker
+            imageUrl={imageUrl}
+            imageAlt={imageAlt}
+            onChange={({ image_url, image_alt }) => {
+              setImageUrl(image_url);
+              setImageAlt(image_alt);
+            }}
+            disabled={!isPending || saving || approving}
+          />
+        </section>
+
+        {selected.delivered_to.length > 0 && (
           <section className="admin-detail-section">
-            <h3>Positions</h3>
-            <ul className="brief-positions-list">
-              {selected.content.position_breakdown.map((p) => (
-                <li key={p.option_id}>
-                  <strong>{p.option_label}:</strong> {p.count} ({p.percentage}%)
-                </li>
+            <h3>Delivered to</h3>
+            <ul>
+              {selected.delivered_to.map((r) => (
+                <li key={r}>{r}</li>
               ))}
             </ul>
           </section>
+        )}
 
-          <section className="admin-detail-section">
-            <h3>About this vote</h3>
-            <p className="form-hint">
-              Snapshotted from the original vote at the time the results were
-              generated. Read-only — editing this would defeat the snapshot.
-            </p>
-            {ctx ? (
-              <div className="admin-vote-context">
-                {ctx.description && (
-                  <div className="admin-vote-context-description">
-                    {ctx.description.split(/\n\n+/).map((para, i) => (
-                      <p key={i}>{para}</p>
-                    ))}
-                  </div>
-                )}
-                {ctx.options.length > 0 && (
-                  <>
-                    <p className="admin-vote-context-options-label">
-                      <strong>Options on the ballot:</strong>
-                    </p>
-                    <ul>
-                      {ctx.options.map((o) => (
-                        <li key={o.option_id}>{o.option_label}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                {(ctx.starts_at || ctx.ends_at) && (
-                  <p className="admin-vote-context-window">
-                    {formatVotingWindow(ctx.starts_at, ctx.ends_at)}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p className="empty-state-inline">
-                Original vote context not available for this earlier record.
-              </p>
-            )}
-          </section>
-
-          <section className="admin-detail-section">
-            <h3>Community comments</h3>
-            <p className="form-hint">
-              One comment per line. Empty lines are ignored; duplicates are
-              removed. Pre-populated from civic.input — edit anything worth
-              surfacing to {hub.governing_body_ref}.
-            </p>
-            <textarea
-              className="form-textarea"
-              rows={6}
-              value={commentsText}
-              onChange={(e) => setCommentsText(e.target.value)}
-              disabled={!isPending}
-              placeholder="(none)"
-            />
-          </section>
-
-          <section className="admin-detail-section">
-            <h3>Notes from the Civic Hub</h3>
-            <p className="form-hint">
-              Optional admin-authored context delivered alongside the results.
-            </p>
-            <textarea
-              className="form-textarea"
-              rows={4}
-              value={adminNotes}
-              onChange={(e) => setAdminNotes(e.target.value)}
-              disabled={!isPending}
-              placeholder="(none)"
-            />
-          </section>
-
-          <section className="admin-detail-section">
-            <h3>Featured image</h3>
-            <p className="form-hint">
-              Optional. Renders as the lead image on the published vote-results
-              page and as the feed card visual. JPEG, PNG, WebP, or GIF.
-            </p>
-            <PostImagePicker
-              imageUrl={imageUrl}
-              imageAlt={imageAlt}
-              onChange={({ image_url, image_alt }) => {
-                setImageUrl(image_url);
-                setImageAlt(image_alt);
-              }}
-              disabled={!isPending || saving || approving}
-            />
-          </section>
-
-          {selected.delivered_to.length > 0 && (
-            <section className="admin-detail-section">
-              <h3>Delivered to</h3>
-              <ul>
-                {selected.delivered_to.map((r) => (
-                  <li key={r}>{r}</li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          <HeldBackNote heldBack={selected.held_back} />
-
-          {isPending && (
-            <div className="admin-actions">
-              <button
-                type="button"
-                className="admin-archive-button"
-                onClick={saveDraft}
-                disabled={saving || approving}
-              >
-                {saving ? "Saving…" : "Save draft"}
-              </button>
-              {confirmingApprove ? (
-                <>
-                  <button
-                    type="button"
-                    className="admin-convert-button"
-                    onClick={approve}
-                    disabled={approving}
-                  >
-                    {approving ? "Approving…" : "Confirm: approve and publish"}
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-cancel-button"
-                    onClick={() => setConfirmingApprove(false)}
-                    disabled={approving}
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="admin-convert-button"
-                  onClick={() => setConfirmingApprove(true)}
-                  disabled={saving}
-                >
-                  Approve and publish
-                </button>
-              )}
-            </div>
-          )}
-          {confirmingApprove && (
-            <p className="form-hint" style={{ marginTop: "var(--space-sm)" }}>
-              This will deliver the vote results to {hub.governing_body_ref} and publish a
-              "Vote results: …" post to the public feed. This cannot be undone.
-            </p>
-          )}
-        </div>
-      </div>
+      </PublicationReview>
     );
   }
 
   return (
-    <div className="page admin-briefs-page">
-      <AdminTabs />
-      <div className="admin-briefs-body">
-        <h1>Briefs</h1>
-        <p className="admin-subtitle">
+    <PublicationList
+      heading="Briefs"
+      intro={
+        <>
           Review and approve the brief a process produces when it closes.
           Approval {hub.governing_body_short ? `delivers it to ${hub.governing_body_ref} and publishes` : "publishes"}
           it to the public feed. (Today this covers closed votes; other process
           types join as their briefs are built.)
-        </p>
-
-        <div className="admin-brief-filters">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={`admin-brief-filter${statusFilter === f.id ? " is-active" : ""}`}
-              onClick={() => setStatusFilter(f.id)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {loading && <p>Loading…</p>}
-        {error && <p className="form-error">{error}</p>}
-
-        {!loading && !error && filtered.length === 0 && (
-          <p className="empty-state-inline">
-            {statusFilter === "all"
-              ? "No vote results yet. Records are created automatically when votes close."
-              : `No ${statusFilter} vote results.`}
-          </p>
-        )}
-
-        <ul className="admin-proposal-list">
-          {filtered.map((record) => (
-            <li
-              key={record.id}
-              className="admin-proposal-item"
-              onClick={() => openReview(record.id)}
-            >
-              <div className="admin-proposal-header">
-                <h3>{record.title}</h3>
-                <StatusChip status={record.publication_status} />
-              </div>
-              {record.vote_description_preview && (
-                <p className="admin-vote-description-preview">
-                  {record.vote_description_preview}
-                  {record.vote_description_preview.length === 200 ? "…" : ""}
-                </p>
-              )}
-              <div className="admin-proposal-meta">
-                <span>{record.participation_count} votes</span>
-                <span>Generated {localShortDate(record.generated_at)}</span>
-                {record.published_at && (
-                  <span>Published {localShortDate(record.published_at)}</span>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
+        </>
+      }
+      records={list.data ?? []}
+      loading={list.loading}
+      error={error}
+      emptyAll="No vote results yet. Records are created automatically when votes close."
+      emptyNoun="vote results"
+      onOpen={openReview}
+      row={(record) => (
+        <>
+          <div className="admin-proposal-header">
+            <h3>{record.title}</h3>
+            <StatusChip status={record.publication_status} />
+          </div>
+          {record.vote_description_preview && (
+            <p className="admin-vote-description-preview">
+              {record.vote_description_preview}
+              {record.vote_description_preview.length === 200 ? "…" : ""}
+            </p>
+          )}
+          <div className="admin-proposal-meta">
+            <span>{record.participation_count} votes</span>
+            <span>Generated {localShortDate(record.generated_at)}</span>
+            {record.published_at && <span>Published {localShortDate(record.published_at)}</span>}
+          </div>
+        </>
+      )}
+    />
   );
-}
-
-function StatusChip({ status }: { status: VoteResultsPublicationStatus }) {
-  const cls = `status-badge admin-brief-status-${status}`;
-  const label =
-    status === "pending"
-      ? "pending review"
-      : status === "approved"
-      ? "approved"
-      : "published";
-  return <span className={cls}>{label}</span>;
-}
-
-function parseCommentsText(text: string): string[] {
-  return text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
 }
 
 function formatVotingWindow(
   startsAt: string | null,
   endsAt: string | null,
 ): string {
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  const fmt = localShortDate;
   if (startsAt && endsAt) return `Voting was open from ${fmt(startsAt)} to ${fmt(endsAt)}.`;
   if (startsAt) return `Voting opened ${fmt(startsAt)}.`;
   if (endsAt) return `Voting closed ${fmt(endsAt)}.`;
