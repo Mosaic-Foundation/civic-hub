@@ -127,12 +127,14 @@ test.describe("the Plugins page and the link picker", () => {
     const admin = await session(hub, adminEmailFor(hub));
     const creator = await session(hub, `manifest-link-${run}@example.test`);
     const id = await liveProposal(request, creator.token, admin.token, `Manifest link source ${run}`);
+    // Something of its own to find: the fixture set's hub has no other processes to link to.
+    await liveProposal(request, creator.token, admin.token, `Manifest link target ${run}`);
     await visitAs(page, admin.token);
     await page.goto(`/proposal/${id}`);
     await page.getByRole("button", { name: "+ Add a related process" }).click();
     const search = page.getByPlaceholder("Search votes, proposals, projects, conversations…");
     await expect(search).toBeVisible();
-    await search.fill("a");
+    await search.fill(`Manifest link target ${run}`);
     const results = page.locator(".link-picker__result-meta");
     await expect(results.first()).toBeVisible({ timeout: 15_000 });
     const labels = await results.allTextContents();
