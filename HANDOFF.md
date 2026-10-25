@@ -4,6 +4,37 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## After the frontend pass: announcement author names; no web fonts — 2026-10-25
+
+Two commits on `multi-tenant` after the frontend pass, released to dev with `release.sh dev --yes` (no migration).
+Adam releases to production.
+
+- `4f80ac5` **Announcements keep their author's name.** The controller chose the name shown with a post and passed it
+  on, but `civic.announcement/handler.ts` `initializeState` never copied `author_display_name`. No announcement
+  recorded a name, so no card or page showed an author.
+  - **Now:** the name is copied (trimmed; blank is none).
+  - **Who sees it is unchanged** (the redaction's rule, the same on `/api/feed` and `/events`): an office holder's
+    name is shown to everyone; an admin's shows as "Admin" to the signed-out public.
+  - **Older announcements** have no name stored and keep showing none.
+  - **Tests:** `tests/unit/announcementAuthorName.test.ts` fails without the fix; `feedStream.spec.ts` checks that
+    the board member's card names them for every reader.
+- `9b798e5` **No web fonts in the build.** The three `@fontsource-variable` packages are removed (3 woff2, 108 kB):
+  no page ever used them. The look is unchanged; the 24 screenshots match.
+
+**Decision for a later design pass (Adam, 2026-10-25): the fonts.**
+- **The mismatch:** the design tokens (`ui/src/styles/design-system/tokens.css`) ask for "Inter" (body) and
+  "Libre Franklin" (headings), but the packages the hub bundled declared "Inter Variable", "Libre Franklin Variable"
+  and "Manrope Variable". No family ever matched, so the hub has always rendered in the system's fonts
+  (system-ui / -apple-system / Segoe UI).
+- **For now:** keep the look; ship no font files.
+- **For the design pass:**
+  - whether to use Inter / Libre Franklin at all (a visible change on every page);
+  - if so, how to load them (bundle the latin subset and name the families to match, as `fonts.css` did briefly in
+    `fef886d`);
+  - whether Manrope has any place.
+
+---
+
 ## Frontend pass: one way to do each thing in the hub UI; the feed reads the public stream — 2026-10-25
 
 `multi-tenant`, one commit per item, `7b1945d`..(this commit), from `957fede`.
@@ -78,10 +109,9 @@ Moving them to the stream would need a surface filter on `/events`, or the pills
 stream. Neither was done, as asked: nothing was added to the wire.
 
 **Noticed, not changed:**
-- **Announcement author names are dropped.** `src/modules/civic.announcement/handler.ts` `initializeState` never
-  copies `author_display_name`. No announcement records its author's name, so no card shows one, and the
-  controller's choice of name is dead code. It is one line of server code.
-- **The self-hosted fonts are never used.** The tokens ask for "Inter" and the packages declare "Inter Variable".
+- **Announcement author names are dropped.** Fixed in `4f80ac5`; see the entry above.
+- **The self-hosted fonts are never used.** The files are now removed and the question deferred to a design pass;
+  see the entry above.
 - **The settings cache can serve a dead hub's settings.** It is keyed by hub id, so a hub deleted and re-made with
   the same id inside one server's life gets the old hub's settings. This only affects tests.
 - **Legacy untyped events read by the stored type.** The member and public views strip their legacy fields
@@ -91,7 +121,6 @@ stream. Neither was done, as asked: nothing was added to the wire.
   against `/api/feed`'s 2.5 kB.
 
 **Left:**
-- The announcement author fix (above).
 - Retiring `/api/feed` once the stream carries what the pills need.
 - The `auditConcurrency` flake.
 
