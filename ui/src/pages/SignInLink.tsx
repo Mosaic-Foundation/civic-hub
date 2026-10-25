@@ -28,11 +28,28 @@ function takeLinkToken(): LinkToken | null {
   return { kind: match[1] === "invite" ? "invite" : "code", value: match[2]! };
 }
 
+/**
+ * The token the page was opened with, taken from the address once and kept
+ * until the page has mounted: React may render a page and throw the render
+ * away (a lazily loaded page, a transition), and a second render must still
+ * find the token the first one took from the address bar.
+ */
+let openedWith: LinkToken | null | undefined;
+
+function linkTokenOnOpen(): LinkToken | null {
+  if (openedWith === undefined) openedWith = takeLinkToken();
+  return openedWith;
+}
+
 export default function SignInLink() {
   const hub = useHub();
   const { user, login } = useAuth();
   const navigate = useNavigate();
-  const [token, setToken] = useState(takeLinkToken);
+  const [token, setToken] = useState(linkTokenOnOpen);
+  // Mounted: the next visit to this page reads the address afresh.
+  useEffect(() => {
+    openedWith = undefined;
+  }, []);
   const [keepSignedIn, setKeepSignedIn] = useState(rememberedKeepSignedIn);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
