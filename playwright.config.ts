@@ -28,6 +28,8 @@ export default defineConfig({
   // The hubs a run creates are deleted when it ends, pass or fail; local
   // stack only (tests/setup/dropTestHubs.ts).
   globalSetup: "./tests/setup/dropTestHubs.ts",
+  // screenshots.spec.ts's committed images (local only; see that file).
+  snapshotPathTemplate: "{testDir}/screenshots/{arg}{ext}",
 
   use: {
     // CIVIC_E2E_BASE_URL: a preview build (`vite preview`, which serves the
