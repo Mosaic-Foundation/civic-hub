@@ -100,3 +100,70 @@ test.describe("blocked storage", () => {
     expect(errors).toEqual([]);
   });
 });
+
+test.describe("the phone layout when a field takes focus", () => {
+  // The viewport allows zoom (ux-polish.spec.ts, Zoom); what keeps iOS from
+  // zooming in on a field is the 16px rule (index.css), and the navigation
+  // slice's fixed header and bar must stay where they are.
+  test("the header and the bottom bar stay put, and every field is at least 16px", async ({ page, request }) => {
+    const hub = await hubId(request);
+    const admin = await session(hub, adminEmailFor(hub));
+    const id = await liveVote(request, admin.token, `Focus ${run}`);
+    const resident = await session(hub, `focus-${run}@example.test`);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await visitAs(page, resident.token);
+    await page.goto(`/process/${id}`);
+    const field = page.locator("main textarea").first();
+    await expect(field).toBeVisible();
+
+    const bars = page.locator(".civic-nav, .bottom-bar");
+    const before = await bars.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+    expect(before.length).toBeGreaterThan(0);
+
+    await field.click();
+    await expect(field).toBeFocused();
+    await page.waitForTimeout(400);
+    const after = await bars.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+    expect(after).toEqual(before);
+    expect(await page.evaluate(() => window.visualViewport?.scale ?? 1)).toBe(1);
+
+    const small = await page.evaluate(() =>
+      [...document.querySelectorAll("input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea, select")]
+        .filter((el) => (el as HTMLElement).offsetParent !== null)
+        .map((el) => ({ name: el.getAttribute("name") ?? el.className, size: parseFloat(getComputedStyle(el).fontSize) }))
+        .filter((f) => f.size < 16),
+    );
+    expect(small).toEqual([]);
+  });
+});
+
+test.describe("the one Modal in a real browser", () => {
+  test("the sign-in dialog keeps focus inside, closes on Escape, and gives focus back", async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("seen_intro_popup", "true");
+      localStorage.setItem("welcome-banner-dismissed-v2", "true");
+      sessionStorage.setItem("civic_preview", "1");
+    });
+    await page.goto("/");
+    const opener = page.getByRole("button", { name: "Sign in" }).first();
+    await opener.click();
+    const dialog = page.getByRole("dialog", { name: /Sign in/ });
+    await expect(dialog).toBeVisible();
+    await expect(page.getByLabel("Email")).toBeFocused();
+
+    // Twenty tabs, forward and back: focus never leaves the dialog for the page.
+    for (const key of [...Array(10).fill("Tab"), ...Array(10).fill("Shift+Tab")]) {
+      await page.keyboard.press(key);
+      const inside = await page.evaluate(() => {
+        const active = document.activeElement;
+        const open = document.querySelector("dialog[open]");
+        return !active || active === document.body || (open?.contains(active) ?? false);
+      });
+      expect(inside, `focus after ${key}`).toBe(true);
+    }
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(opener).toBeFocused();
+  });
+});
