@@ -48,6 +48,18 @@ function cached<T>(key: string): { data: T } | null {
   return hit && Date.now() - hit.at < CACHE_TTL_MS ? { data: hit.data as T } : null;
 }
 
+/**
+ * The same cache for a read that is not a hook's (the feed's first page, which
+ * pages by hand): served from the cache when fresh, else read and kept.
+ */
+export async function cachedRead<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+  const hit = cached<T>(key);
+  if (hit) return hit.data;
+  const data = await fetcher();
+  cache.set(cacheKeyOf(key), { at: Date.now(), data });
+  return data;
+}
+
 /** Empty the cache (tests; a sign-out does not need it, the token is in the key). */
 export function clearApiCache(): void {
   cache.clear();

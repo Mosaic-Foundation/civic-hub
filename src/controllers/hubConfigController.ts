@@ -59,8 +59,10 @@ export interface HubConfigResponse {
   /**
    * What the hub holds (added 2026-10-07): any sample content left, and a
    * Welcome page of its own. The beta bar and the /welcome links read them.
+   * `sample_items` counts visitors' demo items too: the feed reads /events,
+   * which never carries sample content, only when there are none.
    */
-  content: { samples: boolean; welcome: boolean };
+  content: { samples: boolean; welcome: boolean; sample_items: boolean };
   /**
    * Every registered process type as residents read it (navigation slice,
    * 2026-10-14): the feed pill's label, the icon, and the section it has in

@@ -22,7 +22,7 @@
 
 import { ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
-import { buildFeedProcessMeta } from "../services/feedMeta.js";
+import { buildFeedProcessMeta, processMetaFor } from "../services/feedMeta.js";
 import { isProcessHistoryServable } from "../services/processService.js";
 import { resolveCaller } from "../middleware/auth.js";
 import { can } from "../authz/canActor.js";
@@ -36,6 +36,8 @@ import {
 import {
   FEED_DEFAULT_LIMIT,
   FEED_MAX_LIMIT,
+  FEED_META_MAX,
+  feedProcessFacts,
   readFeedPage,
 } from "../services/feedPage.js";
 import type { ActivitySurface } from "../shared/feedActivity.js";
@@ -112,4 +114,35 @@ export const handleGetFeed = route(async (req, res) => {
   } else {
     res.json(body);
   }
+});
+
+// GET /api/feed/meta?process=<id>,<id>… (frontend pass, 2026-10-24).
+//
+// The hub's feed reads its cards off /events, the public stream, as an
+// outside reader does. What a card shows beyond the stream is the hub's own
+// read: for each process, whether the hub shows it, its type and sample flag
+// (services/feedPage.ts feedProcessFacts), and the card metadata /api/feed
+// batches as process_meta (services/feedMeta.ts processMetaFor). Nothing here
+// is on the wire, and nothing is per reader: a process the hub does not show
+// answers { hidden: true } and nothing else.
+const PROCESS_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+export const handleGetFeedMeta = route(async (req, res) => {
+  const raw = firstQueryValue(req.query.process) ?? "";
+  const ids = [...new Set(raw.split(",").map((s) => s.trim()).filter(Boolean))];
+  if (ids.length > FEED_META_MAX) {
+    throw new ValidationError(`At most ${FEED_META_MAX} processes`);
+  }
+  if (ids.some((id) => !PROCESS_ID.test(id))) {
+    throw new ValidationError("Invalid process id");
+  }
+  const facts = await feedProcessFacts(ids);
+  const shown = ids.filter((id) => !("hidden" in facts[id]!));
+  const meta = await processMetaFor(shown);
+  const processes: Record<string, unknown> = {};
+  for (const id of ids) {
+    const fact = facts[id]!;
+    processes[id] = "hidden" in fact ? fact : { ...fact, ...(meta[id] ? { meta: meta[id] } : {}) };
+  }
+  res.json({ processes });
 });

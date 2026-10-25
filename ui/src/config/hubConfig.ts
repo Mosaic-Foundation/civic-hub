@@ -47,7 +47,7 @@ export interface HubConfig {
    */
   plugin_setup?: Record<string, PluginSetupStatus>;
   /** Sample content left, a Welcome page written (2026-10-07). Optional, like plugin_setup. */
-  content?: { samples: boolean; welcome: boolean };
+  content?: { samples: boolean; welcome: boolean; sample_items?: boolean };
   /**
    * Every registered process type as residents read it: the feed's pill, the
    * icon, its section (navigation slice, 2026-10-14). From the registry, so

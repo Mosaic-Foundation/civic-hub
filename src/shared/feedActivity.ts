@@ -249,6 +249,29 @@ const BRIEF_STYLES: ReadonlyMap<string, FeedBriefStyle> = new Map(
 export const FEED_EVENT_TYPES: readonly string[] = [...RULES.keys()];
 
 /**
+ * Kinds whose card reads anything beyond its own event payload (titles,
+ * counts, images): the server batches their per-process metadata (GET
+ * /api/feed's process_meta, GET /api/feed/meta), and the feed seeds its
+ * metadata cache with it for these kinds only.
+ */
+export const FEED_META_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>([
+  "vote-open",
+  "vote-closed",
+  "vote-results",
+  "meeting",
+  "wordcloud",
+  "project-created",
+  "project-updated",
+  "conversation",
+  "conversation-results",
+  "announcement",
+  "announcement-author",
+  // A brief's card is its publish event; a regenerated version replaces its
+  // headline in place, marked "Updated <date>" (Actions slice).
+  "brief",
+]);
+
+/**
  * Classify a civic event into its feed/digest presentation, or null when the
  * event is not feed-worthy. The ONE predicate the gate, renderer, filter, and
  * digest all share. Default-closed: an event no rule names makes no card.

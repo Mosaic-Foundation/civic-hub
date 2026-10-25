@@ -322,6 +322,11 @@ export function countSeededSampleProcesses(hubId: string): PromiseLike<number> {
   return forHub(hubId).from("processes").count().eq("is_sample", true).eq("added_in_demo", false);
 }
 
+/** Sample processes of either kind: seeded, or a visitor's on a demo hub. */
+export function countSampleProcesses(hubId: string): PromiseLike<number> {
+  return forHub(hubId).from("processes").count().eq("is_sample", true);
+}
+
 /** One process's id, status, state and sample flags, or null when there is none. */
 export async function sampleProcessLiveRow(processId: string): Promise<{
   id: string;

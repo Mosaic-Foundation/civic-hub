@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHubConfig } from "../config/HubConfigContext";
+import { getLoadedHubConfig } from "../config/hubConfig";
+import { WireFeedReader } from "../services/wireFeed";
+import { cachedRead } from "../hooks/useApi";
 import { theName } from "../../../src/shared/hubCopy";
 import { Link } from "react-router-dom";
 import {
@@ -30,6 +33,24 @@ import "./Feed.css";
  * "Load more" button is left for the reader.
  */
 const EMPTY_PAGE_RETRIES = 5;
+
+/**
+ * The "All" view reads the hub's public stream, /events (services/wireFeed.ts),
+ * as an outside reader does. Carried on /api/feed: the filter pills (the
+ * stream has no filter by surface) and a hub with any sample item (sample
+ * content is never on the stream, ADR-010). `civic_feed_source=internal` in
+ * sessionStorage reads /api/feed for this tab: the parity check's other half,
+ * and a way back if the stream ever misreads.
+ */
+function readsStream(surface: FeedSurface | undefined): boolean {
+  if (surface) return false;
+  if (getLoadedHubConfig()?.content?.sample_items !== false) return false;
+  try {
+    return sessionStorage.getItem("civic_feed_source") !== "internal";
+  } catch {
+    return true;
+  }
+}
 
 interface Props {
   /**
@@ -67,13 +88,13 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
   // filter is dropped.
   const generation = useRef(0);
 
-  // One page from the server, skipping over pages that came back empty.
+  // One page of /api/feed, skipping over pages that came back empty.
   // Perf pass phase 2: the server batches every card's metadata into the
-  // response, so cards render COMPLETE on the first frame — the per-id
-  // lazy fetches below become a fallback for any process the server
-  // couldn't enrich. Removed announcements arrive as a flag on their meta
-  // entry.
-  const fetchPage = useCallback(
+  // response (and /api/feed/meta into the stream's), so cards render
+  // COMPLETE on the first frame — the per-id lazy fetches below become a
+  // fallback for any process the server couldn't enrich. Removed
+  // announcements arrive as a flag on their meta entry.
+  const fetchInternalPage = useCallback(
     async (cursor: string | null) => {
       let page = await getFeed({ cursor, surface });
       for (let i = 0; page.events.length === 0 && page.nextCursor && i < EMPTY_PAGE_RETRIES; i++) {
@@ -82,6 +103,34 @@ export default function Feed({ surface, emptyFilteredAction }: Props) {
       return page;
     },
     [surface],
+  );
+
+  const stream = useRef<WireFeedReader | null>(null);
+  const fetchPage = useCallback(
+    async (cursor: string | null) => {
+      if (readsStream(surface)) {
+        // "Load more" continues the reader. A first page is kept 30 seconds
+        // (useApi's cache), with a reader at the place it ends, so a hop back
+        // to the feed is instant.
+        if (cursor !== null && stream.current) {
+          const page = await stream.current.page();
+          return { events: page.events, processMeta: page.processMeta, nextCursor: page.done ? null : "stream" };
+        }
+        const first = await cachedRead("feed|stream", async () => {
+          const reader = new WireFeedReader();
+          return { page: await reader.page(), reader };
+        });
+        stream.current = first.reader.clone();
+        const page = first.page;
+        return { events: page.events, processMeta: page.processMeta, nextCursor: page.done ? null : "stream" };
+      }
+      stream.current = null;
+      if (cursor === null) {
+        return cachedRead(`feed|${surface ?? "all"}`, () => fetchInternalPage(null));
+      }
+      return fetchInternalPage(cursor);
+    },
+    [surface, fetchInternalPage],
   );
 
   const absorb = useCallback(

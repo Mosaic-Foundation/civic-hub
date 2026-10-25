@@ -977,6 +977,25 @@ interface EventsResponse {
   next_cursor?: string | null;
 }
 
+/**
+ * One page of GET /events, the hub's public stream (AS2), as this reader is
+ * served it: the member view when signed in, the admin view for an admin.
+ */
+export function getEventsPage(cursor: string | null, limit = 100): Promise<Record<string, unknown>> {
+  const params = new URLSearchParams({ page: "true", limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  return request("GET", `/events?${params}`);
+}
+
+/** What GET /api/feed/meta says of one process (services/feedPage.ts feedProcessFacts). */
+export type FeedProcessFacts = { hidden: true } | { type: string; sample?: true; meta?: FeedProcessMeta };
+
+/** The hub's facts and card metadata for processes the feed read off /events (at most 100). */
+export async function getFeedMeta(processIds: string[]): Promise<Record<string, FeedProcessFacts>> {
+  const params = new URLSearchParams({ process: processIds.join(",") });
+  return (await request<{ processes: Record<string, FeedProcessFacts> }>("GET", `/feed/meta?${params}`)).processes;
+}
+
 /** The feed's filter pills; mirrors ActivitySurface in src/shared/feedActivity.ts. */
 export type FeedSurface = "announcement" | "meeting_summary" | "activity";
 

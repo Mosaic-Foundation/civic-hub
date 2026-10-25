@@ -36,6 +36,8 @@ import type { CivicEvent } from "../models/event.js";
 import type { ProcessStatus } from "../models/process.js";
 
 export const FEED_DEFAULT_LIMIT = 25;
+/** Processes one GET /api/feed/meta may ask about (one facts read). */
+export const FEED_META_MAX = 100;
 export const FEED_MAX_LIMIT = 100;
 
 /** Rows read from the log per round trip. */
@@ -127,7 +129,7 @@ async function keep(
   const shown = new Map<string, FeedEvent>();
   if (events.length === 0) return shown;
 
-  const facts = await processFacts(events);
+  const facts = await processFacts(events.map((e) => e.process_id));
   const newest = req.processId ? null : await newestPublications(events, req.isAdmin);
 
   for (const event of events) {
@@ -157,9 +159,33 @@ async function keep(
   return shown;
 }
 
-/** Status, type and sample flag of each process the batch's events name. */
-async function processFacts(events: CivicEvent[]): Promise<Map<string, ProcessFacts>> {
-  const ids = [...new Set(events.map((e) => e.process_id).filter(Boolean))];
+/**
+ * What the feed needs to know of each process its cards name, for a feed read
+ * off /events (GET /api/feed/meta; frontend pass, 2026-10-24): whether the
+ * hub shows it (the rules this page applies in `keep`: it exists, it is not
+ * archived or pending review, its plugin is on), and for one it shows, its
+ * type (an event from before data.process.type carries none on the public
+ * wire) and its sample flag (badged here; never on the wire). A process not
+ * shown says only that, nothing of its type. At most BATCH ids.
+ */
+export async function feedProcessFacts(
+  ids: readonly string[],
+): Promise<Record<string, { hidden: true } | { type: string; sample?: true }>> {
+  const facts = await processFacts(ids);
+  const out: Record<string, { hidden: true } | { type: string; sample?: true }> = {};
+  for (const id of ids) {
+    const fact = facts.get(id);
+    out[id] =
+      !fact || NON_PUBLIC_STATUSES.includes(fact.status) || !isProcessTypeEnabled(fact.type)
+        ? { hidden: true }
+        : { type: fact.type, ...(fact.is_sample ? { sample: true as const } : {}) };
+  }
+  return out;
+}
+
+/** Status, type and sample flag of each process named. */
+async function processFacts(processIds: readonly string[]): Promise<Map<string, ProcessFacts>> {
+  const ids = [...new Set(processIds.filter(Boolean))];
   const facts = new Map<string, ProcessFacts>();
   if (ids.length === 0) return facts;
   // At most BATCH ids, so at most BATCH rows: one request, under the cap.

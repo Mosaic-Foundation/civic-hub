@@ -20,8 +20,8 @@
 // map, and the client's lazy per-id fallback still exists for that case.
 
 import {
+  FEED_META_KINDS,
   classifyActivity,
-  type ActivityKind,
   type ClassifierEvent,
 } from "../shared/feedActivity.js";
 import { getProcessState } from "./processService.js";
@@ -31,25 +31,6 @@ import type { CivicEvent } from "../models/event.js";
 export type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
 import type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
 
-/** Kinds whose card reads anything beyond its own event payload —
- *  mirrors the client's per-kind lookup switch in Feed.tsx. */
-const META_KINDS: ReadonlySet<ActivityKind> = new Set([
-  "vote-open",
-  "vote-closed",
-  "vote-results",
-  "meeting",
-  "wordcloud",
-  "project-created",
-  "project-updated",
-  "conversation",
-  "conversation-results",
-  "announcement",
-  "announcement-author",
-  // A brief's card is its publish event; a regenerated version replaces its
-  // headline in place, marked "Updated <date>" (Actions slice).
-  "brief",
-] as ActivityKind[]);
-
 export async function buildFeedProcessMeta(
   events: CivicEvent[],
 ): Promise<Record<string, FeedProcessMeta>> {
@@ -58,11 +39,20 @@ export async function buildFeedProcessMeta(
   for (const e of events) {
     if (!e.process_id || seen.has(e.process_id)) continue;
     const activity = classifyActivity(e as unknown as ClassifierEvent);
-    if (!activity || !META_KINDS.has(activity.kind)) continue;
+    if (!activity || !FEED_META_KINDS.has(activity.kind)) continue;
     seen.add(e.process_id);
     ids.push(e.process_id);
   }
+  return processMetaFor(ids);
+}
 
+/**
+ * The card metadata of these processes, by id; a process that cannot be read
+ * publicly, or whose type has no feedMeta hook, is absent. GET /api/feed
+ * passes the processes of its page's cards; GET /api/feed/meta the ones the
+ * feed read off /events.
+ */
+export async function processMetaFor(ids: readonly string[]): Promise<Record<string, FeedProcessMeta>> {
   const out: Record<string, FeedProcessMeta> = {};
 
   await Promise.all(
