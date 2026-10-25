@@ -69,8 +69,8 @@ delete the hubs they create**: `tests/setup/dropTestHubs.ts`, the global setup o
 hubs when a run starts and, when it ends, pass or fail, deletes every new one with all its rows (local stack only;
 the fixture set and anything older than the run are never touched; one run at a time per stack, since a hub made by
 hand during a run goes with it). What the runs add to `floyd` and `athens` themselves (residents, votes, events) stays
-until the next `reset`. **`.env` points at the hosted dev project:** a bare `npm run test:e2e` with nothing on :3000
-starts `npm run dev` from `.env` and writes to dev; start the API on the local stack first, as `e2e.yml` does.
+until the next `reset`. **`.env` points at the hosted dev project,** so Playwright refuses a non-local base and gives
+the API it starts the local stack's database (2026-10-24; see "E2E User Flow Tests").
 
 Point the dev server at the local stack rather than at a hosted project
 before running the API or E2E layers, and start it with `CIVIC_FAKE_ADAPTERS=on`
@@ -2158,9 +2158,11 @@ Open the real UI in Chromium and simulate resident interactions.
   identical once `anon-…` pseudonyms are masked — those differ only because
   each deployment has its own `CIVIC_ANON_SECRET`. The browser snippet is in
   RUNBOOK-cutover.md → "Verification"; reuse it after any data refresh.
-- **Run against the local stack, not `.env`:** the config's `webServer` runs
-  `npm run dev`, which reads `.env` (the hosted dev project). Start an API on
-  :3000 with the local stack's URL and key first; Playwright reuses it.
+- **Local only (2026-10-24, `tests/setup/e2eGuard.ts`):** the config refuses to load when
+  `CIVIC_E2E_BASE_URL`, `CIVIC_E2E_API_BASE` or `CIVIC_API_BASE` is not this machine, unless
+  `CIVIC_E2E_REMOTE=yes`. The API its `webServer` starts gets the local stack's `SUPABASE_URL` and key, which win
+  over `.env`'s hosted project (`--env-file` never overrides the environment). Starting the API yourself, as
+  `e2e.yml` does, still works the same.
 
 ---
 

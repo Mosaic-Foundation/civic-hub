@@ -1,4 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
+import { LOCAL_STACK, refuseRemote } from "./tests/setup/e2eGuard";
+
+// Local only, unless CIVIC_E2E_REMOTE=yes (tests/setup/e2eGuard.ts).
+refuseRemote(process.env);
 
 /**
  * Playwright E2E config for Civic Hub.
@@ -65,7 +69,8 @@ export default defineConfig({
       timeout: 30_000,
       // The in-memory adapters (ADR-012): with .env's real keys, a local run
       // would otherwise reach Anthropic and Resend.
-      env: { CIVIC_FAKE_ADAPTERS: "on" },
+      // The local stack, not .env's hosted project (see refuseRemote).
+      env: { CIVIC_FAKE_ADAPTERS: "on", ...(process.env.CIVIC_E2E_REMOTE === "yes" ? {} : LOCAL_STACK) },
     },
     {
       command: "cd ui && npm run dev",
