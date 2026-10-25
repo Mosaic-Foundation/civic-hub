@@ -31,8 +31,9 @@ Rules for this session:
 - No string in `src/` or `ui/src/` may name a place; Floyd's values are data.
 - Every slice ends with: tests green (`npm test`, and Playwright if UI changed),
   a short entry prepended to HANDOFF.md, TESTING.md updated for any test
-  layer, suite, or check the slice added or changed, and a commit on
-  `multi-tenant`.
+  layer, suite, or check the slice added or changed, a commit on
+  `multi-tenant`, and everything put away: `./scripts/local-stack.sh stop`
+  (the dev servers the session started, the local stack, Docker).
 - If a decision is not covered by BUILD-PLAN-multi-tenant.md, stop and ask
   Adam before choosing. Do not guess at names of settings keys or columns.
 - Delegate mechanical repeats (string sweeps, converting further modules to an

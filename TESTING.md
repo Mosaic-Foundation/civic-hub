@@ -19,10 +19,16 @@ Updated alongside HANDOFF.md after every session that adds or modifies features.
 ```bash
 cd civic-hub
 
-# Local database — brings up Postgres + PostgREST and applies every
-# migration. Needed by the API and E2E layers; the unit layer does not
-# use it. Added 2026-09-22 with supabase/config.toml.
-supabase start
+# Local database (the Supabase CLI's stack): Docker up if it isn't, the stack
+# up if it isn't, pending migrations applied, the fixture set loaded. Needed by
+# the API and E2E layers; the unit layer does not use it. Idempotent.
+./scripts/local-stack.sh start
+
+# Back to the fixture set only (drops every local row and stored file)
+./scripts/local-stack.sh reset
+
+# What is running, the hubs, counts, disk
+./scripts/local-stack.sh status
 
 # API integration tests (requires dev server running on :3000)
 npm run test
@@ -46,9 +52,25 @@ npm run test:smoke
 # Watch mode for API tests during development
 npm run test:watch
 
-# Tear the local database down (--no-backup discards its data)
-supabase stop
+# Put everything away: the hub's dev servers, the stack (data kept), Docker
+./scripts/local-stack.sh stop
 ```
+
+**Before you hand off:** run `./scripts/local-stack.sh stop`. It stops every node server listening from `civic-hub/`
+(or a worktree) and names each, stops the stack, and quits Docker Desktop when nothing else runs in it, so Adam's
+laptop is idle when no session is working. `start` brings Docker back when the next session needs it.
+
+**The local stack** (2026-10-24). `scripts/local-stack.sh` refuses any URL that is not 127.0.0.1 or localhost, runs
+its fixture scripts with an empty environment (never `.env`), and starts the stack without Supabase's log analytics
+and log collector (`-x logflare,vector`; their log table had grown to 5.7 GB). The **fixture set** is what CI loads,
+plus the smoke hub: `floyd` (the migrations, beta) and `athens` (`supabase/seed.sql`, demo) with their settings
+seeded, the jurisdiction list, and `smoke` (beta, kind other, `smoke.localhost`) for a local smoke run. **Test runs
+delete the hubs they create**: `tests/setup/dropTestHubs.ts`, the global setup of vitest and Playwright, records the
+hubs when a run starts and, when it ends, pass or fail, deletes every new one with all its rows (local stack only;
+the fixture set and anything older than the run are never touched; one run at a time per stack, since a hub made by
+hand during a run goes with it). What the runs add to `floyd` and `athens` themselves (residents, votes, events) stays
+until the next `reset`. **`.env` points at the hosted dev project:** a bare `npm run test:e2e` with nothing on :3000
+starts `npm run dev` from `.env` and writes to dev; start the API on the local stack first, as `e2e.yml` does.
 
 Point the dev server at the local stack rather than at a hosted project
 before running the API or E2E layers, and start it with `CIVIC_FAKE_ADAPTERS=on`
@@ -62,6 +84,41 @@ keys to use for `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; everything
 else can stay as it is in `.env.example`. As of 2026-09-22 all 8 API test
 files (68 tests) pass against a stack brought up this way, which is the
 first time that layer has been runnable from a clean checkout.
+
+---
+
+## Local stack hygiene: a small fixture set, runs that clean up, sessions that put things away (2026-10-24)
+
+**Every local run starts from the fixture set and leaves it as it found it** (`scripts/local-stack.sh`,
+`tests/setup/dropTestHubs.ts`; see Quick Start).
+- **Before → after**, on Adam's Mac:
+  - Hubs: 1,208 → 3. Each API pass added ~50 and left them; now each run deletes its own.
+  - Disk, all databases: 6.2 GB → 55 MB after `reset`, 71 MB after a full round of suites. 5.7 GB of the 6.2 had
+    been Supabase's log analytics.
+  - `npm test` (lint, unit and API, service role): 335 s (2,720 passed, 4 failed, the dashboard timeouts) → 159 s
+    (2,724 passed).
+  - API, minted tokens: 334 s (898 passed, 4 failed) → 118 s (902 passed).
+  - Playwright as `e2e.yml` runs it: 171 passed, 1 failed (`dashboard.spec.ts`) → **172 passed, 2 skipped**, no
+    retries, 197 s.
+  - Unit: 1,822 passed.
+  - `reset` from Docker stopped: 40 s.
+- **`dropTestHubs`** proved with a planted failing test: the run failed and still deleted the 2 hubs it made. Every
+  full run since ended with `status` showing athens, floyd and smoke only.
+- **The flake that remains:** `auditConcurrency.test.ts` "ballots cast at the same moment are all counted" (service
+  role) answered one 500 in 3 of 4 full runs on the fixture set: Kong's "upstream prematurely closed connection",
+  where the database did not restart (no signal 11). The file alone passes 5 of 5, and the 4th full run was green.
+  With the analytics services on it failed the same way, so leaving them off is not the cause. The likely cause is
+  Kong reusing a connection PostgREST had already closed: Kong retries a GET or HEAD on another connection but not
+  a POST, and Kong logged ~12 such closes per run. It shows more often now because the suite runs about twice as
+  fast. Rerun the file, as before.
+- **The link picker E2E test** (`manifestUi.spec.ts`) searched Athens for "a" and relied on some other process being
+  there; it now makes its own. "A detail page of every type" still needs an earlier spec's project when the file is
+  run alone (CI runs the whole suite).
+- **Smoke, every check runs:** `dev.smoke.spec.ts` is no longer serial. Proved locally with a planted failing check
+  sixth of 26. Every check after it ran: 22 passed, and the run's reviews, residents and settings were put away by
+  each worker's `afterAll`. Locally three checks cannot pass (the DID document, the context IRI and the audience
+  IRI): `vite preview` proxies only `/api`, and on dev those paths are Vercel rewrites. The local smoke hub now
+  matches dev's (top tabs, Members threshold unset), which `create-hub.ts`'s new-hub defaults had broken.
 
 ---
 
@@ -817,7 +874,8 @@ Conduct some test wrote, so its page has no "In short". `signIn.spec.ts` checks 
 A fourth layer: `tests/smoke/`, Playwright against the **live dev deployment**, after every dev deploy. It replaces
 the browser half of the dev checklist Adam ran by hand after each release (RUNBOOK-release.md → Dev).
 
-- **What it checks** (`dev.smoke.spec.ts`, one serial group, 21 tests):
+- **What it checks** (`dev.smoke.spec.ts`, 25 tests in file order on one worker; since 2026-10-24 every check runs
+  after a failure, where serial mode used to skip the rest; a check that needs an earlier one's item skips by name):
   - `/api/health` is ok with no schema gaps, on the deployed commit; an unknown `POST /api/…` answers JSON 404;
   - a resident and an admin are signed in;
   - a new resident signs in through the email's link at 375 px and joins beside the terms notice (since 2026-10-14,
@@ -868,11 +926,8 @@ the browser half of the dev checklist Adam ran by hand after each release (RUNBO
 - **Budget:** under 3 minutes (`globalTimeout` 170 s in `playwright.smoke.config.ts`); 9 s locally. No retries: the
   steps build on each other, and a retry would submit everything again.
 
-**Running it locally**, against a local `smoke` hub on the local stack (the guard allows the local stack):
-
-```bash
-cd /Users/adamlake/Developer/Civic-Social-Mono/civic-hub && SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_SERVICE_ROLE_KEY=<the local stack's service-role key> CIVIC_ADMIN_EMAILS=admin@example.test npx tsx scripts/create-hub.ts --id smoke --hostname smoke.localhost --name "Smoke Test Hub" --kind other --mode beta
-```
+**Running it locally**, against the local `smoke` hub (the guard allows the local stack). Since 2026-10-24 it is in
+the fixture set, so `./scripts/local-stack.sh start` or `reset` makes it.
 
 Start an API with `CIVIC_DEV_HUB=smoke` and `CIVIC_COC_FAKE=on` (so bare `localhost` is the smoke hub), and a
 `vite preview` in front of it (as in `e2e.yml`). Then:
@@ -2601,7 +2656,7 @@ the local-stack jobs.
 
 ---
 
-*Last updated: 2026-10-23 — Architecture 4 (`authzParity` API test + `tests/fixtures/authz/oldRules.ts`, `hubRoles` and `actorDid` API tests, `canActor` and `actorDid` unit tests, `authOfficial`/`adminRoster` rewritten for the seam, `authzSeam.spec.ts`, `scripts/check-hub-roles.ts`, the `civic/authz-seam` lint, the export tests naming `hub_roles`). Before that, 2026-10-21 — Architecture 2 (`processManifest`, `manifestParity` + `tests/fixtures/manifests/`, `feedMetaHooks`, `emissionCheck`, `descriptorRouting`, `uiRegistry` unit tests; `processDescriptor` and `residentActions` API tests; conformance step 5 rewritten for reads that never close; `manifestUi.spec.ts`; the smoke descriptor check; the `auditLiveExposure` restore fix). Before that, 2026-10-20 — Architecture 1 (`wireIdentity` unit and API tests, `tests/fixtures/wire/before.json`, `namespaceDocument.test.ts`, conformance step 8's move check, the smoke DID check, the wire snapshot scripts). Before that, 2026-10-17 — the dashboard slice (`dashboard.test.ts` API and unit, `jobSchedule.test.ts`, `dashboard.spec.ts`, `CIVIC_DASHBOARD_FAKE` on CI's servers). Before that, 2026-10-17 — the cleanup slice (`settingsVersion.test.ts` on two servers, `adminQueueCounts.test.ts`, the invite check in `membersInvites` and one smoke test, `meetingSummaryGeneric.test.ts`, `polisCleanup.test.ts`, the smoke suite's waits gone). Before that, 2026-10-15 — leaving demo (`leavingDemo.test.ts`, `adminDigestTally.test.ts`, `leavingDemo.spec.ts`, the tally's unit tests, a read-only smoke test of Mode). Before that, 2026-10-14 — the Members plugin (`membersPlugin.test.ts`, `membersPlugin.spec.ts`, a last smoke test, console-made hubs' threshold of 10). Before that, 2026-10-14 — navigation polish (`hubNavigation.spec.ts` 13 tests, the smoke phone test extended, `more-sheet-bar`, the notice's localStorage key). Before that, 2026-10-14 — navigation (`navSections.test.ts`, `navigation.test.ts`, `hubNavigation.spec.ts`, two smoke tests replacing the phone Admin menu one, the console-made hubs' sidebar). Before that, 2026-10-14 — members and invites (`memberInvites.test.ts`, `membersInvites.test.ts`, `membersInvites.spec.ts`, three smoke tests, the leak harness's member routes). Before that, 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
+*Last updated: 2026-10-24 — local stack hygiene (`scripts/local-stack.sh`, `tests/setup/dropTestHubs.ts` as vitest's and Playwright's global setup, the smoke spec no longer serial, the link picker E2E test making its own target, Quick Start rewritten around the script). Before that, 2026-10-23 — Architecture 4 (`authzParity` API test + `tests/fixtures/authz/oldRules.ts`, `hubRoles` and `actorDid` API tests, `canActor` and `actorDid` unit tests, `authOfficial`/`adminRoster` rewritten for the seam, `authzSeam.spec.ts`, `scripts/check-hub-roles.ts`, the `civic/authz-seam` lint, the export tests naming `hub_roles`). Before that, 2026-10-21 — Architecture 2 (`processManifest`, `manifestParity` + `tests/fixtures/manifests/`, `feedMetaHooks`, `emissionCheck`, `descriptorRouting`, `uiRegistry` unit tests; `processDescriptor` and `residentActions` API tests; conformance step 5 rewritten for reads that never close; `manifestUi.spec.ts`; the smoke descriptor check; the `auditLiveExposure` restore fix). Before that, 2026-10-20 — Architecture 1 (`wireIdentity` unit and API tests, `tests/fixtures/wire/before.json`, `namespaceDocument.test.ts`, conformance step 8's move check, the smoke DID check, the wire snapshot scripts). Before that, 2026-10-17 — the dashboard slice (`dashboard.test.ts` API and unit, `jobSchedule.test.ts`, `dashboard.spec.ts`, `CIVIC_DASHBOARD_FAKE` on CI's servers). Before that, 2026-10-17 — the cleanup slice (`settingsVersion.test.ts` on two servers, `adminQueueCounts.test.ts`, the invite check in `membersInvites` and one smoke test, `meetingSummaryGeneric.test.ts`, `polisCleanup.test.ts`, the smoke suite's waits gone). Before that, 2026-10-15 — leaving demo (`leavingDemo.test.ts`, `adminDigestTally.test.ts`, `leavingDemo.spec.ts`, the tally's unit tests, a read-only smoke test of Mode). Before that, 2026-10-14 — the Members plugin (`membersPlugin.test.ts`, `membersPlugin.spec.ts`, a last smoke test, console-made hubs' threshold of 10). Before that, 2026-10-14 — navigation polish (`hubNavigation.spec.ts` 13 tests, the smoke phone test extended, `more-sheet-bar`, the notice's localStorage key). Before that, 2026-10-14 — navigation (`navSections.test.ts`, `navigation.test.ts`, `hubNavigation.spec.ts`, two smoke tests replacing the phone Admin menu one, the console-made hubs' sidebar). Before that, 2026-10-14 — members and invites (`memberInvites.test.ts`, `membersInvites.test.ts`, `membersInvites.spec.ts`, three smoke tests, the leak harness's member routes). Before that, 2026-10-13 — feedback routing (`feedbackDuplicates.test.ts`, `feedbackInbox.test.ts`, `feedbackRouting.test.ts`, `feedbackRouting.spec.ts`, two smoke tests, the purge of a hub's inbox copies). Before that, 2026-10-13 — the admin menu slice (`helpRegistry.test.ts`, `adminAnchors.test.ts`, `adminMenuSlice.test.ts`, `adminMenu.spec.ts`, three smoke tests, the help-links CI step). Before that, 2026-10-14 — the sign-in slice (`codeRules.test.ts`, `codeEmail.test.ts`, `signInLink.test.ts`, `auditSignIn.test.ts` rewritten, `signIn.spec.ts`, the smoke link sign-in). Before that, 2026-10-13 — vote pages fixes (`votePages.spec.ts`, the preview-build note, conformance step 5's hourly close). Before that, 2026-10-13 — the smoke suite (`tests/smoke/`, `playwright.smoke.config.ts`, `.github/workflows/smoke.yml`). Before that, 2026-10-12 — the plugin conformance suite (`tests/conformance/`, `conformance.test.ts`, `processDescriptors.test.ts`, the fake Polis, `liveProcess.ts` fixtures, the DDL settle). Before that, 2026-10-11 — Audit 2 (rate limits and the fresh test IP, hashed codes and sessions, `auditSignIn` / `aiLimits` / `auditHardening`, the CSP under `vite preview`). Before that, 2026-10-11 — Audit 1 (within-hub exposure: `auditLiveExposure.test.ts`, the check hash fixture, `codeOfConductCheck.spec.ts`). Before that, 2026-10-07 — event reads past 1,000 rows (`eventReads.test.ts`, `rowCap.test.ts`, feed paging in `feed.spec.ts`). Before that, 2026-10-06 — console and sample-content polish (eleven sample templates, the `process` field kind, job_runs recording, the meeting-pill E2E check). Before that, 2026-09-27 — hubDeadEnd.test.ts, E2E 25/25 again, API 290 in token mode (release-1 prep). Before that, 2026-09-27 — consoleRouting.test.ts (dev on *.dev.civic.social). Before that, 2026-09-26 — Phase 7: sample content (marker, stamping triggers, the hub-token delete guard, removal, the console seed). Before that, 2026-09-26 — Phase 5 part two: hub export/import/restore round trip (incl. plain Postgres), console export + sweep, the hourly vote close and the digest's recorded_at window. Before that, 2026-09-25 — Phase 3: the leak harness (both modes), the
 RLS catalog test, and CI running the API layer twice. Before that, 2026-09-25 — Phase 2c suites, the E2E known-failure baseline,
 and the API layer now running in CI. Previously: 2026-09-22 — recorded that the Supabase CLI local stack now
 works end to end, that the migration set builds a working schema from scratch,

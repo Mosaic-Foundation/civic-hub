@@ -4,6 +4,59 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Local stack hygiene: a small fixture set, runs that clean up, sessions that put things away — 2026-10-24
+
+`multi-tenant`, one commit per item, from `3af0878`. Local tooling and tests only: no change to the engine, the
+wire, the UI or the migrations; dev and production untouched, no `release.sh`. Report:
+`~/Documents/Mosaic/0 Management/Civic Social/Local-Stack-Session-Report-2026-10-24.md`.
+
+**What changed:**
+- `977b2ec` **`scripts/local-stack.sh start | reset | stop | status`.**
+  - `start` brings Docker Desktop up if needed and the stack up without logflare and vector, applies pending
+    migrations and loads the fixture set. It is idempotent.
+  - `reset` drops every volume and loads the fixture set only.
+  - `stop` names and stops every node server listening from `civic-hub/` or a mono-repo worktree, stops the stack
+    (data kept), and quits Docker Desktop (`docker desktop stop`) when nothing else runs in it.
+  - `status` shows the servers, the hubs, the counts and the disk.
+  - It refuses any URL but 127.0.0.1 or localhost, and the fixture scripts run with an empty environment, never
+    `.env`.
+- `d156c48` **Test runs delete the hubs they create.** `tests/setup/dropTestHubs.ts` is the global setup of vitest
+  and Playwright: it records the hubs at the start and deletes every new one at the end, pass or fail. It works on
+  the local stack only and never touches the fixture set.
+- `882746b` **Smoke: every check runs after a failure** (the spec is no longer serial; production smoke unchanged).
+- `54f8a87` The link picker E2E test makes its own process to find (it relied on leftover data).
+- `66f7b7c` The fixture's smoke hub matches dev's (top tabs, no Members threshold).
+- Docs: TESTING.md Quick Start is rewritten around the script, with a "Before you hand off" line. SESSION-START.md's
+  "Every slice ends with" now ends with `./scripts/local-stack.sh stop`, and HANDOFF-INDEX.md has a row for the
+  local stack.
+
+**Adam's calls (2026-10-24):**
+- The fixture set is floyd, athens and smoke, plus the hub settings and the jurisdiction list, as CI seeds them.
+- Cleanup deletes what the run made; there is no shared prefix.
+- Analytics is off in the script only; `config.toml` and CI are unchanged.
+- The Polis dev containers (`~/Developer/polis`, 4 cores busy for two weeks) were stopped once by hand; the script
+  never touches them.
+
+**Numbers:**
+- Hubs 1,208 → 3; disk 6.2 GB → 55 MB.
+- `npm test` 335 s → 159 s, all green.
+- API with tokens 334 s → 118 s, all green.
+- Playwright 172 passed, 0 failed, no retries.
+- The details and the one remaining flake (`auditConcurrency`, 3 of 4 full runs, Kong's early close) are in TESTING.md.
+
+**For Adam:**
+- `../CLAUDE.md` is write-denied to sessions. Add one sentence to its Session Rules: "Before handing off, run
+  `civic-hub/scripts/local-stack.sh stop` so no dev server, database or Docker is left running."
+- Turn off Docker Desktop → Settings → General → "Start Docker Desktop when you sign in to your computer".
+
+**Left:**
+- The `auditConcurrency` flake (likely Kong reusing a connection PostgREST had already closed; it only bites POSTs).
+- The three wire-path smoke checks can't run through a local `vite preview`.
+- `.env` points at hosted dev, so a bare `npm run test:e2e` with nothing on :3000 writes there.
+- What runs add to floyd and athens themselves stays until `reset`.
+
+---
+
 ## Architecture 5: the engine knows nothing about where it runs — 2026-10-24
 
 `multi-tenant`, one commit per item, from `bdea376`. Decision record: ADR-012 at the mono-repo root

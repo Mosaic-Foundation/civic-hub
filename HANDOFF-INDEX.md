@@ -13,6 +13,7 @@ numbers below, or just grep the heading.
 |---|---|
 | Project rules, folder map, session ritual | `../CLAUDE.md` |
 | Test commands, coverage, CI notes | `TESTING.md` |
+| The local stack: start, reset to the fixture set, stop (dev servers, stack, Docker; every session before handoff), status; test runs deleting the hubs they create | `scripts/local-stack.sh`, `tests/setup/dropTestHubs.ts`; TESTING.md → Quick Start |
 | Config: every setting (purpose, type, default, required, layer), checked at startup; the generated list | `src/config/settings.ts`, `src/config/checkSettings.ts`, `npm run settings:doc` → RUNBOOK-operations.md → Settings; values: `.env.example`, `ui/.env.example`; ADR-012 |
 | Hub identity and jurisdiction constants | `src/config/hub.ts` |
 | Runtime settings read/write (`hub_settings`) | `src/services/hubSettings.ts` |
@@ -327,6 +328,9 @@ numbers below, or just grep the heading.
 - Light process-linking — 5002–5665
 
 ### Operations
+- **Local stack hygiene (2026-10-24)**: `scripts/local-stack.sh` (start, reset to the fixture set, stop before every
+  handoff, status), test runs deleting the hubs they create, the smoke suite running every check — top of HANDOFF
+  (grep the heading)
 - SHIPPED to production — 3720–3735; Production readiness — 10752–10848
 - Vercel builds: npm ci — 2772–2804
 - Test infrastructure + cron route fix — 8254–8293
