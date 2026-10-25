@@ -17,6 +17,7 @@ import "./MySubmissions.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import SubmissionPreview from "../components/SubmissionPreview";
 import SharePrompt from "../components/SharePrompt";
+import { formatShortDateTime } from "../utils/dates";
 
 const TYPE_LABELS: Record<string, string> = {
   "civic.vote": "Vote",
@@ -32,16 +33,6 @@ const STATUS_LABELS: Record<string, string> = {
   declined: "Declined",
   withdrawn: "Withdrawn",
 };
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 export default function MySubmissions() {
   const { user } = useAuth();
@@ -301,7 +292,7 @@ export default function MySubmissions() {
                         </span>{" "}
                         — {turn.action.replace(/_/g, " ")}
                       </span>
-                      <span>{formatDate(turn.created_at)}</span>
+                      <span>{formatShortDateTime(turn.created_at)}</span>
                     </div>
                     {turn.note && (
                       <div className="review-turn-note">{turn.note}</div>
@@ -467,7 +458,7 @@ export default function MySubmissions() {
               fontSize: "var(--font-size-sm)",
             }}
           >
-            {formatDate(r.updated_at)}
+            {formatShortDateTime(r.updated_at)}
           </p>
         </div>
       ))}

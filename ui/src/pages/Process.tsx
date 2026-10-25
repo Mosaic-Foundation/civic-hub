@@ -21,14 +21,7 @@ import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
 import { detailPathOf, pluginOfDetailRoute, pluginOfType } from "../processes/display";
 import { PluginOff, pluginEnabled } from "../config/plugins";
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+import { formatDate } from "../utils/dates";
 
 export default function Process() {
   const { id } = useParams<{ id: string }>();

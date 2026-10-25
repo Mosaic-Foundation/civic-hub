@@ -1,19 +1,12 @@
 import type { DeliberationReadModel } from "../../services/api";
 import SourceLinks from "../SourceLinks";
 import "./CompletedDeliberation.css";
+import { formatShortDate } from "../../utils/dates";
 
 interface Props {
   process: DeliberationReadModel;
   /** false when the page above already shows the topic as its title. */
   showTopic?: boolean;
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 export default function CompletedDeliberation({ process: proc, showTopic }: Props) {
@@ -96,7 +89,7 @@ export default function CompletedDeliberation({ process: proc, showTopic }: Prop
             <span>
               Methodology: {summary.methodology.prompt_version} &middot;{" "}
               {summary.methodology.model_used} &middot;{" "}
-              {formatDate(summary.methodology.generated_at)}
+              {formatShortDate(summary.methodology.generated_at)}
             </span>
             {summary.linked_polis_data_uri && (
               <a

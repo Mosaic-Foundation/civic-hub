@@ -20,15 +20,7 @@ import ProcessHeader from "../components/ProcessHeader";
 import RichText from "../components/RichText";
 import EditHistory from "../components/EditHistory";
 import SourceLinks from "../components/SourceLinks";
-
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+import { formatDate } from "../utils/dates";
 
 
 export default function ProposalDetail() {

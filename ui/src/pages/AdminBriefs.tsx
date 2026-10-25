@@ -29,6 +29,7 @@ import {
 // Reuse the vote-results admin styles — same layout language.
 import "./AdminVoteResults.css";
 import { manifestOf, typeName } from "../processes/display";
+import { localShortDate, localDateAtTime } from "../utils/dates";
 
 const STATUS_FILTERS: Array<{ id: "all" | BriefPublicationStatus; label: string }> = [
   { id: "all", label: "All" },
@@ -228,7 +229,7 @@ export default function AdminBriefs() {
               {sourceLabel(selected.source_process_type)}
             </span>{" "}
             Status: <StatusChip status={selected.publication_status} /> · Generated{" "}
-            {formatDateTime(selected.generated_at)}
+            {localDateAtTime(selected.generated_at)}
           </p>
 
           {actionMessage && <p className="admin-action-message">{actionMessage}</p>}
@@ -496,7 +497,7 @@ export default function AdminBriefs() {
               <h3>Delivered</h3>
               {selected.delivered_at && (
                 <p className="form-hint">
-                  Sent {formatDateTime(selected.delivered_at)}.
+                  Sent {localDateAtTime(selected.delivered_at)}.
                 </p>
               )}
               <ul>
@@ -635,9 +636,9 @@ export default function AdminBriefs() {
                 {record.participation_count != null && (
                   <span>{record.participation_count} participants</span>
                 )}
-                <span>Generated {formatDate(record.generated_at)}</span>
+                <span>Generated {localShortDate(record.generated_at)}</span>
                 {record.published_at && (
-                  <span>Published {formatDate(record.published_at)}</span>
+                  <span>Published {localShortDate(record.published_at)}</span>
                 )}
               </div>
             </li>
@@ -662,15 +663,3 @@ function parseCommentsText(text: string): string[] {
     .filter((l) => l.length > 0);
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} at ${d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`;
-}

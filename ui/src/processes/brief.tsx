@@ -7,6 +7,7 @@ import BriefPage from "../pages/Brief";
 import AdminBriefs from "../pages/AdminBriefs";
 import { briefResponseContext } from "../../../src/shared/feedActivity";
 import type { ProcessUi } from "./types";
+import { formatShortDate } from "../utils/dates";
 
 export const briefUi: ProcessUi = {
   type: "civic.brief",
@@ -39,7 +40,7 @@ export const briefUi: ProcessUi = {
       meta: () => Promise.resolve({}),
       engagement: (meta) =>
         meta.lastEditedAt
-          ? `Updated ${new Date(meta.lastEditedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+          ? `Updated ${formatShortDate(meta.lastEditedAt)}`
           : null,
     },
     "brief-response": {

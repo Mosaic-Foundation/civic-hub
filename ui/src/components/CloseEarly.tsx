@@ -14,10 +14,7 @@ import { useAction } from "../hooks/useAction";
 import { closeEarly, type EarlyCloseOffer, type ClosedEarly } from "../services/api";
 import { CLOSE_EARLY_NOTE_MAX } from "../../../src/shared/closedEarly";
 import "./CloseEarly.css";
-
-function longDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-}
+import { formatDate } from "../utils/dates";
 
 /** The admin's button and its dialog. Renders nothing for anyone else, or when it can't close early. */
 export function CloseEarlyButton<V>({
@@ -71,7 +68,7 @@ export function CloseEarlyButton<V>({
           describedBy={helpId}
         >
           <p id={helpId} className="close-early-help">
-            It closes now instead of on {longDate(offer.deadline)}, the same way it would at its deadline. Your note
+            It closes now instead of on {formatDate(offer.deadline)}, the same way it would at its deadline. Your note
             is shown on the page and in the brief, word for word. The admin log records that you closed it.
           </p>
           <label htmlFor={noteId} className="close-early-label">

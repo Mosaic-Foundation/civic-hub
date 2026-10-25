@@ -19,6 +19,7 @@ import {
 import AdminTabs from "../components/AdminTabs";
 import hub from "../config/hub";
 import "./AdminMeetingSummaries.css";
+import { localShortDateOfDay, localDateAtTime } from "../utils/dates";
 
 // No "Approved" filter: approveMeetingSummary() walks pending → approved →
 // published inside one call, so "approved" is a transient in-memory step that
@@ -314,11 +315,11 @@ export default function AdminMeetingSummaries() {
             &larr; Back to Meeting summaries
           </button>
           <h1>
-            Review: {selected.meeting_title} — {formatDate(selected.meeting_date)}
+            Review: {selected.meeting_title} — {localShortDateOfDay(selected.meeting_date)}
           </h1>
           <p className="admin-subtitle">
             Status: <StatusChip status={selected.approval_status} /> · Generated{" "}
-            {formatDateTime(selected.generated_at)}
+            {localDateAtTime(selected.generated_at)}
           </p>
 
           <div className="meeting-ai-banner">
@@ -394,7 +395,7 @@ export default function AdminMeetingSummaries() {
               </div>
               <p style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>
                 Revision generated{" "}
-                {formatDate(selected.pending_revision.generated_at)} ·{" "}
+                {localShortDateOfDay(selected.pending_revision.generated_at)} ·{" "}
                 {selected.pending_revision.blocks.length} blocks (published
                 version has {selected.blocks.length})
               </p>
@@ -952,7 +953,7 @@ export default function AdminMeetingSummaries() {
                   className="admin-proposal-title-link"
                   onClick={() => openReview(s.id)}
                 >
-                  {s.meeting_title} — {formatDate(s.meeting_date)}
+                  {s.meeting_title} — {localShortDateOfDay(s.meeting_date)}
                 </h3>
                 <StatusChip status={s.approval_status} />
               </div>
@@ -981,9 +982,9 @@ export default function AdminMeetingSummaries() {
                 {!s.has_video && s.source_type !== "recording" && (
                   <span>PDF-only</span>
                 )}
-                <span>Generated {formatDate(s.generated_at)}</span>
+                <span>Generated {localShortDateOfDay(s.generated_at)}</span>
                 {s.published_at && (
-                  <span>Published {formatDate(s.published_at)}</span>
+                  <span>Published {localShortDateOfDay(s.published_at)}</span>
                 )}
               </div>
             </li>
@@ -1003,31 +1004,6 @@ function StatusChip({ status }: { status: MeetingSummaryApprovalStatus }) {
       ? "approved"
       : "published";
   return <span className={cls}>{label}</span>;
-}
-
-function formatDate(iso: string): string {
-  // Accepts either a date-only (YYYY-MM-DD) or a full timestamp. new Date
-  // on a date-only string is interpreted as UTC, which can shift the day
-  // backward when formatted in local TZ — paper over with a noon-time
-  // constructor when no T is present.
-  const d = iso.includes("T") ? new Date(iso) : new Date(`${iso}T12:00:00`);
-  return d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  return `${d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })} at ${d.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
 }
 
 function formatSeconds(total: number): string {

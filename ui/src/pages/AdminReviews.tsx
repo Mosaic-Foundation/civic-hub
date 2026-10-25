@@ -22,6 +22,7 @@ import { typeColorSlug } from "../components/typeColor";
 import "./AdminReviews.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import SubmissionPreview from "../components/SubmissionPreview";
+import { formatShortDateTime } from "../utils/dates";
 
 const STATUS_FILTERS: Array<{ id: "all" | ReviewStatus; label: string }> = [
   { id: "all", label: "All" },
@@ -49,16 +50,6 @@ const STATUS_LABELS: Record<string, string> = {
   declined: "Declined",
   withdrawn: "Withdrawn",
 };
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 export default function AdminReviews() {
   const navigate = useNavigate();
@@ -286,7 +277,7 @@ export default function AdminReviews() {
                 <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)" }}>
                   Submitted by <strong>{detail.review.creator_name}</strong> (
                   {detail.review.creator_email}) on{" "}
-                  {formatDate(detail.review.created_at)}
+                  {formatShortDateTime(detail.review.created_at)}
                 </p>
               </ProcessHeader>
 
@@ -350,7 +341,7 @@ export default function AdminReviews() {
                         </span>{" "}
                         — {turn.action.replace(/_/g, " ")}
                       </span>
-                      <span>{formatDate(turn.created_at)}</span>
+                      <span>{formatShortDateTime(turn.created_at)}</span>
                     </div>
                     {turn.note && (
                       <div className="review-turn-note">{turn.note}</div>
@@ -550,7 +541,7 @@ export default function AdminReviews() {
               </span>
             </div>
             <p style={{ margin: "var(--space-xs) 0 0", color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)" }}>
-              By {r.creator_name} · {formatDate(r.updated_at)}
+              By {r.creator_name} · {formatShortDateTime(r.updated_at)}
             </p>
           </div>
         ))}
