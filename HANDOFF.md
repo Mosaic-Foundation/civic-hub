@@ -4,6 +4,58 @@ Updated after every Claude Code session. Records what was built, what's incomple
 
 ---
 
+## Architecture 5: the engine knows nothing about where it runs — 2026-10-24
+
+`multi-tenant`, one commit per item, from `bdea376`. Decision record: ADR-012 at the mono-repo root
+(`decisions/012-engine-and-hosting.md`, a local commit for Adam to push, as ADR-008 to ADR-011). Report and handoff:
+`~/Documents/Mosaic/0 Management/Civic Social/Architecture-5-Session-Report-2026-10-24.md`.
+
+**One migration, additive:** `20261024000000_submit_for_review` (a function and its grants). No pre-checks; nobody is
+signed out. **Live on dev at `c5f799d`** (`./scripts/release.sh dev --yes`: 1 migration applied, health ok, no schema gaps; dev's settings passed the new startup check). **CI (with the new `run-anywhere` job), E2E and Smoke green on `c5f799d`.** Not on production.
+
+**Before the production release:** confirm on civic-hub (production) that every setting the hub now refuses to start
+without is set (RUNBOOK-operations.md → Settings, "Required"): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+`CIVIC_ALLOWED_ORIGINS`, `CIVIC_ANON_SECRET`, `CRON_SECRET`, `DIGEST_UNSUBSCRIBE_SECRET`, and `CIVIC_HUB_SIGNING_KEY`
+if `CIVIC_HUB_MINTED_TOKEN` is on, `CIVIC_CONSOLE_ADMIN_EMAIL` if `CIVIC_CONSOLE_HOSTNAME` is set. After it, search
+the logs for `[settings]` (a setting of the wrong type, or one nothing reads).
+
+**The invariants:**
+- **The wire is unchanged:** `wire-snapshot-diff.ts` identical on dev (2,293 events, before at `bdea376`, after at `c5f799d`); locally 66,622 of 66,718 byte-identical, the other 96 Athens sample events deleted between the runs by the sample refresh, none changed.
+- **Residents and admins see the same hub:** HTTP side by side (`bdea376` and the slice on one database): 34,660 pairs, 34,612 byte-identical, 40 identical as JSON, 8 `/health` differing only in `schema.checked` 56 → 57 (the new function); Playwright 171 passed, 2 skipped, 1 failed (`dashboard.spec.ts`, the known local timeout); API suites 898 passed in each mode (4 failed each, the dashboard's known local timeouts); run-anywhere 885 passed, 27 skipped.
+- Ballot secrecy untouched (the receipts store makes the same calls; `ballotSecrecyRules` passes).
+- The operations shell: every heartbeat goes through the heartbeat adapter from the same place
+  (`runScheduledJob`), and `heartbeats-sync.ts --dry-run` lists the same eight checks, schedules and grace periods as
+  the runbook; Smoke is green and unchanged (no page changed); Sentry reports through the errors adapter with the same scrubber; the console's cards read
+  the same services; the backup job is untouched; the AI usage-limit report now comes from the gate, for every caller.
+
+**What changed (Adam's Q1–Q11, 2026-10-24, with four additions):**
+1. **Config.** `src/config/settings.ts` declares every setting (purpose, type, default, required, layer); the app
+   checks them at startup (`checkSettings`): a missing required one refuses the start by name; a wrong type is logged
+   (refused only for the database's settings); unknown names with our prefixes are logged.
+   RUNBOOK-operations.md → Settings is generated (`npm run settings:doc`, test-enforced).
+2. **Adapters.** `src/adapters/` (ai, mail, video, deliberation, errors, heartbeat, objectStore), the vendors in
+   `src/hosting/`, chosen by `installHosting()`; `env` vs `hostingEnv`; lint `civic/hosting-boundary`. The ai gate
+   records every call by purpose and gives the scheduled jobs their own ceiling, `job_daily_tokens` (2M, demo 500k,
+   console-overridable), reporting `ai.job_budget`. Fakes everywhere in tests; `CIVIC_FAKE_ADAPTERS=on` on test
+   servers; `CIVIC_POLIS_FAKE` / `CIVIC_COC_FAKE` aliases for this release.
+3. **Database convention.** Every module keeps its data through its own store (`store.ts` slot, `src/stores/`,
+   `installStores`); only processService/processRows query `processes`; controllers call services; lint
+   `civic/db-convention`, no exemptions. A submission is one transaction (`submit_for_review`).
+4. **Jobs.** `src/jobs/{meetingSummary,digest,adminDigest,newsSync}.ts` return a `JobOutcome`; `RunSink` is gone; the
+   meeting summary's admin alert is `src/services/cronAlerts.ts` and is awaited. `runScheduledJob` is the one run;
+   `scripts/run-job.ts <job> <hub|--all>` runs it from any cron (`npm run jobs:crontab -- --script`).
+5. **Hosting files** listed in ADR-012; `/api/og` rewrites only for crawlers (case-insensitive).
+6. **The proof:** `RUN-ANYWHERE.md` and the `run-anywhere` CI job (plain Postgres + PostgREST 14.5, no Supabase).
+
+**Delegated to Sonnet subagents and reviewed:** the four job moves, and the store conversion of nine modules, the
+controllers and the processes-table callers (six groups in parallel worktrees, merged and checked here).
+
+**Left:** the frontend pass (F6); the plugin loader and capability grant; a real object store for self-hosters;
+removing the two fake-switch aliases next release; real Code of Conduct findings carry no field (`checkTextAgainstCoC`
+passes `[]` as the valid fields), noticed here, not changed.
+
+---
+
 ## Architecture 4: one authorization seam, roles by account, the actor's own DID — 2026-10-23
 
 `multi-tenant`, one commit per item, from `a104260`. Decision record: ADR-011 at the mono-repo root
