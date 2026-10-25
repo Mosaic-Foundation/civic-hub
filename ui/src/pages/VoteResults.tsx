@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link, useParams } from "react-router-dom";
 import { getPublicVoteResults, type PublicVoteResults } from "../services/api";
-import { relativeTime, absoluteTime } from "../components/FeedPost";
 import PostFeaturedImage from "../components/PostFeaturedImage";
 import LinkPreviewCard from "../components/LinkPreviewCard";
 import hub from "../config/hub";
@@ -10,6 +9,8 @@ import { useAuth } from "../context/AuthContext";
 import { getHeldReceipt, isMine } from "../services/voteReceipts";
 import ResultBars from "../components/ResultBars";
 import "./VoteResults.css";
+import { relativeTime, absoluteTime } from "../components/FeedPost";
+import { absoluteDate, localShortDate } from "../utils/dates";
 
 const URL_RE = /\bhttps?:\/\/\S+/gi;
 
@@ -30,33 +31,12 @@ const URL_RE = /\bhttps?:\/\/\S+/gi;
  */
 export default function VoteResultsPage() {
   const { id } = useParams<{ id: string }>();
-  const [results, setResults] = useState<PublicVoteResults | null>(null);
   const { actorId } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
-    setLoading(true);
-    getPublicVoteResults(id)
-      .then((r) => {
-        if (cancelled) return;
-        setResults(r);
-      })
-      .catch((err: Error) => {
-        if (cancelled) return;
-        setError(err.message);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+  const {
+    data: results,
+    loading,
+    error,
+  } = useApi<PublicVoteResults>(id ? `vote-results/${id}` : null, () => getPublicVoteResults(id!));
 
   if (loading) {
     return (
@@ -70,7 +50,7 @@ export default function VoteResultsPage() {
     return (
       <div className="page vote-results-page">
         <p className="vote-results-status vote-results-status-error">
-          {error ?? "Vote results not found."}
+          {error?.message ?? "Vote results not found."}
         </p>
       </div>
     );
@@ -90,12 +70,7 @@ export default function VoteResultsPage() {
   const deliveryLine = (() => {
     if (!deliveredTo) return null;
     if (results.approved_at) {
-      const d = new Date(results.approved_at);
-      const dateLabel = d.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+      const dateLabel = absoluteDate(results.approved_at);
       return `Delivered to the ${deliveredTo} on ${dateLabel}.`;
     }
     return `Delivered to the ${deliveredTo}.`;
@@ -306,12 +281,7 @@ function formatVotingWindow(
   startsAt: string | null,
   endsAt: string | null,
 ): string {
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  const fmt = localShortDate;
   if (startsAt && endsAt) return `Open from ${fmt(startsAt)} to ${fmt(endsAt)}.`;
   if (startsAt) return `Opened ${fmt(startsAt)}.`;
   if (endsAt) return `Closed ${fmt(endsAt)}.`;

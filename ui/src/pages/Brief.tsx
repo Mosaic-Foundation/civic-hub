@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { ClosedEarlyNote } from "../components/CloseEarly";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
@@ -42,9 +43,12 @@ export default function BriefPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { official, user } = useAuth();
-  const [brief, setBrief] = useState<PublicBrief | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: brief,
+    loading,
+    error,
+    setData: setBrief,
+  } = useApi<PublicBrief>(id ? `brief/${id}` : null, () => getPublicBrief(id!));
   const [responseDraft, setResponseDraft] = useState("");
   const post = useAction("Could not post the response.");
   const posting = post.busy;
@@ -68,26 +72,6 @@ export default function BriefPage() {
     });
   }
 
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
-    setLoading(true);
-    getPublicBrief(id)
-      .then((b) => {
-        if (!cancelled) setBrief(b);
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
   if (loading) {
     return (
       <div className="page vote-results-page">
@@ -100,7 +84,7 @@ export default function BriefPage() {
     return (
       <div className="page vote-results-page">
         <p className="vote-results-status">
-          {error ?? "Brief not found."}
+          {error?.message ?? "Brief not found."}
         </p>
         <Link to="/" className="back-link">
           &larr; Home
@@ -165,11 +149,7 @@ export default function BriefPage() {
         // (review R29, 2026-10-07).
         <p className="vote-results-delivery">
           Delivered to the {hub.governing_body_name || hub.governing_body_short} on{" "}
-          {new Date(brief.approved_at).toLocaleDateString(undefined, {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
+          {absoluteDate(brief.approved_at)}
           .
         </p>
       ) : null}
@@ -259,18 +239,14 @@ export default function BriefPage() {
         This brief is the final record of a completed {noun} on the{" "}
         {hub.name}, published{" "}
         <time dateTime={brief.published_at} title={absoluteTime(brief.published_at)}>
-          {new Date(brief.published_at).toLocaleDateString(undefined, {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
+          {absoluteDate(brief.published_at)}
         </time>
         {/* Regenerated after publishing: the same brief, a new version. */}
         {brief.revised_at && (
           <>
             {", updated "}
             <time dateTime={brief.revised_at} title={absoluteTime(brief.revised_at)}>
-              {new Date(brief.revised_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+              {absoluteDate(brief.revised_at)}
             </time>
           </>
         )}
@@ -311,11 +287,7 @@ export default function BriefPage() {
                   dateTime={r.created_at}
                   title={absoluteTime(r.created_at)}
                 >
-                  {new Date(r.created_at).toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                  {absoluteDate(r.created_at)}
                 </time>
               </header>
               <p className="brief-response-body" style={{ whiteSpace: "pre-wrap" }}>

@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import { getOutcomes, type OutcomeEntry, type OutcomesPage } from "../services/api";
+import { absoluteDate } from "../utils/dates";
 import { friendlyType } from "../components/ProcessLinkPicker";
 import hub from "../config/hub";
 import "./Outcomes.css";
@@ -23,36 +25,30 @@ import { briefColorSlug } from "../processes/display";
  */
 
 export default function Outcomes() {
-  const [page, setPage] = useState<OutcomesPage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   // Single-select, like the feed's filter bar: All, or exactly one type.
   // Always newest first — an archive reads backward from today; the old
   // sort dropdown was removed on purpose (Adam, 2026-08-28).
   const [type, setType] = useState<string | null>(null);
   const [year, setYear] = useState<number | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setPage(await getOutcomes({ sourceTypes: type ? [type] : [], year }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load outcomes.");
-    } finally {
-      setLoading(false);
-    }
-  }, [type, year]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // Each filter is its own read, kept 30 seconds like the other list pages.
+  const query = new URLSearchParams();
+  if (type) query.append("source_type", type);
+  if (year != null) query.set("year", String(year));
+  const q = query.toString();
+  const { data: page, loading, error } = useApi<OutcomesPage>(
+    `/brief${q ? `?${q}` : ""}`,
+    () => getOutcomes({ sourceTypes: type ? [type] : [], year }),
+    { cache: true },
+  );
 
   // Filter options come from the server, derived from what has actually been
-  // published — so a process type added later appears here on its own.
-  const availableTypes = page?.filters.source_types ?? [];
-  const availableYears = page?.filters.years ?? [];
+  // published — so a process type added later appears here on its own. The
+  // bar stays while the next filter loads.
+  const [filters, setFilters] = useState<OutcomesPage["filters"] | undefined>(undefined);
+  if (page && page.filters !== filters) setFilters(page.filters);
+  const availableTypes = filters?.source_types ?? [];
+  const availableYears = filters?.years ?? [];
   const filtered = type != null || year != null;
 
   return (
@@ -142,7 +138,7 @@ export default function Outcomes() {
       )}
 
       {loading && <p className="outcomes-status">Loading…</p>}
-      {error && <p className="outcomes-status outcomes-status--error">{error}</p>}
+      {error && <p className="outcomes-status outcomes-status--error">{error.message}</p>}
 
       {!loading && !error && page && page.outcomes.length === 0 && (
         <p className="outcomes-status">
@@ -186,7 +182,6 @@ export default function Outcomes() {
 const typeSlug = briefColorSlug;
 
 function OutcomeRow({ outcome }: { outcome: OutcomeEntry }) {
-  const published = new Date(outcome.published_at);
   const slug = typeSlug(outcome.source_process_type);
   return (
     <li className="outcomes-item">
@@ -211,11 +206,7 @@ function OutcomeRow({ outcome }: { outcome: OutcomeEntry }) {
           <p className="outcomes-item-headline">{outcome.headline}</p>
           <div className="process-card-meta">
             <time dateTime={outcome.published_at}>
-              {published.toLocaleDateString(undefined, {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
+              {absoluteDate(outcome.published_at)}
             </time>
             {outcome.participation_label && <span>{outcome.participation_label}</span>}
             {outcome.related_count > 0 && (

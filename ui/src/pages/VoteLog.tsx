@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   getVoteLog,
@@ -67,10 +68,15 @@ export default function VoteLog() {
     }
   }, [legacyReceipt]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [process, setProcess] = useState<ProcessState | null>(null);
-  const [voteLog, setVoteLog] = useState<VoteLogResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: loaded, loading, error } = useApi<{ process: ProcessState; voteLog: VoteLogResponse }>(
+    id ? `vote-log/${id}` : null,
+    async () => {
+      const [process, voteLog] = await Promise.all([getProcessState(id!), getVoteLog(id!)]);
+      return { process, voteLog };
+    },
+  );
+  const process = loaded?.process;
+  const voteLog = loaded?.voteLog;
 
   // The check
   const [searchInput, setSearchInput] = useState(initialReceipt);
@@ -79,18 +85,6 @@ export default function VoteLog() {
   // another code, so it's clear which code the answer belongs to (2026-10-13).
   const [checkedCode, setCheckedCode] = useState<string | null>(null);
   const check = useAction("The check didn't go through. Please try again.");
-
-  useEffect(() => {
-    if (!id) return;
-
-    Promise.all([getProcessState(id), getVoteLog(id)])
-      .then(([proc, log]) => {
-        setProcess(proc);
-        setVoteLog(log);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [id]);
 
   async function handleSearch(receiptId?: string) {
     const receipt = receiptId ?? searchInput.trim();
@@ -112,7 +106,7 @@ export default function VoteLog() {
   }, [voteLog?.available]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <p className="detail-page">Loading...</p>;
-  if (error) return <p className="detail-page error">Error: {error}</p>;
+  if (error) return <p className="detail-page error">Error: {error.message}</p>;
   if (!process || !id) return (
     <div className="page detail-page">
       <p>Not found.</p>

@@ -5,8 +5,7 @@
  */
 
 import type { SubmissionField } from "../../../src/shared/submissionPreview";
-import { onWrite, request as send, upload } from "./http";
-import { getStoredToken } from "./tokenStore";
+import { request, upload } from "./http";
 
 /** An address a published item was not emailed to, and why. */
 export interface HeldBackRecipient {
@@ -14,59 +13,9 @@ export interface HeldBackRecipient {
   reason: string;
 }
 
-// --- Short-lived GET cache (perf pass, 2026-08-28) --------------------------
-//
-// Tab-switching refetched everything from scratch (auth/me + the full
-// list for the page), so every navigation cost 2-4 API roundtrips before
-// anything rendered. This caches ONLY the allowlisted list/identity GETs
-// below, in memory, for 30 seconds — long enough to make tab hops
-// instant, short enough that a colleague's new post appears on the next
-// natural refresh.
-//
-// Correctness guards, in order of importance:
-//   - ANY non-GET request clears the whole cache, so your own mutation
-//     is never hidden behind a stale list (post a proposal → the list
-//     refetches fresh).
-//   - The allowlist holds only list/identity endpoints. Per-actor detail
-//     reads (/process/:id/state carries has_voted etc.) are
-//     deliberately NOT cacheable.
-//   - Keyed by path + auth token, so sign-in/out never serves the other
-//     identity's payload.
-//   - In-memory module state: a hard reload starts empty.
-const CACHE_TTL_MS = 30_000;
-const CACHEABLE_PATHS = new Set([
-  "/feed",
-  "/process",
-  "/proposals",
-  "/projects",
-  "/deliberations",
-  "/brief",
-  "/auth/me",
-  "/notifications/reviews/count",
-  "/notifications/edits",
-]);
-const getCache = new Map<string, { at: number; data: unknown }>();
-onWrite(() => getCache.clear());
-
-function isCacheable(method: string, path: string): boolean {
-  if (method !== "GET") return false;
-  return CACHEABLE_PATHS.has(path.split("?")[0]!);
-}
-
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const cacheKey = `${path}|${getStoredToken() ?? ""}`;
-  if (isCacheable(method, path)) {
-    const hit = getCache.get(cacheKey);
-    if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
-      return hit.data as T;
-    }
-  }
-  const data = await send<T>(method, path, body);
-  if (isCacheable(method, path)) {
-    getCache.set(cacheKey, { at: Date.now(), data });
-  }
-  return data;
-}
+// Every call goes through services/http.ts request(). Reads are not cached
+// here: a component reads through useApi (hooks/useApi.ts), whose 30-second
+// cache the list pages opt into.
 
 // --- Structured content types ---
 

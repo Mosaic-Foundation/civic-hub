@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import PatternAvatar from "./PatternAvatar";
 import SharePanel from "./SharePanel";
@@ -23,22 +24,14 @@ import "./MemberStack.css";
  */
 export default function MemberStack() {
   const { user, isAdmin } = useAuth();
-  const [summary, setSummary] = useState<MemberSummary | null>(null);
   const [sharing, setSharing] = useState(false);
 
   const membersOn = pluginEnabled("members");
-  useEffect(() => {
-    if (!membersOn) return;
-    let live = true;
-    getMemberSummary()
-      .then((s) => live && setSummary(s))
-      .catch(() => {
-        // The count is a nicety: a failed read leaves the row out.
-      });
-    return () => {
-      live = false;
-    };
-  }, [user?.id, membersOn]);
+  // The count is a nicety: a failed read leaves the row out. A sign-in or out
+  // reads it again, keeping the row shown.
+  const { data: summary } = useApi<MemberSummary>(membersOn ? "members/summary" : null, () => getMemberSummary(), {
+    rereadOn: user?.id,
+  });
 
   const joined = !!user?.is_resident;
   const count = membersOn ? (summary?.count ?? null) : null;

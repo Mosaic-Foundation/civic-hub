@@ -12,7 +12,8 @@
 // Each is best-effort: a failed read shows no count. Polled on navigation
 // and every minute while the tab is open, as the menus did.
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { useApi } from "../hooks/useApi";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import {
@@ -54,77 +55,65 @@ const EMPTY: NavData = {
   openEdited: (href, navigate) => navigate(href),
 };
 
+const NO_EDITS: EditNotification[] = [];
+
 const NavDataContext = createContext<NavData>(EMPTY);
 
 export function NavDataProvider({ children }: { children: ReactNode }) {
   const { user, isAdmin } = useAuth();
   const { pathname } = useLocation();
-  const [memberCount, setMemberCount] = useState<number | null>(null);
-  const [counts, setCounts] = useState<AdminQueueCounts | null>(null);
-  const [mySubmissions, setMySubmissions] = useState(0);
-  const [editNotifs, setEditNotifs] = useState<EditNotification[]>([]);
 
   // The member count changes rarely: on sign-in (joining adds one) and load.
-  useEffect(() => {
-    let live = true;
-    getMemberSummary()
-      .then((s) => live && setMemberCount(s.count))
-      .catch(() => {
-        /* a nicety: no count */
-      });
-    return () => {
-      live = false;
-    };
-  }, [user?.id]);
+  // A failed read shows no count, like every read here.
+  const { data: members } = useApi("members/summary", () => getMemberSummary(), { rereadOn: user?.id });
+  const memberCount = members?.count ?? null;
 
   // Yours: submissions needing attention (cleared by opening My submissions,
-  // which stamps reviews_seen_at), and edited projects you support.
+  // which stamps reviews_seen_at), and edited projects you support. Read
+  // again on every navigation, with the numbers shown meanwhile, and every
+  // minute.
+  const yoursChanged = useMemo(() => ({ user, pathname }), [user, pathname]);
+  const { data: reviewCount, reload: reloadReviewCount } = useApi(
+    user ? "/notifications/reviews/count?scope=mine" : null,
+    () => getReviewNotificationCount(),
+    { cache: true, rereadOn: yoursChanged },
+  );
+  const {
+    data: editData,
+    reload: reloadEdits,
+    setData: setEditData,
+  } = useApi(user ? "/notifications/edits" : null, () => getEditNotifications(), {
+    cache: true,
+    rereadOn: yoursChanged,
+  });
+  const mySubmissions = reviewCount?.count ?? 0;
+  const editNotifs = editData?.items ?? NO_EDITS;
   useEffect(() => {
-    if (!user) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes
-      setMySubmissions(0);
-      setEditNotifs([]);
-      return;
-    }
-    let live = true;
-    const fetchYours = () => {
-      getReviewNotificationCount()
-        .then((r) => live && setMySubmissions(r.count))
-        .catch(() => {});
-      getEditNotifications()
-        .then((r) => live && setEditNotifs(r.items))
-        .catch(() => {});
-    };
-    fetchYours();
-    const interval = setInterval(fetchYours, 60_000);
-    return () => {
-      live = false;
-      clearInterval(interval);
-    };
-  }, [user, pathname]);
+    if (!user) return;
+    const interval = setInterval(() => {
+      void reloadReviewCount();
+      void reloadEdits();
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [user, reloadReviewCount, reloadEdits]);
 
-  // The admins' review queues.
+  // The admins' review queues: on navigation, when a page announces a change,
+  // and every minute.
+  const { data: counts, reload: reloadCounts } = useApi<AdminQueueCounts>(
+    isAdmin ? "admin/queue-counts" : null,
+    () => adminQueueCounts(),
+    { rereadOn: pathname },
+  );
   useEffect(() => {
-    if (!isAdmin) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes
-      setCounts(null);
-      return;
-    }
-    let live = true;
-    const refetch = () => {
-      adminQueueCounts()
-        .then((c) => live && setCounts(c))
-        .catch(() => {});
-    };
-    refetch();
+    if (!isAdmin) return;
+    const refetch = () => void reloadCounts();
     const interval = setInterval(refetch, 60_000);
     window.addEventListener(ADMIN_QUEUES_CHANGED, refetch);
     return () => {
-      live = false;
       clearInterval(interval);
       window.removeEventListener(ADMIN_QUEUES_CHANGED, refetch);
     };
-  }, [isAdmin, pathname]);
+  }, [isAdmin, reloadCounts]);
 
   const reviews = counts ? REVIEW_QUEUES.reduce((n, q) => n + counts[q.key], 0) : 0;
   const reviewsTo = REVIEW_QUEUES.find((q) => (counts?.[q.key] ?? 0) > 0)?.to ?? "/admin/reviews";
@@ -139,7 +128,7 @@ export function NavDataProvider({ children }: { children: ReactNode }) {
       // Opening any of them clears the badge; the page carries the history.
       // Stamp BEFORE navigating: the route change re-polls, and a poll that
       // raced the stamp would bring the dot straight back.
-      setEditNotifs([]);
+      setEditData({ count: 0, items: [] });
       markEditsSeen()
         .catch(() => {})
         .finally(() => navigate(href));

@@ -17,6 +17,7 @@
 // not linked from any non-admin surface.
 
 import { useEffect, useRef, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminListFeedback, adminMarkQueueSeen, notifyAdminQueuesChanged } from "../services/api";
@@ -25,6 +26,7 @@ import AdminTabs from "../components/AdminTabs";
 import HelpButton from "../components/HelpButton";
 import { ForwardButton, MosaicBadge } from "../components/ForwardToCivicSocial";
 import "./AdminFeedback.css";
+import { localTimestamp } from "../utils/dates";
 
 type Filter = FeedbackCategory | "all";
 
@@ -48,15 +50,8 @@ const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
 };
 
 function formatTimestamp(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  if (Number.isNaN(new Date(iso).getTime())) return iso;
+  return localTimestamp(iso);
 }
 
 /** Attribution line. Signed-in submissions always have at least an email. */
@@ -65,43 +60,26 @@ function submitterLabel(item: FeedbackSubmission): string {
   return item.name ?? item.email ?? "Anonymous";
 }
 
+const NO_ITEMS: FeedbackSubmission[] = [];
+
 export default function AdminFeedback() {
   const { isAdmin, loading: authLoading } = useAuth();
-  const [items, setItems] = useState<FeedbackSubmission[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Refetch per filter rather than filtering in the page: the category
   // column is indexed, and this keeps the page correct once the archive
   // outgrows a single response.
-  useEffect(() => {
-    if (authLoading) return;
-    if (!isAdmin) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    adminListFeedback(filter)
-      .then((res) => {
-        if (!cancelled) setItems(res.items);
-        // Seen: everything up to now. Clears the tab's "new since you
-        // looked" count; the tabs refetch on the event.
-        return adminMarkQueueSeen("feedback").then(notifyAdminQueuesChanged).catch(() => {});
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isAdmin, authLoading, filter]);
+  const { data, loading, error, setData } = useApi(
+    !authLoading && isAdmin ? `admin/feedback/${filter}` : null,
+    async () => {
+      const res = await adminListFeedback(filter);
+      // Seen: everything up to now. Clears the tab's "new since you
+      // looked" count; the tabs refetch on the event.
+      await adminMarkQueueSeen("feedback").then(notifyAdminQueuesChanged).catch(() => {});
+      return res;
+    },
+  );
+  const items: FeedbackSubmission[] = data?.items ?? NO_ITEMS;
 
   // A digest link names a row (#fb_…). The rows render only after the fetch,
   // so scroll once they are on the page, once per address.
@@ -163,7 +141,7 @@ export default function AdminFeedback() {
         ))}
       </div>
 
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="form-error">{error.message}</p>}
 
       {authLoading || loading ? (
         <p>Loading…</p>
@@ -204,7 +182,9 @@ export default function AdminFeedback() {
                     <>
                       <ForwardButton
                         item={item}
-                        onForwarded={(next) => setItems((all) => all.map((i) => (i.id === next.id ? next : i)))}
+                        onForwarded={(next) =>
+                          setData((cur) => cur && { ...cur, items: cur.items.map((i) => (i.id === next.id ? next : i)) })
+                        }
                       />
                       <HelpButton k="admin.feedback_forward" label="Send to Civic.Social" />
                     </>

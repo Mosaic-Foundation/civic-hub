@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import {
   getProcessLinks,
@@ -35,38 +35,14 @@ const BRIEF_SOURCE_PREFIX = "synthetic:brief-source:";
 function useBriefPair(processId: string): {
   brief: RenderedLink | null;
   source: RenderedLink | null;
-  loaded: boolean;
 } {
-  const [brief, setBrief] = useState<RenderedLink | null>(null);
-  const [source, setSource] = useState<RenderedLink | null>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
-    setLoaded(false);
-    getProcessLinks(processId)
-      .then((links) => {
-        if (cancelled) return;
-        setBrief(links.incoming.find((l) => l.id.startsWith(BRIEF_OF_PREFIX)) ?? null);
-        setSource(links.outgoing.find((l) => l.id.startsWith(BRIEF_SOURCE_PREFIX)) ?? null);
-      })
-      .catch(() => {
-        // A failed link read must never take the page down — the pointer
-        // is a convenience on top of the record, not the record.
-        if (cancelled) return;
-        setBrief(null);
-        setSource(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoaded(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [processId]);
-
-  return { brief, source, loaded };
+  // A failed link read must never take the page down — the pointer is a
+  // convenience on top of the record, not the record: no pair, nothing shown.
+  const { data: links } = useApi(`process/${processId}/links`, () => getProcessLinks(processId));
+  return {
+    brief: links?.incoming.find((l) => l.id.startsWith(BRIEF_OF_PREFIX)) ?? null,
+    source: links?.outgoing.find((l) => l.id.startsWith(BRIEF_SOURCE_PREFIX)) ?? null,
+  };
 }
 
 function deliveryLine(brief: PublicBrief): string {
@@ -88,25 +64,10 @@ function deliveryLine(brief: PublicBrief): string {
  */
 export function BriefPointer({ processId }: { processId: string }) {
   const { brief } = useBriefPair(processId);
-  const [detail, setDetail] = useState<PublicBrief | null>(null);
 
+  // The button still works without the receipt line, so a failed read shows none.
   const briefId = brief?.peer.id ?? null;
-  useEffect(() => {
-    let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
-    setDetail(null);
-    if (!briefId) return;
-    getPublicBrief(briefId)
-      .then((b) => {
-        if (!cancelled) setDetail(b);
-      })
-      .catch(() => {
-        // The button still works without the receipt line.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [briefId]);
+  const { data: detail } = useApi<PublicBrief>(briefId ? `brief/${briefId}` : null, () => getPublicBrief(briefId!));
 
   if (!brief) return null;
 

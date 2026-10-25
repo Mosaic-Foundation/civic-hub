@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { getLinkPreview, type LinkPreviewData } from "../services/api";
 import "./LinkPreviewCard.css";
 
@@ -20,31 +20,12 @@ interface Props {
   url: string;
 }
 
-type State =
-  | { kind: "loading" }
-  | { kind: "ready"; preview: LinkPreviewData }
-  | { kind: "error"; message: string };
-
 export default function LinkPreviewCard({ url }: Props) {
-  const [state, setState] = useState<State>({ kind: "loading" });
+  const { data: preview, loading } = useApi<LinkPreviewData>(`link-preview?url=${encodeURIComponent(url)}`, () =>
+    getLinkPreview(url),
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    getLinkPreview(url)
-      .then((preview) => {
-        if (cancelled) return;
-        setState({ kind: "ready", preview });
-      })
-      .catch((err: Error) => {
-        if (cancelled) return;
-        setState({ kind: "error", message: err.message });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-
-  if (state.kind === "loading") {
+  if (loading) {
     return (
       <div className="link-preview-card link-preview-card-loading" aria-busy="true">
         <span className="link-preview-card-skeleton-image" />
@@ -59,11 +40,7 @@ export default function LinkPreviewCard({ url }: Props) {
   // No-rich-preview fallback. Render the URL as a plain link so the
   // affordance survives even when OG metadata is missing or scraping
   // failed. We still show the URL text — never a bare card.
-  if (
-    state.kind === "error" ||
-    !state.preview.title ||
-    state.preview.error
-  ) {
+  if (!preview || !preview.title || preview.error) {
     return (
       <a
         href={url}
@@ -76,7 +53,6 @@ export default function LinkPreviewCard({ url }: Props) {
     );
   }
 
-  const { preview } = state;
   return (
     <a
       href={url}

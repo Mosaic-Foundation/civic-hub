@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import {
   addProcessLink,
@@ -46,6 +47,8 @@ interface Props {
   description?: string;
 }
 
+const NO_LINKS: ProcessLinks = { outgoing: [], incoming: [] };
+
 export default function RelatedProcesses({
   processId,
   title = "",
@@ -53,29 +56,17 @@ export default function RelatedProcesses({
   readOnly = false,
   processType,
 }: Props) {
-  const [links, setLinks] = useState<ProcessLinks>({ outgoing: [], incoming: [] });
-  const [loading, setLoading] = useState(true);
+  // A failed link read must never take the page down with it — the process
+  // itself is what the reader came for: it shows no links.
+  const { data, loading, setData: setLinks } = useApi<ProcessLinks>(`process/${processId}/links`, () =>
+    getProcessLinks(processId),
+  );
+  const links = data ?? NO_LINKS;
   const [picking, setPicking] = useState(false);
   const action = useAction("Could not save the link. Please try again.");
   const busy = action.busy;
   const error = action.error;
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      setLinks(await getProcessLinks(processId));
-    } catch {
-      // A failed link read must never take the page down with it — the
-      // process itself is what the reader came for.
-      setLinks({ outgoing: [], incoming: [] });
-    } finally {
-      setLoading(false);
-    }
-  }, [processId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   // Server-decided: the creator of this process, or an admin. `readOnly`
   // overrides it for surfaces that display links but never originate them.

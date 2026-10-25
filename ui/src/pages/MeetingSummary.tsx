@@ -1,20 +1,26 @@
 import { useEffect, useRef, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   getMeetingSummary,
   type PublicMeetingSummary,
 } from "../services/api";
-import { relativeTime, absoluteTime } from "../components/FeedPost";
 import ShareButton from "../components/ShareButton";
 import AdminArchiveButton from "../components/AdminArchiveButton";
 import "./MeetingSummary.css";
 import RelatedProcesses from "../components/RelatedProcesses";
 import SampleBadge from "../components/SampleBadge";
+import { relativeTime, absoluteTime } from "../components/FeedPost";
+import { absoluteDateOfDay } from "../utils/dates";
 
 export default function MeetingSummaryPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [summary, setSummary] = useState<PublicMeetingSummary | null>(null);
+  const {
+    data: summary,
+    loading,
+    error,
+  } = useApi<PublicMeetingSummary>(id ? `meeting-summary/${id}` : null, () => getMeetingSummary(id!));
   const [showMinutes, setShowMinutes] = useState(false);
   const [showRecordingNote, setShowRecordingNote] = useState(false);
   // A sample's timestamp note: which block's is showing; it goes on its own.
@@ -26,28 +32,6 @@ export default function MeetingSummaryPage() {
     timeNoteTimer.current = window.setTimeout(() => setTimeNoteAt(null), 4000);
   }
   useEffect(() => () => window.clearTimeout(timeNoteTimer.current), []);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
-    setLoading(true);
-    getMeetingSummary(id)
-      .then((s) => {
-        if (!cancelled) setSummary(s);
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
 
   if (loading) {
     return (
@@ -61,7 +45,7 @@ export default function MeetingSummaryPage() {
     return (
       <div className="page meeting-summary-page">
         <p className="meeting-status meeting-status-error">
-          {error ?? "This summary hasn't been published yet."}
+          {error?.message ?? "This summary hasn't been published yet."}
         </p>
       </div>
     );
@@ -97,7 +81,7 @@ export default function MeetingSummaryPage() {
           {summary.meeting_title}
           {" — "}
           <time dateTime={summary.meeting_date}>
-            {formatDate(summary.meeting_date)}
+            {absoluteDateOfDay(summary.meeting_date)}
           </time>
         </h1>
         <p className="meeting-meta">
@@ -356,15 +340,6 @@ function youTubeAtTime(watchUrl: string, seconds: number): string {
   } catch {
     return watchUrl;
   }
-}
-
-function formatDate(iso: string): string {
-  const d = iso.includes("T") ? new Date(iso) : new Date(`${iso}T12:00:00`);
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
 }
 
 function formatSeconds(total: number): string {

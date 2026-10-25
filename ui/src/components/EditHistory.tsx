@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { listProcessEdits, type ProcessEdit } from "../services/api";
 import { stripMarkdown } from "../../../src/shared/markdown";
 import { wordDiff } from "./wordDiff";
 import "./EditHistory.css";
+import { absoluteDate } from "../utils/dates";
 
 /**
  * "Edited September 5 · See what changed" — the visible history of a live
@@ -27,10 +29,6 @@ const FIELD_LABELS: Record<string, string> = {
 
 function label(field: string): string {
   return FIELD_LABELS[field] ?? field.replace(/_/g, " ");
-}
-
-function when(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 }
 
 function asText(value: unknown): string {
@@ -112,23 +110,19 @@ export default function EditHistory({
    *  so the change reads in place instead of under a duplicate. */
   onOpenChange?: (open: boolean) => void;
 }) {
-  const [edits, setEdits] = useState<ProcessEdit[]>([]);
+  // History is a convenience on top of the record: a failed read shows none.
+  const { data } = useApi(`process/${processId}/edits`, () => listProcessEdits(processId));
+  const edits: ProcessEdit[] = data?.edits ?? [];
   const [open, setOpen] = useState(() => typeof window !== "undefined" && window.location.hash === "#edits");
-  // Index into edits (newest first): 0 = most recent.
-  const [index, setIndex] = useState(0);
+  // Index into edits (newest first): 0 = most recent. Back to 0 for another process.
+  const [position, setPosition] = useState({ processId, index: 0 });
+  const index = position.processId === processId ? position.index : 0;
+  const setIndex = (next: (i: number) => number) => setPosition({ processId, index: next(index) });
 
   useEffect(() => {
     onOpenChange?.(open && edits.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, edits.length]);
-
-  useEffect(() => {
-    let cancelled = false;
-    listProcessEdits(processId)
-      .then((r) => { if (!cancelled) { setEdits(r.edits); setIndex(0); } })
-      .catch(() => { /* history is a convenience on top of the record */ });
-    return () => { cancelled = true; };
-  }, [processId]);
 
   if (edits.length === 0) return null;
   const latest = edits[0];
@@ -140,7 +134,7 @@ export default function EditHistory({
   return (
     <section className="edit-history" id="edits" aria-label="Edit history">
       <p className="edit-history-line">
-        Edited {when(latest.at)} by {latest.editor_role === "admin" ? "a hub admin" : "the creator"}
+        Edited {absoluteDate(latest.at)} by {latest.editor_role === "admin" ? "a hub admin" : "the creator"}
         {total > 1 ? ` · ${total} edits` : ""}
         {" · "}
         <button type="button" className="edit-history-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
@@ -153,7 +147,7 @@ export default function EditHistory({
           <div className="edit-history-nav">
             <span className="edit-history-when">
               {total > 1 ? `Edit ${number} of ${total} · ` : ""}
-              {when(current.at)} · {current.editor_role === "admin" ? "hub admin" : "creator"} · changed{" "}
+              {absoluteDate(current.at)} · {current.editor_role === "admin" ? "hub admin" : "creator"} · changed{" "}
               {current.changed_fields.map(label).join(", ").toLowerCase()}
             </span>
             {total > 1 && (

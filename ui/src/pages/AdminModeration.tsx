@@ -12,7 +12,7 @@
 // enough volume to need either at launch; both can be layered on
 // later from the same data source.
 
-import { useEffect, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -20,6 +20,7 @@ import {
   type ModerationLogEntry,
 } from "../services/api";
 import AdminTabs from "../components/AdminTabs";
+import { localTimestamp } from "../utils/dates";
 
 function actionLabel(action: string): string {
   switch (action) {
@@ -40,48 +41,12 @@ function actionLabel(action: string): string {
   }
 }
 
-function formatTimestamp(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 export default function AdminModeration() {
   const { isAdmin, loading: authLoading } = useAuth();
-  const [entries, setEntries] = useState<ModerationLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!isAdmin) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    adminGetModerationLog()
-      .then((res) => {
-        if (cancelled) return;
-        setEntries(res.entries);
-      })
-      .catch((err: Error) => {
-        if (cancelled) return;
-        setError(err.message);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isAdmin, authLoading]);
+  const { data, loading, error } = useApi(!authLoading && isAdmin ? "admin/moderation-log" : null, () =>
+    adminGetModerationLog(),
+  );
+  const entries: ModerationLogEntry[] = data?.entries ?? [];
 
   if (authLoading || loading) {
     return (
@@ -104,7 +69,7 @@ export default function AdminModeration() {
     return (
       <div className="page admin-page">
         <AdminTabs />
-        <p className="form-error">Could not load the log: {error}</p>
+        <p className="form-error">Could not load the log: {error.message}</p>
       </div>
     );
   }
@@ -140,7 +105,7 @@ export default function AdminModeration() {
           <tbody>
             {entries.map((entry) => (
               <tr key={entry.event_id}>
-                <td>{formatTimestamp(entry.timestamp)}</td>
+                <td>{localTimestamp(entry.timestamp)}</td>
                 <td>{actionLabel(entry.action)}</td>
                 <td>
                   {entry.target_kind === "announcement" ? (

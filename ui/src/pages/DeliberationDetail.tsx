@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
+import { useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/AuthContext";
@@ -29,9 +29,16 @@ export default function DeliberationDetail() {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const { id } = useParams<{ id: string }>();
-  const [process, setProcess] = useState<DeliberationReadModel | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Back in view after a while: read it again (a second tab catches up).
+  const {
+    data: process,
+    loading,
+    error,
+    reload,
+    setData: setProcess,
+  } = useApi<DeliberationReadModel>(id ? `deliberations/${id}` : null, () => getDeliberation(id!), {
+    refreshOnVisible: true,
+  });
   const start = useAction("Could not start the conversation. Please try again.");
   const starting = start.busy;
   const startError = start.error;
@@ -43,30 +50,12 @@ export default function DeliberationDetail() {
     return start.run(async () => {
       const answer = await startDeliberation(id);
       if (answer.view) setProcess(answer.view);
-      else await load();
+      else await reload();
     });
   }
 
-  const load = useCallback(async () => {
-    if (!id) return;
-    try {
-      const detail = await getDeliberation(id);
-      setProcess(detail);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-  // Back in view after a while: read it again (a second tab catches up).
-  useRefreshOnVisible(load);
-
   if (loading) return <div className="section">Loading...</div>;
-  if (error) return <div className="section error">Error: {error}</div>;
+  if (error) return <div className="section error">Error: {error.message}</div>;
   if (!process) return <div className="section">Conversation not found</div>;
 
   const participated = participatedState;
@@ -164,7 +153,7 @@ export default function DeliberationDetail() {
           processId={process.process_id}
           offer={process.early_close}
           noun="conversation"
-          onView={(view) => (view ? setProcess(view) : load())}
+          onView={(view) => (view ? setProcess(view) : void reload())}
         />
         <AdminArchiveButton
           processId={process.process_id}

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link, useSearchParams } from "react-router-dom";
 import hub from "../config/hub";
 import {
@@ -38,6 +39,8 @@ function isFilterKey(v: string | null): v is VotesFilterKey {
   return v === "active" || v === "proposed" || v === "finalized";
 }
 
+const NO_PROCESSES: ProcessSummary[] = [];
+
 export default function Votes() {
   // CTA-gate (design decision 2026-08-28): the create buttons are
   // visible to everyone, but clicking one runs the sign-up gate first —
@@ -45,9 +48,12 @@ export default function Votes() {
   // keep the softer buffer-then-gate flow for shared links.
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } =
     useRequireAuth();
-  const [processes, setProcesses] = useState<ProcessSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error } = useApi<ProcessSummary[]>(
+    "/process?type=civic.vote",
+    () => listProcesses(["civic.vote"]),
+    { cache: true },
+  );
+  const processes = data ?? NO_PROCESSES;
   const [showPicker, setShowPicker] = useState(false);
 
   const [params, setParams] = useSearchParams();
@@ -60,13 +66,6 @@ export default function Votes() {
     else updated.set("status", next);
     setParams(updated, { replace: true });
   }
-
-  useEffect(() => {
-    listProcesses(["civic.vote"])
-      .then(setProcesses)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
 
   const activeVotes = processes
     .filter((p): p is VoteSummary =>
@@ -148,7 +147,7 @@ export default function Votes() {
       />
 
       {loading && <p className="section">Loading...</p>}
-      {error && <p className="section error">Failed to load: {error}</p>}
+      {error && <p className="section error">Failed to load: {error.message}</p>}
 
       {!loading && !error && (
         <>

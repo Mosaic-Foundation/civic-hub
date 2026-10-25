@@ -3,6 +3,7 @@
 // section has unsaved changes (for the guard in useUnsavedChangesGuard).
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { useApi } from "../../hooks/useApi";
 import {
   adminGetHubSettings,
   adminPutHubSettings,
@@ -28,15 +29,12 @@ interface HubSettingsState {
 const Ctx = createContext<HubSettingsState | null>(null);
 
 export function HubSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [data, setData] = useState<HubSettings | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data: loaded, error: loadError, setData } = useApi<HubSettings>("admin/hub/settings", () =>
+    adminGetHubSettings(),
+  );
+  const data = loaded ?? null;
+  const error = loadError ? `Could not load settings: ${loadError.message}` : null;
   const [dirty, setDirtySet] = useState<ReadonlySet<string>>(new Set());
-
-  useEffect(() => {
-    adminGetHubSettings()
-      .then(setData)
-      .catch((err: Error) => setError(`Could not load settings: ${err.message}`));
-  }, []);
 
   // After every save (and every reload, which follows a change made through
   // another endpoint, such as the mode), the public hub config is fetched
@@ -50,13 +48,13 @@ export function HubSettingsProvider({ children }: { children: React.ReactNode })
       void refreshHubConfig();
       return fresh;
     },
-    [],
+    [setData],
   );
 
   const reload = useCallback(async () => {
     setData(await adminGetHubSettings());
     void refreshHubConfig();
-  }, []);
+  }, [setData]);
 
   const setDirty = useCallback((section: string, isDirty: boolean) => {
     setDirtySet((cur) => {

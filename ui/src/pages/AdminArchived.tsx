@@ -7,34 +7,30 @@
 // recoverable. Gated client-side via AuthContext.isAdmin and server-side by
 // requireAdmin on /admin/archived.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { useAuth } from "../context/AuthContext";
 import { adminListArchived, adminRestoreProcess } from "../services/api";
 import type { ArchivedProcess } from "../services/api";
 import AdminTabs from "../components/AdminTabs";
 import "./AdminArchived.css";
 import { typeName } from "../processes/display";
+import { localTimestamp } from "../utils/dates";
 
 // From the type's manifest; an unknown type reads as its id made legible.
 function typeLabel(type: string): string {
   return typeName(type);
 }
 
-function formatTimestamp(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 export default function AdminArchived() {
   const { isAdmin, loading: authLoading } = useAuth();
-  const [items, setItems] = useState<ArchivedProcess[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data,
+    loading,
+    error: loadError,
+    setData,
+  } = useApi(!authLoading && isAdmin ? "admin/archived" : null, () => adminListArchived());
+  const items: ArchivedProcess[] = data?.items ?? [];
   const [error, setError] = useState<string | null>(null);
   // The id currently in the "confirm restore" state (two-step), and any id
   // whose restore request is in flight.
@@ -42,34 +38,12 @@ export default function AdminArchived() {
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (!isAdmin) {
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    adminListArchived()
-      .then((res) => {
-        if (!cancelled) setItems(res.items);
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isAdmin, authLoading]);
-
   async function handleRestore(id: string) {
     setRestoringId(id);
     setNotice(null);
     try {
       await adminRestoreProcess(id);
-      setItems((prev) => prev.filter((it) => it.id !== id));
+      setData((prev) => prev && { ...prev, items: prev.items.filter((it) => it.id !== id) });
       setNotice("Item restored. It is live again in its previous state.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Restore failed");
@@ -107,7 +81,7 @@ export default function AdminArchived() {
         item to put it back exactly where it was.
       </p>
 
-      {error && <p className="form-error">{error}</p>}
+      {(error ?? loadError?.message) && <p className="form-error">{error ?? loadError?.message}</p>}
       {notice && <p className="admin-archived-notice">{notice}</p>}
 
       {items.length === 0 ? (
@@ -134,7 +108,7 @@ export default function AdminArchived() {
               <tr key={item.id}>
                 <td>{item.title}</td>
                 <td>{typeLabel(item.type)}</td>
-                <td>{formatTimestamp(item.archived_at)}</td>
+                <td>{localTimestamp(item.archived_at)}</td>
                 <td className="admin-archived-reason">{item.reason ?? "—"}</td>
                 <td className="admin-archived-actions">
                   {confirmId === item.id ? (

@@ -14,7 +14,8 @@
 // demo, samples or not, and a new admin's first sign-in lands on it.
 
 import HelpButton from "../../components/HelpButton";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useApi } from "../../hooks/useApi";
 import { Link } from "react-router-dom";
 import DeleteSampleButton from "../../components/DeleteSampleButton";
 import { friendlyType } from "../../components/ProcessLinkPicker";
@@ -29,20 +30,18 @@ import {
 import { SampleRemovalWarning } from "./sampleWarning";
 
 export default function SampleContentSection() {
-  const [summary, setSummary] = useState<SampleContentSummary | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const {
+    data: read,
+    error: readError,
+    setData: setSummary,
+  } = useApi<SampleContentSummary>("admin/sample-content", () => adminGetSampleContent());
+  const summary = read ?? null;
+  const loadError = readError?.message ?? null;
   const [confirming, setConfirming] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
-
-  function load() {
-    adminGetSampleContent()
-      .then(setSummary)
-      .catch((e: Error) => setLoadError(e.message));
-  }
-  useEffect(load, []);
 
   async function requestCode() {
     setMessage(null);

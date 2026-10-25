@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useApi } from "../../hooks/useApi";
 import HelpButton from "../../components/HelpButton";
 import { Link } from "react-router-dom";
 import { adminGetHubAdminLog, type HubAdminLogEntry } from "../../services/api";
+import { localTimestamp } from "../../utils/dates";
 
 /**
  * Settings → Admin log (admin menu slice, 2026-10-13): what this hub's admins
@@ -12,14 +13,9 @@ import { adminGetHubAdminLog, type HubAdminLogEntry } from "../../services/api";
  * phone. The console shows the same rows to the operator.
  */
 export default function AdminLogSection() {
-  const [entries, setEntries] = useState<HubAdminLogEntry[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    adminGetHubAdminLog()
-      .then((r) => setEntries(r.entries))
-      .catch(() => setError("The admin log could not be loaded. Try again in a moment."));
-  }, []);
+  const { data, error: loadError } = useApi("admin/hub-admin-log", () => adminGetHubAdminLog());
+  const entries: HubAdminLogEntry[] | null = data?.entries ?? null;
+  const error = loadError ? "The admin log could not be loaded. Try again in a moment." : null;
 
   return (
     <section className="settings-section">
@@ -43,7 +39,7 @@ export default function AdminLogSection() {
             <li key={e.id} className="admin-log-entry">
               <span className="admin-log-what">{describe(e)}</span>
               <span className="admin-log-meta">
-                {e.actor_email} · {formatTime(e.at)}
+                {e.actor_email} · {localTimestamp(e.at)}
               </span>
             </li>
           ))}
@@ -135,12 +131,3 @@ function describeInvite(after: unknown): string {
   return parts.join("; ");
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}

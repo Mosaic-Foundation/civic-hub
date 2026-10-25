@@ -10,8 +10,8 @@
 // Admins continue to see the original body alongside the tombstone so
 // they can audit / reverse the decision.
 
-import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import type { CommentPhase, CommunityInput, CommunityInputConfig } from "../services/api";
 import Creator from "./Creator";
@@ -53,7 +53,13 @@ const REASON_CHIPS = [
 
 export default function CommunityInputPanel({ processId, config }: Props) {
   const { isAdmin } = useAuth();
-  const [inputs, setInputs] = useState<CommunityInput[]>([]);
+  // Silent when it fails (inputs are non-critical); read again when the tab is
+  // back in view (a second tab catches up).
+  const { data, setData } = useApi<CommunityInput[]>(`process/${processId}/inputs`, () => getInputs(processId), {
+    refreshOnVisible: true,
+  });
+  const inputs = data ?? [];
+  const setInputs = (update: (prev: CommunityInput[]) => CommunityInput[]) => setData((prev) => update(prev ?? []));
   // The hide modal is keyed off comment ID — null means "no modal open".
   const [hideModalFor, setHideModalFor] = useState<string | null>(null);
   const [hideReason, setHideReason] = useState("");
@@ -63,27 +69,13 @@ export default function CommunityInputPanel({ processId, config }: Props) {
   const error = action.error;
   const setError = action.setError;
 
-  const fetchInputs = useCallback(() => {
-    getInputs(processId)
-      .then(setInputs)
-      .catch(() => {
-        /* silent — inputs are non-critical */
-      });
-  }, [processId]);
-
-  useEffect(() => {
-    fetchInputs();
-  }, [fetchInputs]);
-  // Back in view after a while: read it again (a second tab catches up).
-  useRefreshOnVisible(fetchInputs);
-
   // A comment posted on this page shows at once, from the server's answer.
   useEffect(
     () =>
       onInputAdded(processId, (input) =>
-        setInputs((prev) => (prev.some((c) => c.id === input.id) ? prev.map((c) => (c.id === input.id ? input : c)) : [...prev, input])),
+        setData((prev = []) => (prev.some((c) => c.id === input.id) ? prev.map((c) => (c.id === input.id ? input : c)) : [...prev, input])),
       ),
-    [processId],
+    [processId, setData],
   );
 
   // Which phases this panel shows. Default: everything but creator updates,

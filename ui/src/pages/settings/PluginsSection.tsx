@@ -21,7 +21,7 @@
 // and News sync, without a source) stays on and shows a "Needs setup" badge
 // saying what is missing (Adam, 2026-10-07; src/shared/pluginSetup.ts).
 
-import { useEffect, useState } from "react";
+import { useApi } from "../../hooks/useApi";
 import { Link } from "react-router-dom";
 import SectionForm from "./SectionForm";
 import {
@@ -77,23 +77,17 @@ const NEWS_CONNECTOR_LABELS: Record<string, string> = {
   "wix-cms": "Wix blog feed",
 };
 
+const NO_COUNTS: Record<string, number> = {};
+
 export default function PluginsSection() {
   // Live items per plugin, loaded once. A failed load shows no warning
   // rather than a wrong number; the switch still works.
-  const [live, setLive] = useState<Record<string, number>>({});
-  useEffect(() => {
-    adminGetPluginLiveCounts()
-      .then((r) => setLive(r.counts))
-      .catch(() => setLive({}));
-  }, []);
+  const { data: liveRead } = useApi("admin/plugins/live-counts", () => adminGetPluginLiveCounts());
+  const live: Record<string, number> = liveRead?.counts ?? NO_COUNTS;
   // Each job's last run. A failed load says so on the cards rather than
   // showing nothing, which would read as "never ran".
-  const [jobs, setJobs] = useState<JobRunsEntry[] | "error" | null>(null);
-  useEffect(() => {
-    adminGetJobRuns()
-      .then((r) => setJobs(r.jobs))
-      .catch(() => setJobs("error"));
-  }, []);
+  const { data: jobsRead, error: jobsError } = useApi("admin/hub/jobs/runs", () => adminGetJobRuns());
+  const jobs: JobRunsEntry[] | "error" | null = jobsError ? "error" : (jobsRead?.jobs ?? null);
 
   return (
     <SectionForm
@@ -385,12 +379,7 @@ function settingsPanel(f: FormApi, id: PluginId): React.ReactNode | null {
  * threshold. Read again when a save changes the threshold (`saved`).
  */
 function MemberCountLine({ saved }: { saved: string }) {
-  const [summary, setSummary] = useState<MemberSummary | null>(null);
-  useEffect(() => {
-    getMemberSummary()
-      .then(setSummary)
-      .catch(() => setSummary(null));
-  }, [saved]);
+  const { data: summary } = useApi<MemberSummary>("members/summary", () => getMemberSummary(), { rereadOn: saved });
   if (!summary || summary.count === null) return null;
   return (
     <p className="form-hint" data-testid="members-now">

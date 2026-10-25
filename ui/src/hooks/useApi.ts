@@ -197,8 +197,11 @@ export function useApi<T>(
   useEffect(() => {
     if (Object.is(lastRereadOn.current, rereadOn)) return;
     lastRereadOn.current = rereadOn;
+    // A cached read still fresh for this session is the answer (the cache's
+    // rule: a hop within 30 seconds sends nothing).
+    if (useCache && k !== null && cached<T>(k)) return;
     void reload();
-  }, [rereadOn, reload]);
+  }, [rereadOn, reload, useCache, k]);
 
   return { data: current.data, error: current.error, loading: current.loading, reload, setData };
 }

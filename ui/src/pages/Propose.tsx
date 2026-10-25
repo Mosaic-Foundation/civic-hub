@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import {
   listCivicProposals,
@@ -33,17 +34,11 @@ export default function Propose() {
   // keep the softer buffer-then-gate flow for shared links.
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } =
     useRequireAuth();
-  const [proposals, setProposals] = useState<CivicProposalSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error } = useApi<CivicProposalSummary[]>("/proposals", () => listCivicProposals(), {
+    cache: true,
+  });
+  const proposals = data ?? [];
   const [showPicker, setShowPicker] = useState(false);
-
-  useEffect(() => {
-    listCivicProposals()
-      .then((all) => setProposals(all))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
 
   // Show submitted proposals, sorted by support count descending.
   // Endorsed/converted/archived proposals from before the Slice B
@@ -68,7 +63,7 @@ export default function Propose() {
       {showPicker && <ProcessPicker onDismiss={() => setShowPicker(false)} context="proposal" />}
 
       {loading && <p className="section">Loading...</p>}
-      {error && <p className="section error">Failed to load: {error}</p>}
+      {error && <p className="section error">Failed to load: {error.message}</p>}
 
       {!loading && !error && (
         <>

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   search,
@@ -114,11 +115,7 @@ export default function SearchPage() {
 
   const dateBucket: DateBucket = fromIsoToBucket(from);
 
-  const [page, setPage] = useState<SearchResultPage | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Refetch whenever the URL params change. The dep list is the
+  // Refetch whenever the URL params change. The read is keyed by the
   // serialized search; React Router gives us a stable params object
   // per render but the values matter, not the reference.
   const fetchKey = useMemo(
@@ -133,43 +130,19 @@ export default function SearchPage() {
     [q, types, sort, offset, from],
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    if (q.trim().length === 0) {
-      setPage(null);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    search({
-      q,
-      types: types.length > 0 ? types : undefined,
-      sort,
-      from: from ?? undefined,
-      limit: PAGE_SIZE,
-      offset,
-    })
-      .then((p) => {
-        if (cancelled) return;
-        setPage(p);
-      })
-      .catch((err: Error) => {
-        if (cancelled) return;
-        setError(err.message);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // We deliberately depend on the serialized fetchKey so the hook
-    // re-runs only when relevant inputs actually change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchKey]);
+  // Nothing is read for an empty query.
+  const { data: page, loading, error } = useApi<SearchResultPage>(
+    q.trim().length === 0 ? null : `search/${fetchKey}`,
+    () =>
+      search({
+        q,
+        types: types.length > 0 ? types : undefined,
+        sort,
+        from: from ?? undefined,
+        limit: PAGE_SIZE,
+        offset,
+      }),
+  );
 
   function updateParam(mutate: (next: URLSearchParams) => void) {
     const next = new URLSearchParams(params);
@@ -317,8 +290,8 @@ export default function SearchPage() {
       <SearchBody
         q={q}
         loading={loading}
-        error={error}
-        page={page}
+        error={error?.message ?? null}
+        page={page ?? null}
         offset={offset}
         onResetFilters={resetFilters}
         onGoToOffset={goToOffset}

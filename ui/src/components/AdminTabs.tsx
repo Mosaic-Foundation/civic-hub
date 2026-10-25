@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useApi } from "../hooks/useApi";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   adminQueueCounts,
@@ -35,21 +36,17 @@ const EMPTY: AdminQueueCounts = {
 
 export default function AdminTabs() {
   const location = useLocation();
-  const [counts, setCounts] = useState<AdminQueueCounts>(EMPTY);
+  // A failed read shows no badges (best-effort); each navigation reads again,
+  // keeping the badges shown meanwhile.
+  const { data, reload } = useApi<AdminQueueCounts>("admin/queue-counts", () => adminQueueCounts(), {
+    rereadOn: location.pathname,
+  });
+  const counts = data ?? EMPTY;
   useEffect(() => {
-    let active = true;
-    const refetch = () => {
-      adminQueueCounts()
-        .then((c) => { if (active) setCounts(c); })
-        .catch(() => { /* best-effort — a failed fetch shows no badges */ });
-    };
-    refetch();
+    const refetch = () => void reload();
     window.addEventListener(ADMIN_QUEUES_CHANGED, refetch);
-    return () => {
-      active = false;
-      window.removeEventListener(ADMIN_QUEUES_CHANGED, refetch);
-    };
-  }, [location.pathname]);
+    return () => window.removeEventListener(ADMIN_QUEUES_CHANGED, refetch);
+  }, [reload]);
 
   const badge = (n: number, what: string) =>
     n > 0 ? (

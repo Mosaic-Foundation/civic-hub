@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
+import { useApi } from "../hooks/useApi";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import {
   getWordcloud,
@@ -22,14 +22,7 @@ import ProcessHeader from "../components/ProcessHeader";
 import { statusDisplay } from "../components/statusDisplay";
 import "./WordCloud.css";
 import AdminArchiveButton from "../components/AdminArchiveButton";
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+import { formatDate } from "../utils/dates";
 
 const COLORS = ["#1e3a5f", "#2a7d4f", "#5c6bc0", "#00897b", "#37474f", "#4a148c"];
 // Two size scales, picked by how much canvas there is. A phone's cloud was
@@ -359,20 +352,14 @@ function ResponsesList({
   refreshKey: number;
 }) {
   const [open, setOpen] = useState(false);
-  const [responses, setResponses] = useState<WordcloudResponse[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
-    setLoaded(false);
-    getWordcloudResponses(processId, promptId)
-      .then((data) => {
-        setResponses(data.responses);
-        setLoaded(true);
-      })
-      .catch(() => setLoaded(true));
-  }, [open, processId, promptId, refreshKey]);
+  // Read when opened, and again after a new response (refreshKey). A failed
+  // read shows "No responses yet."
+  const { data, loading } = useApi(
+    open ? `wordcloud/${processId}/${promptId}/responses/${refreshKey}` : null,
+    () => getWordcloudResponses(processId, promptId),
+  );
+  const responses: WordcloudResponse[] = data?.responses ?? [];
+  const loaded = !loading;
 
   return (
     <div className="wordcloud-accordion">
@@ -506,23 +493,20 @@ export default function WordCloud() {
   // The page that asked the new account to sign in (review R24), else home.
   const returnPath = isOnboarding ? safeReturnPath(searchParams.get("return")) : null;
   const exitTo = returnPath ?? "/";
-  const [wc, setWc] = useState<WordcloudState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const fetchData = useCallback(async () => {
-    if (!id || authLoading) return;
-    try {
-      const data = await getWordcloud(id);
-      setWc(data);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, actorId, authLoading]);
+  // Not read until the session is known. A sign-in or out reads it again with
+  // the page still shown; so does the tab coming back into view.
+  const {
+    data: wc,
+    loading: reading,
+    error,
+    setData: setWc,
+  } = useApi<WordcloudState>(id && !authLoading ? `wordcloud/${id}` : null, () => getWordcloud(id!), {
+    refreshOnVisible: true,
+    rereadOn: actorId,
+  });
+  const loading = authLoading || reading;
 
   const refreshCloud = useCallback(async () => {
     if (!id) return;
@@ -542,19 +526,13 @@ export default function WordCloud() {
     } catch {
       // Silently fail on refresh — stale cloud is fine
     }
-  }, [id]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-  // Back in view after a while: read it again (a second tab catches up).
-  useRefreshOnVisible(fetchData);
+  }, [id, setWc]);
 
   if (loading) return <p className="wordcloud-page">Loading...</p>;
   if (error)
     return (
       <div className="wordcloud-page">
-        <p className="error">Error: {error}</p>
+        <p className="error">Error: {error.message}</p>
       </div>
     );
   if (!wc) return (

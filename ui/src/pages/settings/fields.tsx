@@ -5,7 +5,8 @@
 // Kinds mirror src/shared/hubSettingsSections.ts; the server validates the
 // same limits, so these are a courtesy, not the rule.
 
-import { useEffect, useId, useState } from "react";
+import { useId } from "react";
+import { useApi } from "../../hooks/useApi";
 import { Link } from "react-router-dom";
 import MarkdownTextarea from "../../components/MarkdownTextarea";
 import HelpButton from "../../components/HelpButton";
@@ -431,13 +432,13 @@ export function ProcessField({
 }) {
   const id = useId();
   const type = fieldSpec(k)?.processType;
-  const [items, setItems] = useState<ProcessSummary[] | null>(null);
-  useEffect(() => {
-    if (!type) return;
-    listProcesses([type])
-      .then((rows) => setItems(rows))
-      .catch(() => setItems([]));
-  }, [type]);
+  // null while it loads; a failed read is a list with nothing in it.
+  const { data, error } = useApi<ProcessSummary[]>(
+    type ? `/process?${new URLSearchParams({ type })}` : null,
+    () => listProcesses([type!]),
+    { cache: true },
+  );
+  const items: ProcessSummary[] | null = error ? [] : (data ?? null);
   const value = f.value(k);
   const missing = value !== "" && items !== null && !items.some((p) => p.id === value);
   // Nothing to choose but None: say so, and where to make one, instead of a

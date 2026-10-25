@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import { listProjects, type ProjectSummary } from "../services/api";
 import ProcessPicker from "../components/ProcessPicker";
@@ -22,17 +23,9 @@ export default function Projects() {
   // keep the softer buffer-then-gate flow for shared links.
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } =
     useRequireAuth();
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error } = useApi<ProjectSummary[]>("/projects", () => listProjects(), { cache: true });
+  const projects = data ?? [];
   const [showPicker, setShowPicker] = useState(false);
-
-  useEffect(() => {
-    listProjects()
-      .then((all) => setProjects(all))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
 
   const activeProjects = projects
     .filter((p) => p.status === "active")
@@ -54,7 +47,7 @@ export default function Projects() {
       {showPicker && <ProcessPicker onDismiss={() => setShowPicker(false)} context="project" />}
 
       {loading && <p className="section">Loading...</p>}
-      {error && <p className="section error">Failed to load: {error}</p>}
+      {error && <p className="section error">Failed to load: {error.message}</p>}
 
       {!loading && !error && (
         <>

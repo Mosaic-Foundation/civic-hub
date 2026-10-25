@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import type { DeliberationSummary } from "../services/api";
@@ -26,24 +27,12 @@ export default function Deliberations() {
   const { requireAuth, showAuthModal, closeAuthModal, handleAuthComplete } =
     useRequireAuth();
   const { isAdmin } = useAuth();
-  const [processes, setProcesses] = useState<DeliberationSummary[]>([]);
   const [showPicker, setShowPicker] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    try {
-      const procs = await listDeliberations();
-      setProcesses(procs);
-    } catch {
-      // no deliberations yet
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  // No conversations yet, or the read failed: the empty state.
+  const { data, loading } = useApi<DeliberationSummary[]>("/deliberations", () => listDeliberations(), {
+    cache: true,
+  });
+  const processes = data ?? [];
 
   const active = processes.filter((p) => p.lifecycle === "active");
   const completed = processes.filter(

@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminListEdits, markEditsSeen, type AdminEditRow } from "../services/api";
 import AdminTabs from "../components/AdminTabs";
 import "./AdminEdits.css";
+import { localShortDate } from "../utils/dates";
 
 /**
  * Admin panel → Edits: every live process a creator has edited (any type —
@@ -23,33 +24,16 @@ const FIELD_LABELS: Record<string, string> = {
   links: "related processes",
 };
 
-function when(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}
-
 export default function AdminEdits() {
   const { isAdmin, loading: authLoading } = useAuth();
-  const [items, setItems] = useState<AdminEditRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (authLoading) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
-    if (!isAdmin) { setLoading(false); return; }
-    let cancelled = false;
-    adminListEdits()
-      .then((res) => {
-        if (cancelled) return;
-        setItems(res.items);
-        // Seen: the tab has been opened. The rows keep their "new" mark for
-        // this render so the admin can see what was new.
-        if (res.unseen > 0) markEditsSeen().catch(() => {});
-      })
-      .catch((err: Error) => { if (!cancelled) setError(err.message); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [isAdmin, authLoading]);
+  const { data, loading, error } = useApi(!authLoading && isAdmin ? "admin/edits" : null, async (signal) => {
+    const res = await adminListEdits();
+    // Seen: the tab has been opened. The rows keep their "new" mark for
+    // this render so the admin can see what was new.
+    if (res.unseen > 0 && !signal.aborted) markEditsSeen().catch(() => {});
+    return res;
+  });
+  const items: AdminEditRow[] = data?.items ?? [];
 
   if (authLoading || loading) {
     return (
@@ -77,7 +61,7 @@ export default function AdminEdits() {
         Nothing here needs approval.
       </p>
 
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="form-error">{error.message}</p>}
 
       {items.length === 0 ? (
         <p className="admin-edits-empty">Nothing has been edited yet.</p>
@@ -103,7 +87,7 @@ export default function AdminEdits() {
                 <td>{row.type_label}</td>
                 <td>{row.edits}</td>
                 <td>{row.changed_fields.map((f) => FIELD_LABELS[f] ?? f.replace(/_/g, " ")).join(", ")}</td>
-                <td><time dateTime={row.latest_at}>{when(row.latest_at)}</time></td>
+                <td><time dateTime={row.latest_at}>{localShortDate(row.latest_at)}</time></td>
               </tr>
             ))}
           </tbody>

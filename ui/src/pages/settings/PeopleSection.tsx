@@ -5,6 +5,7 @@
 
 import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
+import { useApi } from "../../hooks/useApi";
 import PatternAvatar from "../../components/PatternAvatar";
 import { pluginEnabled } from "../../config/plugins";
 import "../Members.css";
@@ -199,13 +200,8 @@ export default function PeopleSection() {
  * them, here; still no addresses.
  */
 function HiddenMembers() {
-  const [data, setData] = useState<{ hidden: Array<{ avatar: string; name: string; is_admin: boolean }>; count: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    adminGetHiddenMembers()
-      .then(setData)
-      .catch((err: Error) => setError(`Could not load the members: ${err.message}`));
-  }, []);
+  const { data, error: loadError } = useApi("admin/hidden-members", () => adminGetHiddenMembers());
+  const error = loadError ? `Could not load the members: ${loadError.message}` : null;
   return (
     <div className="admin-hidden-members" id="hidden-members" style={{ marginTop: "var(--space-lg)" }}>
       <h3 className="settings-subsection-title">

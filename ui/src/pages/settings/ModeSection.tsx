@@ -19,6 +19,7 @@
 
 import HelpButton from "../../components/HelpButton";
 import { useEffect, useState } from "react";
+import { useApi } from "../../hooks/useApi";
 import { Link } from "react-router-dom";
 import {
   adminGetModeReadiness,
@@ -59,12 +60,9 @@ export default function ModeSection() {
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   // Graduating out of demo asks the same question as Settings → Sample
   // content (Phase 7): keep the samples, or take them out with the move.
-  const [sample, setSample] = useState<SampleContentSummary | null>(null);
   const [removeSample, setRemoveSample] = useState<boolean | null>(null);
   // Leaving demo, and going live (2026-10-15): what must be in place, what
   // the admin accepts as it is for this switch, and what the switch will do.
-  const [readiness, setReadiness] = useState<ModeReadiness | null>(null);
-  const [readinessError, setReadinessError] = useState<string | null>(null);
   const [accepted, setAccepted] = useState<ReadonlySet<string>>(new Set());
   const [tellWaitlist, setTellWaitlist] = useState(true);
 
@@ -72,9 +70,10 @@ export default function ModeSection() {
     if (mode) setPending(mode);
   }, [mode]);
 
-  useEffect(() => {
-    if (mode === "demo") adminGetSampleContent().then(setSample).catch(() => setSample(null));
-  }, [mode]);
+  const { data: sampleRead } = useApi<SampleContentSummary>(mode === "demo" ? "admin/sample-content" : null, () =>
+    adminGetSampleContent(),
+  );
+  const sample = sampleRead ?? null;
 
   const asksAboutSample = mode === "demo" && !!sample && sample.processes + (sample.added_in_demo ?? 0) > 0;
 
@@ -85,18 +84,12 @@ export default function ModeSection() {
 
   // Read afresh for every choice: each item may have been set in another
   // section since, and the counts in the consequences change.
-  useEffect(() => {
-    setReadiness(null);
-    setReadinessError(null);
-    if (!changing) return;
-    let live = true;
-    adminGetModeReadiness(pending)
-      .then((r) => live && setReadiness(r))
-      .catch((err: Error) => live && setReadinessError(err.message));
-    return () => {
-      live = false;
-    };
-  }, [changing, pending]);
+  const { data: readinessRead, error: readinessFailure } = useApi<ModeReadiness>(
+    changing ? `admin/mode-readiness/${pending}` : null,
+    () => adminGetModeReadiness(pending),
+  );
+  const readiness = readinessRead ?? null;
+  const readinessError = readinessFailure?.message ?? null;
 
   const items = readiness?.items ?? [];
   const blocked = items.filter((i) => i.blocking && !i.done);

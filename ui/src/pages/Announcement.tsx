@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   adminRemoveAnnouncement,
@@ -33,9 +34,12 @@ export default function AnnouncementPage() {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
 
-  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: announcement,
+    loading,
+    error,
+    setData: setAnnouncement,
+  } = useApi<Announcement>(id ? `announcement/${id}` : null, () => getAnnouncement(id!));
 
   // Slice 11 — admin moderation controls. The remove modal opens when
   // the admin clicks "Remove announcement" and stays mounted until the
@@ -44,28 +48,6 @@ export default function AnnouncementPage() {
   const [removeReason, setRemoveReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [moderationError, setModerationError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    setLoading(true);
-    getAnnouncement(id)
-      .then((a) => {
-        if (cancelled) return;
-        setAnnouncement(a);
-      })
-      .catch((err: Error) => {
-        if (cancelled) return;
-        setError(err.message);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
 
   if (loading) {
     return (
@@ -79,7 +61,7 @@ export default function AnnouncementPage() {
     return (
       <div className="page announcement-page">
         <p className="announcement-status announcement-status-error">
-          {error ?? "Announcement not found."}
+          {error?.message ?? "Announcement not found."}
         </p>
       </div>
     );

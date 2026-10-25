@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { Link } from "react-router-dom";
 import { getWordcloudCloud } from "../services/api";
 import hub from "../config/hub";
@@ -74,36 +75,20 @@ function loadCloud(id: string): Promise<CloudResponse> {
 // renders a broken/empty bar.
 export default function WordcloudTeaser() {
   const id = hub.onboarding_wordcloud_id;
-  const [words, setWords] = useState<string[]>([]);
-  const [hidden, setHidden] = useState(false);
   const [idx, setIdx] = useState(0);
 
-  useEffect(() => {
-    if (!id) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets this fetch's state when its input changes; one data-fetching hook replaces these (audit F6)
-      setHidden(true);
-      return;
-    }
-    let cancelled = false;
-    loadCloud(id)
-      .then((res) => {
-        if (cancelled) return;
-        const cloud = res.clouds?.[0];
-        if (!cloud) {
-          setHidden(true);
-          return;
-        }
-        const top = [...(cloud.entries || [])]
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 20)
-          .map((e) => e.text);
-        setWords(top);
-      })
-      .catch(() => setHidden(true));
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+  // Hidden when there is no id, the read fails, or the response holds no cloud.
+  const { data, error } = useApi<CloudResponse>(id ? `wordcloud/${id}/cloud` : null, () => loadCloud(id!));
+  const cloud = data?.clouds?.[0];
+  const hidden = !id || error !== null || (data !== undefined && !cloud);
+  const words = useMemo(
+    () =>
+      [...(cloud?.entries || [])]
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20)
+        .map((e) => e.text),
+    [cloud],
+  );
 
   // Rotate the visible word once the cloud has at least two.
   useEffect(() => {
@@ -112,7 +97,7 @@ export default function WordcloudTeaser() {
     return () => clearInterval(t);
   }, [words]);
 
-  if (hidden || !id) return null;
+  if (hidden) return null;
 
   const hasWords = words.length > 0;
   const current = hasWords ? words[idx % words.length] : "";

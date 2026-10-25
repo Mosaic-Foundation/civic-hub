@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { useRefreshOnVisible } from "../hooks/useRefreshOnVisible";
+import { useEffect, useState } from "react";
+import { useApi } from "../hooks/useApi";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAction } from "../hooks/useAction";
 import { useAuth } from "../context/AuthContext";
@@ -58,9 +58,21 @@ export default function ProjectDetail() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const { user, isAdmin } = useAuth();
 
-  const [project, setProject] = useState<ProjectDetailType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // A sign-in or out reads it again (is_owner, your sentiment) and so does the
+  // tab coming back into view (a second tab catches up).
+  const {
+    data: project,
+    loading,
+    error: loadError,
+    reload: loadProject,
+    setData: setProject,
+  } = useApi<ProjectDetailType>(id ? `projects/${id}` : null, () => getProjectDetail(id!), {
+    refreshOnVisible: true,
+    rereadOn: user?.id,
+  });
+  // The editor failing to open replaces the page with the error, as a failed read does.
+  const [startEditError, setStartEditError] = useState<string | null>(null);
+  const error = startEditError ?? loadError?.message ?? null;
 
   // Updates and comments are the shared comment module (civic.input) —
   // one word list, one admin hide, one audit trail for every type. A new
@@ -73,19 +85,14 @@ export default function ProjectDetail() {
   // "Edit project" — the server decides (creator or admin, active, what is
   // locked); we only ask when the viewer could plausibly be allowed. Hooks
   // live up here, above the loading/error returns, so their order is stable.
-  const [editPolicy, setEditPolicy] = useState<EditPolicy | null>(null);
   const [editStarting, setEditStarting] = useState(false);
   const viewerIsCreator = project?.is_owner ?? (!!user?.id && user?.id === project?.user_id);
   const mayAsk = !!project && viewerIsCreator && project.status === "active";
   const projectId = project?.id;
-  useEffect(() => {
-    if (!mayAsk || !projectId) { setEditPolicy(null); return; }
-    let cancelled = false;
-    getEditPolicy(projectId)
-      .then((p) => { if (!cancelled) setEditPolicy(p); })
-      .catch(() => { if (!cancelled) setEditPolicy(null); });
-    return () => { cancelled = true; };
-  }, [mayAsk, projectId]);
+  const { data: editPolicy } = useApi<EditPolicy>(
+    mayAsk && projectId ? `projects/${projectId}/edit-policy` : null,
+    () => getEditPolicy(projectId!),
+  );
 
   async function handleStartEdit() {
     if (!projectId) return;
@@ -94,29 +101,11 @@ export default function ProjectDetail() {
       const target = await startProcessEdit(projectId);
       navigate(target.draft_path);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not open the editor");
+      setStartEditError(err instanceof Error ? err.message : "Could not open the editor");
     } finally {
       setEditStarting(false);
     }
   }
-
-  const loadProject = useCallback(async () => {
-    if (!id) return;
-    try {
-      const detail = await getProjectDetail(id);
-      setProject(detail);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, user?.id]);
-
-  useEffect(() => {
-    loadProject();
-  }, [loadProject]);
-  // Back in view after a while: read it again (a second tab catches up).
-  useRefreshOnVisible(loadProject);
 
   function handleSentiment(next: SentimentValue | "neutral") {
     if (!id) return;
