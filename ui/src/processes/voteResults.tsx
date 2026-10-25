@@ -1,8 +1,7 @@
 // civic.vote_results: the legacy published results of a vote
 // (manifest: src/modules/civic.vote_results/manifest.ts). Belongs to the vote plugin.
 
-import VoteResults from "../pages/VoteResults";
-import AdminVoteResults from "../pages/AdminVoteResults";
+import { AdminVoteResults, VoteResults } from "../lazyPages";
 import hub from "../config/hub";
 import { getPublicVoteResults } from "../services/api";
 import { formatCount } from "./feedText";

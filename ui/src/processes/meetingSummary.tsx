@@ -1,8 +1,7 @@
 // civic.meeting_summary: a plain-language summary of a public meeting
 // (manifest: src/modules/civic.meeting_summary/manifest.ts).
 
-import MeetingSummary from "../pages/MeetingSummary";
-import AdminMeetingSummaries from "../pages/AdminMeetingSummaries";
+import { AdminMeetingSummaries, MeetingSummary } from "../lazyPages";
 import { getMeetingSummary } from "../services/api";
 import {
   BooleanField,

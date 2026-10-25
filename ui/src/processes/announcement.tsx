@@ -2,8 +2,7 @@
 // (manifest: src/modules/civic.announcement/manifest.ts).
 
 import { Link } from "react-router-dom";
-import PostAnnouncement from "../pages/PostAnnouncement";
-import AnnouncementPage from "../pages/Announcement";
+import { AnnouncementPage, PostAnnouncement } from "../lazyPages";
 import { getAnnouncement } from "../services/api";
 import { relativeTime } from "../utils/dates";
 import type { FeedKindUi, ProcessUi } from "./types";

@@ -1,10 +1,7 @@
 // civic.proposal: an idea residents float for discussion and support
 // (manifest: src/modules/civic.proposals/manifest.ts).
 
-import Propose from "../pages/Propose";
-import ProposalDetail from "../pages/ProposalDetail";
-import DraftPage from "../pages/draft/DraftPage";
-import { proposalKind } from "../pages/draft/proposalKind";
+import { NewProposal, ProposalDetail, Propose } from "../lazyPages";
 import { ParticipationValues } from "../pages/settings/pluginFields";
 import type { ProcessUi } from "./types";
 
@@ -12,7 +9,7 @@ export const proposalUi: ProcessUi = {
   type: "civic.proposal",
   routes: [
     { path: "/propose", element: <Propose /> },
-    { path: "/propose/new", element: <DraftPage config={proposalKind} /> },
+    { path: "/propose/new", element: <NewProposal /> },
     { path: "/proposal/:id", element: <ProposalDetail /> },
   ],
   feed: {

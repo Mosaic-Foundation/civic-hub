@@ -44,7 +44,8 @@ async function settle(page: Page): Promise<void> {
 
 async function shoot(page: Page, name: string): Promise<void> {
   await settle(page);
-  await expect(page).toHaveScreenshot(`${name}.png`, {
+  // Soft: one run reports every page that differs, not only the first.
+  await expect.soft(page).toHaveScreenshot(`${name}.png`, {
     fullPage: true,
     animations: "disabled",
     caret: "hide",
@@ -55,7 +56,6 @@ async function shoot(page: Page, name: string): Promise<void> {
 
 test.describe("screenshots", () => {
   test.skip(!ON, "local only: CIVIC_E2E_SCREENSHOTS=1");
-  test.describe.configure({ mode: "serial" });
 
   let paths: Array<{ type: string; path: string }> = [];
   let adminToken = "";

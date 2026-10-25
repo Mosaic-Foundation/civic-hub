@@ -1,8 +1,7 @@
 // civic.wordcloud: one-word answers gathered into a cloud
 // (manifest: src/modules/civic.wordcloud/manifest.ts).
 
-import WordCloud from "../pages/WordCloud";
-import CreateWordCloud from "../pages/CreateWordCloud";
+import { CreateWordCloud, WordCloud } from "../lazyPages";
 import { getWordcloud } from "../services/api";
 import { ProcessField } from "../pages/settings/pluginFields";
 import { formatCount } from "./feedText";

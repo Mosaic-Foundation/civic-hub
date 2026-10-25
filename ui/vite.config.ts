@@ -21,6 +21,29 @@ export default defineConfig({
         console: resolve(import.meta.dirname, 'console.html'),
         start: resolve(import.meta.dirname, 'start.html'),
       },
+      // Named chunks (frontend pass, 2026-10-24): the hub's stylesheets as
+      // one file in their old order, React and the router in one, and the
+      // markdown renderer in one. Pages are their own chunks (lazyPages.ts).
+      output: {
+        codeSplitting: {
+          groups: [
+            // Every hub stylesheet in one file, in the order styles/hubStyles.ts
+            // imports them: the cascade resolves as it did in one bundle. Not
+            // the console's or the start page's, and not Modal.css, which the
+            // console also loads.
+            {
+              name: 'styles',
+              test: (id: string) =>
+                /[\\/]ui[\\/]src[\\/].*\.css$/.test(id) &&
+                !/[\\/]ui[\\/]src[\\/](console|start)[\\/]/.test(id) &&
+                !/[\\/]components[\\/]Modal\.css$/.test(id),
+              priority: 4,
+            },
+            { name: 'react', test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/, priority: 3 },
+            { name: 'markdown', test: /node_modules[\\/](react-markdown|remark-|micromark|mdast-|hast-|unist-|unified|vfile|property-information|space-separated-tokens|comma-separated-tokens|decode-named-character-reference|character-entities|devlop|bail|trough|is-plain-obj|ccount|markdown-table|longest-streak|zwitch|html-url-attributes|estree-util|style-to-|inline-style-parser|trim-lines|escape-string-regexp)/, priority: 2 },
+          ],
+        },
+      },
     },
   },
   server: {

@@ -1,9 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-// Self-hosted variable fonts, latin subset only (styles/fonts.css).
-import './styles/fonts.css'
-import './styles/theme.css'
-import './index.css'
+// Every stylesheet, first and in a fixed order (styles/hubStyles.ts).
+import './styles/hubStyles'
 import App from './App.tsx'
 import { loadHubConfig, applyHubHead, getHubDeadEnd, getHubMovedTo } from './config/hubConfig'
 import { DEAD_ENDS, DEAD_END_STYLE } from '../../src/shared/deadEnd'

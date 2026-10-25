@@ -2,9 +2,7 @@
 // officials (manifest: src/modules/civic.brief/manifest.ts).
 
 import { Link } from "react-router-dom";
-import Outcomes from "../pages/Outcomes";
-import BriefPage from "../pages/Brief";
-import AdminBriefs from "../pages/AdminBriefs";
+import { AdminBriefs, BriefPage, Outcomes } from "../lazyPages";
 import { briefResponseContext } from "../../../src/shared/feedActivity";
 import type { ProcessUi } from "./types";
 import { formatShortDate } from "../utils/dates";

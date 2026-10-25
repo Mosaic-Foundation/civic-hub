@@ -1,10 +1,7 @@
 // civic.polis_deliberation: a structured group conversation
 // (manifest: src/shared/polis_deliberation/manifest.ts). The conversation plugin.
 
-import Deliberations from "../pages/Deliberations";
-import DeliberationDetail from "../pages/DeliberationDetail";
-import DraftPage from "../pages/draft/DraftPage";
-import { conversationKind } from "../pages/draft/conversationKind";
+import { DeliberationDetail, Deliberations, NewConversation } from "../lazyPages";
 import { getProcessState } from "../services/api";
 import { UrlField } from "../pages/settings/pluginFields";
 import type { FeedKindUi, ProcessUi } from "./types";
@@ -26,7 +23,7 @@ export const conversationUi: ProcessUi = {
   type: "civic.polis_deliberation",
   routes: [
     { path: "/deliberations", element: <Deliberations /> },
-    { path: "/deliberations/new", element: <DraftPage config={conversationKind} /> },
+    { path: "/deliberations/new", element: <NewConversation /> },
     { path: "/deliberation/:id", element: <DeliberationDetail /> },
   ],
   feed: {

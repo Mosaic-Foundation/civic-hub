@@ -1,10 +1,7 @@
 // civic.project: a community project with updates, comments and sentiment
 // (manifest: src/modules/civic.projects/manifest.ts).
 
-import Projects from "../pages/Projects";
-import ProjectDetail from "../pages/ProjectDetail";
-import DraftPage from "../pages/draft/DraftPage";
-import { projectKind } from "../pages/draft/projectKind";
+import { NewProject, ProjectDetail, Projects } from "../lazyPages";
 import { getProjectDetail } from "../services/api";
 import type { FeedKindUi, ProcessUi } from "./types";
 
@@ -22,7 +19,7 @@ export const projectUi: ProcessUi = {
   type: "civic.project",
   routes: [
     { path: "/projects", element: <Projects /> },
-    { path: "/projects/new", element: <DraftPage config={projectKind} /> },
+    { path: "/projects/new", element: <NewProject /> },
     { path: "/project/:id", element: <ProjectDetail /> },
   ],
   feed: {

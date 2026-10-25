@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/authState";
@@ -17,26 +17,29 @@ import HubBanner from "./components/HubBanner";
 import WordcloudTeaser from "./components/WordcloudTeaser";
 import FeedVotesTabs from "./components/FeedVotesTabs";
 import Home from "./pages/Home";
-import About from "./pages/About";
-import SearchPage from "./pages/Search";
-import AdminSettings from "./pages/AdminSettings";
+import {
+  About,
+  AdminArchived,
+  AdminEdits,
+  AdminFeedback,
+  AdminModeration,
+  AdminReviews,
+  AdminSettings,
+  CodeOfConduct,
+  ContactCivicSocial,
+  Feedback,
+  Members,
+  MySubmissions,
+  Privacy,
+  Search as SearchPage,
+  Settings,
+  SignInLink,
+  Terms,
+  Welcome,
+  preloadPages,
+} from "./lazyPages";
 import { adminAnchorPath } from "../../src/shared/adminAnchors";
-import Settings from "./pages/Settings";
-import Members from "./pages/Members";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
-import CodeOfConduct from "./pages/CodeOfConduct";
-import Feedback from "./pages/Feedback";
-import Welcome from "./pages/Welcome";
-import SignInLink from "./pages/SignInLink";
-import AdminModeration from "./pages/AdminModeration";
-import AdminArchived from "./pages/AdminArchived";
-import AdminEdits from "./pages/AdminEdits";
-import AdminFeedback from "./pages/AdminFeedback";
-import ContactCivicSocial from "./pages/ContactCivicSocial";
 import { recordPage } from "./services/lastPage";
-import AdminReviews from "./pages/AdminReviews";
-import MySubmissions from "./pages/MySubmissions";
 import IntroPopup from "./components/IntroPopup";
 import { hasSeenIntro } from "./components/introSeen";
 import ReAcceptModal from "./components/ReAcceptModal";
@@ -118,7 +121,19 @@ function AppContent() {
   // A hub's creator arriving from the start page gets "Your hub is ready"
   // instead of the visitor's popup (2026-10-08).
   const [showIntro, setShowIntro] = useState(() => !hasSeenIntro() && !arrivingFromStartPage());
-  const { user, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
+  // Once the first page has painted, fetch the other pages' code in the
+  // background, so no later click waits on it (lazyPages.ts).
+  useEffect(() => {
+    if (loading) return;
+    const run = () => preloadPages(isAdmin);
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(run, { timeout: 3000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(run, 1000);
+    return () => window.clearTimeout(id);
+  }, [loading, isAdmin]);
   const [readyClosed, setReadyClosed] = useState(false);
   const showReady = Boolean(user) && !readyClosed && hubJustCreated();
   const preview = usePreviewMode();
@@ -192,45 +207,48 @@ function AppContent() {
           <ShareBanner />
 
           <main className="page-shell">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              {processRoutes()}
-              <Route path="/my-submissions" element={<MySubmissions />} />
-              <Route path="/my-submissions/:reviewId" element={<MySubmissions />} />
-              <Route path="/admin" element={<AdminGuard><AdminAnchor /></AdminGuard>} />
-              <Route path="/admin/reviews" element={<AdminGuard><AdminReviews /></AdminGuard>} />
-              <Route path="/admin/reviews/:reviewId" element={<AdminGuard><AdminReviews /></AdminGuard>} />
-              <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
-              <Route path="/admin/settings/:section" element={<AdminGuard><AdminSettings /></AdminGuard>} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/members" element={whenPlugin("members", <Members />)} />
-              <Route path="/about" element={<About />} />
-              <Route path="/search" element={whenPlugin("search", <SearchPage />)} />
-              {/* Slice 11 — legal pages. Routes resolve via React Router so
-                  cross-document links (Terms → Privacy etc.) don't trigger
-                  full-page reloads. */}
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/code-of-conduct" element={<CodeOfConduct />} />
-              {/* Slice 14 — operator-facing feedback form. Open to anonymous
-                  and signed-in users; submissions persist to the
-                  feedback_submissions table and best-effort email the operator. */}
-              <Route path="/welcome" element={<Welcome />} />
-              <Route path="/sign-in" element={<SignInLink />} />
-              <Route path="/feedback" element={whenPlugin("feedback", <Feedback />)} />
-              {/* Slice 11 — admin moderation log. Read-only list of every
-                  moderation action, gated server-side via requireAdmin
-                  and client-side via the AuthContext.isAdmin flag inside
-                  the page. */}
-              <Route path="/admin/moderation" element={<AdminGuard><AdminModeration /></AdminGuard>} />
-              <Route path="/admin/archived" element={<AdminGuard><AdminArchived /></AdminGuard>} />
-              <Route path="/admin/edits" element={<AdminGuard><AdminEdits /></AdminGuard>} />
-              {/* Read-only archive of resident feedback, incl. topic suggestions. */}
-              <Route path="/admin/feedback" element={whenPlugin("feedback", <AdminGuard><AdminFeedback /></AdminGuard>)} />
-              {/* An admin writes to Civic.Social directly (feedback routing).
-                  Not behind the Feedback plugin. */}
-              <Route path="/admin/contact-civic-social" element={<AdminGuard><ContactCivicSocial /></AdminGuard>} />
-            </Routes>
+            {/* Every page but the feed loads its code when first needed (lazyPages.ts). */}
+            <Suspense fallback={<p className="page-loading" aria-busy="true">Loading…</p>}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                {processRoutes()}
+                <Route path="/my-submissions" element={<MySubmissions />} />
+                <Route path="/my-submissions/:reviewId" element={<MySubmissions />} />
+                <Route path="/admin" element={<AdminGuard><AdminAnchor /></AdminGuard>} />
+                <Route path="/admin/reviews" element={<AdminGuard><AdminReviews /></AdminGuard>} />
+                <Route path="/admin/reviews/:reviewId" element={<AdminGuard><AdminReviews /></AdminGuard>} />
+                <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
+                <Route path="/admin/settings/:section" element={<AdminGuard><AdminSettings /></AdminGuard>} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/members" element={whenPlugin("members", <Members />)} />
+                <Route path="/about" element={<About />} />
+                <Route path="/search" element={whenPlugin("search", <SearchPage />)} />
+                {/* Slice 11 — legal pages. Routes resolve via React Router so
+                    cross-document links (Terms → Privacy etc.) don't trigger
+                    full-page reloads. */}
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/code-of-conduct" element={<CodeOfConduct />} />
+                {/* Slice 14 — operator-facing feedback form. Open to anonymous
+                    and signed-in users; submissions persist to the
+                    feedback_submissions table and best-effort email the operator. */}
+                <Route path="/welcome" element={<Welcome />} />
+                <Route path="/sign-in" element={<SignInLink />} />
+                <Route path="/feedback" element={whenPlugin("feedback", <Feedback />)} />
+                {/* Slice 11 — admin moderation log. Read-only list of every
+                    moderation action, gated server-side via requireAdmin
+                    and client-side via the AuthContext.isAdmin flag inside
+                    the page. */}
+                <Route path="/admin/moderation" element={<AdminGuard><AdminModeration /></AdminGuard>} />
+                <Route path="/admin/archived" element={<AdminGuard><AdminArchived /></AdminGuard>} />
+                <Route path="/admin/edits" element={<AdminGuard><AdminEdits /></AdminGuard>} />
+                {/* Read-only archive of resident feedback, incl. topic suggestions. */}
+                <Route path="/admin/feedback" element={whenPlugin("feedback", <AdminGuard><AdminFeedback /></AdminGuard>)} />
+                {/* An admin writes to Civic.Social directly (feedback routing).
+                    Not behind the Feedback plugin. */}
+                <Route path="/admin/contact-civic-social" element={<AdminGuard><ContactCivicSocial /></AdminGuard>} />
+              </Routes>
+            </Suspense>
           </main>
 
           <SiteFooter />

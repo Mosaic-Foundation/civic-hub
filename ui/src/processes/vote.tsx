@@ -1,11 +1,7 @@
 // civic.vote: an advisory vote (manifest: src/modules/civic.vote/manifest.ts).
 // Its pages, its two feed cards and the vote plugin's panel on the Plugins page.
 
-import Votes from "../pages/Votes";
-import Process from "../pages/Process";
-import VoteLog from "../pages/VoteLog";
-import DraftPage from "../pages/draft/DraftPage";
-import { voteKind } from "../pages/draft/voteKind";
+import { NewVote, Process, VoteLog, Votes } from "../lazyPages";
 import hub from "../config/hub";
 import { voteResultLine } from "../../../src/shared/feedActivity";
 import { getProcessState, type VoteState } from "../services/api";
@@ -64,7 +60,7 @@ export const voteUi: ProcessUi = {
     // The generic page: it hands every other type to its own page, so it checks
     // the record's plugin itself (pages/Process.tsx).
     { path: "/process/:id", element: <Process />, ungated: true },
-    { path: "/votes/new", element: <DraftPage config={voteKind} /> },
+    { path: "/votes/new", element: <NewVote /> },
     { path: "/votes/:id/log", element: <VoteLog /> },
   ],
   feed: {
