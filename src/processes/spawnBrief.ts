@@ -14,8 +14,8 @@ import { getProcessFactory, getProcessHandler } from "./registry.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { HubDbError } from "../db/forHub.js";
 import { briefIdForSource } from "../services/processRows.js";
-import { emitBriefAggregationCompleted } from "../modules/civic.brief/events.js";
-import type { BriefProcessState } from "../modules/civic.brief/index.js";
+import { emitBriefAggregationCompleted } from "../../packages/civic.brief/events.js";
+import type { BriefProcessState } from "../../packages/civic.brief/api.js";
 
 /**
  * Spawn a pending civic.brief from a just-closed source process. Returns

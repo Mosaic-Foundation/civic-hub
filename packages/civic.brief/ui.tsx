@@ -1,13 +1,13 @@
 // civic.brief: the published record of what residents decided, sent to
-// officials (manifest: src/modules/civic.brief/manifest.ts).
+// officials (manifest: ./manifest.ts).
 
 import { Link } from "react-router-dom";
-import { AdminBriefs, BriefPage, Outcomes } from "../lazyPages";
-import { briefResponseContext } from "../../../src/shared/feedActivity";
-import type { ProcessUi } from "./types";
-import { formatShortDate } from "../utils/dates";
+import { AdminBriefs, BriefPage, Outcomes } from "../../ui/src/lazyPages";
+import { briefResponseContext } from "../../src/shared/feedActivity";
+import type { ProcessUi } from "../../ui/src/processes/types";
+import { formatShortDate } from "../../ui/src/utils/dates";
 
-export const briefUi: ProcessUi = {
+const briefUi: ProcessUi = {
   type: "civic.brief",
   routes: [
     // Unified Briefs queue — the universal admin results surface.
@@ -78,3 +78,5 @@ export const briefUi: ProcessUi = {
     </p>
   ),
 };
+
+export default briefUi;

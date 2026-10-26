@@ -27,7 +27,6 @@ import { draftRouter } from "./routes/draftRoutes.js";
 import { deliberationDraftKind } from "./processes/draftKinds.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import briefRoutes from "./routes/briefRoutes.js";
 import announcementRoutes from "./routes/announcementRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import linkPreviewRoutes from "./routes/linkPreviewRoutes.js";
@@ -204,12 +203,6 @@ app.use("/notifications", notificationRoutes);
 
 // Admin endpoints — proposal review and conversion to votes
 app.use("/admin", adminRoutes);
-
-// Briefs — public read of published civic.brief pages (the universal
-// results record for any completed process). Reclaims the /brief path from
-// the Slice 8.5 legacy redirect: /brief now serves the NEW generic brief;
-// existing published vote-results stay at /vote-results/:id.
-app.use("/brief", requirePlugin("brief"), briefRoutes);
 
 // Board / Admin announcements — post, edit, read one
 app.use("/announcement", requirePlugin("announcement"), announcementRoutes);

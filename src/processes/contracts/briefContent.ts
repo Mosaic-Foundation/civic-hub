@@ -1,7 +1,7 @@
 // The brief contract: what a process type's generateBrief returns (the
 // type-agnostic content of a Civic Brief). Here, in the process contract, so
 // the handler interface (src/processes/types.ts) depends on no plugin;
-// src/modules/civic.brief stores and publishes it and re-exports these types
+// packages/civic.brief stores and publishes it and re-exports these types
 // (Architecture 2, 2026-10-21).
 
 /**

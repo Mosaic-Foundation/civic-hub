@@ -3,19 +3,19 @@ import type {
   BriefContent,
   BriefProcessState,
   BriefPublicationStatus,
-} from "../../src/modules/civic.brief/models.js";
+} from "../../packages/civic.brief/models.js";
 import {
   canEdit,
   canApprove,
   isPublished,
   assertPublicationTransition,
-} from "../../src/modules/civic.brief/lifecycle.js";
+} from "../../packages/civic.brief/lifecycle.js";
 import {
   createBriefState,
   editBrief,
   approveBrief,
   getPublicReadModel,
-} from "../../src/modules/civic.brief/service.js";
+} from "../../packages/civic.brief/service.js";
 
 const ALL: BriefPublicationStatus[] = ["pending", "approved", "published"];
 

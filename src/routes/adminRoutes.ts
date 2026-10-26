@@ -8,15 +8,6 @@ import { Router } from "express";
 import { handleAdminQueueCounts, handleMarkAdminQueueSeen } from "../controllers/adminQueueController.js";
 import { handleAdminListEdits } from "../controllers/editNotificationController.js";
 import {
-  handleAdminListBriefs,
-  handleAdminGetBrief,
-  handlePatchBrief,
-  handleApproveBrief,
-  handleRegenerateBrief,
-  handlePublishBriefRevision,
-  handleDiscardBriefRevision,
-} from "../controllers/adminBriefController.js";
-import {
   handleAdminGetMeetingSummary,
   handleAdminListMeetingSummaries,
   handleAcceptMeetingSummaryRevision,
@@ -89,7 +80,6 @@ router.use(requireAdmin);
 // Plugin-specific admin surfaces answer 404 on a hub with the plugin off
 // (src/middleware/pluginGate.ts). The shared queues — reviews, archived,
 // edits, moderation of comments — belong to no one plugin and stay.
-router.use("/briefs", requirePlugin("brief"));
 router.use("/meeting-summaries", requirePlugin("meeting_summary"));
 router.use("/feedback", requirePlugin("feedback"));
 router.use("/moderation/announcements", requirePlugin("announcement"));
@@ -98,19 +88,6 @@ router.use("/moderation/announcements", requirePlugin("announcement"));
 // switch and the loader's verdict, after the admin check above.
 mountPackageRoutes(router, "adminRoutes");
 
-
-// Briefs — the universal, admin-reviewed results for any closed process
-// (civic.brief). New closures (conversation/proposal/project, and votes
-// after migration) land here; legacy civic.vote_results keep their routes
-// above for existing published records.
-router.get("/briefs", handleAdminListBriefs);
-router.get("/briefs/:id", handleAdminGetBrief);
-router.patch("/briefs/:id", handlePatchBrief);
-router.post("/briefs/:id/approve", handleApproveBrief);
-// Regenerate (Actions slice): make it again; publish or discard the new version.
-router.post("/briefs/:id/regenerate", handleRegenerateBrief);
-router.post("/briefs/:id/revision/publish", handlePublishBriefRevision);
-router.post("/briefs/:id/revision/discard", handleDiscardBriefRevision);
 
 // Meeting Summaries (batch routes before /:id to avoid Express treating them as an id)
 router.post("/meeting-summaries/batch-approve", handleBatchApproveMeetingSummaries);

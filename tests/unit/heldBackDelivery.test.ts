@@ -7,8 +7,8 @@
 // names only who was really sent it, and the admin reads it in plain words.
 
 import { describe, it, expect, vi } from "vitest";
-import type { BriefContent, BriefProcessContext } from "../../src/modules/civic.brief/models.js";
-import { approveBrief, createBriefState, getPublicReadModel } from "../../src/modules/civic.brief/service.js";
+import type { BriefContent, BriefProcessContext } from "../../packages/civic.brief/models.js";
+import { approveBrief, createBriefState, getPublicReadModel } from "../../packages/civic.brief/service.js";
 import { publishedMessage } from "../../src/shared/delivery.js";
 
 const ctx: BriefProcessContext = {

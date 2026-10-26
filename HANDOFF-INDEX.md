@@ -89,7 +89,7 @@ numbers below, or just grep the heading.
 | The share nudge: callout on the bar, or the one share banner (never scrolls) | `ui/src/components/shareMomentBus.ts`, `ShareButton.tsx`, `ShareBanner.tsx` (mounted in `ui/src/App.tsx`) |
 | The hourly deadline close (every type with a deadline, job id still `vote_close`) | `closeAllExpired` in `src/services/processService.ts`, `vote_close` in `src/jobs/registry.ts` and `runners.ts`; conformance step 5 |
 | A regenerated brief's state for its source (a conversation's summary), applied on publish | `RegeneratedBrief` in `src/processes/types.ts`, `applySourceState` / `applyOnApproval` in `src/services/briefRegenerate.ts` |
-| A brief's public delivery lines ("Sent to", "Addressed to … (not emailed: …)") | `getPublicReadModel` in `src/modules/civic.brief/service.ts`, `ui/src/services/briefDelivery.ts` |
+| A brief's public delivery lines ("Sent to", "Addressed to … (not emailed: …)") | `getPublicReadModel` in `packages/civic.brief/service.ts`, `ui/src/services/briefDelivery.ts` |
 | Hub audit log actions | `HubAdminAuditAction` in `src/services/hubAdminAudit.ts` (now also `process.close_early`, `brief.regenerate`, `brief.revision_published`) |
 | Drafts, every kind: store, kinds, controller/router factories, UI page | `src/modules/civic.drafts/`, `src/processes/draftKinds.ts`, `src/controllers/draftController.ts`, `src/routes/draftRoutes.ts`; `ui/src/pages/draft/` |
 | Process writes under concurrency (version check, held events, retry-safe actions, deadline-close claim) | `src/services/processService.ts` (`executeAction`, `closeAtDeadline`), `src/services/actionScope.ts` |

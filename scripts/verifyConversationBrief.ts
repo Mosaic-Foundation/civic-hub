@@ -8,7 +8,7 @@
 import "../src/services/processService.js";
 import { getProcessHandler } from "../src/processes/registry.js";
 import type { Process } from "../src/models/process.js";
-import type { BriefContent } from "../src/modules/civic.brief/index.js";
+import type { BriefContent } from "../packages/civic.brief/api.js";
 import { VERIFY_CONVERSATION_BRIEF_TOPIC } from "../tests/fixtures/samples/verifyConversationBrief.js";
 import type { Hub } from "../src/models/hub.js";
 import { withScriptHub } from "./lib/hubScope.js";

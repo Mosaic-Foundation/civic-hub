@@ -2,7 +2,7 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
+import { defineDescriptor, defineManifest } from "../../src/processes/manifest.js";
 
 /**
  * What a brief is (src/processes/descriptor.ts). The hub spawns one when a
@@ -108,3 +108,5 @@ export const BRIEF_MANIFEST = defineManifest({
     ui: { surfaces: ["process-page", "feed-card", "nav-section", "settings-panel"] },
   },
 });
+
+export default BRIEF_MANIFEST;

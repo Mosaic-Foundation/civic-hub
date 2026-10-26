@@ -1,6 +1,6 @@
 // Brief responses service — storage for official responses to briefs.
 //
-// The rules live in src/modules/civic.brief/responses.ts (pure); this
+// The rules live in packages/civic.brief/responses.ts (pure); this
 // file owns every read and write of the brief_responses table plus the
 // responder-name resolution the public projection needs.
 //
@@ -13,7 +13,7 @@
 import { forHub, type HubDb } from "../db/forHub.js";
 import { currentHubId } from "../config/hubContext.js";
 import { generateId } from "../utils/id.js";
-import type { BriefResponseRecord } from "../modules/civic.brief/index.js";
+import type { BriefResponseRecord } from "../../packages/civic.brief/api.js";
 
 /** The hub in scope. Brief responses are only ever read or written inside one. */
 function db(): HubDb {

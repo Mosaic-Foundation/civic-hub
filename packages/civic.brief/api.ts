@@ -60,7 +60,7 @@ export {
 } from "./responses.js";
 export { emitBriefResponseAdded } from "./events.js";
 
-// What this type is: its manifest, src/modules/civic.brief/manifest.ts.
+// What this type is: its manifest, ./manifest.ts.
 
 export type { BriefIndexEntry } from "./service.js";
 export {

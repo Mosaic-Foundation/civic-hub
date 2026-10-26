@@ -13,7 +13,7 @@
 // Express or Supabase, so the whole behaviour is coverable in tests/unit
 // — the layer CI actually runs.
 
-import { ValidationError } from "../../errors/index.js";
+import { ValidationError } from "../../src/sdk/index.js";
 import type { BriefProcessState } from "./models.js";
 
 /** Bounds for a response body — mirrors brief_responses_body_bounds. */

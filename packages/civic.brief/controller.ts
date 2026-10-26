@@ -4,15 +4,23 @@
 // Only publication_status = "published" records are returned; pending and
 // approved records 404 so they stay invisible until an admin publishes.
 
-import { ConflictError, ForbiddenError, NotFoundError } from "../errors/index.js";
-import { route } from "../http/route.js";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  route,
+  getProcess,
+  publishedBriefRows,
+  countLinksTouching,
+  emitEvent,
+  getAuthUser,
+  insertResponse,
+  latestAnchorAt,
+  listResponsesForBrief,
+  responderNames,
+} from "../../src/sdk/index.js";
 import { Request, Response } from "express";
-import { getProcess } from "../services/processService.js";
-import { publishedBriefRows } from "../services/processRows.js";
-import { countLinksTouching } from "../services/processLinkCounts.js";
-import { emitEvent } from "../events/eventEmitter.js";
-import { getAuthUser } from "../middleware/auth.js";
-import type { OfficialIdentity } from "../shared/officialTypes.js";
+import type { OfficialIdentity } from "../../src/shared/officialTypes.js";
 import {
   availableSourceTypes,
   availableYears,
@@ -27,13 +35,7 @@ import {
   toIndexEntry,
   toPublicResponses,
   type BriefProcessState,
-} from "../modules/civic.brief/index.js";
-import {
-  insertResponse,
-  latestAnchorAt,
-  listResponsesForBrief,
-  responderNames,
-} from "../services/briefResponses.js";
+} from "./api.js";
 
 export const handleGetBrief = route(async (req, res) => {
   const id = req.params.id as string;

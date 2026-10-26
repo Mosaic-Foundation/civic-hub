@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { BriefResponseRecord } from "../../src/modules/civic.brief/responses.js";
+import type { BriefResponseRecord } from "../../packages/civic.brief/responses.js";
 import {
   FEED_ANCHOR_WINDOW_MS,
   RESPONSE_BODY_MAX,
@@ -9,7 +9,7 @@ import {
   responseExcerpt,
   responseStatus,
   toPublicResponses,
-} from "../../src/modules/civic.brief/responses.js";
+} from "../../packages/civic.brief/responses.js";
 
 const OFFICIAL = { type: "board_of_supervisors", title: "Board of Supervisors" };
 

@@ -29,7 +29,6 @@ import type { ProcessTypeDisplay } from "../shared/typeDisplay.js";
 export type { ProcessTypeDisplay };
 import type { Process } from "../models/process.js";
 import type { PluginId } from "../models/hubSettings.js";
-import briefProcess from "../modules/civic.brief/handler.js";
 import announcementProcess from "../modules/civic.announcement/handler.js";
 import meetingSummaryProcess from "../modules/civic.meeting_summary/handler.js";
 import { bootDeliberation } from "./deliberationBoot.js";
@@ -81,7 +80,6 @@ const deliberationHandler = bootDeliberation();
 const handlers = (): readonly ProcessHandler[] => {
   const rank = new Map(MANIFESTS.map((m, i) => [m.descriptor.type, i]));
   return [
-    briefProcess,
     announcementProcess,
     meetingSummaryProcess,
     deliberationHandler,

@@ -6,7 +6,7 @@
 // handler already produced the BriefContent, so generation here is just
 // wrapping it in the process state.
 
-import { ConflictError, ValidationError } from "../../errors/index.js";
+import { ConflictError, ValidationError } from "../../src/sdk/index.js";
 import type {
   BriefActionOutcome,
   BriefContent,

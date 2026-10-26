@@ -27,9 +27,9 @@ import { getProcessHandler, processDetailPath } from "../processes/registry.js";
 import { getProcess, isTerminalStatus, saveProcessState } from "./processService.js";
 import { closedEarlyView } from "./closeEarly.js";
 import { auditActor, recordHubAdminAudit } from "./hubAdminAudit.js";
-import { emitBriefUpdated } from "../modules/civic.brief/events.js";
-import { createBriefState } from "../modules/civic.brief/service.js";
-import type { BriefContent, BriefProcessState } from "../modules/civic.brief/models.js";
+import { emitBriefUpdated } from "../../packages/civic.brief/events.js";
+import { createBriefState } from "../../packages/civic.brief/service.js";
+import type { BriefContent, BriefProcessState } from "../../packages/civic.brief/models.js";
 import type { Process } from "../models/process.js";
 import type { RegeneratedBrief } from "../processes/types.js";
 

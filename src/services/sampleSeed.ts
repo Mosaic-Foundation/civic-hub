@@ -68,8 +68,8 @@ import { createProposal, supportProposal } from "../../packages/civic.proposals/
 import { createProject, setProjectSentiment } from "../../packages/civic.projects/service.js";
 import { emitProjectUpdated } from "../../packages/civic.projects/events.js";
 import { submitInput } from "../modules/civic.input/index.js";
-import { approveBrief, setRecipients, type BriefProcessState } from "../modules/civic.brief/index.js";
-import { emitBriefAggregationCompleted } from "../modules/civic.brief/events.js";
+import { approveBrief, setRecipients, type BriefProcessState } from "../../packages/civic.brief/api.js";
+import { emitBriefAggregationCompleted } from "../../packages/civic.brief/events.js";
 import { emitAnnouncementResultPublished } from "../modules/civic.announcement/events.js";
 import type { AnnouncementProcessState } from "../modules/civic.announcement/models.js";
 import {

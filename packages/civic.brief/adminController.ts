@@ -8,11 +8,30 @@
 // list is NOT fatal (a conversation/project brief can publish to the feed
 // without an official email list).
 
-import { applyOnApproval, discardBriefRevision, publishBriefRevision, regenerateBrief } from "../services/briefRegenerate.js";
-import { ConflictError, NotFoundError } from "../errors/index.js";
-import { route } from "../http/route.js";
-import { emitEvent } from "../events/eventEmitter.js";
-import { enrichCreator } from "../services/creatorDisplay.js";
+import {
+  applyOnApproval,
+  discardBriefRevision,
+  publishBriefRevision,
+  regenerateBrief,
+  ConflictError,
+  NotFoundError,
+  route,
+  emitEvent,
+  enrichCreator,
+  getAllProcesses,
+  getProcess,
+  saveProcessState,
+  finalizeBriefSource,
+  processWireIris,
+  getAuthUser,
+  sampleDeliverySuppressed,
+  getVoteResultsRecipients,
+  hubDisplayNameSync,
+  currentHubId,
+  uiBaseUrl,
+  extractUrls,
+  warmPreviewsInBackground,
+} from "../../src/sdk/index.js";
 import {
   approveBrief,
   editBrief,
@@ -22,23 +41,9 @@ import {
   type BriefContentPatch,
   type BriefProcessState,
   type BriefPublicationStatus,
-} from "../modules/civic.brief/index.js";
-import {
-  getAllProcesses,
-  getProcess,
-  saveProcessState,
-} from "../services/processService.js";
-import { finalizeBriefSource } from "../services/briefFinalize.js";
-import { processWireIris } from "../services/processLinks.js";
-import { getAuthUser } from "../middleware/auth.js";
-import { sendEmail } from "../services/mailer.js";
-import { publishedMessage } from "../shared/delivery.js";
-import { sampleDeliverySuppressed } from "../services/sampleContent.js";
-import { getVoteResultsRecipients, hubDisplayNameSync } from "../services/hubSettings.js";
-import { currentHubId } from "../config/hubContext.js";
-import { uiBaseUrl } from "../utils/baseUrl.js";
-import { extractUrls } from "../modules/civic.link_preview/index.js";
-import { warmPreviewsInBackground } from "../services/linkPreviewCache.js";
+} from "./api.js";
+import { briefHost } from "./host.js";
+import { publishedMessage } from "../../src/shared/delivery.js";
 
 const BRIEF_TYPE = "civic.brief";
 
@@ -192,7 +197,7 @@ export const handleApproveBrief = route(async (req, res) => {
     hubLabel: hubDisplayNameSync(),
     publicBriefUrl: publicBriefUrl(record.id),
     // A sample brief is never delivered (Phase 7).
-    sendEmail: record.isSample ? sampleDeliverySuppressed : sendEmail,
+    sendEmail: record.isSample ? sampleDeliverySuppressed : briefHost.get().adapter("mail").deliver,
     finalizeSource: finalizeBriefSource,
     sourceProcessIri:
       (await processWireIris([state.source_process_id])).get(state.source_process_id) ?? null,

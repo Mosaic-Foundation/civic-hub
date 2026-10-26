@@ -13,7 +13,7 @@ import {
 } from "../packages/civic.proposals/service.js";
 import { findExistingBriefId } from "../src/processes/spawnBrief.js";
 import { emitEvent } from "../src/events/eventEmitter.js";
-import type { BriefProcessState } from "../src/modules/civic.brief/index.js";
+import type { BriefProcessState } from "../packages/civic.brief/api.js";
 import type { Process } from "../src/models/process.js";
 import { DEFAULT_JURISDICTION, processJurisdiction } from "../src/config/hub.js";
 import type { Hub } from "../src/models/hub.js";

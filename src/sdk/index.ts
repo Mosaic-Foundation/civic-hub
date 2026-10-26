@@ -39,7 +39,13 @@ export type { GrantedDb, PluginHost, PluginPackage, PluginServer, PluginMount } 
 // package while this file is still being evaluated if a package's own file was
 // the first thing imported.
 export { route } from "../http/route.js";
-export { resolveCallerId, getAuthUser, requireResident, resolveCallerUser } from "../middleware/auth.js";
+export {
+  resolveCallerId,
+  getAuthUser,
+  requireResident,
+  resolveCallerUser,
+  requireOfficial,
+} from "../middleware/auth.js";
 export { KEYS } from "../models/hubSettings.js";
 
 // --- Events: the one emission path ---------------------------------------------------
@@ -52,7 +58,7 @@ export {
   getAllProcesses,
   saveProcessState,
 } from "../services/processService.js";
-export { readProcessState, writeProcessState } from "../services/processRows.js";
+export { readProcessState, writeProcessState, publishedBriefRows } from "../services/processRows.js";
 
 // --- Storage helpers (over host.db()) ---------------------------------------------------
 export { HubDbError } from "../db/forHub.js";
@@ -119,7 +125,7 @@ export { isPastDeadline } from "../utils/deadline.js";
 export { AlreadyVotedError } from "../db/atomic.js";
 
 // --- Brief content a process hands its brief (src/processes/contracts/briefContent.ts) ---
-export type { BriefContent } from "../processes/contracts/briefContent.js";
+export type { BriefContent, BriefSection } from "../processes/contracts/briefContent.js";
 
 // --- Reporting (src/utils/reportError.ts) ----------------------------------------------
 export { reportError } from "../utils/reportError.js";
@@ -153,3 +159,28 @@ export { extractUrls } from "../modules/civic.link_preview/index.js";
 
 // --- src/services/linkPreviewCache.ts ----------------------------------------------------
 export { warmPreviewsInBackground } from "../services/linkPreviewCache.js";
+
+// --- src/services/briefRegenerate.ts -----------------------------------------------------
+export {
+  applyOnApproval,
+  discardBriefRevision,
+  publishBriefRevision,
+  regenerateBrief,
+} from "../services/briefRegenerate.js";
+
+// --- src/services/briefFinalize.ts -------------------------------------------------------
+export { finalizeBriefSource } from "../services/briefFinalize.js";
+
+// --- src/services/processLinks.ts --------------------------------------------------------
+export { processWireIris } from "../services/processLinks.js";
+
+// --- src/services/processLinkCounts.ts ---------------------------------------------------
+export { countLinksTouching } from "../services/processLinkCounts.js";
+
+// --- src/services/briefResponses.ts ------------------------------------------------------
+export {
+  insertResponse,
+  latestAnchorAt,
+  listResponsesForBrief,
+  responderNames,
+} from "../services/briefResponses.js";

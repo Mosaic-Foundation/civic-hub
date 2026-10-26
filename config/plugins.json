@@ -4,6 +4,7 @@
     "packages/civic.proposals",
     "packages/civic.projects",
     "packages/civic.vote_results",
+    "packages/civic.brief",
     "packages/civic.wordcloud"
   ]
 }

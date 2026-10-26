@@ -6,7 +6,7 @@ import { getProcess, saveProcessState } from "../src/services/processService.js"
 import {
   approveBrief,
   type BriefProcessState,
-} from "../src/modules/civic.brief/index.js";
+} from "../packages/civic.brief/api.js";
 import { emitEvent } from "../src/events/eventEmitter.js";
 import { finalizeBriefSource } from "../src/services/briefFinalize.js";
 import type { Hub } from "../src/models/hub.js";

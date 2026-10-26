@@ -24,7 +24,7 @@
 // the source process. The module knows nothing of Express, the registry,
 // Supabase, or nodemailer.
 
-import type { DeliveryReport, HeldBackRecipient } from "../../shared/delivery.js";
+import type { DeliveryReport, HeldBackRecipient } from "../../src/shared/delivery.js";
 
 export type BriefPublicationStatus = "pending" | "approved" | "published";
 
@@ -32,9 +32,9 @@ export type BriefPublicationStatus = "pending" | "approved" | "published";
 export const IMAGE_ALT_MAX = 200;
 export const IMAGE_URL_MAX = 1000;
 
-import type { BriefContent, BriefSection } from "../../processes/contracts/briefContent.js";
+import type { BriefContent, BriefSection } from "../../src/sdk/index.js";
 
-export type { BriefContent, BriefSection } from "../../processes/contracts/briefContent.js";
+export type { BriefContent, BriefSection };
 
 /**
  * One delivery recipient, as selected by the admin during brief review.

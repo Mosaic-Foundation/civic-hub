@@ -19,7 +19,7 @@ import type { ProcessHandler, RegeneratedBrief } from "./types.js";
 import type { PolisHostInterface } from "../shared/polis_deliberation/hostInterface.js";
 import type { PolisAdapter } from "../shared/polis_deliberation/adapter/types.js";
 import type { PolisDeliberationState } from "../shared/polis_deliberation/types.js";
-import type { BriefContent, BriefSection } from "../modules/civic.brief/index.js";
+import type { BriefContent, BriefSection } from "../../packages/civic.brief/api.js";
 import { defaultJurisdiction } from "../config/hub.js";
 import { str } from "../utils/readField.js";
 import type { FeedProcessMeta } from "./contracts/feedMeta.js";

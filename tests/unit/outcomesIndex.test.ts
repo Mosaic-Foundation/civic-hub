@@ -5,8 +5,8 @@ import {
   filterIndex,
   toIndexEntry,
   type BriefIndexEntry,
-} from "../../src/modules/civic.brief/index.js";
-import type { BriefProcessState } from "../../src/modules/civic.brief/index.js";
+} from "../../packages/civic.brief/api.js";
+import type { BriefProcessState } from "../../packages/civic.brief/api.js";
 
 function state(over: Partial<BriefProcessState> = {}): BriefProcessState {
   return {

@@ -3,7 +3,7 @@ import type {
   BriefContent,
   BriefProcessContext,
   SendEmailFn,
-} from "../../src/modules/civic.brief/models.js";
+} from "../../packages/civic.brief/models.js";
 import {
   RECIPIENT_LABEL_MAX,
   approveBrief,
@@ -12,7 +12,7 @@ import {
   getPublicReadModel,
   normalizeRecipients,
   setRecipients,
-} from "../../src/modules/civic.brief/service.js";
+} from "../../packages/civic.brief/service.js";
 
 const ctx: BriefProcessContext = {
   process_id: "brief_1",
