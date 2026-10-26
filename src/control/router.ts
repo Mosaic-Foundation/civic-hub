@@ -37,6 +37,7 @@ import {
   CODE_SENT,
   ControlAuthError,
   SESSION_TTL_MS,
+  confirmCatalogWindow,
   consumeCode,
   createSession,
   requestCode,
@@ -205,6 +206,26 @@ async function stepUp(req: Request, res: Response): Promise<boolean> {
   return true;
 }
 
+/**
+ * A catalog action's confirmation (ADR-015): within ten minutes of a fresh
+ * code entered for one, on the same session, none is needed; otherwise the
+ * code in the body, which opens the window. Says how it was confirmed, for
+ * the action's own audit row, or false when the code is still to come.
+ */
+async function catalogStepUp(req: Request, res: Response): Promise<"code" | "window" | false> {
+  const until = res.locals.controlSession?.catalog_confirmed_until;
+  if (until && Date.parse(until) > Date.now()) return "window";
+  if (!(await stepUp(req, res))) return false;
+  res.locals.controlSession!.catalog_confirmed_until = await confirmCatalogWindow(readCookie(req, COOKIE));
+  return "code";
+}
+
+/** The catalog view, with until when this session's catalog actions need no code. */
+async function catalogFor(res: Response) {
+  const until = res.locals.controlSession?.catalog_confirmed_until ?? null;
+  return { ...(await catalogView()), confirmed_until: until && Date.parse(until) > Date.now() ? until : null };
+}
+
 async function loadHub(req: Request, res: Response): Promise<ControlHub | null> {
   const hub = await getHub(String(req.params.id));
   if (!hub) res.status(404).json({ error: "No such hub." });
@@ -300,7 +321,7 @@ export function controlRouter(): Router {
     const body = req.body as { email?: unknown; code?: unknown; tz?: unknown };
     const email = await consumeCode(body.email, "sign_in", body.code, clientIp(req), body.tz);
     const { token } = await createSession(email);
-    res.locals.controlSession = { email, expires_at: "" };
+    res.locals.controlSession = { email, expires_at: "", catalog_confirmed_until: null };
     await audited(res, { actor: email, action: "console.sign_in" });
     setSessionCookie(req, res, token);
     res.json({ email });
@@ -675,13 +696,14 @@ export function controlRouter(): Router {
   // The plugin catalog (ADR-014): every entry, with its grant in plain words
   // and whether this deployment's files match it; what the deployment mounts.
   r.get("/control/plugins", route(async (_req, res) => {
-    res.json(await catalogView());
+    res.json(await catalogFor(res));
   }));
 
   // Approving a catalog entry lets every hub on this deployment run that
   // exact code: a fresh code, and an audit row with the hash.
   r.post("/control/plugins/:id/approve", route(async (req, res) => {
-    if (!(await stepUp(req, res))) return;
+    const confirmed = await catalogStepUp(req, res);
+    if (!confirmed) return;
     const notes = catalogNotes(req.body);
     const { before, after } = await catalogChange(() => approveEntry(String(req.params.id), actor(res), notes));
     await audited(res, {
@@ -689,30 +711,32 @@ export function controlRouter(): Router {
       action: "plugin.approve",
       hubId: null,
       before: { id: before.id, status: before.status },
-      after: { id: after.id, package: after.package, version: after.version, hash: after.hash, status: after.status, signature_key: after.signature_key },
+      after: { id: after.id, package: after.package, version: after.version, hash: after.hash, status: after.status, signature_key: after.signature_key, confirmed },
     });
-    res.json(await catalogView());
+    res.json(await catalogFor(res));
   }));
 
   // Signing the entries approved before signatures (and every entry again
   // after the key is rotated): a fresh code, and an audit row listing them.
   r.post("/control/plugins/sign", route(async (req, res) => {
-    if (!(await stepUp(req, res))) return;
+    const confirmed = await catalogStepUp(req, res);
+    if (!confirmed) return;
     const { key, signed } = await catalogChange(() => signApprovedEntries());
     await audited(res, {
       actor: actor(res),
       action: "plugin.sign",
       hubId: null,
       before: null,
-      after: { key, entries: signed },
+      after: { key, entries: signed, confirmed },
     });
-    res.json(await catalogView());
+    res.json(await catalogFor(res));
   }));
 
   // Marking a version required moves every hub on an older one to it, without
   // asking their admins: a fresh code, audited.
   r.post("/control/plugins/:id/required", route(async (req, res) => {
-    if (!(await stepUp(req, res))) return;
+    const confirmed = await catalogStepUp(req, res);
+    if (!confirmed) return;
     const required = (req.body as { required?: unknown } | undefined)?.required;
     if (typeof required !== "boolean") throw new ControlInputError('Send { "required": true } or { "required": false }.', 400);
     const { before, after, moved } = await catalogChange(() => setEntryRequired(String(req.params.id), required));
@@ -721,14 +745,15 @@ export function controlRouter(): Router {
       action: "plugin.required",
       hubId: null,
       before: { id: before.id, required: before.required },
-      after: { id: after.id, package: after.package, version: after.version, required: after.required, hubs_moved: moved },
+      after: { id: after.id, package: after.package, version: after.version, required: after.required, hubs_moved: moved, confirmed },
     });
-    res.json(await catalogView());
+    res.json(await catalogFor(res));
   }));
 
   // Withdrawing stops every server mounting that version within a minute.
   r.post("/control/plugins/:id/withdraw", route(async (req, res) => {
-    if (!(await stepUp(req, res))) return;
+    const confirmed = await catalogStepUp(req, res);
+    if (!confirmed) return;
     const notes = catalogNotes(req.body);
     const { before, after } = await catalogChange(() => withdrawEntry(String(req.params.id), actor(res), notes));
     await audited(res, {
@@ -736,9 +761,9 @@ export function controlRouter(): Router {
       action: "plugin.withdraw",
       hubId: null,
       before: { id: before.id, status: before.status },
-      after: { id: after.id, package: after.package, version: after.version, hash: after.hash, status: after.status },
+      after: { id: after.id, package: after.package, version: after.version, hash: after.hash, status: after.status, confirmed },
     });
-    res.json(await catalogView());
+    res.json(await catalogFor(res));
   }));
 
   // Anything else on the console host is not a hub page.

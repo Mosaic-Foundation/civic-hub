@@ -62,3 +62,67 @@ describe("the console's fresh codes", () => {
     expect(await hits("console.request_code", "ip", ip)).toBe(2);
   });
 });
+
+// One fresh code confirms the catalog's actions for ten minutes on the
+// session that entered it (ADR-015), each still audited; anything else, and
+// another session, still needs its own code. On the straw poll's entry (in
+// the catalog, loaded by no deployment), left withdrawn.
+describe("one code confirms catalog actions for ten minutes", () => {
+  const STRAW = "@civic-social-examples/plugin-straw-poll";
+  const sha = async (v: string) => (await import("node:crypto")).createHash("sha256").update(v).digest("hex");
+
+  async function stepCode(): Promise<string> {
+    const code = String(100000 + Math.floor(Math.random() * 899999));
+    const { plantCode } = await import("../fixtures/consoleCall.js");
+    await plantCode("step_up", code);
+    return code;
+  }
+
+  it("the first catalog action takes a code; the next ones on that session do not, each audited with how it was confirmed", async () => {
+    const session = await mintConsoleSession();
+    const view = await consoleCall("GET", "/control/plugins", { cookie: session });
+    expect(view.status, JSON.stringify(view.body)).toBe(200);
+    expect(view.body.confirmed_until).toBeNull();
+    const entry = view.body.entries.find((e: { package: string }) => e.package === STRAW);
+    expect(entry, "the straw poll's entry is in the catalog").toBeTruthy();
+    // Make it approvable whatever an earlier run left: withdrawn or pending.
+    const act = (name: string, body: Record<string, unknown> = {}, cookie = session) =>
+      consoleCall("POST", `/control/plugins/${entry.id}/${name}`, { cookie, body });
+    const [first, second, third] = entry.status === "approved" ? ["withdraw", "approve", "withdraw"] : ["approve", "withdraw", "approve"];
+
+    expect((await act(first)).status).toBe(403);
+    const coded = await act(first, { step_up_code: await stepCode() });
+    expect(coded.status, JSON.stringify(coded.body)).toBe(200);
+    const until = Date.parse(coded.body.confirmed_until);
+    expect(until - Date.now()).toBeGreaterThan(9 * 60_000);
+    expect(until - Date.now()).toBeLessThanOrEqual(10 * 60_000);
+
+    expect((await act(second)).status).toBe(200);
+    expect((await act(third)).status).toBe(200);
+    const audit = (await localRest(
+      `control_audit_log?select=action,after&action=in.(plugin.approve,plugin.withdraw)&after->>id=eq.${entry.id}&order=id.desc&limit=3`,
+    )) as Array<{ action: string; after: { confirmed: string } }>;
+    expect(audit.reverse().map((r) => [r.action.split(".")[1], r.after.confirmed])).toEqual([
+      [first, "code"],
+      [second, "window"],
+      [third, "window"],
+    ]);
+
+    // Another session needs its own code; so does anything that is not the catalog's.
+    expect((await act(third === "approve" ? "withdraw" : "approve", {}, await mintConsoleSession())).status).toBe(403);
+    const archive = await consoleCall("POST", "/control/hubs/smoke/archive", { cookie: session, body: {} });
+    expect(archive.status).toBe(403);
+    expect(archive.body.error).toBe("step_up_required");
+
+    // When the ten minutes are over, a code again.
+    const token = decodeURIComponent(session.split("=")[1]!);
+    await localRest(`control_sessions?token_hash=eq.${await sha(token)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ catalog_confirmed_until: new Date(Date.now() - 1000).toISOString() }),
+    });
+    const after = await act(third === "approve" ? "withdraw" : "approve");
+    expect(after.status).toBe(403);
+    // Leave it withdrawn.
+    if (third === "approve") expect((await act("withdraw", { step_up_code: await stepCode() })).status).toBe(200);
+  });
+});

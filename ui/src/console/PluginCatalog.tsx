@@ -4,6 +4,10 @@
 // deployment run exactly those files (their hash); withdrawing stops it
 // within a minute. Both take a fresh code and are audited.
 //
+// One fresh code confirms the catalog's actions (Approve, Withdraw, Sign,
+// Mark required) for ten minutes on this session, each still audited; the
+// page says until when.
+//
 // Approving signs the entry with this deployment's catalog key (ADR-015).
 // "Sign approved entries" signs the ones approved before signatures, and all
 // of them again after the key is rotated.
@@ -92,6 +96,13 @@ export default function PluginCatalogPage() {
         marked required is recorded on every hub without asking, and each hub&rsquo;s Plugins page says so.
       </p>
       {error && <p className="cx-alert cx-alert-error" role="alert">{error}</p>}
+      {data?.confirmed_until && (
+        <p className="cx-small cx-muted" data-testid="catalog-confirmed">
+          Your code confirms catalog changes until{" "}
+          {new Date(data.confirmed_until).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}: no code is
+          needed for them until then. Each change is still recorded.
+        </p>
+      )}
       {!data && !error && <p className="cx-muted">Loading…</p>}
       {data && (
         <>

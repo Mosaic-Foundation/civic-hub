@@ -145,7 +145,12 @@ export async function consumeCode(rawEmail: unknown, purpose: CodePurpose, rawCo
 export interface ControlSession {
   email: string;
   expires_at: string;
+  /** Until when its catalog actions need no fresh code (one code confirms them for ten minutes), or null. */
+  catalog_confirmed_until: string | null;
 }
+
+/** How long one fresh code confirms the catalog's actions on a session (ADR-015). */
+export const CATALOG_WINDOW_MS = 10 * 60 * 1000;
 
 /** Start a session; returns the token, which is never stored. */
 export async function createSession(email: string): Promise<{ token: string; expiresAt: string }> {
@@ -167,14 +172,23 @@ export async function sessionFromToken(token: string | undefined): Promise<Contr
   if (!token) return null;
   const { data, error } = await getDb()
     .from("control_sessions")
-    .select("email, expires_at, revoked_at")
+    .select("email, expires_at, revoked_at, catalog_confirmed_until")
     .eq("token_hash", sha256(token))
     .maybeSingle();
   if (error || !data) return null;
-  const row = data as { email: string; expires_at: string; revoked_at: string | null };
+  const row = data as { email: string; expires_at: string; revoked_at: string | null; catalog_confirmed_until: string | null };
   if (row.revoked_at || Date.now() > Date.parse(row.expires_at)) return null;
   if (!isConsoleAdmin(row.email)) return null;
-  return { email: row.email, expires_at: row.expires_at };
+  return { email: row.email, expires_at: row.expires_at, catalog_confirmed_until: row.catalog_confirmed_until ?? null };
+}
+
+/** A fresh code was entered for a catalog action: the session's catalog actions need none for ten minutes. */
+export async function confirmCatalogWindow(token: string | undefined): Promise<string | null> {
+  if (!token) return null;
+  const until = new Date(Date.now() + CATALOG_WINDOW_MS).toISOString();
+  const { error } = await getDb().from("control_sessions").update({ catalog_confirmed_until: until }).eq("token_hash", sha256(token));
+  if (error) throw new Error(`control_sessions write failed: ${error.message}`);
+  return until;
 }
 
 export async function revokeSession(token: string | undefined): Promise<void> {

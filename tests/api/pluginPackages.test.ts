@@ -242,7 +242,8 @@ describe("the console's catalog", () => {
   it("withdrawing an entry stops mounting it at once; approving it again brings it back; both take a fresh code and are audited", async () => {
     const list = await consoleCall("GET", "/control/plugins", { cookie });
     const entry = list.body.entries.find((e: { package: string; status: string; matches_deployment: boolean }) => e.package === WORDCLOUD && e.status === "approved" && e.matches_deployment);
-    const noCode = await consoleCall("POST", `/control/plugins/${entry.id}/withdraw`, { cookie, body: {} });
+    // A session that has not yet entered a code for the catalog (one code confirms its actions for ten minutes, ADR-015).
+    const noCode = await consoleCall("POST", `/control/plugins/${entry.id}/withdraw`, { cookie: await mintConsoleSession(), body: {} });
     expect(noCode.status).toBe(403);
     expect(noCode.body.error).toBe("step_up_required");
 
@@ -310,7 +311,7 @@ describe("signed approvals", () => {
       expect(verdict.mounted).toBe(false);
       expect(verdict.reason).toContain("not signed");
 
-      const noCode = await consoleCall("POST", "/control/plugins/sign", { cookie, body: {} });
+      const noCode = await consoleCall("POST", "/control/plugins/sign", { cookie: await mintConsoleSession(), body: {} });
       expect(noCode.status).toBe(403);
       const signed = await consoleCall("POST", "/control/plugins/sign", { cookie, body: { step_up_code: await stepCode() } });
       expect(signed.status, JSON.stringify(signed.body)).toBe(200);
@@ -431,7 +432,7 @@ describe("versions and updates", () => {
       if (wasRequired) {
         expect((await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie, body: { required: false, step_up_code: await stepCode() } })).status).toBe(200);
       }
-      expect((await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie, body: { required: true } })).status).toBe(403);
+      expect((await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie: await mintConsoleSession(), body: { required: true } })).status).toBe(403);
       const marked = await consoleCall("POST", `/control/plugins/${entry.id}/required`, { cookie, body: { required: true, step_up_code: await stepCode() } });
       expect(marked.status, JSON.stringify(marked.body)).toBe(200);
       const row = (await db.query("SELECT version, upgraded_from, upgraded_by FROM hub_plugins WHERE hub_id = $1 AND package = $2", [SLUG, BRIEF])).rows[0];

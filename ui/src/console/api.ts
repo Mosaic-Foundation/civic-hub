@@ -384,4 +384,6 @@ export interface PluginCatalog {
     /** Approved entries not signed by this deployment's key. */
     unsigned: number;
   };
+  /** Until when this session's catalog actions need no fresh code (one code confirms them for ten minutes), or null. */
+  confirmed_until: string | null;
 }
