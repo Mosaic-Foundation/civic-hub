@@ -15,8 +15,8 @@ import {
   handleGetProposal,
   handleSupportProposal,
   handleUnsupportProposal,
-} from "../controllers/proposalController.js";
-import { requireResident } from "../middleware/auth.js";
+} from "./controller.js";
+import { requireResident } from "../../src/sdk/index.js";
 
 const router = Router();
 

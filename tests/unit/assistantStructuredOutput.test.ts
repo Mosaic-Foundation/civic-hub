@@ -15,7 +15,7 @@ import {
   RESPONSE_TOOL,
 } from "../../src/modules/civic.assistant/service";
 import type { CallClaudeMultiTurnFn } from "../../src/modules/civic.assistant/service";
-import { proposalAssistantConfig } from "../../src/modules/civic.proposals/assistantConfig";
+import { proposalAssistantConfig } from "../../packages/civic.proposals/assistantConfig";
 import { deliberationAssistantConfig } from "../../src/processes/deliberationAssistantConfig";
 
 const baseInput = {

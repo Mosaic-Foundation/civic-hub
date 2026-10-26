@@ -1,9 +1,9 @@
-// What civic.proposals keeps, as the host supplies it (ADR-012, the database
-// convention): the module never imports src/db/. The implementation is
-// src/stores/proposals.ts, bound at startup by installStores(). The tables are
-// `proposals` and `proposal_supports`.
+// What civic.proposals keeps (ADR-012, the database convention): the package
+// never imports src/db/. The implementation is ./storeImpl.ts, on the database
+// its host hands it (its granted tables only), bound when the hub loads the
+// package (./index.ts). The tables are `proposals` and `proposal_supports`.
 
-import { storeSlot } from "../../processes/storeSlot.js";
+import { storeSlot } from "../../src/sdk/index.js";
 import type { ProposalStatus } from "./models.js";
 
 /** A stored proposal, as the `proposals` table has it. */

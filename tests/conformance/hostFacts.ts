@@ -7,7 +7,7 @@ import { mappedEventTypes } from "../../src/events/activitySerializer.js";
 import { HUB_TABLES } from "../../src/db/forHub.js";
 import { EXPORT_MANIFEST } from "../../src/db/schemaContract.js";
 import { loadedPackages } from "../../src/plugins/loader.js";
-import { deliberationDraftKind, projectDraftKind, proposalDraftKind } from "../../src/processes/draftKinds.js";
+import { deliberationDraftKind, projectDraftKind } from "../../src/processes/draftKinds.js";
 
 export function hostFacts(): HostFacts {
   return {
@@ -19,7 +19,6 @@ export function hostFacts(): HostFacts {
     // packages keep theirs in src/processes/draftKinds.ts.
     draftKinds: [
       ...loadedPackages().flatMap((p) => (p.server.drafts ? [p.server.drafts.kind] : [])),
-      proposalDraftKind,
       projectDraftKind,
       deliberationDraftKind,
     ].map((k) => ({

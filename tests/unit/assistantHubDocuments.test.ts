@@ -73,7 +73,7 @@ describe("the proposal guide is the hub's document", () => {
   });
 
   it("is declared by the proposal type rather than compiled into it", async () => {
-    const { proposalAssistantConfig } = await import("../../src/modules/civic.proposals/assistantConfig.js");
+    const { proposalAssistantConfig } = await import("../../packages/civic.proposals/assistantConfig.js");
     expect(proposalAssistantConfig.bestPracticesDocument).toBe("legal.proposal_best_practices");
     expect(proposalAssistantConfig.bestPractices).not.toMatch(/floyd/i);
   });

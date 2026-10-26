@@ -2,8 +2,8 @@
 // Plain data: the registry, the wire, the settings page, the feed and the UI
 // are built from it. The handler (./handler.ts) runs its actions.
 
-import { defineDescriptor, defineManifest } from "../../processes/manifest.js";
-import { DEADLINE_CLOSE_INPUT } from "../../shared/deadlineClose.js";
+import { defineDescriptor, defineManifest } from "../../src/processes/manifest.js";
+import { DEADLINE_CLOSE_INPUT } from "../../src/shared/deadlineClose.js";
 
 /**
  * What a proposal is (src/processes/descriptor.ts). Residents support it, or
@@ -102,7 +102,7 @@ export const PROPOSAL_MANIFEST = defineManifest({
     "civic.proposal.closed": { type: "civic:End", object: { kind: "process", terminalState: "closed" } },
   },
   legacyActivities: {
-    // Its emitter exists (civic.proposals/events.ts) but nothing calls it;
+    // Its emitter exists (./events.ts) but nothing calls it;
     // mapped so the type stays serializable if the path is ever wired up.
     "civic.proposal.endorsed": { type: "Like", object: { kind: "civic", class: "civic:Proposal", id: "process" } },
   },
@@ -136,3 +136,5 @@ export const PROPOSAL_MANIFEST = defineManifest({
     ui: { surfaces: ["process-page", "create-page", "feed-card", "nav-section", "settings-panel"] },
   },
 });
+
+export default PROPOSAL_MANIFEST;

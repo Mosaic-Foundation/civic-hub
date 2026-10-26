@@ -19,7 +19,7 @@ import {
   getProcessState,
   saveProcessState,
 } from "../src/services/processService.js";
-import { createProposal } from "../src/modules/civic.proposals/index.js";
+import { createProposal } from "../packages/civic.proposals/service.js";
 import { emitEvent } from "../src/events/eventEmitter.js";
 import { forHub, type HubDb } from "../src/db/forHub.js";
 import type { Hub } from "../src/models/hub.js";

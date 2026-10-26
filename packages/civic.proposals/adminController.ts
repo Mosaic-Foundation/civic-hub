@@ -6,15 +6,13 @@
 // lists proposals for admins and lets them archive (hide) ones that violate
 // guidelines.
 
-import { NotFoundError } from "../errors/index.js";
-import { route } from "../http/route.js";
+import { NotFoundError, route, enrichCreator, enrichCreators } from "../../src/sdk/index.js";
 import {
   listEndorsedProposals,
   listProposals,
   getProposalReadModel,
   getProposalSummary,
-} from "../modules/civic.proposals/index.js";
-import { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
+} from "./service.js";
 
 /**
  * GET /admin/proposals — list proposals for admin review.

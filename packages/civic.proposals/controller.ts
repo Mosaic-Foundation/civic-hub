@@ -5,16 +5,20 @@
 // direct create route was removed 2026-10-12 (it skipped review).
 // Admin operations are in adminController.ts.
 
-import { ValidationError } from "../errors/index.js";
-import { route } from "../http/route.js";
+import {
+  ValidationError,
+  route,
+  resolveCallerUser,
+  actOnProcess,
+  readAsPage,
+  viewFor,
+  enrichCreators,
+  getSampleProcessIds,
+} from "../../src/sdk/index.js";
 import {
   listProposals,
   getProposalSummary,
-} from "../modules/civic.proposals/index.js";
-import { resolveCallerUser } from "../middleware/auth.js";
-import { actOnProcess, readAsPage, viewFor } from "./processController.js";
-import { enrichCreators } from "../services/creatorDisplay.js";
-import { getSampleProcessIds } from "../services/processService.js";
+} from "./service.js";
 
 /**
  * GET /proposals — list all proposals (optionally filtered by status)

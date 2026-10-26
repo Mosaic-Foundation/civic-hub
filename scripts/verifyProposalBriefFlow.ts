@@ -6,11 +6,11 @@
 
 import { forHub } from "../src/db/forHub.js";
 import { getProcess } from "../src/services/processService.js";
-import proposalAdapter from "../src/modules/civic.proposals/handler.js";
+import proposalAdapter from "../packages/civic.proposals/handler.js";
 import {
   createProposal,
   supportProposal,
-} from "../src/modules/civic.proposals/index.js";
+} from "../packages/civic.proposals/service.js";
 import { findExistingBriefId } from "../src/processes/spawnBrief.js";
 import { emitEvent } from "../src/events/eventEmitter.js";
 import type { BriefProcessState } from "../src/modules/civic.brief/index.js";

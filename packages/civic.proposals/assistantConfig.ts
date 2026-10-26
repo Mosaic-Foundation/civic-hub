@@ -4,10 +4,15 @@
 // the best-practices doc, the brainstorm/review guidance, the form's field
 // schema and inline guidance, and the storage adapter for proposal drafts.
 
-import type { AssistantTypeConfig } from "../civic.assistant/index.js";
-import { KEYS } from "../../models/hubSettings.js";
-import { getDraft, appendConversation, saveReviewResult, applyGeneratedDraft } from "../civic.drafts/index.js";
-import { proposalDraftKind } from "../../processes/draftKinds.js";
+import {
+  type AssistantTypeConfig,
+  KEYS,
+  getDraft,
+  appendConversation,
+  saveReviewResult,
+  applyGeneratedDraft,
+} from "../../src/sdk/index.js";
+import { proposalDraftKind } from "./draftKind.js";
 
 /**
  * Stand-in for the hub's own guide, used only when no hub is in scope (a unit

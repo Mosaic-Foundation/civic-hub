@@ -22,10 +22,9 @@ import feedRoutes from "./routes/feedRoutes.js";
 import discoveryRoutes from "./routes/discoveryRoutes.js";
 import debugRoutes from "./routes/debugRoutes.js";
 import inputRoutes from "./routes/inputRoutes.js";
-import proposalRoutes from "./routes/proposalRoutes.js";
 import assistantRoutes from "./routes/assistantRoutes.js";
 import { draftRouter } from "./routes/draftRoutes.js";
-import { proposalDraftKind, projectDraftKind, deliberationDraftKind } from "./processes/draftKinds.js";
+import { projectDraftKind, deliberationDraftKind } from "./processes/draftKinds.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import voteResultsRoutes from "./routes/voteResultsRoutes.js";
@@ -188,10 +187,6 @@ app.use("/process", inputRoutes);
 // runs with the Writing assistant off (src/routes/assistantRoutes.ts).
 app.use("/assistant", assistantRoutes);
 
-// Proposal draft endpoints — draft storage + submission (mounted before
-// /proposals so /proposals/drafts doesn't get caught by /proposals/:id).
-app.use("/proposals/drafts", requirePlugin("proposal"), draftRouter(proposalDraftKind));
-
 // Project draft endpoints — AI-augmented project drafting (mounted before
 // /projects so /projects/drafts doesn't get caught by /projects/:id).
 app.use("/projects/drafts", requirePlugin("project"), draftRouter(projectDraftKind));
@@ -209,9 +204,6 @@ app.use("/deliberations", requirePlugin("conversation"), deliberationRoutes);
 // The plugin packages' routes (ADR-014), in configured order, each behind
 // its plugin's switch and the loader's verdict.
 mountPackageRoutes(app, "routes");
-
-// Proposal endpoints — user-facing proposal submission and endorsement
-app.use("/proposals", requirePlugin("proposal"), proposalRoutes);
 
 // Process review — resident submissions go through collaborative admin review
 app.use("/reviews", reviewRoutes);

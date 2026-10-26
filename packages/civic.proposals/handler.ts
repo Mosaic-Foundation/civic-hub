@@ -14,11 +14,23 @@
 // the status for its read model: written after the process row commits
 // (afterActionCommits), never before.
 
-import { ValidationError } from "../../errors/index.js";
-import { Process, ProcessAction } from "../../models/process.js";
-import { ProcessHandler } from "../../processes/types.js";
-import { emitEvent } from "../../events/eventEmitter.js";
-import { readProcessState, writeProcessState } from "../../services/processRows.js";
+import {
+  ValidationError,
+  type Process,
+  type ProcessAction,
+  type ProcessHandler,
+  emitEvent,
+  readProcessState,
+  writeProcessState,
+  closeThroughDispatcher,
+  afterActionCommits,
+  isPastDeadline,
+  getInputsByProcess,
+  type BriefContent,
+  setDraftStatus,
+  getSettingSync,
+  KEYS,
+} from "../../src/sdk/index.js";
 import { proposalsStore } from "./store.js";
 import {
   createProposal,
@@ -27,19 +39,11 @@ import {
   withdrawProposalSupport,
   markProposalClosed,
   getProposalReadModel,
-} from "./index.js";
+} from "./service.js";
 import { emitProposalClosed } from "./events.js";
-import { closeThroughDispatcher } from "../../processes/registry.js";
-import { afterActionCommits } from "../../services/actionScope.js";
-import { isPastDeadline } from "../../utils/deadline.js";
-import { getInputsByProcess } from "../civic.input/index.js";
-import type { BriefContent } from "../civic.brief/index.js";
 import { proposalAssistantConfig } from "./assistantConfig.js";
-import { setDraftStatus } from "../civic.drafts/index.js";
-import { proposalDraftKind } from "../../processes/draftKinds.js";
-import { hubKindOf, participantNoun } from "../../shared/hubKind.js";
-import { getSettingSync } from "../../services/hubSettings.js";
-import { KEYS } from "../../models/hubSettings.js";
+import { proposalDraftKind } from "./draftKind.js";
+import { hubKindOf, participantNoun } from "../../src/shared/hubKind.js";
 import { PROPOSAL_MANIFEST } from "./manifest.js";
 
 // What the people taking part are called on this hub (review R29, 2026-10-07).

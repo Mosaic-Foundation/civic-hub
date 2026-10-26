@@ -162,7 +162,7 @@ vi.mock("../../src/services/feedHealth.js", () => ({
   findBrokenPublications: async () => [],
 }));
 
-vi.mock("../../src/modules/civic.proposals/index.js", () => ({
+vi.mock("../../packages/civic.proposals/service.js", () => ({
   listProposals: async () => [],
 }));
 

@@ -11,7 +11,6 @@
 // not yet a package, so the packages' manifests are taken one by one from the
 // configured list and it sits among them, where it has always been.
 
-import { PROPOSAL_MANIFEST } from "../modules/civic.proposals/manifest.js";
 import { PROJECT_MANIFEST } from "../modules/civic.projects/manifest.js";
 import { VOTE_RESULTS_MANIFEST } from "../modules/civic.vote_results/manifest.js";
 import { BRIEF_MANIFEST } from "../modules/civic.brief/manifest.js";
@@ -22,7 +21,7 @@ import { PACKAGE_MANIFESTS } from "../../config/plugins/manifests.js";
 import type { ProcessManifest } from "../processes/manifest.js";
 
 // The packages' manifests, in config/plugins.json's order.
-const [VOTE_MANIFEST, WORDCLOUD_MANIFEST] = PACKAGE_MANIFESTS;
+const [VOTE_MANIFEST, PROPOSAL_MANIFEST, WORDCLOUD_MANIFEST] = PACKAGE_MANIFESTS;
 
 export const PROCESS_MANIFESTS = [
   VOTE_MANIFEST,

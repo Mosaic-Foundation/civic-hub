@@ -16,7 +16,7 @@ import { processUiOf } from "../processes";
  *
  * A PROPOSAL defaults to references, not continues — a proposal is an idea
  * board (float an idea, gauge interest; it never becomes a vote, see
- * src/modules/civic.proposals/handler.ts), so it more often OPENS a thread than descends
+ * packages/civic.proposals/handler.ts), so it more often OPENS a thread than descends
  * from one. Same reasoning as a conversation.
  */
 export function defaultRelationFor(processType?: string): RelationType {

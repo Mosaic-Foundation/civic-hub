@@ -21,7 +21,7 @@ import {
 import { clearEvents, getEventCount } from "../events/eventStore.js";
 import { emitEvent } from "../events/eventEmitter.js";
 import { clearInputs, submitInput } from "../modules/civic.input/index.js";
-import { clearProposals } from "../modules/civic.proposals/index.js";
+import { clearProposals } from "../../packages/civic.proposals/service.js";
 import { clearAuth } from "../modules/civic.auth/index.js";
 import { clearReceipts } from "../modules/civic.receipts/index.js";
 import {

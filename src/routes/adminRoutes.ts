@@ -8,10 +8,6 @@ import { Router } from "express";
 import { handleAdminQueueCounts, handleMarkAdminQueueSeen } from "../controllers/adminQueueController.js";
 import { handleAdminListEdits } from "../controllers/editNotificationController.js";
 import {
-  handleAdminListProposals,
-  handleAdminGetProposal,
-} from "../controllers/adminController.js";
-import {
   handleAdminListVoteResults,
   handleAdminGetVoteResults,
   handlePatchVoteResults,
@@ -99,7 +95,6 @@ router.use(requireAdmin);
 // Plugin-specific admin surfaces answer 404 on a hub with the plugin off
 // (src/middleware/pluginGate.ts). The shared queues — reviews, archived,
 // edits, moderation of comments — belong to no one plugin and stay.
-router.use("/proposals", requirePlugin("proposal"));
 router.use("/vote-results", requirePlugin("vote"));
 router.use("/briefs", requirePlugin("brief"));
 router.use("/meeting-summaries", requirePlugin("meeting_summary"));
@@ -110,10 +105,6 @@ router.use("/moderation/announcements", requirePlugin("announcement"));
 // switch and the loader's verdict, after the admin check above.
 mountPackageRoutes(router, "adminRoutes");
 
-
-// Proposals
-router.get("/proposals", handleAdminListProposals);
-router.get("/proposals/:id", handleAdminGetProposal);
 
 // Vote results (renamed from /admin/briefs in Slice 8.5; the underlying
 // process type is civic.vote_results, formerly civic.brief).

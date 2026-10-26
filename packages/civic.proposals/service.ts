@@ -13,8 +13,7 @@
 // The conversion to a vote is handled by the service/controller layer,
 // which coordinates between this module and the vote module.
 
-import { ConflictError, NotFoundError, ValidationError } from "../../errors/index.js";
-import { generateId } from "../../utils/id.js";
+import { ConflictError, NotFoundError, ValidationError, generateId } from "../../src/sdk/index.js";
 import { proposalsStore, type ProposalRow } from "./store.js";
 import type {
   Proposal,

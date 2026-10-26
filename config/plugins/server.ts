@@ -3,9 +3,11 @@
 
 import type { ConfiguredPackage } from "../../src/plugins/package.js";
 import p0 from "../../packages/civic.vote/index.js";
-import p1 from "../../packages/civic.wordcloud/index.js";
+import p1 from "../../packages/civic.proposals/index.js";
+import p2 from "../../packages/civic.wordcloud/index.js";
 
 export const CONFIGURED_PACKAGES: readonly ConfiguredPackage[] = [
   { dir: "packages/civic.vote", pkg: p0 },
-  { dir: "packages/civic.wordcloud", pkg: p1 },
+  { dir: "packages/civic.proposals", pkg: p1 },
+  { dir: "packages/civic.wordcloud", pkg: p2 },
 ];

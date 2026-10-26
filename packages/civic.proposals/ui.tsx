@@ -1,11 +1,11 @@
 // civic.proposal: an idea residents float for discussion and support
-// (manifest: src/modules/civic.proposals/manifest.ts).
+// (manifest: packages/civic.proposals/manifest.ts).
 
-import { NewProposal, ProposalDetail, Propose } from "../lazyPages";
-import { ParticipationValues } from "../pages/settings/pluginFields";
-import type { ProcessUi } from "./types";
+import { NewProposal, ProposalDetail, Propose } from "../../ui/src/lazyPages";
+import { ParticipationValues } from "../../ui/src/pages/settings/pluginFields";
+import type { ProcessUi } from "../../ui/src/processes/types";
 
-export const proposalUi: ProcessUi = {
+const proposalUi: ProcessUi = {
   type: "civic.proposal",
   routes: [
     { path: "/propose", element: <Propose /> },
@@ -35,3 +35,5 @@ export const proposalUi: ProcessUi = {
   },
   settingsPanel: () => <ParticipationValues show="anonymity" />,
 };
+
+export default proposalUi;

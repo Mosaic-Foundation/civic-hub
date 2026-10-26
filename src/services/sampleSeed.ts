@@ -64,7 +64,7 @@ import { processWireIris } from "./processLinks.js";
 import * as vote from "../../packages/civic.vote/service.js";
 import type { VoteProcessState } from "../../packages/civic.vote/service.js";
 import { getBallotChoicesForProcess, clearActiveVoteKeysForProcess } from "../modules/civic.receipts/index.js";
-import { createProposal, supportProposal } from "../modules/civic.proposals/index.js";
+import { createProposal, supportProposal } from "../../packages/civic.proposals/service.js";
 import { createProject, setProjectSentiment } from "../modules/civic.projects/index.js";
 import { emitProjectUpdated } from "../modules/civic.projects/events.js";
 import { submitInput } from "../modules/civic.input/index.js";

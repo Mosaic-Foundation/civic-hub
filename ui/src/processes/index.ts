@@ -10,7 +10,6 @@ import type { ActivityKind } from "../../../src/shared/feedActivity";
 import { MANIFEST_LIST } from "../../../src/shared/processManifests";
 import type { FormApi } from "../pages/settings/pluginFields";
 import type { FeedKindUi, ProcessUi } from "./types";
-import { proposalUi } from "./proposal";
 import { projectUi } from "./project";
 import { voteResultsUi } from "./voteResults";
 import { briefUi } from "./brief";
@@ -20,7 +19,6 @@ import { conversationUi } from "./conversation";
 import { PACKAGE_UI } from "../../../config/plugins/ui";
 
 const MODULES: readonly ProcessUi[] = [
-  proposalUi,
   projectUi,
   voteResultsUi,
   briefUi,

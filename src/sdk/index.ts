@@ -32,19 +32,21 @@ export type { FeedProcessMeta } from "../processes/contracts/feedMeta.js";
 export { storeSlot, type StoreSlot } from "../processes/storeSlot.js";
 export type { GrantedDb, PluginHost, PluginPackage, PluginServer, PluginMount } from "../plugins/package.js";
 
-// --- Requests ------------------------------------------------------------------------
+// --- Requests and the names a package uses as it loads ----------------------------------
 // Listed ahead of the groups that reach the loader (the events and services
-// below): a package's routes call route() and take requireResident when they
-// load, and the loader loads every package while this file is still being
-// evaluated if a package's own file was the first thing imported.
+// below): a package's routes call route() and take requireResident, and its
+// handler reads KEYS, when the package loads, and the loader loads every
+// package while this file is still being evaluated if a package's own file was
+// the first thing imported.
 export { route } from "../http/route.js";
-export { resolveCallerId, getAuthUser, requireResident } from "../middleware/auth.js";
+export { resolveCallerId, getAuthUser, requireResident, resolveCallerUser } from "../middleware/auth.js";
+export { KEYS } from "../models/hubSettings.js";
 
 // --- Events: the one emission path ---------------------------------------------------
 export { emitEvent, buildEvent } from "../events/eventEmitter.js";
 
 // --- The hub's services a package calls ----------------------------------------------
-export { getProcess } from "../services/processService.js";
+export { getProcess, getSampleProcessIds } from "../services/processService.js";
 export { readProcessState, writeProcessState } from "../services/processRows.js";
 
 // --- Storage helpers (over host.db()) ---------------------------------------------------
@@ -89,10 +91,15 @@ export type { DraftKind } from "../processes/draftKinds.js";
 export { getInputsByProcess } from "../modules/civic.input/index.js";
 
 // --- Events (src/models/event.ts) ------------------------------------------------------
-export type { CivicEvent } from "../models/event.js";
+export type { CivicEvent, CreateEventInput } from "../models/event.js";
 
 // --- Settings the hub keeps (src/services/hubSettings.ts) ------------------------------
-export { voteDurationLimitsSync, getSupportThreshold, defaultCheckModeSync } from "../services/hubSettings.js";
+export {
+  voteDurationLimitsSync,
+  getSupportThreshold,
+  defaultCheckModeSync,
+  getSettingSync,
+} from "../services/hubSettings.js";
 
 // --- The hub in scope (src/config/hubContext.ts) ---------------------------------------
 export { currentHubId } from "../config/hubContext.js";
@@ -108,3 +115,12 @@ export type { BriefContent } from "../processes/contracts/briefContent.js";
 
 // --- Reporting (src/utils/reportError.ts) ----------------------------------------------
 export { reportError } from "../utils/reportError.js";
+
+// --- src/services/creatorDisplay.ts ------------------------------------------------------
+export { enrichCreator, enrichCreators } from "../services/creatorDisplay.js";
+
+// --- src/controllers/processController.ts ------------------------------------------------
+export { actOnProcess, readAsPage, viewFor } from "../controllers/processController.js";
+
+// --- src/config/hub.ts -------------------------------------------------------------------
+export { defaultJurisdiction } from "../config/hub.js";
