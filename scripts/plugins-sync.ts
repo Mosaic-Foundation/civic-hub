@@ -7,7 +7,8 @@
 //
 //   config/plugins/manifests.ts   each package's manifest (plain data: the
 //                                 server and the UI read it);
-//   config/plugins/server.ts      each package's server entry, for the loader;
+//   config/plugins/server.ts      each package's server entry and its files (what
+//                                 its content hash covers), for the loader;
 //   config/plugins/ui.ts          each package's UI module;
 //   supabase/migrations/<ts>_pkg_<id>__<name>.sql
 //                                 a byte-for-byte copy of each file in a
@@ -23,6 +24,7 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { packageFiles } from "../src/plugins/hash.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CHECK = process.argv.includes("--check");
@@ -105,7 +107,7 @@ function main(): void {
       'import type { ConfiguredPackage } from "../../src/plugins/package.js";\n' +
       `${imports("p", "index", ".js")}\n\n` +
       "export const CONFIGURED_PACKAGES: readonly ConfiguredPackage[] = [\n" +
-      dirs.map((d, i) => `  { dir: "${d}", pkg: p${i} },\n`).join("") +
+      dirs.map((d, i) => `  { dir: "${d}", pkg: p${i}, files: ${JSON.stringify(packageFiles(join(ROOT, d)))} },\n`).join("") +
       "];\n",
     "config/plugins/ui.ts":
       HEADER +

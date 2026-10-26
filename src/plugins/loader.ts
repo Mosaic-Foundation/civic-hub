@@ -36,7 +36,7 @@ import { createHost } from "./host.js";
 import { everythingMountedForTests, recordMounted } from "./mountedState.js";
 
 export { isPackageMounted, isTypeMounted } from "./mountedState.js";
-import { hashPackage } from "./hash.js";
+import { hashPackage, packageFiles } from "./hash.js";
 import { beyondGrant } from "../shared/pluginGrant.js";
 import { readApprovedCatalog, type CatalogRow } from "../db/pluginCatalog.js";
 import { reportError } from "../utils/reportError.js";
@@ -53,6 +53,8 @@ export class PackageError extends Error {
 
 export interface LoadedPackage {
   dir: string;
+  /** Its files, as plugins:sync listed them. */
+  files: readonly string[];
   pkg: PluginPackage;
   server: PluginServer;
   /** Its process type and the plugin (switch) it rides on. */
@@ -108,7 +110,7 @@ export function loadPackages(list: readonly ConfiguredPackage[]): LoadedPackage[
         throw new PackageError(entry, `a route needs a path starting with "/" and a router (${String(mount.path)})`);
       }
     }
-    out.push({ dir: entry.dir, pkg, server, type: m.descriptor.type, plugin: m.descriptor.plugin });
+    out.push({ dir: entry.dir, files: entry.files, pkg, server, type: m.descriptor.type, plugin: m.descriptor.plugin });
   }
   return out;
 }
@@ -165,7 +167,12 @@ function hashesNow(): Map<string, string | Error> {
     hashes = new Map();
     for (const p of loaded()) {
       try {
-        hashes.set(p.pkg.name, hashPackage(resolve(process.cwd(), p.dir)));
+        const abs = resolve(process.cwd(), p.dir);
+        hashes.set(p.pkg.name, hashPackage(abs, p.files));
+        const beside = packageFiles(abs).filter((f) => !p.files.includes(f));
+        if (beside.length > 0) {
+          console.log(`[plugins] ${p.pkg.name}: ${beside.length} file(s) beside its own, not part of it: ${beside.slice(0, 5).join(", ")}${beside.length > 5 ? ", …" : ""}`);
+        }
       } catch (err) {
         hashes.set(p.pkg.name, err instanceof Error ? err : new Error(String(err)));
       }

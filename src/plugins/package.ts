@@ -129,5 +129,7 @@ export interface PluginPackage {
 export interface ConfiguredPackage {
   /** Its directory, relative to the civic-hub root: "packages/civic.vote". */
   dir: string;
+  /** Its files, relative to `dir`, as plugins:sync found them: what its content hash covers. */
+  files: readonly string[];
   pkg: PluginPackage;
 }

@@ -17,7 +17,7 @@ const real = loadedPackages().find((p) => p.pkg.name === "@civic-social/plugin-w
 
 /** A configured entry like the word cloud's, with some fields replaced. */
 function entry(over: Partial<Record<keyof PluginPackage, unknown>>, dir = "packages/civic.test"): ConfiguredPackage {
-  return { dir, pkg: { ...real.pkg, name: "@test/plugin-sample", ...over } as PluginPackage };
+  return { dir, files: [], pkg: { ...real.pkg, name: "@test/plugin-sample", ...over } as PluginPackage };
 }
 
 describe("package validation at startup", () => {
@@ -113,5 +113,18 @@ describe("the content hash", () => {
     expect(hashPackage(dir)).toBe(first);
     writeFileSync(join(dir, "migrations", "20261025000000_x.sql"), "select 2;\n");
     expect(hashPackage(dir)).not.toBe(first);
+  });
+
+  it("covers exactly the files plugins:sync listed: a host's own files beside them do not change it", () => {
+    const dir = mkdtempSync(join(tmpdir(), "civic-pkg-"));
+    writeFileSync(join(dir, "index.ts"), "export default {};\n");
+    writeFileSync(join(dir, "handler.ts"), "export const x = 1;\n");
+    const listed = ["handler.ts", "index.ts"];
+    const before = hashPackage(dir, listed);
+    expect(before).toBe(hashPackage(dir));
+    // What Vercel ships beside the sources it was given: compiled output.
+    writeFileSync(join(dir, "handler.js"), "export const x = 1;\n");
+    expect(hashPackage(dir, listed)).toBe(before);
+    expect(() => hashPackage(dir, [...listed, "gone.ts"])).toThrow();
   });
 });
