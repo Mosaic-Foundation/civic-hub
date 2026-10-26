@@ -19,6 +19,7 @@ import { loadHubs } from "./hubs.js";
 import { loadJobs } from "./jobs.js";
 import { loadOutside } from "./outside.js";
 import { loadAttention } from "./attention.js";
+import { loadPluginGaps } from "../pluginCatalog.js";
 
 export interface SectionContext {
   now: Date;
@@ -48,6 +49,9 @@ export const DASHBOARD_SECTIONS: readonly DashboardSection[] = [
   { id: "jobs", name: "Jobs and backups", load: loadJobs },
   { id: "outside", name: "Uptime and errors", load: loadOutside },
   { id: "attention", name: "Waiting for attention", load: loadAttention },
+  // Plugin packages this deployment loads but does not mount (ADR-014), and
+  // the hubs left without them; catalog entries waiting for approval.
+  { id: "plugins", name: "Plugins", load: loadPluginGaps },
 ];
 
 export interface SectionResult {

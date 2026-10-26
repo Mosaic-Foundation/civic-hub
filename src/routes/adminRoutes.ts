@@ -90,6 +90,7 @@ import {
   handleRequestSampleRemovalCode,
 } from "../controllers/hubSampleContentController.js";
 import { handleAdminListMembers } from "../controllers/membersController.js";
+import { handleInstallPlugin, handleListPluginInstalls, handleRemovePlugin } from "../controllers/hubPluginsController.js";
 
 const router = Router();
 
@@ -221,6 +222,10 @@ router.put("/hub/settings", handlePutHubSettings);
 router.get("/hub/settings/template/:key", handleGetSettingTemplate);
 // Live items per plugin, for the Plugins page's switch-off warning.
 router.get("/hub/plugins/live", handleGetPluginLiveCounts);
+// Plugin packages' installs: Install, Remove (Stop now or Wind down) (ADR-014).
+router.get("/hub/plugins/installs", handleListPluginInstalls);
+router.post("/hub/plugins/:plugin/install", handleInstallPlugin);
+router.post("/hub/plugins/:plugin/remove", handleRemovePlugin);
 // Each scheduled job's last run, for the Plugins page (job_runs, 20260929000000).
 router.get("/hub/jobs/runs", handleGetJobRuns);
 

@@ -1740,6 +1740,43 @@ export function adminGetPluginLiveCounts(): Promise<{ counts: Record<string, num
   return request("GET", "/admin/hub/plugins/live");
 }
 
+/**
+ * A plugin a package provides, as the Plugins page installs and removes it
+ * (src/services/pluginInstall.ts; ADR-014).
+ */
+export interface PluginInstall {
+  plugin: string;
+  name: string;
+  state: "installed" | "winding_down" | "removed" | "unavailable";
+  packages: Array<{
+    package: string;
+    version: string;
+    display_name: string;
+    type: string;
+    grant: { can: string[]; cannot: string[] };
+    approved_at: string | null;
+    checked_at: string | null;
+  }>;
+  open: number;
+  wind_down_offered: boolean;
+  installed_at: string | null;
+  installed_by: string | null;
+  removed_at: string | null;
+  winding_down_since: string | null;
+}
+
+export function adminListPluginInstalls(): Promise<{ plugins: PluginInstall[] }> {
+  return request("GET", "/admin/hub/plugins/installs");
+}
+
+export function adminInstallPlugin(plugin: string): Promise<{ plugin: PluginInstall }> {
+  return request("POST", `/admin/hub/plugins/${encodeURIComponent(plugin)}/install`, {});
+}
+
+export function adminRemovePlugin(plugin: string, mode: "stop" | "wind_down"): Promise<{ plugin: PluginInstall }> {
+  return request("POST", `/admin/hub/plugins/${encodeURIComponent(plugin)}/remove`, { mode });
+}
+
 /** One recorded run of a scheduled job. Shape: src/services/jobRuns.ts. */
 export interface JobRunRecord {
   job_id: string;

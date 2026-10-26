@@ -8,6 +8,7 @@ import HubDetailPage from "./HubDetail";
 import AuditLog from "./AuditLog";
 import Invites from "./Invites";
 import FeedbackInbox from "./FeedbackInbox";
+import PluginCatalogPage from "./PluginCatalog";
 import Dashboard from "./Dashboard";
 
 type Session = { email: string | null; operator_configured: boolean };
@@ -71,6 +72,9 @@ export default function App() {
               </span>
             ) : null}
           </a>
+          <a href={href({ name: "plugins" })} aria-current={route.name === "plugins" ? "page" : undefined}>
+            Plugins
+          </a>
           <a href={href({ name: "audit" })} aria-current={route.name === "audit" ? "page" : undefined}>
             Audit log
           </a>
@@ -97,6 +101,7 @@ export default function App() {
         {route.name === "audit" && <AuditLog />}
         {route.name === "invites" && <Invites />}
         {route.name === "feedback" && <FeedbackInbox onCountChange={setReceived} />}
+        {route.name === "plugins" && <PluginCatalogPage />}
       </main>
     </div>
   );

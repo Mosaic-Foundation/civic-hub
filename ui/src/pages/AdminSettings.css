@@ -934,6 +934,88 @@
   font-size: 0.9rem;
 }
 
+/* Install and Remove for a plugin a package provides (ADR-014). */
+.plugin-install {
+  margin: 4px 0 8px;
+}
+
+.plugin-install-state {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.plugin-install-state p {
+  margin: 0 0 6px;
+}
+
+.plugin-install-label {
+  font-weight: 600;
+}
+
+.plugin-install-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plugin-install-button {
+  margin-left: 8px;
+  padding: 4px 12px;
+  font-size: 0.9rem;
+  border: 1px solid var(--color-border, #e2e2e2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface, #fff);
+  color: inherit;
+  cursor: pointer;
+}
+
+.plugin-install-actions .plugin-install-button {
+  margin-left: 0;
+}
+
+.plugin-grant-title {
+  margin: 12px 0 4px;
+  font-size: 1rem;
+}
+
+.plugin-grant ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.plugin-grant li {
+  margin-bottom: 4px;
+}
+
+.plugin-remove-modes {
+  border: 0;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.plugin-remove-mode {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.plugin-remove-mode.is-disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.plugin-remove-mode input {
+  margin-top: 4px;
+}
+
+.plugin-remove-detail {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--color-text-muted, inherit);
+}
+
 .plugin-change-link {
   margin-left: 8px;
   font-size: 0.9em;

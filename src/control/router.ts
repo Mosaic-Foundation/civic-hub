@@ -90,6 +90,7 @@ import {
   withDerivedCode,
   type ControlHub,
 } from "./hubs.js";
+import { approveEntry, catalogView, CatalogStateError, withdrawEntry } from "./pluginCatalog.js";
 
 const COOKIE = "civic_console";
 const CSRF_HEADER = "x-civic-console";
@@ -250,6 +251,24 @@ async function audited(res: Response, entry: Parameters<typeof recordAudit>[0]):
     throw new Error(
       "The change was made, but it could not be recorded in the audit log. Check the database before doing anything else.",
     );
+  }
+}
+
+/** An optional note on a catalog decision, at most 1000 characters. */
+function catalogNotes(body: unknown): string | null {
+  const v = (body as { notes?: unknown } | undefined)?.notes;
+  if (v === undefined || v === null || v === "") return null;
+  if (typeof v !== "string" || v.length > 1000) throw new ControlInputError("A note is text, at most 1000 characters.");
+  return v.trim();
+}
+
+/** A catalog change, its state errors answered as the console's 400s. */
+async function catalogChange<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof CatalogStateError) throw new ControlInputError(err.message, 409);
+    throw err;
   }
 }
 
@@ -651,6 +670,43 @@ export function controlRouter(): Router {
       },
     });
     res.json(result);
+  }));
+
+  // The plugin catalog (ADR-014): every entry, with its grant in plain words
+  // and whether this deployment's files match it; what the deployment mounts.
+  r.get("/control/plugins", route(async (_req, res) => {
+    res.json(await catalogView());
+  }));
+
+  // Approving a catalog entry lets every hub on this deployment run that
+  // exact code: a fresh code, and an audit row with the hash.
+  r.post("/control/plugins/:id/approve", route(async (req, res) => {
+    if (!(await stepUp(req, res))) return;
+    const notes = catalogNotes(req.body);
+    const { before, after } = await catalogChange(() => approveEntry(String(req.params.id), actor(res), notes));
+    await audited(res, {
+      actor: actor(res),
+      action: "plugin.approve",
+      hubId: null,
+      before: { id: before.id, status: before.status },
+      after: { id: after.id, package: after.package, version: after.version, hash: after.hash, status: after.status },
+    });
+    res.json(await catalogView());
+  }));
+
+  // Withdrawing stops every server mounting that version within a minute.
+  r.post("/control/plugins/:id/withdraw", route(async (req, res) => {
+    if (!(await stepUp(req, res))) return;
+    const notes = catalogNotes(req.body);
+    const { before, after } = await catalogChange(() => withdrawEntry(String(req.params.id), actor(res), notes));
+    await audited(res, {
+      actor: actor(res),
+      action: "plugin.withdraw",
+      hubId: null,
+      before: { id: before.id, status: before.status },
+      after: { id: after.id, package: after.package, version: after.version, hash: after.hash, status: after.status },
+    });
+    res.json(await catalogView());
   }));
 
   // Anything else on the console host is not a hub page.

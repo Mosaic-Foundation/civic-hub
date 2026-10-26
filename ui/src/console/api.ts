@@ -273,6 +273,11 @@ export const api = {
   feedback: (filter: { stream?: string; status?: string } = {}) =>
     request<FeedbackInbox>("GET", `/feedback?${new URLSearchParams(filter).toString()}`),
   feedbackCount: () => request<{ received: number }>("GET", "/feedback/count"),
+  plugins: () => request<PluginCatalog>("GET", "/plugins"),
+  approvePlugin: (id: string, extra: Record<string, unknown>) =>
+    request<PluginCatalog>("POST", `/plugins/${encodeURIComponent(id)}/approve`, extra),
+  withdrawPlugin: (id: string, extra: Record<string, unknown>) =>
+    request<PluginCatalog>("POST", `/plugins/${encodeURIComponent(id)}/withdraw`, extra),
   updateFeedback: (id: string, patch: { status?: FeedbackStatus; github_issue_url?: string | null }) =>
     request<{ item: FeedbackItem; sender_told?: { sent: boolean; reason?: string } }>(
       "PATCH",
@@ -323,4 +328,40 @@ export interface FeedbackInbox {
   /** Likely duplicates together; the newest group first. */
   groups: FeedbackItem[][];
   received: number;
+}
+
+/** One catalog entry: a package version the operator vets (ADR-014). */
+export interface PluginCatalogEntry {
+  id: string;
+  package: string;
+  version: string;
+  hash: string;
+  display_name: string;
+  plugin: string;
+  process_type: string;
+  conformance: { result: "passed"; ran_at: string; commit?: string; walked?: boolean };
+  status: "pending" | "approved" | "withdrawn";
+  approved_by: string | null;
+  approved_at: string | null;
+  withdrawn_at: string | null;
+  notes: string | null;
+  created_at: string;
+  /** This deployment loads exactly this version and these files. */
+  matches_deployment: boolean;
+  grant: { can: string[]; cannot: string[] };
+}
+
+export interface PluginVerdict {
+  package: string;
+  version: string;
+  type: string;
+  plugin: string;
+  hash: string | null;
+  mounted: boolean;
+  reason?: string;
+}
+
+export interface PluginCatalog {
+  entries: PluginCatalogEntry[];
+  deployment: PluginVerdict[];
 }

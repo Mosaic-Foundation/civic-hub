@@ -91,6 +91,14 @@ function describe(e: HubAdminLogEntry): string {
         : "Sent a feedback item to Civic.Social as a bug";
     case "member.invite":
       return describeInvite(e.after);
+    case "plugin.install":
+      return `Installed ${field(e.after, "plugin") ?? "a plugin"}`;
+    case "plugin.remove":
+      return field(e.after, "reason")
+        ? `${field(e.after, "plugin") ?? "A plugin"} switched off by itself: ${field(e.after, "reason")}`
+        : `Removed ${field(e.after, "plugin") ?? "a plugin"} (stopped now)`;
+    case "plugin.wind_down":
+      return `Started winding down ${field(e.after, "plugin") ?? "a plugin"}`;
     default:
       return e.action;
   }

@@ -19,8 +19,8 @@
 // deliberately NOT filtered: it is the hub's published record, and what a hub
 // published stays published.
 
-import { NotFoundError } from "../errors/index.js";
-import { isPluginEnabledSync } from "./hubSettings.js";
+import { ConflictError, NotFoundError } from "../errors/index.js";
+import { isPluginEnabledSync, isPluginWindingDownSync } from "./hubSettings.js";
 import { PROCESS_TYPE_PLUGINS, registeredProcessTypes } from "../processes/registry.js";
 import type { PluginId } from "../models/hubSettings.js";
 import { isTypeMounted } from "../plugins/mountedState.js";
@@ -73,5 +73,22 @@ export function assertProcessTypeEnabled(type: string, verb = "Creating"): void 
   const plugin = processTypePlugin(type);
   if (plugin && (!isPluginEnabledSync(plugin) || !isTypeMounted(type))) {
     throw new PluginDisabledError(plugin, `${verb} ${type}`);
+  }
+}
+
+/**
+ * Refuse to start a new process of a type whose plugin is off, or winding
+ * down (ADR-014): a resident's submission, an admin's creation, an approval
+ * that would bring a submission live. A process the hub makes itself (a brief
+ * on a close) goes through createProcess, which checks only the switch.
+ */
+export function assertProcessTypeCreatable(type: string, verb = "Creating"): void {
+  assertProcessTypeEnabled(type, verb);
+  const plugin = processTypePlugin(type);
+  if (plugin && isPluginWindingDownSync(plugin)) {
+    throw new ConflictError(
+      "Nothing new of this kind can be started on this hub: it is winding down. What is already open runs to its close.",
+      "plugin_winding_down",
+    );
   }
 }

@@ -190,7 +190,11 @@ export async function getPublicSettings(
   }
   for (const id of PLUGIN_IDS) {
     const key = `plugin.${id}.enabled`;
-    out[key] = asBoolean(resolve(map, key), true) ? "true" : "false";
+    // A plugin whose package this deployment did not mount reads as off,
+    // as it does on the server (src/plugins/mountedState.ts).
+    out[key] = pluginPackageMounted(id) && asBoolean(resolve(map, key), true) ? "true" : "false";
+    // Winding down (ADR-014): on, but nothing new of its kind can be started.
+    if (asBoolean(resolve(map, `plugin.${id}.winding_down`), false)) out[`plugin.${id}.winding_down`] = "true";
   }
   return out;
 }
@@ -710,6 +714,15 @@ export function hubDisplayNameSync(): string {
  */
 export function isPluginEnabledSync(pluginId: string): boolean {
   return pluginPackageMounted(pluginId) && asBoolean(getSettingSync(`plugin.${pluginId}.enabled`), true);
+}
+
+/**
+ * Winding down (ADR-014): the plugin stays on and its open processes run to
+ * their close, but nothing new of its kind can be started; the close job
+ * switches it off when the last one closes (src/services/pluginInstall.ts).
+ */
+export function isPluginWindingDownSync(pluginId: string): boolean {
+  return asBoolean(getSettingSync(`plugin.${pluginId}.winding_down`), false);
 }
 
 export async function isPluginEnabled(

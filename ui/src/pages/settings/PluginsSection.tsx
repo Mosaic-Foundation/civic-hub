@@ -1,6 +1,9 @@
 // Plugins — every plugin's on/off switch, and beneath each one the settings
 // that plugin has (Adam, 2026-09-24; the per-plugin settings were decided on
-// 2026-09-22).
+// 2026-09-22). A plugin a package provides (every process type's, ADR-014)
+// has Install and Remove instead of the switch (./PluginInstall.tsx): its
+// version, what it may do, and two ways to remove it, Stop now (the switch's
+// off) and Wind down. The hub features keep their switches.
 //
 // Off means, for this hub only: the plugin's pages and nav items are gone,
 // its routes answer "not found", its scheduled job is skipped, and its kind
@@ -42,9 +45,13 @@ import HelpButton from "../../components/HelpButton";
 import { HUB_FEATURES } from "../../../../src/shared/hubFeatures";
 import { pluginHasDeadlines, processPluginCopy } from "../../processes/display";
 import { processSettingsPanel } from "../../processes";
+import { PluginInstallControls } from "./PluginInstall";
+import { useHubSettings } from "./hubSettingsState";
 import {
   adminGetJobRuns,
   adminGetPluginLiveCounts,
+  adminListPluginInstalls,
+  type PluginInstall,
   type MemberSummary,
   getMemberSummary,
   type JobRunRecord,
@@ -79,12 +86,21 @@ const NO_COUNTS: Record<string, number> = {};
 export default function PluginsSection() {
   // Live items per plugin, loaded once. A failed load shows no warning
   // rather than a wrong number; the switch still works.
-  const { data: liveRead } = useApi("admin/plugins/live-counts", () => adminGetPluginLiveCounts());
+  const { data: liveRead, reload: reloadLive } = useApi("admin/plugins/live-counts", () => adminGetPluginLiveCounts());
   const live: Record<string, number> = liveRead?.counts ?? NO_COUNTS;
   // Each job's last run. A failed load says so on the cards rather than
   // showing nothing, which would read as "never ran".
   const { data: jobsRead, error: jobsError } = useApi("admin/hub/jobs/runs", () => adminGetJobRuns());
   const jobs: JobRunsEntry[] | "error" | null = jobsError ? "error" : (jobsRead?.jobs ?? null);
+  // The plugins packages provide: their install state, versions and grants.
+  const { data: installsRead, reload: reloadInstalls } = useApi("admin/hub/plugins/installs", () => adminListPluginInstalls());
+  const installs = new Map((installsRead?.plugins ?? []).map((p) => [p.plugin, p]));
+  const settings = useHubSettings();
+  const afterInstallChange = () => {
+    void reloadInstalls();
+    void reloadLive();
+    void settings.reload();
+  };
 
   return (
     <SectionForm
@@ -108,6 +124,8 @@ export default function PluginsSection() {
               id={id}
               live={live[id] ?? 0}
               jobs={jobs === "error" || jobs === null ? jobs : jobs.filter((j) => j.plugin === id)}
+              install={installs.get(id)}
+              onInstallChange={afterInstallChange}
             />
           ))}
         </div>
@@ -121,14 +139,19 @@ function PluginCard({
   id,
   live,
   jobs,
+  install,
+  onInstallChange,
 }: {
   f: FormApi;
   id: PluginId;
   live: number;
   jobs: JobRunsEntry[] | "error" | null;
+  /** Present for a plugin a package provides: Install and Remove replace the switch. */
+  install?: PluginInstall;
+  onInstallChange: () => void;
 }) {
   const hub = useHub();
-  const on = f.value(`plugin.${id}.enabled`) === "true";
+  const on = install ? install.state === "installed" || install.state === "winding_down" : f.value(`plugin.${id}.enabled`) === "true";
   const panel = settingsPanel(f, id);
   // From the served config, so it describes what is saved; refreshed after
   // every save (src/shared/pluginSetup.ts holds the rule).
@@ -155,7 +178,9 @@ function PluginCard({
       >
         <span className="plugin-card-title">
           <span className="plugin-card-name">{pluginCopy(id, hub).name}</span>
-          <span className={`plugin-card-state${on ? " is-on" : ""}`}>{on ? "On" : "Off"}</span>
+          <span className={`plugin-card-state${on ? " is-on" : ""}`}>
+            {install?.state === "winding_down" ? "Winding down" : install ? (on ? "Installed" : "Not installed") : on ? "On" : "Off"}
+          </span>
           {on && setup && <span className="plugin-needs-setup-chip">Needs setup</span>}
         </span>
         <span className="plugin-card-what">{pluginCopy(id, hub).what}</span>
@@ -169,14 +194,20 @@ function PluginCard({
       </div>
       {open && (
         <div id={bodyId} className="plugin-card-body">
-          <BooleanField f={f} k={`plugin.${id}.enabled`} label={`${pluginCopy(id, hub).name} on`} />
+          {install ? (
+            <PluginInstallControls install={install} onChanged={onInstallChange} />
+          ) : (
+            <BooleanField f={f} k={`plugin.${id}.enabled`} label={`${pluginCopy(id, hub).name} on`} />
+          )}
           {on && setup && <NeedsSetup missing={setup.missing} shown={setup.shown} />}
           {on && <JobRunLines jobs={jobs} plugin={id} />}
-          {!on && live > 0 && <LiveItemsWarning id={id} live={live} />}
+          {!on && live > 0 && install?.state !== "unavailable" && <LiveItemsWarning id={id} live={live} />}
           {panel && on && <div className="plugin-settings">{panel}</div>}
           {panel && !on && (
             <p className="form-hint plugin-off-note">
-              Off. Its settings are kept and apply again when it is switched back on.
+              {install
+                ? "Not installed. Its settings are kept and apply again when it is installed."
+                : "Off. Its settings are kept and apply again when it is switched back on."}
             </p>
           )}
         </div>

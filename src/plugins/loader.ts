@@ -143,6 +143,9 @@ export interface PackageVerdict {
   mounted: boolean;
   /** Why it is not mounted, in a sentence an operator can act on. */
   reason?: string;
+  /** For a mounted package: when its catalog row was approved, and its conformance run. */
+  approvedAt?: string;
+  checkedAt?: string;
 }
 
 const CATALOG_TTL_MS = 60_000;
@@ -194,7 +197,7 @@ export function judge(p: Pick<LoadedPackage, "pkg" | "type" | "plugin">, hash: s
   if (beyond.length > 0) {
     return { ...base, hash, mounted: false, reason: `it asks for more than its approved grant: ${beyond.join(", ")}` };
   }
-  return { ...base, hash, mounted: true };
+  return { ...base, hash, mounted: true, approvedAt: row.approved_at ?? undefined, checkedAt: row.conformance.ran_at };
 }
 
 async function refresh(): Promise<void> {
@@ -248,6 +251,13 @@ export function verifyPackages(): Promise<void> {
   if (current && Date.now() - current.at < CATALOG_TTL_MS) return Promise.resolve();
   if (!inflight) inflight = refresh().finally(() => (inflight = null));
   return inflight;
+}
+
+/** Decide again now, reading the approved rows (the console, after an approval or a withdrawal). */
+export async function refreshPackages(): Promise<void> {
+  if (inflight) await inflight;
+  current = current ? { ...current, at: 0 } : null;
+  await verifyPackages();
 }
 
 /** Every package's verdict, in configured order ([] before the first verify). */

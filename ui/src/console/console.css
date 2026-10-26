@@ -434,3 +434,12 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--c
   .cx-dash-concern a { flex-direction: column; gap: 2px; }
   .cx-dash-search { width: 100%; }
 }
+
+/* The plugin catalog (ADR-014). */
+.cx-plugin-list { list-style: none; margin: 0; padding: 0; }
+.cx-plugin-entry { padding: 12px 0; border-top: 1px solid var(--cx-border); }
+.cx-plugin-entry:first-child { border-top: 0; }
+.cx-plugin-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.cx-plugin-status { font-size: 0.8rem; padding: 1px 8px; border-radius: 999px; background: var(--cx-surface-2, rgba(0, 0, 0, 0.06)); }
+.cx-plugin-pending { background: var(--cx-warn-bg); color: var(--cx-warn); }
+.cx-plugin-withdrawn { color: var(--cx-muted); }

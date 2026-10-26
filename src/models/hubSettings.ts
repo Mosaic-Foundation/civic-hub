@@ -397,7 +397,7 @@ export function isDocumentKey(key: string): boolean {
 /** Is this key safe to serve to anyone? `plugin.<id>.enabled` always is. */
 export function isPublicKey(key: string): boolean {
   if (PUBLIC_KEYS.has(key)) return true;
-  return /^plugin\.[a-z_]+\.enabled$/.test(key);
+  return /^plugin\.[a-z_]+\.(enabled|winding_down)$/.test(key);
 }
 
 /** Keep only the public keys of a settings map. */

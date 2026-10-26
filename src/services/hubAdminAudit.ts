@@ -36,7 +36,12 @@ export type HubAdminAuditAction =
   | "member.invite"
   // "Terms and Privacy reviewed" ticked or unticked under Legal (operations
   // shell): { reviewed: boolean } before and after.
-  | "legal.reviewed";
+  | "legal.reviewed"
+  // A plugin installed, removed (stopped, or switched off at the end of a
+  // wind-down) or set winding down from the Plugins page (ADR-014).
+  | "plugin.install"
+  | "plugin.remove"
+  | "plugin.wind_down";
 
 export interface HubAdminAuditEntry {
   actor: string;

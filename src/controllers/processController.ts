@@ -1,6 +1,6 @@
 // Process controller — handles HTTP request/response for process endpoints
 
-import { assertProcessTypeEnabled, isProcessTypeEnabled } from "../services/pluginGate.js";
+import { assertProcessTypeCreatable, isProcessTypeEnabled } from "../services/pluginGate.js";
 import { NotFoundError, ValidationError } from "../errors/index.js";
 import { route } from "../http/route.js";
 import {
@@ -34,7 +34,7 @@ export const handleCreateProcess = route(async (req, res) => {
   // A type an admin does not create directly (proposals and projects make
   // their own rows on approval) is created only through drafts and review.
   // A switched-off plugin's type is not on this hub at all: that answer first.
-  assertProcessTypeEnabled(definition.type);
+  assertProcessTypeCreatable(definition.type);
   const descriptor = getDescriptor(definition.type);
   if (descriptor && !descriptor.creation.admin) {
     throw new ValidationError(

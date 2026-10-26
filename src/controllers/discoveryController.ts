@@ -12,6 +12,7 @@ import { isProcessTypeEnabled } from "../services/pluginGate.js";
 import { baseUrl } from "../utils/baseUrl.js";
 import { getRegisteredTypes, publicProcessTypes } from "../processes/registry.js";
 import { civicPlaceCode, hubName, spaceDid } from "../config/hub.js";
+import { loadedPackages } from "../plugins/loader.js";
 
 export const handleDiscoveryManifest = route((_req, res) => {
   const hub = baseUrl();
@@ -54,6 +55,12 @@ export const handleDiscoveryManifest = route((_req, res) => {
   // types emitted). Tables, settings and adapters stay internal (Adam,
   // 2026-10-12). Additive: `processes` keeps its shape.
   manifest.process_types = publicProcessTypes(isProcessTypeEnabled);
+  // The plugin packages this hub runs, with their versions (ADR-014): the
+  // installed ones of those this deployment mounts. Additive. Names and
+  // versions only; grants and hashes stay with the console.
+  manifest.plugins = loadedPackages()
+    .filter((p) => isProcessTypeEnabled(p.type))
+    .map((p) => ({ package: p.pkg.name, version: p.pkg.version, type: p.type }));
   // Civic Activity Spec v0.2 §6.3: "A conformance claim names its level."
   // Level 1 (Publisher) is what this hub implements — a single validated
   // emission path serving the §6.1 collection under the §5.2 serving rule.

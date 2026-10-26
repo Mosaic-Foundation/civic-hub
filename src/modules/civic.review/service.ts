@@ -1,6 +1,6 @@
 import { ConflictError, ForbiddenError, NotFoundError } from "../../errors/index.js";
 import { reportError } from "../../utils/reportError.js";
-import { assertProcessTypeEnabled } from "../../services/pluginGate.js";
+import { assertProcessTypeCreatable } from "../../services/pluginGate.js";
 import { currentHub, currentHubId } from "../../config/hubContext.js";
 import { createEdges, processWireIris } from "../../services/processLinks.js";
 import { eventToRow } from "../../events/eventStore.js";
@@ -108,7 +108,7 @@ export async function submitForReview(
   const notify = opts.notify ?? true;
   // The review funnel is a creation path: a type whose plugin is off cannot
   // be submitted on this hub.
-  assertProcessTypeEnabled(input.process_type);
+  assertProcessTypeCreatable(input.process_type);
   const handler = getProcessHandler(input.process_type);
   const processId = generateId("proc");
   const reviewId = generateId("rev");
@@ -330,7 +330,7 @@ export async function approveReview(
   // A submission whose plugin the hub switched off cannot go live: approving
   // it would publish a process nobody can open. It waits, hidden from the
   // queue (listReviews), until the plugin is back on.
-  assertProcessTypeEnabled(proc.type, "Approving");
+  assertProcessTypeCreatable(proc.type, "Approving");
 
   // What approval does to this process — the status it lands on, and any
   // lifecycle action that has to run for it to be real. The handler declares

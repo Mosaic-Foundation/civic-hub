@@ -57,13 +57,13 @@ export async function readCatalogRow(id: string): Promise<CatalogRow | null> {
 }
 
 /**
- * Approve a pending row, or withdraw an approved one. Conditional on its
- * status, so two operators cannot both act on it; returns the row as it now
- * is, or null when it was not in `from`.
+ * Approve a pending (or withdrawn) row, or withdraw an approved one.
+ * Conditional on its status, so two operators cannot both act on it; returns
+ * the row as it now is, or null when it was not in `from`.
  */
 export async function setCatalogStatus(
   id: string,
-  from: CatalogStatus,
+  from: readonly CatalogStatus[],
   to: "approved" | "withdrawn",
   by: string,
   notes?: string | null,
@@ -76,7 +76,7 @@ export async function setCatalogStatus(
     .from("plugin_catalog")
     .update(patch)
     .eq("id", id)
-    .eq("status", from)
+    .in("status", [...from])
     .select(COLUMNS)
     .maybeSingle();
   if (error) throw new Error(`plugin_catalog: ${error.message}`);

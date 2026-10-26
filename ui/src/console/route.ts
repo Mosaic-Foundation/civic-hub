@@ -10,7 +10,8 @@ export type Route =
   | { name: "hub"; id: string }
   | { name: "audit" }
   | { name: "invites" }
-  | { name: "feedback" };
+  | { name: "feedback" }
+  | { name: "plugins" };
 
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#\/?/, "");
@@ -20,6 +21,7 @@ export function parseRoute(hash: string): Route {
   if (path === "audit") return { name: "audit" };
   if (path === "invites") return { name: "invites" };
   if (path === "feedback") return { name: "feedback" };
+  if (path === "plugins") return { name: "plugins" };
   const m = path.match(/^hubs\/([a-z0-9-]+)$/);
   if (m) return { name: "hub", id: m[1] };
   return { name: "hubs" };
@@ -37,6 +39,8 @@ export function href(route: Route): string {
       return "#/invites";
     case "feedback":
       return "#/feedback";
+    case "plugins":
+      return "#/plugins";
     case "hub":
       return `#/hubs/${route.id}`;
     default:

@@ -655,9 +655,60 @@ function summarizeAttention(data: unknown): SectionSummary {
   };
 }
 
+// --- Plugins (ADR-014) ------------------------------------------------------
+
+interface PluginGapsData {
+  mounted: number;
+  unmounted: Array<{ package: string; version: string; reason: string; hubs: string[] }>;
+  pending: number;
+}
+
+function PluginsView({ data }: { data: unknown }) {
+  const { unmounted, pending } = data as PluginGapsData;
+  return (
+    <>
+      {unmounted.length === 0 ? (
+        <Empty>Every plugin this deployment loads is running.</Empty>
+      ) : (
+        <ul className="cx-dash-rows">
+          {unmounted.map((u) => (
+            <li key={u.package} className="cx-dash-row cx-dash-row-danger" data-testid={`dash-plugin-${u.package}`}>
+              <strong>{u.package}@{u.version}</strong> is not running: {u.reason}.{" "}
+              {u.hubs.length > 0
+                ? `Installed on ${u.hubs.length} ${u.hubs.length === 1 ? "hub" : "hubs"}, which are without it: ${u.hubs.join(", ")}.`
+                : "No hub has it installed."}
+            </li>
+          ))}
+        </ul>
+      )}
+      {pending > 0 && (
+        <p className="cx-small">
+          {pending} catalog {pending === 1 ? "entry is" : "entries are"} waiting for approval: <a href="#/plugins">Plugins</a>.
+        </p>
+      )}
+    </>
+  );
+}
+
+function summarizePlugins(data: unknown): SectionSummary {
+  const { mounted, unmounted, pending } = data as PluginGapsData;
+  const concerns: Concern[] = unmounted.map((u) => ({
+    tone: u.hubs.length > 0 ? "danger" : "warn",
+    text: `${u.package}@${u.version} is not running${u.hubs.length > 0 ? ` (installed on ${u.hubs.length})` : ""}: ${u.reason}`,
+  }));
+  return {
+    tone: unmounted.some((u) => u.hubs.length > 0) ? "danger" : unmounted.length > 0 || pending > 0 ? "warn" : "ok",
+    value: `${mounted}/${mounted + unmounted.length}`,
+    label: "plugins running",
+    detail: pending > 0 ? `${pending} waiting for approval` : unmounted.length === 0 ? "All running" : "Some not running",
+    concerns,
+  };
+}
+
 export const SECTION_VIEWS: Record<string, SectionView> = {
   hubs: { tab: "Hubs", summarize: summarizeHubs, render: HubsView },
   jobs: { tab: "Jobs and backups", summarize: summarizeJobs, render: JobsView },
   outside: { tab: "Uptime and errors", summarize: summarizeOutside, render: OutsideView },
   attention: { tab: "Waiting", summarize: summarizeAttention, render: AttentionView },
+  plugins: { tab: "Plugins", summarize: summarizePlugins, render: PluginsView },
 };
